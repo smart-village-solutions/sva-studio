@@ -39,7 +39,9 @@ import {
   loadExternalContentCore,
   loadExternalContentReferenceByContentId,
   loadExternalContentReferenceByOperation,
+  loadExternalContentReferenceBySourceEntity,
   prepareExternalContent,
+  recordSuccessfulExternalContentMutation,
   updateExternalContentCore,
   updateExternalContentReconciliationStatus,
   withExternalContentMutationLock,
@@ -188,6 +190,86 @@ describe('external content references', () => {
         operationExternalId: 'missing',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('loads a reference by its provider identity', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
+    });
+
+    await expect(
+      loadExternalContentReferenceBySourceEntity({
+        instanceId: 'tenant-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        sourceEntityId: 'external-1',
+      })
+    ).resolves.toEqual(expect.objectContaining({ contentId: 'content-1', sourceEntityId: 'external-1' }));
+  });
+
+  it('records a successful provider mutation against an existing content core', async () => {
+    state.query.mockResolvedValueOnce({
+      rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
+    });
+    state.updateContent.mockResolvedValue('content-1');
+
+    await expect(
+      recordSuccessfulExternalContentMutation({
+        instanceId: 'tenant-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'request-1',
+        operation: 'update',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        sourceEntityId: 'external-1',
+        contentType: 'generic-items.generic-item',
+        title: 'Eintrag',
+        payload: { status: 'published' },
+        status: 'published',
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Redaktion',
+      })
+    ).resolves.toBe('content-1');
+    expect(state.updateContent).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: 'content-1', mutationRef: 'request-1' })
+    );
+  });
+
+  it('creates and binds a local core for the first successful provider mutation', async () => {
+    state.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [row] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await expect(
+      recordSuccessfulExternalContentMutation({
+        instanceId: 'tenant-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'request-1',
+        operation: 'create',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        sourceEntityId: 'external-1',
+        contentType: 'generic-items.generic-item',
+        title: 'Eintrag',
+        payload: { status: 'draft' },
+        status: 'draft',
+        authorDisplayMode: 'user',
+        authorDisplayName: 'Redaktion',
+      })
+    ).resolves.toBe('content-1');
+    expect(state.insertHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({ mutationRef: 'request-1', action: 'created' })
+    );
+    expect(state.query).toHaveBeenLastCalledWith(
+      expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),
+      ['tenant-1', 'reference-1', 'external-1']
+    );
   });
 
   it('fails closed when reference writes return no row', async () => {

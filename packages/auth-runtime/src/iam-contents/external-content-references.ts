@@ -164,6 +164,25 @@ LIMIT 1;`,
     return result.rows[0] ? mapReference(result.rows[0]) : undefined;
   });
 
+export const loadExternalContentReferenceBySourceEntity = async (input: {
+  readonly instanceId: string;
+  readonly sourceSystem: string;
+  readonly sourceEntityType: string;
+  readonly sourceEntityId: string;
+}): Promise<ExternalContentReference | undefined> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query<ExternalContentReferenceRow>(
+      `${referenceSelect}
+WHERE instance_id = $1
+  AND source_system = $2
+  AND source_entity_type = $3
+  AND source_entity_id = $4
+LIMIT 1;`,
+      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+    );
+    return result.rows[0] ? mapReference(result.rows[0]) : undefined;
+  });
+
 export const listExternalContentReferences = async (input: {
   readonly instanceId: string;
   readonly sourceSystem: string;
@@ -290,6 +309,7 @@ export const updateExternalContentCore = async (input: {
   readonly actorDisplayName: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly mutationRef?: string;
   readonly contentId: string;
   readonly title: string;
   readonly payload: ContentJsonValue;
@@ -303,3 +323,116 @@ export const updateExternalContentCore = async (input: {
 };
 
 export const loadExternalContentCore = loadContentById;
+
+export const recordSuccessfulExternalContentMutation = async (input: {
+  readonly instanceId: string;
+  readonly actorAccountId: string;
+  readonly actorDisplayName: string;
+  readonly mutationRef: string;
+  readonly operation: 'create' | 'update';
+  readonly sourceSystem: string;
+  readonly sourceEntityType: string;
+  readonly sourceEntityId: string;
+  readonly contentType: string;
+  readonly organizationId?: string;
+  readonly title: string;
+  readonly payload: ContentJsonValue;
+  readonly status: IamContentStatus;
+  readonly publishedAt?: string;
+  readonly authorDisplayMode: IamContentAuthorDisplayMode;
+  readonly authorDisplayName: string;
+}): Promise<string> => {
+  const existingReference = await loadExternalContentReferenceBySourceEntity(input);
+  if (existingReference) {
+    await updateExternalContentCore({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      actorDisplayName: input.actorDisplayName,
+      mutationRef: input.mutationRef,
+      contentId: existingReference.contentId,
+      title: input.title,
+      payload: input.payload,
+      status: input.status,
+      publishedAt: input.publishedAt,
+      authorDisplayMode: input.authorDisplayMode,
+      authorDisplayName: input.authorDisplayName,
+    });
+    return existingReference.contentId;
+  }
+
+  const resolved = await withInstanceScopedDb(input.instanceId, async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+      `${input.sourceSystem}:${input.sourceEntityType}`,
+      input.sourceEntityId,
+    ]);
+    const referenceResult = await client.query<ExternalContentReferenceRow>(
+      `${referenceSelect}
+WHERE instance_id = $1
+  AND source_system = $2
+  AND source_entity_type = $3
+  AND source_entity_id = $4
+LIMIT 1;`,
+      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
+    );
+    const concurrentReference = referenceResult.rows[0];
+    if (concurrentReference) {
+      return { contentId: mapReference(concurrentReference).contentId, created: false } as const;
+    }
+
+    const contentId = await insertContentRow(client, {
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      actorDisplayName: input.actorDisplayName,
+      contentType: input.contentType,
+      organizationId: input.organizationId,
+      authorDisplayMode: input.authorDisplayMode,
+      title: input.title,
+      payload: input.payload,
+      status: input.status,
+      publishedAt: input.publishedAt,
+    });
+    const historyId = await insertContentHistory(client, {
+      instanceId: input.instanceId,
+      contentId,
+      actorAccountId: input.actorAccountId,
+      actorDisplayName: input.actorDisplayName,
+      action: input.operation === 'create' ? 'created' : 'updated',
+      changedFields: ['title', 'payload', 'status', ...(input.publishedAt ? ['publishedAt'] : [])],
+      nextStatus: input.status,
+      summary: input.operation === 'create' ? 'Inhalt erstellt' : 'Inhalt aktualisiert',
+      snapshot: input.payload,
+      mutationRef: input.mutationRef,
+    });
+    await updateContentRevisionRefs(client, input.instanceId, contentId, historyId);
+    const reference = await insertExternalContentReference(client, {
+      instanceId: input.instanceId,
+      contentId,
+      sourceSystem: input.sourceSystem,
+      sourceEntityType: input.sourceEntityType,
+      operationExternalId: input.mutationRef,
+    });
+    await client.query(
+      `UPDATE iam.external_content_references
+       SET source_entity_id = $3, reconciliation_status = 'bound', updated_at = NOW()
+       WHERE instance_id = $1 AND id = $2::uuid;`,
+      [input.instanceId, reference.id, input.sourceEntityId]
+    );
+    return { contentId, created: true } as const;
+  });
+  if (!resolved.created) {
+    await updateExternalContentCore({
+      instanceId: input.instanceId,
+      actorAccountId: input.actorAccountId,
+      actorDisplayName: input.actorDisplayName,
+      mutationRef: input.mutationRef,
+      contentId: resolved.contentId,
+      title: input.title,
+      payload: input.payload,
+      status: input.status,
+      publishedAt: input.publishedAt,
+      authorDisplayMode: input.authorDisplayMode,
+      authorDisplayName: input.authorDisplayName,
+    });
+  }
+  return resolved.contentId;
+};

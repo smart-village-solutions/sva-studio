@@ -157,6 +157,7 @@ export type {
   PluginAdminResourceDefinition,
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
+  PluginContentHistoryContract,
   PluginDefinition,
   PluginModuleIamContract,
   PluginModuleIamRegistryEntry,

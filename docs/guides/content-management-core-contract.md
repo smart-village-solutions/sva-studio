@@ -77,3 +77,7 @@ Die generische Bearbeitung ist ein technischer Vollzugriff und erzwingt nicht di
 History darf Snapshot- und Diff-nahe Daten für Revisionen behalten. Audit-Events speichern dagegen nur stabile Core-Metadaten wie Content-ID, Content-Type, Action, Actor, Ergebnis sowie Request- und Trace-Korrelation. Ownership- und Autorenanzeige-Änderungen enthalten alte und neue Werte für `ownerUserId`, `ownerOrganizationId` und die sichtbare Autorenanzeige.
 
 Plugin-Payloads werden nicht als Audit-Rohdaten geschrieben. Payload-Änderungen erscheinen nur als Klassifikation wie `payload_created`, `payload_updated` oder `payload_unchanged`.
+
+Die öffentliche History-Projektion enthält Actor-Anzeige, Aktion, Zeitpunkt, stabile Feld-IDs, Statusübergang und Zusammenfassung sowie `origin = studio` und `coverage = studio_mutations`. Sie gibt `snapshot_json` nicht aus. `mutation_ref` korreliert erfolgreiche Mainserver-Mutationen und verhindert doppelte sichtbare Einträge bei Wiederholungen.
+
+Mainserver-basierte Inhalte erhalten erst nach einer erfolgreichen fachlichen Mutation einen lokalen History-Core und eine gebundene Provider-Referenz. Abgelehnte oder fehlgeschlagene Versuche bleiben ausschließlich im Audit- und Diagnosepfad. Direkte Änderungen außerhalb des Studios werden nicht nachträglich als Studio-History rekonstruiert.

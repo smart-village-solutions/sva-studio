@@ -131,7 +131,7 @@ describe('projects pages', () => {
     };
   });
 
-  it('renders exactly the three domain tabs and creates a normalized project', async () => {
+  it('renders the domain and history tabs and creates a normalized project', async () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
 
@@ -139,6 +139,7 @@ describe('projects pages', () => {
       'tabs.basis',
       'tabs.content',
       'tabs.settings',
+      'tabs.history',
     ]);
     fillRequiredFields();
     fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));

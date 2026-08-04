@@ -9,6 +9,7 @@ import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermiss
 import {
   type AuthenticatedRequestContext,
   resolveActorAccountId,
+  recordSuccessfulExternalContentMutation,
   resolveEffectivePermissions,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
@@ -132,6 +133,8 @@ type ContentProjectionSyncTarget = Readonly<{
   instanceId: string;
   keycloakSubject: string;
   actorAccountId?: string;
+  actorDisplayName?: string;
+  mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;
 }>;
@@ -2136,6 +2139,26 @@ const refreshMainserverProjectionForMutation = async (input: {
           try {
             const row = providedRow ?? await loadMainserverProjectionMutationRow(target, entityId);
             await upsertSingleMainserverProjectionRow(target, actorAccountId, row, refreshRunId);
+            if (actorAccountId && target.actorDisplayName && target.mutationRef && (operation === 'create' || operation === 'update')) {
+              await recordSuccessfulExternalContentMutation({
+                instanceId: target.instanceId,
+                actorAccountId,
+                actorDisplayName: target.actorDisplayName,
+                mutationRef: target.mutationRef,
+                operation,
+                sourceSystem: 'mainserver',
+                sourceEntityType: target.contentType,
+                sourceEntityId: entityId,
+                contentType: target.contentType,
+                ...(row.organizationId ? { organizationId: row.organizationId } : {}),
+                title: row.title,
+                payload: row.payload,
+                status: row.status,
+                ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
+                authorDisplayMode: row.authorDisplayMode,
+                authorDisplayName: row.author,
+              });
+            }
             return;
           } catch (error) {
             lastError = error;
@@ -3147,6 +3170,8 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
   readonly instanceId: string;
   readonly keycloakSubject: string;
   readonly actorAccountId?: string;
+  readonly actorDisplayName?: string;
+  readonly mutationRef?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
   readonly operation?: MainserverProjectionMutationOperation;
@@ -3160,6 +3185,8 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     instanceId: input.instanceId,
     keycloakSubject: input.keycloakSubject,
     actorAccountId: input.actorAccountId,
+    ...(input.actorDisplayName ? { actorDisplayName: input.actorDisplayName } : {}),
+    ...(input.mutationRef ? { mutationRef: input.mutationRef } : {}),
     contentType: input.contentType,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
   } satisfies ContentProjectionSyncTarget;

@@ -207,8 +207,15 @@ export const genericItemsTranslationsDe = {
       contentValue: 'Inhalt',
     },
     history: {
-      placeholder:
-        'Die Historie wird in einem späteren Schritt an eine Host-Ansicht angeschlossen.',
+      loading: 'Historie wird geladen.',
+      error: 'Historie konnte nicht geladen werden.',
+      empty: 'Für diesen Inhalt wurden noch keine Studio-Änderungen erfasst.',
+      createHint: 'Speichern Sie den Inhalt, bevor die Historie verfügbar ist.',
+      tableLabel: 'Historie des generischen Inhalts',
+      sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+      emptySummary: 'Keine weiteren Änderungsdetails.',
+      columns: { time: 'Zeitpunkt', action: 'Aktion', actor: 'Bearbeitet von', summary: 'Zusammenfassung' },
+      actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
     },
     ...genericItemsTranslationsDeActions,
     ...genericItemsTranslationsDeMessages,

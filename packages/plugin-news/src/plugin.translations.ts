@@ -148,6 +148,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     },
   },
   history: {
+    sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
     createHint: 'Die Historie wird nach dem ersten Speichern verfügbar.',
     loading: 'Historie wird geladen.',
     empty: 'Noch keine Historie vorhanden.',
@@ -502,6 +503,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     },
   },
   history: {
+    sourceNotice: 'This history only contains changes made through Studio.',
     createHint: 'History becomes available after the first save.',
     loading: 'History is loading.',
     empty: 'No history available yet.',

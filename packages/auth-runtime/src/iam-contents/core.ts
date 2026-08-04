@@ -21,6 +21,7 @@ import {
   resolveReadableContentScopes,
 } from './read-authorization.js';
 import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
+import { loadExternalContentReferenceBySourceEntity } from './external-content-references.js';
 import {
   loadContentById,
   loadContentDetail,
@@ -144,7 +145,21 @@ export const getContentInternal = async (
   }
 
   try {
-    const item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    let item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    if (!item) {
+      const contentType = new URL(request.url).searchParams.get('contentType')?.trim();
+      if (contentType) {
+        const reference = await loadExternalContentReferenceBySourceEntity({
+          instanceId: actorResolution.actor.instanceId,
+          sourceSystem: 'mainserver',
+          sourceEntityType: contentType,
+          sourceEntityId: contentId,
+        });
+        if (reference) {
+          item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
+        }
+      }
+    }
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
     }
@@ -155,7 +170,7 @@ export const getContentInternal = async (
     }
 
     const [detail, access] = await Promise.all([
-      loadContentDetail(actorResolution.actor.instanceId, contentId),
+      loadContentDetail(actorResolution.actor.instanceId, item.id),
       resolveContentAccess(actorResolution.actor),
     ]);
     return detail
@@ -197,7 +212,19 @@ export const getContentHistoryInternal = async (
   }
 
   try {
-    const item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    let item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    const requestedContentType = new URL(request.url).searchParams.get('contentType')?.trim();
+    if (!item && requestedContentType) {
+      const reference = await loadExternalContentReferenceBySourceEntity({
+        instanceId: actorResolution.actor.instanceId,
+        sourceSystem: 'mainserver',
+        sourceEntityType: requestedContentType,
+        sourceEntityId: contentId,
+      });
+      if (reference) {
+        item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
+      }
+    }
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
     }
@@ -213,7 +240,7 @@ export const getContentHistoryInternal = async (
       return authorizationError;
     }
 
-    const history = await loadContentHistory(actorResolution.actor.instanceId, contentId);
+    const history = await loadContentHistory(actorResolution.actor.instanceId, item.id);
     const pageSize = Math.max(1, history.length);
     return new Response(
       JSON.stringify(asApiList(history, { page: 1, pageSize, total: history.length }, actorResolution.actor.requestId)),

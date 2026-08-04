@@ -170,6 +170,47 @@ const newsPlugin: PluginDefinition = {
 };
 
 describe('plugin registries', () => {
+  it('rejects editable content contributions without a host history binding', () => {
+    const editablePlugin: PluginDefinition = {
+      ...newsPlugin,
+      contentTypes: [
+        {
+          contentType: 'news.article',
+          displayName: 'Article',
+          studioContentType: {
+            requiredReadAction: 'news.read',
+            requiredCreateAction: 'news.create',
+            createPath: '/admin/news/new',
+            detailPath: '/admin/news/$id',
+          },
+        },
+      ],
+    };
+
+    expect(() => createPluginRegistry([editablePlugin])).toThrow(
+      'plugin_content_history_binding_missing:news'
+    );
+  });
+
+  it('accepts host, domain, and explicit non-history classifications', () => {
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          contentHistory: { mode: 'none', reasonCode: 'selection_values_only' },
+        },
+      ])
+    ).not.toThrow();
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          contentHistory: { mode: 'domain', reasonCode: 'domain_history' },
+        },
+      ])
+    ).not.toThrow();
+  });
+
   it('normalizes and merges plugin registry contracts', () => {
     const registry = createPluginRegistry([{ ...newsPlugin, id: ' news ', displayName: ' News ' }]);
 
@@ -947,6 +988,7 @@ describe('plugin registries', () => {
       plugins: [
         {
           ...newsPlugin,
+          contentHistory: { mode: 'host', coverage: 'studio_mutations' },
           contentTypes: [
             {
               contentType: 'news.article',
@@ -969,6 +1011,7 @@ describe('plugin registries', () => {
       plugins: [
         {
           ...newsPlugin,
+          contentHistory: { mode: 'host', coverage: 'studio_mutations' },
           contentTypes: [
             {
               contentType: 'news.article',

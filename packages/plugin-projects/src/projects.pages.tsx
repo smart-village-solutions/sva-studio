@@ -1,6 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   alignHostMediaReferencesByOrder,
+  fetchIamContentHistory,
+  formatDateTimeInEditorTimeZone,
   getHostMediaAsset,
   getHostMediaAssetFileName,
   getHostMediaDelivery,
@@ -26,6 +28,7 @@ import {
   RichTextHtmlEditor,
   Select,
   StudioConfirmDialog,
+  StudioContentHistory,
   StudioDataTable,
   StudioDetailCard,
   StudioDetailPageTemplate,
@@ -70,7 +73,7 @@ import {
 } from './projects.content-media-adapter.js';
 import { projectFormSchema, type ProjectFormValues } from './projects.validation.js';
 
-type ProjectTab = 'basis' | 'content' | 'settings';
+type ProjectTab = 'basis' | 'content' | 'settings' | 'history';
 type Translate = ReturnType<typeof usePluginTranslation>;
 
 const richTextOptions = (pt: Translate) => [
@@ -432,6 +435,40 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
             </StudioDetailCard>
           ) : null}
         </div>
+      ),
+    },
+    {
+      id: 'history',
+      label: pt('tabs.history'),
+      icon: 'history',
+      panel: (
+        <StudioContentHistory
+          contentId={contentId}
+          loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'projects.project' })}
+          labels={{
+            loading: pt('history.loading'),
+            error: pt('history.error'),
+            empty: pt('history.empty'),
+            createHint: pt('history.createHint'),
+            tableLabel: pt('history.tableLabel'),
+            time: pt('history.columns.time'),
+            action: pt('history.columns.action'),
+            actor: pt('history.columns.actor'),
+            summary: pt('history.columns.summary'),
+            sourceNotice: pt('history.sourceNotice'),
+            emptySummary: pt('history.emptySummary'),
+          }}
+          formatAction={(action) =>
+            pt(
+              action === 'created'
+                ? 'history.actions.created'
+                : action === 'status_changed'
+                  ? 'history.actions.statusChanged'
+                  : 'history.actions.updated'
+            )
+          }
+          formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
+        />
       ),
     },
   ];

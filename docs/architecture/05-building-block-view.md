@@ -362,6 +362,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/auth-runtime` -> `@sva/studio-module-iam` für den kanonischen Modul-IAM-Katalog
 - `@sva/sva-mainserver` -> `@sva/auth-runtime`, `@sva/data-repositories`, `@sva/server-runtime`
 - `@sva/plugin-sdk` -> `@sva/core`
+- `@sva/plugin-sdk` definiert zusätzlich den fail-closed `contentHistory`-Contribution-Vertrag und den gemeinsamen History-Read-Client; `@sva/studio-ui-react` stellt dafür die schreibgeschützte, barrierefreie Darstellung bereit
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
@@ -390,6 +391,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
 1. `packages/plugin-sdk/src/plugins.ts`
    - definiert `PluginDefinition` und Merge-Helfer für Plugin-Routen, Navigation, Content-Typen, Admin-Ressourcen und Übersetzungen
+   - klassifiziert Content-History als hostgeführt, fachgeführt oder explizit nicht erforderlich und blockiert bearbeitbare Contributions ohne hostgeführtes Binding vor der Registry-Veröffentlichung
 2. `apps/sva-studio-react/plugin-catalog.json` und `apps/sva-studio-react/src/lib/plugins.ts`
    - registrieren `pluginCategories`, `pluginNews`, `pluginEvents`, `pluginPoi` und `pluginWasteManagement` statisch im Host und materialisieren daraus Route-, Navigations-, Admin-Ressourcen-, Audit- und i18n-Metadaten
 3. `packages/auth-runtime/src/iam-contents/content-type-registry.ts`

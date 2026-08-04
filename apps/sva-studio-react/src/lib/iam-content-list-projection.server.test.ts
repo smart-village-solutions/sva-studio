@@ -24,6 +24,7 @@ const state = vi.hoisted(() => ({
   loggerWarn: vi.fn(),
   resolveActorAccountId: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
+  recordSuccessfulExternalContentMutation: vi.fn(),
   withInstanceScopedDb: vi.fn(),
   getSvaMainserverNews: vi.fn(),
   getSvaMainserverEvent: vi.fn(),
@@ -86,6 +87,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   resolveActorAccountId: state.resolveActorAccountId,
   resolveEffectivePermissions: state.resolveEffectivePermissions,
+  recordSuccessfulExternalContentMutation: state.recordSuccessfulExternalContentMutation,
   withInstanceScopedDb: state.withInstanceScopedDb,
 }));
 
@@ -272,6 +274,7 @@ describe('content list projection', () => {
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.resolveEffectivePermissions.mockReset();
+    state.recordSuccessfulExternalContentMutation.mockReset();
     state.withInstanceScopedDb.mockReset();
     state.getSvaMainserverNews.mockReset();
     state.getSvaMainserverEvent.mockReset();
@@ -2637,6 +2640,8 @@ describe('content list projection', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'mutation-1',
       organizationId: 'org-1',
       operation: 'update',
       entityId: 'poi-mutation-1',
@@ -2662,6 +2667,17 @@ describe('content list projection', () => {
         source_entity_id: 'poi-mutation-1',
       }),
     ]);
+    expect(state.recordSuccessfulExternalContentMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        contentType: 'poi.point-of-interest',
+        mutationRef: 'mutation-1',
+        operation: 'update',
+        sourceEntityId: 'poi-mutation-1',
+        sourceSystem: 'mainserver',
+      })
+    );
   });
 
   it('keeps user-scoped mainserver mutation refreshes bound to the actor account', async () => {

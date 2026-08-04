@@ -246,10 +246,12 @@ Fehlerpfad:
 15. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
 16. Ressourcenspezifische Operations-Module für News, Events, POI und Generic Items rufen denselben Transport-Port auf; das News-Plugin übersetzt dabei den vereinfachten Redaktionseditor in ein Save-Plan-Modell mit `contentBlocks[0]`, Veröffentlichungsmodus und optionaler Push-Auslösung, während Events, POI und Generic Items ihre tab-basierten Detailseiten mit festen Bereichen `Basis`, `Inhalt`, `Einstellungen` und `Historie` über eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Kategorien, Geodaten, Preise, Barrierefreiheit und freie Zusatzfelder anbinden.
 17. Nach erfolgreichen Mainserver-Mutationen für News, Events und POI lädt der Host gezielt genau den betroffenen Datensatz per typed Detailadapter nach und aktualisiert nur dessen Projektionszeile; Delete-Pfade entfernen die Zeile identitätsbasiert ohne typweiten Vollrefresh.
-18. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
-19. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
-20. Es gibt keinen Dual-Write und keine Legacy-Migration in lokale IAM-Contents.
-21. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+18. Derselbe erfolgreiche Follow-up-Pfad bindet die Mainserver-Identität an einen lokalen IAM-Content-Core und finalisiert genau einen History-Eintrag mit Request-/Idempotenz-Korrelation. Providerfehler und Autorisierungsablehnungen erzeugen keinen sichtbaren Erfolgseintrag.
+19. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
+20. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
+21. Der Mainserver bleibt fachlich führend; lokal werden nur Listenprojektion, Provider-Referenz und Studio-Mutationshistorie geführt. Das ist kein zweiter fachlicher Schreibpfad und keine vollständige externe Historie.
+22. Der History-Read löst externe IDs über die Provider-Referenz auf, autorisiert `content.readHistory` im Instance-/Ownership-Scope und liefert kein `snapshot_json` aus.
+23. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
 
 Fehlerpfad:
 

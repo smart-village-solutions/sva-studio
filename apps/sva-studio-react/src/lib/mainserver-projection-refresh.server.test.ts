@@ -18,6 +18,7 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     warn: state.loggerWarn,
   }),
+  getWorkspaceContext: () => ({ requestId: 'request-1' }),
 }));
 
 vi.mock('./iam-content-list-projection.server', () => ({
@@ -61,6 +62,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'news.article',
       organizationId: 'org-1',
       operation: 'create',
@@ -82,6 +85,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'generic-items.generic-item',
       organizationId: 'org-1',
       operation: 'create',
@@ -129,6 +134,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'events.event-record',
       organizationId: 'org-1',
       operation: 'delete',
@@ -149,6 +156,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'news.article',
       organizationId: 'org-1',
       operation: 'update',

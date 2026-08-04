@@ -77,6 +77,20 @@ export type PluginModuleIamContract = {
 
 export type PluginTranslations = Readonly<Record<string, Readonly<Record<string, unknown>>>>;
 
+export type PluginContentHistoryContract =
+  | Readonly<{
+      mode: 'host';
+      coverage: 'studio_mutations';
+    }>
+  | Readonly<{
+      mode: 'domain';
+      reasonCode: 'domain_history';
+    }>
+  | Readonly<{
+      mode: 'none';
+      reasonCode: 'no_editorial_records' | 'infrastructure_only' | 'selection_values_only';
+    }>;
+
 export type PluginAdminResourceDefinition = AdminResourceDefinition;
 
 export type PluginDefinition = {
@@ -93,6 +107,7 @@ export type PluginDefinition = {
   readonly jobTypes?: readonly PluginJobTypeDefinition[];
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
   readonly externalInterfaceTypes?: readonly PluginExternalInterfaceTypeDefinition[];
+  readonly contentHistory?: PluginContentHistoryContract;
   readonly translations?: PluginTranslations;
 };
 
@@ -120,6 +135,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'jobTypes',
   'importProfiles',
   'externalInterfaceTypes',
+  'contentHistory',
   'translations',
 ] as const);
 
@@ -157,6 +173,7 @@ const adminResourceDefinitionAllowedKeys = new Set([
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
 const moduleIamSystemRoleAllowedKeys = new Set(['roleName', 'permissionIds'] as const);
+const contentHistoryContractAllowedKeys = new Set(['mode', 'coverage', 'reasonCode'] as const);
 
 export type PluginActionRegistryEntry = {
   readonly actionId: string;
@@ -741,6 +758,35 @@ const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginReg
   }
 };
 
+const assertPluginRegistryContentHistory = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+  const hasEditableContent = (plugin.contentTypes ?? []).some((definition) => definition.studioContentType !== undefined);
+  const contract = plugin.contentHistory;
+
+  if (hasEditableContent && contract?.mode !== 'host') {
+    throw new Error(`plugin_content_history_binding_missing:${pluginNamespace}`);
+  }
+  if (!contract) {
+    return;
+  }
+
+  assertPluginContributionAllowedKeys(
+    contract,
+    contentHistoryContractAllowedKeys,
+    pluginNamespace,
+    `${pluginNamespace}.contentHistory`
+  );
+
+  if (contract.mode === 'host' && contract.coverage !== 'studio_mutations') {
+    throw new Error(`invalid_plugin_content_history_coverage:${pluginNamespace}`);
+  }
+  if (contract.mode === 'domain' && contract.reasonCode !== 'domain_history') {
+    throw new Error(`invalid_plugin_content_history_reason:${pluginNamespace}`);
+  }
+  if (contract.mode === 'none' && hasEditableContent) {
+    throw new Error(`plugin_content_history_classification_invalid:${pluginNamespace}`);
+  }
+};
+
 const assertPluginRegistryAdminResources = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
   for (const adminResource of plugin.adminResources ?? []) {
     const contributionId = normalizePluginIdentifier(adminResource.resourceId);
@@ -819,6 +865,7 @@ export const createPluginRegistry = (
     assertPluginRegistryNavigation(context);
     assertPluginRegistryPermissions(context);
     assertPluginRegistryContentTypes(context);
+    assertPluginRegistryContentHistory(context);
     assertPluginRegistryAdminResources(context);
     assertPluginRegistryAuditEvents(context);
     assertPluginRegistryModuleIam(context);

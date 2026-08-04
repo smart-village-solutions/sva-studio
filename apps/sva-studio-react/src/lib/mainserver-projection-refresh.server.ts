@@ -3,7 +3,7 @@ import {
   withAuthenticatedUser,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { refreshProjectedContentsForMainserverMutation } from './iam-content-list-projection.server.js';
 
@@ -135,6 +135,12 @@ export const refreshProjectionAfterMainserverMutation = async (
       keycloakSubject: ctx.user.id,
       contentType,
       actorAccountId,
+      actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
+      mutationRef:
+        request.headers.get('idempotency-key') ??
+        request.headers.get('x-request-id') ??
+        getWorkspaceContext().requestId ??
+        `${request.method}:${contentType}:${entityId ?? 'unknown'}`,
       ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
       ...(operation ? { operation } : {}),
       ...(entityId ? { entityId } : {}),

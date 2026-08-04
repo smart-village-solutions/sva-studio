@@ -42,6 +42,8 @@ export type ContentHistoryRow = {
   next_status: IamContentStatus | null;
   created_at: string;
   summary: string | null;
+  origin: 'studio';
+  coverage: 'studio_mutations';
 };
 
 export type CreateContentInput = {
@@ -68,6 +70,7 @@ export type UpdateContentInput = {
   actorDisplayName: string;
   requestId?: string;
   traceId?: string;
+  mutationRef?: string;
   contentId: string;
   organizationId?: string;
   ownerUserId?: string;

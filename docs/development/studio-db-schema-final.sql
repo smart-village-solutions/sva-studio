@@ -539,8 +539,13 @@ CREATE TABLE iam.content_history (
     next_status text,
     summary text,
     snapshot_json jsonb NOT NULL,
+    origin text DEFAULT 'studio'::text NOT NULL,
+    coverage text DEFAULT 'studio_mutations'::text NOT NULL,
+    mutation_ref text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT content_history_action_chk CHECK ((action = ANY (ARRAY['created'::text, 'updated'::text, 'status_changed'::text])))
+    CONSTRAINT content_history_action_chk CHECK ((action = ANY (ARRAY['created'::text, 'updated'::text, 'status_changed'::text]))),
+    CONSTRAINT content_history_coverage_chk CHECK ((coverage = 'studio_mutations'::text)),
+    CONSTRAINT content_history_origin_chk CHECK ((origin = 'studio'::text))
 );
 
 
@@ -2406,6 +2411,8 @@ CREATE INDEX external_content_references_reconciliation_idx ON iam.external_cont
 --
 
 CREATE INDEX iam_content_history_instance_content_created_idx ON iam.content_history USING btree (instance_id, content_id, created_at DESC);
+
+CREATE UNIQUE INDEX iam_content_history_mutation_ref_idx ON iam.content_history USING btree (instance_id, content_id, mutation_ref) WHERE (mutation_ref IS NOT NULL);
 
 
 --

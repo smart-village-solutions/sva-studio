@@ -1,155 +1,46 @@
-// fallow-ignore-file code-duplication
-import * as React from 'react';
 import { fetchIamContentHistory, formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
-import { StudioLoadingState } from '@sva/studio-ui-react';
+import { StudioContentHistory } from '@sva/studio-ui-react';
 
 import { SurveyDetailCard } from './surveys.detail-card.js';
-import { createSurveyHistoryEntries } from './surveys.history.js';
 
 export type SurveyDetailHistoryTabProps = Readonly<{
   contentId?: string;
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
-const formatHistoryDate = (value: string) => formatDateTimeInEditorTimeZone(value) ?? value;
+const actionKey = (action: string) =>
+  action === 'created'
+    ? 'history.actions.created'
+    : action === 'status_changed'
+      ? 'history.actions.statusChanged'
+      : 'history.actions.updated';
 
-const resolveHistoryErrorMessage = (pt: SurveyDetailHistoryTabProps['pt'], error: unknown) => {
-  const code =
-    typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
-      ? error.code
-      : undefined;
-
-  if (code === 'forbidden') {
-    return pt('history.errors.forbidden');
-  }
-
-  if (code === 'not_found') {
-    return pt('history.errors.notFound');
-  }
-
-  return pt('history.errors.load');
+const formatError = (pt: SurveyDetailHistoryTabProps['pt'], error: unknown) => {
+  const code = typeof error === 'object' && error !== null && 'code' in error ? error.code : undefined;
+  return code === 'forbidden'
+    ? pt('history.errors.forbidden')
+    : code === 'not_found'
+      ? pt('history.errors.notFound')
+      : pt('history.errors.load');
 };
-
-const buildHistorySummary = (
-  pt: SurveyDetailHistoryTabProps['pt'],
-  entry: ReturnType<typeof createSurveyHistoryEntries>[number]
-) => {
-  if (entry.summary) {
-    return entry.summary;
-  }
-
-  if (entry.changedFields.length > 0) {
-    return pt('history.changedFields', { fields: entry.changedFields.join(', ') });
-  }
-
-  return pt('history.emptySummary');
-};
-
-function useSurveyHistoryState(contentId: string | undefined, pt: SurveyDetailHistoryTabProps['pt']) {
-  const [entries, setEntries] = React.useState<ReturnType<typeof createSurveyHistoryEntries>>([]);
-  const [isLoading, setIsLoading] = React.useState(Boolean(contentId));
-  const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    if (!contentId) {
-      setEntries([]);
-      setIsLoading(false);
-      setErrorMessage(null);
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    void fetchIamContentHistory(contentId)
-      .then((historyEntries) => {
-        if (!cancelled) {
-          setEntries(createSurveyHistoryEntries(historyEntries));
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          setErrorMessage(resolveHistoryErrorMessage(pt, error));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [contentId, pt]);
-
-  return { entries, errorMessage, isLoading };
-}
-
-function SurveyHistoryTable({ entries, pt }: Readonly<{ entries: ReturnType<typeof createSurveyHistoryEntries>; pt: SurveyDetailHistoryTabProps['pt'] }>) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse" aria-label={pt('history.tableLabel')}>
-        <thead>
-          <tr className="border-b border-border/70 text-left text-sm">
-            <th className="px-3 py-2 font-semibold text-foreground">{pt('history.columns.time')}</th>
-            <th className="px-3 py-2 font-semibold text-foreground">{pt('history.columns.action')}</th>
-            <th className="px-3 py-2 font-semibold text-foreground">{pt('history.columns.actor')}</th>
-            <th className="px-3 py-2 font-semibold text-foreground">{pt('history.columns.summary')}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map((entry) => (
-            <tr key={entry.id} className="border-b border-border/50 align-top text-sm last:border-b-0">
-              <td className="px-3 py-3 text-muted-foreground">{formatHistoryDate(entry.createdAt)}</td>
-              <td className="px-3 py-3 text-foreground">{pt(entry.actionLabelKey)}</td>
-              <td className="px-3 py-3 text-muted-foreground">{entry.actor}</td>
-              <td className="px-3 py-3 text-muted-foreground">{buildHistorySummary(pt, entry)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 export function SurveyDetailHistoryTab({ contentId, pt }: SurveyDetailHistoryTabProps) {
-  const { entries, errorMessage, isLoading } = useSurveyHistoryState(contentId, pt);
-
-  if (!contentId) {
-    return (
-      <SurveyDetailCard title={pt('cards.history.title')} description={pt('cards.history.description')}>
-        <p className="text-sm text-muted-foreground">{pt('history.createHint')}</p>
-      </SurveyDetailCard>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <SurveyDetailCard title={pt('cards.history.title')} description={pt('cards.history.description')}>
-        <StudioLoadingState>{pt('history.loading')}</StudioLoadingState>
-      </SurveyDetailCard>
-    );
-  }
-
-  if (errorMessage) {
-    return (
-      <SurveyDetailCard title={pt('cards.history.title')} description={pt('cards.history.description')}>
-        <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          {errorMessage}
-        </div>
-      </SurveyDetailCard>
-    );
-  }
-
   return (
     <SurveyDetailCard title={pt('cards.history.title')} description={pt('cards.history.description')}>
-      {entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{pt('history.empty')}</p>
-      ) : (
-        <SurveyHistoryTable entries={entries} pt={pt} />
-      )}
+      <StudioContentHistory
+        contentId={contentId}
+        loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'surveys.survey' })}
+        labels={{
+          loading: pt('history.loading'), error: pt('history.errors.load'), empty: pt('history.empty'),
+          createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),
+          time: pt('history.columns.time'), action: pt('history.columns.action'),
+          actor: pt('history.columns.actor'), summary: pt('history.columns.summary'),
+          sourceNotice: pt('history.sourceNotice'), emptySummary: pt('history.emptySummary'),
+        }}
+        formatAction={(action) => pt(actionKey(action))}
+        formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
+        formatError={(error) => formatError(pt, error)}
+      />
     </SurveyDetailCard>
   );
 }

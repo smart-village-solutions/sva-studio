@@ -536,6 +536,7 @@ export function GenericItemsDetailPage({
           categoryOptions={categoryOptions}
           categoryOptionsError={categoryOptionsError}
           categoryOptionsLoading={categoryOptionsLoading}
+          contentId={contentId}
           labels={labels}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()

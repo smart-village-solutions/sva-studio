@@ -168,7 +168,10 @@ describe('projects contract', () => {
   });
 
   it('keeps cleared project text empty while preserving hidden remaining blocks', () => {
-    const merged = mergeProjectIntoGenericItem({ project: { ...project, description: '', fullText: '' }, existing });
+    const merged = mergeProjectIntoGenericItem({
+      project: { ...project, description: '', fullText: '<p></p>' },
+      existing,
+    });
     expect(merged.teaser).toBe('');
     expect(merged.contentBlocks).toEqual([
       { id: 'block-1', title: 'Verborgener Titel', body: '', mediaContents: [] },

@@ -68,6 +68,11 @@ export const parseProjectInput = async (
 const payloadRecord = (payload: unknown): Record<string, unknown> =>
   isRecord(payload) ? payload : {};
 
+const normalizeProjectFullText = (value: string): string => {
+  const trimmed = value.trim();
+  return /^(?:\s|<p>|<\/p>|<br\s*\/?>|&nbsp;)*$/i.test(trimmed) ? '' : trimmed;
+};
+
 const toMediaContents = (input: SvaMainserverProjectInput) =>
   input.images.map((image) => ({
     contentType: 'image',
@@ -126,6 +131,7 @@ export const mergeProjectIntoGenericItem = (input: {
   const existingPayload = payloadRecord(existing?.payload);
   const firstBlock = existing?.contentBlocks[0];
   const remainingBlocks = existing?.contentBlocks.slice(1) ?? [];
+  const fullText = normalizeProjectFullText(input.project.fullText);
   return {
     ...(existing
       ? {
@@ -157,8 +163,8 @@ export const mergeProjectIntoGenericItem = (input: {
       status: input.project.status,
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
-    contentBlocks: input.project.fullText.trim()
-      ? [{ ...(firstBlock ?? {}), body: input.project.fullText.trim() }, ...remainingBlocks]
+    contentBlocks: fullText
+      ? [{ ...(firstBlock ?? {}), body: fullText }, ...remainingBlocks]
       : firstBlock && remainingBlocks.length > 0
         ? [{ ...firstBlock, body: '' }, ...remainingBlocks]
         : [],

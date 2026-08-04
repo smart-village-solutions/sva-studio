@@ -118,7 +118,7 @@
     "@nx/playwright": "^23.0.1",
     "@nx/vite": "^23.0.1",
     "@nx/vitest": "^23.0.1",
-    "@tailwindcss/postcss": "4.3.2",
+    "@tailwindcss/postcss": "4.3.3",
     "@types/node": "^25.6.0",
     "@vitest/coverage-v8": "^4.1.9",
     "autoprefixer": "10.5.2",

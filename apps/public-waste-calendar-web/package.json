@@ -24,13 +24,13 @@
     "@playwright/test": "^1.62.1",
     "@tailwindcss/vite": "4.3.3",
     "@testing-library/react": "^16.2.0",
-    "@types/pg": "^8.15.5",
+    "@types/pg": "^8.20.3",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.10",
     "happy-dom": "^20.11.1",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.0.16",
     "vitest": "^4.1.10"
   }

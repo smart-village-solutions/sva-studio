@@ -469,6 +469,24 @@ describe('content core authorization', () => {
     expect(response.status).toBe(404);
   });
 
+  it('resolves external identities before local detail lookups', async () => {
+    const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({ contentId: 'local-content-1' });
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentDetailMock.mockResolvedValue(content);
+    resolveContentAccessMock.mockResolvedValue(access);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/news-1?contentType=news.article'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadContentByIdMock).toHaveBeenCalledTimes(1);
+    expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
+  });
+
   it('returns a database error when loading content details fails', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
     loadContentByIdMock.mockResolvedValue(content);
@@ -546,6 +564,18 @@ describe('content core authorization', () => {
     expect(loadContentByIdMock).toHaveBeenCalledTimes(1);
     expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
     expect(loadContentHistoryMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
+  });
+
+  it('returns not found for unbound non-UUID external history ids without querying UUID storage', async () => {
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue(undefined);
+
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents/news-unbound/history?contentType=news.article'),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    expect(loadContentByIdMock).not.toHaveBeenCalled();
   });
 
   it('returns actor resolution errors before loading content history', async () => {

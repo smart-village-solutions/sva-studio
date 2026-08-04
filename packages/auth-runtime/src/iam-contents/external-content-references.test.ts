@@ -240,6 +240,10 @@ describe('external content references', () => {
     expect(state.updateContent).toHaveBeenCalledWith(
       expect.objectContaining({ contentId: 'content-1', mutationRef: 'request-1' })
     );
+    expect(state.query).toHaveBeenCalledWith(
+      expect.stringContaining("source_system = 'iam'"),
+      ['tenant-1', 'content-1']
+    );
   });
 
   it('creates and binds a local core for the first successful provider mutation', async () => {
@@ -277,9 +281,13 @@ describe('external content references', () => {
       expect.objectContaining({ mutationRef: 'request-1' }),
       'content-1'
     );
-    expect(state.query).toHaveBeenLastCalledWith(
+    expect(state.query).toHaveBeenCalledWith(
       expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),
       ['tenant-1', 'reference-1', 'external-1']
+    );
+    expect(state.query).toHaveBeenLastCalledWith(
+      expect.stringContaining("source_system = 'iam'"),
+      ['tenant-1', 'content-1']
     );
   });
 

@@ -122,12 +122,12 @@ describe('mainserver projection refresh', () => {
     );
   });
 
-  it('fails closed when a successful create response has no resolvable item identity', async () => {
+  it('preserves a successful create response when no item identity can be resolved', async () => {
     await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
       new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
       'generic-items.generic-item'
-    )).rejects.toThrow('mainserver_mutation_identity_missing');
+    )).resolves.toBeUndefined();
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
     expect(state.loggerWarn).toHaveBeenCalledWith(
@@ -188,16 +188,33 @@ describe('mainserver projection refresh', () => {
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    )).rejects.toThrow('mainserver_mutation_identity_missing');
+    )).resolves.toBeUndefined();
     await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
         method: 'PATCH',
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    )).rejects.toThrow('mainserver_mutation_identity_missing');
+    )).resolves.toBeUndefined();
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+  });
+
+  it('preserves a successful provider write when the projection follow-up fails', async () => {
+    state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(new Error('projection down'));
+
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/news/news-1', { method: 'PATCH' }),
+        new Response(null, { status: 204 }),
+        'news.article'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver mutation projection refresh failed after a successful provider write',
+      expect.objectContaining({ contentType: 'news.article', entityId: 'news-1', error: 'projection down' })
+    );
   });
 
   it('skips projection refresh for read-only requests and failed responses', async () => {

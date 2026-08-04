@@ -2,6 +2,7 @@ import {
   iamContentListSortDirections,
   iamContentListSortFields,
   iamContentStatuses,
+  isUuid,
   type IamContentStatus,
   type IamContentListQuery,
 } from '@sva/core';
@@ -145,20 +146,21 @@ export const getContentInternal = async (
   }
 
   try {
-    let item = await loadContentById(actorResolution.actor.instanceId, contentId);
-    if (!item) {
-      const contentType = new URL(request.url).searchParams.get('contentType')?.trim();
-      if (contentType) {
-        const reference = await loadExternalContentReferenceBySourceEntity({
-          instanceId: actorResolution.actor.instanceId,
-          sourceSystem: 'mainserver',
-          sourceEntityType: contentType,
-          sourceEntityId: contentId,
-        });
-        if (reference) {
-          item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
-        }
+    const contentType = new URL(request.url).searchParams.get('contentType')?.trim();
+    let item;
+    if (contentType) {
+      const reference = await loadExternalContentReferenceBySourceEntity({
+        instanceId: actorResolution.actor.instanceId,
+        sourceSystem: 'mainserver',
+        sourceEntityType: contentType,
+        sourceEntityId: contentId,
+      });
+      if (reference) {
+        item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       }
+    }
+    if (!item && (!contentType || isUuid(contentId))) {
+      item = await loadContentById(actorResolution.actor.instanceId, contentId);
     }
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
@@ -225,7 +227,9 @@ export const getContentHistoryInternal = async (
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       }
     }
-    item ??= await loadContentById(actorResolution.actor.instanceId, contentId);
+    if (!item && (!requestedContentType || isUuid(contentId))) {
+      item = await loadContentById(actorResolution.actor.instanceId, contentId);
+    }
     if (!item) {
       return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
     }

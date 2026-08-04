@@ -106,7 +106,7 @@ export const refreshProjectionAfterMainserverMutation = async (
       method: request.method,
       requestPath: new URL(request.url).pathname,
     });
-    throw new Error('mainserver_mutation_identity_missing');
+    return;
   }
 
   await withAuthenticatedUser(request, async (ctx) => {
@@ -143,21 +143,31 @@ export const refreshProjectionAfterMainserverMutation = async (
       return response;
     }
 
-    await refreshProjectedContentsForMainserverMutation({
-      instanceId: ctx.user.instanceId,
-      keycloakSubject: ctx.user.id,
-      contentType,
-      actorAccountId,
-      actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-      mutationRef:
-        request.headers.get('idempotency-key') ??
-        request.headers.get('x-request-id') ??
-        getWorkspaceContext().requestId ??
-        `${request.method}:${contentType}:${entityId ?? 'unknown'}`,
-      ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
-      ...(operation ? { operation } : {}),
-      ...(entityId ? { entityId } : {}),
-    });
+    try {
+      await refreshProjectedContentsForMainserverMutation({
+        instanceId: ctx.user.instanceId,
+        keycloakSubject: ctx.user.id,
+        contentType,
+        actorAccountId,
+        actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
+        mutationRef:
+          request.headers.get('idempotency-key') ??
+          request.headers.get('x-request-id') ??
+          getWorkspaceContext().requestId ??
+          `${request.method}:${contentType}:${entityId ?? 'unknown'}`,
+        ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
+        ...(operation ? { operation } : {}),
+        ...(entityId ? { entityId } : {}),
+      });
+    } catch (error) {
+      logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
+        instanceId: ctx.user.instanceId,
+        contentType,
+        method: request.method,
+        entityId: entityId ?? null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return response;
   });

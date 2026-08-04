@@ -33,6 +33,20 @@ export type SuccessfulExternalContentMutation = Readonly<{
   authorDisplayName: string;
 }>;
 
+type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
+
+const removeExternalCoreFromIamProjection = (
+  client: InstanceScopedClient,
+  instanceId: string,
+  contentId: string
+): Promise<unknown> =>
+  client.query(
+    `DELETE FROM iam.content_list_projection
+     WHERE instance_id = $1 AND source_system = 'iam'
+       AND source_entity_type = 'iam.contents' AND source_entity_id = $2;`,
+    [instanceId, contentId]
+  );
+
 const updateExistingContent = async (
   input: SuccessfulExternalContentMutation,
   contentId: string
@@ -50,6 +64,9 @@ const updateExistingContent = async (
     authorDisplayMode: input.authorDisplayMode,
     authorDisplayName: input.authorDisplayName,
   });
+  await withInstanceScopedDb(input.instanceId, (client) =>
+    removeExternalCoreFromIamProjection(client, input.instanceId, contentId)
+  );
   return contentId;
 };
 
@@ -102,6 +119,7 @@ const createBoundContent = async (
        WHERE instance_id = $1 AND id = $2::uuid;`,
       [input.instanceId, reference.id, input.sourceEntityId]
     );
+    await removeExternalCoreFromIamProjection(client, input.instanceId, contentId);
     return { contentId, created: true };
   });
 

@@ -21,6 +21,7 @@ export const pluginSurveysMetaEnTranslations = {
     export: 'Export results',
   },
   history: {
+    sourceNotice: 'This history only contains changes made through Studio.',
     createHint: 'History becomes available after the first save.',
     loading: 'Loading history.',
     empty: 'No history available yet.',

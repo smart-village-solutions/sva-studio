@@ -22,6 +22,26 @@ LIMIT 1;
   return currentResult.rows[0];
 };
 
+export const isContentMutationFinalized = async (
+  client: InstanceScopedClient,
+  input: { readonly instanceId: string; readonly contentId: string; readonly mutationRef: string }
+): Promise<boolean> => {
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));', [
+    input.instanceId,
+    `${input.contentId}:${input.mutationRef}`,
+  ]);
+  const result = await client.query<{ id: string }>(
+    `SELECT id::text
+     FROM iam.content_history
+     WHERE instance_id = $1
+       AND content_id = $2::uuid
+       AND mutation_ref = $3
+     LIMIT 1;`,
+    [input.instanceId, input.contentId, input.mutationRef]
+  );
+  return result.rows.length > 0;
+};
+
 export const insertContentHistory = async (
   client: InstanceScopedClient,
   input: {
@@ -35,6 +55,7 @@ export const insertContentHistory = async (
     nextStatus?: IamContentStatus;
     summary?: string;
     snapshot: ContentJsonValue;
+    mutationRef?: string;
   }
 ): Promise<string> => {
   const result = await client.query<{ id: string }>(
@@ -50,7 +71,10 @@ INSERT INTO iam.content_history (
   previous_status,
   next_status,
   summary,
-  snapshot_json
+  snapshot_json,
+  origin,
+  coverage,
+  mutation_ref
 )
 VALUES (
   gen_random_uuid(),
@@ -63,8 +87,13 @@ VALUES (
   $7,
   $8,
   $9,
-  $10::jsonb
+  $10::jsonb,
+  'studio',
+  'studio_mutations',
+  $11
 )
+ON CONFLICT (instance_id, content_id, mutation_ref) WHERE mutation_ref IS NOT NULL
+DO NOTHING
 RETURNING id;
 	`,
     [
@@ -78,9 +107,25 @@ RETURNING id;
       input.nextStatus ?? null,
       input.summary ?? null,
       JSON.stringify(input.snapshot),
+      input.mutationRef ?? null,
     ]
   );
   const historyId = result.rows[0]?.id;
+  if (!historyId && input.mutationRef) {
+    const existing = await client.query<{ id: string }>(
+      `SELECT id::text
+       FROM iam.content_history
+       WHERE instance_id = $1
+         AND content_id = $2::uuid
+         AND mutation_ref = $3
+       LIMIT 1;`,
+      [input.instanceId, input.contentId, input.mutationRef]
+    );
+    const existingId = existing.rows[0]?.id;
+    if (existingId) {
+      return existingId;
+    }
+  }
   if (!historyId) {
     throw new Error('content_history_create_failed');
   }

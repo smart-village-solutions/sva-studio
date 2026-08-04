@@ -1,5 +1,27 @@
-export const GenericItemsDetailHistoryTab = ({ message }: Readonly<{ message: string }>) => (
-  <div className="rounded-2xl border border-dashed border-border/70 bg-card p-5 text-sm text-muted-foreground">
-    {message}
-  </div>
+import { fetchIamContentHistory, formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import { StudioContentHistory } from '@sva/studio-ui-react';
+
+type Translate = (key: string) => string;
+
+const actionKey = (action: string) =>
+  action === 'created'
+    ? 'history.actions.created'
+    : action === 'status_changed'
+      ? 'history.actions.statusChanged'
+      : 'history.actions.updated';
+
+export const GenericItemsDetailHistoryTab = ({ contentId, pt }: Readonly<{ contentId?: string; pt: Translate }>) => (
+  <StudioContentHistory
+    contentId={contentId}
+    loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'generic-items.generic-item' })}
+    labels={{
+      loading: pt('history.loading'), error: pt('history.error'), empty: pt('history.empty'),
+      createHint: pt('history.createHint'), tableLabel: pt('history.tableLabel'),
+      time: pt('history.columns.time'), action: pt('history.columns.action'),
+      actor: pt('history.columns.actor'), summary: pt('history.columns.summary'),
+      sourceNotice: pt('history.sourceNotice'), emptySummary: pt('history.emptySummary'),
+    }}
+    formatAction={(action) => pt(actionKey(action))}
+    formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
+  />
 );

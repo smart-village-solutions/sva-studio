@@ -1,4 +1,5 @@
 import type { PluginTranslations } from '@sva/plugin-sdk';
+import { cockpitCardsHistoryTranslations } from './cockpit-cards.history-translations.js';
 
 export const pluginCockpitCardsTranslations = {
   de: {
@@ -116,17 +117,7 @@ export const pluginCockpitCardsTranslations = {
         link: 'Der Link muss mit https:// beginnen.',
         sortWeight: 'Bitte eine ganze Zahl eingeben.',
       },
-      history: {
-        loading: 'Historie wird geladen.',
-        error: 'Historie konnte nicht geladen werden.',
-        empty: 'Noch keine Historie verfügbar.',
-        label: 'Cockpit-Card-Historie',
-        time: 'Zeitpunkt',
-        action: 'Aktion',
-        actor: 'Bearbeitet von',
-        summary: 'Zusammenfassung',
-        actions: { created: 'Angelegt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
-      },
+      history: cockpitCardsHistoryTranslations.de,
     },
   },
   en: {
@@ -239,17 +230,7 @@ export const pluginCockpitCardsTranslations = {
         link: 'The link must start with https://.',
         sortWeight: 'Enter an integer.',
       },
-      history: {
-        loading: 'Loading history.',
-        error: 'Could not load history.',
-        empty: 'No history available yet.',
-        label: 'Cockpit card history',
-        time: 'Time',
-        action: 'Action',
-        actor: 'Actor',
-        summary: 'Summary',
-        actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
-      },
+      history: cockpitCardsHistoryTranslations.en,
     },
   },
 } satisfies PluginTranslations;

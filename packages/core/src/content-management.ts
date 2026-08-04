@@ -117,6 +117,8 @@ export type IamContentHistoryEntry = {
   readonly toStatus?: IamContentStatus;
   readonly createdAt: string;
   readonly summary?: string;
+  readonly origin: 'studio';
+  readonly coverage: 'studio_mutations';
 };
 
 export const iamContentAuthorDisplayModes = ['organization', 'user'] as const;

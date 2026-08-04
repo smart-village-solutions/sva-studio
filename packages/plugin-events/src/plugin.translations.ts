@@ -286,10 +286,17 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     },
   },
   history: {
+    loading: 'Historie wird geladen.',
+    error: 'Historie konnte nicht geladen werden.',
+    createHint: 'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
+    tableLabel: 'Historie der Veranstaltung',
+    sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+    emptySummary: 'Keine weiteren Änderungsdetails.',
+    columns: { time: 'Zeitpunkt', action: 'Aktion', actor: 'Bearbeitet von', summary: 'Zusammenfassung' },
+    actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
     empty: {
       title: 'Noch keine Historie verfügbar.',
-      description:
-        'Historienereignisse für Veranstaltungen werden in einem späteren Schritt angebunden.',
+      description: 'Für diese Veranstaltung wurden noch keine Studio-Änderungen erfasst.',
     },
   },
   empty: {
@@ -579,9 +586,17 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     },
   },
   history: {
+    loading: 'Loading history.',
+    error: 'History could not be loaded.',
+    createHint: 'Save the event before history becomes available.',
+    tableLabel: 'Event history',
+    sourceNotice: 'This history only contains changes made through Studio.',
+    emptySummary: 'No further change details.',
+    columns: { time: 'Time', action: 'Action', actor: 'Changed by', summary: 'Summary' },
+    actions: { created: 'Created', updated: 'Updated', statusChanged: 'Status changed' },
     empty: {
       title: 'No history available yet.',
-      description: 'Event history entries will be connected in a later step.',
+      description: 'No Studio changes have been recorded for this event yet.',
     },
   },
   empty: { title: 'No events yet', description: 'Create the first event.' },

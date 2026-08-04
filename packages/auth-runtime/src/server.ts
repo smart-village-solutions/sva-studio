@@ -87,6 +87,7 @@ export {
   loadExternalContentCore,
   loadExternalContentReferenceByContentId,
   loadExternalContentReferenceByOperation,
+  loadExternalContentReferenceBySourceEntity,
   listExternalContentReferences,
   prepareExternalContent,
   updateExternalContentCore,
@@ -95,6 +96,7 @@ export {
   type ExternalContentReconciliationStatus,
   type ExternalContentReference,
 } from './iam-contents/external-content-references.js';
+export { recordSuccessfulExternalContentMutation } from './iam-contents/external-content-mutations.js';
 export {
   authorizeInstancePermissionForUser,
   type InstancePermissionAuthorizationResult,

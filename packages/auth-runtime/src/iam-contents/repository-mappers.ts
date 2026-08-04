@@ -37,4 +37,6 @@ export const mapContentHistoryItem = (row: ContentHistoryRow): IamContentHistory
   ...(row.next_status ? { toStatus: row.next_status } : {}),
   createdAt: row.created_at,
   ...(row.summary ? { summary: row.summary } : {}),
+  origin: row.origin,
+  coverage: row.coverage,
 });

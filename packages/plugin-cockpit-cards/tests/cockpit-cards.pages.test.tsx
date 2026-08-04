@@ -482,7 +482,11 @@ describe('cockpit cards pages', () => {
     ]);
     const { CockpitCardsHistory } = await import('../src/cockpit-cards.pages.js');
     const view = render(<CockpitCardsHistory contentId="card-1" />);
-    await waitFor(() => expect(state.history).toHaveBeenCalledWith('card-1'));
+    await waitFor(() =>
+      expect(state.history).toHaveBeenCalledWith('card-1', {
+        contentType: 'cockpit-cards.cockpit-card',
+      })
+    );
     expect(await screen.findByText('formatted:2026-08-01')).toBeTruthy();
     expect(screen.getByText('title')).toBeTruthy();
     view.unmount();

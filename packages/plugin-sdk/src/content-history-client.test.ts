@@ -53,6 +53,20 @@ describe('content-history-client', () => {
     );
   });
 
+  it('includes the content type when resolving external mainserver history', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
+
+    await fetchIamContentHistory('news-1', {
+      fetch: fetchMock as typeof fetch,
+      contentType: 'news.article',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/contents/news-1/history?contentType=news.article',
+      expect.objectContaining({ credentials: 'include' })
+    );
+  });
+
   it('returns an empty list for successful no-history responses', async () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }));
 

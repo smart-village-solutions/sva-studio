@@ -206,7 +206,7 @@ Host-seitiges Kernmodell für Inhalte und ihre führende Listenprojektion:
 Kernidee:
 
 - `contents` hält den aktuellen Stand lokaler IAM-Inhalte.
-- `content_history` hält Historisierung und Änderungsverlauf.
+- `content_history` hält den unveränderlichen Änderungsverlauf. `origin = studio` und `coverage = studio_mutations` machen die Abdeckungsgrenze ausdrücklich; der optionale `mutation_ref` verhindert doppelte sichtbare Erfolgseinträge bei wiederholter Finalisierung derselben Studio-Mutation.
 - `content_list_projection` ist das persistierte führende Read-Model für `/admin/content`; lokale IAM-Inhalte werden triggerbasiert gespiegelt, Mainserver-Typen serverseitig materialisiert. `projection_scope_key` trennt materialisierte Snapshots je Sichtbarkeits-Scope, damit derselbe Mainserver-Datensatz für unterschiedliche Organisationen oder Benutzer-Sichten parallel materialisiert werden kann.
 - `content_list_projection_sync_state` hält den letzten erfolgreichen beziehungsweise fehlgeschlagenen Refresh-Lauf pro Instanz, Mainserver-Content-Typ und `sync_scope_key`; dadurch bleiben Scope-spezifische Snapshots und ihre Refresh-Metadaten voneinander isoliert.
 - Der Sync-State unterscheidet explizit leere, partielle und vollständige Snapshots. `refresh_run_id` schützt Page-Upserts, Finalisierung und Löschabgleich vor überholten Läufen; Phase, abgeschlossene Seite, verfügbare Anzahl, Finalität und übersprungene ungültige Datensätze machen progressive Refreshs beobachtbar.

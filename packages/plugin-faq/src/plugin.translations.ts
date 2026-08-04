@@ -45,6 +45,8 @@ export const pluginFaqTranslations = {
         },
       },
       history: {
+        createHint: 'Speichere die FAQ, bevor die Historie verfügbar ist.',
+        sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
         empty: 'Noch keine Historie verfügbar.',
         loading: 'Historie wird geladen.',
         tableLabel: 'FAQ-Historie',
@@ -152,6 +154,8 @@ export const pluginFaqTranslations = {
         },
       },
       history: {
+        createHint: 'Save the FAQ before history becomes available.',
+        sourceNotice: 'This history only contains changes made through Studio.',
         empty: 'No history available yet.',
         loading: 'Loading history.',
         tableLabel: 'FAQ history',

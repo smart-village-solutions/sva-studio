@@ -179,6 +179,7 @@ export const pluginWasteManagement: PluginDefinition = {
   permissions: wasteManagementPermissionDefinitions,
   moduleIam: wasteManagementModuleIam,
   auditEvents: wasteManagementAuditEventDefinitions,
+  contentHistory: { mode: 'domain', reasonCode: 'domain_history' },
   jobTypes: createWasteManagementPluginJobTypes(),
   importProfiles: createWasteManagementPluginImportProfiles(),
   translations: wasteManagementPluginTranslations,

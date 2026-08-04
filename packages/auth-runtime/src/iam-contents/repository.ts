@@ -3,6 +3,7 @@ import type { IamContentDetail, IamContentHistoryEntry, IamContentListItem, IamC
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 import {
   insertContentHistory,
+  isContentMutationFinalized,
   loadCurrentContentRow,
   resolveContentMutationMetadata,
 } from './repository-shared.js';
@@ -225,7 +226,9 @@ SELECT
   history.previous_status,
   history.next_status,
   history.created_at::text,
-  history.summary
+  history.summary,
+  history.origin,
+  history.coverage
 FROM iam.content_history history
 WHERE history.instance_id = $1
   AND history.content_id = $2::uuid
@@ -271,6 +274,16 @@ export const createContent = async (input: CreateContentInput): Promise<string> 
 
 export const updateContent = async (input: UpdateContentInput): Promise<string | undefined> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    if (
+      input.mutationRef &&
+      await isContentMutationFinalized(client, {
+        instanceId: input.instanceId,
+        contentId: input.contentId,
+        mutationRef: input.mutationRef,
+      })
+    ) {
+      return input.contentId;
+    }
     const current = await loadCurrentContentRow(client, input.instanceId, input.contentId);
     if (!current) {
       return undefined;
@@ -325,6 +338,7 @@ export const updateContent = async (input: UpdateContentInput): Promise<string |
       nextStatus,
       summary: historySummary,
       snapshot: nextPayload,
+      mutationRef: input.mutationRef,
     });
     await updateContentRevisionRefs(client, input.instanceId, input.contentId, historyId);
     await emitContentUpdatedActivity(client, stateInput, current, {

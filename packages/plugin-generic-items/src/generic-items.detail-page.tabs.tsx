@@ -13,6 +13,7 @@ type GenericItemsDetailTabsProps = Readonly<{
   categoryOptions: readonly GenericItemCategoryOption[];
   categoryOptionsError: string | null;
   categoryOptionsLoading: boolean;
+  contentId?: string;
   labels: Record<string, string>;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
@@ -25,7 +26,7 @@ type GenericItemsDetailTabsProps = Readonly<{
 }>;
 
 const createGenericItemsDetailTabs = ({
-  categoryOptions, categoryOptionsError, categoryOptionsLoading, labels, onOpenMediaPicker, pt,
+  categoryOptions, categoryOptionsError, categoryOptionsLoading, contentId, labels, onOpenMediaPicker, pt,
   mediaUsages, onChangeMediaUsages, canSelectMedia, canUploadMedia, onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps): readonly StudioDetailTabDefinition<GenericItemsDetailTabId>[] => [
   {
@@ -46,7 +47,7 @@ const createGenericItemsDetailTabs = ({
   {
     id: 'history', label: pt('tabs.history.label'), title: pt('tabs.history.title'),
     description: pt('tabs.history.description'), icon: 'history',
-    panel: <GenericItemsDetailHistoryTab message={pt('history.placeholder')} />,
+    panel: <GenericItemsDetailHistoryTab contentId={contentId} pt={pt} />,
   },
 ];
 
@@ -55,6 +56,7 @@ export const GenericItemsDetailTabs = ({
   categoryOptions,
   categoryOptionsError,
   categoryOptionsLoading,
+  contentId,
   labels,
   onOpenMediaPicker,
   onTabChange,
@@ -65,7 +67,7 @@ export const GenericItemsDetailTabs = ({
   canUploadMedia,
   onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps) => {
-  const tabs = createGenericItemsDetailTabs({ activeTab, categoryOptions, categoryOptionsError, categoryOptionsLoading, labels, onOpenMediaPicker, onTabChange, pt, mediaUsages, onChangeMediaUsages, canSelectMedia, canUploadMedia, onLoadAssetSnapshot });
+  const tabs = createGenericItemsDetailTabs({ activeTab, categoryOptions, categoryOptionsError, categoryOptionsLoading, contentId, labels, onOpenMediaPicker, onTabChange, pt, mediaUsages, onChangeMediaUsages, canSelectMedia, canUploadMedia, onLoadAssetSnapshot });
 
   return (
     <StudioDetailTabs

@@ -12,11 +12,7 @@ import {
 } from './repository-write-helpers.js';
 import type { CreateContentInput } from './repository-types.js';
 
-export type ExternalContentReconciliationStatus =
-  | 'pending'
-  | 'bound'
-  | 'reconciliation_required'
-  | 'failed';
+export type ExternalContentReconciliationStatus = 'pending' | 'bound' | 'reconciliation_required' | 'failed';
 
 export type ExternalContentReference = Readonly<{
   id: string;
@@ -70,7 +66,7 @@ FROM iam.external_content_references
 
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
-const insertExternalContentReference = async (
+export const insertExternalContentReference = async (
   client: InstanceScopedClient,
   input: {
     readonly instanceId: string;
@@ -122,9 +118,7 @@ export const createExternalContentReference = async (input: {
   readonly sourceEntityType: string;
   readonly operationExternalId: string;
 }): Promise<ExternalContentReference> =>
-  withInstanceScopedDb(input.instanceId, (client) =>
-    insertExternalContentReference(client, input)
-  );
+  withInstanceScopedDb(input.instanceId, (client) => insertExternalContentReference(client, input));
 
 export const loadExternalContentReferenceByContentId = async (input: {
   readonly instanceId: string;
@@ -160,6 +154,25 @@ WHERE instance_id = $1
   AND operation_external_id = $4
 LIMIT 1;`,
       [input.instanceId, input.sourceSystem, input.sourceEntityType, input.operationExternalId]
+    );
+    return result.rows[0] ? mapReference(result.rows[0]) : undefined;
+  });
+
+export const loadExternalContentReferenceBySourceEntity = async (input: {
+  readonly instanceId: string;
+  readonly sourceSystem: string;
+  readonly sourceEntityType: string;
+  readonly sourceEntityId: string;
+}): Promise<ExternalContentReference | undefined> =>
+  withInstanceScopedDb(input.instanceId, async (client) => {
+    const result = await client.query<ExternalContentReferenceRow>(
+      `${referenceSelect}
+WHERE instance_id = $1
+  AND source_system = $2
+  AND source_entity_type = $3
+  AND source_entity_id = $4
+LIMIT 1;`,
+      [input.instanceId, input.sourceSystem, input.sourceEntityType, input.sourceEntityId]
     );
     return result.rows[0] ? mapReference(result.rows[0]) : undefined;
   });
@@ -290,6 +303,7 @@ export const updateExternalContentCore = async (input: {
   readonly actorDisplayName: string;
   readonly requestId?: string;
   readonly traceId?: string;
+  readonly mutationRef?: string;
   readonly contentId: string;
   readonly title: string;
   readonly payload: ContentJsonValue;

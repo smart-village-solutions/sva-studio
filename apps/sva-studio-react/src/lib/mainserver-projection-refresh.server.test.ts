@@ -18,6 +18,7 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     warn: state.loggerWarn,
   }),
+  getWorkspaceContext: () => ({ requestId: 'request-1' }),
 }));
 
 vi.mock('./iam-content-list-projection.server', () => ({
@@ -61,6 +62,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'news.article',
       organizationId: 'org-1',
       operation: 'create',
@@ -82,6 +85,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'generic-items.generic-item',
       organizationId: 'org-1',
       operation: 'create',
@@ -89,29 +94,45 @@ describe('mainserver projection refresh', () => {
     });
   });
 
-  it('does not treat generic-items and surveys collection paths as entity ids when the response has no item id', async () => {
+  it('derives mutation identity from root response ids and Location headers', async () => {
     await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
-      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
-      'generic-items.generic-item'
+      new Request('https://studio.test/api/v1/mainserver/news', { method: 'POST' }),
+      new Response(JSON.stringify({ id: 'news-root-1' }), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'news.article'
     );
     await refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/surveys', { method: 'POST' }),
-      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
-      'surveys.survey'
+      new Request('https://studio.test/api/v1/mainserver/events', { method: 'POST' }),
+      new Response(null, {
+        status: 201,
+        headers: { location: '/api/v1/mainserver/events/event-location-1' },
+      }),
+      'events.event-record'
     );
 
     expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
       1,
-      expect.not.objectContaining({
-        entityId: 'generic-items',
-      })
+      expect.objectContaining({ entityId: 'news-root-1' })
     );
     expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
       2,
-      expect.not.objectContaining({
-        entityId: 'surveys',
-      })
+      expect.objectContaining({ entityId: 'event-location-1' })
+    );
+  });
+
+  it('preserves a successful create response when no item identity can be resolved', async () => {
+    await expect(refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
+      'generic-items.generic-item'
+    )).resolves.toBeUndefined();
+
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver mutation succeeded without a resolvable entity identity',
+      expect.objectContaining({ contentType: 'generic-items.generic-item', method: 'POST' })
     );
   });
 
@@ -129,6 +150,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'events.event-record',
       organizationId: 'org-1',
       operation: 'delete',
@@ -149,6 +172,8 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'kc-user-1',
+      mutationRef: 'request-1',
       contentType: 'news.article',
       organizationId: 'org-1',
       operation: 'update',
@@ -156,29 +181,57 @@ describe('mainserver projection refresh', () => {
     });
   });
 
-  it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
+  it('keeps nested survey response ids from replacing the survey path identity', async () => {
     await refreshProjectionAfterMainserverMutation(
+      new Request(
+        'https://studio.test/api/v1/mainserver/surveys/survey-42/free-text-responses/response-1',
+        { method: 'PATCH' }
+      ),
+      new Response(JSON.stringify({ data: { id: 'response-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'surveys.survey'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ contentType: 'surveys.survey', entityId: 'survey-42' })
+    );
+  });
+
+  it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
+    await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/other/news/news-42', {
         method: 'PATCH',
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    );
-    await refreshProjectionAfterMainserverMutation(
+    )).resolves.toBeUndefined();
+    await expect(refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
         method: 'PATCH',
       }),
       new Response(null, { status: 204 }),
       'news.article'
-    );
+    )).resolves.toBeUndefined();
 
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
-      1,
-      expect.not.objectContaining({ entityId: 'news-42' })
-    );
-    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenNthCalledWith(
-      2,
-      expect.not.objectContaining({ entityId: 'news-42' })
+    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+  });
+
+  it('preserves a successful provider write when the projection follow-up fails', async () => {
+    state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(new Error('projection down'));
+
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/news/news-1', { method: 'PATCH' }),
+        new Response(null, { status: 204 }),
+        'news.article'
+      )
+    ).resolves.toBeUndefined();
+
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver mutation projection refresh failed after a successful provider write',
+      expect.objectContaining({ contentType: 'news.article', entityId: 'news-1', error: 'projection down' })
     );
   });
 

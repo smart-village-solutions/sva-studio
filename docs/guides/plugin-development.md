@@ -492,6 +492,24 @@ Events und POI verwenden dasselbe Muster als getrennte Fachplugins:
 - Eine Event-zu-POI-Auswahl läuft über die POI-Fassade des Hosts. Das Events-Plugin importiert das POI-Plugin nicht.
 - Delete nutzt in Phase 1 `destroyRecord` mit den Mainserver-Record-Types `EventRecord` und `PointOfInterest`.
 
+## Verbindlicher History-Vertrag
+
+Jede Plugin-Definition klassifiziert ihre Inhaltshistorie über `contentHistory`. `createStandardContentPluginDefinition(...)` setzt für redaktionelle Standardinhalte automatisch `{ mode: 'host', coverage: 'studio_mutations' }`. Manuelle Contributions müssen eine der folgenden Klassifikationen angeben:
+
+- `host`: Der Host persistiert und autorisiert die Studio-Mutationshistorie. Das Plugin lädt sie mit `fetchIamContentHistory(...)` und rendert `StudioContentHistory`.
+- `domain`: Eine fachliche Historie bleibt im Plugin bestehen und erfüllt dieselben Rechte-, Scope-, Herkunfts-, Fehler- und Accessibility-Invarianten. Der stabile Grundcode lautet `domain_history`.
+- `none`: Die Contribution besitzt keine veränderbaren redaktionellen Datensätze. Zulässige Grundcodes sind `no_editorial_records`, `infrastructure_only` und `selection_values_only`.
+
+Die Registry lehnt redaktionell bearbeitbare Contributions ohne `host`-Binding mit einem stabilen Diagnosecode ab. Eine UI ohne History-Tab ist daher keine zulässige implizite Ausnahme.
+
+Aktueller Registry-Snapshot:
+
+- Host-History: News, Events, POI, Generic Items, FAQ, Cockpit Cards, Projekte und Umfragen.
+- Fachhistory: Waste Management.
+- Keine Inhaltshistorie: Kategorien (`selection_values_only`).
+
+Die Host-History zeigt ausschließlich erfolgreiche Mutationen, die über das Studio ausgelöst wurden. Bei Mainserver-Inhalten wird die Provider-Identität nach erfolgreicher Mutation an einen lokalen History-Core gebunden; `mutation_ref` macht Wiederholungen idempotent. Änderungen außerhalb des Studios sind nicht vollständig abgedeckt und müssen in der UI entsprechend gekennzeichnet werden. Lesen erfolgt immer über `content.readHistory` im Instance- und Ownership-Scope. `snapshot_json` wird nicht an Plugin-UIs ausgegeben; Diff und Wiederherstellung gehören nicht zu diesem Vertrag.
+
 ## i18n
 
 - Keine harten UI-Strings

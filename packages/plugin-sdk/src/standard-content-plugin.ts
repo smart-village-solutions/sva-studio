@@ -229,6 +229,7 @@ export const createStandardContentPluginDefinition = (
     permissions: options.contribution.permissions,
     moduleIam: options.contribution.moduleIam,
     contentTypes: options.contribution.contentTypes,
+    contentHistory: { mode: 'host', coverage: 'studio_mutations' },
     adminResources: options.contribution.adminResources,
     auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
     translations: options.translations,

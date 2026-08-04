@@ -323,6 +323,30 @@ export const emitContentCreatedActivity = (
     traceId: input.traceId,
   });
 
+export const emitExternalContentUpdatedActivity = (
+  client: InstanceScopedClient,
+  input: CreateContentInput,
+  contentId: string,
+  changedFields: readonly string[]
+): Promise<void> =>
+  emitActivityLog(client, {
+    instanceId: input.instanceId,
+    accountId: input.actorAccountId,
+    eventType: 'iam.content.updated',
+    result: 'success',
+    payload: {
+      content_id: contentId,
+      content_type: input.contentType,
+      ...buildContentActionAuditPayload('content.updatePayload'),
+      title: input.title,
+      changed_fields: changedFields,
+      next_status: input.status,
+      payload_change: changedFields.includes('payload') ? 'payload_updated' : 'payload_unchanged',
+    },
+    requestId: input.requestId,
+    traceId: input.traceId,
+  });
+
 export const emitContentDeletedActivity = (
   client: InstanceScopedClient,
   input: DeleteContentInput,

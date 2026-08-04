@@ -203,6 +203,7 @@ describe('EventsDetailPage', () => {
         'events.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'events.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
+        'events.history.createHint': 'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
         'events.actions.deleteConfirm': 'Wirklich löschen?',
@@ -297,7 +298,9 @@ describe('EventsDetailPage', () => {
     expect(await screen.findAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     fireEvent.click(screen.getByRole('tab', { name: 'Historie' }));
     await waitFor(() => {
-      expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
+      expect(
+        screen.getByText('Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.')
+      ).toBeTruthy();
     });
   });
 

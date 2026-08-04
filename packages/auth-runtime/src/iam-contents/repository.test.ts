@@ -14,6 +14,7 @@ const state = vi.hoisted(() => ({
   emitContentDeletedActivityMock: vi.fn(),
   emitContentUpdatedActivityMock: vi.fn(),
   insertContentHistoryMock: vi.fn(),
+  isContentMutationFinalizedMock: vi.fn(),
   insertContentRowMock: vi.fn(),
   loadCurrentContentRowMock: vi.fn(),
   mapContentHistoryItemMock: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('../iam-account-management/shared.js', () => ({
 
 vi.mock('./repository-shared.js', () => ({
   insertContentHistory: (...args: unknown[]) => state.insertContentHistoryMock(...args),
+  isContentMutationFinalized: (...args: unknown[]) => state.isContentMutationFinalizedMock(...args),
   loadCurrentContentRow: (...args: unknown[]) => state.loadCurrentContentRowMock(...args),
   resolveContentMutationMetadata: (...args: unknown[]) => state.resolveContentMutationMetadataMock(...args),
 }));
@@ -166,6 +168,7 @@ describe('iam content repository', () => {
     state.validatePublicationWindowMock.mockReturnValue(undefined);
     state.insertContentRowMock.mockResolvedValue('content-1');
     state.insertContentHistoryMock.mockResolvedValue('history-1');
+    state.isContentMutationFinalizedMock.mockResolvedValue(false);
     state.updateContentRevisionRefsMock.mockResolvedValue(undefined);
     state.emitContentCreatedActivityMock.mockResolvedValue(undefined);
     state.emitContentDeletedActivityMock.mockResolvedValue(undefined);
@@ -389,6 +392,23 @@ describe('iam content repository', () => {
 
     expect(state.resolveNextContentStateMock).not.toHaveBeenCalled();
     expect(state.updateContentRowMock).not.toHaveBeenCalled();
+  });
+
+  it('skips the complete update pipeline when a mutation reference was already finalized', async () => {
+    state.isContentMutationFinalizedMock.mockResolvedValueOnce(true);
+
+    await expect(
+      updateContent(createUpdateInput({ mutationRef: 'mutation-1', title: 'Wird nicht erneut geschrieben' }))
+    ).resolves.toBe('content-1');
+
+    expect(state.isContentMutationFinalizedMock).toHaveBeenCalledWith(
+      { query: state.queryMock },
+      { instanceId: 'instance-1', contentId: 'content-1', mutationRef: 'mutation-1' }
+    );
+    expect(state.loadCurrentContentRowMock).not.toHaveBeenCalled();
+    expect(state.updateContentRowMock).not.toHaveBeenCalled();
+    expect(state.insertContentHistoryMock).not.toHaveBeenCalled();
+    expect(state.emitContentUpdatedActivityMock).not.toHaveBeenCalled();
   });
 
   it('stops update operations when next-state validation fails', async () => {

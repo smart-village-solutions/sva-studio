@@ -30,5 +30,6 @@ export const pluginCategories: PluginDefinition = {
   routes: [],
   permissions: categoryPermissions,
   moduleIam: categoryModuleIam,
+  contentHistory: { mode: 'none', reasonCode: 'selection_values_only' },
   translations: pluginCategoriesTranslations,
 };

@@ -627,7 +627,7 @@ export function PoiDetailPage({
       />
     ),
     settings: <PoiDetailSettingsTab pt={pt} />,
-    history: <PoiDetailHistoryTab pt={pt} />,
+    history: <PoiDetailHistoryTab contentId={contentId} pt={pt} />,
   } as const satisfies Record<PoiDetailTabId, React.JSX.Element>;
 
   return (

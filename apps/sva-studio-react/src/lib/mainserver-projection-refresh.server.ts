@@ -3,7 +3,7 @@ import {
   withAuthenticatedUser,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
-import { createSdkLogger } from '@sva/server-runtime';
+import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import { refreshProjectedContentsForMainserverMutation } from './iam-content-list-projection.server.js';
 
@@ -69,17 +69,22 @@ const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
 };
 
 const parseEntityIdFromResponse = async (response: Response): Promise<string | undefined> => {
+  const location = response.headers.get('location');
+  if (location) {
+    const locationSegments = new URL(location, 'https://studio.invalid').pathname.split('/').filter(Boolean);
+    const locationId = locationSegments.at(-1);
+    if (locationId) return decodeURIComponent(locationId);
+  }
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
     return undefined;
   }
 
   const payload = (await response.clone().json().catch(() => null)) as
-    | { data?: { id?: unknown } }
+    | { data?: { id?: unknown }; id?: unknown }
     | null;
-  return typeof payload?.data?.id === 'string' && payload.data.id.length > 0
-    ? payload.data.id
-    : undefined;
+  const id = payload?.data?.id ?? payload?.id;
+  return typeof id === 'string' && id.length > 0 ? id : undefined;
 };
 
 export const refreshProjectionAfterMainserverMutation = async (
@@ -94,7 +99,15 @@ export const refreshProjectionAfterMainserverMutation = async (
   const operation = parseMutationOperation(request);
   const entityIdFromPath = parseEntityIdFromRequestPath(request);
   const entityIdFromResponse = await parseEntityIdFromResponse(response);
-  const entityId = entityIdFromResponse ?? entityIdFromPath;
+  const entityId = entityIdFromPath ?? entityIdFromResponse;
+  if ((operation === 'create' || operation === 'update') && !entityId) {
+    logger.warn('Mainserver mutation succeeded without a resolvable entity identity', {
+      contentType,
+      method: request.method,
+      requestPath: new URL(request.url).pathname,
+    });
+    return;
+  }
 
   await withAuthenticatedUser(request, async (ctx) => {
     if (!ctx.user.instanceId) {
@@ -130,15 +143,31 @@ export const refreshProjectionAfterMainserverMutation = async (
       return response;
     }
 
-    await refreshProjectedContentsForMainserverMutation({
-      instanceId: ctx.user.instanceId,
-      keycloakSubject: ctx.user.id,
-      contentType,
-      actorAccountId,
-      ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
-      ...(operation ? { operation } : {}),
-      ...(entityId ? { entityId } : {}),
-    });
+    try {
+      await refreshProjectedContentsForMainserverMutation({
+        instanceId: ctx.user.instanceId,
+        keycloakSubject: ctx.user.id,
+        contentType,
+        actorAccountId,
+        actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
+        mutationRef:
+          request.headers.get('idempotency-key') ??
+          request.headers.get('x-request-id') ??
+          getWorkspaceContext().requestId ??
+          `${request.method}:${contentType}:${entityId ?? 'unknown'}`,
+        ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
+        ...(operation ? { operation } : {}),
+        ...(entityId ? { entityId } : {}),
+      });
+    } catch (error) {
+      logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
+        instanceId: ctx.user.instanceId,
+        contentType,
+        method: request.method,
+        entityId: entityId ?? null,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return response;
   });

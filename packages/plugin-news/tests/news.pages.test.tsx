@@ -1044,7 +1044,9 @@ describe('News editor pages', () => {
     await openHistoryTab();
 
     await waitFor(() => {
-      expect(fetchIamContentHistory).toHaveBeenCalledWith('news-1');
+      expect(fetchIamContentHistory).toHaveBeenCalledWith('news-1', {
+        contentType: 'news.article',
+      });
       expect(screen.getByText('Freigabe erteilt')).toBeTruthy();
     });
 

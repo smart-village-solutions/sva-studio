@@ -252,6 +252,7 @@ describe('PoiDetailPage', () => {
         'poi.validation.geoLocation': 'Koordinaten müssen gültige Breiten- und Längengrade sein.',
         'poi.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
         'poi.history.empty.title': 'Noch keine Historie verfügbar.',
+        'poi.history.createHint': 'Speichern Sie den Ort, bevor die Historie verfügbar ist.',
         'poi.messages.createSuccess': 'Ort erstellt.',
         'poi.messages.updateSuccess': 'Ort aktualisiert.',
         'poi.messages.deleteError': 'Ort konnte nicht gelöscht werden.',
@@ -476,7 +477,7 @@ describe('PoiDetailPage', () => {
 
     expect(await screen.findAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     switchSection('history');
-    expect(screen.getByText('Noch keine Historie verfügbar.')).toBeTruthy();
+    expect(screen.getByText('Speichern Sie den Ort, bevor die Historie verfügbar ist.')).toBeTruthy();
   });
 
   it('loads the poi editor from GraphQL content and keeps missing legacy media references optional', async () => {

@@ -65,6 +65,7 @@ export const pluginSurveys: PluginDefinition = {
   permissions: pluginSurveysPermissionDefinitions,
   moduleIam: pluginSurveysModuleIam,
   contentTypes: standardSurveysContribution.contentTypes,
+  contentHistory: { mode: 'host', coverage: 'studio_mutations' },
   adminResources: standardSurveysContribution.adminResources,
   auditEvents: [],
   translations: pluginSurveysTranslations,

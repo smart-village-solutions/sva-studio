@@ -25,6 +25,7 @@ vi.mock('../iam-account-management/shared.js', () => ({
 
 const {
   insertContentHistory,
+  isContentMutationFinalized,
   loadCurrentContentRow,
   resolveContentMutationMetadata,
 } = await import('./repository-shared.js');
@@ -32,6 +33,7 @@ const {
   emitContentCreatedActivity,
   emitContentDeletedActivity,
   emitContentUpdatedActivity,
+  emitExternalContentUpdatedActivity,
   insertContentRow,
   resolveCreateAuthorDisplay,
   resolveUpdateAuthorDisplay,
@@ -124,6 +126,30 @@ describe('iam content repository helpers', () => {
       'instance-1',
       'content-1',
     ]);
+  });
+
+  it('serializes mutation finalization and detects an existing history entry', async () => {
+    const client = createClient();
+    client.query
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 'history-1' }] });
+
+    await expect(isContentMutationFinalized(client, {
+      instanceId: 'instance-1',
+      contentId: 'content-1',
+      mutationRef: 'mutation-1',
+    })).resolves.toBe(true);
+
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2));',
+      ['instance-1', 'content-1:mutation-1']
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('AND mutation_ref = $3'),
+      ['instance-1', 'content-1', 'mutation-1']
+    );
   });
 
   it('creates content history entries and throws when the database does not return an id', async () => {
@@ -390,6 +416,31 @@ describe('iam content repository helpers', () => {
           primitive_action: 'content.delete',
           domain_capability: 'content.manage',
           title: 'Titel',
+        }),
+      })
+    );
+  });
+
+  it('emits update audit semantics for a newly bound external content core', async () => {
+    const client = createClient();
+
+    await emitExternalContentUpdatedActivity(
+      client,
+      createCreateInput({ status: 'published' }),
+      'content-1',
+      ['title', 'payload', 'status']
+    );
+
+    expect(state.emitActivityLogMock).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        eventType: 'iam.content.updated',
+        payload: expect.objectContaining({
+          action: 'content.updatePayload',
+          primitive_action: 'content.updatePayload',
+          changed_fields: ['title', 'payload', 'status'],
+          next_status: 'published',
+          payload_change: 'payload_updated',
         }),
       })
     );

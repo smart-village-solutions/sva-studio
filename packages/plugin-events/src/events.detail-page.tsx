@@ -798,7 +798,7 @@ export function EventsDetailPage({
                       />
                     ) : null}
                     {tab.id === 'settings' ? <EventsDetailSettingsTab pt={pt} /> : null}
-                    {tab.id === 'history' ? <EventsDetailHistoryTab pt={pt} /> : null}
+                    {tab.id === 'history' ? <EventsDetailHistoryTab contentId={contentId} pt={pt} /> : null}
                   </div>
                 </TabsContent>
               );

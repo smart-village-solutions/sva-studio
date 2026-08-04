@@ -17,7 +17,6 @@ import {
   usePluginTranslation,
   type HostMediaAssetListItem,
   type HostMediaAssetDetail,
-  type IamContentHistoryEntry,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -30,6 +29,7 @@ import {
   isPersistableContentMediaUrl,
   StudioDataTable,
   StudioConfirmDialog,
+  StudioContentHistory,
   StudioDetailCard,
   StudioDetailTabs,
   StudioDetailPageTemplate,
@@ -539,34 +539,6 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
 
 export function CockpitCardsHistory({ contentId }: Readonly<{ contentId: string }>) {
   const pt = usePluginTranslation('cockpit-cards');
-  const [entries, setEntries] = React.useState<readonly IamContentHistoryEntry[]>([]);
-  const [state, setState] = React.useState<'loading' | 'error' | 'ready'>('loading');
-  React.useEffect(() => {
-    let active = true;
-    void fetchIamContentHistory(contentId).then(
-      (nextEntries) => {
-        if (active) {
-          setEntries(
-            [...nextEntries].sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-          );
-          setState('ready');
-        }
-      },
-      () => active && setState('error')
-    );
-    return () => {
-      active = false;
-    };
-  }, [contentId]);
-  if (state === 'loading') return <StudioLoadingState>{pt('history.loading')}</StudioLoadingState>;
-  if (state === 'error')
-    return (
-      <p role="alert" className="text-sm text-destructive">
-        {pt('history.error')}
-      </p>
-    );
-  if (!entries.length)
-    return <p className="text-sm text-muted-foreground">{pt('history.empty')}</p>;
   const formatAction = (action: string) => {
     if (action === 'created' || action === 'create') return pt('history.actions.created');
     if (action === 'updated' || action === 'update') return pt('history.actions.updated');
@@ -575,32 +547,19 @@ export function CockpitCardsHistory({ contentId }: Readonly<{ contentId: string 
     return action;
   };
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse text-sm" aria-label={pt('history.label')}>
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th>{pt('history.time')}</th>
-              <th>{pt('history.action')}</th>
-              <th>{pt('history.actor')}</th>
-              <th>{pt('history.summary')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => (
-              <tr key={entry.id} className="border-t border-border align-top">
-                <td className="px-3 py-3">
-                  {formatDateTimeInEditorTimeZone(entry.createdAt) ?? entry.createdAt}
-                </td>
-                <td className="px-3 py-3">{formatAction(entry.action)}</td>
-                <td className="px-3 py-3">{entry.actor}</td>
-                <td className="px-3 py-3">{entry.summary || entry.changedFields.join(', ')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <StudioContentHistory
+      contentId={contentId}
+      loadHistory={(id) => fetchIamContentHistory(id, { contentType: 'cockpit-cards.cockpit-card' })}
+      labels={{
+        loading: pt('history.loading'), error: pt('history.error'), empty: pt('history.empty'),
+        createHint: pt('history.createHint'), tableLabel: pt('history.label'),
+        time: pt('history.time'), action: pt('history.action'), actor: pt('history.actor'),
+        summary: pt('history.summary'), sourceNotice: pt('history.sourceNotice'),
+        emptySummary: pt('history.emptySummary'),
+      }}
+      formatAction={formatAction}
+      formatDate={(value) => formatDateTimeInEditorTimeZone(value) ?? value}
+    />
   );
 }
 

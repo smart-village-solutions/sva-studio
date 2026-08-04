@@ -161,3 +161,9 @@ export {
   type StudioPaginationProps,
 } from './studio-content-editor-primitives.js';
 export { cn } from './utils.js';
+export {
+  StudioContentHistory,
+  type StudioContentHistoryEntry,
+  type StudioContentHistoryLabels,
+  type StudioContentHistoryProps,
+} from './studio-content-history.js';

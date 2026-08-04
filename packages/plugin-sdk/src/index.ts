@@ -61,6 +61,7 @@ export type {
   PluginAdminResourceDefinition,
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
+  PluginContentHistoryContract,
   PluginDefinition,
   PluginCatalogEntry,
   PluginCatalogIssue,

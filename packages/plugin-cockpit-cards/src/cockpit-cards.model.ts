@@ -121,7 +121,7 @@ export const compareCockpitCardRecords = (
   return (
     leftPayload.languageCode.localeCompare(rightPayload.languageCode) ||
     leftPayload.sortWeight - rightPayload.sortWeight ||
-    new Intl.Collator(leftPayload.languageCode, {
+    new Intl.Collator(leftPayload.languageCode || undefined, {
       usage: 'sort',
       sensitivity: 'base',
       numeric: true,

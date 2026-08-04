@@ -4,6 +4,7 @@ import type { SvaMainserverGenericItemInput } from '../types.js';
 import {
   mergeCockpitCardPayload,
   validateCockpitCardItemOrResponse,
+  validateCockpitCardWriteOrResponse,
 } from './generic-items-route-cockpit-cards.js';
 
 const validItem: SvaMainserverGenericItemInput = {
@@ -67,5 +68,31 @@ describe('cockpit card route validation', () => {
       )
     ).toEqual({ legacy: true, languageCode: 'de', sortWeight: 2 });
     expect(mergeCockpitCardPayload([], null)).toEqual({});
+  });
+
+  it('normalizes omitted optional fields to explicit clearing values', async () => {
+    const result = await validateCockpitCardWriteOrResponse(
+      new Request('https://studio.test/api/v1/mainserver/generic-items/card-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: validItem.title,
+          genericType: validItem.genericType,
+          payload: { sortWeight: 0 },
+          categoryName: validItem.categoryName,
+          categories: validItem.categories,
+          visible: true,
+        }),
+      })
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        contentBlocks: [],
+        mediaContents: [],
+        webUrls: [],
+        payload: { languageCode: '', sortWeight: 0 },
+      })
+    );
   });
 });

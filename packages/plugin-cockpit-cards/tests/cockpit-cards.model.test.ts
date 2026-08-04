@@ -136,5 +136,6 @@ describe('cockpit card model', () => {
     expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 2))).toBeLessThan(0);
     expect(compareCockpitCardRecords(makeRecord('1', 'A2', 'de', 1), makeRecord('2', 'A10', 'de', 1))).toBeLessThan(0);
     expect(compareCockpitCardRecords(makeRecord('1', 'A', 'de', 1), makeRecord('2', 'A', 'de', 1))).toBeLessThan(0);
+    expect(compareCockpitCardRecords(makeRecord('1', 'A', '', 1), makeRecord('2', 'B', '', 1))).toBeLessThan(0);
   });
 });

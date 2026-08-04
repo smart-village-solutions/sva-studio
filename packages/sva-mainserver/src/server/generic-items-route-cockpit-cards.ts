@@ -80,5 +80,18 @@ export const validateCockpitCardWriteOrResponse = async (
   request: Request
 ): Promise<SvaMainserverGenericItemInput | Response> => {
   const item = await parseGenericItemInput(request);
-  return isResponse(item) ? item : (validateCockpitCardItemOrResponse(item) ?? item);
+  if (isResponse(item)) return item;
+  const validation = validateCockpitCardItemOrResponse(item);
+  if (validation) return validation;
+  const payload = payloadRecord(item.payload);
+  return {
+    ...item,
+    contentBlocks: item.contentBlocks ?? [],
+    mediaContents: item.mediaContents ?? [],
+    webUrls: item.webUrls ?? [],
+    payload: {
+      ...payload,
+      languageCode: typeof payload.languageCode === 'string' ? payload.languageCode : '',
+    },
+  };
 };

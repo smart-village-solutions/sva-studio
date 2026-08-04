@@ -21,6 +21,10 @@ function resolveStylesPath(): string {
 const stylesSource = readFileSync(resolveStylesPath(), 'utf8');
 
 describe('styles foundation tokens', () => {
+  it('binds Tailwind dark variants to the Studio theme class', () => {
+    expect(stylesSource).toContain('@custom-variant dark (&:where(.dark, .dark *));');
+  });
+
   it('maps the default shell action tokens to a KERN-blue palette', () => {
     expect(stylesSource).toContain('--primary: 0 90 158;');
     expect(stylesSource).toContain('--ring: 0 90 158;');

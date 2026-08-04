@@ -15,6 +15,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Shell-nahe Komponenten verwenden bevorzugt semantische Klassen wie `bg-background`, `text-foreground`, `bg-card`, `bg-sidebar`, `border-border` und `text-muted-foreground`.
 - Direkte Farbcodes oder projektspezifische Tailwind-Farben wie `slate-*` oder `emerald-*` sollen in neuen Shell-Komponenten nicht mehr verwendet werden.
 - Theme-Auswahl erfolgt zentral über `ThemeProvider` und `src/lib/theme.ts`.
+- Tailwind-Varianten mit `dark:` werden in `src/styles.css` explizit an die vom `ThemeProvider` gesetzte `.dark`-Klasse gebunden. Sie dürfen nicht vom Betriebssystem-Media-Query abweichen.
 - `instanceId` bestimmt optional die Theme-Variante; unbekannte Werte fallen auf `sva-default` zurück.
 - Light-/Dark-Mode bleibt ein separater Modus und darf nicht über Theme-Namen kodiert werden.
 - Ohne gespeicherte Studio-Auswahl fällt der Light-/Dark-Mode auf den Studio-Default `light` zurück, nicht auf Browser- oder Betriebssystem-Präferenzen.

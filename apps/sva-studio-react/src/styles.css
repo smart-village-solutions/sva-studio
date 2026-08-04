@@ -1,6 +1,7 @@
 @import "@kern-ux/native/dist/fonts/fira-sans.css";
 @import "tailwindcss";
 @source "../../../packages";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --color-border: rgb(var(--border));

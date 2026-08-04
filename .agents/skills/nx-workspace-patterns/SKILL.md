@@ -46,7 +46,7 @@ pnpm nx affected --target=typecheck --base=origin/main
 - Für Vite, Vitest und Playwright die installierten Plugins `@nx/vite`, `@nx/vitest` und `@nx/playwright` verwenden.
 - Modellieren von Task-Abhängigkeiten mit `dependsOn`; Hashing mit präzisen `inputs` und `namedInputs`.
 - `cache: false` für E2E-, Coverage- und andere Läufe, deren Ergebnisse nicht sicher wiederverwendbar sind.
-- Nx Cloud nur konfigurieren oder ändern, wenn die Aufgabe dies verlangt. Keine Zugangsdaten in `nx.json` eintragen.
+- Nx Cloud bleibt deaktiviert. Keine Cloud-ID oder Zugangsdaten in `nx.json` eintragen und keine Cloud-Dienste in CI aktivieren.
 
 ## Prüfung
 

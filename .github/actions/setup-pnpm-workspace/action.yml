@@ -17,6 +17,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Disable Nx Cloud
+      shell: bash
+      run: echo "NX_NO_CLOUD=true" >> "$GITHUB_ENV"
+
     - name: Setup pnpm
       uses: pnpm/action-setup@v5
       with:

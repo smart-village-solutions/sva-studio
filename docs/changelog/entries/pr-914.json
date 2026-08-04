@@ -1,0 +1,4 @@
+{
+  "prNumber": 914,
+  "body": "Korrigierte Darstellung im Nacht-Modus\n\n- Farbflächen und Verläufe folgen nun zuverlässig dem im Studio ausgewählten Darstellungsmodus.\n- Die Darstellung ist damit unabhängig von einer abweichenden Betriebssystemeinstellung."
+}

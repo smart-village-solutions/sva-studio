@@ -18,7 +18,7 @@ import type {
 import { errorJson, isRecord } from './content-route-core.js';
 
 export const PROJECTS_CONTENT_TYPE = 'projects.project' as const;
-export const PROJECTS_GENERIC_TYPE = 'PROJECT' as const;
+export const PROJECTS_GENERIC_TYPE = 'FeaturedProject' as const;
 
 const requiredText = z.string().trim().min(1);
 const imageSchema = z.object({

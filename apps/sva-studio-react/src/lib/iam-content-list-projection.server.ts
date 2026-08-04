@@ -1639,8 +1639,7 @@ const mainserverProjectionPageLoaders: Record<
             data: result.data.filter(
               (item) =>
                 item.genericType !== 'FAQ' &&
-                item.genericType !== 'COCKPIT_CARD' &&
-                item.genericType !== 'PROJECT'
+                item.genericType !== 'COCKPIT_CARD'
             ),
           },
           pagingResult: result,

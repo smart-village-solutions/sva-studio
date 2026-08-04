@@ -115,7 +115,7 @@ const genericItem = {
   title: 'Projekt',
   contentType: 'generic-items.generic-item' as const,
   status: 'published' as const,
-  genericType: 'PROJECT',
+  genericType: 'FeaturedProject',
   teaser: 'Kurz',
   visible: true,
   author: 'Gemeinde',
@@ -185,7 +185,7 @@ describe('projects route', () => {
     state.loadCore.mockResolvedValue(core);
     state.listGenericItems
       .mockResolvedValueOnce({
-        data: [{ ...genericItem, genericType: 'INFO' }],
+        data: [{ ...genericItem, genericType: 'PROJECT' }],
         pagination: { page: 1, pageSize: 100, hasNextPage: true },
       })
       .mockResolvedValueOnce({
@@ -262,7 +262,7 @@ describe('projects route', () => {
     expect(state.createGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({
         genericItem: expect.objectContaining({
-          genericType: 'PROJECT',
+          genericType: 'FeaturedProject',
           externalId: 'operation-1',
           visible: true,
         }),
@@ -431,14 +431,14 @@ describe('projects route', () => {
     prepareDefaults();
     state.loadCore.mockResolvedValue(core);
     state.loadReferenceByContentId.mockResolvedValue(reference);
-    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, genericType: 'INFO' });
+    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, genericType: 'PROJECT' });
 
     const wrongType = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`)
     );
     expect(wrongType?.status).toBe(404);
 
-    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, teaser: '' });
+    state.getGenericItem.mockResolvedValueOnce({ ...genericItem, title: '' });
     const invalidProjection = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`)
     );

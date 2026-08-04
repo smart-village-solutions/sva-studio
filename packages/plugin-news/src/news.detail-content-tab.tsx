@@ -1,5 +1,5 @@
-import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
-import { Button, Input, RichTextHtmlEditor, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import { useFormContext, useWatch } from 'react-hook-form';
+import { ContentMediaUsageBlock, Input, RichTextHtmlEditor, Select, StudioField, StudioFormSummaryErrors, contentMediaUsagesToMainserver, createManualContentMediaUsage, getStudioFormFieldProps, mainserverContentMediaToUsages, type ContentMediaUsage } from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
 import {
@@ -8,12 +8,15 @@ import {
   readNestedFieldError,
   translateFieldError,
 } from './news.detail-content-tab.helpers.js';
-import { NewsDetailMediaList } from './news.detail-media-list.js';
-import { createEmptyMediaContent } from './news.detail-media-upload.js';
-import type { NewsDetailFormValues, NewsMediaContentFormValue } from './news.types.js';
+import type { NewsDetailFormValues } from './news.types.js';
 
 export type NewsDetailContentTabProps = Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  mediaUsages?: readonly ContentMediaUsage[];
+  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
 
@@ -120,50 +123,48 @@ function NewsContentTextSection({
 type NewsContentMediaSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   mediaField: ContentFieldBindings;
-  fields: readonly { readonly id: string }[];
-  append: (value: NewsMediaContentFormValue) => void;
-  remove: (index: number) => void;
-  mediaContents: NewsDetailFormValues['contentMedia'];
+  mediaUsages: readonly ContentMediaUsage[];
+  onChange: (usages: readonly ContentMediaUsage[]) => void;
+  canSelectMedia: boolean;
+  canUploadMedia: boolean;
+  onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
-  register: ReturnType<typeof useFormContext<NewsDetailFormValues>>['register'];
 }>;
 
 function NewsContentMediaSection({
   pt,
   mediaField,
-  fields,
-  append,
-  remove,
-  mediaContents,
+  mediaUsages,
+  onChange,
+  canSelectMedia,
+  canUploadMedia,
+  onLoadAssetSnapshot,
   onOpenMediaPicker,
-  register,
 }: NewsContentMediaSectionProps) {
   return (
     <NewsDetailCard
       title={pt('cards.content.media.title')}
       description={pt('cards.content.media.description')}
     >
-      <div id={mediaField.id} className="space-y-3">
-        {fields.length === 0 ? <p className="text-sm text-muted-foreground">{pt('cards.content.media.empty')}</p> : null}
-        <NewsDetailMediaList
-          fields={fields}
-          mediaContents={mediaContents}
-          onRemove={remove}
-          pt={pt}
-          register={register}
-        />
-        <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('library')}>
-            {pt('actions.addImage')}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => onOpenMediaPicker('upload')}>
-            {pt('actions.uploadMedia')}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => append(createEmptyMediaContent())}>
-            {pt('actions.addMediaManual')}
-          </Button>
-        </div>
-      </div>
+      <div id={mediaField.id}><ContentMediaUsageBlock
+        usages={mediaUsages}
+        onChange={onChange}
+        onAddManual={() => onChange([...mediaUsages, {
+          ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
+          additionalData: { contentType: 'image', width: '', height: '' },
+        }])}
+        onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+        onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
+        supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+        showHeader={false}
+        renderAdditionalFields={({ usage, update }) => <>
+          <StudioField id={`content-media-${usage.uiId}-content-type`} label={pt('fields.mediaContentType')}>
+            <Select id={`content-media-${usage.uiId}-content-type`} value={String(usage.additionalData?.contentType ?? '')} onChange={(event) => update({ additionalData: { ...usage.additionalData, contentType: event.currentTarget.value } })}><option value="">{pt('values.mediaContentTypes.unspecified')}</option><option value="image">{pt('values.mediaContentTypes.image')}</option></Select>
+          </StudioField>
+        </>}
+        labels={createNewsMediaUsageLabels(pt)}
+      /></div>
     </NewsDetailCard>
   );
 }
@@ -196,21 +197,31 @@ function NewsContentSourceSection({
   );
 }
 
-export function NewsDetailContentTab({ onOpenMediaPicker, pt }: NewsDetailContentTabProps) {
+const createNewsMediaUsageLabels = (pt: NewsDetailContentTabProps['pt']) => ({
+  title: pt('cards.content.media.title'), description: pt('cards.content.media.description'), empty: pt('cards.content.media.empty'),
+  actions: { library: pt('actions.addImage'), upload: pt('actions.uploadMedia'), manual: pt('actions.addMediaManual'), remove: pt('actions.removeImage'), moveUp: pt('media.moveUp'), moveDown: pt('media.moveDown'), refreshMetadata: pt('media.refresh'), cancel: pt('actions.cancel'), apply: pt('media.apply') },
+  fields: { url: pt('fields.mediaUrl'), altText: pt('fields.mediaUrlDescription'), caption: pt('fields.mediaCaption'), credit: pt('fields.mediaCopyright'), license: pt('messages.mediaPickerLicense') },
+  states: { linked: pt('media.linked'), manual: pt('media.manual'), synced: pt('media.synced'), pending: pt('media.pending'), missing: pt('media.missing'), additional: pt('media.additional'), unresolved: pt('media.unresolved'), failed: pt('media.failed'), previewUnavailable: pt('media.previewUnavailable') },
+  announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
+  refresh: { title: pt('media.refreshTitle'), description: pt('media.refreshDescription'), assetValue: pt('media.assetValue'), contentValue: pt('media.contentValue') },
+});
+
+export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onChangeMediaUsages = () => undefined, canSelectMedia = true, canUploadMedia = true, onLoadAssetSnapshot }: NewsDetailContentTabProps) {
   const {
     control,
     formState: { errors },
     register,
     setValue,
   } = useFormContext<NewsDetailFormValues>();
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'contentMedia',
-  });
   const title = useWatch({ control, name: 'title' }) ?? '';
   const teaser = useWatch({ control, name: 'contentTeaser' }) ?? '';
   const contentBody = useWatch({ control, name: 'contentBody' }) ?? '';
   const mediaContents = useWatch({ control, name: 'contentMedia' }) ?? [];
+  const resolvedUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
+  const changeMedia = (usages: readonly ContentMediaUsage[]) => {
+    onChangeMediaUsages(usages);
+    setValue('contentMedia', contentMediaUsagesToMainserver(usages) as NewsDetailFormValues['contentMedia'], { shouldDirty: true });
+  };
 
   const teaserField = getStudioFormFieldProps({
     id: 'news-content-teaser',
@@ -255,12 +266,12 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt }: NewsDetailConten
       <NewsContentMediaSection
         pt={pt}
         mediaField={mediaField}
-        fields={fields}
-        append={append}
-        remove={remove}
-        mediaContents={mediaContents}
+        mediaUsages={resolvedUsages}
+        onChange={changeMedia}
+        canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
         onOpenMediaPicker={onOpenMediaPicker}
-        register={register}
       />
       <NewsContentSourceSection
         pt={pt}

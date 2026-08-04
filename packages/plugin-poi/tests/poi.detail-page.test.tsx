@@ -3,7 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
@@ -32,6 +34,12 @@ vi.mock('@sva/plugin-sdk', async () => {
   const actual = await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk');
   return {
     ...actual,
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
+    replaceHostMediaReferences: vi.fn(async () => []),
+    getHostMediaDelivery: vi.fn(async ({ assetId }: { assetId: string }) => {
+      const asset = resolveMockMediaAsset(assetId);
+      return { deliveryUrl: asset.previewUrl, expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true };
+    }),
     getHostMapGeocodingConfig: vi.fn(async () => ({
       provider: 'geoapify',
       styleUrl: 'https://tiles.example/styles/poi',
@@ -134,6 +142,11 @@ describe('PoiDetailPage', () => {
   };
 
   beforeEach(() => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      roles: [],
+    });
     navigateMock.mockReset();
     vi.mocked(createPoi).mockReset();
     vi.mocked(deletePoi).mockReset();
@@ -275,6 +288,7 @@ describe('PoiDetailPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('renders the fixed tab order for poi', async () => {
@@ -616,7 +630,8 @@ describe('PoiDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
-    fireEvent.change(document.getElementById('poi-media-url-0') as HTMLInputElement, {
+    const mediaUrl = screen.getAllByLabelText('URL').at(-1)!;
+    fireEvent.change(mediaUrl, {
       target: { value: 'http://invalid.example/media.jpg' },
     });
     switchSection('basis');
@@ -624,9 +639,9 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).not.toHaveBeenCalled();
-      expect(document.activeElement).toBe(document.getElementById('poi-media-url-0'));
+      expect(document.activeElement).toBe(mediaUrl);
       expect(screen.getByText('URLs müssen mit https:// beginnen.')).toBeTruthy();
-      expect(document.getElementById('poi-media-url-0')?.getAttribute('aria-invalid')).toBe('true');
+      expect(mediaUrl.getAttribute('aria-invalid')).toBe('true');
     });
   });
 
@@ -652,9 +667,10 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).not.toHaveBeenCalled();
-      expect(document.activeElement).toBe(document.getElementById('poi-media-url-1'));
-      expect(document.getElementById('poi-media-url-0')?.getAttribute('aria-invalid')).toBeNull();
-      expect(document.getElementById('poi-media-url-1')?.getAttribute('aria-invalid')).toBe('true');
+      const mediaUrls = screen.getAllByLabelText('URL').slice(-2);
+      expect(document.activeElement).toBe(mediaUrls[1]);
+      expect(mediaUrls[0]?.getAttribute('aria-invalid')).toBeNull();
+      expect(mediaUrls[1]?.getAttribute('aria-invalid')).toBe('true');
     });
   });
 

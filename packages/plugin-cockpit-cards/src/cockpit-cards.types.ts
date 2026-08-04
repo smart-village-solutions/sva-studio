@@ -1,12 +1,13 @@
 export type CockpitCardPayload = Readonly<{ languageCode: string; sortWeight: number }>;
 
 export type CockpitCardCategory = Readonly<{ name: string }>;
-export type CockpitCardWebUrl = Readonly<{ url: string; description?: string }>;
+export type CockpitCardWebUrl = Readonly<{ url: string; description?: string; readonly [key: string]: unknown }>;
 export type CockpitCardMedia = Readonly<{
   sourceUrl: CockpitCardWebUrl;
   contentType: 'image';
   captionText?: string;
   copyright?: string;
+  readonly [key: string]: unknown;
 }>;
 
 export type CockpitCardFormValues = Readonly<{

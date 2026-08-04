@@ -3,7 +3,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
   updateHostMediaAsset,
 } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -68,6 +70,19 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
+    replaceHostMediaReferences: vi.fn(async () => []),
+    saveContentWithHostMediaReferences: vi.fn(async (input: { saveContent: () => Promise<unknown> }) => ({
+      status: 'complete',
+      saved: await input.saveContent(),
+    })),
+    getHostMediaDelivery: vi.fn(async ({ assetId }: { assetId: string }) => ({
+      deliveryUrl: assetId === 'asset-teaser'
+        ? 'https://cdn.example.test/teaser-asset.jpg'
+        : `https://cdn.example.test/${assetId}.jpg`,
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      isPublicUrl: true,
+    })),
     getHostMediaAsset: vi.fn(async () => ({
       id: 'asset-teaser',
       instanceId: 'instance-1',
@@ -142,6 +157,11 @@ describe('PoiListPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      roles: [],
+    });
     navigateMock.mockReset();
     paramsMock.mockReset();
     paramsMock.mockReturnValue({ id: 'poi-1' });
@@ -285,6 +305,7 @@ describe('PoiListPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('renders the empty state when no poi exist', async () => {

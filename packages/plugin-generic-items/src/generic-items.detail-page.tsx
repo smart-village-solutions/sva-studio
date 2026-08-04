@@ -3,7 +3,14 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
   getHostMediaAsset,
+  getHostMediaDelivery,
   getHostMediaAssetFileName,
+  listHostMediaReferencesByTarget,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  saveContentWithHostMediaReferences,
+  subscribeSessionAccessSnapshot,
+  alignHostMediaReferencesByOrder,
   updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
@@ -17,6 +24,10 @@ import {
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  contentMediaUsageToReference,
+  isPersistableContentMediaUrl,
+  toContentMediaAssetSnapshot,
+  type ContentMediaUsage,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
@@ -24,12 +35,13 @@ import {
   useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 import React from 'react';
+import { createGenericItem, updateGenericItem } from './generic-items.api.js';
+import { genericItemMediaContentsToUsages, genericItemMediaUsagesToContents } from './generic-items.content-media-adapter.js';
 
-import { createDefaultGenericItemsDetailFormValues } from './generic-items.detail-form.js';
+import { createDefaultGenericItemsDetailFormValues, mapGenericItemsDetailFormValuesToInput, mapGenericItemToDetailFormValues } from './generic-items.detail-form.js';
 import {
   isSupportedUploadFile,
   mediaContentFromAsset,
-  mediaContentSourceKey,
   readAssetFileName,
   readAssetTitle,
   uploadPhaseMessageKey,
@@ -84,6 +96,12 @@ const createSummaryErrors = (
 };
 
 type GenericItemsMediaPickerAsset = StudioMediaPickerAssetDetail;
+const genericItemsMediaReferenceTargetType = 'generic-items.generic-item';
+
+export const resolveGenericItemsPersistentDeliveryUrl = (delivery: Readonly<{ deliveryUrl: string; isPublicUrl?: boolean }>): string | null =>
+  delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
+    ? delivery.deliveryUrl
+    : null;
 
 const toGenericItemsMediaPickerSummary = (
   asset: Parameters<typeof readAssetTitle>[0]
@@ -98,7 +116,8 @@ const toGenericItemsMediaPickerSummary = (
 
 const toGenericItemsMediaPickerDetail = (
   asset: HostMediaAssetDetail,
-  summary?: Parameters<typeof readAssetTitle>[0]
+  summary?: Parameters<typeof readAssetTitle>[0],
+  persistentUrl?: string | null
 ): GenericItemsMediaPickerAsset => {
   const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
@@ -108,6 +127,7 @@ const toGenericItemsMediaPickerDetail = (
     title,
     fileName,
     previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
+    persistentUrl: persistentUrl ?? undefined,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
     metadata: {
@@ -245,12 +265,35 @@ export function GenericItemsDetailPage({
   );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({
+    canEditContent: sessionAccess.permissionActions.includes(mode === 'create' ? 'generic-items.create' : 'generic-items.update'),
+    permissionActions: sessionAccess.permissionActions,
+  }), [mode, sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const { mediaAssets, refreshMediaAssets } = useGenericItemsMediaAssets();
   const mediaAssetsRef = React.useRef(mediaAssets);
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
     useGenericItemsCategoryOptions(pt);
-  const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus });
-  const { activeTab, deleting, handleDelete, onSubmit, setActiveTab } =
+  const handleLoadedItem = React.useCallback((item: Parameters<typeof mapGenericItemToDetailFormValues>[0]) => {
+    if (!contentId) return;
+    void listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: genericItemsMediaReferenceTargetType, targetId: contentId })
+      .then((references) => {
+        const sourceMedia = item.mediaContents ?? [];
+        setMediaUsages(genericItemMediaContentsToUsages(sourceMedia, alignHostMediaReferencesByOrder({ itemCount: sourceMedia.length, role: 'gallery_item', references })));
+        setRequiresReferenceSync(references.length > 0);
+      })
+      .catch(() => {
+        setStatus({ kind: 'error', text: pt('messages.loadError') });
+      });
+  }, [contentId, pt]);
+  const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus, onLoaded: handleLoadedItem });
+  const { activeTab, deleting, handleDelete, setActiveTab } =
     useGenericItemsDetailActions({
       contentId,
       methods,
@@ -261,6 +304,8 @@ export function GenericItemsDetailPage({
     });
   const isAssetSelectable = React.useCallback(
     (asset: GenericItemsMediaPickerAsset) => {
+      if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
+      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -280,11 +325,13 @@ export function GenericItemsDetailPage({
       );
       return existingSources.has(nextMedia.sourceUrl?.url?.trim() ?? '') === false;
     },
-    [methods]
+    [mediaUsages, methods]
   );
 
   const mediaPicker = useStudioMediaPickerOverlay<GenericItemsMediaPickerAsset>({
     onAccept: (asset) => {
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const persistentUrl = asset.persistentUrl;
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -308,13 +355,25 @@ export function GenericItemsDetailPage({
             copyright: nextMedia.copyright ?? '',
             contentType: nextMedia.contentType ?? '',
             sourceUrl: {
-              url: nextMedia.sourceUrl?.url ?? '',
+              url: persistentUrl,
               description: nextMedia.sourceUrl?.description ?? '',
             },
           },
         ],
         { shouldDirty: true }
       );
+      setMediaUsages((current) => [...current, {
+        uiId: `generic-item-asset-${asset.id}-${current.length}`, assetId: asset.id,
+        persistentUrl, previewUrl: asset.previewUrl ?? undefined,
+        altText: asset.metadata.altText || asset.fileName,
+        caption: asset.metadata.description || asset.title,
+        credit: asset.metadata.copyright, license: asset.metadata.license,
+        role: 'gallery_item', sortOrder: current.length,
+        additionalData: { contentType: nextMedia.contentType ?? '', width: '', height: '' },
+        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
+        referenceStatus: 'pending',
+      }]);
+      setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
     canAcceptAsset: isAssetSelectable,
@@ -331,9 +390,12 @@ export function GenericItemsDetailPage({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const detail = await getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      const [detail, delivery] = await Promise.all([
+        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+      ]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toGenericItemsMediaPickerDetail(detail, summary);
+      return toGenericItemsMediaPickerDetail(detail, summary, resolveGenericItemsPersistentDeliveryUrl(delivery));
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -345,7 +407,8 @@ export function GenericItemsDetailPage({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toGenericItemsMediaPickerDetail(detail, summary);
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
+      return toGenericItemsMediaPickerDetail(detail, summary, resolveGenericItemsPersistentDeliveryUrl(delivery));
     },
   });
 
@@ -357,6 +420,28 @@ export function GenericItemsDetailPage({
       resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
+
+  const onSubmit = methods.handleSubmit(async (values) => {
+    setStatus(null);
+    try {
+      const input = { ...mapGenericItemsDetailFormValuesToInput(values), mediaContents: genericItemMediaUsagesToContents(mediaUsages) };
+      const saveContent = () => mode === 'create' ? createGenericItem(input) : updateGenericItem(contentId ?? '', input);
+      const result = requiresReferenceSync
+        ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: genericItemsMediaReferenceTargetType, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) })
+        : { status: 'complete' as const, saved: await saveContent() };
+      if (result.status === 'reference_failed') {
+        setRetryReferenceSync(() => result.retryReferenceSync);
+        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+        return;
+      }
+      setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+      setStatus({ kind: 'success', text: pt(mode === 'create' ? 'messages.createSuccess' : 'messages.updateSuccess') });
+      if (mode === 'create') await navigate({ to: '/admin/generic-items/$id', params: { id: result.saved.id } });
+    } catch {
+      setStatus({ kind: 'error', text: pt('messages.saveError') });
+    }
+  });
 
   if (loading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -419,6 +504,7 @@ export function GenericItemsDetailPage({
           onClose={mediaPicker.close}
           onConfirmSelection={() => void mediaPicker.confirmSelection()}
           onMetadataChange={(key, value) => mediaPicker.updateMetadataField(key, value)}
+          isMetadataEditable={canUpdateMedia}
           onOpenMediaManagement={(assetId) =>
             void navigate({ to: '/admin/media/$mediaId', params: { mediaId: assetId } })
           }
@@ -437,6 +523,13 @@ export function GenericItemsDetailPage({
             {status.text}
           </StudioFormSummary>
         ) : null}
+        {retryReferenceSync ? (
+          <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => {
+            setRetryReferenceSync(null);
+            setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+            setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+          })}>{pt('actions.retryMediaReferences')}</Button>
+        ) : null}
         <GenericItemsDetailTabs
           activeTab={activeTab}
           categoryOptions={categoryOptions}
@@ -448,6 +541,20 @@ export function GenericItemsDetailPage({
           }
           onTabChange={setActiveTab}
           pt={pt}
+          mediaUsages={mediaUsages}
+          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync(usages.some((usage) => Boolean(usage.assetId))); }}
+          canSelectMedia={canSelectMedia}
+          canUploadMedia={canUploadMedia}
+          onLoadAssetSnapshot={async (usage) => {
+            if (!usage.assetId) throw new Error('asset_unavailable');
+            const [detail, delivery] = await Promise.all([
+              getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+              getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+            ]);
+            const persistentUrl = resolveGenericItemsPersistentDeliveryUrl(delivery);
+            if (!persistentUrl) throw new Error('asset_unavailable');
+            return toContentMediaAssetSnapshot({ persistentUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? detail.metadata.title ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+          }}
         />
         <StudioConfirmDialog
           open={deleteDialogOpen}

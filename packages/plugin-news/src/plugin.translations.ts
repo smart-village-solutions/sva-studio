@@ -240,6 +240,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     applyLink: 'Link setzen',
   },
   actions: {
+    cancel: 'Abbrechen',
     create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
@@ -255,6 +256,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     removeImage: 'Medium entfernen',
     remove: 'Entfernen',
     removeCategory: 'Kategorie {{name}} entfernen',
+    retryMediaReferences: 'Medienverknüpfungen erneut synchronisieren',
     deleteConfirm: 'Soll diese Nachricht wirklich gelöscht werden?',
   },
   empty: {
@@ -268,6 +270,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    mediaReferencePartialFailure:
+      'Die Nachricht wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
     loading: 'Nachrichten werden geladen.',
     loadError: 'Nachrichten konnten nicht geladen werden.',
     missingContent: 'Die angeforderte Nachricht konnte nicht geladen werden.',
@@ -289,6 +293,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     mediaUploadUnsupportedType: 'Nur JPG-, PNG- und WebP-Bilder werden unterstützt.',
     mediaUploadUnavailableUrl:
       'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
+    mediaReferenceRetrySuccess: 'Die Medienverknüpfungen wurden synchronisiert.',
     mediaPickerTitle: 'Medium hinzufügen',
     mediaPickerDescription:
       'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
@@ -333,6 +338,13 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       missingInstance: 'Für diese Sitzung fehlt der Instanzkontext.',
       networkError: 'Der Mainserver ist aktuell nicht erreichbar.',
     },
+  },
+  media: {
+    moveUp: 'Nach oben', moveDown: 'Nach unten', refresh: 'Metadaten aus Mediathek aktualisieren', apply: 'Auswahl übernehmen',
+    linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Referenz synchron', pending: 'Referenz ausstehend',
+    missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Referenz nicht auflösbar', failed: 'Referenzfehler',
+    previewUnavailable: 'Keine Vorschau verfügbar', moved: 'Bild wurde verschoben.', removed: 'Bild wurde entfernt.',
+    refreshTitle: 'Metadaten aktualisieren', refreshDescription: 'Wählen Sie die zu übernehmenden Felder.', assetValue: 'Mediathek', contentValue: 'Inhalt',
   },
   validation: {
     title: 'Die Überschrift ist erforderlich.',
@@ -581,6 +593,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     applyLink: 'Apply link',
   },
   actions: {
+    cancel: 'Cancel',
     create: 'Create news',
     update: 'Save changes',
     save: 'Save',
@@ -596,6 +609,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     removeImage: 'Remove media',
     remove: 'Remove',
     removeCategory: 'Remove category {{name}}',
+    retryMediaReferences: 'Retry media reference sync',
     deleteConfirm: 'Do you really want to delete this news entry?',
   },
   empty: {
@@ -609,6 +623,8 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     pageLabel: 'Page {{page}}',
   },
   messages: {
+    mediaReferencePartialFailure:
+      'The news entry was saved, but its media references were not. You can retry the references.',
     loading: 'Loading news.',
     loadError: 'Failed to load news.',
     missingContent: 'The requested news entry could not be loaded.',
@@ -629,6 +645,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     mediaUploadError: 'Media could not be uploaded.',
     mediaUploadUnsupportedType: 'Only JPG, PNG, and WebP images are supported.',
     mediaUploadUnavailableUrl: 'The selected media has no public URL and cannot be used.',
+    mediaReferenceRetrySuccess: 'The media references were synchronized.',
     mediaPickerTitle: 'Add media',
     mediaPickerDescription: 'Select an existing asset or upload a new image.',
     mediaPickerReviewMode: 'Review',
@@ -668,6 +685,13 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       missingInstance: 'This session has no instance context.',
       networkError: 'The Mainserver is currently unavailable.',
     },
+  },
+  media: {
+    moveUp: 'Move up', moveDown: 'Move down', refresh: 'Refresh metadata from media library', apply: 'Apply selection',
+    linked: 'Linked to media library', manual: 'Manual URL', synced: 'Reference synchronized', pending: 'Reference pending',
+    missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Reference unresolved', failed: 'Reference failed',
+    previewUnavailable: 'Preview unavailable', moved: 'Image moved.', removed: 'Image removed.',
+    refreshTitle: 'Refresh metadata', refreshDescription: 'Select the fields to apply.', assetValue: 'Media library', contentValue: 'Content',
   },
   validation: {
     title: 'The title is required.',

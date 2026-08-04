@@ -27,6 +27,7 @@ export type StudioMediaPickerAssetSummary = Readonly<{
 
 export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary & Readonly<{
   metadata: StudioMediaPickerMetadataDraft;
+  persistentUrl?: string | null;
 }>;
 
 export type StudioMediaPickerOverlayLabels = Readonly<{

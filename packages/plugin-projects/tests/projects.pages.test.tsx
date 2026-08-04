@@ -10,9 +10,16 @@ const state = vi.hoisted(() => ({
   update: vi.fn(),
   listAssets: vi.fn(),
   upload: vi.fn(),
+  getAsset: vi.fn(),
+  getDelivery: vi.fn(),
+  updateAsset: vi.fn(),
+  listReferences: vi.fn(),
+  replaceReferences: vi.fn(),
+  saveWithReferences: vi.fn(),
   navigate: vi.fn(),
   params: {} as { id?: string; contentId?: string },
   search: { page: 1, pageSize: 25 },
+  accessSnapshot: { permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'] },
 }));
 
 vi.mock('../src/projects.api.js', () => ({
@@ -22,11 +29,23 @@ vi.mock('../src/projects.api.js', () => ({
   listProjects: state.list,
   updateProject: state.update,
 }));
-vi.mock('@sva/plugin-sdk', () => ({
-  listHostMediaAssets: state.listAssets,
-  uploadHostMediaFile: state.upload,
-  usePluginTranslation: () => (key: string) => key,
-}));
+vi.mock('@sva/plugin-sdk', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/plugin-sdk')>();
+  return {
+    ...actual,
+    getHostMediaAsset: state.getAsset,
+    getHostMediaDelivery: state.getDelivery,
+    listHostMediaAssets: state.listAssets,
+    listHostMediaReferencesByTarget: state.listReferences,
+    replaceHostMediaReferences: state.replaceReferences,
+    saveContentWithHostMediaReferences: state.saveWithReferences,
+    updateHostMediaAsset: state.updateAsset,
+    uploadHostMediaFile: state.upload,
+    readSessionAccessSnapshot: () => state.accessSnapshot,
+    subscribeSessionAccessSnapshot: () => () => undefined,
+    usePluginTranslation: () => (key: string) => key,
+  };
+});
 vi.mock('@sva/studio-ui-react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/studio-ui-react')>();
   return {
@@ -90,6 +109,10 @@ describe('projects pages', () => {
     vi.clearAllMocks();
     state.params = {};
     state.listAssets.mockResolvedValue([]);
+    state.listReferences.mockResolvedValue([]);
+    state.replaceReferences.mockResolvedValue([]);
+    state.saveWithReferences.mockImplementation(async (input: { saveContent: () => Promise<unknown> }) => ({ status: 'complete', saved: await input.saveContent() }));
+    state.accessSnapshot = { permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'] };
   });
 
   it('renders exactly the three domain tabs and creates a normalized project', async () => {
@@ -176,27 +199,64 @@ describe('projects pages', () => {
     await screen.findByText('messages.loadError');
   });
 
-  it('selects and uploads images while preventing duplicate selections', async () => {
+  it('exposes the three media entry points and keeps manual images editable', async () => {
     state.listAssets.mockResolvedValue([
       { id: 'image-1', fileName: 'Bild.jpg', mimeType: 'image/jpeg', previewUrl: 'https://example.test/a.jpg' },
       { id: 'pdf-1', fileName: 'Datei.pdf', mimeType: 'application/pdf', previewUrl: 'https://example.test/a.pdf' },
     ]);
-    state.upload.mockResolvedValue({ previewUrl: 'https://example.test/upload.jpg' });
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
-    const selector = await screen.findByRole('combobox', { name: 'actions.selectImage' });
-    fireEvent.change(selector, { target: { value: 'https://example.test/a.jpg' } });
-    fireEvent.change(selector, { target: { value: 'https://example.test/a.jpg' } });
+    expect(await screen.findByRole('button', { name: 'actions.selectImage' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'actions.uploadImage' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
     expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
-
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(fileInput, { target: { files: [new File(['x'], 'upload.png', { type: 'image/png' })] } });
-    await waitFor(() => expect(state.upload).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(2));
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.removeImage' })[0] as HTMLElement);
-    expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
+    expect(screen.queryAllByLabelText('fields.imageUrl')).toHaveLength(0);
+  });
+
+  it('hides library and upload entry points without media permissions while retaining manual URLs', async () => {
+    state.accessSnapshot = { permissionActions: [] };
+    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
+    render(<ProjectsCreatePage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
+
+    expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
+  });
+
+  it('saves canonical ordered references after content and retries only a failed reference sync', async () => {
+    state.params = { id: 'project-1' };
+    state.get.mockResolvedValue(project);
+    state.listReferences.mockResolvedValue([
+      { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
+      { assetId: 'asset-2', role: 'gallery_item', sortOrder: 1 },
+    ]);
+    state.update.mockResolvedValue(project);
+    const retry = vi.fn().mockResolvedValue(undefined);
+    state.saveWithReferences.mockImplementationOnce(async (input: { saveContent: () => Promise<unknown> }) => ({
+      status: 'reference_failed', saved: await input.saveContent(), retryReferenceSync: retry,
+    }));
+    const { ProjectsEditPage } = await import('../src/projects.pages.js');
+    render(<ProjectsEditPage />);
+    await screen.findByDisplayValue('Brückenbau');
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1) as HTMLElement);
+    await screen.findByText('messages.mediaReferencePartialFailure');
+    expect(state.update).toHaveBeenCalledTimes(1);
+    expect(state.saveWithReferences).toHaveBeenCalledWith(expect.objectContaining({
+      targetType: 'projects.project',
+      references: [
+        { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
+        { assetId: 'asset-2', role: 'gallery_item', sortOrder: 1 },
+      ],
+    }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'actions.retryMediaReferences' }));
+    await waitFor(() => expect(retry).toHaveBeenCalledTimes(1));
+    expect(state.update).toHaveBeenCalledTimes(1);
   });
 
   it('shows load, save, media and delete failures without navigating', async () => {
@@ -211,7 +271,6 @@ describe('projects pages', () => {
     state.listAssets.mockRejectedValueOnce(new Error('media failed'));
     const createView = render(<ProjectsCreatePage />);
     fillRequiredFields();
-    await screen.findByText('messages.mediaError');
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings' }));
     fireEvent.change(screen.getByLabelText('fields.authorId'), { target: { value: 'org-1' } });
     fireEvent.change(screen.getByLabelText('fields.authorName'), { target: { value: 'Stadt' } });

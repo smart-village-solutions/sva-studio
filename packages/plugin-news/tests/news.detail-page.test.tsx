@@ -7,7 +7,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
@@ -63,7 +66,9 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     getHostMediaAsset: vi.fn(),
+    getHostMediaDelivery: vi.fn(async () => ({ deliveryUrl: 'https://cdn.example.test/upload-fallback.jpg', expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true })),
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
     updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
@@ -85,6 +90,8 @@ vi.mock('../src/news.api.js', async () => {
 describe('NewsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    publishSessionAccessSnapshot({ isResolved: true, permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'], roles: [] });
     navigateMock.mockReset();
     registerPluginTranslationResolver((key) => {
       const labels: Record<string, string> = {
@@ -212,6 +219,7 @@ describe('NewsDetailPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('renders the same save action in the page header and after the editor', async () => {
@@ -294,7 +302,7 @@ describe('NewsDetailPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://cdn.example.test/upload-fallback.jpg')).toBeTruthy();
     });
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });

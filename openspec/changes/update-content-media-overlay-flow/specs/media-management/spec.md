@@ -1,4 +1,5 @@
 ## MODIFIED Requirements
+
 ### Requirement: Hostseitiger Admin-Einstieg für Medienmanagement
 
 Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg unter `/admin/media` materialisieren und bei Bedarf spezialisierte Medien-Workflows unterhalb dieses Bereichs oder als hostseitig gesteuerte Overlay-Workflows bereitstellen.
@@ -17,26 +18,58 @@ Das System SHALL Medienmanagement mit einem kanonischen hostseitigen Einstieg un
 - **AND** diese Unterrouten bleiben an denselben Host-, Guard- und Berechtigungsvertrag gebunden
 - **AND** sie umgehen nicht die zentrale Medien-Capability
 
-#### Scenario: Content-Editor startet hostseitigen Medien-Overlay-Flow
+#### Scenario: Content-Editor startet bestehenden hostseitigen Medien-Overlay-Flow
 
-- **WHEN** ein berechtigter Benutzer in einem Content-Editor `Aus Medienverwaltung auswählen` oder `Neu hochladen` startet
-- **THEN** öffnet das System einen hostseitig gesteuerten Medien-Overlay-Flow statt eines plugin-eigenen Upload- oder Bibliotheksdialogs
-- **AND** der Overlay-Flow verwendet denselben kanonischen Upload-Intake wie die Medienverwaltung
-- **AND** der Abschluss bleibt kontextabhängig an den aufrufenden Editor gebunden
+- **WHEN** ein ausreichend berechtigter Benutzer in einem Content-Editor Bibliotheksauswahl oder Upload startet
+- **THEN** verwendet das System den bestehenden hostseitig gesteuerten Medien-Overlay-Flow statt eines plugin-eigenen Upload- oder Bibliotheksdialogs
+- **AND** verwendet der Overlay-Flow denselben kanonischen Upload-Intake wie die Medienverwaltung
+- **AND** bleibt der Abschluss kontextabhängig an den aufrufenden Editor gebunden
 
 ### Requirement: Redaktionelle und technische Metadaten
 
-Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam verwaltbar halten.
+Das System SHALL technische und redaktionelle Metadaten getrennt, aber gemeinsam verwaltbar halten und globale Asset-Metadaten nicht mit contentbezogenen Verwendungsmetadaten gleichsetzen.
 
-#### Scenario: Redaktion pflegt Metadaten
+#### Scenario: Redaktion pflegt globale Asset-Metadaten
 
-- **WHEN** ein Redakteur ein Medium im Studio bearbeitet
-- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz pflegen
+- **WHEN** ein Redakteur mit `media.update` ein Medium in der Medienverwaltung oder im Review bearbeitet
+- **THEN** kann er mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz am `MediaAsset` pflegen
 - **AND** technische Metadaten wie MIME-Type, Größe oder Abmessungen bleiben systemseitig nachvollziehbar
+- **AND** bestehende Content-Snapshots werden durch diese Änderung nicht automatisch überschrieben
+
+#### Scenario: Review ohne globale Änderungsberechtigung
+
+- **WHEN** ein Redakteur ein Asset mit `media.read` und `media.reference.manage`, aber ohne `media.update` überprüft
+- **THEN** zeigt der Review die globalen Asset-Metadaten schreibgeschützt
+- **AND** darf der Redakteur das Asset bei ansonsten erfülltem Zielvertrag übernehmen
 
 #### Scenario: Upload im Content-Kontext erzwingt Review vor Abschluss
 
 - **WHEN** ein Benutzer im Content-Kontext ein neues Medium hochlädt
-- **THEN** wechselt der hostseitige Medien-Overlay-Flow nach erfolgreichem Upload in einen Review-Schritt für redaktionelle Metadaten
-- **AND** der Benutzer kann dort mindestens Titel, Beschreibung, Alt-Text, Copyright und Lizenz pflegen
-- **AND** der Overlay-Flow darf das Medium erst nach einem expliziten Abschluss in den Content-Kontext zurückgeben
+- **THEN** wechselt der hostseitige Medien-Overlay-Flow nach erfolgreichem Upload in einen Review-Schritt
+- **AND** sind globale Metadaten nur mit `media.update` editierbar
+- **AND** darf der Overlay-Flow das Medium erst nach einem expliziten Abschluss in den Content-Kontext zurückgeben
+
+## ADDED Requirements
+
+### Requirement: Asset-Verwendung bleibt vom Asset-Lebenszyklus getrennt
+
+Das System SHALL eine konkrete Content-Verwendung als Referenz auf ein eigenständiges `MediaAsset` behandeln und ihren Mainserver-kompatiblen Metadaten-Snapshot nicht als globalen Asset-Zustand interpretieren.
+
+#### Scenario: Content übernimmt Asset-Metadaten als Startwerte
+
+- **WHEN** ein Asset erstmals mit einem Content verknüpft wird
+- **THEN** darf der Content unterstützte globale Metadaten als lokale Startwerte übernehmen
+- **AND** bleiben spätere lokale Änderungen auf diese Verwendung begrenzt
+- **AND** verändert eine lokale Caption- oder Alt-Text-Änderung nicht das globale Asset
+
+#### Scenario: Content-Verwendung wird entfernt
+
+- **WHEN** eine Content-Verwendung entfernt wird
+- **THEN** wird ihre `MediaReference` beim nächsten erfolgreichen Referenz-Replace entfernt
+- **AND** bleibt das Asset selbst erhalten
+
+#### Scenario: Asset besitzt aktive Referenzen
+
+- **WHEN** ein Benutzer ein Asset mit aktiven Content-Referenzen löschen möchte
+- **THEN** greift die bestehende Nutzungstransparenz und Löschsicherung
+- **AND** werden Mainserver-Snapshots nicht als Ersatz für die Studio-Referenzsicherheit behandelt

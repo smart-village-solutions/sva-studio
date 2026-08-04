@@ -113,12 +113,14 @@ export const useGenericItemsDetailLoader = ({
   mode,
   pt,
   setStatus,
+  onLoaded,
 }: Readonly<{
   contentId?: string;
   methods: UseFormReturn<GenericItemsDetailFormValues>;
   mode: 'create' | 'edit';
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
+  onLoaded?: (item: Awaited<ReturnType<typeof getGenericItem>>) => void;
 }>) => {
   const [loading, setLoading] = React.useState(mode === 'edit');
 
@@ -134,6 +136,7 @@ export const useGenericItemsDetailLoader = ({
       .then((item) => {
         if (active) {
           methods.reset(mapGenericItemToDetailFormValues(item));
+          onLoaded?.(item);
         }
       })
       .catch((error) => {
@@ -150,7 +153,7 @@ export const useGenericItemsDetailLoader = ({
     return () => {
       active = false;
     };
-  }, [contentId, methods, mode, pt, setStatus]);
+  }, [contentId, methods, mode, onLoaded, pt, setStatus]);
 
   return loading;
 };

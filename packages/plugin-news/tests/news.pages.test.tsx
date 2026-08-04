@@ -4,6 +4,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   fetchIamContentHistory,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
   registerPluginTranslationResolver,
 } from '@sva/plugin-sdk';
 
@@ -158,6 +159,7 @@ vi.mock('@sva/plugin-sdk', async () => {
     ...actual,
     fetchIamContentHistory: vi.fn(async () => []),
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
   };
 });
 
@@ -241,6 +243,7 @@ describe('News editor pages', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     navigateMock.mockReset();
     paramsMock.mockReset();
     vi.mocked(getNews).mockResolvedValue({

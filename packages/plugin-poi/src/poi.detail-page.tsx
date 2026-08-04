@@ -3,8 +3,15 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   getHostMediaAsset,
+  getHostMediaDelivery,
   getHostMediaAssetFileName,
+  alignHostMediaReferencesByOrder,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  readSessionAccessSnapshot,
+  resolveContentMediaCapabilities,
+  saveContentWithHostMediaReferences,
+  subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
   usePluginTranslation,
@@ -13,6 +20,7 @@ import {
 } from '@sva/plugin-sdk';
 import {
   Button,
+  isPersistableContentMediaUrl,
   Select,
   StudioDetailTabIcon,
   StudioDetailPageTemplate,
@@ -27,6 +35,8 @@ import {
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
   type StudioMediaPickerOverlayLabels,
+  type ContentMediaAssetSnapshot,
+  type ContentMediaUsage,
   useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
@@ -50,7 +60,6 @@ import {
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
 import {
   isSupportedUploadFile,
-  mediaContentFromAsset,
   mediaContentSourceKey,
   readAssetFileName,
   readAssetTitle,
@@ -60,6 +69,11 @@ import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';
 import { isHttpsUrl, validatePoiForm } from './poi.validation.js';
+import {
+  poiAssetToUsage,
+  poiMediaContentsToUsages,
+  poiMediaUsagesToContents,
+} from './poi.content-media-adapter.js';
 
 type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -112,7 +126,8 @@ const toPoiMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPick
 
 const toPoiMediaPickerDetail = (
   asset: HostMediaAssetDetail,
-  summary?: HostMediaAssetListItem
+  summary?: HostMediaAssetListItem,
+  persistentUrl?: string | null
 ): PoiMediaPickerAsset => {
   const fileName = summary ? readAssetFileName(summary) : getHostMediaAssetFileName(asset);
   const title = asset.metadata.title?.trim() || (summary ? readAssetTitle(summary) : fileName);
@@ -124,6 +139,7 @@ const toPoiMediaPickerDetail = (
     previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
     mimeType: asset.mimeType,
     visibility: asset.visibility,
+    persistentUrl,
     metadata: {
       title,
       altText: asset.metadata.altText?.trim() ?? '',
@@ -228,6 +244,18 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
+  const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const canSelectMedia = mediaCapabilities.canSelect;
+  const canUploadMedia = mediaCapabilities.canUpload;
+  const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const [activeTab, setActiveTab] = React.useState<PoiDetailTabId>('basis');
   const [visitedTabs, setVisitedTabs] = React.useState<readonly PoiDetailTabId[]>(['basis']);
@@ -260,44 +288,35 @@ export function PoiDetailPage({
 
   const isAssetSelectable = React.useCallback(
     (asset: PoiMediaPickerAsset) => {
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
-        previewUrl: asset.previewUrl,
-      });
-      if (!nextMedia) {
-        return false;
+      if (!asset.persistentUrl) {
+        return mediaUsages.every((usage) => usage.assetId !== asset.id);
       }
+      if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
 
       const existingSources = new Set(
         (methods.getValues('content.mediaContents') ?? [])
           .map(mediaContentSourceKey)
           .filter(Boolean)
       );
-      return existingSources.has(mediaContentSourceKey(nextMedia)) === false;
+      return existingSources.has(asset.persistentUrl) === false;
     },
-    [methods]
+    [mediaUsages, methods]
   );
 
   const mediaPicker = useStudioMediaPickerOverlay<PoiMediaPickerAsset>({
     onAccept: (asset) => {
-      const nextMedia = mediaContentFromAsset({
-        id: asset.id,
-        fileName: asset.fileName,
-        metadata: asset.metadata,
-        visibility: asset.visibility,
-        mimeType: asset.mimeType,
+      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      const usage = poiAssetToUsage({
+        assetId: asset.id,
+        persistentUrl: asset.persistentUrl,
         previewUrl: asset.previewUrl,
+        metadata: { ...asset.metadata, fileName: asset.fileName },
+        sortOrder: mediaUsages.length,
       });
-      if (!nextMedia) {
-        return;
-      }
-
-      const currentMedia = methods.getValues('content.mediaContents') ?? [];
-      methods.setValue('content.mediaContents', [...currentMedia, nextMedia], {
+      const nextUsages = [...mediaUsages, usage];
+      setRequiresReferenceSync(true);
+      setMediaUsages(nextUsages);
+      methods.setValue('content.mediaContents', poiMediaUsagesToContents(nextUsages), {
         shouldDirty: true,
       });
       void refreshMediaAssets();
@@ -317,13 +336,12 @@ export function PoiDetailPage({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const detail = await getHostMediaAsset({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-        instanceId,
-      });
+      const [detail, delivery] = await Promise.all([
+        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId, instanceId }),
+        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId, instanceId }),
+      ]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toPoiMediaPickerDetail(detail, summary);
+      return toPoiMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -336,7 +354,8 @@ export function PoiDetailPage({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toPoiMediaPickerDetail(detail, summary);
+      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId, instanceId });
+      return toPoiMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
     },
   });
   const mediaPickerFeedback = React.useMemo(
@@ -367,12 +386,22 @@ export function PoiDetailPage({
     }
 
     let active = true;
-    void getPoi(contentId)
-      .then((item) => {
+    void Promise.all([
+      getPoi(contentId),
+      listHostMediaReferencesByTarget({
+        fetch: globalThis.fetch.bind(globalThis), targetType: 'poi.point-of-interest', targetId: contentId, instanceId,
+      }),
+    ])
+      .then(([item, references]) => {
         if (!active) {
           return;
         }
         reset(mapPoiItemToDetailFormValues(item));
+        const mediaContents = item.mediaContents ?? [];
+        setMediaUsages(poiMediaContentsToUsages(mediaContents, alignHostMediaReferencesByOrder({
+          itemCount: mediaContents.length, role: 'gallery_item', references,
+        })));
+        setRequiresReferenceSync(references.length > 0);
         setLoadedItem(item);
         setLoading(false);
       })
@@ -389,7 +418,7 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mode, pt, reset]);
+  }, [contentId, instanceId, mode, pt, reset]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
 
@@ -484,7 +513,10 @@ export function PoiDetailPage({
           message: 'webUrls',
         });
         setActiveTab('content');
-        focusFieldById(`poi-media-url-${mediaIndex}`);
+        const invalidUsage = mediaUsages[mediaIndex];
+        if (invalidUsage) {
+          focusFieldById(`content-media-${invalidUsage.uiId}-url`);
+        }
       }
       if (validationErrors.includes('operatingCompany.address')) {
         methods.setError('content.operator.address.geoLocation.latitude', {
@@ -510,10 +542,23 @@ export function PoiDetailPage({
     }
 
     try {
-      const saved =
-        mode === 'create'
-          ? await createPoi(mutation)
-          : await updatePoi(contentId as string, mutation);
+      const saveContent = () => mode === 'create' ? createPoi(mutation) : updatePoi(contentId as string, mutation);
+      const result = requiresReferenceSync
+        ? await saveContentWithHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id,
+            targetType: 'poi.point-of-interest', instanceId,
+            references: mediaUsages.flatMap((usage) => usage.assetId ? [{ assetId: usage.assetId, role: 'gallery_item', sortOrder: usage.sortOrder }] : []),
+          })
+        : { status: 'complete' as const, saved: await saveContent() };
+      const saved = result.saved;
+      if (result.status === 'reference_failed') {
+        setRetryReferenceSync(() => result.retryReferenceSync);
+        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+        return;
+      }
+      setRetryReferenceSync(null);
+      setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
       setStatus({
         kind: 'success',
         text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
@@ -556,6 +601,25 @@ export function PoiDetailPage({
     ),
     content: (
       <PoiDetailContentTab
+        canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
+        mediaUsages={mediaUsages}
+        onChangeMediaUsages={setMediaUsages}
+        onLoadAssetSnapshot={async (usage): Promise<ContentMediaAssetSnapshot> => {
+          if (!usage.assetId) throw new Error('missing_asset_id');
+          const [asset, delivery] = await Promise.all([
+            getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId, instanceId }),
+            getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId, instanceId }),
+          ]);
+          if (delivery.isPublicUrl !== true || !isPersistableContentMediaUrl(delivery.deliveryUrl)) throw new Error('asset_unavailable');
+          return {
+            persistentUrl: delivery.deliveryUrl,
+            altText: asset.metadata.altText ?? asset.metadata.description ?? '',
+            caption: asset.metadata.description ?? '',
+            credit: asset.metadata.copyright ?? '',
+            license: asset.metadata.license ?? '',
+          };
+        }}
         onOpenMediaPicker={(pickerMode) =>
           pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
         }
@@ -609,6 +673,7 @@ export function PoiDetailPage({
           }
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
+          isMetadataEditable={canUpdateMedia}
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}
@@ -633,6 +698,15 @@ export function PoiDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          {retryReferenceSync ? (
+            <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => {
+              setRetryReferenceSync(null);
+              setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+              setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+            }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>
+              {pt('messages.mediaReferenceRetry')}
+            </Button>
+          ) : null}
           <Tabs
             value={activeTab}
             onValueChange={(value) => handleTabChange(value as PoiDetailTabId)}

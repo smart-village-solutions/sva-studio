@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   getHostMediaAsset,
+  getHostMediaDelivery,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   replaceHostMediaReferences,
@@ -9,6 +10,12 @@ import {
 } from './media-picker-client.js';
 
 describe('media picker client', () => {
+  it('resolves the host delivery contract including the public-url marker', async () => {
+    const delivery = { deliveryUrl: 'https://cdn.example.test/asset-1.jpg', expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true };
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: delivery }), { status: 200 }));
+    await expect(getHostMediaDelivery({ fetch: fetchMock as never, assetId: 'asset-1', instanceId: 'de-demo' })).resolves.toEqual(delivery);
+    expect(fetchMock).toHaveBeenCalledWith('/api/v1/iam/media/asset-1/delivery?instanceId=de-demo', expect.objectContaining({ credentials: 'include' }));
+  });
   it('lists host media assets and references without leaking storage primitives into the request contract', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

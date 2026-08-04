@@ -12,9 +12,16 @@ const state = vi.hoisted(() => ({
   listAssets: vi.fn(),
   upload: vi.fn(),
   history: vi.fn(),
+  getAsset: vi.fn(),
+  getDelivery: vi.fn(),
+  listReferences: vi.fn(),
+  replaceReferences: vi.fn(),
+  updateAsset: vi.fn(),
+  saveWithReferences: vi.fn(),
   navigate: vi.fn(),
   params: {} as { id?: string; contentId?: string },
   search: { page: 1, pageSize: 25 } as { page?: number; pageSize?: number },
+  sessionAccess: { permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'] },
 }));
 
 vi.mock('../src/cockpit-cards.api.js', () => ({
@@ -26,9 +33,24 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   updateCockpitCard: state.update,
 }));
 vi.mock('@sva/plugin-sdk', () => ({
+  alignHostMediaReferencesByOrder: ({ itemCount, references }: { itemCount: number; references: readonly { assetId: string }[] }) => Array.from({ length: itemCount }, (_, index) => references[index] ? { assetId: references[index]!.assetId, status: 'synced' } : { status: 'missing' }),
   fetchIamContentHistory: state.history,
   formatDateTimeInEditorTimeZone: (value: string) => `formatted:${value}`,
+  getHostMediaAsset: state.getAsset,
+  getHostMediaAssetFileName: () => 'asset.jpg',
+  getHostMediaDelivery: state.getDelivery,
   listHostMediaAssets: state.listAssets,
+  listHostMediaReferencesByTarget: state.listReferences,
+  readSessionAccessSnapshot: () => state.sessionAccess,
+  resolveContentMediaCapabilities: ({ canEditContent, permissionActions }: { canEditContent: boolean; permissionActions: readonly string[] }) => {
+    const permissions = new Set(permissionActions);
+    const canSelect = canEditContent && permissions.has('media.read') && permissions.has('media.reference.manage');
+    return { canSelect, canUpload: canSelect && permissions.has('media.create'), canEditAssetMetadata: canEditContent && permissions.has('media.update') };
+  },
+  replaceHostMediaReferences: state.replaceReferences,
+  saveContentWithHostMediaReferences: state.saveWithReferences,
+  subscribeSessionAccessSnapshot: () => () => undefined,
+  updateHostMediaAsset: state.updateAsset,
   uploadHostMediaFile: state.upload,
   usePluginTranslation: () => (key: string) => key,
 }));
@@ -72,6 +94,7 @@ describe('cockpit cards pages', () => {
     vi.clearAllMocks();
     state.params = {};
     state.search = { page: 1, pageSize: 25 };
+    state.sessionAccess = { permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'] };
     state.listCategories.mockResolvedValue([{ id: 'category-1', name: 'Startseite' }]);
     state.listAssets.mockResolvedValue([
       {
@@ -84,6 +107,9 @@ describe('cockpit cards pages', () => {
       { id: 'document-1', fileName: 'info.pdf', mimeType: 'application/pdf' },
     ]);
     state.history.mockResolvedValue([]);
+    state.listReferences.mockResolvedValue([]);
+    state.getDelivery.mockResolvedValue({ deliveryUrl: 'https://example.test/image.jpg', isPublicUrl: true });
+    state.saveWithReferences.mockImplementation(async ({ saveContent }: { saveContent: () => Promise<unknown> }) => ({ status: 'complete', saved: await saveContent() }));
   });
 
   it('places text and image controls together and loads category and media options', async () => {
@@ -99,8 +125,9 @@ describe('cockpit cards pages', () => {
     expect(contentPanel?.className).toContain('mt-0');
     expect(contentPanel?.contains(addImage)).toBe(true);
     expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
-    expect(await screen.findByRole('option', { name: 'bild.jpg' })).toBeTruthy();
-    expect(screen.queryByRole('option', { name: 'info.pdf' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
+    await waitFor(() => expect(state.listAssets).toHaveBeenCalled());
+    expect(screen.queryByText('info.pdf')).toBeNull();
   });
 
   it('creates a card with the complete normalized payload', async () => {
@@ -140,6 +167,9 @@ describe('cockpit cards pages', () => {
     const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsEditPage />);
     await screen.findByDisplayValue('Bestehende Karte');
+    expect(state.listReferences).toHaveBeenCalledWith(expect.objectContaining({
+      targetType: 'cockpit-cards.cockpit-card', targetId: 'card-1',
+    }));
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Geändert' } });
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings.label' }));
@@ -161,6 +191,31 @@ describe('cockpit cards pages', () => {
     expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
   });
 
+  it('keeps library and upload actions unavailable without media permissions', async () => {
+    state.sessionAccess = { permissionActions: [] };
+    const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsCreatePage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
+    expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
+  });
+
+  it('saves linked references with the canonical target after the content save', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.update.mockResolvedValue(record);
+    state.listReferences.mockResolvedValue([{ assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 }]);
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+    render(<CockpitCardsEditPage />);
+    await screen.findByDisplayValue('Bestehende Karte');
+    fireEvent.click(screen.getAllByRole('button', { name: 'actions.update' }).at(-1)!);
+    await waitFor(() => expect(state.saveWithReferences).toHaveBeenCalledWith(expect.objectContaining({
+      targetType: 'cockpit-cards.cockpit-card',
+      references: [{ assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 }],
+    })));
+  });
+
   it('surfaces load, save, delete, category and media failures', async () => {
     state.params = { contentId: 'card-1' };
     state.get.mockRejectedValue(new Error('load failed'));
@@ -176,7 +231,7 @@ describe('cockpit cards pages', () => {
     const failedDependencies = render(<CockpitCardsCreatePage />);
     await screen.findByText('messages.categoriesError');
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    await screen.findByText('messages.mediaError');
+    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
     failedDependencies.unmount();
 
     state.listCategories.mockResolvedValue([{ id: 'category-1', name: 'Startseite' }]);
@@ -228,32 +283,20 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('messages.saveError')).toBeTruthy();
   });
 
-  it('selects, reorders, removes and uploads images', async () => {
-    state.upload.mockResolvedValue({ previewUrl: 'https://example.test/upload.jpg' });
+  it('adds, reorders and removes manual images through the shared block', async () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    const select = await screen.findByLabelText('actions.selectImage');
-    fireEvent.change(select, { target: { value: 'https://example.test/bild.jpg' } });
     fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+    const urls = screen.getAllByLabelText('fields.imageUrl');
+    fireEvent.change(urls[0]!, { target: { value: 'https://example.test/one.jpg' } });
+    fireEvent.change(urls[1]!, { target: { value: 'https://example.test/two.jpg' } });
     const down = screen.getAllByRole('button', { name: 'actions.moveImageDown' })[0]!;
     fireEvent.click(down);
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.moveImageUp' })[1]!);
+    expect(screen.getAllByLabelText('fields.imageUrl').map((input) => (input as HTMLInputElement).value)).toEqual(['https://example.test/two.jpg', 'https://example.test/one.jpg']);
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.removeImage' })[1]!);
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(input, { target: { files: [] } });
-    expect(state.upload).not.toHaveBeenCalled();
-    fireEvent.change(input, {
-      target: { files: [new File(['image'], 'upload.png', { type: 'image/png' })] },
-    });
-    await waitFor(() => expect(state.upload).toHaveBeenCalledTimes(1));
-    expect(await screen.findByDisplayValue('https://example.test/upload.jpg')).toBeTruthy();
-
-    state.upload.mockRejectedValueOnce(new Error('upload failed'));
-    fireEvent.change(input, {
-      target: { files: [new File(['broken'], 'broken.png', { type: 'image/png' })] },
-    });
-    expect(await screen.findByText('messages.mediaError')).toBeTruthy();
+    expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
   });
 
   it('renders history entries and history errors', async () => {

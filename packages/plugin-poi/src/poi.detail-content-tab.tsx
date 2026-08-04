@@ -6,12 +6,23 @@ import { PoiDetailMediaTab } from './poi.detail-media-tab.js';
 import { PoiDetailOpeningHoursTab } from './poi.detail-opening-hours-tab.js';
 import { PoiDetailOperatorTab } from './poi.detail-operator-tab.js';
 import { PoiDetailPricesTab } from './poi.detail-prices-tab.js';
+import type { ContentMediaAssetSnapshot, ContentMediaUsage } from '@sva/studio-ui-react';
 
 export function PoiDetailContentTab({
   onOpenMediaPicker,
+  canSelectMedia = false,
+  canUploadMedia = false,
+  mediaUsages,
+  onChangeMediaUsages = () => undefined,
+  onLoadAssetSnapshot = async () => { throw new Error('asset_refresh_unavailable'); },
   pt,
 }: Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  mediaUsages?: readonly ContentMediaUsage[];
+  onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
+  onLoadAssetSnapshot?: (usage: ContentMediaUsage) => Promise<ContentMediaAssetSnapshot>;
   pt: (key: string) => string;
 }>) {
   return (
@@ -23,7 +34,15 @@ export function PoiDetailContentTab({
       <PoiDetailLinksTab pt={pt} />
       <PoiDetailOperatorTab pt={pt} />
       <PoiDetailPricesTab pt={pt} />
-      <PoiDetailMediaTab onOpenMediaPicker={onOpenMediaPicker} pt={pt} />
+      <PoiDetailMediaTab
+        canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
+        mediaUsages={mediaUsages}
+        onChangeMediaUsages={onChangeMediaUsages}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
+        onOpenMediaPicker={onOpenMediaPicker}
+        pt={pt}
+      />
     </div>
   );
 }

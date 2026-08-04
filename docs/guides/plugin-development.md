@@ -327,12 +327,12 @@ Spezialcontrols wie Rich-Text, Upload, Medienauswahl, Farbe, Icon und Geo-Auswah
 
 ## Medien-Extension-Points
 
-Plugins binden hostseitig verwaltete Medienreferenzen über den Media-Picker-Vertrag an. Wenn ein externer Fachvertrag eigene Medienfelder vorgibt, bleibt dieses Fachmodell führend; die Medienbibliothek darf dann nur Quelle für Auswahl und Upload sein.
+Plugins binden hostseitig verwaltete Medienreferenzen über den Media-Picker-Vertrag an. Wenn ein externer Fachvertrag eigene Medienfelder vorgibt, bleibt dieses Fachmodell führend; die Medienbibliothek ist Quelle für Auswahl, Upload, persistierbare Delivery-URL und einen initialen Metadaten-Snapshot.
 
 Erlaubt:
 
 - deklarative Picker-Definitionen über `@sva/plugin-sdk`
-- UI-Bindings über `@sva/studio-ui-react`, zum Beispiel `MediaReferenceField`
+- UI-Bindings über `ContentMediaUsageBlock` und `StudioMediaPickerOverlay` aus `@sva/studio-ui-react`
 - hostseitige Referenzverwaltung über die Media-HTTP-Fassade
 
 Nicht erlaubt:
@@ -342,13 +342,18 @@ Nicht erlaubt:
 - direkte Importe aus `@sva/auth-runtime` oder anderen Host-Storage-Interna
 - neue URL-basierte Storage-Artefakte als führendes Persistenzmodell
 
-Plugins mit Host-Medienreferenzen deklarieren Rollen, Medientypen und optional Preset-Anforderungen, erhalten aber keine technischen Storage-Details zurück. Das POI-Plugin ist hiervon bewusst ausgenommen: Bilder werden dort als Mainserver-`mediaContents` gespeichert, nicht als Host-Role-Referenzen.
+Plugins mit Host-Medienreferenzen deklarieren Rollen, Medientypen und optional Preset-Anforderungen, erhalten aber keine technischen Storage-Details zurück. Für geordnete Bildlisten gilt:
+
+- Ein typsicherer Adapter übersetzt das Fachmodell in `ContentMediaUsage` und zurück. Nicht im gemeinsamen Block bearbeitete sowie unbekannte Felder müssen den Roundtrip unverändert überstehen.
+- `uiId` bleibt bei Umsortierung stabil; `assetId` ist optional. Manuelle URLs erzeugen keine erfundene Assetreferenz.
+- `persistentUrl` ist die fachlich speicherbare HTTPS-URL, `previewUrl` bleibt transient. Presigned oder ablaufende URLs dürfen nicht persistiert werden.
+- Die gemeinsame Rolle lautet `gallery_item`; `sortOrder` wird nach jeder Änderung lückenlos aus der sichtbaren Reihenfolge abgeleitet.
+- Zuerst wird der Fachinhalt gespeichert, danach werden Referenzen für dessen stabile `targetId` ersetzt. Ein Retry nach Teilfehler wiederholt nur den Referenzschritt.
+- Die UI zeigt fehlende, zusätzliche oder nicht auflösbare Referenzen an, verändert sie beim Laden aber nicht stillschweigend.
 
 Beispielhaft verwendet:
 
-- News: `teaser_image`, `header_image`
-- Events: `header_image`
-- POI: keine Host-Rolle; Persistenz über `mediaContents`
+- News, Events, POI, Generic Items, Projects und Cockpit Cards: `gallery_item` für den gemeinsamen Kernbildblock; der jeweilige Mainserver-/Fach-Snapshot bleibt zusätzlich führend.
 
 ## Vertragselemente
 

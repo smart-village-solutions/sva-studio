@@ -67,6 +67,7 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
     uploadHostMediaFile: vi.fn(),
   };
 });
@@ -114,6 +115,8 @@ describe('EventsListPage', () => {
         'events.fields.title': 'Titel',
         'events.fields.description': 'Beschreibung',
         'events.fields.mediaCaption': 'Bildunterschrift',
+        'events.fields.mediaSourceUrl': 'Medien-URL',
+        'events.fields.mediaSourceDescription': 'Medien-Beschreibung',
         'events.fields.mediaCopyright': 'Copyright',
         'events.fields.mediaContentType': 'Medientyp',
         'events.fields.mediaWidth': 'Breite',
@@ -260,7 +263,7 @@ describe('EventsListPage', () => {
       target: { value: 'Bühne' },
     });
     fireEvent.change(screen.getByLabelText('Copyright'), { target: { value: 'Stadt' } });
-    fireEvent.change(await screen.findByLabelText('Web-URL', { selector: '#event-media-url-0' }), {
+    fireEvent.change(await screen.findByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/event.jpg' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);

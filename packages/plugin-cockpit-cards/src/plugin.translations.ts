@@ -18,6 +18,14 @@ export const pluginCockpitCardsTranslations = {
         moveImageUp: 'Bild nach oben',
         moveImageDown: 'Bild nach unten',
         removeImage: 'Bild entfernen',
+        retryMediaReferences: 'Medienreferenzen erneut speichern',
+      },
+      media: {
+        description: 'Verwalte Bilder, Metadaten und ihre Reihenfolge.', empty: 'Noch keine Bilder vorhanden.',
+        refresh: 'Metadaten aktualisieren', cancel: 'Abbrechen', apply: 'Übernehmen', altText: 'Alternativtext', caption: 'Bildunterschrift', credit: 'Urheberrecht', license: 'Lizenz',
+        linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Synchronisiert', pending: 'Ausstehend', missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Nicht aufgelöst', failed: 'Synchronisierung fehlgeschlagen', moved: 'Bild wurde verschoben.', removed: 'Bild wurde entfernt.',
+        refreshTitle: 'Metadaten aktualisieren?', refreshDescription: 'Wähle aus, welche aktuellen Mediathek-Werte übernommen werden.', assetValue: 'Mediathek', contentValue: 'Inhalt',
+        pickerTitle: 'Bild auswählen', pickerDescription: 'Wähle ein vorhandenes Bild oder lade ein neues hoch.', review: 'Bild prüfen', search: 'Bilder durchsuchen', uploadRegion: 'Bild hochladen', uploadDescription: 'JPEG-, PNG- oder WebP-Datei auswählen.', browse: 'Datei auswählen', support: 'JPEG, PNG oder WebP', reviewDescription: 'Prüfe Bild und Metadaten vor der Übernahme.', backLibrary: 'Zurück zur Mediathek', backUpload: 'Zurück zum Hochladen', openManagement: 'In Medienverwaltung öffnen', use: 'Bild verwenden',
       },
       permissions: {
         read: 'Kacheln lesen',
@@ -97,6 +105,7 @@ export const pluginCockpitCardsTranslations = {
         categoriesError: 'Kategorien konnten nicht geladen werden.',
         mediaError: 'Bilder konnten nicht geladen oder hochgeladen werden.',
         imagePreviewEmpty: 'Bildvorschau erscheint nach Eingabe einer URL.',
+        mediaReferencePartialFailure: 'Die Kachel wurde gespeichert, aber ihre Medienreferenzen konnten nicht vollständig gespeichert werden.',
       },
       validation: {
         summaryTitle: 'Bitte prüfe folgende Felder:',
@@ -136,6 +145,14 @@ export const pluginCockpitCardsTranslations = {
         moveImageUp: 'Move image up',
         moveImageDown: 'Move image down',
         removeImage: 'Remove image',
+        retryMediaReferences: 'Retry saving media references',
+      },
+      media: {
+        description: 'Manage images, metadata, and their order.', empty: 'No images yet.',
+        refresh: 'Refresh metadata', cancel: 'Cancel', apply: 'Apply', altText: 'Alternative text', caption: 'Caption', credit: 'Copyright', license: 'License',
+        linked: 'Linked to media library', manual: 'Manual URL', synced: 'Synced', pending: 'Pending', missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Unresolved', failed: 'Sync failed', moved: 'Image moved.', removed: 'Image removed.',
+        refreshTitle: 'Refresh metadata?', refreshDescription: 'Select which current media-library values to apply.', assetValue: 'Media library', contentValue: 'Content',
+        pickerTitle: 'Select image', pickerDescription: 'Select an existing image or upload a new one.', review: 'Review image', search: 'Search images', uploadRegion: 'Upload image', uploadDescription: 'Select a JPEG, PNG, or WebP file.', browse: 'Select file', support: 'JPEG, PNG, or WebP', reviewDescription: 'Review the image and metadata before using it.', backLibrary: 'Back to library', backUpload: 'Back to upload', openManagement: 'Open in media management', use: 'Use image',
       },
       permissions: {
         read: 'Read cockpit cards',
@@ -210,6 +227,7 @@ export const pluginCockpitCardsTranslations = {
         categoriesError: 'Could not load categories.',
         mediaError: 'Images could not be loaded or uploaded.',
         imagePreviewEmpty: 'The image preview appears after entering a URL.',
+        mediaReferencePartialFailure: 'The cockpit card was saved, but its media references could not be saved completely.',
       },
       validation: {
         summaryTitle: 'Please check the following fields:',

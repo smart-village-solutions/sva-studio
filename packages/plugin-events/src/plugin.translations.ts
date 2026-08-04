@@ -51,6 +51,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     phone: 'Telefon',
     email: 'E-Mail',
     url: 'Web-URL',
+    mediaSourceUrl: 'Medien-URL',
+    mediaSourceDescription: 'Medien-Beschreibung',
     urlDescription: 'Link-Beschreibung',
     accessibilityDescription: 'Barrierefreiheitsbeschreibung',
     accessibilityTypes: 'Barrierefreiheitsarten',
@@ -102,6 +104,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     updatedAt: 'Aktualisiert',
   },
   actions: {
+    retryMediaReferences: 'Referenzen erneut speichern',
+    cancel: 'Abbrechen',
     create: 'Anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
@@ -129,6 +133,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     removeCategory: 'Kategorie {{name}} entfernen',
   },
   messages: {
+    mediaReferencePartialFailure: 'Der Inhalt wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
+    mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden gespeichert.',
     loading: 'Veranstaltungen werden geladen.',
     loadError: 'Veranstaltungen konnten nicht geladen werden.',
     missingContent: 'Die Veranstaltung konnte nicht geladen werden.',
@@ -239,6 +245,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
       media: {
         title: 'Medien',
         description: 'Galerie, Upload oder manuelle Medienangaben für die Veranstaltung.',
+        empty: 'Noch keine Medien zugeordnet.',
       },
       dates: {
         title: 'Termine',
@@ -295,6 +302,7 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     next: 'Weiter',
     pageLabel: 'Seite {{page}}',
   },
+  media: { moveUp: 'Nach oben', moveDown: 'Nach unten', refresh: 'Metadaten aus Mediathek aktualisieren', apply: 'Auswahl übernehmen', linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Referenz synchron', pending: 'Referenz ausstehend', missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Referenz nicht auflösbar', failed: 'Referenzfehler', previewUnavailable: 'Keine Vorschau verfügbar', moved: 'Bild wurde verschoben.', removed: 'Bild wurde entfernt.', refreshTitle: 'Metadaten aktualisieren', refreshDescription: 'Wählen Sie die zu übernehmenden Felder.', assetValue: 'Mediathek', contentValue: 'Inhalt' },
   validation: {
     title: 'Die Überschrift ist erforderlich.',
     dates: 'Datumswerte müssen gültig sein.',
@@ -362,6 +370,8 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     phone: 'Phone',
     email: 'Email',
     url: 'Web URL',
+    mediaSourceUrl: 'Media URL',
+    mediaSourceDescription: 'Media description',
     urlDescription: 'Link description',
     accessibilityDescription: 'Accessibility description',
     accessibilityTypes: 'Accessibility types',
@@ -413,6 +423,8 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     updatedAt: 'Updated',
   },
   actions: {
+    retryMediaReferences: 'Retry media references',
+    cancel: 'Cancel',
     create: 'Create',
     update: 'Save changes',
     save: 'Save',
@@ -440,6 +452,8 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     removeCategory: 'Remove category {{name}}',
   },
   messages: {
+    mediaReferencePartialFailure: 'The content was saved, but its media references were not. You can retry the references.',
+    mediaReferenceRetrySuccess: 'The media references were saved.',
     loading: 'Loading events.',
     loadError: 'Events could not be loaded.',
     missingContent: 'The event could not be loaded.',
@@ -530,6 +544,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
       media: {
         title: 'Media',
         description: 'Library, upload, or manual media entries for the event.',
+        empty: 'No media assigned yet.',
       },
       dates: {
         title: 'Dates',
@@ -576,6 +591,7 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     next: 'Next',
     pageLabel: 'Page {{page}}',
   },
+  media: { moveUp: 'Move up', moveDown: 'Move down', refresh: 'Refresh metadata from media library', apply: 'Apply selection', linked: 'Linked to media library', manual: 'Manual URL', synced: 'Reference synchronized', pending: 'Reference pending', missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Reference unresolved', failed: 'Reference failed', previewUnavailable: 'Preview unavailable', moved: 'Image moved.', removed: 'Image removed.', refreshTitle: 'Refresh metadata', refreshDescription: 'Select the fields to apply.', assetValue: 'Media library', contentValue: 'Content' },
   validation: {
     title: 'Title is required.',
     dates: 'Dates must be valid.',

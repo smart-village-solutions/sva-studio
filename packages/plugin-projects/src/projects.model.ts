@@ -8,13 +8,17 @@ import { projectFormSchema, type ProjectFormValues } from './projects.validation
 export const normalizeProjectImages = (
   images: readonly Omit<ProjectImage, 'position'>[] | readonly ProjectImage[]
 ): readonly ProjectImage[] =>
-  images.map((image, position) => ({
-    url: image.url.trim(),
-    altText: image.altText.trim(),
-    ...(image.caption?.trim() ? { caption: image.caption.trim() } : {}),
-    ...(image.credits?.trim() ? { credits: image.credits.trim() } : {}),
-    position,
-  }));
+  images.map((image, position) => {
+    const { url, altText, caption, credits, ...additional } = image;
+    return {
+      ...additional,
+      url: url.trim(),
+      altText: altText.trim(),
+      ...(caption?.trim() ? { caption: caption.trim() } : {}),
+      ...(credits?.trim() ? { credits: credits.trim() } : {}),
+      position,
+    };
+  });
 
 export const normalizeProjectInput = (input: ProjectFormValues): ProjectFormInput => {
   const parsed = projectFormSchema.parse(input);

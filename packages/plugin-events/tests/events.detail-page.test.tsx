@@ -3,7 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import {
   getHostMediaAsset,
   listHostMediaAssets,
+  listHostMediaReferencesByTarget,
+  publishSessionAccessSnapshot,
   registerPluginTranslationResolver,
+  resetSessionAccessSnapshot,
   updateHostMediaAsset,
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
@@ -36,7 +39,9 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     getHostMediaAsset: vi.fn(),
+    getHostMediaDelivery: vi.fn(async () => ({ deliveryUrl: 'https://example.com/uploaded-event.jpg', expiresAt: '2099-01-01T00:00:00.000Z', isPublicUrl: true })),
     listHostMediaAssets: vi.fn(async () => []),
+    listHostMediaReferencesByTarget: vi.fn(async () => []),
     updateHostMediaAsset: vi.fn(),
     uploadHostMediaFile: vi.fn(),
   };
@@ -81,6 +86,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 describe('EventsDetailPage', () => {
   beforeEach(() => {
+    publishSessionAccessSnapshot({ isResolved: true, permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'], roles: [] });
     navigateMock.mockReset();
     vi.mocked(createEvent).mockReset();
     vi.mocked(deleteEvent).mockReset();
@@ -93,6 +99,8 @@ describe('EventsDetailPage', () => {
     vi.mocked(getHostMediaAsset).mockReset();
     vi.mocked(listHostMediaAssets).mockReset();
     vi.mocked(listHostMediaAssets).mockResolvedValue([] as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockReset();
+    vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     vi.mocked(updateHostMediaAsset).mockReset();
     vi.mocked(uploadHostMediaFile).mockReset();
     vi.unstubAllGlobals();
@@ -142,6 +150,8 @@ describe('EventsDetailPage', () => {
         'events.fields.recurringTypeOptions.months': 'Monate',
         'events.fields.recurringTypeOptions.years': 'Jahre',
         'events.fields.mediaCaption': 'Bildunterschrift',
+        'events.fields.mediaSourceUrl': 'Medien-URL',
+        'events.fields.mediaSourceDescription': 'Medien-Beschreibung',
         'events.fields.mediaCopyright': 'Copyright',
         'events.fields.mediaContentType': 'Medientyp',
         'events.fields.mediaWidth': 'Breite',
@@ -201,6 +211,7 @@ describe('EventsDetailPage', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('renders the fixed tab order for events', async () => {
@@ -469,7 +480,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('https://example.com/uploaded.jpg')).toBeTruthy();
+      expect(screen.getByDisplayValue('https://example.com/uploaded-event.jpg')).toBeTruthy();
     });
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });

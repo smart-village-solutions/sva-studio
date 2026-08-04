@@ -16,6 +16,28 @@ export { Badge, badgeVariants, type BadgeProps } from './badge.js';
 export { Button, buttonVariants, type ButtonProps } from './button.js';
 export { Checkbox } from './checkbox.js';
 export {
+  ContentMediaUsageBlock,
+  type ContentMediaUsageBlockLabels,
+  type ContentMediaUsageBlockProps,
+} from './content-media-usage-block.js';
+export {
+  contentMediaUsageToReference,
+  createContentMediaUiId,
+  createManualContentMediaUsage,
+  isPersistableContentMediaUrl,
+  moveContentMediaUsage,
+  normalizeContentMediaUsageOrder,
+  toContentMediaAssetSnapshot,
+  type ContentMediaAssetSnapshot,
+  type ContentMediaUsage,
+  type ContentMediaUsagePatch,
+} from './content-media-usage.js';
+export {
+  contentMediaUsagesToMainserver,
+  mainserverContentMediaToUsages,
+  type MainserverContentMedia,
+} from './mainserver-content-media-adapter.js';
+export {
   Dialog,
   DialogClose,
   DialogContent,

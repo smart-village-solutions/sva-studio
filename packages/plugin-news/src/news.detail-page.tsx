@@ -392,6 +392,7 @@ export const NewsDetailPage = ({
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
   const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
   const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
   const canSelectMedia = mediaCapabilities.canSelect;
@@ -603,15 +604,18 @@ export const NewsDetailPage = ({
     const requestId = ++editLoadRequestIdRef.current;
     let active = true;
 
-    void Promise.all([
-      getNews(contentId),
-      listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: NEWS_CONTENT_TYPE, targetId: contentId }),
-    ])
-      .then(([item, references]) => {
+    void getNews(contentId)
+      .then(async (item) => {
         if (!active || requestId !== editLoadRequestIdRef.current) {
           return;
         }
 
+        const references = await listHostMediaReferencesByTarget({
+          fetch: globalThis.fetch.bind(globalThis), targetType: NEWS_CONTENT_TYPE, targetId: contentId,
+        }).catch(() => []);
+        if (!active || requestId !== editLoadRequestIdRef.current) {
+          return;
+        }
         const nextValues = mapNewsItemToDetailFormValues(item);
         reset(nextValues);
         setMediaUsages(mainserverContentMediaToUsages(nextValues.contentMedia, alignHostMediaReferencesByOrder({ itemCount: nextValues.contentMedia.length, role: 'gallery_item', references })));
@@ -641,6 +645,14 @@ export const NewsDetailPage = ({
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
+      if (retryReferenceSync) {
+        setStatusMessage({
+          kind: 'error',
+          text: pt('messages.mediaReferencePartialFailure'),
+        });
+        return;
+      }
+
       setStatusMessage(null);
 
       if (mode === 'edit' && !contentId) {
@@ -656,6 +668,7 @@ export const NewsDetailPage = ({
         const saved = result.saved;
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
+          setRetryCreatedContentId(mode === 'create' ? saved.id : null);
           setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
           setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
           return;
@@ -670,6 +683,7 @@ export const NewsDetailPage = ({
         reset(nextValues);
         setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
         setRetryReferenceSync(null);
+        setRetryCreatedContentId(null);
         setLoadedItem(saved);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
@@ -822,7 +836,7 @@ export const NewsDetailPage = ({
         mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
       }
       primaryAction={
-        <Button type="submit" form={formId}>
+        <Button type="submit" form={formId} disabled={Boolean(retryReferenceSync)}>
           {headerSaveLabel}
         </Button>
       }
@@ -898,6 +912,7 @@ export const NewsDetailPage = ({
               onClick={() =>
                 void retryReferenceSync().then(() => {
                   setRetryReferenceSync(null);
+                  setRetryCreatedContentId(null);
                   setMediaUsages((current) =>
                     current.map((usage) =>
                       usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
@@ -907,7 +922,10 @@ export const NewsDetailPage = ({
                     kind: 'success',
                     text: pt('messages.mediaReferenceRetrySuccess'),
                   });
-                })
+                  if (retryCreatedContentId) {
+                    void navigate({ to: '/admin/news/$id', params: { id: retryCreatedContentId } });
+                  }
+                }, () => setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))
               }
             >
               {pt('actions.retryMediaReferences')}

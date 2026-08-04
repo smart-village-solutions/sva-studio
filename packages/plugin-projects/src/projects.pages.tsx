@@ -292,7 +292,9 @@ function ProjectEditor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; 
           return;
         }
         setRetryReferenceSync(null);
-        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+        if (requiresReferenceSync) {
+          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+        }
         if (mode === 'create') {
           const created = result.saved;
           await navigate({ to: '/admin/projects/$id', params: { id: created.id } });

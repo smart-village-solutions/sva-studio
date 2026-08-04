@@ -58,10 +58,18 @@ export const alignHostMediaReferencesByOrder = (input: {
       : { status: 'missing' as const };
   });
   if (relevant.some((reference, index) => (reference.sortOrder ?? index) >= input.itemCount)) {
-    return alignments.map((alignment, index) =>
-      index === alignments.length - 1 ? { ...alignment, status: 'additional' as const } : alignment
-    );
+    let missingIndex = -1;
+    for (let index = alignments.length - 1; index >= 0; index -= 1) {
+      if (alignments[index]?.status === 'missing') {
+        missingIndex = index;
+        break;
+      }
+    }
+    return missingIndex < 0
+      ? alignments
+      : alignments.map((alignment, index) =>
+          index === missingIndex ? { ...alignment, status: 'additional' as const } : alignment
+        );
   }
   return alignments;
 };
-

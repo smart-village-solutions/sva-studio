@@ -282,9 +282,10 @@ export function GenericItemsDetailPage({
     useGenericItemsCategoryOptions(pt);
   const handleLoadedItem = React.useCallback((item: Parameters<typeof mapGenericItemToDetailFormValues>[0]) => {
     if (!contentId) return;
+    const sourceMedia = item.mediaContents ?? [];
+    setMediaUsages(genericItemMediaContentsToUsages(sourceMedia));
     void listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: genericItemsMediaReferenceTargetType, targetId: contentId })
       .then((references) => {
-        const sourceMedia = item.mediaContents ?? [];
         setMediaUsages(genericItemMediaContentsToUsages(sourceMedia, alignHostMediaReferencesByOrder({ itemCount: sourceMedia.length, role: 'gallery_item', references })));
         setRequiresReferenceSync(references.length > 0);
       })
@@ -528,7 +529,7 @@ export function GenericItemsDetailPage({
             setRetryReferenceSync(null);
             setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
             setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
-          })}>{pt('actions.retryMediaReferences')}</Button>
+          }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>{pt('actions.retryMediaReferences')}</Button>
         ) : null}
         <GenericItemsDetailTabs
           activeTab={activeTab}
@@ -542,7 +543,7 @@ export function GenericItemsDetailPage({
           onTabChange={setActiveTab}
           pt={pt}
           mediaUsages={mediaUsages}
-          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync(usages.some((usage) => Boolean(usage.assetId))); }}
+          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
           onLoadAssetSnapshot={async (usage) => {

@@ -70,27 +70,28 @@ export const toContentMediaAssetSnapshot = (
   license: usage.license,
 });
 
+const sensitiveMediaUrlQueryKeys = new Set([
+  'x-amz-signature',
+  'x-amz-credential',
+  'x-amz-security-token',
+  'x-amz-expires',
+  'x-goog-signature',
+  'googleaccessid',
+  'awsaccesskeyid',
+  'signature',
+  'token',
+  'expires',
+  'sig',
+  'se',
+  'sp',
+  'sv',
+]);
+
 export const isPersistableContentMediaUrl = (value: string): boolean => {
   try {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password) return false;
-    const sensitiveQueryKeys = new Set([
-      'x-amz-signature',
-      'x-amz-credential',
-      'x-amz-security-token',
-      'x-amz-expires',
-      'x-goog-signature',
-      'googleaccessid',
-      'awsaccesskeyid',
-      'signature',
-      'token',
-      'expires',
-      'sig',
-      'se',
-      'sp',
-      'sv',
-    ]);
-    return [...url.searchParams.keys()].every((key) => sensitiveQueryKeys.has(key.toLowerCase()) === false);
+    return [...url.searchParams.keys()].every((key) => sensitiveMediaUrlQueryKeys.has(key.toLowerCase()) === false);
   } catch {
     return false;
   }

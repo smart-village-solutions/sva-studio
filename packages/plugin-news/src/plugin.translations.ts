@@ -343,7 +343,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     moveUp: 'Nach oben', moveDown: 'Nach unten', refresh: 'Metadaten aus Mediathek aktualisieren', apply: 'Auswahl übernehmen',
     linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Referenz synchron', pending: 'Referenz ausstehend',
     missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Referenz nicht auflösbar', failed: 'Referenzfehler',
-    previewUnavailable: 'Keine Vorschau verfügbar', moved: 'Bild wurde verschoben.', removed: 'Bild wurde entfernt.',
+    previewUnavailable: 'Keine Vorschau verfügbar', moved: 'Bild an Position {{position}} von {{total}} verschoben.', removed: 'Bild wurde entfernt.',
     refreshTitle: 'Metadaten aktualisieren', refreshDescription: 'Wählen Sie die zu übernehmenden Felder.', assetValue: 'Mediathek', contentValue: 'Inhalt',
   },
   validation: {
@@ -690,7 +690,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     moveUp: 'Move up', moveDown: 'Move down', refresh: 'Refresh metadata from media library', apply: 'Apply selection',
     linked: 'Linked to media library', manual: 'Manual URL', synced: 'Reference synchronized', pending: 'Reference pending',
     missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Reference unresolved', failed: 'Reference failed',
-    previewUnavailable: 'Preview unavailable', moved: 'Image moved.', removed: 'Image removed.',
+    previewUnavailable: 'Preview unavailable', moved: 'Image moved to position {{position}} of {{total}}.', removed: 'Image removed.',
     refreshTitle: 'Refresh metadata', refreshDescription: 'Select the fields to apply.', assetValue: 'Media library', contentValue: 'Content',
   },
   validation: {

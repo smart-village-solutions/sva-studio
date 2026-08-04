@@ -501,7 +501,7 @@ function Editor({ mode, contentId }: Readonly<{ mode: 'create' | 'edit'; content
             {mutationError}
           </p>
         ) : null}
-        {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setMutationError(null); })}>{pt('actions.retryMediaReferences')}</Button> : null}
+        {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setMutationError(null); }, () => setMutationError(pt('messages.mediaReferencePartialFailure')))}>{pt('actions.retryMediaReferences')}</Button> : null}
         <StudioFormSummaryErrors
           errors={summaryErrors}
           title={pt('validation.summaryTitle')}

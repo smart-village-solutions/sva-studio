@@ -54,5 +54,23 @@ describe('content media persistence', () => {
       references: [{ assetId: 'asset-2', role: 'gallery_item', sortOrder: 1 }],
     })).toEqual([{ status: 'missing' }, { assetId: 'asset-2', status: 'synced' }]);
   });
-});
 
+  it('does not relabel a synchronized item when an extra reference exists', () => {
+    expect(alignHostMediaReferencesByOrder({
+      itemCount: 1,
+      role: 'gallery_item',
+      references: [
+        { assetId: 'asset-1', role: 'gallery_item', sortOrder: 0 },
+        { assetId: 'asset-extra', role: 'gallery_item', sortOrder: 1 },
+      ],
+    })).toEqual([{ assetId: 'asset-1', status: 'synced' }]);
+  });
+
+  it('surfaces an extra reference through an otherwise missing slot', () => {
+    expect(alignHostMediaReferencesByOrder({
+      itemCount: 2,
+      role: 'gallery_item',
+      references: [{ assetId: 'asset-extra', role: 'gallery_item', sortOrder: 2 }],
+    })).toEqual([{ status: 'missing' }, { status: 'additional' }]);
+  });
+});

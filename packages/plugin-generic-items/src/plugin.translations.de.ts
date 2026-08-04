@@ -199,7 +199,7 @@ export const genericItemsTranslationsDe = {
       unresolved: 'Referenz nicht auflösbar',
       failed: 'Referenz fehlgeschlagen',
       previewUnavailable: 'Vorschau nicht verfügbar',
-      moved: 'Medium verschoben.',
+      moved: 'Medium an Position {{position}} von {{total}} verschoben.',
       removed: 'Medium entfernt.',
       refreshTitle: 'Metadaten aktualisieren',
       refreshDescription: 'Wählen Sie die zu übernehmenden Felder.',

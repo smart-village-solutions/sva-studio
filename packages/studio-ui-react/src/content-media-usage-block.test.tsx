@@ -66,4 +66,11 @@ describe('ContentMediaUsageBlock', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }));
     expect((await screen.findByRole('alert')).textContent).toBe('Aktualisierung fehlgeschlagen');
   });
+
+  it('shows reference mismatches for usages without an asset id', () => {
+    render(<Harness initial={[linked({ assetId: undefined, referenceStatus: 'missing' })]} />);
+
+    expect(screen.getAllByText('Manuell')).toHaveLength(2);
+    expect(screen.getByText('Fehlt')).toBeTruthy();
+  });
 });

@@ -79,7 +79,7 @@ const de = {
       refresh: 'Metadaten abgleichen', apply: 'Auswahl übernehmen', license: 'Lizenz',
       linked: 'Verknüpft', manual: 'Manuell', synced: 'Synchronisiert', pending: 'Ausstehend',
       missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Nicht auflösbar', failed: 'Fehlgeschlagen',
-      moved: 'Bild wurde verschoben.', removed: 'Bild wurde entfernt.',
+      moved: 'Bild an Position {{position}} von {{total}} verschoben.', removed: 'Bild wurde entfernt.',
       refreshTitle: 'Metadaten abgleichen', refreshDescription: 'Wähle aus, welche Werte aus der Mediathek übernommen werden.',
       assetValue: 'Mediathek', contentValue: 'Projekt',
       pickerTitle: 'Bild auswählen', pickerDescription: 'Bild aus der Mediathek auswählen oder hochladen.',
@@ -124,6 +124,10 @@ const en = {
       yes: 'Yes',
       no: 'No',
       notAvailable: 'Not available',
+    },
+    media: {
+      ...de.projects.media,
+      moved: 'Image moved to position {{position}} of {{total}}.',
     },
   },
 };

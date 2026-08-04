@@ -56,14 +56,14 @@ export const ContentMediaUsageBlock = ({
     onChange(moveContentMediaUsage(usages, index, index + direction));
     const position = direction < 0 ? index : index + 2;
     setAnnouncement(labels.announcements.moved.replace('{{position}}', String(position)).replace('{{total}}', String(usages.length)));
-    globalThis.setTimeout(() => globalThis.document.getElementById(`content-media-${usage.uiId}-remove`)?.focus(), 0);
+    globalThis.setTimeout(() => globalThis.document?.getElementById(`content-media-${usage.uiId}-remove`)?.focus(), 0);
   };
   const remove = (index: number) => {
     onChange(usages.filter((_, currentIndex) => currentIndex !== index).map((entry, sortOrder) => ({ ...entry, sortOrder })));
     setAnnouncement(labels.announcements.removed);
     globalThis.setTimeout(() => {
       const next = usages[index + 1] ?? usages[index - 1];
-      globalThis.document.getElementById(next ? `content-media-${next.uiId}-remove` : 'content-media-add-manual')?.focus();
+      globalThis.document?.getElementById(next ? `content-media-${next.uiId}-remove` : 'content-media-add-manual')?.focus();
     }, 0);
   };
   const refresh = (usage: ContentMediaUsage) => {

@@ -691,7 +691,7 @@ export function EventsDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') }); })}>{pt('actions.retryMediaReferences')}</Button> : null}
+          {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') }); }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>{pt('actions.retryMediaReferences')}</Button> : null}
           <Tabs
             value={activeTab}
             onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}

@@ -21,11 +21,12 @@ const statusTone = (status: ContentMediaUsage['referenceStatus']) =>
 const Preview = ({ labels, usage }: Pick<ItemProps, 'labels' | 'usage'>) => {
   const previewUrl = usage.previewUrl || usage.persistentUrl;
   const status = usage.referenceStatus ?? (usage.assetId ? 'pending' : 'synced');
+  const showReferenceStatus = Boolean(usage.assetId) || status !== 'synced';
   return <div className="space-y-3">
     <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20">
       {previewUrl ? <img className="h-full w-full object-cover" src={previewUrl} alt={usage.altText} /> : <span className="px-4 text-center text-sm text-muted-foreground">{labels.states.previewUnavailable}</span>}
     </div>
-    <div className="flex flex-wrap gap-2"><Badge variant="secondary">{usage.assetId ? labels.states.linked : labels.states.manual}</Badge>{usage.assetId ? <Badge variant={statusTone(status)}>{labels.states[status]}</Badge> : null}</div>
+    <div className="flex flex-wrap gap-2"><Badge variant="secondary">{usage.assetId ? labels.states.linked : labels.states.manual}</Badge>{showReferenceStatus ? <Badge variant={statusTone(status)}>{labels.states[status]}</Badge> : null}</div>
   </div>;
 };
 

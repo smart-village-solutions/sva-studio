@@ -1626,34 +1626,24 @@ const mainserverProjectionPageLoaders: Record<
       projectedOrganizationId: target.organizationId,
     }),
   'generic-items.generic-item': async ({ target, pageQuery }) =>
-    listSvaMainserverGenericItems({
+    buildLoadedProjectionPage({
+      result: await listSvaMainserverGenericItems({
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
         includeInvisible: true,
         ...pageQuery,
-      }).then((result) =>
-        buildLoadedProjectionPage({
-          result: {
-            ...result,
-            data: result.data.filter(
-              (item) =>
-                item.genericType !== 'FAQ' &&
-                item.genericType !== 'COCKPIT_CARD'
-            ),
-          },
-          pagingResult: result,
-          pageQuery,
-          mapRow: (item, credentialSource) => ({
-            ...mapGenericItem(item, target.instanceId, []),
-            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-            credentialSource,
-            sourceEntityType: 'generic-items.generic-item',
-            sourceEntityId: item.id,
-          }),
-          projectedOrganizationId: target.organizationId,
-        })
-      ),
+      }),
+      pageQuery,
+      mapRow: (item, credentialSource) => ({
+        ...mapGenericItem(item, target.instanceId, []),
+        ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+        credentialSource,
+        sourceEntityType: 'generic-items.generic-item',
+        sourceEntityId: item.id,
+      }),
+      projectedOrganizationId: target.organizationId,
+    }),
   'faq.faq': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
         instanceId: target.instanceId,

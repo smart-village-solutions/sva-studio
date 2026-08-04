@@ -2388,14 +2388,18 @@ describe('content list projection', () => {
     );
   });
 
-  it('includes featured projects in the generic-item projection', async () => {
+  it('includes every known and unknown discriminator in the legacy generic-item projection', async () => {
     state.listSvaMainserverGenericItems.mockResolvedValue({
       data: [
-        {
-          id: 'featured-project-1',
-          title: 'Featured Project',
+        ['featured-project-1', 'Featured Project', 'FeaturedProject'],
+        ['faq-1', 'FAQ', 'FAQ'],
+        ['card-1', 'Kachel', 'COCKPIT_CARD'],
+        ['future-1', 'Zukünftiger Typ', 'FUTURE_TYPE'],
+      ].map(([id, title, genericType]) => ({
+          id: id!,
+          title: title!,
           contentType: 'generic-items.generic-item',
-          genericType: 'FeaturedProject',
+          genericType: genericType!,
           teaser: null,
           keywords: [],
           payload: {},
@@ -2414,8 +2418,7 @@ describe('content list projection', () => {
           author: null,
           createdAt: '2026-08-04T10:00:00.000Z',
           updatedAt: '2026-08-04T11:00:00.000Z',
-        },
-      ],
+        })),
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
@@ -2424,12 +2427,65 @@ describe('content list projection', () => {
       force: true,
     });
 
-    expect(projectionRows).toEqual([
-      expect.objectContaining({
-        content_type: 'generic-items.generic-item',
-        source_entity_id: 'featured-project-1',
-      }),
+    expect(projectionRows.map((row) => row.source_entity_id)).toEqual([
+      'featured-project-1',
+      'faq-1',
+      'card-1',
+      'future-1',
     ]);
+    expect(projectionRows.every((row) => row.content_type === 'generic-items.generic-item')).toBe(
+      true
+    );
+  });
+
+  it('keeps generic and specialized projection rows for the same mainserver item distinct', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [
+        { action: 'generic-items.read', resourceType: 'generic-items' },
+        { action: 'faq.read', resourceType: 'faq' },
+      ],
+    });
+    const faqItem = {
+      id: 'faq-shared-1',
+      title: 'Gemeinsame FAQ',
+      contentType: 'generic-items.generic-item',
+      genericType: 'FAQ',
+      teaser: null,
+      keywords: [],
+      payload: { languageCode: 'de', sortWeight: 0 },
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [{ body: 'Antwort' }],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      author: null,
+      createdAt: '2026-08-04T10:00:00.000Z',
+      updatedAt: '2026-08-04T11:00:00.000Z',
+    };
+    state.listSvaMainserverGenericItems.mockResolvedValue({
+      data: [faqItem],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item', 'faq.faq'],
+      force: true,
+    });
+
+    expect(
+      projectionRows
+        .filter((row) => row.source_entity_id === 'faq-shared-1')
+        .map((row) => row.content_type)
+        .sort()
+    ).toEqual(['faq.faq', 'generic-items.generic-item']);
   });
 
   it('upserts only the latest loaded page during progressive batch refreshes', async () => {

@@ -167,10 +167,25 @@ describe('projects contract', () => {
     ]);
   });
 
-  it('removes the cleared primary text block while preserving remaining blocks', () => {
+  it('keeps cleared project text empty while preserving hidden remaining blocks', () => {
     const merged = mergeProjectIntoGenericItem({ project: { ...project, description: '', fullText: '' }, existing });
     expect(merged.teaser).toBe('');
-    expect(merged.contentBlocks).toEqual([{ id: 'block-2', body: 'Verborgener Block', mediaContents: [] }]);
+    expect(merged.contentBlocks).toEqual([
+      { id: 'block-1', title: 'Verborgener Titel', body: '', mediaContents: [] },
+      { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
+    ]);
+    expect(
+      mapGenericItemToProject({
+        item: { ...existing, teaser: merged.teaser, contentBlocks: merged.contentBlocks ?? [] },
+        core: {
+          id: 'local-1', contentType: 'projects.project', instanceId: 'tenant-1', organizationId: 'org-1',
+          ownerOrganizationId: 'org-1', title: 'Projekt', createdAt: '2026-01-01T00:00:00.000Z',
+          createdBy: 'account-1', updatedAt: '2026-01-02T00:00:00.000Z', updatedBy: 'account-1',
+          authorDisplayMode: 'organization', author: 'Gemeinde', payload: {}, status: 'draft',
+          validationState: 'valid', historyRef: 'history-1',
+        },
+      }).fullText
+    ).toBe('');
   });
 
   it('returns the exact FeaturedProject response without technical type fields', () => {

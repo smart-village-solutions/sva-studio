@@ -159,7 +159,9 @@ export const mergeProjectIntoGenericItem = (input: {
     },
     contentBlocks: input.project.fullText.trim()
       ? [{ ...(firstBlock ?? {}), body: input.project.fullText.trim() }, ...remainingBlocks]
-      : remainingBlocks,
+      : firstBlock && remainingBlocks.length > 0
+        ? [{ ...firstBlock, body: '' }, ...remainingBlocks]
+        : [],
     mediaContents: toMediaContents(input.project),
   };
 };

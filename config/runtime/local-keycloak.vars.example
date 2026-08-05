@@ -1,0 +1,10 @@
+# Lokale, nicht produktive Entwicklungswerte für das Profil `local-keycloak`.
+#
+# Diese Musterdatei enthält keine echten Zugangsdaten. Den gewünschten Wert in
+# `config/runtime/local-keycloak.vars` oder vorzugsweise in
+# `config/runtime/local-keycloak.local.vars` übernehmen. Beide Zieldateien sind
+# git-ignoriert und dürfen nicht committed werden.
+
+# Passwort der lokalen PostgreSQL-Rolle, die tenantbezogene Waste-Datenbanken
+# und deren eingeschränkte Runtime-Rollen provisioniert.
+WASTE_DATABASE_PROVISIONER_PASSWORD=__SET_LOCAL_DEVELOPMENT_PASSWORD__

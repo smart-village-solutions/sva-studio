@@ -99,7 +99,35 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
   'generic-items.generic-item': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'generic-items.generic-item', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
   'faq.faq': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'faq.faq', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
   'cockpit-cards.cockpit-card': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'cockpit-cards.cockpit-card', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
+  'projects.project': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'projects.project', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
   'surveys.survey': { document: svaMainserverSurveyProjectionListDocument, operationName: 'SvaMainserverSurveyProjectionList', responseField: 'surveys', contentType: 'surveys.survey', titleField: 'title', order: 'updatedAt_DESC', paginated: false },
+};
+
+const specializedGenericTypes = {
+  'faq.faq': 'FAQ',
+  'cockpit-cards.cockpit-card': 'COCKPIT_CARD',
+  'projects.project': 'FeaturedProject',
+} as const;
+
+const matchesProjectionContentType = (
+  item: unknown,
+  contentType: SvaMainserverProjectionContentType
+): boolean => {
+  if (!(contentType in specializedGenericTypes)) return true;
+  if (item === null || typeof item !== 'object') return false;
+  const record = item as Record<string, unknown>;
+  const expectedGenericType = specializedGenericTypes[
+    contentType as keyof typeof specializedGenericTypes
+  ];
+  if (record.genericType !== expectedGenericType) return false;
+  if (contentType !== 'projects.project') return true;
+  const payload = record.payload;
+  return !(
+    payload !== null &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload) &&
+    (payload as Record<string, unknown>).deleted === true
+  );
 };
 
 export const createProjectionListOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
@@ -128,20 +156,9 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     const upstreamPageItems = definition.paginated
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
-    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) => {
-      if (contentType !== 'faq.faq' && contentType !== 'cockpit-cards.cockpit-card') {
-        return true;
-      }
-      const genericType =
-        item !== null &&
-        typeof item === 'object' &&
-        typeof (item as Record<string, unknown>).genericType === 'string'
-          ? (item as Record<string, unknown>).genericType
-          : undefined;
-      return contentType === 'faq.faq'
-        ? genericType === 'FAQ'
-        : genericType === 'COCKPIT_CARD';
-    });
+    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) =>
+      matchesProjectionContentType(item, contentType)
+    );
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;
     const data = mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null);

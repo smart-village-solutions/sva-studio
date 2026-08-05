@@ -1,4 +1,3 @@
-import type { IamContentListItem } from '@sva/core';
 import { z } from 'zod';
 
 import type {
@@ -11,6 +10,7 @@ import type {
   SvaMainserverGenericItem,
   SvaMainserverGenericItemInput,
   SvaMainserverProject,
+  SvaMainserverProjectAuthor,
   SvaMainserverProjectInput,
   SvaMainserverProjectStatus,
   SvaMainserverWebUrl,
@@ -126,6 +126,7 @@ export const mergeProjectIntoGenericItem = (input: {
   readonly externalId?: string;
   readonly publishedAt?: string;
   readonly deleted?: boolean;
+  readonly persistAuthor?: boolean;
 }): SvaMainserverGenericItemInput => {
   const existing = input.existing;
   const existingPayload = payloadRecord(existing?.payload);
@@ -161,6 +162,7 @@ export const mergeProjectIntoGenericItem = (input: {
       ...existingPayload,
       language: input.project.language.trim(),
       status: input.project.status,
+      ...(input.persistAuthor === false ? {} : { author: input.project.author }),
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
     contentBlocks: fullText
@@ -172,35 +174,52 @@ export const mergeProjectIntoGenericItem = (input: {
   };
 };
 
-const projectStatus = (core: IamContentListItem): SvaMainserverProjectStatus =>
-  core.status === 'published' || core.status === 'archived' ? core.status : 'draft';
+const projectStatus = (
+  item: SvaMainserverGenericItem,
+  payload: Readonly<Record<string, unknown>>
+): SvaMainserverProjectStatus => {
+  if (payload.status === 'draft' || payload.status === 'published' || payload.status === 'archived') {
+    return payload.status;
+  }
+  return item.visible ? 'published' : 'draft';
+};
 
-const authorFor = (core: IamContentListItem) =>
-  core.authorDisplayMode === 'user'
-    ? {
-        type: 'person' as const,
-        id: core.ownerUserId ?? core.createdBy,
-        displayName: core.author,
-      }
-    : {
-        type: 'organization' as const,
-        id: core.ownerOrganizationId ?? core.organizationId ?? '',
-        displayName: core.author,
-      };
-
-export const mapGenericItemToProject = (input: {
-  readonly item: SvaMainserverGenericItem;
-  readonly core: IamContentListItem;
-}): SvaMainserverProject => {
-  const status = projectStatus(input.core);
-  const payload = payloadRecord(input.item.payload);
+const projectAuthor = (
+  item: SvaMainserverGenericItem,
+  payload: Readonly<Record<string, unknown>>,
+  fallbackAuthor?: SvaMainserverProjectAuthor
+): SvaMainserverProjectAuthor => {
+  const author = payload.author;
+  if (isRecord(author)) {
+    const type = author.type;
+    const id = typeof author.id === 'string' ? author.id.trim() : '';
+    const displayName = typeof author.displayName === 'string' ? author.displayName.trim() : '';
+    if ((type === 'organization' || type === 'person') && id && displayName) {
+      return { type, id, displayName };
+    }
+  }
+  if (fallbackAuthor) return fallbackAuthor;
+  const displayName = item.author?.trim() || item.id;
   return {
-    id: input.core.id,
+    type: 'organization' as const,
+    id: `mainserver:${item.id}`,
+    displayName,
+  };
+};
+
+export const mapGenericItemToProject = (
+  item: SvaMainserverGenericItem,
+  fallbackAuthor?: SvaMainserverProjectAuthor
+): SvaMainserverProject => {
+  const payload = payloadRecord(item.payload);
+  const status = projectStatus(item, payload);
+  return {
+    id: item.id,
     language: typeof payload.language === 'string' ? payload.language.trim() : '',
-    title: input.item.title,
-    description: input.item.teaser?.trim() ?? '',
-    fullText: input.item.contentBlocks[0]?.body?.trim() ?? '',
-    images: input.item.mediaContents.map((media, position) => ({
+    title: item.title,
+    description: item.teaser?.trim() ?? '',
+    fullText: item.contentBlocks[0]?.body?.trim() ?? '',
+    images: item.mediaContents.map((media, position) => ({
       url: media.sourceUrl?.url?.trim() ?? '',
       altText: media.sourceUrl?.description?.trim() ?? '',
       ...(media.captionText?.trim() ? { caption: media.captionText.trim() } : {}),
@@ -209,11 +228,11 @@ export const mapGenericItemToProject = (input: {
     })),
     status,
     published: status === 'published',
-    ...(input.core.publishedAt ? { publishedAt: input.core.publishedAt } : {}),
-    author: authorFor(input.core),
+    ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
+    author: projectAuthor(item, payload, fallbackAuthor),
     deleted: payload.deleted === true,
-    createdAt: input.item.createdAt,
-    updatedAt: input.item.updatedAt,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
   };
 };
 

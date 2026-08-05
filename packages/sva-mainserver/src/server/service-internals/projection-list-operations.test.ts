@@ -135,6 +135,30 @@ describe('projection list operations', () => {
     ]);
   });
 
+  it('projects FeaturedProject items without requiring local Studio records', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [
+        { id: 'project-1', title: 'Projekt', genericType: 'FeaturedProject' },
+        { id: 'legacy-1', title: 'Alt', genericType: 'PROJECT' },
+        { id: 'deleted-project', title: 'Gelöscht', genericType: 'FeaturedProject', payload: { deleted: true } },
+        { id: 'faq-1', title: 'FAQ', genericType: 'FAQ' },
+      ],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig('projects.project', input, config);
+
+    const request = execute.mock.calls[0]?.[0] as { document: string };
+    expect(request.document).toMatch(/genericType\s+author\s+payload/);
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        id: 'project-1',
+        contentType: 'projects.project',
+        title: 'Projekt',
+      }),
+    ]);
+  });
+
   it('rejects malformed projection pages', async () => {
     const operations = createProjectionListOperations(vi.fn().mockResolvedValue({ newsItems: null }));
 

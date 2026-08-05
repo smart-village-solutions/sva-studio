@@ -28,7 +28,7 @@ export const svaMainserverPoiProjectionListDocument = /* GraphQL */ `
 export const svaMainserverGenericItemProjectionListDocument = /* GraphQL */ `
   query SvaMainserverGenericItemProjectionList($limit: Int, $skip: Int, $order: GenericItemOrder) {
     genericItems(limit: $limit, skip: $skip, order: $order) {
-      id title genericType author createdAt updatedAt publicationDate publishedAt visible ${provider}
+      id title genericType author payload createdAt updatedAt publicationDate publishedAt visible ${provider}
     }
   }
 `;

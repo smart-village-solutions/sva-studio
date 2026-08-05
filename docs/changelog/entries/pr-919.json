@@ -1,0 +1,4 @@
+{
+  "prNumber": 919,
+  "body": "Mainserver-Inhalte im Studio vollständig verfügbar\n\n- Inhalte aus dem SVA Mainserver werden auch dann angezeigt und bearbeitet, wenn sie außerhalb des Studios erstellt wurden.\n- Featured Projects benötigen keinen lokalen Studio-Datensatz mehr und erscheinen konsistent in Projekt- und Inhaltslisten.\n- Lokale Studio-Historie und Referenzen bleiben erhalten, blockieren aber keine erfolgreichen Änderungen am Mainserver."
+}

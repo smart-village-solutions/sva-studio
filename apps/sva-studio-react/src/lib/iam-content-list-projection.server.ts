@@ -86,6 +86,7 @@ export type ProjectionRow = {
   source_system: 'iam' | 'mainserver';
   source_entity_type: string;
   source_entity_id: string;
+  resolved_content_id?: string | null;
 };
 
 type ProjectionSyncStateRow = {
@@ -149,7 +150,8 @@ type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
 type GenericItemProjectionContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
-  | 'cockpit-cards.cockpit-card';
+  | 'cockpit-cards.cockpit-card'
+  | 'projects.project';
 type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
@@ -157,6 +159,7 @@ type TargetedMutationContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'projects.project'
   | 'surveys.survey';
 type ProjectionRefreshTrigger =
   | 'manual'
@@ -264,7 +267,10 @@ const pickPresentProjectionFields = (row: ProjectionRow): Partial<OptionalProjec
   ) as Partial<OptionalProjectionItemFields>;
 
 const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
-  id: row.id,
+  id:
+    row.content_type === 'projects.project' && row.resolved_content_id
+      ? row.resolved_content_id
+      : row.id,
   instanceId: row.instance_id,
   ...pickPresentProjectionFields(row),
   contentType: row.content_type,
@@ -589,6 +595,7 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
     value === 'generic-items.generic-item' ||
     value === 'faq.faq' ||
     value === 'cockpit-cards.cockpit-card' ||
+    value === 'projects.project' ||
     value === 'surveys.survey'
   ) {
     return value;
@@ -1587,6 +1594,7 @@ const buildLoadedProjectionPage = <TItem>(input: {
   };
   readonly mapRow: (item: TItem, credentialSource: IamContentListItem['credentialSource']) => MainserverProjectionRowInput;
   readonly projectedOrganizationId: string | undefined;
+  readonly continueAfterEmptyPage?: boolean;
 }): MainserverProjectionLoadedPage => {
   const credentialSource = resolveMainserverProjectionCredentialSource(
     input.result,
@@ -1597,7 +1605,11 @@ const buildLoadedProjectionPage = <TItem>(input: {
 
   return {
     rows: input.result.data.map((item) => input.mapRow(item, credentialSource)),
-    hasNextPage: hasNextProjectionPage(pagingResult, input.pageQuery),
+    hasNextPage: hasNextProjectionPage(
+      pagingResult,
+      input.pageQuery,
+      input.continueAfterEmptyPage
+    ),
     nextPage: nextPage + 1,
     skippedInvalidCount: 0,
   };
@@ -1697,6 +1709,42 @@ const mainserverProjectionPageLoaders: Record<
             sourceEntityId: item.id,
           }),
           projectedOrganizationId: target.organizationId,
+        })
+      ),
+  'projects.project': async ({ target, pageQuery }) =>
+    listSvaMainserverGenericItems({
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+        activeOrganizationId: target.organizationId,
+        includeInvisible: true,
+        ...pageQuery,
+      }).then((result) =>
+        buildLoadedProjectionPage({
+          result: {
+            ...result,
+            data: result.data.filter(
+              (item) =>
+                item.genericType === 'FeaturedProject' &&
+                !(
+                  item.payload &&
+                  typeof item.payload === 'object' &&
+                  !Array.isArray(item.payload) &&
+                  (item.payload as Record<string, unknown>).deleted === true
+                )
+            ),
+          },
+          pagingResult: result,
+          pageQuery,
+          mapRow: (item, credentialSource) => ({
+            ...mapGenericItem(item, target.instanceId, []),
+            contentType: 'projects.project',
+            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+            credentialSource,
+            sourceEntityType: 'projects.project',
+            sourceEntityId: item.id,
+          }),
+          projectedOrganizationId: target.organizationId,
+          continueAfterEmptyPage: true,
         })
       ),
   'news.article': async ({ target, pageQuery }) =>
@@ -1811,7 +1859,9 @@ const loadMainserverProjectionPage = async (
       hasNextPage: hasNextProjectionPage(
         result,
         pageQuery,
-        target.contentType === 'faq.faq' || target.contentType === 'cockpit-cards.cockpit-card'
+        target.contentType === 'faq.faq' ||
+          target.contentType === 'cockpit-cards.cockpit-card' ||
+          target.contentType === 'projects.project'
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,
@@ -2045,6 +2095,22 @@ const mainserverMutationProjectionLoaders: Record<
       sourceEntityId: item.id,
     };
   },
+  'projects.project': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+    const item = await getSvaMainserverGenericItem({
+      activeOrganizationId: target.organizationId,
+      genericItemId: entityId,
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+    });
+    return {
+      ...mapGenericItem(item, target.instanceId, []),
+      contentType: 'projects.project',
+      ...(projectedOrganizationId ? { organizationId: projectedOrganizationId } : {}),
+      credentialSource,
+      sourceEntityType: 'projects.project',
+      sourceEntityId: item.id,
+    };
+  },
   'news.article': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverNews({
       activeOrganizationId: target.organizationId,
@@ -2221,6 +2287,7 @@ const genericItemProjectionContentTypes = [
   'generic-items.generic-item',
   'faq.faq',
   'cockpit-cards.cockpit-card',
+  'projects.project',
 ] as const satisfies readonly GenericItemProjectionContentType[];
 
 const resolveSpecializedGenericItemProjectionContentType = (
@@ -2231,6 +2298,9 @@ const resolveSpecializedGenericItemProjectionContentType = (
   }
   if (genericType === 'COCKPIT_CARD') {
     return 'cockpit-cards.cockpit-card';
+  }
+  if (genericType === 'FeaturedProject') {
+    return 'projects.project';
   }
   return undefined;
 };
@@ -2715,8 +2785,20 @@ SELECT
   projection.credential_source,
   projection.source_system,
   projection.source_entity_type,
-  projection.source_entity_id
+  projection.source_entity_id,
+  project_reference.content_id AS resolved_content_id
 FROM iam.content_list_projection AS projection
+LEFT JOIN LATERAL (
+  SELECT reference.content_id::text AS content_id
+  FROM iam.external_content_references AS reference
+  WHERE projection.content_type = 'projects.project'
+    AND reference.instance_id = projection.instance_id
+    AND reference.source_system = 'mainserver'
+    AND reference.source_entity_type = 'GenericItem'
+    AND reference.source_entity_id = projection.source_entity_id
+    AND reference.reconciliation_status = 'bound'
+  LIMIT 1
+) AS project_reference ON TRUE
 ${whereClause}
   AND NOT (
     projection.content_type = 'projects.project'

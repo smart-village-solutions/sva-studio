@@ -21,7 +21,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
   SvaMainserverGenericItem,
-  SvaMainserverProject,
+  SvaMainserverProjectAuthor,
   SvaMainserverProjectInput,
 } from '../types.js';
 import {
@@ -108,6 +108,7 @@ const idempotencyKeyOrResponse = (request: Request): string | Response => {
 const projectPayload = (input: SvaMainserverProjectInput, deleted = false) => ({
   language: input.language,
   status: input.status,
+  author: input.author,
   deleted,
 });
 
@@ -162,25 +163,69 @@ const sourceReferenceInput = (instanceId: string) => ({
   sourceEntityType: SOURCE_ENTITY_TYPE,
 });
 
+const projectMutationJson = (body: unknown, providerEntityId: string, status = 200): Response => {
+  const response = json(body, status);
+  response.headers.set('X-SVA-Mainserver-Entity-Id', providerEntityId);
+  return response;
+};
+
+const loadProjectLocalContext = async (instanceId: string, contentId: string) => {
+  const reference = await loadExternalContentReferenceByContentId({
+    ...sourceReferenceInput(instanceId),
+    contentId,
+  }).catch(() => undefined);
+  const loadedCore = reference
+    ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)
+    : undefined;
+  const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
+  return { core, reference };
+};
+
+const projectAuthorizationResource = (
+  contentId: string,
+  core: Awaited<ReturnType<typeof loadProjectLocalContext>>['core'],
+  fallbackOwner: { readonly activeOrganizationId?: string; readonly actorAccountId: string }
+) => {
+  const owner = core
+    ? {
+        organizationId: core.organizationId,
+        ownerUserId: core.ownerUserId,
+        ownerOrganizationId: core.ownerOrganizationId,
+      }
+    : {
+        organizationId: fallbackOwner.activeOrganizationId,
+        ownerUserId: !fallbackOwner.activeOrganizationId
+          ? fallbackOwner.actorAccountId
+          : undefined,
+        ownerOrganizationId: fallbackOwner.activeOrganizationId,
+      };
+  return {
+    contentId,
+    ...(owner.organizationId ? { organizationId: owner.organizationId } : {}),
+    ...(owner.ownerUserId ? { ownerUserId: owner.ownerUserId } : {}),
+    ...(owner.ownerOrganizationId ? { ownerOrganizationId: owner.ownerOrganizationId } : {}),
+  };
+};
+
 const loadProjectContext = async (
   instanceId: string,
   keycloakSubject: string,
   contentId: string,
-  activeOrganizationId?: string
+  activeOrganizationId?: string,
+  localContext?: Awaited<ReturnType<typeof loadProjectLocalContext>>
 ) => {
-  const core = await loadExternalContentCore(instanceId, contentId);
-  if (!core || core.contentType !== PROJECTS_CONTENT_TYPE) return undefined;
-  const reference = await loadExternalContentReferenceByContentId({
-    ...sourceReferenceInput(instanceId),
-    contentId,
-  });
-  if (!reference?.sourceEntityId) return undefined;
-  const item = await getSvaMainserverGenericItem({
-    instanceId,
-    keycloakSubject,
-    ...(activeOrganizationId ? { activeOrganizationId } : {}),
-    genericItemId: reference.sourceEntityId,
-  });
+  const { core, reference } = localContext ?? await loadProjectLocalContext(instanceId, contentId);
+  const genericItemId = reference?.sourceEntityId ?? contentId;
+  let item: SvaMainserverGenericItem | undefined;
+  try {
+    item = await getSvaMainserverGenericItem({
+      instanceId, keycloakSubject,
+      ...(activeOrganizationId ? { activeOrganizationId } : {}), genericItemId,
+    });
+  } catch (error) {
+    if (!(error instanceof SvaMainserverError) || error.code !== 'not_found') throw error;
+  }
+  if (!item) return undefined;
   if (item.genericType !== PROJECTS_GENERIC_TYPE) return undefined;
   const payload =
     item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
@@ -190,9 +235,31 @@ const loadProjectContext = async (
   return { core, reference, item };
 };
 
-const mapAndValidate = (item: SvaMainserverGenericItem, core: Awaited<ReturnType<typeof loadExternalContentCore>>) => {
-  if (!core) throw new Error('external_content_core_not_found');
-  const project = mapGenericItemToProject({ item, core });
+const readFallbackAuthor = (
+  item: SvaMainserverGenericItem,
+  actor: ProjectActor,
+  core?: Awaited<ReturnType<typeof loadExternalContentCore>>
+): SvaMainserverProjectAuthor | undefined => {
+  if (core?.authorDisplayMode === 'user' && core.ownerUserId) {
+    return { type: 'person', id: core.ownerUserId, displayName: core.author };
+  }
+  if (core?.authorDisplayMode === 'organization' && core.ownerOrganizationId) {
+    return { type: 'organization', id: core.ownerOrganizationId, displayName: core.author };
+  }
+  return actor.activeOrganizationId
+    ? {
+        type: 'organization',
+        id: actor.activeOrganizationId,
+        displayName: item.author?.trim() || actor.activeOrganizationId,
+      }
+    : undefined;
+};
+
+const mapAndValidate = (
+  item: SvaMainserverGenericItem,
+  fallbackAuthor?: SvaMainserverProjectAuthor
+) => {
+  const project = mapGenericItemToProject(item, fallbackAuthor);
   const invalid = validateProjectProjection(project);
   if (invalid) {
     throw new SvaMainserverError({
@@ -211,61 +278,115 @@ const listProjects = async (
   const actor = await authorizeOrResponse(ctx, 'projects.read');
   if (isResponse(actor)) return actor;
   const input = { ...actor, ...parseMainserverListQuery(request), includeInvisible: true };
-  const [upstream, references] = await Promise.all([
-    listAllActiveProjectItems(input, listSvaMainserverGenericItems),
-    listExternalContentReferences(sourceReferenceInput(actor.instanceId)),
-  ]);
-  const itemById = new Map(upstream.data.map((item) => [item.id, item]));
-  const joined: SvaMainserverProject[] = [];
-  for (const reference of references) {
-    if (!reference.sourceEntityId || reference.reconciliationStatus !== 'bound') continue;
-    const item = itemById.get(reference.sourceEntityId);
-    const core = await loadExternalContentCore(actor.instanceId, reference.contentId);
-    if (!item || !core || core.contentType !== PROJECTS_CONTENT_TYPE) continue;
-    const project = mapAndValidate(item, core);
-    if (!project.deleted) joined.push(project);
-  }
-  joined.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
+  const upstream = await listAllActiveProjectItems(input, listSvaMainserverGenericItems);
+  const references = await listExternalContentReferences(sourceReferenceInput(actor.instanceId))
+    .catch(() => []);
+  const referenceBySourceId = new Map(
+    references.flatMap((reference) =>
+      reference.sourceEntityId && reference.reconciliationStatus === 'bound'
+        ? [[reference.sourceEntityId, reference] as const]
+        : []
+    )
+  );
+  const projectEntries = upstream.data.flatMap((item) => {
+    try {
+      const project = mapAndValidate(item, readFallbackAuthor(item, actor));
+      const reference = referenceBySourceId.get(item.id);
+      return [{ item, project: { ...project, id: reference?.contentId ?? project.id }, reference }];
+    } catch (error) {
+      logger.warn('Skipping FeaturedProject that violates the projection contract', {
+        operation: 'mainserver_projects_list_upstream',
+        instance_id: actor.instanceId,
+        source_entity_id: item.id,
+        error_code: error instanceof SvaMainserverError ? error.code : 'invalid_response',
+      });
+      return [];
+    }
+  });
+  projectEntries.sort((left, right) =>
+    right.project.updatedAt.localeCompare(left.project.updatedAt) ||
+    left.project.id.localeCompare(right.project.id)
+  );
   const start = (input.page - 1) * input.pageSize;
-  const data = joined.slice(start, start + input.pageSize);
+  const data = await Promise.all(
+    projectEntries.slice(start, start + input.pageSize).map(async (entry) => {
+      if (!entry.reference) return entry.project;
+      const loadedCore = await loadExternalContentCore(actor.instanceId, entry.reference.contentId)
+        .catch(() => undefined);
+      const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
+      try {
+        const project = mapAndValidate(entry.item, readFallbackAuthor(entry.item, actor, core));
+        return { ...project, id: entry.reference.contentId };
+      } catch {
+        return entry.project;
+      }
+    })
+  );
   logger.info('Project list upstream pagination completed', {
     operation: 'mainserver_projects_list_upstream',
     upstream_page_count: upstream.observability.upstreamPageCount,
     upstream_item_count: upstream.observability.upstreamItemCount,
-    matching_item_count: joined.length,
+    matching_item_count: projectEntries.length,
   });
   return json({
     data,
     pagination: {
       page: input.page,
       pageSize: input.pageSize,
-      hasNextPage: start + input.pageSize < joined.length,
-      total: joined.length,
+      hasNextPage: start + input.pageSize < projectEntries.length,
+      total: projectEntries.length,
     },
   });
 };
 
 const detailProject = async (
+  request: Request,
   ctx: AuthenticatedRequestContext,
   contentId: string
 ): Promise<Response> => {
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actorInfo = await actorInfoOrResponse(request, ctx);
+  if (isResponse(actorInfo)) return actorInfo;
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.read',
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
+  );
+  if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
     instanceId,
     ctx.user.id,
     contentId,
-    ctx.activeOrganizationId
+    actor.activeOrganizationId,
+    localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
-  const actor = await authorizeOrResponse(ctx, 'projects.read', {
-    contentId,
-    organizationId: context.core.organizationId,
-    ownerUserId: context.core.ownerUserId,
-    ownerOrganizationId: context.core.ownerOrganizationId,
-  });
-  if (isResponse(actor)) return actor;
-  return json({ data: mapAndValidate(context.item, context.core) });
+  const project = mapAndValidate(
+    context.item,
+    readFallbackAuthor(context.item, actor, context.core)
+  );
+  return json({ data: { ...project, id: context.reference?.contentId ?? project.id } });
+};
+
+const normalizeProviderAuthorForMutation = (input: {
+  readonly project: SvaMainserverProjectInput;
+  readonly item: SvaMainserverGenericItem;
+  readonly actor: ProjectActor;
+  readonly actorAccountId: string;
+}): SvaMainserverProjectInput => {
+  if (input.project.author.id !== `mainserver:${input.item.id}`) return input.project;
+  const displayName = input.project.author.displayName || input.item.author?.trim() || input.item.id;
+  return {
+    ...input.project,
+    author: input.actor.activeOrganizationId
+      ? { type: 'organization', id: input.actor.activeOrganizationId, displayName }
+      : { type: 'person', id: input.actorAccountId, displayName },
+  };
 };
 
 const completeCreate = (input: {
@@ -292,6 +413,16 @@ const findProjectByExternalId = async (
   return result.data.find((item) => item.externalId === externalId);
 };
 
+const withProjectMutationLock = async <T>(input: {
+  readonly instanceId: string;
+  readonly lockKey: string;
+  readonly execute: () => Promise<T>;
+}): Promise<T> => withExternalContentMutationLock({
+  instanceId: input.instanceId,
+  referenceId: input.lockKey,
+  execute: input.execute,
+});
+
 const createProject = async (
   request: Request,
   ctx: AuthenticatedRequestContext
@@ -313,34 +444,55 @@ const createProject = async (
   let reference = await loadExternalContentReferenceByOperation({
     ...sourceReferenceInput(actor.instanceId),
     operationExternalId: key,
-  });
-  let core = reference
-    ? await loadExternalContentCore(actor.instanceId, reference.contentId)
-    : undefined;
+  }).catch(() => undefined);
 
-  if (reference) {
-    const repaired = await findProjectByExternalId(actor, key);
-    if (repaired) {
-      if (!reference.sourceEntityId) {
+  let existing: SvaMainserverGenericItem | undefined;
+  if (reference?.sourceEntityId) {
+    try {
+      existing = await getSvaMainserverGenericItem({
+        ...actor,
+        genericItemId: reference.sourceEntityId,
+      });
+    } catch (error) {
+      if (!(error instanceof SvaMainserverError) || error.code !== 'not_found') throw error;
+    }
+  } else if (reference) {
+    existing = await findProjectByExternalId(actor, key);
+  }
+  if (existing) {
+    if (reference && !reference.sourceEntityId) {
+      try {
         reference = await bindExternalContentReference({
           instanceId: actor.instanceId,
           referenceId: reference.id,
-          sourceEntityId: repaired.id,
+          sourceEntityId: existing.id,
+        });
+      } catch (error) {
+        logger.warn('Project local follow-up failed while repairing provider binding', {
+          operation: 'mainserver_projects_local_follow_up',
+          instance_id: actor.instanceId,
+          error_code: error instanceof Error ? error.name : 'local_finalize_failed',
         });
       }
-      const data = mapAndValidate(repaired, core);
-      const responseBody = { data };
-      await completeCreate({
-        instanceId: actor.instanceId,
-        actorAccountId: actorInfo.actorAccountId,
-        idempotencyKey: key,
-        responseBody,
-        responseStatus: 201,
-        status: 'COMPLETED',
-      });
-      return json(responseBody, 201);
     }
-  } else {
+    const mapped = mapAndValidate(existing);
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
+    const responseBody = { data };
+    await Promise.resolve(completeCreate({
+      instanceId: actor.instanceId,
+      actorAccountId: actorInfo.actorAccountId,
+      idempotencyKey: key,
+      responseBody,
+      responseStatus: 201,
+      status: 'COMPLETED',
+    })).catch(() => undefined);
+    return projectMutationJson(responseBody, existing.id, 201);
+  }
+
+  if (!reference) try {
     const reserved = await reserveIdempotency({
       instanceId: actor.instanceId,
       actorAccountId: actorInfo.actorAccountId,
@@ -350,41 +502,35 @@ const createProject = async (
     });
     if (reserved.status === 'replay') return json(reserved.responseBody, reserved.responseStatus);
     if (reserved.status === 'conflict') return errorJson(409, 'idempotency_key_reuse', reserved.message);
-    try {
-      const prepared = await prepareExternalContent({
-        ...actorInfo,
-        actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-        contentType: PROJECTS_CONTENT_TYPE,
-        organizationId: actor.activeOrganizationId,
-        authorDisplayMode: project.author.type === 'person' ? 'user' : 'organization',
-        title: project.title,
-        payload: projectPayload(project),
-        status: project.status,
-        publishedAt: publishedAtFor(project),
-        sourceSystem: SOURCE_SYSTEM,
-        sourceEntityType: SOURCE_ENTITY_TYPE,
-        operationExternalId: key,
-      });
-      reference = prepared.reference;
-      core = await loadExternalContentCore(actor.instanceId, prepared.contentId);
-    } catch {
-      const responseBody = { error: 'database_unavailable', message: 'Projekt konnte nicht vorbereitet werden.' };
-      await completeCreate({
-        instanceId: actor.instanceId,
-        actorAccountId: actorInfo.actorAccountId,
-        idempotencyKey: key,
-        responseBody,
-        responseStatus: 503,
-        status: 'FAILED',
-      });
-      return json(responseBody, 503);
-    }
+  } catch (error) {
+    logger.warn('Project local idempotency reservation unavailable; provider externalId remains authoritative', {
+      operation: 'mainserver_projects_local_follow_up',
+      instance_id: actor.instanceId,
+      error_code: error instanceof Error ? error.name : 'local_finalize_failed',
+    });
+    existing = await findProjectByExternalId(actor, key);
   }
 
-  if (!reference || !core) return errorJson(503, 'database_unavailable', 'Projekt konnte nicht vorbereitet werden.');
+  if (existing) {
+    const mapped = mapAndValidate(existing);
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
+    const responseBody = { data };
+    await Promise.resolve(completeCreate({
+      instanceId: actor.instanceId,
+      actorAccountId: actorInfo.actorAccountId,
+      idempotencyKey: key,
+      responseBody,
+      responseStatus: 201,
+      status: 'COMPLETED',
+    })).catch(() => undefined);
+    return projectMutationJson(responseBody, existing.id, 201);
+  }
 
   try {
-    const publishedAt = publishedAtFor(project, core.publishedAt);
+    const publishedAt = publishedAtFor(project);
     const created = await createSvaMainserverGenericItem({
       ...actor,
       genericItem: mergeProjectIntoGenericItem({ project, externalId: key, publishedAt }),
@@ -394,32 +540,61 @@ const createProject = async (
       genericItemId: created.id,
       visible: project.status === 'published',
     });
-    await bindExternalContentReference({
-      instanceId: actor.instanceId,
-      referenceId: reference.id,
-      sourceEntityId: created.id,
-    });
-    const data = mapAndValidate(
-      { ...created, visible: project.status === 'published' },
-      core
-    );
+
+    try {
+      if (!reference) {
+        const prepared = await prepareExternalContent({
+          ...actorInfo,
+          actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
+          contentType: PROJECTS_CONTENT_TYPE,
+          organizationId: actor.activeOrganizationId,
+          authorDisplayMode: project.author.type === 'person' ? 'user' : 'organization',
+          title: project.title,
+          payload: projectPayload(project),
+          status: project.status,
+          publishedAt,
+          sourceSystem: SOURCE_SYSTEM,
+          sourceEntityType: SOURCE_ENTITY_TYPE,
+          operationExternalId: key,
+        });
+        reference = prepared.reference;
+      }
+      if (!reference.sourceEntityId) {
+        reference = await bindExternalContentReference({
+          instanceId: actor.instanceId,
+          referenceId: reference.id,
+          sourceEntityId: created.id,
+        });
+      }
+    } catch (error) {
+      logger.warn('Project local follow-up failed after provider create', {
+        operation: 'mainserver_projects_local_follow_up',
+        instance_id: actor.instanceId,
+        error_code: error instanceof Error ? error.name : 'local_finalize_failed',
+      });
+    }
+    const mapped = mapAndValidate({ ...created, visible: project.status === 'published' });
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
     const responseBody = { data };
-    await completeCreate({
+    await Promise.resolve(completeCreate({
       instanceId: actor.instanceId,
       actorAccountId: actorInfo.actorAccountId,
       idempotencyKey: key,
       responseBody,
       responseStatus: 201,
       status: 'COMPLETED',
-    });
-    return json(responseBody, 201);
+    })).catch(() => undefined);
+    return projectMutationJson(responseBody, created.id, 201);
   } catch (error) {
-    await updateExternalContentReconciliationStatus({
+    if (reference) await Promise.resolve(updateExternalContentReconciliationStatus({
       instanceId: actor.instanceId,
       referenceId: reference.id,
       status: 'reconciliation_required',
       errorCode: error instanceof SvaMainserverError ? error.code : 'provider_result_unknown',
-    });
+    })).catch(() => undefined);
     return toMainserverErrorResponse(error, 'Projekt konnte nicht angelegt werden.');
   }
 };
@@ -433,44 +608,53 @@ const updateProject = async (
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
-  const context = await loadProjectContext(
-    instanceId,
-    ctx.user.id,
-    contentId,
-    ctx.activeOrganizationId
-  );
-  if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
-  const actor = await authorizeOrResponse(ctx, 'projects.update', {
-    contentId,
-    organizationId: context.core.organizationId,
-    ownerUserId: context.core.ownerUserId,
-    ownerOrganizationId: context.core.ownerOrganizationId,
-  });
-  if (isResponse(actor)) return actor;
-  const project = await parseProjectInput(request);
-  if (isResponse(project)) return project;
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
   const actorInfo = await actorInfoOrResponse(request, ctx);
   if (isResponse(actorInfo)) return actorInfo;
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.update',
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
+  );
+  if (isResponse(actor)) return actor;
+  const context = await loadProjectContext(
+    instanceId,
+    actor.keycloakSubject,
+    contentId,
+    actor.activeOrganizationId,
+    localContext
+  );
+  if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
+  const parsedProject = await parseProjectInput(request);
+  if (isResponse(parsedProject)) return parsedProject;
+  const project = normalizeProviderAuthorForMutation({
+    project: parsedProject,
+    item: context.item,
+    actor,
+    actorAccountId: actorInfo.actorAccountId,
+  });
   const authorError = validateAuthorSelection({ project, actor, actorAccountId: actorInfo.actorAccountId });
   if (authorError) return authorError;
 
   try {
-    return await withExternalContentMutationLock({
+    return await withProjectMutationLock({
       instanceId,
-      referenceId: context.reference.id,
+      lockKey: context.reference?.id ?? context.item.id,
       execute: async () => {
-        const freshCore = await loadExternalContentCore(instanceId, contentId);
         const freshItem = await getSvaMainserverGenericItem({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: context.item.id,
         });
-        if (!freshCore || freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
+        if (freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
-        const publishedAt = publishedAtFor(project, freshCore.publishedAt);
+        const publishedAt = publishedAtFor(project, freshItem.publishedAt);
         const updated = await updateSvaMainserverGenericItem({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: freshItem.id,
           genericItem: mergeProjectIntoGenericItem({
             project,
             existing: freshItem,
@@ -479,10 +663,10 @@ const updateProject = async (
         });
         await changeSvaMainserverGenericItemVisibility({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: freshItem.id,
           visible: project.status === 'published',
         });
-        try {
+        if (context.core && context.reference) try {
           await updateExternalContentCore({
             ...actorInfo,
             actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
@@ -500,16 +684,23 @@ const updateProject = async (
             status: 'bound',
           });
         } catch (error) {
-          await updateExternalContentReconciliationStatus({
+          await Promise.resolve(updateExternalContentReconciliationStatus({
             instanceId,
             referenceId: context.reference.id,
             status: 'reconciliation_required',
             errorCode: 'local_finalize_failed',
+          })).catch(() => undefined);
+          logger.warn('Project local follow-up failed after provider update', {
+            operation: 'mainserver_projects_local_follow_up',
+            instance_id: instanceId,
+            error_code: error instanceof Error ? error.name : 'local_finalize_failed',
           });
-          throw error;
         }
-        const nextCore = await loadExternalContentCore(instanceId, contentId);
-        return json({ data: mapAndValidate({ ...updated, visible: project.status === 'published' }, nextCore) });
+        const data = mapAndValidate({ ...updated, visible: project.status === 'published' });
+        return projectMutationJson(
+          { data: { ...data, id: context.reference?.contentId ?? data.id } },
+          updated.id
+        );
       },
     });
   } catch (error) {
@@ -526,72 +717,98 @@ const deleteProject = async (
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
-  const context = await loadProjectContext(
-    instanceId,
-    ctx.user.id,
-    contentId,
-    ctx.activeOrganizationId
-  );
-  if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
-  const actor = await authorizeOrResponse(ctx, 'projects.delete', {
-    contentId,
-    organizationId: context.core.organizationId,
-    ownerUserId: context.core.ownerUserId,
-    ownerOrganizationId: context.core.ownerOrganizationId,
-  });
-  if (isResponse(actor)) return actor;
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
   const actorInfo = await actorInfoOrResponse(request, ctx);
   if (isResponse(actorInfo)) return actorInfo;
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.delete',
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
+  );
+  if (isResponse(actor)) return actor;
+  const context = await loadProjectContext(
+    instanceId,
+    actor.keycloakSubject,
+    contentId,
+    actor.activeOrganizationId,
+    localContext
+  );
+  if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   try {
-    return await withExternalContentMutationLock({
+    return await withProjectMutationLock({
       instanceId,
-      referenceId: context.reference.id,
+      lockKey: context.reference?.id ?? context.item.id,
       execute: async () => {
-        const freshCore = await loadExternalContentCore(instanceId, contentId);
         const freshItem = await getSvaMainserverGenericItem({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: context.item.id,
         });
-        if (!freshCore || freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
+        if (freshItem.genericType !== PROJECTS_GENERIC_TYPE) {
           return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
         }
-        const freshProject = mapAndValidate(freshItem, freshCore);
+        const freshProject = mapAndValidate(
+          freshItem,
+          actor.activeOrganizationId
+            ? {
+                type: 'organization',
+                id: actor.activeOrganizationId,
+                displayName: freshItem.author?.trim() || actor.activeOrganizationId,
+              }
+            : {
+                type: 'person',
+                id: actorInfo.actorAccountId,
+                displayName: freshItem.author?.trim() || actorInfo.actorAccountId,
+              }
+        );
         await updateSvaMainserverGenericItem({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: freshItem.id,
           genericItem: mergeProjectIntoGenericItem({
             project: freshProject,
             existing: freshItem,
             deleted: true,
-            publishedAt: freshCore.publishedAt,
+            publishedAt: freshItem.publishedAt,
+            persistAuthor: false,
           }),
         });
         await changeSvaMainserverGenericItemVisibility({
           ...actor,
-          genericItemId: context.reference.sourceEntityId!,
+          genericItemId: freshItem.id,
           visible: false,
         });
-        await updateExternalContentCore({
-          ...actorInfo,
-          actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-          contentId,
-          title: freshCore.title,
-          payload: { ...projectPayload(freshProject, true) },
-          status: freshCore.status,
-          publishedAt: freshCore.publishedAt,
-          authorDisplayMode: freshCore.authorDisplayMode,
-          authorDisplayName: freshCore.author,
-        });
-        return json({ data: { id: contentId } });
+        if (context.core && context.reference) {
+          await Promise.resolve(updateExternalContentCore({
+            ...actorInfo,
+            actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
+            contentId: context.reference.contentId,
+            title: freshItem.title,
+            payload: { ...projectPayload(freshProject, true) },
+            status: freshProject.status,
+            publishedAt: freshItem.publishedAt,
+            authorDisplayMode: freshProject.author.type === 'person' ? 'user' : 'organization',
+            authorDisplayName: freshProject.author.displayName,
+          })).catch((error: unknown) => {
+            logger.warn('Project local follow-up failed after provider delete', {
+              operation: 'mainserver_projects_local_follow_up',
+              instance_id: instanceId,
+              error_code: error instanceof Error ? error.name : 'local_finalize_failed',
+            });
+          });
+        }
+        return projectMutationJson(
+          { data: { id: context.reference?.contentId ?? freshItem.id } },
+          freshItem.id
+        );
       },
     });
   } catch (error) {
-    await updateExternalContentReconciliationStatus({
-      instanceId,
-      referenceId: context.reference.id,
-      status: 'reconciliation_required',
-      errorCode: 'soft_delete_finalize_failed',
-    });
+    if (context.reference) await Promise.resolve(updateExternalContentReconciliationStatus({
+      instanceId, referenceId: context.reference.id,
+      status: 'reconciliation_required', errorCode: 'soft_delete_finalize_failed',
+    })).catch(() => undefined);
     return toMainserverErrorResponse(error, 'Projekt konnte nicht gelöscht werden.');
   }
 };
@@ -603,7 +820,7 @@ const dispatchAuthenticated = async (
 ): Promise<Response> => {
   try {
     if (route.kind === 'collection' && request.method === 'GET') return await listProjects(request, ctx);
-    if (route.kind === 'item' && request.method === 'GET') return await detailProject(ctx, route.itemId);
+    if (route.kind === 'item' && request.method === 'GET') return await detailProject(request, ctx, route.itemId);
     if (route.kind === 'collection' && request.method === 'POST') return await createProject(request, ctx);
     if (route.kind === 'item' && request.method === 'PATCH') return await updateProject(request, ctx, route.itemId);
     if (route.kind === 'item' && request.method === 'DELETE') return await deleteProject(request, ctx, route.itemId);

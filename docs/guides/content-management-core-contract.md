@@ -1,6 +1,6 @@
 # Content-Management-Core-Vertrag
 
-Der Content-Core ist hostgeführt. Plugins liefern Payload-Schema, UI-Bindings und zusätzliche Validierung, dürfen aber Scope, Status, Historie, Revisionen, Audit-Referenzen oder IAM-Semantik nicht umdeuten.
+Der Content-Core ist für lokal im Studio persistierte Inhalte hostgeführt. Bei Mainserver-basierten Inhalten bleibt dagegen der Mainserver fachlich führend; lokale Cores, References, History und Listenprojektionen sind optionale, rekonstruierbare Begleitzustände. Plugins liefern Payload-Schema, UI-Bindings und zusätzliche Validierung, dürfen aber IAM-Semantik oder die jeweilige fachliche Source of Truth nicht umdeuten.
 
 ## Core-Felder
 
@@ -81,3 +81,5 @@ Plugin-Payloads werden nicht als Audit-Rohdaten geschrieben. Payload-Änderungen
 Die öffentliche History-Projektion enthält Actor-Anzeige, Aktion, Zeitpunkt, stabile Feld-IDs, Statusübergang und Zusammenfassung sowie `origin = studio` und `coverage = studio_mutations`. Sie gibt `snapshot_json` nicht aus. `mutation_ref` korreliert erfolgreiche Mainserver-Mutationen und verhindert doppelte sichtbare Einträge bei Wiederholungen.
 
 Mainserver-basierte Inhalte erhalten erst nach einer erfolgreichen fachlichen Mutation einen lokalen History-Core und eine gebundene Provider-Referenz. Abgelehnte oder fehlgeschlagene Versuche bleiben ausschließlich im Audit- und Diagnosepfad. Direkte Änderungen außerhalb des Studios werden nicht nachträglich als Studio-History rekonstruiert.
+
+Ein fehlender History-Core oder eine fehlende Provider-Referenz blockiert weder Liste, Detail noch Bearbeitung eines durch die typspezifische IAM-Action autorisierten Mainserver-Inhalts. `404 not_found` des History-Pfads wird für typisierte Mainserver-Inhalte als leere Studio-History mit der dokumentierten Abdeckung `studio_mutations` behandelt.

@@ -24,6 +24,7 @@ const buildReadAction = (contentType: string): string =>
   contentType === 'news.article' ||
   contentType === 'events.event-record' ||
   contentType === 'poi.point-of-interest' ||
+  contentType === 'projects.project' ||
   contentType === 'surveys.survey'
     ? `${contentType.split('.')[0] ?? 'content'}.read`
     : 'content.read';

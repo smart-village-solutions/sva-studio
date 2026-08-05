@@ -1,0 +1,4 @@
+{
+  "prNumber": 920,
+  "body": "Featured Projects wieder in der Inhaltsliste sichtbar\n\n- Featured Projects werden mit der vorhandenen Projekte-Leseberechtigung nicht mehr aus der gemeinsamen Inhaltsliste herausgefiltert.\n- Das gilt auch für GenericItems, die außerhalb des Studios über die Mainserver-API erstellt wurden."
+}

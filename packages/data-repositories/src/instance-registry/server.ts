@@ -345,7 +345,15 @@ const withWasteProvisioningRepository = <T>(
         await client.query('COMMIT');
         return result;
       } catch (error) {
-        await client.query('ROLLBACK');
+        try {
+          await client.query('ROLLBACK');
+        } catch (rollbackError) {
+          logger.warn('Waste provisioning transaction rollback failed', {
+            operation: 'waste_provisioning_repository_transaction',
+            error: rollbackError instanceof Error ? rollbackError.message : String(rollbackError),
+            error_type: readErrorType(rollbackError),
+          });
+        }
         throw error;
       }
     },

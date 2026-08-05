@@ -486,11 +486,14 @@ describe('instance registry server', () => {
     expect(repository.completeWasteProvisioning).toHaveBeenCalledOnce();
     expect(repository.failWasteProvisioning).toHaveBeenCalledOnce();
     expect(repository.failWasteProvisioningRequest).toHaveBeenCalledOnce();
-    expect(poolDouble.query.mock.calls.slice(0, 3)).toEqual([
+    const expectedTransactionCalls = [
       ['BEGIN'],
       ['SELECT set_config($1, $2, true);', ['app.instance_id', 'tenant-a']],
       ['COMMIT'],
-    ]);
+    ];
+    expect(poolDouble.query.mock.calls).toEqual(
+      Array.from({ length: 6 }, () => expectedTransactionCalls).flat()
+    );
     expect(poolDouble.release).toHaveBeenCalledTimes(6);
   });
 
@@ -517,5 +520,39 @@ describe('instance registry server', () => {
     ]);
     expect(poolDouble.query).not.toHaveBeenCalledWith('COMMIT');
     expect(poolDouble.release).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the original repository error when rolling back the Waste provisioning transaction fails', async () => {
+    const server = await import('./server.js');
+    const poolDouble = createPoolDouble();
+    const repositoryError = new Error('provisioning lookup failed');
+
+    poolDouble.query.mockImplementation(async (statement: string) => {
+      if (statement === 'ROLLBACK') {
+        throw new Error('rollback failed');
+      }
+      return { rowCount: 0, rows: [] };
+    });
+    mocks.poolFactory.mockReturnValue(poolDouble.pool);
+    mocks.createInstanceRegistryRepository.mockReturnValue({
+      getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
+    });
+
+    await expect(
+      server.loadWasteTenantProvisioningRecord('tenant-a', {
+        getDatabaseUrl: () => 'postgres://db.example.test/sva',
+      })
+    ).rejects.toBe(repositoryError);
+
+    expect(poolDouble.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(poolDouble.release).toHaveBeenCalledOnce();
+    expect(mocks.logger.warn).toHaveBeenCalledWith(
+      'Waste provisioning transaction rollback failed',
+      {
+        operation: 'waste_provisioning_repository_transaction',
+        error: 'rollback failed',
+        error_type: 'Error',
+      }
+    );
   });
 });

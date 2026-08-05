@@ -591,6 +591,7 @@ const toMainserverContentType = (value: string): MainserverContentType | null =>
     value === 'generic-items.generic-item' ||
     value === 'faq.faq' ||
     value === 'cockpit-cards.cockpit-card' ||
+    value === 'projects.project' ||
     value === 'surveys.survey'
   ) {
     return value;
@@ -1589,6 +1590,7 @@ const buildLoadedProjectionPage = <TItem>(input: {
   };
   readonly mapRow: (item: TItem, credentialSource: IamContentListItem['credentialSource']) => MainserverProjectionRowInput;
   readonly projectedOrganizationId: string | undefined;
+  readonly continueAfterEmptyPage?: boolean;
 }): MainserverProjectionLoadedPage => {
   const credentialSource = resolveMainserverProjectionCredentialSource(
     input.result,
@@ -1599,7 +1601,11 @@ const buildLoadedProjectionPage = <TItem>(input: {
 
   return {
     rows: input.result.data.map((item) => input.mapRow(item, credentialSource)),
-    hasNextPage: hasNextProjectionPage(pagingResult, input.pageQuery),
+    hasNextPage: hasNextProjectionPage(
+      pagingResult,
+      input.pageQuery,
+      input.continueAfterEmptyPage
+    ),
     nextPage: nextPage + 1,
     skippedInvalidCount: 0,
   };
@@ -1712,7 +1718,16 @@ const mainserverProjectionPageLoaders: Record<
         buildLoadedProjectionPage({
           result: {
             ...result,
-            data: result.data.filter((item) => item.genericType === 'FeaturedProject'),
+            data: result.data.filter(
+              (item) =>
+                item.genericType === 'FeaturedProject' &&
+                !(
+                  item.payload &&
+                  typeof item.payload === 'object' &&
+                  !Array.isArray(item.payload) &&
+                  (item.payload as Record<string, unknown>).deleted === true
+                )
+            ),
           },
           pagingResult: result,
           pageQuery,
@@ -1725,6 +1740,7 @@ const mainserverProjectionPageLoaders: Record<
             sourceEntityId: item.id,
           }),
           projectedOrganizationId: target.organizationId,
+          continueAfterEmptyPage: true,
         })
       ),
   'news.article': async ({ target, pageQuery }) =>
@@ -1839,7 +1855,9 @@ const loadMainserverProjectionPage = async (
       hasNextPage: hasNextProjectionPage(
         result,
         pageQuery,
-        target.contentType === 'faq.faq' || target.contentType === 'cockpit-cards.cockpit-card'
+        target.contentType === 'faq.faq' ||
+          target.contentType === 'cockpit-cards.cockpit-card' ||
+          target.contentType === 'projects.project'
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,

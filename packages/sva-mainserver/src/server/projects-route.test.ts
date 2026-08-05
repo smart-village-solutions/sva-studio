@@ -61,6 +61,7 @@ vi.mock('./service.js', () => ({
 }));
 
 import { dispatchSvaMainserverProjectsRequest } from './projects-route.js';
+import { SvaMainserverError } from './errors.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
 const accountId = '22222222-2222-4222-8222-222222222222';
@@ -248,6 +249,7 @@ describe('projects route', () => {
     );
 
     expect(response?.status).toBe(201);
+    expect(state.listGenericItems).not.toHaveBeenCalled();
     expect(state.prepareExternalContent).toHaveBeenCalledWith(
       expect.objectContaining({
         contentType: 'projects.project',
@@ -431,13 +433,27 @@ describe('projects route', () => {
       request(`/api/v1/mainserver/projects/${contentId}`)
     );
     expect(success?.status).toBe(200);
+    await expect(success?.json()).resolves.toMatchObject({
+      data: { author: { type: 'organization', id: organizationId, displayName: 'Gemeinde' } },
+    });
 
     state.loadReferenceByContentId.mockResolvedValueOnce(undefined);
-    state.getGenericItem.mockRejectedValueOnce(new Error('not_found'));
+    state.getGenericItem.mockRejectedValueOnce(
+      new SvaMainserverError({ code: 'not_found', message: 'missing', statusCode: 404 })
+    );
     const missing = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects/missing-external-id')
     );
     expect(missing?.status).toBe(404);
+
+    state.loadReferenceByContentId.mockResolvedValueOnce(undefined);
+    state.getGenericItem.mockRejectedValueOnce(
+      new SvaMainserverError({ code: 'network_error', message: 'offline', statusCode: 503 })
+    );
+    const unavailable = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects/existing-but-unavailable')
+    );
+    expect(unavailable?.status).toBe(503);
 
     state.getGenericItem.mockResolvedValueOnce({
       ...genericItem,
@@ -651,5 +667,40 @@ describe('projects route', () => {
         errorCode: 'soft_delete_finalize_failed',
       })
     );
+  });
+
+  it('normalizes provider-only authors and never updates a foreign local content core', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.loadCore.mockResolvedValue({ ...core, contentType: 'news.article' });
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...input,
+          author: {
+            type: 'organization',
+            id: `mainserver:${genericItem.id}`,
+            displayName: 'Gemeinde',
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItem: expect.objectContaining({
+          payload: expect.objectContaining({
+            author: expect.objectContaining({ id: organizationId }),
+          }),
+        }),
+      })
+    );
+    expect(state.updateCore).not.toHaveBeenCalled();
   });
 });

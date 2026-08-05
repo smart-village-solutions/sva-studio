@@ -139,11 +139,19 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
         typeof (item as Record<string, unknown>).genericType === 'string'
           ? (item as Record<string, unknown>).genericType
           : undefined;
+      const payload =
+        item !== null &&
+        typeof item === 'object' &&
+        (item as Record<string, unknown>).payload !== null &&
+        typeof (item as Record<string, unknown>).payload === 'object' &&
+        !Array.isArray((item as Record<string, unknown>).payload)
+          ? ((item as Record<string, unknown>).payload as Record<string, unknown>)
+          : undefined;
       return contentType === 'faq.faq'
         ? genericType === 'FAQ'
         : contentType === 'cockpit-cards.cockpit-card'
           ? genericType === 'COCKPIT_CARD'
-          : genericType === 'FeaturedProject';
+          : genericType === 'FeaturedProject' && payload?.deleted !== true;
     });
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;

@@ -140,6 +140,7 @@ describe('projection list operations', () => {
       genericItems: [
         { id: 'project-1', title: 'Projekt', genericType: 'FeaturedProject' },
         { id: 'legacy-1', title: 'Alt', genericType: 'PROJECT' },
+        { id: 'deleted-project', title: 'Gelöscht', genericType: 'FeaturedProject', payload: { deleted: true } },
         { id: 'faq-1', title: 'FAQ', genericType: 'FAQ' },
       ],
     });

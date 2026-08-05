@@ -2934,6 +2934,64 @@ describe('content list projection', () => {
     expect(projectionRows).toHaveLength(2);
   });
 
+  it('continues project refresh after filtered pages and excludes soft-deleted projects', async () => {
+    state.resolveEffectivePermissions.mockResolvedValue({
+      ok: true,
+      permissions: [{ action: 'projects.read', resourceType: 'projects' }],
+    });
+    const genericItem = (input: {
+      id: string;
+      genericType: string;
+      deleted?: boolean;
+    }) => ({
+      id: input.id,
+      title: input.id,
+      contentType: 'generic-items.generic-item' as const,
+      genericType: input.genericType,
+      payload: input.deleted ? { deleted: true } : {},
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      createdAt: '2026-08-04T10:00:00.000Z',
+      updatedAt: '2026-08-04T11:00:00.000Z',
+    });
+    state.listSvaMainserverGenericItems
+      .mockResolvedValueOnce({
+        data: [genericItem({ id: 'faq-page-one', genericType: 'FAQ' })],
+        pagination: { page: 1, pageSize: 100, hasNextPage: true },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          genericItem({ id: 'project-active', genericType: 'FeaturedProject' }),
+          genericItem({ id: 'project-deleted', genericType: 'FeaturedProject', deleted: true }),
+        ],
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['projects.project'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    expect(state.listSvaMainserverGenericItems).toHaveBeenCalledTimes(2);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-active',
+      }),
+    ]);
+  });
+
   it('removes stale specialized sibling projections when the generic type changes', async () => {
     projectionRows = [
       {

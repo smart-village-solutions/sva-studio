@@ -161,6 +161,7 @@ export const mergeProjectIntoGenericItem = (input: {
       ...existingPayload,
       language: input.project.language.trim(),
       status: input.project.status,
+      author: input.project.author,
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
     contentBlocks: fullText
@@ -184,7 +185,8 @@ const projectStatus = (
 
 const projectAuthor = (
   item: SvaMainserverGenericItem,
-  payload: Readonly<Record<string, unknown>>
+  payload: Readonly<Record<string, unknown>>,
+  fallbackAuthor?: SvaMainserverProjectAuthor
 ): SvaMainserverProjectAuthor => {
   const author = payload.author;
   if (isRecord(author)) {
@@ -195,6 +197,7 @@ const projectAuthor = (
       return { type, id, displayName };
     }
   }
+  if (fallbackAuthor) return fallbackAuthor;
   const displayName = item.author?.trim() || item.id;
   return {
     type: 'organization' as const,
@@ -203,7 +206,10 @@ const projectAuthor = (
   };
 };
 
-export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMainserverProject => {
+export const mapGenericItemToProject = (
+  item: SvaMainserverGenericItem,
+  fallbackAuthor?: SvaMainserverProjectAuthor
+): SvaMainserverProject => {
   const payload = payloadRecord(item.payload);
   const status = projectStatus(item, payload);
   return {
@@ -222,7 +228,7 @@ export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMain
     status,
     published: status === 'published',
     ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
-    author: projectAuthor(item, payload),
+    author: projectAuthor(item, payload, fallbackAuthor),
     deleted: payload.deleted === true,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,

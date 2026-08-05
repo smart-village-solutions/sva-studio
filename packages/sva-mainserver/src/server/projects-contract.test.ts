@@ -135,7 +135,12 @@ describe('projects contract', () => {
         visible: true,
         externalId: 'operation-1',
         publishedAt: '2026-01-03T00:00:00.000Z',
-        payload: { language: 'de', status: 'published', deleted: false },
+        payload: {
+          language: 'de',
+          status: 'published',
+          author: project.author,
+          deleted: false,
+        },
         contentBlocks: [{ body: '<p>Text</p>' }],
         mediaContents: [
           {
@@ -158,6 +163,7 @@ describe('projects contract', () => {
       language: 'de',
       unknown: 'keep',
       status: 'published',
+      author: project.author,
       deleted: false,
     });
     expect(merged.webUrls).toEqual([{ url: 'https://example.test/hidden' }]);

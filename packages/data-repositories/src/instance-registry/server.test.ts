@@ -486,6 +486,37 @@ describe('instance registry server', () => {
     expect(repository.completeWasteProvisioning).toHaveBeenCalledOnce();
     expect(repository.failWasteProvisioning).toHaveBeenCalledOnce();
     expect(repository.failWasteProvisioningRequest).toHaveBeenCalledOnce();
+    expect(poolDouble.query).toHaveBeenCalledWith('SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      'tenant-a',
+    ]);
+    expect(poolDouble.query).toHaveBeenCalledWith('BEGIN');
+    expect(poolDouble.query).toHaveBeenCalledWith('COMMIT');
     expect(poolDouble.release).toHaveBeenCalledTimes(6);
+  });
+
+  it('rolls back the tenant-scoped Waste provisioning transaction when the repository fails', async () => {
+    const server = await import('./server.js');
+    const poolDouble = createPoolDouble();
+    const repositoryError = new Error('provisioning lookup failed');
+
+    mocks.poolFactory.mockReturnValue(poolDouble.pool);
+    mocks.createInstanceRegistryRepository.mockReturnValue({
+      getWasteProvisioning: vi.fn(async () => Promise.reject(repositoryError)),
+    });
+
+    await expect(
+      server.loadWasteTenantProvisioningRecord('tenant-a', {
+        getDatabaseUrl: () => 'postgres://db.example.test/sva',
+      })
+    ).rejects.toBe(repositoryError);
+
+    expect(poolDouble.query.mock.calls.map(([statement]) => statement)).toEqual([
+      'BEGIN',
+      'SELECT set_config($1, $2, true);',
+      'ROLLBACK',
+    ]);
+    expect(poolDouble.query).not.toHaveBeenCalledWith('COMMIT');
+    expect(poolDouble.release).toHaveBeenCalledOnce();
   });
 });

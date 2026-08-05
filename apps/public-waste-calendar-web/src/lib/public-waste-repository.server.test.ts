@@ -351,6 +351,14 @@ describe('public waste repository', () => {
       })
     );
 
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining(
+          'ORDER BY pickup_date ASC, tour_name ASC, fraction_label ASC, assignment_id ASC'
+        ),
+      })
+    );
+
     const assignmentQuery = execute.mock.calls[3]?.[0];
     expect(assignmentQuery).toEqual(
       expect.objectContaining({

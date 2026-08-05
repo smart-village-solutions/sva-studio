@@ -332,11 +332,23 @@ type WasteProvisioningServerOptions = {
 };
 
 const withWasteProvisioningRepository = <T>(
+  instanceId: string,
   options: WasteProvisioningServerOptions,
   work: (repository: ReturnType<typeof createInstanceRegistryRepository>) => Promise<T>
 ): Promise<T> =>
   withClient(
-    (client) => work(createInstanceRegistryRepository(createExecutor(client))),
+    async (client) => {
+      await client.query('BEGIN');
+      try {
+        await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+        const result = await work(createInstanceRegistryRepository(createExecutor(client)));
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    },
     { getDatabaseUrl: options.getDatabaseUrl }
   );
 
@@ -344,7 +356,7 @@ export const loadWasteTenantProvisioningRecord = (
   instanceId: string,
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(instanceId, options, (repository) =>
     repository.getWasteProvisioning(instanceId)
   );
 
@@ -352,7 +364,7 @@ export const requestWasteTenantProvisioning = (
   instanceId: string,
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(instanceId, options, (repository) =>
     repository.requestWasteProvisioning(instanceId)
   );
 
@@ -360,7 +372,7 @@ export const claimWasteTenantProvisioning = (
   input: { readonly instanceId: string; readonly jobId: string; readonly desiredGeneration: number },
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(input.instanceId, options, (repository) =>
     repository.claimWasteProvisioning(input)
   );
 
@@ -374,7 +386,7 @@ export const completeWasteTenantProvisioning = (
   },
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(input.instanceId, options, (repository) =>
     repository.completeWasteProvisioning(input)
   );
 
@@ -388,7 +400,7 @@ export const failWasteTenantProvisioning = (
   },
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(input.instanceId, options, (repository) =>
     repository.failWasteProvisioning(input)
   );
 
@@ -401,6 +413,6 @@ export const failWasteTenantProvisioningRequest = (
   },
   options: WasteProvisioningServerOptions = {}
 ): Promise<WasteTenantProvisioningRecord | null> =>
-  withWasteProvisioningRepository(options, (repository) =>
+  withWasteProvisioningRepository(input.instanceId, options, (repository) =>
     repository.failWasteProvisioningRequest(input)
   );

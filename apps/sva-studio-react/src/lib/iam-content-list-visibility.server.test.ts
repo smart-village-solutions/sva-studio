@@ -26,6 +26,32 @@ const findRule = (
 };
 
 describe('iam content list visibility', () => {
+  it.each([
+    ['news.article', 'news.read', 'news'],
+    ['events.event-record', 'events.read', 'events'],
+    ['poi.point-of-interest', 'poi.read', 'poi'],
+    ['generic-items.generic-item', 'generic-items.read', 'generic-items'],
+    ['faq.faq', 'faq.read', 'faq'],
+    ['cockpit-cards.cockpit-card', 'cockpit-cards.read', 'cockpit-cards'],
+    ['projects.project', 'projects.read', 'projects'],
+    ['surveys.survey', 'surveys.read', 'surveys'],
+  ] as const)(
+    'uses the namespace read permission for Mainserver type %s',
+    (contentType, action, resourceType) => {
+      const [rule] = buildProjectionReadVisibilityRules(
+        [contentType],
+        [createPermission({ action, resourceType })]
+      );
+
+      expect(rule).toEqual({
+        contentType,
+        allowGlobal: true,
+        allowOrganizationIds: [],
+        allowOwn: false,
+      });
+    }
+  );
+
   it('derives organization-scoped allow rules for projected rows', () => {
     const rules = buildProjectionReadVisibilityRules(
       ['generic', 'news.article'],

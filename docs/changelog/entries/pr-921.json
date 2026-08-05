@@ -1,0 +1,4 @@
+{
+  "prNumber": 921,
+  "body": "Mainserver-Inhalte zuverlässig in Inhaltslisten sichtbar\n\n- Generische Inhalte, FAQ und Kacheln werden mit ihrer jeweiligen Leseberechtigung nicht mehr aus gemeinsamen Inhaltslisten herausgefiltert.\n- Die Berechtigungsprüfung verwendet nun für alle Mainserver-Inhaltstypen dieselbe zentrale Typdefinition."
+}

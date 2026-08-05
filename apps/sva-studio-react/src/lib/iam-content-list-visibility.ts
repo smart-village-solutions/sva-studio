@@ -1,5 +1,7 @@
 import type { EffectivePermission } from '@sva/iam-core';
 
+import { isMainserverContentType } from './iam-content-list-api.shared.js';
+
 type ProjectionRowReadView = {
   readonly contentType: string;
   readonly organizationId?: string;
@@ -21,11 +23,7 @@ const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
 ]);
 
 const buildReadAction = (contentType: string): string =>
-  contentType === 'news.article' ||
-  contentType === 'events.event-record' ||
-  contentType === 'poi.point-of-interest' ||
-  contentType === 'projects.project' ||
-  contentType === 'surveys.survey'
+  isMainserverContentType(contentType)
     ? `${contentType.split('.')[0] ?? 'content'}.read`
     : 'content.read';
 

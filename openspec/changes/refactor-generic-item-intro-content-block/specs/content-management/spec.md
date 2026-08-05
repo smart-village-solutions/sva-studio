@@ -26,23 +26,28 @@ Das System MUST redaktionelle Einleitungen von GenericItems ausschließlich als 
 - **THEN** bleibt der Fachinhalt im festgelegten `contentBlocks[].body`
 - **AND** erzeugt das System kein `intro`
 
-### Requirement: News-Text gehört ausschließlich zu Content-Blocks
+## MODIFIED Requirements
 
-Das System MUST Einleitung und Inhalt einer News ausschließlich als `contentBlocks[].intro` und `contentBlocks[].body` modellieren. Es MUST `payload.teaser` und `payload.body` weder als News-Vertrag anbieten noch daraus einen Content-Block erzeugen. Der Editor MUST die Einleitung als Blockeinleitung bezeichnen und modellieren.
+### Requirement: News ContentBlocks Are The Leading Content Model
 
-#### Scenario: News besitzt nur historischen Payload-Text
+The News plugin SHALL treat `contentBlocks` as the leading and exclusive News text model. It SHALL model introductions and bodies only as `contentBlocks[].intro` and `contentBlocks[].body`. It SHALL NOT expose `payload.teaser` or `payload.body` as part of the News contract and SHALL NOT derive a virtual content block from legacy payload values. Saves SHALL write `contentBlocks` and SHALL NOT write payload. The editor SHALL label and model the introduction as a content-block introduction.
 
-- **GIVEN** eine News besitzt `payload.teaser` oder `payload.body`
-- **AND** keine Content-Blocks
-- **WHEN** das Studio die News abbildet
-- **THEN** bleibt die Liste der Content-Blocks leer
-- **AND** übernimmt das Studio den Payload-Text nicht
+#### Scenario: Legacy payload-only News is loaded
 
-#### Scenario: News-Einleitung wird gespeichert
+- **GIVEN** an existing Mainserver News item has no `contentBlocks` but contains legacy `payload.teaser` or `payload.body` data
+- **WHEN** the editor loads the item
+- **THEN** the editor keeps the content-block list empty
+- **AND** the editor does not derive an introduction or body from the legacy payload
 
-- **WHEN** ein Redakteur die Einleitung einer News speichert
-- **THEN** sendet das Studio den Wert als `contentBlocks[0].intro`
-- **AND** sendet keinen Teaser im Payload oder als Root-Feld
+#### Scenario: User edits multiple content blocks
+
+- **GIVEN** the user edits multiple content blocks with introductions, bodies, and media URL references
+- **WHEN** the item is saved
+- **THEN** the host sends the complete `contentBlocks` list as the new Mainserver state
+- **AND** individual block IDs are not required because `ContentBlockInput` does not expose IDs
+- **AND** the host does not send payload or a root-level teaser field
+
+## ADDED Requirements
 
 ### Requirement: Featured-Project-Texte teilen einen kontrollierten ersten Content-Block
 

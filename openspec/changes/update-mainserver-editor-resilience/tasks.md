@@ -43,7 +43,7 @@
 - [x] 6.1 `docs/architecture/05-building-block-view.md`, `06-runtime-view.md` und `08-cross-cutting-concepts.md` aktualisieren
 - [x] 6.2 `docs/architecture/logging-architecture.md` und `request-flow-szenarien.md` aktualisieren
 - [x] 6.3 Relevante Plugin-Entwicklungsdokumentation um Feldgruppen-, Logging- und Erhaltungsvertrag ergänzen
-- [ ] 6.4 Passenden deutschen Changelog-Eintrag unter `docs/changelog/entries/` ergänzen
+- [x] 6.4 Passenden deutschen Changelog-Eintrag unter `docs/changelog/entries/` ergänzen
 - [x] 6.5 Nach jedem serverseitigen Änderungsblock den kleinsten relevanten Nx-Type-/Unit-Gate-Pfad und früh `pnpm check:server-runtime` ausführen
 - [x] 6.6 Abschließend relevante Nx-Gates, `pnpm check:file-placement`, OpenSpec-Strict-Validierung und `git diff --check` ausführen
-- [ ] 6.7 Vor PR-Erstellung bevorzugt `pnpm test:pr` ausführen oder ausgelassene breite Gates transparent dokumentieren
+- [x] 6.7 Vor PR-Erstellung bevorzugt `pnpm test:pr` ausführen oder ausgelassene breite Gates transparent dokumentieren

@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { listHostMediaAssets, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createEvent, getEvent, listEvents, updateEvent } from '../src/events.api.js';
+import { createEvent, getEventDetail, listEvents, updateEvent } from '../src/events.api.js';
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '../src/events.pages.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -55,6 +55,18 @@ vi.mock('../src/events.api.js', () => ({
     dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
     addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
     urls: [{ url: 'https://example.com/events' }],
+  })),
+  getEventDetail: vi.fn(async () => ({
+    data: {
+      id: 'event-1',
+      title: 'Bestehendes Event',
+      description: 'Beschreibung',
+      categoryName: 'Kultur',
+      dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+      addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
+      urls: [{ url: 'https://example.com/events' }],
+    },
+    deviations: [],
   })),
   createEvent: vi.fn(async () => ({ id: 'event-created' })),
   updateEvent: vi.fn(async () => ({ id: 'event-1' })),
@@ -321,25 +333,28 @@ describe('EventsListPage', () => {
   });
 
   it('loads existing inline media contents on edit and keeps the update flow stable', async () => {
-    vi.mocked(getEvent).mockResolvedValueOnce({
-      id: 'event-1',
-      title: 'Bestehendes Event',
-      description: 'Beschreibung',
-      categoryName: 'Kultur',
-      mediaContents: [
-        {
-          sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header Asset' },
-          captionText: 'Header',
-        },
-      ],
-      dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
-      addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
-      urls: [{ url: 'https://example.com/events' }],
+    vi.mocked(getEventDetail).mockResolvedValueOnce({
+      data: {
+        id: 'event-1',
+        title: 'Bestehendes Event',
+        description: 'Beschreibung',
+        categoryName: 'Kultur',
+        mediaContents: [
+          {
+            sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header Asset' },
+            captionText: 'Header',
+          },
+        ],
+        dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+        addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
+        urls: [{ url: 'https://example.com/events' }],
+      },
+      deviations: [],
     } as never);
     render(<EventsEditPage />);
 
     await waitFor(() => {
-      expect(getEvent).toHaveBeenCalledWith('event-1');
+      expect(getEventDetail).toHaveBeenCalledWith('event-1');
       expect(screen.getByDisplayValue('Bestehendes Event')).toBeTruthy();
     });
 

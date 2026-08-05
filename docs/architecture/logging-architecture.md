@@ -287,6 +287,10 @@ In `dev/monitoring/promtail/promtail-config.yml`:
 
 ## Bekannte Trade-offs
 
+## Mainserver-Vertragsabweichungen
+
+Mainserver-Detailrouten protokollieren erkannte Abweichungen über den Server-Runtime-Logger mit `component`, `operation`, `phase`, `deviation_code`, normalisiertem `field_path`, `handling` sowie vorhandener Request-/Trace-Korrelation. Pro Request und normalisiertem Befund wird nur ein Eintrag emittiert. Rohwerte, Beschreibungen, Payloads, Kontakte, Listenindizes und externe Fehlertexte sind nicht Bestandteil dieser Logs.
+
 1. Doppelte Pipeline (OTEL + Promtail) kann ohne saubere Trennung Duplikate erzeugen.
 2. Context-Middleware nutzt in einem Sonderfall `console.warn` (zirkulaere Abhaengigkeit zum Logger), bewusst begrenzt auf Development-Warnpfad.
 3. In Development kann die Anwendung bewusst ohne aktiven OTEL-Transport laufen; Console-Logs bleiben dann der primäre Diagnosekanal.

@@ -17,8 +17,12 @@ import {
   type SvaMainserverEventListQuery,
 } from '../../generated/events-poi.js';
 
-import { mapEventItem, mapOptionalEventItem } from './event-mappers.js';
-import { toSvaMainserverError, type GraphqlExecutor, type SvaMainserverListInput } from './shared.js';
+import { mapEventItem, mapEventItemDetail, mapOptionalEventItem } from './event-mappers.js';
+import {
+  toSvaMainserverError,
+  type GraphqlExecutor,
+  type SvaMainserverListInput,
+} from './shared.js';
 import { listVisibleRecordsWithConfig } from './visible-list.js';
 
 const buildEventMutationVariables = (input: {
@@ -45,7 +49,9 @@ const buildEventMutationVariables = (input: {
   ...(input.event.mediaContents ? { mediaContents: input.event.mediaContents } : {}),
   ...(input.event.organizer ? { organizer: input.event.organizer } : {}),
   ...(input.event.priceInformations ? { priceInformations: input.event.priceInformations } : {}),
-  ...(input.event.accessibilityInformation ? { accessibilityInformation: input.event.accessibilityInformation } : {}),
+  ...(input.event.accessibilityInformation
+    ? { accessibilityInformation: input.event.accessibilityInformation }
+    : {}),
   ...(input.event.tags ? { tags: input.event.tags } : {}),
   ...(input.event.recurring ? { recurring: input.event.recurring } : {}),
   ...(input.event.recurringWeekdays ? { recurringWeekdays: input.event.recurringWeekdays } : {}),
@@ -59,19 +65,18 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
     input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverListResult<SvaMainserverEventItem>> =>
-    listVisibleRecordsWithConfig<SvaMainserverEventListQuery, SvaMainserverEventFragment, SvaMainserverEventItem>(
-      input,
-      config,
-      executeGraphqlWithConfig,
-      {
-        document: svaMainserverEventListDocument,
-        operationName: 'SvaMainserverEventList',
-        order: 'updatedAt_DESC',
-        readItems: (response) => response.eventRecords ?? [],
-        isVisible: (item) => input.includeInvisible === true || item.visible !== false,
-        mapItem: mapEventItem,
-      }
-    ),
+    listVisibleRecordsWithConfig<
+      SvaMainserverEventListQuery,
+      SvaMainserverEventFragment,
+      SvaMainserverEventItem
+    >(input, config, executeGraphqlWithConfig, {
+      document: svaMainserverEventListDocument,
+      operationName: 'SvaMainserverEventList',
+      order: 'updatedAt_DESC',
+      readItems: (response) => response.eventRecords ?? [],
+      isVisible: (item) => input.includeInvisible === true || item.visible !== false,
+      mapItem: mapEventItem,
+    }),
 
   getEventWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly eventId: string },
@@ -88,6 +93,25 @@ export const createEventOperations = (executeGraphqlWithConfig: GraphqlExecutor)
     );
 
     return mapOptionalEventItem(response.eventRecord);
+  },
+
+  getEventDetailWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly eventId: string },
+    config: SvaMainserverInstanceConfig
+  ) => {
+    const response = await executeGraphqlWithConfig<SvaMainserverEventDetailQuery>(
+      {
+        ...input,
+        document: svaMainserverEventDetailDocument,
+        operationName: 'SvaMainserverEventDetail',
+        variables: { id: input.eventId },
+      },
+      config
+    );
+    if (!response.eventRecord) {
+      return { data: mapOptionalEventItem(response.eventRecord), deviations: [] };
+    }
+    return mapEventItemDetail(response.eventRecord);
   },
 
   writeEventWithConfig: async (

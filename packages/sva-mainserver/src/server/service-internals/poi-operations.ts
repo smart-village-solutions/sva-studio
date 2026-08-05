@@ -17,8 +17,12 @@ import {
   type SvaMainserverPoiListQuery,
 } from '../../generated/events-poi.js';
 
-import { mapOptionalPoiItem, mapPoiItem } from './poi-mappers.js';
-import { toSvaMainserverError, type GraphqlExecutor, type SvaMainserverListInput } from './shared.js';
+import { mapOptionalPoiItem, mapPoiItem, mapPoiItemDetail } from './poi-mappers.js';
+import {
+  toSvaMainserverError,
+  type GraphqlExecutor,
+  type SvaMainserverListInput,
+} from './shared.js';
 import { listVisibleRecordsWithConfig } from './visible-list.js';
 
 const includeTruthyField = <Key extends string, Value>(key: Key, value: Value) =>
@@ -61,19 +65,18 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
     input: SvaMainserverListInput,
     config: SvaMainserverInstanceConfig
   ): Promise<SvaMainserverListResult<SvaMainserverPoiItem>> =>
-    listVisibleRecordsWithConfig<SvaMainserverPoiListQuery, SvaMainserverPoiFragment, SvaMainserverPoiItem>(
-      input,
-      config,
-      executeGraphqlWithConfig,
-      {
-        document: svaMainserverPoiListDocument,
-        operationName: 'SvaMainserverPoiList',
-        order: 'updatedAt_DESC',
-        readItems: (response) => response.pointsOfInterest ?? [],
-        isVisible: (item) => input.includeInvisible === true || item.visible !== false,
-        mapItem: mapPoiItem,
-      }
-    ),
+    listVisibleRecordsWithConfig<
+      SvaMainserverPoiListQuery,
+      SvaMainserverPoiFragment,
+      SvaMainserverPoiItem
+    >(input, config, executeGraphqlWithConfig, {
+      document: svaMainserverPoiListDocument,
+      operationName: 'SvaMainserverPoiList',
+      order: 'updatedAt_DESC',
+      readItems: (response) => response.pointsOfInterest ?? [],
+      isVisible: (item) => input.includeInvisible === true || item.visible !== false,
+      mapItem: mapPoiItem,
+    }),
 
   getPoiWithConfig: async (
     input: SvaMainserverConnectionInput & { readonly poiId: string },
@@ -90,6 +93,25 @@ export const createPoiOperations = (executeGraphqlWithConfig: GraphqlExecutor) =
     );
 
     return mapOptionalPoiItem(response.pointOfInterest);
+  },
+
+  getPoiDetailWithConfig: async (
+    input: SvaMainserverConnectionInput & { readonly poiId: string },
+    config: SvaMainserverInstanceConfig
+  ) => {
+    const response = await executeGraphqlWithConfig<SvaMainserverPoiDetailQuery>(
+      {
+        ...input,
+        document: svaMainserverPoiDetailDocument,
+        operationName: 'SvaMainserverPoiDetail',
+        variables: { id: input.poiId },
+      },
+      config
+    );
+    if (!response.pointOfInterest) {
+      return { data: mapOptionalPoiItem(response.pointOfInterest), deviations: [] };
+    }
+    return mapPoiItemDetail(response.pointOfInterest);
   },
 
   writePoiWithConfig: async (

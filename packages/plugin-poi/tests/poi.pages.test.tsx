@@ -9,7 +9,7 @@ import {
   updateHostMediaAsset,
 } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPoi, getPoi, listPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
+import { createPoi, getPoiDetail, listPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
 import { PoiCreatePage, PoiEditPage, PoiListPage } from '../src/poi.pages.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -58,6 +58,24 @@ vi.mock('../src/poi.api.js', () => ({
     ],
     payload: { source: 'legacy' },
   })),
+  getPoiDetail: vi.fn(async () => ({
+    data: {
+      id: 'poi-1',
+      name: 'Stadtbibliothek',
+      description: 'Öffentliche Bibliothek',
+      mobileDescription: 'Bücher und mehr',
+      active: true,
+      categoryName: 'Bildung',
+      addresses: [{ street: 'Markt 2', city: 'Musterhausen' }],
+      webUrls: [{ url: 'https://example.com/poi' }],
+      openingHours: [{ weekday: 'Montag', timeFrom: '09:00' }],
+      mediaContents: [
+        { captionText: 'Bibliothek', sourceUrl: { url: 'https://example.com/poi/library.jpg' } },
+      ],
+      payload: { source: 'legacy' },
+    },
+    deviations: [],
+  })),
   listPoiCategories: vi.fn(async () => []),
   createPoi: vi.fn(async () => ({ id: 'poi-created' })),
   updatePoi: vi.fn(async () => ({ id: 'poi-1' })),
@@ -72,14 +90,17 @@ vi.mock('@sva/plugin-sdk', async () => {
     listHostMediaAssets: vi.fn(async () => []),
     listHostMediaReferencesByTarget: vi.fn(async () => []),
     replaceHostMediaReferences: vi.fn(async () => []),
-    saveContentWithHostMediaReferences: vi.fn(async (input: { saveContent: () => Promise<unknown> }) => ({
-      status: 'complete',
-      saved: await input.saveContent(),
-    })),
+    saveContentWithHostMediaReferences: vi.fn(
+      async (input: { saveContent: () => Promise<unknown> }) => ({
+        status: 'complete',
+        saved: await input.saveContent(),
+      })
+    ),
     getHostMediaDelivery: vi.fn(async ({ assetId }: { assetId: string }) => ({
-      deliveryUrl: assetId === 'asset-teaser'
-        ? 'https://cdn.example.test/teaser-asset.jpg'
-        : `https://cdn.example.test/${assetId}.jpg`,
+      deliveryUrl:
+        assetId === 'asset-teaser'
+          ? 'https://cdn.example.test/teaser-asset.jpg'
+          : `https://cdn.example.test/${assetId}.jpg`,
       expiresAt: '2099-01-01T00:00:00.000Z',
       isPublicUrl: true,
     })),
@@ -399,7 +420,7 @@ describe('PoiListPage', () => {
     render(<PoiEditPage />);
 
     await waitFor(() => {
-      expect(getPoi).toHaveBeenCalledWith('poi-1');
+      expect(getPoiDetail).toHaveBeenCalledWith('poi-1');
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 

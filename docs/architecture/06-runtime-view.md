@@ -927,6 +927,14 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 
 Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/v1/capabilities` auf. Erst eine kompatible Protokollversion, laufende Agent-Revision, vollständige Ergebnisfelder und die benötigten Datenbankziele erlauben den Auftrag. Nach dem App-Deploy wird zuerst der terminale Swarm-Service- und Task-Zustand bewertet; erst danach beginnt das externe HTTP-Warmup.
 
+## Resilienter Mainserver-Detail- und Updateablauf
+
+1. Die autorisierte Fachroute lädt den Mainserver-Datensatz und prüft die stabile ID als harte Grenze.
+2. Optionale Skalare und Listeneinträge werden unabhängig validiert; gültige Werte bleiben erhalten und Abweichungen werden als normalisierte Feldpfade gesammelt.
+3. Optionale Anreicherungen wie Medienreferenzen starten unabhängig. Ihr Ausfall lässt den Hauptdatensatz editierbar und erzeugt eine eigene Wiederholungsaktion.
+4. Vor einem POI- oder Event-Update liest der Server den aktuellen Datensatz erneut und ergänzt nur deklarierte, im Request ausgelassene und fehlerfrei gelesene Passthrough-Felder. Explizite Leerwerte bleiben explizite Änderungen; bewusst korrigierte degradierte Felder benötigen eine Bestätigung im Editor.
+5. Die Mutation sendet ausschließlich Felder des typisierten GraphQL-Inputs; unbekannte Rohfelder werden nicht durchgereicht.
+
 ## Kontrollierter Datenbank-Vollrestore
 
 1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.

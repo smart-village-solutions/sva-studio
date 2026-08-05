@@ -17,10 +17,7 @@ export type MediaPrimitiveAuthorizationResource = Readonly<{
 }>;
 
 type MediaPrimitiveAuthorizationErrorCode =
-  | 'missing_instance'
-  | 'invalid_action'
-  | 'database_unavailable'
-  | 'forbidden';
+  'missing_instance' | 'invalid_action' | 'database_unavailable' | 'forbidden';
 
 export type MediaPrimitiveAuthorizationResult =
   | Readonly<{
@@ -38,7 +35,7 @@ export type MediaPrimitiveAuthorizationResult =
       message: string;
     }>;
 
-const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
+const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}(?:\.[A-Za-z][A-Za-z0-9-]*)+$/;
 
 const normalizeAuthorizationAction = (action: string): string | null => {
   const normalized = action.trim();

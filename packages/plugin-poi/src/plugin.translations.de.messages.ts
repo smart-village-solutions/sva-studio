@@ -2,6 +2,13 @@ export const poiMessagesDe = {
   loading: 'Orte werden geladen.',
   loadError: 'Orte konnten nicht geladen werden.',
   missingContent: 'Der Ort konnte nicht geladen werden.',
+  mediaReferenceLoadError:
+    'Die Medienreferenzen konnten nicht geladen werden. Der Ort bleibt bearbeitbar.',
+  degradedDataWarning:
+    'Einige Mainserver-Felder konnten nicht sicher gelesen werden. Unveränderte Werte werden nicht überschrieben; Korrekturen müssen bestätigt werden.',
+  degradedField: 'Betroffener Bereich: {{field}}',
+  degradedCorrectionConfirm:
+    'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
   saveError: 'Der Ort konnte nicht gespeichert werden.',
   deleteError: 'Der Ort konnte nicht gelöscht werden.',
   createSuccess: 'Der Ort wurde erstellt.',
@@ -67,10 +74,12 @@ export const poiMessagesDe = {
   mediaMoved: 'Bild an Position {{position}} von {{total}} verschoben.',
   mediaRemoved: 'Bild entfernt.',
   mediaRefreshTitle: 'Metadaten aus Mediathek aktualisieren',
-  mediaRefreshDescription: 'Wählen Sie die Felder aus, die aus dem globalen Medienobjekt übernommen werden sollen.',
+  mediaRefreshDescription:
+    'Wählen Sie die Felder aus, die aus dem globalen Medienobjekt übernommen werden sollen.',
   mediaAssetValue: 'Mediathek',
   mediaContentValue: 'Inhalt',
-  mediaReferencePartialFailure: 'Der Ort wurde gespeichert, aber die Medienreferenzen konnten nicht synchronisiert werden.',
+  mediaReferencePartialFailure:
+    'Der Ort wurde gespeichert, aber die Medienreferenzen konnten nicht synchronisiert werden.',
   mediaReferenceRetry: 'Referenzsynchronisation erneut versuchen',
   mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden synchronisiert.',
   categoryOptionsLoading: 'Kategorien werden geladen.',

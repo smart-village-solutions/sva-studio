@@ -44,6 +44,21 @@ export type SvaMainserverConnectionInput = {
   readonly activeOrganizationId?: string;
 };
 
+export type MainserverDataDeviation = Readonly<{
+  fieldPath: string;
+  fieldGroup: string;
+  code:
+    'unexpected_type' | 'unsupported_value' | 'optional_dependency_failed' | 'preservation_limited';
+  phase: 'read' | 'enrichment' | 'write';
+  handling: 'defaulted' | 'omitted' | 'preserved_readonly' | 'temporarily_unavailable' | 'blocked';
+  retryable: boolean;
+}>;
+
+export type MainserverDetailResult<TItem> = Readonly<{
+  data: TItem;
+  deviations: readonly MainserverDataDeviation[];
+}>;
+
 export type SvaMainserverStaticContentInput = {
   readonly name: string;
   readonly content: string;
@@ -98,8 +113,9 @@ export type SvaMainserverProjectionListItem = Readonly<{
   dataProvider?: Readonly<{ id?: string; name?: string }>;
 }>;
 
-export type SvaMainserverProjectionListResult = SvaMainserverListResult<SvaMainserverProjectionListItem> &
-  Readonly<{ skippedInvalidCount: number }>;
+export type SvaMainserverProjectionListResult =
+  SvaMainserverListResult<SvaMainserverProjectionListItem> &
+    Readonly<{ skippedInvalidCount: number }>;
 
 export type SvaMainserverNewsPayload = {
   readonly teaser?: string;
@@ -354,7 +370,10 @@ export type SvaMainserverAccessibilityInformationInput = {
   readonly urls?: readonly SvaMainserverWebUrlInput[];
 };
 
-export type SvaMainserverAccessibilityInformation = Omit<SvaMainserverAccessibilityInformationInput, 'urls'> & {
+export type SvaMainserverAccessibilityInformation = Omit<
+  SvaMainserverAccessibilityInformationInput,
+  'urls'
+> & {
   readonly id?: string;
   readonly urls: readonly SvaMainserverWebUrl[];
 };
@@ -631,11 +650,7 @@ export type SvaMainserverSurveyMutationErrorCode =
   | 'INTERNAL_ERROR';
 
 export type SvaMainserverSurveySubmissionErrorCode =
-  | 'VALIDATION_ERROR'
-  | 'SURVEY_NOT_FOUND'
-  | 'SURVEY_NOT_ACTIVE'
-  | 'FORBIDDEN'
-  | 'INTERNAL_ERROR';
+  'VALIDATION_ERROR' | 'SURVEY_NOT_FOUND' | 'SURVEY_NOT_ACTIVE' | 'FORBIDDEN' | 'INTERNAL_ERROR';
 
 export type SvaMainserverSurveyFilterInput = {
   readonly ids?: readonly string[];

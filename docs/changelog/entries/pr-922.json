@@ -1,0 +1,4 @@
+{
+  "prNumber": 922,
+  "body": "Mainserver-Editoren bleiben bei einzelnen Datenabweichungen nutzbar\n\n- POI- und Event-Inhalte können weiter geöffnet und in nicht betroffenen Bereichen bearbeitet werden, wenn optionale Felder oder Medienreferenzen fehlschlagen.\n- Hinweise zeigen betroffene Datenbereiche an, ohne Rohdaten oder persönliche Inhalte in Diagnosemetadaten zu übernehmen.\n- Bereits gelesene Zusatzdaten werden beim Speichern geschützt, soweit der Mainserver-Vertrag sie sicher erhalten kann."
+}

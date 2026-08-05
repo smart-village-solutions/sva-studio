@@ -2,6 +2,7 @@ export {
   createEvent,
   deleteEvent,
   getEvent,
+  getEventDetail,
   listEvents,
   listPoiForEventSelection,
   updateEvent,

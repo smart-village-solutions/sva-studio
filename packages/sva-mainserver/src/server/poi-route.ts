@@ -6,9 +6,7 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import type {
-  SvaMainserverPoiInput,
-} from '../types.js';
+import type { SvaMainserverPoiInput } from '../types.js';
 import {
   errorJson,
   isResponse,
@@ -38,7 +36,7 @@ import { parseMainserverListQuery } from './list-pagination.js';
 import {
   createSvaMainserverPoi,
   deleteSvaMainserverPoi,
-  getSvaMainserverPoi,
+  getSvaMainserverPoiDetail,
   listSvaMainserverPoi,
   updateSvaMainserverPoi,
 } from './service.js';
@@ -58,14 +56,17 @@ type ContentActor = {
 
 type RouteMatch = SharedRouteMatch<ContentKind>;
 
-const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, POI_COLLECTION_PATH, 'poi');
+const matchRoute = (request: Request): RouteMatch | null =>
+  matchRequestRoute(request, POI_COLLECTION_PATH, 'poi');
 
 const buildPoiInput = (input: {
   body: Record<string, unknown>;
   name: string;
   categories: SvaMainserverPoiInput['categories'] | undefined;
   addresses: SvaMainserverPoiInput['addresses'] | undefined;
-  contact: ReturnType<typeof parseContact> extends Response | infer T | undefined ? T | undefined : never;
+  contact: ReturnType<typeof parseContact> extends Response | infer T | undefined
+    ? T | undefined
+    : never;
   priceInformations: SvaMainserverPoiInput['priceInformations'] | undefined;
   openingHours: SvaMainserverPoiInput['openingHours'] | undefined;
   operatingCompany: SvaMainserverPoiInput['operatingCompany'] | undefined;
@@ -77,14 +78,22 @@ const buildPoiInput = (input: {
   tags: readonly string[] | undefined;
 }): SvaMainserverPoiInput => ({
   name: input.name,
-  ...(readString(input.body.description) ? { description: readString(input.body.description) } : {}),
+  ...(readString(input.body.description)
+    ? { description: readString(input.body.description) }
+    : {}),
   ...(typeof input.body.mobileDescription === 'string'
     ? { mobileDescription: input.body.mobileDescription.trim() }
     : {}),
-  ...(typeof input.body.externalId === 'string' ? { externalId: input.body.externalId.trim() } : {}),
+  ...(typeof input.body.externalId === 'string'
+    ? { externalId: input.body.externalId.trim() }
+    : {}),
   ...(typeof input.body.keywords === 'string' ? { keywords: input.body.keywords.trim() } : {}),
-  ...(readBoolean(input.body.active) !== undefined ? { active: readBoolean(input.body.active) } : {}),
-  ...(readString(input.body.categoryName) ? { categoryName: readString(input.body.categoryName) } : {}),
+  ...(readBoolean(input.body.active) !== undefined
+    ? { active: readBoolean(input.body.active) }
+    : {}),
+  ...(readString(input.body.categoryName)
+    ? { categoryName: readString(input.body.categoryName) }
+    : {}),
   ...(input.body.payload !== undefined ? { payload: input.body.payload } : {}),
   ...(input.categories ? { categories: input.categories } : {}),
   ...(input.addresses ? { addresses: input.addresses } : {}),
@@ -96,7 +105,9 @@ const buildPoiInput = (input: {
   ...(input.mediaContents ? { mediaContents: input.mediaContents } : {}),
   ...(input.location ? { location: input.location } : {}),
   ...(input.certificates ? { certificates: input.certificates } : {}),
-  ...(input.accessibilityInformation ? { accessibilityInformation: input.accessibilityInformation } : {}),
+  ...(input.accessibilityInformation
+    ? { accessibilityInformation: input.accessibilityInformation }
+    : {}),
   ...(input.tags ? { tags: input.tags } : {}),
 });
 
@@ -178,7 +189,9 @@ const parsePoiInput = async (request: Request): Promise<SvaMainserverPoiInput | 
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
   const csrfError = validateCsrf(request, requestId);
-  return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
+  return csrfError
+    ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.')
+    : null;
 };
 
 const contentTypeFor = (_contentKind: ContentKind) => POI_CONTENT_TYPE;
@@ -229,7 +242,11 @@ const handleCollectionRead = async (
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
+  const actor = await authorizeOrResponse(
+    ctx,
+    route.contentKind,
+    pluginActionFor(route.contentKind, 'read')
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -244,14 +261,31 @@ const handleItemRead = async (
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    route.contentKind,
+    pluginActionFor(route.contentKind, 'read'),
+    route.itemId
+  );
   if (isResponse(actor)) {
     return actor;
   }
 
-  const data = await getSvaMainserverPoi({ ...actor, poiId: route.itemId });
+  const detail = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+  for (const deviation of detail.deviations) {
+    logger.warn('Mainserver detail response degraded', {
+      operation: 'mainserver_poi_detail',
+      instance_id: actor.instanceId,
+      content_type: POI_CONTENT_TYPE,
+      content_id: route.itemId,
+      phase: deviation.phase,
+      field_path: deviation.fieldPath,
+      deviation_code: deviation.code,
+      handling: deviation.handling,
+    });
+  }
   logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-  return json({ data });
+  return json({ data: detail.data, meta: { deviations: detail.deviations } });
 };
 
 const authorizeMutation = async (
@@ -316,7 +350,14 @@ const handleItemUpdate = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeMutation(request, ctx, route.contentKind, 'update', requestId, route.itemId);
+  const actor = await authorizeMutation(
+    request,
+    ctx,
+    route.contentKind,
+    'update',
+    requestId,
+    route.itemId
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -337,7 +378,14 @@ const handleItemDelete = async (
   requestId: string | undefined,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeMutation(request, ctx, route.contentKind, 'delete', requestId, route.itemId);
+  const actor = await authorizeMutation(
+    request,
+    ctx,
+    route.contentKind,
+    'delete',
+    requestId,
+    route.itemId
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -347,7 +395,11 @@ const handleItemDelete = async (
   return json({ data });
 };
 
-const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
+const dispatchAuthenticated = async (
+  request: Request,
+  route: RouteMatch,
+  ctx: AuthenticatedRequestContext
+) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, contentId?: string) => {
     logger.info('Mainserver content route succeeded', {
@@ -372,7 +424,13 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      return await handleCollectionCreate(request, route, ctx, workspaceContext.requestId, logSuccess);
+      return await handleCollectionCreate(
+        request,
+        route,
+        ctx,
+        workspaceContext.requestId,
+        logSuccess
+      );
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
@@ -383,7 +441,11 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
-    return errorJson(405, 'method_not_allowed', 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.');
+    return errorJson(
+      405,
+      'method_not_allowed',
+      'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
+    );
   } catch (error) {
     logger.warn('Mainserver content route failed', {
       operation: 'mainserver_content_request',
@@ -400,7 +462,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
   }
 };
 
-export const dispatchSvaMainserverPoiRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchSvaMainserverPoiRequest = async (
+  request: Request
+): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) {
     return null;

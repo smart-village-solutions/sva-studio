@@ -12,14 +12,18 @@ export function PoiDetailContentTab({
   onOpenMediaPicker,
   canSelectMedia = false,
   canUploadMedia = false,
+  mediaEditingDisabled = false,
   mediaUsages,
   onChangeMediaUsages = () => undefined,
-  onLoadAssetSnapshot = async () => { throw new Error('asset_refresh_unavailable'); },
+  onLoadAssetSnapshot = async () => {
+    throw new Error('asset_refresh_unavailable');
+  },
   pt,
 }: Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   onLoadAssetSnapshot?: (usage: ContentMediaUsage) => Promise<ContentMediaAssetSnapshot>;
@@ -34,15 +38,17 @@ export function PoiDetailContentTab({
       <PoiDetailLinksTab pt={pt} />
       <PoiDetailOperatorTab pt={pt} />
       <PoiDetailPricesTab pt={pt} />
-      <PoiDetailMediaTab
-        canSelectMedia={canSelectMedia}
-        canUploadMedia={canUploadMedia}
-        mediaUsages={mediaUsages}
-        onChangeMediaUsages={onChangeMediaUsages}
-        onLoadAssetSnapshot={onLoadAssetSnapshot}
-        onOpenMediaPicker={onOpenMediaPicker}
-        pt={pt}
-      />
+      <fieldset disabled={mediaEditingDisabled} aria-busy={mediaEditingDisabled}>
+        <PoiDetailMediaTab
+          canSelectMedia={canSelectMedia}
+          canUploadMedia={canUploadMedia}
+          mediaUsages={mediaUsages}
+          onChangeMediaUsages={onChangeMediaUsages}
+          onLoadAssetSnapshot={onLoadAssetSnapshot}
+          onOpenMediaPicker={onOpenMediaPicker}
+          pt={pt}
+        />
+      </fieldset>
     </div>
   );
 }

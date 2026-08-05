@@ -30,6 +30,7 @@ import {
   webUrlSchema,
 } from './mappers-shared.js';
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
+import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const genericItemSchema = z.object({
   id: z.string().min(1),
@@ -41,7 +42,7 @@ const genericItemSchema = z.object({
   externalId: z.string().nullish(),
   publicationDate: z.string().nullish(),
   publishedAt: z.string().nullish(),
-  genericType: z.string().nullish(),
+  genericType: z.string().min(1),
   payload: z.unknown().nullish(),
   visible: z.boolean().nullish(),
   categories: z.array(categorySchema).nullish(),
@@ -74,13 +75,18 @@ const mapAccessibilityInformations = (
 ): readonly SvaMainserverAccessibilityInformation[] =>
   (values ?? []).map((value) => mapAccessibilityInformation(value)).filter(defined);
 
-const mapGenericItemScalarFields = (value: z.infer<typeof genericItemSchema>, createdAt: string) => ({
+const mapGenericItemScalarFields = (
+  value: z.infer<typeof genericItemSchema>,
+  createdAt: string
+) => ({
   ...(optionalString(value.teaser) ? { teaser: optionalString(value.teaser) } : {}),
   ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
   ...(optionalString(value.author) ? { author: optionalString(value.author) } : {}),
   ...(optionalString(value.keywords) ? { keywords: optionalString(value.keywords) } : {}),
   ...(optionalString(value.externalId) ? { externalId: optionalString(value.externalId) } : {}),
-  ...(optionalString(value.publicationDate) ? { publicationDate: optionalString(value.publicationDate) } : {}),
+  ...(optionalString(value.publicationDate)
+    ? { publicationDate: optionalString(value.publicationDate) }
+    : {}),
   ...(optionalString(value.publishedAt) ? { publishedAt: optionalString(value.publishedAt) } : {}),
   ...(value.payload !== undefined && value.payload !== null ? { payload: value.payload } : {}),
   visible: value.visible !== false,
@@ -102,9 +108,24 @@ const mapGenericItemRelationFields = (value: z.infer<typeof genericItemSchema>) 
   priceInformations: (value.priceInformations ?? []).map(mapPrice),
 });
 
-export const mapGenericItem = (item: SvaMainserverGenericItemFragment | null | undefined): SvaMainserverGenericItem => {
-  const parsed = genericItemSchema.safeParse(item);
-  if (!parsed.success) {
+export const mapGenericItemDetail = (item: SvaMainserverGenericItemFragment | null | undefined) => {
+  const parsed = parseResilientDetail<z.infer<typeof genericItemSchema>>(genericItemSchema, item, {
+    hardFields: ['id', 'genericType'],
+    listFields: {
+      categories: categorySchema,
+      contacts: contactSchema,
+      webUrls: webUrlSchema,
+      addresses: addressSchema,
+      contentBlocks: contentBlockSchema,
+      openingHours: openingHourSchema,
+      mediaContents: mediaContentSchema,
+      locations: locationSchema,
+      dates: dateSchema,
+      accessibilityInformations: accessibilityInformationSchema,
+      priceInformations: priceSchema,
+    },
+  });
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige GenericItem-Antwort des SVA-Mainservers.',
@@ -115,15 +136,22 @@ export const mapGenericItem = (item: SvaMainserverGenericItemFragment | null | u
   const createdAt = parsed.data.createdAt ?? new Date(0).toISOString();
 
   return {
-    id: parsed.data.id,
-    title: parsed.data.title ?? '',
-    contentType: 'generic-items.generic-item',
-    status: 'published',
-    genericType: parsed.data.genericType ?? '',
-    ...mapGenericItemScalarFields(parsed.data, createdAt),
-    ...mapGenericItemRelationFields(parsed.data),
+    data: {
+      id: parsed.data.id,
+      title: parsed.data.title ?? '',
+      contentType: 'generic-items.generic-item' as const,
+      status: 'published' as const,
+      genericType: parsed.data.genericType,
+      ...mapGenericItemScalarFields(parsed.data, createdAt),
+      ...mapGenericItemRelationFields(parsed.data),
+    },
+    deviations: parsed.deviations,
   };
 };
+
+export const mapGenericItem = (
+  item: SvaMainserverGenericItemFragment | null | undefined
+): SvaMainserverGenericItem => mapGenericItemDetail(item).data;
 
 export const mapOptionalGenericItem = (
   item: SvaMainserverGenericItemFragment | null | undefined

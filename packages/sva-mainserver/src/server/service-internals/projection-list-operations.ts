@@ -103,6 +103,33 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
   'surveys.survey': { document: svaMainserverSurveyProjectionListDocument, operationName: 'SvaMainserverSurveyProjectionList', responseField: 'surveys', contentType: 'surveys.survey', titleField: 'title', order: 'updatedAt_DESC', paginated: false },
 };
 
+const specializedGenericTypes = {
+  'faq.faq': 'FAQ',
+  'cockpit-cards.cockpit-card': 'COCKPIT_CARD',
+  'projects.project': 'FeaturedProject',
+} as const;
+
+const matchesProjectionContentType = (
+  item: unknown,
+  contentType: SvaMainserverProjectionContentType
+): boolean => {
+  if (!(contentType in specializedGenericTypes)) return true;
+  if (item === null || typeof item !== 'object') return false;
+  const record = item as Record<string, unknown>;
+  const expectedGenericType = specializedGenericTypes[
+    contentType as keyof typeof specializedGenericTypes
+  ];
+  if (record.genericType !== expectedGenericType) return false;
+  if (contentType !== 'projects.project') return true;
+  const payload = record.payload;
+  return !(
+    payload !== null &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload) &&
+    (payload as Record<string, unknown>).deleted === true
+  );
+};
+
 export const createProjectionListOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listProjectionWithConfig: async (
     contentType: SvaMainserverProjectionContentType,
@@ -129,30 +156,9 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     const upstreamPageItems = definition.paginated
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
-    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) => {
-      if (contentType !== 'faq.faq' && contentType !== 'cockpit-cards.cockpit-card' && contentType !== 'projects.project') {
-        return true;
-      }
-      const genericType =
-        item !== null &&
-        typeof item === 'object' &&
-        typeof (item as Record<string, unknown>).genericType === 'string'
-          ? (item as Record<string, unknown>).genericType
-          : undefined;
-      const payload =
-        item !== null &&
-        typeof item === 'object' &&
-        (item as Record<string, unknown>).payload !== null &&
-        typeof (item as Record<string, unknown>).payload === 'object' &&
-        !Array.isArray((item as Record<string, unknown>).payload)
-          ? ((item as Record<string, unknown>).payload as Record<string, unknown>)
-          : undefined;
-      return contentType === 'faq.faq'
-        ? genericType === 'FAQ'
-        : contentType === 'cockpit-cards.cockpit-card'
-          ? genericType === 'COCKPIT_CARD'
-          : genericType === 'FeaturedProject' && payload?.deleted !== true;
-    });
+    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) =>
+      matchesProjectionContentType(item, contentType)
+    );
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;
     const data = mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null);

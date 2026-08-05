@@ -183,13 +183,20 @@ const loadProjectLocalContext = async (instanceId: string, contentId: string) =>
 
 const projectAuthorizationResource = (
   contentId: string,
-  core: Awaited<ReturnType<typeof loadProjectLocalContext>>['core']
-) => ({
-  contentId,
-  ...(core?.organizationId ? { organizationId: core.organizationId } : {}),
-  ...(core?.ownerUserId ? { ownerUserId: core.ownerUserId } : {}),
-  ...(core?.ownerOrganizationId ? { ownerOrganizationId: core.ownerOrganizationId } : {}),
-});
+  core: Awaited<ReturnType<typeof loadProjectLocalContext>>['core'],
+  fallbackOwner: { readonly activeOrganizationId?: string; readonly actorAccountId: string }
+) => {
+  const organizationId = core?.organizationId ?? fallbackOwner.activeOrganizationId;
+  const ownerUserId = core?.ownerUserId ??
+    (!fallbackOwner.activeOrganizationId ? fallbackOwner.actorAccountId : undefined);
+  const ownerOrganizationId = core?.ownerOrganizationId ?? fallbackOwner.activeOrganizationId;
+  return {
+    contentId,
+    ...(organizationId ? { organizationId } : {}),
+    ...(ownerUserId ? { ownerUserId } : {}),
+    ...(ownerOrganizationId ? { ownerOrganizationId } : {}),
+  };
+};
 
 const loadProjectContext = async (
   instanceId: string,
@@ -324,16 +331,22 @@ const listProjects = async (
 };
 
 const detailProject = async (
+  request: Request,
   ctx: AuthenticatedRequestContext,
   contentId: string
 ): Promise<Response> => {
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
   const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actorInfo = await actorInfoOrResponse(request, ctx);
+  if (isResponse(actorInfo)) return actorInfo;
   const actor = await authorizeOrResponse(
     ctx,
     'projects.read',
-    projectAuthorizationResource(contentId, localContext.core)
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
   );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
@@ -454,7 +467,10 @@ const createProject = async (
       }
     }
     const mapped = mapAndValidate(existing);
-    const data = { ...mapped, id: reference?.contentId ?? mapped.id };
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
     const responseBody = { data };
     await Promise.resolve(completeCreate({
       instanceId: actor.instanceId,
@@ -488,7 +504,10 @@ const createProject = async (
 
   if (existing) {
     const mapped = mapAndValidate(existing);
-    const data = { ...mapped, id: reference?.contentId ?? mapped.id };
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
     const responseBody = { data };
     await Promise.resolve(completeCreate({
       instanceId: actor.instanceId,
@@ -546,7 +565,10 @@ const createProject = async (
       });
     }
     const mapped = mapAndValidate({ ...created, visible: project.status === 'published' });
-    const data = { ...mapped, id: reference?.contentId ?? mapped.id };
+    const data = {
+      ...mapped,
+      id: reference?.sourceEntityId ? reference.contentId : mapped.id,
+    };
     const responseBody = { data };
     await Promise.resolve(completeCreate({
       instanceId: actor.instanceId,
@@ -578,10 +600,15 @@ const updateProject = async (
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
   const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actorInfo = await actorInfoOrResponse(request, ctx);
+  if (isResponse(actorInfo)) return actorInfo;
   const actor = await authorizeOrResponse(
     ctx,
     'projects.update',
-    projectAuthorizationResource(contentId, localContext.core)
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
   );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
@@ -594,8 +621,6 @@ const updateProject = async (
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   const parsedProject = await parseProjectInput(request);
   if (isResponse(parsedProject)) return parsedProject;
-  const actorInfo = await actorInfoOrResponse(request, ctx);
-  if (isResponse(actorInfo)) return actorInfo;
   const project = normalizeProviderAuthorForMutation({
     project: parsedProject,
     item: context.item,
@@ -684,10 +709,15 @@ const deleteProject = async (
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
   const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actorInfo = await actorInfoOrResponse(request, ctx);
+  if (isResponse(actorInfo)) return actorInfo;
   const actor = await authorizeOrResponse(
     ctx,
     'projects.delete',
-    projectAuthorizationResource(contentId, localContext.core)
+    projectAuthorizationResource(contentId, localContext.core, {
+      ...(ctx.activeOrganizationId ? { activeOrganizationId: ctx.activeOrganizationId } : {}),
+      actorAccountId: actorInfo.actorAccountId,
+    })
   );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
@@ -698,8 +728,6 @@ const deleteProject = async (
     localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
-  const actorInfo = await actorInfoOrResponse(request, ctx);
-  if (isResponse(actorInfo)) return actorInfo;
   try {
     return await withProjectMutationLock({
       instanceId,
@@ -783,7 +811,7 @@ const dispatchAuthenticated = async (
 ): Promise<Response> => {
   try {
     if (route.kind === 'collection' && request.method === 'GET') return await listProjects(request, ctx);
-    if (route.kind === 'item' && request.method === 'GET') return await detailProject(ctx, route.itemId);
+    if (route.kind === 'item' && request.method === 'GET') return await detailProject(request, ctx, route.itemId);
     if (route.kind === 'collection' && request.method === 'POST') return await createProject(request, ctx);
     if (route.kind === 'item' && request.method === 'PATCH') return await updateProject(request, ctx, route.itemId);
     if (route.kind === 'item' && request.method === 'DELETE') return await deleteProject(request, ctx, route.itemId);

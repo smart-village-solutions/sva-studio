@@ -74,6 +74,7 @@ export const mapEventItemDetail = (
 ): MainserverDetailResult<SvaMainserverEventItem> => {
   const parsed = parseResilientDetail<z.infer<typeof eventItemSchema>>(eventItemSchema, item, {
     hardFields: ['id'],
+    fieldAliases: { tagList: 'tags' },
     listFields: {
       dates: dateSchema,
       recurringWeekdays: z.number(),

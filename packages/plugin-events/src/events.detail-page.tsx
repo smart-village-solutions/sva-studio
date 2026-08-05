@@ -336,6 +336,35 @@ export function EventsDetailPage({
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
   const mediaAssetsRef = React.useRef<readonly HostMediaAssetListItem[]>([]);
   const mediaPickerLabels = React.useMemo(() => createEventsMediaPickerLabels(pt), [pt]);
+  const deviationFieldLabels: Readonly<Record<string, string>> = {
+    title: pt('fields.title'),
+    description: pt('fields.description'),
+    categories: pt('fields.categories'),
+    category: pt('fields.categoryName'),
+    dates: pt('fields.dateStart'),
+    listDate: pt('fields.dateStart'),
+    sortDate: pt('fields.dateStart'),
+    repeat: pt('fields.repeat'),
+    repeatDuration: pt('fields.repeat'),
+    recurring: pt('fields.repeat'),
+    recurringType: pt('fields.recurringType'),
+    recurringInterval: pt('fields.recurringInterval'),
+    recurringWeekdays: pt('fields.recurringWeekdays'),
+    addresses: pt('fields.street'),
+    location: pt('fields.addressAddition'),
+    contacts: pt('fields.contact'),
+    urls: pt('fields.url'),
+    mediaContents: pt('fields.mediaContents'),
+    organizer: pt('fields.organizerName'),
+    priceInformations: pt('fields.priceAmount'),
+    accessibilityInformation: pt('fields.accessibilityDescription'),
+    externalId: pt('fields.externalId'),
+    keywords: pt('fields.keywords'),
+    tags: pt('fields.tags'),
+    visible: pt('fields.visible'),
+    createdAt: pt('fields.createdAt'),
+    updatedAt: pt('fields.updatedAt'),
+  };
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
@@ -542,17 +571,24 @@ export function EventsDetailPage({
         })
           .then((references) => {
             if (!active) return;
-            setMediaUsages(
-              mainserverContentMediaToUsages(
-                nextValues.content.mediaContents,
-                alignHostMediaReferencesByOrder({
-                  itemCount: nextValues.content.mediaContents.length,
-                  role: 'gallery_item',
-                  references,
-                })
-              )
+            if (!methods.getFieldState('content.mediaContents').isDirty) {
+              setMediaUsages(
+                mainserverContentMediaToUsages(
+                  nextValues.content.mediaContents,
+                  alignHostMediaReferencesByOrder({
+                    itemCount: nextValues.content.mediaContents.length,
+                    role: 'gallery_item',
+                    references,
+                  })
+                )
+              );
+            }
+            setRequiresReferenceSync(
+              (current) =>
+                current ||
+                references.length > 0 ||
+                methods.getFieldState('content.mediaContents').isDirty
             );
-            setRequiresReferenceSync(references.length > 0);
           })
           .catch(() => {
             if (!active) return;
@@ -667,10 +703,52 @@ export function EventsDetailPage({
     }
 
     try {
+      const deviationFormPaths: Readonly<
+        Record<string, Parameters<typeof methods.getFieldState>[0]>
+      > = {
+        title: 'title',
+        categories: 'basis.categories',
+        description: 'content.description',
+        dates: 'content.dates',
+        addresses: 'content.addresses',
+        contacts: 'content.contacts',
+        urls: 'content.urls',
+        mediaContents: 'content.mediaContents',
+        organizer: 'content.organizer',
+        priceInformations: 'content.priceInformations',
+        accessibilityInformation: 'content.accessibilityInformation',
+        externalId: 'settings.externalId',
+        keywords: 'settings.keywords',
+        tags: 'settings.tags',
+        visible: 'settings.visible',
+      };
+      const correctedDegradedFields = deviations
+        .map(({ fieldGroup }) => fieldGroup)
+        .filter((fieldGroup) => {
+          const fieldPath = deviationFormPaths[fieldGroup];
+          return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
+        });
+      if (
+        correctedDegradedFields.length > 0 &&
+        !globalThis.confirm(
+          pt('messages.degradedCorrectionConfirm', {
+            fields: correctedDegradedFields
+              .map((field) => deviationFieldLabels[field] ?? field)
+              .join(', '),
+          })
+        )
+      ) {
+        return;
+      }
       const saveContent = () =>
         mode === 'create'
           ? createEvent(payload)
-          : updateEvent(contentId as string, omitDeviatedMainserverFields(payload, deviations));
+          : updateEvent(
+              contentId as string,
+              omitDeviatedMainserverFields(payload, deviations, {
+                retainedFieldGroups: correctedDegradedFields,
+              })
+            );
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
@@ -796,7 +874,9 @@ export function EventsDetailPage({
           <MainserverDeviationSummary
             deviations={deviations}
             title={pt('messages.degradedDataWarning')}
-            fieldLabel={(field) => pt('messages.degradedField', { field })}
+            fieldLabel={(field) =>
+              pt('messages.degradedField', { field: deviationFieldLabels[field] ?? field })
+            }
           />
           {retryReferenceSync ? (
             <Button

@@ -390,6 +390,31 @@ export function PoiDetailPage({
     () => resolvePoiMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
+  const deviationFieldLabels: Readonly<Record<string, string>> = {
+    name: pt('fields.name'),
+    description: pt('fields.description'),
+    mobileDescription: pt('fields.mobileDescription'),
+    categories: pt('fields.categories'),
+    category: pt('fields.categoryName'),
+    addresses: pt('fields.street'),
+    contact: pt('fields.contact'),
+    openingHours: pt('fields.weekday'),
+    operatingCompany: pt('fields.operatorName'),
+    priceInformations: pt('fields.amount'),
+    webUrls: pt('fields.url'),
+    mediaContents: pt('fields.mediaContentType'),
+    location: pt('fields.locationName'),
+    certificates: pt('fields.certificateName'),
+    accessibilityInformation: pt('fields.accessibilityDescription'),
+    externalId: pt('fields.externalId'),
+    keywords: pt('fields.keywords'),
+    tags: pt('fields.tags'),
+    payload: pt('fields.payload'),
+    active: pt('fields.active'),
+    visible: pt('fields.active'),
+    createdAt: pt('fields.createdAt'),
+    updatedAt: pt('fields.updatedAt'),
+  };
 
   React.useEffect(() => {
     void listPoiCategories()
@@ -436,17 +461,24 @@ export function PoiDetailPage({
         })
           .then((references) => {
             if (!active) return;
-            setMediaUsages(
-              poiMediaContentsToUsages(
-                mediaContents,
-                alignHostMediaReferencesByOrder({
-                  itemCount: mediaContents.length,
-                  role: 'gallery_item',
-                  references,
-                })
-              )
+            if (!methods.getFieldState('content.mediaContents').isDirty) {
+              setMediaUsages(
+                poiMediaContentsToUsages(
+                  mediaContents,
+                  alignHostMediaReferencesByOrder({
+                    itemCount: mediaContents.length,
+                    role: 'gallery_item',
+                    references,
+                  })
+                )
+              );
+            }
+            setRequiresReferenceSync(
+              (current) =>
+                current ||
+                references.length > 0 ||
+                methods.getFieldState('content.mediaContents').isDirty
             );
-            setRequiresReferenceSync(references.length > 0);
           })
           .catch(() => {
             if (!active) return;
@@ -590,10 +622,56 @@ export function PoiDetailPage({
     }
 
     try {
+      const deviationFormPaths: Readonly<
+        Record<string, Parameters<typeof methods.getFieldState>[0]>
+      > = {
+        name: 'name',
+        categories: 'basis.categories',
+        active: 'basis.active',
+        description: 'content.description',
+        mobileDescription: 'content.mobileDescription',
+        addresses: 'content.addresses',
+        location: 'content.location',
+        contact: 'content.contact',
+        openingHours: 'content.openingHours',
+        webUrls: 'content.webUrls',
+        operatingCompany: 'content.operator',
+        priceInformations: 'content.prices',
+        mediaContents: 'content.mediaContents',
+        certificates: 'content.certificates',
+        accessibilityInformation: 'content.accessibilityInformation',
+        tags: 'content.tagsText',
+        payload: 'content.payloadText',
+        externalId: 'settings.externalId',
+        keywords: 'settings.keywords',
+      };
+      const correctedDegradedFields = deviations
+        .map(({ fieldGroup }) => fieldGroup)
+        .filter((fieldGroup) => {
+          const fieldPath = deviationFormPaths[fieldGroup];
+          return fieldPath ? methods.getFieldState(fieldPath).isDirty : false;
+        });
+      if (
+        correctedDegradedFields.length > 0 &&
+        !globalThis.confirm(
+          pt('messages.degradedCorrectionConfirm', {
+            fields: correctedDegradedFields
+              .map((field) => deviationFieldLabels[field] ?? field)
+              .join(', '),
+          })
+        )
+      ) {
+        return;
+      }
       const saveContent = () =>
         mode === 'create'
           ? createPoi(mutation)
-          : updatePoi(contentId as string, omitDeviatedMainserverFields(mutation, deviations));
+          : updatePoi(
+              contentId as string,
+              omitDeviatedMainserverFields(mutation, deviations, {
+                retainedFieldGroups: correctedDegradedFields,
+              })
+            );
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
@@ -666,7 +744,12 @@ export function PoiDetailPage({
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
         mediaUsages={mediaUsages}
-        onChangeMediaUsages={setMediaUsages}
+        onChangeMediaUsages={(usages) => {
+          setMediaUsages(usages);
+          setRequiresReferenceSync(
+            (current) => current || usages.some((usage) => Boolean(usage.assetId))
+          );
+        }}
         onLoadAssetSnapshot={async (usage): Promise<ContentMediaAssetSnapshot> => {
           if (!usage.assetId) throw new Error('missing_asset_id');
           const [asset, delivery] = await Promise.all([
@@ -772,7 +855,9 @@ export function PoiDetailPage({
           <MainserverDeviationSummary
             deviations={deviations}
             title={pt('messages.degradedDataWarning')}
-            fieldLabel={(field) => pt('messages.degradedField', { field })}
+            fieldLabel={(field) =>
+              pt('messages.degradedField', { field: deviationFieldLabels[field] ?? field })
+            }
           />
           {retryReferenceSync ? (
             <Button

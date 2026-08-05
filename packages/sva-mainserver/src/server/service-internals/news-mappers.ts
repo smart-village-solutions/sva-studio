@@ -181,8 +181,14 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
     });
   }
 
-  const publishedAt =
-    parsed.data.publishedAt ?? parsed.data.publicationDate ?? new Date(0).toISOString();
+  const publishedAt = parsed.data.publishedAt ?? parsed.data.publicationDate;
+  if (!publishedAt) {
+    throw toSvaMainserverError({
+      code: 'invalid_response',
+      message: 'News-Antwort ohne Veröffentlichungsdatum des SVA-Mainservers.',
+      statusCode: 502,
+    });
+  }
 
   const payload = parseNewsPayload(parsed.data.payload);
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);

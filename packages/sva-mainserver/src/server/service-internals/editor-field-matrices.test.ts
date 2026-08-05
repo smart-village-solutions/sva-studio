@@ -100,4 +100,31 @@ describe('Mainserver editor field matrices', () => {
       tags: ['bestand'],
     });
   });
+
+  it('does not re-inject degraded passthrough fields from a sanitized event read', () => {
+    const merged = mergeEventUpdateWithCurrent(
+      {
+        id: 'event-1',
+        title: 'Alt',
+        contentType: 'events.event-record',
+        status: 'published',
+        tags: ['nur-gueltiger-rest'],
+        dates: [],
+        recurringWeekdays: [],
+        categories: [],
+        addresses: [],
+        contacts: [],
+        urls: [],
+        mediaContents: [],
+        priceInformations: [],
+        visible: true,
+        createdAt: '2026-01-01',
+        updatedAt: '2026-01-02',
+      },
+      { title: 'Neu' },
+      [{ fieldGroup: 'tags' }]
+    );
+
+    expect(merged.tags).toBeUndefined();
+  });
 });

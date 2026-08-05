@@ -25,7 +25,7 @@ describe('resilient Mainserver detail mappers', () => {
       expect.arrayContaining([
         expect.objectContaining({ fieldPath: 'title', fieldGroup: 'title', handling: 'omitted' }),
         expect.objectContaining({ fieldPath: 'dates[]', fieldGroup: 'dates' }),
-        expect.objectContaining({ fieldPath: 'tagList[]', fieldGroup: 'tagList' }),
+        expect.objectContaining({ fieldPath: 'tags[]', fieldGroup: 'tags' }),
       ])
     );
   });

@@ -5,6 +5,7 @@ import type { MainserverDataDeviation, MainserverDetailResult } from '../../type
 type ResilientObjectOptions = Readonly<{
   hardFields: readonly string[];
   listFields?: Readonly<Record<string, z.ZodType>>;
+  fieldAliases?: Readonly<Record<string, string>>;
 }>;
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
@@ -33,6 +34,7 @@ export const parseResilientDetail = <T>(
   const data: Record<string, unknown> = {};
 
   for (const [fieldName, fieldSchema] of Object.entries(schema.shape)) {
+    const canonicalFieldName = options.fieldAliases?.[fieldName] ?? fieldName;
     const fieldValue = value[fieldName];
     const listItemSchema = options.listFields?.[fieldName];
     if (listItemSchema && Array.isArray(fieldValue)) {
@@ -48,7 +50,7 @@ export const parseResilientDetail = <T>(
       }
       data[fieldName] = validItems;
       if (invalidItemFound) {
-        deviations.push(deviationFor(`${fieldName}[]`));
+        deviations.push(deviationFor(`${canonicalFieldName}[]`));
       }
       continue;
     }
@@ -62,7 +64,7 @@ export const parseResilientDetail = <T>(
       return null;
     }
     data[fieldName] = undefined;
-    deviations.push(deviationFor(fieldName));
+    deviations.push(deviationFor(canonicalFieldName));
   }
 
   return { data: data as T, deviations };

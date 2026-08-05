@@ -21,6 +21,16 @@ describe('mainserver-client', () => {
     ).toEqual({ title: 'Neu', payload: { preserved: true } });
   });
 
+  it('retains an explicitly corrected degraded field group', () => {
+    expect(
+      omitDeviatedMainserverFields(
+        { title: 'Neu', dates: [{ dateStart: '2026-08-05' }] },
+        [{ fieldGroup: 'dates' }],
+        { retainedFieldGroups: ['dates'] }
+      )
+    ).toEqual({ title: 'Neu', dates: [{ dateStart: '2026-08-05' }] });
+  });
+
   it('builds canonical list urls and json request headers', () => {
     expect(buildMainserverListUrl('/api/v1/news', { page: 2, pageSize: 50 })).toBe(
       '/api/v1/news?page=2&pageSize=50'

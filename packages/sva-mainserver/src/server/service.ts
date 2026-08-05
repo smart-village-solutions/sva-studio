@@ -424,11 +424,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const current = await eventOperations.getEventWithConfig(input, config);
+    const current = await eventOperations.getEventDetailWithConfig(input, config);
     return eventOperations.writeEventWithConfig(
       {
         ...input,
-        event: mergeEventUpdateWithCurrent(current, input.event),
+        event: mergeEventUpdateWithCurrent(current.data, input.event, current.deviations),
         forceCreate: false,
       },
       config
@@ -535,11 +535,11 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
-    const current = await poiOperations.getPoiWithConfig(input, config);
+    const current = await poiOperations.getPoiDetailWithConfig(input, config);
     return poiOperations.writePoiWithConfig(
       {
         ...input,
-        poi: mergePoiUpdateWithCurrent(current, input.poi),
+        poi: mergePoiUpdateWithCurrent(current.data, input.poi, current.deviations),
         forceCreate: false,
       },
       config

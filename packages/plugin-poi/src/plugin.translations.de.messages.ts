@@ -5,8 +5,10 @@ export const poiMessagesDe = {
   mediaReferenceLoadError:
     'Die Medienreferenzen konnten nicht geladen werden. Der Ort bleibt bearbeitbar.',
   degradedDataWarning:
-    'Einige Mainserver-Felder konnten nicht sicher gelesen werden und bleiben schreibgeschützt.',
+    'Einige Mainserver-Felder konnten nicht sicher gelesen werden. Unveränderte Werte werden nicht überschrieben; Korrekturen müssen bestätigt werden.',
   degradedField: 'Betroffener Bereich: {{field}}',
+  degradedCorrectionConfirm:
+    'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
   saveError: 'Der Ort konnte nicht gespeichert werden.',
   deleteError: 'Der Ort konnte nicht gelöscht werden.',
   createSuccess: 'Der Ort wurde erstellt.',

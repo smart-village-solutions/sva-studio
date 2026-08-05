@@ -42,7 +42,7 @@ const genericItemSchema = z.object({
   externalId: z.string().nullish(),
   publicationDate: z.string().nullish(),
   publishedAt: z.string().nullish(),
-  genericType: z.string().nullish(),
+  genericType: z.string().min(1),
   payload: z.unknown().nullish(),
   visible: z.boolean().nullish(),
   categories: z.array(categorySchema).nullish(),
@@ -110,7 +110,7 @@ const mapGenericItemRelationFields = (value: z.infer<typeof genericItemSchema>) 
 
 export const mapGenericItemDetail = (item: SvaMainserverGenericItemFragment | null | undefined) => {
   const parsed = parseResilientDetail<z.infer<typeof genericItemSchema>>(genericItemSchema, item, {
-    hardFields: ['id'],
+    hardFields: ['id', 'genericType'],
     listFields: {
       categories: categorySchema,
       contacts: contactSchema,
@@ -141,7 +141,7 @@ export const mapGenericItemDetail = (item: SvaMainserverGenericItemFragment | nu
       title: parsed.data.title ?? '',
       contentType: 'generic-items.generic-item' as const,
       status: 'published' as const,
-      genericType: parsed.data.genericType ?? '',
+      genericType: parsed.data.genericType,
       ...mapGenericItemScalarFields(parsed.data, createdAt),
       ...mapGenericItemRelationFields(parsed.data),
     },

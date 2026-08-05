@@ -3,8 +3,11 @@ export const poiMessagesEn = {
   loadError: 'POI could not be loaded.',
   missingContent: 'The POI could not be loaded.',
   mediaReferenceLoadError: 'The media references could not be loaded. The POI remains editable.',
-  degradedDataWarning: 'Some Mainserver fields could not be read safely and remain read-only.',
+  degradedDataWarning:
+    'Some Mainserver fields could not be read safely. Unchanged values are not overwritten; corrections require confirmation.',
   degradedField: 'Affected section: {{field}}',
+  degradedCorrectionConfirm:
+    'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
   saveError: 'POI could not be saved.',
   deleteError: 'POI could not be deleted.',
   createSuccess: 'POI was created.',

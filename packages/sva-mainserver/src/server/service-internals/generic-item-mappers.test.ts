@@ -35,7 +35,7 @@ describe('generic-item-mappers', () => {
         externalId: null,
         publicationDate: null,
         publishedAt: null,
-        genericType: null,
+        genericType: 'generic',
         payload: null,
         visible: null,
         categories: null,
@@ -57,7 +57,7 @@ describe('generic-item-mappers', () => {
       title: '',
       contentType: 'generic-items.generic-item',
       status: 'published',
-      genericType: '',
+      genericType: 'generic',
       visible: true,
       createdAt: '1970-01-01T00:00:00.000Z',
       updatedAt: '1970-01-01T00:00:00.000Z',
@@ -73,6 +73,14 @@ describe('generic-item-mappers', () => {
       accessibilityInformations: [],
       priceInformations: [],
     });
+  });
+
+  it('rejects a missing hard generic type discriminator', () => {
+    expectMappedError(
+      () => mapGenericItem({ id: 'generic-without-type', genericType: null } as never),
+      'invalid_response',
+      502
+    );
   });
 
   it('maps populated generic items and normalizes nested relations', () => {

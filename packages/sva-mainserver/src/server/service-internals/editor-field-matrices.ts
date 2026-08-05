@@ -3,6 +3,7 @@ import type {
   SvaMainserverEventItem,
   SvaMainserverPoiInput,
   SvaMainserverPoiItem,
+  MainserverDataDeviation,
 } from '../../types.js';
 
 export type MainserverEditorFieldClassification =
@@ -101,33 +102,90 @@ export const genericItemEditorFieldMatrix = {
 const preserveDefined = <T>(current: T | undefined, submitted: T | undefined): T | undefined =>
   submitted === undefined ? current : submitted;
 
+const preserveDefinedUnlessDegraded = <T>(
+  fieldGroup: string,
+  current: T | undefined,
+  submitted: T | undefined,
+  degradedFields: ReadonlySet<string>
+): T | undefined =>
+  submitted === undefined && degradedFields.has(fieldGroup)
+    ? undefined
+    : preserveDefined(current, submitted);
+
 export const mergeEventUpdateWithCurrent = (
   current: SvaMainserverEventItem,
-  submitted: SvaMainserverEventInput
-): SvaMainserverEventInput => ({
-  ...submitted,
-  externalId: preserveDefined(current.externalId, submitted.externalId),
-  keywords: preserveDefined(current.keywords, submitted.keywords),
-  parentId: preserveDefined(current.parentId, submitted.parentId),
-  accessibilityInformation: preserveDefined(
-    current.accessibilityInformation,
-    submitted.accessibilityInformation
-  ),
-  tags: preserveDefined(current.tags, submitted.tags),
-});
+  submitted: SvaMainserverEventInput,
+  deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[] = []
+): SvaMainserverEventInput => {
+  const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  return {
+    ...submitted,
+    externalId: preserveDefinedUnlessDegraded(
+      'externalId',
+      current.externalId,
+      submitted.externalId,
+      degradedFields
+    ),
+    keywords: preserveDefinedUnlessDegraded(
+      'keywords',
+      current.keywords,
+      submitted.keywords,
+      degradedFields
+    ),
+    parentId: preserveDefinedUnlessDegraded(
+      'parentId',
+      current.parentId,
+      submitted.parentId,
+      degradedFields
+    ),
+    accessibilityInformation: preserveDefinedUnlessDegraded(
+      'accessibilityInformation',
+      current.accessibilityInformation,
+      submitted.accessibilityInformation,
+      degradedFields
+    ),
+    tags: preserveDefinedUnlessDegraded('tags', current.tags, submitted.tags, degradedFields),
+  };
+};
 
 export const mergePoiUpdateWithCurrent = (
   current: SvaMainserverPoiItem,
-  submitted: SvaMainserverPoiInput
-): SvaMainserverPoiInput => ({
-  ...submitted,
-  mobileDescription: preserveDefined(current.mobileDescription, submitted.mobileDescription),
-  externalId: preserveDefined(current.externalId, submitted.externalId),
-  keywords: preserveDefined(current.keywords, submitted.keywords),
-  payload: preserveDefined(current.payload, submitted.payload),
-  accessibilityInformation: preserveDefined(
-    current.accessibilityInformation,
-    submitted.accessibilityInformation
-  ),
-  tags: preserveDefined(current.tags, submitted.tags),
-});
+  submitted: SvaMainserverPoiInput,
+  deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[] = []
+): SvaMainserverPoiInput => {
+  const degradedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  return {
+    ...submitted,
+    mobileDescription: preserveDefinedUnlessDegraded(
+      'mobileDescription',
+      current.mobileDescription,
+      submitted.mobileDescription,
+      degradedFields
+    ),
+    externalId: preserveDefinedUnlessDegraded(
+      'externalId',
+      current.externalId,
+      submitted.externalId,
+      degradedFields
+    ),
+    keywords: preserveDefinedUnlessDegraded(
+      'keywords',
+      current.keywords,
+      submitted.keywords,
+      degradedFields
+    ),
+    payload: preserveDefinedUnlessDegraded(
+      'payload',
+      current.payload,
+      submitted.payload,
+      degradedFields
+    ),
+    accessibilityInformation: preserveDefinedUnlessDegraded(
+      'accessibilityInformation',
+      current.accessibilityInformation,
+      submitted.accessibilityInformation,
+      degradedFields
+    ),
+    tags: preserveDefinedUnlessDegraded('tags', current.tags, submitted.tags, degradedFields),
+  };
+};

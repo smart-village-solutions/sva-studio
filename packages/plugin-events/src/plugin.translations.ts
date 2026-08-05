@@ -142,8 +142,10 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     mediaReferenceLoadError:
       'Die Medienreferenzen konnten nicht geladen werden. Die Veranstaltung bleibt bearbeitbar.',
     degradedDataWarning:
-      'Einige Mainserver-Felder konnten nicht sicher gelesen werden und bleiben schreibgeschützt.',
+      'Einige Mainserver-Felder konnten nicht sicher gelesen werden. Unveränderte Werte werden nicht überschrieben; Korrekturen müssen bestätigt werden.',
     degradedField: 'Betroffener Bereich: {{field}}',
+    degradedCorrectionConfirm:
+      'Die folgenden zuvor nicht sicher lesbaren Bereiche wurden geändert: {{fields}}. Sollen diese Werte bewusst überschrieben werden?',
     saveError: 'Die Veranstaltung konnte nicht gespeichert werden.',
     deleteError: 'Die Veranstaltung konnte nicht gelöscht werden.',
     createSuccess: 'Die Veranstaltung wurde erstellt.',
@@ -499,8 +501,11 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     missingContent: 'The event could not be loaded.',
     mediaReferenceLoadError:
       'The media references could not be loaded. The event remains editable.',
-    degradedDataWarning: 'Some Mainserver fields could not be read safely and remain read-only.',
+    degradedDataWarning:
+      'Some Mainserver fields could not be read safely. Unchanged values are not overwritten; corrections require confirmation.',
     degradedField: 'Affected section: {{field}}',
+    degradedCorrectionConfirm:
+      'The following previously unreadable sections were changed: {{fields}}. Do you want to overwrite these values intentionally?',
     saveError: 'Event could not be saved.',
     deleteError: 'Event could not be deleted.',
     createSuccess: 'Event was created.',

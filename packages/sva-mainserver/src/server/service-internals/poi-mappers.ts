@@ -73,6 +73,7 @@ export const mapPoiItemDetail = (
 ): MainserverDetailResult<SvaMainserverPoiItem> => {
   const parsed = parseResilientDetail<z.infer<typeof poiItemSchema>>(poiItemSchema, item, {
     hardFields: ['id'],
+    fieldAliases: { tagList: 'tags' },
     listFields: {
       categories: categorySchema,
       addresses: addressSchema,

@@ -15,9 +15,15 @@ export type MainserverDetailResult<TItem> = Readonly<{
 
 export const omitDeviatedMainserverFields = <TInput extends Readonly<Record<string, unknown>>>(
   input: TInput,
-  deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[]
+  deviations: readonly Pick<MainserverDataDeviation, 'fieldGroup'>[],
+  options: Readonly<{ retainedFieldGroups?: readonly string[] }> = {}
 ): TInput => {
-  const omittedFields = new Set(deviations.map(({ fieldGroup }) => fieldGroup));
+  const retainedFields = new Set(options.retainedFieldGroups ?? []);
+  const omittedFields = new Set(
+    deviations
+      .map(({ fieldGroup }) => fieldGroup)
+      .filter((fieldGroup) => !retainedFields.has(fieldGroup))
+  );
   return Object.fromEntries(
     Object.entries(input).filter(([fieldName]) => !omittedFields.has(fieldName))
   ) as TInput;

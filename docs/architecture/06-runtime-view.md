@@ -927,25 +927,25 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 
 Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/v1/capabilities` auf. Erst eine kompatible Protokollversion, laufende Agent-Revision, vollständige Ergebnisfelder und die benötigten Datenbankziele erlauben den Auftrag. Nach dem App-Deploy wird zuerst der terminale Swarm-Service- und Task-Zustand bewertet; erst danach beginnt das externe HTTP-Warmup.
 
-## Kontrollierter Datenbank-Vollrestore
-
 ## Resilienter Mainserver-Detail- und Updateablauf
 
 1. Die autorisierte Fachroute lädt den Mainserver-Datensatz und prüft die stabile ID als harte Grenze.
 2. Optionale Skalare und Listeneinträge werden unabhängig validiert; gültige Werte bleiben erhalten und Abweichungen werden als normalisierte Feldpfade gesammelt.
 3. Optionale Anreicherungen wie Medienreferenzen starten unabhängig. Ihr Ausfall lässt den Hauptdatensatz editierbar und erzeugt eine eigene Wiederholungsaktion.
-4. Vor einem POI- oder Event-Update liest der Server den aktuellen Datensatz erneut und ergänzt nur deklarierte, im Request ausgelassene Passthrough-Felder. Explizite Leerwerte bleiben explizite Änderungen.
+4. Vor einem POI- oder Event-Update liest der Server den aktuellen Datensatz erneut und ergänzt nur deklarierte, im Request ausgelassene und fehlerfrei gelesene Passthrough-Felder. Explizite Leerwerte bleiben explizite Änderungen; bewusst korrigierte degradierte Felder benötigen eine Bestätigung im Editor.
 5. Die Mutation sendet ausschließlich Felder des typisierten GraphQL-Inputs; unbekannte Rohfelder werden nicht durchgereicht.
 
-6. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.
-7. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
-8. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
-9. `pg_restore` läuft einmalig mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.
-10. Nach dem Restore rekonstruiert der Agent im festen Schema-Owner-Kontext die additiven ACLs für den allowlisteten Runtime-Principal `sva_app`. Anschließend prüft er Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Ein Fehler schreibt redigierte Evidenz und lässt die App stillgelegt.
-11. Der Workflow akzeptiert nur Agent-Evidenz mit erfolgreichen, getrennten Schritten für ACL-Reconciliation und Principal-Probe. Danach migriert und bootstrapped er den historischen Stand mit dem gebundenen App-Image.
-12. Nach dem App-Neustart prüft der Workflow zusätzlich zum allgemeinen Runtime-Smoke authentifiziert `/auth/me` auf `permissionStatus: ok` und `/iam/me/permissions` auf HTTP 200. Erst danach entsteht erfolgreiche Workflow-Evidenz.
-13. Erst nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner. HTTP-Liveness, Readiness und Tenant-Login müssen erfolgreich sein; andernfalls deployt der Workflow erneut den gestoppten Stackvertrag.
-14. Keycloak bleibt unverändert. Externer Drift wird nur über die getrennten IAM-Reconcile-Pfade behandelt.
+## Kontrollierter Datenbank-Vollrestore
+
+1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.
+2. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
+3. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
+4. `pg_restore` läuft einmalig mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.
+5. Nach dem Restore rekonstruiert der Agent im festen Schema-Owner-Kontext die additiven ACLs für den allowlisteten Runtime-Principal `sva_app`. Anschließend prüft er Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Ein Fehler schreibt redigierte Evidenz und lässt die App stillgelegt.
+6. Der Workflow akzeptiert nur Agent-Evidenz mit erfolgreichen, getrennten Schritten für ACL-Reconciliation und Principal-Probe. Danach migriert und bootstrapped er den historischen Stand mit dem gebundenen App-Image.
+7. Nach dem App-Neustart prüft der Workflow zusätzlich zum allgemeinen Runtime-Smoke authentifiziert `/auth/me` auf `permissionStatus: ok` und `/iam/me/permissions` auf HTTP 200. Erst danach entsteht erfolgreiche Workflow-Evidenz.
+8. Erst nach erfolgreicher DB-Evidenz startet der Workflow App und Provisioner. HTTP-Liveness, Readiness und Tenant-Login müssen erfolgreich sein; andernfalls deployt der Workflow erneut den gestoppten Stackvertrag.
+9. Keycloak bleibt unverändert. Externer Drift wird nur über die getrennten IAM-Reconcile-Pfade behandelt.
 
 ### Permission-Katalog-Reconcile
 

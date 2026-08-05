@@ -94,12 +94,15 @@ describe('mainserver projection refresh', () => {
     });
   });
 
-  it('refreshes project updates using the stable item id from the request path', async () => {
+  it('refreshes bound project updates using the provider id from the response header', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/projects/project-1', { method: 'PATCH' }),
       new Response(JSON.stringify({ data: { id: 'project-1' } }), {
         status: 200,
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          'x-sva-mainserver-entity-id': 'provider-project-1',
+        },
       }),
       'projects.project'
     );
@@ -108,7 +111,7 @@ describe('mainserver projection refresh', () => {
       expect.objectContaining({
         contentType: 'projects.project',
         operation: 'update',
-        entityId: 'project-1',
+        entityId: 'provider-project-1',
       })
     );
   });

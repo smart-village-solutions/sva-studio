@@ -163,6 +163,12 @@ const sourceReferenceInput = (instanceId: string) => ({
   sourceEntityType: SOURCE_ENTITY_TYPE,
 });
 
+const projectMutationJson = (body: unknown, providerEntityId: string, status = 200): Response => {
+  const response = json(body, status);
+  response.headers.set('X-SVA-Mainserver-Entity-Id', providerEntityId);
+  return response;
+};
+
 const loadProjectLocalContext = async (instanceId: string, contentId: string) => {
   const reference = await loadExternalContentReferenceByContentId({
     ...sourceReferenceInput(instanceId),
@@ -261,7 +267,9 @@ const listProjects = async (
     .catch(() => []);
   const referenceBySourceId = new Map(
     references.flatMap((reference) =>
-      reference.sourceEntityId ? [[reference.sourceEntityId, reference] as const] : []
+      reference.sourceEntityId && reference.reconciliationStatus === 'bound'
+        ? [[reference.sourceEntityId, reference] as const]
+        : []
     )
   );
   const projectEntries = upstream.data.flatMap((item) => {
@@ -290,8 +298,12 @@ const listProjects = async (
       const loadedCore = await loadExternalContentCore(actor.instanceId, entry.reference.contentId)
         .catch(() => undefined);
       const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
-      const project = mapAndValidate(entry.item, readFallbackAuthor(entry.item, actor, core));
-      return { ...project, id: entry.reference.contentId };
+      try {
+        const project = mapAndValidate(entry.item, readFallbackAuthor(entry.item, actor, core));
+        return { ...project, id: entry.reference.contentId };
+      } catch {
+        return entry.project;
+      }
     })
   );
   logger.info('Project list upstream pagination completed', {
@@ -452,7 +464,7 @@ const createProject = async (
       responseStatus: 201,
       status: 'COMPLETED',
     })).catch(() => undefined);
-    return json(responseBody, 201);
+    return projectMutationJson(responseBody, existing.id, 201);
   }
 
   if (!reference) try {
@@ -486,7 +498,7 @@ const createProject = async (
       responseStatus: 201,
       status: 'COMPLETED',
     })).catch(() => undefined);
-    return json(responseBody, 201);
+    return projectMutationJson(responseBody, existing.id, 201);
   }
 
   try {
@@ -544,7 +556,7 @@ const createProject = async (
       responseStatus: 201,
       status: 'COMPLETED',
     })).catch(() => undefined);
-    return json(responseBody, 201);
+    return projectMutationJson(responseBody, created.id, 201);
   } catch (error) {
     if (reference) await Promise.resolve(updateExternalContentReconciliationStatus({
       instanceId: actor.instanceId,
@@ -651,7 +663,10 @@ const updateProject = async (
           });
         }
         const data = mapAndValidate({ ...updated, visible: project.status === 'published' });
-        return json({ data: { ...data, id: context.reference?.contentId ?? data.id } });
+        return projectMutationJson(
+          { data: { ...data, id: context.reference?.contentId ?? data.id } },
+          updated.id
+        );
       },
     });
   } catch (error) {
@@ -746,7 +761,10 @@ const deleteProject = async (
             });
           });
         }
-        return json({ data: { id: context.reference?.contentId ?? freshItem.id } });
+        return projectMutationJson(
+          { data: { id: context.reference?.contentId ?? freshItem.id } },
+          freshItem.id
+        );
       },
     });
   } catch (error) {

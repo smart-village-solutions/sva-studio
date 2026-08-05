@@ -71,6 +71,8 @@ const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
 };
 
 const parseEntityIdFromResponse = async (response: Response): Promise<string | undefined> => {
+  const providerEntityId = response.headers.get('x-sva-mainserver-entity-id')?.trim();
+  if (providerEntityId) return providerEntityId;
   const location = response.headers.get('location');
   if (location) {
     const locationSegments = new URL(location, 'https://studio.invalid').pathname.split('/').filter(Boolean);
@@ -101,7 +103,8 @@ export const refreshProjectionAfterMainserverMutation = async (
   const operation = parseMutationOperation(request);
   const entityIdFromPath = parseEntityIdFromRequestPath(request);
   const entityIdFromResponse = await parseEntityIdFromResponse(response);
-  const entityId = entityIdFromPath ?? entityIdFromResponse;
+  const providerEntityId = response.headers.get('x-sva-mainserver-entity-id')?.trim();
+  const entityId = providerEntityId || entityIdFromPath || entityIdFromResponse;
   if ((operation === 'create' || operation === 'update') && !entityId) {
     logger.warn('Mainserver mutation succeeded without a resolvable entity identity', {
       contentType,

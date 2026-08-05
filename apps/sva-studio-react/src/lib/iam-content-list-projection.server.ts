@@ -86,6 +86,7 @@ export type ProjectionRow = {
   source_system: 'iam' | 'mainserver';
   source_entity_type: string;
   source_entity_id: string;
+  resolved_content_id?: string | null;
 };
 
 type ProjectionSyncStateRow = {
@@ -266,7 +267,10 @@ const pickPresentProjectionFields = (row: ProjectionRow): Partial<OptionalProjec
   ) as Partial<OptionalProjectionItemFields>;
 
 const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
-  id: row.id,
+  id:
+    row.content_type === 'projects.project' && row.resolved_content_id
+      ? row.resolved_content_id
+      : row.id,
   instanceId: row.instance_id,
   ...pickPresentProjectionFields(row),
   contentType: row.content_type,
@@ -2781,8 +2785,20 @@ SELECT
   projection.credential_source,
   projection.source_system,
   projection.source_entity_type,
-  projection.source_entity_id
+  projection.source_entity_id,
+  project_reference.content_id AS resolved_content_id
 FROM iam.content_list_projection AS projection
+LEFT JOIN LATERAL (
+  SELECT reference.content_id::text AS content_id
+  FROM iam.external_content_references AS reference
+  WHERE projection.content_type = 'projects.project'
+    AND reference.instance_id = projection.instance_id
+    AND reference.source_system = 'mainserver'
+    AND reference.source_entity_type = 'GenericItem'
+    AND reference.source_entity_id = projection.source_entity_id
+    AND reference.reconciliation_status = 'bound'
+  LIMIT 1
+) AS project_reference ON TRUE
 ${whereClause}
   AND NOT (
     projection.content_type = 'projects.project'

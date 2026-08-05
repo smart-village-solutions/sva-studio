@@ -22,14 +22,17 @@ services:
       - ./dev/redis-tls/redis.pem:/etc/redis/certs/redis.pem:ro
       - ./dev/redis-tls/redis-key.pem:/etc/redis/certs/redis-key.pem:ro
       - ./dev/redis-tls/ca.pem:/etc/redis/certs/ca.pem:ro
-    command: >-
-      redis-server --port 6379 --tls-port 6380
-      --tls-cert-file /etc/redis/certs/redis.pem
-      --tls-key-file /etc/redis/certs/redis-key.pem
-      --tls-ca-cert-file /etc/redis/certs/ca.pem
-      --tls-replication yes --appendonly yes
-      --maxmemory 256mb --maxmemory-policy allkeys-lru
-      --requirepass "$${REDIS_PASSWORD}"
+    command:
+      - sh
+      - -ec
+      - |
+        exec redis-server --port 6379 --tls-port 6380 \
+          --tls-cert-file /etc/redis/certs/redis.pem \
+          --tls-key-file /etc/redis/certs/redis-key.pem \
+          --tls-ca-cert-file /etc/redis/certs/ca.pem \
+          --tls-replication yes --appendonly yes \
+          --maxmemory 256mb --maxmemory-policy allkeys-lru \
+          --requirepass "$${REDIS_PASSWORD}"
     healthcheck:
       test: ['CMD-SHELL', 'REDISCLI_AUTH=$${REDIS_PASSWORD} redis-cli ping']
       interval: 5s
@@ -46,3 +49,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-sva}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sva_local_dev_password}
     restart: unless-stopped
+
+secrets:
+  waste_database_provisioner_password: !override
+    environment: WASTE_DATABASE_PROVISIONER_PASSWORD

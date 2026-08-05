@@ -362,7 +362,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
     $author: String
     $keywords: String
     $title: String!
-    $teaser: String
     $genericType: String
     $externalId: String
     $publicationDate: String
@@ -388,7 +387,6 @@ export const svaMainserverCreateGenericItemDocument = /* GraphQL */ `
       author: $author
       keywords: $keywords
       title: $title
-      teaser: $teaser
       genericType: $genericType
       externalId: $externalId
       publicationDate: $publicationDate

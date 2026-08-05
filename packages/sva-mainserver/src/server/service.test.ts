@@ -2179,14 +2179,14 @@ describe('createSvaMainserverService', () => {
       id: 'generic-1',
       forceCreate: false,
       genericType: 'faq',
-      teaser: '',
       payload: { answer: '43' },
     });
-    expect(requestBodies[2]?.variables).toMatchObject({ teaser: 'Kurztext' });
+    expect(requestBodies[2]?.variables).not.toHaveProperty('teaser');
+    expect(requestBodies[3]?.variables).not.toHaveProperty('teaser');
     expect(requestBodies[3]?.variables).not.toHaveProperty('visible');
     const genericItemMutation = String(fetchImpl.mock.calls[3]?.[1]?.body);
-    expect(genericItemMutation).toContain('$teaser: String');
-    expect(genericItemMutation).toContain('teaser: $teaser');
+    expect(genericItemMutation).not.toContain('$teaser: String');
+    expect(genericItemMutation).not.toContain('teaser: $teaser');
     expect(genericItemMutation).not.toContain('$visible: Boolean');
     expect(genericItemMutation).not.toContain('visible: $visible');
     expect(requestBodies[4]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });

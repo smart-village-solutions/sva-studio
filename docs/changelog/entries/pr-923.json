@@ -1,0 +1,4 @@
+{
+  "prNumber": 923,
+  "body": "Kacheln wieder über den Mainserver speicherbar\n\n- GenericItem-Mutationen senden kein vom Mainserver-Schema nicht unterstütztes Teaser-Argument mehr.\n- Kachel-Inhalte in Content-Blöcken bleiben beim Anlegen und Bearbeiten unverändert erhalten."
+}

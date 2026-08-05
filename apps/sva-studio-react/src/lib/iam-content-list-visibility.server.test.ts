@@ -135,6 +135,25 @@ describe('iam content list visibility', () => {
     });
   });
 
+  it('uses projects.read for projected project rows instead of the generic content.read fallback', () => {
+    const [rule] = buildProjectionReadVisibilityRules(
+      ['projects.project'],
+      [
+        createPermission({
+          action: 'projects.read',
+          resourceType: 'projects',
+        }),
+      ]
+    );
+
+    expect(rule).toEqual({
+      contentType: 'projects.project',
+      allowGlobal: true,
+      allowOrganizationIds: [],
+      allowOwn: false,
+    });
+  });
+
   it('evaluates row visibility with own fallback', () => {
     const [rule] = buildProjectionReadVisibilityRules(
       ['generic'],

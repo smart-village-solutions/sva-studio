@@ -6,26 +6,11 @@ import type {
   NewsFormInput,
   NewsMediaContentFormValue,
   NewsSavePlan,
-  NewsWebUrl,
 } from './news.types.js';
 
 type NewsEditorialStatus = NewsSavePlan['editorialStatus'];
 type NewsLegacyCompatibilitySnapshot = NonNullable<NewsDetailEditorialFormValues['__legacySnapshot']>;
 type NewsItemMediaContent = NonNullable<NonNullable<NewsContentItem['contentBlocks']>[number]['mediaContents']>[number];
-
-const emptyWebUrl = (): NewsWebUrl => ({
-  url: '',
-  description: '',
-});
-
-const defaultMediaContent = (): NewsMediaContentFormValue => ({
-  captionText: '',
-  copyright: '',
-  contentType: 'image',
-  height: '',
-  width: '',
-  sourceUrl: emptyWebUrl(),
-});
 
 const mapNewsItemMediaContent = (media: NewsItemMediaContent): NewsMediaContentFormValue => ({
   captionText: media.captionText ?? '',
@@ -48,21 +33,11 @@ const mapNewsItemContentBlock = (
   mediaContents: (block.mediaContents ?? []).map(mapNewsItemMediaContent),
 });
 
-const defaultFallbackContentBlock = (item: NewsContentItem): NewsContentBlockFormValue => ({
+const defaultContentBlock = (): NewsContentBlockFormValue => ({
   title: '',
-  intro: item.payload.teaser ?? '',
-  body: item.payload.body ?? '',
-  mediaContents: item.payload.imageUrl
-    ? [
-        {
-          ...defaultMediaContent(),
-          sourceUrl: {
-            url: item.payload.imageUrl,
-            description: '',
-          },
-        },
-      ]
-    : [],
+  intro: '',
+  body: '',
+  mediaContents: [],
 });
 
 const mapNewsItemContentBlocks = (item: NewsContentItem): NewsContentBlockFormValue[] => {
@@ -70,7 +45,7 @@ const mapNewsItemContentBlocks = (item: NewsContentItem): NewsContentBlockFormVa
     return item.contentBlocks.map(mapNewsItemContentBlock);
   }
 
-  return [defaultFallbackContentBlock(item)];
+  return [defaultContentBlock()];
 };
 
 const mapNewsItemCategories = (item: NewsContentItem): string[] => {
@@ -136,11 +111,11 @@ const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySna
 });
 
 const buildFirstContentBlock = (
-  values: Pick<NewsDetailFormValues, 'title' | 'contentTeaser' | 'contentBody' | 'contentMedia'>
+  values: Pick<NewsDetailFormValues, 'title' | 'contentIntro' | 'contentBody' | 'contentMedia'>
 ): NewsFormInput['contentBlocks'] => [
   {
     title: values.title,
-    intro: values.contentTeaser,
+    intro: values.contentIntro,
     body: values.contentBody,
     mediaContents: values.contentMedia,
   },
@@ -232,7 +207,7 @@ export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailEdi
     title: item.title.trim().length > 0 ? item.title : firstBlock?.title ?? '',
     author: item.author ?? '',
     categories: mapNewsItemCategories(item),
-    contentTeaser: firstBlock?.intro ?? '',
+    contentIntro: firstBlock?.intro ?? '',
     contentBody: firstBlock?.body ?? '',
     contentMedia: firstBlock?.mediaContents ?? [],
     sourceUrl: {

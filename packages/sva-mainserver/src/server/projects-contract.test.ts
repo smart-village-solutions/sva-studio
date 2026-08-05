@@ -32,7 +32,6 @@ const existing: SvaMainserverGenericItem = {
   contentType: 'generic-items.generic-item',
   status: 'published',
   genericType: 'FeaturedProject',
-  teaser: 'Alt',
   visible: false,
   author: 'Alt',
   externalId: 'operation-1',
@@ -42,7 +41,7 @@ const existing: SvaMainserverGenericItem = {
   webUrls: [{ id: '1', url: 'https://example.test/hidden' }],
   addresses: [],
   contentBlocks: [
-    { id: 'block-1', title: 'Verborgener Titel', body: 'Alt', mediaContents: [] },
+    { id: 'block-1', title: 'Verborgener Titel', intro: 'Alt', body: 'Alt', mediaContents: [] },
     { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
   ],
   openingHours: [],
@@ -95,7 +94,7 @@ describe('projects contract', () => {
     });
     expect(
       mergeProjectIntoGenericItem({ project: parsed as typeof project })
-    ).toEqual(expect.objectContaining({ teaser: '', contentBlocks: [], mediaContents: [] }));
+    ).toEqual(expect.objectContaining({ contentBlocks: [], mediaContents: [] }));
   });
 
   it('defaults omitted optional language and text fields', async () => {
@@ -131,7 +130,6 @@ describe('projects contract', () => {
       expect.objectContaining({
         title: 'Projekt',
         genericType: 'FeaturedProject',
-        teaser: 'Kurz',
         visible: true,
         externalId: 'operation-1',
         publishedAt: '2026-01-03T00:00:00.000Z',
@@ -141,7 +139,7 @@ describe('projects contract', () => {
           author: project.author,
           deleted: false,
         },
-        contentBlocks: [{ body: '<p>Text</p>' }],
+        contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>' }],
         mediaContents: [
           {
             contentType: 'image',
@@ -168,8 +166,51 @@ describe('projects contract', () => {
     });
     expect(merged.webUrls).toEqual([{ url: 'https://example.test/hidden' }]);
     expect(merged.contentBlocks).toEqual([
-      { id: 'block-1', title: 'Verborgener Titel', body: '<p>Text</p>', mediaContents: [] },
-      { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
+      { title: 'Verborgener Titel', intro: 'Kurz', body: '<p>Text</p>', mediaContents: [] },
+      { body: 'Verborgener Block', mediaContents: [] },
+    ]);
+  });
+
+  it('keeps writable content-block media fields while removing transport ids', () => {
+    const merged = mergeProjectIntoGenericItem({
+      project,
+      existing: {
+        ...existing,
+        contentBlocks: [
+          {
+            id: 'block-1',
+            mediaContents: [
+              {
+                id: 'media-1',
+                contentType: 'image',
+                captionText: 'Bild',
+                sourceUrl: { url: 'https://example.test/image.jpg', description: 'Quelle' },
+              },
+              {
+                id: 'media-2',
+                sourceUrl: { url: 'https://example.test/no-description.jpg' },
+              },
+              { id: 'media-3', copyright: 'Gemeinde' },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(merged.contentBlocks).toEqual([
+      {
+        intro: 'Kurz',
+        body: '<p>Text</p>',
+        mediaContents: [
+          {
+            contentType: 'image',
+            captionText: 'Bild',
+            sourceUrl: { url: 'https://example.test/image.jpg', description: 'Quelle' },
+          },
+          { sourceUrl: { url: 'https://example.test/no-description.jpg' } },
+          { copyright: 'Gemeinde' },
+        ],
+      },
     ]);
   });
 
@@ -200,15 +241,13 @@ describe('projects contract', () => {
       project: { ...project, description: '', fullText: '<p></p>' },
       existing,
     });
-    expect(merged.teaser).toBe('');
     expect(merged.contentBlocks).toEqual([
-      { id: 'block-1', title: 'Verborgener Titel', body: '', mediaContents: [] },
-      { id: 'block-2', body: 'Verborgener Block', mediaContents: [] },
+      { title: 'Verborgener Titel', intro: '', body: '', mediaContents: [] },
+      { body: 'Verborgener Block', mediaContents: [] },
     ]);
     expect(
       mapGenericItemToProject({
         ...existing,
-        teaser: merged.teaser,
         contentBlocks: merged.contentBlocks ?? [],
       }).fullText
     ).toBe('');
@@ -217,7 +256,6 @@ describe('projects contract', () => {
   it('returns the exact FeaturedProject response without technical type fields', () => {
     const mapped = mapGenericItemToProject({
         ...existing,
-        teaser: 'Kurz',
         visible: true,
         publishedAt: '2026-01-03T00:00:00.000Z',
         author: 'Gemeinde',
@@ -227,7 +265,7 @@ describe('projects contract', () => {
           deleted: false,
           author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
         },
-        contentBlocks: [{ body: '<p>Text</p>', mediaContents: [] }],
+        contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>', mediaContents: [] }],
         mediaContents: [
           {
             sourceUrl: { url: 'https://example.test/a.jpg', description: 'Alternativtext' },
@@ -310,7 +348,6 @@ describe('projects contract', () => {
     const mapped = mapGenericItemToProject({
         ...existing,
         payload: null,
-        teaser: undefined,
         contentBlocks: [],
         mediaContents: [{ sourceUrl: undefined }],
     });

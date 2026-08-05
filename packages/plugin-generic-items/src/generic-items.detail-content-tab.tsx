@@ -15,7 +15,6 @@ import {
   createManualContentMediaUsage,
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
-  getStudioFormFieldProps,
 } from '@sva/studio-ui-react';
 import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import * as React from 'react';
@@ -45,8 +44,6 @@ export const GenericItemsDetailContentTab = ({
 }>) => {
   const {
     control,
-    register,
-    formState: { errors },
     setValue,
   } = useFormContext<GenericItemsDetailFormValues>();
   const webUrlsArray = useFieldArray({ control, name: 'webUrls' });
@@ -88,8 +85,6 @@ export const GenericItemsDetailContentTab = ({
   const [isMapEnabled, setIsMapEnabled] = React.useState(true);
   const [mapStyleUrl, setMapStyleUrl] = React.useState('');
 
-  const teaserField = getStudioFormFieldProps({ id: 'generic-item-teaser', error: errors.teaser });
-
   React.useEffect(() => {
     let active = true;
 
@@ -120,9 +115,6 @@ export const GenericItemsDetailContentTab = ({
   return (
     <div className="space-y-4">
       <GenericItemsDetailCard title={labels.textTitle} description={labels.textDescription}>
-        <StudioField {...teaserField} label={labels.teaser} description={labels.teaserHelp}>
-          <Textarea {...teaserField.controlProps} {...register('teaser')} />
-        </StudioField>
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
             <div className="space-y-1">

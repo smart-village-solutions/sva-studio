@@ -32,8 +32,6 @@ export const genericItemsTranslationsDe = {
       publicationDateHelp: 'ISO-Datum oder freier technischer Wert.',
       publishedAt: 'Veröffentlicht am',
       publishedAtHelp: 'Optionaler Zeitstempel für Veröffentlichungslogik.',
-      teaser: 'Einleitung',
-      teaserHelp: 'Kurze redaktionelle Einleitung für Listen und Vorschauen.',
       intro: 'Einleitung',
       body: 'Inhalt',
       categoryName: 'Primärkategorie',

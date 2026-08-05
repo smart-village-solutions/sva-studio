@@ -1,6 +1,4 @@
 type NewsPayload = {
-  readonly teaser?: string;
-  readonly body?: string;
   readonly imageUrl?: string;
   readonly externalUrl?: string;
   readonly category?: string;
@@ -176,7 +174,7 @@ type NewsDetailEditorialFormFields = {
   title: string;
   author: string;
   categories: string[];
-  contentTeaser: string;
+  contentIntro: string;
   contentBody: string;
   contentMedia: NewsMediaContentFormValue[];
   sourceUrl: NewsWebUrl;

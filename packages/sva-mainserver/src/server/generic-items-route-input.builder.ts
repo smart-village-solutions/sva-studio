@@ -15,7 +15,6 @@ import type {
 import { readBoolean, readString } from './content-route-core.js';
 
 const buildGenericItemScalarFields = (body: Record<string, unknown>) => ({
-  ...(readString(body.teaser) ? { teaser: readString(body.teaser) } : {}),
   ...(readBoolean(body.visible) !== undefined ? { visible: readBoolean(body.visible) } : {}),
   ...(readString(body.author) ? { author: readString(body.author) } : {}),
   ...(readString(body.keywords) ? { keywords: readString(body.keywords) } : {}),

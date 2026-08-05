@@ -118,8 +118,6 @@ export type SvaMainserverProjectionListResult =
     Readonly<{ skippedInvalidCount: number }>;
 
 export type SvaMainserverNewsPayload = {
-  readonly teaser?: string;
-  readonly body?: string;
   readonly imageUrl?: string;
   readonly externalUrl?: string;
   readonly category?: string;
@@ -528,7 +526,6 @@ export type SvaMainserverPoiItem = {
 export type SvaMainserverGenericItemInput = {
   readonly title: string;
   readonly genericType: string;
-  readonly teaser?: string;
   readonly visible?: boolean;
   readonly author?: string;
   readonly keywords?: string;
@@ -556,7 +553,6 @@ export type SvaMainserverGenericItem = {
   readonly contentType: 'generic-items.generic-item';
   readonly status: 'published';
   readonly genericType: string;
-  readonly teaser?: string;
   readonly description?: string;
   readonly visible: boolean;
   readonly author?: string;

@@ -355,6 +355,10 @@ Beispielhaft verwendet:
 
 - News, Events, POI, Generic Items, Projects und Cockpit Cards: `gallery_item` für den gemeinsamen Kernbildblock; der jeweilige Mainserver-/Fach-Snapshot bleibt zusätzlich führend.
 
+GenericItem-basierte Plugins dürfen kein Root-Feld `teaser` voraussetzen. Eine separate redaktionelle Einleitung wird als `contentBlocks[index].intro` modelliert; Fachtypen ohne Einleitung speichern ausschließlich ihren festgelegten `body`. Für Featured Projects teilen sich `Description` und `FullText` den ersten Block als `intro` beziehungsweise `body`, ohne Legacy-Fallback auf historische Top-Level-Werte.
+
+Auch News-Plugins modellieren Einleitung und Haupttext ausschließlich als `contentBlocks[index].intro` und `contentBlocks[index].body`. Textkopien in `payload.teaser` oder `payload.body` sind nicht zulässig und werden beim Lesen nicht übernommen.
+
 ## Vertragselemente
 
 ### `routes`

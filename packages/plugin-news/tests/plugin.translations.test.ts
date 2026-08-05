@@ -10,7 +10,7 @@ describe('pluginNewsTranslations', () => {
     );
     expect(pluginNewsTranslations.de.news.fields.title).toBe('Überschrift');
     expect(pluginNewsTranslations.de.news.fields.headline).toBe('Überschrift');
-    expect(pluginNewsTranslations.de.news.fields.contentTeaser).toBe('Einleitung');
+    expect(pluginNewsTranslations.de.news.fields.contentIntro).toBe('Einleitung');
     expect(pluginNewsTranslations.de.news.cards.settings.publication.title).toBe(
       'Veröffentlichung'
     );

@@ -585,6 +585,10 @@ Referenzen:
 
 ### Ergänzung 2026-08: GenericItems als technischer Vollzugriff
 
+- Der Root-GenericItem-Vertrag richtet sich ausschließlich nach den Argumenten von `createGenericItem`. Das historisch lesbare Feld `GenericItem.teaser` wird nicht selektiert, typisiert oder als Fallback verwendet.
+- Redaktionelle Einleitungen sind blocklokal und werden über `contentBlocks[].intro` transportiert. Featured Projects kontrollieren `intro` und `body` des ersten Blocks; weitere Blocks bleiben beim Read-Merge-Write erhalten.
+- News verwenden denselben blocklokalen Textvertrag. `payload.teaser` und `payload.body` gehören nicht zum Studio-Modell und werden nicht als Legacy-Fallback in Content-Blocks umgewandelt.
+
 - Generische Listen, Projektionen, Details und Mutationen filtern nicht nach `genericType` und verlangen ausschließlich die passende Action unter `generic-items.*`.
 - Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen.
 - Besitzt eine Person generische und fachliche Rechte, darf derselbe Mainserver-Datensatz in beiden Content-Type-Repräsentationen erscheinen.

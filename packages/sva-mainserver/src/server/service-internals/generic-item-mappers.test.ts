@@ -28,7 +28,6 @@ describe('generic-item-mappers', () => {
       mapGenericItem({
         id: 'generic-1',
         title: null,
-        teaser: null,
         description: null,
         author: null,
         keywords: null,
@@ -136,7 +135,6 @@ describe('generic-item-mappers', () => {
       id: 'generic-2',
       title: 'FAQ',
       genericType: 'faq',
-      teaser: ' Kurz ',
       description: '<p>Antwort</p>',
       author: ' Redaktion ',
       keywords: 'eins,zwei',

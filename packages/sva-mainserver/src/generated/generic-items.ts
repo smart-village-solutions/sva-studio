@@ -117,7 +117,6 @@ export type SvaMainserverContentBlockFragment = {
 export type SvaMainserverGenericItemFragment = {
   readonly id?: string | null;
   readonly title?: string | null;
-  readonly teaser?: string | null;
   readonly description?: string | null;
   readonly author?: string | null;
   readonly keywords?: string | null;
@@ -291,7 +290,6 @@ const contentBlockFields = `
 const genericItemFields = `
   id
   title
-  teaser
   description
   author
   keywords

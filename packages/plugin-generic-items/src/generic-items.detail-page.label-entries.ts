@@ -33,8 +33,6 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['publicationDateHelp', 'fields.publicationDateHelp'],
   ['publishedAt', 'fields.publishedAt'],
   ['publishedAtHelp', 'fields.publishedAtHelp'],
-  ['teaser', 'fields.teaser'],
-  ['teaserHelp', 'fields.teaserHelp'],
   ['categoryName', 'fields.categoryName'],
   ['categories', 'fields.categories'],
   ['categoriesHelp', 'fields.categoriesHelp'],

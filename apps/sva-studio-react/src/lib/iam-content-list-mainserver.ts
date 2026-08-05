@@ -60,7 +60,6 @@ type MainserverGenericItem = Readonly<{
   contentType: string;
   title?: string;
   genericType?: string;
-  teaser?: string;
   author?: string;
   keywords?: string;
   payload?: unknown;
@@ -289,7 +288,6 @@ export const mapGenericItem = (
   author: item.author ?? 'mainserver',
   payload: toContentJsonValue({
     genericType: item.genericType,
-    teaser: item.teaser,
     keywords: item.keywords,
     payload: item.payload,
     categories: item.categories,

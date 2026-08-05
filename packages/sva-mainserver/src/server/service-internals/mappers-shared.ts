@@ -8,7 +8,6 @@ import type {
   SvaMainserverDate,
   SvaMainserverLocation,
   SvaMainserverMediaContent,
-  SvaMainserverNewsPayload,
   SvaMainserverOpeningHour,
   SvaMainserverOperatingCompany,
   SvaMainserverPrice,
@@ -401,25 +400,5 @@ export const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMai
     ...(defined(value.open) ? { open: value.open } : {}),
     ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
     ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
-  };
-};
-
-export const buildLegacyContentBlock = (payload: SvaMainserverNewsPayload) => {
-  if (!payload.body && !payload.teaser) {
-    return null;
-  }
-  return {
-    ...(payload.teaser ? { intro: payload.teaser } : {}),
-    ...(payload.body ? { body: payload.body } : {}),
-    mediaContents: payload.imageUrl
-      ? [
-          {
-            contentType: 'image',
-            sourceUrl: {
-              url: payload.imageUrl,
-            },
-          },
-        ]
-      : [],
   };
 };

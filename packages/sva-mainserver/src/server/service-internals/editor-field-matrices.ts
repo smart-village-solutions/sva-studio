@@ -81,7 +81,6 @@ export const genericItemEditorFieldMatrix = {
   id: 'hard',
   genericType: 'hard',
   title: 'controlled',
-  teaser: 'controlled',
   description: 'controlled',
   payload: 'passthrough',
   categories: 'controlled',

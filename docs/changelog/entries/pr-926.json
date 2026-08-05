@@ -1,0 +1,4 @@
+{
+  "prNumber": 926,
+  "body": "Einleitungen folgen dem Mainserver-Content-Block-Vertrag\n\n- GenericItems und News verwenden für Einleitungen ausschließlich die Intro-Felder ihrer Content-Blöcke.\n- Featured Projects speichern Beschreibung und Volltext gemeinsam im ersten Content-Block und erhalten weitere schreibbare Blöcke.\n- Historische Teaser-Felder werden nicht mehr als Fallback gelesen oder geschrieben."
+}

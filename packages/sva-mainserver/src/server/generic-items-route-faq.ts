@@ -22,7 +22,6 @@ const hasUnsupportedFaqSections = (genericItem: SvaMainserverGenericItemInput): 
   FAQ_UNSUPPORTED_SECTION_KEYS.some((key) => (genericItem[key]?.length ?? 0) > 0);
 
 const hasUnsupportedFaqScalarFields = (genericItem: SvaMainserverGenericItemInput): boolean =>
-  typeof genericItem.teaser === 'string' ||
   typeof genericItem.author === 'string' ||
   typeof genericItem.keywords === 'string' ||
   typeof genericItem.externalId === 'string' ||

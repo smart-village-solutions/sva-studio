@@ -2040,7 +2040,6 @@ describe('createSvaMainserverService', () => {
       id: 'generic-1',
       title: 'Freier Eintrag',
       genericType: 'faq',
-      teaser: 'Kurztext',
       description: 'Lange Beschreibung',
       author: 'Redaktion',
       keywords: 'faq,service',
@@ -2117,7 +2116,6 @@ describe('createSvaMainserverService', () => {
         genericItem: {
           title: 'Freier Eintrag',
           genericType: 'faq',
-          teaser: genericItem.teaser,
           author: genericItem.author,
           keywords: genericItem.keywords,
           externalId: genericItem.externalId,
@@ -2146,7 +2144,6 @@ describe('createSvaMainserverService', () => {
         genericItem: {
           title: 'Freier Eintrag',
           genericType: 'faq',
-          teaser: '',
           visible: false,
           payload: { answer: '43' },
         },
@@ -2187,6 +2184,7 @@ describe('createSvaMainserverService', () => {
     const genericItemMutation = String(fetchImpl.mock.calls[3]?.[1]?.body);
     expect(genericItemMutation).not.toContain('$teaser: String');
     expect(genericItemMutation).not.toContain('teaser: $teaser');
+    expect(genericItemMutation).not.toContain('\n  teaser\n');
     expect(genericItemMutation).not.toContain('$visible: Boolean');
     expect(genericItemMutation).not.toContain('visible: $visible');
     expect(requestBodies[4]?.variables).toEqual({ id: 'generic-1', recordType: 'GenericItem' });
@@ -2563,7 +2561,7 @@ describe('createSvaMainserverService', () => {
     }
   );
 
-  it('maps news payload strings and hides invisible upstream news', async () => {
+  it('maps supported news payload metadata, ignores obsolete text fields and hides invisible news', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fetchImpl = vi
       .fn()
@@ -2612,11 +2610,10 @@ describe('createSvaMainserverService', () => {
         expect.objectContaining({
           id: 'news-1',
           title: '',
-          payload: expect.objectContaining({
-            teaser: 'Kurztext',
-            body: '<p>Body</p>',
+          payload: {
             externalUrl: 'https://example.test',
-          }),
+          },
+          contentBlocks: [],
           createdAt: publishedAt,
           updatedAt: publishedAt,
           publishedAt,
@@ -2966,7 +2963,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({
       id: 'news-1',
-      payload: { teaser: '', body: '' },
+      payload: {},
     });
   });
 
@@ -3115,7 +3112,7 @@ describe('createSvaMainserverService', () => {
     expect(createBody.variables).not.toHaveProperty('payload');
   });
 
-  it('normalizes sparse nested news fields without rejecting optional data', async () => {
+  it('normalizes sparse news fields without synthesizing blocks from obsolete payload text', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const sparseItem = {
       id: 'news-sparse',
@@ -3173,15 +3170,7 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       id: 'news-sparse',
       categories: [{ name: 'Allgemein', children: [] }],
-      contentBlocks: [
-        expect.objectContaining({
-          intro: 'Alt',
-          body: '<p>Alt</p>',
-          mediaContents: [
-            expect.objectContaining({ sourceUrl: { url: 'https://example.test/legacy.jpg' } }),
-          ],
-        }),
-      ],
+      contentBlocks: [],
       announcements: [{}],
       likeCount: 0,
       likedByMe: false,

@@ -113,7 +113,7 @@ describe('NewsDetailPage', () => {
         'news.fields.categoriesSearch': 'Kategorien suchen',
         'news.fields.categoriesSearchPlaceholder': 'Kategorie suchen',
         'news.fields.headline': 'Headline',
-        'news.fields.contentTeaser': 'Teaser',
+        'news.fields.contentIntro': 'Einleitung',
         'news.fields.contentBody': 'Inhalt',
         'news.fields.sourceUrl': 'Quell-URL',
         'news.fields.sourceUrlDescription': 'Quellbeschreibung',

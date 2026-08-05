@@ -32,7 +32,6 @@ export type GenericItemPagination = {
 export type GenericItemFormInput = {
   readonly title: string;
   readonly genericType: string;
-  readonly teaser?: string;
   readonly visible?: boolean;
   readonly author?: string;
   readonly keywords?: string;

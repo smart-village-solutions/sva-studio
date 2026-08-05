@@ -35,7 +35,6 @@ import { parseResilientDetail } from './resilient-detail-mapper.js';
 const genericItemSchema = z.object({
   id: z.string().min(1),
   title: z.string().nullish(),
-  teaser: z.string().nullish(),
   description: z.string().nullish(),
   author: z.string().nullish(),
   keywords: z.string().nullish(),
@@ -79,7 +78,6 @@ const mapGenericItemScalarFields = (
   value: z.infer<typeof genericItemSchema>,
   createdAt: string
 ) => ({
-  ...(optionalString(value.teaser) ? { teaser: optionalString(value.teaser) } : {}),
   ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
   ...(optionalString(value.author) ? { author: optionalString(value.author) } : {}),
   ...(optionalString(value.keywords) ? { keywords: optionalString(value.keywords) } : {}),

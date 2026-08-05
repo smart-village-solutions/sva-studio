@@ -4,6 +4,7 @@ import {
   requestMainserverJson,
   type MainserverErrorFactory,
 } from './mainserver-request.js';
+import type { MainserverDataDeviation, MainserverDetailResult } from './mainserver-detail.js';
 
 export type MainserverListQuery = Readonly<{
   page: number;
@@ -37,6 +38,7 @@ export type MainserverCrudClientOptions<
 
 type ApiItemResponse<T> = Readonly<{
   data: T;
+  meta?: Readonly<{ deviations?: readonly MainserverDataDeviation[] }>;
 }>;
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
@@ -69,6 +71,17 @@ export const createMainserverCrudClient = <
         errorFactory: options.errorFactory,
       });
       return mapItem(response.data);
+    },
+    getDetail: async (contentId: string): Promise<MainserverDetailResult<TItem>> => {
+      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
+        url: `${options.basePath}/${contentId}`,
+        fetch: options.fetch,
+        errorFactory: options.errorFactory,
+      });
+      return {
+        data: mapItem(response.data),
+        deviations: response.meta?.deviations ?? [],
+      };
     },
     create: async (input: TMutationInput): Promise<TItem> => {
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({

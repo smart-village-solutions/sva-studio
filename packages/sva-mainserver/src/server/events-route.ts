@@ -48,7 +48,7 @@ import {
   changeSvaMainserverEventVisibility,
   createSvaMainserverEvent,
   deleteSvaMainserverEvent,
-  getSvaMainserverEvent,
+  getSvaMainserverEventDetail,
   listSvaMainserverEvents,
   updateSvaMainserverEvent,
 } from './service.js';
@@ -67,9 +67,12 @@ type ContentActor = {
   readonly activeOrganizationId?: string;
 };
 
-const matchRoute = (request: Request): RouteMatch | null => matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
+const matchRoute = (request: Request): RouteMatch | null =>
+  matchRequestRoute(request, EVENTS_COLLECTION_PATH, 'events');
 
-const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | Response | undefined => {
+const parseEventDates = (
+  value: unknown
+): readonly SvaMainserverDateInput[] | Response | undefined => {
   if (!Array.isArray(value)) {
     return undefined;
   }
@@ -82,7 +85,11 @@ const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | Re
     const timeStart = readString(item.timeStart);
     const timeEnd = readString(item.timeEnd);
     if ((timeStart && !isTimeOfDay(timeStart)) || (timeEnd && !isTimeOfDay(timeEnd))) {
-      return errorJson(400, 'invalid_request', 'Termine müssen Uhrzeiten im Format HH:MM enthalten.');
+      return errorJson(
+        400,
+        'invalid_request',
+        'Termine müssen Uhrzeiten im Format HH:MM enthalten.'
+      );
     }
     dates.push({
       ...(readString(item.weekday) ? { weekday: readString(item.weekday) } : {}),
@@ -90,7 +97,9 @@ const parseEventDates = (value: unknown): readonly SvaMainserverDateInput[] | Re
       ...(readString(item.dateEnd) ? { dateEnd: readString(item.dateEnd) } : {}),
       ...(timeStart ? { timeStart } : {}),
       ...(timeEnd ? { timeEnd } : {}),
-      ...(readString(item.timeDescription) ? { timeDescription: readString(item.timeDescription) } : {}),
+      ...(readString(item.timeDescription)
+        ? { timeDescription: readString(item.timeDescription) }
+        : {}),
       ...(readBoolean(item.useOnlyTimeDescription) !== undefined
         ? { useOnlyTimeDescription: readBoolean(item.useOnlyTimeDescription) }
         : {}),
@@ -219,15 +228,25 @@ const buildEventInput = (
     ...(relations.mediaContents ? { mediaContents: relations.mediaContents } : {}),
     ...(relations.organizer ? { organizer: relations.organizer } : {}),
     ...(relations.priceInformations ? { priceInformations: relations.priceInformations } : {}),
-    ...(relations.accessibilityInformation ? { accessibilityInformation: relations.accessibilityInformation } : {}),
+    ...(relations.accessibilityInformation
+      ? { accessibilityInformation: relations.accessibilityInformation }
+      : {}),
     ...(relations.tags ? { tags: relations.tags } : {}),
     ...(readString(body.recurring) ? { recurring: readString(body.recurring) } : {}),
     ...(readString(body.recurringType) ? { recurringType: readString(body.recurringType) } : {}),
-    ...(readString(body.recurringInterval) ? { recurringInterval: readString(body.recurringInterval) } : {}),
-    ...(Array.isArray(body.recurringWeekdays)
-      ? { recurringWeekdays: body.recurringWeekdays.map(readString).filter((value): value is string => Boolean(value)) }
+    ...(readString(body.recurringInterval)
+      ? { recurringInterval: readString(body.recurringInterval) }
       : {}),
-    ...(readString(body.pointOfInterestId) ? { pointOfInterestId: readString(body.pointOfInterestId) } : {}),
+    ...(Array.isArray(body.recurringWeekdays)
+      ? {
+          recurringWeekdays: body.recurringWeekdays
+            .map(readString)
+            .filter((value): value is string => Boolean(value)),
+        }
+      : {}),
+    ...(readString(body.pointOfInterestId)
+      ? { pointOfInterestId: readString(body.pointOfInterestId) }
+      : {}),
   };
 };
 
@@ -256,7 +275,11 @@ const parseEventInput = async (
 
   const visible = readBoolean(body.visible);
   if (body.visible !== undefined && visible === undefined) {
-    return errorJson(400, 'invalid_request', 'Das Feld "visible" muss als Boolean gesendet werden.');
+    return errorJson(
+      400,
+      'invalid_request',
+      'Das Feld "visible" muss als Boolean gesendet werden.'
+    );
   }
 
   return {
@@ -267,7 +290,9 @@ const parseEventInput = async (
 
 const validateMutationRequest = (request: Request, requestId?: string): Response | null => {
   const csrfError = validateCsrf(request, requestId);
-  return csrfError ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.') : null;
+  return csrfError
+    ? errorJson(403, 'csrf_validation_failed', 'Sicherheitsprüfung fehlgeschlagen.')
+    : null;
 };
 
 const toEventVisibilityPartialFailureResponse = (
@@ -288,7 +313,7 @@ const toEventVisibilityPartialFailureResponse = (
       partialSuccess: true,
       data: event,
     },
-    status,
+    status
   );
 };
 
@@ -340,7 +365,11 @@ const handleCollectionRead = async (
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'));
+  const actor = await authorizeOrResponse(
+    ctx,
+    route.contentKind,
+    pluginActionFor(route.contentKind, 'read')
+  );
   if (isResponse(actor)) {
     return actor;
   }
@@ -356,14 +385,31 @@ const handleItemRead = async (
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, contentId?: string) => void
 ) => {
-  const actor = await authorizeOrResponse(ctx, route.contentKind, pluginActionFor(route.contentKind, 'read'), route.itemId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    route.contentKind,
+    pluginActionFor(route.contentKind, 'read'),
+    route.itemId
+  );
   if (isResponse(actor)) {
     return actor;
   }
 
-  const data = await getSvaMainserverEvent({ ...actor, eventId: route.itemId });
+  const detail = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
+  for (const deviation of detail.deviations) {
+    logger.warn('Mainserver detail response degraded', {
+      operation: 'mainserver_event_detail',
+      instance_id: actor.instanceId,
+      content_type: EVENTS_CONTENT_TYPE,
+      content_id: route.itemId,
+      phase: deviation.phase,
+      field_path: deviation.fieldPath,
+      deviation_code: deviation.code,
+      handling: deviation.handling,
+    });
+  }
   logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-  return json({ data });
+  return json({ data: detail.data, meta: { deviations: detail.deviations } });
 };
 
 const logMutationWorkflowFailure = (input: {
@@ -387,15 +433,13 @@ const logMutationWorkflowFailure = (input: {
   });
 };
 
-const createContentMutationHandler = <TInput>(
-  input: {
-    readonly route: Extract<RouteMatch, { readonly kind: 'collection' | 'item' }>;
-    readonly action: 'create' | 'update' | 'delete';
-    readonly requestId?: string;
-    readonly parse: (request: Request) => Promise<TInput | Response>;
-    readonly execute: (actor: ContentActor, parsed: TInput) => Promise<Response>;
-  }
-) => {
+const createContentMutationHandler = <TInput>(input: {
+  readonly route: Extract<RouteMatch, { readonly kind: 'collection' | 'item' }>;
+  readonly action: 'create' | 'update' | 'delete';
+  readonly requestId?: string;
+  readonly parse: (request: Request) => Promise<TInput | Response>;
+  readonly execute: (actor: ContentActor, parsed: TInput) => Promise<Response>;
+}) => {
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
     {
@@ -439,7 +483,8 @@ const createContentMutationHandler = <TInput>(
     respond: (response) => response,
   });
 
-  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => workflow(request, ctx);
+  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, ctx);
 };
 
 const handleCollectionCreate = async (
@@ -458,13 +503,24 @@ const handleCollectionCreate = async (
       const result = await createSvaMainserverEvent({ ...actor, event: parsed.event });
       if (parsed.visible === false) {
         try {
-          await changeSvaMainserverEventVisibility({ ...actor, eventId: result.id, visible: false });
+          await changeSvaMainserverEventVisibility({
+            ...actor,
+            eventId: result.id,
+            visible: false,
+          });
         } catch (error) {
-          return toEventVisibilityPartialFailureResponse(error, { ...result, visible: false }, 'erstellt');
+          return toEventVisibilityPartialFailureResponse(
+            error,
+            { ...result, visible: false },
+            'erstellt'
+          );
         }
       }
       logSuccess(`mainserver_${route.contentKind}_create`, result.id);
-      return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } }, 201);
+      return json(
+        { data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } },
+        201
+      );
     },
   })(request, ctx);
 };
@@ -482,10 +538,18 @@ const handleItemUpdate = async (
     requestId,
     parse: async (inputRequest) => await parseEventInput(inputRequest),
     execute: async (actor, parsed) => {
-      const result = await updateSvaMainserverEvent({ ...actor, eventId: route.itemId, event: parsed.event });
+      const result = await updateSvaMainserverEvent({
+        ...actor,
+        eventId: route.itemId,
+        event: parsed.event,
+      });
       if (parsed.visible !== undefined) {
         try {
-          await changeSvaMainserverEventVisibility({ ...actor, eventId: route.itemId, visible: parsed.visible });
+          await changeSvaMainserverEventVisibility({
+            ...actor,
+            eventId: route.itemId,
+            visible: parsed.visible,
+          });
         } catch (error) {
           return toEventVisibilityPartialFailureResponse(
             error,
@@ -495,7 +559,9 @@ const handleItemUpdate = async (
         }
       }
       logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-      return json({ data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } });
+      return json({
+        data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible },
+      });
     },
   })(request, ctx);
 };
@@ -520,7 +586,11 @@ const handleItemDelete = async (
   })(request, ctx);
 };
 
-const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: AuthenticatedRequestContext) => {
+const dispatchAuthenticated = async (
+  request: Request,
+  route: RouteMatch,
+  ctx: AuthenticatedRequestContext
+) => {
   const workspaceContext = getWorkspaceContext();
   const logSuccess = (operation: string, contentId?: string) => {
     try {
@@ -549,7 +619,13 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {
-      return await handleCollectionCreate(request, route, ctx, workspaceContext.requestId, logSuccess);
+      return await handleCollectionCreate(
+        request,
+        route,
+        ctx,
+        workspaceContext.requestId,
+        logSuccess
+      );
     }
 
     if (route.kind === 'item' && request.method === 'PATCH') {
@@ -560,7 +636,11 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
       return await handleItemDelete(request, route, ctx, workspaceContext.requestId, logSuccess);
     }
 
-    return errorJson(405, 'method_not_allowed', 'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.');
+    return errorJson(
+      405,
+      'method_not_allowed',
+      'Methode wird für diesen Mainserver-Inhalt nicht unterstützt.'
+    );
   } catch (error) {
     logger.warn('Mainserver content route failed', {
       operation: 'mainserver_content_request',
@@ -577,7 +657,9 @@ const dispatchAuthenticated = async (request: Request, route: RouteMatch, ctx: A
   }
 };
 
-export const dispatchSvaMainserverEventsRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchSvaMainserverEventsRequest = async (
+  request: Request
+): Promise<Response | null> => {
   const route = matchRoute(request);
   if (!route) {
     return null;

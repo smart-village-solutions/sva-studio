@@ -10,10 +10,10 @@ const state = vi.hoisted(() => ({
   createSvaMainserverPoi: vi.fn(),
   updateSvaMainserverPoi: vi.fn(),
   listSvaMainserverEvents: vi.fn(),
-  getSvaMainserverEvent: vi.fn(),
+  getSvaMainserverEventDetail: vi.fn(),
   deleteSvaMainserverEvent: vi.fn(),
   listSvaMainserverPoi: vi.fn(),
-  getSvaMainserverPoi: vi.fn(),
+  getSvaMainserverPoiDetail: vi.fn(),
   deleteSvaMainserverPoi: vi.fn(),
   loggerInfo: vi.fn(),
   loggerWarn: vi.fn(),
@@ -41,7 +41,11 @@ vi.mock('./service.js', () => ({
     public readonly code: string;
     public readonly statusCode?: number;
 
-    public constructor(input: { readonly code: string; readonly message: string; readonly statusCode?: number }) {
+    public constructor(input: {
+      readonly code: string;
+      readonly message: string;
+      readonly statusCode?: number;
+    }) {
       super(input.message);
       this.code = input.code;
       this.statusCode = input.statusCode;
@@ -53,10 +57,10 @@ vi.mock('./service.js', () => ({
   createSvaMainserverPoi: state.createSvaMainserverPoi,
   updateSvaMainserverPoi: state.updateSvaMainserverPoi,
   listSvaMainserverEvents: state.listSvaMainserverEvents,
-  getSvaMainserverEvent: state.getSvaMainserverEvent,
+  getSvaMainserverEventDetail: state.getSvaMainserverEventDetail,
   deleteSvaMainserverEvent: state.deleteSvaMainserverEvent,
   listSvaMainserverPoi: state.listSvaMainserverPoi,
-  getSvaMainserverPoi: state.getSvaMainserverPoi,
+  getSvaMainserverPoiDetail: state.getSvaMainserverPoiDetail,
   deleteSvaMainserverPoi: state.deleteSvaMainserverPoi,
 }));
 
@@ -106,7 +110,9 @@ describe('mainserver content route contracts', () => {
   });
 
   it('ignores unrelated routes', async () => {
-    const response = await dispatchSvaMainserverEventsRequest(createRequest('https://studio.test/api/v1/mainserver/news'));
+    const response = await dispatchSvaMainserverEventsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news')
+    );
 
     expect(response).toBeNull();
     expect(state.withAuthenticatedUser).not.toHaveBeenCalled();
@@ -135,7 +141,9 @@ describe('mainserver content route contracts', () => {
     const eventsResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events')
     );
-    const poiResponse = await dispatchSvaMainserverPoiRequest(createRequest('https://studio.test/api/v1/mainserver/poi'));
+    const poiResponse = await dispatchSvaMainserverPoiRequest(
+      createRequest('https://studio.test/api/v1/mainserver/poi')
+    );
 
     expect(eventsResponse?.status).toBe(200);
     await expect(eventsResponse?.json()).resolves.toEqual({
@@ -199,8 +207,20 @@ describe('mainserver content route contracts', () => {
 
   it('reads event and POI details after item authorization', async () => {
     mockAuthorizedMutation();
-    state.getSvaMainserverEvent.mockResolvedValue({ id: 'event-1' });
-    state.getSvaMainserverPoi.mockResolvedValue({ id: 'poi-1' });
+    state.getSvaMainserverEventDetail.mockResolvedValue({
+      data: { id: 'event-1' },
+      deviations: [
+        {
+          fieldPath: 'dates[]',
+          fieldGroup: 'dates',
+          code: 'unexpected_type',
+          phase: 'read',
+          handling: 'omitted',
+          retryable: false,
+        },
+      ],
+    });
+    state.getSvaMainserverPoiDetail.mockResolvedValue({ data: { id: 'poi-1' }, deviations: [] });
 
     const eventsResponse = await dispatchSvaMainserverEventsRequest(
       createRequest('https://studio.test/api/v1/mainserver/events/event-1')
@@ -211,11 +231,19 @@ describe('mainserver content route contracts', () => {
 
     expect(eventsResponse?.status).toBe(200);
     expect(poiResponse?.status).toBe(200);
-    expect(state.getSvaMainserverEvent).toHaveBeenCalledWith(
+    expect(state.getSvaMainserverEventDetail).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: 'event-1', instanceId: 'de-musterhausen' })
     );
-    expect(state.getSvaMainserverPoi).toHaveBeenCalledWith(
+    expect(state.getSvaMainserverPoiDetail).toHaveBeenCalledWith(
       expect.objectContaining({ poiId: 'poi-1', instanceId: 'de-musterhausen' })
+    );
+    await expect(eventsResponse?.json()).resolves.toEqual({
+      data: { id: 'event-1' },
+      meta: { deviations: [expect.objectContaining({ fieldPath: 'dates[]' })] },
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Mainserver detail response degraded',
+      expect.objectContaining({ field_path: 'dates[]', deviation_code: 'unexpected_type' })
     );
   });
 
@@ -377,7 +405,13 @@ describe('mainserver content route contracts', () => {
             },
           ],
           categories: [{ name: ' Wochenmarkt ', payload: { icon: 'bag' } }],
-          addresses: [{ addition: ' Innenhof ', city: 'Musterhausen', geoLocation: { latitude: '52.6', longitude: '13.5' } }],
+          addresses: [
+            {
+              addition: ' Innenhof ',
+              city: 'Musterhausen',
+              geoLocation: { latitude: '52.6', longitude: '13.5' },
+            },
+          ],
           contact: {
             firstName: ' Eva ',
             email: 'markt@example.invalid',
@@ -388,7 +422,10 @@ describe('mainserver content route contracts', () => {
             {
               captionText: ' Marktbild ',
               contentType: 'image',
-              sourceUrl: { url: 'https://example.invalid/markt.jpg', description: ' Abendstimmung ' },
+              sourceUrl: {
+                url: 'https://example.invalid/markt.jpg',
+                description: ' Abendstimmung ',
+              },
             },
           ],
           tags: [' regional ', '', null],
@@ -422,7 +459,13 @@ describe('mainserver content route contracts', () => {
             },
           ],
           categories: [{ name: 'Wochenmarkt', payload: { icon: 'bag' } }],
-          addresses: [{ addition: 'Innenhof', city: 'Musterhausen', geoLocation: { latitude: 52.6, longitude: 13.5 } }],
+          addresses: [
+            {
+              addition: 'Innenhof',
+              city: 'Musterhausen',
+              geoLocation: { latitude: 52.6, longitude: 13.5 },
+            },
+          ],
           contacts: [
             {
               firstName: 'Eva',
@@ -597,7 +640,14 @@ describe('mainserver content route contracts', () => {
           categoryName: 'Service',
           payload: { source: 'portal' },
           categories: [{ name: ' Beratung ', children: [{ name: ' Anmeldung ' }] }],
-          addresses: [{ id: '7', street: 'Rathausgasse 2', city: 'Musterhausen', geoLocation: { latitude: '52.4', longitude: '13.2' } }],
+          addresses: [
+            {
+              id: '7',
+              street: 'Rathausgasse 2',
+              city: 'Musterhausen',
+              geoLocation: { latitude: '52.4', longitude: '13.2' },
+            },
+          ],
           contact: {
             lastName: 'Team',
             phone: '+49 30 555',
@@ -622,7 +672,14 @@ describe('mainserver content route contracts', () => {
           categoryName: 'Service',
           payload: { source: 'portal' },
           categories: [{ name: 'Beratung', children: [{ name: 'Anmeldung' }] }],
-          addresses: [{ id: 7, street: 'Rathausgasse 2', city: 'Musterhausen', geoLocation: { latitude: 52.4, longitude: 13.2 } }],
+          addresses: [
+            {
+              id: 7,
+              street: 'Rathausgasse 2',
+              city: 'Musterhausen',
+              geoLocation: { latitude: 52.4, longitude: 13.2 },
+            },
+          ],
           contact: {
             lastName: 'Team',
             phone: '+49 30 555',
@@ -765,8 +822,22 @@ describe('mainserver content route contracts', () => {
             webUrls: [{ url: 'https://example.invalid/contact', description: ' Kontakt ' }],
           },
           openingHours: [
-            { weekday: 'MO', dateFrom: '2026-06-01', dateTo: '2026-09-30', timeFrom: '08:00', timeTo: '18:00', open: true, description: ' Sommer ' },
-            { weekday: 'TU', timeFrom: '09:00', timeTo: '17:00', open: false, description: ' Winter ' },
+            {
+              weekday: 'MO',
+              dateFrom: '2026-06-01',
+              dateTo: '2026-09-30',
+              timeFrom: '08:00',
+              timeTo: '18:00',
+              open: true,
+              description: ' Sommer ',
+            },
+            {
+              weekday: 'TU',
+              timeFrom: '09:00',
+              timeTo: '17:00',
+              open: false,
+              description: ' Winter ',
+            },
           ],
           priceInformations: [
             { name: ' Erwachsene ', amount: '12.5', description: ' Eintritt ', category: 'adult' },
@@ -937,14 +1008,29 @@ describe('mainserver content route contracts', () => {
 
   it.each([
     ['non-object event body', 'events', { method: 'POST', body: JSON.stringify(null) }],
-    ['missing event title', 'events', { method: 'POST', body: JSON.stringify({ description: 'ohne Titel' }) }],
+    [
+      'missing event title',
+      'events',
+      { method: 'POST', body: JSON.stringify({ description: 'ohne Titel' }) },
+    ],
     ['non-object poi body', 'poi', { method: 'POST', body: JSON.stringify(null) }],
-    ['missing POI name', 'poi', { method: 'POST', body: JSON.stringify({ description: 'ohne Name' }) }],
-    ['non-list POI URLs', 'poi', { method: 'POST', body: JSON.stringify({ name: 'Rathaus', webUrls: 'https://bad' }) }],
+    [
+      'missing POI name',
+      'poi',
+      { method: 'POST', body: JSON.stringify({ description: 'ohne Name' }) },
+    ],
+    [
+      'non-list POI URLs',
+      'poi',
+      { method: 'POST', body: JSON.stringify({ name: 'Rathaus', webUrls: 'https://bad' }) },
+    ],
     [
       'non-HTTPS event URL',
       'events',
-      { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', urls: [{ url: 'http://example.invalid' }] }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Stadtfest', urls: [{ url: 'http://example.invalid' }] }),
+      },
     ],
     [
       'invalid event address item',
@@ -956,16 +1042,30 @@ describe('mainserver content route contracts', () => {
       'events',
       {
         method: 'POST',
-        body: JSON.stringify({ title: 'Stadtfest', addresses: [{ geoLocation: { latitude: 91, longitude: 13 } }] }),
+        body: JSON.stringify({
+          title: 'Stadtfest',
+          addresses: [{ geoLocation: { latitude: 91, longitude: 13 } }],
+        }),
       },
     ],
-    ['invalid event contact', 'events', { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', contact: 'Team' }) }],
+    [
+      'invalid event contact',
+      'events',
+      { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', contact: 'Team' }) },
+    ],
     [
       'invalid event time',
       'events',
-      { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', dates: [{ timeStart: '19 Uhr' }] }) },
+      {
+        method: 'POST',
+        body: JSON.stringify({ title: 'Stadtfest', dates: [{ timeStart: '19 Uhr' }] }),
+      },
     ],
-    ['invalid event tags', 'events', { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', tags: 'sommer' }) }],
+    [
+      'invalid event tags',
+      'events',
+      { method: 'POST', body: JSON.stringify({ title: 'Stadtfest', tags: 'sommer' }) },
+    ],
     [
       'invalid category item',
       'poi',
@@ -979,8 +1079,11 @@ describe('mainserver content route contracts', () => {
   ])('rejects invalid request payloads: %s', async (_label, path, init) => {
     mockAuthorizedMutation();
 
-    const dispatcher = path === 'events' ? dispatchSvaMainserverEventsRequest : dispatchSvaMainserverPoiRequest;
-    const response = await dispatcher(createRequest(`https://studio.test/api/v1/mainserver/${path}`, init));
+    const dispatcher =
+      path === 'events' ? dispatchSvaMainserverEventsRequest : dispatchSvaMainserverPoiRequest;
+    const response = await dispatcher(
+      createRequest(`https://studio.test/api/v1/mainserver/${path}`, init)
+    );
 
     expect(response?.status).toBe(400);
     await expect(response?.json()).resolves.toMatchObject({ error: 'invalid_request' });
@@ -1075,7 +1178,10 @@ describe('mainserver content route contracts', () => {
     );
 
     expect(forbiddenResponse?.status).toBe(403);
-    await expect(forbiddenResponse?.json()).resolves.toEqual({ error: 'forbidden', message: 'Kein Zugriff' });
+    await expect(forbiddenResponse?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Kein Zugriff',
+    });
     expect(internalResponse?.status).toBe(500);
     await expect(internalResponse?.json()).resolves.toEqual({
       error: 'internal_error',
@@ -1135,7 +1241,9 @@ describe('mainserver content route contracts', () => {
     expect(state.updateSvaMainserverEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event: expect.objectContaining({
-          categories: [{ name: 'Kultur', payload: { color: 'green' }, children: [{ name: 'Bühne' }] }],
+          categories: [
+            { name: 'Kultur', payload: { color: 'green' }, children: [{ name: 'Bühne' }] },
+          ],
         }),
       })
     );

@@ -26,7 +26,15 @@ vi.mock('@opentelemetry/api', () => ({
   },
   trace: {
     getTracer: () => ({
-      startActiveSpan: async (_name: string, callback: (span: { setAttributes: (attrs: Record<string, unknown>) => void; setStatus: (status: Record<string, unknown>) => void; recordException: (error: unknown) => void; end: () => void; }) => Promise<unknown>) =>
+      startActiveSpan: async (
+        _name: string,
+        callback: (span: {
+          setAttributes: (attrs: Record<string, unknown>) => void;
+          setStatus: (status: Record<string, unknown>) => void;
+          recordException: (error: unknown) => void;
+          end: () => void;
+        }) => Promise<unknown>
+      ) =>
         callback({
           setAttributes: () => undefined,
           setStatus: () => undefined,
@@ -137,12 +145,10 @@ describe('createSvaMainserverService', () => {
 
   it('caches credentials for sixty seconds by default', async () => {
     let nowMs = 0;
-    const readCredentials = vi
-      .fn()
-      .mockResolvedValue({
-        apiKey: 'key-1',
-        apiSecret: 'secret-1',
-      });
+    const readCredentials = vi.fn().mockResolvedValue({
+      apiKey: 'key-1',
+      apiSecret: 'secret-1',
+    });
 
     const fetchImpl = vi
       .fn()
@@ -156,9 +162,15 @@ describe('createSvaMainserverService', () => {
       now: () => nowMs,
     });
 
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
     nowMs += 30_000;
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
 
     expect(readCredentials).toHaveBeenCalledTimes(1);
   });
@@ -177,9 +189,15 @@ describe('createSvaMainserverService', () => {
       now: () => nowMs,
     });
 
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
     nowMs += 10_000;
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
 
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
@@ -200,9 +218,15 @@ describe('createSvaMainserverService', () => {
       now: () => nowMs,
     });
 
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
     nowMs += 70_000;
-    await service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getQueryRootTypename({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
 
     expect(fetchImpl).toHaveBeenCalledTimes(4);
   });
@@ -223,11 +247,17 @@ describe('createSvaMainserverService', () => {
       readCredentials,
       fetchImpl: vi
         .fn()
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-2', expires_in: 120 }))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-2', expires_in: 120 })
+        )
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-3', expires_in: 120 }))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-3', expires_in: 120 })
+        )
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } })),
       now: () => nowMs,
       credentialCacheMaxSize: 1,
@@ -257,7 +287,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'connected',
       queryRootTypename: 'Query',
@@ -493,7 +526,11 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItems: [item] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, status: 'ok', statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { destroyRecord: { id: 1, status: 'ok', statusCode: 200 } },
+        })
+      );
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
@@ -510,18 +547,30 @@ describe('createSvaMainserverService', () => {
     };
 
     await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'news-1', status: 'published', contentType: 'news.article' })],
+      data: [
+        expect.objectContaining({ id: 'news-1', status: 'published', contentType: 'news.article' }),
+      ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(service.createNews({ ...connection, news })).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
+    await expect(service.createNews({ ...connection, news })).resolves.toEqual(
+      expect.objectContaining({ id: 'news-1' })
+    );
     await expect(service.updateNews({ ...connection, newsId: 'news-1', news })).resolves.toEqual(
       expect.objectContaining({ id: 'news-1' })
     );
-    await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+    await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({
+      id: 'news-1',
+    });
 
     const requestBodies = fetchImpl.mock.calls
       .slice(1)
-      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+      .map(
+        ([, init]) =>
+          JSON.parse(init?.body as string) as {
+            operationName: string;
+            variables?: Record<string, unknown>;
+          }
+      );
     expect(requestBodies[0]).toMatchObject({
       operationName: 'SvaMainserverNewsList',
       variables: { limit: 26, skip: 0, order: 'publishedAt_DESC' },
@@ -606,7 +655,9 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { newsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createNewsItem: item } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } })
+      );
     vi.stubGlobal('fetch', fetchImpl);
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
     const news = {
@@ -615,16 +666,26 @@ describe('createSvaMainserverService', () => {
       payload: item.payload,
     };
 
-    await expect(listSvaMainserverNews({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(
+      listSvaMainserverNews({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: 'news-1' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(getSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toMatchObject({ id: 'news-1' });
-    await expect(createSvaMainserverNews({ ...connection, news })).resolves.toMatchObject({ id: 'news-1' });
-    await expect(updateSvaMainserverNews({ ...connection, newsId: 'news-1', news })).resolves.toMatchObject({
+    await expect(getSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toMatchObject({
       id: 'news-1',
     });
-    await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({ id: 'news-1' });
+    await expect(createSvaMainserverNews({ ...connection, news })).resolves.toMatchObject({
+      id: 'news-1',
+    });
+    await expect(
+      updateSvaMainserverNews({ ...connection, newsId: 'news-1', news })
+    ).resolves.toMatchObject({
+      id: 'news-1',
+    });
+    await expect(deleteSvaMainserverNews({ ...connection, newsId: 'news-1' })).resolves.toEqual({
+      id: 'news-1',
+    });
   });
 
   it('lists, reads, updates results and moderates surveys with typed GraphQL variables', async () => {
@@ -860,13 +921,23 @@ describe('createSvaMainserverService', () => {
     };
 
     await expect(service.listSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey', status: 'ACTIVE' })],
+      data: [
+        expect.objectContaining({
+          id: 'survey-1',
+          contentType: 'surveys.survey',
+          status: 'ACTIVE',
+        }),
+      ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
-    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
-      id: 'survey-1',
-    });
-    await expect(service.getSurveyResults({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject(
+      {
+        id: 'survey-1',
+      }
+    );
+    await expect(
+      service.getSurveyResults({ ...connection, surveyId: 'survey-1' })
+    ).resolves.toMatchObject({
       surveyId: 'survey-1',
       questions: [
         expect.objectContaining({
@@ -874,13 +945,17 @@ describe('createSvaMainserverService', () => {
         }),
       ],
     });
-    await expect(service.createSurvey({ ...connection, survey: surveyInput })).resolves.toMatchObject({
+    await expect(
+      service.createSurvey({ ...connection, survey: surveyInput })
+    ).resolves.toMatchObject({
       success: true,
       action: 'CREATED',
       survey: expect.objectContaining({ id: 'survey-1' }),
       errors: [],
     });
-    await expect(service.updateSurvey({ ...connection, surveyId: 'survey-1', survey: surveyInput })).resolves.toMatchObject({
+    await expect(
+      service.updateSurvey({ ...connection, surveyId: 'survey-1', survey: surveyInput })
+    ).resolves.toMatchObject({
       success: true,
       action: 'UPDATED',
       survey: expect.objectContaining({ id: 'survey-1' }),
@@ -905,7 +980,9 @@ describe('createSvaMainserverService', () => {
       }),
       errors: [],
     });
-    await expect(service.deleteSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+    await expect(
+      service.deleteSurvey({ ...connection, surveyId: 'survey-1' })
+    ).resolves.toMatchObject({
       success: true,
       action: 'DELETED',
       deletedSurveyId: 'survey-1',
@@ -914,7 +991,13 @@ describe('createSvaMainserverService', () => {
 
     const requestBodies = fetchImpl.mock.calls
       .slice(1)
-      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+      .map(
+        ([, init]) =>
+          JSON.parse(init?.body as string) as {
+            operationName: string;
+            variables?: Record<string, unknown>;
+          }
+      );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverSurveysList',
       'SvaMainserverSurveyDetail',
@@ -953,8 +1036,12 @@ describe('createSvaMainserverService', () => {
         isAnonymous: true,
       }),
     });
-    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain('allowsMultipleSubmissionsPerDevice');
-    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain('"resultVisibility":"AFTER_SURVEY_END","targetAreaIds"');
+    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain(
+      'allowsMultipleSubmissionsPerDevice'
+    );
+    expect(JSON.stringify(requestBodies[3]?.variables)).not.toContain(
+      '"resultVisibility":"AFTER_SURVEY_END","targetAreaIds"'
+    );
     expect(requestBodies[4]?.variables).toMatchObject({
       input: expect.objectContaining({
         id: 'survey-1',
@@ -1033,17 +1120,21 @@ describe('createSvaMainserverService', () => {
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
-    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
-      id: 'survey-1',
-      startAt: '2026-07-10T08:00:00.000Z',
-      resultVisibility: 'AFTER_SURVEY_END',
-      showResultsInApp: true,
-      privacyNotice: { de: 'Teilnahme anonym.' },
-    });
+    await expect(service.getSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject(
+      {
+        id: 'survey-1',
+        startAt: '2026-07-10T08:00:00.000Z',
+        resultVisibility: 'AFTER_SURVEY_END',
+        showResultsInApp: true,
+        privacyNotice: { de: 'Teilnahme anonym.' },
+      }
+    );
 
     const requestBodies = fetchImpl.mock.calls
       .slice(1)
-      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; query?: string });
+      .map(
+        ([, init]) => JSON.parse(init?.body as string) as { operationName: string; query?: string }
+      );
     expect(requestBodies).toMatchObject([
       { operationName: 'SvaMainserverSurveysList' },
       { operationName: 'SvaMainserverSurveyDetail' },
@@ -1188,14 +1279,20 @@ describe('createSvaMainserverService', () => {
 
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(listSvaMainserverSurveys({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(
+      listSvaMainserverSurveys({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
-    await expect(getSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+    await expect(
+      getSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })
+    ).resolves.toMatchObject({
       id: 'survey-1',
     });
-    await expect(getSvaMainserverSurveyResults({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+    await expect(
+      getSvaMainserverSurveyResults({ ...connection, surveyId: 'survey-1' })
+    ).resolves.toMatchObject({
       surveyId: 'survey-1',
     });
     await expect(
@@ -1238,7 +1335,9 @@ describe('createSvaMainserverService', () => {
     ).resolves.toMatchObject({
       success: true,
     });
-    await expect(deleteSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })).resolves.toMatchObject({
+    await expect(
+      deleteSvaMainserverSurvey({ ...connection, surveyId: 'survey-1' })
+    ).resolves.toMatchObject({
       success: true,
       deletedSurveyId: 'survey-1',
     });
@@ -1369,7 +1468,9 @@ describe('createSvaMainserverService', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { surveys: [{ id: 'survey-1', results: null }] } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { surveys: [{ id: 'survey-1', results: null }] } })
+      );
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
@@ -1493,7 +1594,12 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
+      service.listSurveys({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        page: 1,
+        pageSize: 25,
+      })
     ).rejects.toMatchObject({
       code: 'invalid_response',
       statusCode: 502,
@@ -1505,7 +1611,9 @@ describe('createSvaMainserverService', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 77 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 77 } } })
+      );
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
@@ -1560,7 +1668,9 @@ describe('createSvaMainserverService', () => {
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { publicJsonFile: { id: '1707' } } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 'static-1' } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { createOrUpdateStaticContent: { id: 'static-1' } } })
+      );
 
     vi.stubGlobal('fetch', fetchImpl);
 
@@ -1602,11 +1712,22 @@ describe('createSvaMainserverService', () => {
       recurringWeekdays: [1, 5],
       category: { id: 'cat-1', name: 'Kultur' },
       categories: [{ name: 'Kultur', children: [{ name: 'Open Air' }] }],
-      addresses: [{ street: 'Parkweg 1', zip: '12345', city: 'Musterhausen', geoLocation: { latitude: '52.1', longitude: '13.1' } }],
+      addresses: [
+        {
+          street: 'Parkweg 1',
+          zip: '12345',
+          city: 'Musterhausen',
+          geoLocation: { latitude: '52.1', longitude: '13.1' },
+        },
+      ],
       location: { name: 'Stadtpark', geoLocation: { latitude: '52.2', longitude: '13.2' } },
-      contacts: [{ firstName: 'Ada', lastName: 'Lovelace', phone: '+491234', email: 'ada@example.test' }],
+      contacts: [
+        { firstName: 'Ada', lastName: 'Lovelace', phone: '+491234', email: 'ada@example.test' },
+      ],
       urls: [{ url: 'https://example.test/event', description: 'Tickets' }],
-      mediaContents: [{ captionText: 'Buehne', sourceUrl: { url: 'https://example.test/event.jpg' } }],
+      mediaContents: [
+        { captionText: 'Buehne', sourceUrl: { url: 'https://example.test/event.jpg' } },
+      ],
       organizer: { name: 'Kulturamt', email: 'kultur@example.test' },
       priceInformations: [{ name: 'Regulaer', amount: 12.5, groupPrice: false }],
       accessibilityInformation: { description: 'Barrierearm', types: 'wheelchair' },
@@ -1644,16 +1765,30 @@ describe('createSvaMainserverService', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecords: [eventItem, { ...eventItem, id: 'event-hidden', visible: false }] } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { eventRecords: [eventItem, { ...eventItem, id: 'event-hidden', visible: false }] },
+        })
+      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointsOfInterest: [poiItem, { ...poiItem, id: 'poi-hidden', visible: false }] } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { pointsOfInterest: [poiItem, { ...poiItem, id: 'poi-hidden', visible: false }] },
+        })
+      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } })
+      );
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
       readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
@@ -1673,7 +1808,9 @@ describe('createSvaMainserverService', () => {
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(service.getEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
+    await expect(service.getEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({
+      id: 'event-1',
+    });
     await expect(
       service.createEvent({
         ...connection,
@@ -1719,7 +1856,9 @@ describe('createSvaMainserverService', () => {
         },
       })
     ).resolves.toMatchObject({ id: 'event-1' });
-    await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
+    await expect(service.deleteEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({
+      id: 'event-1',
+    });
 
     await expect(service.listPoi({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
       data: [
@@ -1733,7 +1872,9 @@ describe('createSvaMainserverService', () => {
       ],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(service.getPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(service.getPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({
+      id: 'poi-1',
+    });
     await expect(
       service.createPoi({
         ...connection,
@@ -1761,28 +1902,52 @@ describe('createSvaMainserverService', () => {
         },
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
-    await expect(service.updatePoi({ ...connection, poiId: 'poi-1', poi: { name: 'Stadtpark', active: false, openingHours: poiItem.openingHours } })).resolves.toMatchObject({ id: 'poi-1' });
-    await expect(service.deletePoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
+    await expect(
+      service.updatePoi({
+        ...connection,
+        poiId: 'poi-1',
+        poi: { name: 'Stadtpark', active: false, openingHours: poiItem.openingHours },
+      })
+    ).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(service.deletePoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({
+      id: 'poi-1',
+    });
 
     const requestBodies = fetchImpl.mock.calls
       .slice(1)
-      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+      .map(
+        ([, init]) =>
+          JSON.parse(init?.body as string) as {
+            operationName: string;
+            variables?: Record<string, unknown>;
+          }
+      );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverEventList',
       'SvaMainserverEventDetail',
       'SvaMainserverCreateEvent',
+      'SvaMainserverEventDetail',
       'SvaMainserverCreateEvent',
       'SvaMainserverDestroyRecord',
       'SvaMainserverPoiList',
       'SvaMainserverPoiDetail',
       'SvaMainserverCreatePoi',
+      'SvaMainserverPoiDetail',
       'SvaMainserverCreatePoi',
       'SvaMainserverDestroyRecord',
     ]);
-    expect(requestBodies[3]?.variables).toMatchObject({ id: 'event-1', forceCreate: false, repeat: true });
-    expect(requestBodies[4]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
-    expect(requestBodies[8]?.variables).toMatchObject({ id: 'poi-1', forceCreate: false, active: false });
-    expect(requestBodies[9]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
+    expect(requestBodies[4]?.variables).toMatchObject({
+      id: 'event-1',
+      forceCreate: false,
+      repeat: true,
+    });
+    expect(requestBodies[5]?.variables).toEqual({ id: 'event-1', recordType: 'EventRecord' });
+    expect(requestBodies[10]?.variables).toMatchObject({
+      id: 'poi-1',
+      forceCreate: false,
+      active: false,
+    });
+    expect(requestBodies[11]?.variables).toEqual({ id: 'poi-1', recordType: 'PointOfInterest' });
   });
 
   it('routes default event and POI helpers through the default service', async () => {
@@ -1810,38 +1975,64 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecords: [eventItem] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { eventRecord: eventItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createEventRecord: eventItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } }))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 200 } } })
+      )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointsOfInterest: [poiItem] } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { pointOfInterest: poiItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: poiItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 2, statusCode: 200 } } })
+      );
     vi.stubGlobal('fetch', fetchImpl);
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(listSvaMainserverEvents({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(
+      listSvaMainserverEvents({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: 'event-1' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(getSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toMatchObject({ id: 'event-1' });
-    await expect(createSvaMainserverEvent({ ...connection, event: { title: 'Event' } })).resolves.toMatchObject({
+    await expect(
+      getSvaMainserverEvent({ ...connection, eventId: 'event-1' })
+    ).resolves.toMatchObject({ id: 'event-1' });
+    await expect(
+      createSvaMainserverEvent({ ...connection, event: { title: 'Event' } })
+    ).resolves.toMatchObject({
       id: 'event-1',
     });
-    await expect(updateSvaMainserverEvent({ ...connection, eventId: 'event-1', event: { title: 'Event' } })).resolves.toMatchObject({
+    await expect(
+      updateSvaMainserverEvent({ ...connection, eventId: 'event-1', event: { title: 'Event' } })
+    ).resolves.toMatchObject({
       id: 'event-1',
     });
-    await expect(deleteSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({ id: 'event-1' });
-    await expect(listSvaMainserverPoi({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(deleteSvaMainserverEvent({ ...connection, eventId: 'event-1' })).resolves.toEqual({
+      id: 'event-1',
+    });
+    await expect(
+      listSvaMainserverPoi({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: 'poi-1' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(getSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({ id: 'poi-1' });
-    await expect(createSvaMainserverPoi({ ...connection, poi: { name: 'POI' } })).resolves.toMatchObject({ id: 'poi-1' });
-    await expect(updateSvaMainserverPoi({ ...connection, poiId: 'poi-1', poi: { name: 'POI' } })).resolves.toMatchObject({
+    await expect(getSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toMatchObject({
       id: 'poi-1',
     });
-    await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({ id: 'poi-1' });
+    await expect(
+      createSvaMainserverPoi({ ...connection, poi: { name: 'POI' } })
+    ).resolves.toMatchObject({ id: 'poi-1' });
+    await expect(
+      updateSvaMainserverPoi({ ...connection, poiId: 'poi-1', poi: { name: 'POI' } })
+    ).resolves.toMatchObject({
+      id: 'poi-1',
+    });
+    await expect(deleteSvaMainserverPoi({ ...connection, poiId: 'poi-1' })).resolves.toEqual({
+      id: 'poi-1',
+    });
   });
 
   it('lists, reads, writes and deletes generic items with typed GraphQL variables', async () => {
@@ -1864,7 +2055,9 @@ describe('createSvaMainserverService', () => {
       addresses: [{ street: 'Rathausplatz 1', city: 'Musterhausen' }],
       contentBlocks: [{ body: '<p>Antwort</p>' }],
       openingHours: [{ weekday: 'MO', timeFrom: '08:00', timeTo: '16:00', open: true }],
-      mediaContents: [{ captionText: 'Titelbild', sourceUrl: { url: 'https://example.test/faq.jpg' } }],
+      mediaContents: [
+        { captionText: 'Titelbild', sourceUrl: { url: 'https://example.test/faq.jpg' } },
+      ],
       locations: [{ name: 'Rathaus', geoLocation: { latitude: '52.4', longitude: '13.4' } }],
       dates: [{ dateStart: '2026-08-01', timeStart: '09:00' }],
       accessibilityInformations: [{ description: 'Leicht lesbar', types: 'plain-language' }],
@@ -1878,13 +2071,17 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { genericItems: [genericItem, { ...genericItem, id: 'generic-hidden', visible: false }] },
+          data: {
+            genericItems: [genericItem, { ...genericItem, id: 'generic-hidden', visible: false }],
+          },
         })
       )
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 3, statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 3, statusCode: 200 } } })
+      );
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
@@ -1893,7 +2090,9 @@ describe('createSvaMainserverService', () => {
     });
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(service.listGenericItems({ ...connection, page: 1, pageSize: 25 })).resolves.toEqual({
+    await expect(
+      service.listGenericItems({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toEqual({
       data: [
         expect.objectContaining({
           id: 'generic-1',
@@ -1905,7 +2104,9 @@ describe('createSvaMainserverService', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    await expect(service.getGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toMatchObject({
+    await expect(
+      service.getGenericItem({ ...connection, genericItemId: 'generic-1' })
+    ).resolves.toMatchObject({
       id: 'generic-1',
       genericType: 'faq',
     });
@@ -1952,13 +2153,21 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'generic-1' });
 
-    await expect(service.deleteGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toEqual({
+    await expect(
+      service.deleteGenericItem({ ...connection, genericItemId: 'generic-1' })
+    ).resolves.toEqual({
       id: 'generic-1',
     });
 
     const requestBodies = fetchImpl.mock.calls
       .slice(1)
-      .map(([, init]) => JSON.parse(init?.body as string) as { operationName: string; variables?: Record<string, unknown> });
+      .map(
+        ([, init]) =>
+          JSON.parse(init?.body as string) as {
+            operationName: string;
+            variables?: Record<string, unknown>;
+          }
+      );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverGenericItemList',
       'SvaMainserverGenericItemDetail',
@@ -2006,20 +2215,29 @@ describe('createSvaMainserverService', () => {
       .mockResolvedValueOnce(createJsonResponse(200, { data: { genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
       .mockResolvedValueOnce(createJsonResponse(200, { data: { createGenericItem: genericItem } }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 4, statusCode: 200 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 4, statusCode: 200 } } })
+      );
     vi.stubGlobal('fetch', fetchImpl);
 
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(listSvaMainserverGenericItems({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject({
+    await expect(
+      listSvaMainserverGenericItems({ ...connection, page: 1, pageSize: 25 })
+    ).resolves.toMatchObject({
       data: [expect.objectContaining({ id: 'generic-1' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
-    await expect(getSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toMatchObject({
+    await expect(
+      getSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })
+    ).resolves.toMatchObject({
       id: 'generic-1',
     });
     await expect(
-      createSvaMainserverGenericItem({ ...connection, genericItem: { title: 'Freier Eintrag', genericType: 'faq' } })
+      createSvaMainserverGenericItem({
+        ...connection,
+        genericItem: { title: 'Freier Eintrag', genericType: 'faq' },
+      })
     ).resolves.toMatchObject({ id: 'generic-1' });
     await expect(
       updateSvaMainserverGenericItem({
@@ -2028,7 +2246,9 @@ describe('createSvaMainserverService', () => {
         genericItem: { title: 'Freier Eintrag', genericType: 'faq' },
       })
     ).resolves.toMatchObject({ id: 'generic-1' });
-    await expect(deleteSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })).resolves.toEqual({
+    await expect(
+      deleteSvaMainserverGenericItem({ ...connection, genericItemId: 'generic-1' })
+    ).resolves.toEqual({
       id: 'generic-1',
     });
   });
@@ -2043,7 +2263,16 @@ describe('createSvaMainserverService', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+        })
+      );
     vi.stubGlobal('fetch', fetchImpl);
 
     await expect(
@@ -2058,7 +2287,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({
@@ -2079,7 +2308,16 @@ describe('createSvaMainserverService', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+        })
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          data: { createPointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true } },
+        })
+      );
     vi.stubGlobal('fetch', fetchImpl);
 
     await expect(
@@ -2095,7 +2333,7 @@ describe('createSvaMainserverService', () => {
       })
     ).resolves.toMatchObject({ id: 'poi-1' });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+    const requestBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
       variables?: Record<string, unknown>;
     };
     expect(requestBody.variables).toMatchObject({
@@ -2126,13 +2364,20 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 13 })
+      service.listNews({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        page: 1,
+        pageSize: 13,
+      })
     ).resolves.toEqual({
       data: [expect.objectContaining({ id: 'news-1' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
-    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as { variables?: Record<string, unknown> };
+    const requestBody = JSON.parse(fetchImpl.mock.calls[1]?.[1]?.body as string) as {
+      variables?: Record<string, unknown>;
+    };
     expect(requestBody.variables).toMatchObject({
       limit: 26,
       skip: 0,
@@ -2206,7 +2451,12 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 5_000 })
+      service.listSurveys({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        page: 1,
+        pageSize: 5_000,
+      })
     ).resolves.toMatchObject({
       data: expect.arrayContaining([
         expect.objectContaining({ id: 'survey-1', contentType: 'surveys.survey' }),
@@ -2245,7 +2495,12 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listSurveys({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 2, pageSize: 101 })
+      service.listSurveys({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        page: 2,
+        pageSize: 101,
+      })
     ).resolves.toMatchObject({
       data: expect.arrayContaining([
         expect.objectContaining({ id: 'survey-102' }),
@@ -2260,46 +2515,51 @@ describe('createSvaMainserverService', () => {
     'keeps the highest allowed visible-list page reachable when the has-next probe crosses the scan limit',
     { timeout: 20_000 },
     async () => {
-    const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      if (
-        init?.body instanceof URLSearchParams ||
-        (typeof init?.body === 'string' && init.body.startsWith('grant_type='))
-      ) {
-        return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
-      }
+      const fetchImpl = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        if (
+          init?.body instanceof URLSearchParams ||
+          (typeof init?.body === 'string' && init.body.startsWith('grant_type='))
+        ) {
+          return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+        }
 
-      const requestBody = JSON.parse(init.body as string) as {
-        variables?: { limit?: number; skip?: number };
-      };
-      const skip = requestBody.variables?.skip ?? 0;
-      const limit = requestBody.variables?.limit ?? 100;
-      const remaining = Math.max(0, 10001 - skip);
-      const batchCount = Math.min(limit, remaining);
-      const newsItems = Array.from({ length: batchCount }, (_value, index) => ({
-        id: `news-${skip + index + 1}`,
-        title: `News ${skip + index + 1}`,
-        payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
-        publishedAt: '2026-04-14T09:30:00.000Z',
-        visible: true,
-      }));
+        const requestBody = JSON.parse(init.body as string) as {
+          variables?: { limit?: number; skip?: number };
+        };
+        const skip = requestBody.variables?.skip ?? 0;
+        const limit = requestBody.variables?.limit ?? 100;
+        const remaining = Math.max(0, 10001 - skip);
+        const batchCount = Math.min(limit, remaining);
+        const newsItems = Array.from({ length: batchCount }, (_value, index) => ({
+          id: `news-${skip + index + 1}`,
+          title: `News ${skip + index + 1}`,
+          payload: { teaser: 'Kurztext', body: '<p>Body</p>' },
+          publishedAt: '2026-04-14T09:30:00.000Z',
+          visible: true,
+        }));
 
-      return createJsonResponse(200, { data: { newsItems } });
-    });
+        return createJsonResponse(200, { data: { newsItems } });
+      });
 
-    const service = createSvaMainserverService({
-      loadInstanceConfig: async () => baseConfig,
-      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
-      fetchImpl,
-    });
+      const service = createSvaMainserverService({
+        loadInstanceConfig: async () => baseConfig,
+        readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+        fetchImpl,
+      });
 
-    await expect(
-      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 100, pageSize: 100 })
-    ).resolves.toEqual({
-      data: Array.from({ length: 100 }, (_value, index) =>
-        expect.objectContaining({ id: `news-${9901 + index}` })
-      ),
-      pagination: { page: 100, pageSize: 100, hasNextPage: true },
-    });
+      await expect(
+        service.listNews({
+          instanceId: baseConfig.instanceId,
+          keycloakSubject: 'subject-1',
+          page: 100,
+          pageSize: 100,
+        })
+      ).resolves.toEqual({
+        data: Array.from({ length: 100 }, (_value, index) =>
+          expect.objectContaining({ id: `news-${9901 + index}` })
+        ),
+        pagination: { page: 100, pageSize: 100, hasNextPage: true },
+      });
     }
   );
 
@@ -2315,7 +2575,11 @@ describe('createSvaMainserverService', () => {
               {
                 id: 'news-1',
                 title: null,
-                payload: JSON.stringify({ teaser: 'Kurztext', body: '<p>Body</p>', externalUrl: 'https://example.test' }),
+                payload: JSON.stringify({
+                  teaser: 'Kurztext',
+                  body: '<p>Body</p>',
+                  externalUrl: 'https://example.test',
+                }),
                 publicationDate: publishedAt,
               },
               {
@@ -2337,7 +2601,12 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.listNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', page: 1, pageSize: 25 })
+      service.listNews({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        page: 1,
+        pageSize: 25,
+      })
     ).resolves.toEqual({
       data: [
         expect.objectContaining({
@@ -2690,7 +2959,11 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', newsId: 'news-1' })
+      service.getNews({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        newsId: 'news-1',
+      })
     ).resolves.toMatchObject({
       id: 'news-1',
       payload: { teaser: '', body: '' },
@@ -2741,7 +3014,11 @@ describe('createSvaMainserverService', () => {
         },
       ],
       dataProvider: { id: 'provider-1', name: 'Provider' },
-      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
+      settings: {
+        alwaysRecreateOnImport: 'false',
+        displayOnlySummary: 'true',
+        onlySummaryLinkText: 'Mehr',
+      },
       announcements: [{ id: 'shout-1', title: 'Hinweis' }],
       likeCount: 5,
       likedByMe: false,
@@ -2767,7 +3044,10 @@ describe('createSvaMainserverService', () => {
       keywords: 'Rathaus',
       charactersToBeShown: 240,
       sourceUrl: { url: 'https://example.test/news', description: 'Quelle' },
-      address: expect.objectContaining({ city: 'Musterhausen', geoLocation: { latitude: 52.1, longitude: 13.1 } }),
+      address: expect.objectContaining({
+        city: 'Musterhausen',
+        geoLocation: { latitude: 52.1, longitude: 13.1 },
+      }),
       categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
       contentBlocks: [
         expect.objectContaining({
@@ -2775,7 +3055,11 @@ describe('createSvaMainserverService', () => {
         }),
       ],
       dataProvider: { id: 'provider-1', name: 'Provider' },
-      settings: { alwaysRecreateOnImport: 'false', displayOnlySummary: 'true', onlySummaryLinkText: 'Mehr' },
+      settings: {
+        alwaysRecreateOnImport: 'false',
+        displayOnlySummary: 'true',
+        onlySummaryLinkText: 'Mehr',
+      },
       announcements: [{ id: 'shout-1', title: 'Hinweis' }],
       likeCount: 5,
       likedByMe: false,
@@ -2797,7 +3081,7 @@ describe('createSvaMainserverService', () => {
           publishedAt,
           showPublishDate: true,
           categoryName: 'Allgemein',
-      categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
+          categories: [{ name: 'Allgemein', children: [{ name: 'Rathaus' }] }],
           sourceUrl: { url: 'https://example.test/news', description: 'Quelle' },
           address: {
             street: 'Markt 1',
@@ -2805,14 +3089,21 @@ describe('createSvaMainserverService', () => {
             city: 'Musterhausen',
             geoLocation: { latitude: 52.1, longitude: 13.1 },
           },
-          contentBlocks: [{ body: '<p>Body</p>', mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' } }] }],
+          contentBlocks: [
+            {
+              body: '<p>Body</p>',
+              mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' } }],
+            },
+          ],
           pointOfInterestId: 'poi-1',
           pushNotification: true,
         },
       })
     ).resolves.toMatchObject({ id: 'news-full' });
 
-    const createBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as { variables: Record<string, unknown> };
+    const createBody = JSON.parse(fetchImpl.mock.calls[2]?.[1]?.body as string) as {
+      variables: Record<string, unknown>;
+    };
     expect(createBody.variables).toMatchObject({
       title: 'Volle News',
       author: 'Redaktion',
@@ -2838,15 +3129,26 @@ describe('createSvaMainserverService', () => {
       publicationDate: null,
       publishedAt,
       showPublishDate: null,
-      payload: JSON.stringify({ teaser: 'Alt', body: '<p>Alt</p>', imageUrl: 'https://example.test/legacy.jpg' }),
+      payload: JSON.stringify({
+        teaser: 'Alt',
+        body: '<p>Alt</p>',
+        imageUrl: 'https://example.test/legacy.jpg',
+      }),
       sourceUrl: { url: null, description: 'Ohne URL' },
       address: {
         geoLocation: { latitude: Number.POSITIVE_INFINITY, longitude: 'bad' },
       },
-      categories: [{ name: null }, { name: 'Allgemein', iconName: null, position: null, children: [{ name: null }] }],
+      categories: [
+        { name: null },
+        { name: 'Allgemein', iconName: null, position: null, children: [{ name: null }] },
+      ],
       contentBlocks: [],
       dataProvider: { id: null, name: null, logo: { url: null }, address: {} },
-      settings: { alwaysRecreateOnImport: null, displayOnlySummary: null, onlySummaryLinkText: null },
+      settings: {
+        alwaysRecreateOnImport: null,
+        displayOnlySummary: null,
+        onlySummaryLinkText: null,
+      },
       announcements: [{ id: null, title: null, description: null }],
       likeCount: null,
       likedByMe: null,
@@ -2863,7 +3165,11 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getNews({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1', newsId: 'news-sparse' })
+      service.getNews({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+        newsId: 'news-sparse',
+      })
     ).resolves.toMatchObject({
       id: 'news-sparse',
       categories: [{ name: 'Allgemein', children: [] }],
@@ -2871,7 +3177,9 @@ describe('createSvaMainserverService', () => {
         expect.objectContaining({
           intro: 'Alt',
           body: '<p>Alt</p>',
-          mediaContents: [expect.objectContaining({ sourceUrl: { url: 'https://example.test/legacy.jpg' } })],
+          mediaContents: [
+            expect.objectContaining({ sourceUrl: { url: 'https://example.test/legacy.jpg' } }),
+          ],
         }),
       ],
       announcements: [{}],
@@ -2928,7 +3236,9 @@ describe('createSvaMainserverService', () => {
           },
         })
       )
-      .mockResolvedValueOnce(createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 500 } } }));
+      .mockResolvedValueOnce(
+        createJsonResponse(200, { data: { destroyRecord: { id: 1, statusCode: 500 } } })
+      );
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
       readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
@@ -2953,7 +3263,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'missing_credentials',
@@ -2969,7 +3282,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'identity_provider_unavailable',
@@ -2987,7 +3303,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'identity_provider_unavailable',
@@ -3005,12 +3324,17 @@ describe('createSvaMainserverService', () => {
       readCredentials,
       fetchImpl: vi
         .fn()
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
     });
 
-    await service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' });
+    await service.getConnectionStatus({
+      instanceId: baseConfig.instanceId,
+      keycloakSubject: 'subject-1',
+    });
 
     expect(readCredentials).toHaveBeenCalledWith({
       instanceId: 'de-musterhausen',
@@ -3032,7 +3356,9 @@ describe('createSvaMainserverService', () => {
       loadInstanceConfig: async () => baseConfig,
       fetchImpl: vi
         .fn()
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Query' } }))
         .mockResolvedValueOnce(createJsonResponse(200, { data: { __typename: 'Mutation' } })),
     });
@@ -3063,7 +3389,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'identity_provider_unavailable',
@@ -3085,7 +3414,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'graphql_error',
@@ -3100,7 +3432,9 @@ describe('createSvaMainserverService', () => {
         readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
         fetchImpl: vi
           .fn()
-          .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+          .mockResolvedValueOnce(
+            createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+          )
           .mockResolvedValueOnce(new Response('forbidden', { status }))
           .mockResolvedValueOnce(new Response('forbidden', { status })),
       });
@@ -3136,7 +3470,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'token_request_failed',
@@ -3158,7 +3495,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'network_error',
@@ -3188,7 +3528,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getQueryRootTypename({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({ __typename: 'Query' });
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
@@ -3217,7 +3560,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getQueryRootTypename({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getQueryRootTypename({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({ __typename: 'Query' });
 
     expect(cancel).toHaveBeenCalledTimes(1);
@@ -3236,7 +3582,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'network_error',
@@ -3256,7 +3605,10 @@ describe('createSvaMainserverService', () => {
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'network_error',
@@ -3270,14 +3622,21 @@ describe('createSvaMainserverService', () => {
       readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
       fetchImpl: vi
         .fn()
-        .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
-        .mockResolvedValueOnce(new Response('not-json', { status: 200, headers: { 'Content-Type': 'text/plain' } })),
+        .mockResolvedValueOnce(
+          createJsonResponse(200, { access_token: 'token-1', expires_in: 120 })
+        )
+        .mockResolvedValueOnce(
+          new Response('not-json', { status: 200, headers: { 'Content-Type': 'text/plain' } })
+        ),
       retryBaseDelayMs: 0,
       randomIntImpl: () => 0,
     });
 
     await expect(
-      service.getConnectionStatus({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+      service.getConnectionStatus({
+        instanceId: baseConfig.instanceId,
+        keycloakSubject: 'subject-1',
+      })
     ).resolves.toMatchObject({
       status: 'error',
       errorCode: 'invalid_response',

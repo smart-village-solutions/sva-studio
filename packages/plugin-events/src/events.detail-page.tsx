@@ -8,6 +8,7 @@ import {
   getHostMediaAssetFileName,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  omitDeviatedMainserverFields,
   saveContentWithHostMediaReferences,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
@@ -24,6 +25,7 @@ import {
   contentMediaUsagesToMainserver,
   isPersistableContentMediaUrl,
   mainserverContentMediaToUsages,
+  MainserverDeviationSummary,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
   Select,
@@ -46,7 +48,7 @@ import {
   createEvent,
   deleteEvent,
   EventsApiError,
-  getEvent,
+  getEventDetail,
   listEventCategories,
   updateEvent,
 } from './events.api.js';
@@ -297,13 +299,27 @@ export function EventsDetailPage({
   const { reset } = methods;
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
-  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
-  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
+    null
+  );
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const mediaCapabilities = React.useMemo(
+    () =>
+      resolveContentMediaCapabilities({
+        canEditContent: true,
+        permissionActions: sessionAccess.permissionActions,
+      }),
+    [sessionAccess.permissionActions]
+  );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
@@ -398,14 +414,30 @@ export function EventsDetailPage({
         ],
         { shouldDirty: true }
       );
-      setMediaUsages((current) => [...current, {
-        uiId: `event-asset-${asset.id}-${current.length}`, assetId: asset.id, persistentUrl,
-        previewUrl: asset.previewUrl ?? undefined, altText: asset.metadata.altText || asset.fileName,
-        caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright,
-        license: asset.metadata.license, role: 'gallery_item', sortOrder: current.length,
-        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
-        referenceStatus: 'pending', additionalData: { contentType: nextMedia.contentType ?? 'image', width: '', height: '' },
-      }]);
+      setMediaUsages((current) => [
+        ...current,
+        {
+          uiId: `event-asset-${asset.id}-${current.length}`,
+          assetId: asset.id,
+          persistentUrl,
+          previewUrl: asset.previewUrl ?? undefined,
+          altText: asset.metadata.altText || asset.fileName,
+          caption: asset.metadata.description || asset.title,
+          credit: asset.metadata.copyright,
+          license: asset.metadata.license,
+          role: 'gallery_item',
+          sortOrder: current.length,
+          assetSnapshot: toContentMediaAssetSnapshot({
+            persistentUrl,
+            altText: asset.metadata.altText || asset.fileName,
+            caption: asset.metadata.description || asset.title,
+            credit: asset.metadata.copyright,
+            license: asset.metadata.license,
+          }),
+          referenceStatus: 'pending',
+          additionalData: { contentType: nextMedia.contentType ?? 'image', width: '', height: '' },
+        },
+      ]);
       setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
@@ -423,9 +455,18 @@ export function EventsDetailPage({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId })]);
+      const [detail, delivery] = await Promise.all([
+        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+      ]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toEventsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
+      return toEventsMediaPickerDetail(
+        detail,
+        summary,
+        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
+          ? delivery.deliveryUrl
+          : null
+      );
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -437,8 +478,17 @@ export function EventsDetailPage({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      return toEventsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
+      const delivery = await getHostMediaDelivery({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+      });
+      return toEventsMediaPickerDetail(
+        detail,
+        summary,
+        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
+          ? delivery.deliveryUrl
+          : null
+      );
     },
   });
   const mediaPickerFeedback = React.useMemo(
@@ -468,20 +518,46 @@ export function EventsDetailPage({
     }
 
     let active = true;
-    void Promise.all([getEvent(contentId), listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: EVENTS_CONTENT_TYPE, targetId: contentId })])
-      .then(([item, references]) => {
+    void getEventDetail(contentId)
+      .then((detail) => {
         if (!active) {
           return;
         }
+        const item = detail.data;
+        setDeviations(detail.deviations);
         const nextValues = mapEventItemToDetailFormValues(item);
         reset(nextValues);
-        setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents, alignHostMediaReferencesByOrder({ itemCount: nextValues.content.mediaContents.length, role: 'gallery_item', references })));
-        setRequiresReferenceSync(references.length > 0);
+        setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
+        setRequiresReferenceSync(false);
         setLoadedItem(item);
         setDateStartInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateStart));
         setDateEndInput(toDateOnlyInputValue(nextValues.content.dates?.[0]?.dateEnd));
         setInvalidDateInputs({ dateStart: false, dateEnd: false });
         setLoading(false);
+
+        void listHostMediaReferencesByTarget({
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: EVENTS_CONTENT_TYPE,
+          targetId: contentId,
+        })
+          .then((references) => {
+            if (!active) return;
+            setMediaUsages(
+              mainserverContentMediaToUsages(
+                nextValues.content.mediaContents,
+                alignHostMediaReferencesByOrder({
+                  itemCount: nextValues.content.mediaContents.length,
+                  role: 'gallery_item',
+                  references,
+                })
+              )
+            );
+            setRequiresReferenceSync(references.length > 0);
+          })
+          .catch(() => {
+            if (!active) return;
+            setStatus({ kind: 'error', text: pt('messages.mediaReferenceLoadError') });
+          });
       })
       .catch((loadError) => {
         if (active) {
@@ -532,7 +608,15 @@ export function EventsDetailPage({
   const submit = methods.handleSubmit(async (values) => {
     setStatus(null);
     methods.clearErrors();
-    const valuesWithMedia = { ...values, content: { ...values.content, mediaContents: contentMediaUsagesToMainserver(mediaUsages) as EventsDetailFormValues['content']['mediaContents'] } };
+    const valuesWithMedia = {
+      ...values,
+      content: {
+        ...values.content,
+        mediaContents: contentMediaUsagesToMainserver(
+          mediaUsages
+        ) as EventsDetailFormValues['content']['mediaContents'],
+      },
+    };
     const payload = mapEventsDetailFormValuesToInput(valuesWithMedia);
     const validationErrors = [
       ...validateEventForm(payload),
@@ -583,17 +667,35 @@ export function EventsDetailPage({
     }
 
     try {
-      const saveContent = () => mode === 'create' ? createEvent(payload) : updateEvent(contentId as string, payload);
-      const result = requiresReferenceSync ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: EVENTS_CONTENT_TYPE, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) }) : { status: 'complete' as const, saved: await saveContent() };
+      const saveContent = () =>
+        mode === 'create'
+          ? createEvent(payload)
+          : updateEvent(contentId as string, omitDeviatedMainserverFields(payload, deviations));
+      const result = requiresReferenceSync
+        ? await saveContentWithHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            saveContent,
+            getTargetId: (saved) => saved.id,
+            targetType: EVENTS_CONTENT_TYPE,
+            references: mediaUsages.flatMap((usage) => {
+              const reference = contentMediaUsageToReference(usage);
+              return reference ? [reference] : [];
+            }),
+          })
+        : { status: 'complete' as const, saved: await saveContent() };
       const saved = result.saved;
       if (result.status === 'reference_failed') {
         setRetryReferenceSync(() => result.retryReferenceSync);
-        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+        setMediaUsages((current) =>
+          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
+        );
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         return;
       }
       setRetryReferenceSync(null);
-      setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+      setMediaUsages((current) =>
+        current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+      );
       setStatus({
         kind: 'success',
         text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
@@ -691,7 +793,34 @@ export function EventsDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          {retryReferenceSync ? <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => { setRetryReferenceSync(null); setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage)); setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') }); }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>{pt('actions.retryMediaReferences')}</Button> : null}
+          <MainserverDeviationSummary
+            deviations={deviations}
+            title={pt('messages.degradedDataWarning')}
+            fieldLabel={(field) => pt('messages.degradedField', { field })}
+          />
+          {retryReferenceSync ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                void retryReferenceSync().then(
+                  () => {
+                    setRetryReferenceSync(null);
+                    setMediaUsages((current) =>
+                      current.map((usage) =>
+                        usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+                      )
+                    );
+                    setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+                  },
+                  () =>
+                    setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
+                )
+              }
+            >
+              {pt('actions.retryMediaReferences')}
+            </Button>
+          ) : null}
           <Tabs
             value={activeTab}
             onValueChange={(value) => handleTabChange(value as EventsDetailTabId)}
@@ -773,14 +902,38 @@ export function EventsDetailPage({
                     {tab.id === 'content' ? (
                       <EventsDetailContentTab
                         mediaUsages={mediaUsages}
-                        onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
+                        onChangeMediaUsages={(usages) => {
+                          setMediaUsages(usages);
+                          setRequiresReferenceSync(
+                            (current) => current || usages.some((usage) => Boolean(usage.assetId))
+                          );
+                        }}
                         canSelectMedia={canSelectMedia}
                         canUploadMedia={canUploadMedia}
                         onLoadAssetSnapshot={async (usage) => {
                           if (!usage.assetId) throw new Error('asset_unavailable');
-                          const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId })]);
-                          if (delivery.isPublicUrl !== true || !isPersistableContentMediaUrl(delivery.deliveryUrl)) throw new Error('asset_unavailable');
-                          return toContentMediaAssetSnapshot({ persistentUrl: delivery.deliveryUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+                          const [detail, delivery] = await Promise.all([
+                            getHostMediaAsset({
+                              fetch: globalThis.fetch.bind(globalThis),
+                              assetId: usage.assetId,
+                            }),
+                            getHostMediaDelivery({
+                              fetch: globalThis.fetch.bind(globalThis),
+                              assetId: usage.assetId,
+                            }),
+                          ]);
+                          if (
+                            delivery.isPublicUrl !== true ||
+                            !isPersistableContentMediaUrl(delivery.deliveryUrl)
+                          )
+                            throw new Error('asset_unavailable');
+                          return toContentMediaAssetSnapshot({
+                            persistentUrl: delivery.deliveryUrl,
+                            altText: detail.metadata.altText ?? '',
+                            caption: detail.metadata.description ?? '',
+                            credit: detail.metadata.copyright ?? '',
+                            license: detail.metadata.license ?? '',
+                          });
                         }}
                         dateEndInput={dateEndInput}
                         dateInputsInvalid={invalidDateInputs}
@@ -798,7 +951,9 @@ export function EventsDetailPage({
                       />
                     ) : null}
                     {tab.id === 'settings' ? <EventsDetailSettingsTab pt={pt} /> : null}
-                    {tab.id === 'history' ? <EventsDetailHistoryTab contentId={contentId} pt={pt} /> : null}
+                    {tab.id === 'history' ? (
+                      <EventsDetailHistoryTab contentId={contentId} pt={pt} />
+                    ) : null}
                   </div>
                 </TabsContent>
               );

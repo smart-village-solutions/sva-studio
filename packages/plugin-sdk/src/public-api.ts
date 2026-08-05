@@ -127,6 +127,11 @@ export type {
   MainserverListQuery,
 } from './mainserver-client.js';
 export {
+  omitDeviatedMainserverFields,
+  type MainserverDataDeviation,
+  type MainserverDetailResult,
+} from './mainserver-detail.js';
+export {
   buildMainserverListUrl,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,

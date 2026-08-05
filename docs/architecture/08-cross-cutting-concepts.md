@@ -659,4 +659,11 @@ Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht i
 
 FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, Formularfehler, Pagination und destruktive Bestätigungen die Primitives aus `@sva/studio-ui-react`. News, Events und POIs dienen als kuratierte Verhaltensreferenzen; ihre pluginlokalen Implementierungen werden nicht kopiert. Fachliche Mapper, Feldpfade und Mainserver-Verträge bleiben in den jeweiligen Plugins beziehungsweise Host-Fassaden.
 
+### Resilienz- und Erhaltungsvertrag
+
+- Mainserver-Detaildaten bleiben bei Abweichungen optionaler Felder nutzbar; harte Identität und fachlich erforderliche GenericItem-Diskriminatoren bleiben fail-closed.
+- Abweichungen enthalten nur normalisierte Schemafelder, Code, Phase, Behandlung und Wiederholbarkeit. Listenindizes, Rohwerte und freie Payload-Schlüssel sind ausgeschlossen.
+- Feldmatrizen unterscheiden harte, kontrollierte, Passthrough-, nur lesbare und nicht erhaltbare Felder. Read-Merge-Write ist nur für typisiert gelesene und typisiert schreibbare Passthrough-Felder zulässig.
+- Anzeige-Defaults sind keine Persistenzwerte. Eine beschädigte oder nicht rekonstruierbare Feldgruppe darf nicht durch einen Default überschrieben werden.
+
 Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die die Treffermenge verändern, müssen vor Sortierung, Gesamtzahl und Pagination auf der vollständigen hostseitigen Teilmenge wirken. Bestätigungsdialoge sperren während einer laufenden Mutation sowohl Bestätigen als auch Abbrechen und zeigen Fehler innerhalb des Dialogkontexts.

@@ -72,6 +72,8 @@ flowchart TD
 
 - Für Integrationen wie den SVA-Mainserver kapselt `@sva/sva-mainserver` die serverseitige Ablaufkette.
 - Das Paket kombiniert instanzgebundene Konfiguration aus `@sva/data`, nutzerbezogene Credentials aus `@sva/auth-runtime` beziehungsweise Keycloak und die externen OAuth2- und GraphQL-Aufrufe.
+- Bei Detailrequests trennt der Host den führenden Mainserver-Datensatz von optionalen Anreicherungen. Feldgruppenabweichungen werden als sichere `meta.deviations` transportiert; nicht migrierte Clients lesen weiterhin ausschließlich `data`.
+- POI- und Event-Updates verwenden unmittelbar vor der Mutation einen kontrollierten Read-Merge-Write-Schritt für deklarierte Passthrough-Felder. Die GraphQL-Mutation erhält niemals einen untypisierten Objekt-Spread.
 
 ## Rollen der zentralen Packages
 

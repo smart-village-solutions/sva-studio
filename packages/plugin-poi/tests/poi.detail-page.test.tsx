@@ -12,7 +12,14 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createPoi, deletePoi, getPoi, listPoiCategories, updatePoi } from '../src/poi.api.js';
+import {
+  createPoi,
+  deletePoi,
+  getPoi,
+  getPoiDetail,
+  listPoiCategories,
+  updatePoi,
+} from '../src/poi.api.js';
 
 import { PoiDetailPage } from '../src/poi.detail-page.js';
 
@@ -22,6 +29,7 @@ vi.mock('../src/poi.api.js', () => ({
   createPoi: vi.fn(),
   deletePoi: vi.fn(),
   getPoi: vi.fn(),
+  getPoiDetail: vi.fn(),
   listPoiCategories: vi.fn(async () => []),
   listPoi: vi.fn(),
   PoiApiError: class PoiApiError extends Error {},
@@ -158,6 +166,11 @@ describe('PoiDetailPage', () => {
     vi.mocked(createPoi).mockReset();
     vi.mocked(deletePoi).mockReset();
     vi.mocked(getPoi).mockReset();
+    vi.mocked(getPoiDetail).mockReset();
+    vi.mocked(getPoiDetail).mockImplementation(async (contentId) => ({
+      data: await vi.mocked(getPoi)(contentId),
+      deviations: [],
+    }));
     vi.mocked(listPoiCategories).mockReset();
     vi.mocked(listPoiCategories).mockResolvedValue([] as never);
     vi.mocked(updatePoi).mockReset();
@@ -182,6 +195,10 @@ describe('PoiDetailPage', () => {
         'poi.detail.editTitle': 'Ort bearbeiten',
         'poi.actions.save': 'Speichern',
         'poi.actions.delete': 'Löschen',
+        'poi.messages.mediaReferenceLoadError': 'Medienreferenzen konnten nicht geladen werden.',
+        'poi.messages.degradedDataWarning':
+          'Einige Datenbereiche konnten nicht vollständig gelesen werden.',
+        'poi.messages.degradedField': 'Betroffener Bereich',
         'poi.detailTabs.basis.title': 'Basis',
         'poi.detailTabs.content.title': 'Inhalt',
         'poi.detailTabs.settings.title': 'Einstellungen',
@@ -477,7 +494,9 @@ describe('PoiDetailPage', () => {
 
     expect(await screen.findAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     switchSection('history');
-    expect(screen.getByText('Speichern Sie den Ort, bevor die Historie verfügbar ist.')).toBeTruthy();
+    expect(
+      screen.getByText('Speichern Sie den Ort, bevor die Historie verfügbar ist.')
+    ).toBeTruthy();
   });
 
   it('loads the poi editor from GraphQL content and keeps missing legacy media references optional', async () => {
@@ -1248,6 +1267,24 @@ describe('PoiDetailPage', () => {
     });
   });
 
+  it('keeps the POI editable when media references fail to load', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({
+      id: 'poi-1',
+      name: 'Rathaus',
+      mediaContents: [],
+      payload: {},
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(
+      new Error('reference load failed')
+    );
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    expect(await screen.findByDisplayValue('Rathaus')).toBeTruthy();
+    expect(screen.getByText('Medienreferenzen konnten nicht geladen werden.')).toBeTruthy();
+    expect(screen.queryByText('poi.messages.missingContent')).toBeNull();
+  });
+
   it('does not delete or navigate away when deletion is cancelled', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',
@@ -1294,6 +1331,29 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Ort konnte nicht gelöscht werden.')).toBeTruthy();
       expect(navigateMock).not.toHaveBeenCalled();
+    });
+  });
+
+  it('shows a localized summary for degraded Mainserver field groups', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({ id: 'poi-1', name: 'Rathaus', payload: {} } as never);
+    vi.mocked(getPoiDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getPoi)(contentId),
+      deviations: [{ fieldGroup: 'addresses' }] as never,
+    }));
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    expect(
+      await screen.findByText('Einige Datenbereiche konnten nicht vollständig gelesen werden.')
+    ).toBeTruthy();
+    expect(screen.getByText('Betroffener Bereich')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+    await waitFor(() => {
+      expect(updatePoi).toHaveBeenCalledWith(
+        'poi-1',
+        expect.not.objectContaining({ addresses: expect.anything() })
+      );
     });
   });
 

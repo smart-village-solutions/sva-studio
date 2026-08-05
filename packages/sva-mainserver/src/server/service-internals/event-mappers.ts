@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { SvaMainserverEventItem } from '../../types.js';
+import type { MainserverDetailResult, SvaMainserverEventItem } from '../../types.js';
 import type { SvaMainserverEventFragment } from '../../generated/events-poi.js';
 
 import {
@@ -27,6 +27,7 @@ import {
   repeatDurationSchema,
 } from './mappers-shared.js';
 import { defined, optionalNumber, optionalString, toSvaMainserverError } from './shared.js';
+import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const eventItemSchema = z.object({
   id: z.string().min(1),
@@ -49,7 +50,15 @@ const eventItemSchema = z.object({
   addresses: z.array(addressSchema).nullish(),
   location: locationSchema.nullish(),
   contacts: z.array(contactSchema).nullish(),
-  urls: z.array(z.object({ id: z.string().nullish(), url: z.string().nullish(), description: z.string().nullish() })).nullish(),
+  urls: z
+    .array(
+      z.object({
+        id: z.string().nullish(),
+        url: z.string().nullish(),
+        description: z.string().nullish(),
+      })
+    )
+    .nullish(),
   mediaContents: z.array(mediaContentSchema).nullish(),
   organizer: operatingCompanySchema.nullish(),
   priceInformations: z.array(priceSchema).nullish(),
@@ -60,9 +69,28 @@ const eventItemSchema = z.object({
   visible: z.boolean().nullish(),
 });
 
-export const mapEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaMainserverEventItem => {
-  const parsed = eventItemSchema.safeParse(item);
-  if (!parsed.success) {
+export const mapEventItemDetail = (
+  item: SvaMainserverEventFragment | null | undefined
+): MainserverDetailResult<SvaMainserverEventItem> => {
+  const parsed = parseResilientDetail<z.infer<typeof eventItemSchema>>(eventItemSchema, item, {
+    hardFields: ['id'],
+    listFields: {
+      dates: dateSchema,
+      recurringWeekdays: z.number(),
+      categories: categorySchema,
+      addresses: addressSchema,
+      contacts: contactSchema,
+      urls: z.object({
+        id: z.string().nullish(),
+        url: z.string().nullish(),
+        description: z.string().nullish(),
+      }),
+      mediaContents: mediaContentSchema,
+      priceInformations: priceSchema,
+      tagList: z.string(),
+    },
+  });
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige Event-Antwort des SVA-Mainservers.',
@@ -78,45 +106,76 @@ export const mapEventItem = (item: SvaMainserverEventFragment | null | undefined
   const recurringInterval = optionalNumber(parsed.data.recurringInterval);
 
   return {
-    id: parsed.data.id,
-    title: parsed.data.title ?? '',
-    contentType: 'events.event-record',
-    status: 'published',
-    ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
-    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
-    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
-    ...(parentId !== undefined ? { parentId } : {}),
-    dates: (parsed.data.dates ?? []).map(mapDate),
-    ...(optionalString(parsed.data.listDate) ? { listDate: optionalString(parsed.data.listDate) } : {}),
-    ...(optionalString(parsed.data.sortDate) ? { sortDate: optionalString(parsed.data.sortDate) } : {}),
-    ...(defined(parsed.data.repeat) ? { repeat: parsed.data.repeat } : {}),
-    ...(mapRepeatDuration(parsed.data.repeatDuration) ? { repeatDuration: mapRepeatDuration(parsed.data.repeatDuration) } : {}),
-    ...(defined(parsed.data.recurring) ? { recurring: parsed.data.recurring } : {}),
-    ...(recurringType !== undefined ? { recurringType } : {}),
-    ...(recurringInterval !== undefined ? { recurringInterval } : {}),
-    recurringWeekdays: parsed.data.recurringWeekdays ?? [],
-    ...(category ? { categoryName: category.name } : {}),
-    categories,
-    addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
-    ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
-    contacts: (parsed.data.contacts ?? []).map(mapContact).filter(defined),
-    urls: (parsed.data.urls ?? []).map(mapWebUrl).filter(defined),
-    mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
-    ...(mapOperatingCompany(parsed.data.organizer) ? { organizer: mapOperatingCompany(parsed.data.organizer) } : {}),
-    priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
-    ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
-      ? { accessibilityInformation: mapAccessibilityInformation(parsed.data.accessibilityInformation) }
-      : {}),
-    tags: parsed.data.tagList ?? [],
-    visible: parsed.data.visible !== false,
-    createdAt,
-    updatedAt: parsed.data.updatedAt ?? createdAt,
+    data: {
+      id: parsed.data.id,
+      title: parsed.data.title ?? '',
+      contentType: 'events.event-record',
+      status: 'published',
+      ...(optionalString(parsed.data.description)
+        ? { description: optionalString(parsed.data.description) }
+        : {}),
+      ...(optionalString(parsed.data.externalId)
+        ? { externalId: optionalString(parsed.data.externalId) }
+        : {}),
+      ...(optionalString(parsed.data.keywords)
+        ? { keywords: optionalString(parsed.data.keywords) }
+        : {}),
+      ...(parentId !== undefined ? { parentId } : {}),
+      dates: (parsed.data.dates ?? []).map(mapDate),
+      ...(optionalString(parsed.data.listDate)
+        ? { listDate: optionalString(parsed.data.listDate) }
+        : {}),
+      ...(optionalString(parsed.data.sortDate)
+        ? { sortDate: optionalString(parsed.data.sortDate) }
+        : {}),
+      ...(defined(parsed.data.repeat) ? { repeat: parsed.data.repeat } : {}),
+      ...(mapRepeatDuration(parsed.data.repeatDuration)
+        ? { repeatDuration: mapRepeatDuration(parsed.data.repeatDuration) }
+        : {}),
+      ...(defined(parsed.data.recurring) ? { recurring: parsed.data.recurring } : {}),
+      ...(recurringType !== undefined ? { recurringType } : {}),
+      ...(recurringInterval !== undefined ? { recurringInterval } : {}),
+      recurringWeekdays: parsed.data.recurringWeekdays ?? [],
+      ...(category ? { categoryName: category.name } : {}),
+      categories,
+      addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
+      ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
+      contacts: (parsed.data.contacts ?? []).map(mapContact).filter(defined),
+      urls: (parsed.data.urls ?? []).map(mapWebUrl).filter(defined),
+      mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
+      ...(mapOperatingCompany(parsed.data.organizer)
+        ? { organizer: mapOperatingCompany(parsed.data.organizer) }
+        : {}),
+      priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
+      ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
+        ? {
+            accessibilityInformation: mapAccessibilityInformation(
+              parsed.data.accessibilityInformation
+            ),
+          }
+        : {}),
+      tags: parsed.data.tagList ?? [],
+      visible: parsed.data.visible !== false,
+      createdAt,
+      updatedAt: parsed.data.updatedAt ?? createdAt,
+    },
+    deviations: parsed.deviations,
   };
 };
 
-export const mapOptionalEventItem = (item: SvaMainserverEventFragment | null | undefined): SvaMainserverEventItem => {
+export const mapEventItem = (
+  item: SvaMainserverEventFragment | null | undefined
+): SvaMainserverEventItem => mapEventItemDetail(item).data;
+
+export const mapOptionalEventItem = (
+  item: SvaMainserverEventFragment | null | undefined
+): SvaMainserverEventItem => {
   if (!item) {
-    throw toSvaMainserverError({ code: 'not_found', message: 'Event wurde nicht gefunden.', statusCode: 404 });
+    throw toSvaMainserverError({
+      code: 'not_found',
+      message: 'Event wurde nicht gefunden.',
+      statusCode: 404,
+    });
   }
   return mapEventItem(item);
 };

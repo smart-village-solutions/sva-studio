@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { SvaMainserverPoiItem } from '../../types.js';
+import type { MainserverDetailResult } from '../../types.js';
 import type { SvaMainserverPoiFragment } from '../../generated/events-poi.js';
 
 import {
@@ -25,6 +26,7 @@ import {
   priceSchema,
 } from './mappers-shared.js';
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
+import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const certificateSchema = z.object({
   id: z.string().nullish(),
@@ -47,7 +49,15 @@ const poiItemSchema = z.object({
   priceInformations: z.array(priceSchema).nullish(),
   openingHours: z.array(openingHourSchema).nullish(),
   operatingCompany: operatingCompanySchema.nullish(),
-  webUrls: z.array(z.object({ id: z.string().nullish(), url: z.string().nullish(), description: z.string().nullish() })).nullish(),
+  webUrls: z
+    .array(
+      z.object({
+        id: z.string().nullish(),
+        url: z.string().nullish(),
+        description: z.string().nullish(),
+      })
+    )
+    .nullish(),
   mediaContents: z.array(mediaContentSchema).nullish(),
   location: locationSchema.nullish(),
   certificates: z.array(certificateSchema).nullish(),
@@ -58,9 +68,27 @@ const poiItemSchema = z.object({
   visible: z.boolean().nullish(),
 });
 
-export const mapPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMainserverPoiItem => {
-  const parsed = poiItemSchema.safeParse(item);
-  if (!parsed.success) {
+export const mapPoiItemDetail = (
+  item: SvaMainserverPoiFragment | null | undefined
+): MainserverDetailResult<SvaMainserverPoiItem> => {
+  const parsed = parseResilientDetail<z.infer<typeof poiItemSchema>>(poiItemSchema, item, {
+    hardFields: ['id'],
+    listFields: {
+      categories: categorySchema,
+      addresses: addressSchema,
+      priceInformations: priceSchema,
+      openingHours: openingHourSchema,
+      webUrls: z.object({
+        id: z.string().nullish(),
+        url: z.string().nullish(),
+        description: z.string().nullish(),
+      }),
+      mediaContents: mediaContentSchema,
+      certificates: certificateSchema,
+      tagList: z.string(),
+    },
+  });
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige POI-Antwort des SVA-Mainservers.',
@@ -86,44 +114,69 @@ export const mapPoiItem = (item: SvaMainserverPoiFragment | null | undefined): S
   });
 
   return {
-    id: parsed.data.id,
-    name: parsed.data.name ?? '',
-    contentType: 'poi.point-of-interest',
-    status: 'published',
-    ...(optionalString(parsed.data.description) ? { description: optionalString(parsed.data.description) } : {}),
-    ...(optionalString(parsed.data.mobileDescription)
-      ? { mobileDescription: optionalString(parsed.data.mobileDescription) }
-      : {}),
-    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
-    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
-    active: parsed.data.active !== false,
-    ...(category ? { categoryName: category.name } : {}),
-    ...(parsed.data.payload !== undefined && parsed.data.payload !== null ? { payload: parsed.data.payload } : {}),
-    categories,
-    addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
-    ...(mapContact(parsed.data.contact) ? { contact: mapContact(parsed.data.contact) } : {}),
-    priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
-    openingHours: (parsed.data.openingHours ?? []).map(mapOpeningHour),
-    ...(mapOperatingCompany(parsed.data.operatingCompany)
-      ? { operatingCompany: mapOperatingCompany(parsed.data.operatingCompany) }
-      : {}),
-    webUrls: (parsed.data.webUrls ?? []).map(mapWebUrl).filter(defined),
-    mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
-    ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
-    certificates,
-    ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
-      ? { accessibilityInformation: mapAccessibilityInformation(parsed.data.accessibilityInformation) }
-      : {}),
-    tags: parsed.data.tagList ?? [],
-    visible: parsed.data.visible !== false,
-    createdAt,
-    updatedAt: parsed.data.updatedAt ?? createdAt,
+    data: {
+      id: parsed.data.id,
+      name: parsed.data.name ?? '',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      ...(optionalString(parsed.data.description)
+        ? { description: optionalString(parsed.data.description) }
+        : {}),
+      ...(optionalString(parsed.data.mobileDescription)
+        ? { mobileDescription: optionalString(parsed.data.mobileDescription) }
+        : {}),
+      ...(optionalString(parsed.data.externalId)
+        ? { externalId: optionalString(parsed.data.externalId) }
+        : {}),
+      ...(optionalString(parsed.data.keywords)
+        ? { keywords: optionalString(parsed.data.keywords) }
+        : {}),
+      active: parsed.data.active !== false,
+      ...(category ? { categoryName: category.name } : {}),
+      ...(parsed.data.payload !== undefined && parsed.data.payload !== null
+        ? { payload: parsed.data.payload }
+        : {}),
+      categories,
+      addresses: (parsed.data.addresses ?? []).map(mapAddress).filter(defined),
+      ...(mapContact(parsed.data.contact) ? { contact: mapContact(parsed.data.contact) } : {}),
+      priceInformations: (parsed.data.priceInformations ?? []).map(mapPrice),
+      openingHours: (parsed.data.openingHours ?? []).map(mapOpeningHour),
+      ...(mapOperatingCompany(parsed.data.operatingCompany)
+        ? { operatingCompany: mapOperatingCompany(parsed.data.operatingCompany) }
+        : {}),
+      webUrls: (parsed.data.webUrls ?? []).map(mapWebUrl).filter(defined),
+      mediaContents: (parsed.data.mediaContents ?? []).map(mapMediaContent),
+      ...(mapLocation(parsed.data.location) ? { location: mapLocation(parsed.data.location) } : {}),
+      certificates,
+      ...(mapAccessibilityInformation(parsed.data.accessibilityInformation)
+        ? {
+            accessibilityInformation: mapAccessibilityInformation(
+              parsed.data.accessibilityInformation
+            ),
+          }
+        : {}),
+      tags: parsed.data.tagList ?? [],
+      visible: parsed.data.visible !== false,
+      createdAt,
+      updatedAt: parsed.data.updatedAt ?? createdAt,
+    },
+    deviations: parsed.deviations,
   };
 };
 
-export const mapOptionalPoiItem = (item: SvaMainserverPoiFragment | null | undefined): SvaMainserverPoiItem => {
+export const mapPoiItem = (
+  item: SvaMainserverPoiFragment | null | undefined
+): SvaMainserverPoiItem => mapPoiItemDetail(item).data;
+
+export const mapOptionalPoiItem = (
+  item: SvaMainserverPoiFragment | null | undefined
+): SvaMainserverPoiItem => {
   if (!item) {
-    throw toSvaMainserverError({ code: 'not_found', message: 'POI wurde nicht gefunden.', statusCode: 404 });
+    throw toSvaMainserverError({
+      code: 'not_found',
+      message: 'POI wurde nicht gefunden.',
+      statusCode: 404,
+    });
   }
   return mapPoiItem(item);
 };

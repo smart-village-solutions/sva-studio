@@ -1,6 +1,12 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
 
-import type { PoiCategoryOption, PoiContentItem, PoiFormInput, PoiListQuery, PoiListResult } from './poi.types.js';
+import type {
+  PoiCategoryOption,
+  PoiContentItem,
+  PoiFormInput,
+  PoiListQuery,
+  PoiListResult,
+} from './poi.types.js';
 
 export class PoiApiError extends Error {
   public constructor(
@@ -12,7 +18,13 @@ export class PoiApiError extends Error {
   }
 }
 
-const poiClient = createMainserverCrudClient<PoiContentItem, PoiFormInput, PoiListResult, PoiListResult, PoiApiError>({
+const poiClient = createMainserverCrudClient<
+  PoiContentItem,
+  PoiFormInput,
+  PoiListResult,
+  PoiListResult,
+  PoiApiError
+>({
   basePath: '/api/v1/mainserver/poi',
   errorFactory: (code, message) => new PoiApiError(code, message),
   mapListResponse: (response) => response,
@@ -20,9 +32,12 @@ const poiClient = createMainserverCrudClient<PoiContentItem, PoiFormInput, PoiLi
 
 export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => poiClient.list(query);
 
-export const getPoi = async (contentId: string): Promise<PoiContentItem> => poiClient.get(contentId);
+export const getPoi = async (contentId: string): Promise<PoiContentItem> =>
+  poiClient.get(contentId);
+export const getPoiDetail = async (contentId: string) => poiClient.getDetail(contentId);
 
-export const createPoi = async (input: PoiFormInput): Promise<PoiContentItem> => poiClient.create(input);
+export const createPoi = async (input: PoiFormInput): Promise<PoiContentItem> =>
+  poiClient.create(input);
 
 export const updatePoi = async (contentId: string, input: PoiFormInput): Promise<PoiContentItem> =>
   poiClient.update(contentId, input);
@@ -30,7 +45,10 @@ export const updatePoi = async (contentId: string, input: PoiFormInput): Promise
 export const deletePoi = async (contentId: string): Promise<void> => poiClient.remove(contentId);
 
 export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]> => {
-  const response = await requestMainserverJson<{ readonly data: readonly PoiCategoryOption[] }, PoiApiError>({
+  const response = await requestMainserverJson<
+    { readonly data: readonly PoiCategoryOption[] },
+    PoiApiError
+  >({
     url: '/api/v1/mainserver/categories',
     errorFactory: (code, message) => new PoiApiError(code, message),
   });

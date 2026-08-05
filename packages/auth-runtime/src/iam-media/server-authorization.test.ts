@@ -63,6 +63,21 @@ describe('authorizeMediaPrimitiveForUser', () => {
     });
   });
 
+  it('authorizes fully-qualified media actions with multiple segments', async () => {
+    await expect(
+      authorizeMediaPrimitiveForUser({
+        ctx: createContext(),
+        action: 'media.reference.manage',
+        permissions: [
+          {
+            action: 'media.reference.manage',
+            resourceType: 'media',
+          },
+        ],
+      })
+    ).resolves.toMatchObject({ ok: true });
+  });
+
   it('resolves media permissions instance-wide without reading an active organization context', async () => {
     await expect(
       authorizeMediaPrimitiveForUser({

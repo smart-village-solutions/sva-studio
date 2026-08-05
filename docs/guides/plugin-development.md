@@ -563,3 +563,9 @@ Vor einem Push bevorzugt:
 - [ADR-034: Plugin-SDK-Vertrag v1](../adr/ADR-034-plugin-sdk-vertrag-v1.md)
 - [ADR-041: Plugin-Plattform v2 für externe Distribution](../adr/ADR-041-plugin-plattform-v2-fuer-externe-distribution.md)
 - [ADR-039: Medienmanagement als Host-Capability](../adr/ADR-039-medienmanagement-host-capability-und-storage-vertrag.md)
+
+# Mainserver-Detailverträge
+
+Mainserver-basierte Plugins verwenden für neue Detailseiten `getDetail(id)`, wenn feldgruppenbezogene Abweichungen sichtbar werden müssen. `data` bleibt das Fachmodell; `deviations` wird über die gemeinsame `MainserverDeviationSummary` lokalisiert dargestellt. Plugins dürfen daraus weder Rohwerte rekonstruieren noch unbekannte GraphQL-Felder schreiben.
+
+Vor einer Editormigration ist eine Feldmatrix für harte, kontrollierte, Passthrough-, nur lesbare und nicht erhaltbare Felder erforderlich. Passthrough-Erhaltung setzt voraus, dass Detailquery und Mutation-Input das Feld typisiert unterstützen. Optionale Anreicherungen werden unabhängig geladen und erhalten eine eigene lokalisierte Fehler- und Wiederholungsdarstellung.

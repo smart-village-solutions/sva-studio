@@ -25,25 +25,41 @@ export class EventsApiError extends Error {
 
 const MAX_POI_SELECTION_PAGE = 101;
 
-const eventsClient = createMainserverCrudClient<EventContentItem, EventFormInput, EventListResult, EventListResult, EventsApiError>({
+const eventsClient = createMainserverCrudClient<
+  EventContentItem,
+  EventFormInput,
+  EventListResult,
+  EventListResult,
+  EventsApiError
+>({
   basePath: '/api/v1/mainserver/events',
   errorFactory: (code, message) => new EventsApiError(code, message),
   mapListResponse: (response) => response,
 });
 
-export const listEvents = async (query: EventListQuery): Promise<EventListResult> => eventsClient.list(query);
+export const listEvents = async (query: EventListQuery): Promise<EventListResult> =>
+  eventsClient.list(query);
 
-export const getEvent = async (contentId: string): Promise<EventContentItem> => eventsClient.get(contentId);
+export const getEvent = async (contentId: string): Promise<EventContentItem> =>
+  eventsClient.get(contentId);
+export const getEventDetail = async (contentId: string) => eventsClient.getDetail(contentId);
 
-export const createEvent = async (input: EventFormInput): Promise<EventContentItem> => eventsClient.create(input);
+export const createEvent = async (input: EventFormInput): Promise<EventContentItem> =>
+  eventsClient.create(input);
 
-export const updateEvent = async (contentId: string, input: EventFormInput): Promise<EventContentItem> =>
-  eventsClient.update(contentId, input);
+export const updateEvent = async (
+  contentId: string,
+  input: EventFormInput
+): Promise<EventContentItem> => eventsClient.update(contentId, input);
 
-export const deleteEvent = async (contentId: string): Promise<void> => eventsClient.remove(contentId);
+export const deleteEvent = async (contentId: string): Promise<void> =>
+  eventsClient.remove(contentId);
 
 export const listEventCategories = async (): Promise<readonly EventCategoryOption[]> => {
-  const response = await requestMainserverJson<{ readonly data: readonly EventCategoryOption[] }, EventsApiError>({
+  const response = await requestMainserverJson<
+    { readonly data: readonly EventCategoryOption[] },
+    EventsApiError
+  >({
     url: '/api/v1/mainserver/categories',
     errorFactory: (code, message) => new EventsApiError(code, message),
   });

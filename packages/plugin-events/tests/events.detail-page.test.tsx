@@ -16,6 +16,7 @@ import {
   createEvent,
   deleteEvent,
   getEvent,
+  getEventDetail,
   listEventCategories,
   listPoiForEventSelection,
   updateEvent,
@@ -29,6 +30,7 @@ vi.mock('../src/events.api.js', () => ({
   deleteEvent: vi.fn(),
   EventsApiError: class EventsApiError extends Error {},
   getEvent: vi.fn(),
+  getEventDetail: vi.fn(),
   listEventCategories: vi.fn(async () => []),
   listEvents: vi.fn(),
   listPoiForEventSelection: vi.fn(async () => []),
@@ -101,6 +103,11 @@ describe('EventsDetailPage', () => {
     vi.mocked(createEvent).mockReset();
     vi.mocked(deleteEvent).mockReset();
     vi.mocked(getEvent).mockReset();
+    vi.mocked(getEventDetail).mockReset();
+    vi.mocked(getEventDetail).mockImplementation(async (contentId) => ({
+      data: await vi.mocked(getEvent)(contentId),
+      deviations: [],
+    }));
     vi.mocked(listEventCategories).mockReset();
     vi.mocked(listEventCategories).mockResolvedValue([] as never);
     vi.mocked(listPoiForEventSelection).mockReset();
@@ -123,6 +130,10 @@ describe('EventsDetailPage', () => {
         'events.detail.createTitle': 'Event anlegen',
         'events.detail.editTitle': 'Event bearbeiten',
         'events.actions.save': 'Speichern',
+        'events.messages.mediaReferenceLoadError': 'Medienreferenzen konnten nicht geladen werden.',
+        'events.messages.degradedDataWarning':
+          'Einige Datenbereiche konnten nicht vollständig gelesen werden.',
+        'events.messages.degradedField': 'Betroffener Bereich',
         'events.actions.delete': 'Löschen',
         'events.detailTabs.basis.title': 'Basis',
         'events.detailTabs.content.title': 'Inhalt',
@@ -203,7 +214,8 @@ describe('EventsDetailPage', () => {
         'events.messages.mediaUploadUnsupportedType': 'Dateityp wird nicht unterstützt.',
         'events.messages.mediaUploadUnavailableUrl': 'Bild-URL konnte nicht ermittelt werden.',
         'events.history.empty.title': 'Noch keine Historie verfügbar.',
-        'events.history.createHint': 'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
+        'events.history.createHint':
+          'Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.',
         'events.messages.updateSuccess': 'Event aktualisiert.',
         'events.messages.deleteError': 'Event konnte nicht gelöscht werden.',
         'events.actions.deleteConfirm': 'Wirklich löschen?',
@@ -607,6 +619,24 @@ describe('EventsDetailPage', () => {
     });
   });
 
+  it('keeps the event editable when media references fail to load', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Sommerfest',
+      mediaContents: [],
+      dates: [],
+    } as never);
+    vi.mocked(listHostMediaReferencesByTarget).mockRejectedValueOnce(
+      new Error('reference load failed')
+    );
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    expect(await screen.findByDisplayValue('Sommerfest')).toBeTruthy();
+    expect(screen.getByText('Medienreferenzen konnten nicht geladen werden.')).toBeTruthy();
+    expect(screen.queryByText('events.messages.missingContent')).toBeNull();
+  });
+
   it('does not delete or navigate away when deletion is cancelled', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1',
@@ -677,6 +707,33 @@ describe('EventsDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('shows a localized summary for degraded Mainserver field groups', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.mocked(getEventDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getEvent)(contentId),
+      deviations: [{ fieldGroup: 'dates' }] as never,
+    }));
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    expect(
+      await screen.findByText('Einige Datenbereiche konnten nicht vollständig gelesen werden.')
+    ).toBeTruthy();
+    expect(screen.getByText('Betroffener Bereich')).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+    await waitFor(() => {
+      expect(updateEvent).toHaveBeenCalledWith(
+        'event-1',
+        expect.not.objectContaining({ dates: expect.anything() })
+      );
     });
   });
 

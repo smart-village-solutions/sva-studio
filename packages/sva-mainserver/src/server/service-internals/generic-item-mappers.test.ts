@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapGenericItem, mapOptionalGenericItem } from './generic-item-mappers.js';
+import {
+  mapGenericItem,
+  mapGenericItemDetail,
+  mapOptionalGenericItem,
+} from './generic-item-mappers.js';
 
 const expectMappedError = (
   callback: () => unknown,
@@ -87,22 +91,34 @@ describe('generic-item-mappers', () => {
         payload: { answer: '42' },
         visible: false,
         categories: [{ name: 'Service', children: [{ name: null }, { name: 'Unterkategorie' }] }],
-        contacts: [{ email: 'faq@example.invalid', webUrls: [{ url: 'https://example.invalid/contact' }] }],
+        contacts: [
+          { email: 'faq@example.invalid', webUrls: [{ url: 'https://example.invalid/contact' }] },
+        ],
         webUrls: [{ url: 'https://example.invalid/faq', description: 'Mehr' }, { url: null }],
-        addresses: [{ city: 'Musterhausen', geoLocation: { latitude: '52.52', longitude: '13.4' } }],
+        addresses: [
+          { city: 'Musterhausen', geoLocation: { latitude: '52.52', longitude: '13.4' } },
+        ],
         contentBlocks: [
           {
             title: 'Antwort',
             body: '<p>42</p>',
-            mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' }],
+            mediaContents: [
+              { sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' },
+            ],
           },
         ],
         openingHours: [{ weekday: 'Mo', open: true }],
         mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image-2.jpg' } }],
-        locations: [{ name: 'Rathaus', geoLocation: { latitude: '52.1', longitude: '13.2' } }, { name: null }],
+        locations: [
+          { name: 'Rathaus', geoLocation: { latitude: '52.1', longitude: '13.2' } },
+          { name: null },
+        ],
         dates: [{ dateStart: '2026-08-01', useOnlyTimeDescription: 'true' }],
         accessibilityInformations: [
-          { description: 'Stufenlos', urls: [{ url: 'https://example.invalid/a11y' }, { url: null }] },
+          {
+            description: 'Stufenlos',
+            urls: [{ url: 'https://example.invalid/a11y' }, { url: null }],
+          },
         ],
         priceInformations: [{ name: 'Eintritt', amount: 12.5, groupPrice: true }],
         createdAt: '2026-07-03T08:00:00.000Z',
@@ -124,21 +140,27 @@ describe('generic-item-mappers', () => {
       createdAt: '2026-07-03T08:00:00.000Z',
       updatedAt: '2026-07-03T08:00:00.000Z',
       categories: [{ name: 'Service', children: [{ name: 'Unterkategorie' }] }],
-      contacts: [{ email: 'faq@example.invalid', webUrls: [{ url: 'https://example.invalid/contact' }] }],
+      contacts: [
+        { email: 'faq@example.invalid', webUrls: [{ url: 'https://example.invalid/contact' }] },
+      ],
       webUrls: [{ url: 'https://example.invalid/faq', description: 'Mehr' }],
       addresses: [{ city: 'Musterhausen', geoLocation: { latitude: 52.52, longitude: 13.4 } }],
       contentBlocks: [
         {
           title: 'Antwort',
           body: '<p>42</p>',
-          mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' }],
+          mediaContents: [
+            { sourceUrl: { url: 'https://example.invalid/image.jpg' }, captionText: 'Bild' },
+          ],
         },
       ],
       openingHours: [{ weekday: 'Mo', open: true }],
       mediaContents: [{ sourceUrl: { url: 'https://example.invalid/image-2.jpg' } }],
       locations: [{ name: 'Rathaus', geoLocation: { latitude: 52.1, longitude: 13.2 } }],
       dates: [{ dateStart: '2026-08-01', useOnlyTimeDescription: 'true' }],
-      accessibilityInformations: [{ description: 'Stufenlos', urls: [{ url: 'https://example.invalid/a11y' }] }],
+      accessibilityInformations: [
+        { description: 'Stufenlos', urls: [{ url: 'https://example.invalid/a11y' }] },
+      ],
       priceInformations: [{ name: 'Eintritt', amount: 12.5, groupPrice: true }],
     });
   });
@@ -146,5 +168,29 @@ describe('generic-item-mappers', () => {
   it('throws typed errors for missing or invalid upstream responses', () => {
     expectMappedError(() => mapOptionalGenericItem(null), 'not_found', 404);
     expectMappedError(() => mapGenericItem({ id: '' } as never), 'invalid_response', 502);
+  });
+
+  it('keeps valid list entries and reports malformed optional fields', () => {
+    const result = mapGenericItemDetail({
+      id: 'generic-resilient',
+      title: 42,
+      genericType: 'faq',
+      payload: { preserved: true },
+      webUrls: [{ url: 'https://example.invalid' }, { url: 42 }],
+    } as never);
+
+    expect(result.data).toMatchObject({
+      id: 'generic-resilient',
+      title: '',
+      genericType: 'faq',
+      payload: { preserved: true },
+      webUrls: [{ url: 'https://example.invalid' }],
+    });
+    expect(result.deviations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ fieldPath: 'title', fieldGroup: 'title' }),
+        expect.objectContaining({ fieldPath: 'webUrls[]', fieldGroup: 'webUrls' }),
+      ])
+    );
   });
 });

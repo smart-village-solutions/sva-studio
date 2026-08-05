@@ -696,6 +696,12 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 ## Zentraler Backup-Agent
 
+### Ergänzung 2026-08: Resiliente Mainserver-Detailgrenze
+
+- `@sva/sva-mainserver` validiert Detailantworten nach Identität, optionalen Skalaren und isolierten Listenfeldgruppen. Eine ungültige optionale Feldgruppe verwirft nicht mehr den gesamten Datensatz oder gültige Geschwistereinträge.
+- `@sva/plugin-sdk` stellt additiv `getDetail(id)` mit getrennten Daten und PII-armen Abweichungsmetadaten bereit; das bestehende `get(id)` bleibt kompatibel.
+- `@sva/studio-ui-react` rendert die gemeinsame zugängliche Abweichungszusammenfassung. Fachplugins bleiben für lokalisierte Abschnittshinweise und die kontrollierten Formularfelder verantwortlich.
+
 Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.
 
 Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provisioning`, sichert alle `ready`- und `disabled`-Datenbanken unter `<umgebung>/waste/<instance_id>/` und bindet Restores zusätzlich an die signierte Instanz-ID. Freie Datenbank- oder Rollennamen sind kein Bestandteil des Request-Vertrags.

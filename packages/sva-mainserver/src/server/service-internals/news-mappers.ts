@@ -25,6 +25,7 @@ import {
   settingSchema,
 } from './mappers-shared.js';
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
+import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const newsPayloadSchema = z.object({
   teaser: z.string().optional(),
@@ -74,7 +75,9 @@ const newsItemSchema = z.object({
   visible: z.boolean().nullish(),
 });
 
-const mapAnnouncement = (value: z.infer<typeof announcementSchema>): SvaMainserverAnnouncementSummary => ({
+const mapAnnouncement = (
+  value: z.infer<typeof announcementSchema>
+): SvaMainserverAnnouncementSummary => ({
   ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
   ...(optionalString(value.title) ? { title: optionalString(value.title) } : {}),
   ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
@@ -113,7 +116,9 @@ const mapDataProvider = (
     ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
     ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
     ...(optionalString(value.dataType) ? { dataType: optionalString(value.dataType) } : {}),
-    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.description)
+      ? { description: optionalString(value.description) }
+      : {}),
     ...(optionalString(value.notice) ? { notice: optionalString(value.notice) } : {}),
     ...(mapWebUrl(value.logo) ? { logo: mapWebUrl(value.logo) } : {}),
     ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
@@ -121,7 +126,9 @@ const mapDataProvider = (
   return Object.keys(dataProvider).length > 0 ? dataProvider : undefined;
 };
 
-const mapSettings = (value: z.infer<typeof settingSchema> | null | undefined): SvaMainserverSetting | undefined => {
+const mapSettings = (
+  value: z.infer<typeof settingSchema> | null | undefined
+): SvaMainserverSetting | undefined => {
   if (!value) {
     return undefined;
   }
@@ -129,8 +136,12 @@ const mapSettings = (value: z.infer<typeof settingSchema> | null | undefined): S
     ...(optionalString(value.alwaysRecreateOnImport)
       ? { alwaysRecreateOnImport: optionalString(value.alwaysRecreateOnImport) }
       : {}),
-    ...(optionalString(value.displayOnlySummary) ? { displayOnlySummary: optionalString(value.displayOnlySummary) } : {}),
-    ...(optionalString(value.onlySummaryLinkText) ? { onlySummaryLinkText: optionalString(value.onlySummaryLinkText) } : {}),
+    ...(optionalString(value.displayOnlySummary)
+      ? { displayOnlySummary: optionalString(value.displayOnlySummary) }
+      : {}),
+    ...(optionalString(value.onlySummaryLinkText)
+      ? { onlySummaryLinkText: optionalString(value.onlySummaryLinkText) }
+      : {}),
   };
   return Object.keys(settings).length > 0 ? settings : undefined;
 };
@@ -153,9 +164,16 @@ export const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => 
   return parsed.data;
 };
 
-export const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): SvaMainserverNewsItem => {
-  const parsed = newsItemSchema.safeParse(item);
-  if (!parsed.success) {
+export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | undefined) => {
+  const parsed = parseResilientDetail<z.infer<typeof newsItemSchema>>(newsItemSchema, item, {
+    hardFields: ['id'],
+    listFields: {
+      categories: categorySchema,
+      contentBlocks: contentBlockSchema,
+      announcements: announcementSchema,
+    },
+  });
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige News-Antwort des SVA-Mainservers.',
@@ -163,55 +181,70 @@ export const mapNewsItem = (item: SvaMainserverNewsItemFragment | null | undefin
     });
   }
 
-  const publishedAt = parsed.data.publishedAt ?? parsed.data.publicationDate;
-  if (!publishedAt) {
-    throw toSvaMainserverError({
-      code: 'invalid_response',
-      message: 'Mainserver-News ohne Veröffentlichungsdatum erhalten.',
-      statusCode: 502,
-    });
-  }
+  const publishedAt =
+    parsed.data.publishedAt ?? parsed.data.publicationDate ?? new Date(0).toISOString();
 
   const payload = parseNewsPayload(parsed.data.payload);
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);
 
   return {
-    id: parsed.data.id,
-    title: parsed.data.title ?? '',
-    contentType: 'news.article',
-    payload,
-    status: 'published',
-    author: parsed.data.author ?? '',
-    ...(optionalString(parsed.data.keywords) ? { keywords: optionalString(parsed.data.keywords) } : {}),
-    ...(optionalString(parsed.data.externalId) ? { externalId: optionalString(parsed.data.externalId) } : {}),
-    ...(defined(parsed.data.fullVersion) ? { fullVersion: parsed.data.fullVersion } : {}),
-    ...(defined(parseCharactersToBeShown(parsed.data.charactersToBeShown))
-      ? { charactersToBeShown: parseCharactersToBeShown(parsed.data.charactersToBeShown) }
-      : {}),
-    ...(optionalString(parsed.data.newsType) ? { newsType: optionalString(parsed.data.newsType) } : {}),
-    ...(optionalString(parsed.data.publicationDate) ? { publicationDate: optionalString(parsed.data.publicationDate) } : {}),
-    ...(defined(parsed.data.showPublishDate) ? { showPublishDate: parsed.data.showPublishDate } : {}),
-    ...(payload.category ? { categoryName: payload.category } : {}),
-    categories,
-    ...(mapWebUrl(parsed.data.sourceUrl) ? { sourceUrl: mapWebUrl(parsed.data.sourceUrl) } : {}),
-    ...(mapAddress(parsed.data.address) ? { address: mapAddress(parsed.data.address) } : {}),
-    contentBlocks: mapContentBlocks(parsed.data.contentBlocks, payload),
-    ...(mapDataProvider(parsed.data.dataProvider) ? { dataProvider: mapDataProvider(parsed.data.dataProvider) } : {}),
-    ...(mapSettings(parsed.data.settings) ? { settings: mapSettings(parsed.data.settings) } : {}),
-    announcements: (parsed.data.announcements ?? []).map(mapAnnouncement),
-    likeCount: parsed.data.likeCount ?? 0,
-    likedByMe: parsed.data.likedByMe ?? false,
-    ...(optionalString(parsed.data.pushNotificationsSentAt)
-      ? { pushNotificationsSentAt: optionalString(parsed.data.pushNotificationsSentAt) }
-      : {}),
-    visible: parsed.data.visible !== false,
-    createdAt: parsed.data.createdAt ?? publishedAt,
-    updatedAt: parsed.data.updatedAt ?? parsed.data.createdAt ?? publishedAt,
-    publishedAt,
+    data: {
+      id: parsed.data.id,
+      title: parsed.data.title ?? '',
+      contentType: 'news.article' as const,
+      payload,
+      status: 'published' as const,
+      author: parsed.data.author ?? '',
+      ...(optionalString(parsed.data.keywords)
+        ? { keywords: optionalString(parsed.data.keywords) }
+        : {}),
+      ...(optionalString(parsed.data.externalId)
+        ? { externalId: optionalString(parsed.data.externalId) }
+        : {}),
+      ...(defined(parsed.data.fullVersion) ? { fullVersion: parsed.data.fullVersion } : {}),
+      ...(defined(parseCharactersToBeShown(parsed.data.charactersToBeShown))
+        ? { charactersToBeShown: parseCharactersToBeShown(parsed.data.charactersToBeShown) }
+        : {}),
+      ...(optionalString(parsed.data.newsType)
+        ? { newsType: optionalString(parsed.data.newsType) }
+        : {}),
+      ...(optionalString(parsed.data.publicationDate)
+        ? { publicationDate: optionalString(parsed.data.publicationDate) }
+        : {}),
+      ...(defined(parsed.data.showPublishDate)
+        ? { showPublishDate: parsed.data.showPublishDate }
+        : {}),
+      ...(payload.category ? { categoryName: payload.category } : {}),
+      categories,
+      ...(mapWebUrl(parsed.data.sourceUrl) ? { sourceUrl: mapWebUrl(parsed.data.sourceUrl) } : {}),
+      ...(mapAddress(parsed.data.address) ? { address: mapAddress(parsed.data.address) } : {}),
+      contentBlocks: mapContentBlocks(parsed.data.contentBlocks, payload),
+      ...(mapDataProvider(parsed.data.dataProvider)
+        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
+        : {}),
+      ...(mapSettings(parsed.data.settings) ? { settings: mapSettings(parsed.data.settings) } : {}),
+      announcements: (parsed.data.announcements ?? []).map(mapAnnouncement),
+      likeCount: parsed.data.likeCount ?? 0,
+      likedByMe: parsed.data.likedByMe ?? false,
+      ...(optionalString(parsed.data.pushNotificationsSentAt)
+        ? { pushNotificationsSentAt: optionalString(parsed.data.pushNotificationsSentAt) }
+        : {}),
+      visible: parsed.data.visible !== false,
+      createdAt: parsed.data.createdAt ?? publishedAt,
+      updatedAt: parsed.data.updatedAt ?? parsed.data.createdAt ?? publishedAt,
+      publishedAt,
+    },
+    deviations: parsed.deviations,
   };
 };
 
-export const mapOptionalNewsItem = (item: SvaMainserverNewsItemFragment | null | undefined): SvaMainserverNewsItem => {
+export const mapNewsItem = (
+  item: SvaMainserverNewsItemFragment | null | undefined
+): SvaMainserverNewsItem => mapNewsItemDetail(item).data;
+
+export const mapOptionalNewsItem = (
+  item: SvaMainserverNewsItemFragment | null | undefined
+): SvaMainserverNewsItem => {
   if (!item) {
     throw toSvaMainserverError({
       code: 'not_found',

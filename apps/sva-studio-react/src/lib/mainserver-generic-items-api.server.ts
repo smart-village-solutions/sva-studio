@@ -6,14 +6,13 @@ export const dispatchMainserverGenericItemsRequest = async (request: Request): P
   const response = await dispatchSvaMainserverGenericItemsRequest(request);
   if (response) {
     const pathname = new URL(request.url).pathname;
-    if (pathname.startsWith('/api/v1/mainserver/projects')) {
-      return response;
-    }
-    const contentType = pathname.startsWith('/api/v1/mainserver/faqs')
-      ? 'faq.faq'
-      : pathname.startsWith('/api/v1/mainserver/cockpit-cards')
-        ? 'cockpit-cards.cockpit-card'
-        : 'generic-items.generic-item';
+    const contentType = pathname.startsWith('/api/v1/mainserver/projects')
+      ? 'projects.project'
+      : pathname.startsWith('/api/v1/mainserver/faqs')
+        ? 'faq.faq'
+        : pathname.startsWith('/api/v1/mainserver/cockpit-cards')
+          ? 'cockpit-cards.cockpit-card'
+          : 'generic-items.generic-item';
     await refreshProjectionAfterMainserverMutation(request, response, contentType);
   }
   return response;

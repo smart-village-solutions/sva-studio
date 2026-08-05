@@ -94,6 +94,25 @@ describe('mainserver projection refresh', () => {
     });
   });
 
+  it('refreshes project updates using the stable item id from the request path', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/projects/project-1', { method: 'PATCH' }),
+      new Response(JSON.stringify({ data: { id: 'project-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'projects.project'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: 'projects.project',
+        operation: 'update',
+        entityId: 'project-1',
+      })
+    );
+  });
+
   it('derives mutation identity from root response ids and Location headers', async () => {
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news', { method: 'POST' }),

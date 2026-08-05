@@ -126,6 +126,7 @@ export const mergeProjectIntoGenericItem = (input: {
   readonly externalId?: string;
   readonly publishedAt?: string;
   readonly deleted?: boolean;
+  readonly persistAuthor?: boolean;
 }): SvaMainserverGenericItemInput => {
   const existing = input.existing;
   const existingPayload = payloadRecord(existing?.payload);
@@ -161,7 +162,7 @@ export const mergeProjectIntoGenericItem = (input: {
       ...existingPayload,
       language: input.project.language.trim(),
       status: input.project.status,
-      author: input.project.author,
+      ...(input.persistAuthor === false ? {} : { author: input.project.author }),
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
     contentBlocks: fullText

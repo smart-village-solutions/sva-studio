@@ -148,6 +148,8 @@ describe('projection list operations', () => {
 
     const result = await operations.listProjectionWithConfig('projects.project', input, config);
 
+    const request = execute.mock.calls[0]?.[0] as { document: string };
+    expect(request.document).toMatch(/genericType\s+author\s+payload/);
     expect(result.data).toEqual([
       expect.objectContaining({
         id: 'project-1',

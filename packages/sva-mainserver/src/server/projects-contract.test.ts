@@ -173,6 +173,28 @@ describe('projects contract', () => {
     ]);
   });
 
+  it('preserves an existing author when soft-deleting without author persistence', () => {
+    const merged = mergeProjectIntoGenericItem({
+      project,
+      existing: {
+        ...existing,
+        payload: {
+          ...existing.payload,
+          author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
+        },
+      },
+      deleted: true,
+      persistAuthor: false,
+    });
+
+    expect(merged.payload).toEqual(
+      expect.objectContaining({
+        author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
+        deleted: true,
+      })
+    );
+  });
+
   it('keeps cleared project text empty while preserving hidden remaining blocks', () => {
     const merged = mergeProjectIntoGenericItem({
       project: { ...project, description: '', fullText: '<p></p>' },

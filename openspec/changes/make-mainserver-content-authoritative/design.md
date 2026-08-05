@@ -24,6 +24,8 @@ Listen prüfen die typspezifische Read-Action. Detail- und Mutationspfade prüfe
 
 Extern entstandene Inhalte besitzen keine lokale Content-ID. Deshalb verwenden Read- und reguläre Mutationspfade die stabile Mainserver-ID. Für bestehende Studio-Datensätze darf eine vorhandene External Reference lokale IDs kompatibel auflösen, ohne für neue Reads erforderlich zu sein.
 
+Gebundene Bestandsinhalte liefern weiterhin ihre lokale Content-ID, damit bestehende Media-References und Links stabil bleiben. Provider-only-Inhalte verwenden die Mainserver-ID. Mutationen werden pro Inhalt serialisiert; bei gebundenen Inhalten dient die Reference-ID, andernfalls die Mainserver-ID als Advisory-Lock-Schlüssel.
+
 ### Lokale Folgearbeit ist best effort
 
 Nach bestätigtem Mainserver-Erfolg werden Projection, Reference und Studio-History nachgezogen. Fehler werden deterministisch protokolliert und durch Reconciliation repariert; sie ändern den Provider-Erfolg nicht.

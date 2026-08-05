@@ -14,6 +14,7 @@ type MainserverProjectionContentType =
   | 'generic-items.generic-item'
   | 'faq.faq'
   | 'cockpit-cards.cockpit-card'
+  | 'projects.project'
   | 'surveys.survey';
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
@@ -30,6 +31,7 @@ const mainserverCollectionSegments = new Set([
   'generic-items',
   'faqs',
   'cockpit-cards',
+  'projects',
   'surveys',
 ]);
 

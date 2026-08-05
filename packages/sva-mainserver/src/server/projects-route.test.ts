@@ -204,13 +204,13 @@ describe('projects route', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toEqual({
-      data: [expect.objectContaining({ id: 'external-1', title: 'Projekt' })],
+      data: [expect.objectContaining({ id: contentId, title: 'Projekt' })],
       pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
     });
     expect(state.listGenericItems).toHaveBeenCalledTimes(2);
   });
 
-  it('lists Mainserver projects without requiring local references or cores', async () => {
+  it('lists Mainserver projects when optional local references are unavailable', async () => {
     prepareDefaults();
     state.listGenericItems.mockResolvedValue({
       data: [genericItem],
@@ -227,8 +227,77 @@ describe('projects route', () => {
     await expect(response?.json()).resolves.toEqual(
       expect.objectContaining({ pagination: expect.objectContaining({ total: 1 }) })
     );
-    expect(state.listReferences).not.toHaveBeenCalled();
+    expect(state.listReferences).toHaveBeenCalledTimes(1);
     expect(state.loadCore).not.toHaveBeenCalled();
+  });
+
+  it('skips malformed external projects without breaking the complete list', async () => {
+    prepareDefaults();
+    state.listReferences.mockResolvedValue([]);
+    state.listGenericItems.mockResolvedValue({
+      data: [{ ...genericItem, id: 'invalid-project', title: ' ' }, genericItem],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects')
+    );
+
+    expect(response?.status).toBe(200);
+    await expect(response?.json()).resolves.toMatchObject({
+      data: [expect.objectContaining({ id: 'external-1' })],
+      pagination: { total: 1 },
+    });
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Skipping FeaturedProject that violates the projection contract',
+      expect.objectContaining({ source_entity_id: 'invalid-project' })
+    );
+  });
+
+  it('uses the local person author and stable content id for bound legacy projects', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue({
+      ...core,
+      authorDisplayMode: 'user',
+      author: 'Person Redaktion',
+      ownerUserId: accountId,
+      ownerOrganizationId: undefined,
+    });
+    state.getGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`)
+    );
+
+    await expect(response?.json()).resolves.toMatchObject({
+      data: {
+        id: contentId,
+        author: { type: 'person', id: accountId, displayName: 'Person Redaktion' },
+      },
+    });
+  });
+
+  it('authorizes mutations before reading the provider item', async () => {
+    prepareDefaults();
+    state.authorize.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Nicht erlaubt',
+    });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.loadReferenceByContentId).not.toHaveBeenCalled();
+    expect(state.getGenericItem).not.toHaveBeenCalled();
   });
 
   it('creates local core and stable external reference before binding the provider result', async () => {
@@ -392,7 +461,9 @@ describe('projects route', () => {
     );
     expect(state.loadCore).not.toHaveBeenCalled();
     expect(state.updateCore).not.toHaveBeenCalled();
-    expect(state.withLock).not.toHaveBeenCalled();
+    expect(state.withLock).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceId: 'external-1' })
+    );
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects/external-1', { method: 'DELETE' })

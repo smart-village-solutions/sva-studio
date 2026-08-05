@@ -163,16 +163,36 @@ const sourceReferenceInput = (instanceId: string) => ({
   sourceEntityType: SOURCE_ENTITY_TYPE,
 });
 
+const loadProjectLocalContext = async (instanceId: string, contentId: string) => {
+  const reference = await loadExternalContentReferenceByContentId({
+    ...sourceReferenceInput(instanceId),
+    contentId,
+  }).catch(() => undefined);
+  const loadedCore = reference
+    ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)
+    : undefined;
+  const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
+  return { core, reference };
+};
+
+const projectAuthorizationResource = (
+  contentId: string,
+  core: Awaited<ReturnType<typeof loadProjectLocalContext>>['core']
+) => ({
+  contentId,
+  ...(core?.organizationId ? { organizationId: core.organizationId } : {}),
+  ...(core?.ownerUserId ? { ownerUserId: core.ownerUserId } : {}),
+  ...(core?.ownerOrganizationId ? { ownerOrganizationId: core.ownerOrganizationId } : {}),
+});
+
 const loadProjectContext = async (
   instanceId: string,
   keycloakSubject: string,
   contentId: string,
-  activeOrganizationId?: string
+  activeOrganizationId?: string,
+  localContext?: Awaited<ReturnType<typeof loadProjectLocalContext>>
 ) => {
-  const reference = await loadExternalContentReferenceByContentId({
-    ...sourceReferenceInput(instanceId),
-    contentId,
-  });
+  const { core, reference } = localContext ?? await loadProjectLocalContext(instanceId, contentId);
   const genericItemId = reference?.sourceEntityId ?? contentId;
   let item: SvaMainserverGenericItem | undefined;
   try {
@@ -190,10 +210,6 @@ const loadProjectContext = async (
       ? (item.payload as Record<string, unknown>)
       : {};
   if (payload.deleted === true) return undefined;
-  const loadedCore = reference
-    ? await loadExternalContentCore(instanceId, reference.contentId).catch(() => undefined)
-    : undefined;
-  const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
   return { core, reference, item };
 };
 
@@ -243,15 +259,16 @@ const listProjects = async (
   const upstream = await listAllActiveProjectItems(input, listSvaMainserverGenericItems);
   const references = await listExternalContentReferences(sourceReferenceInput(actor.instanceId))
     .catch(() => []);
-  const contentIdBySourceId = new Map(
+  const referenceBySourceId = new Map(
     references.flatMap((reference) =>
-      reference.sourceEntityId ? [[reference.sourceEntityId, reference.contentId] as const] : []
+      reference.sourceEntityId ? [[reference.sourceEntityId, reference] as const] : []
     )
   );
-  const projects = upstream.data.flatMap((item) => {
+  const projectEntries = upstream.data.flatMap((item) => {
     try {
       const project = mapAndValidate(item, readFallbackAuthor(item, actor));
-      return [{ ...project, id: contentIdBySourceId.get(item.id) ?? project.id }];
+      const reference = referenceBySourceId.get(item.id);
+      return [{ item, project: { ...project, id: reference?.contentId ?? project.id }, reference }];
     } catch (error) {
       logger.warn('Skipping FeaturedProject that violates the projection contract', {
         operation: 'mainserver_projects_list_upstream',
@@ -262,22 +279,34 @@ const listProjects = async (
       return [];
     }
   });
-  projects.sort((left, right) => right.updatedAt.localeCompare(left.updatedAt) || left.id.localeCompare(right.id));
+  projectEntries.sort((left, right) =>
+    right.project.updatedAt.localeCompare(left.project.updatedAt) ||
+    left.project.id.localeCompare(right.project.id)
+  );
   const start = (input.page - 1) * input.pageSize;
-  const data = projects.slice(start, start + input.pageSize);
+  const data = await Promise.all(
+    projectEntries.slice(start, start + input.pageSize).map(async (entry) => {
+      if (!entry.reference) return entry.project;
+      const loadedCore = await loadExternalContentCore(actor.instanceId, entry.reference.contentId)
+        .catch(() => undefined);
+      const core = loadedCore?.contentType === PROJECTS_CONTENT_TYPE ? loadedCore : undefined;
+      const project = mapAndValidate(entry.item, readFallbackAuthor(entry.item, actor, core));
+      return { ...project, id: entry.reference.contentId };
+    })
+  );
   logger.info('Project list upstream pagination completed', {
     operation: 'mainserver_projects_list_upstream',
     upstream_page_count: upstream.observability.upstreamPageCount,
     upstream_item_count: upstream.observability.upstreamItemCount,
-    matching_item_count: projects.length,
+    matching_item_count: projectEntries.length,
   });
   return json({
     data,
     pagination: {
       page: input.page,
       pageSize: input.pageSize,
-      hasNextPage: start + input.pageSize < projects.length,
-      total: projects.length,
+      hasNextPage: start + input.pageSize < projectEntries.length,
+      total: projectEntries.length,
     },
   });
 };
@@ -288,13 +317,19 @@ const detailProject = async (
 ): Promise<Response> => {
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
-  const actor = await authorizeOrResponse(ctx, 'projects.read');
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.read',
+    projectAuthorizationResource(contentId, localContext.core)
+  );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
     instanceId,
     ctx.user.id,
     contentId,
-    ctx.activeOrganizationId
+    actor.activeOrganizationId,
+    localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   const project = mapAndValidate(
@@ -530,13 +565,19 @@ const updateProject = async (
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
-  const actor = await authorizeOrResponse(ctx, 'projects.update');
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.update',
+    projectAuthorizationResource(contentId, localContext.core)
+  );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
     instanceId,
     actor.keycloakSubject,
     contentId,
-    actor.activeOrganizationId
+    actor.activeOrganizationId,
+    localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   const parsedProject = await parseProjectInput(request);
@@ -627,13 +668,19 @@ const deleteProject = async (
   if (csrf) return csrf;
   const instanceId = ctx.user.instanceId;
   if (!instanceId) return errorJson(400, 'missing_instance', 'Instanzkontext fehlt.');
-  const actor = await authorizeOrResponse(ctx, 'projects.delete');
+  const localContext = await loadProjectLocalContext(instanceId, contentId);
+  const actor = await authorizeOrResponse(
+    ctx,
+    'projects.delete',
+    projectAuthorizationResource(contentId, localContext.core)
+  );
   if (isResponse(actor)) return actor;
   const context = await loadProjectContext(
     instanceId,
     actor.keycloakSubject,
     contentId,
-    actor.activeOrganizationId
+    actor.activeOrganizationId,
+    localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
   const actorInfo = await actorInfoOrResponse(request, ctx);

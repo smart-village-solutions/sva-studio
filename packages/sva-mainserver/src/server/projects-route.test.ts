@@ -176,6 +176,7 @@ const prepareDefaults = () => {
     data: [],
     pagination: { page: 1, pageSize: 100, hasNextPage: false },
   });
+  state.loadReferenceByContentId.mockResolvedValue(undefined);
   state.withLock.mockImplementation(({ execute }) => execute());
 };
 
@@ -295,8 +296,12 @@ describe('projects route', () => {
       })
     );
 
+    await expect(response?.json()).resolves.toEqual({
+      error: 'forbidden',
+      message: 'Nicht erlaubt',
+    });
     expect(response?.status).toBe(403);
-    expect(state.loadReferenceByContentId).not.toHaveBeenCalled();
+    expect(state.loadReferenceByContentId).toHaveBeenCalledTimes(1);
     expect(state.getGenericItem).not.toHaveBeenCalled();
   });
 

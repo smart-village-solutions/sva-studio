@@ -252,6 +252,7 @@ export function PoiDetailPage({
     null
   );
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -479,6 +480,7 @@ export function PoiDetailPage({
                 references.length > 0 ||
                 methods.getFieldState('content.mediaContents').isDirty
             );
+            setMediaReferencesReady(true);
           })
           .catch(() => {
             if (!active) return;
@@ -743,6 +745,7 @@ export function PoiDetailPage({
       <PoiDetailContentTab
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
+        mediaEditingDisabled={!mediaReferencesReady}
         mediaUsages={mediaUsages}
         onChangeMediaUsages={(usages) => {
           setMediaUsages(usages);

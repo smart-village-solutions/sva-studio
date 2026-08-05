@@ -304,6 +304,7 @@ export function EventsDetailPage({
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
+  const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
   const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
     null
   );
@@ -589,6 +590,7 @@ export function EventsDetailPage({
                 references.length > 0 ||
                 methods.getFieldState('content.mediaContents').isDirty
             );
+            setMediaReferencesReady(true);
           })
           .catch(() => {
             if (!active) return;
@@ -990,6 +992,7 @@ export function EventsDetailPage({
                         }}
                         canSelectMedia={canSelectMedia}
                         canUploadMedia={canUploadMedia}
+                        mediaEditingDisabled={!mediaReferencesReady}
                         onLoadAssetSnapshot={async (usage) => {
                           if (!usage.assetId) throw new Error('asset_unavailable');
                           const [detail, delivery] = await Promise.all([

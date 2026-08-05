@@ -186,15 +186,24 @@ const projectAuthorizationResource = (
   core: Awaited<ReturnType<typeof loadProjectLocalContext>>['core'],
   fallbackOwner: { readonly activeOrganizationId?: string; readonly actorAccountId: string }
 ) => {
-  const organizationId = core?.organizationId ?? fallbackOwner.activeOrganizationId;
-  const ownerUserId = core?.ownerUserId ??
-    (!fallbackOwner.activeOrganizationId ? fallbackOwner.actorAccountId : undefined);
-  const ownerOrganizationId = core?.ownerOrganizationId ?? fallbackOwner.activeOrganizationId;
+  const owner = core
+    ? {
+        organizationId: core.organizationId,
+        ownerUserId: core.ownerUserId,
+        ownerOrganizationId: core.ownerOrganizationId,
+      }
+    : {
+        organizationId: fallbackOwner.activeOrganizationId,
+        ownerUserId: !fallbackOwner.activeOrganizationId
+          ? fallbackOwner.actorAccountId
+          : undefined,
+        ownerOrganizationId: fallbackOwner.activeOrganizationId,
+      };
   return {
     contentId,
-    ...(organizationId ? { organizationId } : {}),
-    ...(ownerUserId ? { ownerUserId } : {}),
-    ...(ownerOrganizationId ? { ownerOrganizationId } : {}),
+    ...(owner.organizationId ? { organizationId: owner.organizationId } : {}),
+    ...(owner.ownerUserId ? { ownerUserId: owner.ownerUserId } : {}),
+    ...(owner.ownerOrganizationId ? { ownerOrganizationId: owner.ownerOrganizationId } : {}),
   };
 };
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 925,
+  "body": "Lokale Waste-Entwicklungsumgebung vereinheitlicht\n\n- Das Provisioner-Passwort kann über die lokale Runtime-Variablendatei als Compose-Secret gesetzt werden.\n- Redis wertet sein lokales Passwort zuverlässig im Container aus.\n- Eine secret-freie Musterdatei dokumentiert die notwendige lokale Variable."
+}

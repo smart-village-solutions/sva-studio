@@ -1,0 +1,4 @@
+{
+  "prNumber": 924,
+  "body": "Abfallkalender nach Migrationserprobung robuster\n\n- Die Waste-Provisionierung berücksichtigt den Tenant-Kontext nun zuverlässig mit aktivierter Row-Level Security.\n- Öffentliche Abholtermine werden mit PostgreSQL-kompatibler Sortierung geladen.\n- Ein technischer Bericht hält die Erkenntnisse und die Cutover-Checkliste für Prignitz fest."
+}

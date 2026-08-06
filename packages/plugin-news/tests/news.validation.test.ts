@@ -6,8 +6,6 @@ describe('validateNewsPayload', () => {
   it('accepts a valid payload', () => {
     expect(
       validateNewsPayload({
-        teaser: 'Kurztext',
-        body: '<p>Hallo</p>',
         imageUrl: 'https://example.com/image.jpg',
         externalUrl: 'https://example.com/article',
         category: 'Allgemein',
@@ -18,22 +16,15 @@ describe('validateNewsPayload', () => {
   it('rejects invalid fields', () => {
     expect(
       validateNewsPayload({
-        teaser: '',
-        body: '',
         imageUrl: 'http://example.com/image.jpg',
         externalUrl: 'javascript:alert(1)',
         category: 'x'.repeat(129),
       })
-    ).toEqual(['teaser', 'body', 'imageUrl', 'externalUrl', 'category']);
+    ).toEqual(['imageUrl', 'externalUrl', 'category']);
   });
 
-  it('counts visible text across html tags and whitespace', () => {
-    expect(
-      validateNewsPayload({
-        teaser: 'Kurztext',
-        body: '<p>Hallo <strong>Welt</strong></p>',
-      })
-    ).toEqual([]);
+  it('ignores obsolete text fields instead of treating them as News payload', () => {
+    expect(validateNewsPayload({})).toEqual([]);
   });
 });
 

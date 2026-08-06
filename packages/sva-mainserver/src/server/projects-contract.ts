@@ -5,6 +5,8 @@ import type {
   SvaMainserverAddress,
   SvaMainserverCategory,
   SvaMainserverCategoryInput,
+  SvaMainserverContentBlock,
+  SvaMainserverContentBlockInput,
   SvaMainserverContact,
   SvaMainserverDate,
   SvaMainserverGenericItem,
@@ -120,6 +122,28 @@ const mapAccessibilityToInput = (
     urls: mapWebUrlsToInput(urls),
   }));
 
+const mapContentBlocksToInput = (
+  values: readonly SvaMainserverContentBlock[]
+): readonly SvaMainserverContentBlockInput[] =>
+  values.map(({ title, intro, body, mediaContents }) => ({
+    ...(title === undefined ? {} : { title }),
+    ...(intro === undefined ? {} : { intro }),
+    ...(body === undefined ? {} : { body }),
+    mediaContents: mediaContents.map(
+      ({ id: _id, sourceUrl, ...media }) => ({
+        ...media,
+        ...(sourceUrl
+          ? {
+              sourceUrl: {
+                url: sourceUrl.url,
+                ...(sourceUrl.description ? { description: sourceUrl.description } : {}),
+              },
+            }
+          : {}),
+      })
+    ),
+  }));
+
 export const mergeProjectIntoGenericItem = (input: {
   readonly project: SvaMainserverProjectInput;
   readonly existing?: SvaMainserverGenericItem;
@@ -130,8 +154,9 @@ export const mergeProjectIntoGenericItem = (input: {
 }): SvaMainserverGenericItemInput => {
   const existing = input.existing;
   const existingPayload = payloadRecord(existing?.payload);
-  const firstBlock = existing?.contentBlocks[0];
-  const remainingBlocks = existing?.contentBlocks.slice(1) ?? [];
+  const existingBlocks = mapContentBlocksToInput(existing?.contentBlocks ?? []);
+  const firstBlock = existingBlocks[0];
+  const remainingBlocks = existingBlocks.slice(1);
   const fullText = normalizeProjectFullText(input.project.fullText);
   return {
     ...(existing
@@ -153,7 +178,6 @@ export const mergeProjectIntoGenericItem = (input: {
       : {}),
     title: input.project.title.trim(),
     genericType: PROJECTS_GENERIC_TYPE,
-    teaser: input.project.description.trim(),
     visible: input.project.status === 'published',
     author: input.project.author.displayName.trim(),
     externalId: input.externalId ?? existing?.externalId,
@@ -165,11 +189,16 @@ export const mergeProjectIntoGenericItem = (input: {
       ...(input.persistAuthor === false ? {} : { author: input.project.author }),
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
-    contentBlocks: fullText
-      ? [{ ...(firstBlock ?? {}), body: fullText }, ...remainingBlocks]
-      : firstBlock && remainingBlocks.length > 0
-        ? [{ ...firstBlock, body: '' }, ...remainingBlocks]
-        : [],
+    contentBlocks: input.project.description.trim() || fullText || firstBlock || remainingBlocks.length > 0
+      ? [
+          {
+            ...(firstBlock ?? {}),
+            intro: input.project.description.trim(),
+            body: fullText,
+          },
+          ...remainingBlocks,
+        ]
+      : [],
     mediaContents: toMediaContents(input.project),
   };
 };
@@ -217,7 +246,7 @@ export const mapGenericItemToProject = (
     id: item.id,
     language: typeof payload.language === 'string' ? payload.language.trim() : '',
     title: item.title,
-    description: item.teaser?.trim() ?? '',
+    description: item.contentBlocks[0]?.intro?.trim() ?? '',
     fullText: item.contentBlocks[0]?.body?.trim() ?? '',
     images: item.mediaContents.map((media, position) => ({
       url: media.sourceUrl?.url?.trim() ?? '',

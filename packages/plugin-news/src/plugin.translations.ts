@@ -40,7 +40,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     sourceUrl: 'Quell-URL',
     sourceUrlDescription: 'Quellbeschreibung',
     description: 'Beschreibung',
-    contentTeaser: 'Einleitung',
+    contentIntro: 'Einleitung',
     contentBody: 'Inhalt',
     publicationMode: 'Veröffentlichungsmodus',
     scheduledPublicationAt: 'Zeitpunkt der Veröffentlichung',
@@ -398,7 +398,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     sourceUrl: 'Source URL',
     sourceUrlDescription: 'Source description',
     description: 'Description',
-    contentTeaser: 'Teaser',
+    contentIntro: 'Introduction',
     contentBody: 'Content',
     publicationMode: 'Publication mode',
     scheduledPublicationAt: 'Publication time',
@@ -472,7 +472,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     content: {
       text: {
         title: 'Text Content',
-        description: 'Headline, teaser, and main content of the news entry.',
+        description: 'Headline, introduction, and main content of the news entry.',
       },
       media: {
         title: 'Media',

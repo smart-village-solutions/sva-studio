@@ -219,7 +219,7 @@ export const newsDetailFormSchema = z
     title: z.string().trim().min(1, 'title'),
     author: z.string(),
     categories: z.array(z.string().trim().min(1, 'categories').max(128, 'categories')),
-    contentTeaser: z.string(),
+    contentIntro: z.string(),
     contentBody: z.string(),
     contentMedia: z.array(mediaContentSchema),
     sourceUrl: z.object({
@@ -328,7 +328,7 @@ const ensureCompatibilityTouched = (values: NewsDetailEditorialFormValues) => {
 const toCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => [
   {
     title: values.title,
-    intro: values.contentTeaser,
+    intro: values.contentIntro,
     body: values.contentBody,
     mediaContents: values.contentMedia,
   },
@@ -466,7 +466,7 @@ const defineCompatibilityContentAliases = (
       const firstBlock = nextValue?.[0] ?? defaultContentBlock();
       ensureLegacySnapshot(values).legacyContentBlocks = nextValue;
       values.title = firstBlock.title || values.title;
-      values.contentTeaser = firstBlock.intro;
+      values.contentIntro = firstBlock.intro;
       values.contentBody = firstBlock.body;
       values.contentMedia = firstBlock.mediaContents;
     }
@@ -520,7 +520,7 @@ export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormVa
     title: '',
     author,
     categories: [],
-    contentTeaser: '',
+    contentIntro: '',
     contentBody: '',
     contentMedia: [],
     sourceUrl: emptyWebUrl(),
@@ -574,11 +574,11 @@ const buildMediaContentMutation = (media: NewsMediaContentFormValue) => {
 };
 
 const buildEditorialContentBlocks = (
-  values: Pick<NewsDetailFormValues, 'title' | 'contentTeaser' | 'contentBody' | 'contentMedia'>
+  values: Pick<NewsDetailFormValues, 'title' | 'contentIntro' | 'contentBody' | 'contentMedia'>
 ): NonNullable<NewsFormInput['contentBlocks']> => [
   {
     title: values.title.trim(),
-    intro: values.contentTeaser,
+    intro: values.contentIntro,
     body: values.contentBody.trim(),
     mediaContents: values.contentMedia
       .map(buildMediaContentMutation)
@@ -599,8 +599,8 @@ const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormV
     values.title = compatibilityContentBlocks[0].title;
   }
 
-  if (values.contentTeaser.length === 0 && compatibilityContentBlocks[0]?.intro) {
-    values.contentTeaser = compatibilityContentBlocks[0].intro;
+  if (values.contentIntro.length === 0 && compatibilityContentBlocks[0]?.intro) {
+    values.contentIntro = compatibilityContentBlocks[0].intro;
   }
 
   if (values.contentBody.length === 0 && compatibilityContentBlocks[0]?.body) {
@@ -718,7 +718,7 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
   ].some((path) => hasDirtyPath(dirtyFields, path)),
   content: [
     ['contentBlocks'],
-    ['contentTeaser'],
+    ['contentIntro'],
     ['contentBody'],
     ['contentMedia'],
     ['sourceUrl'],
@@ -744,11 +744,11 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
 
 export const buildNewsDetailCharacterCounts = (
   values: Pick<NewsDetailFormValues, 'title'> &
-  Partial<Pick<NewsDetailFormValues, 'contentTeaser' | 'contentBody'>> & {
+  Partial<Pick<NewsDetailFormValues, 'contentIntro' | 'contentBody'>> & {
     readonly contentBlocks?: readonly Pick<NewsContentBlockFormValue, 'intro' | 'body'>[];
   }
 ) => {
-  const contentBlocks = values.contentBlocks ?? [{ intro: values.contentTeaser ?? '', body: values.contentBody ?? '' }];
+  const contentBlocks = values.contentBlocks ?? [{ intro: values.contentIntro ?? '', body: values.contentBody ?? '' }];
 
   return {
     title: values.title.length,

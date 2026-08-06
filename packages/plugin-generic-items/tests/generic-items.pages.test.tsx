@@ -109,7 +109,6 @@ describe('generic items pages', () => {
         'genericItems.fields.externalId': 'Externe ID',
         'genericItems.fields.publicationDate': 'Publikationsdatum',
         'genericItems.fields.publishedAt': 'Veröffentlicht am',
-        'genericItems.fields.teaser': 'Teaser',
         'genericItems.fields.categoryName': 'Primärkategorie',
         'genericItems.fields.categories': 'Kategorien',
         'genericItems.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',

@@ -512,7 +512,6 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         body: JSON.stringify({
           title: 'Freier Eintrag',
           genericType: 'faq',
-          teaser: 'Kurztext',
           payload: { answer: '42' },
           categories: [{ name: 'Service' }],
           contacts: [{ email: 'faq@example.invalid' }],
@@ -535,7 +534,6 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         genericItem: expect.objectContaining({
           title: 'Freier Eintrag',
           genericType: 'faq',
-          teaser: 'Kurztext',
           payload: { answer: '42' },
           visible: false,
           categories: [{ name: 'Service' }],

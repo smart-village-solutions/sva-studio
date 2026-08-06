@@ -60,10 +60,9 @@ vi.mock('../src/news.api.js', async () => {
     title: 'Bestehende News',
     contentType: NEWS_CONTENT_TYPE,
     payload: {
-      teaser: 'Kurztext',
-      body: '<p>Body</p>',
       category: 'Allgemein',
     },
+    contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
     status: 'published',
     author: 'Editor',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -257,10 +256,9 @@ describe('News editor pages', () => {
       title: 'Bestehende News',
       contentType: NEWS_CONTENT_TYPE,
       payload: {
-        teaser: 'Kurztext',
-        body: '<p>Body</p>',
         category: 'Allgemein',
       },
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -349,7 +347,7 @@ describe('News editor pages', () => {
         'news.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'news.fields.sourceUrl': 'Quell-URL',
         'news.fields.sourceUrlDescription': 'Quellbeschreibung',
-        'news.fields.contentTeaser': 'Teaser',
+        'news.fields.contentIntro': 'Einleitung',
         'news.fields.contentBody': 'Inhalt',
         'news.fields.publicationMode': 'Veröffentlichungsmodus',
         'news.fields.scheduledPublicationAt': 'Zeitpunkt der Veröffentlichung',
@@ -523,7 +521,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p><br></p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -546,7 +544,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     clickPrimaryAction('News anlegen');
 
@@ -569,7 +567,7 @@ describe('News editor pages', () => {
       target: { value: '2026-03-29T02:30' },
     });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     clickPrimaryAction('News anlegen');
 
@@ -592,7 +590,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -616,7 +614,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     fireEvent.change(screen.getByLabelText('Quell-URL'), {
       target: { value: 'https://example.com/news' },
@@ -676,7 +674,7 @@ describe('News editor pages', () => {
       target: { value: 'https://example.com/news' },
     });
     fireEvent.change(screen.getByLabelText('Quellbeschreibung'), { target: { value: 'Quelle' } });
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Inhalt</p>' } });
     fireEvent.click(screen.getByRole('button', { name: 'Link manuell eintragen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), {
@@ -722,7 +720,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -746,7 +744,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -772,7 +770,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -798,7 +796,7 @@ describe('News editor pages', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
     await openContentTab();
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: 'Kurztext' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Body</p>' } });
     await openReleaseTab();
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {
@@ -892,10 +890,9 @@ describe('News editor pages', () => {
       title: 'Neuere News',
       contentType: NEWS_CONTENT_TYPE,
       payload: {
-        teaser: 'Neuer Kurztext',
-        body: '<p>Neu</p>',
         category: 'Allgemein',
       },
+      contentBlocks: [{ intro: 'Neuer Kurztext', body: '<p>Neu</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-03T00:00:00.000Z',
@@ -918,10 +915,9 @@ describe('News editor pages', () => {
       title: 'Alte News',
       contentType: NEWS_CONTENT_TYPE,
       payload: {
-        teaser: 'Alter Kurztext',
-        body: '<p>Alt</p>',
         category: 'Allgemein',
       },
+      contentBlocks: [{ intro: 'Alter Kurztext', body: '<p>Alt</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -960,10 +956,8 @@ describe('News editor pages', () => {
       id: 'news-future',
       title: 'Geplante News',
       contentType: NEWS_CONTENT_TYPE,
-      payload: {
-        teaser: 'Kurztext',
-        body: '<p>Body</p>',
-      },
+      payload: {},
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -1359,10 +1353,8 @@ describe('News editor pages', () => {
       id: 'news-3',
       title: 'Termin',
       contentType: NEWS_CONTENT_TYPE,
-      payload: {
-        teaser: 'Kurztext',
-        body: '<p>Body</p>',
-      },
+      payload: {},
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -1387,10 +1379,8 @@ describe('News editor pages', () => {
       id: 'news-4',
       title: 'Termin',
       contentType: NEWS_CONTENT_TYPE,
-      payload: {
-        teaser: 'Kurztext',
-        body: '<p>Body</p>',
-      },
+      payload: {},
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
       status: 'published',
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',

@@ -93,7 +93,6 @@ const validateGeoPair = (
 export const genericItemsDetailFormSchema = z.object({
   title: z.string().trim().min(1, 'Titel ist erforderlich.'),
   genericType: z.string().trim().min(1, 'Generic-Type ist erforderlich.'),
-  teaser: z.string(),
   visible: z.boolean(),
   author: z.string(),
   keywords: z.string(),

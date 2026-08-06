@@ -48,7 +48,7 @@ const editorValuesFixture = {
   title: 'Neue News',
   author: 'Redaktion',
   categories: ['Allgemein'],
-  contentTeaser: 'Kurztext',
+  contentIntro: 'Kurztext',
   contentBody: '<p>Inhalt</p>',
   sourceUrl: {
     url: 'https://example.org/details',
@@ -306,7 +306,7 @@ describe('news api', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
     values.title = 'Neue News';
     values.categories = ['Allgemein'];
-    values.contentTeaser = 'Kurztext';
+    values.contentIntro = 'Kurztext';
     values.contentBody = '<p>Inhalt</p>';
     values.sourceUrl = {
       url: 'https://example.org/details',
@@ -360,7 +360,7 @@ describe('news api', () => {
       title: 'Persistierter Titel',
       contentType: NEWS_CONTENT_TYPE,
       payload: {},
-      contentBlocks: [{ intro: 'Persistierter Teaser', body: '<p>Persistierter Inhalt</p>' }],
+      contentBlocks: [{ intro: 'Persistierte Einleitung', body: '<p>Persistierter Inhalt</p>' }],
       status: 'draft',
       author: 'Persistierter Autor',
       categories: [{ name: 'Persistiert' }],
@@ -372,7 +372,7 @@ describe('news api', () => {
 
     const values = createDefaultNewsDetailFormValues();
     values.title = 'Neue News';
-    values.contentTeaser = 'Kurztext';
+    values.contentIntro = 'Kurztext';
     values.contentBody = '<p>Inhalt</p>';
     values.publicationMode = 'draft';
 

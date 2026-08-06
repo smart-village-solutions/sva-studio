@@ -9,7 +9,7 @@ describe('news-mappers', () => {
       title: 'Meldung',
       publishedAt: 42,
       publicationDate: '2026-08-05',
-      payload: { teaser: 'Kurz', body: 'Lang' },
+      payload: {},
       contentBlocks: [{ title: 'Gültig' }, { title: 42 }],
     } as never);
 

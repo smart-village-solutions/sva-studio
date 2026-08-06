@@ -20,7 +20,6 @@ export const mapGenericItemToDetailFormValues = (
 ): GenericItemsDetailFormValues => ({
   title: item.title,
   genericType: item.genericType,
-  teaser: item.teaser ?? '',
   visible: item.visible !== false,
   author: item.author ?? '',
   keywords: item.keywords ?? '',

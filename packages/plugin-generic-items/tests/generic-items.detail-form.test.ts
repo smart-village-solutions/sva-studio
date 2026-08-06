@@ -7,7 +7,6 @@ describe('generic items detail form mapping', () => {
     const result = mapGenericItemsDetailFormValuesToInput({
       title: 'Freier Eintrag',
       genericType: 'faq',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',
@@ -300,7 +299,6 @@ describe('generic items detail form mapping', () => {
     const result = mapGenericItemsDetailFormValuesToInput({
       title: 'Freier Eintrag',
       genericType: 'faq',
-      teaser: '',
       visible: false,
       author: '',
       keywords: '',
@@ -439,7 +437,6 @@ describe('generic items detail form mapping', () => {
     const result = mapGenericItemsDetailFormValuesToInput({
       title: 'Freier Eintrag',
       genericType: 'faq',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',

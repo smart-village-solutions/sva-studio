@@ -117,7 +117,7 @@ test.describe('news plugin', () => {
     await categorySearch.blur();
     await expect(page.getByText('Kultur')).toBeVisible();
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
-    await page.locator('#news-content-teaser').fill('Kurztext');
+    await page.locator('#news-content-intro').fill('Kurztext');
     await page.locator('#news-content-body').fill('<p>Inhalt</p>');
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
@@ -176,7 +176,8 @@ test.describe('news plugin', () => {
         updatedAt: '2026-04-13T12:10:00.000Z',
         publishedAt: '2026-04-13T12:10:00.000Z',
         visible: true,
-        payload: { teaser: 'Kurztext', body: '<p>Inhalt</p>' },
+        payload: {},
+        contentBlocks: [{ intro: 'Kurztext', body: '<p>Inhalt</p>' }],
       },
     ];
     await page.route('**/auth/me', async (route) =>

@@ -128,7 +128,6 @@ describe('generic-items-route-input sections', () => {
     ).toEqual({
       title: 'Titel',
       genericType: 'faq',
-      teaser: 'Kurz',
       visible: false,
       author: 'Redaktion',
       keywords: 'eins,zwei',
@@ -163,7 +162,6 @@ describe('generic-items-route-input sections', () => {
     expect(success).toEqual({
       title: 'Freier Eintrag',
       genericType: 'job',
-      teaser: 'Kurztext',
       payload: { contract: 'full-time' },
       locations: [{ name: 'Rathaus' }],
       contentBlocks: [{ body: '<p>Text</p>' }],

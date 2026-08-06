@@ -7,7 +7,6 @@ const emptyContact = { firstName: '', lastName: '', email: '', phone: '', fax: '
 const createValidFormValues = () => ({
   title: 'Titel',
   genericType: 'faq',
-  teaser: '',
   visible: true,
   author: '',
   keywords: '',
@@ -59,7 +58,6 @@ describe('generic items validation', () => {
     const result = genericItemsDetailFormSchema.safeParse({
       title: '',
       genericType: '',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',
@@ -113,7 +111,6 @@ describe('generic items validation', () => {
     const result = genericItemsDetailFormSchema.safeParse({
       title: 'Titel',
       genericType: 'faq',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',
@@ -167,7 +164,6 @@ describe('generic items validation', () => {
     const result = genericItemsDetailFormSchema.safeParse({
       title: 'Titel',
       genericType: 'faq',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',
@@ -221,7 +217,6 @@ describe('generic items validation', () => {
     const result = genericItemsDetailFormSchema.safeParse({
       title: 'Titel',
       genericType: 'faq',
-      teaser: '',
       visible: true,
       author: '',
       keywords: '',

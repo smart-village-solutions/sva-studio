@@ -50,7 +50,7 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
       'cards.content.source.title': 'Quelle',
       'cards.content.source.description': 'Quellenangaben.',
       'fields.headline': 'Headline',
-      'fields.contentTeaser': 'Teaser',
+      'fields.contentIntro': 'Einleitung',
       'fields.contentBody': 'Inhalt',
       'fields.sourceUrl': 'Quell-URL',
       'fields.sourceUrlDescription': 'Quellbeschreibung',
@@ -110,7 +110,7 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
         title: 'Bestehende Headline',
         author: '',
         categories: [],
-        contentTeaser: '<p>Teaser</p>',
+        contentIntro: '<p>Einleitung</p>',
         contentBody: '<p>Body</p>',
         contentMedia: [],
         sourceUrl: { url: '', description: '' },
@@ -140,16 +140,23 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
 }
 
 describe('NewsDetailContentTab', () => {
-  it('renders teaser and content with RichTextHtmlEditor bindings', () => {
+  it('renders intro and content with RichTextHtmlEditor bindings', () => {
     const valuesRef = renderTab();
 
     expect(screen.getAllByTestId('rich-text-editor')).toHaveLength(2);
 
-    fireEvent.change(screen.getByLabelText('Teaser'), { target: { value: '<p>Neuer Teaser</p>' } });
+    fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: '<p>Neue Einleitung</p>' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Neuer Inhalt</p>' } });
     fireEvent.click(screen.getByRole('button', { name: 'Werte lesen' }));
 
-    expect(valuesRef.current?.contentTeaser).toBe('<p>Neuer Teaser</p>');
+    expect(valuesRef.current?.contentIntro).toBe('<p>Neue Einleitung</p>');
     expect(valuesRef.current?.contentBody).toBe('<p>Neuer Inhalt</p>');
+  });
+
+  it('normalizes a missing intro value to an empty editor value', () => {
+    renderTab({ contentIntro: undefined as unknown as string });
+
+    expect((screen.getAllByLabelText('Einleitung').at(-1) as HTMLTextAreaElement).value).toBe('');
+    expect(screen.getAllByText('0 Zeichen')).not.toHaveLength(0);
   });
 });

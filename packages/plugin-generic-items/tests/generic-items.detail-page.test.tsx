@@ -140,8 +140,6 @@ describe('GenericItemsDetailPage', () => {
         'genericItems.fields.publicationDateHelp': 'Publikationshilfe',
         'genericItems.fields.publishedAt': 'Veröffentlicht am',
         'genericItems.fields.publishedAtHelp': 'Veröffentlichungshilfe',
-        'genericItems.fields.teaser': 'Teaser',
-        'genericItems.fields.teaserHelp': 'Teaserhilfe',
         'genericItems.fields.categoryName': 'Primärkategorie',
         'genericItems.fields.categories': 'Kategorien',
         'genericItems.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',

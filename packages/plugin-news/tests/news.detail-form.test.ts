@@ -15,8 +15,6 @@ const sampleItem: NewsContentItem = {
   title: 'Rathaus informiert',
   contentType: 'news',
   payload: {
-    teaser: 'Kurzer Einstieg',
-    body: '<p>Ausfuehrlicher Inhalt</p>',
     category: 'Stadt',
   },
   status: 'published',
@@ -65,7 +63,7 @@ describe('news.detail-form', () => {
     values.externalId = 'ext-42';
     values.newsType = 'meldung';
     values.contentBlocks = [
-      { title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] },
+      { title: 'Block', intro: 'Einleitung', body: '<p>Body</p>', mediaContents: [] },
     ];
 
     expect(values.__legacySnapshot).toMatchObject({
@@ -74,11 +72,21 @@ describe('news.detail-form', () => {
     });
     expect(values.contentBlocks?.[0]).toMatchObject({
       title: 'Block',
-      intro: 'Teaser',
+      intro: 'Einleitung',
       body: '<p>Body</p>',
     });
-    expect(values.contentTeaser).toBe('Teaser');
+    expect(values.contentIntro).toBe('Einleitung');
     expect(values.contentBody).toBe('<p>Body</p>');
+  });
+
+  it('counts intro and body from the editorial fields when no compatibility blocks are supplied', () => {
+    expect(
+      buildNewsDetailCharacterCounts({
+        title: 'Titel',
+        contentIntro: 'Intro',
+        contentBody: 'Body',
+      })
+    ).toEqual({ title: 5, intros: [5], bodies: [4] });
   });
 
   it('maps a NewsContentItem into the simplified editorial form values', () => {
@@ -86,7 +94,7 @@ describe('news.detail-form', () => {
       title: 'Rathaus informiert',
       author: 'Redaktion',
       categories: ['Stadt', 'Verwaltung'],
-      contentTeaser: 'Kurzer Einstieg',
+      contentIntro: 'Kurzer Einstieg',
       contentBody: '<p>Ausfuehrlicher Inhalt</p>',
       sourceUrl: { url: 'https://example.org/news', description: 'Quelle' },
       sourceUrlDescription: 'Quelle',
@@ -109,7 +117,7 @@ describe('news.detail-form', () => {
         ...createDefaultNewsDetailFormValues(),
         title: 'News title',
         author: 'Redaktion',
-        contentTeaser: 'Teaser',
+        contentIntro: 'Einleitung',
         contentBody: '<p>Body</p>',
         publicationMode: 'scheduled',
         scheduledPublicationAt: '',
@@ -123,7 +131,7 @@ describe('news.detail-form', () => {
         ...createDefaultNewsDetailFormValues(),
         title: 'News title',
         author: 'Redaktion',
-        contentTeaser: 'Teaser',
+        contentIntro: 'Einleitung',
         contentBody: '<p>Body</p>',
         publicationMode: 'draft',
         scheduledPublicationAt: '',
@@ -139,7 +147,7 @@ describe('news.detail-form', () => {
         title: 'News title',
         author: 'Redaktion',
         categories: [],
-        contentTeaser: 'Teaser',
+        contentIntro: 'Einleitung',
         contentBody: '<p>Body</p>',
         contentMedia: [],
         sourceUrl: { url: '', description: '' },
@@ -157,7 +165,7 @@ describe('news.detail-form', () => {
         title: 'News title',
         author: 'Redaktion',
         categories: [],
-        contentTeaser: 'Teaser',
+        contentIntro: 'Einleitung',
         contentBody: '',
         contentMedia: [],
         sourceUrl: { url: '', description: '' },
@@ -177,7 +185,7 @@ describe('news.detail-form', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
 
     values.title = 'Neue News';
-    values.contentTeaser = 'Teaser';
+    values.contentIntro = 'Einleitung';
     values.contentBody = '<p>Body</p>';
 
     const mutation = mapNewsDetailFormValuesToMutation(values, 'create');
@@ -207,7 +215,7 @@ describe('news.detail-form', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
 
     values.contentBlocks = [
-      { title: 'Block', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] },
+      { title: 'Block', intro: 'Einleitung', body: '<p>Body</p>', mediaContents: [] },
     ];
     values.publishedAt = '2026-06-01T12:00:00.000Z';
     values.publicationDate = '2026-05-31T18:30:00.000Z';
@@ -219,7 +227,7 @@ describe('news.detail-form', () => {
       publishedAt: '2026-06-01T12:00:00.000Z',
       publicationDate: '2026-05-31T18:30:00.000Z',
       contentBlocks: [
-        expect.objectContaining({ title: 'Block', intro: 'Teaser', body: '<p>Body</p>' }),
+        expect.objectContaining({ title: 'Block', intro: 'Einleitung', body: '<p>Body</p>' }),
       ],
     });
   });
@@ -249,7 +257,7 @@ describe('news.detail-form', () => {
     values.contentBlocks = [
       {
         title: 'Legacy Abschnitt',
-        intro: 'Legacy Teaser',
+        intro: 'Legacy-Einleitung',
         body: '<p>Legacy Inhalt</p>',
         mediaContents: [],
       },
@@ -257,7 +265,7 @@ describe('news.detail-form', () => {
     values.publishedAt = '2020-01-01T00:00:00.000Z';
     values.publicationDate = '2020-01-01T00:00:00.000Z';
     values.title = 'Aktualisierte News';
-    values.contentTeaser = 'Neuer Teaser';
+    values.contentIntro = 'Neue Einleitung';
     values.contentBody = '<p>Neuer Inhalt</p>';
     values.publicationMode = 'scheduled';
     values.scheduledPublicationAt = '2026-06-01T12:00:00.000Z';
@@ -277,7 +285,7 @@ describe('news.detail-form', () => {
       contentBlocks: [
         expect.objectContaining({
           title: 'Aktualisierte News',
-          intro: 'Neuer Teaser',
+          intro: 'Neue Einleitung',
           body: '<p>Neuer Inhalt</p>',
         }),
       ],
@@ -291,7 +299,7 @@ describe('news.detail-form', () => {
         title: 'Legacy News',
         author: '',
         categories: [],
-        contentTeaser: '',
+        contentIntro: '',
         contentBody: '<p>   </p>',
         contentMedia: [
           {
@@ -322,7 +330,7 @@ describe('news.detail-form', () => {
         title: 'Legacy News',
         author: '',
         categories: [],
-        contentTeaser: '',
+        contentIntro: '',
         contentBody: '<p>   </p>',
         contentMedia: [],
         sourceUrl: { url: '', description: '' },
@@ -348,7 +356,7 @@ describe('news.detail-form', () => {
     values.contentBlocks = [
       {
         title: 'Legacy Titel',
-        intro: 'Legacy Teaser',
+        intro: 'Legacy-Einleitung',
         body: '<p>Legacy Inhalt</p>',
         mediaContents: [
           {
@@ -398,7 +406,7 @@ describe('news.detail-form', () => {
       contentBlocks: [
         {
           title: 'Legacy Titel',
-          intro: 'Legacy Teaser',
+          intro: 'Legacy-Einleitung',
           body: '<p>Legacy Inhalt</p>',
           mediaContents: [
             {
@@ -442,7 +450,7 @@ describe('news.detail-form', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
 
     values.title = 'Neue News';
-    values.contentTeaser = 'Teaser';
+    values.contentIntro = 'Einleitung';
     values.contentBody = '<p>Body</p>';
     values.contentMedia = [
       {

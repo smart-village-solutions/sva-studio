@@ -12,7 +12,6 @@ import type { SvaMainserverNewsItemFragment } from '../../generated/news.js';
 
 import {
   addressSchema,
-  buildLegacyContentBlock,
   categorySchema,
   contentBlockSchema,
   dataProviderSchema,
@@ -28,8 +27,6 @@ import { defined, optionalString, toSvaMainserverError } from './shared.js';
 import { parseResilientDetail } from './resilient-detail-mapper.js';
 
 const newsPayloadSchema = z.object({
-  teaser: z.string().optional(),
-  body: z.string().optional(),
   imageUrl: z.string().optional(),
   externalUrl: z.string().optional(),
   category: z.string().optional(),
@@ -90,10 +87,9 @@ const mapAnnouncement = (
 });
 
 const mapContentBlocks = (
-  values: readonly z.infer<typeof contentBlockSchema>[] | null | undefined,
-  payload: SvaMainserverNewsPayload
+  values: readonly z.infer<typeof contentBlockSchema>[] | null | undefined
 ): readonly SvaMainserverContentBlock[] => {
-  const mapped = (values ?? []).map((value) => ({
+  return (values ?? []).map((value) => ({
     ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
     ...(optionalString(value.title) ? { title: optionalString(value.title) } : {}),
     ...(optionalString(value.intro) ? { intro: optionalString(value.intro) } : {}),
@@ -102,8 +98,6 @@ const mapContentBlocks = (
     ...(optionalString(value.createdAt) ? { createdAt: optionalString(value.createdAt) } : {}),
     ...(optionalString(value.updatedAt) ? { updatedAt: optionalString(value.updatedAt) } : {}),
   }));
-  const legacyBlock = mapped.length === 0 ? buildLegacyContentBlock(payload) : null;
-  return legacyBlock ? [legacyBlock] : mapped;
 };
 
 const mapDataProvider = (
@@ -159,7 +153,7 @@ export const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => 
       : payload;
   const parsed = newsPayloadSchema.safeParse(rawPayload);
   if (!parsed.success) {
-    return { teaser: '', body: '' };
+    return {};
   }
   return parsed.data;
 };
@@ -224,7 +218,7 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
       categories,
       ...(mapWebUrl(parsed.data.sourceUrl) ? { sourceUrl: mapWebUrl(parsed.data.sourceUrl) } : {}),
       ...(mapAddress(parsed.data.address) ? { address: mapAddress(parsed.data.address) } : {}),
-      contentBlocks: mapContentBlocks(parsed.data.contentBlocks, payload),
+      contentBlocks: mapContentBlocks(parsed.data.contentBlocks),
       ...(mapDataProvider(parsed.data.dataProvider)
         ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
         : {}),

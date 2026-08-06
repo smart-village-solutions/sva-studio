@@ -12,7 +12,6 @@ describe('pluginGenericItems contract', () => {
     expect(pluginGenericItems.displayName).toBe('Generic Items');
     expect(genericItemsTranslationsDe.genericItems.navigation.title).toBe('Generische Inhalte');
     expect(genericItemsTranslationsDe.genericItems.fields.title).toBe('Überschrift');
-    expect(genericItemsTranslationsDe.genericItems.fields.teaser).toBe('Einleitung');
     expect(genericItemsTranslationsDe.genericItems.fields.intro).toBe('Einleitung');
   });
 

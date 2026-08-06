@@ -19,7 +19,6 @@ export const mapGenericItemsDetailFormValuesToInput = (
 ): GenericItemFormInput => ({
   title: values.title.trim(),
   genericType: values.genericType.trim(),
-  teaser: values.teaser.trim() || undefined,
   visible: values.visible,
   author: values.author.trim() || undefined,
   keywords: values.keywords.trim() || undefined,

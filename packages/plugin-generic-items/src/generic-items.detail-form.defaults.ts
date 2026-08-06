@@ -84,7 +84,6 @@ export const createDefaultLocationFormValue = () => ({
 export const createDefaultGenericItemsDetailFormValues = (): GenericItemsDetailFormValues => ({
   title: '',
   genericType: '',
-  teaser: '',
   visible: true,
   author: '',
   keywords: '',

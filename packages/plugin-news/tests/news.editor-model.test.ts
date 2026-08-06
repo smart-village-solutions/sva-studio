@@ -11,10 +11,7 @@ const newsItemFixture: NewsContentItem = {
   id: 'news-1',
   title: 'Bestehender Titel',
   contentType: 'news',
-  payload: {
-    teaser: 'Legacy teaser',
-    body: '<p>Legacy body</p>',
-  },
+  payload: {},
   status: 'published',
   author: 'Redaktion',
   keywords: 'Rathaus, Termin',
@@ -30,7 +27,7 @@ const newsItemFixture: NewsContentItem = {
   contentBlocks: [
     {
       title: 'Bestehender Titel',
-      intro: 'Legacy teaser',
+      intro: 'Legacy intro',
       body: '<p>Legacy body</p>',
       mediaContents: [],
     },
@@ -46,7 +43,7 @@ const editorValuesFixture: NewsDetailFormValues = {
   title: 'Neue Headline',
   author: 'Neue Redaktion',
   categories: ['Stadt', 'Service'],
-  contentTeaser: 'Neuer Teaser',
+  contentIntro: 'Neue Einleitung',
   contentBody: '<p>Neuer Inhalt</p>',
   contentMedia: [],
   sourceUrl: {
@@ -79,7 +76,7 @@ describe('news.editor-model', () => {
       createNewsEditorFormValues({
         ...newsItemFixture,
         title: '',
-        contentBlocks: [{ title: 'Block Headline', intro: 'Teaser', body: '<p>Body</p>', mediaContents: [] }],
+        contentBlocks: [{ title: 'Block Headline', intro: 'Einleitung', body: '<p>Body</p>', mediaContents: [] }],
       }).title
     ).toBe('Block Headline');
   });
@@ -97,10 +94,28 @@ describe('news.editor-model', () => {
     expect(values).toMatchObject({
       title: '',
       author: '',
-      contentTeaser: '',
+      contentIntro: '',
       contentBody: '',
       sourceUrl: { url: '', description: '' },
       contentMedia: [{ captionText: '', copyright: '', contentType: 'image', height: '', width: '', sourceUrl: { url: '', description: '' } }],
+    });
+  });
+
+  it('does not recover editorial text from payload fields when content blocks are absent', () => {
+    const values = createNewsEditorFormValues({
+      ...newsItemFixture,
+      payload: {
+        teaser: 'Nicht mehr unterstützte Einleitung',
+        body: 'Nicht mehr unterstützter Inhalt',
+        imageUrl: 'https://example.org/legacy.jpg',
+      },
+      contentBlocks: [],
+    } as NewsContentItem);
+
+    expect(values).toMatchObject({
+      contentIntro: '',
+      contentBody: '',
+      contentMedia: [],
     });
   });
 

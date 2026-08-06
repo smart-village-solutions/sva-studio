@@ -23,9 +23,9 @@ export type NewsDetailContentTabProps = Readonly<{
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   title: string;
-  teaser: string;
+  intro: string;
   contentBody: string;
-  teaserField: ContentFieldBindings;
+  introField: ContentFieldBindings;
   bodyField: ContentFieldBindings;
   setValue: ReturnType<typeof useFormContext<NewsDetailFormValues>>['setValue'];
 }>;
@@ -33,9 +33,9 @@ type NewsContentTextSectionProps = Readonly<{
 function NewsContentTextSection({
   pt,
   title,
-  teaser,
+  intro,
   contentBody,
-  teaserField,
+  introField,
   bodyField,
   setValue,
 }: NewsContentTextSectionProps) {
@@ -57,7 +57,7 @@ function NewsContentTextSection({
     link: pt('richText.applyLink'),
     linkPrompt: pt('richText.linkInput'),
   };
-  const teaserLabelId = `${teaserField.id}-label`;
+  const introLabelId = `${introField.id}-label`;
   const bodyLabelId = `${bodyField.id}-label`;
 
   return (
@@ -70,25 +70,25 @@ function NewsContentTextSection({
       </StudioField>
 
       <div className="space-y-1">
-        <label id={teaserLabelId} htmlFor={teaserField.id} className="text-sm font-medium">
-          {pt('fields.contentTeaser')}
+        <label id={introLabelId} htmlFor={introField.id} className="text-sm font-medium">
+          {pt('fields.contentIntro')}
         </label>
         <RichTextHtmlEditor
-          id={teaserField.id}
-          labelId={teaserLabelId}
-          describedBy={teaserField.controlProps['aria-describedby']}
-          ariaInvalid={teaserField.controlProps['aria-invalid'] === true}
-          value={teaser}
-          onChange={(nextValue) => setValue('contentTeaser', nextValue, { shouldDirty: true })}
+          id={introField.id}
+          labelId={introLabelId}
+          describedBy={introField.controlProps['aria-describedby']}
+          ariaInvalid={introField.controlProps['aria-invalid'] === true}
+          value={intro}
+          onChange={(nextValue) => setValue('contentIntro', nextValue, { shouldDirty: true })}
           blockTypeOptions={blockTypeOptions}
           toolbarLabels={toolbarLabels}
         />
-        <p id={teaserField.descriptionId} className="text-xs text-muted-foreground">
-          {pt('fields.characterCount', { count: teaser.length })}
+        <p id={introField.descriptionId} className="text-xs text-muted-foreground">
+          {pt('fields.characterCount', { count: intro.length })}
         </p>
-        {teaserField.error ? (
-          <p id={teaserField.errorId} className="text-sm text-destructive">
-            {teaserField.error}
+        {introField.error ? (
+          <p id={introField.errorId} className="text-sm text-destructive">
+            {introField.error}
           </p>
         ) : null}
       </div>
@@ -214,7 +214,7 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
     setValue,
   } = useFormContext<NewsDetailFormValues>();
   const title = useWatch({ control, name: 'title' }) ?? '';
-  const teaser = useWatch({ control, name: 'contentTeaser' }) ?? '';
+  const intro = useWatch({ control, name: 'contentIntro' }) ?? '';
   const contentBody = useWatch({ control, name: 'contentBody' }) ?? '';
   const mediaContents = useWatch({ control, name: 'contentMedia' }) ?? [];
   const resolvedUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
@@ -223,9 +223,9 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
     setValue('contentMedia', contentMediaUsagesToMainserver(usages) as NewsDetailFormValues['contentMedia'], { shouldDirty: true });
   };
 
-  const teaserField = getStudioFormFieldProps({
-    id: 'news-content-teaser',
-    error: translateFieldError(errors.contentTeaser, pt),
+  const introField = getStudioFormFieldProps({
+    id: 'news-content-intro',
+    error: translateFieldError(errors.contentIntro, pt),
   });
   const bodyField = getStudioFormFieldProps({
     id: 'news-content-body',
@@ -244,7 +244,7 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
     error: translateFieldError(readNestedFieldError(errors.contentMedia), pt),
   });
   const summaryErrors = collectSummaryErrors([
-    teaserField,
+    introField,
     bodyField,
     sourceUrlField,
     sourceTextField,
@@ -257,9 +257,9 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
       <NewsContentTextSection
         pt={pt}
         title={title}
-        teaser={teaser}
+        intro={intro}
         contentBody={contentBody}
-        teaserField={teaserField}
+        introField={introField}
         bodyField={bodyField}
         setValue={setValue}
       />

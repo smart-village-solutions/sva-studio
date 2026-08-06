@@ -75,7 +75,6 @@ vi.mock('@sva/studio-ui-react', async () => {
 const labels: Record<string, string> = {
   textTitle: 'Text',
   textDescription: 'Textbeschreibung',
-  teaser: 'Teaser',
   contentBlocks: 'Content-Blocks',
   addContentBlock: 'Block hinzufügen',
   contentBlockItem: 'Inhaltsblock',

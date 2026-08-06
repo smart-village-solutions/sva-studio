@@ -119,6 +119,8 @@ Abhängigkeiten des aktuellen Systems.
   11d. Plugin Generic Items (`packages/plugin-generic-items`)
 
 - bildet als technische Vollansicht alle Mainserver-`GenericItem`s unabhängig vom `genericType` ab, einschließlich fachlich spezialisierter und unbekannter Diskriminatoren
+- modelliert redaktionelle Einleitungen ausschließlich je Content-Block über `contentBlocks[].intro`; ein globales GenericItem-Teaser-Feld gehört weder zum Studio-Typ noch zum Editor
+- auch das News-Plugin liest und schreibt Einleitung und Haupttext ausschließlich über `contentBlocks[].intro/body`; der News-Payload enthält keine Textkopie und erzeugt keinen Fallback-Block
 - autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
 - lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
 - darf denselben Mainserver-Datensatz bei kombinierten Rechten zusätzlich zur fachlichen Repräsentation als `generic-items.generic-item` projizieren

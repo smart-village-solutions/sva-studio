@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EffectiveAccessProvider, useEffectiveAccess } from './effective-access-provider';
 
 const fetchWithRequestTimeoutMock = vi.fn();
+const refetchOrganizationContextMock = vi.fn<() => Promise<void>>();
 const iamMocks = vi.hoisted(() => ({
   readIamErrorResponse: vi.fn(),
 }));
@@ -35,6 +36,7 @@ const organizationContextMockValue = {
   context: { activeOrganizationId: 'org-1' as string | null },
   error: null as null | { code: string },
   isLoading: false,
+  refetch: refetchOrganizationContextMock,
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -97,6 +99,7 @@ describe('EffectiveAccessProvider', () => {
     organizationContextMockValue.context.activeOrganizationId = 'org-1';
     organizationContextMockValue.error = null;
     organizationContextMockValue.isLoading = false;
+    refetchOrganizationContextMock.mockResolvedValue(undefined);
     fetchWithRequestTimeoutMock.mockResolvedValue(response([{ action: 'news.read' }]));
     iamMocks.readIamErrorResponse.mockResolvedValue({
       status: 403,
@@ -267,6 +270,33 @@ describe('EffectiveAccessProvider', () => {
       })
     );
     expect(fetchWithRequestTimeoutMock).not.toHaveBeenCalled();
+  });
+
+  it('refetches a failed organization context before invalidating effective access', async () => {
+    let resolveRefetch: (() => void) | undefined;
+    refetchOrganizationContextMock.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveRefetch = resolve;
+      })
+    );
+    organizationContextMockValue.error = { code: 'organization_context_failed' };
+    const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
+    act(() => result.current.retry());
+
+    expect(refetchOrganizationContextMock).toHaveBeenCalledTimes(1);
+    expect(fetchWithRequestTimeoutMock).not.toHaveBeenCalled();
+
+    organizationContextMockValue.error = null;
+    await act(async () => {
+      resolveRefetch?.();
+      await Promise.resolve();
+    });
+    rerender();
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+    expect(fetchWithRequestTimeoutMock).toHaveBeenCalledTimes(1);
   });
 
   it('loads instance permissions without an organization query when no organization is active', async () => {

@@ -489,7 +489,7 @@ describe('iam-api organization helpers', () => {
     expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
   });
 
-  it('dispatches effective-access invalidation only for an explicit stale signal', async () => {
+  it('dispatches effective-access invalidation for stale signals and forbidden responses', async () => {
     const dispatchEvent = vi.fn();
     vi.stubGlobal('window', {});
     vi.stubGlobal('dispatchEvent', dispatchEvent);
@@ -524,7 +524,10 @@ describe('iam-api organization helpers', () => {
     await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
       code: 'forbidden',
     });
-    expect(dispatchEvent).not.toHaveBeenCalled();
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
+      EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT
+    );
   });
 
   it('supports the flat error response shape and request id header', async () => {

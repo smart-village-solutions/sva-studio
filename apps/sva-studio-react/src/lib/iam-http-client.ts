@@ -186,7 +186,10 @@ export const readIamErrorResponse = async (response: Response): Promise<IamHttpE
     );
   }
 
-  if (globalThis.window !== undefined && effectiveAccessInvalidationErrorCodes.has(code)) {
+  if (
+    globalThis.window !== undefined &&
+    (response.status === 403 || effectiveAccessInvalidationErrorCodes.has(code))
+  ) {
     globalThis.dispatchEvent(
       new CustomEvent(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, { detail: { code } })
     );

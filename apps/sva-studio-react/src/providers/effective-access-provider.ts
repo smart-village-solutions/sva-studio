@@ -231,6 +231,15 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     requestEffectiveAccessInvalidation();
   }, []);
 
+  const retry = React.useCallback(() => {
+    if (!organizationContext.error) {
+      invalidate();
+      return;
+    }
+
+    void organizationContext.refetch().finally(invalidate);
+  }, [invalidate, organizationContext.error, organizationContext.refetch]);
+
   React.useEffect(() => {
     globalThis.addEventListener(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, invalidate);
     return () => {
@@ -249,11 +258,11 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
           isAuthenticated: auth.isAuthenticated,
           requirement,
           snapshot,
-        }),
+      }),
       invalidate,
-      retry: invalidate,
+      retry,
     }),
-    [auth.isAuthenticated, invalidate, snapshot]
+    [auth.isAuthenticated, invalidate, retry, snapshot]
   );
 
   return React.createElement(EffectiveAccessContext.Provider, { value }, children);

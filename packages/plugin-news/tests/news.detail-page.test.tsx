@@ -107,6 +107,12 @@ describe('NewsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
+      unscopedPermissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+      ],
       assignedModules: ['news'],
       roles: [],
     });

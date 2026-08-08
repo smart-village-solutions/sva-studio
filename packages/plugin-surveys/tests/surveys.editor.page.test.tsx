@@ -13,6 +13,7 @@ const accessState = vi.hoisted(() => ({
   snapshot: {
     isResolved: true,
     permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+    unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
     assignedModules: ['surveys'],
     roles: [],
   },
@@ -95,6 +96,7 @@ describe('SurveyEditorPage', () => {
     accessState.snapshot = {
       isResolved: true,
       permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+      unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
       assignedModules: ['surveys'],
       roles: [],
     };
@@ -147,6 +149,7 @@ describe('SurveyEditorPage', () => {
     accessState.snapshot = {
       isResolved: true,
       permissionActions: ['surveys.create'],
+      unscopedPermissionActions: ['surveys.create'],
       assignedModules: [],
       roles: [],
     };
@@ -158,6 +161,7 @@ describe('SurveyEditorPage', () => {
     accessState.snapshot = {
       isResolved: true,
       permissionActions: ['surveys.read'],
+      unscopedPermissionActions: ['surveys.read'],
       assignedModules: ['surveys'],
       roles: [],
     };

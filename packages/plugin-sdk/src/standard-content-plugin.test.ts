@@ -18,6 +18,7 @@ describe('standard content plugin helpers', () => {
         isResolved: true,
         assignedModules: ['news'],
         permissionActions: ['news.read', 'news.update'],
+        unscopedPermissionActions: ['news.read', 'news.update'],
         roles: [],
       })
     ).toEqual({
@@ -33,11 +34,30 @@ describe('standard content plugin helpers', () => {
         isResolved: true,
         assignedModules: [],
         permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
         roles: [],
       })
     ).toEqual({
       isResolved: true,
       canRead: false,
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
+    });
+  });
+
+  it('does not promote scoped update or delete grants to global detail capabilities', () => {
+    expect(
+      resolveStandardContentAccessCapabilities('news', {
+        isResolved: true,
+        assignedModules: ['news'],
+        permissionActions: ['news.read', 'news.update', 'news.delete'],
+        unscopedPermissionActions: ['news.read'],
+        roles: [],
+      })
+    ).toEqual({
+      isResolved: true,
+      canRead: true,
       canCreate: false,
       canUpdate: false,
       canDelete: false,

@@ -70,6 +70,18 @@ const collectPermissionActions = (snapshot: EffectiveAccessSnapshot): readonly s
       )
     : [];
 
+const collectGloballyAllowedPermissionActions = (
+  snapshot: EffectiveAccessSnapshot
+): readonly string[] =>
+  collectPermissionActions(snapshot).filter(
+    (action) =>
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: { kind: 'tenant', actions: { mode: 'allOf', values: [action] } },
+        snapshot,
+      }).status === 'allowed'
+  );
+
 const usePublishSessionAccessSnapshot = (
   snapshot: EffectiveAccessSnapshot,
   roles: readonly string[] | undefined
@@ -79,6 +91,10 @@ const usePublishSessionAccessSnapshot = (
     publishSessionAccessSnapshot({
       isResolved,
       permissionActions: collectPermissionActions(snapshot),
+      unscopedPermissionActions:
+        snapshot.status === 'ready' && snapshot.scope.kind === 'tenant' && 'permissions' in snapshot
+          ? collectGloballyAllowedPermissionActions(snapshot)
+          : [],
       assignedModules:
         snapshot.status === 'ready' && 'assignedModules' in snapshot
           ? snapshot.assignedModules

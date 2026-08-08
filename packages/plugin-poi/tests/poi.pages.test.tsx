@@ -190,6 +190,7 @@ describe('PoiListPage', () => {
         'media.update',
         'media.reference.manage',
       ],
+      unscopedPermissionActions: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
       assignedModules: ['poi'],
       roles: [],
     });

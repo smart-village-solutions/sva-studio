@@ -106,6 +106,12 @@ describe('EventsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
+      unscopedPermissionActions: [
+        'events.read',
+        'events.create',
+        'events.update',
+        'events.delete',
+      ],
       assignedModules: ['events'],
       roles: [],
     });

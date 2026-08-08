@@ -105,6 +105,7 @@ describe('EventsListPage', () => {
       isResolved: true,
       assignedModules: ['events'],
       permissionActions: ['events.read', 'events.create', 'events.update', 'events.delete'],
+      unscopedPermissionActions: ['events.read', 'events.create', 'events.update', 'events.delete'],
       roles: [],
     });
     navigateMock.mockReset();

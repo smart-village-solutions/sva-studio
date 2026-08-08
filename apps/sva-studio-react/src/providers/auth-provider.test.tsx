@@ -192,6 +192,7 @@ describe('AuthProvider', () => {
     expect(readSessionAccessSnapshot()).toEqual({
       isResolved: false,
       permissionActions: [],
+      unscopedPermissionActions: [],
       assignedModules: [],
       roles: [],
     });

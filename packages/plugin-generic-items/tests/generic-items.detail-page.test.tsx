@@ -82,6 +82,12 @@ describe('GenericItemsDetailPage', () => {
         'generic-items.update',
         'generic-items.delete',
       ],
+      unscopedPermissionActions: [
+        'generic-items.read',
+        'generic-items.create',
+        'generic-items.update',
+        'generic-items.delete',
+      ],
       roles: [],
     });
     navigateMock.mockReset();

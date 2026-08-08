@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 
 import { EffectiveAccessProvider, useEffectiveAccess } from './effective-access-provider';
 
@@ -72,7 +73,10 @@ vi.mock('./auth-provider', () => ({
 }));
 
 const response = (
-  permissions: readonly { action: string }[],
+  permissions: readonly {
+    action: string;
+    accessScope?: 'all' | 'own' | 'organization';
+  }[],
   instanceId = 'instance-1',
   snapshotVersion?: string
 ) => ({
@@ -87,6 +91,7 @@ describe('EffectiveAccessProvider', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetSessionAccessSnapshot();
     authMockValue.hasResolvedSession = true;
     authMockValue.isAuthenticated = true;
     authMockValue.isLoading = false;
@@ -110,6 +115,7 @@ describe('EffectiveAccessProvider', () => {
 
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   it('loads one tenant snapshot and applies permission and module gates', async () => {
@@ -232,6 +238,24 @@ describe('EffectiveAccessProvider', () => {
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
 
     expect(result.current.permissionActions).toEqual(['news.read', 'news.update']);
+  });
+
+  it('publishes only unscoped grants as global plugin mutation capabilities', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce(
+      response([
+        { action: 'news.read' },
+        { action: 'news.update', accessScope: 'own' },
+        { action: 'news.delete', accessScope: 'organization' },
+      ])
+    );
+    renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(readSessionAccessSnapshot().isResolved).toBe(true));
+
+    expect(readSessionAccessSnapshot()).toMatchObject({
+      permissionActions: ['news.delete', 'news.read', 'news.update'],
+      unscopedPermissionActions: ['news.read'],
+    });
   });
 
   it('keeps access unresolved while the authentication session is unresolved', async () => {

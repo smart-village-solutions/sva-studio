@@ -250,6 +250,7 @@ describe('News editor pages', () => {
       isResolved: true,
       assignedModules: ['news'],
       permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
       roles: [],
     });
     vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({

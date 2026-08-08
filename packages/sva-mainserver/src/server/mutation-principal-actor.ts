@@ -9,6 +9,8 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 import type { SvaMainserverConnectionInput } from '../types.js';
 import {
   createMainserverContextBinding,
+  MAINSERVER_CONTRACT_VERSION,
+  MAINSERVER_CONTRACT_VERSION_HEADER,
   MAINSERVER_CONTEXT_BINDING_HEADER,
   readActingPrincipalType,
   readMainserverOperationId,
@@ -56,8 +58,11 @@ const hasCurrentContextBinding = (
   authorizedActor: SvaMainserverConnectionInput
 ): boolean => {
   const supplied = request.headers.get(MAINSERVER_CONTEXT_BINDING_HEADER)?.trim();
+  const requiresBinding =
+    request.method !== 'POST' &&
+    request.headers.get(MAINSERVER_CONTRACT_VERSION_HEADER)?.trim() === MAINSERVER_CONTRACT_VERSION;
   return (
-    !supplied ||
+    (!supplied && !requiresBinding) ||
     supplied ===
       createMainserverContextBinding({
         user: { id: authorizedActor.keycloakSubject, instanceId: authorizedActor.instanceId },

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const events = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 const genericItems = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
-const news = vi.hoisted(() => ({ setVisibility: vi.fn() }));
+const news = vi.hoisted(() => ({ get: vi.fn(), setVisibility: vi.fn() }));
 const poi = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 const surveys = vi.hoisted(() => ({ get: vi.fn(), update: vi.fn() }));
 
@@ -11,7 +11,7 @@ vi.mock('@sva/plugin-generic-items', () => ({
   getGenericItem: genericItems.get,
   updateGenericItem: genericItems.update,
 }));
-vi.mock('@sva/plugin-news', () => ({ setNewsVisibility: news.setVisibility }));
+vi.mock('@sva/plugin-news', () => ({ getNews: news.get, setNewsVisibility: news.setVisibility }));
 vi.mock('@sva/plugin-poi', () => ({ getPoi: poi.get, updatePoi: poi.update }));
 vi.mock('@sva/plugin-surveys/api', () => ({
   getSurvey: surveys.get,
@@ -43,6 +43,7 @@ describe('content status mutation', () => {
 
     expect(news.setVisibility).toHaveBeenNthCalledWith(1, 'news-1', false, 'organization');
     expect(news.setVisibility).toHaveBeenNthCalledWith(2, 'news-1', true, 'organization');
+    expect(news.get).toHaveBeenCalledTimes(2);
   });
 
   it('preserves event, generic-item, and POI fields while changing visibility', async () => {

@@ -503,6 +503,7 @@ const buildProjectionTargetKey = (target: ContentProjectionSyncTarget): string =
     instanceId: target.instanceId,
     actorAccountId: target.actorAccountId,
     activeOrganizationId: target.organizationId,
+    ...(target.actingPrincipalType ? { actingPrincipalType: target.actingPrincipalType } : {}),
     contentType: target.contentType,
   });
 };
@@ -525,14 +526,18 @@ const buildMainserverReadScopeKeys = (input: {
         return [];
       }
 
-      return [
+      const principalTypes = input.activeOrganizationId
+        ? (['user', 'organization', undefined] as const)
+        : (['user', undefined] as const);
+      return principalTypes.map((actingPrincipalType) =>
         buildMainserverProjectionScopeKey({
           instanceId: input.instanceId,
           actorAccountId,
           activeOrganizationId: input.activeOrganizationId,
+          ...(actingPrincipalType ? { actingPrincipalType } : {}),
           contentType: mainserverContentType,
-        }),
-      ];
+        })
+      );
     })
     .filter((value, index, values) => values.indexOf(value) === index);
 };
@@ -1613,9 +1618,9 @@ type MainserverProjectionPageResult<TItem> = {
 
 const resolveMainserverProjectionCredentialSource = <TItem>(
   result: MainserverProjectionPageResult<TItem>,
-  projectedOrganizationId: string | undefined
+  actingPrincipalType?: 'organization' | 'user'
 ): IamContentListItem['credentialSource'] =>
-  result.credentialSource ?? (projectedOrganizationId ? 'organization' : 'user');
+  result.credentialSource ?? actingPrincipalType ?? 'user';
 
 const hasNextProjectionPage = (
   result: MainserverProjectionPageResult<unknown>,
@@ -1646,11 +1651,12 @@ const buildLoadedProjectionPage = <TItem>(input: {
     credentialSource: IamContentListItem['credentialSource']
   ) => MainserverProjectionRowInput;
   readonly projectedOrganizationId: string | undefined;
+  readonly actingPrincipalType?: 'organization' | 'user';
   readonly continueAfterEmptyPage?: boolean;
 }): MainserverProjectionLoadedPage => {
   const credentialSource = resolveMainserverProjectionCredentialSource(
     input.result,
-    input.projectedOrganizationId
+    input.actingPrincipalType
   );
   const pagingResult = input.pagingResult ?? input.result;
   const nextPage = pagingResult.pagination.page ?? input.pageQuery.page;
@@ -1673,6 +1679,9 @@ type MainserverProjectionPageLoader = (
   }>
 ) => Promise<MainserverProjectionLoadedPage>;
 
+const toProjectionPrincipalContext = (target: ContentProjectionSyncTarget) =>
+  target.actingPrincipalType ? { actingPrincipalType: target.actingPrincipalType } : {};
+
 const mainserverProjectionPageLoaders: Record<
   MainserverContentType,
   MainserverProjectionPageLoader
@@ -1683,6 +1692,7 @@ const mainserverProjectionPageLoaders: Record<
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         includeInvisible: true,
         ...pageQuery,
       }),
@@ -1695,6 +1705,7 @@ const mainserverProjectionPageLoaders: Record<
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
     }),
   'generic-items.generic-item': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
@@ -1702,6 +1713,7 @@ const mainserverProjectionPageLoaders: Record<
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         includeInvisible: true,
         ...pageQuery,
       }),
@@ -1714,12 +1726,14 @@ const mainserverProjectionPageLoaders: Record<
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
     }),
   'faq.faq': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       activeOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
       includeInvisible: true,
       ...pageQuery,
     }).then((result) =>
@@ -1736,6 +1750,7 @@ const mainserverProjectionPageLoaders: Record<
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
       })
     ),
   'cockpit-cards.cockpit-card': async ({ target, pageQuery }) =>
@@ -1743,6 +1758,7 @@ const mainserverProjectionPageLoaders: Record<
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       activeOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
       includeInvisible: true,
       ...pageQuery,
     }).then((result) =>
@@ -1762,6 +1778,7 @@ const mainserverProjectionPageLoaders: Record<
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
       })
     ),
   'projects.project': async ({ target, pageQuery }) =>
@@ -1769,6 +1786,7 @@ const mainserverProjectionPageLoaders: Record<
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       activeOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
       includeInvisible: true,
       ...pageQuery,
     }).then((result) =>
@@ -1797,6 +1815,7 @@ const mainserverProjectionPageLoaders: Record<
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         continueAfterEmptyPage: true,
       })
     ),
@@ -1806,6 +1825,7 @@ const mainserverProjectionPageLoaders: Record<
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         includeInvisible: true,
         orderBy: 'updatedAt_DESC',
         ...pageQuery,
@@ -1819,6 +1839,7 @@ const mainserverProjectionPageLoaders: Record<
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
     }),
   'poi.point-of-interest': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
@@ -1826,6 +1847,7 @@ const mainserverProjectionPageLoaders: Record<
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         includeInvisible: true,
         ...pageQuery,
       }),
@@ -1838,6 +1860,7 @@ const mainserverProjectionPageLoaders: Record<
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
     }),
   'surveys.survey': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
@@ -1845,6 +1868,7 @@ const mainserverProjectionPageLoaders: Record<
         instanceId: target.instanceId,
         keycloakSubject: target.keycloakSubject,
         activeOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
         includeArchived: true,
         ...pageQuery,
       }),
@@ -1857,6 +1881,7 @@ const mainserverProjectionPageLoaders: Record<
         sourceEntityId: item.id,
       }),
       projectedOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
     }),
 };
 
@@ -1985,12 +2010,12 @@ const loadMainserverProjectionPage = async (
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       activeOrganizationId: target.organizationId,
+      ...toProjectionPrincipalContext(target),
       contentType: target.contentType,
       includeInvisible: true,
       ...pageQuery,
     });
-    const credentialSource =
-      result.credentialSource ?? (target.organizationId ? 'organization' : 'user');
+    const credentialSource = result.credentialSource ?? target.actingPrincipalType ?? 'user';
     return enrichProjectionRowsWithBindingState(target, {
       rows: result.data.map((item: SvaMainserverProjectionListItem) => ({
         id: item.id,

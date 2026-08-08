@@ -13,6 +13,19 @@ describe('mainserver projection scope', () => {
     ).toBe('de-musterhausen::account-1::no-organization::news.article');
   });
 
+  it('isolates user and organization credential projections', () => {
+    const base = {
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      activeOrganizationId: 'org-1',
+      contentType: 'news.article',
+    } as const;
+
+    expect(buildMainserverProjectionScopeKey({ ...base, actingPrincipalType: 'user' })).not.toBe(
+      buildMainserverProjectionScopeKey({ ...base, actingPrincipalType: 'organization' })
+    );
+  });
+
   it('rejects blank actor account ids', () => {
     expect(() =>
       buildMainserverProjectionScopeKey({

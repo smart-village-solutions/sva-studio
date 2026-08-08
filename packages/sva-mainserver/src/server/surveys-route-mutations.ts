@@ -54,7 +54,7 @@ export const handleCreateSurvey = async (
         });
         return toSurveyMutationFailureResponse(created, 'Umfrage konnte nicht angelegt werden.');
       }
-      const bindingOutcome = await recordCreatedMainserverDataProvider({
+      const bindingResult = await recordCreatedMainserverDataProvider({
         actor,
         created: created.survey,
         reread: async () =>
@@ -62,14 +62,15 @@ export const handleCreateSurvey = async (
         contentType: SURVEYS_CONTENT_TYPE,
       });
       const reconciliationRequired =
-        bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required';
+        bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required';
       await finalizeMainserverMutation({
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus: reconciliationRequired ? 'reconciliation_required' : 'complete',
         completedSteps: ['provider_write', 'binding_observation'],
         contentId: created.survey.id,
-        observedDataProviderId: created.survey.dataProvider?.id,
+        observedDataProviderId:
+          created.survey.dataProvider?.id ?? bindingResult.observedDataProviderId,
       });
       return json(
         {

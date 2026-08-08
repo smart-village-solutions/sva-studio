@@ -339,7 +339,7 @@ const createPoiContent = async (request: Request, actor: MainserverMutationActor
   });
   if (isResponse(principalAuthorization)) return principalAuthorization;
   const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
-  const bindingOutcome = await recordCreatedMainserverDataProvider({
+  const bindingResult = await recordCreatedMainserverDataProvider({
     actor,
     created: data,
     reread: async () => (await getSvaMainserverPoiDetail({ ...actor, poiId: data.id })).data,
@@ -349,16 +349,16 @@ const createPoiContent = async (request: Request, actor: MainserverMutationActor
     actor,
     providerOutcome: 'succeeded',
     reconciliationStatus:
-      bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+      bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
         ? 'reconciliation_required'
         : 'complete',
     completedSteps: ['provider_write', 'binding_observation'],
     contentId: data.id,
-    observedDataProviderId: data.dataProvider?.id,
+    observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
   });
   return {
     data,
-    ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+    ...(bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
       ? { meta: { reconciliationStatus: 'reconciliation_required' as const } }
       : {}),
   };

@@ -716,7 +716,7 @@ const handleCollectionCreate = async (
           result: 'success',
           newsId: data.id,
         });
-        const bindingOutcome = await recordCreatedMainserverDataProvider({
+        const bindingResult = await recordCreatedMainserverDataProvider({
           actor,
           created: data,
           reread: async () => await getSvaMainserverNews({ ...actor, newsId: data.id }),
@@ -726,19 +726,21 @@ const handleCollectionCreate = async (
           actor,
           providerOutcome: 'succeeded',
           reconciliationStatus:
-            bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+            bindingResult.outcome === 'conflict' ||
+            bindingResult.outcome === 'reconciliation_required'
               ? 'reconciliation_required'
               : 'complete',
           completedSteps: ['provider_write', 'binding_observation'],
           contentId: data.id,
-          observedDataProviderId: data.dataProvider?.id,
+          observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
         });
         const responseData =
           parsed.visible === undefined ? data : { ...data, visible: parsed.visible };
         logSuccess('mainserver_news_create', data.id);
         const responseBody = {
           data: responseData,
-          ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+          ...(bindingResult.outcome === 'conflict' ||
+          bindingResult.outcome === 'reconciliation_required'
             ? { meta: { reconciliationStatus: 'reconciliation_required' } }
             : {}),
         };

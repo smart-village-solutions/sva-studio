@@ -300,7 +300,7 @@ const handleCreateRequest = async (
               ? { ...withoutEditorialAuthor(genericItem), genericType: 'COCKPIT_CARD' }
               : withoutEditorialAuthor(genericItem),
       });
-      const bindingOutcome = await recordCreatedMainserverDataProvider({
+      const bindingResult = await recordCreatedMainserverDataProvider({
         actor,
         created: data,
         reread: async () => await getSvaMainserverGenericItem({ ...actor, genericItemId: data.id }),
@@ -310,18 +310,20 @@ const handleCreateRequest = async (
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus:
-          bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+          bindingResult.outcome === 'conflict' ||
+          bindingResult.outcome === 'reconciliation_required'
             ? 'reconciliation_required'
             : 'complete',
         completedSteps: ['provider_write', 'binding_observation'],
         contentId: data.id,
-        observedDataProviderId: data.dataProvider?.id,
+        observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
       });
       logSuccess('mainserver_generic-items_create', data.id);
       return json(
         {
           data,
-          ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+          ...(bindingResult.outcome === 'conflict' ||
+          bindingResult.outcome === 'reconciliation_required'
             ? { meta: { reconciliationStatus: 'reconciliation_required' } }
             : {}),
         },

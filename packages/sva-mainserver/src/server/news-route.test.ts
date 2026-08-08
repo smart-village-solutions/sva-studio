@@ -355,6 +355,12 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({ responseStatus: 201 })
     );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentId: 'news-1',
+        observedDataProviderId: 'dp-org-1',
+      })
+    );
     expect(state.emitAuthAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         eventType: 'plugin_action_authorized',

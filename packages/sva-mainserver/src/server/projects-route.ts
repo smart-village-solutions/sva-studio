@@ -493,7 +493,7 @@ const createProject = async (
       ...actor,
       genericItem: mergeProjectIntoGenericItem({ project, externalId: key, publishedAt }),
     });
-    const bindingOutcome = await recordCreatedMainserverDataProvider({
+    const bindingResult = await recordCreatedMainserverDataProvider({
       actor,
       created,
       reread: async () =>
@@ -550,21 +550,22 @@ const createProject = async (
     };
     const responseBody = {
       data,
-      ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+      ...(bindingResult.outcome === 'conflict' ||
+      bindingResult.outcome === 'reconciliation_required'
         ? { meta: { reconciliationStatus: 'reconciliation_required' } }
         : {}),
     };
     const reconciliationRequired =
       localFollowUpFailed ||
-      bindingOutcome === 'conflict' ||
-      bindingOutcome === 'reconciliation_required';
+      bindingResult.outcome === 'conflict' ||
+      bindingResult.outcome === 'reconciliation_required';
     await finalizeMainserverMutation({
       actor,
       providerOutcome: 'succeeded',
       reconciliationStatus: reconciliationRequired ? 'reconciliation_required' : 'complete',
       completedSteps: ['provider_write', 'binding_observation'],
       contentId: created.id,
-      observedDataProviderId: created.dataProvider?.id,
+      observedDataProviderId: created.dataProvider?.id ?? bindingResult.observedDataProviderId,
     });
     await Promise.resolve(
       completeCreate({

@@ -372,6 +372,21 @@ describe('projects route', () => {
     });
     expect(state.getGenericItem).not.toHaveBeenCalled();
 
+    const missingV2Binding = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SVA-Mainserver-Contract-Version': '2',
+        },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(missingV2Binding?.status).toBe(409);
+    await expect(missingV2Binding?.json()).resolves.toMatchObject({
+      error: 'stale_mainserver_context',
+    });
+
     const currentContextBinding = createMainserverContextBinding({
       user: { id: ctx.user.id, instanceId: ctx.user.instanceId },
       activeOrganizationId: ctx.activeOrganizationId,
@@ -381,6 +396,7 @@ describe('projects route', () => {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'X-SVA-Mainserver-Contract-Version': '2',
           'X-SVA-Context-Binding': currentContextBinding,
         },
         body: JSON.stringify(input),

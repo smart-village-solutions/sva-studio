@@ -8,13 +8,16 @@ Bei Mainserver-Inhalten ist der vom Mainserver gesetzte `dataProvider` der unver
 
 ## Mutationsvertrag
 
-- Der aktuelle Browser-Client sendet `X-SVA-Mainserver-Contract-Version: 2`, `X-SVA-Acting-Principal-Type: organization|user`, eine Operations-ID und bei geladenen Details die nicht autorisierende Kontextbindung.
+- Der aktuelle Browser-Client sendet `X-SVA-Mainserver-Contract-Version: 2`, `X-SVA-Acting-Principal-Type: organization|user`, eine Operations-ID und bei Änderungen beziehungsweise Deletes zwingend die nicht autorisierende Kontextbindung. Fehlt sie lokal, lädt der Client das Detail vor der Mutation erneut; liefert auch dieser Read keine Bindung, bricht er fail-closed ab.
 - Der Server validiert Actor, aktive Organisation, `contentAuthorPolicy`, Membership, Credentials, Action und Scope erneut.
 - Pre-Read, Read-Merge-Write, Provider-Write, Status-/Visibility-Zweitschritt, Post-Read, Projection, Audit und Reconciliation verwenden denselben unveränderlichen Credential-Fingerprint.
 - Jede bestehende Mutation benötigt einen frischen Same-Credential-Pre-Read. Projection und Cache autorisieren nie eine Mutation.
 - Gelöschte, pseudonymisierte oder blockierte Accounts und gelöschte beziehungsweise inaktive Organisationen zählen nicht als aktuelle Binding-Readiness. Ihre automatisch beobachtete Bindung bleibt als historische Referenz erhalten und wird keinem anderen Principal übertragen.
 - Ein erfolgreicher Provider-Write bleibt fachlich erfolgreich. Fehler in Binding, Journal, Projection oder History erzeugen `reconciliation_required`, aber keinen fingierten Providerfehler.
+- Liefert ein Create den DataProvider erst im Same-Credential-Re-Read, wird diese beobachtete ID in Bindung, Mutation-Journal und Audit derselben Operation weitergereicht.
 - Hard Delete persistiert DataProvider und Preimage vor dem Write und verlangt keinen Post-Delete-Read.
+
+Implizite Reads und Hintergrundabgleiche verwenden bei `org_or_personal` persönliche Credentials. Nur `org_only` wählt ohne expliziten Principal organisatorische Credentials. Principal-gebundene Mutation-Refreshes werden in getrennten `user`-/`organization`-Projektionsscopes gespeichert; ein automatischer Full-Refresh darf Zeilen des jeweils anderen Principal-Scopes nicht entfernen.
 
 ## Rollout-Schalter
 

@@ -104,6 +104,44 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
     });
   });
 
+  it('defaults org_or_personal reads to user credentials even when organization credentials exist', async () => {
+    state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) =>
+      work({
+        query: vi.fn(async () => ({
+          rows: [
+            {
+              content_author_policy: 'org_or_personal',
+              mainserver_application_id: 'org-app-1',
+              mainserver_application_secret_ciphertext: 'org-secret-1',
+            },
+          ],
+        })),
+      })
+    );
+    state.readSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      credentials: {
+        apiKey: 'user-app-1',
+        apiSecret: 'user-secret-1',
+      },
+    });
+
+    await expect(
+      readEffectiveSvaMainserverCredentialsWithStatus({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+      })
+    ).resolves.toMatchObject({
+      status: 'ok',
+      source: 'user',
+      credentials: {
+        apiKey: 'user-app-1',
+        apiSecret: 'user-secret-1',
+      },
+    });
+  });
+
   it('returns a deterministic org-scoped error for org_only organizations without complete credentials', async () => {
     state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) =>
       work({

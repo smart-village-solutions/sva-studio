@@ -1,7 +1,7 @@
 import type { IamContentListItem, IamContentStatus } from '@sva/core';
 import { getEvent, updateEvent } from '@sva/plugin-events';
 import { getGenericItem, updateGenericItem } from '@sva/plugin-generic-items';
-import { setNewsVisibility } from '@sva/plugin-news';
+import { getNews, setNewsVisibility } from '@sva/plugin-news';
 import { getPoi, updatePoi } from '@sva/plugin-poi';
 import type { SurveyContentItem, SurveyStatus } from '@sva/plugin-surveys';
 import { getSurvey, updateSurvey } from '@sva/plugin-surveys/api';
@@ -65,6 +65,7 @@ export const updateMainserverContentStatus = async (
 
   switch (item.contentType) {
     case 'news.article':
+      await getNews(item.id);
       await setNewsVisibility(item.id, status === 'published', actingPrincipalType);
       return;
     case 'events.event-record': {

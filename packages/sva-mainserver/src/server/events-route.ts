@@ -540,7 +540,7 @@ const handleCollectionCreate = async (
       });
       if (isResponse(principalAuthorization)) return principalAuthorization;
       const result = await createSvaMainserverEvent({ ...actor, event: parsed.event });
-      const bindingOutcome = await recordCreatedMainserverDataProvider({
+      const bindingResult = await recordCreatedMainserverDataProvider({
         actor,
         created: result,
         reread: async () =>
@@ -561,7 +561,7 @@ const handleCollectionCreate = async (
             reconciliationStatus: 'reconciliation_required',
             completedSteps: ['provider_write'],
             contentId: result.id,
-            observedDataProviderId: result.dataProvider?.id,
+            observedDataProviderId: result.dataProvider?.id ?? bindingResult.observedDataProviderId,
             lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
           });
           return toEventVisibilityPartialFailureResponse(
@@ -575,18 +575,20 @@ const handleCollectionCreate = async (
         actor,
         providerOutcome: 'succeeded',
         reconciliationStatus:
-          bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+          bindingResult.outcome === 'conflict' ||
+          bindingResult.outcome === 'reconciliation_required'
             ? 'reconciliation_required'
             : 'complete',
         completedSteps: ['provider_write', 'binding_observation'],
         contentId: result.id,
-        observedDataProviderId: result.dataProvider?.id,
+        observedDataProviderId: result.dataProvider?.id ?? bindingResult.observedDataProviderId,
       });
       logSuccess(`mainserver_${route.contentKind}_create`, result.id);
       return json(
         {
           data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible },
-          ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+          ...(bindingResult.outcome === 'conflict' ||
+          bindingResult.outcome === 'reconciliation_required'
             ? { meta: { reconciliationStatus: 'reconciliation_required' } }
             : {}),
         },

@@ -219,21 +219,6 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
         };
   }
 
-  if (organizationCredentials) {
-    return {
-      status: 'ok',
-      source: 'organization',
-      credentials: organizationCredentials,
-      credentialFingerprint: createCredentialFingerprint({
-        instanceId: input.instanceId,
-        source: 'organization',
-        principalId: input.activeOrganizationId,
-        credentials: organizationCredentials,
-      }),
-      organizationId: input.activeOrganizationId,
-    };
-  }
-
   return resolveUserCredentials(input);
 };
 

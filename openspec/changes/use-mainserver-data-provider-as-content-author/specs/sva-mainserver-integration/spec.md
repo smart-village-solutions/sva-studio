@@ -254,7 +254,7 @@ The system SHALL execute Event and POI create, update, archive, and delete mutat
 
 ### Requirement: Mainserver-Credential-Auflösung respektiert den aktiven Organisationskontext
 
-The system SHALL resolve SVA Mainserver credentials server-side. For Studio-initiated content mutations, `actingPrincipalType` SHALL select exactly `organization` or `user` and SHALL disable implicit cross-source fallback. For pure reads and background reconciliation without a bound mutation context, the existing `contentAuthorPolicy`-driven organization-first resolver MAY remain in use, but its chosen source SHALL be returned and included in cache and projection isolation.
+The system SHALL resolve SVA Mainserver credentials server-side. For Studio-initiated content mutations, `actingPrincipalType` SHALL select exactly `organization` or `user` and SHALL disable implicit cross-source fallback. Pure reads and background reconciliation without a bound mutation context SHALL use user credentials for `org_or_personal` and organization credentials only for `org_only`. The chosen source SHALL be returned and included in cache and projection isolation.
 
 #### Scenario: Explicit organization mutation uses only organization credentials
 
@@ -271,11 +271,12 @@ The system SHALL resolve SVA Mainserver credentials server-side. For Studio-init
 - **THEN** the resolver uses only current or compatible legacy user credentials
 - **AND** no organization lookup or fallback occurs
 
-#### Scenario: Pure read may use existing organization-first policy
+#### Scenario: Pure read defaults to the personal principal
 
 - **GIVEN** a pure read is not causally bound to a mutation
 - **WHEN** the active organization's `contentAuthorPolicy` is `org_or_personal`
-- **THEN** the existing resolver may prefer complete organization credentials and fall back to current-user credentials
+- **THEN** the resolver uses current-user credentials
+- **AND** it does not prefer or fall back to organization credentials
 - **AND** it returns the actual credential source
 - **AND** caches and projections remain isolated by that source or credential signature
 
@@ -301,6 +302,27 @@ The system SHALL resolve SVA Mainserver credentials server-side. For Studio-init
 - **WHEN** it performs Pre-Read, Write, Post-Read or Reconciliation
 - **THEN** those steps reuse the bound `MutationPrincipalContext`
 - **AND** they do not invoke the general organization-first resolver again
+
+### Requirement: V2-Mutationen binden den geladenen Sessionkontext
+
+Das System MUST bei V2-Updates und -Deletes einen nicht autorisierenden Kontext-Bindungswert aus einem aktuellen Detail-Read verlangen und ihn vor dem Provider-Write gegen den authentifizierten Session- und Organisationskontext prüfen. Ein Client ohne vorhandenen Bindungswert MUST das Detail vor der Mutation erneut laden und MUST fail-closed abbrechen, wenn der Read keinen Bindungswert liefert. Requests ohne Vertragsversion dürfen nur im konfigurierten Legacy-Übergang ohne diesen Wert verarbeitet werden.
+
+#### Scenario: V2-Update ohne Kontextbindung wird abgelehnt
+
+- **GIVEN** ein Client sendet Vertragsversion 2
+- **WHEN** er ein bestehendes Mainserver-Objekt ohne Kontext-Bindungswert aktualisiert
+- **THEN** beginnt kein Provider-Write
+- **AND** Studio antwortet mit einem deterministischen Context-Binding-Fehler
+
+### Requirement: Projektionsscopes isolieren explizite Principals
+
+Das System SHALL gezielte Mutation-Refreshes nach `user` und `organization` im Projektionsscope isolieren. Ein automatischer Full-Refresh SHALL nur seinen eigenen Scope ersetzen oder löschen und SHALL keine Zeilen eines expliziten anderen Principal-Scopes entfernen. Listenreads SHALL die für den aktuellen Account und die aktive Organisation zulässigen Principal-Scopes berücksichtigen.
+
+#### Scenario: Persönlicher Full-Refresh erhält organisatorische Mutationsprojektion
+
+- **GIVEN** ein `org_or_personal`-Kontext enthält eine durch eine Organisationsmutation aktualisierte Projektionszeile
+- **WHEN** ein impliziter Full-Refresh mit persönlichen Credentials läuft
+- **THEN** bleibt die organisatorische Projektionszeile erhalten
 
 ### Requirement: Mainserver-Projektion trennt Quellkontext von IAM-Ownership
 

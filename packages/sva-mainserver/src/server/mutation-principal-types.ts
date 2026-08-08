@@ -39,3 +39,8 @@ export type DataProviderBearingItem = Readonly<{
 
 export type MainserverCreateBindingOutcome =
   'created' | 'confirmed' | 'conflict' | 'reconciliation_required' | undefined;
+
+export type MainserverCreateBindingResult = Readonly<{
+  outcome: MainserverCreateBindingOutcome;
+  observedDataProviderId?: string;
+}>;

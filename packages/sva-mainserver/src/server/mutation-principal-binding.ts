@@ -3,7 +3,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type {
   DataProviderBearingItem,
-  MainserverCreateBindingOutcome,
+  MainserverCreateBindingResult,
   MainserverMutationActor,
 } from './mutation-principal-types.js';
 
@@ -14,11 +14,11 @@ export const recordCreatedMainserverDataProvider = async (input: {
   readonly created: DataProviderBearingItem;
   readonly reread: () => Promise<DataProviderBearingItem>;
   readonly contentType: string;
-}): Promise<MainserverCreateBindingOutcome> => {
+}): Promise<MainserverCreateBindingResult> => {
   try {
     const observed = input.created.dataProvider?.id ? input.created : await input.reread();
     const dataProviderId = observed.dataProvider?.id?.trim();
-    if (!dataProviderId) return undefined;
+    if (!dataProviderId) return { outcome: undefined };
     const result = await recordMainserverDataProviderObservation({
       instanceId: input.actor.instanceId,
       principalType: input.actor.mutationPrincipalContext.actingPrincipalType,
@@ -28,7 +28,7 @@ export const recordCreatedMainserverDataProvider = async (input: {
       dataProviderName: observed.dataProvider?.name,
       evidenceKind: input.created.dataProvider?.id ? 'create_response' : 'create_reread',
     });
-    return result.outcome;
+    return { outcome: result.outcome, observedDataProviderId: dataProviderId };
   } catch (error) {
     const workspaceContext = getWorkspaceContext();
     logger.warn('Mainserver create binding follow-up failed', {
@@ -40,6 +40,6 @@ export const recordCreatedMainserverDataProvider = async (input: {
       content_id: input.created.id,
       error_code: error instanceof Error ? error.name : 'unknown_error',
     });
-    return 'reconciliation_required';
+    return { outcome: 'reconciliation_required' };
   }
 };

@@ -3072,6 +3072,8 @@ describe('content list projection', () => {
       expect.objectContaining({
         organization_id: null,
         owner_user_id: null,
+        projection_scope_key:
+          'de-musterhausen::account-1::no-organization::user::poi.point-of-interest',
         source_entity_id: 'poi-user-1',
       }),
     ]);
@@ -3367,7 +3369,7 @@ describe('content list projection', () => {
       {
         id: 'generic-type-change-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::faq.faq',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::organization::faq.faq',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3441,7 +3443,8 @@ describe('content list projection', () => {
       {
         id: 'generic-delete-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::generic-items.generic-item',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::generic-items.generic-item',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3469,7 +3472,8 @@ describe('content list projection', () => {
       {
         id: 'generic-keep-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::generic-items.generic-item',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::generic-items.generic-item',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3529,7 +3533,8 @@ describe('content list projection', () => {
       {
         id: 'poi-delete-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3557,7 +3562,8 @@ describe('content list projection', () => {
       {
         id: 'poi-keep-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3584,9 +3590,10 @@ describe('content list projection', () => {
       },
     ];
     syncStates.set(
-      'poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest',
+      'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
-        sync_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        sync_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         last_started_at: null,
         last_succeeded_at: new Date().toISOString(),
         last_failed_at: null,
@@ -3613,7 +3620,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('serializes targeted mutation refreshes behind a running batch refresh for the same scope', async () => {
+  it('runs targeted mutation refreshes independently from the automatic batch scope', async () => {
     const releaseBatchList = { current: null as (() => void) | null };
     const batchListRelease = new Promise<void>((resolve) => {
       releaseBatchList.current = resolve;
@@ -3689,7 +3696,7 @@ describe('content list projection', () => {
     for (let index = 0; index < 10; index += 1) {
       await Promise.resolve();
     }
-    expect(state.getSvaMainserverPoi).not.toHaveBeenCalled();
+    expect(state.getSvaMainserverPoi).toHaveBeenCalledTimes(1);
 
     releaseBatchList.current?.();
 
@@ -3709,11 +3716,13 @@ describe('content list projection', () => {
       {
         id: 'poi-stale-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
         owner_organization_id: 'org-1',
+        authorization_mode: 'credential_visible_compatibility',
         content_type: 'poi.point-of-interest',
         title: 'Alter Snapshot',
         published_at: null,
@@ -3736,6 +3745,19 @@ describe('content list projection', () => {
       },
     ];
     syncStates.set(
+      'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+      {
+        sync_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        last_started_at: null,
+        last_succeeded_at: staleSucceededAt,
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 1,
+      }
+    );
+    syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest',
       {
         sync_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
@@ -3744,7 +3766,7 @@ describe('content list projection', () => {
         last_failed_at: null,
         last_error_code: null,
         last_error_message: null,
-        projected_count: 1,
+        projected_count: 0,
       }
     );
     state.getSvaMainserverPoi.mockRejectedValue(new Error('detail failed'));
@@ -3773,7 +3795,7 @@ describe('content list projection', () => {
     ]);
     expect(
       syncStates.get(
-        'poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest'
+        'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest'
       )
     ).toEqual(
       expect.objectContaining({
@@ -3850,7 +3872,8 @@ describe('content list projection', () => {
         entity_id: 'poi-log-1',
         operation: 'update',
         refresh_trigger: 'mutation_follow_up',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       })
     );
   });

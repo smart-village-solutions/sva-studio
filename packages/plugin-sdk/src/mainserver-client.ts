@@ -72,7 +72,37 @@ const createMainserverContextBindingStore = () => {
     return result;
   };
 
-  return { capture, mutationHeaders };
+  return {
+    capture,
+    has: (contentId: string): boolean => contextBindings.has(contentId),
+    mutationHeaders,
+  };
+};
+
+const createMainserverItemLoader = <TItem, TError extends Error>(input: {
+  readonly basePath: string;
+  readonly fetch?: typeof fetch;
+  readonly errorFactory: MainserverErrorFactory<TError>;
+  readonly mapItem: (item: TItem) => TItem;
+  readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
+}) => {
+  const loadDetail = async (contentId: string): Promise<MainserverDetailResult<TItem>> => {
+    const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
+      url: `${input.basePath}/${contentId}`,
+      fetch: input.fetch,
+      errorFactory: input.errorFactory,
+      onResponse: input.contextBindingStore.capture(contentId),
+    });
+    return {
+      data: input.mapItem(response.data),
+      deviations: response.meta?.deviations ?? [],
+    };
+  };
+
+  return {
+    loadDetail,
+    loadItem: async (contentId: string): Promise<TItem> => (await loadDetail(contentId)).data,
+  };
 };
 
 export const createMainserverCrudClient = <
@@ -86,6 +116,24 @@ export const createMainserverCrudClient = <
 ) => {
   const mapItem = options.mapItem ?? ((item: TItem) => item);
   const contextBindingStore = createMainserverContextBindingStore();
+  const { loadDetail, loadItem } = createMainserverItemLoader({
+    basePath: options.basePath,
+    fetch: options.fetch,
+    errorFactory: options.errorFactory,
+    mapItem,
+    contextBindingStore,
+  });
+  const ensureContextBinding = async (contentId: string): Promise<void> => {
+    if (!contextBindingStore.has(contentId)) {
+      await loadItem(contentId);
+    }
+    if (!contextBindingStore.has(contentId)) {
+      throw options.errorFactory(
+        'mainserver_context_binding_missing',
+        'mainserver_context_binding_missing'
+      );
+    }
+  };
 
   return {
     list: async (query: MainserverListQuery): Promise<TListResult> => {
@@ -96,27 +144,8 @@ export const createMainserverCrudClient = <
       });
       return options.mapListResponse(response, mapItem);
     },
-    get: async (contentId: string): Promise<TItem> => {
-      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-        url: `${options.basePath}/${contentId}`,
-        fetch: options.fetch,
-        errorFactory: options.errorFactory,
-        onResponse: contextBindingStore.capture(contentId),
-      });
-      return mapItem(response.data);
-    },
-    getDetail: async (contentId: string): Promise<MainserverDetailResult<TItem>> => {
-      const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-        url: `${options.basePath}/${contentId}`,
-        fetch: options.fetch,
-        errorFactory: options.errorFactory,
-        onResponse: contextBindingStore.capture(contentId),
-      });
-      return {
-        data: mapItem(response.data),
-        deviations: response.meta?.deviations ?? [],
-      };
-    },
+    get: loadItem,
+    getDetail: loadDetail,
     create: async (
       input: TMutationInput,
       actingPrincipalType: MainserverActingPrincipalType
@@ -138,6 +167,7 @@ export const createMainserverCrudClient = <
       input: TMutationInput,
       actingPrincipalType: MainserverActingPrincipalType
     ): Promise<TItem> => {
+      await ensureContextBinding(contentId);
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
         url: `${options.basePath}/${contentId}`,
         fetch: options.fetch,
@@ -158,6 +188,7 @@ export const createMainserverCrudClient = <
       contentId: string,
       actingPrincipalType: MainserverActingPrincipalType
     ): Promise<void> => {
+      await ensureContextBinding(contentId);
       await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
         url: `${options.basePath}/${contentId}`,
         fetch: options.fetch,

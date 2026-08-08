@@ -156,12 +156,14 @@ Für Create existiert noch kein Content-DataProvider. Deshalb gelten vor dem Ups
 
 Der gemeinsame Kontext enthält mindestens Instanz, Actor, aktive Organisation, Principal-Typ, Credential-Quelle und Credential-Fingerprint. Er wird für Pre-Read, Read-Merge-Write, Provider-Mutation, Visibility- oder Status-Zweitschritt, Post-Read, DataProvider-Prüfung, Projection-Refresh, Audit und Reconciliation verwendet.
 
-Credential- und Token-Caches enthalten denselben Principal-Kontext beziehungsweise eine gleichwertige Credential-Signatur. Ein Wechsel der aktiven Organisation oder Credential-Version darf keinen alten Cache-Eintrag weiter autorisieren. Ein Editor-Request trägt einen nicht autorisierenden Kontext-Bindungswert; stimmt dieser beim Save nicht mehr mit der aktuellen Session überein, wird die Mutation als stale abgewiesen.
+Credential- und Token-Caches enthalten denselben Principal-Kontext beziehungsweise eine gleichwertige Credential-Signatur. Ein Wechsel der aktiven Organisation oder Credential-Version darf keinen alten Cache-Eintrag weiter autorisieren. Jeder V2-Request zum Ändern oder Löschen trägt einen nicht autorisierenden Kontext-Bindungswert aus einem aktuellen Detail-Read; fehlt er oder stimmt er beim Save nicht mehr mit der aktuellen Session überein, wird die Mutation vor dem Provider-Write abgewiesen. Legacy-Requests ohne Vertragsversion bleiben ausschließlich während des konfigurierten Übergangs kompatibel.
 
 - `org_only`: nur `organization` ist bei aktiver Organisation zulässig.
 - `org_or_personal`: `organization` und `user` sind bei aktiver Organisation zulässig.
 - kein aktiver Organisationskontext: nur `user` ist zulässig.
 - fehlende Credentials erzeugen einen spezifischen Fehler; es gibt keinen stillen Fallback.
+
+Implizite Reads und Hintergrund-Reconciliation verwenden bei `org_or_personal` den persönlichen Principal; nur `org_only` wählt ohne explizite Auswahl die aktive Organisation. Automatische und gezielte Projektionsaktualisierungen trennen `user` und `organization` im Scope-Schlüssel, sobald der Principal explizit feststeht. Ein Refresh in einem Scope löscht keine Zeilen eines anderen Principal-Scopes.
 
 ### Hard Delete verwendet Preimage und Tombstone
 

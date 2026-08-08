@@ -25,6 +25,7 @@
 - [x] 2.5 Credential-/Token-Caches nach Principal-Kontext beziehungsweise Credential-Signatur trennen und bei Policy-, Mapping-, Organisations- oder Credential-Wechsel invalidieren.
 - [x] 2.6 Einen nicht autorisierenden Kontext-Bindungswert für Editor-Requests ergänzen und stale Organisationswechsel vor dem Write ablehnen.
 - [x] 2.7 Policy-, Credential-, Cache-, Context-Switch- und Legacy-Client-Tests ergänzen.
+- [x] 2.8 Kontextbindung für V2-Updates und -Deletes verpflichtend machen und bei fehlender Client-Bindung einen fail-closed Detail-Pre-Read ausführen.
 
 ## 3. Credential-visible Compatibility und exakte Scopes
 
@@ -36,6 +37,7 @@
 - [x] 3.6 Projection- oder Cache-Treffer niemals als Mutationsautorisierung akzeptieren; `401`, `403` und `404` beim Pre-Read fail-closed behandeln.
 - [x] 3.7 Automatische Scope-Wechsel, Konflikte und Rückfälle auditieren, metrisch zählen und in Administration/Diagnose anzeigen.
 - [x] 3.8 Listen-, Detail- und Mutationsregeln für persönliche und organisatorische Credential-Kontexte testen.
+- [x] 3.9 Implizite `org_or_personal`-Reads auf persönliche Credentials festlegen und automatische sowie explizite Principal-Projektionsscopes gegeneinander isolieren.
 
 ## 4. Create, Delete und persistente Reconciliation
 
@@ -45,6 +47,7 @@
 - [x] 4.4 Vor Hard Delete DataProvider und Audit-Preimage mit Operationsreferenz persistieren; nach Erfolg einen Tombstone finalisieren und keinen Post-Delete-Read verlangen.
 - [x] 4.5 Persistentes Mutation-Journal für Principal, Credential-Fingerprint, erwarteten/tatsächlichen Provider, Teiloperationen, Provider-Outcome, Retry und Reconciliation ergänzen.
 - [x] 4.6 Lost-Response-, Duplicate-, Partial-Success-, Retry-, Tombstone- und idempotente Finalisierungstests ergänzen.
+- [x] 4.7 Eine erst im Same-Credential-Re-Read beobachtete Create-DataProvider-ID an Mutation-Journal und Audit derselben Operation weiterreichen.
 
 ## 5. Mainserver-Routen, Projektionen und Content-Typen
 

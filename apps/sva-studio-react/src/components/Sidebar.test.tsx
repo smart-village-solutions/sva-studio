@@ -6,6 +6,7 @@ import React from 'react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IamContentAccessSummary } from '@sva/core';
 import { pluginNews } from '@sva/plugin-news';
+import type { PluginNavigationItem } from '@sva/plugin-sdk';
 
 import { mergeI18nResources } from '../i18n';
 import Sidebar from './Sidebar';
@@ -17,6 +18,7 @@ const COCKPIT_URL = 'https://cockpit.guben.de';
 
 const useAuthMock = vi.fn();
 const useContentAccessMock = vi.fn();
+const decideAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
 type PluginNavigationItemMock = {
@@ -26,6 +28,7 @@ type PluginNavigationItemMock = {
   section: 'dataManagement' | 'applications' | 'system';
   requiredAction?: string;
   actionId?: string;
+  accessRequirement?: PluginNavigationItem['accessRequirement'];
 };
 const studioPluginNavigationMock = vi.hoisted(() => ({
   items: [
@@ -81,6 +84,10 @@ vi.mock('../providers/auth-provider', () => ({
 
 vi.mock('../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
+}));
+
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => ({ decide: decideAccessMock }),
 }));
 
 vi.mock('../lib/plugins', () => ({
@@ -219,6 +226,8 @@ beforeEach(() => {
   ];
   studioPluginActionLookupMock.get.mockReset();
   studioPluginActionLookupMock.get.mockReturnValue(undefined);
+  decideAccessMock.mockReset();
+  decideAccessMock.mockReturnValue({ status: 'allowed', reason: 'allowed_by_permission' });
   localStorageState.clear();
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -856,6 +865,64 @@ describe('Sidebar', () => {
       '/plugins/news/publish'
     );
     expect(studioPluginActionLookupMock.get).toHaveBeenCalledWith('news.publish');
+  });
+
+  it('blendet Plugin-Navigation aus, wenn ihre kanonische Access-Anforderung abgelehnt wird', () => {
+    const accessRequirement = {
+      kind: 'tenant',
+      actions: { mode: 'allOf', values: ['news.read'] },
+    } as const;
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.navigation',
+        to: '/plugins/news/review',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        accessRequirement,
+      },
+    ];
+    decideAccessMock.mockReturnValue({ status: 'denied', reason: 'permission_missing' });
+
+    renderSidebar({
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({ permissionActions: ['news.read'] }),
+    });
+
+    expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
+    expect(screen.queryByRole('link', { name: 'Nachrichten' })).toBeNull();
+  });
+
+  it('wertet die kanonische Access-Anforderung der referenzierten Plugin-Action aus', () => {
+    const accessRequirement = {
+      kind: 'tenant',
+      actions: { mode: 'allOf', values: ['news.publish'] },
+    } as const;
+    studioPluginNavigationMock.items = [
+      {
+        id: 'news.publish',
+        to: '/plugins/news/publish',
+        titleKey: 'news.navigation.title',
+        section: 'dataManagement',
+        actionId: 'news.publish',
+      },
+    ];
+    studioPluginActionLookupMock.get.mockReturnValue({
+      actionId: 'news.publish',
+      namespace: 'news',
+      actionName: 'publish',
+      ownerPluginId: 'news',
+      titleKey: 'news.actions.publish',
+      accessRequirement,
+    });
+    decideAccessMock.mockReturnValue({ status: 'denied', reason: 'permission_missing' });
+
+    renderSidebar({
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({ permissionActions: ['news.publish'] }),
+    });
+
+    expect(decideAccessMock).toHaveBeenCalledWith(accessRequirement);
+    expect(screen.queryByRole('link', { name: 'news.actions.publish' })).toBeNull();
   });
 
   it('blendet Plugin-Navigation fail-closed aus, wenn nur eine feingranulare Update-Berechtigung verlangt wird', () => {

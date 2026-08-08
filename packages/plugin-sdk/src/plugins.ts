@@ -207,6 +207,7 @@ export type PluginActionRegistryEntry = {
   readonly ownerPluginId: string;
   readonly titleKey: string;
   readonly requiredAction?: PluginRouteGuard;
+  readonly accessRequirement?: UiAccessRequirement;
   readonly featureFlag?: string;
   readonly legacyAliases?: readonly string[];
   readonly deprecatedAlias?: string;
@@ -1236,6 +1237,7 @@ export const createPluginActionRegistry = (
         ownerPluginId: pluginNamespace,
         titleKey: actionTitleKey,
         requiredAction: normalizedAction.requiredAction,
+        accessRequirement: normalizedAction.accessRequirement,
         featureFlag: normalizedAction.featureFlag,
         legacyAliases,
       });
@@ -1252,6 +1254,7 @@ export const createPluginActionRegistry = (
           ownerPluginId: pluginNamespace,
           titleKey: actionTitleKey,
           requiredAction: normalizedAction.requiredAction,
+          accessRequirement: normalizedAction.accessRequirement,
           featureFlag: normalizedAction.featureFlag,
           legacyAliases,
           deprecatedAlias: legacyAlias,

@@ -368,11 +368,21 @@ describe('plugin registries', () => {
       namespace: 'news',
       actionName: 'read',
       ownerPluginId: 'news',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'news',
+        actions: { mode: 'allOf', values: ['news.read'] },
+      },
       featureFlag: 'news-enabled',
       legacyAliases: ['news-read'],
     });
     expect(legacyAction).toMatchObject({
       actionId: 'news.read',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'news',
+        actions: { mode: 'allOf', values: ['news.read'] },
+      },
       deprecatedAlias: 'news-read',
     });
     expect(auditEvents.get('news.created')).toMatchObject({

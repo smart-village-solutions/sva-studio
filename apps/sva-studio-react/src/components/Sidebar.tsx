@@ -56,6 +56,7 @@ import {
   studioPluginNavigation,
 } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { Button } from './ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Sheet, SheetContent } from './ui/sheet';
@@ -758,6 +759,7 @@ export default function Sidebar({
   const { user, isAuthenticated } = useAuth();
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
   const contentAccessApi = useContentAccess();
+  const { decide: decideAccess } = useEffectiveAccess();
   const accessUser = user
     ? { ...user, permissionActions: contentAccessApi.permissionActions }
     : user;
@@ -835,16 +837,22 @@ export default function Sidebar({
           item,
           resolvedTitleKey: action?.titleKey ?? item.titleKey,
           resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
+          resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
         };
       })
-      .filter(({ resolvedRequiredAction }) =>
-        hasRequiredContentAccess(
-          resolvedRequiredAction,
-          contentAccessApi.access
-            ? { ...contentAccessApi.access, permissionActions: contentAccessApi.permissionActions }
-            : null,
-          contentAccessApi.isLoading
-        )
+      .filter(({ resolvedAccessRequirement, resolvedRequiredAction }) =>
+        resolvedAccessRequirement
+          ? decideAccess(resolvedAccessRequirement).status === 'allowed'
+          : hasRequiredContentAccess(
+              resolvedRequiredAction,
+              contentAccessApi.access
+                ? {
+                    ...contentAccessApi.access,
+                    permissionActions: contentAccessApi.permissionActions,
+                  }
+                : null,
+              contentAccessApi.isLoading
+            )
       )
       .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,
@@ -1104,6 +1112,7 @@ export default function Sidebar({
     contentAccessApi.access,
     contentAccessApi.isLoading,
     contentAccessApi.permissionActions,
+    decideAccess,
     user,
   ]);
 

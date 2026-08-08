@@ -69,7 +69,7 @@
 - [ ] 8.3 Die betroffenen Unit-, Type-, Runtime-, Routing-, Plugin-Registry- und E2E-Gates gemäß `DEVELOPMENT_RULES.md` in kleinen Slices ausführen.
 - [x] 8.4 `docs/architecture/04-solution-strategy.md`, `05-building-block-view.md`, `06-runtime-view.md`, `08-cross-cutting-concepts.md`, `09-architecture-decisions.md`, `10-quality-requirements.md` und `11-risks-and-technical-debt.md` aktualisieren.
 - [x] 8.5 ADR-014 und ADR-026 für revisionsbasierte Korrektheit fortschreiben und eine ADR unter `docs/adr/` für Auth-/Effective-Access-Trennung, diskriminierten Plattform-/Tenant-Scope, additives Modul-Gate, Fail-closed-Zustände, Ressourcen-Ownership und Plugin-Capability-Übergabe erstellen und verlinken.
-- [ ] 8.6 Relevante Auth-, Routing-, Permission-Cache- und Plugin-Dokumentation sowie den Changelog-Eintrag aktualisieren.
+- [x] 8.6 Relevante Auth-, Routing-, Permission-Cache- und Plugin-Dokumentation sowie den Changelog-Eintrag aktualisieren.
 - [x] 8.7 Abschließenden read-only Audit-Run über UI-Aktionsmatrix, Registry-Verträge, Permission-Cache-Revisionsmatrix und Server-Endpunkte durchführen und verbleibende Ausnahmen dokumentieren.
 
 ## 9. Parallelisierte Delivery-Slices

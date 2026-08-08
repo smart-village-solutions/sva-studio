@@ -1,0 +1,4 @@
+{
+  "prNumber": 931,
+  "body": "Scopegebundener UI-Zugriff wird zentral ausgewertet\n\n- Routen, Navigation und Plugin-Aktionen verwenden ein gemeinsames Access-Requirement-Modell statt verteilter Rollen- und Permission-Prüfungen.\n- Der Permission-Cache unterstützt transaktionale Invalidierung und replikaübergreifende Synchronisation über Redis.\n- Diagnose, Dokumentation und Migrationen sichern die schrittweise Umstellung bestehender Studio- und Plugin-Oberflächen ab."
+}

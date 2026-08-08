@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppShell from './AppShell';
 
 const useAuthMock = vi.fn();
+const retryEffectiveAccessMock = vi.fn();
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
@@ -29,6 +30,13 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => ({
+    snapshot: { status: 'ready' },
+    retry: retryEffectiveAccessMock,
+  }),
 }));
 
 vi.mock('../hooks/use-organization-context', () => ({
@@ -85,6 +93,7 @@ vi.mock('./Sidebar', () => ({
 afterEach(() => {
   cleanup();
   useAuthMock.mockReset();
+  retryEffectiveAccessMock.mockReset();
 });
 
 beforeEach(() => {

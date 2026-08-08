@@ -16,6 +16,15 @@ export const genericItemsTranslationsDe = {
       editTitle: 'Generischen Inhalt bearbeiten',
       editDescription: 'Aktualisieren oder löschen Sie den generischen Inhalt.',
     },
+    principal: {
+      createAs: 'Erstellen als',
+      actAs: 'Handeln als',
+      description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+      organization: 'Aktive Organisation',
+      user: 'Persönlicher Account',
+      dataProvider: 'Ursprünglicher DataProvider',
+      unavailable: 'Nicht verfügbar',
+    },
     fields: {
       actions: 'Aktionen',
       title: 'Überschrift',
@@ -210,9 +219,15 @@ export const genericItemsTranslationsDe = {
       empty: 'Für diesen Inhalt wurden noch keine Studio-Änderungen erfasst.',
       createHint: 'Speichern Sie den Inhalt, bevor die Historie verfügbar ist.',
       tableLabel: 'Historie des generischen Inhalts',
-      sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+      sourceNotice:
+        'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
       emptySummary: 'Keine weiteren Änderungsdetails.',
-      columns: { time: 'Zeitpunkt', action: 'Aktion', actor: 'Bearbeitet von', summary: 'Zusammenfassung' },
+      columns: {
+        time: 'Zeitpunkt',
+        action: 'Aktion',
+        actor: 'Bearbeitet von',
+        summary: 'Zusammenfassung',
+      },
       actions: { created: 'Erstellt', updated: 'Aktualisiert', statusChanged: 'Status geändert' },
     },
     ...genericItemsTranslationsDeActions,

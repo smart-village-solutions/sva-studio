@@ -114,7 +114,9 @@ WHERE rolname = current_user;
   );
   const role = result.rows[0];
   if (!role || role.rolsuper || role.rolbypassrls) {
-    throw new Error('Unsafe runtime role for audit sink: current role must not be SUPERUSER or BYPASSRLS.');
+    throw new Error(
+      'Unsafe runtime role for audit sink: current role must not be SUPERUSER or BYPASSRLS.'
+    );
   }
 };
 
@@ -144,7 +146,12 @@ SET
 WHERE keycloak_subject = $1
   AND instance_id = $2;
 `,
-        [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+        [
+          input.keycloakSubject,
+          input.instanceId,
+          input.encryptedEmailCiphertext,
+          input.encryptedDisplayNameCiphertext,
+        ]
       );
     }
 
@@ -161,7 +168,12 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (keycloak_subject, instance_id) WHERE instance_id IS NOT NULL DO NOTHING
 RETURNING id;
 `,
-    [input.instanceId, input.keycloakSubject, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+    [
+      input.instanceId,
+      input.keycloakSubject,
+      input.encryptedEmailCiphertext,
+      input.encryptedDisplayNameCiphertext,
+    ]
   );
 
   if (inserted.rowCount > 0) {
@@ -187,7 +199,12 @@ SET
 WHERE keycloak_subject = $1
   AND instance_id = $2;
 `,
-      [input.keycloakSubject, input.instanceId, input.encryptedEmailCiphertext, input.encryptedDisplayNameCiphertext]
+      [
+        input.keycloakSubject,
+        input.instanceId,
+        input.encryptedEmailCiphertext,
+        input.encryptedDisplayNameCiphertext,
+      ]
     );
   }
 
@@ -222,6 +239,27 @@ const insertActivityLog = async (
           reason_code: input.pluginAction.reasonCode ?? null,
           resource_type: input.pluginAction.resourceType ?? null,
           resource_id: input.pluginAction.resourceId ?? null,
+          ...(input.pluginAction.mainserverMutation
+            ? {
+                acting_principal_type: input.pluginAction.mainserverMutation.actingPrincipalType,
+                acting_principal_id: input.pluginAction.mainserverMutation.actingPrincipalId,
+                active_organization_id:
+                  input.pluginAction.mainserverMutation.activeOrganizationId ?? null,
+                credential_source: input.pluginAction.mainserverMutation.credentialSource,
+                credential_fingerprint: input.pluginAction.mainserverMutation.credentialFingerprint,
+                data_provider_id: input.pluginAction.mainserverMutation.dataProviderId ?? null,
+                authorization_mode: input.pluginAction.mainserverMutation.authorizationMode,
+                resolver_mode: input.pluginAction.mainserverMutation.resolverMode ?? null,
+                candidate_authorization_mode:
+                  input.pluginAction.mainserverMutation.candidateAuthorizationMode ?? null,
+                candidate_allowed: input.pluginAction.mainserverMutation.candidateAllowed ?? null,
+                shadow_difference: input.pluginAction.mainserverMutation.shadowDifference ?? null,
+                operation_external_id: input.pluginAction.mainserverMutation.operationExternalId,
+                provider_outcome: input.pluginAction.mainserverMutation.providerOutcome ?? null,
+                reconciliation_status:
+                  input.pluginAction.mainserverMutation.reconciliationStatus ?? null,
+              }
+            : {}),
         }
       : {}),
   };
@@ -386,11 +424,10 @@ const writeScopedAuditEvent = async (
 
 export const persistAuthAuditEventWithClient = async (
   client: AuditSqlClient,
-  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent & { scope?: RuntimeScopeRef }
+  event: Required<Pick<AuthAuditEvent, 'workspaceId'>> &
+    AuthAuditEvent & { scope?: RuntimeScopeRef }
 ): Promise<PersistAuthAuditResult> => {
-  const scope =
-    event.scope
-    ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
+  const scope = event.scope ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
   if (!scope) {
     return {
       persisted: false,
@@ -420,9 +457,7 @@ export const persistAuthAuditEventWithClient = async (
 const resolveValidatedAuditScope = (
   event: Required<Pick<AuthAuditEvent, 'workspaceId'>> & AuthAuditEvent
 ): RuntimeScopeRef | PersistAuthAuditResult => {
-  const scope =
-    event.scope
-    ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
+  const scope = event.scope ?? getRuntimeScopeRef({ workspaceId: event.workspaceId });
 
   if (!scope) {
     return {
@@ -451,10 +486,10 @@ const withAuditTransaction = async <TResult>(
   try {
     await client.query('BEGIN');
     await assertIamAppRuntimeRole(client);
-    await client.query(
-      'SELECT set_config($1, $2, true);',
-      ['app.instance_id', scope.kind === 'instance' ? scope.instanceId : '']
-    );
+    await client.query('SELECT set_config($1, $2, true);', [
+      'app.instance_id',
+      scope.kind === 'instance' ? scope.instanceId : '',
+    ]);
 
     const result = await handler();
     await client.query('COMMIT');
@@ -466,7 +501,8 @@ const withAuditTransaction = async <TResult>(
       enrichedError as Error & {
         reasonCode?: PersistAuthAuditResult['reason'];
       }
-    ).reasonCode = scope.kind === 'platform' ? 'platform_audit_unavailable' : 'tenant_audit_unavailable';
+    ).reasonCode =
+      scope.kind === 'platform' ? 'platform_audit_unavailable' : 'tenant_audit_unavailable';
     throw enrichedError;
   }
 };

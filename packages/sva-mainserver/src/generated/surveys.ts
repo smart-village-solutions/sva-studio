@@ -77,6 +77,10 @@ export type SvaMainserverSurveyFragment = {
   readonly updatedAt?: string | null;
   readonly publishedAt?: string | null;
   readonly archivedAt?: string | null;
+  readonly dataProvider?: Readonly<{
+    readonly id?: string | null;
+    readonly name?: string | null;
+  }> | null;
 };
 
 export type SvaMainserverSurveysListQuery = {
@@ -186,6 +190,7 @@ const surveyFields = `
   updatedAt
   publishedAt
   archivedAt
+  dataProvider { id name }
 `;
 
 const surveyListFields = `
@@ -204,6 +209,7 @@ const surveyListFields = `
   updatedAt
   publishedAt
   archivedAt
+  dataProvider { id name }
 `;
 
 const surveyMutationPayloadFields = `

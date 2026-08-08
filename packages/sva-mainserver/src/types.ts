@@ -10,6 +10,8 @@ export type SvaMainserverErrorCode =
   | 'identity_provider_unavailable'
   | 'missing_credentials'
   | 'organization_mainserver_credentials_missing'
+  | 'acting_principal_not_allowed'
+  | 'credential_context_changed'
   | 'token_request_failed'
   | 'unauthorized'
   | 'forbidden'
@@ -42,6 +44,8 @@ export type SvaMainserverConnectionInput = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
   readonly activeOrganizationId?: string;
+  readonly actingPrincipalType?: 'organization' | 'user';
+  readonly credentialFingerprint?: string;
 };
 
 export type MainserverDataDeviation = Readonly<{
@@ -219,6 +223,14 @@ export type SvaMainserverDataProvider = {
   readonly logo?: SvaMainserverWebUrl;
   readonly address?: SvaMainserverAddress;
 };
+
+export type SvaMainserverDataProviderIdentity = Readonly<{
+  dataProvider: Readonly<{
+    id?: string;
+    name?: string;
+  }>;
+  hasStableId: boolean;
+}>;
 
 export type SvaMainserverSetting = {
   readonly alwaysRecreateOnImport?: string;
@@ -469,6 +481,7 @@ export type SvaMainserverEventItem = {
   readonly visible: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: SvaMainserverDataProvider;
 };
 
 export type SvaMainserverPoiInput = {
@@ -521,6 +534,7 @@ export type SvaMainserverPoiItem = {
   readonly visible: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: SvaMainserverDataProvider;
 };
 
 export type SvaMainserverGenericItemInput = {
@@ -574,6 +588,7 @@ export type SvaMainserverGenericItem = {
   readonly accessibilityInformations: readonly SvaMainserverAccessibilityInformation[];
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: SvaMainserverDataProvider;
 };
 
 export type SvaMainserverProjectStatus = 'draft' | 'published' | 'archived';
@@ -597,7 +612,6 @@ export type SvaMainserverProjectInput = Readonly<{
   fullText: string;
   images: readonly SvaMainserverProjectImage[];
   status: SvaMainserverProjectStatus;
-  author: SvaMainserverProjectAuthor;
 }>;
 
 export type SvaMainserverProject = SvaMainserverProjectInput &
@@ -608,6 +622,8 @@ export type SvaMainserverProject = SvaMainserverProjectInput &
     deleted: boolean;
     createdAt: string;
     updatedAt: string;
+    author: SvaMainserverProjectAuthor;
+    dataProvider?: Readonly<{ id?: string; name?: string }>;
   }>;
 
 export type SvaMainserverLocalizedText = Readonly<Record<string, string>>;
@@ -769,6 +785,7 @@ export type SvaMainserverSurveyItem = {
   readonly updatedAt: string;
   readonly publishedAt?: string;
   readonly archivedAt?: string;
+  readonly dataProvider?: SvaMainserverDataProvider;
 } & SvaMainserverSurveyPayloadBackedFields;
 
 export type SvaMainserverSurveyMutationError = {

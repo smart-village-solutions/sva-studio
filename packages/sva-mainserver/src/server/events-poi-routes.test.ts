@@ -1,9 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   validateCsrf: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  resolveMutationPrincipalContext: vi.fn(),
+  recordMainserverDataProviderObservation: vi.fn(),
+  beginMainserverMutationJournal: vi.fn(),
+  finalizeMainserverMutationJournal: vi.fn(),
   createSvaMainserverEvent: vi.fn(),
   changeSvaMainserverEventVisibility: vi.fn(),
   updateSvaMainserverEvent: vi.fn(),
@@ -22,9 +27,25 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  authorizeMainserverCreatePrincipal: vi.fn(() => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   validateCsrf: state.validateCsrf,
+  resolveActorInfo: state.resolveActorInfo,
+  resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
+  beginMainserverMutationJournal: state.beginMainserverMutationJournal,
+  finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
 }));
 
 vi.mock('@sva/server-runtime', async () => {
@@ -86,6 +107,9 @@ const createRequest = (url: string, init?: RequestInit): Request =>
     headers: {
       Origin: 'https://studio.test',
       'X-Requested-With': 'XMLHttpRequest',
+      ...(init?.method && init.method !== 'GET'
+        ? { 'X-SVA-Acting-Principal-Type': 'organization' }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -105,6 +129,37 @@ const mockAuthorizedMutation = () => {
 };
 
 describe('mainserver content route contracts', () => {
+  beforeEach(() => {
+    state.resolveActorInfo.mockResolvedValue({
+      actor: {
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+      },
+    });
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: true,
+      context: {
+        version: 1,
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: '11111111-1111-1111-8111-111111111111',
+        credentialSource: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      },
+    });
+    state.getSvaMainserverEventDetail.mockResolvedValue({
+      data: { id: 'event-1' },
+      deviations: [],
+    });
+    state.recordMainserverDataProviderObservation.mockResolvedValue({
+      outcome: 'created',
+      binding: { status: 'verified' },
+    });
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
   });

@@ -407,7 +407,8 @@ describe('PoiListPage', () => {
               },
             }),
           ],
-        })
+        }),
+        'user'
       );
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/admin/poi/$id',
@@ -449,7 +450,8 @@ describe('PoiListPage', () => {
           webUrls: [{ url: 'https://example.com/poi' }],
           mediaContents: [],
           payload: { source: 'legacy' },
-        })
+        }),
+        'user'
       );
       expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
     });

@@ -74,13 +74,16 @@ describe('faq editor pages', () => {
     fireEvent.click(primaryAction('actions.create'));
 
     await waitFor(() =>
-      expect(state.createFaqMock).toHaveBeenCalledWith({
-        title: 'Neue Frage',
-        genericType: 'FAQ',
-        contentBlocks: [{ body: 'Eine Antwort' }],
-        payload: { languageCode: 'en-US', sortWeight: 7 },
-        visible: true,
-      })
+      expect(state.createFaqMock).toHaveBeenCalledWith(
+        {
+          title: 'Neue Frage',
+          genericType: 'FAQ',
+          contentBlocks: [{ body: 'Eine Antwort' }],
+          payload: { languageCode: 'en-US', sortWeight: 7 },
+          visible: true,
+        },
+        'user'
+      )
     );
     await waitFor(() =>
       expect(state.navigateMock).toHaveBeenCalledWith({
@@ -118,14 +121,18 @@ describe('faq editor pages', () => {
     fireEvent.click(primaryAction('actions.update'));
 
     await waitFor(() => expect(state.updateFaqMock).toHaveBeenCalledTimes(1));
-    expect(state.updateFaqMock).toHaveBeenCalledWith('faq-1', {
-      title: 'Bestehende Frage',
-      genericType: 'FAQ',
-      contentBlocks: [{ body: 'Aktualisierte Antwort' }],
-      payload: { languageCode: 'fr', sortWeight: 2, legacy: 'keep' },
-      visible: true,
-      publicationDate: '2026-07-21T10:00:00.000Z',
-    });
+    expect(state.updateFaqMock).toHaveBeenCalledWith(
+      'faq-1',
+      {
+        title: 'Bestehende Frage',
+        genericType: 'FAQ',
+        contentBlocks: [{ body: 'Aktualisierte Antwort' }],
+        payload: { languageCode: 'fr', sortWeight: 2, legacy: 'keep' },
+        visible: true,
+        publicationDate: '2026-07-21T10:00:00.000Z',
+      },
+      'user'
+    );
   }, 30_000);
 
   it('renders load and save errors for the edit page', async () => {
@@ -210,7 +217,7 @@ describe('faq editor pages', () => {
     await screen.findByDisplayValue('Frage');
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
-    await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1'));
+    await waitFor(() => expect(state.deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user'));
     expect(state.navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
   });
 

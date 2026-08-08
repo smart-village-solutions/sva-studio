@@ -35,15 +35,20 @@ describe('poi api', () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { id: 'poi-1', name: 'Rathaus' } }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await createPoi({ name: 'Rathaus' });
+    await createPoi({ name: 'Rathaus' }, 'organization');
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/mainserver/poi',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'Rathaus' }) })
     );
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers);
+    expect(headers.get('X-SVA-Acting-Principal-Type')).toBe('organization');
+    expect(headers.get('X-SVA-Mainserver-Contract-Version')).toBe('2');
   });
 
   it('lists poi categories from the categories route', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: [{ id: 'cat-1', name: 'Verwaltung' }] }));
+    const fetchMock = vi.fn(async () =>
+      Response.json({ data: [{ id: 'cat-1', name: 'Verwaltung' }] })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(listPoiCategories()).resolves.toEqual([{ id: 'cat-1', name: 'Verwaltung' }]);
@@ -54,7 +59,10 @@ describe('poi api', () => {
   });
 
   it('throws stable errors', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 }))
+    );
 
     await expect(listPoi({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(PoiApiError);
   });

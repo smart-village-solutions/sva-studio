@@ -1,5 +1,11 @@
 import { readFieldError } from '@sva/plugin-sdk';
-import { Checkbox, Input, StudioField, StudioFieldGroup, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import {
+  Checkbox,
+  Input,
+  StudioField,
+  StudioFieldGroup,
+  getStudioFormFieldProps,
+} from '@sva/studio-ui-react';
 import { Controller, useFormContext } from 'react-hook-form';
 
 import { GenericItemsCategoryMultiselect } from './generic-items.category-multiselect.js';
@@ -13,6 +19,43 @@ type GenericItemsDetailBasisTabProps = Readonly<{
   categoryOptionsLoading: boolean;
   labels: Record<string, string>;
 }>;
+
+const GenericItemsCategoriesField = ({
+  availableCategories,
+  categoryOptionsError,
+  categoryOptionsLoading,
+  labels,
+}: GenericItemsDetailBasisTabProps) => {
+  const { control, formState } = useFormContext<GenericItemsDetailFormValues>();
+  const fieldProps = getStudioFormFieldProps({
+    id: 'generic-item-categories',
+    error: readFieldError(formState.errors.categories),
+    hasDescription: true,
+  });
+  return (
+    <StudioField {...fieldProps} label={labels.categories} description={labels.categoriesHelp}>
+      <Controller
+        name="categories"
+        control={control}
+        render={({ field }) => (
+          <GenericItemsCategoryMultiselect
+            availableCategories={availableCategories}
+            errorMessage={categoryOptionsError ?? undefined}
+            loading={categoryOptionsLoading}
+            helpText={labels.categoriesHelp}
+            inputId="generic-item-category"
+            inputPlaceholder={labels.categoriesSearchPlaceholder}
+            loadingText={labels.categoryOptionsLoading}
+            searchLabel={labels.categoriesSearch}
+            removeLabel={(name) => labels.removeCategory.replace('{{name}}', name)}
+            value={field.value}
+            onChange={field.onChange}
+          />
+        )}
+      />
+    </StudioField>
+  );
+};
 
 const GenericItemsIdentityCard = ({
   availableCategories,
@@ -31,12 +74,13 @@ const GenericItemsIdentityCard = ({
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
   const titleField = getStudioFormFieldProps({ id: 'generic-item-title', error: errors.title });
-  const genericTypeField = getStudioFormFieldProps({ id: 'generic-item-type', error: errors.genericType });
-  const visibleField = getStudioFormFieldProps({ id: 'generic-item-visible', error: errors.visible });
-  const categoriesField = getStudioFormFieldProps({
-    id: 'generic-item-categories',
-    error: readFieldError(errors.categories),
-    hasDescription: true,
+  const genericTypeField = getStudioFormFieldProps({
+    id: 'generic-item-type',
+    error: errors.genericType,
+  });
+  const visibleField = getStudioFormFieldProps({
+    id: 'generic-item-visible',
+    error: errors.visible,
   });
 
   return (
@@ -64,39 +108,31 @@ const GenericItemsIdentityCard = ({
           )}
         />
       </StudioField>
-      <StudioField {...categoriesField} label={labels.categories} description={labels.categoriesHelp}>
-        <Controller
-          name="categories"
-          control={control}
-          render={({ field }) => (
-            <GenericItemsCategoryMultiselect
-              availableCategories={availableCategories}
-              errorMessage={categoryOptionsError ?? undefined}
-              loading={categoryOptionsLoading}
-              helpText={labels.categoriesHelp}
-              inputId="generic-item-category"
-              inputPlaceholder={labels.categoriesSearchPlaceholder}
-              loadingText={labels.categoryOptionsLoading}
-              searchLabel={labels.categoriesSearch}
-              removeLabel={(name) => labels.removeCategory.replace('{{name}}', name)}
-              value={field.value}
-              onChange={field.onChange}
-            />
-          )}
-        />
-      </StudioField>
+      <GenericItemsCategoriesField
+        availableCategories={availableCategories}
+        categoryOptionsError={categoryOptionsError}
+        categoryOptionsLoading={categoryOptionsLoading}
+        labels={labels}
+      />
     </GenericItemsDetailCard>
   );
 };
 
-const GenericItemsMetaCard = ({ labels }: Readonly<Pick<GenericItemsDetailBasisTabProps, 'labels'>>) => {
+const GenericItemsMetaCard = ({
+  labels,
+}: Readonly<Pick<GenericItemsDetailBasisTabProps, 'labels'>>) => {
   const {
     register,
     formState: { errors },
   } = useFormContext<GenericItemsDetailFormValues>();
-  const authorField = getStudioFormFieldProps({ id: 'generic-item-author', error: errors.author });
-  const keywordsField = getStudioFormFieldProps({ id: 'generic-item-keywords', error: errors.keywords });
-  const externalIdField = getStudioFormFieldProps({ id: 'generic-item-external-id', error: errors.externalId });
+  const keywordsField = getStudioFormFieldProps({
+    id: 'generic-item-keywords',
+    error: errors.keywords,
+  });
+  const externalIdField = getStudioFormFieldProps({
+    id: 'generic-item-external-id',
+    error: errors.externalId,
+  });
   const publicationDateField = getStudioFormFieldProps({
     id: 'generic-item-publication-date',
     error: errors.publicationDate,
@@ -109,9 +145,6 @@ const GenericItemsMetaCard = ({ labels }: Readonly<Pick<GenericItemsDetailBasisT
   return (
     <GenericItemsDetailCard title={labels.metaTitle} description={labels.metaDescription}>
       <StudioFieldGroup columns={2}>
-        <StudioField {...authorField} label={labels.author}>
-          <Input {...authorField.controlProps} {...register('author')} />
-        </StudioField>
         <StudioField {...keywordsField} label={labels.keywords} description={labels.keywordsHelp}>
           <Input {...keywordsField.controlProps} {...register('keywords')} />
         </StudioField>
@@ -120,11 +153,19 @@ const GenericItemsMetaCard = ({ labels }: Readonly<Pick<GenericItemsDetailBasisT
         <StudioField {...externalIdField} label={labels.externalId}>
           <Input {...externalIdField.controlProps} {...register('externalId')} />
         </StudioField>
-        <StudioField {...publicationDateField} label={labels.publicationDate} description={labels.publicationDateHelp}>
+        <StudioField
+          {...publicationDateField}
+          label={labels.publicationDate}
+          description={labels.publicationDateHelp}
+        >
           <Input {...publicationDateField.controlProps} {...register('publicationDate')} />
         </StudioField>
       </StudioFieldGroup>
-      <StudioField {...publishedAtField} label={labels.publishedAt} description={labels.publishedAtHelp}>
+      <StudioField
+        {...publishedAtField}
+        label={labels.publishedAt}
+        description={labels.publishedAtHelp}
+      >
         <Input {...publishedAtField.controlProps} {...register('publishedAt')} />
       </StudioField>
     </GenericItemsDetailCard>

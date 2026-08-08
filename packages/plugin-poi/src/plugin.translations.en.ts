@@ -16,6 +16,15 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     editTitle: 'Edit POI',
     editDescription: 'Update or delete the point of interest.',
   },
+  principal: {
+    createAs: 'Create as',
+    actAs: 'Act as',
+    description: 'Determines the credentials for this Mainserver action.',
+    organization: 'Active organization',
+    user: 'Personal account',
+    dataProvider: 'Original DataProvider',
+    unavailable: 'Unavailable',
+  },
   fields: {
     name: 'Name',
     description: 'Description',

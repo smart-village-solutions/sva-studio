@@ -119,7 +119,7 @@ describe('LocaleProvider', () => {
     expect(screen.getByText('Historie')).toBeTruthy();
     expect(screen.getByText('Basisdaten')).toBeTruthy();
     expect(
-      screen.getByText('Überschrift, Kategorien, Autor und redaktionelle Metadaten der Nachricht.')
+      screen.getByText('Überschrift, Kategorien und redaktionelle Metadaten der Nachricht.')
     ).toBeTruthy();
     expect(screen.getByText('Überschrift & Kategorien')).toBeTruthy();
     expect(
@@ -134,9 +134,11 @@ describe('LocaleProvider', () => {
     expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(
       1
     );
-    expect(screen.getByText('Autor & Metadaten')).toBeTruthy();
+    expect(screen.getByText('Schreibkontext & Metadaten')).toBeTruthy();
     expect(
-      screen.getByText('Autorenschaft und zeitliche Einordnung dieser Nachricht.')
+      screen.getByText(
+        'Mainserver-Schreibkontext, Datenanbieter und zeitliche Einordnung dieser Nachricht.'
+      )
     ).toBeTruthy();
   });
 });

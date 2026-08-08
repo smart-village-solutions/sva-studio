@@ -25,7 +25,10 @@ export const gotoShellRoot = async (page: Page, attempts = 5) => {
 
 export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName = 'Editor One') => {
   const authMeResponse = page.waitForResponse(
-    (response) => response.request().method() === 'GET' && response.url().includes('/auth/me') && response.status() === 200
+    (response) =>
+      response.request().method() === 'GET' &&
+      response.url().includes('/auth/me') &&
+      response.status() === 200
   );
   const expectedTriggerPattern = new RegExp(
     `${escapeForRegex(expectedUserName)}|${escapeForRegex(resolveUserInitials(expectedUserName))}`
@@ -42,18 +45,22 @@ export const navigateClientSide = async (page: Page, targetPath: string) => {
     .waitForFunction(
       () =>
         Boolean(
-          (window as typeof window & {
-            __SVA_PLAYWRIGHT_ROUTER__?: { navigate: (options: { to: string }) => Promise<void> | void };
-          }).__SVA_PLAYWRIGHT_ROUTER__,
+          (
+            window as typeof window & {
+              __SVA_PLAYWRIGHT_ROUTER__?: {
+                navigate: (options: { to: string }) => Promise<void> | void;
+              };
+            }
+          ).__SVA_PLAYWRIGHT_ROUTER__
         ),
       undefined,
-      { timeout: 5_000 },
+      { timeout: 5_000 }
     )
     .then(() => true)
     .catch(() => false);
 
   if (!routerAvailable) {
-    await page.goto(targetPath, { waitUntil: 'networkidle' });
+    await page.goto(targetPath, { waitUntil: 'domcontentloaded' });
     return;
   }
 
@@ -80,7 +87,10 @@ export const createEmptyPaginatedDataResponse = (pageSize = 0) =>
     },
   });
 
-export const registerSharedIamRoutes = async (page: Page, options: { pendingLegalTextsPageSize?: number } = {}) => {
+export const registerSharedIamRoutes = async (
+  page: Page,
+  options: { pendingLegalTextsPageSize?: number } = {}
+) => {
   await page.route('**/iam/authorize', async (route) => {
     await route.fulfill({
       status: 200,

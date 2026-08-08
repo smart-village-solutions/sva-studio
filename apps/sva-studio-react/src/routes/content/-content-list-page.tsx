@@ -16,6 +16,7 @@ import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import {
   StudioDataTable,
   StudioListPageTemplate,
+  type MainserverPrincipalType,
   type StudioBulkAction,
   type StudioColumnDef,
 } from '@sva/studio-ui-react';
@@ -29,8 +30,10 @@ import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
+import { useOrganizationContext } from '../../hooks/use-organization-context';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
+import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
 import type { IamHttpError } from '../../lib/iam-api';
 import type { IamContentListMetadata } from '../../lib/iam-api';
 import { EMPTY_VISIBLE_TYPE_SENTINEL } from '../../lib/iam-content-list-api.shared';
@@ -43,6 +46,7 @@ import {
 } from '../../lib/studio-content-types';
 import { appAdminResources } from '../../routing/admin-resources';
 import { ContentStatusDialog } from './-content-status-dialog';
+import { MainserverAuthoringDiagnosticsPanel } from './-mainserver-authoring-diagnostics';
 
 type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
 type SortDirection = 'asc' | 'desc';
@@ -304,37 +308,41 @@ const canDeleteMainserverItem = (
   return deleteAction ? permissionActions.includes(deleteAction) : false;
 };
 
-const deleteMainserverItem = async (contentType: string, contentId: string): Promise<void> => {
+const deleteMainserverItem = async (
+  contentType: string,
+  contentId: string,
+  actingPrincipalType: MainserverPrincipalType
+): Promise<void> => {
   if (contentType === 'news.article') {
-    await deleteNews(contentId);
+    await deleteNews(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'events.event-record') {
-    await deleteEvent(contentId);
+    await deleteEvent(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'poi.point-of-interest') {
-    await deletePoi(contentId);
+    await deletePoi(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'surveys.survey') {
-    await deleteSurvey(contentId);
+    await deleteSurvey(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'faq.faq') {
-    await deleteFaq(contentId);
+    await deleteFaq(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'cockpit-cards.cockpit-card') {
-    await deleteCockpitCard(contentId);
+    await deleteCockpitCard(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'projects.project') {
-    await deleteProject(contentId);
+    await deleteProject(contentId, actingPrincipalType);
     return;
   }
   if (contentType === 'generic-items.generic-item') {
-    await deleteGenericItem(contentId);
+    await deleteGenericItem(contentId, actingPrincipalType);
   }
 };
 
@@ -506,7 +514,11 @@ export const ContentListPage = () => {
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
   const auth = useAuth();
+  const organizationContext = useOrganizationContext();
   const contentAccessApi = useContentAccess();
+  const standalonePrincipalType = resolveStandaloneMainserverPrincipal(
+    organizationContext.context?.activeOrganizationId
+  );
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
@@ -629,10 +641,10 @@ export const ContentListPage = () => {
 
   const handleDeleteContent = React.useCallback(
     async (contentType: string, contentId: string) => {
-      await deleteMainserverItem(contentType, contentId);
+      await deleteMainserverItem(contentType, contentId, standalonePrincipalType);
       await contentsApi.refetch();
     },
-    [contentsApi]
+    [contentsApi, standalonePrincipalType]
   );
 
   const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
@@ -754,6 +766,7 @@ export const ContentListPage = () => {
           <ContentStatusDialog
             item={item}
             canUpdate={resolveRowAccess(item.access, contentsApi.error).canUpdate}
+            actingPrincipalType={standalonePrincipalType}
             onUpdated={contentsApi.refetch}
           />
         ),
@@ -761,7 +774,7 @@ export const ContentListPage = () => {
         sortValue: (item) => item.status,
       },
     ],
-    [contentsApi.error, contentsApi.refetch]
+    [contentsApi.error, contentsApi.refetch, standalonePrincipalType]
   );
 
   return (
@@ -791,6 +804,10 @@ export const ContentListPage = () => {
           <AlertDescription>{projectionSyncMessage}</AlertDescription>
         </Alert>
       ) : null}
+
+      <MainserverAuthoringDiagnosticsPanel
+        enabled={effectivePermissionActions.includes('iam.monitoring.read')}
+      />
 
       <section>
         <StudioDataTable

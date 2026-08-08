@@ -1,4 +1,13 @@
 export const pluginSurveysContentEnTranslations = {
+  principal: {
+    createAs: 'Create as',
+    actAs: 'Act as',
+    description: 'Determines the credentials for this Mainserver action.',
+    organization: 'Active organization',
+    user: 'Personal account',
+    dataProvider: 'Original DataProvider',
+    unavailable: 'Unavailable',
+  },
   messages: {
     createPendingHint:
       'This section is already visible, but it will only be populated with data after the first save.',

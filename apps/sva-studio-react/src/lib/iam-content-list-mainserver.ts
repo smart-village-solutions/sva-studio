@@ -35,6 +35,7 @@ type MainserverEventItem = Readonly<{
   visible?: boolean;
   createdAt: string;
   updatedAt: string;
+  dataProvider?: MainserverDataProvider;
 }>;
 
 type MainserverPoiItem = Readonly<{
@@ -53,6 +54,7 @@ type MainserverPoiItem = Readonly<{
   tags?: unknown;
   createdAt: string;
   updatedAt: string;
+  dataProvider?: MainserverDataProvider;
 }>;
 
 type MainserverGenericItem = Readonly<{
@@ -78,6 +80,7 @@ type MainserverGenericItem = Readonly<{
   createdAt: string;
   updatedAt: string;
   publishedAt?: string;
+  dataProvider?: MainserverDataProvider;
 }>;
 
 type MainserverSurveyLocalizedText = Readonly<Record<string, string>>;
@@ -102,6 +105,7 @@ type MainserverSurveyItem = Readonly<{
   updatedAt: string;
   publishedAt?: string;
   archivedAt?: string;
+  dataProvider?: MainserverDataProvider;
 }>;
 
 const normalizeTitle = (value: string | undefined, fallback: string): string => {
@@ -182,6 +186,13 @@ const createMainserverItemAccess = (
 const resolveNewsTitle = (item: MainserverNewsItem): string =>
   normalizeTitle(item.title, normalizeTitle(item.contentBlocks?.[0]?.title, item.id));
 
+const mapDataProviderProjection = (
+  dataProvider: Readonly<{ id?: string; name?: string }> | undefined
+): Pick<IamContentListItem, 'sourceDataProviderId' | 'sourceDataProviderName'> => ({
+  ...(dataProvider?.id ? { sourceDataProviderId: dataProvider.id } : {}),
+  ...(dataProvider?.name ? { sourceDataProviderName: dataProvider.name } : {}),
+});
+
 export const mapNewsItem = (
   item: MainserverNewsItem,
   instanceId: string,
@@ -197,8 +208,7 @@ export const mapNewsItem = (
   updatedBy: item.author,
   authorDisplayMode: 'organization',
   author: item.author,
-  ...(item.dataProvider?.id ? { sourceDataProviderId: item.dataProvider.id } : {}),
-  ...(item.dataProvider?.name ? { sourceDataProviderName: item.dataProvider.name } : {}),
+  ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue(item.payload),
   status: item.visible === false ? 'draft' : 'published',
   validationState: 'valid',
@@ -222,6 +232,7 @@ export const mapEventItem = (
   updatedBy: 'mainserver',
   authorDisplayMode: 'organization',
   author: 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue({
     description: item.description,
     categoryName: item.categoryName,
@@ -253,6 +264,7 @@ export const mapPoiItem = (
   updatedBy: 'mainserver',
   authorDisplayMode: 'organization',
   author: 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue({
     description: item.description,
     mobileDescription: item.mobileDescription,
@@ -286,6 +298,7 @@ export const mapGenericItem = (
   updatedBy: item.author ?? 'mainserver',
   authorDisplayMode: 'organization',
   author: item.author ?? 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue({
     genericType: item.genericType,
     keywords: item.keywords,
@@ -335,6 +348,7 @@ export const mapSurveyItem = (
   updatedBy: 'mainserver',
   authorDisplayMode: 'organization',
   author: 'mainserver',
+  ...mapDataProviderProjection(item.dataProvider),
   payload: toContentJsonValue({
     shortDescription: item.shortDescription,
     description: item.description,

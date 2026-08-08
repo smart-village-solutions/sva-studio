@@ -20,13 +20,14 @@ export const mapGenericItemsDetailFormValuesToInput = (
   title: values.title.trim(),
   genericType: values.genericType.trim(),
   visible: values.visible,
-  author: values.author.trim() || undefined,
   keywords: values.keywords.trim() || undefined,
   externalId: values.externalId.trim() || undefined,
   publicationDate: values.publicationDate.trim() || undefined,
   publishedAt: values.publishedAt.trim() || undefined,
   categoryName: values.categories[0]?.trim() || undefined,
-  categories: Array.from(new Set((values.categories ?? []).map((entry) => entry.trim()).filter(Boolean))).map((name) => ({
+  categories: Array.from(
+    new Set((values.categories ?? []).map((entry) => entry.trim()).filter(Boolean))
+  ).map((name) => ({
     name,
   })),
   contacts: mapContactsToInput(values.contacts),

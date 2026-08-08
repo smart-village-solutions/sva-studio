@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   createMainserverJsonRequestHeaders,
+  createMainserverMutationHeaders,
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-request.js';
@@ -11,35 +12,54 @@ describe('mainserver-request', () => {
     Object.fromEntries(new Headers(headers).entries());
 
   it('builds canonical json request headers', () => {
-    expect(readHeaders(createMainserverJsonRequestHeaders({ Authorization: 'Bearer test' }))).toEqual({
+    expect(
+      readHeaders(createMainserverJsonRequestHeaders({ Authorization: 'Bearer test' }))
+    ).toEqual({
       authorization: 'Bearer test',
       'content-type': 'application/json',
       'x-requested-with': 'XMLHttpRequest',
     });
   });
 
+  it('binds mutation requests to an explicit principal and stable operation id', () => {
+    expect(
+      readHeaders(createMainserverMutationHeaders('organization', undefined, 'operation-123'))
+    ).toMatchObject({
+      'x-sva-acting-principal-type': 'organization',
+      'x-sva-mainserver-contract-version': '2',
+      'x-sva-operation-id': 'operation-123',
+    });
+  });
+
   it('covers fetch resolution, structured errors, fallback errors and default timeout wrapping', async () => {
     const originalFetch = globalThis.fetch;
     vi.stubGlobal('fetch', undefined);
-    await expect(requestMainserverJson({ url: '/missing' })).rejects.toThrow('mainserver_fetch_unavailable');
+    await expect(requestMainserverJson({ url: '/missing' })).rejects.toThrow(
+      'mainserver_fetch_unavailable'
+    );
     vi.stubGlobal('fetch', originalFetch);
 
     const fallbackFetch = vi.fn(async () => new Response('kaputt', { status: 500 }));
-    await expect(requestMainserverJson({ url: '/fallback', fetch: fallbackFetch as typeof fetch })).rejects.toMatchObject({
+    await expect(
+      requestMainserverJson({ url: '/fallback', fetch: fallbackFetch as typeof fetch })
+    ).rejects.toMatchObject({
       code: 'http_500',
       message: 'http_500',
       name: 'MainserverApiError',
     });
 
-    const structuredFetch = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          error: { code: 'database_unavailable', message: 'db down' },
-        }),
-        { status: 503 }
-      )
+    const structuredFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'database_unavailable', message: 'db down' },
+          }),
+          { status: 503 }
+        )
     );
-    await expect(requestMainserverJson({ url: '/structured', fetch: structuredFetch as typeof fetch })).rejects.toMatchObject({
+    await expect(
+      requestMainserverJson({ url: '/structured', fetch: structuredFetch as typeof fetch })
+    ).rejects.toMatchObject({
       code: 'database_unavailable',
       message: 'db down',
       name: 'MainserverApiError',
@@ -48,12 +68,17 @@ describe('mainserver-request', () => {
 
   it('supports custom error factories and preserves caller abort errors', async () => {
     class CustomMainserverError extends Error {
-      public constructor(public readonly code: string, message: string) {
+      public constructor(
+        public readonly code: string,
+        message: string
+      ) {
         super(message);
       }
     }
 
-    const customFailureFetch = vi.fn(async () => new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 }));
+    const customFailureFetch = vi.fn(
+      async () => new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })
+    );
     await expect(
       requestMainserverJson({
         url: '/custom-error',
@@ -86,7 +111,10 @@ describe('mainserver-request', () => {
         message: 'caller_cancelled',
       });
     } finally {
-      Object.defineProperty(AbortSignal, 'any', { configurable: true, value: originalAbortSignalAny });
+      Object.defineProperty(AbortSignal, 'any', {
+        configurable: true,
+        value: originalAbortSignalAny,
+      });
     }
   });
 
@@ -98,7 +126,10 @@ describe('mainserver-request', () => {
           new Promise<Response>((_resolve, reject) => {
             init?.signal?.addEventListener(
               'abort',
-              () => reject(init.signal?.reason ?? new DOMException('mainserver_timeout', 'TimeoutError')),
+              () =>
+                reject(
+                  init.signal?.reason ?? new DOMException('mainserver_timeout', 'TimeoutError')
+                ),
               { once: true }
             );
           })
@@ -124,7 +155,10 @@ describe('mainserver-request', () => {
           new Promise((_, reject) => {
             init?.signal?.addEventListener(
               'abort',
-              () => reject(init.signal?.reason ?? new DOMException('mainserver_timeout', 'TimeoutError')),
+              () =>
+                reject(
+                  init.signal?.reason ?? new DOMException('mainserver_timeout', 'TimeoutError')
+                ),
               { once: true }
             );
           }),
@@ -216,13 +250,17 @@ describe('mainserver-request', () => {
       requestMainserverJson({
         url: '/meta',
         onResponse,
-        fetch: vi.fn(async () =>
-          new Response(JSON.stringify({ ok: true }), {
-            status: 200,
-            headers: { 'content-type': 'application/json; charset=utf-8' },
-          }),
+        fetch: vi.fn(
+          async () =>
+            new Response(JSON.stringify({ ok: true }), {
+              status: 200,
+              headers: {
+                'content-type': 'application/json; charset=utf-8',
+                'x-sva-context-binding': 'v1.loaded-context',
+              },
+            })
         ) as typeof fetch,
-      }),
+      })
     ).resolves.toEqual({ ok: true });
 
     expect(onResponse).toHaveBeenCalledWith(
@@ -232,7 +270,8 @@ describe('mainserver-request', () => {
         status: 200,
         ok: true,
         contentType: 'application/json; charset=utf-8',
-      }),
+        contextBinding: 'v1.loaded-context',
+      })
     );
   });
 });

@@ -90,7 +90,12 @@ const createBoundContent = async (
     if (concurrentContentId) return { contentId: concurrentContentId, created: false };
 
     const contentId = await insertContentRow(client, input);
-    const changedFields = ['title', 'payload', 'status', ...(input.publishedAt ? ['publishedAt'] : [])];
+    const changedFields = [
+      'title',
+      'payload',
+      'status',
+      ...(input.publishedAt ? ['publishedAt'] : []),
+    ];
     const historyId = await insertContentHistory(client, {
       ...input,
       contentId,
@@ -131,4 +136,57 @@ export const recordSuccessfulExternalContentMutation = async (
 
   const resolved = await createBoundContent(input);
   return resolved.created ? resolved.contentId : updateExistingContent(input, resolved.contentId);
+};
+
+export const recordSuccessfulExternalContentDeletion = async (
+  input: Readonly<{
+    instanceId: string;
+    actorAccountId: string;
+    actorDisplayName: string;
+    mutationRef: string;
+    sourceSystem: string;
+    sourceEntityType: string;
+    sourceEntityId: string;
+  }>
+): Promise<boolean> => {
+  const reference = await loadExternalContentReferenceBySourceEntity(input);
+  if (!reference) return false;
+
+  return withInstanceScopedDb(input.instanceId, async (client) => {
+    const content = await client.query<{
+      readonly payload_json: ContentJsonValue;
+      readonly status: IamContentStatus;
+    }>(
+      `SELECT payload_json, status
+       FROM iam.contents
+       WHERE instance_id = $1 AND id = $2::uuid
+       FOR UPDATE;`,
+      [input.instanceId, reference.contentId]
+    );
+    const current = content.rows[0];
+    if (!current) return false;
+
+    const historyId = await insertContentHistory(client, {
+      instanceId: input.instanceId,
+      contentId: reference.contentId,
+      actorAccountId: input.actorAccountId,
+      actorDisplayName: input.actorDisplayName,
+      action: 'status_changed',
+      changedFields: ['status'],
+      previousStatus: current.status,
+      nextStatus: 'archived',
+      summary: 'Inhalt im Mainserver gelöscht',
+      snapshot: current.payload_json,
+      mutationRef: input.mutationRef,
+    });
+    await client.query(
+      `UPDATE iam.contents
+       SET status = 'archived', updated_by = $3::uuid, updated_at = NOW()
+       WHERE instance_id = $1 AND id = $2::uuid;`,
+      [input.instanceId, reference.contentId, input.actorAccountId]
+    );
+    await updateContentRevisionRefs(client, input.instanceId, reference.contentId, historyId);
+    await removeExternalCoreFromIamProjection(client, input.instanceId, reference.contentId);
+    return true;
+  });
 };

@@ -1,6 +1,17 @@
 import { mergeRequestHeaders } from './http-client.js';
+import { combineAbortSignals } from './mainserver-abort-signal.js';
 
-export type MainserverErrorFactory<TError extends Error> = (code: string, message: string) => TError;
+export type MainserverErrorFactory<TError extends Error> = (
+  code: string,
+  message: string
+) => TError;
+export type MainserverActingPrincipalType = 'organization' | 'user';
+
+export const MAINSERVER_ACTING_PRINCIPAL_HEADER = 'X-SVA-Acting-Principal-Type';
+export const MAINSERVER_CONTRACT_VERSION_HEADER = 'X-SVA-Mainserver-Contract-Version';
+export const MAINSERVER_CONTRACT_VERSION = '2';
+export const MAINSERVER_CONTEXT_BINDING_HEADER = 'X-SVA-Context-Binding';
+export const MAINSERVER_OPERATION_ID_HEADER = 'X-SVA-Operation-Id';
 
 export type MainserverResponseMeta = Readonly<{
   url: string;
@@ -8,6 +19,7 @@ export type MainserverResponseMeta = Readonly<{
   status: number;
   ok: boolean;
   contentType: string | null;
+  contextBinding?: string;
   durationMs: number;
 }>;
 
@@ -39,7 +51,9 @@ const resolveFetch = (fetchOverride?: typeof fetch): typeof fetch => {
   return resolvedFetch;
 };
 
-const createTimeoutSignal = (timeoutMs: number): { readonly cancel: () => void; readonly signal: AbortSignal } => {
+const createTimeoutSignal = (
+  timeoutMs: number
+): { readonly cancel: () => void; readonly signal: AbortSignal } => {
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(() => {
     controller.abort(new DOMException('mainserver_timeout', 'TimeoutError'));
@@ -62,18 +76,36 @@ export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Heade
     headers
   );
 
+export const createMainserverMutationHeaders = (
+  actingPrincipalType: MainserverActingPrincipalType,
+  headers?: HeadersInit,
+  operationId = globalThis.crypto.randomUUID()
+): Headers => {
+  const result = createMainserverJsonRequestHeaders(headers);
+  result.set(MAINSERVER_ACTING_PRINCIPAL_HEADER, actingPrincipalType);
+  result.set(MAINSERVER_CONTRACT_VERSION_HEADER, MAINSERVER_CONTRACT_VERSION);
+  result.set(MAINSERVER_OPERATION_ID_HEADER, operationId);
+  return result;
+};
+
 const resolveMainserverErrorFactory = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
 ): MainserverErrorFactory<TError | MainserverApiError> =>
-  errorFactory ?? ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
+  errorFactory ??
+  ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
 
 const createMainserverTimeoutError = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
-): TError | MainserverApiError => resolveMainserverErrorFactory(errorFactory)('mainserver_timeout', 'mainserver_timeout');
+): TError | MainserverApiError =>
+  resolveMainserverErrorFactory(errorFactory)('mainserver_timeout', 'mainserver_timeout');
 
 const isMainserverTimeoutError = (error: unknown, signal?: AbortSignal): boolean =>
   (error instanceof DOMException && error.name === 'TimeoutError') ||
-  Boolean(signal?.aborted && signal.reason instanceof DOMException && signal.reason.name === 'TimeoutError');
+  Boolean(
+    signal?.aborted &&
+    signal.reason instanceof DOMException &&
+    signal.reason.name === 'TimeoutError'
+  );
 
 const wrapMainserverTimeoutError = <TError extends Error>(
   error: unknown,
@@ -85,61 +117,6 @@ const wrapMainserverTimeoutError = <TError extends Error>(
   }
 
   throw error;
-};
-
-const combineAbortSignals = (signals: readonly AbortSignal[]): {
-  readonly cancel: () => void;
-  readonly signal: AbortSignal;
-} => {
-  if (signals.length === 1) {
-    return {
-      cancel: () => undefined,
-      signal: signals[0]!,
-    };
-  }
-
-  if (typeof AbortSignal.any === 'function') {
-    return {
-      cancel: () => undefined,
-      signal: AbortSignal.any([...signals]),
-    };
-  }
-
-  const controller = new AbortController();
-  const listeners = new Map<AbortSignal, () => void>();
-
-  const abortFrom = (signal: AbortSignal) => {
-    controller.abort(signal.reason);
-  };
-
-  const cleanup = () => {
-    for (const [signal, handleAbort] of listeners.entries()) {
-      signal.removeEventListener('abort', handleAbort);
-    }
-    listeners.clear();
-  };
-
-  for (const signal of signals) {
-    if (signal.aborted) {
-      cleanup();
-      abortFrom(signal);
-      return {
-        cancel: cleanup,
-        signal: controller.signal,
-      };
-    }
-
-    const handleAbort = () => {
-      abortFrom(signal);
-    };
-    listeners.set(signal, handleAbort);
-    signal.addEventListener('abort', handleAbort, { once: true });
-  }
-
-  return {
-    cancel: cleanup,
-    signal: controller.signal,
-  };
 };
 
 const fetchMainserverResponse = async (input: {
@@ -172,7 +149,9 @@ const isHtmlLikeContentType = (response: Response): boolean => {
   return normalized.includes('text/html') || normalized.includes('application/xhtml+xml');
 };
 
-const readStructuredErrorDetails = (value: ApiErrorResponse['error']): {
+const readStructuredErrorDetails = (
+  value: ApiErrorResponse['error']
+): {
   readonly code?: string;
   readonly message?: string;
 } => {
@@ -185,7 +164,10 @@ const readStructuredErrorDetails = (value: ApiErrorResponse['error']): {
   };
 };
 
-const parseMainserverErrorResponse = async (response: Response, signal?: AbortSignal): Promise<{
+const parseMainserverErrorResponse = async (
+  response: Response,
+  signal?: AbortSignal
+): Promise<{
   readonly code: string;
   readonly message: string;
 }> => {
@@ -271,17 +253,22 @@ export async function requestMainserverJson<T, TError extends Error = Mainserver
         fetch: input.fetch,
         signal: combinedSignal.signal,
       });
+      const contextBinding = response.headers?.get(MAINSERVER_CONTEXT_BINDING_HEADER)?.trim();
       input.onResponse?.({
         url: input.url,
         method: (input.init?.method ?? 'GET').toUpperCase(),
         status: response.status,
         ok: response.ok,
         contentType: readResponseContentType(response),
+        ...(contextBinding ? { contextBinding } : {}),
         durationMs: Date.now() - startedAt,
       });
       await assertMainserverResponseOk(response, input.errorFactory, combinedSignal.signal);
       if (isHtmlLikeContentType(response)) {
-        throw resolveMainserverErrorFactory(input.errorFactory)('non_json_response', 'non_json_response');
+        throw resolveMainserverErrorFactory(input.errorFactory)(
+          'non_json_response',
+          'non_json_response'
+        );
       }
       return (await response.json()) as T;
     } catch (error) {

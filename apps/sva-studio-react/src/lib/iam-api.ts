@@ -220,7 +220,13 @@ export type IamContentProjectionSyncState = Readonly<{
   isStale: boolean;
   isSyncRunning: boolean;
   hasSnapshot: boolean;
-  snapshotState?: 'empty' | 'partial_running' | 'partial_failed' | 'complete_fresh' | 'complete_refreshing' | 'complete_failed';
+  snapshotState?:
+    | 'empty'
+    | 'partial_running'
+    | 'partial_failed'
+    | 'complete_fresh'
+    | 'complete_refreshing'
+    | 'complete_failed';
   refreshPhase?: 'hot' | 'reconciliation';
   completedPage?: number;
   availableCount?: number;
@@ -238,9 +244,10 @@ export type IamContentListMetadata = Readonly<{
   isTotalFinal?: boolean;
 }>;
 
-export type IamContentListResponse = ApiListResponse<IamContentListItem> & Readonly<{
-  metadata?: IamContentListMetadata;
-}>;
+export type IamContentListResponse = ApiListResponse<IamContentListItem> &
+  Readonly<{
+    metadata?: IamContentListMetadata;
+  }>;
 
 export type RefreshProjectedContentsPayload = Readonly<{
   visibleTypes?: readonly string[];
@@ -250,6 +257,48 @@ export type RefreshProjectedContentsPayload = Readonly<{
 export type RefreshProjectedContentsResult = Readonly<{
   status: 'accepted' | 'already_running' | 'completed' | 'failed';
   syncStates: readonly IamContentProjectionSyncState[];
+}>;
+
+export type MainserverAuthoringDiagnostics = Readonly<{
+  bindings: Readonly<{
+    byStatus: Readonly<Record<string, number>>;
+    byPrincipalType: Readonly<Record<string, number>>;
+    rotationPrincipalCount: number;
+    recent: readonly Readonly<{
+      principalType: 'organization' | 'user';
+      principalId: string;
+      credentialFingerprintPrefix: string;
+      dataProviderId: string;
+      status: 'pending' | 'verified' | 'conflict' | 'historical' | 'revoked';
+      evidenceKind: 'create_response' | 'create_reread' | 'identity_endpoint';
+      lastObservedAt: string;
+    }>[];
+  }>;
+  mutations: Readonly<{
+    byAuthorizationMode: Readonly<Record<string, number>>;
+    byResolverMode: Readonly<Record<string, number>>;
+    byReconciliationStatus: Readonly<Record<string, number>>;
+    automaticModeSwitchCount: number;
+    shadowDifferenceCount: number;
+    recent: readonly Readonly<{
+      operationExternalId: string;
+      actionId: string;
+      contentType: string;
+      contentId?: string;
+      actingPrincipalType: 'organization' | 'user';
+      credentialFingerprintPrefix: string;
+      authorizationMode: 'credential_visible_compatibility' | 'exact';
+      resolverMode: 'automatic' | 'compatibility' | 'shadow';
+      candidateAuthorizationMode?: 'credential_visible_compatibility' | 'exact';
+      candidateAllowed?: boolean;
+      shadowDifference: boolean;
+      providerOutcome: 'pending' | 'succeeded' | 'failed' | 'unknown';
+      reconciliationStatus: 'complete' | 'failed' | 'pending' | 'reconciliation_required';
+      attemptCount: number;
+      lastErrorCode?: string;
+      updatedAt: string;
+    }>[];
+  }>;
 }>;
 
 export type MediaVisibility = 'public' | 'protected';
@@ -385,9 +434,8 @@ export type MediaListQuery = {
   readonly pageSize?: number;
 };
 
-export const isRegisteredMediaAsset = (
-  asset: IamMediaAsset
-): asset is IamRegisteredMediaAsset => 'id' in asset;
+export const isRegisteredMediaAsset = (asset: IamMediaAsset): asset is IamRegisteredMediaAsset =>
+  'id' in asset;
 
 export const getMediaLibraryItemKey = (asset: IamMediaAsset): string =>
   isRegisteredMediaAsset(asset) ? asset.id : asset.storageKey;
@@ -501,10 +549,7 @@ export type ReconcileInstanceKeycloakPayload = {
 
 export type ExecuteInstanceKeycloakProvisioningPayload = {
   readonly intent:
-    | 'provision'
-    | 'provision_admin_client'
-    | 'reset_tenant_admin'
-    | 'rotate_client_secret';
+    'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
   readonly tenantAdminTemporaryPassword?: string;
 };
 
@@ -645,9 +690,7 @@ export const getGroup = async (groupId: string): Promise<ApiItemResponse<IamAdmi
 export const listLegalTexts = async (): Promise<ApiListResponse<IamLegalTextListItem>> =>
   requestJson<ApiListResponse<IamLegalTextListItem>>('/api/v1/iam/legal-texts');
 
-export const listContents = async (
-  query: IamContentListQuery
-): Promise<IamContentListResponse> => {
+export const listContents = async (query: IamContentListQuery): Promise<IamContentListResponse> => {
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
@@ -677,6 +720,13 @@ export const refreshProjectedContents = async (
   postJson<ApiItemResponse<RefreshProjectedContentsResult>, RefreshProjectedContentsPayload>(
     '/api/v1/iam/contents/refresh',
     payload
+  );
+
+export const getMainserverAuthoringDiagnostics = async (): Promise<
+  ApiItemResponse<MainserverAuthoringDiagnostics>
+> =>
+  requestJson<ApiItemResponse<MainserverAuthoringDiagnostics>>(
+    '/api/v1/iam/contents/mainserver-diagnostics'
   );
 
 export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
@@ -876,7 +926,10 @@ export const updateInstance = async (
   instanceId: string,
   payload: UpdateInstancePayload
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  patchJson<ApiItemResponse<IamInstanceDetail>, UpdateInstancePayload>(`/api/v1/iam/instances/${instanceId}`, payload);
+  patchJson<ApiItemResponse<IamInstanceDetail>, UpdateInstancePayload>(
+    `/api/v1/iam/instances/${instanceId}`,
+    payload
+  );
 
 export const getInstanceKeycloakStatus = async (
   instanceId: string
@@ -916,7 +969,11 @@ export const rotateInstanceSecret = async (
   postJson<
     ApiItemResponse<IamInstanceDetail['latestKeycloakProvisioningRun']>,
     Pick<ExecuteInstanceKeycloakProvisioningPayload, 'intent'>
-  >(`/api/v1/iam/instances/${instanceId}/keycloak/rotate-secret`, { intent: 'rotate_client_secret' }, true);
+  >(
+    `/api/v1/iam/instances/${instanceId}/keycloak/rotate-secret`,
+    { intent: 'rotate_client_secret' },
+    true
+  );
 
 export const getInstanceKeycloakProvisioningRun = async (
   instanceId: string,
@@ -965,20 +1022,28 @@ export const listPluginOperationJobs = async (
     params.set('q', query.q);
   }
 
-  return requestJson<StudioJobListResponse>(`/api/v1/plugin-operations/jobs?${params.toString()}`, undefined, {
-    signal: options.signal,
-    timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
-  });
+  return requestJson<StudioJobListResponse>(
+    `/api/v1/plugin-operations/jobs?${params.toString()}`,
+    undefined,
+    {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 };
 
 export const getPluginOperationJob = async (
   jobId: string,
   options: IamRequestOptions = {}
 ): Promise<StudioJobDetail> => {
-  const response = await requestJson<StudioJobDetailResponse>(`/api/v1/plugin-operations/jobs/${jobId}`, undefined, {
-    signal: options.signal,
-    timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
-  });
+  const response = await requestJson<StudioJobDetailResponse>(
+    `/api/v1/plugin-operations/jobs/${jobId}`,
+    undefined,
+    {
+      signal: options.signal,
+      timeoutMs: options.timeoutMs ?? DEFAULT_IAM_REQUEST_TIMEOUT_MS,
+    }
+  );
 
   return response.data;
 };
@@ -1074,10 +1139,11 @@ export const reconcileInstanceKeycloak = async (
   instanceId: string,
   payload: ReconcileInstanceKeycloakPayload
 ): Promise<ApiItemResponse<IamInstanceDetail['keycloakStatus']>> =>
-  postJson<
-    ApiItemResponse<IamInstanceDetail['keycloakStatus']>,
-    ReconcileInstanceKeycloakPayload
-  >(`/api/v1/iam/instances/${instanceId}/keycloak/reconcile`, payload, true);
+  postJson<ApiItemResponse<IamInstanceDetail['keycloakStatus']>, ReconcileInstanceKeycloakPayload>(
+    `/api/v1/iam/instances/${instanceId}/keycloak/reconcile`,
+    payload,
+    true
+  );
 
 export const probeTenantIamAccess = async (
   instanceId: string
@@ -1112,10 +1178,7 @@ export const revokeInstanceModule = async (
   instanceId: string,
   moduleId: string
 ): Promise<ApiItemResponse<IamInstanceDetail>> =>
-  postJson<
-    ApiItemResponse<IamInstanceDetail>,
-    { moduleId: string; confirmation: 'REVOKE' }
-  >(
+  postJson<ApiItemResponse<IamInstanceDetail>, { moduleId: string; confirmation: 'REVOKE' }>(
     `/api/v1/iam/instances/${instanceId}/modules/revoke`,
     { moduleId, confirmation: 'REVOKE' },
     true
@@ -1457,9 +1520,13 @@ export const getMyDataSubjectRightsCase = async (
 
 export const getMyPendingLegalTexts = async (): Promise<ApiListResponse<IamPendingLegalTextItem>> =>
   requestSingleFlight('iam:pending-legal-texts', async () =>
-    requestJson<ApiListResponse<IamPendingLegalTextItem>>('/iam/me/legal-texts/pending', undefined, {
-      timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
-    })
+    requestJson<ApiListResponse<IamPendingLegalTextItem>>(
+      '/iam/me/legal-texts/pending',
+      undefined,
+      {
+        timeoutMs: HEALTH_REQUEST_TIMEOUT_MS,
+      }
+    )
   );
 
 export const acceptLegalText = async (payload: {
@@ -1563,10 +1630,7 @@ export const requestLegalConsentExport = async (input: {
   return requestJsonOrText(`/iam/governance/legal-consents/export?${params.toString()}`);
 };
 
-export const buildMyDataExportDownloadUrl = (
-  jobId: string,
-  format: 'json' | 'csv' | 'xml'
-) =>
+export const buildMyDataExportDownloadUrl = (jobId: string, format: 'json' | 'csv' | 'xml') =>
   `/iam/me/data-export/status?jobId=${encodeURIComponent(jobId)}&download=${encodeURIComponent(format)}`;
 
 export const getDataExportStatus = async (

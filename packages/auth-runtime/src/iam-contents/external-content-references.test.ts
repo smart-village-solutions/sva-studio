@@ -47,7 +47,10 @@ import {
   updateExternalContentReconciliationStatus,
   withExternalContentMutationLock,
 } from './external-content-references.js';
-import { recordSuccessfulExternalContentMutation } from './external-content-mutations.js';
+import {
+  recordSuccessfulExternalContentDeletion,
+  recordSuccessfulExternalContentMutation,
+} from './external-content-mutations.js';
 
 const row = {
   id: 'reference-1',
@@ -130,7 +133,9 @@ describe('external content references', () => {
         referenceId: 'reference-1',
         sourceEntityId: 'external-1',
       })
-    ).resolves.toEqual(expect.objectContaining({ sourceEntityId: 'external-1', reconciliationStatus: 'bound' }));
+    ).resolves.toEqual(
+      expect.objectContaining({ sourceEntityId: 'external-1', reconciliationStatus: 'bound' })
+    );
     await expect(
       listExternalContentReferences({
         instanceId: 'tenant-1',
@@ -210,7 +215,9 @@ describe('external content references', () => {
         sourceEntityType: 'GenericItem',
         sourceEntityId: 'external-1',
       })
-    ).resolves.toEqual(expect.objectContaining({ contentId: 'content-1', sourceEntityId: 'external-1' }));
+    ).resolves.toEqual(
+      expect.objectContaining({ contentId: 'content-1', sourceEntityId: 'external-1' })
+    );
   });
 
   it('records a successful provider mutation against an existing content core', async () => {
@@ -240,10 +247,55 @@ describe('external content references', () => {
     expect(state.updateContent).toHaveBeenCalledWith(
       expect.objectContaining({ contentId: 'content-1', mutationRef: 'request-1' })
     );
-    expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining("source_system = 'iam'"),
-      ['tenant-1', 'content-1']
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining("source_system = 'iam'"), [
+      'tenant-1',
+      'content-1',
+    ]);
+  });
+
+  it('records an idempotently correlated delete in host-owned studio history', async () => {
+    state.query
+      .mockResolvedValueOnce({
+        rows: [{ ...row, source_entity_id: 'external-1', reconciliation_status: 'bound' }],
+      })
+      .mockResolvedValueOnce({
+        rows: [{ payload_json: { title: 'Eintrag' }, status: 'published' }],
+      })
+      .mockResolvedValue({ rows: [] });
+
+    await expect(
+      recordSuccessfulExternalContentDeletion({
+        instanceId: 'tenant-1',
+        actorAccountId: 'account-1',
+        actorDisplayName: 'Redaktion',
+        mutationRef: 'operation-delete-1',
+        sourceSystem: 'mainserver',
+        sourceEntityType: 'GenericItem',
+        sourceEntityId: 'external-1',
+      })
+    ).resolves.toBe(true);
+
+    expect(state.insertHistory).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      expect.objectContaining({
+        action: 'status_changed',
+        mutationRef: 'operation-delete-1',
+        previousStatus: 'published',
+        nextStatus: 'archived',
+        summary: 'Inhalt im Mainserver gelöscht',
+      })
     );
+    expect(state.updateRevision).toHaveBeenCalledWith(
+      expect.objectContaining({ query: state.query }),
+      'tenant-1',
+      'content-1',
+      'history-1'
+    );
+    expect(state.query).toHaveBeenCalledWith(expect.stringContaining("SET status = 'archived'"), [
+      'tenant-1',
+      'content-1',
+      'account-1',
+    ]);
   });
 
   it('creates and binds a local core for the first successful provider mutation', async () => {
@@ -285,10 +337,10 @@ describe('external content references', () => {
       expect.stringContaining("SET source_entity_id = $3, reconciliation_status = 'bound'"),
       ['tenant-1', 'reference-1', 'external-1']
     );
-    expect(state.query).toHaveBeenLastCalledWith(
-      expect.stringContaining("source_system = 'iam'"),
-      ['tenant-1', 'content-1']
-    );
+    expect(state.query).toHaveBeenLastCalledWith(expect.stringContaining("source_system = 'iam'"), [
+      'tenant-1',
+      'content-1',
+    ]);
   });
 
   it('keeps the locked provider lookup on the transaction client', async () => {

@@ -21,16 +21,17 @@ export type CredentialValue = {
   readonly apiSecret: string;
   readonly credentialSource?: 'organization' | 'user';
   readonly credentialOrganizationId?: string;
+  readonly credentialFingerprint?: string;
 };
 
-export type ServiceHop = 'db' | 'keycloak' | 'oauth2' | 'graphql';
+export type ServiceHop = 'db' | 'keycloak' | 'oauth2' | 'graphql' | 'identity';
 
 export type UpstreamRequestInput = {
   readonly url: string;
   readonly init: RequestInit;
   readonly input: SvaMainserverConnectionInput;
   readonly operationName: string;
-  readonly hop: Extract<ServiceHop, 'oauth2' | 'graphql'>;
+  readonly hop: Extract<ServiceHop, 'oauth2' | 'graphql' | 'identity'>;
 };
 
 export type GraphqlOperationInput = SvaMainserverConnectionInput & {
@@ -143,13 +144,16 @@ export const assertUpstreamScanLimit = (skip: number) => {
   if (skip > MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS) {
     throw toSvaMainserverError({
       code: 'invalid_response',
-      message: 'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
+      message:
+        'Mainserver-Pagination erfordert zu viele Upstream-Datensätze für sichtbare Ergebnisse.',
       statusCode: 502,
     });
   }
 };
 
-export const normalizeVisibleListQuery = (input: SvaMainserverListQuery): SvaMainserverListQuery => {
+export const normalizeVisibleListQuery = (
+  input: SvaMainserverListQuery
+): SvaMainserverListQuery => {
   const requestedPageSize = Math.trunc(input.pageSize);
   const pageSize = ALLOWED_MAINSERVER_PAGE_SIZES.has(requestedPageSize) ? requestedPageSize : 25;
   const maxPage = Math.floor((MAX_MAINSERVER_UPSTREAM_SCAN_RECORDS - 1) / pageSize) + 1;
@@ -204,12 +208,14 @@ export const assertPublishedAt = (publishedAt: string): void => {
   }
 };
 
-export const defined = <TValue>(value: TValue | null | undefined): value is TValue => value !== null && value !== undefined;
+export const defined = <TValue>(value: TValue | null | undefined): value is TValue =>
+  value !== null && value !== undefined;
 
 export const optionalString = (value: string | null | undefined): string | undefined =>
   value && value.length > 0 ? value : undefined;
 
-export const optionalNumber = (value: number | null | undefined): number | undefined => (defined(value) ? value : undefined);
+export const optionalNumber = (value: number | null | undefined): number | undefined =>
+  defined(value) ? value : undefined;
 
 export const sleep = async (ms: number): Promise<void> =>
   new Promise((resolve) => {

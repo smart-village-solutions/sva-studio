@@ -77,7 +77,9 @@ export const buildAuthorizeRequest = (input: {
             ...(input.resource.ownerOrganizationId
               ? { ownerOrganizationId: input.resource.ownerOrganizationId }
               : {}),
-            ...(input.resource.organizationId ? { organizationId: input.resource.organizationId } : {}),
+            ...(input.resource.organizationId
+              ? { organizationId: input.resource.organizationId }
+              : {}),
           },
         }
       : {}),
@@ -101,6 +103,25 @@ const projectPermissionsForOrganizationOptionalAccess = (
     organizationId: undefined,
     ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
   }));
+
+const projectPermissionsForCredentialVisibleCompatibility = (
+  permissions: readonly EffectivePermission[]
+): readonly EffectivePermission[] =>
+  permissions.map((permission) => ({
+    ...permission,
+    ...(permission.accessScope === 'own' || permission.accessScope === 'organization'
+      ? { accessScope: undefined }
+      : {}),
+  }));
+
+export const resolveCredentialVisibleCompatibilityDecision = (
+  request: AuthorizeRequest,
+  permissions: readonly EffectivePermission[]
+): boolean =>
+  evaluateAuthorizeDecision(
+    request,
+    projectPermissionsForCredentialVisibleCompatibility(permissions)
+  ).allowed;
 
 export const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
   ok: false,

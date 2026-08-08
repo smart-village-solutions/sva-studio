@@ -123,6 +123,11 @@ export type SvaMainserverCertificateFragment = {
   readonly name?: string | null;
 };
 
+export type SvaMainserverDataProviderFragment = {
+  readonly id?: string | null;
+  readonly name?: string | null;
+};
+
 export type SvaMainserverEventFragment = {
   readonly id?: string | null;
   readonly title?: string | null;
@@ -153,6 +158,7 @@ export type SvaMainserverEventFragment = {
   readonly visible?: boolean | null;
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
+  readonly dataProvider?: SvaMainserverDataProviderFragment | null;
 };
 
 export type SvaMainserverPoiFragment = {
@@ -180,6 +186,7 @@ export type SvaMainserverPoiFragment = {
   readonly visible?: boolean | null;
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
+  readonly dataProvider?: SvaMainserverDataProviderFragment | null;
 };
 
 export type SvaMainserverEventListQuery = {
@@ -387,6 +394,7 @@ const eventFields = `
   createdAt
   updatedAt
   visible
+  dataProvider { id name }
 `;
 
 const poiFields = `
@@ -448,6 +456,7 @@ const poiFields = `
   createdAt
   updatedAt
   visible
+  dataProvider { id name }
 `;
 
 export const svaMainserverEventListDocument = `

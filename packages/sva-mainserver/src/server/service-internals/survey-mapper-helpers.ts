@@ -27,22 +27,30 @@ import {
   type SurveyPayloadContract,
 } from './survey-payload-contract.js';
 import { defined, optionalNumber, optionalString } from './shared.js';
+import { mapDataProvider } from './mappers-shared.js';
 
-export const mapLocalizedText = (value: z.infer<typeof localizedTextSchema>): SvaMainserverLocalizedText =>
-  typeof value === 'string' ? { de: value } : value;
+export const mapLocalizedText = (
+  value: z.infer<typeof localizedTextSchema>
+): SvaMainserverLocalizedText => (typeof value === 'string' ? { de: value } : value);
 
 export const optionalLocalizedField = <TKey extends string>(
   key: TKey,
   value: z.infer<typeof localizedTextSchema> | null | undefined
 ): Partial<Record<TKey, SvaMainserverLocalizedText>> =>
-  value ? (Object.assign({}, { [key]: mapLocalizedText(value) }) as Partial<Record<TKey, SvaMainserverLocalizedText>>) : {};
+  value
+    ? (Object.assign({}, { [key]: mapLocalizedText(value) }) as Partial<
+        Record<TKey, SvaMainserverLocalizedText>
+      >)
+    : {};
 
 export const optionalTimestampField = <TKey extends string>(
   key: TKey,
   value: string | null | undefined
 ): Partial<Record<TKey, string>> => {
   const timestamp = optionalString(value);
-  return timestamp ? (Object.assign({}, { [key]: timestamp }) as Partial<Record<TKey, string>>) : {};
+  return timestamp
+    ? (Object.assign({}, { [key]: timestamp }) as Partial<Record<TKey, string>>)
+    : {};
 };
 
 export const mapFreeTextResult = (
@@ -62,8 +70,12 @@ export const mapOptionResult = (
   optionId: value.optionId,
   title: mapLocalizedText(value.title),
   votes: value.votes ?? 0,
-  ...(defined(optionalNumber(value.percentage)) ? { percentage: optionalNumber(value.percentage) } : {}),
-  freeTextResponses: (value.freeTextResponses ?? []).map((item) => mapFreeTextResult(item, fallbackTimestamp)),
+  ...(defined(optionalNumber(value.percentage))
+    ? { percentage: optionalNumber(value.percentage) }
+    : {}),
+  freeTextResponses: (value.freeTextResponses ?? []).map((item) =>
+    mapFreeTextResult(item, fallbackTimestamp)
+  ),
 });
 
 export const mapQuestionResults = (
@@ -73,8 +85,12 @@ export const mapQuestionResults = (
   questionId: value.questionId,
   type: value.type,
   totalResponses: value.totalResponses ?? 0,
-  optionResults: (value.optionResults ?? []).map((item) => mapOptionResult(item, fallbackTimestamp)),
-  freeTextResponses: (value.freeTextResponses ?? []).map((item) => mapFreeTextResult(item, fallbackTimestamp)),
+  optionResults: (value.optionResults ?? []).map((item) =>
+    mapOptionResult(item, fallbackTimestamp)
+  ),
+  freeTextResponses: (value.freeTextResponses ?? []).map((item) =>
+    mapFreeTextResult(item, fallbackTimestamp)
+  ),
 });
 
 export const mapQuestionOption = (
@@ -114,7 +130,10 @@ export const mapSurveyResults = (
   questions: (value.questions ?? []).map((item) => mapQuestionResults(item, fallbackTimestamp)),
 });
 
-export const buildSurveyResultFields = (survey: z.infer<typeof surveySchema>, fallbackTimestamp: string) => ({
+export const buildSurveyResultFields = (
+  survey: z.infer<typeof surveySchema>,
+  fallbackTimestamp: string
+) => ({
   participationCount: survey.participationCount ?? survey.results?.participationCount ?? 0,
   submissionCount: survey.submissionCount ?? survey.results?.submissionCount ?? 0,
   ...(survey.results ? { results: mapSurveyResults(survey.results, fallbackTimestamp) } : {}),
@@ -122,9 +141,16 @@ export const buildSurveyResultFields = (survey: z.infer<typeof surveySchema>, fa
 
 export const parseSurveyPayloadContract = (
   payload: unknown,
-  parsePayloadContract: (payload: unknown) => { success: true; data: SurveyPayloadContract } | { success: false }
+  parsePayloadContract: (
+    payload: unknown
+  ) => { success: true; data: SurveyPayloadContract } | { success: false }
 ): SurveyPayloadContract => {
-  if (payload === null || payload === undefined || typeof payload !== 'object' || Array.isArray(payload)) {
+  if (
+    payload === null ||
+    payload === undefined ||
+    typeof payload !== 'object' ||
+    Array.isArray(payload)
+  ) {
     return createEmptySurveyPayloadContract();
   }
 
@@ -169,9 +195,12 @@ export const mapParsedSurveyItem = (
     showResultsInApp: survey.showResultsInApp ?? payload.showResultsInApp ?? false,
     isAnonymous: survey.isAnonymous !== false,
     questions: (survey.questions ?? []).map((question) => mapQuestion(question, fallbackTimestamp)),
-    questionCount: survey.questionCount ?? (survey.questions?.length ?? 0),
+    questionCount: survey.questionCount ?? survey.questions?.length ?? 0,
     ...buildSurveyResultFields(survey, fallbackTimestamp),
     createdAt: survey.createdAt ?? fallbackTimestamp,
     updatedAt: survey.updatedAt ?? survey.createdAt ?? fallbackTimestamp,
+    ...(mapDataProvider(survey.dataProvider)
+      ? { dataProvider: mapDataProvider(survey.dataProvider) }
+      : {}),
   };
 };

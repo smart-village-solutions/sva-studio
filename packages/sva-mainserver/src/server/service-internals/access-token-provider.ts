@@ -42,16 +42,21 @@ export const createAccessTokenProvider = (input: {
         credentials.apiSecret,
         credentials.credentialSource ?? 'unknown',
         credentials.credentialOrganizationId ?? 'none',
+        credentials.credentialFingerprint ?? 'unversioned',
       ].join('\u0000'),
       credentialFingerprintSalt,
-      32,
+      32
     ).toString('hex');
 
-  return async (connection: SvaMainserverConnectionInput, config: SvaMainserverInstanceConfig): Promise<string> => {
+  return async (
+    connection: SvaMainserverConnectionInput,
+    config: SvaMainserverInstanceConfig
+  ): Promise<string> => {
     const credentials = await input.loadCredentials(connection);
     const credentialSignature = resolveCredentialSignature(credentials);
     const tokenCacheKey =
       `${connection.instanceId}:${connection.keycloakSubject}:${connection.activeOrganizationId ?? 'none'}:` +
+      `${connection.actingPrincipalType ?? 'automatic'}:` +
       `${credentialSignature}:` +
       `${config.oauthTokenUrl}:${config.graphqlBaseUrl}`;
     const nowMs = input.now();

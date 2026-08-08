@@ -5,6 +5,7 @@ import { setNewsVisibility } from '@sva/plugin-news';
 import { getPoi, updatePoi } from '@sva/plugin-poi';
 import type { SurveyContentItem, SurveyStatus } from '@sva/plugin-surveys';
 import { getSurvey, updateSurvey } from '@sva/plugin-surveys/api';
+import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 
 const visibilityStatuses = ['draft', 'published'] as const satisfies readonly IamContentStatus[];
 const surveyStatuses = [
@@ -12,6 +13,13 @@ const surveyStatuses = [
   'published',
   'archived',
 ] as const satisfies readonly IamContentStatus[];
+
+export const resolveStandaloneMainserverPrincipal = (
+  activeOrganizationId: string | null | undefined
+): MainserverPrincipalType =>
+  typeof activeOrganizationId === 'string' && activeOrganizationId.trim().length > 0
+    ? 'organization'
+    : 'user';
 
 export const getSupportedQuickStatuses = (contentType: string): readonly IamContentStatus[] => {
   switch (contentType) {
@@ -45,7 +53,8 @@ const mapSurveyStatus = (status: IamContentStatus): SurveyStatus => {
 
 export const updateMainserverContentStatus = async (
   item: Pick<IamContentListItem, 'contentType' | 'id'>,
-  status: IamContentStatus
+  status: IamContentStatus,
+  actingPrincipalType: MainserverPrincipalType
 ): Promise<void> => {
   if (!getSupportedQuickStatuses(item.contentType).includes(status)) {
     throw new Error(`unsupported_content_status:${item.contentType}:${status}`);
@@ -53,21 +62,29 @@ export const updateMainserverContentStatus = async (
 
   switch (item.contentType) {
     case 'news.article':
-      await setNewsVisibility(item.id, status === 'published');
+      await setNewsVisibility(item.id, status === 'published', actingPrincipalType);
       return;
     case 'events.event-record': {
       const current = await getEvent(item.id);
-      await updateEvent(item.id, { ...current, visible: status === 'published' });
+      await updateEvent(
+        item.id,
+        { ...current, visible: status === 'published' },
+        actingPrincipalType
+      );
       return;
     }
     case 'generic-items.generic-item': {
       const current = await getGenericItem(item.id);
-      await updateGenericItem(item.id, { ...current, visible: status === 'published' });
+      await updateGenericItem(
+        item.id,
+        { ...current, visible: status === 'published' },
+        actingPrincipalType
+      );
       return;
     }
     case 'poi.point-of-interest': {
       const current = await getPoi(item.id);
-      await updatePoi(item.id, { ...current, active: status === 'published' });
+      await updatePoi(item.id, { ...current, active: status === 'published' }, actingPrincipalType);
       return;
     }
     case 'surveys.survey': {
@@ -88,7 +105,8 @@ export const updateMainserverContentStatus = async (
           privacyNotice: resolveLocalizedText(current.privacyNotice),
           transparencyNotice: resolveLocalizedText(current.transparencyNotice),
         },
-        current
+        current,
+        actingPrincipalType
       );
       return;
     }

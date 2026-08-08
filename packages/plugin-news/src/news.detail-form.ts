@@ -75,7 +75,8 @@ const defaultContentBlock = (): NewsContentBlockFormValue => ({
   mediaContents: [],
 });
 
-const isValidDateString = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
+const isValidDateString = (value: string): boolean =>
+  Number.isNaN(new Date(value).getTime()) === false;
 
 const isValidLocalDateTimeString = (value: string): boolean => {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/u.exec(value);
@@ -163,30 +164,38 @@ const mediaContentSchema = z.object({
   }),
 });
 
-const legacySnapshotSchema = z.object({
-  visible: z.boolean().optional(),
-  keywords: z.string().optional(),
-  externalId: z.string().optional(),
-  fullVersion: z.boolean().optional(),
-  charactersToBeShown: z.union([z.number(), z.string()]).optional(),
-  newsType: z.string().optional(),
-  publishedAt: z.string().optional(),
-  publicationDate: z.string().optional(),
-  showPublishDate: z.boolean().optional(),
-  address: z.object({
-    street: z.string().optional(),
-    zip: z.string().optional(),
-    city: z.string().optional(),
-  }).optional(),
-  pointOfInterestId: z.string().optional(),
-  pushNotificationsSentAt: z.string().optional(),
-  legacyContentBlocks: z.array(z.object({
-    title: z.string(),
-    intro: z.string(),
-    body: z.string(),
-    mediaContents: z.array(mediaContentSchema),
-  })).optional(),
-}).optional();
+const legacySnapshotSchema = z
+  .object({
+    visible: z.boolean().optional(),
+    keywords: z.string().optional(),
+    externalId: z.string().optional(),
+    fullVersion: z.boolean().optional(),
+    charactersToBeShown: z.union([z.number(), z.string()]).optional(),
+    newsType: z.string().optional(),
+    publishedAt: z.string().optional(),
+    publicationDate: z.string().optional(),
+    showPublishDate: z.boolean().optional(),
+    address: z
+      .object({
+        street: z.string().optional(),
+        zip: z.string().optional(),
+        city: z.string().optional(),
+      })
+      .optional(),
+    pointOfInterestId: z.string().optional(),
+    pushNotificationsSentAt: z.string().optional(),
+    legacyContentBlocks: z
+      .array(
+        z.object({
+          title: z.string(),
+          intro: z.string(),
+          body: z.string(),
+          mediaContents: z.array(mediaContentSchema),
+        })
+      )
+      .optional(),
+  })
+  .optional();
 
 const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]) =>
   mediaContents.some((media) => {
@@ -194,7 +203,10 @@ const hasInvalidMediaUrls = (mediaContents: readonly NewsMediaContentFormValue[]
     return url.length > 0 && isHttpsUrl(url) === false;
   });
 
-const readCompatibilityString = (values: Record<string, unknown>, key: string): string | undefined => {
+const readCompatibilityString = (
+  values: Record<string, unknown>,
+  key: string
+): string | undefined => {
   const value = values[key];
   return typeof value === 'string' ? value : undefined;
 };
@@ -206,13 +218,6 @@ const isStrictlyValidCompatibilityDate = (value: string): boolean => {
 
   return isValidDateString(value);
 };
-
-const usesLegacyPageCompatibility = (values: Record<string, unknown>) =>
-  'publishedAt' in values ||
-  'publicationDate' in values ||
-  'contentBlocks' in values ||
-  'keywords' in values ||
-  'externalId' in values;
 
 export const newsDetailFormSchema = z
   .object({
@@ -234,16 +239,6 @@ export const newsDetailFormSchema = z
   })
   .passthrough()
   .superRefine((values, ctx) => {
-    const compatibilityMode = usesLegacyPageCompatibility(values as Record<string, unknown>);
-
-    if (compatibilityMode === false && values.author.trim().length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['author'],
-        message: 'author',
-      });
-    }
-
     if (values.sourceUrl.url.trim().length > 0 && isHttpsUrl(values.sourceUrl.url) === false) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -260,7 +255,10 @@ export const newsDetailFormSchema = z
       });
     }
 
-    if (values.publicationMode === 'scheduled' && isValidDateString(values.scheduledPublicationAt) === false) {
+    if (
+      values.publicationMode === 'scheduled' &&
+      isValidDateString(values.scheduledPublicationAt) === false
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['scheduledPublicationAt'],
@@ -268,7 +266,10 @@ export const newsDetailFormSchema = z
       });
     }
 
-    const compatibilityPublishedAt = readCompatibilityString(values as Record<string, unknown>, 'publishedAt');
+    const compatibilityPublishedAt = readCompatibilityString(
+      values as Record<string, unknown>,
+      'publishedAt'
+    );
     if (
       compatibilityPublishedAt &&
       compatibilityPublishedAt.trim().length > 0 &&
@@ -281,7 +282,10 @@ export const newsDetailFormSchema = z
       });
     }
 
-    const compatibilityPublicationDate = readCompatibilityString(values as Record<string, unknown>, 'publicationDate');
+    const compatibilityPublicationDate = readCompatibilityString(
+      values as Record<string, unknown>,
+      'publicationDate'
+    );
     if (
       compatibilityPublicationDate &&
       compatibilityPublicationDate.trim().length > 0 &&
@@ -294,10 +298,14 @@ export const newsDetailFormSchema = z
       });
     }
 
-    const compatibilityCharactersToBeShown = readCompatibilityString(values as Record<string, unknown>, 'charactersToBeShown');
+    const compatibilityCharactersToBeShown = readCompatibilityString(
+      values as Record<string, unknown>,
+      'charactersToBeShown'
+    );
     if (
       compatibilityCharactersToBeShown &&
-      (/^\d+$/u.test(compatibilityCharactersToBeShown) === false || Number(compatibilityCharactersToBeShown) < 0)
+      (/^\d+$/u.test(compatibilityCharactersToBeShown) === false ||
+        Number(compatibilityCharactersToBeShown) < 0)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -309,7 +317,9 @@ export const newsDetailFormSchema = z
 
 export const newsDetailFormResolver = zodResolver(newsDetailFormSchema as never);
 
-const ensureLegacySnapshot = (values: NewsDetailEditorialFormValues): MutableLegacyCompatibilitySnapshot => {
+const ensureLegacySnapshot = (
+  values: NewsDetailEditorialFormValues
+): MutableLegacyCompatibilitySnapshot => {
   if (!values.__legacySnapshot) {
     values.__legacySnapshot = createEmptyLegacySnapshot();
   }
@@ -325,7 +335,9 @@ const ensureCompatibilityTouched = (values: NewsDetailEditorialFormValues) => {
   return values.__compatibilityTouched;
 };
 
-const toCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => [
+const toCompatibilityContentBlocks = (
+  values: NewsDetailEditorialFormValues
+): NewsContentBlockFormValue[] => [
   {
     title: values.title,
     intro: values.contentIntro,
@@ -334,14 +346,19 @@ const toCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): Ne
   },
 ];
 
-const buildCompatibilityContentBlocks = (values: NewsDetailEditorialFormValues): NewsContentBlockFormValue[] => {
+const buildCompatibilityContentBlocks = (
+  values: NewsDetailEditorialFormValues
+): NewsContentBlockFormValue[] => {
   const { legacyContentBlocks = [] } = ensureLegacySnapshot(values);
   const [, ...remainingBlocks] = legacyContentBlocks;
 
   return [toCompatibilityContentBlocks(values)[0], ...remainingBlocks];
 };
 
-const syncPublicationModeFromPublishedAt = (values: NewsDetailEditorialFormValues, nextValue: string) => {
+const syncPublicationModeFromPublishedAt = (
+  values: NewsDetailEditorialFormValues,
+  nextValue: string
+) => {
   const trimmedValue = nextValue.trim();
 
   if (trimmedValue.length === 0) {
@@ -386,15 +403,33 @@ const defineCompatibilityMetadataAliases = (
   compatibilityValues: CompatibilityFormValues,
   values: NewsDetailEditorialFormValues
 ) => {
-  defineCompatibilityAlias(compatibilityValues, values, 'keywords', () => ensureLegacySnapshot(values).keywords ?? '', (nextValue) => {
-    ensureLegacySnapshot(values).keywords = nextValue;
-  });
-  defineCompatibilityAlias(compatibilityValues, values, 'externalId', () => ensureLegacySnapshot(values).externalId ?? '', (nextValue) => {
-    ensureLegacySnapshot(values).externalId = nextValue;
-  });
-  defineCompatibilityAlias(compatibilityValues, values, 'newsType', () => ensureLegacySnapshot(values).newsType ?? '', (nextValue) => {
-    ensureLegacySnapshot(values).newsType = nextValue;
-  });
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'keywords',
+    () => ensureLegacySnapshot(values).keywords ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).keywords = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'externalId',
+    () => ensureLegacySnapshot(values).externalId ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).externalId = nextValue;
+    }
+  );
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'newsType',
+    () => ensureLegacySnapshot(values).newsType ?? '',
+    (nextValue) => {
+      ensureLegacySnapshot(values).newsType = nextValue;
+    }
+  );
   defineCompatibilityAlias(
     compatibilityValues,
     values,
@@ -407,9 +442,15 @@ const defineCompatibilityMetadataAliases = (
       ensureLegacySnapshot(values).charactersToBeShown = nextValue;
     }
   );
-  defineCompatibilityAlias(compatibilityValues, values, 'fullVersion', () => ensureLegacySnapshot(values).fullVersion ?? false, (nextValue) => {
-    ensureLegacySnapshot(values).fullVersion = nextValue;
-  });
+  defineCompatibilityAlias(
+    compatibilityValues,
+    values,
+    'fullVersion',
+    () => ensureLegacySnapshot(values).fullVersion ?? false,
+    (nextValue) => {
+      ensureLegacySnapshot(values).fullVersion = nextValue;
+    }
+  );
   defineCompatibilityAlias(
     compatibilityValues,
     values,
@@ -505,7 +546,9 @@ const defineCompatibilityPublicationAliases = (
   );
 };
 
-const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues): NewsDetailFormValues => {
+const attachLegacyCompatibilityAliases = (
+  values: NewsDetailEditorialFormValues
+): NewsDetailFormValues => {
   const compatibilityValues = values as CompatibilityFormValues;
 
   defineCompatibilityMetadataAliases(compatibilityValues, values);
@@ -515,10 +558,10 @@ const attachLegacyCompatibilityAliases = (values: NewsDetailEditorialFormValues)
   return compatibilityValues;
 };
 
-export const createDefaultNewsDetailFormValues = (author = ''): NewsDetailFormValues =>
+export const createDefaultNewsDetailFormValues = (): NewsDetailFormValues =>
   attachLegacyCompatibilityAliases({
     title: '',
-    author,
+    author: '',
     categories: [],
     contentIntro: '',
     contentBody: '',
@@ -542,16 +585,22 @@ const compactWebUrl = (url: string, description?: string): NewsWebUrl | undefine
   }
 
   const compactedDescription = compactString(description);
-  return compactedDescription ? { url: compactedUrl, description: compactedDescription } : { url: compactedUrl };
+  return compactedDescription
+    ? { url: compactedUrl, description: compactedDescription }
+    : { url: compactedUrl };
 };
 
-const buildCategoryMutation = (categories: NewsDetailFormValues['categories']): Pick<NewsFormInput, 'categories'> | undefined => {
+const buildCategoryMutation = (
+  categories: NewsDetailFormValues['categories']
+): Pick<NewsFormInput, 'categories'> | undefined => {
   if (categories.length === 0) {
     return undefined;
   }
 
   return {
-    categories: Array.from(new Set(categories.map((entry) => entry.trim()).filter(Boolean))).map((name) => ({ name })),
+    categories: Array.from(new Set(categories.map((entry) => entry.trim()).filter(Boolean))).map(
+      (name) => ({ name })
+    ),
   };
 };
 
@@ -593,7 +642,9 @@ const shouldIncludePushNotification = (
 
 const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormValues => {
   const compatibilityValues = values as CompatibilityFormValues;
-  const compatibilityContentBlocks = Array.isArray(compatibilityValues.contentBlocks) ? compatibilityValues.contentBlocks : [];
+  const compatibilityContentBlocks = Array.isArray(compatibilityValues.contentBlocks)
+    ? compatibilityValues.contentBlocks
+    : [];
 
   if (values.title.length === 0 && compatibilityContentBlocks[0]?.title) {
     values.title = compatibilityContentBlocks[0].title;
@@ -649,7 +700,11 @@ const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
   if (touched.publicationDate && typeof compatibilityValues.publicationDate === 'string') {
     snapshot.publicationDate = compatibilityValues.publicationDate;
   }
-  if (touched.address && compatibilityValues.address && typeof compatibilityValues.address === 'object') {
+  if (
+    touched.address &&
+    compatibilityValues.address &&
+    typeof compatibilityValues.address === 'object'
+  ) {
     snapshot.address = compatibilityValues.address;
   }
   if (touched.pointOfInterestId && typeof compatibilityValues.pointOfInterestId === 'string') {
@@ -667,7 +722,11 @@ export const mapNewsDetailFormValuesToMutation = (
   const normalizedValues = normalizeEditorialValues({ ...values });
   syncSnapshotFromCompatibilityValues(normalizedValues);
   const snapshot = normalizedValues.__legacySnapshot ?? null;
-  const mutation = buildNewsSavePayload(normalizedValues, snapshot, new Date().toISOString()).mutation;
+  const mutation = buildNewsSavePayload(
+    normalizedValues,
+    snapshot,
+    new Date().toISOString()
+  ).mutation;
   const categories = buildCategoryMutation(normalizedValues.categories);
   const sourceUrl = compactWebUrl(
     normalizedValues.sourceUrl.url,
@@ -677,7 +736,6 @@ export const mapNewsDetailFormValuesToMutation = (
 
   return {
     ...mutation,
-    ...(compactString(normalizedValues.author) ? { author: compactString(normalizedValues.author) } : {}),
     ...(categories ?? {}),
     ...(sourceUrl ? { sourceUrl } : {}),
     contentBlocks,
@@ -687,7 +745,10 @@ export const mapNewsDetailFormValuesToMutation = (
   };
 };
 
-const hasDirtyPath = (tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | undefined, path: readonly string[]): boolean => {
+const hasDirtyPath = (
+  tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | undefined,
+  path: readonly string[]
+): boolean => {
   if (tree === true) {
     return true;
   }
@@ -705,17 +766,14 @@ const hasDirtyPath = (tree: DirtyFieldTree | readonly DirtyFieldTree[] | true | 
   }
 
   const [head, ...tail] = path;
-  const nextTree = (tree as Record<string, true | DirtyFieldTree | readonly DirtyFieldTree[] | undefined>)[head];
+  const nextTree = (
+    tree as Record<string, true | DirtyFieldTree | readonly DirtyFieldTree[] | undefined>
+  )[head];
   return hasDirtyPath(nextTree, tail);
 };
 
 export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTabState => ({
-  basis: [
-    ['title'],
-    ['author'],
-    ['keywords'],
-    ['categories'],
-  ].some((path) => hasDirtyPath(dirtyFields, path)),
+  basis: [['title'], ['keywords'], ['categories']].some((path) => hasDirtyPath(dirtyFields, path)),
   content: [
     ['contentBlocks'],
     ['contentIntro'],
@@ -744,11 +802,13 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
 
 export const buildNewsDetailCharacterCounts = (
   values: Pick<NewsDetailFormValues, 'title'> &
-  Partial<Pick<NewsDetailFormValues, 'contentIntro' | 'contentBody'>> & {
-    readonly contentBlocks?: readonly Pick<NewsContentBlockFormValue, 'intro' | 'body'>[];
-  }
+    Partial<Pick<NewsDetailFormValues, 'contentIntro' | 'contentBody'>> & {
+      readonly contentBlocks?: readonly Pick<NewsContentBlockFormValue, 'intro' | 'body'>[];
+    }
 ) => {
-  const contentBlocks = values.contentBlocks ?? [{ intro: values.contentIntro ?? '', body: values.contentBody ?? '' }];
+  const contentBlocks = values.contentBlocks ?? [
+    { intro: values.contentIntro ?? '', body: values.contentBody ?? '' },
+  ];
 
   return {
     title: values.title.length,

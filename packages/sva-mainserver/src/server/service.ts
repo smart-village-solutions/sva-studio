@@ -28,6 +28,7 @@ import type {
 } from '../types.js';
 import { loadSvaMainserverInstanceConfig } from './config-store.js';
 import { createAccessTokenProvider } from './service-internals/access-token-provider.js';
+import { createDataProviderIdentityOperation } from './service-internals/data-provider-identity.js';
 import {
   createCredentialProvider,
   createDefaultCredentialReader,
@@ -71,6 +72,7 @@ export type SvaMainserverServiceOptions = {
     readonly instanceId: string;
     readonly keycloakSubject: string;
     readonly activeOrganizationId?: string;
+    readonly actingPrincipalType?: 'organization' | 'user';
   }) => Promise<CredentialValue | null>;
   readonly fetchImpl?: typeof fetch;
   readonly now?: () => number;
@@ -235,6 +237,15 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     fetchWithRetry,
     loadAccessToken,
   });
+  const loadDataProviderIdentityWithConfig = createDataProviderIdentityOperation({
+    fetchWithRetry,
+    loadAccessToken,
+  });
+
+  const loadDataProviderIdentity = async (input: SvaMainserverConnectionInput) => {
+    const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
+    return loadDataProviderIdentityWithConfig(input, config);
+  };
 
   const newsOperations = createNewsOperations(executeGraphqlWithConfig);
   const newsVisibilityOperations = createNewsVisibilityOperations(executeGraphqlWithConfig);
@@ -723,6 +734,7 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
     getSurvey,
     getSurveyResults,
     listCategories,
+    loadDataProviderIdentity,
     listEvents,
     listGenericItems,
     listNews,
@@ -763,6 +775,9 @@ export const getSvaMainserverMutationRootTypename = (input: SvaMainserverConnect
 
 export const listSvaMainserverCategories = (input: SvaMainserverConnectionInput) =>
   getDefaultService().listCategories(input);
+
+export const loadSvaMainserverDataProviderIdentity = (input: SvaMainserverConnectionInput) =>
+  getDefaultService().loadDataProviderIdentity(input);
 
 export const listSvaMainserverNews = (
   input: SvaMainserverConnectionInput & SvaMainserverNewsListInput

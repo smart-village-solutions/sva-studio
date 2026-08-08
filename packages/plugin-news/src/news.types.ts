@@ -120,13 +120,7 @@ export type NewsFormInput = {
   readonly visible?: boolean;
 };
 
-export type NewsAuthorControl =
-  | { readonly kind: 'fixed'; readonly value: string }
-  | {
-      readonly kind: 'selectable';
-      readonly value: string;
-      readonly options: readonly { readonly value: string; readonly label: string }[];
-    };
+export type { MainserverPrincipalControlModel as NewsPrincipalControl } from '@sva/studio-ui-react';
 
 export type NewsDetailTabId = 'basis' | 'content' | 'settings' | 'history';
 

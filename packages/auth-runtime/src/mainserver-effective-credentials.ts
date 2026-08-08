@@ -1,3 +1,5 @@
+import { scryptSync } from 'node:crypto';
+
 import type { IamContentAuthorPolicy } from '@sva/core';
 
 import { revealField } from './iam-account-management/encryption.js';
@@ -7,10 +9,11 @@ import {
   readSvaMainserverCredentialsWithStatus,
 } from './mainserver-credentials.js';
 
-type EffectiveMainserverCredentialsInput = {
+export type EffectiveMainserverCredentialsInput = {
   readonly instanceId: string;
   readonly keycloakSubject: string;
   readonly activeOrganizationId?: string;
+  readonly actingPrincipalType?: EffectiveMainserverCredentialSource;
 };
 
 type OrganizationMainserverCredentialRow = {
@@ -26,11 +29,12 @@ export type EffectiveSvaMainserverCredentialsResult =
       readonly status: 'ok';
       readonly source: EffectiveMainserverCredentialSource;
       readonly credentials: SvaMainserverCredentials;
+      readonly credentialFingerprint: string;
       readonly organizationId?: string;
     }
   | {
       readonly status: 'organization_mainserver_credentials_missing';
-      readonly organizationId: string;
+      readonly organizationId?: string;
     }
   | {
       readonly status: 'missing_credentials';
@@ -40,6 +44,10 @@ export type EffectiveSvaMainserverCredentialsResult =
     }
   | {
       readonly status: 'database_unavailable';
+    }
+  | {
+      readonly status: 'acting_principal_not_allowed';
+      readonly actingPrincipalType: EffectiveMainserverCredentialSource;
     };
 
 const buildOrganizationMainserverSecretAad = (organizationId: string): string =>
@@ -53,6 +61,18 @@ const normalizeOptionalText = (value: string | null | undefined): string | null 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
+
+const createCredentialFingerprint = (input: {
+  readonly instanceId: string;
+  readonly source: EffectiveMainserverCredentialSource;
+  readonly principalId: string;
+  readonly credentials: SvaMainserverCredentials;
+}): string =>
+  scryptSync(
+    `${input.credentials.apiKey}\u0000${input.credentials.apiSecret}`,
+    `${input.instanceId}\u0000${input.source}\u0000${input.principalId}`,
+    32
+  ).toString('hex');
 
 const loadOrganizationMainserverCredentialRow = async (
   input: Required<Pick<EffectiveMainserverCredentialsInput, 'instanceId' | 'activeOrganizationId'>>
@@ -104,12 +124,22 @@ const resolveUserCredentials = async (
     { readonly status: 'ok' | 'missing_credentials' | 'identity_provider_unavailable' }
   >
 > => {
-  const result = await readSvaMainserverCredentialsWithStatus(input.keycloakSubject, input.instanceId);
+  const result = await readSvaMainserverCredentialsWithStatus(
+    input.keycloakSubject,
+    input.instanceId
+  );
   if (result.status === 'ok') {
+    const credentials = result.credentials;
     return {
       status: 'ok',
       source: 'user',
-      credentials: result.credentials,
+      credentials,
+      credentialFingerprint: createCredentialFingerprint({
+        instanceId: input.instanceId,
+        source: 'user',
+        principalId: input.keycloakSubject,
+        credentials,
+      }),
     };
   }
 
@@ -119,6 +149,12 @@ const resolveUserCredentials = async (
 export const readEffectiveSvaMainserverCredentialsWithStatus = async (
   input: EffectiveMainserverCredentialsInput
 ): Promise<EffectiveSvaMainserverCredentialsResult> => {
+  if (input.actingPrincipalType === 'organization' && !input.activeOrganizationId) {
+    return {
+      status: 'organization_mainserver_credentials_missing',
+    };
+  }
+
   if (!input.activeOrganizationId) {
     return resolveUserCredentials(input);
   }
@@ -142,16 +178,39 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
     };
   }
 
+  if (
+    input.actingPrincipalType === 'user' &&
+    organizationCredentialRow.content_author_policy === 'org_only'
+  ) {
+    return {
+      status: 'acting_principal_not_allowed',
+      actingPrincipalType: 'user',
+    };
+  }
+
+  if (input.actingPrincipalType === 'user') {
+    return resolveUserCredentials(input);
+  }
+
   const organizationCredentials = resolveOrganizationCredentials(
     organizationCredentialRow,
     input.activeOrganizationId
   );
-  if (organizationCredentialRow.content_author_policy === 'org_only') {
+  if (
+    input.actingPrincipalType === 'organization' ||
+    organizationCredentialRow.content_author_policy === 'org_only'
+  ) {
     return organizationCredentials
       ? {
           status: 'ok',
           source: 'organization',
           credentials: organizationCredentials,
+          credentialFingerprint: createCredentialFingerprint({
+            instanceId: input.instanceId,
+            source: 'organization',
+            principalId: input.activeOrganizationId,
+            credentials: organizationCredentials,
+          }),
           organizationId: input.activeOrganizationId,
         }
       : {
@@ -165,6 +224,12 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
       status: 'ok',
       source: 'organization',
       credentials: organizationCredentials,
+      credentialFingerprint: createCredentialFingerprint({
+        instanceId: input.instanceId,
+        source: 'organization',
+        principalId: input.activeOrganizationId,
+        credentials: organizationCredentials,
+      }),
       organizationId: input.activeOrganizationId,
     };
   }

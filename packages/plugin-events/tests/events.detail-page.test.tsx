@@ -433,7 +433,8 @@ describe('EventsDetailPage', () => {
               sourceUrl: { url: 'https://example.com/header.jpg', description: 'Header' },
             }),
           ],
-        })
+        }),
+        'user'
       );
       expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
     });
@@ -588,7 +589,8 @@ describe('EventsDetailPage', () => {
           categories: [{ name: 'Kultur' }],
           externalId: 'event-ext-1',
           visible: true,
-        })
+        }),
+        'user'
       );
       expect(navigateMock).toHaveBeenCalledWith({
         to: '/admin/events/$id',
@@ -732,7 +734,8 @@ describe('EventsDetailPage', () => {
     await waitFor(() => {
       expect(updateEvent).toHaveBeenCalledWith(
         'event-1',
-        expect.not.objectContaining({ dates: expect.anything() })
+        expect.not.objectContaining({ dates: expect.anything() }),
+        'user'
       );
     });
   });
@@ -757,7 +760,7 @@ describe('EventsDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1');
+      expect(vi.mocked(deleteEvent)).toHaveBeenCalledWith('event-1', 'user');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });

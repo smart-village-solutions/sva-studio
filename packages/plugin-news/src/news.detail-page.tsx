@@ -33,6 +33,7 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
@@ -75,7 +76,7 @@ import {
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type {
-  NewsAuthorControl,
+  NewsPrincipalControl,
   NewsCategoryOption,
   NewsContentItem,
   NewsDetailFormValues,
@@ -362,13 +363,11 @@ const newsTabIconMap = {
 export const NewsDetailPage = ({
   mode,
   contentId,
-  initialAuthor,
-  authorControl,
+  principalControl,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
-  initialAuthor?: string;
-  authorControl?: NewsAuthorControl;
+  principalControl?: NewsPrincipalControl;
 }>) => {
   const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
@@ -391,10 +390,23 @@ export const NewsDetailPage = ({
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
+    null
+  );
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
-  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
-  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({ canEditContent: true, permissionActions: sessionAccess.permissionActions }), [sessionAccess.permissionActions]);
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const mediaCapabilities = React.useMemo(
+    () =>
+      resolveContentMediaCapabilities({
+        canEditContent: true,
+        permissionActions: sessionAccess.permissionActions,
+      }),
+    [sessionAccess.permissionActions]
+  );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
@@ -402,13 +414,15 @@ export const NewsDetailPage = ({
   const [visitedTabs, setVisitedTabs] = React.useState<readonly NewsDetailTabId[]>(['basis']);
   const editLoadRequestIdRef = React.useRef(0);
   const formId = React.useId();
-  const resolvedInitialAuthor = (authorControl?.value ?? initialAuthor ?? '').trim();
+  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
 
   const methods = useForm<NewsDetailFormValues>({
-    defaultValues: createDefaultNewsDetailFormValues(resolvedInitialAuthor),
+    defaultValues: createDefaultNewsDetailFormValues(),
     resolver: newsDetailFormResolver,
   });
-  const { formState, reset, setValue } = methods;
+  const { formState, reset } = methods;
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
@@ -466,18 +480,41 @@ export const NewsDetailPage = ({
       if (!nextMedia) {
         return;
       }
-      const persistedMedia = { ...nextMedia, sourceUrl: { ...nextMedia.sourceUrl, url: persistentUrl } };
+      const persistedMedia = {
+        ...nextMedia,
+        sourceUrl: { ...nextMedia.sourceUrl, url: persistentUrl },
+      };
 
       const currentMedia = methods.getValues('contentMedia') ?? [];
       methods.setValue('contentMedia', [...currentMedia, persistedMedia], { shouldDirty: true });
-      setMediaUsages((current) => [...current, {
-        uiId: `news-asset-${asset.id}-${current.length}`, assetId: asset.id,
-        persistentUrl, previewUrl: asset.previewUrl ?? undefined,
-        altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title,
-        credit: asset.metadata.copyright, license: asset.metadata.license, role: 'gallery_item', sortOrder: current.length,
-        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
-        referenceStatus: 'pending', additionalData: { contentType: persistedMedia.contentType, width: persistedMedia.width, height: persistedMedia.height },
-      }]);
+      setMediaUsages((current) => [
+        ...current,
+        {
+          uiId: `news-asset-${asset.id}-${current.length}`,
+          assetId: asset.id,
+          persistentUrl,
+          previewUrl: asset.previewUrl ?? undefined,
+          altText: asset.metadata.altText || asset.fileName,
+          caption: asset.metadata.description || asset.title,
+          credit: asset.metadata.copyright,
+          license: asset.metadata.license,
+          role: 'gallery_item',
+          sortOrder: current.length,
+          assetSnapshot: toContentMediaAssetSnapshot({
+            persistentUrl,
+            altText: asset.metadata.altText || asset.fileName,
+            caption: asset.metadata.description || asset.title,
+            credit: asset.metadata.copyright,
+            license: asset.metadata.license,
+          }),
+          referenceStatus: 'pending',
+          additionalData: {
+            contentType: persistedMedia.contentType,
+            width: persistedMedia.width,
+            height: persistedMedia.height,
+          },
+        },
+      ]);
       setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
@@ -495,9 +532,18 @@ export const NewsDetailPage = ({
       return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
     },
     loadAsset: async (assetId) => {
-      const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId })]);
+      const [detail, delivery] = await Promise.all([
+        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
+      ]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toNewsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
+      return toNewsMediaPickerDetail(
+        detail,
+        summary,
+        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
+          ? delivery.deliveryUrl
+          : null
+      );
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -509,8 +555,17 @@ export const NewsDetailPage = ({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      return toNewsMediaPickerDetail(detail, summary, delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl) ? delivery.deliveryUrl : null);
+      const delivery = await getHostMediaDelivery({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+      });
+      return toNewsMediaPickerDetail(
+        detail,
+        summary,
+        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
+          ? delivery.deliveryUrl
+          : null
+      );
     },
   });
   const mediaPickerFeedback = React.useMemo(
@@ -536,24 +591,10 @@ export const NewsDetailPage = ({
   );
 
   React.useEffect(() => {
-    if (mode !== 'create') {
-      return;
+    if (principalControl) {
+      setActingPrincipalType(principalControl.value);
     }
-
-    const normalizedInitialAuthor = resolvedInitialAuthor;
-    if (normalizedInitialAuthor.length === 0) {
-      return;
-    }
-
-    if (formState.dirtyFields.author) {
-      return;
-    }
-
-    setValue('author', normalizedInitialAuthor, {
-      shouldDirty: false,
-      shouldTouch: false,
-    });
-  }, [formState.dirtyFields.author, mode, resolvedInitialAuthor, setValue]);
+  }, [principalControl]);
 
   React.useEffect(() => {
     let active = true;
@@ -611,14 +652,25 @@ export const NewsDetailPage = ({
         }
 
         const references = await listHostMediaReferencesByTarget({
-          fetch: globalThis.fetch.bind(globalThis), targetType: NEWS_CONTENT_TYPE, targetId: contentId,
+          fetch: globalThis.fetch.bind(globalThis),
+          targetType: NEWS_CONTENT_TYPE,
+          targetId: contentId,
         }).catch(() => []);
         if (!active || requestId !== editLoadRequestIdRef.current) {
           return;
         }
         const nextValues = mapNewsItemToDetailFormValues(item);
         reset(nextValues);
-        setMediaUsages(mainserverContentMediaToUsages(nextValues.contentMedia, alignHostMediaReferencesByOrder({ itemCount: nextValues.contentMedia.length, role: 'gallery_item', references })));
+        setMediaUsages(
+          mainserverContentMediaToUsages(
+            nextValues.contentMedia,
+            alignHostMediaReferencesByOrder({
+              itemCount: nextValues.contentMedia.length,
+              role: 'gallery_item',
+              references,
+            })
+          )
+        );
         setRequiresReferenceSync(references.length > 0);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
@@ -661,15 +713,42 @@ export const NewsDetailPage = ({
       }
 
       try {
-        const saveContent = () => saveNewsEditorItem({ contentId, values: { ...values, contentMedia: contentMediaUsagesToMainserver(mediaUsages) as NewsDetailFormValues['contentMedia'] }, existingItem: loadedItem ?? null }, { createNews, updateNews });
+        const saveContent = () =>
+          saveNewsEditorItem(
+            {
+              contentId,
+              values: {
+                ...values,
+                contentMedia: contentMediaUsagesToMainserver(
+                  mediaUsages
+                ) as NewsDetailFormValues['contentMedia'],
+              },
+              existingItem: loadedItem ?? null,
+              actingPrincipalType,
+            },
+            { createNews, updateNews }
+          );
         const result = requiresReferenceSync
-          ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: NEWS_CONTENT_TYPE, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) })
+          ? await saveContentWithHostMediaReferences({
+              fetch: globalThis.fetch.bind(globalThis),
+              saveContent,
+              getTargetId: (saved) => saved.id,
+              targetType: NEWS_CONTENT_TYPE,
+              references: mediaUsages.flatMap((usage) => {
+                const reference = contentMediaUsageToReference(usage);
+                return reference ? [reference] : [];
+              }),
+            })
           : { status: 'complete' as const, saved: await saveContent() };
         const saved = result.saved;
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
-          setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+          setMediaUsages((current) =>
+            current.map((usage) =>
+              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
+            )
+          );
           setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
           return;
         }
@@ -681,7 +760,9 @@ export const NewsDetailPage = ({
 
         const nextValues = mapNewsItemToDetailFormValues(saved);
         reset(nextValues);
-        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
+        setMediaUsages((current) =>
+          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+        );
         setRetryReferenceSync(null);
         setRetryCreatedContentId(null);
         setLoadedItem(saved);
@@ -712,7 +793,7 @@ export const NewsDetailPage = ({
     setDeletePending(true);
 
     try {
-      await deleteNews(contentId);
+      await deleteNews(contentId, actingPrincipalType);
       await navigate({ to: '/admin/content' });
     } catch (error) {
       setStatusMessage({
@@ -757,7 +838,9 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailBasisTab
           availableCategories={categoryOptions}
-          authorControl={authorControl}
+          principalControl={principalControl}
+          actingPrincipalType={actingPrincipalType}
+          onActingPrincipalTypeChange={setActingPrincipalType}
           categoryOptionsError={categoryOptionsError}
           categoryOptionsLoading={categoryOptionsLoading}
           mode={mode}
@@ -776,14 +859,38 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailContentTab
           mediaUsages={mediaUsages}
-          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
+          onChangeMediaUsages={(usages) => {
+            setMediaUsages(usages);
+            setRequiresReferenceSync(
+              (current) => current || usages.some((usage) => Boolean(usage.assetId))
+            );
+          }}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
           onLoadAssetSnapshot={async (usage) => {
             if (!usage.assetId) throw new Error('asset_unavailable');
-            const [detail, delivery] = await Promise.all([getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }), getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId })]);
-            if (delivery.isPublicUrl !== true || !isPersistableContentMediaUrl(delivery.deliveryUrl)) throw new Error('asset_unavailable');
-            return toContentMediaAssetSnapshot({ persistentUrl: delivery.deliveryUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+            const [detail, delivery] = await Promise.all([
+              getHostMediaAsset({
+                fetch: globalThis.fetch.bind(globalThis),
+                assetId: usage.assetId,
+              }),
+              getHostMediaDelivery({
+                fetch: globalThis.fetch.bind(globalThis),
+                assetId: usage.assetId,
+              }),
+            ]);
+            if (
+              delivery.isPublicUrl !== true ||
+              !isPersistableContentMediaUrl(delivery.deliveryUrl)
+            )
+              throw new Error('asset_unavailable');
+            return toContentMediaAssetSnapshot({
+              persistentUrl: delivery.deliveryUrl,
+              altText: detail.metadata.altText ?? '',
+              caption: detail.metadata.description ?? '',
+              credit: detail.metadata.copyright ?? '',
+              license: detail.metadata.license ?? '',
+            });
           }}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
@@ -910,22 +1017,32 @@ export const NewsDetailPage = ({
               type="button"
               variant="outline"
               onClick={() =>
-                void retryReferenceSync().then(() => {
-                  setRetryReferenceSync(null);
-                  setRetryCreatedContentId(null);
-                  setMediaUsages((current) =>
-                    current.map((usage) =>
-                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                    )
-                  );
-                  setStatusMessage({
-                    kind: 'success',
-                    text: pt('messages.mediaReferenceRetrySuccess'),
-                  });
-                  if (retryCreatedContentId) {
-                    void navigate({ to: '/admin/news/$id', params: { id: retryCreatedContentId } });
-                  }
-                }, () => setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))
+                void retryReferenceSync().then(
+                  () => {
+                    setRetryReferenceSync(null);
+                    setRetryCreatedContentId(null);
+                    setMediaUsages((current) =>
+                      current.map((usage) =>
+                        usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+                      )
+                    );
+                    setStatusMessage({
+                      kind: 'success',
+                      text: pt('messages.mediaReferenceRetrySuccess'),
+                    });
+                    if (retryCreatedContentId) {
+                      void navigate({
+                        to: '/admin/news/$id',
+                        params: { id: retryCreatedContentId },
+                      });
+                    }
+                  },
+                  () =>
+                    setStatusMessage({
+                      kind: 'error',
+                      text: pt('messages.mediaReferencePartialFailure'),
+                    })
+                )
               }
             >
               {pt('actions.retryMediaReferences')}

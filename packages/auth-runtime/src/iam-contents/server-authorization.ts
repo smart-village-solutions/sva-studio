@@ -14,6 +14,7 @@ import {
   resolveActiveOrganizationId,
   resolveActorAccountIdForOwnership,
   resolveAuthorizationPermissions,
+  resolveCredentialVisibleCompatibilityDecision,
   resolveOrganizationOptionalDecision,
   type ContentPrimitiveAuthorizationResource,
   type ContentPrimitiveAuthorizationResult,
@@ -24,11 +25,76 @@ export type {
   ContentPrimitiveAuthorizationResult,
 } from './server-authorization.model.js';
 
+const resolveAuthorizationDecisionResult = (input: {
+  readonly instanceId: string;
+  readonly keycloakSubject: string;
+  readonly action: string;
+  readonly resource: ContentPrimitiveAuthorizationResource;
+  readonly organizationId?: string;
+  readonly permissions: readonly EffectivePermission[];
+  readonly request: ReturnType<typeof buildAuthorizeRequest>;
+  readonly decision: ReturnType<typeof evaluateAuthorizeDecision>;
+  readonly credentialVisibleCompatibility: boolean | undefined;
+  readonly requestId: string | undefined;
+  readonly traceId: string | undefined;
+}): ContentPrimitiveAuthorizationResult => {
+  if (
+    !input.decision.allowed &&
+    resolveOrganizationOptionalDecision(
+      input.request,
+      input.organizationId,
+      input.permissions,
+      input.action,
+      input.resource.contentType
+    )
+  ) {
+    return allowedAuthorizationResult({
+      instanceId: input.instanceId,
+      keycloakSubject: input.keycloakSubject,
+      permissions: input.permissions,
+    });
+  }
+
+  if (
+    !input.decision.allowed &&
+    input.credentialVisibleCompatibility === true &&
+    resolveCredentialVisibleCompatibilityDecision(input.request, input.permissions)
+  ) {
+    return allowedAuthorizationResult({
+      instanceId: input.instanceId,
+      keycloakSubject: input.keycloakSubject,
+      permissions: input.permissions,
+      ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+    });
+  }
+
+  if (!input.decision.allowed) {
+    logAuthorizationDenied({
+      instanceId: input.instanceId,
+      requestId: input.requestId,
+      traceId: input.traceId,
+      action: input.action,
+      resource: input.resource,
+      organizationId: input.organizationId,
+      reason: input.decision.reason,
+    });
+    return forbiddenAuthorizationResult();
+  }
+
+  return allowedAuthorizationResult({
+    instanceId: input.instanceId,
+    keycloakSubject: input.keycloakSubject,
+    permissions: input.permissions,
+    organizationId: input.organizationId,
+  });
+};
+
 export const authorizeContentPrimitiveForUser = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly action: string;
   readonly resource?: ContentPrimitiveAuthorizationResource;
   readonly permissions?: readonly EffectivePermission[];
+  readonly credentialVisibleCompatibility?: boolean;
 }): Promise<ContentPrimitiveAuthorizationResult> => {
   const instanceId = input.ctx.user.instanceId;
   if (!instanceId) {
@@ -102,41 +168,17 @@ export const authorizeContentPrimitiveForUser = async (input: {
     traceId: workspaceContext.traceId,
   });
   const decision = evaluateAuthorizeDecision(request, permissions);
-  if (
-    !decision.allowed &&
-    resolveOrganizationOptionalDecision(
-      request,
-      organizationId,
-      permissions,
-      action,
-      resource.contentType
-    )
-  ) {
-    return allowedAuthorizationResult({
-      instanceId,
-      keycloakSubject: input.ctx.user.id,
-      permissions,
-    });
-  }
-
-  if (!decision.allowed) {
-    logAuthorizationDenied({
-      instanceId,
-      requestId: workspaceContext.requestId,
-      traceId: workspaceContext.traceId,
-      action,
-      resource,
-      organizationId,
-      reason: decision.reason,
-    });
-
-    return forbiddenAuthorizationResult();
-  }
-
-  return allowedAuthorizationResult({
+  return resolveAuthorizationDecisionResult({
     instanceId,
     keycloakSubject: input.ctx.user.id,
+    action,
+    resource,
+    ...(organizationId ? { organizationId } : {}),
     permissions,
-    organizationId,
+    request,
+    decision,
+    credentialVisibleCompatibility: input.credentialVisibleCompatibility,
+    requestId: workspaceContext.requestId,
+    traceId: workspaceContext.traceId,
   });
 };

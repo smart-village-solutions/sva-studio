@@ -56,9 +56,7 @@ export type IamContentValidationState = (typeof iamContentValidationStates)[numb
 export type IamContentPrimitiveAction = (typeof iamContentPrimitiveActions)[number];
 export type IamContentDomainCapability = (typeof iamContentDomainCapabilities)[number];
 export type IamContentCapabilityMappingDiagnosticCode =
-  | 'capability_mapping_missing'
-  | 'capability_mapping_invalid'
-  | 'capability_authorization_denied';
+  'capability_mapping_missing' | 'capability_mapping_invalid' | 'capability_authorization_denied';
 export type IamContentAccessState = (typeof iamContentAccessStates)[number];
 export type IamContentAccessReasonCode = (typeof iamContentAccessReasonCodes)[number];
 
@@ -85,9 +83,7 @@ export type ResolvedIamContentCapabilityMapping =
 
 export type ContentJsonPrimitive = string | number | boolean | null;
 export type ContentJsonValue =
-  | ContentJsonPrimitive
-  | { readonly [key: string]: ContentJsonValue }
-  | readonly ContentJsonValue[];
+  ContentJsonPrimitive | { readonly [key: string]: ContentJsonValue } | readonly ContentJsonValue[];
 
 type ContentPermissionView = {
   readonly action: string;
@@ -125,6 +121,8 @@ export const iamContentAuthorDisplayModes = ['organization', 'user'] as const;
 export type IamContentAuthorDisplayMode = (typeof iamContentAuthorDisplayModes)[number];
 const iamContentCredentialSources = ['organization', 'user'] as const;
 export type IamContentCredentialSource = (typeof iamContentCredentialSources)[number];
+export const iamContentAuthorizationModes = ['credential_visible_compatibility', 'exact'] as const;
+export type IamContentAuthorizationMode = (typeof iamContentAuthorizationModes)[number];
 
 export type IamContentListItem = {
   readonly id: string;
@@ -146,6 +144,8 @@ export type IamContentListItem = {
   readonly sourceDataProviderId?: string;
   readonly sourceDataProviderName?: string;
   readonly credentialSource?: IamContentCredentialSource;
+  readonly credentialFingerprint?: string;
+  readonly authorizationMode?: IamContentAuthorizationMode;
   readonly payload: ContentJsonValue;
   readonly status: IamContentStatus;
   readonly validationState: IamContentValidationState;

@@ -3,10 +3,14 @@ import { useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
+  MainserverPrincipalControl,
   StudioDetailPageTemplate,
   StudioDetailTabs,
   StudioFormSummary,
   StudioLoadingState,
+  resolveMainserverPrincipalOptions,
+  type MainserverPrincipalControlModel,
+  type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
 
 import {
@@ -20,13 +24,57 @@ import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
 
 const formId = 'survey-detail-form';
 
+const SurveyPrincipalControl = ({
+  actingPrincipalType,
+  loadedItem,
+  mode,
+  onChange,
+  principalControl,
+  pt,
+}: Readonly<{
+  actingPrincipalType: MainserverPrincipalType;
+  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
+  mode: SurveyEditorMode;
+  onChange: (value: MainserverPrincipalType) => void;
+  principalControl?: MainserverPrincipalControlModel;
+  pt: ReturnType<typeof usePluginTranslation>;
+}>) => (
+  <MainserverPrincipalControl
+    id="survey-acting-principal"
+    label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+    description={pt('principal.description')}
+    value={actingPrincipalType}
+    options={resolveMainserverPrincipalOptions(principalControl, {
+      value: actingPrincipalType,
+      label: pt(`principal.${actingPrincipalType}`),
+    })}
+    onChange={onChange}
+    dataProvider={mode === 'edit' ? (loadedItem?.dataProvider ?? null) : undefined}
+    dataProviderLabel={pt('principal.dataProvider')}
+    dataProviderUnavailableLabel={pt('principal.unavailable')}
+  />
+);
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
-}: Readonly<{ mode: SurveyEditorMode; contentId?: string }>) => {
+  principalControl,
+}: Readonly<{
+  mode: SurveyEditorMode;
+  contentId?: string;
+  principalControl?: MainserverPrincipalControlModel;
+}>) => {
   const pt = usePluginTranslation('surveys');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
+  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+  React.useEffect(() => {
+    if (principalControl) {
+      setActingPrincipalType(principalControl.value);
+    }
+  }, [principalControl]);
   const methods = useForm<SurveyDetailFormValues>({
     defaultValues: createDefaultSurveyDetailFormValues(),
   });
@@ -35,6 +83,7 @@ export const SurveyEditorPage = ({
     contentId,
     methods,
     pt,
+    actingPrincipalType,
     navigateToContentList: () => navigate({ to: '/admin/content' }),
   });
   const tabs = React.useMemo(
@@ -63,6 +112,14 @@ export const SurveyEditorPage = ({
           className="space-y-5"
         >
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          <SurveyPrincipalControl
+            actingPrincipalType={actingPrincipalType}
+            loadedItem={loadedItem}
+            mode={mode}
+            onChange={setActingPrincipalType}
+            principalControl={principalControl}
+            pt={pt}
+          />
           <StudioDetailTabs
             ariaLabel={pt('tabs.ariaLabel')}
             tabs={tabs}

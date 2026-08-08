@@ -18,7 +18,7 @@ Es kombiniert:
 - Datenbank: `sva_studio`
 - Live-Dump: `artifacts/db-schema/studio-live-schema-2026-05-08.sql`
 - Finaler Soll-Snapshot aus Migrationen: `docs/development/studio-db-schema-final.sql`
-- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-02`
+- Finaler Soll-Snapshot zuletzt lokal aktualisiert: `2026-08-07`
 - Migrationen im Repo: `packages/data/migrations/*.sql`
 
 ### Zusammenfassung
@@ -38,9 +38,9 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0074_iam_waste_tenant_provisioning.sql`
+- Repo-Migrationen vorhanden bis: `0077_mainserver_data_provider_identity.sql`
 
-Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0074`:
+Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
@@ -55,6 +55,8 @@ Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038`
 - der bisherige Waste-Datenquellenstatus aus `0065_iam_instance_waste_data_sources.sql`
 - der PostgreSQL-Interface-Typ aus `0073_iam_external_interface_postgresql.sql`
 - der tenantgebundene Waste-Provisionierungsstatus und der Eindeutigkeitsindex für pluginverwaltete Waste-Interfaces aus `0074_iam_waste_tenant_provisioning.sql`
+- die allgemeinen External-Content-Referenzen und die explizite Studio-only-History-Abdeckung aus `0075` und `0076`
+- die credential-versionierten Mainserver-DataProvider-Bindungen, das persistente Mutation-Journal sowie Credential-Fingerprint und Autorisierungsmodus der Content-Projektion aus `0077_mainserver_data_provider_identity.sql`
 
 Für Entwicklungsentscheidungen gilt deshalb:
 
@@ -67,7 +69,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0074_iam_waste_tenant_provisioning.sql`; `0074` ergänzt den tenantgebundenen Provisionierungsstatus und die Eindeutigkeit pluginverwalteter Waste-Interfaces
+- Enthält strukturell den Repo-Sollstand bis `0077_mainserver_data_provider_identity.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -202,6 +204,8 @@ Host-seitiges Kernmodell für Inhalte und ihre führende Listenprojektion:
 - `iam.content_list_projection`
 - `iam.content_list_projection_sync_state`
 - `iam.external_content_references`
+- `iam.mainserver_data_provider_bindings`
+- `iam.mainserver_mutation_journal`
 
 Kernidee:
 
@@ -213,11 +217,13 @@ Kernidee:
 - `contents` trägt zusätzlich einen eigenen Lösch-Lifecycle-Zustand, damit tenantweite Account-Löschregeln in V1 referenzwahrend auf Inhalte abgebildet werden können.
 - Für privilegierten Admin-Hard-Delete dürfen `author_account_id`, `creator_account_id`, `updater_account_id` und `content_history.actor_account_id` referenzwahrend auf `NULL` fallen.
 - Die übrigen bewusst blockierenden `ON DELETE RESTRICT`-Pfade bleiben unverändert und müssen im Runtime-Flow als Konflikt behandelt werden. Betroffen sind weiterhin DSR-, Governance-, Delegations-, Impersonation- und Korrekturpfade, etwa für Zielaccounts, Delegationsbeziehungen, Permission-Requests oder Profilkorrekturen.
-- `owner_user_id` und `owner_organization_id` sind die kanonischen Ownership-Spalten für Scope-Prüfungen (`own`, `organization`, `all`) und werden in `content_list_projection` gespiegelt.
+- `owner_user_id` und `owner_organization_id` sind rekonstruierbare Ownership-Spalten für Scope-Prüfungen (`own`, `organization`, `all`). Bei Mainserver-Inhalten dürfen sie ausschließlich aus aktuellen konfliktfreien DataProvider-Bindungen entstehen; der Kompatibilitätsmodus erfindet keine Owner.
 - `author_display_mode` (`organization` oder `user`) steuert die fachliche sichtbare Autorenanzeige; `author_display_name` bleibt der persistierte Anzeige-Snapshot.
-- `source_data_provider_id`, `source_data_provider_name` und `credential_source` beschreiben bei Mainserver-Projektionen die externe Veröffentlichungsidentität und verwendete Credential-Quelle. Diese Felder setzen keine IAM-Ownership.
+- `source_data_provider_id`, `source_data_provider_name`, `credential_source`, `credential_fingerprint` und `authorization_mode` beschreiben bei Mainserver-Projektionen die externe Veröffentlichungsidentität, verwendete Credential-Version und die readiness-gesteuerte Auswertung. Diese Felder setzen für sich allein keine IAM-Ownership.
 - `owner_subject_id` bleibt nur noch Legacy-Kompatibilitätsfeld und ist nicht mehr maßgeblich für Autorisierung.
 - `external_content_references` verbindet einen lokalen Content-Core-Datensatz eindeutig mit einer externen Entität. Die stabile Operations-ID ermöglicht Repair nach verlorenen Providerantworten; `reconciliation_status` unterscheidet offene, gebundene, reparaturbedürftige und fehlgeschlagene Zustände. Instanz-, Operations- und externe Quellschlüssel verhindern Doppelbindungen, während RLS die Mandantentrennung erzwingt.
+- `mainserver_data_provider_bindings` hält ausschließlich automatisch beobachtete, instanz- und credential-versionierte Principal-zu-DataProvider-Zuordnungen. Konflikte überschreiben keine vorhandene Evidenz; historische und widerrufene Versionen bleiben ausdrücklich unterscheidbar. Aktuelle Readiness verlangt zusätzlich einen aktiven, nicht gelöschten Account beziehungsweise eine aktive, noch vorhandene Organisation; die Bindungszeile selbst bleibt für historische Herleitung und Audit erhalten.
+- `mainserver_mutation_journal` korreliert Provider-Write, Retry, Teiloperationen, Preimage/Tombstone und lokale Reconciliation über `operation_external_id`. `resolver_mode`, `candidate_authorization_mode`, `candidate_allowed` und `shadow_difference` halten Shadow-, Aktivierungs- und Rollbackentscheidungen je Operation nachvollziehbar. Das Journal ist ein Betriebs- und Auditnachweis und keine zweite sichtbare Content-History.
 
 ### 7. Media-Management
 

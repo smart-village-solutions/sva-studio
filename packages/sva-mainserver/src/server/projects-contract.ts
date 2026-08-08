@@ -23,16 +23,20 @@ export const PROJECTS_CONTENT_TYPE = 'projects.project' as const;
 export const PROJECTS_GENERIC_TYPE = 'FeaturedProject' as const;
 
 const requiredText = z.string().trim().min(1);
-const imageSchema = z.object({
-  url: requiredText,
-  altText: requiredText,
-  caption: z.string().trim().optional(),
-  credits: z.string().trim().optional(),
-  position: z.number().int().nonnegative(),
-}).strict();
+const imageSchema = z
+  .object({
+    url: requiredText,
+    altText: requiredText,
+    caption: z.string().trim().optional(),
+    credits: z.string().trim().optional(),
+    position: z.number().int().nonnegative(),
+  })
+  .strict();
 
-const authorSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('organization'), id: requiredText, displayName: requiredText }).strict(),
+const projectAuthorSchema = z.discriminatedUnion('type', [
+  z
+    .object({ type: z.literal('organization'), id: requiredText, displayName: requiredText })
+    .strict(),
   z.object({ type: z.literal('person'), id: requiredText, displayName: requiredText }).strict(),
 ]);
 
@@ -44,7 +48,6 @@ export const projectInputSchema = z
     fullText: z.string().trim().default(''),
     images: z.array(imageSchema),
     status: z.enum(['draft', 'published', 'archived']),
-    author: authorSchema,
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -57,11 +60,18 @@ export const projectInputSchema = z
     }
   });
 
+const projectRequestSchema = projectInputSchema
+  .safeExtend({ author: projectAuthorSchema.optional() })
+  .transform(({ author, ...project }) => {
+    void author;
+    return project;
+  });
+
 export const parseProjectInput = async (
   request: Request
 ): Promise<SvaMainserverProjectInput | Response> => {
   const body = (await request.json().catch(() => null)) as unknown;
-  const parsed = projectInputSchema.safeParse(body);
+  const parsed = projectRequestSchema.safeParse(body);
   return parsed.success
     ? parsed.data
     : errorJson(400, 'invalid_request', 'Projektfelder sind unvollständig oder ungültig.');
@@ -114,9 +124,7 @@ const mapDatesToInput = (values: readonly SvaMainserverDate[]) =>
       : { useOnlyTimeDescription: useOnlyTimeDescription === 'true' }),
   }));
 
-const mapAccessibilityToInput = (
-  values: readonly SvaMainserverAccessibilityInformation[]
-) =>
+const mapAccessibilityToInput = (values: readonly SvaMainserverAccessibilityInformation[]) =>
   values.map(({ id: _id, urls, ...information }) => ({
     ...information,
     urls: mapWebUrlsToInput(urls),
@@ -129,19 +137,17 @@ const mapContentBlocksToInput = (
     ...(title === undefined ? {} : { title }),
     ...(intro === undefined ? {} : { intro }),
     ...(body === undefined ? {} : { body }),
-    mediaContents: mediaContents.map(
-      ({ id: _id, sourceUrl, ...media }) => ({
-        ...media,
-        ...(sourceUrl
-          ? {
-              sourceUrl: {
-                url: sourceUrl.url,
-                ...(sourceUrl.description ? { description: sourceUrl.description } : {}),
-              },
-            }
-          : {}),
-      })
-    ),
+    mediaContents: mediaContents.map(({ id: _id, sourceUrl, ...media }) => ({
+      ...media,
+      ...(sourceUrl
+        ? {
+            sourceUrl: {
+              url: sourceUrl.url,
+              ...(sourceUrl.description ? { description: sourceUrl.description } : {}),
+            },
+          }
+        : {}),
+    })),
   }));
 
 export const mergeProjectIntoGenericItem = (input: {
@@ -150,7 +156,6 @@ export const mergeProjectIntoGenericItem = (input: {
   readonly externalId?: string;
   readonly publishedAt?: string;
   readonly deleted?: boolean;
-  readonly persistAuthor?: boolean;
 }): SvaMainserverGenericItemInput => {
   const existing = input.existing;
   const existingPayload = payloadRecord(existing?.payload);
@@ -171,34 +176,32 @@ export const mergeProjectIntoGenericItem = (input: {
           priceInformations: existing.priceInformations.map(({ id: _id, ...entry }) => entry),
           locations: existing.locations.map(({ id: _id, ...entry }) => entry),
           dates: mapDatesToInput(existing.dates),
-          accessibilityInformations: mapAccessibilityToInput(
-            existing.accessibilityInformations
-          ),
+          accessibilityInformations: mapAccessibilityToInput(existing.accessibilityInformations),
         }
       : {}),
     title: input.project.title.trim(),
     genericType: PROJECTS_GENERIC_TYPE,
     visible: input.project.status === 'published',
-    author: input.project.author.displayName.trim(),
+    ...(existing?.author ? { author: existing.author } : {}),
     externalId: input.externalId ?? existing?.externalId,
     publishedAt: input.publishedAt ?? existing?.publishedAt,
     payload: {
       ...existingPayload,
       language: input.project.language.trim(),
       status: input.project.status,
-      ...(input.persistAuthor === false ? {} : { author: input.project.author }),
       deleted: input.deleted ?? existingPayload.deleted === true,
     },
-    contentBlocks: input.project.description.trim() || fullText || firstBlock || remainingBlocks.length > 0
-      ? [
-          {
-            ...(firstBlock ?? {}),
-            intro: input.project.description.trim(),
-            body: fullText,
-          },
-          ...remainingBlocks,
-        ]
-      : [],
+    contentBlocks:
+      input.project.description.trim() || fullText || firstBlock || remainingBlocks.length > 0
+        ? [
+            {
+              ...(firstBlock ?? {}),
+              intro: input.project.description.trim(),
+              body: fullText,
+            },
+            ...remainingBlocks,
+          ]
+        : [],
     mediaContents: toMediaContents(input.project),
   };
 };
@@ -207,7 +210,11 @@ const projectStatus = (
   item: SvaMainserverGenericItem,
   payload: Readonly<Record<string, unknown>>
 ): SvaMainserverProjectStatus => {
-  if (payload.status === 'draft' || payload.status === 'published' || payload.status === 'archived') {
+  if (
+    payload.status === 'draft' ||
+    payload.status === 'published' ||
+    payload.status === 'archived'
+  ) {
     return payload.status;
   }
   return item.visible ? 'published' : 'draft';
@@ -215,8 +222,7 @@ const projectStatus = (
 
 const projectAuthor = (
   item: SvaMainserverGenericItem,
-  payload: Readonly<Record<string, unknown>>,
-  fallbackAuthor?: SvaMainserverProjectAuthor
+  payload: Readonly<Record<string, unknown>>
 ): SvaMainserverProjectAuthor => {
   const author = payload.author;
   if (isRecord(author)) {
@@ -227,7 +233,6 @@ const projectAuthor = (
       return { type, id, displayName };
     }
   }
-  if (fallbackAuthor) return fallbackAuthor;
   const displayName = item.author?.trim() || item.id;
   return {
     type: 'organization' as const,
@@ -236,10 +241,7 @@ const projectAuthor = (
   };
 };
 
-export const mapGenericItemToProject = (
-  item: SvaMainserverGenericItem,
-  fallbackAuthor?: SvaMainserverProjectAuthor
-): SvaMainserverProject => {
+export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMainserverProject => {
   const payload = payloadRecord(item.payload);
   const status = projectStatus(item, payload);
   return {
@@ -258,7 +260,8 @@ export const mapGenericItemToProject = (
     status,
     published: status === 'published',
     ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
-    author: projectAuthor(item, payload, fallbackAuthor),
+    author: projectAuthor(item, payload),
+    ...(item.dataProvider ? { dataProvider: item.dataProvider } : {}),
     deleted: payload.deleted === true,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
@@ -273,9 +276,12 @@ export const validateProjectProjection = (project: SvaMainserverProject): Respon
     fullText: project.fullText,
     images: project.images,
     status: project.status,
-    author: project.author,
   });
-  return parsed.success
+  return parsed.success && projectAuthorSchema.safeParse(project.author).success
     ? null
-    : errorJson(502, 'invalid_response', 'Mainserver-Projekt verletzt den FeaturedProject-Vertrag.');
+    : errorJson(
+        502,
+        'invalid_response',
+        'Mainserver-Projekt verletzt den FeaturedProject-Vertrag.'
+      );
 };

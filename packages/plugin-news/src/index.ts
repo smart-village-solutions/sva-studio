@@ -14,7 +14,7 @@ export { NewsDetailPage } from './news.detail-page.js';
 export { NewsCreatePage, NewsEditPage } from './news.pages.js';
 export { validateNewsForm, validateNewsPayload } from './news.validation.js';
 export type {
-  NewsAuthorControl,
+  NewsPrincipalControl,
   NewsContentItem,
   NewsFormInput,
   NewsListQuery,

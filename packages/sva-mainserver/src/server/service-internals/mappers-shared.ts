@@ -6,6 +6,7 @@ import type {
   SvaMainserverCategory,
   SvaMainserverContact,
   SvaMainserverDate,
+  SvaMainserverDataProvider,
   SvaMainserverLocation,
   SvaMainserverMediaContent,
   SvaMainserverOpeningHour,
@@ -91,6 +92,24 @@ export const dataProviderSchema = z.object({
   logo: webUrlSchema.nullish(),
   address: addressSchema.nullish(),
 });
+
+export const mapDataProvider = (
+  value: z.infer<typeof dataProviderSchema> | null | undefined
+): SvaMainserverDataProvider | undefined => {
+  if (!value) return undefined;
+  const dataProvider = {
+    ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
+    ...(optionalString(value.name) ? { name: optionalString(value.name) } : {}),
+    ...(optionalString(value.dataType) ? { dataType: optionalString(value.dataType) } : {}),
+    ...(optionalString(value.description)
+      ? { description: optionalString(value.description) }
+      : {}),
+    ...(optionalString(value.notice) ? { notice: optionalString(value.notice) } : {}),
+    ...(mapWebUrl(value.logo) ? { logo: mapWebUrl(value.logo) } : {}),
+    ...(mapAddress(value.address) ? { address: mapAddress(value.address) } : {}),
+  };
+  return Object.keys(dataProvider).length > 0 ? dataProvider : undefined;
+};
 
 export const settingSchema = z.object({
   alwaysRecreateOnImport: z.string().nullish(),
@@ -186,7 +205,9 @@ export const parseCharactersToBeShown = (value: string | null | undefined): numb
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
-export const parseGeoCoordinate = (value: number | string | null | undefined): number | undefined => {
+export const parseGeoCoordinate = (
+  value: number | string | null | undefined
+): number | undefined => {
   if (typeof value === 'number') {
     return Number.isFinite(value) ? value : undefined;
   }
@@ -197,18 +218,24 @@ export const parseGeoCoordinate = (value: number | string | null | undefined): n
   return undefined;
 };
 
-export const mapWebUrl = (value: z.infer<typeof webUrlSchema> | null | undefined): SvaMainserverWebUrl | undefined => {
+export const mapWebUrl = (
+  value: z.infer<typeof webUrlSchema> | null | undefined
+): SvaMainserverWebUrl | undefined => {
   if (!value?.url) {
     return undefined;
   }
   return {
     ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
     url: value.url,
-    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.description)
+      ? { description: optionalString(value.description) }
+      : {}),
   };
 };
 
-export const mapAddress = (value: z.infer<typeof addressSchema> | null | undefined): SvaMainserverAddress | undefined => {
+export const mapAddress = (
+  value: z.infer<typeof addressSchema> | null | undefined
+): SvaMainserverAddress | undefined => {
   if (!value) {
     return undefined;
   }
@@ -229,7 +256,9 @@ export const mapAddress = (value: z.infer<typeof addressSchema> | null | undefin
     ...(optionalString(value.zip) ? { zip: optionalString(value.zip) } : {}),
     ...(optionalString(value.city) ? { city: optionalString(value.city) } : {}),
     ...(optionalString(value.kind) ? { kind: optionalString(value.kind) } : {}),
-    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude)) ? { geoLocation } : {}),
+    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude))
+      ? { geoLocation }
+      : {}),
   };
   return Object.keys(address).length > 0 ? address : undefined;
 };
@@ -261,7 +290,9 @@ const hasIncompleteCategoryTree = (value: CategoryLike): boolean => {
   return (value.children ?? []).some(hasIncompleteCategoryTree);
 };
 
-export const mapMediaContent = (value: z.infer<typeof mediaContentSchema>): SvaMainserverMediaContent => ({
+export const mapMediaContent = (
+  value: z.infer<typeof mediaContentSchema>
+): SvaMainserverMediaContent => ({
   ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
   ...(optionalString(value.captionText) ? { captionText: optionalString(value.captionText) } : {}),
   ...(optionalString(value.copyright) ? { copyright: optionalString(value.copyright) } : {}),
@@ -278,13 +309,17 @@ export const mapDate = (value: z.infer<typeof dateSchema>): SvaMainserverDate =>
   ...(optionalString(value.dateEnd) ? { dateEnd: optionalString(value.dateEnd) } : {}),
   ...(optionalString(value.timeStart) ? { timeStart: optionalString(value.timeStart) } : {}),
   ...(optionalString(value.timeEnd) ? { timeEnd: optionalString(value.timeEnd) } : {}),
-  ...(optionalString(value.timeDescription) ? { timeDescription: optionalString(value.timeDescription) } : {}),
+  ...(optionalString(value.timeDescription)
+    ? { timeDescription: optionalString(value.timeDescription) }
+    : {}),
   ...(optionalString(value.useOnlyTimeDescription)
     ? { useOnlyTimeDescription: optionalString(value.useOnlyTimeDescription) }
     : {}),
 });
 
-export const mapContact = (value: z.infer<typeof contactSchema> | null | undefined): SvaMainserverContact | undefined => {
+export const mapContact = (
+  value: z.infer<typeof contactSchema> | null | undefined
+): SvaMainserverContact | undefined => {
   if (!value) {
     return undefined;
   }
@@ -300,7 +335,9 @@ export const mapContact = (value: z.infer<typeof contactSchema> | null | undefin
   return Object.keys(contact).length > 1 || contact.webUrls.length > 0 ? contact : undefined;
 };
 
-export const mapLocation = (value: z.infer<typeof locationSchema> | null | undefined): SvaMainserverLocation | undefined => {
+export const mapLocation = (
+  value: z.infer<typeof locationSchema> | null | undefined
+): SvaMainserverLocation | undefined => {
   if (!value) {
     return undefined;
   }
@@ -321,7 +358,9 @@ export const mapLocation = (value: z.infer<typeof locationSchema> | null | undef
     ...(optionalString(value.district) ? { district: optionalString(value.district) } : {}),
     ...(optionalString(value.regionName) ? { regionName: optionalString(value.regionName) } : {}),
     ...(optionalString(value.state) ? { state: optionalString(value.state) } : {}),
-    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude)) ? { geoLocation } : {}),
+    ...(geoLocation && (defined(geoLocation.latitude) || defined(geoLocation.longitude))
+      ? { geoLocation }
+      : {}),
   };
   return Object.keys(location).length > 0 ? location : undefined;
 };
@@ -348,10 +387,18 @@ export const mapPrice = (value: z.infer<typeof priceSchema>): SvaMainserverPrice
   ...(defined(value.groupPrice) ? { groupPrice: value.groupPrice } : {}),
   ...(optionalNumber(value.ageFrom) !== undefined ? { ageFrom: value.ageFrom as number } : {}),
   ...(optionalNumber(value.ageTo) !== undefined ? { ageTo: value.ageTo as number } : {}),
-  ...(optionalNumber(value.minAdultCount) !== undefined ? { minAdultCount: value.minAdultCount as number } : {}),
-  ...(optionalNumber(value.maxAdultCount) !== undefined ? { maxAdultCount: value.maxAdultCount as number } : {}),
-  ...(optionalNumber(value.minChildrenCount) !== undefined ? { minChildrenCount: value.minChildrenCount as number } : {}),
-  ...(optionalNumber(value.maxChildrenCount) !== undefined ? { maxChildrenCount: value.maxChildrenCount as number } : {}),
+  ...(optionalNumber(value.minAdultCount) !== undefined
+    ? { minAdultCount: value.minAdultCount as number }
+    : {}),
+  ...(optionalNumber(value.maxAdultCount) !== undefined
+    ? { maxAdultCount: value.maxAdultCount as number }
+    : {}),
+  ...(optionalNumber(value.minChildrenCount) !== undefined
+    ? { minChildrenCount: value.minChildrenCount as number }
+    : {}),
+  ...(optionalNumber(value.maxChildrenCount) !== undefined
+    ? { maxChildrenCount: value.maxChildrenCount as number }
+    : {}),
   ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
   ...(optionalString(value.category) ? { category: optionalString(value.category) } : {}),
 });
@@ -364,11 +411,15 @@ export const mapAccessibilityInformation = (
   }
   const information = {
     ...(optionalString(value.id) ? { id: optionalString(value.id) } : {}),
-    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.description)
+      ? { description: optionalString(value.description) }
+      : {}),
     ...(optionalString(value.types) ? { types: optionalString(value.types) } : {}),
     urls: (value.urls ?? []).map(mapWebUrl).filter(defined),
   };
-  return Object.keys(information).length > 1 || information.urls.length > 0 ? information : undefined;
+  return Object.keys(information).length > 1 || information.urls.length > 0
+    ? information
+    : undefined;
 };
 
 export const mapRepeatDuration = (
@@ -386,7 +437,9 @@ export const mapRepeatDuration = (
   return Object.keys(repeatDuration).length > 0 ? repeatDuration : undefined;
 };
 
-export const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMainserverOpeningHour => {
+export const mapOpeningHour = (
+  value: z.infer<typeof openingHourSchema>
+): SvaMainserverOpeningHour => {
   const sortNumber = optionalNumber(value.sortNumber);
 
   return {
@@ -399,6 +452,8 @@ export const mapOpeningHour = (value: z.infer<typeof openingHourSchema>): SvaMai
     ...(sortNumber !== undefined ? { sortNumber } : {}),
     ...(defined(value.open) ? { open: value.open } : {}),
     ...(defined(value.useYear) ? { useYear: value.useYear } : {}),
-    ...(optionalString(value.description) ? { description: optionalString(value.description) } : {}),
+    ...(optionalString(value.description)
+      ? { description: optionalString(value.description) }
+      : {}),
   };
 };

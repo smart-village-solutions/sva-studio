@@ -323,6 +323,14 @@ Die Inhaltsübersicht verwendet standardmäßig schlanke Mainserver-Listenadapte
 - `SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED=true|false` (Standard: `true`)
 - `SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED=true|false` (Standard: `true`)
 
+Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
+
+- `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow|automatic|compatibility` (Standard: `shadow`)
+- `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE=legacy_compatible|required` (Standard: `legacy_compatible`)
+- `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer)
+
+Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
+
 Ein nicht finaler Listenstand meldet `availableCount` und `isTotalFinal=false`; `totalCount` fehlt dann bewusst. Pro Typ liefern die Refresh-Metadaten Snapshot-Zustand, Phase, abgeschlossene Page, verfügbare Anzahl, Invalid-Zähler und den letzten Fehler.
 
 Rollback-Reihenfolge:

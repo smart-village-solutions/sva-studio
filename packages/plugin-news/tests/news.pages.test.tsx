@@ -330,6 +330,13 @@ describe('News editor pages', () => {
         'news.fields.title': 'Titel',
         'news.fields.headline': 'Headline',
         'news.fields.author': 'Autor',
+        'news.fields.createAs': 'Erstellen als',
+        'news.fields.actAs': 'Handeln als',
+        'news.fields.actingPrincipalHelp': 'Schreibkontext auswählen.',
+        'news.fields.dataProvider': 'Datenanbieter',
+        'news.fields.dataProviderUnavailable': 'Noch nicht verfügbar',
+        'news.principals.organization': 'Aktive Organisation',
+        'news.principals.user': 'Persönlich',
         'news.fields.status': 'Status',
         'news.fields.createdAt': 'Erstellt am',
         'news.fields.keywords': 'Schlagwörter',
@@ -508,12 +515,19 @@ describe('News editor pages', () => {
     });
   });
 
-  it('prefills the author field for new entries when an initial author is provided', async () => {
-    render(<NewsCreatePage initialAuthor="Stadt Musterhausen" />);
+  it('renders the selected create principal without an editable author field', async () => {
+    render(
+      <NewsCreatePage
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Stadt Musterhausen' }}
+      />
+    );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Stadt Musterhausen');
+      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
+        'Stadt Musterhausen'
+      );
     });
+    expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
   it('allows creating news with html-only body content', async () => {
@@ -650,10 +664,10 @@ describe('News editor pages', () => {
   });
 
   it('submits the simplified editorial model while preserving hidden legacy omissions on create', async () => {
-    render(<NewsCreatePage initialAuthor="Redaktion" />);
+    render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Volle News' } });
-    expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Redaktion');
+    expect(screen.queryByLabelText('Autor')).toBeNull();
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
@@ -687,7 +701,7 @@ describe('News editor pages', () => {
       expect(createNews).toHaveBeenCalled();
       const createPayload = vi.mocked(createNews).mock.calls[0]?.[0] as Record<string, unknown>;
       expect(createPayload.title).toBe('Volle News');
-      expect(createPayload.author).toBe('Redaktion');
+      expect(createPayload).not.toHaveProperty('author');
       expect(createPayload.categories).toEqual([{ name: 'Allgemein' }, { name: 'Rathaus' }]);
       expect(createPayload.sourceUrl).toEqual({
         url: 'https://example.com/news',
@@ -1168,7 +1182,8 @@ describe('News editor pages', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Bestehende volle News')).toBeTruthy();
-      expect(screen.getByDisplayValue('Redaktion')).toBeTruthy();
+      expect(screen.getByText('Datenquelle')).toBeTruthy();
+      expect(screen.queryByLabelText('Autor')).toBeNull();
       expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
       expect(screen.getByText('Kultur')).toBeTruthy();
     });
@@ -1209,7 +1224,6 @@ describe('News editor pages', () => {
         'news-1',
         expect.objectContaining({
           title: 'Bestehende volle News',
-          author: 'Redaktion',
           keywords: 'Markt, Kultur',
           categories: [{ name: 'Kultur' }, { name: 'Rathaus' }],
         })
@@ -1304,7 +1318,7 @@ describe('News editor pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(deleteNews).toHaveBeenCalledWith('news-1');
+      expect(deleteNews).toHaveBeenCalledWith('news-1', 'user');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });

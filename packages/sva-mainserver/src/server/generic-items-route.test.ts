@@ -1,10 +1,15 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SvaMainserverError } from './errors.js';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   validateCsrf: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  resolveMutationPrincipalContext: vi.fn(),
+  recordMainserverDataProviderObservation: vi.fn(),
+  beginMainserverMutationJournal: vi.fn(),
+  finalizeMainserverMutationJournal: vi.fn(),
   createSvaMainserverGenericItem: vi.fn(),
   updateSvaMainserverGenericItem: vi.fn(),
   listSvaMainserverGenericItems: vi.fn(),
@@ -17,9 +22,25 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  authorizeMainserverCreatePrincipal: vi.fn(() => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   validateCsrf: state.validateCsrf,
+  resolveActorInfo: state.resolveActorInfo,
+  resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
+  beginMainserverMutationJournal: state.beginMainserverMutationJournal,
+  finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
 }));
 
 vi.mock('@sva/server-runtime', async () => {
@@ -59,6 +80,9 @@ const createRequest = (url: string, init?: RequestInit): Request =>
     headers: {
       Origin: 'https://studio.test',
       'X-Requested-With': 'XMLHttpRequest',
+      ...(init?.method && init.method !== 'GET'
+        ? { 'X-SVA-Acting-Principal-Type': 'organization' }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -78,6 +102,33 @@ const mockAuthorizedMutation = () => {
 };
 
 describe('dispatchSvaMainserverGenericItemsRequest', () => {
+  beforeEach(() => {
+    state.resolveActorInfo.mockResolvedValue({
+      actor: {
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+      },
+    });
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: true,
+      context: {
+        version: 1,
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: '11111111-1111-1111-8111-111111111111',
+        credentialSource: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      },
+    });
+    state.recordMainserverDataProviderObservation.mockResolvedValue({
+      outcome: 'created',
+      binding: { status: 'verified' },
+    });
+  });
+
   afterEach(() => {
     vi.resetAllMocks();
   });
@@ -512,6 +563,7 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         body: JSON.stringify({
           title: 'Freier Eintrag',
           genericType: 'faq',
+          author: 'Manipulierter Autor',
           payload: { answer: '42' },
           categories: [{ name: 'Service' }],
           contacts: [{ email: 'faq@example.invalid' }],
@@ -541,16 +593,29 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         }),
       })
     );
+    expect(state.createSvaMainserverGenericItem.mock.calls[0]?.[0]?.genericItem).not.toHaveProperty(
+      'author'
+    );
   });
 
   it('updates generic items through PATCH', async () => {
     mockAuthorizedMutation();
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-1',
+      genericType: 'faq',
+      author: 'Persistierter Autor',
+      dataProvider: { id: 'dp-org-1', name: 'Redaktion' },
+    });
     state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'generic-1' });
 
     const response = await dispatchSvaMainserverGenericItemsRequest(
       createRequest('https://studio.test/api/v1/mainserver/generic-items/generic-1', {
         method: 'PATCH',
-        body: JSON.stringify({ title: 'Aktualisiert', genericType: 'faq' }),
+        body: JSON.stringify({
+          title: 'Aktualisiert',
+          genericType: 'faq',
+          author: 'Manipulierter Autor',
+        }),
       })
     );
 
@@ -558,7 +623,11 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({
         genericItemId: 'generic-1',
-        genericItem: expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' }),
+        genericItem: expect.objectContaining({
+          title: 'Aktualisiert',
+          genericType: 'faq',
+          author: 'Persistierter Autor',
+        }),
       })
     );
   });
@@ -604,9 +673,14 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       updateResponse?.status,
       deleteResponse?.status,
     ]).toEqual([200, 201, 200, 200]);
-    expect(state.authorizeContentPrimitiveForUser.mock.calls.map(([input]) => input.action)).toEqual(
-      ['generic-items.read', 'generic-items.create', 'generic-items.update', 'generic-items.delete']
-    );
+    expect(
+      state.authorizeContentPrimitiveForUser.mock.calls.map(([input]) => input.action)
+    ).toEqual([
+      'generic-items.read',
+      'generic-items.create',
+      'generic-items.update',
+      'generic-items.delete',
+    ]);
     expect(state.updateSvaMainserverGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({
         genericItemId: 'faq-1',

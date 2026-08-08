@@ -18,7 +18,8 @@ import type { EventContentItem, EventListResult } from './events.types.js';
 
 type ListSearchState = Record<string, unknown>;
 
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) => pt(fallbackKey);
+const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) =>
+  pt(fallbackKey);
 
 const updateListSearchPage = (
   current: ListSearchState,
@@ -31,12 +32,17 @@ const updateListSearchPage = (
 });
 
 const formatEventStartDate = (value?: string): string | undefined =>
-  isValidDateOnlyValue(value) ? formatDateOnlyForEditor(value) : formatDateTimeInEditorTimeZone(value);
+  isValidDateOnlyValue(value)
+    ? formatDateOnlyForEditor(value)
+    : formatDateTimeInEditorTimeZone(value);
 
 export function EventsListPage() {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
-  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const search = useSearch({ strict: false }) as {
+    readonly page?: number;
+    readonly pageSize?: number;
+  };
   const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<EventListResult>({
     data: [],
@@ -96,7 +102,9 @@ export function EventsListPage() {
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length === 0 ? (
+        <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
+      ) : null}
       {!loading && !error && result.data.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
@@ -110,12 +118,21 @@ export function EventsListPage() {
             }}
             data={result.data}
             columns={[
-              { id: 'title', header: pt('fields.title'), cell: (item: EventContentItem) => item.title },
-              { id: 'categoryName', header: pt('fields.categoryName'), cell: (item: EventContentItem) => item.categoryName ?? '—' },
+              {
+                id: 'title',
+                header: pt('fields.title'),
+                cell: (item: EventContentItem) => item.title,
+              },
+              {
+                id: 'categoryName',
+                header: pt('fields.categoryName'),
+                cell: (item: EventContentItem) => item.categoryName ?? '—',
+              },
               {
                 id: 'dateStart',
                 header: pt('fields.dateStart'),
-                cell: (item: EventContentItem) => (item.dates?.[0]?.dateStart ? formatEventStartDate(item.dates[0].dateStart) : '—'),
+                cell: (item: EventContentItem) =>
+                  item.dates?.[0]?.dateStart ? formatEventStartDate(item.dates[0].dateStart) : '—',
               },
             ]}
             rowActions={(item) => (
@@ -129,8 +146,15 @@ export function EventsListPage() {
             getRowId={(item) => item.id}
             selectionMode="none"
           />
-          <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <p key={result.pagination.page} aria-live="polite" className="animate-pagination-active">
+          <nav
+            aria-label={pt('pagination.ariaLabel')}
+            className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
+          >
+            <p
+              key={result.pagination.page}
+              aria-live="polite"
+              className="animate-pagination-active"
+            >
               {pt('pagination.pageLabel', { page: result.pagination.page })}
             </p>
             <div className="flex items-center gap-2">
@@ -178,11 +202,28 @@ export function EventsListPage() {
   );
 }
 
-export function EventsCreatePage() {
-  return <EventsDetailPage mode="create" />;
+export function EventsCreatePage({
+  principalControl,
+}: Readonly<{
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) {
+  return <EventsDetailPage mode="create" principalControl={principalControl} />;
 }
 
-export function EventsEditPage() {
-  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  return <EventsDetailPage mode="edit" contentId={params.contentId ?? params.id} />;
+export function EventsEditPage({
+  principalControl,
+}: Readonly<{
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) {
+  const params = useParams({ strict: false }) as {
+    readonly contentId?: string;
+    readonly id?: string;
+  };
+  return (
+    <EventsDetailPage
+      mode="edit"
+      contentId={params.contentId ?? params.id}
+      principalControl={principalControl}
+    />
+  );
 }

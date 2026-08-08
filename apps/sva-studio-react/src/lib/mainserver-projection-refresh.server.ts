@@ -1,9 +1,6 @@
-import {
-  resolveActorAccountId,
-  withAuthenticatedUser,
-  withInstanceScopedDb,
-} from '@sva/auth-runtime/server';
-import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
+import { loadMainserverMutationJournal } from '@sva/auth-runtime/server';
+import { readMainserverMutationFollowUpContext } from '@sva/sva-mainserver/server';
+import { createSdkLogger } from '@sva/server-runtime';
 
 import { refreshProjectedContentsForMainserverMutation } from './iam-content-list-projection.server.js';
 
@@ -41,9 +38,7 @@ const shouldRefreshProjectionForRequest = (request: Request, response: Response)
   request.method !== 'HEAD' &&
   request.method !== 'OPTIONS';
 
-const parseMutationOperation = (
-  request: Request
-): MainserverProjectionMutationOperation | null =>
+const parseMutationOperation = (request: Request): MainserverProjectionMutationOperation | null =>
   request.method === 'POST'
     ? 'create'
     : request.method === 'PUT' || request.method === 'PATCH'
@@ -53,9 +48,7 @@ const parseMutationOperation = (
         : null;
 
 const parseEntityIdFromRequestPath = (request: Request): string | undefined => {
-  const segments = new URL(request.url).pathname
-    .split('/')
-    .filter((segment) => segment.length > 0);
+  const segments = new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0);
   const mainserverIndex = segments.findIndex((segment) => segment === 'mainserver');
   if (mainserverIndex < 0) {
     return undefined;
@@ -75,7 +68,9 @@ const parseEntityIdFromResponse = async (response: Response): Promise<string | u
   if (providerEntityId) return providerEntityId;
   const location = response.headers.get('location');
   if (location) {
-    const locationSegments = new URL(location, 'https://studio.invalid').pathname.split('/').filter(Boolean);
+    const locationSegments = new URL(location, 'https://studio.invalid').pathname
+      .split('/')
+      .filter(Boolean);
     const locationId = locationSegments.at(-1);
     if (locationId) return decodeURIComponent(locationId);
   }
@@ -84,9 +79,10 @@ const parseEntityIdFromResponse = async (response: Response): Promise<string | u
     return undefined;
   }
 
-  const payload = (await response.clone().json().catch(() => null)) as
-    | { data?: { id?: unknown }; id?: unknown }
-    | null;
+  const payload = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { data?: { id?: unknown }; id?: unknown } | null;
   const id = payload?.data?.id ?? payload?.id;
   return typeof id === 'string' && id.length > 0 ? id : undefined;
 };
@@ -114,66 +110,48 @@ export const refreshProjectionAfterMainserverMutation = async (
     return;
   }
 
-  await withAuthenticatedUser(request, async (ctx) => {
-    if (!ctx.user.instanceId) {
-      return response;
-    }
-
-    let actorAccountId: string | undefined;
-    try {
-      actorAccountId = await withInstanceScopedDb(ctx.user.instanceId, async (client) =>
-        resolveActorAccountId(client, {
-          instanceId: ctx.user.instanceId!,
-          keycloakSubject: ctx.user.id,
-        })
-      );
-    } catch (error) {
-      logger.warn('Skipped mainserver mutation projection refresh because actor account resolution failed', {
-        instanceId: ctx.user.instanceId,
-        keycloakSubject: ctx.user.id,
-        contentType,
-        method: request.method,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      return response;
-    }
-
-    if (!actorAccountId) {
-      logger.warn('Skipped mainserver mutation projection refresh because actor account resolution returned no account', {
-        instanceId: ctx.user.instanceId,
-        keycloakSubject: ctx.user.id,
-        contentType,
-        method: request.method,
-      });
-      return response;
-    }
-
-    try {
-      await refreshProjectedContentsForMainserverMutation({
-        instanceId: ctx.user.instanceId,
-        keycloakSubject: ctx.user.id,
-        contentType,
-        actorAccountId,
-        actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-        mutationRef:
-          request.headers.get('idempotency-key') ??
-          request.headers.get('x-request-id') ??
-          getWorkspaceContext().requestId ??
-          `${request.method}:${contentType}:${entityId ?? 'unknown'}`,
-        ...(ctx.activeOrganizationId ? { organizationId: ctx.activeOrganizationId } : {}),
-        ...(operation ? { operation } : {}),
-        ...(entityId ? { entityId } : {}),
-      });
-    } catch (error) {
-      logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
-        instanceId: ctx.user.instanceId,
+  const followUpContext = readMainserverMutationFollowUpContext(request);
+  if (!followUpContext) {
+    logger.warn(
+      'Skipped Mainserver mutation projection refresh without a bound principal context',
+      {
         contentType,
         method: request.method,
         entityId: entityId ?? null,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+      }
+    );
+    return;
+  }
 
-    return response;
-  });
+  try {
+    const journal = await loadMainserverMutationJournal({
+      instanceId: followUpContext.instanceId,
+      operationExternalId: followUpContext.operationExternalId,
+    });
+    await refreshProjectedContentsForMainserverMutation({
+      instanceId: followUpContext.instanceId,
+      keycloakSubject: followUpContext.keycloakSubject,
+      contentType,
+      actorAccountId: followUpContext.actorAccountId,
+      actorDisplayName: followUpContext.actorDisplayName,
+      mutationRef: followUpContext.operationExternalId,
+      actingPrincipalType: followUpContext.actingPrincipalType,
+      credentialFingerprint: followUpContext.credentialFingerprint,
+      authorizationMode: journal?.authorizationMode ?? 'credential_visible_compatibility',
+      ...(followUpContext.activeOrganizationId
+        ? { organizationId: followUpContext.activeOrganizationId }
+        : {}),
+      ...(operation ? { operation } : {}),
+      ...(entityId ? { entityId } : {}),
+    });
+  } catch (error) {
+    logger.warn('Mainserver mutation projection refresh failed after a successful provider write', {
+      instanceId: followUpContext.instanceId,
+      contentType,
+      method: request.method,
+      entityId: entityId ?? null,
+      operationExternalId: followUpContext.operationExternalId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 };

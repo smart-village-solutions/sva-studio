@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createEvent, EventsApiError, listEventCategories, listEvents, listPoiForEventSelection } from '../src/events.api.js';
+import {
+  createEvent,
+  EventsApiError,
+  listEventCategories,
+  listEvents,
+  listPoiForEventSelection,
+} from '../src/events.api.js';
 
 describe('events api', () => {
   afterEach(() => {
@@ -27,14 +33,19 @@ describe('events api', () => {
   });
 
   it('creates events via POST', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: { id: 'event-1', title: 'Stadtfest' } }));
+    const fetchMock = vi.fn(async () =>
+      Response.json({ data: { id: 'event-1', title: 'Stadtfest' } })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
-    await createEvent({ title: 'Stadtfest' });
+    await createEvent({ title: 'Stadtfest' }, 'organization');
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/mainserver/events',
       expect.objectContaining({ method: 'POST', body: JSON.stringify({ title: 'Stadtfest' }) })
     );
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers);
+    expect(headers.get('X-SVA-Acting-Principal-Type')).toBe('organization');
+    expect(headers.get('X-SVA-Mainserver-Contract-Version')).toBe('2');
   });
 
   it('lists event categories from the categories route', async () => {
@@ -72,7 +83,8 @@ describe('events api', () => {
 
   it('includes the last allowed POI selection page', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       const page = Number(new URL(url, 'https://studio.test').searchParams.get('page'));
 
       return Response.json({
@@ -93,7 +105,8 @@ describe('events api', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (input: string | URL | Request) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         const page = Number(new URL(url, 'https://studio.test').searchParams.get('page'));
 
         return Response.json({
@@ -125,7 +138,10 @@ describe('events api', () => {
   });
 
   it('throws stable errors', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json({ error: 'forbidden', message: 'Nope' }, { status: 403 }))
+    );
 
     await expect(listEvents({ page: 1, pageSize: 25 })).rejects.toBeInstanceOf(EventsApiError);
   });

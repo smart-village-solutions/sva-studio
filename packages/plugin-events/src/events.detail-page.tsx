@@ -26,8 +26,12 @@ import {
   isPersistableContentMediaUrl,
   mainserverContentMediaToUsages,
   MainserverDeviationSummary,
+  MainserverPrincipalControl,
+  resolveMainserverPrincipalOptions,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
+  type MainserverPrincipalControlModel,
+  type MainserverPrincipalType,
   Select,
   StudioDetailPageTemplate,
   StudioFormSummary,
@@ -286,9 +290,11 @@ const resolveEventsMediaPickerFeedback = (
 export function EventsDetailPage({
   mode,
   contentId,
+  principalControl,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
+  principalControl?: MainserverPrincipalControlModel;
 }>) {
   const pt = usePluginTranslation('events');
   const navigate = useNavigate();
@@ -301,6 +307,12 @@ export function EventsDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
+  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+  React.useEffect(() => {
+    if (principalControl) setActingPrincipalType(principalControl.value);
+  }, [principalControl]);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
@@ -744,12 +756,13 @@ export function EventsDetailPage({
       }
       const saveContent = () =>
         mode === 'create'
-          ? createEvent(payload)
+          ? createEvent(payload, actingPrincipalType)
           : updateEvent(
               contentId as string,
               omitDeviatedMainserverFields(payload, deviations, {
                 retainedFieldGroups: correctedDegradedFields,
-              })
+              }),
+              actingPrincipalType
             );
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
@@ -794,7 +807,7 @@ export function EventsDetailPage({
     }
 
     try {
-      await deleteEvent(contentId);
+      await deleteEvent(contentId, actingPrincipalType);
       await navigate({ to: '/admin/content' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
@@ -873,6 +886,20 @@ export function EventsDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5">
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          <MainserverPrincipalControl
+            id="events-acting-principal"
+            label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+            description={pt('principal.description')}
+            value={actingPrincipalType}
+            options={resolveMainserverPrincipalOptions(principalControl, {
+              value: actingPrincipalType,
+              label: pt(`principal.${actingPrincipalType}`),
+            })}
+            onChange={setActingPrincipalType}
+            dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
+            dataProviderLabel={pt('principal.dataProvider')}
+            dataProviderUnavailableLabel={pt('principal.unavailable')}
+          />
           <MainserverDeviationSummary
             deviations={deviations}
             title={pt('messages.degradedDataWarning')}

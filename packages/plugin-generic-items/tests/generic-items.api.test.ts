@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { createGenericItem, listGenericItemCategories, listGenericItems } from '../src/generic-items.api.js';
+import {
+  createGenericItem,
+  listGenericItemCategories,
+  listGenericItems,
+} from '../src/generic-items.api.js';
 
 describe('generic items api', () => {
   afterEach(() => {
@@ -27,10 +31,12 @@ describe('generic items api', () => {
   });
 
   it('creates generic items via POST', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: { id: 'generic-1', title: 'Freier Eintrag' } }));
+    const fetchMock = vi.fn(async () =>
+      Response.json({ data: { id: 'generic-1', title: 'Freier Eintrag' } })
+    );
     vi.stubGlobal('fetch', fetchMock);
 
-    await createGenericItem({ title: 'Freier Eintrag', genericType: 'faq' });
+    await createGenericItem({ title: 'Freier Eintrag', genericType: 'faq' }, 'organization');
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/v1/mainserver/generic-items',
       expect.objectContaining({
@@ -38,6 +44,9 @@ describe('generic items api', () => {
         body: JSON.stringify({ title: 'Freier Eintrag', genericType: 'faq' }),
       })
     );
+    const headers = new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers);
+    expect(headers.get('X-SVA-Acting-Principal-Type')).toBe('organization');
+    expect(headers.get('X-SVA-Mainserver-Contract-Version')).toBe('2');
   });
 
   it('loads category options from the host facade', async () => {

@@ -25,6 +25,7 @@ const project = {
   status: 'published' as const,
   author: { type: 'organization' as const, id: 'org-1', displayName: 'Gemeinde' },
 };
+const { author: _legacyRequestAuthor, ...projectWithoutAuthor } = project;
 
 const existing: SvaMainserverGenericItem = {
   id: 'external-1',
@@ -35,7 +36,12 @@ const existing: SvaMainserverGenericItem = {
   visible: false,
   author: 'Alt',
   externalId: 'operation-1',
-  payload: { language: 'en', unknown: 'keep', deleted: false },
+  payload: {
+    language: 'en',
+    unknown: 'keep',
+    deleted: false,
+    author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
+  },
   categories: [],
   contacts: [],
   webUrls: [{ id: '1', url: 'https://example.test/hidden' }],
@@ -63,7 +69,14 @@ describe('projects contract', () => {
         headers: { 'Content-Type': 'application/json' },
       })
     );
-    expect(valid).toEqual({ ...project, language: 'de', title: 'Projekt', description: 'Kurz', fullText: '<p>Text</p>' });
+    expect(valid).toEqual({
+      ...projectWithoutAuthor,
+      language: 'de',
+      title: 'Projekt',
+      description: 'Kurz',
+      fullText: '<p>Text</p>',
+    });
+    expect(valid).not.toHaveProperty('author');
 
     const invalid = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
@@ -79,32 +92,51 @@ describe('projects contract', () => {
     const parsed = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
         method: 'POST',
-        body: JSON.stringify({ ...project, language: '', description: '', fullText: '', images: [] }),
+        body: JSON.stringify({
+          ...project,
+          language: '',
+          description: '',
+          fullText: '',
+          images: [],
+        }),
         headers: { 'Content-Type': 'application/json' },
       })
     );
 
     expect(parsed).toEqual({
-      ...project,
+      ...projectWithoutAuthor,
       language: '',
       title: 'Projekt',
       description: '',
       fullText: '',
       images: [],
     });
-    expect(
-      mergeProjectIntoGenericItem({ project: parsed as typeof project })
-    ).toEqual(expect.objectContaining({ contentBlocks: [], mediaContents: [] }));
+    expect(mergeProjectIntoGenericItem({ project: parsed as typeof project })).toEqual(
+      expect.objectContaining({ contentBlocks: [], mediaContents: [] })
+    );
   });
 
   it('defaults omitted optional language and text fields', async () => {
-    const { language: _language, description: _description, fullText: _fullText, ...required } = project;
+    const {
+      language: _language,
+      description: _description,
+      fullText: _fullText,
+      ...required
+    } = projectWithoutAuthor;
     const parsed = await parseProjectInput(
       new Request('https://studio.test/api/v1/mainserver/projects', {
-        method: 'POST', body: JSON.stringify(required), headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        body: JSON.stringify(required),
+        headers: { 'Content-Type': 'application/json' },
       })
     );
-    expect(parsed).toEqual({ ...required, title: 'Projekt', language: '', description: '', fullText: '' });
+    expect(parsed).toEqual({
+      ...required,
+      title: 'Projekt',
+      language: '',
+      description: '',
+      fullText: '',
+    });
   });
 
   it('rejects derived and unknown mutation fields', async () => {
@@ -136,7 +168,6 @@ describe('projects contract', () => {
         payload: {
           language: 'de',
           status: 'published',
-          author: project.author,
           deleted: false,
         },
         contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>' }],
@@ -161,7 +192,7 @@ describe('projects contract', () => {
       language: 'de',
       unknown: 'keep',
       status: 'published',
-      author: project.author,
+      author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
       deleted: false,
     });
     expect(merged.webUrls).toEqual([{ url: 'https://example.test/hidden' }]);
@@ -214,7 +245,7 @@ describe('projects contract', () => {
     ]);
   });
 
-  it('preserves an existing author when soft-deleting without author persistence', () => {
+  it('preserves an existing legacy author when soft-deleting', () => {
     const merged = mergeProjectIntoGenericItem({
       project,
       existing: {
@@ -225,7 +256,6 @@ describe('projects contract', () => {
         },
       },
       deleted: true,
-      persistAuthor: false,
     });
 
     expect(merged.payload).toEqual(
@@ -255,24 +285,24 @@ describe('projects contract', () => {
 
   it('returns the exact FeaturedProject response without technical type fields', () => {
     const mapped = mapGenericItemToProject({
-        ...existing,
-        visible: true,
-        publishedAt: '2026-01-03T00:00:00.000Z',
-        author: 'Gemeinde',
-        payload: {
-          language: 'en',
-          status: 'published',
-          deleted: false,
-          author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
+      ...existing,
+      visible: true,
+      publishedAt: '2026-01-03T00:00:00.000Z',
+      author: 'Gemeinde',
+      payload: {
+        language: 'en',
+        status: 'published',
+        deleted: false,
+        author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
+      },
+      contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>', mediaContents: [] }],
+      mediaContents: [
+        {
+          sourceUrl: { url: 'https://example.test/a.jpg', description: 'Alternativtext' },
+          captionText: 'Bild',
+          copyright: 'Gemeinde',
         },
-        contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>', mediaContents: [] }],
-        mediaContents: [
-          {
-            sourceUrl: { url: 'https://example.test/a.jpg', description: 'Alternativtext' },
-            captionText: 'Bild',
-            copyright: 'Gemeinde',
-          },
-        ],
+      ],
     });
     expect(mapped).toEqual({
       id: 'external-1',
@@ -309,8 +339,20 @@ describe('projects contract', () => {
         ...existing,
         keywords: ['klima'],
         publicationDate: '2026-01-03T00:00:00.000Z',
-        categories: [{ id: 'category-1', name: 'Umwelt', children: [{ id: 'child-1', name: 'Klima', children: [] }] }],
-        contacts: [{ id: 'contact-1', firstName: 'Ada', webUrls: [{ id: 'web-1', url: 'https://example.test', description: 'Profil' }] }],
+        categories: [
+          {
+            id: 'category-1',
+            name: 'Umwelt',
+            children: [{ id: 'child-1', name: 'Klima', children: [] }],
+          },
+        ],
+        contacts: [
+          {
+            id: 'contact-1',
+            firstName: 'Ada',
+            webUrls: [{ id: 'web-1', url: 'https://example.test', description: 'Profil' }],
+          },
+        ],
         addresses: [
           { id: '12', street: 'Markt', houseNumber: '1' },
           { id: 'not-a-number', street: 'Nebenstraße', houseNumber: '2' },
@@ -331,7 +373,9 @@ describe('projects contract', () => {
         visible: false,
         keywords: ['klima'],
         categories: [{ name: 'Umwelt', children: [{ name: 'Klima', children: [] }] }],
-        contacts: [{ firstName: 'Ada', webUrls: [{ url: 'https://example.test', description: 'Profil' }] }],
+        contacts: [
+          { firstName: 'Ada', webUrls: [{ url: 'https://example.test', description: 'Profil' }] },
+        ],
         addresses: [
           { id: 12, street: 'Markt', houseNumber: '1' },
           { street: 'Nebenstraße', houseNumber: '2' },
@@ -346,10 +390,10 @@ describe('projects contract', () => {
 
   it('maps safe projection fallbacks and validates malformed responses', () => {
     const mapped = mapGenericItemToProject({
-        ...existing,
-        payload: null,
-        contentBlocks: [],
-        mediaContents: [{ sourceUrl: undefined }],
+      ...existing,
+      payload: null,
+      contentBlocks: [],
+      mediaContents: [{ sourceUrl: undefined }],
     });
 
     expect(mapped).toEqual(

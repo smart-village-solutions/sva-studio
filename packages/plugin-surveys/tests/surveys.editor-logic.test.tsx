@@ -60,6 +60,7 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'user',
       });
     });
 
@@ -105,6 +106,7 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'user',
       });
     });
 
@@ -150,6 +152,7 @@ describe('useSurveyEditorController', () => {
           methods,
           pt,
           navigateToContentList,
+          actingPrincipalType: 'user',
         });
       },
       {
@@ -238,6 +241,7 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'organization',
       });
     });
 
@@ -251,6 +255,7 @@ describe('useSurveyEditorController', () => {
     });
 
     expect(updateSurveyMock).toHaveBeenCalledOnce();
+    expect(updateSurveyMock.mock.calls[0]?.at(-1)).toBe('organization');
     expect(result.current.loadedItem).toMatchObject({
       id: 'survey-1',
       title: { de: 'Bestandsumfrage aktualisiert' },
@@ -295,6 +300,7 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'organization',
       });
     });
 
@@ -303,6 +309,7 @@ describe('useSurveyEditorController', () => {
     });
 
     expect(createSurveyMock).toHaveBeenCalledOnce();
+    expect(createSurveyMock.mock.calls[0]?.at(-1)).toBe('organization');
     expect(result.current.status).toEqual({ kind: 'success', text: 'Umfrage wurde angelegt.' });
     expect(result.current.loadedItem?.id).toBe('survey-created');
     expect(navigateToContentList).toHaveBeenCalledOnce();
@@ -323,12 +330,16 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'user',
       });
     });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
-      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+      expect(result.current.status).toEqual({
+        kind: 'error',
+        text: 'Umfrage konnte nicht geladen werden.',
+      });
     });
   });
 
@@ -350,13 +361,17 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'user',
       });
     });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
       expect(result.current.loadedItem).toBeNull();
-      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+      expect(result.current.status).toEqual({
+        kind: 'error',
+        text: 'Umfrage konnte nicht geladen werden.',
+      });
     });
 
     await act(async () => {
@@ -364,7 +379,10 @@ describe('useSurveyEditorController', () => {
     });
 
     expect(updateSurveyMock).not.toHaveBeenCalled();
-    expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      text: 'Umfrage konnte nicht geladen werden.',
+    });
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
 
@@ -403,6 +421,7 @@ describe('useSurveyEditorController', () => {
           methods,
           pt,
           navigateToContentList,
+          actingPrincipalType: 'user',
         });
       },
       {
@@ -418,7 +437,10 @@ describe('useSurveyEditorController', () => {
 
     await waitFor(() => {
       expect(result.current.loadedItem).toBeNull();
-      expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht geladen werden.' });
+      expect(result.current.status).toEqual({
+        kind: 'error',
+        text: 'Umfrage konnte nicht geladen werden.',
+      });
     });
 
     expect(methodsRef?.getValues()).toEqual(createEmptyFormValues());
@@ -441,6 +463,7 @@ describe('useSurveyEditorController', () => {
         methods,
         pt,
         navigateToContentList,
+        actingPrincipalType: 'user',
       });
     });
 
@@ -448,7 +471,10 @@ describe('useSurveyEditorController', () => {
       await result.current.submit();
     });
 
-    expect(result.current.status).toEqual({ kind: 'error', text: 'Umfrage konnte nicht angelegt werden.' });
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      text: 'Umfrage konnte nicht angelegt werden.',
+    });
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
 });

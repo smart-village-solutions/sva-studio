@@ -317,7 +317,8 @@ describe('GenericItemsDetailPage', () => {
 
     await waitFor(() => {
       expect(createGenericItem).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Freier Eintrag', genericType: 'faq' })
+        expect.objectContaining({ title: 'Freier Eintrag', genericType: 'faq' }),
+        'user'
       );
     });
 
@@ -352,7 +353,8 @@ describe('GenericItemsDetailPage', () => {
           genericType: 'faq',
           categoryName: 'Rathaus',
           categories: [{ name: 'Rathaus' }],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -370,7 +372,8 @@ describe('GenericItemsDetailPage', () => {
     await waitFor(() => {
       expect(updateGenericItem).toHaveBeenCalledWith(
         'generic-1',
-        expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' })
+        expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' }),
+        'user'
       );
     });
   });
@@ -399,7 +402,7 @@ describe('GenericItemsDetailPage', () => {
     resolveDelete?.();
 
     await waitFor(() => {
-      expect(deleteGenericItem).toHaveBeenCalledWith('generic-1');
+      expect(deleteGenericItem).toHaveBeenCalledWith('generic-1', 'user');
     });
 
     await waitFor(() => {

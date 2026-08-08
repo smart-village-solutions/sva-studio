@@ -24,6 +24,22 @@ export type PluginActionAuditPayload = {
   reasonCode?: string;
   resourceType?: string;
   resourceId?: string;
+  mainserverMutation?: Readonly<{
+    actingPrincipalType: 'organization' | 'user';
+    actingPrincipalId: string;
+    activeOrganizationId?: string;
+    credentialSource: 'organization' | 'user';
+    credentialFingerprint: string;
+    dataProviderId?: string;
+    authorizationMode: 'credential_visible_compatibility' | 'exact';
+    resolverMode?: 'automatic' | 'compatibility' | 'shadow';
+    candidateAuthorizationMode?: 'credential_visible_compatibility' | 'exact';
+    candidateAllowed?: boolean;
+    shadowDifference?: boolean;
+    operationExternalId: string;
+    providerOutcome?: 'failed' | 'pending' | 'succeeded' | 'unknown';
+    reconciliationStatus?: 'complete' | 'failed' | 'pending' | 'reconciliation_required';
+  }>;
 };
 
 export type AuthAuditEvent = {

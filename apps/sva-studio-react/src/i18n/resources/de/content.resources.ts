@@ -80,7 +80,8 @@ export const contentDEResources = {
   },
   editor: {
     createTitle: 'Neuen Inhalt anlegen',
-    createSubtitle: 'Definieren Sie die Basisangaben und hinterlegen Sie die generischen JSON-Zusatzdaten.',
+    createSubtitle:
+      'Definieren Sie die Basisangaben und hinterlegen Sie die generischen JSON-Zusatzdaten.',
     editTitle: 'Inhalt bearbeiten',
     editSubtitle: 'Aktualisieren Sie Metadaten, Status und Zusatzdaten des ausgewählten Inhalts.',
   },
@@ -122,6 +123,9 @@ export const contentDEResources = {
     id: 'Inhalts-ID',
     access: 'Zugriffsstatus',
     accessContext: 'Organisationskontext: {{value}}',
+  },
+  principal: {
+    user: 'Persönlich',
   },
   access: {
     states: {
@@ -184,6 +188,28 @@ export const contentDEResources = {
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Ein Hintergrundabgleich wurde angestoßen.',
     staleWithError:
       'Die angezeigten Mainserver-Inhalte stammen aus dem letzten erfolgreichen Abgleich von {{value}}. Der letzte Hintergrundabgleich meldete {{errorCode}}.',
+  },
+  diagnostics: {
+    title: 'Mainserver-Autorendiagnose',
+    description:
+      'Instanzbezogene, schreibgeschützte Übersicht der automatisch ermittelten DataProvider-Bindungen und Studio-Mutationen.',
+    loading: 'Autorendiagnose wird geladen ...',
+    loadError: 'Die Mainserver-Autorendiagnose konnte nicht geladen werden.',
+    retry: 'Erneut laden',
+    readOnlyNotice:
+      'Bindungen entstehen ausschließlich automatisch aus bestätigter Mainserver-Evidenz. Eine manuelle Zuordnung ist nicht verfügbar.',
+    metrics: {
+      verifiedBindings: 'Bestätigte Bindungen',
+      conflicts: 'Bindungskonflikte',
+      rotations: 'Principals mit Rotation',
+      compatibility: 'Kompatibilitätsentscheidungen',
+      exact: 'Exakte Entscheidungen',
+      modeSwitches: 'Automatische Moduswechsel',
+      shadowEvaluations: 'Shadow-Auswertungen',
+      shadowDifferences: 'Shadow-Abweichungen',
+      reconciliationRequired: 'Abgleich erforderlich',
+      reconciliationFailed: 'Abgleich fehlgeschlagen',
+    },
   },
   errors: {
     forbidden: 'Unzureichende Berechtigungen für diese Inhaltsaktion.',

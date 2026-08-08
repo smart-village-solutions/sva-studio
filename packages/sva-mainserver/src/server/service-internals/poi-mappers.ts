@@ -8,12 +8,14 @@ import {
   accessibilityInformationSchema,
   addressSchema,
   categorySchema,
+  dataProviderSchema,
   contactSchema,
   locationSchema,
   mapAccessibilityInformation,
   mapAddress,
   mapCategory,
   mapContact,
+  mapDataProvider,
   mapLocation,
   mapMediaContent,
   mapOpeningHour,
@@ -66,6 +68,7 @@ const poiItemSchema = z.object({
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
   visible: z.boolean().nullish(),
+  dataProvider: dataProviderSchema.nullish(),
 });
 
 export const mapPoiItemDetail = (
@@ -160,6 +163,9 @@ export const mapPoiItemDetail = (
       visible: parsed.data.visible !== false,
       createdAt,
       updatedAt: parsed.data.updatedAt ?? createdAt,
+      ...(mapDataProvider(parsed.data.dataProvider)
+        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
+        : {}),
     },
     deviations: parsed.deviations,
   };

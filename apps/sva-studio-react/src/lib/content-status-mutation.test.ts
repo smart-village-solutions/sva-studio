@@ -20,6 +20,7 @@ vi.mock('@sva/plugin-surveys/api', () => ({
 
 import {
   getSupportedQuickStatuses,
+  resolveStandaloneMainserverPrincipal,
   updateMainserverContentStatus,
 } from './content-status-mutation';
 
@@ -29,11 +30,19 @@ describe('content status mutation', () => {
   });
 
   it('publishes and hides news through the dedicated visibility contract', async () => {
-    await updateMainserverContentStatus({ id: 'news-1', contentType: 'news.article' }, 'draft');
-    await updateMainserverContentStatus({ id: 'news-1', contentType: 'news.article' }, 'published');
+    await updateMainserverContentStatus(
+      { id: 'news-1', contentType: 'news.article' },
+      'draft',
+      'organization'
+    );
+    await updateMainserverContentStatus(
+      { id: 'news-1', contentType: 'news.article' },
+      'published',
+      'organization'
+    );
 
-    expect(news.setVisibility).toHaveBeenNthCalledWith(1, 'news-1', false);
-    expect(news.setVisibility).toHaveBeenNthCalledWith(2, 'news-1', true);
+    expect(news.setVisibility).toHaveBeenNthCalledWith(1, 'news-1', false, 'organization');
+    expect(news.setVisibility).toHaveBeenNthCalledWith(2, 'news-1', true, 'organization');
   });
 
   it('preserves event, generic-item, and POI fields while changing visibility', async () => {
@@ -48,28 +57,34 @@ describe('content status mutation', () => {
 
     await updateMainserverContentStatus(
       { id: 'event-1', contentType: 'events.event-record' },
-      'draft'
+      'draft',
+      'user'
     );
     await updateMainserverContentStatus(
       { id: 'generic-1', contentType: 'generic-items.generic-item' },
-      'draft'
+      'draft',
+      'user'
     );
     await updateMainserverContentStatus(
       { id: 'poi-1', contentType: 'poi.point-of-interest' },
-      'draft'
+      'draft',
+      'user'
     );
 
     expect(events.update).toHaveBeenCalledWith(
       'event-1',
-      expect.objectContaining({ title: 'Fest', visible: false })
+      expect.objectContaining({ title: 'Fest', visible: false }),
+      'user'
     );
     expect(genericItems.update).toHaveBeenCalledWith(
       'generic-1',
-      expect.objectContaining({ genericType: 'faq', visible: false })
+      expect.objectContaining({ genericType: 'faq', visible: false }),
+      'user'
     );
     expect(poi.update).toHaveBeenCalledWith(
       'poi-1',
-      expect.objectContaining({ name: 'Rathaus', active: false })
+      expect.objectContaining({ name: 'Rathaus', active: false }),
+      'user'
     );
   });
 
@@ -89,7 +104,8 @@ describe('content status mutation', () => {
 
     await updateMainserverContentStatus(
       { id: 'survey-1', contentType: 'surveys.survey' },
-      'archived'
+      'archived',
+      'organization'
     );
 
     expect(surveys.update).toHaveBeenCalledWith(
@@ -99,7 +115,8 @@ describe('content status mutation', () => {
         shortDescription: 'Short',
         status: 'ARCHIVED',
       }),
-      current
+      current,
+      'organization'
     );
   });
 
@@ -109,7 +126,19 @@ describe('content status mutation', () => {
     expect(getSupportedQuickStatuses('unknown.type')).toEqual([]);
 
     await expect(
-      updateMainserverContentStatus({ id: 'news-1', contentType: 'news.article' }, 'archived')
+      updateMainserverContentStatus(
+        { id: 'news-1', contentType: 'news.article' },
+        'archived',
+        'user'
+      )
     ).rejects.toThrow('unsupported_content_status:news.article:archived');
+  });
+
+  it('selects organization only for a non-empty active organization', () => {
+    expect(resolveStandaloneMainserverPrincipal('org-1')).toBe('organization');
+    expect(resolveStandaloneMainserverPrincipal('  org-1  ')).toBe('organization');
+    expect(resolveStandaloneMainserverPrincipal(undefined)).toBe('user');
+    expect(resolveStandaloneMainserverPrincipal(null)).toBe('user');
+    expect(resolveStandaloneMainserverPrincipal('   ')).toBe('user');
   });
 });

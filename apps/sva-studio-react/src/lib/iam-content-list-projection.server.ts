@@ -5,11 +5,19 @@ import {
   type IamContentListItem,
   type IamContentListQuery,
 } from '@sva/core';
-import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermission } from '@sva/iam-core';
+import {
+  evaluateAuthorizeDecision,
+  type AuthorizeRequest,
+  type EffectivePermission,
+} from '@sva/iam-core';
 import {
   type AuthenticatedRequestContext,
+  loadCurrentMainserverDataProviderBinding,
+  readEffectiveSvaMainserverCredentialsWithStatus,
+  readMainserverScopeResolverMode,
   resolveActorAccountId,
   recordSuccessfulExternalContentMutation,
+  recordSuccessfulExternalContentDeletion,
   resolveEffectivePermissions,
   withInstanceScopedDb,
 } from '@sva/auth-runtime/server';
@@ -41,7 +49,13 @@ import {
   buildProjectionReadVisibilityRules,
   type ProjectionReadVisibilityRule,
 } from './iam-content-list-visibility.js';
-import { mapEventItem, mapGenericItem, mapNewsItem, mapPoiItem, mapSurveyItem } from './iam-content-list-mainserver.js';
+import {
+  mapEventItem,
+  mapGenericItem,
+  mapNewsItem,
+  mapPoiItem,
+  mapSurveyItem,
+} from './iam-content-list-mainserver.js';
 import { runMainserverProjectionRoundRobin } from './mainserver-projection-refresh-coordinator.server.js';
 import { buildMainserverProjectionScopeKey } from './mainserver-projection-scope.server.js';
 
@@ -83,6 +97,8 @@ export type ProjectionRow = {
   source_data_provider_id: string | null;
   source_data_provider_name: string | null;
   credential_source: IamContentListItem['credentialSource'] | null;
+  credential_fingerprint: string | null;
+  authorization_mode: IamContentListItem['authorizationMode'] | null;
   source_system: 'iam' | 'mainserver';
   source_entity_type: string;
   source_entity_id: string;
@@ -139,6 +155,9 @@ type ContentProjectionSyncTarget = Readonly<{
   mutationRef?: string;
   contentType: MainserverContentType;
   organizationId?: string;
+  actingPrincipalType?: 'organization' | 'user';
+  credentialFingerprint?: string;
+  authorizationMode?: 'credential_visible_compatibility' | 'exact';
 }>;
 
 type TriggerProjectionRefreshResult = Readonly<{
@@ -148,10 +167,7 @@ type TriggerProjectionRefreshResult = Readonly<{
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
 type GenericItemProjectionContentType =
-  | 'generic-items.generic-item'
-  | 'faq.faq'
-  | 'cockpit-cards.cockpit-card'
-  | 'projects.project';
+  'generic-items.generic-item' | 'faq.faq' | 'cockpit-cards.cockpit-card' | 'projects.project';
 type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
@@ -161,11 +177,7 @@ type TargetedMutationContentType =
   | 'cockpit-cards.cockpit-card'
   | 'projects.project'
   | 'surveys.survey';
-type ProjectionRefreshTrigger =
-  | 'manual'
-  | 'mutation_follow_up'
-  | 'reconciliation'
-  | 'scheduler';
+type ProjectionRefreshTrigger = 'manual' | 'mutation_follow_up' | 'reconciliation' | 'scheduler';
 
 type MainserverProjectionRowInput = Pick<
   IamContentListItem,
@@ -188,6 +200,8 @@ type MainserverProjectionRowInput = Pick<
   | 'sourceDataProviderId'
   | 'sourceDataProviderName'
   | 'credentialSource'
+  | 'credentialFingerprint'
+  | 'authorizationMode'
   | 'payload'
   | 'status'
   | 'validationState'
@@ -201,7 +215,10 @@ type MainserverProjectionRowInput = Pick<
   }>;
 
 type ProjectionDbClient = Readonly<{
-  query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+  query: <TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{
     readonly rowCount: number | null;
     readonly rows: readonly TRow[];
   }>;
@@ -247,6 +264,8 @@ type OptionalProjectionItemFields = Pick<
   | 'sourceDataProviderId'
   | 'sourceDataProviderName'
   | 'credentialSource'
+  | 'credentialFingerprint'
+  | 'authorizationMode'
 >;
 
 const pickPresentProjectionFields = (row: ProjectionRow): Partial<OptionalProjectionItemFields> =>
@@ -263,6 +282,8 @@ const pickPresentProjectionFields = (row: ProjectionRow): Partial<OptionalProjec
       sourceDataProviderId: row.source_data_provider_id,
       sourceDataProviderName: row.source_data_provider_name,
       credentialSource: row.credential_source,
+      credentialFingerprint: row.credential_fingerprint,
+      authorizationMode: row.authorization_mode,
     }).filter(([, value]) => typeof value === 'string' && value.length > 0)
   ) as Partial<OptionalProjectionItemFields>;
 
@@ -309,10 +330,7 @@ const buildProjectionDeduplicationKey = (row: ProjectionRow): string =>
     ? ['mainserver', row.source_entity_type, row.source_entity_id].join('::')
     : row.id;
 
-const comparePreferredProjectionRows = (
-  left: ProjectionRow,
-  right: ProjectionRow
-): number => {
+const comparePreferredProjectionRows = (left: ProjectionRow, right: ProjectionRow): number => {
   const scopePriorityResult =
     resolveProjectionScopePriority(right) - resolveProjectionScopePriority(left);
   if (scopePriorityResult !== 0) {
@@ -667,9 +685,7 @@ LIMIT 1;
     return result.rows[0] ?? null;
   });
 
-const countProjectedRowsForScope = async (
-  target: ContentProjectionSyncTarget
-): Promise<number> =>
+const countProjectedRowsForScope = async (target: ContentProjectionSyncTarget): Promise<number> =>
   withInstanceScopedDb(target.instanceId, async (client) => {
     const result = await withProjectionSchemaModeRetry(target, 'table', async () => {
       const schemaMode = await loadProjectionTableSchemaMode(client, target.instanceId);
@@ -770,8 +786,14 @@ DO UPDATE SET
   is_total_final = FALSE,
   updated_at = NOW();
         `,
-        [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target), refreshRunId, refreshPhase]
-      );
+          [
+            target.instanceId,
+            target.contentType,
+            buildMainserverSyncScopeKey(target),
+            refreshRunId,
+            refreshPhase,
+          ]
+        );
         return;
       }
 
@@ -802,8 +824,8 @@ DO UPDATE SET
   is_total_final = FALSE,
   updated_at = NOW();
       `,
-      [target.instanceId, target.contentType, refreshRunId, refreshPhase]
-    );
+        [target.instanceId, target.contentType, refreshRunId, refreshPhase]
+      );
     });
   });
 };
@@ -834,15 +856,15 @@ WHERE instance_id = $1
   AND sync_scope_key = $3
   AND refresh_run_id = $4::uuid;
         `,
-        [
-          target.instanceId,
-          target.contentType,
-          buildMainserverSyncScopeKey(target),
-          refreshRunId,
-          errorCode,
-          errorMessage,
-        ]
-      );
+          [
+            target.instanceId,
+            target.contentType,
+            buildMainserverSyncScopeKey(target),
+            refreshRunId,
+            errorCode,
+            errorMessage,
+          ]
+        );
         return;
       }
 
@@ -861,8 +883,8 @@ WHERE instance_id = $1
   AND content_type = $2
   AND refresh_run_id = $3::uuid;
       `,
-      [target.instanceId, target.contentType, refreshRunId, errorCode, errorMessage]
-    );
+        [target.instanceId, target.contentType, refreshRunId, errorCode, errorMessage]
+      );
     });
   });
 };
@@ -925,7 +947,7 @@ WHERE instance_id = $1
   AND content_type = $2
   AND projection_scope_key = $3;
         `
-      : `
+        : `
 DELETE FROM iam.content_list_projection
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -961,7 +983,7 @@ WHERE instance_id = $1
   AND source_entity_type = $4
   AND NOT (source_entity_id = ANY($5::text[]));
         `
-      : `
+        : `
 DELETE FROM iam.content_list_projection
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -1000,7 +1022,7 @@ WHERE instance_id = $1
   AND source_entity_type = $4
   AND source_entity_id = $5;
         `
-      : `
+        : `
 DELETE FROM iam.content_list_projection
 WHERE instance_id = $1
   AND source_system = 'mainserver'
@@ -1025,22 +1047,17 @@ const toNullableProjectionValue = <T>(value: T | null | undefined): T | null => 
 
 const toRequiredProjectionReference = (value: string | null | undefined): string => value ?? '';
 
-const resolveProjectionOwnerUserId = (
-  row: MainserverProjectionRowInput,
-  actorAccountId: string | undefined
-): string | null => row.ownerUserId ?? (row.organizationId ? null : (actorAccountId ?? null));
-
 const mapMainserverProjectionPayloadRow = (
   row: MainserverProjectionRowInput,
-  actorAccountId: string | undefined,
+  _actorAccountId: string | undefined,
   projectionScopeKey: string
 ) => ({
   id: row.id,
   instance_id: row.instanceId,
   projection_scope_key: projectionScopeKey,
   organization_id: toNullableProjectionValue(row.organizationId),
-  owner_user_id: resolveProjectionOwnerUserId(row, actorAccountId),
-  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId ?? row.organizationId),
+  owner_user_id: toNullableProjectionValue(row.ownerUserId),
+  owner_organization_id: toNullableProjectionValue(row.ownerOrganizationId),
   content_type: row.contentType,
   title: row.title,
   published_at: toNullableProjectionValue(row.publishedAt),
@@ -1055,6 +1072,8 @@ const mapMainserverProjectionPayloadRow = (
   source_data_provider_id: toNullableProjectionValue(row.sourceDataProviderId),
   source_data_provider_name: toNullableProjectionValue(row.sourceDataProviderName),
   credential_source: toNullableProjectionValue(row.credentialSource),
+  credential_fingerprint: toNullableProjectionValue(row.credentialFingerprint),
+  authorization_mode: row.authorizationMode ?? 'credential_visible_compatibility',
   payload_json: row.payload,
   status: row.status,
   validation_state: row.validationState,
@@ -1096,6 +1115,8 @@ INSERT INTO iam.content_list_projection (
   source_data_provider_id,
   source_data_provider_name,
   credential_source,
+  credential_fingerprint,
+  authorization_mode,
   payload_json,
   status,
   validation_state,
@@ -1128,6 +1149,8 @@ SELECT
   item.source_data_provider_id,
   item.source_data_provider_name,
   item.credential_source,
+  item.credential_fingerprint,
+  item.authorization_mode,
   item.payload_json::jsonb,
   item.status,
   item.validation_state,
@@ -1159,6 +1182,8 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
   source_data_provider_id text,
   source_data_provider_name text,
   credential_source text,
+  credential_fingerprint text,
+  authorization_mode text,
   payload_json jsonb,
   status text,
   validation_state text,
@@ -1184,6 +1209,8 @@ DO UPDATE SET
   source_data_provider_id = EXCLUDED.source_data_provider_id,
   source_data_provider_name = EXCLUDED.source_data_provider_name,
   credential_source = EXCLUDED.credential_source,
+  credential_fingerprint = EXCLUDED.credential_fingerprint,
+  authorization_mode = EXCLUDED.authorization_mode,
   payload_json = EXCLUDED.payload_json,
   status = EXCLUDED.status,
   validation_state = EXCLUDED.validation_state,
@@ -1214,6 +1241,8 @@ INSERT INTO iam.content_list_projection (
   source_data_provider_id,
   source_data_provider_name,
   credential_source,
+  credential_fingerprint,
+  authorization_mode,
   payload_json,
   status,
   validation_state,
@@ -1245,6 +1274,8 @@ SELECT
   item.source_data_provider_id,
   item.source_data_provider_name,
   item.credential_source,
+  item.credential_fingerprint,
+  item.authorization_mode,
   item.payload_json::jsonb,
   item.status,
   item.validation_state,
@@ -1275,6 +1306,8 @@ FROM jsonb_to_recordset($1::jsonb) AS item(
   source_data_provider_id text,
   source_data_provider_name text,
   credential_source text,
+  credential_fingerprint text,
+  authorization_mode text,
   payload_json jsonb,
   status text,
   validation_state text,
@@ -1300,6 +1333,8 @@ DO UPDATE SET
   source_data_provider_id = EXCLUDED.source_data_provider_id,
   source_data_provider_name = EXCLUDED.source_data_provider_name,
   credential_source = EXCLUDED.credential_source,
+  credential_fingerprint = EXCLUDED.credential_fingerprint,
+  authorization_mode = EXCLUDED.authorization_mode,
   payload_json = EXCLUDED.payload_json,
   status = EXCLUDED.status,
   validation_state = EXCLUDED.validation_state,
@@ -1394,13 +1429,8 @@ DO UPDATE SET
   refresh_phase = NULL,
   updated_at = NOW();
       `,
-      [
-        target.instanceId,
-        target.contentType,
-        buildMainserverSyncScopeKey(target),
-        projectedCount,
-      ]
-    );
+        [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target), projectedCount]
+      );
       return;
     }
 
@@ -1436,8 +1466,8 @@ DO UPDATE SET
   refresh_phase = NULL,
   updated_at = NOW();
     `,
-    [target.instanceId, target.contentType, projectedCount]
-  );
+      [target.instanceId, target.contentType, projectedCount]
+    );
   });
 };
 
@@ -1486,7 +1516,11 @@ LIMIT 1
 FOR UPDATE;
           `,
         schemaMode === 'scoped'
-          ? [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target)]
+          ? [
+              input.target.instanceId,
+              input.target.contentType,
+              buildMainserverSyncScopeKey(input.target),
+            ]
           : [input.target.instanceId, input.target.contentType]
       );
       const persistedRunId = leaderResult.rows[0]?.refresh_run_id;
@@ -1529,8 +1563,23 @@ WHERE instance_id = $1
   AND (refresh_run_id = $3::uuid OR refresh_run_id IS NULL);
           `,
         schemaMode === 'scoped'
-          ? [input.target.instanceId, input.target.contentType, buildMainserverSyncScopeKey(input.target), input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
-          : [input.target.instanceId, input.target.contentType, input.refreshRunId, input.page, availableCount, input.skippedInvalidCount]
+          ? [
+              input.target.instanceId,
+              input.target.contentType,
+              buildMainserverSyncScopeKey(input.target),
+              input.refreshRunId,
+              input.page,
+              availableCount,
+              input.skippedInvalidCount,
+            ]
+          : [
+              input.target.instanceId,
+              input.target.contentType,
+              input.refreshRunId,
+              input.page,
+              availableCount,
+              input.skippedInvalidCount,
+            ]
       );
 
       if (input.finalize) {
@@ -1592,7 +1641,10 @@ const buildLoadedProjectionPage = <TItem>(input: {
     readonly page: number;
     readonly pageSize: number;
   };
-  readonly mapRow: (item: TItem, credentialSource: IamContentListItem['credentialSource']) => MainserverProjectionRowInput;
+  readonly mapRow: (
+    item: TItem,
+    credentialSource: IamContentListItem['credentialSource']
+  ) => MainserverProjectionRowInput;
   readonly projectedOrganizationId: string | undefined;
   readonly continueAfterEmptyPage?: boolean;
 }): MainserverProjectionLoadedPage => {
@@ -1605,23 +1657,21 @@ const buildLoadedProjectionPage = <TItem>(input: {
 
   return {
     rows: input.result.data.map((item) => input.mapRow(item, credentialSource)),
-    hasNextPage: hasNextProjectionPage(
-      pagingResult,
-      input.pageQuery,
-      input.continueAfterEmptyPage
-    ),
+    hasNextPage: hasNextProjectionPage(pagingResult, input.pageQuery, input.continueAfterEmptyPage),
     nextPage: nextPage + 1,
     skippedInvalidCount: 0,
   };
 };
 
-type MainserverProjectionPageLoader = (input: Readonly<{
-  target: ContentProjectionSyncTarget;
-  pageQuery: {
-    readonly page: number;
-    readonly pageSize: number;
-  };
-}>) => Promise<MainserverProjectionLoadedPage>;
+type MainserverProjectionPageLoader = (
+  input: Readonly<{
+    target: ContentProjectionSyncTarget;
+    pageQuery: {
+      readonly page: number;
+      readonly pageSize: number;
+    };
+  }>
+) => Promise<MainserverProjectionLoadedPage>;
 
 const mainserverProjectionPageLoaders: Record<
   MainserverContentType,
@@ -1667,86 +1717,89 @@ const mainserverProjectionPageLoaders: Record<
     }),
   'faq.faq': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
-        instanceId: target.instanceId,
-        keycloakSubject: target.keycloakSubject,
-        activeOrganizationId: target.organizationId,
-        includeInvisible: true,
-        ...pageQuery,
-      }).then((result) =>
-        buildLoadedProjectionPage({
-          result: { ...result, data: result.data.filter((item) => item.genericType === 'FAQ') },
-          pagingResult: result,
-          pageQuery,
-          mapRow: (item, credentialSource) => ({
-            ...mapGenericItem(item, target.instanceId, []),
-            contentType: 'faq.faq',
-            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-            credentialSource,
-            sourceEntityType: 'faq.faq',
-            sourceEntityId: item.id,
-          }),
-          projectedOrganizationId: target.organizationId,
-        })
-      ),
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      activeOrganizationId: target.organizationId,
+      includeInvisible: true,
+      ...pageQuery,
+    }).then((result) =>
+      buildLoadedProjectionPage({
+        result: { ...result, data: result.data.filter((item) => item.genericType === 'FAQ') },
+        pagingResult: result,
+        pageQuery,
+        mapRow: (item, credentialSource) => ({
+          ...mapGenericItem(item, target.instanceId, []),
+          contentType: 'faq.faq',
+          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+          credentialSource,
+          sourceEntityType: 'faq.faq',
+          sourceEntityId: item.id,
+        }),
+        projectedOrganizationId: target.organizationId,
+      })
+    ),
   'cockpit-cards.cockpit-card': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
-        instanceId: target.instanceId,
-        keycloakSubject: target.keycloakSubject,
-        activeOrganizationId: target.organizationId,
-        includeInvisible: true,
-        ...pageQuery,
-      }).then((result) =>
-        buildLoadedProjectionPage({
-          result: { ...result, data: result.data.filter((item) => item.genericType === 'COCKPIT_CARD') },
-          pagingResult: result,
-          pageQuery,
-          mapRow: (item, credentialSource) => ({
-            ...mapGenericItem(item, target.instanceId, []),
-            contentType: 'cockpit-cards.cockpit-card',
-            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-            credentialSource,
-            sourceEntityType: 'cockpit-cards.cockpit-card',
-            sourceEntityId: item.id,
-          }),
-          projectedOrganizationId: target.organizationId,
-        })
-      ),
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      activeOrganizationId: target.organizationId,
+      includeInvisible: true,
+      ...pageQuery,
+    }).then((result) =>
+      buildLoadedProjectionPage({
+        result: {
+          ...result,
+          data: result.data.filter((item) => item.genericType === 'COCKPIT_CARD'),
+        },
+        pagingResult: result,
+        pageQuery,
+        mapRow: (item, credentialSource) => ({
+          ...mapGenericItem(item, target.instanceId, []),
+          contentType: 'cockpit-cards.cockpit-card',
+          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+          credentialSource,
+          sourceEntityType: 'cockpit-cards.cockpit-card',
+          sourceEntityId: item.id,
+        }),
+        projectedOrganizationId: target.organizationId,
+      })
+    ),
   'projects.project': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
-        instanceId: target.instanceId,
-        keycloakSubject: target.keycloakSubject,
-        activeOrganizationId: target.organizationId,
-        includeInvisible: true,
-        ...pageQuery,
-      }).then((result) =>
-        buildLoadedProjectionPage({
-          result: {
-            ...result,
-            data: result.data.filter(
-              (item) =>
-                item.genericType === 'FeaturedProject' &&
-                !(
-                  item.payload &&
-                  typeof item.payload === 'object' &&
-                  !Array.isArray(item.payload) &&
-                  (item.payload as Record<string, unknown>).deleted === true
-                )
-            ),
-          },
-          pagingResult: result,
-          pageQuery,
-          mapRow: (item, credentialSource) => ({
-            ...mapGenericItem(item, target.instanceId, []),
-            contentType: 'projects.project',
-            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-            credentialSource,
-            sourceEntityType: 'projects.project',
-            sourceEntityId: item.id,
-          }),
-          projectedOrganizationId: target.organizationId,
-          continueAfterEmptyPage: true,
-        })
-      ),
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      activeOrganizationId: target.organizationId,
+      includeInvisible: true,
+      ...pageQuery,
+    }).then((result) =>
+      buildLoadedProjectionPage({
+        result: {
+          ...result,
+          data: result.data.filter(
+            (item) =>
+              item.genericType === 'FeaturedProject' &&
+              !(
+                item.payload &&
+                typeof item.payload === 'object' &&
+                !Array.isArray(item.payload) &&
+                (item.payload as Record<string, unknown>).deleted === true
+              )
+          ),
+        },
+        pagingResult: result,
+        pageQuery,
+        mapRow: (item, credentialSource) => ({
+          ...mapGenericItem(item, target.instanceId, []),
+          contentType: 'projects.project',
+          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+          credentialSource,
+          sourceEntityType: 'projects.project',
+          sourceEntityId: item.id,
+        }),
+        projectedOrganizationId: target.organizationId,
+        continueAfterEmptyPage: true,
+      })
+    ),
   'news.article': async ({ target, pageQuery }) =>
     buildLoadedProjectionPage({
       result: await listSvaMainserverNews({
@@ -1807,6 +1860,112 @@ const mainserverProjectionPageLoaders: Record<
     }),
 };
 
+type ProjectionBindingState = Readonly<{
+  authorizationMode: 'credential_visible_compatibility' | 'exact';
+  userDataProviderId?: string;
+  organizationDataProviderId?: string;
+  userCredentialFingerprint?: string;
+  organizationCredentialFingerprint?: string;
+}>;
+
+const resolveProjectionBindingState = async (
+  target: ContentProjectionSyncTarget
+): Promise<ProjectionBindingState> => {
+  if (!target.actorAccountId) {
+    return { authorizationMode: 'credential_visible_compatibility' };
+  }
+
+  try {
+    const [userCredentials, organizationCredentials] = await Promise.all([
+      readEffectiveSvaMainserverCredentialsWithStatus({
+        instanceId: target.instanceId,
+        keycloakSubject: target.keycloakSubject,
+        activeOrganizationId: target.organizationId,
+        actingPrincipalType: 'user',
+      }),
+      target.organizationId
+        ? readEffectiveSvaMainserverCredentialsWithStatus({
+            instanceId: target.instanceId,
+            keycloakSubject: target.keycloakSubject,
+            activeOrganizationId: target.organizationId,
+            actingPrincipalType: 'organization',
+          })
+        : Promise.resolve(undefined),
+    ]);
+    const [userBinding, organizationBinding] = await Promise.all([
+      userCredentials.status === 'ok'
+        ? loadCurrentMainserverDataProviderBinding({
+            instanceId: target.instanceId,
+            principalType: 'user',
+            principalId: target.actorAccountId,
+            credentialFingerprint: userCredentials.credentialFingerprint,
+          })
+        : Promise.resolve(undefined),
+      target.organizationId && organizationCredentials?.status === 'ok'
+        ? loadCurrentMainserverDataProviderBinding({
+            instanceId: target.instanceId,
+            principalType: 'organization',
+            principalId: target.organizationId,
+            credentialFingerprint: organizationCredentials.credentialFingerprint,
+          })
+        : Promise.resolve(undefined),
+    ]);
+    const exactCandidate = target.organizationId
+      ? Boolean(userBinding && organizationBinding)
+      : Boolean(userBinding);
+    const exact = readMainserverScopeResolverMode() === 'automatic' && exactCandidate;
+    return {
+      authorizationMode: exact ? 'exact' : 'credential_visible_compatibility',
+      ...(userBinding ? { userDataProviderId: userBinding.dataProviderId } : {}),
+      ...(organizationBinding
+        ? { organizationDataProviderId: organizationBinding.dataProviderId }
+        : {}),
+      ...(userCredentials.status === 'ok'
+        ? { userCredentialFingerprint: userCredentials.credentialFingerprint }
+        : {}),
+      ...(organizationCredentials?.status === 'ok'
+        ? { organizationCredentialFingerprint: organizationCredentials.credentialFingerprint }
+        : {}),
+    };
+  } catch (error) {
+    contentProjectionLogger.warn('mainserver_projection_binding_state_failed', {
+      operation: 'mainserver_projection_binding_state',
+      instance_id: target.instanceId,
+      content_type: target.contentType,
+      error_code: error instanceof Error ? error.name : 'unknown_error',
+    });
+    return { authorizationMode: 'credential_visible_compatibility' };
+  }
+};
+
+const enrichProjectionRowsWithBindingState = async (
+  target: ContentProjectionSyncTarget,
+  page: MainserverProjectionLoadedPage
+): Promise<MainserverProjectionLoadedPage> => {
+  const state = await resolveProjectionBindingState(target);
+  return {
+    ...page,
+    rows: page.rows.map((row) => {
+      const providerId = row.sourceDataProviderId;
+      const exact = state.authorizationMode === 'exact';
+      return {
+        ...row,
+        ownerUserId:
+          exact && providerId === state.userDataProviderId ? target.actorAccountId : undefined,
+        ownerOrganizationId:
+          exact && providerId === state.organizationDataProviderId
+            ? target.organizationId
+            : undefined,
+        credentialFingerprint:
+          row.credentialSource === 'organization'
+            ? state.organizationCredentialFingerprint
+            : state.userCredentialFingerprint,
+        authorizationMode: state.authorizationMode,
+      };
+    }),
+  };
+};
+
 const loadMainserverProjectionPage = async (
   target: ContentProjectionSyncTarget,
   pageQuery: {
@@ -1815,7 +1974,11 @@ const loadMainserverProjectionPage = async (
   }
 ): Promise<MainserverProjectionLoadedPage> => {
   if (!target.instanceId) {
-    throw createListErrorResponse(400, 'invalid_instance_id', 'Kein Instanzkontext für diese Inhalte vorhanden.');
+    throw createListErrorResponse(
+      400,
+      'invalid_instance_id',
+      'Kein Instanzkontext für diese Inhalte vorhanden.'
+    );
   }
   if ((process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE ?? 'slim') !== 'legacy') {
     const result = await listSvaMainserverProjection({
@@ -1826,8 +1989,9 @@ const loadMainserverProjectionPage = async (
       includeInvisible: true,
       ...pageQuery,
     });
-    const credentialSource = result.credentialSource ?? (target.organizationId ? 'organization' : 'user');
-    return {
+    const credentialSource =
+      result.credentialSource ?? (target.organizationId ? 'organization' : 'user');
+    return enrichProjectionRowsWithBindingState(target, {
       rows: result.data.map((item: SvaMainserverProjectionListItem) => ({
         id: item.id,
         instanceId: target.instanceId,
@@ -1865,12 +2029,15 @@ const loadMainserverProjectionPage = async (
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,
-    };
+    });
   }
-  return mainserverProjectionPageLoaders[target.contentType]({
+  return enrichProjectionRowsWithBindingState(
     target,
-    pageQuery,
-  });
+    await mainserverProjectionPageLoaders[target.contentType]({
+      target,
+      pageQuery,
+    })
+  );
 };
 
 const refreshMainserverProjectionBatch = (
@@ -1900,105 +2067,110 @@ const refreshMainserverProjectionBatch = (
     }
 
     await runMainserverProjectionRoundRobin(
-    targets,
-    MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-    async (target, pageQuery) => {
-      const result = await loadMainserverProjectionPage(target, pageQuery);
+      targets,
+      MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+      async (target, pageQuery) => {
+        const result = await loadMainserverProjectionPage(target, pageQuery);
+        const targetKey = buildProjectionTargetKey(target);
+        skippedInvalidCounts.set(
+          targetKey,
+          (skippedInvalidCounts.get(targetKey) ?? 0) + result.skippedInvalidCount
+        );
+        return {
+          data: result.rows,
+          hasNextPage: result.hasNextPage,
+          nextPage: result.nextPage,
+        };
+      },
+      async (target, pages) => {
+        const targetKey = buildProjectionTargetKey(target);
+        const rows = pages.flatMap((page) => page).slice(0, MAX_SYNC_ITEMS_PER_TYPE);
+        accumulatedRows.set(targetKey, rows);
+        const latestPage = pages.at(-1) ?? [];
+        contentProjectionLogger.info('mainserver_projection_page_loaded', {
+          ...buildProjectionLogContext(target, trigger),
+          loaded_row_count: latestPage.length,
+          page: pages.length,
+          page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+          projected_row_count: rows.length,
+        });
+        await persistMainserverProjectionRowsProgressively({
+          target,
+          keycloakSubject: target.keycloakSubject,
+          actorAccountId: target.actorAccountId,
+          rows: latestPage,
+          finalize: false,
+          page: pages.length,
+          refreshRunId: refreshRunIds.get(targetKey) as string,
+          skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
+        });
+      },
+      async (target, _pages, error) => {
+        const errorCode = normalizeApiErrorCode(
+          error && typeof error === 'object' && 'code' in error
+            ? (error as { code?: unknown }).code
+            : undefined
+        );
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
+        contentProjectionLogger.warn('mainserver_projection_page_failed', {
+          ...buildProjectionLogContext(target, trigger),
+          error_code: errorCode,
+          error_message: errorMessage,
+          page: _pages.length + 1,
+          page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
+        });
+        await markProjectionSyncFailed(
+          target,
+          refreshRunIds.get(buildProjectionTargetKey(target)) as string,
+          errorCode,
+          errorMessage
+        );
+        responses.set(
+          buildProjectionTargetKey(target),
+          createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
+        );
+      },
+      async () => {
+        resolveHotCompletion?.(new Map(responses));
+        for (const target of targets) {
+          const targetKey = buildProjectionTargetKey(target);
+          if (!responses.has(targetKey)) {
+            await markProjectionRefreshPhase(
+              target,
+              refreshRunIds.get(targetKey) as string,
+              'reconciliation'
+            );
+          }
+        }
+      }
+    );
+
+    for (const target of targets) {
       const targetKey = buildProjectionTargetKey(target);
-      skippedInvalidCounts.set(
-        targetKey,
-        (skippedInvalidCounts.get(targetKey) ?? 0) + result.skippedInvalidCount
-      );
-      return {
-        data: result.rows,
-        hasNextPage: result.hasNextPage,
-        nextPage: result.nextPage,
-      };
-    },
-    async (target, pages) => {
-      const targetKey = buildProjectionTargetKey(target);
-      const rows = pages.flatMap((page) => page).slice(0, MAX_SYNC_ITEMS_PER_TYPE);
-      accumulatedRows.set(targetKey, rows);
-      const latestPage = pages.at(-1) ?? [];
-      contentProjectionLogger.info('mainserver_projection_page_loaded', {
-        ...buildProjectionLogContext(target, trigger),
-        loaded_row_count: latestPage.length,
-        page: pages.length,
-        page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-        projected_row_count: rows.length,
-      });
+      if (responses.has(targetKey)) {
+        continue;
+      }
+
       await persistMainserverProjectionRowsProgressively({
         target,
         keycloakSubject: target.keycloakSubject,
         actorAccountId: target.actorAccountId,
-        rows: latestPage,
-        finalize: false,
-        page: pages.length,
+        rows: accumulatedRows.get(targetKey) ?? [],
+        finalize: true,
+        page: Math.max(
+          1,
+          Math.ceil(
+            (accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE
+          )
+        ),
         refreshRunId: refreshRunIds.get(targetKey) as string,
         skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
       });
-    },
-    async (target, _pages, error) => {
-      const errorCode = normalizeApiErrorCode(
-        error && typeof error === 'object' && 'code' in error
-          ? (error as { code?: unknown }).code
-          : undefined
-      );
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Mainserver-Inhalte konnten nicht synchronisiert werden.';
-      contentProjectionLogger.warn('mainserver_projection_page_failed', {
-        ...buildProjectionLogContext(target, trigger),
-        error_code: errorCode,
-        error_message: errorMessage,
-        page: _pages.length + 1,
-        page_size: MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
-      });
-      await markProjectionSyncFailed(
-        target,
-        refreshRunIds.get(buildProjectionTargetKey(target)) as string,
-        errorCode,
-        errorMessage
-      );
-      responses.set(
-        buildProjectionTargetKey(target),
-        createListErrorResponse(503, errorCode, errorMessage, getWorkspaceContext().requestId)
-      );
-    },
-    async () => {
-      resolveHotCompletion?.(new Map(responses));
-      for (const target of targets) {
-        const targetKey = buildProjectionTargetKey(target);
-        if (!responses.has(targetKey)) {
-          await markProjectionRefreshPhase(
-            target,
-            refreshRunIds.get(targetKey) as string,
-            'reconciliation'
-          );
-        }
-      }
+      responses.set(targetKey, null);
     }
-    );
-
-  for (const target of targets) {
-    const targetKey = buildProjectionTargetKey(target);
-    if (responses.has(targetKey)) {
-      continue;
-    }
-
-    await persistMainserverProjectionRowsProgressively({
-      target,
-      keycloakSubject: target.keycloakSubject,
-      actorAccountId: target.actorAccountId,
-      rows: accumulatedRows.get(targetKey) ?? [],
-      finalize: true,
-      page: Math.max(1, Math.ceil((accumulatedRows.get(targetKey)?.length ?? 0) / MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE)),
-      refreshRunId: refreshRunIds.get(targetKey) as string,
-      skippedInvalidCount: skippedInvalidCounts.get(targetKey) ?? 0,
-    });
-    responses.set(targetKey, null);
-  }
 
     resolveHotCompletion?.(new Map(responses));
     return responses;
@@ -2019,6 +2191,31 @@ type MainserverMutationProjectionLoader = (
   }>
 ) => Promise<MainserverProjectionRowInput>;
 
+const requireMutationProjectionPrincipalContext = (
+  target: ContentProjectionSyncTarget
+): Readonly<{
+  actingPrincipalType: 'organization' | 'user';
+  credentialFingerprint: string;
+  authorizationMode: 'credential_visible_compatibility' | 'exact';
+}> => {
+  if (!target.actingPrincipalType || !target.credentialFingerprint || !target.authorizationMode) {
+    throw new Error('mainserver_projection_mutation_principal_context_required');
+  }
+  return {
+    actingPrincipalType: target.actingPrincipalType,
+    credentialFingerprint: target.credentialFingerprint,
+    authorizationMode: target.authorizationMode,
+  };
+};
+
+const toMutationProjectionConnectionContext = (target: ContentProjectionSyncTarget) => {
+  const context = requireMutationProjectionPrincipalContext(target);
+  return {
+    actingPrincipalType: context.actingPrincipalType,
+    credentialFingerprint: context.credentialFingerprint,
+  } as const;
+};
+
 const mainserverMutationProjectionLoaders: Record<
   TargetedMutationContentType,
   MainserverMutationProjectionLoader
@@ -2031,6 +2228,7 @@ const mainserverMutationProjectionLoaders: Record<
   }) => {
     const item = await getSvaMainserverEvent({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       eventId: entityId,
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
@@ -2051,6 +2249,7 @@ const mainserverMutationProjectionLoaders: Record<
   }) => {
     const item = await getSvaMainserverGenericItem({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       genericItemId: entityId,
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
@@ -2066,6 +2265,7 @@ const mainserverMutationProjectionLoaders: Record<
   'faq.faq': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverGenericItem({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       genericItemId: entityId,
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
@@ -2079,9 +2279,15 @@ const mainserverMutationProjectionLoaders: Record<
       sourceEntityId: item.id,
     };
   },
-  'cockpit-cards.cockpit-card': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
+  'cockpit-cards.cockpit-card': async ({
+    target,
+    entityId,
+    credentialSource,
+    projectedOrganizationId,
+  }) => {
     const item = await getSvaMainserverGenericItem({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       genericItemId: entityId,
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
@@ -2098,6 +2304,7 @@ const mainserverMutationProjectionLoaders: Record<
   'projects.project': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverGenericItem({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       genericItemId: entityId,
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
@@ -2114,6 +2321,7 @@ const mainserverMutationProjectionLoaders: Record<
   'news.article': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverNews({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       newsId: entityId,
@@ -2134,6 +2342,7 @@ const mainserverMutationProjectionLoaders: Record<
   }) => {
     const item = await getSvaMainserverPoi({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       poiId: entityId,
@@ -2149,6 +2358,7 @@ const mainserverMutationProjectionLoaders: Record<
   'surveys.survey': async ({ target, entityId, credentialSource, projectedOrganizationId }) => {
     const item = await getSvaMainserverSurvey({
       activeOrganizationId: target.organizationId,
+      ...toMutationProjectionConnectionContext(target),
       instanceId: target.instanceId,
       keycloakSubject: target.keycloakSubject,
       surveyId: entityId,
@@ -2168,20 +2378,81 @@ const loadMainserverProjectionMutationRow = async (
   entityId: string
 ): Promise<MainserverProjectionRowInput> => {
   const projectedOrganizationId = target.organizationId;
-  const credentialSource: IamContentListItem['credentialSource'] = projectedOrganizationId
-    ? 'organization'
-    : 'user';
-  const loader = mainserverMutationProjectionLoaders[target.contentType as TargetedMutationContentType];
+  const principalContext = requireMutationProjectionPrincipalContext(target);
+  const credentialSource: IamContentListItem['credentialSource'] =
+    principalContext.actingPrincipalType;
+  const loader =
+    mainserverMutationProjectionLoaders[target.contentType as TargetedMutationContentType];
   if (loader) {
-    return loader({
+    const row = await loader({
       target,
       entityId,
       credentialSource,
       projectedOrganizationId,
     });
+    return {
+      ...row,
+      credentialSource,
+      credentialFingerprint: principalContext.credentialFingerprint,
+      authorizationMode: principalContext.authorizationMode,
+    };
   }
 
-  throw new Error(`Unsupported targeted projection refresh for content type "${target.contentType}".`);
+  throw new Error(
+    `Unsupported targeted projection refresh for content type "${target.contentType}".`
+  );
+};
+
+const enrichMutationProjectionRowWithBinding = async (
+  target: ContentProjectionSyncTarget,
+  row: MainserverProjectionRowInput
+): Promise<MainserverProjectionRowInput> => {
+  const principalContext = requireMutationProjectionPrincipalContext(target);
+  const rowWithoutSyntheticOwner = {
+    ...row,
+    ownerUserId: undefined,
+    ownerOrganizationId: undefined,
+    credentialSource: principalContext.actingPrincipalType,
+    credentialFingerprint: principalContext.credentialFingerprint,
+    authorizationMode: principalContext.authorizationMode,
+  } satisfies MainserverProjectionRowInput;
+
+  if (principalContext.authorizationMode !== 'exact' || !row.sourceDataProviderId) {
+    return rowWithoutSyntheticOwner;
+  }
+
+  const principalId =
+    principalContext.actingPrincipalType === 'organization'
+      ? target.organizationId
+      : target.actorAccountId;
+  if (!principalId) {
+    return rowWithoutSyntheticOwner;
+  }
+
+  try {
+    const binding = await loadCurrentMainserverDataProviderBinding({
+      instanceId: target.instanceId,
+      principalType: principalContext.actingPrincipalType,
+      principalId,
+      credentialFingerprint: principalContext.credentialFingerprint,
+    });
+    if (binding?.dataProviderId !== row.sourceDataProviderId) {
+      return rowWithoutSyntheticOwner;
+    }
+
+    return {
+      ...rowWithoutSyntheticOwner,
+      ...(principalContext.actingPrincipalType === 'organization'
+        ? { ownerOrganizationId: principalId }
+        : { ownerUserId: principalId }),
+    };
+  } catch (error) {
+    contentProjectionLogger.warn('mainserver_projection_mutation_binding_failed', {
+      ...buildProjectionLogContext(target, 'mutation_follow_up'),
+      error_code: error instanceof Error ? error.name : 'unknown_error',
+    });
+    return rowWithoutSyntheticOwner;
+  }
 };
 
 const refreshMainserverProjectionForMutation = async (input: {
@@ -2196,83 +2467,104 @@ const refreshMainserverProjectionForMutation = async (input: {
   const refreshRunId = randomUUID();
   const precedingSync = runningProjectionSyncs.get(targetKey) ?? Promise.resolve(null);
   const mutationWork = precedingSync.then(async () => {
-      await markProjectionSyncStarted(target, refreshRunId, 'hot');
+    await markProjectionSyncStarted(target, refreshRunId, 'hot');
 
-      try {
-        if (operation === 'delete') {
-          await withInstanceScopedDb(target.instanceId, async (client) => {
-            const leader = await client.query<{ refresh_run_id?: string | null }>(
-              `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
+    try {
+      if (operation === 'delete') {
+        if (actorAccountId && target.actorDisplayName && target.mutationRef) {
+          await recordSuccessfulExternalContentDeletion({
+            instanceId: target.instanceId,
+            actorAccountId,
+            actorDisplayName: target.actorDisplayName,
+            mutationRef: target.mutationRef,
+            sourceSystem: 'mainserver',
+            sourceEntityType: target.contentType,
+            sourceEntityId: entityId,
+          });
+        }
+        await withInstanceScopedDb(target.instanceId, async (client) => {
+          const leader = await client.query<{ refresh_run_id?: string | null }>(
+            `SELECT refresh_run_id::text FROM iam.content_list_projection_sync_state
                WHERE instance_id = $1 AND source_system = 'mainserver' AND content_type = $2
                  AND sync_scope_key = $3 FOR UPDATE;`,
-              [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
-            );
-            if (leader.rows[0]?.refresh_run_id !== refreshRunId) {
-              return;
-            }
-            await deleteMainserverProjectionRowByEntity(client, target, entityId);
-            const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
-            await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
-          });
-          return;
-        }
-
-        let lastError: unknown;
-        for (let attempt = 0; attempt < 2; attempt += 1) {
-          try {
-            const row = providedRow ?? await loadMainserverProjectionMutationRow(target, entityId);
-            await upsertSingleMainserverProjectionRow(target, actorAccountId, row, refreshRunId);
-            if (actorAccountId && target.actorDisplayName && target.mutationRef && (operation === 'create' || operation === 'update')) {
-              await recordSuccessfulExternalContentMutation({
-                instanceId: target.instanceId,
-                actorAccountId,
-                actorDisplayName: target.actorDisplayName,
-                mutationRef: target.mutationRef,
-                operation,
-                sourceSystem: 'mainserver',
-                sourceEntityType: target.contentType,
-                sourceEntityId: entityId,
-                contentType: target.contentType,
-                ...(row.organizationId ? { organizationId: row.organizationId } : {}),
-                title: row.title,
-                payload: row.payload,
-                status: row.status,
-                ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
-                authorDisplayMode: row.authorDisplayMode,
-                authorDisplayName: row.author,
-              });
-            }
+            [target.instanceId, target.contentType, buildMainserverSyncScopeKey(target)]
+          );
+          if (leader.rows[0]?.refresh_run_id !== refreshRunId) {
             return;
-          } catch (error) {
-            lastError = error;
           }
-        }
-
-        throw lastError instanceof Error
-          ? lastError
-          : new Error('Mainserver mutation follow-up refresh failed.');
-      } catch (error) {
-        const errorCode = normalizeApiErrorCode(
-          error && typeof error === 'object' && 'code' in error
-            ? (error as { code?: unknown }).code
-            : undefined
-        );
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'Mainserver-Mutationsprojektion konnte nicht nachgeladen werden.';
-        contentProjectionLogger.warn('mainserver_projection_mutation_refresh_failed', {
-          ...buildProjectionLogContext(target, 'mutation_follow_up'),
-          entity_id: entityId,
-          error_code: errorCode,
-          error_message: errorMessage,
-          operation,
+          await deleteMainserverProjectionRowByEntity(client, target, entityId);
+          const projectedCount = await countProjectedRowsForScopeWithClient(client, target);
+          await markMainserverProjectionSyncSucceeded(client, target, projectedCount);
         });
-        await markProjectionSyncFailed(target, refreshRunId, errorCode, errorMessage);
+        return;
       }
-    });
+
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const loadedRow =
+            providedRow ?? (await loadMainserverProjectionMutationRow(target, entityId));
+          const row = await enrichMutationProjectionRowWithBinding(target, loadedRow);
+          await upsertSingleMainserverProjectionRow(target, actorAccountId, row, refreshRunId);
+          if (
+            actorAccountId &&
+            target.actorDisplayName &&
+            target.mutationRef &&
+            (operation === 'create' || operation === 'update')
+          ) {
+            await recordSuccessfulExternalContentMutation({
+              instanceId: target.instanceId,
+              actorAccountId,
+              actorDisplayName: target.actorDisplayName,
+              mutationRef: target.mutationRef,
+              operation,
+              sourceSystem: 'mainserver',
+              sourceEntityType: target.contentType,
+              sourceEntityId: entityId,
+              contentType: target.contentType,
+              ...(row.organizationId ? { organizationId: row.organizationId } : {}),
+              title: row.title,
+              payload: row.payload,
+              status: row.status,
+              ...(row.publishedAt ? { publishedAt: row.publishedAt } : {}),
+              authorDisplayMode: row.authorDisplayMode,
+              authorDisplayName: row.author,
+            });
+          }
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+
+      throw lastError instanceof Error
+        ? lastError
+        : new Error('Mainserver mutation follow-up refresh failed.');
+    } catch (error) {
+      const errorCode = normalizeApiErrorCode(
+        error && typeof error === 'object' && 'code' in error
+          ? (error as { code?: unknown }).code
+          : undefined
+      );
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Mainserver-Mutationsprojektion konnte nicht nachgeladen werden.';
+      contentProjectionLogger.warn('mainserver_projection_mutation_refresh_failed', {
+        ...buildProjectionLogContext(target, 'mutation_follow_up'),
+        entity_id: entityId,
+        error_code: errorCode,
+        error_message: errorMessage,
+        operation,
+      });
+      await markProjectionSyncFailed(target, refreshRunId, errorCode, errorMessage);
+    }
+  });
   const mutationSync = mutationWork
-    .then(() => null as Response | null, () => null as Response | null)
+    .then(
+      () => null as Response | null,
+      () => null as Response | null
+    )
     .finally(() => {
       if (runningProjectionSyncs.get(targetKey) === mutationSync) {
         runningProjectionSyncs.delete(targetKey);
@@ -2317,7 +2609,10 @@ const deleteStaleGenericItemSiblingProjection = async (
     })
   );
   const siblingSync = deleteWork
-    .then(() => null as Response | null, () => null as Response | null)
+    .then(
+      () => null as Response | null,
+      () => null as Response | null
+    )
     .finally(() => {
       if (runningProjectionSyncs.get(targetKey) === siblingSync) {
         runningProjectionSyncs.delete(targetKey);
@@ -2344,16 +2639,34 @@ const refreshGenericItemSiblingProjections = async (input: {
   readonly operation: MainserverProjectionMutationOperation;
   readonly entityId: string;
 }): Promise<void> => {
+  if (
+    input.operation === 'delete' &&
+    input.target.actorAccountId &&
+    input.target.actorDisplayName &&
+    input.target.mutationRef
+  ) {
+    await recordSuccessfulExternalContentDeletion({
+      instanceId: input.target.instanceId,
+      actorAccountId: input.target.actorAccountId,
+      actorDisplayName: input.target.actorDisplayName,
+      mutationRef: input.target.mutationRef,
+      sourceSystem: 'mainserver',
+      sourceEntityType: input.target.contentType,
+      sourceEntityId: input.entityId,
+    });
+  }
   let item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
   try {
-    item = input.operation === 'delete'
-      ? undefined
-      : await getSvaMainserverGenericItem({
-          activeOrganizationId: input.target.organizationId,
-          genericItemId: input.entityId,
-          instanceId: input.target.instanceId,
-          keycloakSubject: input.target.keycloakSubject,
-        });
+    item =
+      input.operation === 'delete'
+        ? undefined
+        : await getSvaMainserverGenericItem({
+            activeOrganizationId: input.target.organizationId,
+            ...toMutationProjectionConnectionContext(input.target),
+            genericItemId: input.entityId,
+            instanceId: input.target.instanceId,
+            keycloakSubject: input.target.keycloakSubject,
+          });
   } catch {
     await refreshGenericItemProjectionSnapshots(input.target);
     return;
@@ -2364,17 +2677,22 @@ const refreshGenericItemSiblingProjections = async (input: {
 
   for (const contentType of genericItemProjectionContentTypes) {
     const target = { ...input.target, contentType } satisfies ContentProjectionSyncTarget;
-    const shouldProject = contentType === 'generic-items.generic-item' || contentType === specializedContentType;
-    const row = item && shouldProject
-      ? {
-          ...mapGenericItem(item, target.instanceId, []),
-          contentType,
-          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-          credentialSource: target.organizationId ? 'organization' as const : 'user' as const,
-          sourceEntityType: contentType,
-          sourceEntityId: item.id,
-        }
-      : undefined;
+    const shouldProject =
+      contentType === 'generic-items.generic-item' || contentType === specializedContentType;
+    const row =
+      item && shouldProject
+        ? {
+            ...mapGenericItem(item, target.instanceId, []),
+            contentType,
+            ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+            credentialSource: requireMutationProjectionPrincipalContext(target).actingPrincipalType,
+            credentialFingerprint:
+              requireMutationProjectionPrincipalContext(target).credentialFingerprint,
+            authorizationMode: requireMutationProjectionPrincipalContext(target).authorizationMode,
+            sourceEntityType: contentType,
+            sourceEntityId: item.id,
+          }
+        : undefined;
 
     if (!shouldProject || input.operation === 'delete') {
       await deleteStaleGenericItemSiblingProjection(target, input.entityId);
@@ -2439,9 +2757,15 @@ const computeProjectionSyncState = async (
   const hasGlobalSnapshot = Number.isFinite(lastSucceededAtMs);
   let hasSnapshot = hasGlobalSnapshot;
 
-  if (hasGlobalSnapshot || (process.env.SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED ?? 'true') === 'true') {
+  const hasLegacyGlobalSnapshot = hasGlobalSnapshot && !syncState?.sync_scope_key;
+  if (
+    !hasLegacyGlobalSnapshot &&
+    (hasGlobalSnapshot ||
+      (process.env.SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED ?? 'true') === 'true')
+  ) {
     const projectedRowsForScope = await countProjectedRowsForScope(target);
-    hasSnapshot = projectedRowsForScope > 0 || (hasGlobalSnapshot && (syncState?.projected_count ?? 0) === 0);
+    hasSnapshot =
+      projectedRowsForScope > 0 || (hasGlobalSnapshot && (syncState?.projected_count ?? 0) === 0);
   }
 
   return {
@@ -2658,10 +2982,18 @@ const buildProjectionReadVisibilitySql = (
   actorAccountId: string | undefined,
   params: unknown[]
 ): string => {
+  const enforceExactScopes = readMainserverScopeResolverMode() === 'automatic';
   const perTypeClauses = rules.flatMap((rule) => {
     const allowClauses: string[] = [];
     if (rule.allowGlobal) {
       allowClauses.push('TRUE');
+    }
+    if (rule.allowCredentialCompatibility) {
+      allowClauses.push(
+        enforceExactScopes
+          ? `(projection.source_system = 'mainserver' AND projection.authorization_mode = 'credential_visible_compatibility')`
+          : `(projection.source_system = 'mainserver')`
+      );
     }
     if (rule.allowOrganizationIds.length > 0) {
       params.push([...rule.allowOrganizationIds]);
@@ -2724,17 +3056,6 @@ const loadProjectionPage = async (
         );
       }
 
-      params.push(actorAccountId ?? null);
-      const actorAccountParam = `$${params.length}`;
-      conditions.push(
-        `(
-        projection.source_system <> 'mainserver'
-        OR projection.organization_id IS NOT NULL
-        OR projection.owner_user_id IS NULL
-        OR (${actorAccountParam}::text IS NOT NULL AND projection.owner_user_id::text = ${actorAccountParam})
-      )`
-      );
-
       const projectionSchemaMode = await loadProjectionTableSchemaMode(client, instanceId);
       if (projectionSchemaMode === 'scoped') {
         const mainserverScopeKeys = buildMainserverReadScopeKeys({
@@ -2783,6 +3104,8 @@ SELECT
   projection.source_data_provider_id,
   projection.source_data_provider_name,
   projection.credential_source,
+  projection.credential_fingerprint,
+  projection.authorization_mode,
   projection.source_system,
   projection.source_entity_type,
   projection.source_entity_id,
@@ -2848,16 +3171,25 @@ const resolveItemAccess = async (
     }),
     permissions
   ).allowed;
-  const canUpdate = evaluateAuthorizeDecision(
-    buildListAccessAuthorizeRequest({
-      instanceId,
-      action: buildUpdateAction(item.contentType),
-      item,
-      organizationId,
-      actorAccountId,
-    }),
-    permissions
-  ).allowed;
+  const updateRequest = buildListAccessAuthorizeRequest({
+    instanceId,
+    action: buildUpdateAction(item.contentType),
+    item,
+    organizationId,
+    actorAccountId,
+  });
+  const exactUpdateAllowed = evaluateAuthorizeDecision(updateRequest, permissions).allowed;
+  const compatibilityPermissions = permissions.map((permission) => ({
+    ...permission,
+    ...(permission.accessScope === 'own' || permission.accessScope === 'organization'
+      ? { accessScope: undefined }
+      : {}),
+  }));
+  const canUpdate =
+    exactUpdateAllowed ||
+    ((item.authorizationMode === 'credential_visible_compatibility' ||
+      readMainserverScopeResolverMode() !== 'automatic') &&
+      evaluateAuthorizeDecision(updateRequest, compatibilityPermissions).allowed);
 
   return canUpdate
     ? {
@@ -3216,8 +3548,8 @@ export const refreshProjectedContents = async (
   const requiresActorAccountId =
     mainserverTypes.length > 0 ||
     typeAuthorization.permissions.some(
-    (permission) => permission.accessScope === 'own' || permission.accessScope === 'organization'
-  );
+      (permission) => permission.accessScope === 'own' || permission.accessScope === 'organization'
+    );
   let actorAccountId: string | undefined;
   if (requiresActorAccountId && instanceId) {
     try {
@@ -3273,6 +3605,9 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
   readonly mutationRef?: string;
   readonly contentType: MainserverContentType;
   readonly organizationId?: string;
+  readonly actingPrincipalType: 'organization' | 'user';
+  readonly credentialFingerprint: string;
+  readonly authorizationMode: 'credential_visible_compatibility' | 'exact';
   readonly operation?: MainserverProjectionMutationOperation;
   readonly entityId?: string;
 }): Promise<void> => {
@@ -3288,6 +3623,9 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     ...(input.mutationRef ? { mutationRef: input.mutationRef } : {}),
     contentType: input.contentType,
     ...(input.organizationId ? { organizationId: input.organizationId } : {}),
+    actingPrincipalType: input.actingPrincipalType,
+    credentialFingerprint: input.credentialFingerprint,
+    authorizationMode: input.authorizationMode,
   } satisfies ContentProjectionSyncTarget;
 
   const supportsTargetedMutationRefresh =
@@ -3297,7 +3635,11 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
     (input.operation === 'create' || input.operation === 'update' || input.operation === 'delete');
 
   if (supportsTargetedMutationRefresh) {
-    if (genericItemProjectionContentTypes.includes(input.contentType as GenericItemProjectionContentType)) {
+    if (
+      genericItemProjectionContentTypes.includes(
+        input.contentType as GenericItemProjectionContentType
+      )
+    ) {
       await refreshGenericItemSiblingProjections({
         target,
         operation: input.operation,

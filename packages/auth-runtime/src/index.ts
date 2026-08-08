@@ -23,7 +23,11 @@ export { buildLogContext } from './log-context.js';
 export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.js';
 export { emitAuthAuditEvent } from './audit-events.js';
-export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
+export type {
+  AuthAuditEvent,
+  AuthAuditEventType,
+  PluginActionAuditPayload,
+} from './audit-events.types.js';
 export {
   persistAuthAuditEventToDb,
   persistAuthAuditEventWithClient,
@@ -56,9 +60,24 @@ export {
   readEffectiveSvaMainserverCredentialsWithStatus,
 } from './mainserver-effective-credentials.js';
 export type {
+  EffectiveMainserverCredentialsInput,
   EffectiveMainserverCredentialSource,
   EffectiveSvaMainserverCredentialsResult,
 } from './mainserver-effective-credentials.js';
+export { resolveMutationPrincipalContext } from './mainserver-mutation-principal.js';
+export type {
+  MainserverActingPrincipalType,
+  MutationPrincipalContext,
+  ResolveMutationPrincipalContextResult,
+} from './mainserver-mutation-principal.js';
+export {
+  authorizeMainserverCreatePrincipal,
+  authorizeMainserverDataProviderAccess,
+  readMainserverScopeResolverMode,
+  type MainserverContentAuthorizationDecision,
+  type MainserverContentAuthorizationMode,
+  type MainserverScopeResolverMode,
+} from './iam-contents/mainserver-content-authorization.js';
 export {
   buildMainserverIdentityAttributes,
   getSvaMainserverCredentialAttributeNames,

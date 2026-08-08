@@ -69,4 +69,5 @@ export type PoiContentItem = PoiFormInput & {
   readonly visible?: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: Readonly<{ id?: string; name?: string }>;
 };

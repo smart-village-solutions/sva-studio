@@ -19,6 +19,18 @@ describe('waste tenant database provisioning deployment', () => {
     expect(appSection).not.toContain('WASTE_DATABASE_PROVISIONER');
   });
 
+  it('defaults Mainserver authoring to shadow evaluation and a rollback-compatible client transition', () => {
+    expect(appSection).toContain(
+      "SVA_MAINSERVER_SCOPE_RESOLVER_MODE: '${SVA_MAINSERVER_SCOPE_RESOLVER_MODE:-shadow}'"
+    );
+    expect(appSection).toContain(
+      "SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE: '${SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE:-legacy_compatible}'"
+    );
+    expect(appSection).toContain(
+      "SVA_MAINSERVER_CONFIRMED_CAPABILITIES: '${SVA_MAINSERVER_CONFIRMED_CAPABILITIES:-}'"
+    );
+  });
+
   it('uses the existing provisioner service and a protected secret for privileged jobs', () => {
     expect(provisionerSection).toContain("SVA_PROVISIONER_COMBINED_WORKER: 'true'");
     expect(provisionerSection).toContain("SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged'");
@@ -38,6 +50,8 @@ describe('waste tenant database provisioning deployment', () => {
     expect(entrypoint).toContain('NOSUPERUSER CREATEDB CREATEROLE NOREPLICATION NOINHERIT');
     expect(entrypoint).toContain('iam-instance-registry/worker.js');
     expect(entrypoint).toContain('./entrypoint.sh "$@"');
-    expect(entrypoint).not.toContain('WASTE_DATABASE_PROVISIONER_URL="postgresql://${POSTGRES_USER}');
+    expect(entrypoint).not.toContain(
+      'WASTE_DATABASE_PROVISIONER_URL="postgresql://${POSTGRES_USER}'
+    );
   });
 });

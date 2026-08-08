@@ -1,4 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type {
   GenericItemContentItem,
@@ -30,25 +31,37 @@ const genericItemsClient = createMainserverCrudClient<
   mapListResponse: (response: GenericItemListResult) => response,
 });
 
-export const listGenericItems = async (query: GenericItemListQuery): Promise<GenericItemListResult> =>
-  genericItemsClient.list(query);
+export const listGenericItems = async (
+  query: GenericItemListQuery
+): Promise<GenericItemListResult> => genericItemsClient.list(query);
 
 export const getGenericItem = async (contentId: string): Promise<GenericItemContentItem> =>
   genericItemsClient.get(contentId);
 
-export const createGenericItem = async (input: GenericItemFormInput): Promise<GenericItemContentItem> =>
-  genericItemsClient.create(input);
+export const createGenericItem = async (
+  input: GenericItemFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<GenericItemContentItem> => genericItemsClient.create(input, actingPrincipalType);
 
 export const updateGenericItem = async (
   contentId: string,
-  input: GenericItemFormInput
-): Promise<GenericItemContentItem> => genericItemsClient.update(contentId, input);
+  input: GenericItemFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<GenericItemContentItem> =>
+  genericItemsClient.update(contentId, input, actingPrincipalType);
 
-export const deleteGenericItem = async (contentId: string): Promise<void> =>
-  genericItemsClient.remove(contentId);
+export const deleteGenericItem = async (
+  contentId: string,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => genericItemsClient.remove(contentId, actingPrincipalType);
 
-export const listGenericItemCategories = async (): Promise<readonly GenericItemCategoryOption[]> => {
-  const response = await requestMainserverJson<{ readonly data: readonly GenericItemCategoryOption[] }, GenericItemsApiError>({
+export const listGenericItemCategories = async (): Promise<
+  readonly GenericItemCategoryOption[]
+> => {
+  const response = await requestMainserverJson<
+    { readonly data: readonly GenericItemCategoryOption[] },
+    GenericItemsApiError
+  >({
     url: '/api/v1/mainserver/categories',
     errorFactory: (code, message) => new GenericItemsApiError(code, message),
   });

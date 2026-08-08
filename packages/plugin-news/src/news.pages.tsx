@@ -1,20 +1,24 @@
 import { useParams } from '@tanstack/react-router';
 
 import { NewsDetailPage } from './news.detail-page.js';
+import type { NewsPrincipalControl } from './news.types.js';
 
 type NewsCreatePageProps = Readonly<{
-  initialAuthor?: string;
+  principalControl?: NewsPrincipalControl;
 }>;
 
-export const NewsCreatePage = ({ initialAuthor }: NewsCreatePageProps) => (
-  <NewsDetailPage mode="create" initialAuthor={initialAuthor} />
+export const NewsCreatePage = ({ principalControl }: NewsCreatePageProps) => (
+  <NewsDetailPage mode="create" principalControl={principalControl} />
 );
 
-export const NewsEditPage = () => {
-  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
+export const NewsEditPage = ({ principalControl }: NewsCreatePageProps = {}) => {
+  const params = useParams({ strict: false }) as {
+    readonly contentId?: string;
+    readonly id?: string;
+  };
   const contentId = resolveNewsContentId(params);
 
-  return <NewsDetailPage mode="edit" contentId={contentId} />;
+  return <NewsDetailPage mode="edit" contentId={contentId} principalControl={principalControl} />;
 };
 
 const resolveNewsContentId = (params: {

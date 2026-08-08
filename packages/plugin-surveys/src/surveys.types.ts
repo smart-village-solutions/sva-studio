@@ -15,7 +15,12 @@ export type SurveyQuestion = Readonly<{
   surveyId: string;
   title: SurveyLocalizedText;
   description?: SurveyLocalizedText;
-  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SINGLE_CHOICE_WITH_TEXT' | 'MULTIPLE_CHOICE_WITH_TEXT';
+  type:
+    | 'SINGLE_CHOICE'
+    | 'MULTIPLE_CHOICE'
+    | 'FREE_TEXT'
+    | 'SINGLE_CHOICE_WITH_TEXT'
+    | 'MULTIPLE_CHOICE_WITH_TEXT';
   required: boolean;
   position: number;
   options: readonly SurveyQuestionOption[];
@@ -38,7 +43,12 @@ export type SurveyResultsOptionResult = Readonly<{
 
 export type SurveyResultsQuestionResult = Readonly<{
   questionId: string;
-  type: 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'FREE_TEXT' | 'SINGLE_CHOICE_WITH_TEXT' | 'MULTIPLE_CHOICE_WITH_TEXT';
+  type:
+    | 'SINGLE_CHOICE'
+    | 'MULTIPLE_CHOICE'
+    | 'FREE_TEXT'
+    | 'SINGLE_CHOICE_WITH_TEXT'
+    | 'MULTIPLE_CHOICE_WITH_TEXT';
   totalResponses: number;
   optionResults: readonly SurveyResultsOptionResult[];
   freeTextResponses: readonly SurveyResultsFreeTextResponse[];
@@ -75,6 +85,7 @@ export type SurveyContentItem = Readonly<{
   updatedAt: string;
   publishedAt?: string;
   archivedAt?: string;
+  dataProvider?: Readonly<{ id?: string; name?: string }>;
 }>;
 
 export type SurveyListQuery = Readonly<{

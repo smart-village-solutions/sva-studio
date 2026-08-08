@@ -135,10 +135,15 @@ export type SvaMainserverGenericItemFragment = {
   readonly mediaContents?: readonly SvaMainserverMediaContentFragment[] | null;
   readonly locations?: readonly SvaMainserverLocationFragment[] | null;
   readonly dates?: readonly SvaMainserverDateFragment[] | null;
-  readonly accessibilityInformations?: readonly SvaMainserverAccessibilityInformationFragment[] | null;
+  readonly accessibilityInformations?:
+    readonly SvaMainserverAccessibilityInformationFragment[] | null;
   readonly priceInformations?: readonly SvaMainserverPriceFragment[] | null;
   readonly createdAt?: string | null;
   readonly updatedAt?: string | null;
+  readonly dataProvider?: Readonly<{
+    readonly id?: string | null;
+    readonly name?: string | null;
+  }> | null;
 };
 
 export type SvaMainserverGenericItemListQuery = {
@@ -299,6 +304,7 @@ const genericItemFields = `
   genericType
   payload
   visible
+  dataProvider { id name }
   categories {
     ${categoryFields}
   }

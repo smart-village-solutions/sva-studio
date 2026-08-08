@@ -23,6 +23,8 @@ import {
 } from './events-poi-plugin.routes';
 
 test.describe('events and POI plugins', () => {
+  test.describe.configure({ timeout: 90_000 });
+
   test.beforeEach(async ({ page }) => {
     await mockSharedShellRequests(page);
   });

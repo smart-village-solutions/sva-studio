@@ -30,6 +30,7 @@ import {
   type ParsedValue,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
+import { withMainserverContextBinding } from './content-route-context.js';
 import {
   parseAccessibilityInformation,
   parseAddressList,
@@ -44,6 +45,17 @@ import {
 import { SvaMainserverError } from './errors.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
+import {
+  authorizeMainserverCreateForPrincipal,
+  authorizeMainserverExistingContent,
+  finalizeMainserverMutation,
+  recordCreatedMainserverDataProvider,
+  runMainserverMutationWithFailureFinalization,
+  resolveMainserverVisibilityAction,
+  resolveMainserverMutationActor,
+  toMainserverAdditionalActions,
+  type MainserverMutationActor,
+} from './mutation-principal.js';
 import {
   changeSvaMainserverEventVisibility,
   createSvaMainserverEvent,
@@ -336,6 +348,7 @@ const authorizeOrResponse = async (
       contentType: contentTypeFor(contentKind),
       ...(contentId ? { contentId } : {}),
     },
+    credentialVisibleCompatibility: action !== 'events.read',
   });
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();
@@ -357,6 +370,20 @@ const authorizeOrResponse = async (
     keycloakSubject: result.actor.keycloakSubject,
     activeOrganizationId: result.actor.organizationId ?? ctx.activeOrganizationId,
   };
+};
+
+const authorizeMutationOrResponse = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  contentKind: ContentKind,
+  action: string,
+  contentId?: string
+): Promise<MainserverMutationActor | Response> => {
+  const authorizedActor = await authorizeOrResponse(ctx, contentKind, action, contentId);
+  if (isResponse(authorizedActor)) {
+    return authorizedActor;
+  }
+  return resolveMainserverMutationActor({ request, ctx, authorizedActor });
 };
 
 const handleCollectionRead = async (
@@ -438,7 +465,7 @@ const createContentMutationHandler = <TInput>(input: {
   readonly action: 'create' | 'update' | 'delete';
   readonly requestId?: string;
   readonly parse: (request: Request) => Promise<TInput | Response>;
-  readonly execute: (actor: ContentActor, parsed: TInput) => Promise<Response>;
+  readonly execute: (actor: MainserverMutationActor, parsed: TInput) => Promise<Response>;
 }) => {
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
@@ -447,7 +474,7 @@ const createContentMutationHandler = <TInput>(input: {
       readonly contentId?: string;
     },
     {
-      readonly actor: ContentActor;
+      readonly actor: MainserverMutationActor;
     },
     Record<never, never>,
     TInput,
@@ -457,8 +484,9 @@ const createContentMutationHandler = <TInput>(input: {
       requestId: input.requestId,
       ...(input.route.kind === 'item' ? { contentId: input.route.itemId } : {}),
     }),
-    authorize: async ({ context, contentId }) => {
-      const actor = await authorizeOrResponse(
+    authorize: async ({ request, context, contentId }) => {
+      const actor = await authorizeMutationOrResponse(
+        request,
         context,
         input.route.contentKind,
         pluginActionFor(input.route.contentKind, input.action),
@@ -468,7 +496,12 @@ const createContentMutationHandler = <TInput>(input: {
     },
     csrf: ({ request, requestId }) => validateMutationRequest(request, requestId) ?? undefined,
     parse: ({ request }) => input.parse(request),
-    execute: async ({ actor, input: parsed }) => input.execute(actor, parsed),
+    execute: async ({ actor, input: parsed, contentId }) =>
+      runMainserverMutationWithFailureFinalization({
+        actor,
+        contentId,
+        operation: async () => await input.execute(actor, parsed),
+      }),
     mapError: (error, state) => {
       logMutationWorkflowFailure({
         request: state.request,
@@ -500,7 +533,20 @@ const handleCollectionCreate = async (
     requestId,
     parse: async (inputRequest) => await parseEventInput(inputRequest),
     execute: async (actor, parsed) => {
+      const principalAuthorization = await authorizeMainserverCreateForPrincipal({
+        actor,
+        action: pluginActionFor(route.contentKind, 'create'),
+        contentType: EVENTS_CONTENT_TYPE,
+      });
+      if (isResponse(principalAuthorization)) return principalAuthorization;
       const result = await createSvaMainserverEvent({ ...actor, event: parsed.event });
+      const bindingOutcome = await recordCreatedMainserverDataProvider({
+        actor,
+        created: result,
+        reread: async () =>
+          (await getSvaMainserverEventDetail({ ...actor, eventId: result.id })).data,
+        contentType: EVENTS_CONTENT_TYPE,
+      });
       if (parsed.visible === false) {
         try {
           await changeSvaMainserverEventVisibility({
@@ -509,6 +555,15 @@ const handleCollectionCreate = async (
             visible: false,
           });
         } catch (error) {
+          await finalizeMainserverMutation({
+            actor,
+            providerOutcome: 'succeeded',
+            reconciliationStatus: 'reconciliation_required',
+            completedSteps: ['provider_write'],
+            contentId: result.id,
+            observedDataProviderId: result.dataProvider?.id,
+            lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
+          });
           return toEventVisibilityPartialFailureResponse(
             error,
             { ...result, visible: false },
@@ -516,9 +571,25 @@ const handleCollectionCreate = async (
           );
         }
       }
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus:
+          bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+            ? 'reconciliation_required'
+            : 'complete',
+        completedSteps: ['provider_write', 'binding_observation'],
+        contentId: result.id,
+        observedDataProviderId: result.dataProvider?.id,
+      });
       logSuccess(`mainserver_${route.contentKind}_create`, result.id);
       return json(
-        { data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible } },
+        {
+          data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible },
+          ...(bindingOutcome === 'conflict' || bindingOutcome === 'reconciliation_required'
+            ? { meta: { reconciliationStatus: 'reconciliation_required' } }
+            : {}),
+        },
         201
       );
     },
@@ -538,6 +609,18 @@ const handleItemUpdate = async (
     requestId,
     parse: async (inputRequest) => await parseEventInput(inputRequest),
     execute: async (actor, parsed) => {
+      const existing = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
+      const providerAuthorization = await authorizeMainserverExistingContent({
+        actor,
+        action: pluginActionFor(route.contentKind, 'update'),
+        contentType: EVENTS_CONTENT_TYPE,
+        contentId: route.itemId,
+        item: existing.data,
+        additionalActions: toMainserverAdditionalActions(
+          resolveMainserverVisibilityAction(existing.data.visible, parsed.visible)
+        ),
+      });
+      if (isResponse(providerAuthorization)) return providerAuthorization;
       const result = await updateSvaMainserverEvent({
         ...actor,
         eventId: route.itemId,
@@ -551,6 +634,15 @@ const handleItemUpdate = async (
             visible: parsed.visible,
           });
         } catch (error) {
+          await finalizeMainserverMutation({
+            actor,
+            providerOutcome: 'succeeded',
+            reconciliationStatus: 'reconciliation_required',
+            completedSteps: ['provider_write'],
+            contentId: route.itemId,
+            observedDataProviderId: existing.data?.dataProvider?.id,
+            lastErrorCode: error instanceof SvaMainserverError ? error.code : 'visibility_failed',
+          });
           return toEventVisibilityPartialFailureResponse(
             error,
             { ...result, visible: parsed.visible },
@@ -558,6 +650,14 @@ const handleItemUpdate = async (
           );
         }
       }
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write'],
+        contentId: route.itemId,
+        observedDataProviderId: existing.data?.dataProvider?.id,
+      });
       logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
       return json({
         data: parsed.visible === undefined ? result : { ...result, visible: parsed.visible },
@@ -579,7 +679,24 @@ const handleItemDelete = async (
     requestId,
     parse: async () => ({ itemId: route.itemId }),
     execute: async (actor) => {
+      const existing = await getSvaMainserverEventDetail({ ...actor, eventId: route.itemId });
+      const providerAuthorization = await authorizeMainserverExistingContent({
+        actor,
+        action: pluginActionFor(route.contentKind, 'delete'),
+        contentType: EVENTS_CONTENT_TYPE,
+        contentId: route.itemId,
+        item: existing.data,
+      });
+      if (isResponse(providerAuthorization)) return providerAuthorization;
       const data = await deleteSvaMainserverEvent({ ...actor, eventId: route.itemId });
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write', 'tombstone'],
+        contentId: route.itemId,
+        observedDataProviderId: existing.data?.dataProvider?.id,
+      });
       logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
       return json({ data });
     },
@@ -615,7 +732,7 @@ const dispatchAuthenticated = async (
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      return await handleItemRead(route, ctx, logSuccess);
+      return withMainserverContextBinding(await handleItemRead(route, ctx, logSuccess), ctx);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {

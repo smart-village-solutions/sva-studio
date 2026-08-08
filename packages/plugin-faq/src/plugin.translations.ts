@@ -24,6 +24,15 @@ export const pluginFaqTranslations = {
         editTitle: 'FAQ bearbeiten',
         editDescription: 'Passe Inhalt, Sortierung und Veröffentlichung der FAQ an.',
       },
+      principal: {
+        createAs: 'Erstellen als',
+        actAs: 'Handeln als',
+        description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+        organization: 'Aktive Organisation',
+        user: 'Persönlicher Account',
+        dataProvider: 'Ursprünglicher DataProvider',
+        unavailable: 'Nicht verfügbar',
+      },
       tabs: {
         ariaLabel: 'FAQ-Bereiche',
         mobileLabel: 'FAQ-Bereich auswählen',
@@ -46,7 +55,8 @@ export const pluginFaqTranslations = {
       },
       history: {
         createHint: 'Speichere die FAQ, bevor die Historie verfügbar ist.',
-        sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+        sourceNotice:
+          'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
         empty: 'Noch keine Historie verfügbar.',
         loading: 'Historie wird geladen.',
         tableLabel: 'FAQ-Historie',
@@ -128,6 +138,15 @@ export const pluginFaqTranslations = {
         createDescription: 'Add a new question with its answer, language, and visibility.',
         editTitle: 'Edit FAQ',
         editDescription: 'Update the FAQ content, sorting, and publication settings.',
+      },
+      principal: {
+        createAs: 'Create as',
+        actAs: 'Act as',
+        description: 'Determines the credentials for this Mainserver action.',
+        organization: 'Active organization',
+        user: 'Personal account',
+        dataProvider: 'Original DataProvider',
+        unavailable: 'Unavailable',
       },
       tabs: {
         ariaLabel: 'FAQ sections',

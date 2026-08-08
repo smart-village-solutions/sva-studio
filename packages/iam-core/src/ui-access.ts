@@ -102,7 +102,7 @@ export type EvaluateUiAccessInput = Readonly<{
   snapshot?: EffectiveAccessSnapshot;
 }>;
 
-const FULLY_QUALIFIED_ACTION_PATTERN = /^[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+$/;
+const FULLY_QUALIFIED_ACTION_PATTERN = /^[a-z][a-z0-9-]*(?:\.[A-Za-z][A-Za-z0-9-]*)+$/;
 
 const isFullyQualifiedAction = (action: string): boolean =>
   FULLY_QUALIFIED_ACTION_PATTERN.test(action);

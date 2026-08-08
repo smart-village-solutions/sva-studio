@@ -130,6 +130,20 @@ describe('evaluateUiAccess', () => {
     ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
   });
 
+  it('accepts existing camel-case segments in fully-qualified IAM actions', () => {
+    const snapshot = readyTenantSnapshot([
+      { action: 'iam.legalText.read', resourceType: 'legalText', accessScope: 'all' },
+    ]);
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement(['iam.legalText.read']),
+        snapshot,
+      })
+    ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
+  });
+
   it('requires a matching server capability for resource-scoped actions', () => {
     const snapshot = readyTenantSnapshot([
       { action: 'news.update', resourceType: 'content', accessScope: 'organization', organizationId: 'org-a' },

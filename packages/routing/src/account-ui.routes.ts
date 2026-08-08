@@ -130,7 +130,7 @@ const accountUiRouteGuardDefinitions: Record<
   adminGroupDetail: {
     kind: 'protected',
     route: uiRoutePaths.adminGroupDetail,
-    requiredPermissions: ['iam.role.write'],
+    requiredPermissions: ['iam.role.read'],
   },
   adminLegalTexts: {
     kind: 'protected',
@@ -145,7 +145,7 @@ const accountUiRouteGuardDefinitions: Record<
   adminLegalTextDetail: {
     kind: 'protected',
     route: uiRoutePaths.adminLegalTextDetail,
-    requiredPermissions: ['iam.legalText.write'],
+    requiredPermissions: ['iam.legalText.read'],
   },
   adminIam: {
     kind: 'protected',

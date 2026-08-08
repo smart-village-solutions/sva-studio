@@ -209,11 +209,11 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('requires write access for the group detail editor route', async () => {
+  it('requires read access for the group detail route', async () => {
     await expect(
       invoke(
         accountUiRouteGuards.adminGroupDetail,
-        { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
+        { roles: ['custom_role'], permissionActions: ['iam.role.write'] },
         '/admin/groups/group-1'
       )
     ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
@@ -221,7 +221,7 @@ describe('accountUiRouteGuards', () => {
     await expect(
       invoke(
         accountUiRouteGuards.adminGroupDetail,
-        { roles: ['custom_role'], permissionActions: ['iam.role.write'] },
+        { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
         '/admin/groups/group-1'
       )
     ).resolves.toBeUndefined();
@@ -245,7 +245,7 @@ describe('accountUiRouteGuards', () => {
     await expect(
       invoke(
         accountUiRouteGuards.adminLegalTextDetail,
-        { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] },
+        { roles: ['custom_role'], permissionActions: ['iam.legalText.read'] },
         '/admin/legal-texts/legal-text-1'
       )
     ).resolves.toBeUndefined();

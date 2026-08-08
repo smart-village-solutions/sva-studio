@@ -135,6 +135,7 @@ const messages = {
   'surveys.messages.createSuccess': 'Umfrage wurde angelegt.',
   'surveys.messages.updateSuccess': 'Umfrage wurde gespeichert.',
   'surveys.messages.missingContentId': 'Keine Umfrage-ID vorhanden.',
+  'surveys.messages.updateUnavailable': 'Bearbeiten nicht verfügbar.',
 } as const;
 
 describe('survey editor pages', () => {
@@ -291,6 +292,14 @@ describe('survey editor pages', () => {
       const scoped = within(view.container);
 
       expect(await scoped.findByRole('heading', { name: 'Umfrage bearbeiten' })).toBeTruthy();
+      expect(scoped.getByText('Bearbeiten nicht verfügbar.')).toBeTruthy();
+      expect(
+        [
+          ...view.container.querySelectorAll<HTMLButtonElement>(
+            'button[form="survey-detail-form"]'
+          ),
+        ].every((button) => button.disabled)
+      ).toBe(true);
       expect(scoped.getAllByRole('tablist')).toHaveLength(1);
       expect(scoped.getByRole('button', { name: 'Zielgebiet district-1 entfernen' })).toBeTruthy();
       expect(scoped.getByRole('tab', { name: 'Basis' })).toBeTruthy();

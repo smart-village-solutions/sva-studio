@@ -134,11 +134,27 @@ describe('content status mutation', () => {
     ).rejects.toThrow('unsupported_content_status:news.article:archived');
   });
 
-  it('selects organization only for a non-empty active organization', () => {
-    expect(resolveStandaloneMainserverPrincipal('org-1')).toBe('organization');
-    expect(resolveStandaloneMainserverPrincipal('  org-1  ')).toBe('organization');
+  it('uses organization only when the organization policy requires it', () => {
+    expect(
+      resolveStandaloneMainserverPrincipal({
+        kind: 'fixed',
+        value: 'organization',
+        label: 'Organisation',
+      })
+    ).toBe('organization');
+    expect(
+      resolveStandaloneMainserverPrincipal({
+        kind: 'selectable',
+        value: 'organization',
+        options: [
+          { value: 'organization', label: 'Organisation' },
+          { value: 'user', label: 'Persönlich' },
+        ],
+      })
+    ).toBe('user');
+    expect(
+      resolveStandaloneMainserverPrincipal({ kind: 'fixed', value: 'user', label: 'Persönlich' })
+    ).toBe('user');
     expect(resolveStandaloneMainserverPrincipal(undefined)).toBe('user');
-    expect(resolveStandaloneMainserverPrincipal(null)).toBe('user');
-    expect(resolveStandaloneMainserverPrincipal('   ')).toBe('user');
   });
 });

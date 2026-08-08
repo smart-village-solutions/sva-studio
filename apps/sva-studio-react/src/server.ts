@@ -67,8 +67,8 @@ let dispatchMainserverSurveysRequestPromise:
 let dispatchMainserverGenericItemsRequestPromise:
   | Promise<typeof import('./lib/mainserver-generic-items-api.server')['dispatchMainserverGenericItemsRequest']>
   | null = null;
-let dispatchMainserverCategoriesRequestPromise:
-  | Promise<typeof import('./lib/mainserver-categories-api.server')['dispatchMainserverCategoriesRequest']>
+let dispatchMainserverMetadataRequestPromise:
+  | Promise<typeof import('./lib/mainserver-metadata-api.server')['dispatchMainserverMetadataRequest']>
   | null = null;
 let dispatchAggregatedContentListRequestPromise:
   | Promise<typeof import('./lib/iam-content-list-api.server')['dispatchAggregatedContentListRequest']>
@@ -138,11 +138,11 @@ const getDispatchMainserverGenericItemsRequest = async () => {
   );
   return dispatchMainserverGenericItemsRequestPromise;
 };
-const getDispatchMainserverCategoriesRequest = async () => {
-  dispatchMainserverCategoriesRequestPromise ??= import('./lib/mainserver-categories-api.server').then(
-    (mod) => mod.dispatchMainserverCategoriesRequest
+const getDispatchMainserverMetadataRequest = async () => {
+  dispatchMainserverMetadataRequestPromise ??= import('./lib/mainserver-metadata-api.server').then(
+    (mod) => mod.dispatchMainserverMetadataRequest
   );
-  return dispatchMainserverCategoriesRequestPromise;
+  return dispatchMainserverMetadataRequestPromise;
 };
 const getDispatchAggregatedContentListRequest = async () => {
   dispatchAggregatedContentListRequestPromise ??= import('./lib/iam-content-list-api.server').then(
@@ -168,7 +168,7 @@ const serverEntryRouteDispatchers: readonly RouteDispatchDescriptor[] = [
   { label: 'mainserver poi', getDispatcher: getDispatchMainserverPoiRequest },
   { label: 'mainserver surveys', getDispatcher: getDispatchMainserverSurveysRequest },
   { label: 'mainserver generic items', getDispatcher: getDispatchMainserverGenericItemsRequest },
-  { label: 'mainserver categories', getDispatcher: getDispatchMainserverCategoriesRequest },
+  { label: 'mainserver metadata', getDispatcher: getDispatchMainserverMetadataRequest },
   { label: 'aggregated content list', getDispatcher: getDispatchAggregatedContentListRequest },
   { label: 'map geocoding', getDispatcher: getDispatchMapGeocodingRequest },
   { label: 'studio changelog', getDispatcher: getDispatchStudioChangelogRequest },

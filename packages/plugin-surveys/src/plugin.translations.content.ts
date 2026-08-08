@@ -39,6 +39,8 @@ export const pluginSurveysContentTranslations = {
     createSuccess: 'Umfrage wurde angelegt.',
     updateSuccess: 'Umfrage wurde gespeichert.',
     missingContentId: 'Keine Umfrage-ID vorhanden.',
+    updateUnavailable:
+      'Diese Mainserver-Umgebung unterstützt das Bearbeiten von Umfragen noch nicht.',
   },
   validation: {
     titleRequired: 'Bitte einen Titel angeben.',

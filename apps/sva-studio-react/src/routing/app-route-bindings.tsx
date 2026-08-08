@@ -25,6 +25,7 @@ import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
+import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
 import { getOrganization } from '../lib/iam-api';
@@ -165,6 +166,17 @@ const AppPlaceholderRoutePage = () => (
   />
 );
 
+const ContentListRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  return (
+    <ContentListPage
+      enabledMainserverMutationActions={mutationCapabilities.enabledActions}
+      principalControl={principalControl}
+    />
+  );
+};
+
 const LazyMonitoringOverviewPage = React.lazy(async () => {
   const mod = await import('../routes/monitoring/-overview-page');
   return { default: mod.MonitoringOverviewPage };
@@ -251,7 +263,13 @@ const SurveyCreateRoutePage = () => {
 
 const SurveyEditRoutePage = () => {
   const principalControl = useMainserverPrincipalControl();
-  return <SurveyEditPage principalControl={principalControl} />;
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  return (
+    <SurveyEditPage
+      canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
+      principalControl={principalControl}
+    />
+  );
 };
 
 const HelpPlaceholderRoutePage = () => (
@@ -469,17 +487,17 @@ export const appRouteBindings: StudioAppRouteBindings = {
   accountPrivacy: AccountPrivacyPage,
   accountPrivacyDetail: AccountPrivacyDetailRoutePage,
   accountRules: AccountRulesPage,
-  content: ContentListPage,
+  content: ContentListRoutePage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,
   mediaUsage: MediaUsagePage,
-  newsList: ContentListPage,
+  newsList: ContentListRoutePage,
   newsDetail: NewsEditRoutePage,
   newsEditor: NewsCreateRoutePage,
-  eventsList: ContentListPage,
+  eventsList: ContentListRoutePage,
   eventsDetail: EventsEditRoutePage,
   eventsEditor: EventsCreateRoutePage,
-  genericItemsList: ContentListPage,
+  genericItemsList: ContentListRoutePage,
   genericItemsDetail: GenericItemsEditRoutePage,
   genericItemsEditor: GenericItemsCreateRoutePage,
   faqList: FaqListPage,
@@ -491,10 +509,10 @@ export const appRouteBindings: StudioAppRouteBindings = {
   projectsList: ProjectsListPage,
   projectsDetail: ProjectsEditRoutePage,
   projectsEditor: ProjectsCreateRoutePage,
-  poiList: ContentListPage,
+  poiList: ContentListRoutePage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,
-  surveysList: ContentListPage,
+  surveysList: ContentListRoutePage,
   surveysDetail: SurveyEditRoutePage,
   surveysEditor: SurveyCreateRoutePage,
   media: MediaPage,

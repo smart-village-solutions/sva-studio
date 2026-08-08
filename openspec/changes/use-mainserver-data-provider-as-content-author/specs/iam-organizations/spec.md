@@ -20,17 +20,18 @@ Das IAM-System SHALL `content_author_policy` als serverseitige Begrenzung der f�
 - **AND** ist im Editor `organization` vorausgewählt und der Benutzer kann im Dropdown zu `user` wechseln
 - **AND** die serverseitige Mutation validiert die Auswahl erneut
 
-#### Scenario: Eigenständige Aktion verwendet die aktive Organisation
+#### Scenario: Eigenständige Aktion verwendet die von der Richtlinie erzwungene Organisation
 
 - **GIVEN** eine aktive Organisation ist serverseitig bestätigt
+- **AND** sie hat `content_author_policy = 'org_only'`
 - **AND** ein Benutzer löst eine Schreibaktion außerhalb eines geöffneten Editors aus einer Liste oder einem Dialog aus
 - **WHEN** das Studio den Mutationsprincipal bestimmt
 - **THEN** verwendet es ohne zusätzliches Dropdown explizit `actingPrincipalType = organization`
 - **AND** validiert der Server Content-Action, Scope, Membership, Richtlinie und Organisations-Credentials erneut
 
-#### Scenario: Eigenständige Aktion ohne aktive Organisation verwendet den Account
+#### Scenario: Eigenständige Aktion ohne erzwungenen Organisationsprincipal verwendet den Account
 
-- **GIVEN** keine aktive Organisation ist serverseitig bestätigt
+- **GIVEN** keine aktive Organisation ist serverseitig bestätigt oder ihre Richtlinie ist nicht `org_only`
 - **AND** ein Benutzer löst eine Schreibaktion außerhalb eines geöffneten Editors aus
 - **WHEN** das Studio den Mutationsprincipal bestimmt
 - **THEN** verwendet es ohne zusätzliches Dropdown explizit `actingPrincipalType = user`

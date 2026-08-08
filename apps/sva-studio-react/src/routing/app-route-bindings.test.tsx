@@ -15,6 +15,7 @@ const routeState = vi.hoisted(() => ({
     organizations: [] as Array<{ organizationId: string; displayName: string; isActive: boolean }>,
   },
   getOrganization: vi.fn(),
+  enabledMainserverMutationActions: [] as string[],
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -55,6 +56,7 @@ vi.mock('../i18n', () => ({
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => ({
+    hasResolvedSession: true,
     isAuthenticated: Boolean(routeState.authUser),
     user: routeState.authUser,
   }),
@@ -63,6 +65,14 @@ vi.mock('../providers/auth-provider', () => ({
 vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => ({
     context: routeState.organizationContext,
+  }),
+}));
+
+vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
+  useMainserverMutationCapabilities: () => ({
+    enabledActions: routeState.enabledMainserverMutationActions,
+    isLoading: false,
+    error: null,
   }),
 }));
 
@@ -233,7 +243,19 @@ vi.mock('../routes/content/-content-editor-page', () => ({
 }));
 
 vi.mock('../routes/content/-content-list-page', () => ({
-  ContentListPage: () => <div data-testid="content-list-page" />,
+  ContentListPage: ({
+    enabledMainserverMutationActions,
+    principalControl,
+  }: {
+    enabledMainserverMutationActions?: readonly string[];
+    principalControl?: { value: string };
+  }) => (
+    <div
+      data-mutation-actions={enabledMainserverMutationActions?.join(',')}
+      data-principal={principalControl?.value}
+      data-testid="content-list-page"
+    />
+  ),
 }));
 
 vi.mock('../routes/content/-content-type-picker-page', () => ({
@@ -381,8 +403,18 @@ vi.mock('@sva/plugin-surveys', () => ({
   SurveyCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
     <div data-testid="surveys-create-page" data-principal-value={principalControl?.value} />
   ),
-  SurveyEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
-    <div data-testid="surveys-edit-page" data-principal-value={principalControl?.value} />
+  SurveyEditPage: ({
+    canUpdate,
+    principalControl,
+  }: {
+    canUpdate?: boolean;
+    principalControl?: { value: string };
+  }) => (
+    <div
+      data-can-update={String(canUpdate)}
+      data-testid="surveys-edit-page"
+      data-principal-value={principalControl?.value}
+    />
   ),
 }));
 
@@ -402,6 +434,7 @@ describe('appRouteBindings', () => {
       organizations: [],
     };
     routeState.getOrganization.mockReset();
+    routeState.enabledMainserverMutationActions = [];
   });
 
   afterEach(() => {
@@ -434,8 +467,9 @@ describe('appRouteBindings', () => {
     createView.unmount();
 
     routeState.params = { id: 'survey-1' };
+    routeState.enabledMainserverMutationActions = ['surveys.update'];
     render(<appRouteBindings.surveysDetail />);
-    expect(screen.getByTestId('surveys-edit-page')).toBeTruthy();
+    expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
   });
 
   it('renders the concrete categories plugin page instead of the placeholder', async () => {
@@ -832,7 +866,8 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.content />);
-    expect(screen.getByTestId('content-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBe('user');
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
     cleanup();
 
     render(<appRouteBindings.media />);

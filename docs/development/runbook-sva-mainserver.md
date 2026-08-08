@@ -118,6 +118,12 @@ Surveys folgen demselben Boundary-Muster wie News, Events und POI. Das Plugin er
 | `PATCH /api/v1/mainserver/surveys/$surveyId`  | `surveys.update` | `createOrUpdateSurvey(id)`                                                     | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad.                                                                                |
 | `DELETE /api/v1/mainserver/surveys/$surveyId` | `surveys.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Löschpfad bleibt im typed Adapter gekapselt.                                                                                         |
 
+`GET /api/v1/mainserver/mutation-capabilities` liefert authentifizierten Studio-Clients die
+effektiv aktivierten fully-qualified Mutations-Actions. Die Survey-Liste und der Survey-Editor
+schalten Update, Statuswechsel und Delete nur frei, wenn die jeweilige Action in dieser Antwort
+enthalten ist. Bei Ladefehlern bleibt die Oberfläche für diese unbestätigten Mutationen
+fail-closed; `surveys.create` bleibt davon unabhängig.
+
 Fachliche Regeln des Studio-Vertrags:
 
 - Statusmodell nur `DRAFT`, `ACTIVE`, `ARCHIVED`

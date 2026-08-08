@@ -10,8 +10,12 @@ export const SurveyCreatePage = ({
 );
 
 export const SurveyEditPage = ({
+  canUpdate = false,
   principalControl,
-}: Readonly<{ principalControl?: MainserverPrincipalControlModel }> = {}) => {
+}: Readonly<{
+  canUpdate?: boolean;
+  principalControl?: MainserverPrincipalControlModel;
+}> = {}) => {
   const params = useParams({ strict: false }) as {
     readonly contentId?: string;
     readonly id?: string;
@@ -20,6 +24,7 @@ export const SurveyEditPage = ({
     <SurveyEditorPage
       mode="edit"
       contentId={params.contentId ?? params.id}
+      canUpdate={canUpdate}
       principalControl={principalControl}
     />
   );

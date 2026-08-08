@@ -9,7 +9,7 @@ const dispatchMainserverEventsRequestMock = vi.fn();
 const dispatchMainserverPoiRequestMock = vi.fn();
 const dispatchMainserverSurveysRequestMock = vi.fn();
 const dispatchMainserverGenericItemsRequestMock = vi.fn();
-const dispatchMainserverCategoriesRequestMock = vi.fn();
+const dispatchMainserverMetadataRequestMock = vi.fn();
 const dispatchAggregatedContentListRequestMock = vi.fn();
 const dispatchMapGeocodingRequestMock = vi.fn();
 const dispatchStudioChangelogRequestMock = vi.fn();
@@ -67,8 +67,8 @@ vi.mock('./lib/mainserver-generic-items-api.server', () => ({
   dispatchMainserverGenericItemsRequest: dispatchMainserverGenericItemsRequestMock,
 }));
 
-vi.mock('./lib/mainserver-categories-api.server', () => ({
-  dispatchMainserverCategoriesRequest: dispatchMainserverCategoriesRequestMock,
+vi.mock('./lib/mainserver-metadata-api.server', () => ({
+  dispatchMainserverMetadataRequest: dispatchMainserverMetadataRequestMock,
 }));
 
 vi.mock('./lib/iam-content-list-api.server', () => ({
@@ -106,7 +106,7 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockReset();
     dispatchMainserverSurveysRequestMock.mockReset();
     dispatchMainserverGenericItemsRequestMock.mockReset();
-    dispatchMainserverCategoriesRequestMock.mockReset();
+    dispatchMainserverMetadataRequestMock.mockReset();
     dispatchAggregatedContentListRequestMock.mockReset();
     dispatchMapGeocodingRequestMock.mockReset();
     dispatchStudioChangelogRequestMock.mockReset();
@@ -132,7 +132,7 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
     dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(new Response('auth', { status: 200 }));
@@ -161,12 +161,42 @@ describe('server transport', () => {
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/news'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/news')
+    );
 
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('news');
+  });
+
+  it('bypasses Mainserver capability requests before content and auth routing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(
+      Response.json({ data: { enabledActions: ['surveys.create'] } })
+    );
+    createStartHandlerMock.mockReturnValue(startFetch);
+
+    const mod = await import('./server');
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/mutation-capabilities')
+    );
+
+    expect(dispatchMainserverMetadataRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
+    expect(startFetch).not.toHaveBeenCalled();
+    await expect(response.json()).resolves.toEqual({
+      data: { enabledActions: ['surveys.create'] },
+    });
   });
 
   it('bypasses mainserver events requests before poi and auth routing', async () => {
@@ -183,7 +213,9 @@ describe('server transport', () => {
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/events'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/events')
+    );
 
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
@@ -207,7 +239,9 @@ describe('server transport', () => {
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/poi'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/poi')
+    );
 
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
@@ -225,21 +259,25 @@ describe('server transport', () => {
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
-    dispatchMainserverSurveysRequestMock.mockResolvedValue(new Response('surveys', { status: 200 }));
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(
+      new Response('surveys', { status: 200 })
+    );
     dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/surveys'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/surveys')
+    );
 
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverGenericItemsRequestMock).not.toHaveBeenCalled();
-    expect(dispatchMainserverCategoriesRequestMock).not.toHaveBeenCalled();
+    expect(dispatchMainserverMetadataRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('surveys');
@@ -254,20 +292,24 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
-    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(new Response('generic-items', { status: 200 }));
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverGenericItemsRequestMock.mockResolvedValue(
+      new Response('generic-items', { status: 200 })
+    );
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/v1/mainserver/generic-items'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/mainserver/generic-items')
+    );
 
     expect(dispatchMainserverNewsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverEventsRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchMainserverCategoriesRequestMock).not.toHaveBeenCalled();
+    expect(dispatchMainserverMetadataRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
     await expect(response.text()).resolves.toBe('generic-items');
@@ -283,7 +325,7 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
     dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(
       new Response('categories', { status: 200 })
     );
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
@@ -300,7 +342,7 @@ describe('server transport', () => {
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(1);
-    expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(1);
+    expect(dispatchMainserverMetadataRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAggregatedContentListRequestMock).not.toHaveBeenCalled();
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
@@ -317,7 +359,7 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
     dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock
       .mockResolvedValueOnce(new Response('contents', { status: 200 }))
       .mockResolvedValueOnce(null);
@@ -327,7 +369,9 @@ describe('server transport', () => {
 
     const mod = await import('./server');
     const aggregatedResponse = await mod.default.fetch(
-      new Request('http://localhost:3000/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article')
+      new Request(
+        'http://localhost:3000/api/v1/iam/contents?page=1&pageSize=25&visibleType=news.article'
+      )
     );
     const response = await mod.default.fetch(
       new Request('http://localhost:3000/api/v1/iam/map-geocoding/config')
@@ -340,7 +384,7 @@ describe('server transport', () => {
     expect(dispatchMainserverPoiRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMainserverSurveysRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMainserverGenericItemsRequestMock).toHaveBeenCalledTimes(2);
-    expect(dispatchMainserverCategoriesRequestMock).toHaveBeenCalledTimes(2);
+    expect(dispatchMainserverMetadataRequestMock).toHaveBeenCalledTimes(2);
     expect(dispatchMapGeocodingRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
     expect(startFetch).not.toHaveBeenCalled();
@@ -357,15 +401,19 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
     dispatchMainserverGenericItemsRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAggregatedContentListRequestMock.mockResolvedValue(null);
     dispatchMapGeocodingRequestMock.mockResolvedValue(null);
-    dispatchStudioChangelogRequestMock.mockResolvedValue(new Response('changelog', { status: 200 }));
+    dispatchStudioChangelogRequestMock.mockResolvedValue(
+      new Response('changelog', { status: 200 })
+    );
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/api/studio/changelog'));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/api/studio/changelog')
+    );
 
     expect(dispatchStudioChangelogRequestMock).toHaveBeenCalledTimes(1);
     expect(dispatchAuthRouteRequestMock).not.toHaveBeenCalled();
@@ -410,7 +458,7 @@ describe('server transport', () => {
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
-    dispatchMainserverCategoriesRequestMock.mockResolvedValue(null);
+    dispatchMainserverMetadataRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(null);
     createStartHandlerMock.mockReturnValue(startFetch);
     withRequestContextMock.mockImplementation(async (_input, callback) => callback());
@@ -425,7 +473,8 @@ describe('server transport', () => {
 
     await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
     await Promise.resolve();
-    const registrationCountAfterFirstRequest = registerStudioPluginOperationHandlersMock.mock.calls.length;
+    const registrationCountAfterFirstRequest =
+      registerStudioPluginOperationHandlersMock.mock.calls.length;
     await mod.default.fetch(new Request('http://localhost:3000/admin/users?page=2'));
     await Promise.resolve();
 
@@ -444,7 +493,7 @@ describe('server transport', () => {
       new Response(JSON.stringify({ ok: false }), {
         status: 500,
         headers: { 'content-type': 'application/json' },
-      }),
+      })
     );
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
     const logger = { info: vi.fn() };
@@ -470,17 +519,19 @@ describe('server transport', () => {
     resolveServerFunctionBranchDecisionMock.mockReturnValue('html_router_fallback');
 
     const mod = await import('./server');
-    const response = await mod.default.fetch(new Request('http://localhost:3000/_server/demo', { method: 'POST' }));
+    const response = await mod.default.fetch(
+      new Request('http://localhost:3000/_server/demo', { method: 'POST' })
+    );
 
     expect(logger.info).toHaveBeenNthCalledWith(
       1,
       'Server function request received',
-      expect.objectContaining({ request_id: 'req-server-fn', path: '/_server/demo' }),
+      expect.objectContaining({ request_id: 'req-server-fn', path: '/_server/demo' })
     );
     expect(logger.info).toHaveBeenNthCalledWith(
       2,
       'Server function request routed',
-      expect.objectContaining({ branch_decision: 'html_router_fallback', http_status: 500 }),
+      expect.objectContaining({ branch_decision: 'html_router_fallback', http_status: 500 })
     );
     await expect(response.json()).resolves.toEqual({ ok: false });
   });
@@ -619,10 +670,14 @@ describe('server transport', () => {
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
     dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
     dispatchAuthRouteRequestMock.mockResolvedValue(authResponse);
-    createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('start', { status: 200 })));
+    createStartHandlerMock.mockReturnValue(
+      vi.fn().mockResolvedValue(new Response('start', { status: 200 }))
+    );
 
     const mod = await import('./server');
-    const responsePromise = mod.default.fetch(new Request('http://localhost:3000/api/v1/plugin-operations/jobs'));
+    const responsePromise = mod.default.fetch(
+      new Request('http://localhost:3000/api/v1/plugin-operations/jobs')
+    );
 
     const requestStateBeforeRegistration = await Promise.race([
       Promise.resolve(responsePromise).then(() => 'resolved'),
@@ -644,7 +699,9 @@ describe('server transport', () => {
     vi.stubEnv('SVA_PLUGIN_OPERATION_WORKER_ENABLED', 'false');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
-    registerStudioPluginOperationHandlersMock.mockRejectedValue(new Error('missing runtime requirement'));
+    registerStudioPluginOperationHandlersMock.mockRejectedValue(
+      new Error('missing runtime requirement')
+    );
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -684,7 +741,9 @@ describe('server transport', () => {
     const mod = await import('./server');
 
     const firstResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
-    const secondResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/groups'));
+    const secondResponse = await mod.default.fetch(
+      new Request('http://localhost:3000/admin/groups')
+    );
 
     await expect(firstResponse.text()).resolves.toBe('first');
     await expect(secondResponse.text()).resolves.toBe('second');
@@ -722,7 +781,9 @@ describe('server transport', () => {
     const mod = await import('./server');
 
     const firstResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/users'));
-    const secondResponse = await mod.default.fetch(new Request('http://localhost:3000/admin/groups'));
+    const secondResponse = await mod.default.fetch(
+      new Request('http://localhost:3000/admin/groups')
+    );
 
     await expect(firstResponse.text()).resolves.toBe('first');
     await expect(secondResponse.text()).resolves.toBe('second');

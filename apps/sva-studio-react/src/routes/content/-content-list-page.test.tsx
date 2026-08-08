@@ -490,7 +490,25 @@ describe('ContentListPage', () => {
     );
     deleteSurveyMock.mockResolvedValue(undefined);
 
-    render(<ContentListPage />);
+    const view = render(
+      <ContentListPage
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+      />
+    );
+    expect(
+      (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.queryByRole('button', { name: /Status von Beteiligung ändern/ })).toBeNull();
+
+    view.rerender(
+      <ContentListPage
+        enabledMainserverMutationActions={['surveys.delete', 'surveys.update']}
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+      />
+    );
+    expect(
+      screen.getAllByRole('button', { name: /Status von Beteiligung ändern/ }).length
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
 

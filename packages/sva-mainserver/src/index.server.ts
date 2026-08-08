@@ -2,6 +2,7 @@ export * from './server/errors.js';
 export * from './server/events-route.js';
 export * from './server/generic-items-route.js';
 export * from './server/interfaces-contract.js';
+export * from './server/mainserver-mutation-capabilities-route.js';
 export * from './server/categories-route.js';
 export * from './server/news-route.js';
 export {

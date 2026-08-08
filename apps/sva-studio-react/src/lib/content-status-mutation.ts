@@ -5,7 +5,10 @@ import { setNewsVisibility } from '@sva/plugin-news';
 import { getPoi, updatePoi } from '@sva/plugin-poi';
 import type { SurveyContentItem, SurveyStatus } from '@sva/plugin-surveys';
 import { getSurvey, updateSurvey } from '@sva/plugin-surveys/api';
-import type { MainserverPrincipalType } from '@sva/studio-ui-react';
+import type {
+  MainserverPrincipalControlModel,
+  MainserverPrincipalType,
+} from '@sva/studio-ui-react';
 
 const visibilityStatuses = ['draft', 'published'] as const satisfies readonly IamContentStatus[];
 const surveyStatuses = [
@@ -15,9 +18,9 @@ const surveyStatuses = [
 ] as const satisfies readonly IamContentStatus[];
 
 export const resolveStandaloneMainserverPrincipal = (
-  activeOrganizationId: string | null | undefined
+  principalControl: MainserverPrincipalControlModel | undefined
 ): MainserverPrincipalType =>
-  typeof activeOrganizationId === 'string' && activeOrganizationId.trim().length > 0
+  principalControl?.kind === 'fixed' && principalControl.value === 'organization'
     ? 'organization'
     : 'user';
 

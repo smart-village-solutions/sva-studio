@@ -36,5 +36,8 @@ const readConfirmedCapabilities = (): ReadonlySet<string> => {
 export const isMainserverMutationCapabilityEnabled = (action: string): boolean =>
   readConfirmedCapabilities().has(action);
 
+export const getEnabledMainserverMutationCapabilities = (): readonly string[] =>
+  [...readConfirmedCapabilities()].sort((left, right) => left.localeCompare(right));
+
 export const getMainserverMutationCapabilityEnvironmentName = (): string =>
   CONFIRMED_CAPABILITIES_ENV;

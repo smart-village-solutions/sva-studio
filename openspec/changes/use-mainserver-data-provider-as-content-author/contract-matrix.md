@@ -76,6 +76,12 @@ fachliche als auch jede zusätzliche Autorisierungsentscheidung.
 
 Unbestätigte Kombinationen werden über `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` aktiviert. Der Wert ist eine kommaseparierte Liste fully-qualified Actions. Die Freigabe darf erst nach einem realen Contract-Lauf mit persönlichen und organisatorischen Credentials erfolgen; ein leerer oder ungültiger Wert erweitert keine Fähigkeit.
 
+Die effektiven Capabilities werden dem authentifizierten Client über
+`GET /api/v1/mainserver/mutation-capabilities` bereitgestellt. Eine vorhandene IAM-Action reicht
+für eine unbestätigte Mainserver-Mutation nicht aus. Listenaktionen und Editor bleiben für diese
+Action deaktiviert, solange sie nicht effektiv aktiviert ist oder der Capability-Vertrag nicht
+geladen werden kann.
+
 ## Komposition mit parallelen Changes
 
 - `make-mainserver-content-authoritative`: Mainserver-Existenz und Provider-Erfolg bleiben fachlich autoritativ; Binding, Journal, Reference, Projection und History sind rekonstruierbare Folgearbeit.

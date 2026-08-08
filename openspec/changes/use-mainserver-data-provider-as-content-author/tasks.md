@@ -60,7 +60,7 @@
 
 - [x] 6.1 Wiederverwendbare, barrierefreie und übersetzte Controls für „Erstellen als“ und „Handeln als“ sowie die read-only DataProvider-Anzeige implementieren.
 - [x] 6.2 Einen Principal-Wechsel gegenüber dem geladenen Credential-Kontext durch einen neuen Same-Credential-Pre-Read validieren.
-- [x] 6.3 Eigenständige Aktionen bei aktiver Organisation explizit als `organization`, andernfalls als `user` ausführen und serverseitig erneut validieren.
+- [x] 6.3 Eigenständige Aktionen nur bei `org_only` explizit als `organization`, bei `org_or_personal`, fehlender Richtlinie oder ohne aktive Organisation als `user` ausführen und serverseitig erneut validieren.
 - [x] 6.4 Audit um Actor, Principal, aktive Organisation, Credential-Quelle/Fingerprint, DataProvider, Autorisierungsmodus, Action, Ergebnis und Operationsreferenz erweitern.
 - [x] 6.5 Bestehenden host-owned History-Vertrag um `coverage = studio_mutations` und korrelierte erfolgreiche Mainserver-Mutationen erweitern; keine zweite History-Pipeline einführen.
 - [x] 6.6 Admin-Diagnose für Bindungen, Konflikte, Rotation, Kompatibilitätsmodus, automatische Scope-Wechsel und Reconciliation ergänzen; keine manuelle Mapping-Funktion bereitstellen.

@@ -16,6 +16,7 @@ import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import {
   StudioDataTable,
   StudioListPageTemplate,
+  type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioBulkAction,
   type StudioColumnDef,
@@ -30,7 +31,6 @@ import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { useContents } from '../../hooks/use-contents';
 import { useContentAccess } from '../../hooks/use-content-access';
-import { useOrganizationContext } from '../../hooks/use-organization-context';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
@@ -302,11 +302,23 @@ const deriveDeleteAction = (contentType: string): string | null => {
 
 const canDeleteMainserverItem = (
   contentType: string,
-  permissionActions: readonly string[] = []
+  permissionActions: readonly string[] = [],
+  enabledMainserverMutationActions: readonly string[] = []
 ): boolean => {
   const deleteAction = deriveDeleteAction(contentType);
-  return deleteAction ? permissionActions.includes(deleteAction) : false;
+  if (!deleteAction || !permissionActions.includes(deleteAction)) {
+    return false;
+  }
+  return (
+    contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes(deleteAction)
+  );
 };
+
+const canUpdateMainserverItem = (
+  contentType: string,
+  enabledMainserverMutationActions: readonly string[]
+): boolean =>
+  contentType !== 'surveys.survey' || enabledMainserverMutationActions.includes('surveys.update');
 
 const deleteMainserverItem = async (
   contentType: string,
@@ -384,16 +396,25 @@ const ContentRowActions = ({
   item,
   listError,
   permissionActions,
+  enabledMainserverMutationActions,
   onDelete,
 }: Readonly<{
   item: RegisteredContentRow;
   listError: IamHttpError | null;
   permissionActions: readonly string[] | undefined;
+  enabledMainserverMutationActions: readonly string[];
   onDelete: (contentType: string, contentId: string) => Promise<void>;
 }>) => {
-  const access = resolveRowAccess(item.access, listError);
+  const resolvedAccess = resolveRowAccess(item.access, listError);
+  const access = canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
+    ? resolvedAccess
+    : { ...resolvedAccess, canUpdate: false };
   const actionLabel = resolveRowActionLabel(access);
-  const canDelete = canDeleteMainserverItem(item.contentType, permissionActions);
+  const canDelete = canDeleteMainserverItem(
+    item.contentType,
+    permissionActions,
+    enabledMainserverMutationActions
+  );
   const actionIcon = resolveRowActionIcon(access);
 
   const handleDelete = () => {
@@ -509,16 +530,21 @@ const ContentPaginationNav = ({
   );
 };
 
-export const ContentListPage = () => {
+export type ContentListPageProps = Readonly<{
+  enabledMainserverMutationActions?: readonly string[];
+  principalControl?: MainserverPrincipalControlModel;
+}>;
+
+export const ContentListPage = ({
+  enabledMainserverMutationActions = [],
+  principalControl,
+}: ContentListPageProps) => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
   const auth = useAuth();
-  const organizationContext = useOrganizationContext();
   const contentAccessApi = useContentAccess();
-  const standalonePrincipalType = resolveStandaloneMainserverPrincipal(
-    organizationContext.context?.activeOrganizationId
-  );
+  const standalonePrincipalType = resolveStandaloneMainserverPrincipal(principalControl);
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
@@ -765,7 +791,10 @@ export const ContentListPage = () => {
         cell: (item) => (
           <ContentStatusDialog
             item={item}
-            canUpdate={resolveRowAccess(item.access, contentsApi.error).canUpdate}
+            canUpdate={
+              resolveRowAccess(item.access, contentsApi.error).canUpdate &&
+              canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
+            }
             actingPrincipalType={standalonePrincipalType}
             onUpdated={contentsApi.refetch}
           />
@@ -774,7 +803,12 @@ export const ContentListPage = () => {
         sortValue: (item) => item.status,
       },
     ],
-    [contentsApi.error, contentsApi.refetch, standalonePrincipalType]
+    [
+      contentsApi.error,
+      contentsApi.refetch,
+      enabledMainserverMutationActions,
+      standalonePrincipalType,
+    ]
   );
 
   return (
@@ -935,6 +969,7 @@ export const ContentListPage = () => {
               item={item}
               listError={contentsApi.error}
               permissionActions={effectivePermissionActions}
+              enabledMainserverMutationActions={enabledMainserverMutationActions}
               onDelete={handleDeleteContent}
             />
           )}

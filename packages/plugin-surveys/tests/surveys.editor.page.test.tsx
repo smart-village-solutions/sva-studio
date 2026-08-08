@@ -23,6 +23,7 @@ vi.mock('@sva/plugin-sdk', () => ({
       'pages.editTitle': 'Umfrage bearbeiten',
       'pages.editDescription': 'Beschreibung bearbeiten',
       'messages.editorLoading': 'Umfrage wird geladen.',
+      'messages.updateUnavailable': 'Bearbeiten nicht verfügbar.',
       'tabs.ariaLabel': 'Umfrage-Bereiche',
       'tabs.basis.label': 'Basis',
       'tabs.basis.title': 'Basis',
@@ -87,5 +88,27 @@ describe('SurveyEditorPage', () => {
 
     expect(submitMock).toHaveBeenCalledTimes(1);
     expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+  });
+
+  it('fails closed for edits until the Mainserver update capability is enabled', () => {
+    const view = render(<SurveyEditorPage mode="edit" contentId="survey-1" />);
+
+    expect(screen.getByText('Bearbeiten nicht verfügbar.')).toBeTruthy();
+    expect(
+      [
+        ...view.container.querySelectorAll<HTMLButtonElement>('button[form="survey-detail-form"]'),
+      ].every((button) => button.disabled)
+    ).toBe(true);
+    fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+    expect(submitMock).not.toHaveBeenCalled();
+
+    view.rerender(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate />);
+    expect(
+      [
+        ...view.container.querySelectorAll<HTMLButtonElement>('button[form="survey-detail-form"]'),
+      ].every((button) => !button.disabled)
+    ).toBe(true);
+    fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+    expect(submitMock).toHaveBeenCalledTimes(1);
   });
 });

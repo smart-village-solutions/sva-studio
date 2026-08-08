@@ -31,6 +31,12 @@ Bei Mainserver-Inhalten ist der vom Mainserver gesetzte `dataProvider` der unver
 
 `SVA_MAINSERVER_CONFIRMED_CAPABILITIES` enthält ausschließlich durch reale Contract-Tests bestätigte zusätzliche Actions. Ein leerer Wert erweitert keine Capability.
 
+Die effektive Liste wird angemeldeten Studio-Clients über
+`GET /api/v1/mainserver/mutation-capabilities` bereitgestellt. UI-Rechte allein schalten keine
+unbestätigte Mainserver-Operation frei: Survey-Update, Statuswechsel und Delete bleiben bis zum
+Capability-Nachweis deaktiviert. Kann der Capability-Vertrag nicht geladen werden, gilt derselbe
+fail-closed Zustand.
+
 ## Aktivierungsfolge
 
 1. Migration, Bindings, Journal und Projection-Felder mit `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow` ausrollen.

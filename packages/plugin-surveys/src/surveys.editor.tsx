@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   MainserverPrincipalControl,
@@ -55,13 +55,78 @@ const SurveyPrincipalControl = ({
   />
 );
 
+const SurveyEditorForm = ({
+  actingPrincipalType,
+  activeTab,
+  canMutate,
+  loadedItem,
+  methods,
+  mode,
+  onActiveTabChange,
+  onPrincipalChange,
+  principalControl,
+  pt,
+  status,
+  submit,
+  tabs,
+}: Readonly<{
+  actingPrincipalType: MainserverPrincipalType;
+  activeTab: SurveyEditorTabId;
+  canMutate: boolean;
+  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
+  methods: UseFormReturn<SurveyDetailFormValues>;
+  mode: SurveyEditorMode;
+  onActiveTabChange: (tab: SurveyEditorTabId) => void;
+  onPrincipalChange: (value: MainserverPrincipalType) => void;
+  principalControl?: MainserverPrincipalControlModel;
+  pt: ReturnType<typeof usePluginTranslation>;
+  status: ReturnType<typeof useSurveyEditorController>['status'];
+  submit: ReturnType<typeof useSurveyEditorController>['submit'];
+  tabs: ReturnType<typeof createSurveyEditorTabs>;
+}>) => (
+  <FormProvider {...methods}>
+    <form
+      id={formId}
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (canMutate) void submit();
+      }}
+      className="space-y-5"
+    >
+      {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+      {!canMutate ? (
+        <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
+      ) : null}
+      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canMutate}>
+        <SurveyPrincipalControl
+          actingPrincipalType={actingPrincipalType}
+          loadedItem={loadedItem}
+          mode={mode}
+          onChange={onPrincipalChange}
+          principalControl={principalControl}
+          pt={pt}
+        />
+        <StudioDetailTabs
+          ariaLabel={pt('tabs.ariaLabel')}
+          tabs={tabs}
+          value={activeTab}
+          onValueChange={onActiveTabChange}
+          keepMounted
+        />
+      </fieldset>
+    </form>
+  </FormProvider>
+);
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
+  canUpdate = false,
   principalControl,
 }: Readonly<{
   mode: SurveyEditorMode;
   contentId?: string;
+  canUpdate?: boolean;
   principalControl?: MainserverPrincipalControlModel;
 }>) => {
   const pt = usePluginTranslation('surveys');
@@ -90,6 +155,7 @@ export const SurveyEditorPage = ({
     () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
     [contentId, loadedItem, mode, pt]
   );
+  const canMutate = mode === 'create' || canUpdate;
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;
@@ -100,35 +166,25 @@ export const SurveyEditorPage = ({
       title={pt(mode === 'create' ? 'pages.createTitle' : 'pages.editTitle')}
       description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
       actions={<SurveyEditorActions pt={pt} />}
-      primaryAction={<SurveyEditorPrimaryAction mode={mode} formId={formId} pt={pt} />}
+      primaryAction={
+        <SurveyEditorPrimaryAction disabled={!canMutate} mode={mode} formId={formId} pt={pt} />
+      }
     >
-      <FormProvider {...methods}>
-        <form
-          id={formId}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submit();
-          }}
-          className="space-y-5"
-        >
-          {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-          <SurveyPrincipalControl
-            actingPrincipalType={actingPrincipalType}
-            loadedItem={loadedItem}
-            mode={mode}
-            onChange={setActingPrincipalType}
-            principalControl={principalControl}
-            pt={pt}
-          />
-          <StudioDetailTabs
-            ariaLabel={pt('tabs.ariaLabel')}
-            tabs={tabs}
-            value={activeTab}
-            onValueChange={setActiveTab}
-            keepMounted
-          />
-        </form>
-      </FormProvider>
+      <SurveyEditorForm
+        actingPrincipalType={actingPrincipalType}
+        activeTab={activeTab}
+        canMutate={canMutate}
+        loadedItem={loadedItem}
+        methods={methods}
+        mode={mode}
+        onActiveTabChange={setActiveTab}
+        onPrincipalChange={setActingPrincipalType}
+        principalControl={principalControl}
+        pt={pt}
+        status={status}
+        submit={submit}
+        tabs={tabs}
+      />
     </StudioDetailPageTemplate>
   );
 };

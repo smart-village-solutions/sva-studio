@@ -39,6 +39,7 @@ export const pluginSurveysContentEnTranslations = {
     createSuccess: 'Survey was created.',
     updateSuccess: 'Survey was saved.',
     missingContentId: 'No survey id available.',
+    updateUnavailable: 'This Mainserver environment does not support editing surveys yet.',
   },
   validation: {
     titleRequired: 'Please provide a title.',

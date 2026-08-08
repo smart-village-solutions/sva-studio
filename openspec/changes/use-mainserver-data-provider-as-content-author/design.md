@@ -177,7 +177,11 @@ Beim Create bietet die Oberfläche „Erstellen als“ beziehungsweise „Veröf
 
 Beim Bearbeiten zeigt die Oberfläche den bestehenden DataProvider read-only als ursprünglichen Inhaber. „Handeln als“ bestimmt nur den Mutationsprincipal. Wechselt die Auswahl gegenüber dem geladenen Credential-Kontext, validiert der Server die Verfügbarkeit mit einem neuen Same-Credential-Pre-Read.
 
-Eigenständige Aktionen aus Listen oder Dialogen verwenden bei aktiver Organisation automatisch `organization`, andernfalls `user`. Der Server validiert den Principal erneut. Fehlende Credentials oder fehlende Mainserver-Verfügbarkeit führen nicht zu einem Fallback auf den anderen Principal.
+Eigenständige Aktionen aus Listen oder Dialogen verwenden nur bei `org_only` automatisch
+`organization`. Bei `org_or_personal`, fehlender Richtlinie oder ohne aktive Organisation
+verwenden sie `user`, weil dort kein Principal-Dropdown die organisatorische Auswahl bestätigt.
+Der Server validiert den Principal erneut. Fehlende Credentials oder fehlende
+Mainserver-Verfügbarkeit führen nicht zu einem nachträglichen Fallback auf den anderen Principal.
 
 ### GraphQL-author und Content-Typen
 

@@ -729,6 +729,17 @@ export const getMainserverAuthoringDiagnostics = async (): Promise<
     '/api/v1/iam/contents/mainserver-diagnostics'
   );
 
+export type MainserverMutationCapabilities = Readonly<{
+  enabledActions: readonly string[];
+}>;
+
+export const getMainserverMutationCapabilities = async (): Promise<
+  ApiItemResponse<MainserverMutationCapabilities>
+> =>
+  requestJson<ApiItemResponse<MainserverMutationCapabilities>>(
+    '/api/v1/mainserver/mutation-capabilities'
+  );
+
 export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
   requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);
 

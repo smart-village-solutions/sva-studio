@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  getEnabledMainserverMutationCapabilities,
   getMainserverMutationCapabilityEnvironmentName,
   isMainserverMutationCapabilityEnabled,
 } from './mainserver-mutation-capabilities.js';
@@ -31,5 +32,9 @@ describe('Mainserver mutation capabilities', () => {
     expect(isMainserverMutationCapabilityEnabled('surveys.update')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('surveys.delete')).toBe(true);
     expect(isMainserverMutationCapabilityEnabled('surveys.moderate')).toBe(false);
+    expect(getEnabledMainserverMutationCapabilities()).toEqual(
+      expect.arrayContaining(['news.update', 'surveys.create', 'surveys.delete', 'surveys.update'])
+    );
+    expect(getEnabledMainserverMutationCapabilities()).not.toContain('invalid');
   });
 });

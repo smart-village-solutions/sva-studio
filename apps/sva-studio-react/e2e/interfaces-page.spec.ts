@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { registerSharedIamRoutes } from './studio-shell.helpers';
+import {
+  gotoHomeAsAuthenticatedUser,
+  navigateClientSide,
+  registerSharedIamRoutes,
+} from './studio-shell.helpers';
 
 type RecordedServerFnResponse = {
   body: string;
@@ -47,7 +51,7 @@ const mockAuthenticatedInterfacesShell = async (page: Page) => {
           instanceId: 'de-musterhausen',
           assignedModules: [],
           roles: ['interface_manager'],
-          permissionActions: [],
+          permissionActions: ['integration.manage'],
         },
       }),
     });
@@ -59,7 +63,7 @@ const mockAuthenticatedInterfacesShell = async (page: Page) => {
       contentType: 'application/json',
       body: JSON.stringify({
         instanceId: 'de-musterhausen',
-        permissions: [],
+        permissions: [{ action: 'integration.manage', resourceType: 'integration' }],
         subject: {
           actorUserId: 'kc-interface-manager-1',
           effectiveUserId: 'kc-interface-manager-1',
@@ -106,7 +110,8 @@ test('interfaces page uses the real /_server transport for overview load', async
     pageErrors.push(error.message);
   });
 
-  await page.goto('/interfaces');
+  await gotoHomeAsAuthenticatedUser(page, 'Interface Manager');
+  await navigateClientSide(page, '/interfaces');
   await expect
     .poll(
       () => serverFnResponses.find((response) => response.method === 'GET')?.status,

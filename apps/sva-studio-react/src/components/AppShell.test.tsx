@@ -31,6 +31,17 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => ({
+    context: null,
+    organizations: [],
+    isLoading: false,
+    error: null,
+    setActiveOrganization: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 vi.mock('../providers/theme-provider', () => ({
   useTheme: () => ({
     mode: 'light',

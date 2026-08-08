@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router';
+import type { IamLegalTextListItem } from '@sva/core';
 import React from 'react';
 
 import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
@@ -96,6 +97,106 @@ const summarizeTargets = (input: {
     groups: String(groupCount),
   });
 };
+
+const LegalTextsTable = ({
+  legalTexts,
+}: Readonly<{ legalTexts: readonly IamLegalTextListItem[] }>) => (
+  <StudioTableSurface>
+    <table className="min-w-full border-collapse" aria-label={t('admin.legalTexts.table.ariaLabel')}>
+      <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
+      <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <tr>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerUuid')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerName')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerVersion')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerLocale')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerStatus')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerTargets')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerContent')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerPublished')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerCreated')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerUpdated')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerAcceptances')}
+          </th>
+          <th scope="col" className="px-3 py-3">
+            {t('admin.legalTexts.table.headerLastAccepted')}
+          </th>
+          <th scope="col" className="px-3 py-3 text-right">
+            {t('admin.legalTexts.table.headerActions')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {legalTexts.map((item) => (
+          <tr key={item.id} className="border-t border-border align-top">
+            <td className="px-3 py-3 text-xs text-muted-foreground">{item.id}</td>
+            <td className="px-3 py-3 text-sm font-medium text-foreground">{item.name}</td>
+            <td className="px-3 py-3 text-sm text-foreground">{item.legalTextVersion}</td>
+            <td className="px-3 py-3 text-sm text-foreground">{item.locale}</td>
+            <td className="px-3 py-3">
+              <Badge variant="outline">{t(statusLabelKeyByValue[item.status])}</Badge>
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {summarizeTargets(item.targets ?? {})}
+            </td>
+            <td className="max-w-xs px-3 py-3 text-sm text-foreground">
+              {summarizeHtml(item.contentHtml)}
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {formatLegalTextDateTime(item.publishedAt)}
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {formatLegalTextDateTime(item.createdAt)}
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {formatLegalTextDateTime(item.updatedAt)}
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {t('admin.legalTexts.table.acceptanceSummary', {
+                active: String(item.activeAcceptanceCount),
+                total: String(item.acceptanceCount),
+              })}
+            </td>
+            <td className="px-3 py-3 text-sm text-foreground">
+              {formatLegalTextDateTime(item.lastAcceptedAt)}
+            </td>
+            <td className="px-3 py-3 text-right">
+              <Button asChild type="button" variant="outline" size="sm">
+                <Link
+                  to="/admin/legal-texts/$legalTextVersionId"
+                  params={{ legalTextVersionId: item.id }}
+                >
+                  {t('admin.legalTexts.actions.edit')}
+                </Link>
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </StudioTableSurface>
+);
 
 export const LegalTextsPage = () => {
   const legalTextsApi = useLegalTexts();
@@ -222,104 +323,7 @@ export const LegalTextsPage = () => {
           ) : null}
         </Card>
       ) : (
-        <StudioTableSurface>
-          <table
-            className="min-w-full border-collapse"
-            aria-label={t('admin.legalTexts.table.ariaLabel')}
-          >
-            <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
-            <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerUuid')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerName')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerVersion')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerLocale')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerStatus')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerTargets')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerContent')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerPublished')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerCreated')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerUpdated')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerAcceptances')}
-                </th>
-                <th scope="col" className="px-3 py-3">
-                  {t('admin.legalTexts.table.headerLastAccepted')}
-                </th>
-                <th scope="col" className="px-3 py-3 text-right">
-                  {t('admin.legalTexts.table.headerActions')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLegalTexts.map((item) => (
-                <tr key={item.id} className="border-t border-border align-top">
-                  <td className="px-3 py-3 text-xs text-muted-foreground">{item.id}</td>
-                  <td className="px-3 py-3 text-sm font-medium text-foreground">{item.name}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{item.legalTextVersion}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{item.locale}</td>
-                  <td className="px-3 py-3">
-                    <Badge variant="outline">{t(statusLabelKeyByValue[item.status])}</Badge>
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {summarizeTargets(item.targets ?? {})}
-                  </td>
-                  <td className="max-w-xs px-3 py-3 text-sm text-foreground">
-                    {summarizeHtml(item.contentHtml)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {formatLegalTextDateTime(item.publishedAt)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {formatLegalTextDateTime(item.createdAt)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {formatLegalTextDateTime(item.updatedAt)}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {t('admin.legalTexts.table.acceptanceSummary', {
-                      active: String(item.activeAcceptanceCount),
-                      total: String(item.acceptanceCount),
-                    })}
-                  </td>
-                  <td className="px-3 py-3 text-sm text-foreground">
-                    {formatLegalTextDateTime(item.lastAcceptedAt)}
-                  </td>
-                  <td className="px-3 py-3 text-right">
-                    <Button asChild type="button" variant="outline" size="sm">
-                      <Link
-                        to="/admin/legal-texts/$legalTextVersionId"
-                        params={{ legalTextVersionId: item.id }}
-                      >
-                        {t('admin.legalTexts.actions.edit')}
-                      </Link>
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </StudioTableSurface>
+        <LegalTextsTable legalTexts={filteredLegalTexts} />
       )}
     </section>
   );

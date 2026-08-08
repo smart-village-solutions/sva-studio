@@ -39,6 +39,11 @@ const INITIAL_FORM_STATE: AuthorizePerformanceFormState = {
   organizationId: '',
 };
 
+const MONITORING_WRITE_REQUIREMENT = {
+  kind: 'tenant',
+  actions: { mode: 'allOf', values: ['iam.monitoring.write'] },
+} as const;
+
 const formatDuration = (value: number): string => `${value.toFixed(2)} ms`;
 
 const authorizeScenarioLabel = (
@@ -197,10 +202,7 @@ const toSubmitPayload = (form: AuthorizePerformanceFormState) => ({
 });
 
 export const MonitoringOverviewPage = () => {
-  const writeDecision = useAccessDecision({
-    kind: 'tenant',
-    actions: { mode: 'allOf', values: ['iam.monitoring.write'] },
-  });
+  const writeDecision = useAccessDecision(MONITORING_WRITE_REQUIREMENT);
   const canStartAuthorizeRun = writeDecision.status === 'allowed';
   const [form, setForm] = React.useState<AuthorizePerformanceFormState>(INITIAL_FORM_STATE);
   const [isLoadingLatest, setIsLoadingLatest] = React.useState(true);

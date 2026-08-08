@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
+import { copyTextToClipboard } from './-media-detail-workspace-header-clipboard';
 
 type MediaDetailWorkspaceHeaderProps = Readonly<{
   asset: IamRegisteredMediaAsset;
@@ -50,27 +51,6 @@ const createQrDownloadName = (asset: IamRegisteredMediaAsset) =>
       '-'
     ) || asset.id
   }-qr`;
-
-const copyTextToClipboard = async (value: string) => {
-  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(value);
-    return;
-  }
-
-  if (typeof document === 'undefined') {
-    throw new Error('clipboard_unavailable');
-  }
-
-  const textarea = document.createElement('textarea');
-  textarea.value = value;
-  textarea.setAttribute('readonly', 'true');
-  textarea.style.position = 'absolute';
-  textarea.style.left = '-9999px';
-  document.body.appendChild(textarea);
-  textarea.select();
-  document.execCommand('copy');
-  document.body.removeChild(textarea);
-};
 
 const useQrCodeAssets = (deliveryUrl: string, qrDialogOpen: boolean) => {
   const [qrSvgMarkup, setQrSvgMarkup] = React.useState<string | null>(null);

@@ -121,7 +121,7 @@ test('read-only user detail blocks implicit submit and a direct mutation remains
   await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
   await page.getByRole('tab', { name: 'Verwaltung' }).click();
   await expect(page.locator('form[aria-readonly="true"]')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toBeDisabled();
   await page.getByLabel('Mainserver Application-ID').press('Enter');
   expect(patchRequests).toBe(0);
 

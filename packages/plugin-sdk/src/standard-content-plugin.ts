@@ -302,19 +302,17 @@ export const createStandardContentPluginContribution = (
 
 export const createStandardContentPluginDefinition = (
   options: StandardContentPluginDefinitionOptions
-): PluginDefinition => {
-  return {
-    id: options.pluginId,
-    displayName: options.displayName,
-    routes: options.routes ?? [],
-    navigation: options.contribution.navigation,
-    actions: options.contribution.actions,
-    permissions: options.contribution.permissions,
-    moduleIam: options.contribution.moduleIam,
-    contentTypes: options.contribution.contentTypes,
-    contentHistory: { mode: 'host', coverage: 'studio_mutations' },
-    adminResources: options.contribution.adminResources,
-    auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
-    translations: options.translations,
-  };
-};
+): PluginDefinition => ({
+  id: options.pluginId,
+  displayName: options.displayName,
+  routes: options.routes ?? [],
+  navigation: options.contribution.navigation,
+  actions: options.contribution.actions,
+  permissions: options.contribution.permissions,
+  moduleIam: options.contribution.moduleIam,
+  contentTypes: options.contribution.contentTypes,
+  contentHistory: { mode: 'host', coverage: 'studio_mutations' },
+  adminResources: options.contribution.adminResources,
+  auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
+  translations: options.translations,
+});

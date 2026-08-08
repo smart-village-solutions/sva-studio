@@ -486,6 +486,18 @@ export const deriveMimeTypeFromUnregisteredMedia = (asset: IamUnregisteredMediaA
   }
 };
 
+const shouldAutoResolveMediaDelivery = (
+  asset: IamRegisteredMediaAsset | null,
+  delivery: IamMediaDelivery | null,
+  autoResolvedDeliveryAssetId: string | null
+): asset is IamRegisteredMediaAsset =>
+  Boolean(
+    asset &&
+      !delivery &&
+      autoResolvedDeliveryAssetId !== asset.id &&
+      asset.mimeType.startsWith('image/')
+  );
+
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {
   const { refreshSession } = useAuth();
   const [asset, setAsset] = React.useState<IamRegisteredMediaAsset | null>(null);
@@ -618,12 +630,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
   resolveDeliveryRef.current = resolveDelivery;
 
   React.useEffect(() => {
-    if (
-      !asset ||
-      delivery ||
-      autoResolvedDeliveryAssetId === asset.id ||
-      !asset.mimeType.startsWith('image/')
-    ) {
+    if (!shouldAutoResolveMediaDelivery(asset, delivery, autoResolvedDeliveryAssetId)) {
       return;
     }
 

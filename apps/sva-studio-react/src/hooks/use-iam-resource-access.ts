@@ -7,6 +7,14 @@ export type IamUiResource = 'group' | 'legalText' | 'organization' | 'role' | 'u
 
 type IamUiOperation = 'create' | 'delete' | 'read' | 'update';
 
+const platformOperations: Readonly<Record<IamUiResource, readonly IamUiOperation[]>> = {
+  group: [],
+  legalText: [],
+  organization: [],
+  role: ['read', 'update'],
+  user: ['read', 'update'],
+};
+
 const tenantActions: Readonly<Record<IamUiResource, Readonly<Record<IamUiOperation, string>>>> = {
   group: {
     read: 'iam.role.read',
@@ -40,8 +48,14 @@ const tenantActions: Readonly<Record<IamUiResource, Readonly<Record<IamUiOperati
   },
 };
 
-const buildRequirement = (isPlatformScope: boolean, action: string): UiAccessRequirement =>
-  isPlatformScope
+export const buildIamResourceRequirement = (
+  resource: IamUiResource,
+  operation: IamUiOperation,
+  isPlatformScope: boolean
+): UiAccessRequirement => {
+  const action = tenantActions[resource][operation];
+
+  return isPlatformScope && platformOperations[resource].includes(operation)
     ? {
         kind: 'platform',
         roles: { mode: 'anyOf', values: ['instance_registry_admin'] },
@@ -50,19 +64,19 @@ const buildRequirement = (isPlatformScope: boolean, action: string): UiAccessReq
         kind: 'tenant',
         actions: { mode: 'allOf', values: [action] },
       };
+};
 
 export type IamResourceAccess = Readonly<Record<IamUiOperation, UiAccessDecision>>;
 
 export const useIamResourceAccess = (resource: IamUiResource): IamResourceAccess => {
   const { user } = useAuth();
   const isPlatformScope = Boolean(user && !user.instanceId);
-  const actions = tenantActions[resource];
 
   return {
-    read: useAccessDecision(buildRequirement(isPlatformScope, actions.read)),
-    create: useAccessDecision(buildRequirement(isPlatformScope, actions.create)),
-    update: useAccessDecision(buildRequirement(isPlatformScope, actions.update)),
-    delete: useAccessDecision(buildRequirement(isPlatformScope, actions.delete)),
+    read: useAccessDecision(buildIamResourceRequirement(resource, 'read', isPlatformScope)),
+    create: useAccessDecision(buildIamResourceRequirement(resource, 'create', isPlatformScope)),
+    update: useAccessDecision(buildIamResourceRequirement(resource, 'update', isPlatformScope)),
+    delete: useAccessDecision(buildIamResourceRequirement(resource, 'delete', isPlatformScope)),
   };
 };
 

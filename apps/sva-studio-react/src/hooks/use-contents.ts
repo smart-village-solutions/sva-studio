@@ -64,6 +64,14 @@ const DEFAULT_CONTENT_PAGINATION = {
   total: 0,
 } as const satisfies ApiPagination;
 
+const reusePaginationIfUnchanged = (
+  current: ApiPagination,
+  next: ApiPagination
+): ApiPagination =>
+  current.page === next.page && current.pageSize === next.pageSize && current.total === next.total
+    ? current
+    : next;
+
 const shouldRevalidateContentProjection = (
   enabled: boolean,
   metadata: IamContentListMetadata | null
@@ -73,6 +81,18 @@ const shouldRevalidateContentProjection = (
   (metadata.hasRunningMainserverSync ||
     metadata.hasStaleMainserverContent ||
     metadata.mainserverSyncStates.some((state) => state.snapshotState?.startsWith('partial_')));
+
+const getRefreshProjectionState = (
+  metadata: IamContentListMetadata | null,
+  visibleTypes: IamContentListQuery['visibleTypes']
+): readonly string[] =>
+  metadata?.mainserverSyncStates
+    ?.map((entry) => entry.contentType)
+    .filter((contentType) => typeof contentType === 'string' && contentType.length > 0) ??
+  visibleTypes?.filter(
+    (contentType) => typeof contentType === 'string' && contentType.length > 0
+  ) ??
+  [];
 
 const useContentProjectionRevalidation = (
   shouldRevalidate: boolean,
@@ -119,13 +139,7 @@ export const useContents = (
       readonly metadata?: IamContentListMetadata;
     }) => {
       const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
-      setPagination((currentPagination) =>
-        currentPagination.page === nextPagination.page &&
-        currentPagination.pageSize === nextPagination.pageSize &&
-        currentPagination.total === nextPagination.total
-          ? currentPagination
-          : nextPagination
-      );
+      setPagination((current) => reusePaginationIfUnchanged(current, nextPagination));
       setMetadata(response.metadata ?? null);
     },
     []
@@ -239,14 +253,7 @@ export const useContents = (
   );
 
   const refreshProjectionState = React.useMemo(
-    () =>
-      metadata?.mainserverSyncStates
-        ?.map((entry) => entry.contentType)
-        .filter((contentType) => typeof contentType === 'string' && contentType.length > 0) ??
-      query.visibleTypes?.filter(
-        (contentType) => typeof contentType === 'string' && contentType.length > 0
-      ) ??
-      [],
+    () => getRefreshProjectionState(metadata, query.visibleTypes),
     [metadata, query.visibleTypes]
   );
 

@@ -52,6 +52,18 @@ test('role create page opens and submits successfully', async ({ page }) => {
     });
   });
 
+  await page.route('**/iam/me/permissions?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        instanceId: adminAuthPayload.user.instanceId,
+        permissions: adminAuthPayload.user.permissionActions.map((action) => ({ action })),
+        snapshotVersion: 'roles-e2e',
+      }),
+    });
+  });
+
   await page.route('**/api/v1/iam/roles', async (route) => {
     const method = route.request().method();
 

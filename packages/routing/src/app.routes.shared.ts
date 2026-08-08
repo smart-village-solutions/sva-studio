@@ -4,18 +4,13 @@ import {
   createPluginGuardrailError,
   mergeAdminResourceDefinitions,
 } from '@sva/plugin-sdk';
-import {
-  createRoute,
-  redirect,
-  type AnyRoute,
-  type RootRoute,
-  type RouteComponent,
-} from '@tanstack/react-router';
+import { createRoute, redirect, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 
 import {
   assertNoStaticAdminRouteShadowing,
   collectAdminResourceRoutePaths,
 } from './admin-resource-route-conflicts.js';
+import type { AppRouteBindings } from './app-route-bindings.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
 import {
   createAdminResourceRouteFactories,
@@ -30,76 +25,9 @@ import { uiRoutePaths } from './route-paths.js';
 import { enforceUiRouteAccessRequirements } from './ui-route-access.js';
 
 export { getAdminDetailRoutePath } from './admin-resource-route-paths.js';
+export type { AppRouteBindings } from './app-route-bindings.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
-export type AppRouteBindings = {
-  readonly home: RouteComponent;
-  readonly account: RouteComponent;
-  readonly accountPrivacy: RouteComponent;
-  readonly accountPrivacyDetail: RouteComponent;
-  readonly accountRules: RouteComponent;
-  readonly content: RouteComponent;
-  readonly contentCreate: RouteComponent;
-  readonly contentDetail: RouteComponent;
-  readonly mediaUsage: RouteComponent;
-  readonly newsList: RouteComponent;
-  readonly newsDetail: RouteComponent;
-  readonly newsEditor: RouteComponent;
-  readonly eventsList: RouteComponent;
-  readonly eventsDetail: RouteComponent;
-  readonly eventsEditor: RouteComponent;
-  readonly genericItemsList: RouteComponent;
-  readonly genericItemsDetail: RouteComponent;
-  readonly faqList: RouteComponent;
-  readonly faqDetail: RouteComponent;
-  readonly faqEditor: RouteComponent;
-  readonly cockpitCardsList: RouteComponent;
-  readonly cockpitCardsDetail: RouteComponent;
-  readonly cockpitCardsEditor: RouteComponent;
-  readonly projectsList: RouteComponent;
-  readonly projectsDetail: RouteComponent;
-  readonly projectsEditor: RouteComponent;
-  readonly genericItemsEditor: RouteComponent;
-  readonly poiList: RouteComponent;
-  readonly poiDetail: RouteComponent;
-  readonly poiEditor: RouteComponent;
-  readonly media: RouteComponent;
-  readonly adminMedia: RouteComponent;
-  readonly categories: RouteComponent;
-  readonly app: RouteComponent;
-  readonly interfaces: RouteComponent;
-  readonly help: RouteComponent;
-  readonly support: RouteComponent;
-  readonly license: RouteComponent;
-  readonly adminUsers: RouteComponent;
-  readonly adminUserCreate: RouteComponent;
-  readonly adminUserDetail: RouteComponent;
-  readonly adminOrganizations: RouteComponent;
-  readonly adminOrganizationCreate: RouteComponent;
-  readonly adminOrganizationDetail: RouteComponent;
-  readonly adminInstances: RouteComponent;
-  readonly adminInstanceCreate: RouteComponent;
-  readonly adminInstanceSetup: RouteComponent;
-  readonly adminInstanceDetail: RouteComponent;
-  readonly adminRoles: RouteComponent;
-  readonly adminRoleCreate: RouteComponent;
-  readonly adminRoleDetail: RouteComponent;
-  readonly adminGroups: RouteComponent;
-  readonly adminGroupCreate: RouteComponent;
-  readonly adminGroupDetail: RouteComponent;
-  readonly adminLegalTexts: RouteComponent;
-  readonly adminLegalTextCreate: RouteComponent;
-  readonly adminLegalTextDetail: RouteComponent;
-  readonly adminIam: RouteComponent;
-  readonly adminIamGovernanceDetail: RouteComponent;
-  readonly adminIamDsrDetail: RouteComponent;
-  readonly modules: RouteComponent;
-  readonly monitoring: RouteComponent;
-  readonly monitoringJobs: RouteComponent;
-  readonly monitoringJobDetail: RouteComponent;
-  readonly adminApiPhase1Test: RouteComponent;
-};
-
 export type AppRouteBindingKey = keyof AppRouteBindings;
 type UiRouteDefinition = {
   readonly binding: AppRouteBindingKey;
@@ -319,7 +247,7 @@ export const getPluginRouteFactories = (
               throw redirect({ href: '/?error=auth.insufficientRole' });
             }
           },
-          component: routeDefinition.component as RouteComponent,
+          component: routeDefinition.component as AppRouteBindings[keyof AppRouteBindings],
         });
     })
   );

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IamViewerPage } from './-iam-page';
 
 const useAuthMock = vi.fn();
+const invalidateEffectiveAccessMock = vi.fn();
 const useNavigateMock = vi.fn();
 const listGovernanceCasesMock = vi.fn();
 const listAdminDsrCasesMock = vi.fn();
@@ -20,6 +21,13 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../../providers/effective-access-provider', () => ({
+  useEffectiveAuth: () => useAuthMock(),
+  useEffectiveAccess: () => ({
+    invalidate: invalidateEffectiveAccessMock,
+  }),
 }));
 
 vi.mock('../../lib/iam-api', () => ({
@@ -48,6 +56,8 @@ describe('IamViewerPage', () => {
 
   beforeEach(() => {
     useAuthMock.mockReset();
+    invalidateEffectiveAccessMock.mockReset();
+    invalidateEffectiveAccessMock.mockResolvedValue(undefined);
     useNavigateMock.mockReset();
     listGovernanceCasesMock.mockReset();
     listAdminDsrCasesMock.mockReset();
@@ -105,8 +115,7 @@ describe('IamViewerPage', () => {
     });
   });
 
-  it('shows a rights fetch error and invalidates permissions on 403', async () => {
-    const refreshSession = vi.fn().mockResolvedValue(undefined);
+  it('shows a rights fetch error without refreshing access on 403', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -122,7 +131,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      refreshSession,
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -132,7 +141,7 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="rights" />);
 
     await waitFor(() => {
-      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(invalidateEffectiveAccessMock).not.toHaveBeenCalled();
       expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
     });
   });
@@ -831,14 +840,13 @@ describe('IamViewerPage', () => {
     });
   });
 
-  it('shows deletion-rules loading errors and authorize 403 errors with permission invalidation', async () => {
-    const refreshSession = vi.fn().mockResolvedValue(undefined);
+  it('shows deletion-rules loading errors and authorize 403 errors without access refresh', async () => {
     getAdminDeletionRulesMock.mockRejectedValueOnce(new Error('rules_down'));
     useAuthMock.mockReturnValue({
       user: adminUser,
       isLoading: false,
       error: null,
-      refreshSession,
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -883,7 +891,7 @@ describe('IamViewerPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
 
     await waitFor(() => {
-      expect(refreshSession).toHaveBeenCalledTimes(1);
+      expect(invalidateEffectiveAccessMock).not.toHaveBeenCalled();
       expect(screen.getByText('authorize_forbidden')).toBeTruthy();
     });
   });

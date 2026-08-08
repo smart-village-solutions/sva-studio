@@ -1,6 +1,3 @@
-import { createHash } from 'node:crypto';
-
-import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
 import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
@@ -10,6 +7,12 @@ import {
   type PermissionLookupInput,
   loadPermissionsWithClient,
 } from './permission-store.queries.js';
+import {
+  type PermissionRevisionVector,
+  revisionsEqual,
+  toRedisSnapshotKey,
+  toSnapshotLookupKey,
+} from './permission-store.keys.js';
 import {
   readPermissionRevisionVector,
   readPermissionRevisionVectorWithClient,
@@ -30,57 +33,6 @@ import {
   recordPermissionCacheRedisLatency,
   withInstanceScopedDb,
 } from './shared.js';
-
-const normalizeGeoContext = (input: PermissionLookupInput) => {
-  const geoUnitId = input.geoUnitId?.trim() || undefined;
-  const geoHierarchy = input.geoHierarchy
-    ?.map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-
-  if (!geoUnitId && (!geoHierarchy || geoHierarchy.length === 0)) {
-    return undefined;
-  }
-
-  return {
-    ...(geoUnitId ? { geoUnitId } : {}),
-    ...(geoHierarchy && geoHierarchy.length > 0
-      ? { geoHierarchy: [...new Set(geoHierarchy)] }
-      : {}),
-  };
-};
-
-const toGeoContextHash = (input: PermissionLookupInput): string | undefined => {
-  const normalized = normalizeGeoContext(input);
-  if (!normalized) {
-    return undefined;
-  }
-
-  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 16);
-};
-
-type PermissionRevisionVector = Awaited<ReturnType<typeof readPermissionRevisionVector>>;
-
-const revisionsEqual = (left: PermissionRevisionVector, right: PermissionRevisionVector): boolean =>
-  left.instanceRevision === right.instanceRevision && left.userRevision === right.userRevision;
-
-const toSnapshotLookupKey = (input: PermissionLookupInput, revision: PermissionRevisionVector) => ({
-  instanceId: input.instanceId,
-  keycloakSubject: input.keycloakSubject,
-  organizationId: input.organizationId,
-  geoContextHash: toGeoContextHash(input),
-  ...revision,
-});
-
-const toRedisSnapshotKey = (
-  snapshotKey: ReturnType<typeof toSnapshotLookupKey>
-): PermSnapshotKey => ({
-  instanceId: snapshotKey.instanceId,
-  userId: snapshotKey.keycloakSubject,
-  organizationId: snapshotKey.organizationId,
-  geoCtxHash: snapshotKey.geoContextHash,
-  instanceRevision: snapshotKey.instanceRevision,
-  userRevision: snapshotKey.userRevision,
-});
 
 type RecomputeCandidate =
   | Readonly<{

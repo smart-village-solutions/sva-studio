@@ -68,6 +68,24 @@ const collectPermissionActions = (snapshot: EffectiveAccessSnapshot): readonly s
       )
     : [];
 
+const usePublishSessionAccessSnapshot = (
+  snapshot: EffectiveAccessSnapshot,
+  roles: readonly string[] | undefined
+): void => {
+  React.useEffect(() => {
+    const isResolved = snapshot.status === 'ready' || snapshot.status === 'error';
+    publishSessionAccessSnapshot({
+      isResolved,
+      permissionActions: collectPermissionActions(snapshot),
+      assignedModules:
+        snapshot.status === 'ready' && 'assignedModules' in snapshot
+          ? snapshot.assignedModules
+          : [],
+      roles: snapshot.status === 'ready' ? (roles ?? []) : [],
+    });
+  }, [roles, snapshot]);
+};
+
 export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
   const auth = useAuth();
   const organizationContext = useOrganizationContext();
@@ -218,18 +236,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     };
   }, [invalidate]);
 
-  React.useEffect(() => {
-    const isResolved = snapshot.status === 'ready' || snapshot.status === 'error';
-    publishSessionAccessSnapshot({
-      isResolved,
-      permissionActions: collectPermissionActions(snapshot),
-      assignedModules:
-        snapshot.status === 'ready' && 'assignedModules' in snapshot
-          ? snapshot.assignedModules
-          : [],
-      roles: snapshot.status === 'ready' ? (auth.user?.roles ?? []) : [],
-    });
-  }, [auth.user?.roles, snapshot]);
+  usePublishSessionAccessSnapshot(snapshot, auth.user?.roles);
 
   const value = React.useMemo<EffectiveAccessContextValue>(
     () => ({

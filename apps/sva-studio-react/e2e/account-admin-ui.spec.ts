@@ -2,12 +2,12 @@ import { expect, test } from '@playwright/test';
 
 import {
   ROOT_AUTH_SESSION_FILE,
-  adminAuthPayload,
   appRoot,
   getRootPlaywrightBaseUrl,
   gotoHomeAsAuthenticatedUser,
   loadPlaywrightEnv,
   navigateClientSide,
+  registerAccountAdminAuthRoute,
   registerSharedAccountAdminRoutes,
   resolveAuthSessionFile,
   unauthenticatedStorageState,
@@ -61,9 +61,7 @@ test.describe('unauthenticated admin access', () => {
 });
 
 test('responsive IAM views render on mobile, tablet, desktop', async ({ page }) => {
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(adminAuthPayload) });
-  });
+  await registerAccountAdminAuthRoute(page);
   await page.route('**/api/v1/iam/users?**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 25, total: 0 } }) });
   });

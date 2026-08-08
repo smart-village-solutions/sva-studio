@@ -1,27 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { registerAccountAdminAuthRoute } from './account-admin-ui.helpers';
 import { gotoHomeAsAuthenticatedUser, navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
-
-const adminAuthPayload = {
-  user: {
-    id: 'kc-admin-1',
-    name: 'Admin One',
-    email: 'admin@example.com',
-    instanceId: '11111111-1111-1111-8111-111111111111',
-    roles: ['system_admin'],
-    permissionActions: [
-      'iam.user.read',
-      'iam.user.write',
-      'iam.role.read',
-      'iam.role.write',
-      'iam.org.read',
-      'iam.org.write',
-      'integration.manage',
-      'app.read',
-      'cockpit.read',
-    ],
-  },
-};
 
 test.beforeEach(async ({ page }) => {
   await registerSharedIamRoutes(page);
@@ -44,25 +24,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
     },
   ];
 
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(adminAuthPayload),
-    });
-  });
-
-  await page.route('**/iam/me/permissions?**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        instanceId: adminAuthPayload.user.instanceId,
-        permissions: adminAuthPayload.user.permissionActions.map((action) => ({ action })),
-        snapshotVersion: 'roles-e2e',
-      }),
-    });
-  });
+  await registerAccountAdminAuthRoute(page);
 
   await page.route('**/api/v1/iam/roles', async (route) => {
     const method = route.request().method();
@@ -136,13 +98,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
 });
 
 test('tenant role list hides the root-only instance_registry_admin role', async ({ page }) => {
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(adminAuthPayload),
-    });
-  });
+  await registerAccountAdminAuthRoute(page);
 
   await page.route('**/api/v1/iam/roles', async (route) => {
     await route.fulfill({

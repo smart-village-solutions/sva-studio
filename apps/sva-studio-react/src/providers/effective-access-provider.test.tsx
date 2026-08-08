@@ -8,7 +8,19 @@ const fetchWithRequestTimeoutMock = vi.fn();
 const iamMocks = vi.hoisted(() => ({
   readIamErrorResponse: vi.fn(),
 }));
-const authMockValue = {
+type AuthMockUser = {
+  id: string;
+  instanceId?: string;
+  assignedModules: string[];
+  roles: string[];
+};
+
+const authMockValue: {
+  hasResolvedSession: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  user: AuthMockUser | null;
+} = {
   hasResolvedSession: true,
   isAuthenticated: true,
   isLoading: false,
@@ -76,9 +88,12 @@ describe('EffectiveAccessProvider', () => {
     authMockValue.hasResolvedSession = true;
     authMockValue.isAuthenticated = true;
     authMockValue.isLoading = false;
-    authMockValue.user.instanceId = 'instance-1';
-    authMockValue.user.assignedModules = ['news'];
-    authMockValue.user.roles = ['custom_role'];
+    authMockValue.user = {
+      id: 'user-1',
+      instanceId: 'instance-1',
+      assignedModules: ['news'],
+      roles: ['custom_role'],
+    };
     organizationContextMockValue.context.activeOrganizationId = 'org-1';
     organizationContextMockValue.error = null;
     organizationContextMockValue.isLoading = false;
@@ -187,6 +202,92 @@ describe('EffectiveAccessProvider', () => {
     expect(result.current.snapshot).toMatchObject({ errorCode: 'invalid_response' });
   });
 
+  it('classifies a non-object permission snapshot as an invalid response', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => null,
+    });
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
+
+    expect(result.current.snapshot).toMatchObject({ errorCode: 'invalid_response' });
+  });
+
+  it('sorts and deduplicates permission actions', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce(
+      response([
+        { action: 'news.update' },
+        { action: 'news.read' },
+        { action: 'news.update' },
+      ])
+    );
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+
+    expect(result.current.permissionActions).toEqual(['news.read', 'news.update']);
+  });
+
+  it('keeps access unresolved while the authentication session is unresolved', async () => {
+    authMockValue.hasResolvedSession = false;
+    authMockValue.isLoading = true;
+    const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('loading'));
+    authMockValue.isLoading = false;
+    rerender();
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('unresolved'));
+    expect(fetchWithRequestTimeoutMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps access unresolved after a resolved session without a user', async () => {
+    authMockValue.user = null;
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('unresolved'));
+
+    expect(fetchWithRequestTimeoutMock).not.toHaveBeenCalled();
+  });
+
+  it('projects organization loading and errors without requesting permissions', async () => {
+    organizationContextMockValue.isLoading = true;
+    const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('loading'));
+    organizationContextMockValue.isLoading = false;
+    organizationContextMockValue.error = { code: 'organization_context_failed' };
+    rerender();
+
+    await waitFor(() =>
+      expect(result.current.snapshot).toMatchObject({
+        status: 'error',
+        errorCode: 'organization_context_failed',
+      })
+    );
+    expect(fetchWithRequestTimeoutMock).not.toHaveBeenCalled();
+  });
+
+  it('loads instance permissions without an organization query when no organization is active', async () => {
+    organizationContextMockValue.context.activeOrganizationId = null;
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
+
+    expect(fetchWithRequestTimeoutMock).toHaveBeenCalledWith(
+      '/iam/me/permissions?instanceId=instance-1',
+      expect.any(Object),
+      { timeoutMs: 10_000 }
+    );
+  });
+
+  it('rejects use outside the effective access provider', () => {
+    expect(() => renderHook(() => useEffectiveAccess())).toThrow(
+      'useEffectiveAccess must be used within EffectiveAccessProvider'
+    );
+  });
+
   it('deduplicates local and server-triggered invalidation per snapshot generation', async () => {
     const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
@@ -206,8 +307,12 @@ describe('EffectiveAccessProvider', () => {
   });
 
   it('uses only technical roles for platform access without loading tenant permissions', async () => {
-    authMockValue.user.instanceId = undefined;
-    authMockValue.user.roles = ['instance_registry_admin'];
+    authMockValue.user = {
+      id: 'user-1',
+      instanceId: undefined,
+      assignedModules: ['news'],
+      roles: ['instance_registry_admin'],
+    };
 
     const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
@@ -225,7 +330,12 @@ describe('EffectiveAccessProvider', () => {
     const { result, rerender } = renderHook(() => useEffectiveAccess(), { wrapper });
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
 
-    authMockValue.user.assignedModules = [];
+    authMockValue.user = {
+      id: 'user-1',
+      instanceId: 'instance-1',
+      assignedModules: [],
+      roles: ['custom_role'],
+    };
     rerender();
     await waitFor(() => expect(result.current.snapshot.status).toBe('ready'));
 

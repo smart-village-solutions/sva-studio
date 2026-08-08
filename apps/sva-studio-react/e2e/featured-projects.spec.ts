@@ -82,6 +82,7 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
       return route.fulfill({
         status: project && !deleted ? 200 : 404,
         contentType: 'application/json',
+        headers: project && !deleted ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined,
         body: JSON.stringify(project && !deleted ? { data: project } : { error: 'not_found' }),
       });
     }

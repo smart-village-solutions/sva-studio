@@ -271,6 +271,34 @@ describe('mainserver-client', () => {
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBeUndefined();
   });
 
+  it('loads an encoded detail path before custom mutations request binding headers', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'news/1', title: 'Erste' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+        })
+    );
+    const client = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/items',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response) => response.data,
+    });
+
+    await client.ensureMutationContext('news/1');
+
+    expect(fetchMock).toHaveBeenCalledWith('/items/news%2F1', expect.any(Object));
+    expect(readHeaders(client.mutationHeaders('news/1', 'user'))).toMatchObject({
+      'x-sva-context-binding': 'v1.loaded-context',
+    });
+  });
+
   it('parses structured host error envelopes with nested code and message fields', async () => {
     const fetchMock = vi.fn(
       async () =>

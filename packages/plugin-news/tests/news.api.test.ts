@@ -203,9 +203,14 @@ describe('news api', () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({ 'X-SVA-Context-Binding': 'v1.loaded-context' }),
         json: async () => ({
           data: sampleResponse,
         }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ data: sampleResponse }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
@@ -220,15 +225,20 @@ describe('news api', () => {
     expect(fetch).toHaveBeenNthCalledWith(
       1,
       '/api/v1/mainserver/news/news-1',
+      expect.any(Object)
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'PATCH' })
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual(
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual(
       expect.objectContaining({
         pushNotification: true,
       })
     );
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'DELETE' })
     );
@@ -238,34 +248,44 @@ describe('news api', () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({ 'X-SVA-Context-Binding': 'v1.loaded-context' }),
         json: async () => ({
           data: sampleResponse,
         }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ data: sampleResponse }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ status: 'ok' }),
       } as Response);
 
-    await expect(updateNewsPartial('news-1', { title: 'Nur Titel' })).resolves.toEqual(
+    await expect(updateNewsPartial('news-1/with slash', { title: 'Nur Titel' })).resolves.toEqual(
       expect.objectContaining({ id: 'news-1' })
     );
     await expect(setNewsVisibility('news-1/with slash', false)).resolves.toBeUndefined();
 
     expect(fetch).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/mainserver/news/news-1',
-      expect.objectContaining({ method: 'PATCH' })
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash',
+      expect.any(Object)
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({
-      title: 'Nur Titel',
-    });
     expect(fetch).toHaveBeenNthCalledWith(
       2,
-      '/api/v1/mainserver/news/news-1%2Fwith%20slash/visibility',
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash',
       expect.objectContaining({ method: 'PATCH' })
     );
     expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual({
+      title: 'Nur Titel',
+    });
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash/visibility',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[2]?.[1]?.body as string)).toEqual({
       visible: false,
     });
   });

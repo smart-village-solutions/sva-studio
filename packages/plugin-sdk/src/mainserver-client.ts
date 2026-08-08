@@ -88,7 +88,7 @@ const createMainserverItemLoader = <TItem, TError extends Error>(input: {
 }) => {
   const loadDetail = async (contentId: string): Promise<MainserverDetailResult<TItem>> => {
     const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-      url: `${input.basePath}/${contentId}`,
+      url: `${input.basePath}/${encodeURIComponent(contentId)}`,
       fetch: input.fetch,
       errorFactory: input.errorFactory,
       onResponse: input.contextBindingStore.capture(contentId),
@@ -169,7 +169,7 @@ export const createMainserverCrudClient = <
     ): Promise<TItem> => {
       await ensureContextBinding(contentId);
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
-        url: `${options.basePath}/${contentId}`,
+        url: `${options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: options.fetch,
         errorFactory: options.errorFactory,
         init: {
@@ -190,7 +190,7 @@ export const createMainserverCrudClient = <
     ): Promise<void> => {
       await ensureContextBinding(contentId);
       await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
-        url: `${options.basePath}/${contentId}`,
+        url: `${options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: options.fetch,
         errorFactory: options.errorFactory,
         init: {
@@ -199,6 +199,7 @@ export const createMainserverCrudClient = <
         },
       });
     },
+    ensureMutationContext: ensureContextBinding,
     mutationHeaders: contextBindingStore.mutationHeaders,
   };
 };

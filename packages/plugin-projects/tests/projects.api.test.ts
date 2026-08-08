@@ -62,7 +62,12 @@ describe('projects api', () => {
   it('reads, updates and deletes projects through the shared CRUD contract', async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce(Response.json({ data: { id: 'project-1', ...input } }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { data: { id: 'project-1', ...input } },
+          { headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' } }
+        )
+      )
       .mockResolvedValueOnce(Response.json({ data: { id: 'project-1', ...input } }))
       .mockResolvedValueOnce(Response.json({ data: null }));
     vi.stubGlobal('fetch', fetchMock);

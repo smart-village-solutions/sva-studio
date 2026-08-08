@@ -116,6 +116,7 @@ export const setNewsVisibility = async (
   visible: boolean,
   actingPrincipalType: MainserverActingPrincipalType
 ): Promise<void> => {
+  await newsClient.ensureMutationContext(contentId);
   await requestMainserverJson<{ readonly status: string }, NewsApiError>({
     url: `/api/v1/mainserver/news/${encodeURIComponent(contentId)}/visibility`,
     errorFactory: (code, message) => new NewsApiError(code, message),

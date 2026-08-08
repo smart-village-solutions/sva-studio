@@ -6,7 +6,7 @@ import type { AppRouteBindings } from './app-route-bindings.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
-import { enforcePluginRouteAccessRequirement } from './ui-route-access.js';
+import { enforceRouteAccessRequirement } from './ui-route-access.js';
 
 type PluginRouteFactory = RouteFactory<RootRoute, AnyRoute>;
 
@@ -45,7 +45,7 @@ export const getPluginRouteFactories = (
           validateSearch: routeDefinition.validateSearch,
           beforeLoad: async (beforeLoadOptions) => {
             if (routeDefinition.accessRequirement) {
-              await enforcePluginRouteAccessRequirement(routeDefinition.accessRequirement, {
+              await enforceRouteAccessRequirement(routeDefinition.accessRequirement, {
                 context: beforeLoadOptions.context as RouteGuardContext,
               });
             } else {

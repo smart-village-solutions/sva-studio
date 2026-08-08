@@ -12,6 +12,8 @@ import {
   asIamError,
   EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT,
   fetchWithRequestTimeout,
+  IamHttpError,
+  readIamErrorResponse,
 } from '../lib/iam-api';
 import {
   createOperationLogger,
@@ -170,15 +172,15 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     )
       .then(async (response) => {
         if (!response.ok) {
-          throw asIamError({
-            status: response.status,
-            code: response.status === 403 ? 'forbidden' : `http_${response.status}`,
-            message: `http_${response.status}`,
-          });
+          throw await readIamErrorResponse(response);
         }
         const payload: unknown = await response.json();
         if (!isMePermissionsResponse(payload) || payload.instanceId !== auth.user?.instanceId) {
-          throw asIamError({ status: 502, code: 'invalid_response', message: 'invalid_response' });
+          throw new IamHttpError({
+            status: 502,
+            code: 'invalid_response',
+            message: 'invalid_response',
+          });
         }
         if (generationRef.current !== generation) {
           return;

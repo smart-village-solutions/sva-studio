@@ -544,6 +544,60 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content/$id')).toBe(true);
   });
 
+  it('enforces canonical admin-resource access requirements without legacy permissions', async () => {
+    const routeFactories = createUiRouteFactories(bindings, {
+      adminResources: [
+        {
+          ...adminResources[0],
+          moduleId: 'news',
+          accessRequirements: {
+            list: {
+              kind: 'tenant',
+              moduleId: 'news',
+              actions: { mode: 'allOf', values: ['news.read'] },
+            },
+          },
+        },
+      ],
+    });
+    const route = routeFactories
+      .map((factory) => factory({ id: 'root' } as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/content');
+    const beforeLoad = readRouteOptions(expectDefined(route)).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: ['custom_role'],
+              assignedModules: ['news'],
+              permissionActions: [],
+            }),
+          },
+        },
+        location: { href: '/admin/content' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: ['custom_role'],
+              assignedModules: ['news'],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/admin/content' },
+      })
+    ).resolves.toBeUndefined();
+  });
+
   it('falls back to the generic id detail param for unmapped admin detail bindings', () => {
     expect(getAdminDetailRoutePath('/admin/custom', 'help')).toBe('/admin/custom/$id');
   });

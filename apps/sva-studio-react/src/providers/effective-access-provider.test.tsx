@@ -5,6 +5,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EffectiveAccessProvider, useEffectiveAccess } from './effective-access-provider';
 
 const fetchWithRequestTimeoutMock = vi.fn();
+const iamMocks = vi.hoisted(() => ({
+  readIamErrorResponse: vi.fn(),
+}));
 const authMockValue = {
   hasResolvedSession: true,
   isAuthenticated: true,
@@ -24,11 +27,21 @@ const organizationContextMockValue = {
 
 vi.mock('../lib/iam-api', () => ({
   EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT: 'sva:effective-access-invalidation-required',
+  IamHttpError: class IamHttpError extends Error {
+    status: number;
+    code: string;
+    constructor(input: { status: number; code: string; message: string }) {
+      super(input.message);
+      this.status = input.status;
+      this.code = input.code;
+    }
+  },
   asIamError: (cause: unknown) =>
     cause && typeof cause === 'object' && 'code' in cause
       ? cause
       : { status: 503, code: 'database_unavailable', message: 'database_unavailable' },
   fetchWithRequestTimeout: (...args: unknown[]) => fetchWithRequestTimeoutMock(...args),
+  readIamErrorResponse: (...args: unknown[]) => iamMocks.readIamErrorResponse(...args),
 }));
 
 vi.mock('../lib/browser-operation-logging', () => ({
@@ -70,6 +83,11 @@ describe('EffectiveAccessProvider', () => {
     organizationContextMockValue.error = null;
     organizationContextMockValue.isLoading = false;
     fetchWithRequestTimeoutMock.mockResolvedValue(response([{ action: 'news.read' }]));
+    iamMocks.readIamErrorResponse.mockResolvedValue({
+      status: 403,
+      code: 'forbidden',
+      message: 'forbidden',
+    });
   });
 
   afterEach(() => {
@@ -144,6 +162,29 @@ describe('EffectiveAccessProvider', () => {
     expect(fetchWithRequestTimeoutMock.mock.calls).toSatisfy((calls: unknown[][]) =>
       calls.every(([path]) => typeof path === 'string' && path.startsWith('/iam/me/permissions?'))
     );
+  });
+
+  it('preserves IAM error codes from permission snapshot responses', async () => {
+    const failedResponse = { ok: false, status: 403 };
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce(failedResponse);
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
+
+    expect(iamMocks.readIamErrorResponse).toHaveBeenCalledWith(failedResponse);
+    expect(result.current.snapshot).toMatchObject({ errorCode: 'forbidden' });
+  });
+
+  it('classifies invalid permission snapshot payloads as invalid responses', async () => {
+    fetchWithRequestTimeoutMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ instanceId: 'instance-1', permissions: null }),
+    });
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
+
+    await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
+
+    expect(result.current.snapshot).toMatchObject({ errorCode: 'invalid_response' });
   });
 
   it('deduplicates local and server-triggered invalidation per snapshot generation', async () => {

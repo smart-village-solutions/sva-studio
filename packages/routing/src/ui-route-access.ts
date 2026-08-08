@@ -46,7 +46,7 @@ const satisfiesRequiredValues = (
     ? required.values.every((value) => available.has(value))
     : required.values.some((value) => available.has(value));
 
-export const enforcePluginRouteAccessRequirement = async (
+export const enforceRouteAccessRequirement = async (
   requirement: PluginRouteAccessRequirement | undefined,
   beforeLoadOptions: { readonly context: RouteGuardContext }
 ): Promise<void> => {

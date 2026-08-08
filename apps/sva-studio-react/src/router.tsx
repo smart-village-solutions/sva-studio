@@ -196,17 +196,11 @@ const readEffectivePermissionActions = (payload: unknown): readonly string[] | n
   return [...new Set(actions)].sort((left, right) => left.localeCompare(right));
 };
 
-const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
-  const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  const user = parseRouteGuardUser(await response.json());
-  if (!user) {
-    return null;
-  }
+const loadScopedRouteGuardUser = async (
+  user: RouteGuardUser,
+  url: string,
+  init?: RequestInit
+): Promise<RouteGuardUser> => {
   if (!user.instanceId) {
     return { ...user, permissionActions: [] };
   }
@@ -236,6 +230,17 @@ const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Pr
   return permissionActions
     ? { ...user, permissionActions }
     : { ...user, permissionActions: [], permissionStatus: 'degraded' };
+};
+
+const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
+  const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const user = parseRouteGuardUser(await response.json());
+  return user ? loadScopedRouteGuardUser(user, url, init) : null;
 };
 
 const getRouteGuardUser = createIsomorphicFn()
@@ -271,7 +276,14 @@ const getRouteGuardUser = createIsomorphicFn()
         fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
       );
       if (!result.ok) return null;
-      return parseRouteGuardUser(result.payload);
+      const user = parseRouteGuardUser(result.payload);
+      return user
+        ? await loadScopedRouteGuardUser(
+            user,
+            new URL('/auth/me', resolveBaseUrl()).toString(),
+            { credentials: 'include' }
+          )
+        : null;
     } catch {
       return null;
     }

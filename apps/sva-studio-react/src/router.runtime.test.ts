@@ -320,7 +320,7 @@ describe('router runtime helpers', () => {
     );
     expect(await getUser()).toEqual({
       roles: ['editor', 'system_admin'],
-      permissionActions: ['news.read', 'events.read'],
+      permissionActions: [],
       permissionStatus: 'ok',
       assignedModules: ['media', 'news'],
     });
@@ -335,6 +335,58 @@ describe('router runtime helpers', () => {
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('timeout'));
     expect(await getUser()).toBeNull();
+  });
+
+  it('loads active-organization permissions for client route guards', async () => {
+    const { getRouter } = await import('./router');
+    const getUser = readRouteGuardGetUser(await getRouter());
+
+    routerMocks.fetchWithRequestTimeoutSpy
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: {
+              instanceId: 'instance-1',
+              roles: ['editor'],
+              permissionActions: ['legacy.must-not-authorize'],
+              assignedModules: ['news'],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { activeOrganizationId: 'org-1' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ instanceId: 'instance-1', permissions: [{ action: 'news.read' }] }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      );
+
+    await expect(getUser()).resolves.toEqual({
+      instanceId: 'instance-1',
+      roles: ['editor'],
+      permissionActions: ['news.read'],
+      permissionStatus: 'ok',
+      assignedModules: ['news'],
+    });
+    expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenNthCalledWith(
+      2,
+      'http://localhost:3000/api/v1/iam/me/context',
+      { credentials: 'include' },
+      { timeoutMs: 5_000 }
+    );
+    expect(routerMocks.fetchWithRequestTimeoutSpy).toHaveBeenNthCalledWith(
+      3,
+      'http://localhost:3000/iam/me/permissions?instanceId=instance-1&organizationId=org-1',
+      { credentials: 'include' },
+      { timeoutMs: 5_000 }
+    );
   });
 
   it('does not bypass auth-me when dev auth is only available but no dev auth cookie exists', async () => {
@@ -363,7 +415,7 @@ describe('router runtime helpers', () => {
 
     expect(await getUser()).toEqual({
       roles: ['editor'],
-      permissionActions: ['news.read'],
+      permissionActions: [],
       permissionStatus: 'ok',
       assignedModules: ['news'],
     });

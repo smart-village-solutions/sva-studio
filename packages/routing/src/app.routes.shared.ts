@@ -1,10 +1,6 @@
-import type { AdminResourceDefinition, PluginDefinition, RouteFactory } from '@sva/plugin-sdk';
-import {
-  assertPluginRoutePathAllowed,
-  createPluginGuardrailError,
-  mergeAdminResourceDefinitions,
-} from '@sva/plugin-sdk';
-import { createRoute, redirect, type AnyRoute, type RootRoute } from '@tanstack/react-router';
+import type { AdminResourceDefinition, RouteFactory } from '@sva/plugin-sdk';
+import { mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
+import { createRoute, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 
 import {
   assertNoStaticAdminRouteShadowing,
@@ -18,13 +14,13 @@ import {
 } from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
-import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
 import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 import { enforceUiRouteAccessRequirements } from './ui-route-access.js';
 
 export { getAdminDetailRoutePath } from './admin-resource-route-paths.js';
+export { getPluginRouteFactories } from './plugin.routes.js';
 export type { AppRouteBindings } from './app-route-bindings.js';
 
 export type AppRouteFactory = RouteFactory<RootRoute, AnyRoute>;
@@ -203,52 +199,4 @@ export const createUiRouteFactories = (
     ...createAdminResourceRouteFactories(bindings, adminResources, diagnostics),
     ...createLegacyContentAliasFactories(adminResources),
   ];
-};
-
-export const getPluginRouteFactories = (
-  pluginDefinitions: readonly PluginDefinition[] = [],
-  options: { readonly diagnostics?: RoutingDiagnosticsHook } = {}
-): readonly AppRouteFactory[] => {
-  const diagnostics = options.diagnostics;
-  return pluginDefinitions.flatMap((pluginDefinition) =>
-    pluginDefinition.routes.map((routeDefinition) => {
-      const guard = resolvePluginRouteGuard(pluginDefinition, routeDefinition, diagnostics);
-      const normalizedGuard = routeDefinition.guard?.trim();
-      const unsupportedGuard = !guard && normalizedGuard ? normalizedGuard : null;
-      const pluginNamespace = pluginDefinition.id.trim();
-      const contributionId = routeDefinition.id.trim();
-      const requiredModuleId = pluginDefinition.moduleIam?.moduleId?.trim() || null;
-
-      assertPluginRoutePathAllowed(pluginNamespace, contributionId, routeDefinition.path);
-
-      if (unsupportedGuard) {
-        throw createPluginGuardrailError({
-          code: 'plugin_guardrail_unsupported_binding',
-          pluginNamespace,
-          contributionId,
-          fieldOrReason: 'guard',
-        });
-      }
-
-      return (rootRoute: RootRoute) =>
-        createRoute({
-          getParentRoute: () => rootRoute,
-          path: routeDefinition.path,
-          validateSearch: routeDefinition.validateSearch,
-          beforeLoad: async (beforeLoadOptions) => {
-            await guard?.(beforeLoadOptions);
-
-            if (!requiredModuleId) {
-              return;
-            }
-
-            const user = await beforeLoadOptions.context.auth?.getUser();
-            if (!user?.assignedModules?.includes(requiredModuleId)) {
-              throw redirect({ href: '/?error=auth.insufficientRole' });
-            }
-          },
-          component: routeDefinition.component as AppRouteBindings[keyof AppRouteBindings],
-        });
-    })
-  );
 };

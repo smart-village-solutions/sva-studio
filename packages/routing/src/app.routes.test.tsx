@@ -679,6 +679,57 @@ describe('app.routes', () => {
     });
   });
 
+  it('enforces accessRequirement-only plugin routes', async () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            accessRequirement: {
+              kind: 'tenant',
+              actions: { mode: 'allOf', values: ['news.read'] },
+            },
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const [route] = routeFactories.map((factory) => factory({ id: 'root' } as never));
+    const beforeLoad = readRouteOptions(route).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: [],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+  });
+
   it('normalizes surrounding whitespace for registered plugin permission guards', async () => {
     const routeFactories = getPluginRouteFactories([
       {

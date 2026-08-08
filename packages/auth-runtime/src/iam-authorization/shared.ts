@@ -43,6 +43,10 @@ export type EffectivePermissionsResolution =
       permissions: readonly EffectivePermission[];
       cacheStatus: SnapshotCacheStatus;
       snapshotVersion?: string;
+      permissionRevision: Readonly<{
+        instanceRevision: number;
+        userRevision: number;
+      }>;
     }
   | { ok: false; error: 'database_unavailable' };
 
@@ -75,6 +79,19 @@ export const iamCacheInvalidationLatencyHistogram = authMeter.createHistogram(
   {
     description: 'End-to-end latency for IAM cache invalidation events.',
     unit: 'ms',
+  }
+);
+export const iamPermissionRevisionReadLatencyHistogram = authMeter.createHistogram(
+  'sva_iam_permission_revision_read_duration_ms',
+  {
+    description: 'Latency for PostgreSQL-authoritative IAM permission revision reads.',
+    unit: 'ms',
+  }
+);
+export const iamPermissionCacheLifecycleCounter = authMeter.createCounter(
+  'sva_iam_permission_cache_lifecycle_total',
+  {
+    description: 'Lifecycle outcomes for revisions, recomputes, publishes and event eviction.',
   }
 );
 export const iamCacheStaleEntriesGauge = authMeter.createObservableGauge(
@@ -113,8 +130,9 @@ export const recordPermissionCacheColdStart = (instanceId: string): void => {
 
 export const withInstanceScopedDb = async <T>(
   instanceId: string,
-  work: (client: QueryClient) => Promise<T>
-): Promise<T> => withResolvedInstanceDb(resolvePool, instanceId, work);
+  work: (client: QueryClient) => Promise<T>,
+  options?: Readonly<{ isolationLevel?: 'repeatable read' }>
+): Promise<T> => withResolvedInstanceDb(resolvePool, instanceId, work, options);
 
 export const ensureInvalidationListener = async (): Promise<void> => {
   if (invalidationListenerInit) {
@@ -162,6 +180,10 @@ export const ensureInvalidationListener = async (): Promise<void> => {
         instanceId: parsed.instanceId,
         keycloakSubject: parsed.keycloakSubject,
       });
+      iamPermissionCacheLifecycleCounter.add(1, {
+        operation: 'event_evict',
+        scope: parsed.keycloakSubject ? 'user' : 'instance',
+      });
       void processSnapshotInvalidationEvent(parsed.event).catch((error) => {
         cacheLogger.error('Redis snapshot invalidation failed', {
           operation: 'cache_invalidate_failed',
@@ -177,6 +199,12 @@ export const ensureInvalidationListener = async (): Promise<void> => {
         operation: 'cache_invalidate',
         trigger: parsed.trigger,
         affected_scope: parsed.keycloakSubject ? 'user' : 'instance',
+        ...(parsed.revision
+          ? {
+              revision_scope: parsed.revision.scope,
+              permission_revision: parsed.revision.value,
+            }
+          : {}),
         ...buildRequestContext(parsed.instanceId),
       });
     });
@@ -217,6 +245,10 @@ export const buildMePermissionsResponse = (input: {
   isImpersonating: boolean;
   snapshotVersion?: string;
   cacheStatus?: SnapshotCacheStatus;
+  permissionRevision: Readonly<{
+    instanceRevision: number;
+    userRevision: number;
+  }>;
 }): MePermissionsResponse => ({
   instanceId: input.instanceId,
   organizationId: input.organizationId,
@@ -231,6 +263,7 @@ export const buildMePermissionsResponse = (input: {
   traceId: getWorkspaceContext().traceId,
   snapshotVersion: input.snapshotVersion,
   cacheStatus: input.cacheStatus,
+  permissionRevision: input.permissionRevision,
   provenance: {
     hasGroupDerivedPermissions: input.permissions.some(
       (permission) => (permission.sourceGroupIds?.length ?? 0) > 0

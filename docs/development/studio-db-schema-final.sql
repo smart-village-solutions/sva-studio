@@ -1571,6 +1571,36 @@ CREATE TABLE iam.organizations (
 
 
 --
+-- Name: permission_cache_instance_revisions; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.permission_cache_instance_revisions (
+    instance_id text NOT NULL,
+    revision bigint DEFAULT 1 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT permission_cache_instance_revisions_positive_chk CHECK ((revision > 0))
+);
+
+ALTER TABLE ONLY iam.permission_cache_instance_revisions FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: permission_cache_user_revisions; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.permission_cache_user_revisions (
+    instance_id text NOT NULL,
+    keycloak_subject text NOT NULL,
+    revision bigint DEFAULT 1 NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT permission_cache_user_revisions_positive_chk CHECK ((revision > 0)),
+    CONSTRAINT permission_cache_user_revisions_subject_chk CHECK ((length(btrim(keycloak_subject)) > 0))
+);
+
+ALTER TABLE ONLY iam.permission_cache_user_revisions FORCE ROW LEVEL SECURITY;
+
+
+--
 -- Name: permission_change_requests; Type: TABLE; Schema: iam; Owner: -
 --
 
@@ -2376,6 +2406,22 @@ ALTER TABLE ONLY iam.organizations
 
 ALTER TABLE ONLY iam.organizations
     ADD CONSTRAINT organizations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: permission_cache_instance_revisions permission_cache_instance_revisions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.permission_cache_instance_revisions
+    ADD CONSTRAINT permission_cache_instance_revisions_pkey PRIMARY KEY (instance_id);
+
+
+--
+-- Name: permission_cache_user_revisions permission_cache_user_revisions_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.permission_cache_user_revisions
+    ADD CONSTRAINT permission_cache_user_revisions_pkey PRIMARY KEY (instance_id, keycloak_subject);
 
 
 --
@@ -4069,6 +4115,22 @@ ALTER TABLE ONLY iam.organizations
 
 
 --
+-- Name: permission_cache_instance_revisions permission_cache_instance_revisions_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.permission_cache_instance_revisions
+    ADD CONSTRAINT permission_cache_instance_revisions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: permission_cache_user_revisions permission_cache_user_revisions_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.permission_cache_user_revisions
+    ADD CONSTRAINT permission_cache_user_revisions_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
 -- Name: permission_change_requests permission_change_requests_approver_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4496,6 +4558,32 @@ CREATE POLICY organization_mainserver_credentials_isolation_policy ON iam.organi
 --
 
 CREATE POLICY organizations_isolation_policy ON iam.organizations USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: permission_cache_instance_revisions; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.permission_cache_instance_revisions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: permission_cache_instance_revisions permission_cache_instance_revisions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY permission_cache_instance_revisions_isolation_policy ON iam.permission_cache_instance_revisions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: permission_cache_user_revisions; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.permission_cache_user_revisions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: permission_cache_user_revisions permission_cache_user_revisions_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY permission_cache_user_revisions_isolation_policy ON iam.permission_cache_user_revisions USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
 
 
 --

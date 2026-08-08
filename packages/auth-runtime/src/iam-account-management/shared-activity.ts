@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
 
 import type { IamRoleSyncState } from '@sva/core';
 
 import type { QueryClient } from '../db.js';
+import { bumpPermissionRevisionWithClient } from '../iam-authorization/permission-revision-store.js';
 
 import { sanitizeRoleAuditDetails } from './role-audit.js';
 
@@ -115,14 +115,14 @@ export const notifyPermissionInvalidation = async (
   client: QueryClient,
   input: { instanceId: string; keycloakSubject?: string; trigger: string }
 ) => {
-  await client.query('SELECT pg_notify($1, $2);', [
-    'iam_permission_snapshot_invalidation',
-    JSON.stringify({
-      eventId: randomUUID(),
-      instanceId: input.instanceId,
-      ...(input.keycloakSubject ? { keycloakSubject: input.keycloakSubject } : {}),
-      trigger: 'pg_notify',
-      reason: input.trigger,
-    }),
-  ]);
+  await bumpPermissionRevisionWithClient(
+    client,
+    input.keycloakSubject
+      ? {
+          kind: 'user',
+          instanceId: input.instanceId,
+          keycloakSubject: input.keycloakSubject,
+        }
+      : { kind: 'instance', instanceId: input.instanceId }
+  );
 };

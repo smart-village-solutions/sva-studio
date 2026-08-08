@@ -19,14 +19,21 @@ type UseLegalTextsResult = {
   readonly mutationError: IamHttpError | null;
   readonly refetch: () => Promise<void>;
   readonly clearMutationError: () => void;
-  readonly createLegalText: (payload: CreateLegalTextPayload) => Promise<IamLegalTextListItem | null>;
-  readonly updateLegalText: (legalTextVersionId: string, payload: UpdateLegalTextPayload) => Promise<boolean>;
+  readonly createLegalText: (
+    payload: CreateLegalTextPayload
+  ) => Promise<IamLegalTextListItem | null>;
+  readonly updateLegalText: (
+    legalTextVersionId: string,
+    payload: UpdateLegalTextPayload
+  ) => Promise<boolean>;
   readonly deleteLegalText: (legalTextVersionId: string) => Promise<boolean>;
 };
 
 export const useLegalTexts = (): UseLegalTextsResult => {
-  const { invalidatePermissions } = useAuth();
-  const adminList = useIamAdminList(listLegalTexts, invalidatePermissions);
+  const { refreshSession } = useAuth();
+  const adminList = useIamAdminList(listLegalTexts, refreshSession, {
+    invalidateEffectiveAccessOnMutation: true,
+  });
 
   return {
     legalTexts: adminList.items,

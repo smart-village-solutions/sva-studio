@@ -10,6 +10,7 @@ export const dataRepositoriesPackageRoles = [
 
 export {
   createIamSeedRepository,
+  createPermissionCacheRevisionRepository,
   createCachedInstanceIntegrationLoader,
   createExternalInterfaceRepository,
   createInstanceIntegrationRepository,
@@ -40,6 +41,9 @@ export type {
   InstanceIntegrationRepository,
   InstanceRegistryRepository,
   PermissionCatalogReconcileResult,
+  PermissionCacheRevisionRepository,
+  PermissionRevisionScope,
+  PermissionRevisionVector,
   IntegrationProviderKey,
   MediaAssetListFilter,
   MediaAssetRecord,

@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegalTexts } from './use-legal-texts';
+import { getEffectiveAccessInvalidationGeneration } from '../providers/effective-access-invalidation';
 
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -24,7 +25,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -58,7 +59,7 @@ describe('useLegalTexts', () => {
     createLegalTextMock.mockReset();
     updateLegalTextMock.mockReset();
     asIamErrorMock.mockReset();
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
     browserLoggerMock.debug.mockReset();
     browserLoggerMock.info.mockReset();
     browserLoggerMock.warn.mockReset();
@@ -66,6 +67,7 @@ describe('useLegalTexts', () => {
   });
 
   it('loads and mutates legal texts', async () => {
+    const initialAccessGeneration = getEffectiveAccessInvalidationGeneration();
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listLegalTextsMock.mockResolvedValue({
       data: [
@@ -108,6 +110,7 @@ describe('useLegalTexts', () => {
 
     expect(createLegalTextMock).toHaveBeenCalledTimes(1);
     expect(updateLegalTextMock).toHaveBeenCalledTimes(1);
+    expect(getEffectiveAccessInvalidationGeneration()).toBe(initialAccessGeneration + 2);
     expect(browserLoggerMock.debug).toHaveBeenCalledWith(
       'mutation_started',
       expect.objectContaining({ operation: 'create_legal_text', event: 'legal_text_mutation' })
@@ -118,7 +121,7 @@ describe('useLegalTexts', () => {
     );
   });
 
-  it('invalidates permissions when initial fetch returns 403', async () => {
+  it('does not refresh the session when initial fetch returns 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);
     listLegalTextsMock.mockRejectedValueOnce(new Error('forbidden-list'));
@@ -131,7 +134,7 @@ describe('useLegalTexts', () => {
       expect(result.current.legalTexts).toHaveLength(0);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('stores mutation errors when create fails', async () => {
@@ -161,7 +164,7 @@ describe('useLegalTexts', () => {
     });
 
     expect(result.current.mutationError).toBe(conflictError);
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('returns the created legal text from the mutation response', async () => {

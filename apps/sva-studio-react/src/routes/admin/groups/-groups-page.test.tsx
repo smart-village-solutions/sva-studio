@@ -6,6 +6,17 @@ import { GroupsPage } from './-groups-page';
 
 const useGroupsMock = vi.fn();
 const useRolesMock = vi.fn();
+const iamAccessAllowedMock = vi.fn();
+
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    create: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    update: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    delete: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -35,6 +46,8 @@ vi.mock('../../../providers/auth-provider', () => ({
 
 describe('GroupsPage', () => {
   beforeEach(() => {
+    iamAccessAllowedMock.mockReset();
+    iamAccessAllowedMock.mockReturnValue(true);
     useGroupsMock.mockReset();
     useRolesMock.mockReset();
     useAuthMock.mockReset();
@@ -232,5 +245,15 @@ describe('GroupsPage', () => {
     expect(
       screen.getByText('Die Gruppenverwaltung ist nur mit aktivem Instanzkontext verfügbar.')
     ).toBeTruthy();
+  });
+
+  it('removes group mutation controls without write access', () => {
+    iamAccessAllowedMock.mockReturnValue(false);
+    useGroupsMock.mockReturnValue(createGroupsState());
+
+    render(<GroupsPage />);
+
+    expect(screen.queryByRole('link', { name: 'Gruppe anlegen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
   });
 });

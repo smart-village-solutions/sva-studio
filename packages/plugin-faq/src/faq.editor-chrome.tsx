@@ -5,11 +5,13 @@ import { Button, StudioConfirmDialog, StudioFormSummary } from '@sva/studio-ui-r
 export type FaqTranslator = ReturnType<typeof usePluginTranslation>;
 
 export const FaqEditorActions = ({
+  canDelete,
   disabled,
   mode,
   onDelete,
   pt,
 }: Readonly<{
+  canDelete: boolean;
   disabled: boolean;
   mode: 'create' | 'edit';
   onDelete: () => void;
@@ -19,7 +21,7 @@ export const FaqEditorActions = ({
     <Button asChild variant="outline">
       <Link to="/admin/content">{pt('actions.back')}</Link>
     </Button>
-    {mode === 'edit' ? (
+    {mode === 'edit' && canDelete ? (
       <Button type="button" variant="destructive" disabled={disabled} onClick={onDelete}>
         {pt('actions.delete')}
       </Button>

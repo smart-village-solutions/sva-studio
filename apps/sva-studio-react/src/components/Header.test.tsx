@@ -159,7 +159,7 @@ describe('Header auth actions', () => {
       refetch: vi.fn(),
       loginWithDevAuth: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -192,7 +192,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -237,7 +237,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'dark',
@@ -335,7 +335,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'dark',
@@ -388,7 +388,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'dark',
@@ -428,7 +428,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useLocaleMock.mockReturnValue({
       locale: 'de',
@@ -478,7 +478,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -524,7 +524,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -596,7 +596,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -632,7 +632,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: false,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -668,7 +668,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -728,7 +728,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -769,7 +769,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -808,7 +808,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -842,7 +842,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -884,7 +884,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -942,7 +942,7 @@ describe('Header auth actions', () => {
       refetch: vi.fn(),
       loginWithDevAuth: loginWithDevAuthMock,
       logout: logoutMock,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -974,7 +974,7 @@ describe('Header auth actions', () => {
       refetch: vi.fn(),
       loginWithDevAuth: loginWithDevAuthMock,
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     rerender(<Header />);
@@ -998,7 +998,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -1034,7 +1034,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -1078,7 +1078,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',
@@ -1116,7 +1116,7 @@ describe('Header auth actions', () => {
       hasResolvedSession: true,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     useThemeMock.mockReturnValue({
       mode: 'light',

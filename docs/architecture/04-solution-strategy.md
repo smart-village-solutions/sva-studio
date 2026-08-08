@@ -27,6 +27,9 @@ Architekturprinzipien auf IST-Basis.
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik
 - Redis-Permission-Snapshots sind der primäre Shared-Read-Path für effektive IAM-Berechtigungen; der lokale In-Memory-Cache dient nur als L1
+- PostgreSQL-Revisionsvektoren sind die autoritative Gültigkeitsgrenze für L1 und Redis. `NOTIFY` beschleunigt Eviction, entscheidet aber nicht über Korrektheit.
+- Die Browser-UI trennt Identität und Session (`AuthProvider`) vom scopegebundenen Berechtigungszustand (`EffectiveAccessProvider`). Nicht aufgelöste, ladende oder fehlerhafte Access-Snapshots geben keine UI-Aktion frei.
+- Tenant-UI-Zugriff verlangt die vollständig qualifizierte Action und, wo ein Fachmodul existiert, zusätzlich dessen aktuelle Modulzuweisung. Plattformzugriff verwendet ausschließlich technische Plattformrollen.
 - `instanceId` ist der kanonische Mandanten-Scope für IAM-Datenzugriff und Autorisierung und wird als fachlicher String-Schlüssel geführt
 - `organizationId` bleibt im IAM ein optionaler Fachkontext innerhalb einer Instanz und bindet instanzweite Rechte nicht implizit an eine Organisation
 - Verwaltete IAM-Permissions klassifizieren ihre Laufzeitsemantik explizit über `runtimeScope = instance | record | organization_context`; `accessScope` bleibt auf datensatzbezogene Rollen-Zuordnungen begrenzt
@@ -208,6 +211,7 @@ Referenzen:
 - Der POI-Editor folgt strategisch nicht mehr einem reduzierten CRUD-Minimum, sondern einem festen redaktionsorientierten Bereichsmodell mit RHF-basierter Formularorchestrierung.
 - Karten- und Geocoding-Funktionen bleiben host-owned: Browser-Plugins sprechen ausschließlich normierte IAM-Endpunkte und kennen weder Providerdetails noch Secret-Referenzen.
 - Medienreferenzen und Uploads folgen ebenfalls einem host-owned Vertrag über IAM-Media-Endpunkte; das Plugin speichert Referenzen, aber kein Storage- oder Signaturwissen.
+
 ### Ergänzung 2026-07: Policy-gesteuerter MCP-Zugang
 
 Die Instanz-Control-Plane wird über einen dünnen lokalen MCP-Adapter wiederverwendet. Keycloak-Service-Tokens werden serverseitig gegen Issuer, Audience, Zeitbindung und vollständig qualifizierte Action-IDs geprüft. Lesen, kontrollierte Mutationen und kritische Mutationen bilden drei feste Risikostufen. Kritische Aktionen verwenden einen serverseitig erzwungenen Zwei-Schritt-Vertrag aus aktuellem Read/Plan und einer kurzlebigen, einmaligen, zustandsgebundenen Confirmation-Challenge. Der MCP führt keine automatische Reparatur aus und reicht ausschließlich redigierte strukturierte Ergebnisse weiter.

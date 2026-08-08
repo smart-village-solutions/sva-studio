@@ -7,7 +7,13 @@ import { StudioSummaryCard } from '../../components/StudioSummaryCard';
 import { StudioTableSurface } from '../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { t } from '../../i18n';
@@ -17,6 +23,7 @@ import {
   IamHttpError,
   startAuthorizePerformanceRun,
 } from '../../lib/iam-api';
+import { useAccessDecision } from '../../providers/effective-access-provider';
 
 type AuthorizePerformanceFormState = {
   readonly action: string;
@@ -31,6 +38,11 @@ const INITIAL_FORM_STATE: AuthorizePerformanceFormState = {
   resourceId: '',
   organizationId: '',
 };
+
+const MONITORING_WRITE_REQUIREMENT = {
+  kind: 'tenant',
+  actions: { mode: 'allOf', values: ['iam.monitoring.write'] },
+} as const;
 
 const formatDuration = (value: number): string => `${value.toFixed(2)} ms`;
 
@@ -78,7 +90,9 @@ const AuthorizeResultTable = ({
       >
         <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.instanceId', { value: result.actor.instanceId })}</p>
-          <p>{t('monitoring.authorize.summary.subject', { value: result.actor.keycloakSubject })}</p>
+          <p>
+            {t('monitoring.authorize.summary.subject', { value: result.actor.keycloakSubject })}
+          </p>
         </div>
       </StudioSummaryCard>
       <StudioSummaryCard
@@ -88,8 +102,14 @@ const AuthorizeResultTable = ({
       >
         <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.action', { value: result.request.action })}</p>
-          <p>{t('monitoring.authorize.summary.resourceType', { value: result.request.resourceType })}</p>
-          <p>{t('monitoring.authorize.summary.resourceId', { value: result.request.resourceId ?? t('monitoring.authorize.values.notAvailable') })}</p>
+          <p>
+            {t('monitoring.authorize.summary.resourceType', { value: result.request.resourceType })}
+          </p>
+          <p>
+            {t('monitoring.authorize.summary.resourceId', {
+              value: result.request.resourceId ?? t('monitoring.authorize.values.notAvailable'),
+            })}
+          </p>
         </div>
       </StudioSummaryCard>
       <StudioSummaryCard
@@ -98,8 +118,16 @@ const AuthorizeResultTable = ({
         valueClassName="text-lg"
       >
         <div className="space-y-1 text-sm text-muted-foreground">
-          <p>{t('monitoring.authorize.summary.samples', { value: result.configuration.measuredRequests })}</p>
-          <p>{t('monitoring.authorize.summary.warmup', { value: result.configuration.warmupRequests })}</p>
+          <p>
+            {t('monitoring.authorize.summary.samples', {
+              value: result.configuration.measuredRequests,
+            })}
+          </p>
+          <p>
+            {t('monitoring.authorize.summary.warmup', {
+              value: result.configuration.warmupRequests,
+            })}
+          </p>
           <p>{t('monitoring.authorize.summary.generatedAt', { value: result.generatedAt })}</p>
         </div>
       </StudioSummaryCard>
@@ -110,8 +138,16 @@ const AuthorizeResultTable = ({
       >
         <div className="space-y-1 text-sm text-muted-foreground">
           <p>{t('monitoring.authorize.summary.measuredOnServer')}</p>
-          <p>{t('monitoring.authorize.summary.reportJson', { value: result.report?.jsonPath ?? t('monitoring.authorize.values.notAvailable') })}</p>
-          <p>{t('monitoring.authorize.summary.reportMarkdown', { value: result.report?.markdownPath ?? t('monitoring.authorize.values.notAvailable') })}</p>
+          <p>
+            {t('monitoring.authorize.summary.reportJson', {
+              value: result.report?.jsonPath ?? t('monitoring.authorize.values.notAvailable'),
+            })}
+          </p>
+          <p>
+            {t('monitoring.authorize.summary.reportMarkdown', {
+              value: result.report?.markdownPath ?? t('monitoring.authorize.values.notAvailable'),
+            })}
+          </p>
         </div>
       </StudioSummaryCard>
     </div>
@@ -133,13 +169,23 @@ const AuthorizeResultTable = ({
         <tbody>
           {result.scenarios.map((scenario) => (
             <tr key={scenario.scenario} className="border-t align-top">
-              <td className="px-4 py-3 font-medium text-foreground">{authorizeScenarioLabel(scenario.scenario)}</td>
+              <td className="px-4 py-3 font-medium text-foreground">
+                {authorizeScenarioLabel(scenario.scenario)}
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{scenario.summary.count}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDuration(scenario.summary.p50Ms)}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDuration(scenario.summary.p95Ms)}</td>
-              <td className="px-4 py-3 text-muted-foreground">{formatDuration(scenario.summary.p99Ms)}</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {formatDuration(scenario.summary.p50Ms)}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {formatDuration(scenario.summary.p95Ms)}
+              </td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {formatDuration(scenario.summary.p99Ms)}
+              </td>
               <td className="px-4 py-3 text-muted-foreground">{scenario.evaluationLabel}</td>
-              <td className="px-4 py-3 text-muted-foreground">{scenario.observedCacheStatuses.join(', ')}</td>
+              <td className="px-4 py-3 text-muted-foreground">
+                {scenario.observedCacheStatuses.join(', ')}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -156,6 +202,8 @@ const toSubmitPayload = (form: AuthorizePerformanceFormState) => ({
 });
 
 export const MonitoringOverviewPage = () => {
+  const writeDecision = useAccessDecision(MONITORING_WRITE_REQUIREMENT);
+  const canStartAuthorizeRun = writeDecision.status === 'allowed';
   const [form, setForm] = React.useState<AuthorizePerformanceFormState>(INITIAL_FORM_STATE);
   const [isLoadingLatest, setIsLoadingLatest] = React.useState(true);
   const [isRunning, setIsRunning] = React.useState(false);
@@ -190,8 +238,7 @@ export const MonitoringOverviewPage = () => {
   }, []);
 
   const handleChange =
-    (key: keyof AuthorizePerformanceFormState) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (key: keyof AuthorizePerformanceFormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
       const value = event.target.value;
       setForm((current) => ({
         ...current,
@@ -201,6 +248,9 @@ export const MonitoringOverviewPage = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canStartAuthorizeRun) {
+      return;
+    }
     setIsRunning(true);
     setError(null);
 
@@ -242,36 +292,54 @@ export const MonitoringOverviewPage = () => {
               <CardDescription>{t('monitoring.authorize.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">{t('monitoring.authorize.serverMeasuredNotice')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('monitoring.authorize.serverMeasuredNotice')}
+              </p>
               <form className="grid gap-4 md:grid-cols-2" onSubmit={handleSubmit}>
                 <div className="space-y-2">
-                  <Label htmlFor="authorize-performance-action">{t('monitoring.authorize.form.action')}</Label>
-                  <Input id="authorize-performance-action" value={form.action} onChange={handleChange('action')} />
+                  <Label htmlFor="authorize-performance-action">
+                    {t('monitoring.authorize.form.action')}
+                  </Label>
+                  <Input
+                    id="authorize-performance-action"
+                    value={form.action}
+                    onChange={handleChange('action')}
+                    disabled={!canStartAuthorizeRun}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="authorize-performance-resource-type">{t('monitoring.authorize.form.resourceType')}</Label>
+                  <Label htmlFor="authorize-performance-resource-type">
+                    {t('monitoring.authorize.form.resourceType')}
+                  </Label>
                   <Input
                     id="authorize-performance-resource-type"
                     value={form.resourceType}
                     onChange={handleChange('resourceType')}
+                    disabled={!canStartAuthorizeRun}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="authorize-performance-resource-id">{t('monitoring.authorize.form.resourceId')}</Label>
+                  <Label htmlFor="authorize-performance-resource-id">
+                    {t('monitoring.authorize.form.resourceId')}
+                  </Label>
                   <Input
                     id="authorize-performance-resource-id"
                     value={form.resourceId}
                     onChange={handleChange('resourceId')}
                     placeholder={t('monitoring.authorize.form.resourceIdPlaceholder')}
+                    disabled={!canStartAuthorizeRun}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="authorize-performance-organization-id">{t('monitoring.authorize.form.organizationId')}</Label>
+                  <Label htmlFor="authorize-performance-organization-id">
+                    {t('monitoring.authorize.form.organizationId')}
+                  </Label>
                   <Input
                     id="authorize-performance-organization-id"
                     value={form.organizationId}
                     onChange={handleChange('organizationId')}
                     placeholder={t('monitoring.authorize.form.organizationIdPlaceholder')}
+                    disabled={!canStartAuthorizeRun}
                   />
                 </div>
                 <div className="md:col-span-2 flex items-center justify-between gap-3">
@@ -282,9 +350,13 @@ export const MonitoringOverviewPage = () => {
                         ? t('monitoring.authorize.status.loading')
                         : t('monitoring.authorize.status.idle')}
                   </p>
-                  <Button type="submit" disabled={isRunning}>
-                    {isRunning ? t('monitoring.authorize.actions.running') : t('monitoring.authorize.actions.start')}
-                  </Button>
+                  {canStartAuthorizeRun ? (
+                    <Button type="submit" disabled={isRunning}>
+                      {isRunning
+                        ? t('monitoring.authorize.actions.running')
+                        : t('monitoring.authorize.actions.start')}
+                    </Button>
+                  ) : null}
                 </div>
               </form>
             </CardContent>

@@ -10,7 +10,7 @@ const useRealUsersHook = vi.hoisted(() => ({ current: false }));
 const useUsersMock = vi.fn();
 const useRolesMock = vi.fn();
 const useGroupsMock = vi.fn();
-const invalidatePermissionsMock = vi.fn();
+const refreshSessionMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
@@ -49,7 +49,7 @@ vi.mock('../../../providers/auth-provider', () => ({
     error: null,
     refetch: vi.fn(),
     logout: vi.fn(),
-    invalidatePermissions: invalidatePermissionsMock,
+    refreshSession: refreshSessionMock,
   }),
 }));
 

@@ -3,7 +3,13 @@ import React from 'react';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -14,6 +20,7 @@ import type {
   InitializeMediaUploadPayload,
   InitializeMediaUploadResponse,
 } from '../../../lib/iam-api';
+import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 type MediaCreateFormState = Readonly<{
   mimeType: string;
@@ -64,8 +71,12 @@ const mediaTypeForMimeType = (mimeType: string): InitializeMediaUploadPayload['m
 const MediaCreatePlanningCard = ({ item }: Readonly<{ item: MediaCreatePlanningItem }>) => (
   <div className="rounded-2xl border border-white/80 bg-white/70 p-4 shadow-[0_18px_40px_-32px_rgba(15,23,42,0.55)]">
     <div className="space-y-1">
-      <p className="text-sm font-semibold text-foreground">{t(`media.create.planning.items.${item}.title`)}</p>
-      <p className="text-sm text-muted-foreground">{t(`media.create.planning.items.${item}.body`)}</p>
+      <p className="text-sm font-semibold text-foreground">
+        {t(`media.create.planning.items.${item}.title`)}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {t(`media.create.planning.items.${item}.body`)}
+      </p>
     </div>
   </div>
 );
@@ -105,6 +116,12 @@ const MediaCreateResultCard = ({ result }: Readonly<{ result: InitializeMediaUpl
 );
 
 export const MediaCreatePage = () => {
+  const createDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.create'] },
+  });
+  const canCreateMedia = createDecision.status === 'allowed';
   const mediaApi = useCreateMediaUpload();
   const [formState, setFormState] = React.useState<MediaCreateFormState>(defaultFormState);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -126,6 +143,9 @@ export const MediaCreatePage = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canCreateMedia) {
+      return;
+    }
 
     setIsSubmitting(true);
     setResult(null);
@@ -179,6 +199,7 @@ export const MediaCreatePage = () => {
                   <Label htmlFor="media-create-mime-type">{t('media.fields.mimeType')}</Label>
                   <Select
                     id="media-create-mime-type"
+                    disabled={!canCreateMedia}
                     value={formState.mimeType}
                     onChange={(event) => updateFormState('mimeType', event.target.value)}
                   >
@@ -193,6 +214,7 @@ export const MediaCreatePage = () => {
                 <div className="space-y-2">
                   <Label htmlFor="media-create-byte-size">{t('media.fields.byteSize')}</Label>
                   <Input
+                    disabled={!canCreateMedia}
                     id="media-create-byte-size"
                     min={1}
                     required
@@ -209,9 +231,13 @@ export const MediaCreatePage = () => {
                 <Label htmlFor="media-create-visibility">{t('media.fields.visibility')}</Label>
                 <Select
                   id="media-create-visibility"
+                  disabled={!canCreateMedia}
                   value={formState.visibility}
                   onChange={(event) =>
-                    updateFormState('visibility', event.target.value as MediaCreateFormState['visibility'])
+                    updateFormState(
+                      'visibility',
+                      event.target.value as MediaCreateFormState['visibility']
+                    )
                   }
                 >
                   <option value="protected">{t('media.visibility.protected')}</option>
@@ -220,10 +246,16 @@ export const MediaCreatePage = () => {
               </div>
 
               <div className="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="max-w-xl text-sm text-muted-foreground">{t('media.create.submitHint')}</p>
-                <Button disabled={isSubmitting} type="submit">
-                  {isSubmitting ? t('media.create.submitting') : t('media.actions.initializeUpload')}
-                </Button>
+                <p className="max-w-xl text-sm text-muted-foreground">
+                  {t('media.create.submitHint')}
+                </p>
+                {canCreateMedia ? (
+                  <Button disabled={isSubmitting} type="submit">
+                    {isSubmitting
+                      ? t('media.create.submitting')
+                      : t('media.actions.initializeUpload')}
+                  </Button>
+                ) : null}
               </div>
             </form>
           </CardContent>

@@ -10,7 +10,7 @@ const browserLoggerMock = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 const authMockValue = {
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 const listPermissionsMock = vi.fn();
@@ -34,7 +34,7 @@ vi.mock('@sva/monitoring-client/logging', () => ({
 
 describe('useRolePermissions', () => {
   beforeEach(() => {
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
     listPermissionsMock.mockReset();
     useIamAdminListMock.mockReset();
     browserLoggerMock.debug.mockReset();
@@ -64,7 +64,7 @@ describe('useRolePermissions', () => {
 
     const { result } = renderHook(() => useRolePermissions());
 
-    expect(useIamAdminListMock).toHaveBeenCalledWith(expect.any(Function), authMockValue.invalidatePermissions);
+    expect(useIamAdminListMock).toHaveBeenCalledWith(expect.any(Function), authMockValue.refreshSession);
     expect(result.current).toEqual({
       permissions: items,
       isLoading: true,

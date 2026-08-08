@@ -1,4 +1,8 @@
-import type { IamOrganizationDetail, IamOrganizationListItem, IamOrganizationType } from '@sva/core';
+import type {
+  IamOrganizationDetail,
+  IamOrganizationListItem,
+  IamOrganizationType,
+} from '@sva/core';
 import React from 'react';
 
 import {
@@ -24,6 +28,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 type OrganizationStatusFilter = 'active' | 'inactive' | 'all';
 
@@ -54,8 +59,13 @@ type UseOrganizationsResult = {
   readonly loadOrganization: (organizationId: string) => Promise<IamOrganizationDetail | null>;
   readonly clearSelectedOrganization: () => void;
   readonly clearMutationError: () => void;
-  readonly createOrganization: (payload: CreateOrganizationPayload) => Promise<IamOrganizationDetail | null>;
-  readonly updateOrganization: (organizationId: string, payload: UpdateOrganizationPayload) => Promise<IamOrganizationDetail | null>;
+  readonly createOrganization: (
+    payload: CreateOrganizationPayload
+  ) => Promise<IamOrganizationDetail | null>;
+  readonly updateOrganization: (
+    organizationId: string,
+    payload: UpdateOrganizationPayload
+  ) => Promise<IamOrganizationDetail | null>;
   readonly deleteOrganization: (organizationId: string) => Promise<boolean>;
   readonly assignMembership: (
     organizationId: string,
@@ -66,7 +76,10 @@ type UseOrganizationsResult = {
     accountId: string,
     payload: UpdateOrganizationMembershipPayload
   ) => Promise<IamOrganizationDetail | null>;
-  readonly removeMembership: (organizationId: string, accountId: string) => Promise<IamOrganizationDetail | null>;
+  readonly removeMembership: (
+    organizationId: string,
+    accountId: string
+  ) => Promise<IamOrganizationDetail | null>;
 };
 
 const DEFAULT_FILTERS: OrganizationFilters = {
@@ -78,13 +91,15 @@ const DEFAULT_FILTERS: OrganizationFilters = {
 };
 
 const organizationsLogger = createOperationLogger('organizations-hook', 'debug');
-const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
+const SESSION_REFRESHED_EVENT = 'session_refreshed_after_401';
 
 const getOrganizationMutationOperation = (organizationId?: string) =>
   organizationId ? 'organization_mutation_with_detail_reload' : 'organization_mutation';
 
-export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrganizationsResult => {
-  const { invalidatePermissions } = useAuth();
+export const useOrganizations = (
+  initial?: Partial<OrganizationFilters>
+): UseOrganizationsResult => {
+  const { refreshSession } = useAuth();
 
   const [filters, setFilters] = React.useState<OrganizationFilters>({
     ...DEFAULT_FILTERS,
@@ -96,7 +111,8 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
-  const [selectedOrganization, setSelectedOrganization] = React.useState<IamOrganizationDetail | null>(null);
+  const [selectedOrganization, setSelectedOrganization] =
+    React.useState<IamOrganizationDetail | null>(null);
   const [detailLoading, setDetailLoading] = React.useState(false);
   const organizationsRef = React.useRef(organizations);
   const totalRef = React.useRef(total);
@@ -121,72 +137,88 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     };
   }, [filters.search]);
 
-  const loadOrganizations = React.useCallback(async (options?: { preserveStateOnError?: boolean }) => {
-    const requestId = ++listRequestIdRef.current;
-    logBrowserOperationStart(organizationsLogger, 'organization_list_refetch_started', {
-      operation: 'list_organizations',
-      page: filters.page,
-      page_size: filters.pageSize,
-      search: debouncedSearch || undefined,
-      organization_type: filters.organizationType,
-      status: filters.status,
-    });
-    setIsLoading(true);
-    if (!options?.preserveStateOnError) {
-      setError(null);
-    }
-    try {
-      const response = await listOrganizations({
-        page: filters.page,
-        pageSize: filters.pageSize,
-        search: debouncedSearch || undefined,
-        organizationType: filters.organizationType === 'all' ? undefined : filters.organizationType,
-        status: filters.status === 'all' ? undefined : filters.status,
-      });
-      if (requestId !== listRequestIdRef.current) {
-        return true;
-      }
-      setOrganizations(response.data);
-      setTotal(response.pagination.total);
-      logBrowserOperationSuccess(
-        organizationsLogger,
-        'organization_list_refetch_succeeded',
-        {
-          operation: 'list_organizations',
-          item_count: response.data.length,
-          total: response.pagination.total,
-        },
-        'debug'
-      );
-      return true;
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
-          operation: 'list_organizations',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
-        });
-      }
-      if (requestId !== listRequestIdRef.current) {
-        return false;
-      }
-      if (!options?.preserveStateOnError) {
-        setOrganizations([]);
-        setTotal(0);
-        setError(resolvedError);
-      }
-      logBrowserOperationFailure(organizationsLogger, 'organization_list_refetch_failed', resolvedError, {
+  const loadOrganizations = React.useCallback(
+    async (options?: { preserveStateOnError?: boolean }) => {
+      const requestId = ++listRequestIdRef.current;
+      logBrowserOperationStart(organizationsLogger, 'organization_list_refetch_started', {
         operation: 'list_organizations',
+        page: filters.page,
+        page_size: filters.pageSize,
+        search: debouncedSearch || undefined,
+        organization_type: filters.organizationType,
+        status: filters.status,
       });
-      return false;
-    } finally {
-      if (requestId === listRequestIdRef.current) {
-        setIsLoading(false);
+      setIsLoading(true);
+      if (!options?.preserveStateOnError) {
+        setError(null);
       }
-    }
-  }, [debouncedSearch, filters.organizationType, filters.page, filters.pageSize, filters.status, invalidatePermissions]);
+      try {
+        const response = await listOrganizations({
+          page: filters.page,
+          pageSize: filters.pageSize,
+          search: debouncedSearch || undefined,
+          organizationType:
+            filters.organizationType === 'all' ? undefined : filters.organizationType,
+          status: filters.status === 'all' ? undefined : filters.status,
+        });
+        if (requestId !== listRequestIdRef.current) {
+          return true;
+        }
+        setOrganizations(response.data);
+        setTotal(response.pagination.total);
+        logBrowserOperationSuccess(
+          organizationsLogger,
+          'organization_list_refetch_succeeded',
+          {
+            operation: 'list_organizations',
+            item_count: response.data.length,
+            total: response.pagination.total,
+          },
+          'debug'
+        );
+        return true;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          organizationsLogger.info(SESSION_REFRESHED_EVENT, {
+            operation: 'list_organizations',
+            status: resolvedError.status,
+            error_code: resolvedError.code,
+          });
+        }
+        if (requestId !== listRequestIdRef.current) {
+          return false;
+        }
+        if (!options?.preserveStateOnError) {
+          setOrganizations([]);
+          setTotal(0);
+          setError(resolvedError);
+        }
+        logBrowserOperationFailure(
+          organizationsLogger,
+          'organization_list_refetch_failed',
+          resolvedError,
+          {
+            operation: 'list_organizations',
+          }
+        );
+        return false;
+      } finally {
+        if (requestId === listRequestIdRef.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [
+      debouncedSearch,
+      filters.organizationType,
+      filters.page,
+      filters.pageSize,
+      filters.status,
+      refreshSession,
+    ]
+  );
 
   React.useEffect(() => {
     void loadOrganizations();
@@ -214,9 +246,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          organizationsLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'get_organization',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -227,10 +259,15 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
           return null;
         }
         setMutationError(resolvedError);
-        logBrowserOperationFailure(organizationsLogger, 'organization_detail_load_failed', resolvedError, {
-          operation: 'get_organization',
-          organization_id: organizationId,
-        });
+        logBrowserOperationFailure(
+          organizationsLogger,
+          'organization_detail_load_failed',
+          resolvedError,
+          {
+            operation: 'get_organization',
+            organization_id: organizationId,
+          }
+        );
         return null;
       } finally {
         if (requestId === detailRequestIdRef.current) {
@@ -238,11 +275,14 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         }
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   const mutate = React.useCallback(
-    async <T,>(action: () => Promise<{ data: T }>, options?: { organizationId?: string }): Promise<T | null> => {
+    async <T>(
+      action: () => Promise<{ data: T }>,
+      options?: { organizationId?: string }
+    ): Promise<T | null> => {
       setMutationError(null);
       const operation = getOrganizationMutationOperation(options?.organizationId);
       logBrowserOperationStart(organizationsLogger, 'organization_mutation_started', {
@@ -253,6 +293,7 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         const previousOrganizations = organizationsRef.current;
         const previousTotal = totalRef.current;
         const result = await action();
+        requestEffectiveAccessInvalidation();
         const reloaded = await loadOrganizations({ preserveStateOnError: true });
         if (!reloaded) {
           setOrganizations(previousOrganizations);
@@ -268,9 +309,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
         return result.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          organizationsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          organizationsLogger.info(SESSION_REFRESHED_EVENT, {
             operation,
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -278,14 +319,19 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
           });
         }
         setMutationError(resolvedError);
-        logBrowserOperationFailure(organizationsLogger, 'organization_mutation_failed', resolvedError, {
-          operation,
-          organization_id: options?.organizationId,
-        });
+        logBrowserOperationFailure(
+          organizationsLogger,
+          'organization_mutation_failed',
+          resolvedError,
+          {
+            operation,
+            organization_id: options?.organizationId,
+          }
+        );
         return null;
       }
     },
-    [invalidatePermissions, loadOrganization, loadOrganizations]
+    [refreshSession, loadOrganization, loadOrganizations]
   );
 
   return {
@@ -300,7 +346,8 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     detailLoading,
     filters,
     setSearch: (value) => setFilters((current) => ({ ...current, page: 1, search: value })),
-    setOrganizationType: (value) => setFilters((current) => ({ ...current, page: 1, organizationType: value })),
+    setOrganizationType: (value) =>
+      setFilters((current) => ({ ...current, page: 1, organizationType: value })),
     setStatus: (value) => setFilters((current) => ({ ...current, page: 1, status: value })),
     setPage: (value) => setFilters((current) => ({ ...current, page: Math.max(1, value) })),
     refetch: async () => {
@@ -320,7 +367,9 @@ export const useOrganizations = (initial?: Partial<OrganizationFilters>): UseOrg
     assignMembership: async (organizationId, payload) =>
       mutate(() => assignOrganizationMembership(organizationId, payload), { organizationId }),
     updateMembership: async (organizationId, accountId, payload) =>
-      mutate(() => updateOrganizationMembership(organizationId, accountId, payload), { organizationId }),
+      mutate(() => updateOrganizationMembership(organizationId, accountId, payload), {
+        organizationId,
+      }),
     removeMembership: async (organizationId, accountId) =>
       mutate(() => removeOrganizationMembership(organizationId, accountId), { organizationId }),
   };

@@ -25,7 +25,10 @@ export type OrganizationFormValues = {
   mainserverApplicationSecretSet: boolean;
 };
 
-export type OrganizationParentOption = Pick<IamOrganizationListItem, 'id' | 'displayName' | 'organizationKey'>;
+export type OrganizationParentOption = Pick<
+  IamOrganizationListItem,
+  'id' | 'displayName' | 'organizationKey'
+>;
 
 const ORGANIZATION_PARENT_OPTIONS_PAGE_SIZE = 100;
 
@@ -39,7 +42,8 @@ const ORGANIZATION_TYPE_KEYS = {
 } satisfies Record<IamOrganizationType, TranslationKey>;
 
 export const organizationTypeOptions = Object.keys(ORGANIZATION_TYPE_KEYS) as IamOrganizationType[];
-export const getOrganizationTypeTranslationKey = (type: IamOrganizationType) => ORGANIZATION_TYPE_KEYS[type];
+export const getOrganizationTypeTranslationKey = (type: IamOrganizationType) =>
+  ORGANIZATION_TYPE_KEYS[type];
 
 export const createOrganizationFormValues = (): OrganizationFormValues => ({
   organizationKey: '',
@@ -123,8 +127,7 @@ export const suggestOrganizationKey = (
 export const getOrganizationParentOptions = (
   organizations: readonly OrganizationParentOption[],
   excludeOrganizationId?: string
-) =>
-  organizations.filter((organization) => organization.id !== excludeOrganizationId);
+) => organizations.filter((organization) => organization.id !== excludeOrganizationId);
 
 export const mergeOrganizationParentOptions = (
   ...lists: readonly (readonly OrganizationParentOption[])[]
@@ -154,12 +157,13 @@ export const areOrganizationParentOptionsEqual = (
   });
 
 export const loadAllOrganizationParentOptions = async (
-  loadPage: (input: {
-    readonly page: number;
-    readonly pageSize: number;
-  }) => Promise<{
+  loadPage: (input: { readonly page: number; readonly pageSize: number }) => Promise<{
     readonly data: readonly OrganizationParentOption[];
-    readonly pagination: { readonly page: number; readonly pageSize: number; readonly total: number };
+    readonly pagination: {
+      readonly page: number;
+      readonly pageSize: number;
+      readonly total: number;
+    };
   }>
 ): Promise<readonly OrganizationParentOption[]> => {
   const organizations: OrganizationParentOption[] = [];
@@ -214,6 +218,7 @@ type OrganizationFormProps = {
   readonly setFormValues: React.Dispatch<React.SetStateAction<OrganizationFormValues>>;
   readonly submitLabel: string;
   readonly formValues: OrganizationFormValues;
+  readonly readOnly?: boolean;
 };
 
 export const OrganizationForm = ({
@@ -226,132 +231,141 @@ export const OrganizationForm = ({
   setFormValues,
   submitLabel,
   formValues,
+  readOnly = false,
 }: OrganizationFormProps) => {
   const parentOptions = getOrganizationParentOptions(organizations, excludeOrganizationId);
 
   return (
-    <form className="space-y-4" onSubmit={onSubmit}>
-      <div className="grid gap-1 text-sm text-foreground">
-        <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
-        <Input
-          id="organization-key"
-          value={formValues.organizationKey}
-          onChange={(event) =>
-            onOrganizationKeyChange
-              ? onOrganizationKeyChange(event.target.value)
-              : setFormValues((current) => ({ ...current, organizationKey: event.target.value }))
-          }
-        />
-      </div>
-      <div className="grid gap-1 text-sm text-foreground">
-        <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
-        <Input
-          id="organization-name"
-          value={formValues.displayName}
-          onChange={(event) =>
-            onDisplayNameChange
-              ? onDisplayNameChange(event.target.value)
-              : setFormValues((current) => ({ ...current, displayName: event.target.value }))
-          }
-        />
-      </div>
-      <div className="grid gap-1 text-sm text-foreground md:grid-cols-2 md:gap-4">
-        <div className="grid gap-1">
-          <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
-          <Select
-            id="organization-type"
-            value={formValues.organizationType}
+    <form className="space-y-4" aria-readonly={readOnly} onSubmit={onSubmit}>
+      <fieldset className="contents" disabled={readOnly}>
+        <div className="grid gap-1 text-sm text-foreground">
+          <Label htmlFor="organization-key">{t('admin.organizations.form.keyLabel')}</Label>
+          <Input
+            id="organization-key"
+            value={formValues.organizationKey}
             onChange={(event) =>
-              setFormValues((current) => ({
-                ...current,
-                organizationType: event.target.value as IamOrganizationType,
-              }))
+              onOrganizationKeyChange
+                ? onOrganizationKeyChange(event.target.value)
+                : setFormValues((current) => ({ ...current, organizationKey: event.target.value }))
+            }
+          />
+        </div>
+        <div className="grid gap-1 text-sm text-foreground">
+          <Label htmlFor="organization-name">{t('admin.organizations.form.nameLabel')}</Label>
+          <Input
+            id="organization-name"
+            value={formValues.displayName}
+            onChange={(event) =>
+              onDisplayNameChange
+                ? onDisplayNameChange(event.target.value)
+                : setFormValues((current) => ({ ...current, displayName: event.target.value }))
+            }
+          />
+        </div>
+        <div className="grid gap-1 text-sm text-foreground md:grid-cols-2 md:gap-4">
+          <div className="grid gap-1">
+            <Label htmlFor="organization-type">{t('admin.organizations.form.typeLabel')}</Label>
+            <Select
+              id="organization-type"
+              value={formValues.organizationType}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  organizationType: event.target.value as IamOrganizationType,
+                }))
+              }
+            >
+              {organizationTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {t(ORGANIZATION_TYPE_KEYS[type])}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="grid gap-1">
+            <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
+            <Select
+              id="organization-policy"
+              value={formValues.contentAuthorPolicy}
+              onChange={(event) =>
+                setFormValues((current) => ({
+                  ...current,
+                  contentAuthorPolicy: event.target.value as OrganizationContentAuthorPolicy,
+                }))
+              }
+            >
+              <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
+              <option value="org_or_personal">
+                {t('admin.organizations.policies.orgOrPersonal')}
+              </option>
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-1 text-sm text-foreground">
+          <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
+          <Select
+            id="organization-parent"
+            value={formValues.parentOrganizationId}
+            onChange={(event) =>
+              setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))
             }
           >
-            {organizationTypeOptions.map((type) => (
-              <option key={type} value={type}>
-                {t(ORGANIZATION_TYPE_KEYS[type])}
+            <option value="">{t('admin.organizations.form.parentNone')}</option>
+            {parentOptions.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.displayName}
               </option>
             ))}
           </Select>
         </div>
-        <div className="grid gap-1">
-          <Label htmlFor="organization-policy">{t('admin.organizations.form.policyLabel')}</Label>
-          <Select
-            id="organization-policy"
-            value={formValues.contentAuthorPolicy}
+        <div className="grid gap-1 text-sm text-foreground">
+          <Label htmlFor="organization-mainserver-app-id">
+            {t('admin.organizations.form.mainserverApplicationIdLabel')}
+          </Label>
+          <Input
+            id="organization-mainserver-app-id"
+            value={formValues.mainserverApplicationId}
             onChange={(event) =>
               setFormValues((current) => ({
                 ...current,
-                contentAuthorPolicy: event.target.value as OrganizationContentAuthorPolicy,
+                mainserverApplicationId: event.target.value,
               }))
             }
-          >
-            <option value="org_only">{t('admin.organizations.policies.orgOnly')}</option>
-            <option value="org_or_personal">{t('admin.organizations.policies.orgOrPersonal')}</option>
-          </Select>
+          />
         </div>
-      </div>
-      <div className="grid gap-1 text-sm text-foreground">
-        <Label htmlFor="organization-parent">{t('admin.organizations.form.parentLabel')}</Label>
-        <Select
-          id="organization-parent"
-          value={formValues.parentOrganizationId}
-          onChange={(event) => setFormValues((current) => ({ ...current, parentOrganizationId: event.target.value }))}
-        >
-          <option value="">{t('admin.organizations.form.parentNone')}</option>
-          {parentOptions.map((organization) => (
-            <option key={organization.id} value={organization.id}>
-              {organization.displayName}
-            </option>
-          ))}
-        </Select>
-      </div>
-      <div className="grid gap-1 text-sm text-foreground">
-        <Label htmlFor="organization-mainserver-app-id">
-          {t('admin.organizations.form.mainserverApplicationIdLabel')}
-        </Label>
-        <Input
-          id="organization-mainserver-app-id"
-          value={formValues.mainserverApplicationId}
-          onChange={(event) =>
-            setFormValues((current) => ({
-              ...current,
-              mainserverApplicationId: event.target.value,
-            }))
-          }
-        />
-      </div>
-      <div className="grid gap-1 text-sm text-foreground">
-        <Label htmlFor="organization-mainserver-app-secret">
-          {t('admin.organizations.form.mainserverApplicationSecretLabel')}
-        </Label>
-        <Input
-          id="organization-mainserver-app-secret"
-          type="password"
-          autoComplete="new-password"
-          value={formValues.mainserverApplicationSecret}
-          placeholder={t('admin.organizations.form.mainserverApplicationSecretPlaceholder')}
-          onChange={(event) =>
-            setFormValues((current) => ({
-              ...current,
-              mainserverApplicationSecret: event.target.value,
-            }))
-          }
-        />
-        <span className="text-xs text-muted-foreground">
-          {formValues.mainserverApplicationSecretSet
-            ? t('admin.organizations.form.mainserverApplicationSecretConfigured')
-            : t('admin.organizations.form.mainserverApplicationSecretMissing')}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {t('admin.organizations.form.mainserverApplicationSecretHint')}
-        </span>
-      </div>
-      <div className="flex justify-end gap-2">
-        {actions}
-        <Button type="submit">{submitLabel}</Button>
-      </div>
+        <div className="grid gap-1 text-sm text-foreground">
+          <Label htmlFor="organization-mainserver-app-secret">
+            {t('admin.organizations.form.mainserverApplicationSecretLabel')}
+          </Label>
+          <Input
+            id="organization-mainserver-app-secret"
+            type="password"
+            autoComplete="new-password"
+            value={formValues.mainserverApplicationSecret}
+            placeholder={t('admin.organizations.form.mainserverApplicationSecretPlaceholder')}
+            onChange={(event) =>
+              setFormValues((current) => ({
+                ...current,
+                mainserverApplicationSecret: event.target.value,
+              }))
+            }
+          />
+          <span className="text-xs text-muted-foreground">
+            {formValues.mainserverApplicationSecretSet
+              ? t('admin.organizations.form.mainserverApplicationSecretConfigured')
+              : t('admin.organizations.form.mainserverApplicationSecretMissing')}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {t('admin.organizations.form.mainserverApplicationSecretHint')}
+          </span>
+        </div>
+        {readOnly ? null : (
+          <div className="flex justify-end gap-2">
+            {actions}
+            <Button type="submit">{submitLabel}</Button>
+          </div>
+        )}
+      </fieldset>
     </form>
   );
 };

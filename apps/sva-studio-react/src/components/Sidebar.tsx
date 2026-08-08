@@ -56,6 +56,7 @@ import {
   studioPluginNavigation,
 } from '../lib/plugins';
 import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { Button } from './ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Sheet, SheetContent } from './ui/sheet';
@@ -156,7 +157,7 @@ const hasRequiredContentAccess = (
   }
 
   if (isLoading) {
-    return true;
+    return false;
   }
 
   if (!access) {
@@ -193,7 +194,7 @@ const hasPermissionAction = (
   isLoading: boolean
 ) => {
   if (isLoading) {
-    return true;
+    return false;
   }
 
   return permissionActions?.includes(requiredAction) === true;
@@ -755,49 +756,51 @@ export default function Sidebar({
   isMobileOpen = false,
   onMobileOpenChange,
 }: SidebarProps) {
-  const { user, isAuthenticated, isDevAuthAvailable: devAuthAvailable } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const tenantName = user?.instanceDisplayName?.trim() || user?.instanceId?.trim() || undefined;
   const contentAccessApi = useContentAccess();
+  const { decide: decideAccess } = useEffectiveAccess();
+  const accessUser = user
+    ? { ...user, permissionActions: contentAccessApi.permissionActions }
+    : user;
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
   const canAccessContent =
     canAccessWorkspace &&
-    (devAuthAvailable || contentAccessApi.isLoading || contentAccessApi.access?.canRead === true);
+    contentAccessApi.access?.canRead === true;
   const canAccessMedia =
     canAccessWorkspace &&
-    (devAuthAvailable ||
-      (isModuleAssignedToUser('media', user) &&
+    (isModuleAssignedToUser('media', user) &&
         hasPermissionAction(
           'media.read',
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
-        )));
+        ));
   const canAccessCategories =
     canAccessWorkspace &&
-    (devAuthAvailable ||
-      (isModuleAssignedToUser('categories', user) &&
+    (isModuleAssignedToUser('categories', user) &&
         hasPermissionAction(
           CATEGORIES_READ_PERMISSION,
           contentAccessApi.permissionActions,
           contentAccessApi.isLoading
-        )));
+        ));
   const canAccessAdminUsers =
-    isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
+    isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(accessUser) || hasPlatformInstanceAdminAccess(accessUser));
   const canAccessAdminOrganizations =
-    isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(user);
+    isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(accessUser);
   const canAccessAdminInstances =
-    isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(user);
+    isAuthenticated && isIamAdminEnabled() && hasPlatformInstanceAdminAccess(accessUser);
   const canAccessAdminRoles =
     isAuthenticated &&
     isIamAdminEnabled() &&
-    (hasRoleAdminAccess(user) || hasPlatformInstanceAdminAccess(user));
+    (hasRoleAdminAccess(accessUser) || hasPlatformInstanceAdminAccess(accessUser));
   const canAccessAdminGroups = canAccessAdminRoles && Boolean(user?.instanceId);
   const canAccessAdminLegalTexts =
-    isAuthenticated && isIamAdminEnabled() && hasLegalTextAdminAccess(user);
-  const canAccessAdminPrivacy = isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(user);
-  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(user);
-  const canAccessExperimentalFeatures = isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(user);
+    isAuthenticated && isIamAdminEnabled() && hasLegalTextAdminAccess(accessUser);
+  const canAccessAdminPrivacy = isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(accessUser);
+  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(accessUser);
+  const canAccessExperimentalFeatures = isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(accessUser);
   const canAccessSystemTools =
-    canAccessExperimentalFeatures && isAuthenticated && isIamUiEnabled() && hasMonitoringAccess(user);
+    canAccessExperimentalFeatures && isAuthenticated && isIamUiEnabled() && hasMonitoringAccess(accessUser);
   const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
   const canAccessApplicationLink =
     canAccessWorkspace &&
@@ -834,17 +837,22 @@ export default function Sidebar({
           item,
           resolvedTitleKey: action?.titleKey ?? item.titleKey,
           resolvedRequiredAction: action?.requiredAction ?? item.requiredAction,
+          resolvedAccessRequirement: action?.accessRequirement ?? item.accessRequirement,
         };
       })
-      .filter(({ resolvedRequiredAction }) =>
-        devAuthAvailable ||
-        hasRequiredContentAccess(
-          resolvedRequiredAction,
-          contentAccessApi.access
-            ? { ...contentAccessApi.access, permissionActions: contentAccessApi.permissionActions }
-            : null,
-          contentAccessApi.isLoading
-        )
+      .filter(({ resolvedAccessRequirement, resolvedRequiredAction }) =>
+        resolvedAccessRequirement
+          ? decideAccess(resolvedAccessRequirement).status === 'allowed'
+          : hasRequiredContentAccess(
+              resolvedRequiredAction,
+              contentAccessApi.access
+                ? {
+                    ...contentAccessApi.access,
+                    permissionActions: contentAccessApi.permissionActions,
+                  }
+                : null,
+              contentAccessApi.isLoading
+            )
       )
       .map(({ item, resolvedTitleKey }) => ({
         kind: 'link' as const,
@@ -855,7 +863,7 @@ export default function Sidebar({
         section: item.section,
         moduleId: getStudioPluginNavigationModuleId(item),
       }))
-      .filter((item) => devAuthAvailable || isModuleAssignedToUser(item.moduleId, user));
+      .filter((item) => isModuleAssignedToUser(item.moduleId, user));
     const pluginDataManagementItems = pluginNavigationItems.filter(
       (item) => item.section === 'dataManagement'
     );
@@ -1104,7 +1112,7 @@ export default function Sidebar({
     contentAccessApi.access,
     contentAccessApi.isLoading,
     contentAccessApi.permissionActions,
-    devAuthAvailable,
+    decideAccess,
     user,
   ]);
 

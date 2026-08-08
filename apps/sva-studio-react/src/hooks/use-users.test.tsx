@@ -29,7 +29,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 const createDeferred = <T,>() => {
@@ -75,7 +75,8 @@ vi.mock('../lib/iam-api', () => ({
   deactivateUser: (...args: unknown[]) => deactivateUserMock(...args),
   deleteUser: (...args: unknown[]) => deleteUserMock(...args),
   bulkDeactivateUsers: (...args: unknown[]) => bulkDeactivateUsersMock(...args),
-  bulkReprovisionMainserverUsers: (...args: unknown[]) => bulkReprovisionMainserverUsersMock(...args),
+  bulkReprovisionMainserverUsers: (...args: unknown[]) =>
+    bulkReprovisionMainserverUsersMock(...args),
   syncUsersFromKeycloak: (...args: unknown[]) => syncUsersFromKeycloakMock(...args),
 }));
 
@@ -128,7 +129,9 @@ describe('useUsers', () => {
     });
     deactivateUserMock.mockResolvedValue({ data: { id: 'user-1' } });
     deleteUserMock.mockResolvedValue(undefined);
-    bulkDeactivateUsersMock.mockResolvedValue({ data: { deactivatedUserIds: ['user-1'], count: 1 } });
+    bulkDeactivateUsersMock.mockResolvedValue({
+      data: { deactivatedUserIds: ['user-1'], count: 1 },
+    });
     bulkReprovisionMainserverUsersMock.mockResolvedValue({
       data: {
         successes: [{ id: 'user-1' }],
@@ -203,9 +206,7 @@ describe('useUsers', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    let syncResult:
-      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
-      | undefined;
+    let syncResult: Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>> | undefined;
     await act(async () => {
       syncResult = await result.current.syncUsersFromKeycloak();
     });
@@ -253,9 +254,7 @@ describe('useUsers', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    let syncResult:
-      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
-      | undefined;
+    let syncResult: Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>> | undefined;
     await act(async () => {
       syncResult = await result.current.syncUsersFromKeycloak();
     });
@@ -308,9 +307,7 @@ describe('useUsers', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    let syncResult:
-      | Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>>
-      | undefined;
+    let syncResult: Awaited<ReturnType<typeof result.current.syncUsersFromKeycloak>> | undefined;
     await act(async () => {
       syncResult = await result.current.syncUsersFromKeycloak();
     });
@@ -361,9 +358,7 @@ describe('useUsers', () => {
       expect(result.current.isLoading).toBe(false);
     });
 
-    let createResult:
-      | Awaited<ReturnType<typeof result.current.createUser>>
-      | undefined;
+    let createResult: Awaited<ReturnType<typeof result.current.createUser>> | undefined;
     await act(async () => {
       createResult = await result.current.createUser({ email: 'second@example.com' });
     });
@@ -385,7 +380,7 @@ describe('useUsers', () => {
     expect(listUsersMock).toHaveBeenCalledTimes(2);
   });
 
-  it('invalidates permissions on 403 during initial load', async () => {
+  it('does not refresh the session on 403 during initial load', async () => {
     listUsersMock.mockRejectedValue({
       status: 403,
       code: 'forbidden',
@@ -400,13 +395,7 @@ describe('useUsers', () => {
 
     expect(result.current.error?.status).toBe(403);
     expect(result.current.users).toHaveLength(0);
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(browserLoggerMock.info).toHaveBeenCalledWith(
-      'permission_invalidated_after_403',
-      expect.objectContaining({
-        operation: 'list_users',
-      })
-    );
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('resets pagination when search/status/role changes and clamps page to minimum 1', async () => {
@@ -517,7 +506,7 @@ describe('useUsers', () => {
       code: 'forbidden',
     });
     expect(result.current.mutationError?.status).toBe(403);
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('preserves mutation errors across successful list refetches', async () => {

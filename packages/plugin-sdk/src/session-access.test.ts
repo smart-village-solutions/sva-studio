@@ -19,18 +19,21 @@ describe('plugin-sdk session access store', () => {
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+      assignedModules: ['waste-management'],
       roles: ['system_admin'],
     });
 
     expect(readSessionAccessSnapshot()).toEqual({
       isResolved: true,
       permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+      assignedModules: ['waste-management'],
       roles: ['system_admin'],
     });
     expect(notifications).toEqual([
       {
         isResolved: true,
         permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
+        assignedModules: ['waste-management'],
         roles: ['system_admin'],
       },
     ]);
@@ -49,11 +52,13 @@ describe('plugin-sdk session access store', () => {
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: ['waste-management.read'],
+      assignedModules: ['waste-management'],
       roles: ['editor'],
     });
     publishSessionAccessSnapshot({
       isResolved: true,
       permissionActions: ['waste-management.read'],
+      assignedModules: ['waste-management'],
       roles: ['editor'],
     });
 

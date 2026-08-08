@@ -1,4 +1,5 @@
 export * from './iam/repositories.js';
+export * from './iam/permission-cache-revisions.js';
 export * from './iam/seed-plan.js';
 export * from './iam/types.js';
 export * from './integrations/instance-integrations.js';

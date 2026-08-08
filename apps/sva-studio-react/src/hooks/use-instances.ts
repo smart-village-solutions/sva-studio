@@ -37,6 +37,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 type InstanceStatusFilter = IamInstanceListItem['status'] | 'all';
 
@@ -78,7 +79,7 @@ const normalizeKeycloakWorkflowError = (error: IamHttpError): IamHttpError => {
 };
 
 export const useInstances = () => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [filters, setFilters] = React.useState<InstanceFilters>({ search: '', status: 'all' });
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [instances, setInstances] = React.useState<readonly IamInstanceListItem[]>([]);
@@ -112,7 +113,9 @@ export const useInstances = () => {
 
   const updateSelectedForInstance = React.useCallback(
     (instanceId: string, updater: (current: IamInstanceDetail) => IamInstanceDetail) => {
-      setSelectedInstance((current) => (current?.instanceId === instanceId ? updater(current) : current));
+      setSelectedInstance((current) =>
+        current?.instanceId === instanceId ? updater(current) : current
+      );
     },
     []
   );
@@ -131,7 +134,7 @@ export const useInstances = () => {
     []
   );
 
-  const invalidatePermissionsAfter403 = React.useCallback(
+  const refreshSessionAfter401 = React.useCallback(
     async (
       input: {
         operation: string;
@@ -147,15 +150,15 @@ export const useInstances = () => {
       if (state) {
         state.invalidated = true;
       }
-      await invalidatePermissions();
-      instancesLogger.info('permission_invalidated_after_403', {
+      await refreshSession();
+      instancesLogger.info('session_refreshed_after_401', {
         operation: input.operation,
         status: input.status,
         error_code: input.errorCode,
         instance_id: input.instanceId,
       });
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   const refetch = React.useCallback(async () => {
@@ -183,9 +186,9 @@ export const useInstances = () => {
       );
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
-        await invalidatePermissions();
-        instancesLogger.info('permission_invalidated_after_403', {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        instancesLogger.info('session_refreshed_after_401', {
           operation: 'list_instances',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -199,7 +202,7 @@ export const useInstances = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, filters.status, invalidatePermissions]);
+  }, [debouncedSearch, filters.status, refreshSession]);
 
   React.useEffect(() => {
     void refetch();
@@ -217,29 +220,34 @@ export const useInstances = () => {
       });
       setDetailLoading(true);
       setMutationError(null);
-      const permissionInvalidationState = { invalidated: false };
+      const sessionRefreshState = { invalidated: false };
       try {
         let statusError: IamHttpError | undefined;
         const [detailResponse, statusResponse] = await Promise.all([
           getInstance(instanceId),
           getInstanceKeycloakStatus(instanceId).catch(async (cause) => {
             const resolvedError = asIamError(cause);
-            if (resolvedError.status === 403) {
-              await invalidatePermissionsAfter403(
+            if (resolvedError.status === 401) {
+              await refreshSessionAfter401(
                 {
                   operation: 'get_instance_keycloak_status',
                   status: resolvedError.status,
                   errorCode: resolvedError.code,
                   instanceId,
                 },
-                permissionInvalidationState
+                sessionRefreshState
               );
             }
             statusError = resolvedError;
-            logBrowserOperationFailure(instancesLogger, 'instance_keycloak_status_refresh_failed', resolvedError, {
-              operation: 'get_instance_keycloak_status',
-              instance_id: instanceId,
-            });
+            logBrowserOperationFailure(
+              instancesLogger,
+              'instance_keycloak_status_refresh_failed',
+              resolvedError,
+              {
+                operation: 'get_instance_keycloak_status',
+                instance_id: instanceId,
+              }
+            );
             return null;
           }),
         ]);
@@ -258,15 +266,15 @@ export const useInstances = () => {
         return nextInstance;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissionsAfter403(
+        if (resolvedError.status === 401) {
+          await refreshSessionAfter401(
             {
               operation: 'get_instance_detail',
               status: resolvedError.status,
               errorCode: resolvedError.code,
               instanceId,
             },
-            permissionInvalidationState
+            sessionRefreshState
           );
         }
         setMutationError(resolvedError);
@@ -279,7 +287,7 @@ export const useInstances = () => {
         setDetailLoading(false);
       }
     },
-    [invalidatePermissionsAfter403]
+    [refreshSessionAfter401]
   );
 
   const refreshInstanceAudit = React.useCallback(
@@ -297,15 +305,16 @@ export const useInstances = () => {
         const targetsRequestedInstance =
           targetInstanceIds.length === 0 || targetInstanceIds.includes(instanceId);
         const matchesCurrentDetail =
-          currentDetailInstanceIdRef.current === null || currentDetailInstanceIdRef.current === instanceId;
+          currentDetailInstanceIdRef.current === null ||
+          currentDetailInstanceIdRef.current === instanceId;
         if (isLatestRequest && matchesCurrentDetail && targetsRequestedInstance) {
           setInstanceAuditRun(response.data);
         }
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError((current) => current ?? resolvedError);
         return null;
@@ -313,7 +322,7 @@ export const useInstances = () => {
         endAuditRequest();
       }
     },
-    [beginAuditRequest, endAuditRequest, invalidatePermissions]
+    [beginAuditRequest, endAuditRequest, refreshSession]
   );
 
   const refreshInstancesAudit = React.useCallback(
@@ -328,8 +337,8 @@ export const useInstances = () => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError((current) => current ?? resolvedError);
         return null;
@@ -337,7 +346,7 @@ export const useInstances = () => {
         endAuditRequest();
       }
     },
-    [beginAuditRequest, endAuditRequest, invalidatePermissions]
+    [beginAuditRequest, endAuditRequest, refreshSession]
   );
 
   const mutate = React.useCallback(
@@ -345,7 +354,7 @@ export const useInstances = () => {
       action: () => Promise<{ data: T }>,
       instanceId?: string,
       operation = 'instance_mutation',
-      options?: { invalidateAuthAfterSuccess?: boolean }
+      options?: { refreshSessionAfterSuccess?: boolean }
     ) => {
       setMutationError(null);
       logBrowserOperationStart(instancesLogger, 'instance_mutation_started', {
@@ -354,8 +363,9 @@ export const useInstances = () => {
       });
       try {
         const result = await action();
-        if (options?.invalidateAuthAfterSuccess) {
-          await invalidatePermissions();
+        requestEffectiveAccessInvalidation();
+        if (options?.refreshSessionAfterSuccess) {
+          await refreshSession();
         }
         await refetch();
         if (instanceId) {
@@ -369,9 +379,9 @@ export const useInstances = () => {
         return result.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          instancesLogger.info('permission_invalidated_after_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          instancesLogger.info('session_refreshed_after_401', {
             operation,
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -386,7 +396,7 @@ export const useInstances = () => {
         return null;
       }
     },
-    [invalidatePermissions, loadInstance, refetch, refreshInstanceAudit]
+    [refreshSession, loadInstance, refetch, refreshInstanceAudit]
   );
 
   return {
@@ -402,7 +412,8 @@ export const useInstances = () => {
     mutationError,
     filters,
     setSearch: (value: string) => setFilters((current) => ({ ...current, search: value })),
-    setStatus: (value: InstanceStatusFilter) => setFilters((current) => ({ ...current, status: value })),
+    setStatus: (value: InstanceStatusFilter) =>
+      setFilters((current) => ({ ...current, status: value })),
     refetch,
     loadInstance,
     refreshInstancesAudit,
@@ -437,9 +448,9 @@ export const useInstances = () => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          instancesLogger.info('permission_invalidated_after_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          instancesLogger.info('session_refreshed_after_401', {
             operation: 'get_instance_keycloak_status',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -447,10 +458,15 @@ export const useInstances = () => {
           });
         }
         setMutationError(resolvedError);
-        logBrowserOperationFailure(instancesLogger, 'instance_keycloak_status_refresh_failed', resolvedError, {
-          operation: 'get_instance_keycloak_status',
-          instance_id: instanceId,
-        });
+        logBrowserOperationFailure(
+          instancesLogger,
+          'instance_keycloak_status_refresh_failed',
+          resolvedError,
+          {
+            operation: 'get_instance_keycloak_status',
+            instance_id: instanceId,
+          }
+        );
         return null;
       } finally {
         setStatusLoading(false);
@@ -492,12 +508,16 @@ export const useInstances = () => {
         setStatusLoading(false);
       }
     },
-    executeKeycloakProvisioning: async (instanceId: string, payload: ExecuteInstanceKeycloakProvisioningPayload) =>
+    executeKeycloakProvisioning: async (
+      instanceId: string,
+      payload: ExecuteInstanceKeycloakProvisioningPayload
+    ) =>
       mutate(
         async () => {
-          const response = payload.intent === 'rotate_client_secret'
-            ? await rotateInstanceSecret(instanceId)
-            : await executeInstanceKeycloakProvisioning(instanceId, payload);
+          const response =
+            payload.intent === 'rotate_client_secret'
+              ? await rotateInstanceSecret(instanceId)
+              : await executeInstanceKeycloakProvisioning(instanceId, payload);
           updateSelectedForInstance(instanceId, (current) => {
             const keycloakProvisioningRuns = mergeProvisioningRuns(
               current.keycloakProvisioningRuns,
@@ -535,14 +555,19 @@ export const useInstances = () => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError(resolvedError);
-        logBrowserOperationFailure(instancesLogger, 'tenant_iam_access_probe_failed', resolvedError, {
-          operation: 'probe_tenant_iam_access',
-          instance_id: instanceId,
-        });
+        logBrowserOperationFailure(
+          instancesLogger,
+          'tenant_iam_access_probe_failed',
+          resolvedError,
+          {
+            operation: 'probe_tenant_iam_access',
+            instance_id: instanceId,
+          }
+        );
         return null;
       } finally {
         setStatusLoading(false);
@@ -557,7 +582,10 @@ export const useInstances = () => {
           updateSelectedForInstance(instanceId, (current) => ({
             ...current,
             latestKeycloakProvisioningRun: response.data,
-            keycloakProvisioningRuns: mergeProvisioningRuns(current.keycloakProvisioningRuns, response.data),
+            keycloakProvisioningRuns: mergeProvisioningRuns(
+              current.keycloakProvisioningRuns,
+              response.data
+            ),
           }));
         }
         return response.data;
@@ -587,31 +615,34 @@ export const useInstances = () => {
         async () => assignInstanceModule(instanceId, moduleId),
         instanceId,
         'assign_instance_module',
-        { invalidateAuthAfterSuccess: true }
+        { refreshSessionAfterSuccess: true }
       ),
     bootstrapAdminStructure: async (instanceId: string, moduleIds: readonly string[]) =>
       mutate(
         async () => bootstrapInstanceAdminStructure(instanceId, moduleIds),
         instanceId,
         'bootstrap_instance_admin_structure',
-        { invalidateAuthAfterSuccess: true }
+        { refreshSessionAfterSuccess: true }
       ),
     revokeModule: async (instanceId: string, moduleId: string) =>
       mutate(
         async () => revokeInstanceModule(instanceId, moduleId),
         instanceId,
         'revoke_instance_module',
-        { invalidateAuthAfterSuccess: true }
+        { refreshSessionAfterSuccess: true }
       ),
     seedIamBaseline: async (instanceId: string) =>
       mutate(
         async () => seedInstanceIamBaseline(instanceId),
         instanceId,
         'seed_instance_iam_baseline',
-        { invalidateAuthAfterSuccess: true }
+        { refreshSessionAfterSuccess: true }
       ),
-    activateInstance: async (instanceId: string) => mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
-    suspendInstance: async (instanceId: string) => mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),
-    archiveInstance: async (instanceId: string) => mutate(() => archiveInstance(instanceId), instanceId, 'archive_instance'),
+    activateInstance: async (instanceId: string) =>
+      mutate(() => activateInstance(instanceId), instanceId, 'activate_instance'),
+    suspendInstance: async (instanceId: string) =>
+      mutate(() => suspendInstance(instanceId), instanceId, 'suspend_instance'),
+    archiveInstance: async (instanceId: string) =>
+      mutate(() => archiveInstance(instanceId), instanceId, 'archive_instance'),
   };
 };

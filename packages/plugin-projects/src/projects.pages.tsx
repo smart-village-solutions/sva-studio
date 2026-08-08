@@ -10,6 +10,7 @@ import {
   listHostMediaReferencesByTarget,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
@@ -303,13 +304,18 @@ function ProjectEditor({
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('projects', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
-        canEditContent: true,
+        canEditContent: canSave,
         permissionActions: sessionAccess.permissionActions,
       }),
-    [sessionAccess.permissionActions]
+    [canSave, sessionAccess.permissionActions]
   );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
@@ -442,6 +448,7 @@ function ProjectEditor({
 
   const save = form.handleSubmit(
     async (values) => {
+      if (!canSave) return;
       if (retryReferenceSync) {
         setMutationError(pt('messages.mediaReferencePartialFailure'));
         return;
@@ -722,7 +729,7 @@ function ProjectEditor({
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
-          {mode === 'edit' ? (
+          {mode === 'edit' && accessCapabilities.canDelete ? (
             <Button type="button" variant="destructive" onClick={() => setDeleteDialogOpen(true)}>
               {pt('actions.delete')}
             </Button>
@@ -730,13 +737,15 @@ function ProjectEditor({
         </div>
       }
       primaryAction={
-        <Button
-          type="submit"
-          form={formId}
-          disabled={form.formState.isSubmitting || Boolean(retryReferenceSync)}
-        >
-          {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
-        </Button>
+        canSave ? (
+          <Button
+            type="submit"
+            form={formId}
+            disabled={form.formState.isSubmitting || Boolean(retryReferenceSync)}
+          >
+            {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
+          </Button>
+        ) : undefined
       }
     >
       <StudioMediaPickerOverlay

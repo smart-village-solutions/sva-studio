@@ -24,6 +24,25 @@ vi.mock('../../../hooks/use-users', () => ({
   useUsers: () => useUsersMock(),
 }));
 
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => {
+    const user = useAuthMock()?.user;
+    const platformAllowed =
+      !user?.instanceId && user?.roles?.includes('instance_registry_admin') === true;
+    const decision = (allowed: boolean) => ({
+      status: allowed ? 'allowed' : 'denied',
+      reason: allowed ? 'allowed_by_permission' : 'permission_missing',
+    });
+    return {
+      read: decision(platformAllowed || user?.permissionActions?.includes('iam.user.read')),
+      create: decision(platformAllowed || user?.permissionActions?.includes('iam.user.write')),
+      update: decision(platformAllowed || user?.permissionActions?.includes('iam.user.write')),
+      delete: decision(platformAllowed || user?.permissionActions?.includes('iam.accounts.delete')),
+    };
+  },
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
+
 vi.mock('../../../lib/iam-admin-access', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../lib/iam-admin-access')>();
   return {
@@ -111,7 +130,7 @@ describe('UserListPage', () => {
         id: 'user-admin',
         instanceId: 'de-musterhausen',
         roles: ['system_admin'],
-        permissionActions: ['iam.user.read', 'iam.accounts.delete'],
+        permissionActions: ['iam.user.read', 'iam.user.write', 'iam.accounts.delete'],
       },
     });
   });
@@ -575,6 +594,9 @@ describe('UserListPage', () => {
 
     expect(screen.getByRole('heading', { name: 'Benutzerverwaltung' })).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Plattform-Benutzer' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Nutzer anlegen' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Nutzer anlegen' })).toBeNull();
+    expect(
+      screen.getAllByRole('switch', { name: 'Aktivstatus für Alice' })[0]?.hasAttribute('disabled')
+    ).toBe(true);
   });
 });

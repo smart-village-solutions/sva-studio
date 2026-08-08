@@ -52,7 +52,7 @@ type UseGroupsResult = {
 };
 
 const groupsLogger = createOperationLogger('groups-hook', 'debug');
-const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
+const SESSION_REFRESHED_EVENT = 'session_refreshed_after_401';
 
 type LegacyGroupMember = {
   accountId: string;
@@ -94,10 +94,11 @@ const normalizeGroupDetail = (detail: IamAdminGroupDetail): IamAdminGroupDetail 
 };
 
 export const useGroups = (): UseGroupsResult => {
-  const { invalidatePermissions, user } = useAuth();
+  const { refreshSession, user } = useAuth();
   const hasInstanceContext = Boolean(user?.instanceId);
-  const adminList = useIamAdminList(listGroups, invalidatePermissions, {
+  const adminList = useIamAdminList(listGroups, refreshSession, {
     enabled: hasInstanceContext,
+    invalidateEffectiveAccessOnMutation: true,
   });
   const {
     items,
@@ -127,9 +128,9 @@ export const useGroups = (): UseGroupsResult => {
         return normalizeGroupDetail(response.data);
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          groupsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          groupsLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'get_group',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -155,7 +156,7 @@ export const useGroups = (): UseGroupsResult => {
         return null;
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   const createGroupWithResult = React.useCallback(

@@ -10,12 +10,12 @@ Die effektive Berechtigungsauflösung kombiniert Rollen, Gruppen, Organisationsk
 
 ## Entscheidung
 
-Redis wird als primärer Shared-Read-Path für Permission-Snapshots verwendet. Ein lokaler In-Memory-Cache bleibt als L1 erlaubt, darf Redis aber nicht ersetzen.
+Redis wird als primärer Shared-Snapshot-Store verwendet. Ein lokaler In-Memory-Cache bleibt als L1 erlaubt. PostgreSQL bleibt jedoch vor jedem L1-/Redis-Hit die autoritative Gültigkeitsgrenze: Erst der aktuelle `instanceRevision`-/`userRevision`-Vektor bestimmt den adressierbaren v2-Snapshot-Key.
 
 ## Begründung
 
 - Redis ermöglicht kontextgebundene Snapshots mit TTL, Versionierung und gezielter Invalidierung.
-- Der Shared-Cache vermeidet inkonsistente Prozess-Lokalcaches.
+- Der Shared-Cache reduziert doppelte Recomputes zwischen Replikaten; verlorene Redis-Evictions können wegen revisionsgebundener Keys keine veraltete Freigabe erzeugen.
 - Fail-Closed-Regeln, Readiness und Observability lassen sich auf einen zentralen Read-Path ausrichten.
 
 ## Konsequenzen
@@ -28,12 +28,14 @@ Redis wird als primärer Shared-Read-Path für Permission-Snapshots verwendet. E
 
 ### Negative Konsequenzen
 
-- Redis wird zur kritischen Infrastruktur für den Autorisierungspfad
+- Redis bleibt kritische Infrastruktur für den Autorisierungspfad, ist aber nicht die fachliche Quelle der Snapshot-Gültigkeit
 - Ausfall oder Fehlkonfiguration blockieren geschützte Zugriffe
 
 ### Mitigationen
 
 - HTTP `503` fail-closed statt stiller Freigabe
+- Schmaler indizierter PostgreSQL-Revisions-Read vor jedem Cache-Hit
+- Recompute-Singleflight pro App-Replikat und erneute Revisionsprüfung vor Publish
 - OTEL-Metriken, `redis-exporter`, Readiness-Gates und Performance-Berichte
 
 ## Verwandte ADRs

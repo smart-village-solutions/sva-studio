@@ -97,7 +97,17 @@ describe('NewsDetailPage', () => {
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
     publishSessionAccessSnapshot({
       isResolved: true,
-      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      permissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+      ],
+      assignedModules: ['news'],
       roles: [],
     });
     navigateMock.mockReset();

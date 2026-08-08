@@ -548,7 +548,6 @@ export const ContentListPage = ({
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
-  const authPermissionActions = auth.user?.permissionActions ?? [];
   const authSessionPending = auth.isLoading || !auth.hasResolvedSession;
   const contentAccessPending =
     contentAccessApi.isLoading ||
@@ -559,10 +558,9 @@ export const ContentListPage = ({
   const effectivePermissionActions = React.useMemo(
     () =>
       authSessionPending || contentAccessApi.isLoading || contentAccessPending
-        ? authPermissionActions
+        ? []
         : contentAccessApi.permissionActions,
     [
-      authPermissionActions,
       authSessionPending,
       contentAccessApi.isLoading,
       contentAccessApi.permissionActions,

@@ -11,6 +11,7 @@ import {
   alignHostMediaReferencesByOrder,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   toDatetimeLocalValue,
@@ -399,13 +400,18 @@ export const NewsDetailPage = ({
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('news', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
-        canEditContent: true,
+        canEditContent: canSave,
         permissionActions: sessionAccess.permissionActions,
       }),
-    [sessionAccess.permissionActions]
+    [canSave, sessionAccess.permissionActions]
   );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
@@ -697,6 +703,7 @@ export const NewsDetailPage = ({
 
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
+      if (!canSave) return;
       if (retryReferenceSync) {
         setStatusMessage({
           kind: 'error',
@@ -943,16 +950,18 @@ export const NewsDetailPage = ({
         mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
       }
       primaryAction={
-        <Button type="submit" form={formId} disabled={Boolean(retryReferenceSync)}>
-          {headerSaveLabel}
-        </Button>
+        canSave ? (
+          <Button type="submit" form={formId} disabled={Boolean(retryReferenceSync)}>
+            {headerSaveLabel}
+          </Button>
+        ) : undefined
       }
       actions={
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
-          {mode === 'edit' ? (
+          {mode === 'edit' && accessCapabilities.canDelete ? (
             <Button variant="destructive" type="button" onClick={onDelete} disabled={deletePending}>
               {deleteLabel}
             </Button>

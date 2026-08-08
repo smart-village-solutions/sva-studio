@@ -98,8 +98,8 @@ describe('iam-authorize-performance helpers', () => {
       scenarios: [
         {
           scenario: 'cache-hit',
-          samplesMs: [10, 12, 14],
-          summary: summarizeDurations([10, 12, 14]),
+          samplesMs: [4, 6, 8],
+          summary: summarizeDurations([4, 6, 8]),
           accepted: true,
         },
         {
@@ -124,6 +124,8 @@ describe('iam-authorize-performance helpers', () => {
     expect(markdown).toMatch(/Cache-Miss/);
     expect(markdown).toMatch(/Recompute/);
     expect(markdown).toMatch(/nicht erfüllt/);
-    expect(markdown).toMatch(/p95 < 100 ms im Cache-Hit-Szenario: erfüllt/);
+    expect(markdown).toMatch(/p95 < 10 ms im Cache-Hit-Szenario: erfüllt/);
+    expect(markdown).toMatch(/p95 < 80 ms im Cache-Miss-Szenario/);
+    expect(markdown).toMatch(/p95 < 300 ms im Recompute-Szenario/);
   });
 });

@@ -5,15 +5,14 @@ import {
   configureRootAccountAdminTest,
   gotoHomeAsAuthenticatedUser,
   navigateClientSide,
+  registerAccountAdminAuthRoute,
 } from './account-admin-ui.helpers';
 
 configureRootAccountAdminTest(test);
 
 test('tenant admin mutations fail closed in the browser when the admin client contract is missing', async ({ page }) => {
   const registryAdminAuthPayload = { user: { ...adminAuthPayload.user, roles: ['system_admin', 'instance_registry_admin'] } };
-  await page.route('**/auth/me', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(registryAdminAuthPayload) });
-  });
+  await registerAccountAdminAuthRoute(page, registryAdminAuthPayload);
   await page.route('**/api/v1/iam/instances/demo', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { instanceId: 'demo', displayName: 'Demo', status: 'requested', parentDomain: 'studio.example.org', primaryHostname: 'demo.studio.example.org', realmMode: 'existing', authRealm: 'demo', authClientId: 'sva-studio', authClientSecretConfigured: true, tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: true }, hostnames: [], provisioningRuns: [], auditEvents: [], tenantAdminBootstrap: { username: 'demo-admin', email: 'demo@example.org' }, keycloakPreflight: { overallStatus: 'ready', checkedAt: '2026-04-12T10:00:00.000Z', generatedAt: '2026-04-12T10:00:00.000Z', checks: [] }, keycloakPlan: { mode: 'existing', overallStatus: 'ready', generatedAt: '2026-04-12T10:00:00.000Z', driftSummary: 'Kein Drift.', steps: [] }, keycloakProvisioningRuns: [], keycloakStatus: { realmExists: true, clientExists: true, tenantAdminClientExists: true, tenantAdminExists: true, tenantAdminHasSystemAdmin: true, tenantAdminHasInstanceRegistryAdmin: false, redirectUrisMatch: true, logoutUrisMatch: true, webOriginsMatch: true, clientSecretConfigured: true, tenantClientSecretReadable: true, clientSecretAligned: true, tenantAdminClientSecretConfigured: true, tenantAdminClientSecretReadable: true, tenantAdminClientSecretAligned: true, runtimeSecretSource: 'tenant' }, latestKeycloakProvisioningRun: null } }) });
   });

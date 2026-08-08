@@ -3,6 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaUnregisteredDetailPage } from './-media-unregistered-detail-page';
 
+const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
+
+vi.mock('../../../providers/effective-access-provider', () => ({
+  useAccessDecision: (requirement: { actions: { values: readonly string[] } }) =>
+    requirement.actions.values.some((action) => accessState.deniedActions.has(action))
+      ? { status: 'denied', reason: 'permission_missing' }
+      : { status: 'allowed', reason: 'allowed_by_permission' },
+}));
+
 const useRegisterBucketMediaMock = vi.fn();
 const navigateMock = vi.fn();
 
@@ -25,6 +34,7 @@ describe('MediaUnregisteredDetailPage', () => {
   const registerMediaMock = vi.fn();
 
   beforeEach(() => {
+    accessState.deniedActions.clear();
     navigateMock.mockReset();
     registerMediaMock.mockReset();
     useRegisterBucketMediaMock.mockReset();
@@ -33,6 +43,30 @@ describe('MediaUnregisteredDetailPage', () => {
       clearMutationError: vi.fn(),
       registerMedia: registerMediaMock,
     });
+  });
+
+  it('hides registration without media.create', () => {
+    accessState.deniedActions.add('media.create');
+
+    render(
+      <MediaUnregisteredDetailPage
+        asset={{
+          source: 'bucket',
+          registrationStatus: 'unregistered',
+          storageKey: 'cms_uploads/photo.jpg',
+          fileName: 'photo.jpg',
+          folderPath: 'cms_uploads',
+          relativePath: 'cms_uploads/photo.jpg',
+          byteSize: 42,
+          updatedAt: null,
+          lastModified: null,
+          previewUrl: null,
+        }}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Als Medium registrieren' })).toBeNull();
+    expect(registerMediaMock).not.toHaveBeenCalled();
   });
 
   afterEach(() => {

@@ -1,12 +1,22 @@
-import { createHash } from 'node:crypto';
-
-import type { PermSnapshotKey } from './redis-permission-snapshot.server.js';
 import {
   getRedisPermissionSnapshot,
   setRedisPermissionSnapshot,
 } from './redis-permission-snapshot.server.js';
 import type { EffectivePermissionsResolution } from './shared.js';
-import { type PermissionLookupInput, loadPermissionsFromDb } from './permission-store.queries.js';
+import {
+  type PermissionLookupInput,
+  loadPermissionsWithClient,
+} from './permission-store.queries.js';
+import {
+  type PermissionRevisionVector,
+  revisionsEqual,
+  toRedisSnapshotKey,
+  toSnapshotLookupKey,
+} from './permission-store.keys.js';
+import {
+  readPermissionRevisionVector,
+  readPermissionRevisionVectorWithClient,
+} from './permission-revision-store.js';
 import { filterTenantEffectivePermissions } from './root-only-permissions.js';
 import {
   buildRequestContext,
@@ -14,58 +24,111 @@ import {
   cacheMetricsState,
   ensureInvalidationListener,
   iamCacheLookupCounter,
+  iamPermissionCacheLifecycleCounter,
+  iamPermissionRevisionReadLatencyHistogram,
   logger,
   permissionSnapshotCache,
   recordPermissionCacheColdStart,
   recordPermissionCacheRecompute,
   recordPermissionCacheRedisLatency,
+  withInstanceScopedDb,
 } from './shared.js';
 
-const normalizeGeoContext = (input: PermissionLookupInput) => {
-  const geoUnitId = input.geoUnitId?.trim() || undefined;
-  const geoHierarchy = input.geoHierarchy
-    ?.map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
+type RecomputeCandidate =
+  | Readonly<{
+      status: 'current';
+      permissions: ReturnType<typeof filterTenantEffectivePermissions>;
+    }>
+  | Readonly<{ status: 'stale' }>;
 
-  if (!geoUnitId && (!geoHierarchy || geoHierarchy.length === 0)) {
-    return undefined;
+const inFlightRecomputes = new Map<string, Promise<RecomputeCandidate>>();
+
+const recomputePermissions = async (
+  input: PermissionLookupInput,
+  expectedRevision: PermissionRevisionVector
+): Promise<RecomputeCandidate> => {
+  const candidate = await withInstanceScopedDb(
+    input.instanceId,
+    async (client): Promise<RecomputeCandidate> => {
+      const transactionRevision = await readPermissionRevisionVectorWithClient(
+        client,
+        input.instanceId,
+        input.keycloakSubject
+      );
+      if (!revisionsEqual(transactionRevision, expectedRevision)) {
+        return { status: 'stale' };
+      }
+
+      const permissions = filterTenantEffectivePermissions(
+        await loadPermissionsWithClient(client, input)
+      );
+      return { status: 'current', permissions };
+    },
+    { isolationLevel: 'repeatable read' }
+  );
+
+  if (candidate.status === 'stale') {
+    return candidate;
   }
 
-  return {
-    ...(geoUnitId ? { geoUnitId } : {}),
-    ...(geoHierarchy && geoHierarchy.length > 0 ? { geoHierarchy: [...new Set(geoHierarchy)] } : {}),
-  };
+  const revisionBeforePublish = await readPermissionRevisionVector(
+    input.instanceId,
+    input.keycloakSubject
+  );
+  return revisionsEqual(revisionBeforePublish, expectedRevision) ? candidate : { status: 'stale' };
 };
 
-const toGeoContextHash = (input: PermissionLookupInput): string | undefined => {
-  const normalized = normalizeGeoContext(input);
-  if (!normalized) {
-    return undefined;
+const recomputePermissionsSingleFlight = (
+  input: PermissionLookupInput,
+  expectedRevision: PermissionRevisionVector,
+  snapshotLookupKey: ReturnType<typeof toSnapshotLookupKey>
+): Promise<RecomputeCandidate> => {
+  const flightKey = JSON.stringify(snapshotLookupKey);
+  const existing = inFlightRecomputes.get(flightKey);
+  if (existing) {
+    return existing;
   }
 
-  return createHash('sha256').update(JSON.stringify(normalized)).digest('hex').slice(0, 16);
+  const recompute = recomputePermissions(input, expectedRevision).finally(() => {
+    if (inFlightRecomputes.get(flightKey) === recompute) {
+      inFlightRecomputes.delete(flightKey);
+    }
+  });
+  inFlightRecomputes.set(flightKey, recompute);
+  return recompute;
 };
 
-const toSnapshotLookupKey = (input: PermissionLookupInput) => ({
-  instanceId: input.instanceId,
-  keycloakSubject: input.keycloakSubject,
-  organizationId: input.organizationId,
-  geoContextHash: toGeoContextHash(input),
-});
-
-const toRedisSnapshotKey = (
-  snapshotKey: ReturnType<typeof toSnapshotLookupKey>
-): PermSnapshotKey => ({
-  instanceId: snapshotKey.instanceId,
-  userId: snapshotKey.keycloakSubject,
-  organizationId: snapshotKey.organizationId,
-  geoCtxHash: snapshotKey.geoContextHash,
-});
-
-export const resolveEffectivePermissions = async (input: PermissionLookupInput): Promise<EffectivePermissionsResolution> => {
+const resolveEffectivePermissionsAttempt = async (
+  input: PermissionLookupInput,
+  attempt: number
+): Promise<EffectivePermissionsResolution> => {
   await ensureInvalidationListener();
 
-  const snapshotLookupKey = toSnapshotLookupKey(input);
+  let permissionRevision: PermissionRevisionVector;
+  const revisionReadStartedAt = performance.now();
+  try {
+    permissionRevision = await readPermissionRevisionVector(
+      input.instanceId,
+      input.keycloakSubject
+    );
+    iamPermissionRevisionReadLatencyHistogram.record(performance.now() - revisionReadStartedAt, {
+      outcome: 'success',
+    });
+    iamPermissionCacheLifecycleCounter.add(1, { operation: 'revision_read', outcome: 'success' });
+  } catch (error) {
+    iamPermissionRevisionReadLatencyHistogram.record(performance.now() - revisionReadStartedAt, {
+      outcome: 'error',
+    });
+    iamPermissionCacheLifecycleCounter.add(1, { operation: 'revision_read', outcome: 'error' });
+    logger.error('Permission revision read failed', {
+      operation: 'revision_read_failed',
+      error: error instanceof Error ? error.message : String(error),
+      ...buildRequestContext(input.instanceId),
+    });
+    return { ok: false, error: 'database_unavailable' };
+  }
+
+  const snapshotLookupKey = toSnapshotLookupKey(input, permissionRevision);
   const lookup = permissionSnapshotCache.get(snapshotLookupKey);
 
   if (lookup.status === 'hit' && lookup.snapshot) {
@@ -84,6 +147,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       permissions,
       cacheStatus: 'hit',
       snapshotVersion: lookup.snapshot?.snapshotVersion,
+      permissionRevision,
     };
   }
 
@@ -130,6 +194,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       permissions,
       cacheStatus: 'hit',
       snapshotVersion: snapshot.snapshotVersion,
+      permissionRevision,
     };
   }
 
@@ -155,7 +220,26 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
   });
 
   try {
-    const permissions = filterTenantEffectivePermissions(await loadPermissionsFromDb(input));
+    const candidate = await recomputePermissionsSingleFlight(
+      input,
+      permissionRevision,
+      snapshotLookupKey
+    );
+    if (candidate.status === 'stale') {
+      iamPermissionCacheLifecycleCounter.add(1, {
+        operation: 'stale_write_discarded',
+        outcome: attempt < 1 ? 'retry' : 'failed',
+      });
+      cacheLogger.info('Stale permission recompute discarded', {
+        operation: 'stale_write_discarded',
+        attempt,
+        ...buildRequestContext(input.instanceId),
+      });
+      return attempt < 1
+        ? resolveEffectivePermissionsAttempt(input, attempt + 1)
+        : { ok: false, error: 'database_unavailable' };
+    }
+    const permissions = candidate.permissions;
     const redisWrite = await setRedisPermissionSnapshot(redisKey, permissions);
     if (!redisWrite.ok) {
       logger.error('Redis permission snapshot write failed after recompute', {
@@ -166,12 +250,14 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       return { ok: false, error: 'database_unavailable' };
     }
     recordPermissionCacheRecompute();
+    iamPermissionCacheLifecycleCounter.add(1, { operation: 'recompute', outcome: 'success' });
     const snapshot = permissionSnapshotCache.set(
       snapshotLookupKey,
       permissions,
       Date.now(),
       redisWrite.version
     );
+    iamPermissionCacheLifecycleCounter.add(1, { operation: 'publish', outcome: 'success' });
 
     if (lookup.status === 'stale') {
       cacheLogger.info('Permission snapshot recomputed after stale detection', {
@@ -187,6 +273,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
       permissions,
       cacheStatus: lookup.status === 'stale' ? 'recompute' : 'miss',
       snapshotVersion: snapshot.snapshotVersion,
+      permissionRevision,
     };
   } catch (error) {
     logger.error('Failed to recompute permission snapshot', {
@@ -198,3 +285,7 @@ export const resolveEffectivePermissions = async (input: PermissionLookupInput):
     return { ok: false, error: 'database_unavailable' };
   }
 };
+
+export const resolveEffectivePermissions = (
+  input: PermissionLookupInput
+): Promise<EffectivePermissionsResolution> => resolveEffectivePermissionsAttempt(input, 0);

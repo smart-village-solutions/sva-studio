@@ -20,8 +20,8 @@ type UseRolePermissionsResult = {
 };
 
 export const useRolePermissions = (): UseRolePermissionsResult => {
-  const { invalidatePermissions } = useAuth();
-  const adminList = useIamAdminList(listPermissions, invalidatePermissions);
+  const { refreshSession } = useAuth();
+  const adminList = useIamAdminList(listPermissions, refreshSession);
 
   const refetch = async (): Promise<void> => {
     logBrowserOperationStart(rolePermissionsLogger, 'role_permissions_refetch_started', {

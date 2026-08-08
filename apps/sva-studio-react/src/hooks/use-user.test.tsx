@@ -19,7 +19,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -51,26 +51,31 @@ describe('useUser', () => {
     sendPasswordSetupEmailMock.mockReset();
     reprovisionMainserverUserMock.mockReset();
     asIamErrorMock.mockReset();
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
   });
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('invalidates permissions when loading user returns a protected error (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    getUserMock.mockRejectedValueOnce(new Error('no-access'));
+  ])(
+    'refreshes the session only when loading user returns 401 (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      getUserMock.mockRejectedValueOnce(new Error('no-access'));
 
-    const { result } = renderHook(() => useUser(`user-${protectedError.status}`));
+      const { result } = renderHook(() => useUser(`user-${protectedError.status}`));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.user).toBeNull();
-      expect(result.current.error).toBe(protectedError);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.user).toBeNull();
+        expect(result.current.error).toBe(protectedError);
+      });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+    }
+  );
 
   it('returns null from save and stores non-403 error without invalidating permissions', async () => {
     const validationError = { status: 400, code: 'invalid', message: 'Invalid payload' };
@@ -101,7 +106,7 @@ describe('useUser', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.mutationError).toBe(validationError);
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('loads and updates a user', async () => {
@@ -146,35 +151,40 @@ describe('useUser', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('invalidates permissions when save returns a protected error (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    getUserMock.mockResolvedValueOnce({
-      data: {
-        id: 'user-3',
-        keycloakSubject: 'subject-3',
-        displayName: 'User Three',
-        status: 'active',
-        roles: [],
-        mainserverUserApplicationSecretSet: false,
-      },
-    });
-    updateUserMock.mockRejectedValueOnce(new Error('forbidden-save'));
+  ])(
+    'refreshes the session only when save returns 401 (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      getUserMock.mockResolvedValueOnce({
+        data: {
+          id: 'user-3',
+          keycloakSubject: 'subject-3',
+          displayName: 'User Three',
+          status: 'active',
+          roles: [],
+          mainserverUserApplicationSecretSet: false,
+        },
+      });
+      updateUserMock.mockRejectedValueOnce(new Error('forbidden-save'));
 
-    const { result } = renderHook(() => useUser('user-3'));
+      const { result } = renderHook(() => useUser('user-3'));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-    await act(async () => {
-      const saved = await result.current.save({ displayName: 'Changed' });
-      expect(saved).toBeNull();
-    });
+      await act(async () => {
+        const saved = await result.current.save({ displayName: 'Changed' });
+        expect(saved).toBeNull();
+      });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toBeNull();
-    expect(result.current.mutationError).toBe(protectedError);
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+      expect(result.current.error).toBeNull();
+      expect(result.current.mutationError).toBe(protectedError);
+    }
+  );
 
   it('resends the password setup email successfully', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
@@ -207,7 +217,7 @@ describe('useUser', () => {
 
     expect(sendPasswordSetupEmailMock).toHaveBeenCalledWith('user-4');
     expect(result.current.error).toBeNull();
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('reprovisions mainserver data successfully and refetches the user', async () => {
@@ -262,7 +272,7 @@ describe('useUser', () => {
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
   ])(
-    'invalidates permissions when resending the password setup email returns a protected error (status $status, code $code)',
+    'refreshes the session only when resending the password setup email returns 401 (status $status, code $code)',
     async (protectedError) => {
       asIamErrorMock.mockReturnValue(protectedError);
       getUserMock.mockResolvedValueOnce({
@@ -288,7 +298,9 @@ describe('useUser', () => {
         expect(sent).toBe(false);
       });
 
-      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
       expect(result.current.error).toBeNull();
       expect(result.current.mutationError).toBe(protectedError);
     }

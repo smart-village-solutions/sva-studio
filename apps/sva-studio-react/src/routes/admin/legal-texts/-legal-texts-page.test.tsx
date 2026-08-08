@@ -1,13 +1,28 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LegalTextsPage } from './-legal-texts-page';
 
 const useLegalTextsMock = vi.fn();
+const iamAccessAllowedMock = vi.fn();
+
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    create: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    update: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    delete: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -48,6 +63,11 @@ const legalTextsFixture = [
 ];
 
 describe('LegalTextsPage', () => {
+  beforeEach(() => {
+    iamAccessAllowedMock.mockReset();
+    iamAccessAllowedMock.mockReturnValue(true);
+  });
+
   afterEach(() => {
     cleanup();
   });
@@ -67,8 +87,12 @@ describe('LegalTextsPage', () => {
     render(<LegalTextsPage />);
 
     expect(screen.getByRole('heading', { name: 'Rechtstext-Verwaltung' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Rechtstext anlegen' }).getAttribute('href')).toBe('/admin/legal-texts/new');
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/legal-texts/$legalTextVersionId');
+    expect(screen.getByRole('link', { name: 'Rechtstext anlegen' }).getAttribute('href')).toBe(
+      '/admin/legal-texts/new'
+    );
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe(
+      '/admin/legal-texts/$legalTextVersionId'
+    );
   });
 
   it('filters legal texts by search and status', () => {
@@ -85,16 +109,22 @@ describe('LegalTextsPage', () => {
 
     render(<LegalTextsPage />);
 
-    fireEvent.change(screen.getByPlaceholderText('Nach UUID, Name, Version, Sprache oder Inhalt suchen'), {
-      target: { value: 'terms of use' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Nach UUID, Name, Version, Sprache oder Inhalt suchen'),
+      {
+        target: { value: 'terms of use' },
+      }
+    );
 
     expect(screen.queryByText('Datenschutzhinweise')).toBeNull();
     expect(screen.getByText('Nutzungsbedingungen')).toBeTruthy();
 
-    fireEvent.change(screen.getByPlaceholderText('Nach UUID, Name, Version, Sprache oder Inhalt suchen'), {
-      target: { value: '' },
-    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Nach UUID, Name, Version, Sprache oder Inhalt suchen'),
+      {
+        target: { value: '' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Status'), {
       target: { value: 'draft' },
     });
@@ -118,8 +148,30 @@ describe('LegalTextsPage', () => {
 
     render(<LegalTextsPage />);
 
-    expect(screen.getByText('Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Sicherheitsprüfung fehlgeschlagen. Bitte Seite neu laden und erneut versuchen.'
+      )
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('removes legal-text creation controls without write access', () => {
+    iamAccessAllowedMock.mockReturnValue(false);
+    useLegalTextsMock.mockReturnValue({
+      legalTexts: legalTextsFixture,
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createLegalText: vi.fn(),
+      updateLegalText: vi.fn(),
+    });
+
+    render(<LegalTextsPage />);
+
+    expect(screen.queryByRole('link', { name: 'Rechtstext anlegen' })).toBeNull();
   });
 });

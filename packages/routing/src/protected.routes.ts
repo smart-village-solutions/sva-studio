@@ -1,6 +1,11 @@
 import { redirect } from '@tanstack/react-router';
 
 import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
+import {
+  buildInsufficientRoleHref,
+  buildLoginHref,
+  sanitizePathForDiagnostics,
+} from './protected-route-redirects.js';
 
 export type RouteGuardUser = {
   readonly instanceId?: string;
@@ -39,45 +44,6 @@ export type ProtectedRouteOptions = {
 const DEFAULT_LOGIN_PATH = '/auth/login';
 const DEFAULT_FALLBACK_PATH = '/';
 const DEFAULT_INSUFFICIENT_ROLE_KEY = 'auth.insufficientRole';
-const INTERNAL_REDIRECT_BASE = 'https://local.invalid';
-
-const isInternalPath = (value: string): boolean => value.startsWith('/') && value.startsWith('//') === false;
-
-const normalizeInternalPath = (value: string, fallbackPath: string): string => {
-  const candidate = isInternalPath(value) ? value : fallbackPath;
-  const url = new URL(candidate, INTERNAL_REDIRECT_BASE);
-  return `${url.pathname}${url.search}${url.hash}`;
-};
-
-const normalizeReturnToPath = (value: string): string => {
-  if (isInternalPath(value)) {
-    return value;
-  }
-  try {
-    const url = new URL(value);
-    return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return DEFAULT_FALLBACK_PATH;
-  }
-};
-
-const buildLoginHref = (_loginPath: string, returnTo: string) => {
-  const url = new URL(DEFAULT_FALLBACK_PATH, INTERNAL_REDIRECT_BASE);
-  url.searchParams.set('auth', 'login');
-  url.searchParams.set('returnTo', normalizeReturnToPath(returnTo));
-  return `${url.pathname}${url.search}`;
-};
-
-const buildInsufficientRoleHref = (path: string, reasonKey: string) => {
-  const url = new URL(normalizeInternalPath(path, DEFAULT_FALLBACK_PATH), INTERNAL_REDIRECT_BASE);
-  url.searchParams.set('error', reasonKey);
-  return `${url.pathname}${url.search}`;
-};
-
-const sanitizePathForDiagnostics = (value: string, fallbackPath: string): string => {
-  const url = new URL(normalizeInternalPath(value, fallbackPath), INTERNAL_REDIRECT_BASE);
-  return url.pathname;
-};
 
 const sanitizeRequiredRoles = (requiredRoles: readonly string[]): readonly string[] =>
   requiredRoles
@@ -85,7 +51,10 @@ const sanitizeRequiredRoles = (requiredRoles: readonly string[]): readonly strin
       const segments = requiredRole.split(':').filter(Boolean);
       return segments[segments.length - 1];
     })
-    .filter((requiredRole): requiredRole is string => typeof requiredRole === 'string' && requiredRole.length > 0);
+    .filter(
+      (requiredRole): requiredRole is string =>
+        typeof requiredRole === 'string' && requiredRole.length > 0
+    );
 
 const hasAnyRole = (user: RouteGuardUser, requiredRoles: readonly string[]) =>
   requiredRoles.some((requiredRole) => user.roles.includes(requiredRole));
@@ -112,7 +81,10 @@ const emitAccessDeniedDiagnostic = (input: {
   });
 };
 
-const throwInsufficientAccessRedirect = (fallbackPath: string, insufficientRoleKey: string): never => {
+const throwInsufficientAccessRedirect = (
+  fallbackPath: string,
+  insufficientRoleKey: string
+): never => {
   throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
 };
 
@@ -128,7 +100,9 @@ const assertAllRequiredPermissions = (input: {
     return;
   }
   const grantedPermissions = new Set(input.user.permissionActions ?? []);
-  const missingPermissions = input.requiredPermissions.filter((permission) => !grantedPermissions.has(permission));
+  const missingPermissions = input.requiredPermissions.filter(
+    (permission) => !grantedPermissions.has(permission)
+  );
   if (missingPermissions.length === 0) {
     return;
   }
@@ -168,7 +142,8 @@ const assertAnyRequiredAccess = (input: {
     route: input.route,
     reason: input.requiredPermissions.length > 0 ? 'insufficient-permission' : 'insufficient-role',
     fallbackPath: input.fallbackPath,
-    requiredPermissions: input.requiredPermissions.length > 0 ? input.requiredPermissions : undefined,
+    requiredPermissions:
+      input.requiredPermissions.length > 0 ? input.requiredPermissions : undefined,
     requiredRoles: input.requiredRoles.length > 0 ? input.requiredRoles : undefined,
   });
   throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
@@ -209,7 +184,8 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
     requiredPermissions = [],
     requiredAnyPermissions = [],
   } = options;
-  const diagnosticsRoute = 'route' in options && typeof options.route === 'string' ? options.route : null;
+  const diagnosticsRoute =
+    'route' in options && typeof options.route === 'string' ? options.route : null;
 
   return async ({ context, location }: BeforeLoadOptions<TContext>) => {
     const user = await context.auth?.getUser();
@@ -222,6 +198,20 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
         fallbackPath: DEFAULT_FALLBACK_PATH,
       });
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
+    }
+
+    if (
+      user.permissionStatus === 'degraded' &&
+      (requiredPermissions.length > 0 || requiredAnyPermissions.length > 0)
+    ) {
+      emitAccessDeniedDiagnostic({
+        diagnostics,
+        route: diagnosticsRoute,
+        reason: 'insufficient-permission',
+        fallbackPath,
+        requiredPermissions: [...requiredPermissions, ...requiredAnyPermissions],
+      });
+      throwInsufficientAccessRedirect(fallbackPath, insufficientRoleKey);
     }
 
     assertAllRequiredPermissions({

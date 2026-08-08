@@ -2,15 +2,25 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.fn();
-const invalidatePermissionsMock = vi.fn();
+const refreshSessionMock = vi.fn();
+const retryEffectiveAccessMock = vi.fn();
+const effectiveAccessMock = {
+  snapshot: { status: 'ready' } as { status: 'ready' | 'error' },
+  retry: retryEffectiveAccessMock,
+};
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => effectiveAccessMock,
+}));
+
 describe('PermissionsDegradedBanner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    effectiveAccessMock.snapshot = { status: 'ready' };
   });
 
   afterEach(() => {
@@ -22,7 +32,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: false,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     const healthy = render(<PermissionsDegradedBanner />);
@@ -31,7 +41,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: true,
     });
     render(<PermissionsDegradedBanner />);
@@ -40,7 +50,7 @@ describe('PermissionsDegradedBanner', () => {
 
   it('retries permission invalidation and disables the retry button while pending', async () => {
     let resolveInvalidate: (() => void) | undefined;
-    invalidatePermissionsMock.mockImplementation(
+    refreshSessionMock.mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           resolveInvalidate = resolve;
@@ -48,7 +58,7 @@ describe('PermissionsDegradedBanner', () => {
     );
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
 
@@ -58,7 +68,7 @@ describe('PermissionsDegradedBanner', () => {
     const retryButton = screen.getByRole('button', { name: 'Neu laden' });
     fireEvent.click(retryButton);
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+    expect(refreshSessionMock).toHaveBeenCalledTimes(1);
     expect(retryButton.hasAttribute('disabled')).toBe(true);
 
     resolveInvalidate?.();
@@ -72,7 +82,7 @@ describe('PermissionsDegradedBanner', () => {
     const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
 
@@ -82,7 +92,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: false,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     view.rerender(<PermissionsDegradedBanner />);
@@ -90,10 +100,26 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     view.rerender(<PermissionsDegradedBanner />);
     expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  it('surfaces effective-access failures and retries only the failed snapshot', async () => {
+    effectiveAccessMock.snapshot = { status: 'error' };
+    useAuthMock.mockReturnValue({
+      permissionsDegraded: false,
+      refreshSession: refreshSessionMock,
+      isLoading: false,
+    });
+
+    const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
+    render(<PermissionsDegradedBanner />);
+    fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
+
+    await waitFor(() => expect(retryEffectiveAccessMock).toHaveBeenCalledTimes(1));
+    expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 });

@@ -47,3 +47,94 @@ test('admin user list and edit page are reachable for system_admin', async ({ pa
   await page.getByRole('tab', { name: 'Berechtigungen' }).click();
   await expect(page.getByText('content.read')).toBeVisible();
 });
+
+test('read-only user detail blocks implicit submit and a direct mutation remains forbidden', async ({
+  page,
+}) => {
+  let patchRequests = 0;
+  await page.route('**/auth/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        user: {
+          id: 'kc-reader-1',
+          name: 'IAM Reader',
+          email: 'reader@example.com',
+          instanceId: '11111111-1111-1111-8111-111111111111',
+          roles: ['system_admin'],
+          permissionActions: ['iam.user.read'],
+        },
+      }),
+    });
+  });
+  await page.route('**/iam/me/permissions?**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        instanceId: '11111111-1111-1111-8111-111111111111',
+        permissions: [
+          { action: 'iam.user.read', resourceType: 'iam.user', accessScope: 'all' },
+        ],
+        snapshotVersion: 'reader-snapshot-1',
+      }),
+    });
+  });
+  await page.route('**/api/v1/iam/users/account-2', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      patchRequests += 1;
+      await route.fulfill({
+        status: 403,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { code: 'forbidden', message: 'permission_missing' } }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: 'account-2',
+          keycloakSubject: 'kc-user-2',
+          displayName: 'User Two',
+          email: 'user2@example.com',
+          status: 'active',
+          roles: [],
+          permissions: ['content.read'],
+          mainserverUserApplicationSecretSet: false,
+        },
+      }),
+    });
+  });
+  await page.route('**/api/v1/iam/roles', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } }),
+    });
+  });
+
+  await gotoHomeAsAuthenticatedUser(page, 'IAM Reader');
+  await navigateClientSide(page, '/admin/users/account-2');
+  await expect(page.getByRole('heading', { name: 'User Two' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Verwaltung' }).click();
+  await expect(page.locator('form[aria-readonly="true"]')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Änderungen speichern' })).toBeDisabled();
+  await page.getByLabel('Mainserver Application-ID').press('Enter');
+  expect(patchRequests).toBe(0);
+
+  const directMutationStatus = await page.evaluate(async () =>
+    (
+      await fetch('/api/v1/iam/users/account-2', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ firstName: 'Forbidden' }),
+      })
+    ).status
+  );
+  expect(directMutationStatus).toBe(403);
+  expect(patchRequests).toBe(1);
+});

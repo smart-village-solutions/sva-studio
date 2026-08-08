@@ -8,9 +8,19 @@ const iamApiState = vi.hoisted(() => ({
   startAuthorizePerformanceRun: vi.fn(),
   asIamError: vi.fn((error: unknown) => error),
 }));
+const accessState = vi.hoisted(() => ({ allowed: true }));
+
+vi.mock('../../providers/effective-access-provider', () => ({
+  useAccessDecision: () =>
+    accessState.allowed
+      ? { status: 'allowed', reason: 'allowed_by_permission' }
+      : { status: 'denied', reason: 'permission_missing' },
+}));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to }: { children: React.ReactNode; to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -36,11 +46,14 @@ vi.mock('@sva/studio-ui-react', () => ({
 
 vi.mock('../../lib/iam-api', () => ({
   IamHttpError: class extends Error {},
-  asIamError: (...args: Parameters<typeof iamApiState.asIamError>) => iamApiState.asIamError(...args),
-  getLatestAuthorizePerformanceRun: (...args: Parameters<typeof iamApiState.getLatestAuthorizePerformanceRun>) =>
-    iamApiState.getLatestAuthorizePerformanceRun(...args),
-  startAuthorizePerformanceRun: (...args: Parameters<typeof iamApiState.startAuthorizePerformanceRun>) =>
-    iamApiState.startAuthorizePerformanceRun(...args),
+  asIamError: (...args: Parameters<typeof iamApiState.asIamError>) =>
+    iamApiState.asIamError(...args),
+  getLatestAuthorizePerformanceRun: (
+    ...args: Parameters<typeof iamApiState.getLatestAuthorizePerformanceRun>
+  ) => iamApiState.getLatestAuthorizePerformanceRun(...args),
+  startAuthorizePerformanceRun: (
+    ...args: Parameters<typeof iamApiState.startAuthorizePerformanceRun>
+  ) => iamApiState.startAuthorizePerformanceRun(...args),
 }));
 
 const baseResult = {
@@ -85,6 +98,7 @@ const baseResult = {
 
 describe('MonitoringOverviewPage', () => {
   beforeEach(() => {
+    accessState.allowed = true;
     iamApiState.getLatestAuthorizePerformanceRun.mockReset();
     iamApiState.startAuthorizePerformanceRun.mockReset();
     iamApiState.asIamError.mockReset();
@@ -106,7 +120,11 @@ describe('MonitoringOverviewPage', () => {
     expect(screen.getByText('Subject: kc-user-1')).toBeTruthy();
     expect(screen.getByText('Cache-Hit')).toBeTruthy();
     expect(screen.getAllByRole('link', { name: 'Zu den Monitoring Jobs' })).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Zu den Monitoring Jobs' }).every((link) => link.getAttribute('href') === '/monitoring/jobs')).toBe(true);
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Zu den Monitoring Jobs' })
+        .every((link) => link.getAttribute('href') === '/monitoring/jobs')
+    ).toBe(true);
   });
 
   it('starts a new run with the form values and shows the updated result', async () => {
@@ -146,6 +164,22 @@ describe('MonitoringOverviewPage', () => {
     await screen.findByRole('heading', { name: 'Monitoring' });
     fireEvent.click(screen.getByRole('button', { name: 'Lauf starten' }));
 
-    expect(await screen.findByText('Sie dürfen diesen Monitoring-Lauf nicht ausführen.')).toBeTruthy();
+    expect(
+      await screen.findByText('Sie dürfen diesen Monitoring-Lauf nicht ausführen.')
+    ).toBeTruthy();
+  });
+
+  it('does not render a mutation control without iam.monitoring.write', async () => {
+    accessState.allowed = false;
+    iamApiState.getLatestAuthorizePerformanceRun.mockResolvedValue(null);
+
+    render(<MonitoringOverviewPage />);
+
+    await screen.findByRole('heading', { name: 'Monitoring' });
+    expect(screen.queryByRole('button', { name: 'Lauf starten' })).toBeNull();
+    expect(screen.getByLabelText('Action-ID').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Resource-Typ').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Resource-ID').hasAttribute('disabled')).toBe(true);
+    expect(iamApiState.startAuthorizePerformanceRun).not.toHaveBeenCalled();
   });
 });

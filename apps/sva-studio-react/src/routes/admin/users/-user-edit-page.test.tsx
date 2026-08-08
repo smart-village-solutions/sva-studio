@@ -17,6 +17,16 @@ const useOrganizationsMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
 
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: 'allowed' },
+    create: { status: 'allowed' },
+    update: { status: 'allowed' },
+    delete: { status: 'allowed' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
+
 vi.mock('../../../hooks/use-user', () => ({
   useUser: (...args: unknown[]) => useUserMock(...args),
 }));

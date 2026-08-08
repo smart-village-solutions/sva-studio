@@ -6,9 +6,24 @@ import { IamHttpError } from '../../../lib/iam-api';
 import { OrganizationsPage } from './-organizations-page';
 
 const useOrganizationsMock = vi.fn();
+const iamAccessAllowedMock = vi.fn();
+
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    create: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    update: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    delete: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -74,6 +89,8 @@ describe('OrganizationsPage', () => {
 
   beforeEach(() => {
     useOrganizationsMock.mockReset();
+    iamAccessAllowedMock.mockReset();
+    iamAccessAllowedMock.mockReturnValue(true);
   });
 
   it('renders list content and route links', () => {
@@ -82,9 +99,15 @@ describe('OrganizationsPage', () => {
     render(<OrganizationsPage />);
 
     expect(screen.getByRole('heading', { name: 'Organisationsverwaltung' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Organisation anlegen' }).getAttribute('href')).toBe('/admin/organizations/new');
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe('/admin/organizations/$organizationId');
-    expect(screen.getAllByRole('link', { name: 'Mitglieder verwalten' })[0]!.getAttribute('href')).toBe('/admin/organizations/$organizationId');
+    expect(screen.getByRole('link', { name: 'Organisation anlegen' }).getAttribute('href')).toBe(
+      '/admin/organizations/new'
+    );
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe(
+      '/admin/organizations/$organizationId'
+    );
+    expect(
+      screen.getAllByRole('link', { name: 'Mitglieder verwalten' })[0]!.getAttribute('href')
+    ).toBe('/admin/organizations/$organizationId');
     expect(screen.getByText('1 Organisationen gefunden.')).toBeTruthy();
   });
 
@@ -177,7 +200,9 @@ describe('OrganizationsPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Organisation löschen' })).toBeTruthy();
     });
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
 
     await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
   });
@@ -192,11 +217,26 @@ describe('OrganizationsPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Organisation löschen' })).toBeTruthy();
     });
-    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' }));
+    fireEvent.click(
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Löschen' })
+    );
 
     await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'Organisation löschen' })).toBeNull();
     });
+  });
+
+  it('removes create and delete controls and disables status mutation without write access', () => {
+    iamAccessAllowedMock.mockReturnValue(false);
+    useOrganizationsMock.mockReturnValue(createOrganizationsApiState());
+
+    render(<OrganizationsPage />);
+
+    expect(screen.queryByRole('link', { name: 'Organisation anlegen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
+    expect(
+      screen.getAllByRole('switch').every((control) => control.hasAttribute('disabled'))
+    ).toBe(true);
   });
 });

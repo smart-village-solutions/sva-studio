@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getEffectiveAccessInvalidationGeneration } from '../providers/effective-access-invalidation';
 import { useRoles } from './use-roles';
 
 const listRolesMock = vi.fn();
@@ -20,7 +21,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -54,10 +55,11 @@ describe('useRoles', () => {
     deleteRoleMock.mockReset();
     reconcileRolesMock.mockReset();
     asIamErrorMock.mockReset();
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
   });
 
   it('loads and mutates roles', async () => {
+    const initialAccessGeneration = getEffectiveAccessInvalidationGeneration();
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listRolesMock.mockResolvedValue({
       data: [
@@ -142,9 +144,10 @@ describe('useRoles', () => {
     expect(deleteRoleMock).toHaveBeenCalledTimes(1);
     expect(reconcileRolesMock).toHaveBeenCalledTimes(1);
     expect(result.current.reconcileReport?.correctedCount).toBe(1);
+    expect(getEffectiveAccessInvalidationGeneration()).toBe(initialAccessGeneration + 5);
   });
 
-  it('invalidates permissions when initial fetch returns 403', async () => {
+  it('does not refresh the session when initial fetch returns 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);
     listRolesMock.mockRejectedValueOnce(new Error('forbidden-list'));
@@ -157,7 +160,7 @@ describe('useRoles', () => {
       expect(result.current.roles).toHaveLength(0);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('returns false and stores error when mutation fails without 403', async () => {
@@ -200,10 +203,10 @@ describe('useRoles', () => {
 
     expect(result.current.error).toBeNull();
     expect(result.current.mutationError).toBe(conflictError);
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
-  it('invalidates permissions when mutation fails with 403', async () => {
+  it('does not refresh the session when mutation fails with 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);
     listRolesMock.mockResolvedValueOnce({
@@ -240,12 +243,12 @@ describe('useRoles', () => {
       expect(deleted).toBe(false);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
     expect(result.current.error).toBeNull();
     expect(result.current.mutationError).toBe(forbiddenError);
   });
 
-  it('invalidates permissions and stores page error when reconcile fails with 403', async () => {
+  it('does not refresh the session and stores page error when reconcile fails with 403', async () => {
     const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
     asIamErrorMock.mockReturnValue(forbiddenError);
     listRolesMock.mockResolvedValueOnce({
@@ -282,7 +285,7 @@ describe('useRoles', () => {
       expect(reconciled).toBe(false);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
     expect(result.current.error).toBe(forbiddenError);
     expect(result.current.mutationError).toBeNull();
   });

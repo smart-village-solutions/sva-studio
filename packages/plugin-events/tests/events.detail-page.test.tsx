@@ -96,7 +96,17 @@ describe('EventsDetailPage', () => {
   beforeEach(() => {
     publishSessionAccessSnapshot({
       isResolved: true,
-      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      permissionActions: [
+        'events.read',
+        'events.create',
+        'events.update',
+        'events.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+      ],
+      assignedModules: ['events'],
       roles: [],
     });
     navigateMock.mockReset();
@@ -313,6 +323,30 @@ describe('EventsDetailPage', () => {
       expect(
         screen.getByText('Speichern Sie die Veranstaltung, bevor die Historie verfügbar ist.')
       ).toBeTruthy();
+    });
+  });
+
+  it('keeps read-only event editors from saving or deleting', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['events.read'],
+      assignedModules: ['events'],
+      roles: [],
+    });
+    vi.mocked(getEvent).mockResolvedValueOnce({ id: 'event-read-only', title: 'Nur lesen' } as never);
+
+    const { container } = render(<EventsDetailPage mode="edit" contentId="event-read-only" />);
+
+    await screen.findByDisplayValue('Nur lesen');
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
+
+    const form = container.querySelector('form');
+    if (!form) throw new Error('event_form_missing');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(vi.mocked(updateEvent)).not.toHaveBeenCalled();
     });
   });
 

@@ -7,6 +7,8 @@ export interface PermissionSnapshotKey {
   readonly keycloakSubject: string;
   readonly organizationId?: string;
   readonly geoContextHash?: string;
+  readonly instanceRevision: number;
+  readonly userRevision: number;
   readonly version: number;
 }
 
@@ -16,6 +18,8 @@ export interface PermissionSnapshot {
   readonly expiresAtMs: number;
   readonly version: number;
   readonly snapshotVersion?: string;
+  readonly instanceRevision: number;
+  readonly userRevision: number;
 }
 
 export interface CacheLookupResult {
@@ -33,6 +37,8 @@ const formatSnapshotKey = (key: PermissionSnapshotKey): string => {
     key.keycloakSubject,
     key.organizationId ?? 'global',
     key.geoContextHash ?? 'geo-global',
+    `ir${key.instanceRevision}`,
+    `ur${key.userRevision}`,
     `v${key.version}`,
   ].join(':');
 };
@@ -74,6 +80,8 @@ export class PermissionSnapshotCache {
       expiresAtMs: nowMs + this.ttlMs,
       version,
       snapshotVersion,
+      instanceRevision: key.instanceRevision,
+      userRevision: key.userRevision,
     };
     this.snapshots.set(
       formatSnapshotKey({

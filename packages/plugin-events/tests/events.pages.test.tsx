@@ -1,6 +1,10 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { listHostMediaAssets, registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import {
+  listHostMediaAssets,
+  publishSessionAccessSnapshot,
+  registerPluginTranslationResolver,
+} from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEvent, getEventDetail, listEvents, updateEvent } from '../src/events.api.js';
 import { EventsCreatePage, EventsEditPage, EventsListPage } from '../src/events.pages.js';
@@ -97,6 +101,12 @@ const paramsMock = vi.fn(() => ({ id: 'event-1' }));
 describe('EventsListPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['events'],
+      permissionActions: ['events.read', 'events.create', 'events.update', 'events.delete'],
+      roles: [],
+    });
     navigateMock.mockReset();
     paramsMock.mockReset();
     paramsMock.mockReturnValue({ id: 'event-1' });

@@ -3,27 +3,36 @@ import { AlertTriangle, X, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
 
 export const PermissionsDegradedBanner = () => {
-  const { permissionsDegraded, invalidatePermissions, isLoading } = useAuth();
+  const { permissionsDegraded, refreshSession, isLoading } = useAuth();
+  const effectiveAccess = useEffectiveAccess();
+  const effectiveAccessDegraded = effectiveAccess.snapshot.status === 'error';
+  const isDegraded = permissionsDegraded || effectiveAccessDegraded;
   const [dismissed, setDismissed] = React.useState(false);
   const [isRetrying, setIsRetrying] = React.useState(false);
 
   // Wenn der Nutzer Berechtigungen neu lädt und sie jetzt ok sind, Banner ausblenden.
   React.useEffect(() => {
-    if (!permissionsDegraded) {
+    if (!isDegraded) {
       setDismissed(false);
     }
-  }, [permissionsDegraded]);
+  }, [isDegraded]);
 
-  if (!permissionsDegraded || dismissed || isLoading) {
+  if (!isDegraded || dismissed || isLoading) {
     return null;
   }
 
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      await invalidatePermissions();
+      if (permissionsDegraded) {
+        await refreshSession();
+      }
+      if (effectiveAccessDegraded) {
+        effectiveAccess.retry();
+      }
     } finally {
       setIsRetrying(false);
     }
@@ -48,7 +57,10 @@ export const PermissionsDegradedBanner = () => {
           onClick={() => void handleRetry()}
           className="h-auto gap-1.5 px-2 py-1 text-amber-800 hover:bg-amber-500/20 hover:text-amber-900 dark:text-amber-200 dark:hover:text-amber-100"
         >
-          <RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`}
+          />
           {t('shell.permissionsDegraded.retry')}
         </Button>
         <Button

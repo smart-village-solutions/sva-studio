@@ -84,6 +84,7 @@ import {
   updateOrganizationMembership,
   updateGroup,
   updateOrganization,
+  EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT,
   LEGAL_ACCEPTANCE_REQUIRED_EVENT,
   normalizeRuntimeHealthResponse,
 } from './iam-api';
@@ -488,6 +489,44 @@ describe('iam-api organization helpers', () => {
     expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
   });
 
+  it('dispatches effective-access invalidation only for an explicit stale signal', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'permission_snapshot_stale' }), {
+          status: 409,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      code: 'permission_snapshot_stale',
+    });
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
+      EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT
+    );
+
+    dispatchEvent.mockClear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'forbidden' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      code: 'forbidden',
+    });
+    expect(dispatchEvent).not.toHaveBeenCalled();
+  });
+
   it('supports the flat error response shape and request id header', async () => {
     vi.stubGlobal(
       'fetch',
@@ -874,7 +913,6 @@ describe('iam-api organization helpers', () => {
     );
   });
 });
-
 describe('iam-api user sync helper', () => {
   beforeEach(() => {
     vi.restoreAllMocks();

@@ -10,6 +10,7 @@ import {
   listHostMediaReferencesByTarget,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
@@ -259,13 +260,18 @@ function Editor({
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('cockpit-cards', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
-        canEditContent: true,
+        canEditContent: canSave,
         permissionActions: sessionAccess.permissionActions,
       }),
-    [sessionAccess.permissionActions]
+    [canSave, sessionAccess.permissionActions]
   );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
@@ -461,6 +467,7 @@ function Editor({
   if (error) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
   const save = form.handleSubmit(
     async (values) => {
+      if (!canSave) return;
       setMutationError(null);
       try {
         const input = mapCockpitCardFormValuesToGenericItemInput(
@@ -705,7 +712,7 @@ function Editor({
           <Button asChild variant="outline">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
-          {mode === 'edit' && contentId ? (
+          {mode === 'edit' && contentId && accessCapabilities.canDelete ? (
             <Button
               type="button"
               variant="destructive"
@@ -718,9 +725,15 @@ function Editor({
         </div>
       }
       primaryAction={
-        <Button type="submit" form={formId} disabled={form.formState.isSubmitting || deletePending}>
-          {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
-        </Button>
+        canSave ? (
+          <Button
+            type="submit"
+            form={formId}
+            disabled={form.formState.isSubmitting || deletePending}
+          >
+            {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
+          </Button>
+        ) : undefined
       }
     >
       <StudioMediaPickerOverlay

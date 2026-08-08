@@ -20,7 +20,19 @@ const state = vi.hoisted(() => ({
   params: {} as { id?: string; contentId?: string },
   search: { page: 1, pageSize: 25 },
   accessSnapshot: {
-    permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'],
+    isResolved: true,
+    assignedModules: ['projects'],
+    permissionActions: [
+      'projects.read',
+      'projects.create',
+      'projects.update',
+      'projects.delete',
+      'media.read',
+      'media.reference.manage',
+      'media.create',
+      'media.update',
+    ],
+    roles: [],
   },
 }));
 
@@ -127,7 +139,19 @@ describe('projects pages', () => {
       })
     );
     state.accessSnapshot = {
-      permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'],
+      isResolved: true,
+      assignedModules: ['projects'],
+      permissionActions: [
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
+        'media.read',
+        'media.reference.manage',
+        'media.create',
+        'media.update',
+      ],
+      roles: [],
     };
   });
 
@@ -365,7 +389,12 @@ describe('projects pages', () => {
   });
 
   it('hides library and upload entry points without media permissions while retaining manual URLs', async () => {
-    state.accessSnapshot = { permissionActions: [] };
+    state.accessSnapshot = {
+      isResolved: true,
+      assignedModules: ['projects'],
+      permissionActions: ['projects.read', 'projects.create', 'projects.update', 'projects.delete'],
+      roles: [],
+    };
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));

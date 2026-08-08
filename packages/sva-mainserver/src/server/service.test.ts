@@ -70,6 +70,9 @@ vi.mock('@sva/server-runtime', async (importOriginal) => {
 });
 
 import {
+  changeSvaMainserverEventVisibility,
+  changeSvaMainserverGenericItemVisibility,
+  changeSvaMainserverNewsVisibility,
   createOrUpdateSvaMainserverStaticContent,
   createSvaMainserverEvent,
   createSvaMainserverGenericItem,
@@ -77,22 +80,32 @@ import {
   createSvaMainserverPoi,
   createSvaMainserverSurvey,
   createSvaMainserverService,
+  createSvaMainserverWastePickupTimes,
   deleteSvaMainserverEvent,
   deleteSvaMainserverGenericItem,
   deleteSvaMainserverNews,
   deleteSvaMainserverPoi,
   deleteSvaMainserverSurvey,
+  deleteSvaMainserverWastePickupTimes,
+  getSvaMainserverConnectionStatus,
   getSvaMainserverEvent,
+  getSvaMainserverEventDetail,
   getSvaMainserverGenericItem,
+  getSvaMainserverMutationRootTypename,
   getSvaMainserverNews,
   getSvaMainserverPoi,
+  getSvaMainserverPoiDetail,
+  getSvaMainserverQueryRootTypename,
   getSvaMainserverSurvey,
   getSvaMainserverSurveyResults,
+  listSvaMainserverCategories,
   listSvaMainserverEvents,
   listSvaMainserverGenericItems,
   listSvaMainserverNews,
   listSvaMainserverPoi,
+  listSvaMainserverProjection,
   listSvaMainserverSurveys,
+  listSvaMainserverWasteSyncSnapshot,
   releaseSvaMainserverSurveyFreeTextResponse,
   resetSvaMainserverServiceState,
   updateSvaMainserverEvent,
@@ -385,6 +398,32 @@ describe('createSvaMainserverService', () => {
           },
         })
       );
+
+    const service = createSvaMainserverService({
+      loadInstanceConfig: async () => baseConfig,
+      readCredentials: async () => ({ apiKey: 'key-1', apiSecret: 'secret-1' }),
+      fetchImpl,
+    });
+
+    await expect(
+      service.listCategories({ instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' })
+    ).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    });
+  });
+
+  it.each([
+    ['a non-object category', 'invalid-category'],
+    ['a non-numeric position', { id: 'cat-1', name: 'Allgemein', position: 'first' }],
+    ['a non-string tag list', { id: 'cat-1', name: 'Allgemein', tagList: ['amt'] }],
+    ['a non-object parent', { id: 'cat-1', name: 'Allgemein', parent: 'cat-root' }],
+    ['a parent with a non-string name', { id: 'cat-1', name: 'Allgemein', parent: { name: 42 } }],
+  ])('rejects categories responses containing %s', async (_label, category) => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
+      .mockResolvedValueOnce(createJsonResponse(200, { data: { categories: [category] } }));
 
     const service = createSvaMainserverService({
       loadInstanceConfig: async () => baseConfig,
@@ -3667,5 +3706,143 @@ describe('createSvaMainserverService', () => {
       errorCode: 'graphql_error',
       errorMessage: expect.stringContaining('boom'),
     });
+  });
+
+  it('routes diagnostic, projection, detail, visibility and waste helpers through the default service', async () => {
+    state.loadSvaMainserverInstanceConfig.mockResolvedValue(baseConfig);
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
+      status: 'ok',
+      source: 'user',
+      credentials: { apiKey: 'key-1', apiSecret: 'secret-1' },
+    });
+
+    const operationNames: string[] = [];
+    const fetchImpl = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      if (init?.body instanceof URLSearchParams) {
+        return createJsonResponse(200, { access_token: 'token-1', expires_in: 120 });
+      }
+
+      const request = JSON.parse(String(init?.body)) as {
+        operationName: string;
+      };
+      operationNames.push(request.operationName);
+
+      const data = (() => {
+        switch (request.operationName) {
+          case 'SvaMainserverQueryRootTypename':
+            return { __typename: 'Query' };
+          case 'SvaMainserverMutationRootTypename':
+            return { __typename: 'Mutation' };
+          case 'SvaMainserverCategoriesList':
+            return { categories: [{ id: 'category-1', name: 'Kultur' }] };
+          case 'SvaMainserverNewsProjectionList':
+            return { newsItems: [] };
+          case 'SvaMainserverChangeNewsVisibility':
+          case 'SvaMainserverChangeGenericItemVisibility':
+            return { changeVisibility: { id: 1, status: 'ok', statusCode: 200 } };
+          case 'SvaMainserverEventDetail':
+            return {
+              eventRecord: {
+                id: 'event-1',
+                title: 'Event',
+                visible: true,
+                recurringWeekdays: [],
+              },
+            };
+          case 'SvaMainserverPoiDetail':
+            return {
+              pointOfInterest: { id: 'poi-1', name: 'POI', payload: {}, visible: true },
+            };
+          case 'SvaMainserverWasteTours':
+            return { wasteTours: [] };
+          case 'SvaMainserverCreateWastePickUpTimes':
+            return { createWastePickUpTimes: { success: true, errors: [] } };
+          case 'SvaMainserverDestroyWastePickUpTimeByIds':
+            return { destroyWastePickUpTime: { id: 'pickup-1' } };
+          default:
+            throw new Error(`Unexpected GraphQL operation: ${request.operationName}`);
+        }
+      })();
+
+      return createJsonResponse(200, { data });
+    });
+    vi.stubGlobal('fetch', fetchImpl);
+
+    const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
+    const wasteItem = {
+      id: 'pickup-1',
+      pickupDate: '2026-08-10',
+      wasteType: 'Papier',
+      street: 'Markt 1',
+    };
+
+    await expect(getSvaMainserverConnectionStatus(connection)).resolves.toMatchObject({
+      status: 'connected',
+      queryRootTypename: 'Query',
+      mutationRootTypename: 'Mutation',
+    });
+    await expect(getSvaMainserverQueryRootTypename(connection)).resolves.toEqual({
+      __typename: 'Query',
+    });
+    await expect(getSvaMainserverMutationRootTypename(connection)).resolves.toEqual({
+      __typename: 'Mutation',
+    });
+    await expect(listSvaMainserverCategories(connection)).resolves.toEqual([
+      { id: 'category-1', name: 'Kultur' },
+    ]);
+    await expect(
+      listSvaMainserverProjection({
+        ...connection,
+        contentType: 'news.article',
+        page: 1,
+        pageSize: 25,
+      })
+    ).resolves.toMatchObject({
+      data: [],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false },
+    });
+    await expect(
+      changeSvaMainserverNewsVisibility({ ...connection, newsId: 'news-1', visible: false })
+    ).resolves.toBeUndefined();
+    await expect(
+      getSvaMainserverEventDetail({ ...connection, eventId: 'event-1' })
+    ).resolves.toMatchObject({ data: { id: 'event-1' } });
+    await expect(
+      changeSvaMainserverEventVisibility({ ...connection, eventId: 'event-1', visible: false })
+    ).resolves.toBeUndefined();
+    await expect(
+      changeSvaMainserverGenericItemVisibility({
+        ...connection,
+        genericItemId: 'generic-1',
+        visible: false,
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      getSvaMainserverPoiDetail({ ...connection, poiId: 'poi-1' })
+    ).resolves.toMatchObject({ data: { id: 'poi-1' } });
+    await expect(listSvaMainserverWasteSyncSnapshot(connection)).resolves.toEqual({
+      tours: [],
+      pickupTimes: [],
+    });
+    await expect(
+      createSvaMainserverWastePickupTimes({ ...connection, items: [wasteItem] })
+    ).resolves.toBeUndefined();
+    await expect(
+      deleteSvaMainserverWastePickupTimes({ ...connection, items: [wasteItem] })
+    ).resolves.toBeUndefined();
+
+    expect(operationNames).toEqual(
+      expect.arrayContaining([
+        'SvaMainserverCategoriesList',
+        'SvaMainserverNewsProjectionList',
+        'SvaMainserverChangeNewsVisibility',
+        'SvaMainserverChangeGenericItemVisibility',
+        'SvaMainserverEventDetail',
+        'SvaMainserverPoiDetail',
+        'SvaMainserverWasteTours',
+        'SvaMainserverCreateWastePickUpTimes',
+        'SvaMainserverDestroyWastePickUpTimeByIds',
+      ])
+    );
   });
 });

@@ -181,6 +181,7 @@ export const authorizeHandler = async (request: Request): Promise<Response> => {
           traceId: decision.traceId ?? getWorkspaceContext().traceId,
           snapshotVersion: resolved.snapshotVersion ?? null,
           cacheStatus: resolved.cacheStatus,
+          permissionRevision: resolved.permissionRevision,
         });
         timingDiagnostics.responseSerializationMs =
           performance.now() - responseSerializationStartedAt;

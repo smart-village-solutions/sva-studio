@@ -8,6 +8,7 @@ import {
   logBrowserOperationSuccess,
   type BrowserOperationLogMeta,
 } from '../lib/browser-operation-logging';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 type ListResponse<TItem> = {
   readonly data: readonly TItem[];
@@ -40,13 +41,15 @@ const adminListLogger = createOperationLogger('iam-admin-list', 'debug');
 
 export const useIamAdminList = <TItem>(
   listItems: () => Promise<ListResponse<TItem>>,
-  invalidatePermissions: () => Promise<void> | void,
+  refreshSession: () => Promise<void> | void,
   options: {
     enabled?: boolean;
+    invalidateEffectiveAccessOnMutation?: boolean;
     onLoaded?: (response: ListResponse<TItem>) => void;
   } = {}
 ): UseIamAdminListResult<TItem> => {
   const enabled = options.enabled ?? true;
+  const invalidateEffectiveAccessOnMutation = options.invalidateEffectiveAccessOnMutation ?? false;
   const onLoaded = options.onLoaded;
   const [items, setItems] = React.useState<readonly TItem[]>([]);
   const [isLoading, setIsLoading] = React.useState(enabled);
@@ -81,9 +84,9 @@ export const useIamAdminList = <TItem>(
       );
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        adminListLogger.info('permission_invalidated_after_401_or_403', {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        adminListLogger.info('session_refreshed_after_401', {
           operation: 'list_refetch',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -97,7 +100,7 @@ export const useIamAdminList = <TItem>(
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, invalidatePermissions, listItems, onLoaded]);
+  }, [enabled, refreshSession, listItems, onLoaded]);
 
   React.useEffect(() => {
     if (!enabled) {
@@ -115,14 +118,17 @@ export const useIamAdminList = <TItem>(
       setMutationError(null);
       try {
         const result = await action();
+        if (invalidateEffectiveAccessOnMutation) {
+          requestEffectiveAccessInvalidation();
+        }
         await refetch();
         logBrowserOperationSuccess(adminListLogger, 'mutation_succeeded', meta);
         return result;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          adminListLogger.info('permission_invalidated_after_401_or_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          adminListLogger.info('session_refreshed_after_401', {
             operation: typeof meta.operation === 'string' ? meta.operation : 'mutation',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -133,7 +139,7 @@ export const useIamAdminList = <TItem>(
         return null;
       }
     },
-    [invalidatePermissions, refetch]
+    [invalidateEffectiveAccessOnMutation, refreshSession, refetch]
   );
 
   const runMutation = React.useCallback(

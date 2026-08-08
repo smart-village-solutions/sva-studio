@@ -40,6 +40,7 @@ export type {
   MePermissionsRequest,
   MePermissionsResponse,
   MePermissionsSubject,
+  PermissionRevisionVector,
   ReadinessStatus,
   RuntimeDependencyHealth,
   RuntimeDependencyKey,
@@ -67,5 +68,17 @@ export type {
   AuthorizePerformanceScenario,
   AuthorizePerformanceScenarioResult,
 } from './authorize-performance-contract.js';
+
+export { evaluateUiAccess, uiAccessDecisionReasons } from './ui-access.js';
+
+export type {
+  EffectiveAccessSnapshot,
+  EvaluateUiAccessInput,
+  UiAccessDecision,
+  UiAccessDecisionReason,
+  UiAccessRequirement,
+  UiAccessScope,
+  UiResourceCapability,
+} from './ui-access.js';
 
 export * from './package-metadata.js';

@@ -10,6 +10,7 @@ const guardSpies = vi.hoisted(() => ({
   contentCreate: vi.fn(async () => undefined),
   contentDetail: vi.fn(async () => undefined),
   media: vi.fn(async () => undefined),
+  interfaces: vi.fn(async () => undefined),
   adminUsers: vi.fn(async () => undefined),
   adminUserCreate: vi.fn(async () => undefined),
   adminUserDetail: vi.fn(async () => undefined),
@@ -45,7 +46,9 @@ const createRouteMock = vi.hoisted(() =>
   }))
 );
 
-const redirectMock = vi.hoisted(() => vi.fn((options: Record<string, unknown>) => ({ ...options, __redirect: true })));
+const redirectMock = vi.hoisted(() =>
+  vi.fn((options: Record<string, unknown>) => ({ ...options, __redirect: true }))
+);
 
 vi.mock('@tanstack/react-router', () => ({
   createRoute: createRouteMock,
@@ -126,9 +129,7 @@ const bindingKeys = [
   'adminApiPhase1Test',
 ] as const;
 
-const bindings = Object.fromEntries(
-  bindingKeys.map((key) => [key, () => key])
-);
+const bindings = Object.fromEntries(bindingKeys.map((key) => [key, () => key]));
 
 const adminResources = [
   {
@@ -208,6 +209,8 @@ describe('app.routes', () => {
     expect(routeMap.has('/account/rules')).toBe(true);
     expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/admin/media/$mediaId/usage')).toBe(true);
+    expect(routeMap.has('/media')).toBe(true);
+    expect(routeMap.has('/interfaces')).toBe(true);
     expect(routeMap.has('/content')).toBe(true);
     expect(routeMap.has('/admin/users')).toBe(true);
     expect(routeMap.has('/admin/roles/$roleId')).toBe(true);
@@ -250,16 +253,43 @@ describe('app.routes', () => {
         },
       },
     });
+    await readRouteOptions(routeMap.get('/media')).beforeLoad?.({
+      href: '/media',
+      context: {
+        auth: {
+          getUser: async () => ({
+            assignedModules: ['media'],
+            permissionActions: ['media.read'],
+          }),
+        },
+      },
+    });
+    await readRouteOptions(routeMap.get('/interfaces')).beforeLoad?.({
+      href: '/interfaces',
+      context: {
+        auth: {
+          getUser: async () => ({ permissionActions: ['integration.manage'] }),
+        },
+      },
+    });
     await readRouteOptions(routeMap.get('/admin/users')).beforeLoad?.({ href: '/admin/users' });
     await readRouteOptions(routeMap.get('/modules')).beforeLoad?.({ href: '/modules' });
     await readRouteOptions(routeMap.get('/monitoring')).beforeLoad?.({ href: '/monitoring' });
-    await readRouteOptions(routeMap.get('/monitoring/jobs')).beforeLoad?.({ href: '/monitoring/jobs' });
-    await readRouteOptions(routeMap.get('/monitoring/jobs/$jobId')).beforeLoad?.({ href: '/monitoring/jobs/job-1' });
-    await readRouteOptions(routeMap.get('/plugins/calendar')).beforeLoad?.({ href: '/plugins/calendar' });
+    await readRouteOptions(routeMap.get('/monitoring/jobs')).beforeLoad?.({
+      href: '/monitoring/jobs',
+    });
+    await readRouteOptions(routeMap.get('/monitoring/jobs/$jobId')).beforeLoad?.({
+      href: '/monitoring/jobs/job-1',
+    });
+    await readRouteOptions(routeMap.get('/plugins/calendar')).beforeLoad?.({
+      href: '/plugins/calendar',
+    });
     await readRouteOptions(routeMap.get('/plugins/news')).beforeLoad?.({ href: '/plugins/news' });
 
     expect(guardSpies.account).toHaveBeenCalledWith({ href: '/account' });
-    expect(guardSpies.accountPrivacyDetail).toHaveBeenCalledWith({ href: '/account/privacy/case-1' });
+    expect(guardSpies.accountPrivacyDetail).toHaveBeenCalledWith({
+      href: '/account/privacy/case-1',
+    });
     expect(guardSpies.accountRules).toHaveBeenCalledWith({ href: '/account/rules' });
     expect(guardSpies.content).toHaveBeenCalledWith(
       expect.objectContaining({ href: '/categories' })
@@ -267,36 +297,88 @@ describe('app.routes', () => {
     expect(guardSpies.media).toHaveBeenCalledWith(
       expect.objectContaining({ href: '/admin/media/asset-1/usage' })
     );
+    expect(guardSpies.media).toHaveBeenCalledWith(expect.objectContaining({ href: '/media' }));
+    expect(guardSpies.interfaces).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/interfaces' })
+    );
     expect(guardSpies.adminUsers).toHaveBeenCalledWith({ href: '/admin/users' });
     expect(guardSpies.modules).toHaveBeenCalledWith({ href: '/modules' });
     expect(guardSpies.monitoring).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.monitoringJobs).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
     expect(guardSpies.monitoringJobDetail).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
-    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
+    expect(guardSpies.content).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/news' })
+    );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
       'accountPrivacyDetail',
       undefined,
       '/account/privacy/$caseId'
     );
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('accountRules', undefined, '/account/rules');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'accountRules',
+      undefined,
+      '/account/rules'
+    );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/categories');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/admin/media/$mediaId/usage');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/admin/content');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('adminUsers', undefined, '/admin/users');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'media',
+      undefined,
+      '/admin/media/$mediaId/usage'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('media', undefined, '/media');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'interfaces',
+      undefined,
+      '/interfaces'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'content',
+      undefined,
+      '/admin/content'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'adminUsers',
+      undefined,
+      '/admin/users'
+    );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('modules', undefined, '/modules');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoring', undefined, '/monitoring');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoringJobs', undefined, '/monitoring/jobs');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('monitoringJobDetail', undefined, '/monitoring/jobs/$jobId');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/news');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'monitoring',
+      undefined,
+      '/monitoring'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'monitoringJobs',
+      undefined,
+      '/monitoring/jobs'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'monitoringJobDetail',
+      undefined,
+      '/monitoring/jobs/$jobId'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'content',
+      undefined,
+      '/plugins/news'
+    );
 
-    expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual({
-      tab: 'rights',
-    });
-    expect(readRouteOptions(routeMap.get('/admin/roles/$roleId')).validateSearch?.({ tab: 'bogus' })).toEqual({
+    expect(readRouteOptions(routeMap.get('/admin/iam')).validateSearch?.({ tab: 'bogus' })).toEqual(
+      {
+        tab: 'rights',
+      }
+    );
+    expect(
+      readRouteOptions(routeMap.get('/admin/roles/$roleId')).validateSearch?.({ tab: 'bogus' })
+    ).toEqual({
       tab: 'general',
     });
-    expect(readRouteOptions(routeMap.get('/plugins/waste-management')).validateSearch?.({ tab: 'settings' })).toEqual({
+    expect(
+      readRouteOptions(routeMap.get('/plugins/waste-management')).validateSearch?.({
+        tab: 'settings',
+      })
+    ).toEqual({
       tab: 'settings',
     });
   });
@@ -323,16 +405,24 @@ describe('app.routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    const guardCallCount = Object.values(guardSpies).reduce((count, spy) => count + spy.mock.calls.length, 0);
+    const guardCallCount = Object.values(guardSpies).reduce(
+      (count, spy) => count + spy.mock.calls.length,
+      0
+    );
 
-    expect(readRouteOptions(routeMap.get('/interfaces')).getParentRoute?.()).toBe(rootRoute);
-    expect(readRouteOptions(routeMap.get('/interfaces')).beforeLoad).toBeUndefined();
     expect(readRouteOptions(routeMap.get('/help')).beforeLoad).toBeUndefined();
     expect(readRouteOptions(routeMap.get('/admin/api/phase1-test')).beforeLoad).toBeUndefined();
 
-    expect(await readRouteOptions(routeMap.get('/plugins/public-plugin')).beforeLoad?.({ href: '/plugins/public-plugin' })).toBeUndefined();
+    expect(
+      await readRouteOptions(routeMap.get('/plugins/public-plugin')).beforeLoad?.({
+        href: '/plugins/public-plugin',
+      })
+    ).toBeUndefined();
 
-    const nextGuardCallCount = Object.values(guardSpies).reduce((count, spy) => count + spy.mock.calls.length, 0);
+    const nextGuardCallCount = Object.values(guardSpies).reduce(
+      (count, spy) => count + spy.mock.calls.length,
+      0
+    );
     expect(nextGuardCallCount).toBe(guardCallCount);
   });
 
@@ -371,17 +461,43 @@ describe('app.routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    expect(readRouteOptions(routeMap.get('/plugins/plugin-guards/read')).getParentRoute?.()).toBe(rootRoute);
-    await readRouteOptions(routeMap.get('/plugins/plugin-guards/read')).beforeLoad?.({ href: '/plugins/plugin-guards/read' });
-    await readRouteOptions(routeMap.get('/plugins/plugin-guards/create')).beforeLoad?.({ href: '/plugins/plugin-guards/create' });
-    await readRouteOptions(routeMap.get('/plugins/plugin-guards/write')).beforeLoad?.({ href: '/plugins/plugin-guards/write' });
+    expect(readRouteOptions(routeMap.get('/plugins/plugin-guards/read')).getParentRoute?.()).toBe(
+      rootRoute
+    );
+    await readRouteOptions(routeMap.get('/plugins/plugin-guards/read')).beforeLoad?.({
+      href: '/plugins/plugin-guards/read',
+    });
+    await readRouteOptions(routeMap.get('/plugins/plugin-guards/create')).beforeLoad?.({
+      href: '/plugins/plugin-guards/create',
+    });
+    await readRouteOptions(routeMap.get('/plugins/plugin-guards/write')).beforeLoad?.({
+      href: '/plugins/plugin-guards/write',
+    });
 
-    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/plugin-guards/read' });
-    expect(guardSpies.contentCreate).toHaveBeenCalledWith({ href: '/plugins/plugin-guards/create' });
-    expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/plugin-guards/write' });
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('content', undefined, '/plugins/plugin-guards/read');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentCreate', undefined, '/plugins/plugin-guards/create');
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('contentDetail', undefined, '/plugins/plugin-guards/write');
+    expect(guardSpies.content).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/read' })
+    );
+    expect(guardSpies.contentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/create' })
+    );
+    expect(guardSpies.contentDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/write' })
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'content',
+      undefined,
+      '/plugins/plugin-guards/read'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'contentCreate',
+      undefined,
+      '/plugins/plugin-guards/create'
+    );
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'contentDetail',
+      undefined,
+      '/plugins/plugin-guards/write'
+    );
   });
 
   it('redirects legacy content aliases to the canonical admin content routes', () => {
@@ -393,14 +509,16 @@ describe('app.routes', () => {
     const routes = routeFactories.map((factory) => factory(rootRoute as never));
     const routeMap = new Map(routes.map((route) => [String(readRouteOptions(route).path), route]));
 
-    expect(() => readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=2' })).toThrow(
-      expect.objectContaining({ href: '/admin/content?page=2', __redirect: true })
-    );
-    expect(() => readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new' })).toThrow(
-      expect.objectContaining({ href: '/admin/content/new', __redirect: true })
-    );
-    expect(
-      () => readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({ href: '/content/content-7' })
+    expect(() =>
+      readRouteOptions(routeMap.get('/content')).beforeLoad?.({ href: '/content?page=2' })
+    ).toThrow(expect.objectContaining({ href: '/admin/content?page=2', __redirect: true }));
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/new')).beforeLoad?.({ href: '/content/new' })
+    ).toThrow(expect.objectContaining({ href: '/admin/content/new', __redirect: true }));
+    expect(() =>
+      readRouteOptions(routeMap.get('/content/$contentId')).beforeLoad?.({
+        href: '/content/content-7',
+      })
     ).toThrow(expect.objectContaining({ href: '/admin/content/content-7', __redirect: true }));
   });
 
@@ -415,6 +533,9 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/admin/content/new')).toBe(true);
     expect(routeMap.has('/admin/content/$id')).toBe(true);
+    expect(
+      readRouteOptions(expectDefined(routeMap.get('/admin/api/phase1-test'))).getParentRoute?.()
+    ).toBe(rootRoute);
   });
 
   it('defaults admin resources to an empty list when ui route factories are created without options', () => {
@@ -430,6 +551,60 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/admin/content/new')).toBe(true);
     expect(routeMap.has('/admin/content/$id')).toBe(true);
+  });
+
+  it('enforces canonical admin-resource access requirements without legacy permissions', async () => {
+    const routeFactories = createUiRouteFactories(bindings, {
+      adminResources: [
+        {
+          ...adminResources[0],
+          moduleId: 'news',
+          accessRequirements: {
+            list: {
+              kind: 'tenant',
+              moduleId: 'news',
+              actions: { mode: 'allOf', values: ['news.read'] },
+            },
+          },
+        },
+      ],
+    });
+    const route = routeFactories
+      .map((factory) => factory({ id: 'root' } as never))
+      .find((candidate) => readRouteOptions(candidate).path === '/admin/content');
+    const beforeLoad = readRouteOptions(expectDefined(route)).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: ['custom_role'],
+              assignedModules: ['news'],
+              permissionActions: [],
+            }),
+          },
+        },
+        location: { href: '/admin/content' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: ['custom_role'],
+              assignedModules: ['news'],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/admin/content' },
+      })
+    ).resolves.toBeUndefined();
   });
 
   it('falls back to the generic id detail param for unmapped admin detail bindings', () => {
@@ -484,21 +659,21 @@ describe('app.routes', () => {
 
     expect(() =>
       getPluginRouteFactories(
-      [
-        {
-          id: 'plugin-unsupported',
-          displayName: 'Plugin unsupported',
-          routes: [
-            {
-              id: 'plugin.unsupported',
-              path: '/plugins/plugin-unsupported',
-              guard: 'unknown.guard' as never,
-              component: () => 'unsupported',
-            },
-          ],
-        },
-      ],
-      { diagnostics }
+        [
+          {
+            id: 'plugin-unsupported',
+            displayName: 'Plugin unsupported',
+            routes: [
+              {
+                id: 'plugin.unsupported',
+                path: '/plugins/plugin-unsupported',
+                guard: 'unknown.guard' as never,
+                component: () => 'unsupported',
+              },
+            ],
+          },
+        ],
+        { diagnostics }
       )
     ).toThrow('plugin_guardrail_unsupported_binding:plugin-unsupported:plugin.unsupported:guard');
     expect(diagnostics).not.toHaveBeenCalled();
@@ -545,11 +720,17 @@ describe('app.routes', () => {
     expect(readRouteOptions(route).path).toBe('/plugins/news');
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) } },
+        context: {
+          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) },
+        },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
-    expect(createAccountUiRouteGuardMock).not.toHaveBeenCalledWith('content', expect.anything(), '/plugins/news');
+    expect(createAccountUiRouteGuardMock).not.toHaveBeenCalledWith(
+      'content',
+      expect.anything(),
+      '/plugins/news'
+    );
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
@@ -559,6 +740,112 @@ describe('app.routes', () => {
     ).rejects.toMatchObject({
       href: '/?error=auth.insufficientRole',
     });
+  });
+
+  it('enforces accessRequirement-only plugin routes', async () => {
+    const routeFactories = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            accessRequirement: {
+              kind: 'tenant',
+              actions: { mode: 'allOf', values: ['news.read'] },
+            },
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const [route] = routeFactories.map((factory) => factory({ id: 'root' } as never));
+    const beforeLoad = readRouteOptions(route).beforeLoad;
+
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).resolves.toBeUndefined();
+    await expect(
+      beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: [],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+  });
+
+  it.each([
+    {
+      name: 'empty action sets',
+      accessRequirement: {
+        kind: 'tenant' as const,
+        actions: { mode: 'allOf' as const, values: [] },
+      },
+    },
+    {
+      name: 'resource capabilities without route-level authorization evidence',
+      accessRequirement: {
+        kind: 'tenant' as const,
+        actions: { mode: 'allOf' as const, values: ['news.read'] },
+        resourceCapability: {
+          action: 'news.read',
+          allowed: true,
+          instanceId: 'instance-1',
+          resourceType: 'news.article',
+          resourceId: 'article-1',
+        },
+      },
+    },
+  ])('denies $name in plugin route guards', async ({ accessRequirement }) => {
+    const [routeFactory] = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            accessRequirement,
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const route = routeFactory?.({ id: 'root' } as never);
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
   });
 
   it('normalizes surrounding whitespace for registered plugin permission guards', async () => {
@@ -582,7 +869,9 @@ describe('app.routes', () => {
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) } },
+        context: {
+          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'] }) },
+        },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
@@ -593,7 +882,9 @@ describe('app.routes', () => {
       {
         id: 'waste-management',
         displayName: 'Waste Management',
-        permissions: [{ id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read' }],
+        permissions: [
+          { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read' },
+        ],
         routes: [
           {
             id: 'waste-management.home',
@@ -611,7 +902,9 @@ describe('app.routes', () => {
     const rootRoute = { id: 'root' };
     const [route] = routeFactories.map((factory) => factory(rootRoute as never));
 
-    expect(readRouteOptions(route).validateSearch?.({ tab: 'settings', page: '2', ignored: 'value' })).toEqual({
+    expect(
+      readRouteOptions(route).validateSearch?.({ tab: 'settings', page: '2', ignored: 'value' })
+    ).toEqual({
       tab: 'settings',
       page: 2,
     });
@@ -644,24 +937,43 @@ describe('app.routes', () => {
     ]);
     const rootRoute = { id: 'root' };
     const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+    const deniedGetUser = vi.fn(() => ({
+      roles: ['custom_role'],
+      permissionActions: ['news.read'],
+      assignedModules: [],
+    }));
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
-        context: { auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'], assignedModules: [] }) } },
+        context: {
+          auth: {
+            getUser: deniedGetUser,
+          },
+        },
         location: { href: '/plugins/news' },
       })
     ).rejects.toMatchObject({
       href: '/?error=auth.insufficientRole',
     });
+    expect(deniedGetUser).toHaveBeenCalledTimes(1);
+
+    const allowedGetUser = vi.fn(() => ({
+      roles: ['custom_role'],
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+    }));
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['news.read'], assignedModules: ['news'] }) },
+          auth: {
+            getUser: allowedGetUser,
+          },
         },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
+    expect(allowedGetUser).toHaveBeenCalledTimes(1);
   });
 
   it('blocks static media usage routes when module assignment or media.read is missing', async () => {
@@ -677,7 +989,13 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: ['media.read'], assignedModules: [] }) },
+          auth: {
+            getUser: () => ({
+              roles: ['custom_role'],
+              permissionActions: ['media.read'],
+              assignedModules: [],
+            }),
+          },
         },
         location: { href: '/admin/media/asset-1/usage' },
       })
@@ -688,7 +1006,13 @@ describe('app.routes', () => {
     await expect(
       readRouteOptions(mediaUsageRoute).beforeLoad?.({
         context: {
-          auth: { getUser: () => ({ roles: ['custom_role'], permissionActions: [], assignedModules: ['media'] }) },
+          auth: {
+            getUser: () => ({
+              roles: ['custom_role'],
+              permissionActions: [],
+              assignedModules: ['media'],
+            }),
+          },
         },
         location: { href: '/admin/media/asset-1/usage' },
       })
@@ -724,10 +1048,22 @@ describe('app.routes', () => {
   });
 
   it('builds server route factories without requiring app-local route composition', () => {
-    const routeFactories = getServerRouteFactories({ bindings, adminResources, diagnostics: vi.fn() });
+    const routeFactories = getServerRouteFactories({
+      bindings,
+      adminResources,
+      diagnostics: vi.fn(),
+    });
 
-    expect(routeFactories.some((factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/auth/login')).toBe(true);
-    expect(routeFactories.some((factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/account')).toBe(true);
+    expect(
+      routeFactories.some(
+        (factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/auth/login'
+      )
+    ).toBe(true);
+    expect(
+      routeFactories.some(
+        (factory) => readRouteOptions(factory({ id: 'root' } as never)).path === '/account'
+      )
+    ).toBe(true);
   });
 
   it('maps plugin guards onto canonical account-ui guards', () => {
@@ -801,7 +1137,11 @@ describe('app.routes', () => {
   it('threads a default diagnostics hook through the server route factory entry point', () => {
     getServerRouteFactories({ bindings });
 
-    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', expect.any(Function), '/account');
+    expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
+      'account',
+      expect.any(Function),
+      '/account'
+    );
   });
 
   it('registers the history route path when an admin resource declares a history view', () => {
@@ -822,7 +1162,9 @@ describe('app.routes', () => {
       adminResources: [resourceWithHistory],
     });
     const rootRoute = { id: 'root' };
-    const paths = routeFactories.map((factory) => String(readRouteOptions(factory(rootRoute as never)).path));
+    const paths = routeFactories.map((factory) =>
+      String(readRouteOptions(factory(rootRoute as never)).path)
+    );
 
     expect(paths).toContain('/admin/reports/$roleId/history');
   });

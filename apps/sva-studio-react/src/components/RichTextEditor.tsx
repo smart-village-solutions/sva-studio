@@ -10,6 +10,7 @@ type RichTextEditorProps = {
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly placeholder?: string;
+  readonly readOnly?: boolean;
   readonly commands: {
     readonly bold: string;
     readonly italic: string;
@@ -40,7 +41,15 @@ const runCommand = (command: string, commandValue?: string) => {
   }
 };
 
-export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, commands }: RichTextEditorProps) => {
+export const RichTextEditor = ({
+  id,
+  labelId,
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+  commands,
+}: RichTextEditorProps) => {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const placeholderDescriptionId = `${id}${PLACEHOLDER_DESCRIPTION_SUFFIX}`;
   const sanitizedValue = React.useMemo(() => sanitizeLegalTextHtml(value), [value]);
@@ -72,45 +81,94 @@ export const RichTextEditor = ({ id, labelId, value, onChange, placeholder, comm
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('bold')}>
-          {commands.bold}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('italic')}>
-          {commands.italic}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('underline')}>
-          {commands.underline}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('formatBlock', '<p>')}>
-          {commands.paragraph}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('formatBlock', '<h2>')}>
-          {commands.heading}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('insertUnorderedList')}>
-          {commands.bulletList}
-        </Button>
-        <Button type="button" size="sm" variant="outline" onMouseDown={(event) => event.preventDefault()} onClick={() => applyCommand('removeFormat')}>
-          {commands.clearFormatting}
-        </Button>
-      </div>
+      {readOnly ? null : (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('bold')}
+          >
+            {commands.bold}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('italic')}
+          >
+            {commands.italic}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('underline')}
+          >
+            {commands.underline}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('formatBlock', '<p>')}
+          >
+            {commands.paragraph}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('formatBlock', '<h2>')}
+          >
+            {commands.heading}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('insertUnorderedList')}
+          >
+            {commands.bulletList}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => applyCommand('removeFormat')}
+          >
+            {commands.clearFormatting}
+          </Button>
+        </div>
+      )}
       <div
         id={id}
         ref={editorRef}
         aria-labelledby={labelId}
         aria-describedby={placeholder ? placeholderDescriptionId : undefined}
         aria-multiline="true"
-        contentEditable
+        contentEditable={!readOnly}
+        aria-readonly={readOnly}
         role="textbox"
         suppressContentEditableWarning
-        tabIndex={0}
+        tabIndex={readOnly ? -1 : 0}
         className="min-h-56 rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
         data-placeholder={placeholder}
-        onInput={syncValue}
-        onBlur={syncValue}
+        onInput={readOnly ? undefined : syncValue}
+        onBlur={readOnly ? undefined : syncValue}
       />
-      {placeholder ? <p id={placeholderDescriptionId} className="sr-only">{placeholder}</p> : null}
+      {placeholder ? (
+        <p id={placeholderDescriptionId} className="sr-only">
+          {placeholder}
+        </p>
+      ) : null}
     </div>
   );
 };

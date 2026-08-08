@@ -37,11 +37,21 @@ export const pluginSurveysActionDefinitions = definePluginActions('surveys', [
     id: pluginSurveysModerationActionId,
     titleKey: 'surveys.actions.moderate',
     requiredAction: 'surveys.moderate',
+    accessRequirement: {
+      kind: 'tenant',
+      moduleId: 'surveys',
+      actions: { mode: 'allOf', values: ['surveys.moderate'] },
+    },
   },
   {
     id: pluginSurveysExportActionId,
     titleKey: 'surveys.actions.export',
     requiredAction: 'surveys.export',
+    accessRequirement: {
+      kind: 'tenant',
+      moduleId: 'surveys',
+      actions: { mode: 'allOf', values: ['surveys.export'] },
+    },
   },
 ] as const);
 

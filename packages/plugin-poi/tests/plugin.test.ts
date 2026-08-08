@@ -15,6 +15,11 @@ describe('pluginPoi contract', () => {
         titleKey: 'poi.navigation.title',
         section: 'dataManagement',
         requiredAction: 'poi.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'poi',
+          actions: { mode: 'allOf', values: ['poi.read'] },
+        },
       },
     ]);
     expect(pluginPoi.actions?.map((action) => action.id)).toEqual([

@@ -15,10 +15,14 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
-import { contentsLogger, PERMISSION_INVALIDATED_EVENT, type UseContentDetailResult } from './use-contents.shared.js';
+import {
+  contentsLogger,
+  SESSION_REFRESHED_EVENT,
+  type UseContentDetailResult,
+} from './use-contents.shared.js';
 
 export const useContentDetail = (contentId: string | null): UseContentDetailResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [content, setContent] = React.useState<IamContentDetail | null>(null);
   const [history, setHistory] = React.useState<readonly IamContentHistoryEntry[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -42,7 +46,10 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
     setError(null);
 
     try {
-      const [contentResponse, historyResponse] = await Promise.all([getContent(contentId), getContentHistory(contentId)]);
+      const [contentResponse, historyResponse] = await Promise.all([
+        getContent(contentId),
+        getContentHistory(contentId),
+      ]);
       setContent({
         ...contentResponse.data,
         history: historyResponse.data,
@@ -55,9 +62,9 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        contentsLogger.info(SESSION_REFRESHED_EVENT, {
           operation: 'get_content_detail',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -74,7 +81,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
     } finally {
       setIsLoading(false);
     }
-  }, [contentId, invalidatePermissions]);
+  }, [contentId, refreshSession]);
 
   React.useEffect(() => {
     void refetch();
@@ -100,9 +107,9 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          contentsLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'update_content',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -117,7 +124,7 @@ export const useContentDetail = (contentId: string | null): UseContentDetailResu
         return false;
       }
     },
-    [contentId, invalidatePermissions, refetch]
+    [contentId, refreshSession, refetch]
   );
 
   return {

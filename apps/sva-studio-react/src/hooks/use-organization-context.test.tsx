@@ -1,7 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import type { PropsWithChildren } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useOrganizationContext } from './use-organization-context';
+import { OrganizationContextProvider, useOrganizationContext } from './use-organization-context';
 
 const getMyOrganizationContextMock = vi.fn();
 const updateMyOrganizationContextMock = vi.fn();
@@ -19,7 +20,7 @@ type AuthMockValue = {
   error: Error | null;
   refetch: ReturnType<typeof vi.fn>;
   logout: ReturnType<typeof vi.fn>;
-  invalidatePermissions: ReturnType<typeof vi.fn>;
+  refreshSession: ReturnType<typeof vi.fn>;
 };
 
 const authMockValue: AuthMockValue = {
@@ -34,7 +35,7 @@ const authMockValue: AuthMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -58,6 +59,10 @@ vi.mock('../providers/auth-provider', () => ({
 }));
 
 describe('useOrganizationContext', () => {
+  const wrapper = ({ children }: PropsWithChildren) => (
+    <OrganizationContextProvider>{children}</OrganizationContextProvider>
+  );
+
   beforeEach(() => {
     vi.clearAllMocks();
     authMockValue.isAuthenticated = true;
@@ -81,7 +86,7 @@ describe('useOrganizationContext', () => {
       },
     });
 
-    const { result } = renderHook(() => useOrganizationContext());
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -92,7 +97,7 @@ describe('useOrganizationContext', () => {
   it('clears state without requesting data when the user is not authenticated', async () => {
     authMockValue.isAuthenticated = false;
 
-    const { result } = renderHook(() => useOrganizationContext());
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -105,7 +110,7 @@ describe('useOrganizationContext', () => {
   it('does not request organization context for authenticated root users without instance context', async () => {
     authMockValue.user.instanceId = undefined;
 
-    const { result } = renderHook(() => useOrganizationContext());
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -122,7 +127,7 @@ describe('useOrganizationContext', () => {
     expect(updateMyOrganizationContextMock).not.toHaveBeenCalled();
   });
 
-  it('switches the organization and invalidates permissions on success', async () => {
+  it('switches the organization without coupling the scope change to an auth refresh', async () => {
     getMyOrganizationContextMock.mockResolvedValue({
       data: {
         activeOrganizationId: 'org-1',
@@ -136,7 +141,7 @@ describe('useOrganizationContext', () => {
       },
     });
 
-    const { result } = renderHook(() => useOrganizationContext());
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -148,17 +153,17 @@ describe('useOrganizationContext', () => {
     });
 
     expect(result.current.context?.activeOrganizationId).toBe('org-2');
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores the resolved error and invalidates permissions on protected responses (status $status, code $code)', async (protectedError) => {
+  ])('stores protected response errors without coupling them to an auth refresh (status $status, code $code)', async (protectedError) => {
     asIamErrorMock.mockReturnValue(protectedError);
     getMyOrganizationContextMock.mockRejectedValueOnce(new Error('protected-load'));
 
-    const { result } = renderHook(() => useOrganizationContext());
+    const { result } = renderHook(() => useOrganizationContext(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -172,7 +177,7 @@ describe('useOrganizationContext', () => {
       expect(switched).toBe(false);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
     expect(result.current.error).toBe(protectedError);
   });
 });

@@ -10,7 +10,7 @@ import {
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 
-type UseOrganizationContextResult = {
+export type OrganizationContextValue = {
   readonly context: IamOrganizationContext | null;
   readonly isLoading: boolean;
   readonly isUpdating: boolean;
@@ -19,11 +19,11 @@ type UseOrganizationContextResult = {
   readonly switchOrganization: (organizationId: string) => Promise<boolean>;
 };
 
-const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
-const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
+const OrganizationContext = React.createContext<OrganizationContextValue | null>(null);
 
-export const useOrganizationContext = (): UseOrganizationContextResult => {
-  const { isAuthenticated, invalidatePermissions, user } = useAuth();
+const organizationContextLogger = createOperationLogger('organization-context-hook', 'debug');
+export const OrganizationContextProvider = ({ children }: Readonly<{ children: React.ReactNode }>) => {
+  const { isAuthenticated, user } = useAuth();
   const [context, setContext] = React.useState<IamOrganizationContext | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -51,14 +51,6 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        organizationContextLogger.info(PERMISSION_INVALIDATED_EVENT, {
-          operation: 'get_my_organization_context',
-          status: resolvedError.status,
-          error_code: resolvedError.code,
-        });
-      }
       setContext(null);
       setError(resolvedError);
       logBrowserOperationFailure(organizationContextLogger, 'organization_context_load_failed', resolvedError, {
@@ -67,13 +59,13 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
     } finally {
       setIsLoading(false);
     }
-  }, [invalidatePermissions, isAuthenticated, user?.instanceId]);
+  }, [isAuthenticated, user?.instanceId]);
 
   React.useEffect(() => {
     void loadContext();
   }, [loadContext]);
 
-  return {
+  const value = React.useMemo<OrganizationContextValue>(() => ({
     context,
     isLoading,
     isUpdating,
@@ -96,7 +88,6 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
       try {
         const response = await updateMyOrganizationContext(organizationId);
         setContext(response.data);
-        await invalidatePermissions();
         logBrowserOperationSuccess(organizationContextLogger, 'organization_context_switch_succeeded', {
           operation: 'update_my_organization_context',
           organization_id: organizationId,
@@ -104,15 +95,6 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          organizationContextLogger.info(PERMISSION_INVALIDATED_EVENT, {
-            operation: 'update_my_organization_context',
-            status: resolvedError.status,
-            error_code: resolvedError.code,
-            organization_id: organizationId,
-          });
-        }
         setError(resolvedError);
         logBrowserOperationFailure(organizationContextLogger, 'organization_context_switch_failed', resolvedError, {
           operation: 'update_my_organization_context',
@@ -123,5 +105,15 @@ export const useOrganizationContext = (): UseOrganizationContextResult => {
         setIsUpdating(false);
       }
     },
-  };
+  }), [context, error, isLoading, isUpdating, loadContext, user?.instanceId]);
+
+  return React.createElement(OrganizationContext.Provider, { value }, children);
+};
+
+export const useOrganizationContext = (): OrganizationContextValue => {
+  const context = React.useContext(OrganizationContext);
+  if (!context) {
+    throw new Error('useOrganizationContext must be used within OrganizationContextProvider');
+  }
+  return context;
 };

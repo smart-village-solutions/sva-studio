@@ -32,6 +32,10 @@ const DEFAULT_QUERY = {
   sortDirection: 'desc',
   visibleTypes: DEFAULT_VISIBLE_TYPES,
 } as const;
+const DISABLED_QUERY = {
+  ...DEFAULT_QUERY,
+  visibleTypes: ['__no_readable_content__'],
+} as const;
 const { mockedStudioContentTypes } = vi.hoisted(() => ({
   mockedStudioContentTypes: [
     {
@@ -282,7 +286,7 @@ describe('ContentListPage', () => {
   });
 
   const expectDisabledDefaultContentQuery = () => {
-    expect(useContentsMock).toHaveBeenCalledWith(DEFAULT_QUERY, { enabled: false });
+    expect(useContentsMock).toHaveBeenCalledWith(DISABLED_QUERY, { enabled: false });
   };
 
   const renderWithUnresolvedContentAccess = (isLoading = true) => {
@@ -904,7 +908,7 @@ describe('ContentListPage', () => {
     renderWithStableQuerySearchState();
   });
 
-  it('keeps the content list query reference stable when content access finishes with the same readable types', () => {
+  it('updates the content list query when readable content types resolve', () => {
     searchState = {
       filters: { status: 'all' },
       sort: { field: 'updatedAt', direction: 'desc' },
@@ -941,7 +945,13 @@ describe('ContentListPage', () => {
       isLoading: false,
       error: null,
     });
-    renderWithStableQuerySearchState();
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    const view = render(<ContentListPage />);
+    view.rerender(<ContentListPage />);
+
+    expect(useContentsMock.mock.calls[0]?.[0]).toEqual(DISABLED_QUERY);
+    expect(useContentsMock.mock.calls[1]?.[0]).toEqual(DEFAULT_QUERY);
   });
 
   it('normalizes legacy query aliases from route search state into canonical list controls', () => {

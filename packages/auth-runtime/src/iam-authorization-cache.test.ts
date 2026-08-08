@@ -10,6 +10,8 @@ describe('iam authorization cache', () => {
       keycloakSubject: 'kc-user-1',
       organizationId: 'org-1',
       geoContextHash: 'geo-1',
+      instanceRevision: 2,
+      userRevision: 4,
     };
 
     const snapshot = cache.set(key, [{ action: 'content.read', resourceType: 'content' }], 10_000, 'snap-1');
@@ -39,13 +41,13 @@ describe('iam authorization cache', () => {
   it('bumps user versions and invalidates instance-wide scopes', () => {
     const cache = new PermissionSnapshotCache();
 
-    cache.set({ instanceId: 'tenant-a', keycloakSubject: 'user-1' }, [], 1_000);
-    cache.set({ instanceId: 'tenant-a', keycloakSubject: 'user-2' }, [], 1_000);
-    cache.set({ instanceId: 'tenant-b', keycloakSubject: 'user-3' }, [], 1_000);
+    cache.set({ instanceId: 'tenant-a', keycloakSubject: 'user-1', instanceRevision: 1, userRevision: 1 }, [], 1_000);
+    cache.set({ instanceId: 'tenant-a', keycloakSubject: 'user-2', instanceRevision: 1, userRevision: 1 }, [], 1_000);
+    cache.set({ instanceId: 'tenant-b', keycloakSubject: 'user-3', instanceRevision: 1, userRevision: 1 }, [], 1_000);
 
     expect(cache.invalidate({ instanceId: 'tenant-a', keycloakSubject: 'user-1' })).toBe(2);
     expect(cache.getVersion('tenant-a', 'user-1')).toBe(2);
-    expect(cache.get({ instanceId: 'tenant-a', keycloakSubject: 'user-1' }, 1_100)).toEqual({ status: 'miss' });
+    expect(cache.get({ instanceId: 'tenant-a', keycloakSubject: 'user-1', instanceRevision: 1, userRevision: 1 }, 1_100)).toEqual({ status: 'miss' });
     expect(cache.bumpVersion('tenant-a', 'user-2')).toBe(2);
 
     expect(cache.invalidate({ instanceId: 'tenant-a' })).toBe(2);
@@ -57,6 +59,43 @@ describe('iam authorization cache', () => {
   it('parses specialized invalidation events and falls back to scope defaults', () => {
     expect(parseInvalidationEvent('not-json')).toBeNull();
     expect(parseInvalidationEvent(JSON.stringify({ nope: true }))).toBeNull();
+
+    expect(
+      parseInvalidationEvent(
+        JSON.stringify({
+          instanceId: 'tenant-a',
+          keycloakSubject: 'kc-user-1',
+          eventId: 'evt-revision-1',
+          event: 'PermissionRevisionChanged',
+          revisionScope: 'user',
+          newRevision: 8,
+        })
+      )
+    ).toEqual({
+      instanceId: 'tenant-a',
+      keycloakSubject: 'kc-user-1',
+      trigger: 'pg_notify',
+      eventId: 'evt-revision-1',
+      revision: { scope: 'user', value: 8 },
+      event: {
+        type: 'user_scope_changed',
+        instanceId: 'tenant-a',
+        keycloakSubject: 'kc-user-1',
+        eventId: 'evt-revision-1',
+        reason: 'permission_revision_changed',
+      },
+    });
+
+    expect(
+      parseInvalidationEvent(
+        JSON.stringify({
+          instanceId: 'tenant-a',
+          event: 'PermissionRevisionChanged',
+          revisionScope: 'user',
+          newRevision: 9,
+        })
+      )
+    ).toBeNull();
 
     expect(
       parseInvalidationEvent(

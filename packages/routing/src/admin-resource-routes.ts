@@ -1,7 +1,12 @@
 import type { AdminResourceDefinition } from '@sva/plugin-sdk';
-import { createRoute, redirect, type RootRoute } from '@tanstack/react-router';
+import { createRoute, type RootRoute } from '@tanstack/react-router';
 
 import { withCoreContentAdminResource } from './admin-resource-route-aliases.js';
+import {
+  createMemoizedUserContext,
+  ensureAssignedModule,
+  ensureRequiredPermissions,
+} from './admin-resource-authorization.js';
 import {
   adminDetailParamNameByBinding,
   getAdminDetailRoutePath,
@@ -13,6 +18,8 @@ import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './accoun
 import { normalizeAdminResourceListSearch } from './admin-resource-search-params.js';
 import type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
+import type { RouteGuardContext } from './protected.routes.js';
+import { enforceRouteAccessRequirement } from './ui-route-access.js';
 
 export { createLegacyContentAliasFactories } from './admin-resource-route-legacy-alias-factories.js';
 
@@ -96,49 +103,6 @@ const adminResourceGuardMap = {
 
 const resolveAdminResourceGuard = (resource: AdminResourceDefinition, routeKind: AdminResourceRouteKind): AccountUiRouteGuardKey =>
   adminResourceGuardMap[resource.guard][routeKind];
-
-const ensureAssignedModule = async (
-  resource: AdminResourceDefinition,
-  beforeLoadOptions: {
-    readonly context?: {
-      readonly auth?: {
-        readonly getUser?: () => Promise<{ assignedModules?: readonly string[] } | null | undefined>;
-      };
-    };
-  }
-): Promise<void> => {
-  if (!resource.moduleId) {
-    return;
-  }
-
-  const user = await beforeLoadOptions.context?.auth?.getUser?.();
-  if (!user?.assignedModules?.includes(resource.moduleId)) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
-  }
-};
-
-const ensureRequiredPermissions = async (
-  resource: AdminResourceDefinition,
-  routeKind: AdminResourceRouteKind,
-  beforeLoadOptions: {
-    readonly context?: {
-      readonly auth?: {
-        readonly getUser?: () => Promise<{ permissionActions?: readonly string[] } | null | undefined>;
-      };
-    };
-  }
-): Promise<void> => {
-  const requiredPermissions = resource.permissions?.[routeKind];
-  if (!requiredPermissions || requiredPermissions.length === 0) {
-    return;
-  }
-
-  const user = await beforeLoadOptions.context?.auth?.getUser?.();
-  const grantedPermissions = new Set(user?.permissionActions ?? []);
-  if (requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
-  }
-};
 
 const createHistoryRouteDefinition = (
   historyBinding: BindingKey | undefined,
@@ -224,9 +188,19 @@ export const createAdminResourceRouteFactories = (
           getParentRoute: () => rootRoute,
           path: definition.path,
           beforeLoad: async (beforeLoadOptions) => {
-            await guard(beforeLoadOptions);
-            await ensureAssignedModule(definition.resource, beforeLoadOptions);
-            await ensureRequiredPermissions(definition.resource, definition.routeKind, beforeLoadOptions);
+            const userContext = createMemoizedUserContext(beforeLoadOptions);
+            await guard(userContext.options);
+            const user = await userContext.getUser();
+            await ensureAssignedModule(definition.resource, user);
+            const accessRequirement =
+              definition.resource.accessRequirements?.[definition.routeKind];
+            if (accessRequirement) {
+              await enforceRouteAccessRequirement(accessRequirement, {
+                context: userContext.options.context as RouteGuardContext,
+              });
+            } else {
+              await ensureRequiredPermissions(definition.resource, definition.routeKind, user);
+            }
           },
           validateSearch: definition.validateSearch,
           component: bindings[definition.binding],

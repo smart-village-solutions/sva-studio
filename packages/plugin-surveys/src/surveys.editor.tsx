@@ -1,7 +1,12 @@
 import React from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  readSessionAccessSnapshot,
+  resolveStandardContentAccessCapabilities,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
@@ -155,7 +160,17 @@ export const SurveyEditorPage = ({
     () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
     [contentId, loadedItem, mode, pt]
   );
-  const canMutate = mode === 'create' || canUpdate;
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('surveys', sessionAccess),
+    [sessionAccess]
+  );
+  const canMutate =
+    mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate;
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;

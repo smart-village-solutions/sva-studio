@@ -5,7 +5,6 @@ import type {
   IamRuntimeSafeDetails,
   IamUserGroupAssignment,
 } from '@sva/core';
-import { publishSessionAccessSnapshot } from '@sva/plugin-sdk';
 import {
   createOperationLogger,
   logBrowserOperationFailure,
@@ -40,10 +39,7 @@ import {
   type IamHttpError,
 } from '../lib/iam-api';
 import { DEFAULT_MAINSERVER_VISIBLE_TYPES } from '../lib/iam-content-list-api.shared';
-import {
-  type AuthMeResult,
-  fetchAuthMeSingleFlight,
-} from '../lib/auth-me-singleflight';
+import { type AuthMeResult, fetchAuthMeSingleFlight } from '../lib/auth-me-singleflight';
 
 type SessionUser = {
   id: string;
@@ -73,7 +69,7 @@ type AuthContextValue = AuthState & {
   refetch: () => Promise<void>;
   loginWithDevAuth: () => Promise<void>;
   logout: () => Promise<void>;
-  invalidatePermissions: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 };
 
 type AuthProviderProps = Readonly<{
@@ -292,7 +288,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const warmProjectedContentsAfterSessionLoad = React.useCallback(
     (silent: boolean, payload: SessionUser | null) => {
       const previousUser = confirmedUserRef.current;
-      const readableVisibleTypes = resolveReadableMainserverVisibleTypes(payload?.permissionActions);
+      const readableVisibleTypes = resolveReadableMainserverVisibleTypes(
+        payload?.permissionActions
+      );
       const isNewShift =
         !silent &&
         Boolean(payload?.instanceId) &&
@@ -378,9 +376,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const cleanup = (
           result: boolean,
           reasonCode:
-            | 'silent_recovery_failed'
-            | 'silent_recovery_succeeded'
-            | 'silent_recovery_timeout'
+            'silent_recovery_failed' | 'silent_recovery_succeeded' | 'silent_recovery_timeout'
         ) => {
           if (settled) {
             return;
@@ -500,7 +496,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const commitUnauthenticatedSession = React.useCallback(
     (silent: boolean, authFlowId: string, result: AuthMeResult) => {
-      const shouldClearConfirmedSnapshot = !silent || result.status === 401 || result.status === 403;
+      const shouldClearConfirmedSnapshot =
+        !silent || result.status === 401 || result.status === 403;
       if (isMountedRef.current) {
         if (shouldClearConfirmedSnapshot) {
           setUser(null);
@@ -656,7 +653,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         status: recoveryResult.status,
       });
 
-      if (!recoveryResult.ok && recoveryResult.status === 401 && hadKnownSession && !silent && isMountedRef.current) {
+      if (
+        !recoveryResult.ok &&
+        recoveryResult.status === 401 &&
+        hadKnownSession &&
+        !silent &&
+        isMountedRef.current
+      ) {
         const retryResponseMeta = readAuthDiagnosticMeta(recoveryResult.error);
         setSessionRecoveryFailed(true);
         const redirectMeta = {
@@ -832,25 +835,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     return () => {
       clearSessionExpiryTimer();
     };
-  }, [
-    clearSessionExpiryTimer,
-    loadUser,
-    recordTrail,
-    sessionExpiresAt,
-    user,
-  ]);
+  }, [clearSessionExpiryTimer, loadUser, recordTrail, sessionExpiresAt, user]);
 
   React.useEffect(() => {
     void loadUser(false);
   }, [loadUser]);
-
-  React.useEffect(() => {
-    publishSessionAccessSnapshot({
-      isResolved: hasResolvedSession,
-      permissionActions: user?.permissionActions ?? [],
-      roles: user?.roles ?? [],
-    });
-  }, [hasResolvedSession, user]);
 
   const refetch = React.useCallback(async () => {
     await loadUser(false);
@@ -876,7 +865,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     await loadUser(false);
   }, [devAuthAvailable, loadUser]);
 
-  const invalidatePermissions = React.useCallback(async () => {
+  const refreshSession = React.useCallback(async () => {
     await loadUser(true);
   }, [loadUser]);
 
@@ -958,13 +947,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       refetch,
       loginWithDevAuth,
       logout,
-      invalidatePermissions,
+      refreshSession,
     }),
     [
       error,
       devAuthAvailable,
       hasResolvedSession,
-      invalidatePermissions,
+      refreshSession,
       isLoading,
       isRecoveringSession,
       loginWithDevAuth,

@@ -8,6 +8,7 @@ import type { AcceptanceConfig } from './iam-acceptance.ts';
 import { parseAcceptanceConfig } from './iam-acceptance.ts';
 import {
   buildAuthorizeBenchmarkPayload,
+  authorizeBenchmarkP95ThresholdMs,
   renderAuthorizePerformanceMarkdownReport,
   summarizeDurations,
   type AuthorizeBenchmarkPayload,
@@ -59,7 +60,10 @@ type Locator = {
 type Page = {
   close: () => Promise<void>;
   getByRole: (role: string, options?: { exact?: boolean; name?: string | RegExp }) => Locator;
-  goto: (url: string, options?: { waitUntil?: 'domcontentloaded' | 'load'; timeout?: number }) => Promise<unknown>;
+  goto: (
+    url: string,
+    options?: { waitUntil?: 'domcontentloaded' | 'load'; timeout?: number }
+  ) => Promise<unknown>;
   locator: (selector: string) => Locator;
   waitForLoadState: (state?: 'domcontentloaded' | 'load' | 'networkidle') => Promise<void>;
   waitForURL: (url: string | RegExp, options?: { timeout?: number }) => Promise<void>;
@@ -71,7 +75,10 @@ type PgModule = {
 
 type Pool = {
   end: () => Promise<void>;
-  query: <T>(text: string, values?: readonly unknown[]) => Promise<{ rowCount: number | null; rows: T[] }>;
+  query: <T>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{ rowCount: number | null; rows: T[] }>;
 };
 
 type AuthMePayload = {
@@ -123,7 +130,6 @@ const JSON_HEADERS = {
   'X-Requested-With': 'XMLHttpRequest',
 } as const;
 
-const AUTHORIZE_INVALIDATION_CHANNEL = 'iam_permission_snapshot_invalidation';
 const LOGIN_TIMEOUT_MS = 45_000;
 
 const parsePositiveInteger = (raw: string | undefined, fallback: number): number => {
@@ -183,7 +189,10 @@ const clickIfVisible = async (locator: Locator): Promise<boolean> => {
   return true;
 };
 
-const performKeycloakLogin = async (page: Page, input: { password: string; username: string }): Promise<void> => {
+const performKeycloakLogin = async (
+  page: Page,
+  input: { password: string; username: string }
+): Promise<void> => {
   const usernameFilled =
     (await fillIfVisible(page.locator('input[name="username"]'), input.username)) ||
     (await fillIfVisible(page.locator('#username'), input.username));
@@ -222,9 +231,12 @@ const loginAndReadSession = async (input: {
       waitUntil: 'domcontentloaded',
     });
     await performKeycloakLogin(page, { username: input.username, password: input.password });
-    await page.waitForURL(new RegExp(`${input.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.*`), {
-      timeout: LOGIN_TIMEOUT_MS,
-    });
+    await page.waitForURL(
+      new RegExp(`${input.baseUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/.*`),
+      {
+        timeout: LOGIN_TIMEOUT_MS,
+      }
+    );
     await page.waitForLoadState('networkidle');
 
     const meResponse = await context.request.get(new URL('/auth/me', input.baseUrl).toString(), {
@@ -253,7 +265,10 @@ const loginAndReadSession = async (input: {
 };
 
 const createReportFileBase = (basename: string, generatedAt: Date): string => {
-  const isoDate = generatedAt.toISOString().replace(/[:]/g, '-').replace(/\.\d{3}Z$/, 'Z');
+  const isoDate = generatedAt
+    .toISOString()
+    .replace(/[:]/g, '-')
+    .replace(/\.\d{3}Z$/, 'Z');
   return `${basename}-${isoDate}`;
 };
 
@@ -280,18 +295,27 @@ const invokeAuthorize = async (input: {
   readonly baseUrl: string;
   readonly context: BrowserContext;
   readonly payload: AuthorizeApiPayload;
-}): Promise<{ readonly cacheStatus?: string; readonly durationMs: number; readonly response: AuthorizeApiResponse }> => {
+}): Promise<{
+  readonly cacheStatus?: string;
+  readonly durationMs: number;
+  readonly response: AuthorizeApiResponse;
+}> => {
   const startedAt = performance.now();
-  const apiResponse = await input.context.request.post(new URL('/iam/authorize', input.baseUrl).toString(), {
-    data: input.payload,
-    failOnStatusCode: false,
-    headers: JSON_HEADERS,
-  });
+  const apiResponse = await input.context.request.post(
+    new URL('/iam/authorize', input.baseUrl).toString(),
+    {
+      data: input.payload,
+      failOnStatusCode: false,
+      headers: JSON_HEADERS,
+    }
+  );
   const durationMs = performance.now() - startedAt;
 
   const response = (await apiResponse.json()) as AuthorizeApiResponse;
   if (apiResponse.status() !== 200) {
-    throw new Error(`/iam/authorize antwortete mit HTTP ${apiResponse.status()} (${response.error ?? 'unknown_error'}).`);
+    throw new Error(
+      `/iam/authorize antwortete mit HTTP ${apiResponse.status()} (${response.error ?? 'unknown_error'}).`
+    );
   }
   if (typeof response.allowed !== 'boolean') {
     throw new Error('/iam/authorize lieferte keine fachliche Allow-/Deny-Entscheidung.');
@@ -307,27 +331,49 @@ const emitUserScopeInvalidation = async (input: {
   readonly scenarioRunId: string;
   readonly sampleIndex: number;
 }): Promise<void> => {
-  const payload = JSON.stringify({
-    eventId: `bench-${input.scenarioRunId}-invalidate-${input.sampleIndex}`,
-    instanceId: input.instanceId,
-    keycloakSubject: input.keycloakSubject,
-    reason: 'benchmark_recompute',
-    trigger: 'pg_notify',
-  });
-
-  await input.pool.query('SELECT pg_notify($1, $2);', [AUTHORIZE_INVALIDATION_CHANNEL, payload]);
+  await input.pool.query(
+    `
+WITH bumped AS (
+  INSERT INTO iam.permission_cache_user_revisions (
+    instance_id,
+    keycloak_subject,
+    revision,
+    updated_at
+  )
+  VALUES ($1, $2, 2, NOW())
+  ON CONFLICT (instance_id, keycloak_subject) DO UPDATE
+    SET revision = iam.permission_cache_user_revisions.revision + 1,
+        updated_at = NOW()
+  RETURNING revision
+), notified AS (
+  SELECT pg_notify(
+    'iam_permission_snapshot_invalidation',
+    json_build_object(
+      'eventId', $3,
+      'event', 'PermissionRevisionChanged',
+      'instanceId', $1,
+      'keycloakSubject', $2,
+      'revisionScope', 'user',
+      'newRevision', revision,
+      'trigger', 'pg_notify'
+    )::text
+  )
+  FROM bumped
+)
+SELECT revision
+FROM bumped
+CROSS JOIN notified
+`,
+    [
+      input.instanceId,
+      input.keycloakSubject,
+      `bench-${input.scenarioRunId}-invalidate-${input.sampleIndex}`,
+    ]
+  );
 };
 
-const scenarioThresholdMs = (scenario: AuthorizeBenchmarkScenario): number => {
-  switch (scenario) {
-    case 'cache-hit':
-      return 100;
-    case 'cache-miss':
-      return 300;
-    case 'recompute':
-      return 300;
-  }
-};
+const scenarioThresholdMs = (scenario: AuthorizeBenchmarkScenario): number =>
+  authorizeBenchmarkP95ThresholdMs[scenario];
 
 const assertScenarioStatuses = (input: {
   readonly observedStatuses: readonly string[];
@@ -338,15 +384,24 @@ const assertScenarioStatuses = (input: {
   }
 
   if (input.scenario === 'cache-hit' && input.observedStatuses.some((status) => status !== 'hit')) {
-    throw new Error(`Szenario cache-hit lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`);
+    throw new Error(
+      `Szenario cache-hit lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`
+    );
   }
 
-  if (input.scenario === 'cache-miss' && input.observedStatuses.some((status) => status !== 'miss')) {
-    throw new Error(`Szenario cache-miss lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`);
+  if (
+    input.scenario === 'cache-miss' &&
+    input.observedStatuses.some((status) => status !== 'miss')
+  ) {
+    throw new Error(
+      `Szenario cache-miss lieferte unerwartete cacheStatus-Werte: ${input.observedStatuses.join(', ')}.`
+    );
   }
 
   if (input.scenario === 'recompute' && input.observedStatuses.some((status) => status === 'hit')) {
-    throw new Error(`Szenario recompute blieb im Cache-Hit hängen: ${input.observedStatuses.join(', ')}.`);
+    throw new Error(
+      `Szenario recompute blieb im Cache-Hit hängen: ${input.observedStatuses.join(', ')}.`
+    );
   }
 };
 
@@ -503,7 +558,8 @@ const main = async (): Promise<void> => {
         pool,
         runId: `${generatedAt.getTime()}-${scenario}`,
         scenario,
-        scenarioConcurrency: scenario === 'recompute' ? config.recomputeConcurrency : config.concurrency,
+        scenarioConcurrency:
+          scenario === 'recompute' ? config.recomputeConcurrency : config.concurrency,
         warmupRequests: config.warmupRequests,
       });
       scenarios.push(measurement);
@@ -547,6 +603,9 @@ const main = async (): Promise<void> => {
 };
 
 main().catch((error) => {
-  console.error('[iam-authorize-benchmark] Failed:', error instanceof Error ? error.message : String(error));
+  console.error(
+    '[iam-authorize-benchmark] Failed:',
+    error instanceof Error ? error.message : String(error)
+  );
   process.exit(1);
 });

@@ -131,6 +131,7 @@ export type InstanceRegistryRepository = {
   readonly listAssignedModules: (instanceId: string) => Promise<readonly string[]>;
   readonly assignModule: (instanceId: string, moduleId: string) => Promise<boolean>;
   readonly revokeModule: (instanceId: string, moduleId: string) => Promise<boolean>;
+  readonly bumpPermissionCacheInstanceRevision?: (instanceId: string) => Promise<number>;
   readonly syncAssignedModuleIam: (input: {
     instanceId: string;
     managedModuleIds: readonly string[];

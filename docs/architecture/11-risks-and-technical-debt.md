@@ -561,3 +561,10 @@ Referenzen:
 - Risiko: Gemeinsame Tabs mounten umfangreiche besuchte Bereiche weiter und erhöhen bei sehr großen Repeatern den Speicherbedarf. Maßnahme: nur bereits besuchte Panels halten; keine pauschale Initialisierung aller Bereiche.
 - Risiko: Ein fachlicher Listenfilter wird nur auf eine bereits paginierte Browserseite angewandt. Maßnahme: FAQ-Sprachfilter hostseitig auf der vollständig eingesammelten FAQ-Teilmenge ausführen und den Vertrag mit Mehrseiten-Tests absichern.
 - Risiko: Gemeinsame UI-Primitives entwickeln sich zu einer zweiten Fachlogikschicht. Maßnahme: ausschließlich Darstellung, Fokus und Dialogzustand teilen; Mapping, Validierung und Persistenz bleiben plugin- beziehungsweise hostnah.
+
+### Fortschreibung 2026-08: Zentraler scopegebundener UI-Zugriff
+
+- Restrisiko: UI-Negativtests beweisen keine Serverautorisierung. Maßnahme: Die maschinenlesbare Aktionsinventur kennzeichnet Server-Enforcement ohne belegten Endpunktvertrag ausdrücklich als `not_verified`; diese Einträge bleiben Audit- und Migrationsblocker.
+- Restrisiko: Best-Effort-Redis-Cleanup kann alte v2-Keys bis zum TTL-Ablauf erhalten. Maßnahme: Der aktuelle PostgreSQL-Revisionsvektor macht sie logisch unadressierbar; Kapazität und Cleanup-Fehler werden separat beobachtet.
+- Restrisiko: Der verbindliche Multi-Replikat-Performance-Nachweis benötigt eine realistische Zielumgebung mit PostgreSQL, Redis und mehreren App-Replikaten. Maßnahme: Das endpoint-nahe Benchmark-Harness erzwingt die Grenzwerte 10/80/300 ms und erhöht für Recompute die autoritative User-Revision; Ergebnisse dürfen erst nach realer Ausführung als Abnahmebeleg gelten.
+- Risiko: Brownfield-Plugin-Beiträge ohne explizite Access-Anforderung bleiben während der Migration sichtbar. Maßnahme: Übergangsdiagnosen inventarisieren sie; nach bereinigter Diagnostik wird die Registry-Prüfung auf fail-fast verschärft.

@@ -45,7 +45,7 @@ import {
 } from '../../lib/iam-viewer-access';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { t } from '../../i18n';
-import { useAuth } from '../../providers/auth-provider';
+import { useEffectiveAccess, useEffectiveAuth } from '../../providers/effective-access-provider';
 import {
   filterPermissions,
   formatGovernanceTitle,
@@ -88,9 +88,7 @@ const buildPermissionsPath = (query: IamPermissionsQuery) => {
   return `/iam/me/permissions?${searchParams.toString()}`;
 };
 
-const buildGovernanceComplianceExportPath = (input: {
-  instanceId: string;
-}) => {
+const buildGovernanceComplianceExportPath = (input: { instanceId: string }) => {
   const searchParams = new URLSearchParams();
   searchParams.set('instanceId', input.instanceId);
   searchParams.set('format', 'csv');
@@ -119,7 +117,7 @@ const governanceTypeOptions = [
   'delegation',
   'impersonation',
   'legal_acceptance',
- ] as const;
+] as const;
 
 const dsrTypeOptions = [
   'request',
@@ -127,15 +125,9 @@ const dsrTypeOptions = [
   'legal_hold',
   'profile_correction',
   'recipient_notification',
- ] as const;
+] as const;
 
-const dsrStatusOptions = [
-  'queued',
-  'in_progress',
-  'completed',
-  'blocked',
-  'failed',
- ] as const;
+const dsrStatusOptions = ['queued', 'in_progress', 'completed', 'blocked', 'failed'] as const;
 
 const mapDeletionContentStrategyKey = (strategy: IamDeletionContentStrategy) => {
   switch (strategy) {
@@ -158,8 +150,8 @@ const isAbortError = (error: unknown) =>
   (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError';
 
 const buildSelectOptions = (values: readonly (string | null | undefined)[]) =>
-  [...new Set(values.map((value) => value?.trim() ?? '').filter((value) => value.length > 0))].sort((left, right) =>
-    left.localeCompare(right)
+  [...new Set(values.map((value) => value?.trim() ?? '').filter((value) => value.length > 0))].sort(
+    (left, right) => left.localeCompare(right)
   );
 
 const formatSourceRoles = (permission: EffectivePermission) =>
@@ -169,16 +161,23 @@ const formatSourceGroups = (permission: EffectivePermission) => {
   if (permission.groupName && permission.groupName.trim().length > 0) {
     return permission.groupName;
   }
-  return (permission.sourceGroupIds ?? []).length > 0 ? (permission.sourceGroupIds ?? []).join(', ') : '—';
+  return (permission.sourceGroupIds ?? []).length > 0
+    ? (permission.sourceGroupIds ?? []).join(', ')
+    : '—';
 };
 
 const formatGovernanceActors = (item: IamGovernanceCaseListItem) =>
-  [item.actorDisplayName ?? item.actorAccountId, item.targetDisplayName ?? item.targetAccountId].filter(Boolean).join(' -> ') || '—';
+  [item.actorDisplayName ?? item.actorAccountId, item.targetDisplayName ?? item.targetAccountId]
+    .filter(Boolean)
+    .join(' -> ') || '—';
 
 const formatDsrPeople = (item: IamDsrCaseListItem) =>
   [
     item.targetDisplayName ?? item.targetAccountId,
-    item.requesterDisplayName ?? item.requesterAccountId ?? item.actorDisplayName ?? item.actorAccountId,
+    item.requesterDisplayName ??
+      item.requesterAccountId ??
+      item.actorDisplayName ??
+      item.actorAccountId,
   ]
     .filter(Boolean)
     .join(' / ') || '—';
@@ -194,14 +193,21 @@ const PermissionTable = ({
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full border-collapse text-left text-xs sm:text-sm" aria-label={t('admin.iam.rights.tableAriaLabel')}>
+      <table
+        className="min-w-full border-collapse text-left text-xs sm:text-sm"
+        aria-label={t('admin.iam.rights.tableAriaLabel')}
+      >
         <thead>
           <tr className="border-b border-border text-muted-foreground">
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.action')}</th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.area')}</th>
-            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceType')}</th>
+            <th className="py-2 pr-4 font-semibold">
+              {t('admin.iam.rights.columns.resourceType')}
+            </th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.resourceId')}</th>
-            <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.organization')}</th>
+            <th className="py-2 pr-4 font-semibold">
+              {t('admin.iam.rights.columns.organization')}
+            </th>
             <th className="py-2 pr-4 font-semibold">{t('admin.iam.rights.columns.scope')}</th>
             <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceRoles')}</th>
             <th className="py-2 font-semibold">{t('admin.iam.rights.columns.sourceGroups')}</th>
@@ -218,7 +224,9 @@ const PermissionTable = ({
               <td className="py-2 pr-4">{formatPermissionAreaLabel(permission)}</td>
               <td className="py-2 pr-4">{permission.resourceType}</td>
               <td className="py-2 pr-4">{permission.resourceId ?? '—'}</td>
-              <td className="py-2 pr-4">{permission.organizationId ?? t('admin.iam.rights.noOrganization')}</td>
+              <td className="py-2 pr-4">
+                {permission.organizationId ?? t('admin.iam.rights.noOrganization')}
+              </td>
               <td className="py-2 pr-4">{formatObjectEntries(permission.scope)}</td>
               <td className="py-2">{formatSourceRoles(permission)}</td>
               <td className="py-2">{formatSourceGroups(permission)}</td>
@@ -310,7 +318,10 @@ const buildGovernanceColumns = (): readonly StudioColumnDef<IamGovernanceCaseLis
     header: t('admin.iam.governance.columns.case'),
     cell: (item) => (
       <div className="space-y-1">
-        <a className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/admin/iam/governance/${item.id}`}>
+        <a
+          className="font-semibold text-foreground underline-offset-4 hover:underline"
+          href={`/admin/iam/governance/${item.id}`}
+        >
           {formatGovernanceTitle(item)}
         </a>
         <p className="text-xs text-muted-foreground">{item.summary}</p>
@@ -320,7 +331,9 @@ const buildGovernanceColumns = (): readonly StudioColumnDef<IamGovernanceCaseLis
   {
     id: 'status',
     header: t('admin.iam.governance.columns.status'),
-    cell: (item) => <StatusBadge label={item.status} tone="border-secondary/40 bg-secondary/10 text-secondary" />,
+    cell: (item) => (
+      <StatusBadge label={item.status} tone="border-secondary/40 bg-secondary/10 text-secondary" />
+    ),
   },
   {
     id: 'actors',
@@ -354,7 +367,10 @@ const buildDsrColumns = (): readonly StudioColumnDef<IamDsrCaseListItem>[] => [
     header: t('admin.iam.dsr.columns.case'),
     cell: (item) => (
       <div className="space-y-1">
-        <a className="font-semibold text-foreground underline-offset-4 hover:underline" href={`/admin/iam/dsr/${item.id}`}>
+        <a
+          className="font-semibold text-foreground underline-offset-4 hover:underline"
+          href={`/admin/iam/dsr/${item.id}`}
+        >
           {item.title}
         </a>
         <p className="text-xs text-muted-foreground">{item.summary}</p>
@@ -364,7 +380,9 @@ const buildDsrColumns = (): readonly StudioColumnDef<IamDsrCaseListItem>[] => [
   {
     id: 'status',
     header: t('admin.iam.dsr.columns.status'),
-    cell: (item) => <StatusBadge label={t(mapDsrStatusToTranslationKey(item))} tone={mapDsrStatusTone(item)} />,
+    cell: (item) => (
+      <StatusBadge label={t(mapDsrStatusToTranslationKey(item))} tone={mapDsrStatusTone(item)} />
+    ),
   },
   {
     id: 'people',
@@ -392,9 +410,14 @@ const buildDsrColumns = (): readonly StudioColumnDef<IamDsrCaseListItem>[] => [
   },
 ];
 
-const useIamTabNavigation = (activeTab: IamCockpitTabKey, allowedTabs: readonly IamCockpitTabKey[]) => {
+const useIamTabNavigation = (
+  activeTab: IamCockpitTabKey,
+  allowedTabs: readonly IamCockpitTabKey[]
+) => {
   const navigate = useNavigate();
-  const tabButtonRefs = React.useRef<Partial<Record<IamCockpitTabKey, HTMLButtonElement | null>>>({});
+  const tabButtonRefs = React.useRef<Partial<Record<IamCockpitTabKey, HTMLButtonElement | null>>>(
+    {}
+  );
   const shouldFocusActiveTabRef = React.useRef(false);
 
   const navigateToTab = React.useCallback(
@@ -411,7 +434,11 @@ const useIamTabNavigation = (activeTab: IamCockpitTabKey, allowedTabs: readonly 
     }
     shouldFocusActiveTabRef.current = false;
     Promise.resolve(
-      navigate({ to: '/admin/iam', search: { tab: getFirstAllowedTab(allowedTabs) }, replace: true })
+      navigate({
+        to: '/admin/iam',
+        search: { tab: getFirstAllowedTab(allowedTabs) },
+        replace: true,
+      })
     ).catch(() => undefined);
   }, [activeTab, allowedTabs, navigate]);
 
@@ -460,33 +487,42 @@ const useRightsTabState = ({
   canAccessCockpit,
   cockpitEnabled,
   instanceId,
-  invalidatePermissions,
+  refreshSession,
 }: Readonly<{
   activeTab: IamCockpitTabKey;
   allowedTabs: readonly IamCockpitTabKey[];
   canAccessCockpit: boolean;
   cockpitEnabled: boolean;
   instanceId: string;
-  invalidatePermissions: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }>) => {
   const [organizationId, setOrganizationId] = React.useState('');
   const [actingAsUserId, setActingAsUserId] = React.useState('');
   const [queryText, setQueryText] = React.useState('');
   const [selectedOrganizationIds, setSelectedOrganizationIds] = React.useState<string[]>([]);
   const [permissions, setPermissions] = React.useState<readonly EffectivePermission[]>([]);
-  const [permissionSubject, setPermissionSubject] = React.useState<IamPermissionsResponse['subject'] | null>(null);
+  const [permissionSubject, setPermissionSubject] = React.useState<
+    IamPermissionsResponse['subject'] | null
+  >(null);
   const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(false);
   const [permissionsError, setPermissionsError] = React.useState<string | null>(null);
   const [authorizeAction, setAuthorizeAction] = React.useState('content.read');
   const [authorizeResourceType, setAuthorizeResourceType] = React.useState('content');
   const [authorizeResourceId, setAuthorizeResourceId] = React.useState('');
   const [authorizeOrganizationId, setAuthorizeOrganizationId] = React.useState('');
-  const [authorizeDecision, setAuthorizeDecision] = React.useState<AuthorizeDecisionViewModel | null>(null);
+  const [authorizeDecision, setAuthorizeDecision] =
+    React.useState<AuthorizeDecisionViewModel | null>(null);
   const [authorizeError, setAuthorizeError] = React.useState<string | null>(null);
   const [isAuthorizing, setIsAuthorizing] = React.useState(false);
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || !instanceId || activeTab !== 'rights' || !allowedTabs.includes('rights')) {
+    if (
+      !cockpitEnabled ||
+      !canAccessCockpit ||
+      !instanceId ||
+      activeTab !== 'rights' ||
+      !allowedTabs.includes('rights')
+    ) {
       return;
     }
 
@@ -521,9 +557,9 @@ const useRightsTabState = ({
         }
 
         if (!response.ok) {
-          if (response.status === 403) {
-            await invalidatePermissions();
-            iamViewerLogger.info('permission_invalidated_after_403', {
+          if (response.status === 401) {
+            await refreshSession();
+            iamViewerLogger.info('session_refreshed_after_401', {
               operation: 'load_permissions',
               status: response.status,
             });
@@ -532,11 +568,16 @@ const useRightsTabState = ({
           setPermissions([]);
           setPermissionSubject(null);
           setPermissionsError(payload?.error ?? `http_${response.status}`);
-          logBrowserOperationFailure(iamViewerLogger, 'iam_permissions_load_failed', new Error(payload?.error ?? `http_${response.status}`), {
-            operation: 'load_permissions',
-            instance_id: instanceId,
-            status: response.status,
-          });
+          logBrowserOperationFailure(
+            iamViewerLogger,
+            'iam_permissions_load_failed',
+            new Error(payload?.error ?? `http_${response.status}`),
+            {
+              operation: 'load_permissions',
+              instance_id: instanceId,
+              status: response.status,
+            }
+          );
           return;
         }
 
@@ -580,7 +621,16 @@ const useRightsTabState = ({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [actingAsUserId, activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId, invalidatePermissions, organizationId]);
+  }, [
+    actingAsUserId,
+    activeTab,
+    allowedTabs,
+    canAccessCockpit,
+    cockpitEnabled,
+    instanceId,
+    refreshSession,
+    organizationId,
+  ]);
 
   const filteredPermissions = React.useMemo(
     () =>
@@ -626,31 +676,35 @@ const useRightsTabState = ({
     });
 
     try {
-      const response = await fetchWithRequestTimeout('/iam/authorize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          instanceId,
-          action: authorizeAction.trim(),
-          resource: {
-            type: authorizeResourceType.trim(),
-            id: authorizeResourceId.trim() || undefined,
-            organizationId: authorizeOrganizationId.trim() || organizationId.trim() || undefined,
-          },
-          context: {
-            organizationId: authorizeOrganizationId.trim() || organizationId.trim() || undefined,
-            actingAsUserId: actingAsUserId.trim() || undefined,
-            requestId: `iam-viewer-${Date.now()}`,
-          },
-        }),
-      }, {
-        timeoutMs: 10_000,
-      });
+      const response = await fetchWithRequestTimeout(
+        '/iam/authorize',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            instanceId,
+            action: authorizeAction.trim(),
+            resource: {
+              type: authorizeResourceType.trim(),
+              id: authorizeResourceId.trim() || undefined,
+              organizationId: authorizeOrganizationId.trim() || organizationId.trim() || undefined,
+            },
+            context: {
+              organizationId: authorizeOrganizationId.trim() || organizationId.trim() || undefined,
+              actingAsUserId: actingAsUserId.trim() || undefined,
+              requestId: `iam-viewer-${Date.now()}`,
+            },
+          }),
+        },
+        {
+          timeoutMs: 10_000,
+        }
+      );
 
       if (!response.ok) {
-        if (response.status === 403) {
-          await invalidatePermissions();
-          iamViewerLogger.info('permission_invalidated_after_403', {
+        if (response.status === 401) {
+          await refreshSession();
+          iamViewerLogger.info('session_refreshed_after_401', {
             operation: 'authorize',
             status: response.status,
           });
@@ -658,11 +712,16 @@ const useRightsTabState = ({
         const payload = (await response.json().catch(() => null)) as IamApiErrorPayload | null;
         setAuthorizeDecision(null);
         setAuthorizeError(payload?.error ?? `http_${response.status}`);
-        logBrowserOperationFailure(iamViewerLogger, 'iam_authorize_failed', new Error(payload?.error ?? `http_${response.status}`), {
-          operation: 'authorize',
-          instance_id: instanceId,
-          status: response.status,
-        });
+        logBrowserOperationFailure(
+          iamViewerLogger,
+          'iam_authorize_failed',
+          new Error(payload?.error ?? `http_${response.status}`),
+          {
+            operation: 'authorize',
+            instance_id: instanceId,
+            status: response.status,
+          }
+        );
         return;
       }
 
@@ -734,10 +793,18 @@ const useGovernanceTabState = ({
     search: '',
   });
   const [isLoading, setIsLoading] = React.useState(false);
-  const requestQuery = React.useMemo(() => ({ ...query, search: query.search?.trim() ?? '' }), [query]);
+  const requestQuery = React.useMemo(
+    () => ({ ...query, search: query.search?.trim() ?? '' }),
+    [query]
+  );
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'governance' || !allowedTabs.includes('governance')) {
+    if (
+      !cockpitEnabled ||
+      !canAccessCockpit ||
+      activeTab !== 'governance' ||
+      !allowedTabs.includes('governance')
+    ) {
       return;
     }
 
@@ -825,10 +892,18 @@ const useDsrTabState = ({
     search: '',
   });
   const [isLoading, setIsLoading] = React.useState(false);
-  const requestQuery = React.useMemo(() => ({ ...query, search: query.search?.trim() ?? '' }), [query]);
+  const requestQuery = React.useMemo(
+    () => ({ ...query, search: query.search?.trim() ?? '' }),
+    [query]
+  );
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'dsr' || !allowedTabs.includes('dsr')) {
+    if (
+      !cockpitEnabled ||
+      !canAccessCockpit ||
+      activeTab !== 'dsr' ||
+      !allowedTabs.includes('dsr')
+    ) {
       return;
     }
 
@@ -904,14 +979,21 @@ const useDeletionRulesTabState = ({
   cockpitEnabled: boolean;
   instanceId: string;
 }>) => {
-  const [deletionRules, setDeletionRules] = React.useState<IamTenantDeletionRulesOverview | null>(null);
+  const [deletionRules, setDeletionRules] = React.useState<IamTenantDeletionRulesOverview | null>(
+    null
+  );
   const [draft, setDraft] = React.useState<DeletionRulesDraft | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (!cockpitEnabled || !canAccessCockpit || activeTab !== 'deletion-rules' || !allowedTabs.includes('deletion-rules')) {
+    if (
+      !cockpitEnabled ||
+      !canAccessCockpit ||
+      activeTab !== 'deletion-rules' ||
+      !allowedTabs.includes('deletion-rules')
+    ) {
       return;
     }
     if (!instanceId) {
@@ -1026,7 +1108,9 @@ const RightsTabPanel = ({
   <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="space-y-4">
     <StudioFilterSurface className="grid gap-3 lg:grid-cols-4">
       <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-        <Label htmlFor="iam-organization-filter">{t('admin.iam.rights.filters.organization')}</Label>
+        <Label htmlFor="iam-organization-filter">
+          {t('admin.iam.rights.filters.organization')}
+        </Label>
         <Select
           id="iam-organization-filter"
           value={state.organizationId}
@@ -1050,7 +1134,11 @@ const RightsTabPanel = ({
       </div>
       <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
         <Label htmlFor="iam-query-filter">{t('admin.iam.rights.filters.search')}</Label>
-        <Input id="iam-query-filter" value={state.queryText} onChange={(event) => state.setQueryText(event.target.value)} />
+        <Input
+          id="iam-query-filter"
+          value={state.queryText}
+          onChange={(event) => state.setQueryText(event.target.value)}
+        />
       </div>
       <StudioSummaryCard
         eyebrow={t('admin.iam.rights.subject.title')}
@@ -1059,7 +1147,9 @@ const RightsTabPanel = ({
       >
         <p className="text-xs text-muted-foreground">
           {state.permissionSubject?.isImpersonating
-            ? t('admin.iam.rights.subject.impersonating', { actor: state.permissionSubject.actorUserId })
+            ? t('admin.iam.rights.subject.impersonating', {
+                actor: state.permissionSubject.actorUserId,
+              })
             : t('admin.iam.rights.subject.self')}
         </p>
       </StudioSummaryCard>
@@ -1088,7 +1178,9 @@ const RightsTabPanel = ({
 
     {state.permissionsError ? (
       <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-        <AlertDescription>{t('admin.iam.rights.messages.error', { value: state.permissionsError })}</AlertDescription>
+        <AlertDescription>
+          {t('admin.iam.rights.messages.error', { value: state.permissionsError })}
+        </AlertDescription>
       </Alert>
     ) : null}
 
@@ -1107,7 +1199,9 @@ const RightsTabPanel = ({
           />
         </div>
         <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          <Label htmlFor="iam-authorize-resource-type">{t('admin.iam.rights.authorize.resourceType')}</Label>
+          <Label htmlFor="iam-authorize-resource-type">
+            {t('admin.iam.rights.authorize.resourceType')}
+          </Label>
           <Input
             id="iam-authorize-resource-type"
             value={state.authorizeResourceType}
@@ -1115,7 +1209,9 @@ const RightsTabPanel = ({
           />
         </div>
         <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          <Label htmlFor="iam-authorize-resource-id">{t('admin.iam.rights.authorize.resourceId')}</Label>
+          <Label htmlFor="iam-authorize-resource-id">
+            {t('admin.iam.rights.authorize.resourceId')}
+          </Label>
           <Input
             id="iam-authorize-resource-id"
             value={state.authorizeResourceId}
@@ -1123,7 +1219,9 @@ const RightsTabPanel = ({
           />
         </div>
         <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-          <Label htmlFor="iam-authorize-organization-id">{t('admin.iam.rights.authorize.organizationId')}</Label>
+          <Label htmlFor="iam-authorize-organization-id">
+            {t('admin.iam.rights.authorize.organizationId')}
+          </Label>
           <Select
             id="iam-authorize-organization-id"
             value={state.authorizeOrganizationId}
@@ -1139,9 +1237,13 @@ const RightsTabPanel = ({
         </div>
         <div className="lg:col-span-4 flex items-center gap-3">
           <Button type="submit" disabled={state.isAuthorizing}>
-            {state.isAuthorizing ? t('admin.iam.rights.authorize.running') : t('admin.iam.rights.authorize.run')}
+            {state.isAuthorizing
+              ? t('admin.iam.rights.authorize.running')
+              : t('admin.iam.rights.authorize.run')}
           </Button>
-          {state.authorizeError ? <p className="text-sm text-destructive">{state.authorizeError}</p> : null}
+          {state.authorizeError ? (
+            <p className="text-sm text-destructive">{state.authorizeError}</p>
+          ) : null}
         </div>
         {state.authorizeDecision ? (
           <Card className="lg:col-span-4 bg-background p-3 shadow-none">
@@ -1162,7 +1264,9 @@ const RightsTabPanel = ({
                   {t('admin.iam.rights.authorize.summary.resource')}
                 </dt>
                 <dd className="text-foreground">
-                  {[state.authorizeResourceType.trim(), state.authorizeResourceId.trim()].filter(Boolean).join(' / ') || '—'}
+                  {[state.authorizeResourceType.trim(), state.authorizeResourceId.trim()]
+                    .filter(Boolean)
+                    .join(' / ') || '—'}
                 </dd>
               </div>
               <div>
@@ -1186,12 +1290,20 @@ const RightsTabPanel = ({
                   {t('admin.iam.rights.authorize.summary.origin')}
                 </dt>
                 <dd className="text-foreground">
-                  {state.authorizeDecision.provenance?.sourceKinds && state.authorizeDecision.provenance.sourceKinds.length > 0
-                    ? formatPermissionSourceKindLabels(state.authorizeDecision.provenance.sourceKinds)
-                    : state.authorizeDecision.matchedPermissions && state.authorizeDecision.matchedPermissions.length > 0
-                      ? formatPermissionSourceKindLabels(
-                          [...new Set(state.authorizeDecision.matchedPermissions.map((permission) => permission.source))] as readonly string[]
-                        )
+                  {state.authorizeDecision.provenance?.sourceKinds &&
+                  state.authorizeDecision.provenance.sourceKinds.length > 0
+                    ? formatPermissionSourceKindLabels(
+                        state.authorizeDecision.provenance.sourceKinds
+                      )
+                    : state.authorizeDecision.matchedPermissions &&
+                        state.authorizeDecision.matchedPermissions.length > 0
+                      ? formatPermissionSourceKindLabels([
+                          ...new Set(
+                            state.authorizeDecision.matchedPermissions.map(
+                              (permission) => permission.source
+                            )
+                          ),
+                        ] as readonly string[])
                       : '—'}
                 </dd>
               </div>
@@ -1228,10 +1340,14 @@ const GovernanceTabPanel = ({
   <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="space-y-4">
     <StudioFilterSurface className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.exportHint')}</p>
+        <p className="text-sm text-muted-foreground">
+          {t('admin.iam.governance.messages.exportHint')}
+        </p>
         {instanceId && canExportGovernanceCompliance ? (
           <Button asChild size="sm" variant="outline">
-            <a href={buildGovernanceComplianceExportPath({ instanceId })}>{t('admin.iam.governance.actions.exportCsv')}</a>
+            <a href={buildGovernanceComplianceExportPath({ instanceId })}>
+              {t('admin.iam.governance.actions.exportCsv')}
+            </a>
           </Button>
         ) : null}
       </div>
@@ -1241,7 +1357,9 @@ const GovernanceTabPanel = ({
           <Input
             id="iam-governance-search"
             value={state.query.search ?? ''}
-            onChange={(event) => state.setQuery((current) => ({ ...current, page: 1, search: event.target.value }))}
+            onChange={(event) =>
+              state.setQuery((current) => ({ ...current, page: 1, search: event.target.value }))
+            }
           />
         </div>
         <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1303,7 +1421,9 @@ const GovernanceTabPanel = ({
       selectionMode="none"
       isLoading={state.isLoading}
       loadingState={t('admin.iam.governance.messages.loading')}
-      emptyState={<p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.empty')}</p>}
+      emptyState={
+        <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.empty')}</p>
+      }
     />
   </div>
 );
@@ -1328,7 +1448,9 @@ const DsrTabPanel = ({
         <Input
           id="iam-dsr-search"
           value={state.query.search ?? ''}
-          onChange={(event) => state.setQuery((current) => ({ ...current, page: 1, search: event.target.value }))}
+          onChange={(event) =>
+            state.setQuery((current) => ({ ...current, page: 1, search: event.target.value }))
+          }
         />
       </div>
       <div className="grid gap-1 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1389,7 +1511,9 @@ const DsrTabPanel = ({
       selectionMode="none"
       isLoading={state.isLoading}
       loadingState={t('admin.iam.dsr.messages.loading')}
-      emptyState={<p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.empty')}</p>}
+      emptyState={
+        <p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.empty')}</p>
+      }
     />
   </div>
 );
@@ -1418,47 +1542,63 @@ const DeletionRulesTabPanel = ({
         ) : null}
 
         {state.isLoading || !state.draft ? (
-          <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.loading')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t('admin.iam.deletionRules.messages.loading')}
+          </p>
         ) : (
           <form className="grid gap-4 md:grid-cols-2" onSubmit={state.handleSave}>
             <div className="grid gap-1">
-              <Label htmlFor="deletion-rules-deactivate">{t('admin.iam.deletionRules.fields.deactivateAfterDays')}</Label>
+              <Label htmlFor="deletion-rules-deactivate">
+                {t('admin.iam.deletionRules.fields.deactivateAfterDays')}
+              </Label>
               <Input
                 id="deletion-rules-deactivate"
                 inputMode="numeric"
                 value={state.draft.deactivateAfterDays}
                 onChange={(event) =>
-                  state.setDraft((current) => (current ? { ...current, deactivateAfterDays: event.target.value } : current))
+                  state.setDraft((current) =>
+                    current ? { ...current, deactivateAfterDays: event.target.value } : current
+                  )
                 }
                 disabled={!state.deletionRules?.canEdit || state.isSaving}
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="deletion-rules-pseudonymize">{t('admin.iam.deletionRules.fields.pseudonymizeAfterDays')}</Label>
+              <Label htmlFor="deletion-rules-pseudonymize">
+                {t('admin.iam.deletionRules.fields.pseudonymizeAfterDays')}
+              </Label>
               <Input
                 id="deletion-rules-pseudonymize"
                 inputMode="numeric"
                 value={state.draft.pseudonymizeAfterDays}
                 onChange={(event) =>
-                  state.setDraft((current) => (current ? { ...current, pseudonymizeAfterDays: event.target.value } : current))
+                  state.setDraft((current) =>
+                    current ? { ...current, pseudonymizeAfterDays: event.target.value } : current
+                  )
                 }
                 disabled={!state.deletionRules?.canEdit || state.isSaving}
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="deletion-rules-delete">{t('admin.iam.deletionRules.fields.deleteAfterDays')}</Label>
+              <Label htmlFor="deletion-rules-delete">
+                {t('admin.iam.deletionRules.fields.deleteAfterDays')}
+              </Label>
               <Input
                 id="deletion-rules-delete"
                 inputMode="numeric"
                 value={state.draft.deleteAfterDays}
                 onChange={(event) =>
-                  state.setDraft((current) => (current ? { ...current, deleteAfterDays: event.target.value } : current))
+                  state.setDraft((current) =>
+                    current ? { ...current, deleteAfterDays: event.target.value } : current
+                  )
                 }
                 disabled={!state.deletionRules?.canEdit || state.isSaving}
               />
             </div>
             <div className="grid gap-1">
-              <Label htmlFor="deletion-rules-strategy">{t('admin.iam.deletionRules.fields.defaultContentStrategy')}</Label>
+              <Label htmlFor="deletion-rules-strategy">
+                {t('admin.iam.deletionRules.fields.defaultContentStrategy')}
+              </Label>
               <Select
                 id="deletion-rules-strategy"
                 value={state.draft.defaultContentStrategy}
@@ -1509,10 +1649,14 @@ const DeletionRulesTabPanel = ({
             </div>
             <div className="md:col-span-2 flex items-center gap-3">
               <Button type="submit" disabled={!state.deletionRules?.canEdit || state.isSaving}>
-                {state.isSaving ? t('admin.iam.deletionRules.actions.saving') : t('admin.iam.deletionRules.actions.save')}
+                {state.isSaving
+                  ? t('admin.iam.deletionRules.actions.saving')
+                  : t('admin.iam.deletionRules.actions.save')}
               </Button>
               {!state.deletionRules?.canEdit ? (
-                <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.messages.readOnly')}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t('admin.iam.deletionRules.messages.readOnly')}
+                </p>
               ) : null}
             </div>
           </form>
@@ -1523,21 +1667,26 @@ const DeletionRulesTabPanel = ({
 );
 
 export function IamViewerPage({ activeTab }: IamViewerPageProps) {
-  const { user, isLoading: isLoadingUser, error: authError, invalidatePermissions } = useAuth();
+  const { user, isLoading: isLoadingUser, error: authError } = useEffectiveAuth();
+  const { invalidate } = useEffectiveAccess();
+  const invalidateEffectiveAccess = React.useCallback(async () => invalidate(), [invalidate]);
   const instanceId = user?.instanceId ?? '';
   const cockpitEnabled = isIamCockpitEnabled();
   const canAccessCockpit = hasIamCockpitAccessRole(user);
   const canExportGovernanceCompliance = hasGovernanceComplianceExportRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
   const studioDataTableLabels = React.useMemo(() => createStudioDataTableLabels(), []);
-  const { handleTabKeyDown, navigateToTab, tabButtonRefs } = useIamTabNavigation(activeTab, allowedTabs);
+  const { handleTabKeyDown, navigateToTab, tabButtonRefs } = useIamTabNavigation(
+    activeTab,
+    allowedTabs
+  );
   const rightsTabState = useRightsTabState({
     activeTab,
     allowedTabs,
     canAccessCockpit,
     cockpitEnabled,
     instanceId,
-    invalidatePermissions,
+    refreshSession: invalidateEffectiveAccess,
   });
   const governanceTabState = useGovernanceTabState({
     activeTab,
@@ -1596,7 +1745,11 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
         <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.iam.page.subtitle')}</p>
       </header>
 
-      <Card className="flex flex-wrap gap-2 p-2" role="tablist" aria-label={t('admin.iam.tabs.ariaLabel')}>
+      <Card
+        className="flex flex-wrap gap-2 p-2"
+        role="tablist"
+        aria-label={t('admin.iam.tabs.ariaLabel')}
+      >
         {allowedTabs.map((tab, tabIndex) => {
           const selected = tab === activeTab;
           return (

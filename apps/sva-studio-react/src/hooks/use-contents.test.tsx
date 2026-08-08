@@ -33,7 +33,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
   updateProfile: vi.fn(),
 };
 
@@ -82,7 +82,7 @@ describe('useContents', () => {
     logBrowserOperationStartMock.mockReset();
     logBrowserOperationSuccessMock.mockReset();
     logBrowserOperationFailureMock.mockReset();
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
   });
 
   afterEach(() => {
@@ -268,7 +268,7 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('invalidates permissions when the initial content list fetch fails with a protected error (status $status, code $code)', async (protectedError) => {
+  ])('refreshes the session only when the initial content list fetch fails with 401 (status $status, code $code)', async (protectedError) => {
     asIamErrorMock.mockReturnValue(protectedError);
     listContentsMock.mockRejectedValueOnce(new Error('protected-list'));
 
@@ -280,7 +280,9 @@ describe('useContents', () => {
       expect(result.current.contents).toEqual([]);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+      protectedError.status === 401 ? 1 : 0
+    );
   });
 
   it('keeps the last successful items when a later refetch times out', async () => {
@@ -327,7 +329,7 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('invalidates permissions when a content list refetch fails with a protected error (status $status, code $code)', async (protectedError) => {
+  ])('refreshes the session only when a content list refetch fails with 401 (status $status, code $code)', async (protectedError) => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     listContentsMock
       .mockResolvedValueOnce({
@@ -366,7 +368,9 @@ describe('useContents', () => {
       expect(result.current.contents[0]?.id).toBe('content-1');
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+      protectedError.status === 401 ? 1 : 0
+    );
   });
 
   it('runs bulk archive and delete actions with safe audit metadata', async () => {
@@ -502,7 +506,7 @@ describe('useContents', () => {
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
   ])(
-    'invalidates permissions on protected create errors (status $status, code $code)',
+    'refreshes the session only on 401 create errors (status $status, code $code)',
     async (protectedError) => {
       asIamErrorMock.mockReturnValue(protectedError);
       createContentMock.mockRejectedValueOnce(new Error('protected-create'));
@@ -519,7 +523,9 @@ describe('useContents', () => {
         expect(created).toBe(false);
       });
 
-      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
     }
   );
 
@@ -586,7 +592,7 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores detail errors and invalidates permissions on protected detail-load failures (status $status, code $code)', async (protectedError) => {
+  ])('stores detail errors and refreshes the session only on 401 detail-load failures (status $status, code $code)', async (protectedError) => {
     asIamErrorMock.mockReturnValue(protectedError);
     getContentMock.mockRejectedValueOnce(new Error('protected-detail'));
     getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
@@ -598,13 +604,15 @@ describe('useContents', () => {
       expect(result.current.error).toBe(protectedError);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+      protectedError.status === 401 ? 1 : 0
+    );
   });
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores update errors and invalidates permissions on protected update failures (status $status, code $code)', async (protectedError) => {
+  ])('stores update errors and refreshes the session only on 401 update failures (status $status, code $code)', async (protectedError) => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
     getContentMock.mockResolvedValue({
       data: {
@@ -639,7 +647,9 @@ describe('useContents', () => {
       expect(updated).toBe(false);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+      protectedError.status === 401 ? 1 : 0
+    );
     expect(result.current.mutationError).toBe(protectedError);
   });
 
@@ -700,7 +710,7 @@ describe('useContents', () => {
       expect(result.current.error).toBe(genericError);
     });
 
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
 
     getContentMock.mockResolvedValue({
       data: {
@@ -731,6 +741,6 @@ describe('useContents', () => {
     });
 
     expect(result.current.mutationError).toBe(genericError);
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 });

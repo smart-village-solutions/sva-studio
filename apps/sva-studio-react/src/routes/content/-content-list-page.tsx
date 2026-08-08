@@ -72,6 +72,8 @@ type RegisteredContentRow = IamContentListItem &
     editPath: string;
   }>;
 
+const EMPTY_PERMISSION_ACTIONS: readonly string[] = [];
+
 const MAIN_SERVER_CONTENT_TYPES = new Set([
   'news.article',
   'events.event-record',
@@ -569,6 +571,8 @@ export const ContentListPage = ({
       contentAccessPending,
     ]
   );
+  const unscopedPermissionActions =
+    contentAccessApi.unscopedPermissionActions ?? EMPTY_PERMISSION_ACTIONS;
   const readableContentTypes = React.useMemo(
     () =>
       studioContentTypes.filter((definition) =>
@@ -678,7 +682,7 @@ export const ContentListPage = ({
             {
               id: 'archive-selection',
               label: buildBulkActionLabel('content.actions.archive'),
-              disabled: !effectivePermissionActions.includes('content.archive'),
+              disabled: !unscopedPermissionActions.includes('content.archive'),
               onClick: async ({ selectedRows, clearSelection }) => {
                 if (selectedRows.length === 0) {
                   return;
@@ -699,7 +703,7 @@ export const ContentListPage = ({
             {
               id: 'delete-selection',
               label: buildBulkActionLabel('content.actions.delete'),
-              disabled: !effectivePermissionActions.includes('content.delete'),
+              disabled: !unscopedPermissionActions.includes('content.delete'),
               variant: 'destructive',
               onClick: async ({ selectedRows, clearSelection }) => {
                 if (
@@ -725,12 +729,12 @@ export const ContentListPage = ({
         : [],
     [
       contentsApi,
-      effectivePermissionActions,
       hasBulkActionableContents,
       routeState.page,
       routeState.pageSize,
       routeState.sort,
       routeState.status,
+      unscopedPermissionActions,
     ]
   );
 

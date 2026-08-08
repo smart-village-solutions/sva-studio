@@ -1087,6 +1087,7 @@ describe('ContentListPage', () => {
         sourceKinds: ['direct_role'],
       },
       permissionActions: ['content.read', 'content.archive', 'content.delete'],
+      unscopedPermissionActions: ['content.read', 'content.archive', 'content.delete'],
       isLoading: false,
       error: null,
     });
@@ -1098,6 +1099,49 @@ describe('ContentListPage', () => {
     expect(
       screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile local-1 auswählen' })
     ).toHaveLength(2);
+  });
+
+  it('disables local bulk mutations when only scoped actions are available', async () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'local-1',
+            contentType: 'generic',
+            title: 'Lokaler Inhalt',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-23T10:00:00.000Z',
+            author: 'Editor',
+            payload: { hero: 'A' },
+            status: 'draft',
+          },
+        ],
+        pagination: { page: 1, pageSize: 1, total: 1 },
+      })
+    );
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: false,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['content.read', 'content.archive', 'content.delete'],
+      unscopedPermissionActions: ['content.read'],
+      isLoading: false,
+      error: null,
+    });
+
+    render(<ContentListPage />);
+
+    expect(
+      screen.getByRole('button', { name: 'Archivieren (Auswahl)' }).hasAttribute('disabled')
+    ).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'Löschen (Auswahl)' }).hasAttribute('disabled')
+    ).toBe(true);
   });
 
   it('uses a sentinel visible type when no readable content types are available', () => {

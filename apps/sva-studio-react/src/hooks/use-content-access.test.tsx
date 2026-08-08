@@ -10,6 +10,7 @@ const effectiveAccessMock = {
     generation: 1,
   } as Record<string, unknown>,
   permissionActions: [] as readonly string[],
+  unscopedPermissionActions: [] as readonly string[],
 };
 
 vi.mock('../providers/effective-access-provider', () => ({
@@ -36,6 +37,7 @@ describe('useContentAccess', () => {
       generation: 1,
     };
     effectiveAccessMock.permissionActions = [];
+    effectiveAccessMock.unscopedPermissionActions = [];
   });
 
   it('fails closed while the shared access snapshot is unresolved', () => {
@@ -43,6 +45,7 @@ describe('useContentAccess', () => {
     expect(result.current).toEqual({
       access: null,
       permissionActions: [],
+      unscopedPermissionActions: [],
       isLoading: true,
       error: null,
     });
@@ -61,6 +64,7 @@ describe('useContentAccess', () => {
       ],
     };
     effectiveAccessMock.permissionActions = ['content.read', 'content.updatePayload', 'news.read'];
+    effectiveAccessMock.unscopedPermissionActions = ['content.read', 'news.read'];
 
     const { result } = renderHook(() => useContentAccess());
     expect(result.current.access).toEqual({
@@ -76,6 +80,7 @@ describe('useContentAccess', () => {
       'content.updatePayload',
       'news.read',
     ]);
+    expect(result.current.unscopedPermissionActions).toEqual(['content.read', 'news.read']);
   });
 
   it('does not reuse tenant actions for a platform snapshot', () => {
@@ -90,6 +95,7 @@ describe('useContentAccess', () => {
     expect(renderHook(() => useContentAccess()).result.current).toEqual({
       access: null,
       permissionActions: [],
+      unscopedPermissionActions: [],
       isLoading: false,
       error: null,
     });

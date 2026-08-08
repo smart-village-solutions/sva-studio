@@ -30,6 +30,7 @@ import {
 export type EffectiveAccessContextValue = Readonly<{
   snapshot: EffectiveAccessSnapshot;
   permissionActions: readonly string[];
+  unscopedPermissionActions: readonly string[];
   decide: (requirement: UiAccessRequirement) => UiAccessDecision;
   invalidate: () => void;
   retry: () => void;
@@ -269,6 +270,7 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     () => ({
       snapshot,
       permissionActions: collectPermissionActions(snapshot),
+      unscopedPermissionActions: collectGloballyAllowedPermissionActions(snapshot),
       decide: (requirement) =>
         evaluateUiAccess({
           isAuthenticated: auth.isAuthenticated,

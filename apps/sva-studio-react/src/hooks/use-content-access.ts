@@ -6,6 +6,7 @@ import { useEffectiveAccess } from '../providers/effective-access-provider';
 type UseContentAccessResult = {
   readonly access: IamContentAccessSummary | null;
   readonly permissionActions: readonly string[];
+  readonly unscopedPermissionActions: readonly string[];
   readonly isLoading: boolean;
   readonly error: IamHttpError | null;
 };
@@ -23,6 +24,7 @@ export const useContentAccess = (): UseContentAccessResult => {
     return {
       access: snapshot.errorCode === 'forbidden' ? withServerDeniedContentAccess(undefined) : null,
       permissionActions: [],
+      unscopedPermissionActions: [],
       isLoading: false,
       error,
     };
@@ -32,6 +34,7 @@ export const useContentAccess = (): UseContentAccessResult => {
     return {
       access: null,
       permissionActions: [],
+      unscopedPermissionActions: [],
       isLoading: snapshot.status === 'loading' || snapshot.status === 'unresolved',
       error: null,
     };
@@ -40,6 +43,7 @@ export const useContentAccess = (): UseContentAccessResult => {
   return {
     access: summarizeContentAccess(snapshot.permissions),
     permissionActions: effectiveAccess.permissionActions,
+    unscopedPermissionActions: effectiveAccess.unscopedPermissionActions,
     isLoading: false,
     error: null,
   };

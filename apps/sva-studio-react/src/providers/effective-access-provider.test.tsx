@@ -248,7 +248,7 @@ describe('EffectiveAccessProvider', () => {
         { action: 'news.delete', accessScope: 'organization' },
       ])
     );
-    renderHook(() => useEffectiveAccess(), { wrapper });
+    const { result } = renderHook(() => useEffectiveAccess(), { wrapper });
 
     await waitFor(() => expect(readSessionAccessSnapshot().isResolved).toBe(true));
 
@@ -256,6 +256,7 @@ describe('EffectiveAccessProvider', () => {
       permissionActions: ['news.delete', 'news.read', 'news.update'],
       unscopedPermissionActions: ['news.read'],
     });
+    expect(result.current.unscopedPermissionActions).toEqual(['news.read']);
   });
 
   it('keeps access unresolved while the authentication session is unresolved', async () => {

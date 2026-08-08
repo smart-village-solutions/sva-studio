@@ -22,6 +22,40 @@ export type AuthorizeBenchmarkPayload = {
   };
 };
 
+type BenchmarkQueryClient = {
+  query: <T = unknown>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{ rowCount: number | null; rows: T[] }>;
+  release: () => void;
+};
+
+type BenchmarkDbPool = {
+  connect: () => Promise<BenchmarkQueryClient>;
+};
+
+export const withBenchmarkInstanceDb = async <T>(
+  pool: BenchmarkDbPool,
+  instanceId: string,
+  work: (client: BenchmarkQueryClient) => Promise<T>
+): Promise<T> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE iam_app;');
+    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export type DurationSummary = {
   readonly count: number;
   readonly minMs: number;

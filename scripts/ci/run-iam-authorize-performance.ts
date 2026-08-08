@@ -11,6 +11,7 @@ import {
   authorizeBenchmarkP95ThresholdMs,
   renderAuthorizePerformanceMarkdownReport,
   summarizeDurations,
+  withBenchmarkInstanceDb,
   type AuthorizeBenchmarkPayload,
   type AuthorizeBenchmarkScenario,
   type AuthorizePerformanceReport,
@@ -74,11 +75,16 @@ type PgModule = {
 };
 
 type Pool = {
+  connect: () => Promise<PoolClient>;
   end: () => Promise<void>;
+};
+
+type PoolClient = {
   query: <T>(
     text: string,
     values?: readonly unknown[]
   ) => Promise<{ rowCount: number | null; rows: T[] }>;
+  release: () => void;
 };
 
 type AuthMePayload = {
@@ -331,8 +337,9 @@ const emitUserScopeInvalidation = async (input: {
   readonly scenarioRunId: string;
   readonly sampleIndex: number;
 }): Promise<void> => {
-  await input.pool.query(
-    `
+  await withBenchmarkInstanceDb(input.pool, input.instanceId, async (client) => {
+    await client.query(
+      `
 WITH bumped AS (
   INSERT INTO iam.permission_cache_user_revisions (
     instance_id,
@@ -364,12 +371,13 @@ SELECT revision
 FROM bumped
 CROSS JOIN notified
 `,
-    [
-      input.instanceId,
-      input.keycloakSubject,
-      `bench-${input.scenarioRunId}-invalidate-${input.sampleIndex}`,
-    ]
-  );
+      [
+        input.instanceId,
+        input.keycloakSubject,
+        `bench-${input.scenarioRunId}-invalidate-${input.sampleIndex}`,
+      ]
+    );
+  });
 };
 
 const scenarioThresholdMs = (scenario: AuthorizeBenchmarkScenario): number =>

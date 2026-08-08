@@ -1,6 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  readSessionAccessSnapshot,
+  resolveStandardContentAccessCapabilities,
+  subscribeSessionAccessSnapshot,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import {
   Button,
   MainserverPrincipalControl,
@@ -57,6 +62,8 @@ const createSummaryErrors = (
 
 type FaqEditorViewProps = Readonly<{
   activeTab: FaqTab;
+  canDelete: boolean;
+  canSave: boolean;
   actingPrincipalType: MainserverPrincipalType;
   contentId?: string;
   deleteDialogOpen: boolean;
@@ -85,6 +92,7 @@ const FaqEditorView = (props: FaqEditorViewProps) => (
     )}
     actions={
       <FaqEditorActions
+        canDelete={props.canDelete}
         disabled={props.deletePending || props.form.formState.isSubmitting}
         mode={props.mode}
         onDelete={() => props.setDeleteDialogOpen(true)}
@@ -92,13 +100,15 @@ const FaqEditorView = (props: FaqEditorViewProps) => (
       />
     }
     primaryAction={
-      <Button
-        type="submit"
-        form={props.formId}
-        disabled={props.form.formState.isSubmitting || props.deletePending}
-      >
-        {props.pt(props.mode === 'create' ? 'actions.create' : 'actions.update')}
-      </Button>
+      props.canSave ? (
+        <Button
+          type="submit"
+          form={props.formId}
+          disabled={props.form.formState.isSubmitting || props.deletePending}
+        >
+          {props.pt(props.mode === 'create' ? 'actions.create' : 'actions.update')}
+        </Button>
+      ) : undefined
     }
   >
     <FormProvider {...props.form}>
@@ -137,17 +147,19 @@ const FaqEditorView = (props: FaqEditorViewProps) => (
         />
       </form>
     </FormProvider>
-    <FaqDeleteDialog
-      open={props.deleteDialogOpen}
-      pending={props.deletePending}
-      errorMessage={props.deleteErrorMessage}
-      onConfirm={() => void props.onDelete()}
-      onCancel={() => {
-        props.setDeleteDialogOpen(false);
-        props.setDeleteErrorMessage(null);
-      }}
-      pt={props.pt}
-    />
+    {props.canDelete ? (
+      <FaqDeleteDialog
+        open={props.deleteDialogOpen}
+        pending={props.deletePending}
+        errorMessage={props.deleteErrorMessage}
+        onConfirm={() => void props.onDelete()}
+        onCancel={() => {
+          props.setDeleteDialogOpen(false);
+          props.setDeleteErrorMessage(null);
+        }}
+        pt={props.pt}
+      />
+    ) : null}
   </StudioDetailPageTemplate>
 );
 
@@ -161,6 +173,16 @@ const FaqEditorPage = ({
   principalControl?: MainserverPrincipalControlModel;
 }>) => {
   const pt = usePluginTranslation('faq');
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('faq', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const navigate = useNavigate();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
   const [activeTab, setActiveTab] = React.useState<FaqTab>('basis');
@@ -198,6 +220,8 @@ const FaqEditorPage = ({
   return (
     <FaqEditorView
       activeTab={activeTab}
+      canDelete={accessCapabilities.canDelete}
+      canSave={canSave}
       actingPrincipalType={actingPrincipalType}
       contentId={contentId}
       deleteDialogOpen={deleteDialogOpen}
@@ -208,9 +232,16 @@ const FaqEditorPage = ({
       loadedItem={loadedItem}
       mode={mode}
       onDelete={async () => {
+        if (!accessCapabilities.canDelete) return;
         if (await onDelete()) setDeleteDialogOpen(false);
       }}
-      onSubmit={(event) => void save(event)}
+      onSubmit={(event) => {
+        if (!canSave) {
+          event.preventDefault();
+          return;
+        }
+        void save(event);
+      }}
       principalControl={principalControl}
       pt={pt}
       saveErrorMessage={saveErrorMessage}

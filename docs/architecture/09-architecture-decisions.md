@@ -120,6 +120,7 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
 - ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
 - ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und die Entfernung früherer Standardrollen aus dem Sollmodell bei gleichzeitiger Absicherung historischer Altbestände über Migrationspfade (Abschnitt 04, 05, 06, 08, 09, 10, 11)
+- ADR-050: Zentraler scopegebundener UI-Zugriff trennt Identität von Effective Access, diskriminiert Plattform-/Tenant-Scope, kombiniert Actions mit Modul-Gates und hält Ressourcen-Ownership an der Servergrenze (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
 ### Fortschreibung 2026-07: Survey-Content-Plugin ohne neue ADR
 

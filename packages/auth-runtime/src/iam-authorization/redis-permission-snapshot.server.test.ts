@@ -38,6 +38,8 @@ describe('redis permission snapshot server', () => {
       getRedisPermissionSnapshot({
         instanceId: 'tenant-a',
         userId: 'user-1',
+        instanceRevision: 1,
+        userRevision: 1,
       })
     ).resolves.toEqual({
       hit: false,
@@ -55,6 +57,8 @@ describe('redis permission snapshot server', () => {
       getRedisPermissionSnapshot({
         instanceId: 'tenant-a',
         userId: 'user-1',
+        instanceRevision: 1,
+        userRevision: 1,
       })
     ).resolves.toEqual({
       hit: false,
@@ -77,6 +81,8 @@ describe('redis permission snapshot server', () => {
           userId: 'user-1',
           organizationId: 'org-1',
           geoCtxHash: 'geo-1',
+          instanceRevision: 2,
+          userRevision: 3,
         },
         permissions as never
       )
@@ -98,6 +104,8 @@ describe('redis permission snapshot server', () => {
         userId: 'user-1',
         organizationId: 'org-1',
         geoCtxHash: 'geo-1',
+        instanceRevision: 2,
+        userRevision: 3,
       })
     ).resolves.toEqual({
       hit: false,
@@ -111,6 +119,8 @@ describe('redis permission snapshot server', () => {
         userId: 'user-1',
         organizationId: 'org-1',
         geoCtxHash: 'geo-1',
+        instanceRevision: 2,
+        userRevision: 3,
       })
     ).resolves.toMatchObject({
       hit: true,
@@ -131,6 +141,8 @@ describe('redis permission snapshot server', () => {
       getRedisPermissionSnapshot({
         instanceId: 'tenant-a',
         userId: 'user-1',
+        instanceRevision: 1,
+        userRevision: 1,
       })
     ).resolves.toEqual({
       hit: false,
@@ -143,6 +155,8 @@ describe('redis permission snapshot server', () => {
         {
           instanceId: 'tenant-a',
           userId: 'user-1',
+          instanceRevision: 1,
+          userRevision: 1,
         },
         [] as never
       )
@@ -160,7 +174,7 @@ describe('redis permission snapshot server', () => {
     expect(state.redis.scan).toHaveBeenCalledWith(
       '0',
       'MATCH',
-      'perm:v1:tenant-a:user-1:*',
+      'perm:v2:tenant-a:user-1:*',
       'COUNT',
       100
     );

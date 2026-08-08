@@ -39,7 +39,7 @@ export const isMockAuthEnabled = async () => {
   const runtimeProfile = parseRuntimeProfile(import.meta.env.VITE_SVA_RUNTIME_PROFILE);
 
   return (
-    isDevAuthAvailable() ||
+    (isDevAuthAvailable() && hasActiveDevAuthSession()) ||
     (runtimeProfile !== null && isMockAuthRuntimeProfile(runtimeProfile))
   );
 };
@@ -166,6 +166,36 @@ export const parseRouteGuardUser = (payload: unknown): RouteGuardUser | null => 
   return hasRecognizedUserShape ? readRouteGuardUser(payload) : null;
 };
 
+const readActiveOrganizationId = (payload: unknown): string | undefined => {
+  if (!payload || typeof payload !== 'object' || !('data' in payload)) {
+    return undefined;
+  }
+  const data = (payload as { data?: unknown }).data;
+  if (!data || typeof data !== 'object' || !('activeOrganizationId' in data)) {
+    return undefined;
+  }
+  const organizationId = (data as { activeOrganizationId?: unknown }).activeOrganizationId;
+  return typeof organizationId === 'string' && organizationId.length > 0 ? organizationId : undefined;
+};
+
+const readEffectivePermissionActions = (payload: unknown): readonly string[] | null => {
+  if (!payload || typeof payload !== 'object' || !('permissions' in payload)) {
+    return null;
+  }
+  const permissions = (payload as { permissions?: unknown }).permissions;
+  if (!Array.isArray(permissions)) {
+    return null;
+  }
+  const actions: string[] = [];
+  for (const permission of permissions) {
+    if (!permission || typeof permission !== 'object' || typeof (permission as { action?: unknown }).action !== 'string') {
+      return null;
+    }
+    actions.push((permission as { action: string }).action);
+  }
+  return [...new Set(actions)].sort((left, right) => left.localeCompare(right));
+};
+
 const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
   const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
 
@@ -173,7 +203,39 @@ const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Pr
     return null;
   }
 
-  return parseRouteGuardUser(await response.json());
+  const user = parseRouteGuardUser(await response.json());
+  if (!user) {
+    return null;
+  }
+  if (!user.instanceId) {
+    return { ...user, permissionActions: [] };
+  }
+
+  const contextResponse = await fetchWithRequestTimeout(
+    new URL('/api/v1/iam/me/context', url).toString(),
+    init,
+    { timeoutMs: 5_000 }
+  );
+  if (!contextResponse.ok) {
+    return { ...user, permissionActions: [], permissionStatus: 'degraded' };
+  }
+  const activeOrganizationId = readActiveOrganizationId(await contextResponse.json());
+  const searchParams = new URLSearchParams({ instanceId: user.instanceId });
+  if (activeOrganizationId) {
+    searchParams.set('organizationId', activeOrganizationId);
+  }
+  const permissionsResponse = await fetchWithRequestTimeout(
+    new URL(`/iam/me/permissions?${searchParams.toString()}`, url).toString(),
+    init,
+    { timeoutMs: 5_000 }
+  );
+  if (!permissionsResponse.ok) {
+    return { ...user, permissionActions: [], permissionStatus: 'degraded' };
+  }
+  const permissionActions = readEffectivePermissionActions(await permissionsResponse.json());
+  return permissionActions
+    ? { ...user, permissionActions }
+    : { ...user, permissionActions: [], permissionStatus: 'degraded' };
 };
 
 const getRouteGuardUser = createIsomorphicFn()

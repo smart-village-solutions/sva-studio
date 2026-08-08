@@ -1,12 +1,14 @@
 export type SessionAccessSnapshot = Readonly<{
   isResolved: boolean;
   permissionActions: readonly string[];
+  assignedModules: readonly string[];
   roles: readonly string[];
 }>;
 
 const emptySnapshot: SessionAccessSnapshot = {
   isResolved: false,
   permissionActions: [],
+  assignedModules: [],
   roles: [],
 };
 
@@ -25,6 +27,7 @@ export const publishSessionAccessSnapshot = (snapshot: SessionAccessSnapshot): v
   if (
     currentSnapshot.isResolved === snapshot.isResolved &&
     arePermissionActionsEqual(currentSnapshot.permissionActions, snapshot.permissionActions) &&
+    arePermissionActionsEqual(currentSnapshot.assignedModules, snapshot.assignedModules) &&
     areRolesEqual(currentSnapshot.roles, snapshot.roles)
   ) {
     return;
@@ -33,6 +36,7 @@ export const publishSessionAccessSnapshot = (snapshot: SessionAccessSnapshot): v
   currentSnapshot = {
     isResolved: snapshot.isResolved,
     permissionActions: [...snapshot.permissionActions],
+    assignedModules: [...snapshot.assignedModules],
     roles: [...snapshot.roles],
   };
 

@@ -99,7 +99,7 @@ const unauthenticatedAuthState = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 type SidebarContentAccessState = {
@@ -174,7 +174,14 @@ const setupSidebarSession = (
   useAuthMock.mockReturnValue(
     input.user ? createAuthenticatedAuthState(input.user) : unauthenticatedAuthState
   );
-  useContentAccessMock.mockReturnValue(input.contentAccess ?? createContentAccessState());
+  const contentAccess = input.contentAccess ?? createContentAccessState();
+  const userPermissionActions = Array.isArray(input.user?.permissionActions)
+    ? input.user.permissionActions.filter((value): value is string => typeof value === 'string')
+    : [];
+  useContentAccessMock.mockReturnValue({
+    ...contentAccess,
+    permissionActions: [...new Set([...userPermissionActions, ...contentAccess.permissionActions])],
+  });
 };
 
 const renderSidebar = (
@@ -251,6 +258,25 @@ it('zeigt den Tenant-Namen unter dem App-Titel und nutzt die Tenant-ID als Fallb
 });
 
 describe('Sidebar', () => {
+  it('gibt während des zentralen Access-Ladens trotz verfügbarer Dev-Auth keine geschützten Links frei', () => {
+    renderSidebar({
+      user: createSidebarUser({
+        instanceId: 'tenant-a',
+        isDevAuthAvailable: true,
+        permissionActions: ['news.read', 'media.read', 'admin.users.manage'],
+      }),
+      contentAccess: createContentAccessState({
+        access: null,
+        permissionActions: [],
+        isLoading: true,
+      }),
+    });
+
+    expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
+  });
+
   it('rendert im Loading-Zustand keine interaktiven Links', () => {
     useAuthMock.mockReturnValue(unauthenticatedAuthState);
 

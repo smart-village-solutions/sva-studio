@@ -33,7 +33,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
   updateProfile: vi.fn(),
 };
 
@@ -82,7 +82,7 @@ describe('useContents', () => {
     logBrowserOperationStartMock.mockReset();
     logBrowserOperationSuccessMock.mockReset();
     logBrowserOperationFailureMock.mockReset();
-    authMockValue.invalidatePermissions.mockReset();
+    authMockValue.refreshSession.mockReset();
   });
 
   afterEach(() => {
@@ -280,7 +280,7 @@ describe('useContents', () => {
       expect(result.current.contents).toEqual([]);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the last successful items when a later refetch times out', async () => {
@@ -366,7 +366,7 @@ describe('useContents', () => {
       expect(result.current.contents[0]?.id).toBe('content-1');
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
   });
 
   it('runs bulk archive and delete actions with safe audit metadata', async () => {
@@ -519,7 +519,7 @@ describe('useContents', () => {
         expect(created).toBe(false);
       });
 
-      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
     }
   );
 
@@ -598,7 +598,7 @@ describe('useContents', () => {
       expect(result.current.error).toBe(protectedError);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -639,7 +639,7 @@ describe('useContents', () => {
       expect(updated).toBe(false);
     });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
     expect(result.current.mutationError).toBe(protectedError);
   });
 
@@ -700,7 +700,7 @@ describe('useContents', () => {
       expect(result.current.error).toBe(genericError);
     });
 
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
 
     getContentMock.mockResolvedValue({
       data: {
@@ -731,6 +731,6 @@ describe('useContents', () => {
     });
 
     expect(result.current.mutationError).toBe(genericError);
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 });

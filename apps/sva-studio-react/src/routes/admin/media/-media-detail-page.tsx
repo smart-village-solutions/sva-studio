@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { useMediaDetail } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 import { MediaDetailImageControlsSection } from './-media-detail-image-controls-section.js';
 import { MediaDetailMetadataSection } from './-media-detail-metadata-section.js';
@@ -33,6 +34,21 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 };
 
 export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
+  const deleteDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.delete'] },
+  });
+  const publicDeliveryDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.read'] },
+  });
+  const protectedDeliveryDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.deliver.protected'] },
+  });
   const mediaApi = useMediaDetail(assetId);
   const navigate = useNavigate();
 
@@ -77,6 +93,12 @@ export const MediaDetailPage = ({ assetId }: MediaDetailPageProps) => {
         delivery={mediaApi.delivery}
         onResolveDelivery={() => void mediaApi.resolveDelivery()}
         onDelete={() => void handleDelete()}
+        canDelete={deleteDecision.status === 'allowed'}
+        canResolveDelivery={
+          mediaApi.asset.visibility === 'protected'
+            ? protectedDeliveryDecision.status === 'allowed'
+            : publicDeliveryDecision.status === 'allowed'
+        }
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,1fr)]">

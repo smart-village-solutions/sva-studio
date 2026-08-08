@@ -3,6 +3,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaCreatePage } from './-media-create-page';
 
+const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
+
+vi.mock('../../../providers/effective-access-provider', () => ({
+  useAccessDecision: (requirement: { actions: { values: readonly string[] } }) =>
+    requirement.actions.values.some((action) => accessState.deniedActions.has(action))
+      ? { status: 'denied', reason: 'permission_missing' }
+      : { status: 'allowed', reason: 'allowed_by_permission' },
+}));
+
 const useCreateMediaUploadMock = vi.fn();
 
 vi.mock('../../../hooks/use-media', () => ({
@@ -13,6 +22,7 @@ describe('MediaCreatePage', () => {
   const initializeUploadMock = vi.fn();
 
   beforeEach(() => {
+    accessState.deniedActions.clear();
     initializeUploadMock.mockReset();
     useCreateMediaUploadMock.mockReset();
     useCreateMediaUploadMock.mockReturnValue({
@@ -48,11 +58,30 @@ describe('MediaCreatePage', () => {
 
     render(<MediaCreatePage />);
 
-    fireEvent.submit(screen.getByRole('button', { name: 'Upload initialisieren' }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen
+        .getByRole('button', { name: 'Upload initialisieren' })
+        .closest('form') as HTMLFormElement
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Nächste Schritte')).toBeTruthy();
       expect(screen.getByText('Asset-ID: asset-1')).toBeTruthy();
     });
+  });
+
+  it('blocks implicit and explicit form submission without media.create', () => {
+    accessState.deniedActions.add('media.create');
+
+    render(<MediaCreatePage />);
+
+    const mimeType = screen.getByLabelText('MIME-Typ');
+    const form = mimeType.closest('form');
+    expect(mimeType.hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Dateigröße in Byte').hasAttribute('disabled')).toBe(true);
+    expect(screen.getByLabelText('Sichtbarkeit').hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Upload initialisieren' })).toBeNull();
+    fireEvent.submit(form as HTMLFormElement);
+    expect(initializeUploadMock).not.toHaveBeenCalled();
   });
 });

@@ -224,6 +224,20 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
+    if (
+      user.permissionStatus === 'degraded' &&
+      (requiredPermissions.length > 0 || requiredAnyPermissions.length > 0)
+    ) {
+      emitAccessDeniedDiagnostic({
+        diagnostics,
+        route: diagnosticsRoute,
+        reason: 'insufficient-permission',
+        fallbackPath,
+        requiredPermissions: [...requiredPermissions, ...requiredAnyPermissions],
+      });
+      throwInsufficientAccessRedirect(fallbackPath, insufficientRoleKey);
+    }
+
     assertAllRequiredPermissions({
       user,
       requiredPermissions,

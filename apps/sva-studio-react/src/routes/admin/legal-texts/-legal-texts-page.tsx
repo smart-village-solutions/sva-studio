@@ -12,8 +12,13 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { t, type TranslationKey } from '../../../i18n';
-import { formatLegalTextDateTime, getLegalTextErrorMessage, type LegalTextStatus } from './-legal-texts-shared';
+import {
+  formatLegalTextDateTime,
+  getLegalTextErrorMessage,
+  type LegalTextStatus,
+} from './-legal-texts-shared';
 
 type StatusFilter = 'all' | 'draft' | 'valid' | 'archived';
 
@@ -94,6 +99,8 @@ const summarizeTargets = (input: {
 
 export const LegalTextsPage = () => {
   const legalTextsApi = useLegalTexts();
+  const access = useIamResourceAccess('legalText');
+  const canCreateLegalTexts = isIamAccessAllowed(access.create);
   const [search, setSearch] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>('all');
 
@@ -117,26 +124,27 @@ export const LegalTextsPage = () => {
     const total = legalTextsApi.legalTexts.length;
     const valid = legalTextsApi.legalTexts.filter((item) => item.status === 'valid').length;
     const locales = new Set(legalTextsApi.legalTexts.map((item) => item.locale)).size;
-    const acceptances = legalTextsApi.legalTexts.reduce((sum, item) => sum + item.activeAcceptanceCount, 0);
+    const acceptances = legalTextsApi.legalTexts.reduce(
+      (sum, item) => sum + item.activeAcceptanceCount,
+      0
+    );
     return { total, valid, locales, acceptances };
   }, [legalTextsApi.legalTexts]);
 
   return (
     <section className="space-y-5" aria-busy={legalTextsApi.isLoading}>
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-foreground">{t('admin.legalTexts.page.title')}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.legalTexts.page.subtitle')}</p>
+        <h1 className="text-3xl font-semibold text-foreground">
+          {t('admin.legalTexts.page.title')}
+        </h1>
+        <p className="max-w-3xl text-sm text-muted-foreground">
+          {t('admin.legalTexts.page.subtitle')}
+        </p>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StudioSummaryCard
-          eyebrow={t('admin.legalTexts.metrics.total')}
-          value={metrics.total}
-        />
-        <StudioSummaryCard
-          eyebrow={t('admin.legalTexts.metrics.valid')}
-          value={metrics.valid}
-        />
+        <StudioSummaryCard eyebrow={t('admin.legalTexts.metrics.total')} value={metrics.total} />
+        <StudioSummaryCard eyebrow={t('admin.legalTexts.metrics.valid')} value={metrics.valid} />
         <StudioSummaryCard
           eyebrow={t('admin.legalTexts.metrics.locales')}
           value={metrics.locales}
@@ -170,11 +178,13 @@ export const LegalTextsPage = () => {
             <option value="archived">{t('admin.legalTexts.filters.statusArchived')}</option>
           </Select>
         </div>
-        <div className="flex items-end justify-end">
-          <Button asChild type="button">
-            <Link to="/admin/legal-texts/new">{t('admin.legalTexts.actions.create')}</Link>
-          </Button>
-        </div>
+        {canCreateLegalTexts ? (
+          <div className="flex items-end justify-end">
+            <Button asChild type="button">
+              <Link to="/admin/legal-texts/new">{t('admin.legalTexts.actions.create')}</Link>
+            </Button>
+          </div>
+        ) : null}
       </StudioFilterSurface>
 
       {legalTextsApi.error ? (
@@ -182,7 +192,12 @@ export const LegalTextsPage = () => {
           <AlertDescription className="flex flex-col gap-3">
             <span>{getLegalTextErrorMessage(legalTextsApi.error)}</span>
             <div>
-              <Button type="button" size="sm" variant="outline" onClick={() => void legalTextsApi.refetch()}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void legalTextsApi.refetch()}
+              >
                 {t('admin.legalTexts.actions.retry')}
               </Button>
             </div>
@@ -192,33 +207,68 @@ export const LegalTextsPage = () => {
 
       {filteredLegalTexts.length === 0 ? (
         <Card className="space-y-3 p-6">
-          <h2 className="text-xl font-semibold text-foreground">{t('admin.legalTexts.empty.title')}</h2>
-          <p className="max-w-2xl text-sm text-muted-foreground">{t('admin.legalTexts.empty.body')}</p>
-          <div>
-            <Button asChild type="button">
-              <Link to="/admin/legal-texts/new">{t('admin.legalTexts.actions.create')}</Link>
-            </Button>
-          </div>
+          <h2 className="text-xl font-semibold text-foreground">
+            {t('admin.legalTexts.empty.title')}
+          </h2>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            {t('admin.legalTexts.empty.body')}
+          </p>
+          {canCreateLegalTexts ? (
+            <div>
+              <Button asChild type="button">
+                <Link to="/admin/legal-texts/new">{t('admin.legalTexts.actions.create')}</Link>
+              </Button>
+            </div>
+          ) : null}
         </Card>
       ) : (
         <StudioTableSurface>
-          <table className="min-w-full border-collapse" aria-label={t('admin.legalTexts.table.ariaLabel')}>
+          <table
+            className="min-w-full border-collapse"
+            aria-label={t('admin.legalTexts.table.ariaLabel')}
+          >
             <caption className="sr-only">{t('admin.legalTexts.table.caption')}</caption>
             <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerUuid')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerName')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerVersion')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerLocale')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerStatus')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerTargets')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerContent')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerPublished')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerCreated')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerUpdated')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerAcceptances')}</th>
-                <th scope="col" className="px-3 py-3">{t('admin.legalTexts.table.headerLastAccepted')}</th>
-                <th scope="col" className="px-3 py-3 text-right">{t('admin.legalTexts.table.headerActions')}</th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerUuid')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerName')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerVersion')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerLocale')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerStatus')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerTargets')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerContent')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerPublished')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerCreated')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerUpdated')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerAcceptances')}
+                </th>
+                <th scope="col" className="px-3 py-3">
+                  {t('admin.legalTexts.table.headerLastAccepted')}
+                </th>
+                <th scope="col" className="px-3 py-3 text-right">
+                  {t('admin.legalTexts.table.headerActions')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -231,21 +281,36 @@ export const LegalTextsPage = () => {
                   <td className="px-3 py-3">
                     <Badge variant="outline">{t(statusLabelKeyByValue[item.status])}</Badge>
                   </td>
-                  <td className="px-3 py-3 text-sm text-foreground">{summarizeTargets(item.targets ?? {})}</td>
-                  <td className="max-w-xs px-3 py-3 text-sm text-foreground">{summarizeHtml(item.contentHtml)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.publishedAt)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.createdAt)}</td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.updatedAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">
+                    {summarizeTargets(item.targets ?? {})}
+                  </td>
+                  <td className="max-w-xs px-3 py-3 text-sm text-foreground">
+                    {summarizeHtml(item.contentHtml)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-foreground">
+                    {formatLegalTextDateTime(item.publishedAt)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-foreground">
+                    {formatLegalTextDateTime(item.createdAt)}
+                  </td>
+                  <td className="px-3 py-3 text-sm text-foreground">
+                    {formatLegalTextDateTime(item.updatedAt)}
+                  </td>
                   <td className="px-3 py-3 text-sm text-foreground">
                     {t('admin.legalTexts.table.acceptanceSummary', {
                       active: String(item.activeAcceptanceCount),
                       total: String(item.acceptanceCount),
                     })}
                   </td>
-                  <td className="px-3 py-3 text-sm text-foreground">{formatLegalTextDateTime(item.lastAcceptedAt)}</td>
+                  <td className="px-3 py-3 text-sm text-foreground">
+                    {formatLegalTextDateTime(item.lastAcceptedAt)}
+                  </td>
                   <td className="px-3 py-3 text-right">
                     <Button asChild type="button" variant="outline" size="sm">
-                      <Link to="/admin/legal-texts/$legalTextVersionId" params={{ legalTextVersionId: item.id }}>
+                      <Link
+                        to="/admin/legal-texts/$legalTextVersionId"
+                        params={{ legalTextVersionId: item.id }}
+                      >
                         {t('admin.legalTexts.actions.edit')}
                       </Link>
                     </Button>

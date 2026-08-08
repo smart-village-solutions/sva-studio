@@ -163,6 +163,11 @@ export const pluginWasteManagement: PluginDefinition = {
       id: 'waste-management.home',
       path: '/plugins/waste-management',
       guard: 'waste-management.read',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: { mode: 'allOf', values: ['waste-management.read'] },
+      },
       validateSearch: (search: Record<string, unknown>) => normalizeWasteManagementSearchParams(search),
       component: WasteManagementPage as never,
     },
@@ -174,6 +179,11 @@ export const pluginWasteManagement: PluginDefinition = {
       titleKey: 'wasteManagement.navigation.title',
       section: 'dataManagement',
       requiredAction: 'waste-management.read',
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: 'waste-management',
+        actions: { mode: 'allOf', values: ['waste-management.read'] },
+      },
     },
   ],
   permissions: wasteManagementPermissionDefinitions,

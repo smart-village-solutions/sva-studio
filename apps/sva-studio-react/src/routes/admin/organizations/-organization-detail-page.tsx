@@ -10,9 +10,13 @@ import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
-import { filterSearchableSelectOptions, SearchableSelect } from '../../../components/ui/searchable-select';
+import {
+  filterSearchableSelectOptions,
+  SearchableSelect,
+} from '../../../components/ui/searchable-select';
 import { Select } from '../../../components/ui/select';
 import { useOrganizations } from '../../../hooks/use-organizations';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { t } from '../../../i18n';
 import { asIamError, listOrganizations, listUsers, type IamHttpError } from '../../../lib/iam-api';
 import {
@@ -32,7 +36,9 @@ const MEMBERSHIP_USER_PAGE_SIZE = 100;
 const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 
 const formatMembershipUserLabel = (user: IamUserListItem) =>
-  user.email ? `${user.displayName} <${user.email}>` : `${user.displayName} <${user.keycloakSubject}>`;
+  user.email
+    ? `${user.displayName} <${user.email}>`
+    : `${user.displayName} <${user.keycloakSubject}>`;
 
 const membershipUserKeywords = (user: IamUserListItem) => [
   user.displayName,
@@ -42,7 +48,9 @@ const membershipUserKeywords = (user: IamUserListItem) => [
   user.department ?? '',
 ];
 
-export const sortMembershipUsersByLabel = (users: readonly IamUserListItem[]): readonly IamUserListItem[] =>
+export const sortMembershipUsersByLabel = (
+  users: readonly IamUserListItem[]
+): readonly IamUserListItem[] =>
   users
     .map((user) => ({
       user,
@@ -75,7 +83,9 @@ const DEFAULT_MEMBERSHIP_FORM: MembershipAssignmentForm = {
 };
 
 const buildMembershipDrafts = (
-  memberships: NonNullable<ReturnType<typeof useOrganizations>['selectedOrganization']>['memberships']
+  memberships: NonNullable<
+    ReturnType<typeof useOrganizations>['selectedOrganization']
+  >['memberships']
 ): Record<string, OrganizationMembershipDraft> =>
   Object.fromEntries(
     memberships.map((membership) => [
@@ -89,19 +99,25 @@ const buildMembershipDrafts = (
 
 export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPageProps) => {
   const organizationsApi = useOrganizations();
+  const access = useIamResourceAccess('organization');
+  const canUpdateOrganization = isIamAccessAllowed(access.update);
+  const canDeleteOrganization = isIamAccessAllowed(access.delete);
   const { loadOrganization } = organizationsApi;
-  const [membershipForm, setMembershipForm] = React.useState<MembershipAssignmentForm>(DEFAULT_MEMBERSHIP_FORM);
+  const [membershipForm, setMembershipForm] =
+    React.useState<MembershipAssignmentForm>(DEFAULT_MEMBERSHIP_FORM);
   const [membershipSearch, setMembershipSearch] = React.useState('');
   const [debouncedMembershipSearch, setDebouncedMembershipSearch] = React.useState('');
   const [membershipUsers, setMembershipUsers] = React.useState<readonly IamUserListItem[]>([]);
   const [membershipUsersLoading, setMembershipUsersLoading] = React.useState(true);
   const [membershipUsersError, setMembershipUsersError] = React.useState<IamHttpError | null>(null);
-  const [membershipDrafts, setMembershipDrafts] = React.useState<Record<string, OrganizationMembershipDraft>>({});
+  const [membershipDrafts, setMembershipDrafts] = React.useState<
+    Record<string, OrganizationMembershipDraft>
+  >({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
-  const [parentOrganizations, setParentOrganizations] = React.useState<readonly OrganizationParentOption[]>(
-    () => organizationsApi.organizations
-  );
+  const [parentOrganizations, setParentOrganizations] = React.useState<
+    readonly OrganizationParentOption[]
+  >(() => organizationsApi.organizations);
 
   React.useEffect(() => {
     void loadOrganization(organizationId);
@@ -119,7 +135,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
     const loadParentOrganizations = async () => {
       try {
-        const organizations = await loadAllOrganizationParentOptions((query) => listOrganizations(query));
+        const organizations = await loadAllOrganizationParentOptions((query) =>
+          listOrganizations(query)
+        );
         if (!active) {
           return;
         }
@@ -156,7 +174,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   }, [organizationId]);
 
   const selectedOrganization =
-    organizationsApi.selectedOrganization?.id === organizationId ? organizationsApi.selectedOrganization : null;
+    organizationsApi.selectedOrganization?.id === organizationId
+      ? organizationsApi.selectedOrganization
+      : null;
 
   React.useEffect(() => {
     const timeoutId = globalThis.setTimeout(() => {
@@ -172,6 +192,12 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     let active = true;
 
     const loadMembershipUsers = async () => {
+      if (!canUpdateOrganization) {
+        setMembershipUsers([]);
+        setMembershipUsersLoading(false);
+        setMembershipUsersError(null);
+        return;
+      }
       setMembershipUsersLoading(true);
       setMembershipUsersError(null);
 
@@ -206,10 +232,11 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     return () => {
       active = false;
     };
-  }, [debouncedMembershipSearch]);
+  }, [canUpdateOrganization, debouncedMembershipSearch]);
 
   const assignedMembershipAccountIds = React.useMemo(
-    () => new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),
+    () =>
+      new Set(selectedOrganization?.memberships.map((membership) => membership.accountId) ?? []),
     [selectedOrganization?.memberships]
   );
   const availableMembershipUsers = React.useMemo(
@@ -237,7 +264,11 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       return {
         value: selectedMembershipUser.id,
         label: formatMembershipUserLabel(selectedMembershipUser),
-        keywords: [selectedMembershipUser.displayName, selectedMembershipUser.email ?? '', selectedMembershipUser.keycloakSubject],
+        keywords: [
+          selectedMembershipUser.displayName,
+          selectedMembershipUser.email ?? '',
+          selectedMembershipUser.keycloakSubject,
+        ],
       };
     }
 
@@ -254,12 +285,18 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
   const onSubmitOrganization = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    await organizationsApi.updateOrganization(organizationId, toOrganizationMutationPayload(formValues));
+    if (!canUpdateOrganization) {
+      return;
+    }
+    await organizationsApi.updateOrganization(
+      organizationId,
+      toOrganizationMutationPayload(formValues)
+    );
   };
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!membershipForm.accountId) {
+    if (!canUpdateOrganization || !membershipForm.accountId) {
       return;
     }
 
@@ -277,6 +314,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   };
 
   const onConfirmDelete = async () => {
+    if (!canDeleteOrganization) {
+      return;
+    }
     const success = await organizationsApi.deleteOrganization(organizationId);
     if (success) {
       setDeleteConfirmOpen(false);
@@ -298,6 +338,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
   const saveMembership = React.useCallback(
     async (accountId: string) => {
+      if (!canUpdateOrganization) {
+        return;
+      }
       const draft = membershipDrafts[accountId];
       if (!draft) {
         return;
@@ -305,7 +348,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
       await organizationsApi.updateMembership(organizationId, accountId, draft);
     },
-    [membershipDrafts, organizationId, organizationsApi]
+    [canUpdateOrganization, membershipDrafts, organizationId, organizationsApi]
   );
 
   if (organizationsApi.error) {
@@ -333,7 +376,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         title={selectedOrganization?.displayName ?? t('admin.organizations.editDialog.title')}
         description={t('admin.organizations.editDialog.description')}
         actions={
-          selectedOrganization ? (
+          selectedOrganization && canDeleteOrganization ? (
             <Button
               type="button"
               variant="destructive"
@@ -346,7 +389,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         }
       >
         {!selectedOrganization && !organizationsApi.detailLoading ? (
-          <Card className="p-6 text-sm text-muted-foreground">{t('admin.organizations.detail.notFound')}</Card>
+          <Card className="p-6 text-sm text-muted-foreground">
+            {t('admin.organizations.detail.notFound')}
+          </Card>
         ) : null}
 
         {selectedOrganization ? (
@@ -390,7 +435,8 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                     {t('admin.organizations.table.headerParent')}
                   </p>
                   <p className="text-sm text-foreground">
-                    {selectedOrganization.parentDisplayName ?? t('admin.organizations.messages.root')}
+                    {selectedOrganization.parentDisplayName ??
+                      t('admin.organizations.messages.root')}
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -407,15 +453,22 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 </div>
                 <div className="space-y-1 xl:col-span-2">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.messages.hierarchyPath', { value: '' }).replace(': ', '')}
+                    {t('admin.organizations.messages.hierarchyPath', { value: '' }).replace(
+                      ': ',
+                      ''
+                    )}
                   </p>
                   <p className="text-sm text-foreground">
-                    {(selectedOrganization.hierarchyPath ?? []).join(' > ') || t('admin.organizations.messages.root')}
+                    {(selectedOrganization.hierarchyPath ?? []).join(' > ') ||
+                      t('admin.organizations.messages.root')}
                   </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.messages.metadataCount', { value: '' }).replace(': ', '')}
+                    {t('admin.organizations.messages.metadataCount', { value: '' }).replace(
+                      ': ',
+                      ''
+                    )}
                   </p>
                   <p className="text-sm text-foreground">
                     {Object.keys(selectedOrganization.metadata ?? {}).length}
@@ -440,6 +493,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 setFormValues={setFormValues}
                 submitLabel={t('admin.organizations.actions.save')}
                 formValues={formValues}
+                readOnly={!canUpdateOrganization}
               />
             </Card>
 
@@ -461,86 +515,112 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 </p>
               </Card>
 
-              <form className="grid gap-3" onSubmit={(event) => void onAssignMembership(event)}>
-                <div className="grid gap-1 text-sm text-foreground">
-                  <SearchableSelect
-                    id="membership-account"
-                    label={t('admin.organizations.membershipsDialog.accountLabel')}
-                    value={membershipForm.accountId}
-                    placeholder={t('admin.organizations.membershipsDialog.accountPlaceholder')}
-                    searchPlaceholder={t('admin.organizations.membershipsDialog.searchPlaceholder')}
-                    emptyText={t('admin.organizations.membershipsDialog.emptySelection')}
-                    options={availableMembershipUsers.map((user) => ({
-                      value: user.id,
-                      label: formatMembershipUserLabel(user),
-                      keywords: membershipUserKeywords(user),
-                    }))}
-                    selectedOption={selectedMembershipUserOption}
-                    searchValue={membershipSearch}
-                    onSearchValueChange={setMembershipSearch}
-                    onValueChange={(accountId) =>
-                      setMembershipForm((current) => {
-                        const selectedUser = availableMembershipUsers.find((user) => user.id === accountId);
-                        return {
-                          ...current,
-                          accountId,
-                          accountLabel: selectedUser ? formatMembershipUserLabel(selectedUser) : current.accountLabel,
-                        };
-                      })
-                    }
-                    disabled={membershipUsersLoading}
-                  />
-                  {membershipUsersLoading ? (
-                    <p className="text-xs text-muted-foreground">{t('admin.organizations.membershipsDialog.loading')}</p>
-                  ) : null}
-                  {membershipUsersError ? (
-                    <p className="text-xs text-destructive">{organizationErrorMessage(membershipUsersError)}</p>
-                  ) : null}
-                  {!membershipUsersLoading && !membershipUsersError ? (
-                    <p className="text-xs text-muted-foreground">
-                      {visibleMembershipUsers.length > 0
-                        ? t('admin.organizations.membershipsDialog.availableCount', {
-                            count: String(visibleMembershipUsers.length),
-                          })
-                        : t('admin.organizations.membershipsDialog.emptySelection')}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
+              <form
+                className="grid gap-3"
+                aria-readonly={!canUpdateOrganization}
+                onSubmit={(event) => void onAssignMembership(event)}
+              >
+                <fieldset className="contents" disabled={!canUpdateOrganization}>
                   <div className="grid gap-1 text-sm text-foreground">
-                    <Label htmlFor="membership-visibility">
-                      {t('admin.organizations.membershipsDialog.visibilityLabel')}
-                    </Label>
-                    <Select
-                      id="membership-visibility"
-                      value={membershipForm.visibility}
-                      onChange={(event) =>
-                        setMembershipForm((current) => ({
-                          ...current,
-                          visibility: event.target.value as 'internal' | 'external',
-                        }))
+                    <SearchableSelect
+                      id="membership-account"
+                      label={t('admin.organizations.membershipsDialog.accountLabel')}
+                      value={membershipForm.accountId}
+                      placeholder={t('admin.organizations.membershipsDialog.accountPlaceholder')}
+                      searchPlaceholder={t(
+                        'admin.organizations.membershipsDialog.searchPlaceholder'
+                      )}
+                      emptyText={t('admin.organizations.membershipsDialog.emptySelection')}
+                      options={availableMembershipUsers.map((user) => ({
+                        value: user.id,
+                        label: formatMembershipUserLabel(user),
+                        keywords: membershipUserKeywords(user),
+                      }))}
+                      selectedOption={selectedMembershipUserOption}
+                      searchValue={membershipSearch}
+                      onSearchValueChange={setMembershipSearch}
+                      onValueChange={(accountId) =>
+                        setMembershipForm((current) => {
+                          const selectedUser = availableMembershipUsers.find(
+                            (user) => user.id === accountId
+                          );
+                          return {
+                            ...current,
+                            accountId,
+                            accountLabel: selectedUser
+                              ? formatMembershipUserLabel(selectedUser)
+                              : current.accountLabel,
+                          };
+                        })
                       }
-                    >
-                      <option value="internal">{t('admin.organizations.membershipsDialog.visibilityInternal')}</option>
-                      <option value="external">{t('admin.organizations.membershipsDialog.visibilityExternal')}</option>
-                    </Select>
-                  </div>
-                  <Label htmlFor="membership-default" className="flex items-center gap-2 text-sm text-foreground">
-                    <Checkbox
-                      id="membership-default"
-                      checked={membershipForm.isDefaultContext}
-                      onChange={(event) =>
-                        setMembershipForm((current) => ({ ...current, isDefaultContext: event.target.checked }))
-                      }
+                      disabled={membershipUsersLoading}
                     />
-                    <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
-                  </Label>
-                </div>
-                <div className="flex justify-end">
-                  <Button type="submit" disabled={!membershipForm.accountId}>
-                    {t('admin.organizations.actions.assignMembership')}
-                  </Button>
-                </div>
+                    {membershipUsersLoading ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t('admin.organizations.membershipsDialog.loading')}
+                      </p>
+                    ) : null}
+                    {membershipUsersError ? (
+                      <p className="text-xs text-destructive">
+                        {organizationErrorMessage(membershipUsersError)}
+                      </p>
+                    ) : null}
+                    {!membershipUsersLoading && !membershipUsersError ? (
+                      <p className="text-xs text-muted-foreground">
+                        {visibleMembershipUsers.length > 0
+                          ? t('admin.organizations.membershipsDialog.availableCount', {
+                              count: String(visibleMembershipUsers.length),
+                            })
+                          : t('admin.organizations.membershipsDialog.emptySelection')}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-1 text-sm text-foreground">
+                      <Label htmlFor="membership-visibility">
+                        {t('admin.organizations.membershipsDialog.visibilityLabel')}
+                      </Label>
+                      <Select
+                        id="membership-visibility"
+                        value={membershipForm.visibility}
+                        onChange={(event) =>
+                          setMembershipForm((current) => ({
+                            ...current,
+                            visibility: event.target.value as 'internal' | 'external',
+                          }))
+                        }
+                      >
+                        <option value="internal">
+                          {t('admin.organizations.membershipsDialog.visibilityInternal')}
+                        </option>
+                        <option value="external">
+                          {t('admin.organizations.membershipsDialog.visibilityExternal')}
+                        </option>
+                      </Select>
+                    </div>
+                    <Label
+                      htmlFor="membership-default"
+                      className="flex items-center gap-2 text-sm text-foreground"
+                    >
+                      <Checkbox
+                        id="membership-default"
+                        checked={membershipForm.isDefaultContext}
+                        onChange={(event) =>
+                          setMembershipForm((current) => ({
+                            ...current,
+                            isDefaultContext: event.target.checked,
+                          }))
+                        }
+                      />
+                      <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
+                    </Label>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button type="submit" disabled={!membershipForm.accountId}>
+                      {t('admin.organizations.actions.assignMembership')}
+                    </Button>
+                  </div>
+                </fieldset>
               </form>
 
               <div className="space-y-3">
@@ -560,7 +640,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                             {membership.email ?? membership.keycloakSubject}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {t('admin.organizations.membershipsDialog.createdAt', { value: membership.createdAt })}
+                            {t('admin.organizations.membershipsDialog.createdAt', {
+                              value: membership.createdAt,
+                            })}
                           </p>
                         </div>
                         <div className="mt-3 grid gap-4 md:grid-cols-[minmax(0,12rem)_auto_auto] md:items-end">
@@ -570,7 +652,11 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                             </Label>
                             <Select
                               id={`membership-visibility-${membership.accountId}`}
-                              value={membershipDrafts[membership.accountId]?.visibility ?? membership.visibility}
+                              disabled={!canUpdateOrganization}
+                              value={
+                                membershipDrafts[membership.accountId]?.visibility ??
+                                membership.visibility
+                              }
                               onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
                                 updateMembershipDraft(membership.accountId, {
                                   visibility: event.target.value as 'internal' | 'external',
@@ -591,6 +677,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                           >
                             <Checkbox
                               id={`membership-default-${membership.accountId}`}
+                              disabled={!canUpdateOrganization}
                               checked={
                                 membershipDrafts[membership.accountId]?.isDefaultContext ??
                                 membership.isDefaultContext
@@ -612,32 +699,44 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                                 {t('admin.organizations.membershipsDialog.defaultBadge')}
                               </Badge>
                             ) : null}
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              aria-label={t('admin.organizations.membershipsDialog.saveMembershipLabel', {
-                                name: membership.displayName,
-                              })}
-                              onClick={() => void saveMembership(membership.accountId)}
-                            >
-                              {t('admin.organizations.actions.save')}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => void organizationsApi.removeMembership(organizationId, membership.accountId)}
-                            >
-                              {t('admin.organizations.actions.removeMembership')}
-                            </Button>
+                            {canUpdateOrganization ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  aria-label={t(
+                                    'admin.organizations.membershipsDialog.saveMembershipLabel',
+                                    { name: membership.displayName }
+                                  )}
+                                  onClick={() => void saveMembership(membership.accountId)}
+                                >
+                                  {t('admin.organizations.actions.save')}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="destructive"
+                                  onClick={() =>
+                                    void organizationsApi.removeMembership(
+                                      organizationId,
+                                      membership.accountId
+                                    )
+                                  }
+                                >
+                                  {t('admin.organizations.actions.removeMembership')}
+                                </Button>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-muted-foreground">{t('admin.organizations.membershipsDialog.empty')}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {t('admin.organizations.membershipsDialog.empty')}
+                  </p>
                 )}
               </div>
             </Card>
@@ -646,13 +745,15 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
 
         {organizationsApi.mutationError && selectedOrganization ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
+            <AlertDescription>
+              {organizationErrorMessage(organizationsApi.mutationError)}
+            </AlertDescription>
           </Alert>
         ) : null}
       </StudioDetailPageTemplate>
 
       <ConfirmDialog
-        open={deleteConfirmOpen}
+        open={canDeleteOrganization && deleteConfirmOpen}
         title={t('admin.organizations.confirm.deleteTitle')}
         description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}

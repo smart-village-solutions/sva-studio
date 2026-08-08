@@ -19,6 +19,8 @@ import NotFound from '../components/NotFound';
 import { resolveBreadcrumbItems } from '../lib/breadcrumbs';
 import { createThemeBootstrapScript } from '../lib/theme';
 import { AuthProvider } from '../providers/auth-provider';
+import { EffectiveAccessProvider } from '../providers/effective-access-provider';
+import { OrganizationContextProvider } from '../hooks/use-organization-context';
 import { LocaleProvider } from '../providers/locale-provider';
 import { ThemeProvider } from '../providers/theme-provider';
 import { t } from '../i18n';
@@ -134,7 +136,9 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
         suppressHydrationWarning
       >
         <AuthProvider>
-          <LocaleProvider>
+          <OrganizationContextProvider>
+            <EffectiveAccessProvider>
+              <LocaleProvider>
             <a
               href="#main-content"
               onClick={() => {
@@ -157,7 +161,9 @@ export function RootDocument({ children }: Readonly<{ children: React.ReactNode 
                 {children}
               </AppShell>
             </ThemeProvider>
-          </LocaleProvider>
+              </LocaleProvider>
+            </EffectiveAccessProvider>
+          </OrganizationContextProvider>
         </AuthProvider>
         {tanstackDevtoolsEnabled ? (
           <TanStackDevtools

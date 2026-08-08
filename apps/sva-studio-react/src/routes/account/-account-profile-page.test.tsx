@@ -69,7 +69,7 @@ const authMockValue = {
   hasResolvedSession: true,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../../lib/iam-api', () => ({

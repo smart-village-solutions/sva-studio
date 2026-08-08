@@ -228,15 +228,15 @@ describe('router runtime helpers', () => {
     });
   });
 
-  it('enables mock auth from explicit env flags and runtime profile helpers', async () => {
+  it('requires an active dev session and otherwise uses only explicit mock runtime profiles', async () => {
     const { isMockAuthEnabled } = await import('./router');
 
     vi.stubEnv('VITE_SVA_DEV_AUTH', 'true');
-    expect(await isMockAuthEnabled()).toBe(true);
+    expect(await isMockAuthEnabled()).toBe(false);
 
     vi.stubEnv('VITE_SVA_DEV_AUTH', 'false');
     vi.stubEnv('VITE_MOCK_AUTH', 'true');
-    expect(await isMockAuthEnabled()).toBe(true);
+    expect(await isMockAuthEnabled()).toBe(false);
 
     vi.stubEnv('VITE_MOCK_AUTH', 'false');
     vi.stubEnv('VITE_SVA_RUNTIME_PROFILE', 'mock-profile');
@@ -381,16 +381,34 @@ describe('router runtime helpers', () => {
     const getUser = readRouteGuardGetUser(router);
 
     routerMocks.executionMode.current = 'server';
-    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ user: { roles: ['app_manager', 'editor'], permissionActions: ['news.read'], assignedModules: ['media'] } }),
-        {
+    routerMocks.fetchWithRequestTimeoutSpy
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: {
+              instanceId: 'instance-1',
+              roles: ['app_manager', 'editor'],
+              permissionActions: ['legacy.must-not-authorize'],
+              assignedModules: ['media'],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { activeOrganizationId: 'org-1' } }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
-        }
+        })
       )
-    );
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ instanceId: 'instance-1', permissions: [{ action: 'news.read' }] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      );
     expect(await getUser()).toEqual({
+      instanceId: 'instance-1',
       roles: ['app_manager', 'editor'],
       permissionActions: ['news.read'],
       permissionStatus: 'ok',

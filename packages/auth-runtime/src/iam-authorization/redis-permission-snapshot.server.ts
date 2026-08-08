@@ -7,14 +7,16 @@ import { getRedisClient } from '../redis.js';
 const logger = createSdkLogger({ component: 'iam-permission-cache', level: 'info' });
 
 const SNAPSHOT_TTL_SECONDS = 900;
-const SNAPSHOT_KEY_PREFIX = 'perm:v1';
-const SNAPSHOT_SCHEMA_VERSION = 1;
+const SNAPSHOT_KEY_PREFIX = 'perm:v2';
+const SNAPSHOT_SCHEMA_VERSION = 2;
 
 export type PermSnapshotKey = {
   instanceId: string;
   userId: string;
   organizationId?: string;
   geoCtxHash?: string;
+  instanceRevision: number;
+  userRevision: number;
 };
 
 type StoredSnapshot = {
@@ -23,6 +25,14 @@ type StoredSnapshot = {
   readonly schema_version: number;
   readonly signed_at: string;
   readonly hmac: string;
+  readonly binding: Readonly<{
+    instanceId: string;
+    userId: string;
+    organizationHash: string;
+    geoContextHash: string;
+    instanceRevision: number;
+    userRevision: number;
+  }>;
   readonly createdAt?: string;
 };
 
@@ -42,15 +52,26 @@ const computeCtxHash = (value: string | undefined): string => {
 const buildRedisKey = (key: PermSnapshotKey): string => {
   const orgHash = computeCtxHash(key.organizationId);
   const geoHash = key.geoCtxHash ?? 'none';
-  return `${SNAPSHOT_KEY_PREFIX}:${key.instanceId}:${key.userId}:${orgHash}:${geoHash}`;
+  return `${SNAPSHOT_KEY_PREFIX}:${key.instanceId}:${key.userId}:${orgHash}:${geoHash}:ir${key.instanceRevision}:ur${key.userRevision}`;
 };
+
+const buildBinding = (key: PermSnapshotKey): StoredSnapshot['binding'] => ({
+  instanceId: key.instanceId,
+  userId: key.userId,
+  organizationHash: computeCtxHash(key.organizationId),
+  geoContextHash: key.geoCtxHash ?? 'none',
+  instanceRevision: key.instanceRevision,
+  userRevision: key.userRevision,
+});
 
 const computeHmac = (data: string): string => {
   const secret = process.env.REDIS_SNAPSHOT_HMAC_SECRET ?? 'dev-hmac-secret-change-in-prod';
   return createHmac('sha256', secret).update(data).digest('hex');
 };
 
-const serializeSignedPayload = (stored: Pick<StoredSnapshot, 'permissions' | 'version' | 'schema_version' | 'signed_at'>) =>
+const serializeSignedPayload = (
+  stored: Pick<StoredSnapshot, 'permissions' | 'version' | 'schema_version' | 'signed_at' | 'binding'>
+) =>
   JSON.stringify(stored);
 
 export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<RedisSnapshotResult> => {
@@ -65,7 +86,7 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
 
     const stored: StoredSnapshot = JSON.parse(raw);
     const signedAt = stored.signed_at ?? stored.createdAt;
-    if (!signedAt || typeof stored.schema_version !== 'number') {
+    if (!signedAt || stored.schema_version !== SNAPSHOT_SCHEMA_VERSION || !stored.binding) {
       logger.warn('Redis permission snapshot metadata missing — evicting key', {
         operation: 'snapshot_get',
         key: redisKey,
@@ -82,10 +103,14 @@ export const getRedisPermissionSnapshot = async (key: PermSnapshotKey): Promise<
         version: stored.version,
         schema_version: stored.schema_version,
         signed_at: signedAt,
+        binding: stored.binding,
       })
     );
 
-    if (stored.hmac !== expectedHmac) {
+    if (
+      stored.hmac !== expectedHmac ||
+      JSON.stringify(stored.binding) !== JSON.stringify(buildBinding(key))
+    ) {
       logger.warn('Redis permission snapshot HMAC mismatch — evicting key', {
         operation: 'snapshot_get',
         key: redisKey,
@@ -115,6 +140,7 @@ export const setRedisPermissionSnapshot = async (
     const redisKey = buildRedisKey(key);
     const version = createHash('sha256').update(JSON.stringify(permissions)).digest('hex').slice(0, 16);
     const signedAt = new Date().toISOString();
+    const binding = buildBinding(key);
 
     const hmac = computeHmac(
       serializeSignedPayload({
@@ -122,6 +148,7 @@ export const setRedisPermissionSnapshot = async (
         version,
         schema_version: SNAPSHOT_SCHEMA_VERSION,
         signed_at: signedAt,
+        binding,
       })
     );
 
@@ -130,6 +157,7 @@ export const setRedisPermissionSnapshot = async (
       version,
       schema_version: SNAPSHOT_SCHEMA_VERSION,
       signed_at: signedAt,
+      binding,
       hmac,
     };
     await redis.setex(redisKey, SNAPSHOT_TTL_SECONDS, JSON.stringify(stored));

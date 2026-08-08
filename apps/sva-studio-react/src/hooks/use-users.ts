@@ -1,4 +1,9 @@
-import type { IamCreateUserResult, IamUserDetail, IamUserImportSyncReport, IamUserListItem } from '@sva/core';
+import type {
+  IamCreateUserResult,
+  IamUserDetail,
+  IamUserImportSyncReport,
+  IamUserListItem,
+} from '@sva/core';
 import React from 'react';
 
 import {
@@ -24,6 +29,7 @@ import {
 } from '../lib/browser-operation-logging';
 import { subscribeIamUsersUpdated } from '../lib/iam-user-events';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 type UserFilters = {
   readonly page: number;
@@ -48,7 +54,10 @@ type UseUsersResult = {
   readonly setPage: (value: number) => void;
   readonly refetch: () => Promise<void>;
   readonly createUser: (payload: CreateUserPayload) => Promise<IamCreateUserResult | null>;
-  readonly updateUser: (userId: string, payload: UpdateUserPayload) => Promise<IamUserDetail | null>;
+  readonly updateUser: (
+    userId: string,
+    payload: UpdateUserPayload
+  ) => Promise<IamUserDetail | null>;
   readonly deactivateUser: (userId: string) => Promise<boolean>;
   readonly deleteUser: (userId: string) => Promise<boolean>;
   readonly bulkDeactivate: (userIds: readonly string[]) => Promise<boolean>;
@@ -72,7 +81,7 @@ const DEFAULT_FILTERS: UserFilters = {
 const usersLogger = createOperationLogger('users-hook', 'debug');
 
 export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const isMountedRef = React.useRef(false);
 
   const [filters, setFilters] = React.useState<UserFilters>({
@@ -151,9 +160,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       );
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 403) {
-        await invalidatePermissions();
-        usersLogger.info('permission_invalidated_after_403', {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        usersLogger.info('session_refreshed_after_401', {
           operation: 'list_users',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -172,7 +181,14 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         setIsLoading(false);
       }
     }
-  }, [debouncedSearch, filters.page, filters.pageSize, filters.role, filters.status, invalidatePermissions]);
+  }, [
+    debouncedSearch,
+    filters.page,
+    filters.pageSize,
+    filters.role,
+    filters.status,
+    refreshSession,
+  ]);
 
   React.useEffect(() => {
     loadUsers().catch((cause) => {
@@ -200,13 +216,14 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
   );
 
   const mutate = React.useCallback(
-    async <T,>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
+    async <T>(action: () => Promise<T>, operation = 'user_mutation'): Promise<T | null> => {
       if (isMountedRef.current) {
         setMutationError(null);
       }
       logBrowserOperationStart(usersLogger, `${operation}_started`, { operation });
       try {
         const result = await action();
+        requestEffectiveAccessInvalidation();
         // Do not block the visible mutation result on the follow-up list refresh.
         // If the reload is slow, the create/edit/deactivate flow should still complete.
         loadUsers().catch((cause) => {
@@ -221,9 +238,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         return result;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          usersLogger.info('permission_invalidated_after_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          usersLogger.info('session_refreshed_after_401', {
             operation,
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -232,11 +249,13 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         if (isMountedRef.current) {
           setMutationError(resolvedError);
         }
-        logBrowserOperationFailure(usersLogger, `${operation}_failed`, resolvedError, { operation });
+        logBrowserOperationFailure(usersLogger, `${operation}_failed`, resolvedError, {
+          operation,
+        });
         return null;
       }
     },
-    [invalidatePermissions, loadUsers]
+    [refreshSession, loadUsers]
   );
 
   return {
@@ -286,6 +305,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       });
       try {
         const response = await syncUsersFromKeycloakRequest();
+        requestEffectiveAccessInvalidation();
         // Do not block the visible sync feedback on the follow-up list refresh.
         // The list reload keeps its own loading/error handling.
         loadUsers().catch((cause: unknown) => {
@@ -324,9 +344,9 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         return { ok: true, report: response.data };
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          usersLogger.info('permission_invalidated_after_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          usersLogger.info('session_refreshed_after_401', {
             operation: 'user_sync_keycloak',
             status: resolvedError.status,
             error_code: resolvedError.code,

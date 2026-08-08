@@ -96,7 +96,17 @@ describe('EventsDetailPage', () => {
   beforeEach(() => {
     publishSessionAccessSnapshot({
       isResolved: true,
-      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      permissionActions: [
+        'events.read',
+        'events.create',
+        'events.update',
+        'events.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+      ],
+      assignedModules: ['events'],
       roles: [],
     });
     navigateMock.mockReset();

@@ -4,6 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaDetailPage } from './-media-detail-page';
 
+const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
+
+vi.mock('../../../providers/effective-access-provider', () => ({
+  useAccessDecision: (requirement: { actions: { values: readonly string[] } }) =>
+    requirement.actions.values.some((action) => accessState.deniedActions.has(action))
+      ? { status: 'denied', reason: 'permission_missing' }
+      : { status: 'allowed', reason: 'allowed_by_permission' },
+}));
+
 const useMediaDetailMock = vi.fn();
 const navigateMock = vi.fn();
 const qrCodeToDataUrlMock = vi.fn();
@@ -21,13 +30,16 @@ vi.mock('@tanstack/react-router', () => ({
     to,
     params,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { readonly to: string; readonly params?: Record<string, string> }) => {
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    readonly to: string;
+    readonly params?: Record<string, string>;
+  }) => {
     const href = typeof params?.mediaId === 'string' ? to.replace('$mediaId', params.mediaId) : to;
     return (
       <a href={href} {...props}>
-      {children}
-    </a>
-  );
+        {children}
+      </a>
+    );
   },
   useNavigate: () => navigateMock,
 }));
@@ -38,6 +50,7 @@ vi.mock('../../../hooks/use-media', () => ({
 
 describe('MediaDetailPage', () => {
   beforeEach(() => {
+    accessState.deniedActions.clear();
     useMediaDetailMock.mockReset();
     navigateMock.mockReset();
     qrCodeToDataUrlMock.mockReset();
@@ -107,26 +120,30 @@ describe('MediaDetailPage', () => {
     render(<MediaDetailPage assetId="asset-2" />);
 
     expect(screen.getByRole('heading', { name: 'Detail Asset' })).toBeTruthy();
-    expect(screen.getByRole('img', { name: 'Ausschnitt der Bühnenbeleuchtung' }).getAttribute('src')).toBe(
-      'https://delivery.example.test'
-    );
+    expect(
+      screen.getByRole('img', { name: 'Ausschnitt der Bühnenbeleuchtung' }).getAttribute('src')
+    ).toBe('https://delivery.example.test');
     expect(screen.getByText('1 Verwendung')).toBeTruthy();
     expect(screen.getByText('Öffentlich')).toBeTruthy();
     expect(screen.getByText('Auslieferungs-URL')).toBeTruthy();
   });
 
   it('shows the public url tools with copy and qr actions for public assets', async () => {
-    qrCodeToStringMock.mockResolvedValue('<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/></svg>');
+    qrCodeToStringMock.mockResolvedValue(
+      '<svg viewBox="0 0 10 10"><rect width="10" height="10" fill="#fff"/></svg>'
+    );
     qrCodeToDataUrlMock.mockResolvedValue('data:image/png;base64,qrpng');
 
     render(<MediaDetailPage assetId="asset-2" />);
 
     expect(screen.getByText('Öffentliche URL')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Auslieferungslink erzeugen' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'https://delivery.example.test' }).getAttribute('rel')).toBe(
+    expect(
+      screen.getByRole('link', { name: 'https://delivery.example.test' }).getAttribute('rel')
+    ).toBe('noopener noreferrer');
+    expect(screen.getByRole('link', { name: 'Öffnen' }).getAttribute('rel')).toBe(
       'noopener noreferrer'
     );
-    expect(screen.getByRole('link', { name: 'Öffnen' }).getAttribute('rel')).toBe('noopener noreferrer');
 
     fireEvent.click(screen.getByRole('button', { name: 'Öffentliche URL kopieren' }));
     await waitFor(() => {
@@ -137,12 +154,18 @@ describe('MediaDetailPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'QR-Code zur öffentlichen URL' })).toBeTruthy();
-      expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('href')).toBe('data:image/png;base64,qrpng');
-      expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('download')).toBe('detail-asset-qr.png');
-      expect(screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('href')).toContain(
-        'data:image/svg+xml'
+      expect(screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('href')).toBe(
+        'data:image/png;base64,qrpng'
       );
-      expect(screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('download')).toBe('detail-asset-qr.svg');
+      expect(
+        screen.getByRole('link', { name: 'QR-Code als PNG laden' }).getAttribute('download')
+      ).toBe('detail-asset-qr.png');
+      expect(
+        screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('href')
+      ).toContain('data:image/svg+xml');
+      expect(
+        screen.getByRole('link', { name: 'QR-Code als SVG laden' }).getAttribute('download')
+      ).toBe('detail-asset-qr.svg');
     });
   });
 
@@ -366,5 +389,13 @@ describe('MediaDetailPage', () => {
       expect(deleteMedia).toHaveBeenCalledTimes(1);
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/media' });
     });
+  });
+
+  it('hides destructive controls without media.delete', () => {
+    accessState.deniedActions.add('media.delete');
+
+    render(<MediaDetailPage assetId="asset-2" />);
+
+    expect(screen.queryByRole('button', { name: 'Medium löschen' })).toBeNull();
   });
 });

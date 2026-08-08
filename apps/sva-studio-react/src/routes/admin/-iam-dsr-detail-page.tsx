@@ -11,7 +11,7 @@ import {
   isIamCockpitEnabled,
 } from '../../lib/iam-viewer-access';
 import { getAdminDsrCase } from '../../lib/iam-api';
-import { useAuth } from '../../providers/auth-provider';
+import { useEffectiveAuth } from '../../providers/effective-access-provider';
 import {
   mapDsrStatusToTranslationKey,
   mapDsrStatusTone,
@@ -84,7 +84,7 @@ const DsrDetailContent = ({ item }: Readonly<{ item: IamDsrCaseListItem }>) => {
 
 export function IamDsrDetailPage({ caseId }: Readonly<{ caseId: string }>) {
   const navigate = useNavigate();
-  const { user, isLoading: isLoadingUser, error: authError } = useAuth();
+  const { user, isLoading: isLoadingUser, error: authError } = useEffectiveAuth();
   const [item, setItem] = React.useState<IamDsrCaseListItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);

@@ -5,6 +5,10 @@ export interface CacheInvalidationEvent {
   readonly keycloakSubject?: string;
   readonly trigger: 'pg_notify' | 'ttl' | 'recompute';
   readonly eventId?: string;
+  readonly revision?: Readonly<{
+    scope: 'instance' | 'user';
+    value: number;
+  }>;
   readonly event: SnapshotInvalidationEvent;
 }
 
@@ -15,6 +19,49 @@ type ParsedInvalidationPayload = {
   keycloakSubject?: string;
   eventName?: string;
   raw: Record<string, unknown>;
+};
+
+const parsePositiveSafeInteger = (value: unknown): number | undefined =>
+  typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined;
+
+const parsePermissionRevisionChanged = (
+  payload: ParsedInvalidationPayload
+): CacheInvalidationEvent | null => {
+  if (payload.eventName !== 'PermissionRevisionChanged') {
+    return null;
+  }
+
+  const revisionScope = payload.raw.revisionScope;
+  const newRevision = parsePositiveSafeInteger(payload.raw.newRevision);
+  if ((revisionScope !== 'instance' && revisionScope !== 'user') || !newRevision) {
+    return null;
+  }
+  if (revisionScope === 'user' && !payload.keycloakSubject) {
+    return null;
+  }
+
+  return {
+    instanceId: payload.instanceId,
+    ...(payload.keycloakSubject ? { keycloakSubject: payload.keycloakSubject } : {}),
+    trigger: payload.trigger,
+    eventId: payload.eventId,
+    revision: { scope: revisionScope, value: newRevision },
+    event:
+      revisionScope === 'user'
+        ? {
+            type: 'user_scope_changed',
+            instanceId: payload.instanceId,
+            keycloakSubject: payload.keycloakSubject!,
+            eventId: payload.eventId,
+            reason: 'permission_revision_changed',
+          }
+        : {
+            type: 'instance_scope_changed',
+            instanceId: payload.instanceId,
+            eventId: payload.eventId,
+            reason: 'permission_revision_changed',
+          },
+  };
 };
 
 const parsePayloadRecord = (payloadRaw: string): ParsedInvalidationPayload | null => {
@@ -128,6 +175,10 @@ export const parseInvalidationEvent = (payloadRaw: string): CacheInvalidationEve
   const payload = parsePayloadRecord(payloadRaw);
   if (!payload) {
     return null;
+  }
+
+  if (payload.eventName === 'PermissionRevisionChanged') {
+    return parsePermissionRevisionChanged(payload);
   }
 
   return (

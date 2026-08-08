@@ -24,11 +24,8 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useUsers } from '../../../hooks/use-users';
-import {
-  hasPlatformInstanceAdminAccess,
-  hasUserDeleteAccess,
-  isIamBulkEnabled,
-} from '../../../lib/iam-admin-access';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
+import { hasPlatformInstanceAdminAccess, isIamBulkEnabled } from '../../../lib/iam-admin-access';
 import { IamHttpError } from '../../../lib/iam-api';
 import { useAuth } from '../../../providers/auth-provider';
 import { t } from '../../../i18n';
@@ -129,11 +126,13 @@ const UserStatusCell = ({
   user,
   isAuthLoading,
   isPlatformScope,
+  canUpdateUsers,
   onStatusAction,
 }: {
   user: UserListUser;
   isAuthLoading: boolean;
   isPlatformScope: boolean;
+  canUpdateUsers: boolean;
   onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void;
 }) =>
   isPlatformScope || isAuthLoading ? (
@@ -144,7 +143,9 @@ const UserStatusCell = ({
     <div className="flex items-center gap-2">
       <Switch
         checked={user.status !== 'inactive'}
-        disabled={user.editability === 'blocked' || user.editability === 'read_only'}
+        disabled={
+          !canUpdateUsers || user.editability === 'blocked' || user.editability === 'read_only'
+        }
         aria-label={t('admin.users.messages.statusSwitchLabel', {
           name: user.displayName,
         })}
@@ -179,6 +180,7 @@ const UserKeycloakCell = ({ user }: { user: UserListUser }) => {
 const buildUserColumns = (
   isAuthLoading: boolean,
   isPlatformScope: boolean,
+  canUpdateUsers: boolean,
   onStatusAction: (action: 'activate' | 'deactivate', userId: string) => void
 ): readonly StudioColumnDef<UserListUser>[] => [
   {
@@ -210,6 +212,7 @@ const buildUserColumns = (
         user={user}
         isAuthLoading={isAuthLoading}
         isPlatformScope={isPlatformScope}
+        canUpdateUsers={canUpdateUsers}
         onStatusAction={onStatusAction}
       />
     ),
@@ -262,10 +265,12 @@ const UserListToolbarStart = ({ usersApi }: { usersApi: UsersApiState }) => (
 );
 
 const UserListToolbarEnd = ({
+  canUpdateUsers,
   syncStatus,
   total,
   onSyncUsers,
 }: {
+  canUpdateUsers: boolean;
   syncStatus: SyncStatusState;
   total: number;
   onSyncUsers: () => Promise<void>;
@@ -274,16 +279,18 @@ const UserListToolbarEnd = ({
     <p role="status" className="text-xs text-muted-foreground">
       {t('admin.users.messages.resultCount', { count: total })}
     </p>
-    <Button
-      type="button"
-      variant="outline"
-      disabled={syncStatus === 'pending'}
-      onClick={() => void onSyncUsers()}
-    >
-      {syncStatus === 'pending'
-        ? t('admin.users.actions.syncing')
-        : t('admin.users.actions.syncKeycloak')}
-    </Button>
+    {canUpdateUsers ? (
+      <Button
+        type="button"
+        variant="outline"
+        disabled={syncStatus === 'pending'}
+        onClick={() => void onSyncUsers()}
+      >
+        {syncStatus === 'pending'
+          ? t('admin.users.actions.syncing')
+          : t('admin.users.actions.syncKeycloak')}
+      </Button>
+    ) : null}
   </>
 );
 
@@ -584,15 +591,18 @@ export const UserListPage = () => {
     syncStatus,
   } = useUserListController({ usersApi });
   const { user } = useAuth();
+  const access = useIamResourceAccess('user');
   const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
   const isAuthLoading = user === null;
-  const canDeleteUsers = !isPlatformScope && !isAuthLoading && hasUserDeleteAccess(user);
+  const canCreateUsers = isIamAccessAllowed(access.create);
+  const canUpdateUsers = isIamAccessAllowed(access.update);
+  const canDeleteUsers = isIamAccessAllowed(access.delete);
   const statusActionDialogKeys = getStatusActionDialogTranslationKeys(statusActionDialog);
 
   const pageCount = Math.max(1, Math.ceil(usersApi.total / usersApi.pageSize));
   const userColumns = React.useMemo(
-    () => buildUserColumns(isAuthLoading, isPlatformScope, openSingleStatusAction),
-    [isAuthLoading, isPlatformScope, openSingleStatusAction]
+    () => buildUserColumns(isAuthLoading, isPlatformScope, canUpdateUsers, openSingleStatusAction),
+    [canUpdateUsers, isAuthLoading, isPlatformScope, openSingleStatusAction]
   );
 
   return (
@@ -603,7 +613,7 @@ export const UserListPage = () => {
           isPlatformScope ? 'admin.users.page.platformSubtitle' : 'admin.users.page.subtitle'
         )}
         primaryAction={
-          isPlatformScope || isAuthLoading
+          isPlatformScope || isAuthLoading || !canCreateUsers
             ? undefined
             : {
                 label: t('admin.users.actions.create'),
@@ -637,7 +647,7 @@ export const UserListPage = () => {
             </Card>
           }
           bulkActions={
-            isIamBulkEnabled() && !isPlatformScope
+            isIamBulkEnabled() && !isPlatformScope && canUpdateUsers
               ? [
                   {
                     id: 'bulk-deactivate',
@@ -658,6 +668,7 @@ export const UserListPage = () => {
           toolbarStart={<UserListToolbarStart usersApi={usersApi} />}
           toolbarEnd={
             <UserListToolbarEnd
+              canUpdateUsers={canUpdateUsers}
               syncStatus={syncStatus}
               total={usersApi.total}
               onSyncUsers={onSyncUsers}

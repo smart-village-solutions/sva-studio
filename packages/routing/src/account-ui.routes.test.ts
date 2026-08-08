@@ -1,18 +1,20 @@
 import { redirect } from '@tanstack/react-router';
 import { describe, expect, it, vi } from 'vitest';
 
-import { accountUiRouteGuards, createAccountUiRouteGuard, createAccountUiRouteGuards } from './account-ui.routes';
+import {
+  accountUiRouteGuards,
+  createAccountUiRouteGuard,
+  createAccountUiRouteGuards,
+} from './account-ui.routes';
 
 type Guard = (typeof accountUiRouteGuards)[keyof typeof accountUiRouteGuards];
 
 const invoke = async (
   guard: Guard,
-  user:
-    | {
-        roles: readonly string[];
-        permissionActions?: readonly string[];
-      }
-    | null,
+  user: {
+    roles: readonly string[];
+    permissionActions?: readonly string[];
+  } | null,
   href: string
 ) => {
   return guard({
@@ -33,7 +35,9 @@ describe('accountUiRouteGuards', () => {
   });
 
   it('allows account route for authenticated users', async () => {
-    await expect(invoke(accountUiRouteGuards.account, { roles: ['custom_role'] }, '/account')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.account, { roles: ['custom_role'] }, '/account')
+    ).resolves.toBeUndefined();
   });
 
   it('allows account privacy route for authenticated users', async () => {
@@ -44,29 +48,49 @@ describe('accountUiRouteGuards', () => {
 
   it('allows account privacy detail route for authenticated users', async () => {
     await expect(
-      invoke(accountUiRouteGuards.accountPrivacyDetail, { roles: ['custom_role'] }, '/account/privacy/case-1')
+      invoke(
+        accountUiRouteGuards.accountPrivacyDetail,
+        { roles: ['custom_role'] },
+        '/account/privacy/case-1'
+      )
     ).resolves.toBeUndefined();
   });
 
   it('allows account rules route for authenticated users', async () => {
-    await expect(invoke(accountUiRouteGuards.accountRules, { roles: ['custom_role'] }, '/account/rules')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.accountRules, { roles: ['custom_role'] }, '/account/rules')
+    ).resolves.toBeUndefined();
   });
 
   it('allows modules route for authenticated users without admin roles', async () => {
-    await expect(invoke(accountUiRouteGuards.modules, { roles: ['viewer'] }, '/modules')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.modules, { roles: ['viewer'] }, '/modules')
+    ).resolves.toBeUndefined();
   });
 
   it('allows content routes for authenticated users without legacy role coupling', async () => {
-    await expect(invoke(accountUiRouteGuards.content, { roles: ['custom_role'] }, '/admin/content')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentCreate, { roles: ['custom_role'] }, '/admin/content/new')).resolves.toBeUndefined();
     await expect(
-      invoke(accountUiRouteGuards.contentDetail, { roles: ['custom_role'] }, '/admin/content/content-1')
+      invoke(accountUiRouteGuards.content, { roles: ['custom_role'] }, '/admin/content')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.contentCreate, { roles: ['custom_role'] }, '/admin/content/new')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(
+        accountUiRouteGuards.contentDetail,
+        { roles: ['custom_role'] },
+        '/admin/content/content-1'
+      )
     ).resolves.toBeUndefined();
   });
 
   it('allows content routes for any authenticated user', async () => {
-    await expect(invoke(accountUiRouteGuards.content, { roles: ['viewer'] }, '/admin/content')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.contentCreate, { roles: ['viewer'] }, '/admin/content/new')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.content, { roles: ['viewer'] }, '/admin/content')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.contentCreate, { roles: ['viewer'] }, '/admin/content/new')
+    ).resolves.toBeUndefined();
     await expect(
       invoke(accountUiRouteGuards.contentDetail, { roles: ['viewer'] }, '/admin/content/content-1')
     ).resolves.toBeUndefined();
@@ -74,14 +98,22 @@ describe('accountUiRouteGuards', () => {
 
   it('allows admin users route for custom permission grants without legacy roles', async () => {
     const user = { roles: ['custom_role'], permissionActions: ['iam.user.read', 'iam.user.write'] };
-    await expect(invoke(accountUiRouteGuards.adminUsers, user, '/admin/users')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminUserCreate, user, '/admin/users/new')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminUserDetail, user, '/admin/users/user-1')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminUsers, user, '/admin/users')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminUserCreate, user, '/admin/users/new')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminUserDetail, user, '/admin/users/user-1')
+    ).resolves.toBeUndefined();
   });
 
   it('allows admin organizations route for custom permission grants without legacy roles', async () => {
     const user = { roles: ['custom_role'], permissionActions: ['iam.org.read', 'iam.org.write'] };
-    await expect(invoke(accountUiRouteGuards.adminOrganizations, user, '/admin/organizations')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminOrganizations, user, '/admin/organizations')
+    ).resolves.toBeUndefined();
     await expect(
       invoke(accountUiRouteGuards.adminOrganizationCreate, user, '/admin/organizations/new')
     ).resolves.toBeUndefined();
@@ -93,36 +125,46 @@ describe('accountUiRouteGuards', () => {
   it('keeps root-only platform admins out of tenant admin mutations while preserving platform list routes', async () => {
     const rootOnlyUser = { roles: ['instance_registry_admin'], permissionActions: [] };
 
-    await expect(invoke(accountUiRouteGuards.adminInstances, rootOnlyUser, '/admin/instances')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminUsers, rootOnlyUser, '/admin/users')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminUserCreate, rootOnlyUser, '/admin/users/new')).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
-    await expect(invoke(accountUiRouteGuards.adminUserDetail, rootOnlyUser, '/admin/users/user-1')).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
+    await expect(
+      invoke(accountUiRouteGuards.adminInstances, rootOnlyUser, '/admin/instances')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminUsers, rootOnlyUser, '/admin/users')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminUserCreate, rootOnlyUser, '/admin/users/new')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    await expect(
+      invoke(accountUiRouteGuards.adminUserDetail, rootOnlyUser, '/admin/users/user-1')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
     await expect(
       invoke(accountUiRouteGuards.adminOrganizations, rootOnlyUser, '/admin/organizations')
     ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
-    await expect(invoke(accountUiRouteGuards.adminGroups, rootOnlyUser, '/admin/groups')).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
-    await expect(invoke(accountUiRouteGuards.adminIam, rootOnlyUser, '/admin/iam')).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
+    await expect(
+      invoke(accountUiRouteGuards.adminGroups, rootOnlyUser, '/admin/groups')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    await expect(
+      invoke(accountUiRouteGuards.adminIam, rootOnlyUser, '/admin/iam')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
   });
 
   it('redirects admin users route when IAM user permissions are missing', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminUsers, { roles: ['custom_role'], permissionActions: ['news.read'] }, '/admin/users')
-    ).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
+      invoke(
+        accountUiRouteGuards.adminUsers,
+        { roles: ['custom_role'], permissionActions: ['news.read'] },
+        '/admin/users'
+      )
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
   });
 
   it('allows admin roles route for custom permission grants without legacy roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminRoles, { roles: ['custom_role'], permissionActions: ['iam.role.read'] }, '/admin/roles')
+      invoke(
+        accountUiRouteGuards.adminRoles,
+        { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
+        '/admin/roles'
+      )
     ).resolves.toBeUndefined();
   });
 
@@ -138,10 +180,12 @@ describe('accountUiRouteGuards', () => {
 
   it('requires write access for the role creation route', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminRoleCreate, { roles: ['custom_role'], permissionActions: ['iam.role.read'] }, '/admin/roles/new')
-    ).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
+      invoke(
+        accountUiRouteGuards.adminRoleCreate,
+        { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
+        '/admin/roles/new'
+      )
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
 
     await expect(
       invoke(
@@ -154,9 +198,15 @@ describe('accountUiRouteGuards', () => {
 
   it('allows admin groups route for custom permission grants without legacy roles', async () => {
     const user = { roles: ['custom_role'], permissionActions: ['iam.role.read', 'iam.role.write'] };
-    await expect(invoke(accountUiRouteGuards.adminGroups, user, '/admin/groups')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminGroupCreate, user, '/admin/groups/new')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.adminGroupDetail, user, '/admin/groups/group-1')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminGroups, user, '/admin/groups')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminGroupCreate, user, '/admin/groups/new')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.adminGroupDetail, user, '/admin/groups/group-1')
+    ).resolves.toBeUndefined();
   });
 
   it('requires write access for the group detail editor route', async () => {
@@ -166,9 +216,7 @@ describe('accountUiRouteGuards', () => {
         { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
         '/admin/groups/group-1'
       )
-    ).rejects.toMatchObject(
-      redirect({ href: '/?error=auth.insufficientRole' })
-    );
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
 
     await expect(
       invoke(
@@ -181,27 +229,66 @@ describe('accountUiRouteGuards', () => {
 
   it('allows legal text routes for custom permission grants without legacy roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminLegalTexts, { roles: ['custom_role'], permissionActions: ['iam.legalText.read'] }, '/admin/legal-texts')
+      invoke(
+        accountUiRouteGuards.adminLegalTexts,
+        { roles: ['custom_role'], permissionActions: ['iam.legalText.read'] },
+        '/admin/legal-texts'
+      )
     ).resolves.toBeUndefined();
     await expect(
-      invoke(accountUiRouteGuards.adminLegalTextCreate, { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] }, '/admin/legal-texts/new')
+      invoke(
+        accountUiRouteGuards.adminLegalTextCreate,
+        { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] },
+        '/admin/legal-texts/new'
+      )
     ).resolves.toBeUndefined();
     await expect(
-      invoke(accountUiRouteGuards.adminLegalTextDetail, { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] }, '/admin/legal-texts/legal-text-1')
+      invoke(
+        accountUiRouteGuards.adminLegalTextDetail,
+        { roles: ['custom_role'], permissionActions: ['iam.legalText.write'] },
+        '/admin/legal-texts/legal-text-1'
+      )
     ).resolves.toBeUndefined();
   });
 
   it('allows admin iam route for cockpit permissions without legacy roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.adminIam, { roles: ['custom_role'], permissionActions: ['iam.governance.read'] }, '/admin/iam')
+      invoke(
+        accountUiRouteGuards.adminIam,
+        { roles: ['custom_role'], permissionActions: ['iam.governance.read'] },
+        '/admin/iam'
+      )
     ).resolves.toBeUndefined();
   });
 
   it('allows monitoring routes for custom permission grants without legacy roles', async () => {
     const user = { roles: ['custom_role'], permissionActions: ['iam.monitoring.read'] };
-    await expect(invoke(accountUiRouteGuards.monitoring, user, '/monitoring')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.monitoringJobs, user, '/monitoring/jobs')).resolves.toBeUndefined();
-    await expect(invoke(accountUiRouteGuards.monitoringJobDetail, user, '/monitoring/jobs/job-1')).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.monitoring, user, '/monitoring')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.monitoringJobs, user, '/monitoring/jobs')
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(accountUiRouteGuards.monitoringJobDetail, user, '/monitoring/jobs/job-1')
+    ).resolves.toBeUndefined();
+  });
+
+  it('protects interfaces with the fully qualified integration action', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.interfaces,
+        { roles: ['custom_role'], permissionActions: ['integration.manage'] },
+        '/interfaces'
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      invoke(
+        accountUiRouteGuards.interfaces,
+        { roles: ['custom_role'], permissionActions: [] },
+        '/interfaces'
+      )
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
   });
 
   it('creates a fresh guard set when diagnostics are injected', () => {

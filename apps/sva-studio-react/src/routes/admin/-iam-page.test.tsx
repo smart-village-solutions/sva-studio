@@ -70,7 +70,7 @@ describe('IamViewerPage', () => {
       user: null,
       isLoading: true,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -87,7 +87,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['compliance_officer'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
@@ -106,7 +106,7 @@ describe('IamViewerPage', () => {
   });
 
   it('shows a rights fetch error and invalidates permissions on 403', async () => {
-    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
+    const refreshSession = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal(
       'fetch',
       vi.fn(
@@ -122,7 +122,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions,
+      refreshSession,
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -132,7 +132,7 @@ describe('IamViewerPage', () => {
     render(<IamViewerPage activeTab="rights" />);
 
     await waitFor(() => {
-      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(refreshSession).toHaveBeenCalledTimes(1);
       expect(screen.getByRole('alert').textContent).toContain('forbidden_scope');
     });
   });
@@ -169,7 +169,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -231,7 +231,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -321,7 +321,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -397,7 +397,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -432,7 +432,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -485,7 +485,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['support_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
@@ -523,7 +523,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -561,7 +561,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -601,7 +601,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -636,7 +636,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -679,7 +679,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -728,7 +728,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -769,7 +769,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, instanceId: '' },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -793,7 +793,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     render(<IamViewerPage activeTab="deletion-rules" />);
@@ -832,13 +832,13 @@ describe('IamViewerPage', () => {
   });
 
   it('shows deletion-rules loading errors and authorize 403 errors with permission invalidation', async () => {
-    const invalidatePermissions = vi.fn().mockResolvedValue(undefined);
+    const refreshSession = vi.fn().mockResolvedValue(undefined);
     getAdminDeletionRulesMock.mockRejectedValueOnce(new Error('rules_down'));
     useAuthMock.mockReturnValue({
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions,
+      refreshSession,
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -883,7 +883,7 @@ describe('IamViewerPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Authorize prüfen' }));
 
     await waitFor(() => {
-      expect(invalidatePermissions).toHaveBeenCalledTimes(1);
+      expect(refreshSession).toHaveBeenCalledTimes(1);
       expect(screen.getByText('authorize_forbidden')).toBeTruthy();
     });
   });
@@ -895,7 +895,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, instanceId: '' },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -921,7 +921,7 @@ describe('IamViewerPage', () => {
       user: null,
       isLoading: false,
       error: new Error('auth_down'),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(false);
@@ -936,7 +936,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(false);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -998,7 +998,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -1068,7 +1068,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -1113,7 +1113,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, instanceId: '' },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -1145,7 +1145,7 @@ describe('IamViewerPage', () => {
       user: adminUser,
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasIamCockpitAccessRoleMock.mockReturnValue(true);
@@ -1227,7 +1227,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -1292,7 +1292,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
@@ -1356,7 +1356,7 @@ describe('IamViewerPage', () => {
       user: { ...adminUser, roles: ['security_admin'] },
       isLoading: false,
       error: null,
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
     isIamCockpitEnabledMock.mockReturnValue(true);
     hasGovernanceComplianceExportRoleMock.mockReturnValue(true);

@@ -11,7 +11,7 @@ import {
   isIamCockpitEnabled,
 } from '../../lib/iam-viewer-access';
 import { getGovernanceCase } from '../../lib/iam-api';
-import { useAuth } from '../../providers/auth-provider';
+import { useEffectiveAuth } from '../../providers/effective-access-provider';
 import {
   formatGovernanceTitle,
   mapGovernanceTypeToTranslationKey,
@@ -34,7 +34,7 @@ const formatMetadata = (metadata: Readonly<Record<string, unknown>>) => {
 
 export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>) {
   const navigate = useNavigate();
-  const { user, isLoading: isLoadingUser, error: authError } = useAuth();
+  const { user, isLoading: isLoadingUser, error: authError } = useEffectiveAuth();
   const [item, setItem] = React.useState<IamGovernanceCaseListItem | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);

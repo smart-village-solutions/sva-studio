@@ -49,10 +49,13 @@ type UseMediaLibraryResult = {
 type UseCreateMediaUploadResult = {
   readonly mutationError: IamHttpError | null;
   readonly clearMutationError: () => void;
-  readonly initializeUpload: (payload: InitializeMediaUploadPayload) => Promise<InitializeMediaUploadResponse | null>;
+  readonly initializeUpload: (
+    payload: InitializeMediaUploadPayload
+  ) => Promise<InitializeMediaUploadResponse | null>;
 };
 
-export type SingleFileUploadPhase = 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
+export type SingleFileUploadPhase =
+  'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
 
 type UseSingleFileMediaUploadResult = {
   readonly phase: SingleFileUploadPhase;
@@ -66,7 +69,9 @@ type UseSingleFileMediaUploadResult = {
 type UseRegisterBucketMediaResult = {
   readonly mutationError: IamHttpError | null;
   readonly clearMutationError: () => void;
-  readonly registerMedia: (payload: RegisterBucketMediaPayload) => Promise<IamRegisteredMediaAsset | null>;
+  readonly registerMedia: (
+    payload: RegisterBucketMediaPayload
+  ) => Promise<IamRegisteredMediaAsset | null>;
 };
 
 type UseMediaDetailResult = {
@@ -103,9 +108,11 @@ const putFileToSignedUrl = async (input: {
 };
 
 export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [assets, setAssets] = React.useState<readonly IamMediaAsset[]>([]);
-  const [usageByAssetId, setUsageByAssetId] = React.useState<Readonly<Record<string, number | null>>>({});
+  const [usageByAssetId, setUsageByAssetId] = React.useState<
+    Readonly<Record<string, number | null>>
+  >({});
   const [usageStatusByAssetId, setUsageStatusByAssetId] = React.useState<
     Readonly<Record<string, 'loading' | 'ready' | 'unavailable'>>
   >({});
@@ -140,10 +147,13 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
         response.data.map((asset) => [getMediaLibraryItemKey(asset), null] as const)
       );
       const initialUsageStatusByAssetId = Object.fromEntries(
-        response.data.map((asset) => [
-          getMediaLibraryItemKey(asset),
-          isRegisteredMediaAsset(asset) ? 'loading' : 'unavailable',
-        ] as const)
+        response.data.map(
+          (asset) =>
+            [
+              getMediaLibraryItemKey(asset),
+              isRegisteredMediaAsset(asset) ? 'loading' : 'unavailable',
+            ] as const
+        )
       );
       setAssets(response.data);
       setUsageByAssetId(initialUsageByAssetId);
@@ -183,17 +193,19 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
           })
           .catch(async (cause) => {
             const resolvedError = asIamError(cause);
-            if (
-              (resolvedError.status === 401 || resolvedError.status === 403) &&
-              !protectedUsageFailureHandled
-            ) {
+            if (resolvedError.status === 401 && !protectedUsageFailureHandled) {
               protectedUsageFailureHandled = true;
-              await invalidatePermissions();
+              await refreshSession();
             }
 
-            logBrowserOperationFailure(mediaLogger, 'media_library_usage_load_failed', resolvedError, {
-              operation: 'get_media_usage',
-            });
+            logBrowserOperationFailure(
+              mediaLogger,
+              'media_library_usage_load_failed',
+              resolvedError,
+              {
+                operation: 'get_media_usage',
+              }
+            );
 
             if (requestId !== latestRequestRef.current) {
               return;
@@ -220,8 +232,8 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
       if (requestId !== latestRequestRef.current) {
         return;
       }
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
+      if (resolvedError.status === 401) {
+        await refreshSession();
       }
       setAssets([]);
       setUsageByAssetId({});
@@ -234,7 +246,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
         operation: 'list_media',
       });
     }
-  }, [invalidatePermissions, query.page, query.pageSize, query.search, query.visibility]);
+  }, [refreshSession, query.page, query.pageSize, query.search, query.visibility]);
 
   React.useEffect(() => {
     void refetch();
@@ -255,7 +267,7 @@ export const useMediaLibrary = (query: MediaListQuery = {}): UseMediaLibraryResu
 };
 
 export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const runMutation = React.useCallback(
@@ -275,8 +287,8 @@ export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError(resolvedError);
         logBrowserOperationFailure(mediaLogger, 'media_upload_initialize_failed', resolvedError, {
@@ -285,7 +297,7 @@ export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
         return null;
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   return {
@@ -296,7 +308,7 @@ export const useCreateMediaUpload = (): UseCreateMediaUploadResult => {
 };
 
 export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [phase, setPhase] = React.useState<SingleFileUploadPhase>('idle');
   const [error, setError] = React.useState<IamHttpError | Error | null>(null);
   const [assetId, setAssetId] = React.useState<string | null>(null);
@@ -380,8 +392,8 @@ export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
         return { assetId: completed.data.assetId };
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
 
         const currentError = cause instanceof Error ? cause : resolvedError;
@@ -408,7 +420,7 @@ export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
         return null;
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   return {
@@ -422,7 +434,7 @@ export const useSingleFileMediaUpload = (): UseSingleFileMediaUploadResult => {
 };
 
 export const useRegisterBucketMedia = (): UseRegisterBucketMediaResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const runMutation = React.useCallback(
@@ -433,14 +445,14 @@ export const useRegisterBucketMedia = (): UseRegisterBucketMediaResult => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError(resolvedError);
         return null;
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   return {
@@ -475,11 +487,13 @@ export const deriveMimeTypeFromUnregisteredMedia = (asset: IamUnregisteredMediaA
 };
 
 export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [asset, setAsset] = React.useState<IamRegisteredMediaAsset | null>(null);
   const [usage, setUsage] = React.useState<IamMediaUsageImpact | null>(null);
   const [delivery, setDelivery] = React.useState<IamMediaDelivery | null>(null);
-  const [autoResolvedDeliveryAssetId, setAutoResolvedDeliveryAssetId] = React.useState<string | null>(null);
+  const [autoResolvedDeliveryAssetId, setAutoResolvedDeliveryAssetId] = React.useState<
+    string | null
+  >(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
@@ -503,7 +517,10 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
     setError(null);
 
     try {
-      const [assetResponse, usageResponse] = await Promise.all([getMedia(assetId), getMediaUsage(assetId)]);
+      const [assetResponse, usageResponse] = await Promise.all([
+        getMedia(assetId),
+        getMediaUsage(assetId),
+      ]);
       setAsset(assetResponse.data);
       setUsage(usageResponse.data);
       setDelivery(null);
@@ -515,8 +532,8 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
+      if (resolvedError.status === 401) {
+        await refreshSession();
       }
       setAsset(null);
       setUsage(null);
@@ -530,7 +547,7 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
     } finally {
       setIsLoading(false);
     }
-  }, [assetId, invalidatePermissions]);
+  }, [assetId, refreshSession]);
 
   React.useEffect(() => {
     void refetch();
@@ -557,8 +574,8 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
+        if (resolvedError.status === 401) {
+          await refreshSession();
         }
         setMutationError(resolvedError);
         logBrowserOperationFailure(mediaLogger, 'media_update_failed', resolvedError, {
@@ -568,37 +585,45 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
         return false;
       }
     },
-    [assetId, invalidatePermissions, refetch]
+    [assetId, refreshSession, refetch]
   );
 
-  const resolveDelivery = React.useCallback(async (options?: { readonly suppressErrorState?: boolean }) => {
-    if (!assetId) {
-      return null;
-    }
-    if (!options?.suppressErrorState) {
-      setMutationError(null);
-    }
-    try {
-      const response = await getMediaDelivery(assetId);
-      setDelivery(response.data);
-      return response.data;
-    } catch (cause) {
-      const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
+  const resolveDelivery = React.useCallback(
+    async (options?: { readonly suppressErrorState?: boolean }) => {
+      if (!assetId) {
+        return null;
       }
       if (!options?.suppressErrorState) {
-        setMutationError(resolvedError);
+        setMutationError(null);
       }
-      return null;
-    }
-  }, [assetId, invalidatePermissions]);
+      try {
+        const response = await getMediaDelivery(assetId);
+        setDelivery(response.data);
+        return response.data;
+      } catch (cause) {
+        const resolvedError = asIamError(cause);
+        if (resolvedError.status === 401) {
+          await refreshSession();
+        }
+        if (!options?.suppressErrorState) {
+          setMutationError(resolvedError);
+        }
+        return null;
+      }
+    },
+    [assetId, refreshSession]
+  );
 
   const resolveDeliveryRef = React.useRef<typeof resolveDelivery | null>(null);
   resolveDeliveryRef.current = resolveDelivery;
 
   React.useEffect(() => {
-    if (!asset || delivery || autoResolvedDeliveryAssetId === asset.id || !asset.mimeType.startsWith('image/')) {
+    if (
+      !asset ||
+      delivery ||
+      autoResolvedDeliveryAssetId === asset.id ||
+      !asset.mimeType.startsWith('image/')
+    ) {
       return;
     }
 
@@ -622,13 +647,13 @@ export const useMediaDetail = (assetId: string | null): UseMediaDetailResult => 
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
+      if (resolvedError.status === 401) {
+        await refreshSession();
       }
       setMutationError(resolvedError);
       return false;
     }
-  }, [assetId, invalidatePermissions]);
+  }, [assetId, refreshSession]);
 
   return {
     asset,

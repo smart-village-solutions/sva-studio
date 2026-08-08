@@ -1,4 +1,8 @@
-import { createAdminRoute, createProtectedRoute, type ProtectedRouteOptions } from './protected.routes.js';
+import {
+  createAdminRoute,
+  createProtectedRoute,
+  type ProtectedRouteOptions,
+} from './protected.routes.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { uiRoutePaths } from './route-paths.js';
 
@@ -12,6 +16,7 @@ export type AccountUiRouteGuardKey =
   | 'contentCreate'
   | 'contentDetail'
   | 'media'
+  | 'interfaces'
   | 'adminUsers'
   | 'adminUserCreate'
   | 'adminUserDetail'
@@ -42,7 +47,10 @@ type AccountUiRouteGuardDefinition = {
   readonly requiredAnyPermissions?: ProtectedRouteOptions['requiredAnyPermissions'];
 };
 
-const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRouteGuardDefinition> = {
+const accountUiRouteGuardDefinitions: Record<
+  AccountUiRouteGuardKey,
+  AccountUiRouteGuardDefinition
+> = {
   account: { kind: 'protected', route: uiRoutePaths.account },
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   accountPrivacyDetail: { kind: 'protected', route: uiRoutePaths.accountPrivacyDetail },
@@ -52,15 +60,32 @@ const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRo
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },
   media: { kind: 'protected', route: uiRoutePaths.media },
+  interfaces: {
+    kind: 'protected',
+    route: uiRoutePaths.interfaces,
+    requiredPermissions: ['integration.manage'],
+  },
   adminUsers: {
     kind: 'protected',
     route: uiRoutePaths.adminUsers,
     requiredAnyPermissions: ['iam.user.read'],
     requiredAnyRoles: ['instance_registry_admin'],
   },
-  adminUserCreate: { kind: 'admin', route: uiRoutePaths.adminUserCreate, requiredPermissions: ['iam.user.write'] },
-  adminUserDetail: { kind: 'admin', route: uiRoutePaths.adminUserDetail, requiredPermissions: ['iam.user.read'] },
-  adminOrganizations: { kind: 'admin', route: uiRoutePaths.adminOrganizations, requiredPermissions: ['iam.org.read'] },
+  adminUserCreate: {
+    kind: 'admin',
+    route: uiRoutePaths.adminUserCreate,
+    requiredPermissions: ['iam.user.write'],
+  },
+  adminUserDetail: {
+    kind: 'admin',
+    route: uiRoutePaths.adminUserDetail,
+    requiredPermissions: ['iam.user.read'],
+  },
+  adminOrganizations: {
+    kind: 'admin',
+    route: uiRoutePaths.adminOrganizations,
+    requiredPermissions: ['iam.org.read'],
+  },
   adminOrganizationCreate: {
     kind: 'admin',
     route: uiRoutePaths.adminOrganizationCreate,
@@ -92,7 +117,11 @@ const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRo
     route: uiRoutePaths.adminRoleDetail,
     requiredPermissions: ['iam.role.read'],
   },
-  adminGroups: { kind: 'protected', route: uiRoutePaths.adminGroups, requiredPermissions: ['iam.role.read'] },
+  adminGroups: {
+    kind: 'protected',
+    route: uiRoutePaths.adminGroups,
+    requiredPermissions: ['iam.role.read'],
+  },
   adminGroupCreate: {
     kind: 'protected',
     route: uiRoutePaths.adminGroupCreate,
@@ -128,7 +157,11 @@ const accountUiRouteGuardDefinitions: Record<AccountUiRouteGuardKey, AccountUiRo
       'iam.deletionRules.read',
     ],
   },
-  monitoring: { kind: 'protected', route: uiRoutePaths.monitoring, requiredPermissions: ['iam.monitoring.read'] },
+  monitoring: {
+    kind: 'protected',
+    route: uiRoutePaths.monitoring,
+    requiredPermissions: ['iam.monitoring.read'],
+  },
   monitoringJobs: {
     kind: 'protected',
     route: uiRoutePaths.monitoringJobs,
@@ -176,6 +209,7 @@ export const createAccountUiRouteGuards = (diagnostics?: RoutingDiagnosticsHook)
     contentCreate: createAccountUiRouteGuard('contentCreate', diagnostics),
     contentDetail: createAccountUiRouteGuard('contentDetail', diagnostics),
     media: createAccountUiRouteGuard('media', diagnostics),
+    interfaces: createAccountUiRouteGuard('interfaces', diagnostics),
     adminUsers: createAccountUiRouteGuard('adminUsers', diagnostics),
     adminUserCreate: createAccountUiRouteGuard('adminUserCreate', diagnostics),
     adminUserDetail: createAccountUiRouteGuard('adminUserDetail', diagnostics),

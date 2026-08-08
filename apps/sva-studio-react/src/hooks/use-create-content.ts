@@ -1,16 +1,25 @@
 import React from 'react';
 
-import { asIamError, createContent, type CreateContentPayload, type IamHttpError } from '../lib/iam-api';
+import {
+  asIamError,
+  createContent,
+  type CreateContentPayload,
+  type IamHttpError,
+} from '../lib/iam-api';
 import {
   logBrowserOperationFailure,
   logBrowserOperationStart,
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
-import { contentsLogger, PERMISSION_INVALIDATED_EVENT, type UseCreateContentResult } from './use-contents.shared.js';
+import {
+  contentsLogger,
+  SESSION_REFRESHED_EVENT,
+  type UseCreateContentResult,
+} from './use-contents.shared.js';
 
 export const useCreateContent = (): UseCreateContentResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [mutationError, setMutationError] = React.useState<IamHttpError | null>(null);
 
   const runMutation = React.useCallback(
@@ -27,9 +36,9 @@ export const useCreateContent = (): UseCreateContentResult => {
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          contentsLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'create_content',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -42,7 +51,7 @@ export const useCreateContent = (): UseCreateContentResult => {
         return false;
       }
     },
-    [invalidatePermissions]
+    [refreshSession]
   );
 
   return {

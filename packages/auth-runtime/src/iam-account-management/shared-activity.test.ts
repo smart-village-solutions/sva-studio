@@ -27,7 +27,7 @@ describe('shared activity helpers', () => {
   });
 
   it('writes activity logs with nullable optional identifiers and payload defaults', async () => {
-    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [{ revision: '2' }] }));
 
     await emitActivityLog({ query } as never, {
       instanceId: 'tenant-a',
@@ -97,7 +97,7 @@ describe('shared activity helpers', () => {
   });
 
   it('updates role sync state and publishes invalidation payloads with optional subjects', async () => {
-    const query = vi.fn(async () => ({ rowCount: 1, rows: [] }));
+    const query = vi.fn(async () => ({ rowCount: 1, rows: [{ revision: '2' }] }));
 
     await setRoleSyncState({ query } as never, {
       instanceId: 'tenant-a',
@@ -123,24 +123,15 @@ describe('shared activity helpers', () => {
       null,
       true,
     ]);
-    expect(query).toHaveBeenNthCalledWith(2, 'SELECT pg_notify($1, $2);', [
-      'iam_permission_snapshot_invalidation',
-      JSON.stringify({
-        eventId: 'event-1',
-        instanceId: 'tenant-a',
-        keycloakSubject: 'kc-1',
-        trigger: 'pg_notify',
-        reason: 'role_membership_changed',
-      }),
-    ]);
-    expect(query).toHaveBeenNthCalledWith(3, 'SELECT pg_notify($1, $2);', [
-      'iam_permission_snapshot_invalidation',
-      JSON.stringify({
-        eventId: 'event-1',
-        instanceId: 'tenant-a',
-        trigger: 'pg_notify',
-        reason: 'role_membership_changed',
-      }),
-    ]);
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('INSERT INTO iam.permission_cache_user_revisions'),
+      ['tenant-a', 'kc-1']
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('INSERT INTO iam.permission_cache_instance_revisions'),
+      ['tenant-a']
+    );
   });
 });

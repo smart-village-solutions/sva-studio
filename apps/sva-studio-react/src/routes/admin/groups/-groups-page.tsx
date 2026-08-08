@@ -14,6 +14,7 @@ import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import { useAuth } from '../../../providers/auth-provider';
@@ -35,6 +36,9 @@ export const GroupsPage = () => {
   const { user } = useAuth();
   const groupsApi = useGroups();
   const rolesApi = useRoles();
+  const access = useIamResourceAccess('group');
+  const canCreateGroups = isIamAccessAllowed(access.create);
+  const canDeleteGroups = isIamAccessAllowed(access.delete);
   const hasInstanceContext = Boolean(user?.instanceId);
 
   const [search, setSearch] = React.useState('');
@@ -165,9 +169,11 @@ export const GroupsPage = () => {
         >
           {t('admin.groups.actions.sort')}
         </Button>
-        <Button asChild type="button">
-          <Link to="/admin/groups/new">{t('admin.groups.actions.create')}</Link>
-        </Button>
+        {canCreateGroups ? (
+          <Button asChild type="button">
+            <Link to="/admin/groups/new">{t('admin.groups.actions.create')}</Link>
+          </Button>
+        ) : null}
       </StudioFilterSurface>
 
       {!hasInstanceContext ? (
@@ -279,14 +285,16 @@ export const GroupsPage = () => {
                           {t('admin.groups.actions.edit')}
                         </Link>
                       </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => setDeleteGroupId(group.id)}
-                      >
-                        {t('admin.groups.actions.delete')}
-                      </Button>
+                      {canDeleteGroups ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => setDeleteGroupId(group.id)}
+                        >
+                          {t('admin.groups.actions.delete')}
+                        </Button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -302,7 +310,7 @@ export const GroupsPage = () => {
         </Card>
       ) : null}
       <ConfirmDialog
-        open={Boolean(deleteGroupId)}
+        open={canDeleteGroups && Boolean(deleteGroupId)}
         title={t('admin.groups.confirm.deleteTitle')}
         description={t('admin.groups.confirm.deleteDescription')}
         confirmLabel={t('admin.groups.actions.delete')}

@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path, { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { PluginDefinition, PluginManifest } from '../../packages/plugin-sdk/src/index.ts';
+import {
+  collectPluginAccessTransitionDiagnostics,
+  type PluginDefinition,
+  type PluginManifest,
+} from '../../packages/plugin-sdk/src/index.ts';
 import type { StudioPluginCatalogConfigEntry } from '../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts';
 
 import {
@@ -13,7 +17,8 @@ import {
   type GuardrailCheckDefinition,
 } from './guardrail-report.shared.ts';
 
-type PluginCatalogLoaderModule = typeof import('../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts');
+type PluginCatalogLoaderModule =
+  typeof import('../../apps/sva-studio-react/src/lib/plugin-catalog-loader.ts');
 
 type PluginCatalogConfigEntryJson = Readonly<{
   pluginId: string;
@@ -29,13 +34,22 @@ const loadStudioModuleIamRegistry = async (): Promise<
   typeof import('../../packages/studio-module-iam/src/index.ts').studioModuleIamRegistry
 > => (await import('../../packages/studio-module-iam/src/index.ts')).studioModuleIamRegistry;
 
-const readWorkspacePluginCatalogEntries = (repoRoot: string): readonly StudioPluginCatalogConfigEntry[] => {
+const loadStudioPermissionCatalog = async (): Promise<
+  typeof import('../../packages/studio-module-iam/src/index.ts').studioPermissionCatalog
+> => (await import('../../packages/studio-module-iam/src/index.ts')).studioPermissionCatalog;
+
+const readWorkspacePluginCatalogEntries = (
+  repoRoot: string
+): readonly StudioPluginCatalogConfigEntry[] => {
   const catalogPath = resolve(repoRoot, 'apps/sva-studio-react/plugin-catalog.json');
   const rawEntries = readJsonFile<readonly PluginCatalogConfigEntryJson[]>(catalogPath);
   return rawEntries.filter((entry) => entry.sourceType === 'workspace');
 };
 
-const readWorkspacePluginManifest = (repoRoot: string, sourceRef: string): PluginManifest | undefined => {
+const readWorkspacePluginManifest = (
+  repoRoot: string,
+  sourceRef: string
+): PluginManifest | undefined => {
   const manifestPath = resolve(repoRoot, sourceRef, 'plugin.manifest.json');
   return existsSync(manifestPath) ? readJsonFile<PluginManifest>(manifestPath) : undefined;
 };
@@ -69,7 +83,9 @@ const collectPluginSdkCompatibilityFindings = (
     }
 
     return manifest.sdkVersion?.trim()
-      ? [`${entry.pluginId}: sdkVersion ist gesetzt (${manifest.sdkVersion}), aber keine explizite SDK-Range dokumentiert.`]
+      ? [
+          `${entry.pluginId}: sdkVersion ist gesetzt (${manifest.sdkVersion}), aber keine explizite SDK-Range dokumentiert.`,
+        ]
       : [`${entry.pluginId}: plugin.manifest.json enthaelt keine SDK-Kompatibilitaetsangabe.`];
   });
 
@@ -82,28 +98,106 @@ const collectPluginIamDrift = (
   for (const plugin of plugins) {
     const contract = studioModuleIamRegistry.get(plugin.id);
     if (!contract) {
-      findings.push(`${plugin.id}: kein kanonischer Host-IAM-Vertrag im Registry-Snapshot gefunden.`);
+      findings.push(
+        `${plugin.id}: kein kanonischer Host-IAM-Vertrag im Registry-Snapshot gefunden.`
+      );
       continue;
     }
 
-    const pluginPermissionIds = new Set((plugin.permissions ?? []).map((permission) => permission.id));
+    const pluginPermissionIds = new Set(
+      (plugin.permissions ?? []).map((permission) => permission.id)
+    );
     const contractPermissionIds = new Set(contract.permissionIds);
 
-    const missingInPlugin = [...contractPermissionIds].filter((permissionId) => !pluginPermissionIds.has(permissionId));
-    const unknownInPlugin = [...pluginPermissionIds].filter((permissionId) => !contractPermissionIds.has(permissionId));
+    const missingInPlugin = [...contractPermissionIds].filter(
+      (permissionId) => !pluginPermissionIds.has(permissionId)
+    );
+    const unknownInPlugin = [...pluginPermissionIds].filter(
+      (permissionId) => !contractPermissionIds.has(permissionId)
+    );
 
     if (missingInPlugin.length > 0) {
-      findings.push(`${plugin.id}: Host-IAM kennt weitere Permissions (${missingInPlugin.join(', ')}).`);
+      findings.push(
+        `${plugin.id}: Host-IAM kennt weitere Permissions (${missingInPlugin.join(', ')}).`
+      );
     }
     if (unknownInPlugin.length > 0) {
-      findings.push(`${plugin.id}: Plugin-Permissions sind im Host-IAM nicht kanonisch erfasst (${unknownInPlugin.join(', ')}).`);
+      findings.push(
+        `${plugin.id}: Plugin-Permissions sind im Host-IAM nicht kanonisch erfasst (${unknownInPlugin.join(', ')}).`
+      );
     }
   }
 
   return findings;
 };
 
-const runI18nKeyCheck = (repoRoot: string): { readonly ok: boolean; readonly details: readonly string[] } => {
+const buildUiActionInventory = (
+  plugins: readonly PluginDefinition[],
+  studioModuleIamRegistry: Awaited<ReturnType<typeof loadStudioModuleIamRegistry>>,
+  studioPermissionCatalog: Awaited<ReturnType<typeof loadStudioPermissionCatalog>>
+) => {
+  const pluginById = new Map(plugins.map((plugin) => [plugin.id, plugin] as const));
+
+  const moduleActions = [...studioModuleIamRegistry.values()].flatMap((contract) => {
+    const plugin = pluginById.get(contract.ownerPluginId);
+    const pluginPermissions = new Set(
+      (plugin?.permissions ?? []).map((permission) => permission.id)
+    );
+    const moduleIamPermissions = new Set(plugin?.moduleIam?.permissionIds ?? []);
+
+    return contract.permissionIds.map((permissionId) => {
+      const contributions = [
+        ...(plugin?.actions ?? [])
+          .filter((action) => action.requiredAction === permissionId)
+          .map((action) => `action:${action.id}`),
+        ...(plugin?.routes ?? [])
+          .filter((route) => route.guard === permissionId)
+          .map((route) => `route:${route.id}`),
+        ...(plugin?.navigation ?? [])
+          .filter((item) => item.requiredAction === permissionId)
+          .map((item) => `navigation:${item.id}`),
+      ];
+
+      return {
+        actionId: permissionId,
+        owner: contract.ownerPluginId === 'host' ? 'host' : 'plugin',
+        ownerId: contract.ownerPluginId,
+        moduleId: contract.moduleId,
+        scope: 'tenant',
+        moduleAssignmentRequired: true,
+        inStudioModuleIam: true,
+        inPluginPermissions: plugin ? pluginPermissions.has(permissionId) : null,
+        inPluginModuleIam: plugin ? moduleIamPermissions.has(permissionId) : null,
+        uiContributions: contributions,
+        serverEnforcement: 'not_verified',
+      } as const;
+    });
+  });
+  const registeredActionIds = new Set(moduleActions.map((entry) => entry.actionId));
+  const coreActions = studioPermissionCatalog
+    .filter((permission) => !registeredActionIds.has(permission.key))
+    .map((permission) => ({
+      actionId: permission.key,
+      owner: 'host' as const,
+      ownerId: 'host',
+      moduleId: permission.availability.kind === 'module' ? permission.availability.moduleId : null,
+      scope: permission.availability.kind === 'root' ? ('platform' as const) : ('tenant' as const),
+      moduleAssignmentRequired: permission.availability.kind === 'module',
+      inStudioModuleIam: false,
+      inPluginPermissions: null,
+      inPluginModuleIam: null,
+      uiContributions: [],
+      serverEnforcement: 'not_verified' as const,
+    }));
+
+  return [...moduleActions, ...coreActions].sort((left, right) =>
+    left.actionId.localeCompare(right.actionId)
+  );
+};
+
+const runI18nKeyCheck = (
+  repoRoot: string
+): { readonly ok: boolean; readonly details: readonly string[] } => {
   try {
     const scriptSource = readFileSync(resolve(repoRoot, 'scripts/ci/check-i18n-keys.ts'), 'utf8');
     if (!scriptSource.includes('missingUsageKeys')) {
@@ -131,7 +225,11 @@ const collectShortActionIdFindings = (repoRoot: string): readonly string[] => {
     resolve(repoRoot, 'packages/sva-mainserver/src/server'),
   ]) {
     for (const filePath of walkFiles(directory)) {
-      if (!/\.(ts|tsx)$/.test(filePath) || filePath.endsWith('.test.ts') || filePath.endsWith('.test.tsx')) {
+      if (
+        !/\.(ts|tsx)$/.test(filePath) ||
+        filePath.endsWith('.test.ts') ||
+        filePath.endsWith('.test.tsx')
+      ) {
         continue;
       }
 
@@ -150,11 +248,16 @@ const collectShortActionIdFindings = (repoRoot: string): readonly string[] => {
 
 const collectServerOnlyLeakFindings = (repoRoot: string): readonly string[] => {
   const findings: string[] = [];
-  const importPattern = /from\s+['"`]([^'"`]+(?:\.server(?:\.[jt]sx?)?|\/server(?:\.[jt]sx?)?))['"`]/g;
+  const importPattern =
+    /from\s+['"`]([^'"`]+(?:\.server(?:\.[jt]sx?)?|\/server(?:\.[jt]sx?)?))['"`]/g;
 
   for (const directory of [resolve(repoRoot, 'apps'), resolve(repoRoot, 'packages')]) {
     for (const filePath of walkFiles(directory)) {
-      if (!/\.(ts|tsx)$/.test(filePath) || filePath.endsWith('.test.ts') || filePath.endsWith('.test.tsx')) {
+      if (
+        !/\.(ts|tsx)$/.test(filePath) ||
+        filePath.endsWith('.test.ts') ||
+        filePath.endsWith('.test.tsx')
+      ) {
         continue;
       }
       if (filePath.endsWith('.server.ts') || filePath.endsWith('.server.tsx')) {
@@ -192,21 +295,44 @@ const limitVisibleFindings = (findings: readonly string[]): readonly string[] =>
 };
 
 export const buildPluginContractCheck = async (context: GuardrailCheckContext) => {
-  const [{ createStudioPluginCatalogReport, getWorkspacePluginModuleCandidates }, studioModuleIamRegistry] = await Promise.all([
+  const [
+    { createStudioPluginCatalogReport, getWorkspacePluginModuleCandidates },
+    studioModuleIamRegistry,
+    studioPermissionCatalog,
+  ] = await Promise.all([
     loadPluginCatalogLoaderModule(),
     loadStudioModuleIamRegistry(),
+    loadStudioPermissionCatalog(),
   ]);
   const entries = readWorkspacePluginCatalogEntries(context.rootDir);
   const report = await createStudioPluginCatalogReport({
     catalogConfig: entries,
     resolveManifest: (entry) => readWorkspacePluginManifest(context.rootDir, entry.sourceRef),
     resolvePluginModule: (entry, manifest) =>
-      importWorkspacePluginModule(context.rootDir, entry, manifest, getWorkspacePluginModuleCandidates),
+      importWorkspacePluginModule(
+        context.rootDir,
+        entry,
+        manifest,
+        getWorkspacePluginModuleCandidates
+      ),
   });
 
-  const issueMessages = report.issues.map((issue) => `${issue.pluginId}: ${issue.code}: ${issue.message}`);
+  const issueMessages = report.issues.map(
+    (issue) => `${issue.pluginId}: ${issue.code}: ${issue.message}`
+  );
   const sdkCompatibilityFindings = collectPluginSdkCompatibilityFindings(entries, context.rootDir);
-  const iamDriftFindings = collectPluginIamDrift(report.snapshot.registry.plugins, studioModuleIamRegistry);
+  const iamDriftFindings = collectPluginIamDrift(
+    report.snapshot.registry.plugins,
+    studioModuleIamRegistry
+  );
+  const accessTransitionDiagnostics = collectPluginAccessTransitionDiagnostics(
+    report.snapshot.registry.plugins
+  );
+  const uiActionInventory = buildUiActionInventory(
+    report.snapshot.registry.plugins,
+    studioModuleIamRegistry,
+    studioPermissionCatalog
+  );
   const findings = [...issueMessages, ...sdkCompatibilityFindings, ...iamDriftFindings];
 
   return createGuardrailCheckResult({
@@ -223,11 +349,15 @@ export const buildPluginContractCheck = async (context: GuardrailCheckContext) =
       loadedPlugins: report.snapshot.registry.plugins.map((plugin) => plugin.id),
       sdkCompatibilityFindings,
       iamDriftFindings,
+      accessTransitionDiagnostics,
+      uiActionInventory,
     },
     wouldFailInEnforcement: findings.length > 0,
     affectedTargets: entries.map((entry) => entry.sourceRef),
     suggestedNextStep:
-      findings.length > 0 ? 'Preflight-Validierung schrittweise von report-only auf fail-fast anheben.' : null,
+      findings.length > 0
+        ? 'Preflight-Validierung schrittweise von report-only auf fail-fast anheben.'
+        : null,
   });
 };
 
@@ -263,7 +393,9 @@ export const buildArchitectureDriftCheck = async (context: GuardrailCheckContext
       'packages/sva-mainserver/src/server',
     ],
     suggestedNextStep:
-      details.length > 0 ? 'Vorhandene Drift in dedizierte statische Gates ueberfuehren und Altlasten abbauen.' : null,
+      details.length > 0
+        ? 'Vorhandene Drift in dedizierte statische Gates ueberfuehren und Altlasten abbauen.'
+        : null,
   });
 };
 

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.fn();
-const invalidatePermissionsMock = vi.fn();
+const refreshSessionMock = vi.fn();
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
@@ -22,7 +22,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: false,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     const healthy = render(<PermissionsDegradedBanner />);
@@ -31,7 +31,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: true,
     });
     render(<PermissionsDegradedBanner />);
@@ -40,7 +40,7 @@ describe('PermissionsDegradedBanner', () => {
 
   it('retries permission invalidation and disables the retry button while pending', async () => {
     let resolveInvalidate: (() => void) | undefined;
-    invalidatePermissionsMock.mockImplementation(
+    refreshSessionMock.mockImplementation(
       () =>
         new Promise<void>((resolve) => {
           resolveInvalidate = resolve;
@@ -48,7 +48,7 @@ describe('PermissionsDegradedBanner', () => {
     );
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
 
@@ -58,7 +58,7 @@ describe('PermissionsDegradedBanner', () => {
     const retryButton = screen.getByRole('button', { name: 'Neu laden' });
     fireEvent.click(retryButton);
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+    expect(refreshSessionMock).toHaveBeenCalledTimes(1);
     expect(retryButton.hasAttribute('disabled')).toBe(true);
 
     resolveInvalidate?.();
@@ -72,7 +72,7 @@ describe('PermissionsDegradedBanner', () => {
     const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
 
@@ -82,7 +82,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: false,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     view.rerender(<PermissionsDegradedBanner />);
@@ -90,7 +90,7 @@ describe('PermissionsDegradedBanner', () => {
 
     useAuthMock.mockReturnValue({
       permissionsDegraded: true,
-      invalidatePermissions: invalidatePermissionsMock,
+      refreshSession: refreshSessionMock,
       isLoading: false,
     });
     view.rerender(<PermissionsDegradedBanner />);

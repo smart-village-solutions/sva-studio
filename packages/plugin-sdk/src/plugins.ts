@@ -1,4 +1,5 @@
 import type { AdminResourceDefinition } from './admin-resources.js';
+import type { UiAccessRequirement } from '@sva/iam-core';
 import type { ContentTypeDefinition } from './content-types.js';
 import {
   assertPluginContributionAllowedKeys,
@@ -13,7 +14,10 @@ import {
 } from './plugin-identifiers.js';
 import type { PluginExternalInterfaceTypeDefinition } from './external-interfaces.js';
 import { definePluginExternalInterfaceTypes } from './external-interfaces.js';
-import type { PluginImportProfileDefinition, PluginJobTypeDefinition } from './plugin-operations.js';
+import type {
+  PluginImportProfileDefinition,
+  PluginJobTypeDefinition,
+} from './plugin-operations.js';
 import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
 
 export type PluginRouteGuard = string;
@@ -25,6 +29,7 @@ export type PluginRouteDefinition = {
   readonly path: string;
   readonly guard?: PluginRouteGuard;
   readonly actionId?: string;
+  readonly accessRequirement?: UiAccessRequirement;
   readonly validateSearch?: (search: Record<string, unknown>) => unknown;
   readonly component: (...args: never[]) => unknown;
 };
@@ -36,6 +41,7 @@ export type PluginNavigationItem = {
   readonly section: PluginNavigationSection;
   readonly actionId?: string;
   readonly requiredAction?: PluginRouteGuard;
+  readonly accessRequirement?: UiAccessRequirement;
 };
 
 export type PluginActionDefinition = {
@@ -49,6 +55,7 @@ export type PluginActionDefinition = {
   readonly id: string;
   readonly titleKey: string;
   readonly requiredAction?: PluginRouteGuard;
+  readonly accessRequirement?: UiAccessRequirement;
   readonly featureFlag?: string;
   readonly legacyAliases?: readonly string[];
 };
@@ -139,12 +146,29 @@ const pluginDefinitionAllowedKeys = new Set([
   'translations',
 ] as const);
 
-const routeDefinitionAllowedKeys = new Set(['id', 'path', 'guard', 'actionId', 'validateSearch', 'component'] as const);
-const navigationItemAllowedKeys = new Set(['id', 'to', 'titleKey', 'section', 'actionId', 'requiredAction'] as const);
+const routeDefinitionAllowedKeys = new Set([
+  'id',
+  'path',
+  'guard',
+  'actionId',
+  'accessRequirement',
+  'validateSearch',
+  'component',
+] as const);
+const navigationItemAllowedKeys = new Set([
+  'id',
+  'to',
+  'titleKey',
+  'section',
+  'actionId',
+  'requiredAction',
+  'accessRequirement',
+] as const);
 const actionDefinitionAllowedKeys = new Set([
   'id',
   'titleKey',
   'requiredAction',
+  'accessRequirement',
   'featureFlag',
   'legacyAliases',
 ] as const);
@@ -169,6 +193,7 @@ const adminResourceDefinitionAllowedKeys = new Set([
   'permissions',
   'capabilities',
   'contentUi',
+  'accessRequirements',
 ] as const);
 const auditEventDefinitionAllowedKeys = new Set(['eventType', 'titleKey'] as const);
 const moduleIamContractAllowedKeys = new Set(['moduleId', 'permissionIds', 'systemRoles'] as const);
@@ -212,6 +237,67 @@ export type PluginModuleIamRegistryEntry = {
   readonly systemRoles: readonly PluginModuleIamSystemRoleDefinition[];
 };
 
+export type PluginAccessTransitionDiagnostic = Readonly<{
+  pluginId: string;
+  contributionType: 'action' | 'route' | 'navigation' | 'adminResource';
+  contributionId: string;
+  code: 'missing_access_requirement';
+}>;
+
+export const collectPluginAccessTransitionDiagnostics = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginAccessTransitionDiagnostic[] =>
+  plugins.flatMap((plugin) => {
+    const pluginId = normalizePluginNamespace(plugin.id);
+    const diagnostics: PluginAccessTransitionDiagnostic[] = [];
+    for (const action of plugin.actions ?? []) {
+      if (action.requiredAction && !action.accessRequirement) {
+        diagnostics.push({
+          pluginId,
+          contributionType: 'action',
+          contributionId: action.id,
+          code: 'missing_access_requirement',
+        });
+      }
+    }
+    for (const route of plugin.routes) {
+      if (route.guard && !route.accessRequirement) {
+        diagnostics.push({
+          pluginId,
+          contributionType: 'route',
+          contributionId: route.id,
+          code: 'missing_access_requirement',
+        });
+      }
+    }
+    for (const navigationItem of plugin.navigation ?? []) {
+      if (navigationItem.requiredAction && !navigationItem.accessRequirement) {
+        diagnostics.push({
+          pluginId,
+          contributionType: 'navigation',
+          contributionId: navigationItem.id,
+          code: 'missing_access_requirement',
+        });
+      }
+    }
+    for (const resource of plugin.adminResources ?? []) {
+      for (const [view, permissionIds] of Object.entries(resource.permissions ?? {})) {
+        if (permissionIds === undefined) {
+          continue;
+        }
+        if (!resource.accessRequirements?.[view as keyof typeof resource.accessRequirements]) {
+          diagnostics.push({
+            pluginId,
+            contributionType: 'adminResource',
+            contributionId: `${resource.resourceId}.${view}`,
+            code: 'missing_access_requirement',
+          });
+        }
+      }
+    }
+    return diagnostics;
+  });
+
 const normalizeLegacyAliases = (
   actionId: string,
   aliases: readonly string[] | undefined
@@ -221,7 +307,11 @@ const normalizeLegacyAliases = (
   }
 
   const normalizedAliases = aliases.map((alias) => normalizePluginIdentifier(alias));
-  if (normalizedAliases.some((alias) => alias.length === 0 || LEGACY_ACTION_ALIAS_PATTERN.test(alias) === false)) {
+  if (
+    normalizedAliases.some(
+      (alias) => alias.length === 0 || LEGACY_ACTION_ALIAS_PATTERN.test(alias) === false
+    )
+  ) {
     throw new Error(`invalid_plugin_action_alias:${actionId}`);
   }
   if (normalizedAliases.some((alias) => alias === actionId)) {
@@ -230,14 +320,18 @@ const normalizeLegacyAliases = (
 
   const uniqueAliases = [...new Set(normalizedAliases)];
   if (uniqueAliases.length !== normalizedAliases.length) {
-    const duplicateAlias = normalizedAliases.find((alias, index) => normalizedAliases.indexOf(alias) !== index);
+    const duplicateAlias = normalizedAliases.find(
+      (alias, index) => normalizedAliases.indexOf(alias) !== index
+    );
     throw new Error(`duplicate_plugin_action_alias:${actionId}:${duplicateAlias}`);
   }
 
   return uniqueAliases;
 };
 
-const normalizePluginActionDefinition = (action: PluginActionDefinition): PluginActionDefinition => {
+const normalizePluginActionDefinition = (
+  action: PluginActionDefinition
+): PluginActionDefinition => {
   const actionId = normalizePluginIdentifier(action.id);
   const titleKey = normalizePluginIdentifier(action.titleKey);
 
@@ -250,14 +344,18 @@ const normalizePluginActionDefinition = (action: PluginActionDefinition): Plugin
   };
 };
 
-const normalizePluginPermissionDefinition = (permission: PluginPermissionDefinition): PluginPermissionDefinition => ({
+const normalizePluginPermissionDefinition = (
+  permission: PluginPermissionDefinition
+): PluginPermissionDefinition => ({
   ...permission,
   id: normalizePluginIdentifier(permission.id),
   titleKey: normalizePluginIdentifier(permission.titleKey),
   descriptionKey: normalizePluginIdentifier(permission.descriptionKey ?? '') || undefined,
 });
 
-const normalizePluginAuditEventDefinition = (event: PluginAuditEventDefinition): PluginAuditEventDefinition => ({
+const normalizePluginAuditEventDefinition = (
+  event: PluginAuditEventDefinition
+): PluginAuditEventDefinition => ({
   ...event,
   eventType: normalizePluginIdentifier(event.eventType),
   titleKey: normalizePluginIdentifier(event.titleKey ?? '') || undefined,
@@ -267,12 +365,18 @@ const normalizePluginModuleIamSystemRoleDefinition = (
   definition: PluginModuleIamSystemRoleDefinition
 ): PluginModuleIamSystemRoleDefinition => ({
   roleName: normalizePluginIdentifier(definition.roleName),
-  permissionIds: definition.permissionIds.map((permissionId) => normalizePluginIdentifier(permissionId)),
+  permissionIds: definition.permissionIds.map((permissionId) =>
+    normalizePluginIdentifier(permissionId)
+  ),
 });
 
-const normalizePluginModuleIamContract = (contract: PluginModuleIamContract): PluginModuleIamContract => ({
+const normalizePluginModuleIamContract = (
+  contract: PluginModuleIamContract
+): PluginModuleIamContract => ({
   moduleId: normalizePluginIdentifier(contract.moduleId),
-  permissionIds: contract.permissionIds.map((permissionId) => normalizePluginIdentifier(permissionId)),
+  permissionIds: contract.permissionIds.map((permissionId) =>
+    normalizePluginIdentifier(permissionId)
+  ),
   systemRoles: contract.systemRoles.map(normalizePluginModuleIamSystemRoleDefinition),
 });
 
@@ -286,7 +390,9 @@ const resolvePluginPermissionDefinition = (
   plugin: PluginDefinition,
   permissionId: string
 ): PluginPermissionDefinition | undefined =>
-  plugin.permissions?.find((permission) => normalizePluginIdentifier(permission.id) === permissionId);
+  plugin.permissions?.find(
+    (permission) => normalizePluginIdentifier(permission.id) === permissionId
+  );
 
 const assertPluginPermissionReference = (
   plugin: PluginDefinition,
@@ -300,12 +406,16 @@ const assertPluginPermissionReference = (
   }
 
   if (normalizedPermissionId.startsWith('content.')) {
-    throw new Error(`legacy_content_plugin_permission_guard:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+    throw new Error(
+      `legacy_content_plugin_permission_guard:${pluginNamespace}:${source}:${normalizedPermissionId}`
+    );
   }
 
   const parsed = parseNamespacedPluginIdentifier(normalizedPermissionId);
   if (parsed === undefined) {
-    throw new Error(`invalid_plugin_permission_reference:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+    throw new Error(
+      `invalid_plugin_permission_reference:${pluginNamespace}:${source}:${normalizedPermissionId}`
+    );
   }
   if (parsed.namespace !== pluginNamespace) {
     throw new Error(
@@ -313,7 +423,47 @@ const assertPluginPermissionReference = (
     );
   }
   if (!resolvePluginPermissionDefinition(plugin, normalizedPermissionId)) {
-    throw new Error(`plugin_permission_reference_missing:${pluginNamespace}:${source}:${normalizedPermissionId}`);
+    throw new Error(
+      `plugin_permission_reference_missing:${pluginNamespace}:${source}:${normalizedPermissionId}`
+    );
+  }
+};
+
+const assertPluginAccessRequirement = (
+  plugin: PluginDefinition,
+  pluginNamespace: string,
+  source: string,
+  requirement: UiAccessRequirement | undefined,
+  legacyRequiredAction?: string
+): void => {
+  if (!requirement) {
+    if (legacyRequiredAction) {
+      throw new Error(
+        `plugin_access_requirement_missing:${pluginNamespace}:${source}:${legacyRequiredAction}`
+      );
+    }
+    return;
+  }
+  if (requirement.kind !== 'tenant') {
+    throw new Error(
+      `plugin_access_requirement_scope_invalid:${pluginNamespace}:${source}:${requirement.kind}`
+    );
+  }
+  if (requirement.moduleId !== pluginNamespace) {
+    throw new Error(
+      `plugin_access_requirement_module_mismatch:${pluginNamespace}:${source}:${requirement.moduleId ?? 'missing'}`
+    );
+  }
+  if (requirement.actions.values.length === 0) {
+    throw new Error(`plugin_access_requirement_actions_missing:${pluginNamespace}:${source}`);
+  }
+  for (const action of requirement.actions.values) {
+    assertPluginPermissionReference(plugin, pluginNamespace, source, action);
+  }
+  if (legacyRequiredAction && !requirement.actions.values.includes(legacyRequiredAction)) {
+    throw new Error(
+      `plugin_access_requirement_legacy_mismatch:${pluginNamespace}:${source}:${legacyRequiredAction}`
+    );
   }
 };
 
@@ -330,7 +480,9 @@ const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boole
 };
 
 const pluginUsesStandardContentAdminResource = (plugin: PluginDefinition): boolean =>
-  (plugin.adminResources ?? []).some((resource) => resource.guard === 'content' && resource.contentUi);
+  (plugin.adminResources ?? []).some(
+    (resource) => resource.guard === 'content' && resource.contentUi
+  );
 
 export const definePluginActions = <const TActions extends readonly PluginActionDefinition[]>(
   namespace: string,
@@ -368,14 +520,18 @@ export const definePluginActions = <const TActions extends readonly PluginAction
       throw new Error(`invalid_plugin_action_definition:${action.id}`);
     }
     if (parsed.namespace !== normalizedNamespace) {
-      throw new Error(`plugin_action_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${action.id}`);
+      throw new Error(
+        `plugin_action_namespace_mismatch:${normalizedNamespace}:${parsed.namespace}:${action.id}`
+      );
     }
   }
 
   return normalizedActions;
 };
 
-export const definePluginPermissions = <const TPermissions extends readonly PluginPermissionDefinition[]>(
+export const definePluginPermissions = <
+  const TPermissions extends readonly PluginPermissionDefinition[],
+>(
   namespace: string,
   permissions: TPermissions
 ): TPermissions => {
@@ -420,7 +576,9 @@ export const definePluginPermissions = <const TPermissions extends readonly Plug
   return normalizedPermissions;
 };
 
-export const definePluginAuditEvents = <const TEvents extends readonly PluginAuditEventDefinition[]>(
+export const definePluginAuditEvents = <
+  const TEvents extends readonly PluginAuditEventDefinition[],
+>(
   namespace: string,
   events: TEvents
 ): TEvents => {
@@ -438,7 +596,9 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
     );
   }
 
-  const normalizedEvents = events.map((event) => normalizePluginAuditEventDefinition(event)) as unknown as TEvents;
+  const normalizedEvents = events.map((event) =>
+    normalizePluginAuditEventDefinition(event)
+  ) as unknown as TEvents;
 
   for (const event of normalizedEvents) {
     const parsed = parseNamespacedPluginIdentifier(event.eventType);
@@ -455,9 +615,7 @@ export const definePluginAuditEvents = <const TEvents extends readonly PluginAud
   return normalizedEvents;
 };
 
-export const definePluginModuleIamContract = <
-  const TContract extends PluginModuleIamContract,
->(
+export const definePluginModuleIamContract = <const TContract extends PluginModuleIamContract>(
   namespace: string,
   contract: TContract
 ): TContract => {
@@ -483,7 +641,9 @@ export const definePluginModuleIamContract = <
 
   const normalizedContract = normalizePluginModuleIamContract(contract) as TContract;
   if (normalizedContract.moduleId !== normalizedNamespace) {
-    throw new Error(`plugin_module_iam_module_id_mismatch:${normalizedNamespace}:${normalizedContract.moduleId}`);
+    throw new Error(
+      `plugin_module_iam_module_id_mismatch:${normalizedNamespace}:${normalizedContract.moduleId}`
+    );
   }
 
   for (const permissionId of normalizedContract.permissionIds) {
@@ -561,7 +721,10 @@ const createPluginRegistryValidationContext = (
   };
 };
 
-const assertPluginRegistryActions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryActions = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const action of plugin.actions ?? []) {
     assertPluginContributionAllowedKeys(
       action,
@@ -570,6 +733,13 @@ const assertPluginRegistryActions = ({ plugin, pluginNamespace }: PluginRegistry
       normalizePluginIdentifier(action.id)
     );
     assertPluginPermissionReference(plugin, pluginNamespace, action.id, action.requiredAction);
+    assertPluginAccessRequirement(
+      plugin,
+      pluginNamespace,
+      action.id,
+      action.accessRequirement,
+      action.requiredAction
+    );
   }
 };
 
@@ -597,7 +767,10 @@ const assertOwnedPluginActionReference = (
   return action;
 };
 
-const assertPluginRegistryRoutes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryRoutes = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const route of plugin.routes) {
     assertPluginContributionAllowedKeys(
       route,
@@ -607,6 +780,13 @@ const assertPluginRegistryRoutes = ({ plugin, pluginNamespace }: PluginRegistryV
     );
     assertPluginRoutePathAllowed(pluginNamespace, normalizePluginIdentifier(route.id), route.path);
     assertPluginPermissionReference(plugin, pluginNamespace, route.id, route.guard);
+    assertPluginAccessRequirement(
+      plugin,
+      pluginNamespace,
+      route.id,
+      route.accessRequirement,
+      route.guard
+    );
 
     const routeActionId = normalizePluginIdentifier(route.actionId ?? '');
     if (!routeActionId) {
@@ -622,7 +802,9 @@ const assertPluginRegistryRoutes = ({ plugin, pluginNamespace }: PluginRegistryV
       `plugin_route_action_missing:${pluginNamespace}:${route.id}:${routeActionId}`
     );
     if (route.guard !== action.requiredAction) {
-      throw new Error(`plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`);
+      throw new Error(
+        `plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
+      );
     }
   }
 };
@@ -647,7 +829,10 @@ const assertPluginRegistryStandardContentRouteGuardrails = ({
   }
 };
 
-const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryNavigation = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const navigationItem of plugin.navigation ?? []) {
     assertPluginContributionAllowedKeys(
       navigationItem,
@@ -655,7 +840,19 @@ const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegis
       pluginNamespace,
       normalizePluginIdentifier(navigationItem.id)
     );
-    assertPluginPermissionReference(plugin, pluginNamespace, navigationItem.id, navigationItem.requiredAction);
+    assertPluginPermissionReference(
+      plugin,
+      pluginNamespace,
+      navigationItem.id,
+      navigationItem.requiredAction
+    );
+    assertPluginAccessRequirement(
+      plugin,
+      pluginNamespace,
+      navigationItem.id,
+      navigationItem.accessRequirement,
+      navigationItem.requiredAction
+    );
 
     const navigationActionId = normalizePluginIdentifier(navigationItem.actionId ?? '');
     if (!navigationActionId) {
@@ -682,7 +879,10 @@ const assertPluginRegistryNavigation = ({ plugin, pluginNamespace }: PluginRegis
   }
 };
 
-const assertPluginRegistryPermissions = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryPermissions = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const permission of plugin.permissions ?? []) {
     assertPluginContributionAllowedKeys(
       permission,
@@ -703,7 +903,10 @@ const assertPluginRegistryPermissions = ({ plugin, pluginNamespace }: PluginRegi
   }
 };
 
-const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryContentTypes = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   const pluginPermissionIds = new Set(
     (plugin.permissions ?? []).map((permission) => normalizePluginIdentifier(permission.id))
   );
@@ -748,7 +951,9 @@ const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginReg
       );
     }
     if (!pluginPermissionIds.has(requiredReadAction)) {
-      throw new Error(`plugin_content_type_read_action_missing:${pluginNamespace}:${requiredReadAction}:${normalizedContentType}`);
+      throw new Error(
+        `plugin_content_type_read_action_missing:${pluginNamespace}:${requiredReadAction}:${normalizedContentType}`
+      );
     }
     if (!pluginPermissionIds.has(requiredCreateAction)) {
       throw new Error(
@@ -758,8 +963,13 @@ const assertPluginRegistryContentTypes = ({ plugin, pluginNamespace }: PluginReg
   }
 };
 
-const assertPluginRegistryContentHistory = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
-  const hasEditableContent = (plugin.contentTypes ?? []).some((definition) => definition.studioContentType !== undefined);
+const assertPluginRegistryContentHistory = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
+  const hasEditableContent = (plugin.contentTypes ?? []).some(
+    (definition) => definition.studioContentType !== undefined
+  );
   const contract = plugin.contentHistory;
 
   if (hasEditableContent && !contract) {
@@ -788,7 +998,10 @@ const assertPluginRegistryContentHistory = ({ plugin, pluginNamespace }: PluginR
   }
 };
 
-const assertPluginRegistryAdminResources = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryAdminResources = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const adminResource of plugin.adminResources ?? []) {
     const contributionId = normalizePluginIdentifier(adminResource.resourceId);
     assertPluginContributionAllowedKeys(
@@ -807,10 +1020,34 @@ const assertPluginRegistryAdminResources = ({ plugin, pluginNamespace }: PluginR
         `plugin_admin_resource_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${normalizedResourceId}`
       );
     }
+    for (const [view, permissionIds] of Object.entries(adminResource.permissions ?? {})) {
+      if (permissionIds === undefined) {
+        continue;
+      }
+      if (
+        !adminResource.accessRequirements?.[view as keyof typeof adminResource.accessRequirements]
+      ) {
+        throw new Error(
+          `plugin_access_requirement_missing:${pluginNamespace}:${normalizedResourceId}.${view}:${permissionIds[0] ?? 'missing'}`
+        );
+      }
+    }
+    for (const [view, requirement] of Object.entries(adminResource.accessRequirements ?? {})) {
+      assertPluginAccessRequirement(
+        plugin,
+        pluginNamespace,
+        `${normalizedResourceId}.${view}`,
+        requirement,
+        adminResource.permissions?.[view as keyof typeof adminResource.permissions]?.[0]
+      );
+    }
   }
 };
 
-const assertPluginRegistryAuditEvents = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryAuditEvents = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   for (const eventDefinition of plugin.auditEvents ?? []) {
     const contributionId = normalizePluginIdentifier(eventDefinition.eventType);
     assertPluginContributionAllowedKeys(
@@ -832,7 +1069,10 @@ const assertPluginRegistryAuditEvents = ({ plugin, pluginNamespace }: PluginRegi
   }
 };
 
-const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegistryValidationContext): void => {
+const assertPluginRegistryModuleIam = ({
+  plugin,
+  pluginNamespace,
+}: PluginRegistryValidationContext): void => {
   if (plugin.moduleIam) {
     definePluginModuleIamContract(pluginNamespace, plugin.moduleIam);
   }
@@ -841,8 +1081,13 @@ const assertPluginRegistryModuleIam = ({ plugin, pluginNamespace }: PluginRegist
 const normalizePluginRegistryOperations = ({
   plugin,
   pluginNamespace,
-}: PluginRegistryValidationContext): Pick<PluginDefinition, 'jobTypes' | 'importProfiles' | 'externalInterfaceTypes'> => ({
-  jobTypes: plugin.jobTypes ? definePluginJobTypes(pluginNamespace, plugin.jobTypes) : plugin.jobTypes,
+}: PluginRegistryValidationContext): Pick<
+  PluginDefinition,
+  'jobTypes' | 'importProfiles' | 'externalInterfaceTypes'
+> => ({
+  jobTypes: plugin.jobTypes
+    ? definePluginJobTypes(pluginNamespace, plugin.jobTypes)
+    : plugin.jobTypes,
   importProfiles: plugin.importProfiles
     ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
     : plugin.importProfiles,
@@ -904,7 +1149,8 @@ export const mergePluginContentTypes = (
 
 export const mergePluginAdminResourceDefinitions = (
   plugins: readonly PluginDefinition[]
-): readonly PluginAdminResourceDefinition[] => plugins.flatMap((plugin) => plugin.adminResources ?? []);
+): readonly PluginAdminResourceDefinition[] =>
+  plugins.flatMap((plugin) => plugin.adminResources ?? []);
 
 export const mergePluginAuditEventDefinitions = (
   plugins: readonly PluginDefinition[]
@@ -919,7 +1165,10 @@ export const mergePluginModuleIamContracts = (
     }
 
     const normalizedPluginNamespace = normalizePluginNamespace(plugin.id);
-    const normalizedContract = definePluginModuleIamContract(normalizedPluginNamespace, plugin.moduleIam);
+    const normalizedContract = definePluginModuleIamContract(
+      normalizedPluginNamespace,
+      plugin.moduleIam
+    );
     return [
       {
         moduleId: normalizedContract.moduleId,
@@ -972,7 +1221,9 @@ export const createPluginActionRegistry = (
         throw new Error(`invalid_plugin_action_id:${actionId}`);
       }
       if (parsed.namespace !== pluginNamespace) {
-        throw new Error(`plugin_action_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${actionId}`);
+        throw new Error(
+          `plugin_action_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${actionId}`
+        );
       }
       if (registry.has(actionId)) {
         throw new Error(`duplicate_plugin_action:${actionId}`);

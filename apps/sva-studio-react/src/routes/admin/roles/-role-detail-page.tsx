@@ -10,7 +10,13 @@ import {
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../../components/ui/card';
 import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
@@ -20,6 +26,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { useRolePermissions } from '../../../hooks/use-role-permissions';
 import { useRoles } from '../../../hooks/use-roles';
 import { useUsers } from '../../../hooks/use-users';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
@@ -35,7 +42,11 @@ type RoleDetailPageProps = Readonly<{
 }>;
 
 const TABS: readonly RoleDetailTab[] = ['general', 'permissions', 'assignments', 'sync'];
-const ASSIGNABLE_PERMISSION_ACCESS_SCOPES: readonly PermissionAccessScope[] = ['all', 'own', 'organization'];
+const ASSIGNABLE_PERMISSION_ACCESS_SCOPES: readonly PermissionAccessScope[] = [
+  'all',
+  'own',
+  'organization',
+];
 
 const ROLE_PERMISSION_ACTION_LABELS = {
   read: 'admin.roles.permissionActions.read',
@@ -146,7 +157,9 @@ export const sortPermissionIdsByCatalog = (
   permissionIds: readonly string[],
   catalog: readonly { id: string; permissionKey: string }[]
 ) => {
-  const permissionKeyById = new Map(catalog.map((permission) => [permission.id, permission.permissionKey] as const));
+  const permissionKeyById = new Map(
+    catalog.map((permission) => [permission.id, permission.permissionKey] as const)
+  );
 
   return [...permissionIds].sort((left, right) => {
     const leftKey = permissionKeyById.get(left) ?? left;
@@ -211,7 +224,9 @@ const buildPermissionScopeDraft = (
   }[]
 ): Record<string, PermissionAccessScope> => {
   const byAssignment = Object.fromEntries(
-    (role.permissionAssignments ?? []).map((assignment) => [assignment.permissionId, assignment.accessScope] as const)
+    (role.permissionAssignments ?? []).map(
+      (assignment) => [assignment.permissionId, assignment.accessScope] as const
+    )
   ) as Record<string, PermissionAccessScope>;
   const permissionById = new Map(catalog.map((permission) => [permission.id, permission] as const));
 
@@ -220,9 +235,11 @@ const buildPermissionScopeDraft = (
       acc[permission.id] = normalizePermissionAccessScope(
         byAssignment[permission.id] ?? permission.accessScope ?? 'all',
         {
-          isScopeAssignable: permission.isScopeAssignable ?? permissionById.get(permission.id)?.isScopeAssignable,
+          isScopeAssignable:
+            permission.isScopeAssignable ?? permissionById.get(permission.id)?.isScopeAssignable,
           supportedAccessScopes:
-            permission.supportedAccessScopes ?? permissionById.get(permission.id)?.supportedAccessScopes,
+            permission.supportedAccessScopes ??
+            permissionById.get(permission.id)?.supportedAccessScopes,
         }
       );
       return acc;
@@ -233,6 +250,8 @@ const buildPermissionScopeDraft = (
 
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const rolesApi = useRoles();
+  const access = useIamResourceAccess('role');
+  const canUpdateRole = isIamAccessAllowed(access.update);
   const permissionsApi = useRolePermissions();
   const usersApi = useUsers({ page: 1, pageSize: 100 });
   const navigate = useNavigate();
@@ -241,18 +260,25 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     () => rolesApi.roles.filter((entry) => isTenantRoleVisible(entry)),
     [rolesApi.roles]
   );
-  const role = React.useMemo(() => visibleRoles.find((entry) => entry.id === roleId) ?? null, [roleId, visibleRoles]);
-  const isReadOnly = role ? isTenantRoleReadOnly(role) : true;
+  const role = React.useMemo(
+    () => visibleRoles.find((entry) => entry.id === roleId) ?? null,
+    [roleId, visibleRoles]
+  );
+  const isReadOnly = !canUpdateRole || (role ? isTenantRoleReadOnly(role) : true);
   const [editForm, setEditForm] = React.useState({
     displayName: '',
     description: '',
     roleLevel: '10',
   });
   const [permissionDraft, setPermissionDraft] = React.useState<string[]>([]);
-  const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<Record<string, PermissionAccessScope>>({});
+  const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<
+    Record<string, PermissionAccessScope>
+  >({});
   const [isSavingMeta, setIsSavingMeta] = React.useState(false);
   const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
-  const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<string[]>([]);
+  const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<
+    string[]
+  >([]);
   const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
   const [permissionSearch, setPermissionSearch] = React.useState('');
 
@@ -283,7 +309,8 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           id: permission.id,
           permissionKey: permission.permissionKey,
           description:
-            permission.description?.trim() || t('admin.roles.detail.permissions.permissionDescriptionFallback'),
+            permission.description?.trim() ||
+            t('admin.roles.detail.permissions.permissionDescriptionFallback'),
           resourceLabel: summary.resourceLabel,
           actionLabel: summary.actionLabel,
           detailLabel: summary.detailLabel,
@@ -292,7 +319,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           supportedAccessScopes: normalizeSupportedAccessScopes(
             permission.supportedAccessScopes as readonly PermissionAccessScope[] | undefined
           ),
-          accessScope: normalizePermissionAccessScope(permissionScopeDraft[permission.id], permission),
+          accessScope: normalizePermissionAccessScope(
+            permissionScopeDraft[permission.id],
+            permission
+          ),
         };
       }),
     [permissionDraft, permissionScopeDraft, permissionsApi.permissions]
@@ -406,7 +436,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               id: 'technical',
               header: t('admin.roles.detail.permissions.table.columns.technicalKey'),
               cell: (permission) => (
-                <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">{permission.permissionKey}</code>
+                <code className="rounded bg-muted px-2 py-1 text-xs text-foreground">
+                  {permission.permissionKey}
+                </code>
               ),
               sortable: true,
               sortValue: (permission) => permission.permissionKey.toLowerCase(),
@@ -494,7 +526,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return [];
     }
 
-    return usersApi.users.filter((user) => user.roles.some((assignment) => assignment.roleId === role.id));
+    return usersApi.users.filter((user) =>
+      user.roles.some((assignment) => assignment.roleId === role.id)
+    );
   }, [role, usersApi.users]);
 
   const unassignedUsers = React.useMemo(() => {
@@ -502,7 +536,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return [];
     }
 
-    return usersApi.users.filter((user) => user.roles.every((assignment) => assignment.roleId !== role.id));
+    return usersApi.users.filter((user) =>
+      user.roles.every((assignment) => assignment.roleId !== role.id)
+    );
   }, [role, usersApi.users]);
 
   const onSaveGeneral = async (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -575,7 +611,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
-    const nextRoleIds = currentRoleIds.includes(role.id) ? [...currentRoleIds] : [...currentRoleIds, role.id];
+    const nextRoleIds = currentRoleIds.includes(role.id)
+      ? [...currentRoleIds]
+      : [...currentRoleIds, role.id];
     await updateRoleAssignment(userId, nextRoleIds);
   };
 
@@ -649,10 +687,17 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const savePermissionsAction = (
     <Button
       type="button"
-      disabled={isReadOnly || permissionsApi.isLoading || Boolean(permissionsApi.error) || isSavingPermissions}
+      disabled={
+        isReadOnly ||
+        permissionsApi.isLoading ||
+        Boolean(permissionsApi.error) ||
+        isSavingPermissions
+      }
       onClick={() => void onSavePermissions()}
     >
-      {isSavingPermissions ? t('admin.roles.workspace.savingPermissions') : t('admin.roles.workspace.savePermissions')}
+      {isSavingPermissions
+        ? t('admin.roles.workspace.savingPermissions')
+        : t('admin.roles.workspace.savePermissions')}
     </Button>
   );
 
@@ -674,7 +719,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       }
       className="aria-busy:opacity-100"
     >
-      <section className="space-y-5" aria-busy={rolesApi.isLoading || isSavingMeta || isSavingPermissions}>
+      <section
+        className="space-y-5"
+        aria-busy={rolesApi.isLoading || isSavingMeta || isSavingPermissions}
+      >
         {rolesApi.mutationError ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
             <AlertDescription className="flex flex-col gap-3">
@@ -703,8 +751,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           <CardHeader className="gap-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-2">
-                <p className="text-lg font-semibold leading-none tracking-tight text-foreground">{role.roleName}</p>
-                <CardDescription>{role.description?.trim() || t('admin.roles.detail.subtitle')}</CardDescription>
+                <p className="text-lg font-semibold leading-none tracking-tight text-foreground">
+                  {role.roleName}
+                </p>
+                <CardDescription>
+                  {role.description?.trim() || t('admin.roles.detail.subtitle')}
+                </CardDescription>
               </div>
               <div className="flex flex-wrap gap-2 text-xs">
                 <Badge variant="outline">{roleTypeLabel(role)}</Badge>
@@ -724,18 +776,28 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           </CardHeader>
           <CardContent>
             <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <DetailMetaItem label={t('admin.roles.editDialog.keyLabel')} value={<code>{role.roleKey}</code>} />
+              <DetailMetaItem
+                label={t('admin.roles.editDialog.keyLabel')}
+                value={<code>{role.roleKey}</code>}
+              />
               <DetailMetaItem
                 label={t('admin.roles.detail.general.externalRoleName')}
                 value={<code>{role.externalRoleName}</code>}
               />
               <DetailMetaItem label={t('admin.roles.detail.sync.source')} value={role.managedBy} />
-              <DetailMetaItem label={t('admin.roles.editDialog.levelLabel')} value={String(role.roleLevel)} />
+              <DetailMetaItem
+                label={t('admin.roles.editDialog.levelLabel')}
+                value={String(role.roleLevel)}
+              />
             </dl>
           </CardContent>
         </Card>
 
-        <Card role="tablist" aria-label={t('admin.roles.detail.tabsAriaLabel')} className="flex overflow-x-auto p-1">
+        <Card
+          role="tablist"
+          aria-label={t('admin.roles.detail.tabsAriaLabel')}
+          className="flex overflow-x-auto p-1"
+        >
           {TABS.map((tab, index) => {
             const selected = tab === activeTab;
             return (
@@ -784,14 +846,25 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <CardDescription>{t('admin.roles.detail.subtitle')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="grid gap-4 md:grid-cols-2" onSubmit={onSaveGeneral}>
+              <form
+                className="grid gap-4 md:grid-cols-2"
+                aria-readonly={isReadOnly}
+                onSubmit={onSaveGeneral}
+              >
                 <div className="grid gap-2 text-sm text-foreground">
                   <Label htmlFor="role-detail-key">{t('admin.roles.editDialog.keyLabel')}</Label>
                   <Input id="role-detail-key" value={role.roleKey} disabled className="bg-muted" />
                 </div>
                 <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="role-detail-external">{t('admin.roles.detail.general.externalRoleName')}</Label>
-                  <Input id="role-detail-external" value={role.externalRoleName} disabled className="bg-muted" />
+                  <Label htmlFor="role-detail-external">
+                    {t('admin.roles.detail.general.externalRoleName')}
+                  </Label>
+                  <Input
+                    id="role-detail-external"
+                    value={role.externalRoleName}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
                 <div className="grid gap-2 text-sm text-foreground">
                   <Label htmlFor="role-detail-name">{t('admin.roles.editDialog.nameLabel')}</Label>
@@ -799,11 +872,15 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     id="role-detail-name"
                     value={editForm.displayName}
                     disabled={isReadOnly}
-                    onChange={(event) => setEditForm((current) => ({ ...current, displayName: event.target.value }))}
+                    onChange={(event) =>
+                      setEditForm((current) => ({ ...current, displayName: event.target.value }))
+                    }
                   />
                 </div>
                 <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="role-detail-level">{t('admin.roles.editDialog.levelLabel')}</Label>
+                  <Label htmlFor="role-detail-level">
+                    {t('admin.roles.editDialog.levelLabel')}
+                  </Label>
                   <Input
                     id="role-detail-level"
                     type="number"
@@ -811,16 +888,22 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     max={100}
                     value={editForm.roleLevel}
                     disabled={isReadOnly}
-                    onChange={(event) => setEditForm((current) => ({ ...current, roleLevel: event.target.value }))}
+                    onChange={(event) =>
+                      setEditForm((current) => ({ ...current, roleLevel: event.target.value }))
+                    }
                   />
                 </div>
                 <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-                  <Label htmlFor="role-detail-description">{t('admin.roles.editDialog.descriptionLabel')}</Label>
+                  <Label htmlFor="role-detail-description">
+                    {t('admin.roles.editDialog.descriptionLabel')}
+                  </Label>
                   <Textarea
                     id="role-detail-description"
                     value={editForm.description}
                     disabled={isReadOnly}
-                    onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))}
+                    onChange={(event) =>
+                      setEditForm((current) => ({ ...current, description: event.target.value }))
+                    }
                   />
                 </div>
                 <div className="flex justify-end gap-3 md:col-span-2">
@@ -839,7 +922,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     {t('admin.roles.detail.general.reset')}
                   </Button>
                   <Button type="submit" disabled={isReadOnly || isSavingMeta}>
-                    {isSavingMeta ? t('admin.roles.detail.general.saving') : t('admin.roles.detail.general.save')}
+                    {isSavingMeta
+                      ? t('admin.roles.detail.general.saving')
+                      : t('admin.roles.detail.general.save')}
                   </Button>
                 </div>
               </form>
@@ -852,8 +937,14 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             </CardHeader>
             <CardContent>
               <dl className="space-y-4">
-                <DetailMetaItem label={t('admin.roles.detail.tabs.sync')} value={roleStatusLabel(role.syncState)} />
-                <DetailMetaItem label={t('admin.roles.detail.assignments.managedBy')} value={role.managedBy} />
+                <DetailMetaItem
+                  label={t('admin.roles.detail.tabs.sync')}
+                  value={roleStatusLabel(role.syncState)}
+                />
+                <DetailMetaItem
+                  label={t('admin.roles.detail.assignments.managedBy')}
+                  value={role.managedBy}
+                />
                 <DetailMetaItem
                   label={t('admin.roles.detail.sync.lastSyncedAt')}
                   value={role.lastSyncedAt ?? t('admin.roles.detail.sync.notAvailable')}
@@ -883,7 +974,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <CardDescription>{t('admin.roles.workspace.sideSubtitle')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">{t('admin.roles.detail.permissions.cockpitHint')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('admin.roles.detail.permissions.cockpitHint')}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
@@ -912,7 +1005,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <AlertDescription>{t('admin.roles.workspace.permissionsLoadError')}</AlertDescription>
             </Alert>
           ) : permissionsApi.isLoading ? (
-            <p className="text-sm text-muted-foreground">{t('admin.roles.workspace.permissionsLoading')}</p>
+            <p className="text-sm text-muted-foreground">
+              {t('admin.roles.workspace.permissionsLoading')}
+            </p>
           ) : (
             <StudioDataTable
               ariaLabel={t('admin.roles.detail.permissions.table.ariaLabel')}
@@ -923,7 +1018,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               getRowId={(permission) => permission.id}
               selectionMode="none"
               emptyState={
-                <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+                <Card
+                  className="border-none p-0 text-sm text-muted-foreground shadow-none"
+                  role="status"
+                >
                   {t('admin.roles.detail.permissions.table.empty')}
                 </Card>
               }
@@ -956,16 +1054,36 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               }
               toolbarEnd={
                 <div className="flex flex-wrap gap-2">
-                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignVisiblePermissions}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isReadOnly}
+                    onClick={assignVisiblePermissions}
+                  >
                     {t('admin.roles.detail.permissions.bulk.assignVisible')}
                   </Button>
-                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeVisiblePermissions}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isReadOnly}
+                    onClick={removeVisiblePermissions}
+                  >
                     {t('admin.roles.detail.permissions.bulk.removeVisible')}
                   </Button>
-                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={assignAllPermissions}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isReadOnly}
+                    onClick={assignAllPermissions}
+                  >
                     {t('admin.roles.detail.permissions.bulk.assignAll')}
                   </Button>
-                  <Button type="button" variant="outline" disabled={isReadOnly} onClick={removeAllPermissions}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isReadOnly}
+                    onClick={removeAllPermissions}
+                  >
                     {t('admin.roles.detail.permissions.bulk.removeAll')}
                   </Button>
                 </div>
@@ -975,7 +1093,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
 
           <StudioFormActionBar>
             {savePermissionsAction}
-            <Button type="button" variant="outline" disabled={isReadOnly} onClick={resetPermissionDraft}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isReadOnly}
+              onClick={resetPermissionDraft}
+            >
               {t('admin.roles.workspace.resetPermissions')}
             </Button>
           </StudioFormActionBar>
@@ -1001,10 +1124,15 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     count: String(role.memberCount),
                   })}
                 />
-                <DetailMetaItem label={t('admin.roles.detail.assignments.managedBy')} value={role.managedBy} />
+                <DetailMetaItem
+                  label={t('admin.roles.detail.assignments.managedBy')}
+                  value={role.managedBy}
+                />
               </dl>
               <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="role-assignment-search">{t('admin.roles.detail.assignments.searchLabel')}</Label>
+                <Label htmlFor="role-assignment-search">
+                  {t('admin.roles.detail.assignments.searchLabel')}
+                </Label>
                 <Input
                   id="role-assignment-search"
                   value={usersApi.filters.search}
@@ -1019,7 +1147,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <CardTitle>{t('admin.roles.detail.assignments.managementTitle')}</CardTitle>
-                  <CardDescription>{t('admin.roles.detail.assignments.managementBody')}</CardDescription>
+                  <CardDescription>
+                    {t('admin.roles.detail.assignments.managementBody')}
+                  </CardDescription>
                 </div>
                 <Button asChild type="button" variant="outline">
                   <Link to="/admin/users">{t('admin.roles.detail.assignments.openUsers')}</Link>
@@ -1029,7 +1159,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             <CardContent className="space-y-4">
               {usersApi.error ? (
                 <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-                  <AlertDescription>{t('admin.roles.detail.assignments.loadError')}</AlertDescription>
+                  <AlertDescription>
+                    {t('admin.roles.detail.assignments.loadError')}
+                  </AlertDescription>
                 </Alert>
               ) : null}
 
@@ -1039,9 +1171,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     {t('admin.roles.detail.assignments.currentTitle')}
                   </h3>
                   {usersApi.isLoading ? (
-                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('admin.roles.detail.assignments.loading')}
+                    </p>
                   ) : assignedUsers.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.emptyAssigned')}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('admin.roles.detail.assignments.emptyAssigned')}
+                    </p>
                   ) : (
                     <ul className="space-y-2">
                       {assignedUsers.map((user) => {
@@ -1054,7 +1190,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                           >
                             <div className="min-w-0">
                               <p className="font-medium text-foreground">{user.displayName}</p>
-                              <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {user.email ?? user.keycloakSubject}
+                              </p>
                             </div>
                             <Button
                               type="button"
@@ -1079,7 +1217,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     {t('admin.roles.detail.assignments.availableTitle')}
                   </h3>
                   {usersApi.isLoading ? (
-                    <p className="text-sm text-muted-foreground">{t('admin.roles.detail.assignments.loading')}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {t('admin.roles.detail.assignments.loading')}
+                    </p>
                   ) : unassignedUsers.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
                       {t('admin.roles.detail.assignments.emptyAvailable')}
@@ -1096,7 +1236,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                           >
                             <div className="min-w-0">
                               <p className="font-medium text-foreground">{user.displayName}</p>
-                              <p className="text-xs text-muted-foreground">{user.email ?? user.keycloakSubject}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {user.email ?? user.keycloakSubject}
+                              </p>
                             </div>
                             <Button
                               type="button"
@@ -1148,9 +1290,15 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   label={t('admin.roles.detail.sync.lastSyncedAt')}
                   value={role.lastSyncedAt ?? t('admin.roles.detail.sync.notAvailable')}
                 />
-                <DetailMetaItem label={t('admin.roles.detail.sync.source')} value={role.managedBy} />
+                <DetailMetaItem
+                  label={t('admin.roles.detail.sync.source')}
+                  value={role.managedBy}
+                />
                 {role.syncError?.code ? (
-                  <DetailMetaItem label={t('admin.roles.detail.sync.errorCode')} value={role.syncError.code} />
+                  <DetailMetaItem
+                    label={t('admin.roles.detail.sync.errorCode')}
+                    value={role.syncError.code}
+                  />
                 ) : null}
               </dl>
             </CardContent>
@@ -1167,8 +1315,12 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <li>{t('admin.roles.detail.sync.localChangeItems.roleLevel')}</li>
               </ul>
               <div className="space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">{t('admin.roles.detail.sync.actionsTitle')}</h3>
-                <p className="text-sm text-muted-foreground">{t('admin.roles.detail.sync.actionsBody')}</p>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('admin.roles.detail.sync.actionsTitle')}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {t('admin.roles.detail.sync.actionsBody')}
+                </p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button

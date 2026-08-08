@@ -114,6 +114,7 @@ export const mePermissionsHandler = async (request: Request): Promise<Response> 
         isImpersonating,
         snapshotVersion: resolved.snapshotVersion,
         cacheStatus: resolved.cacheStatus,
+        permissionRevision: resolved.permissionRevision,
       });
 
       logger.debug('Resolved effective permissions for current user', {

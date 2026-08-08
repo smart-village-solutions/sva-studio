@@ -1128,6 +1128,9 @@ importers:
       '@sva/core':
         specifier: workspace:*
         version: link:../core
+      '@sva/iam-core':
+        specifier: workspace:*
+        version: link:../iam-core
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.10
@@ -13843,6 +13846,7 @@ snapshots:
   '@sva/plugin-sdk@file:packages/plugin-sdk':
     dependencies:
       '@sva/core': file:packages/core
+      '@sva/iam-core': file:packages/iam-core
 
   '@sva/plugin-waste-management@file:packages/plugin-waste-management(@tanstack/react-router@1.170.8(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(@tiptap/core@3.27.1(@tiptap/pm@3.27.1))(@tiptap/pm@3.27.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:

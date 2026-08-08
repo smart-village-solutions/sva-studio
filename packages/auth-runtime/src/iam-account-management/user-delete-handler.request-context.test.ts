@@ -19,6 +19,7 @@ vi.mock('@sva/iam-admin', () => ({
   assertAccountHardDeletePreconditions: vi.fn(),
   createDeleteUserHandlerInternal: state.createDeleteUserHandlerInternal,
   hardDeleteAccount: vi.fn(),
+  listManagedPermissionMetadata: vi.fn(() => []),
   purgeAccountHardDeleteBlockers: vi.fn(),
   reconcileOwnedContentForAccountDelete: vi.fn(),
 }));

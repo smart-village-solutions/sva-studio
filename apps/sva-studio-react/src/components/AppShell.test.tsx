@@ -88,7 +88,7 @@ beforeEach(() => {
     error: null,
     refetch: vi.fn(),
     logout: vi.fn(),
-    invalidatePermissions: vi.fn(),
+    refreshSession: vi.fn(),
   });
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -160,7 +160,7 @@ describe('AppShell', () => {
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     render(
@@ -182,7 +182,7 @@ describe('AppShell', () => {
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     render(

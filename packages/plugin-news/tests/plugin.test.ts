@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { pluginNews, pluginNewsActionDefinitions, pluginNewsPermissionDefinitions } from '../src/plugin.js';
+import {
+  pluginNews,
+  pluginNewsActionDefinitions,
+  pluginNewsPermissionDefinitions,
+} from '../src/plugin.js';
 
 describe('pluginNews contract', () => {
   it('keeps the canonical standard content contract', () => {
@@ -11,6 +15,11 @@ describe('pluginNews contract', () => {
         titleKey: 'news.navigation.title',
         section: 'dataManagement',
         requiredAction: 'news.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'news',
+          actions: { mode: 'allOf', values: ['news.read'] },
+        },
       },
     ]);
     expect(pluginNews.actions).toEqual(pluginNewsActionDefinitions);

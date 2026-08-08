@@ -12,14 +12,11 @@ import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { useGroups } from '../../../hooks/use-groups';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { useRoles } from '../../../hooks/use-roles';
 import { t } from '../../../i18n';
 import { formatEditorDateTime, parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
-import {
-  diffGroupRoleIds,
-  groupErrorMessage,
-  GroupTextFields,
-} from './-group-shared';
+import { diffGroupRoleIds, groupErrorMessage, GroupTextFields } from './-group-shared';
 
 type GroupDetailPageProps = {
   readonly groupId: string;
@@ -54,6 +51,9 @@ const formatDateTime = (value?: string) => {
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   const groupsApi = useGroups();
   const rolesApi = useRoles();
+  const access = useIamResourceAccess('group');
+  const canUpdateGroup = isIamAccessAllowed(access.update);
+  const canDeleteGroup = isIamAccessAllowed(access.delete);
   const {
     isLoading,
     detailError,
@@ -75,7 +75,8 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     roleIds: [],
     isActive: true,
   });
-  const [membershipForm, setMembershipForm] = React.useState<MembershipFormState>(emptyMembershipForm);
+  const [membershipForm, setMembershipForm] =
+    React.useState<MembershipFormState>(emptyMembershipForm);
 
   const loadDetail = React.useCallback(async () => {
     const detail = await loadGroupDetail(groupId);
@@ -99,7 +100,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
   const onEdit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!group) {
+    if (!group || !canUpdateGroup) {
       return;
     }
 
@@ -112,7 +113,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       return;
     }
 
-    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(group.assignedRoleIds, formValues.roleIds);
+    const { roleIdsToAssign, roleIdsToRemove } = diffGroupRoleIds(
+      group.assignedRoleIds,
+      formValues.roleIds
+    );
 
     for (const roleId of roleIdsToAssign) {
       const assigned = await assignRole(groupId, roleId);
@@ -133,6 +137,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canUpdateGroup) {
+      return;
+    }
     setFormError(null);
 
     const validFrom = parseOptionalEditorDateTime(membershipForm.validFrom);
@@ -156,6 +163,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   };
 
   const onRemoveMembership = async (keycloakSubject: string) => {
+    if (!canUpdateGroup) {
+      return;
+    }
     const removed = await removeMembership(groupId, keycloakSubject);
     if (!removed) {
       return;
@@ -165,6 +175,9 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   };
 
   const onDelete = async () => {
+    if (!canDeleteGroup) {
+      return;
+    }
     const deleted = await deleteGroup(groupId);
     if (deleted) {
       setDeleteConfirmOpen(false);
@@ -175,9 +188,13 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     <section className="space-y-5" aria-busy={isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{group?.displayName ?? t('admin.groups.dialogs.editTitle')}</h1>
+          <h1 className="text-3xl font-semibold text-foreground">
+            {group?.displayName ?? t('admin.groups.dialogs.editTitle')}
+          </h1>
           <p className="max-w-3xl text-sm text-muted-foreground">
-            {group ? t('admin.groups.dialogs.editDescription', { groupKey: group.groupKey }) : t('admin.groups.messages.loading')}
+            {group
+              ? t('admin.groups.dialogs.editDescription', { groupKey: group.groupKey })
+              : t('admin.groups.messages.loading')}
           </p>
         </div>
         <Button asChild type="button" variant="outline">
@@ -209,114 +226,175 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       {group ? (
         <>
           <Card className="space-y-4 p-4">
-            <form className="grid gap-4" onSubmit={onEdit}>
-              <GroupTextFields
-                descriptionId="edit-group-description"
-                displayNameId="edit-group-name"
-                formValues={formValues}
-                setFormValues={setFormValues}
-              />
-              <fieldset className="grid gap-2 text-sm text-foreground">
-                <legend>{t('admin.groups.dialogs.rolesLabel')}</legend>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {rolesApi.roles.map((role) => {
-                    const checked = formValues.roleIds.includes(role.id);
-                    return (
-                      <Label key={role.id} className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2">
-                        <Checkbox
-                          type="checkbox"
-                          checked={checked}
-                          onChange={(event) =>
-                            setFormValues((current) => ({
-                              ...current,
-                              roleIds: event.target.checked
-                                ? [...current.roleIds, role.id]
-                                : current.roleIds.filter((entry) => entry !== role.id),
-                            }))
-                          }
-                        />
-                        <span>{role.roleName}</span>
-                      </Label>
-                    );
-                  })}
+            <form className="grid gap-4" aria-readonly={!canUpdateGroup} onSubmit={onEdit}>
+              <fieldset className="contents" disabled={!canUpdateGroup}>
+                <GroupTextFields
+                  descriptionId="edit-group-description"
+                  displayNameId="edit-group-name"
+                  formValues={formValues}
+                  setFormValues={setFormValues}
+                />
+                <fieldset className="grid gap-2 text-sm text-foreground">
+                  <legend>{t('admin.groups.dialogs.rolesLabel')}</legend>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {rolesApi.roles.map((role) => {
+                      const checked = formValues.roleIds.includes(role.id);
+                      return (
+                        <Label
+                          key={role.id}
+                          className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2"
+                        >
+                          <Checkbox
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) =>
+                              setFormValues((current) => ({
+                                ...current,
+                                roleIds: event.target.checked
+                                  ? [...current.roleIds, role.id]
+                                  : current.roleIds.filter((entry) => entry !== role.id),
+                              }))
+                            }
+                          />
+                          <span>{role.roleName}</span>
+                        </Label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+                <Label className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
+                  <Checkbox
+                    type="checkbox"
+                    checked={formValues.isActive}
+                    onChange={(event) =>
+                      setFormValues((current) => ({ ...current, isActive: event.target.checked }))
+                    }
+                  />
+                  <span>{t('admin.groups.labels.active')}</span>
+                </Label>
+                <div className="flex justify-end gap-3">
+                  {canDeleteGroup ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
+                      {t('admin.groups.actions.delete')}
+                    </Button>
+                  ) : null}
+                  <Button type="submit">{t('admin.groups.actions.save')}</Button>
                 </div>
               </fieldset>
-              <Label className="flex items-center gap-2 rounded border border-border bg-background px-3 py-2 text-sm text-foreground">
-                <Checkbox
-                  type="checkbox"
-                  checked={formValues.isActive}
-                  onChange={(event) => setFormValues((current) => ({ ...current, isActive: event.target.checked }))}
-                />
-                <span>{t('admin.groups.labels.active')}</span>
-              </Label>
-              <div className="flex justify-end gap-3">
-                <Button type="button" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}>
-                  {t('admin.groups.actions.delete')}
-                </Button>
-                <Button type="submit">{t('admin.groups.actions.save')}</Button>
-              </div>
             </form>
           </Card>
 
           <section className="space-y-3">
             <header className="space-y-1">
-              <h2 className="text-base font-semibold text-foreground">{t('admin.groups.memberships.title')}</h2>
-              <p className="text-sm text-muted-foreground">{t('admin.groups.memberships.subtitle')}</p>
+              <h2 className="text-base font-semibold text-foreground">
+                {t('admin.groups.memberships.title')}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {t('admin.groups.memberships.subtitle')}
+              </p>
             </header>
-            <form className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]" onSubmit={onAssignMembership}>
-              <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="group-membership-subject">{t('admin.groups.memberships.subjectLabel')}</Label>
-                <Input
-                  id="group-membership-subject"
-                  required
-                  value={membershipForm.keycloakSubject}
-                  onChange={(event) =>
-                    setMembershipForm((current) => ({ ...current, keycloakSubject: event.target.value }))
-                  }
-                />
-              </div>
-              <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="group-membership-valid-from">{t('admin.groups.memberships.validFromLabel')}</Label>
-                <Input
-                  id="group-membership-valid-from"
-                  type="datetime-local"
-                  value={membershipForm.validFrom}
-                  onChange={(event) => setMembershipForm((current) => ({ ...current, validFrom: event.target.value }))}
-                />
-              </div>
-              <div className="grid gap-2 text-sm text-foreground">
-                <Label htmlFor="group-membership-valid-until">{t('admin.groups.memberships.validUntilLabel')}</Label>
-                <Input
-                  id="group-membership-valid-until"
-                  type="datetime-local"
-                  value={membershipForm.validUntil}
-                  onChange={(event) => setMembershipForm((current) => ({ ...current, validUntil: event.target.value }))}
-                />
-              </div>
-              <div className="flex items-end">
-                <Button type="submit">{t('admin.groups.memberships.assign')}</Button>
-              </div>
+            <form
+              className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
+              aria-readonly={!canUpdateGroup}
+              onSubmit={onAssignMembership}
+            >
+              <fieldset className="contents" disabled={!canUpdateGroup}>
+                <div className="grid gap-2 text-sm text-foreground">
+                  <Label htmlFor="group-membership-subject">
+                    {t('admin.groups.memberships.subjectLabel')}
+                  </Label>
+                  <Input
+                    id="group-membership-subject"
+                    required
+                    value={membershipForm.keycloakSubject}
+                    onChange={(event) =>
+                      setMembershipForm((current) => ({
+                        ...current,
+                        keycloakSubject: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-2 text-sm text-foreground">
+                  <Label htmlFor="group-membership-valid-from">
+                    {t('admin.groups.memberships.validFromLabel')}
+                  </Label>
+                  <Input
+                    id="group-membership-valid-from"
+                    type="datetime-local"
+                    value={membershipForm.validFrom}
+                    onChange={(event) =>
+                      setMembershipForm((current) => ({
+                        ...current,
+                        validFrom: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="grid gap-2 text-sm text-foreground">
+                  <Label htmlFor="group-membership-valid-until">
+                    {t('admin.groups.memberships.validUntilLabel')}
+                  </Label>
+                  <Input
+                    id="group-membership-valid-until"
+                    type="datetime-local"
+                    value={membershipForm.validUntil}
+                    onChange={(event) =>
+                      setMembershipForm((current) => ({
+                        ...current,
+                        validUntil: event.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button type="submit">{t('admin.groups.memberships.assign')}</Button>
+                </div>
+              </fieldset>
             </form>
 
             <StudioTableSurface tone="background">
-              <table className="min-w-full border-collapse" aria-label={t('admin.groups.memberships.tableAriaLabel')}>
+              <table
+                className="min-w-full border-collapse"
+                aria-label={t('admin.groups.memberships.tableAriaLabel')}
+              >
                 <caption className="sr-only">{t('admin.groups.memberships.caption')}</caption>
                 <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
-                    <th scope="col" className="px-3 py-3">{t('admin.groups.memberships.tableSubject')}</th>
-                    <th scope="col" className="px-3 py-3">{t('admin.groups.memberships.tableValidity')}</th>
-                    <th scope="col" className="px-3 py-3">{t('admin.groups.memberships.tableOrigin')}</th>
-                    <th scope="col" className="px-3 py-3 text-right">{t('admin.groups.memberships.tableActions')}</th>
+                    <th scope="col" className="px-3 py-3">
+                      {t('admin.groups.memberships.tableSubject')}
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      {t('admin.groups.memberships.tableValidity')}
+                    </th>
+                    <th scope="col" className="px-3 py-3">
+                      {t('admin.groups.memberships.tableOrigin')}
+                    </th>
+                    <th scope="col" className="px-3 py-3 text-right">
+                      {t('admin.groups.memberships.tableActions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {group.memberships.length > 0 ? (
                     group.memberships.map((membership) => (
-                      <tr key={`${membership.groupId}-${membership.accountId}`} className="border-t border-border text-sm text-foreground">
+                      <tr
+                        key={`${membership.groupId}-${membership.accountId}`}
+                        className="border-t border-border text-sm text-foreground"
+                      >
                         <th scope="row" className="px-3 py-3 text-left font-medium">
                           <div className="space-y-1">
-                            <div>{membership.displayName ?? (membership.keycloakSubject || membership.accountId)}</div>
-                            <div className="text-xs text-muted-foreground">{membership.keycloakSubject || membership.accountId}</div>
+                            <div>
+                              {membership.displayName ??
+                                (membership.keycloakSubject || membership.accountId)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {membership.keycloakSubject || membership.accountId}
+                            </div>
                           </div>
                         </th>
                         <td className="px-3 py-3">
@@ -336,15 +414,17 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                         </td>
                         <td className="px-3 py-3">
                           <div className="flex justify-end">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              disabled={!membership.keycloakSubject}
-                              onClick={() => void onRemoveMembership(membership.keycloakSubject)}
-                            >
-                              {t('admin.groups.memberships.remove')}
-                            </Button>
+                            {canUpdateGroup ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                disabled={!membership.keycloakSubject}
+                                onClick={() => void onRemoveMembership(membership.keycloakSubject)}
+                              >
+                                {t('admin.groups.memberships.remove')}
+                              </Button>
+                            ) : null}
                           </div>
                         </td>
                       </tr>
@@ -373,7 +453,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       ) : null}
 
       <ConfirmDialog
-        open={deleteConfirmOpen}
+        open={canDeleteGroup && deleteConfirmOpen}
         title={t('admin.groups.confirm.deleteTitle')}
         description={t('admin.groups.confirm.deleteDescription')}
         confirmLabel={t('admin.groups.actions.delete')}

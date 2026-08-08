@@ -1,10 +1,26 @@
 import type { AdminResourceDefinition, PluginDefinition, RouteFactory } from '@sva/plugin-sdk';
-import { assertPluginRoutePathAllowed, createPluginGuardrailError, mergeAdminResourceDefinitions } from '@sva/plugin-sdk';
-import { createRoute, redirect, type AnyRoute, type RootRoute, type RouteComponent } from '@tanstack/react-router';
+import {
+  assertPluginRoutePathAllowed,
+  createPluginGuardrailError,
+  mergeAdminResourceDefinitions,
+} from '@sva/plugin-sdk';
+import {
+  createRoute,
+  redirect,
+  type AnyRoute,
+  type RootRoute,
+  type RouteComponent,
+} from '@tanstack/react-router';
 
-import { assertNoStaticAdminRouteShadowing, collectAdminResourceRoutePaths } from './admin-resource-route-conflicts.js';
+import {
+  assertNoStaticAdminRouteShadowing,
+  collectAdminResourceRoutePaths,
+} from './admin-resource-route-conflicts.js';
 import { createAccountUiRouteGuard, type AccountUiRouteGuardKey } from './account-ui.routes.js';
-import { createAdminResourceRouteFactories, createLegacyContentAliasFactories } from './admin-resource-routes.js';
+import {
+  createAdminResourceRouteFactories,
+  createLegacyContentAliasFactories,
+} from './admin-resource-routes.js';
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
@@ -111,7 +127,13 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredModuleId: 'media',
     requiredPermissions: ['media.read'],
   },
-  { binding: 'media', path: uiRoutePaths.media, guard: 'account' },
+  {
+    binding: 'media',
+    path: uiRoutePaths.media,
+    guard: 'media',
+    requiredModuleId: 'media',
+    requiredPermissions: ['media.read'],
+  },
   {
     binding: 'categories',
     path: uiRoutePaths.categories,
@@ -120,36 +142,89 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     requiredPermissions: ['categories.read'],
   },
   { binding: 'app', path: uiRoutePaths.app, guard: 'account' },
-  { binding: 'interfaces', path: uiRoutePaths.interfaces },
+  {
+    binding: 'interfaces',
+    path: uiRoutePaths.interfaces,
+    guard: 'interfaces',
+    requiredPermissions: ['integration.manage'],
+  },
   { binding: 'help', path: uiRoutePaths.help },
   { binding: 'support', path: uiRoutePaths.support },
   { binding: 'license', path: uiRoutePaths.license },
   { binding: 'adminUsers', path: uiRoutePaths.adminUsers, guard: 'adminUsers' },
   { binding: 'adminUserCreate', path: uiRoutePaths.adminUserCreate, guard: 'adminUserCreate' },
   { binding: 'adminUserDetail', path: uiRoutePaths.adminUserDetail, guard: 'adminUserDetail' },
-  { binding: 'adminOrganizations', path: uiRoutePaths.adminOrganizations, guard: 'adminOrganizations' },
-  { binding: 'adminOrganizationCreate', path: uiRoutePaths.adminOrganizationCreate, guard: 'adminOrganizationCreate' },
-  { binding: 'adminOrganizationDetail', path: uiRoutePaths.adminOrganizationDetail, guard: 'adminOrganizationDetail' },
+  {
+    binding: 'adminOrganizations',
+    path: uiRoutePaths.adminOrganizations,
+    guard: 'adminOrganizations',
+  },
+  {
+    binding: 'adminOrganizationCreate',
+    path: uiRoutePaths.adminOrganizationCreate,
+    guard: 'adminOrganizationCreate',
+  },
+  {
+    binding: 'adminOrganizationDetail',
+    path: uiRoutePaths.adminOrganizationDetail,
+    guard: 'adminOrganizationDetail',
+  },
   { binding: 'adminInstances', path: uiRoutePaths.adminInstances, guard: 'adminInstances' },
-  { binding: 'adminInstanceCreate', path: uiRoutePaths.adminInstanceCreate, guard: 'adminInstances' },
+  {
+    binding: 'adminInstanceCreate',
+    path: uiRoutePaths.adminInstanceCreate,
+    guard: 'adminInstances',
+  },
   { binding: 'adminInstanceSetup', path: uiRoutePaths.adminInstanceSetup, guard: 'adminInstances' },
-  { binding: 'adminInstanceDetail', path: uiRoutePaths.adminInstanceDetail, guard: 'adminInstances' },
+  {
+    binding: 'adminInstanceDetail',
+    path: uiRoutePaths.adminInstanceDetail,
+    guard: 'adminInstances',
+  },
   { binding: 'adminRoles', path: uiRoutePaths.adminRoles, guard: 'adminRoles' },
   { binding: 'adminRoleCreate', path: uiRoutePaths.adminRoleCreate, guard: 'adminRoleCreate' },
-  { binding: 'adminRoleDetail', path: uiRoutePaths.adminRoleDetail, guard: 'adminRoleDetail', validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeRoleDetailTab(search.tab) }) },
+  {
+    binding: 'adminRoleDetail',
+    path: uiRoutePaths.adminRoleDetail,
+    guard: 'adminRoleDetail',
+    validateSearch: (search: Record<string, unknown>) => ({
+      tab: normalizeRoleDetailTab(search.tab),
+    }),
+  },
   { binding: 'adminGroups', path: uiRoutePaths.adminGroups, guard: 'adminGroups' },
   { binding: 'adminGroupCreate', path: uiRoutePaths.adminGroupCreate, guard: 'adminGroupCreate' },
   { binding: 'adminGroupDetail', path: uiRoutePaths.adminGroupDetail, guard: 'adminGroupDetail' },
   { binding: 'adminLegalTexts', path: uiRoutePaths.adminLegalTexts, guard: 'adminLegalTexts' },
-  { binding: 'adminLegalTextCreate', path: uiRoutePaths.adminLegalTextCreate, guard: 'adminLegalTextCreate' },
-  { binding: 'adminLegalTextDetail', path: uiRoutePaths.adminLegalTextDetail, guard: 'adminLegalTextDetail' },
-  { binding: 'adminIam', path: uiRoutePaths.adminIam, guard: 'adminIam', validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeIamTab(search.tab) }) },
-  { binding: 'adminIamGovernanceDetail', path: uiRoutePaths.adminIamGovernanceDetail, guard: 'adminIam' },
+  {
+    binding: 'adminLegalTextCreate',
+    path: uiRoutePaths.adminLegalTextCreate,
+    guard: 'adminLegalTextCreate',
+  },
+  {
+    binding: 'adminLegalTextDetail',
+    path: uiRoutePaths.adminLegalTextDetail,
+    guard: 'adminLegalTextDetail',
+  },
+  {
+    binding: 'adminIam',
+    path: uiRoutePaths.adminIam,
+    guard: 'adminIam',
+    validateSearch: (search: Record<string, unknown>) => ({ tab: normalizeIamTab(search.tab) }),
+  },
+  {
+    binding: 'adminIamGovernanceDetail',
+    path: uiRoutePaths.adminIamGovernanceDetail,
+    guard: 'adminIam',
+  },
   { binding: 'adminIamDsrDetail', path: uiRoutePaths.adminIamDsrDetail, guard: 'adminIam' },
   { binding: 'modules', path: uiRoutePaths.modules, guard: 'modules' },
   { binding: 'monitoring', path: uiRoutePaths.monitoring, guard: 'monitoring' },
   { binding: 'monitoringJobs', path: uiRoutePaths.monitoringJobs, guard: 'monitoringJobs' },
-  { binding: 'monitoringJobDetail', path: uiRoutePaths.monitoringJobDetail, guard: 'monitoringJobDetail' },
+  {
+    binding: 'monitoringJobDetail',
+    path: uiRoutePaths.monitoringJobDetail,
+    guard: 'monitoringJobDetail',
+  },
   { binding: 'adminApiPhase1Test', path: uiRoutePaths.adminApiPhase1Test },
 ] as const;
 
@@ -167,7 +242,9 @@ export const createUiRouteFactories = (
     adminResourcePaths,
     uiRouteDefinitions.map((definition) => definition.path)
   );
-  const routeDefinitions = uiRouteDefinitions.filter((definition) => !adminResourcePaths.has(definition.path));
+  const routeDefinitions = uiRouteDefinitions.filter(
+    (definition) => !adminResourcePaths.has(definition.path)
+  );
   return [
     ...routeDefinitions.map((definition) => {
       if (definition.guard) {

@@ -7,6 +7,16 @@ import { LegalTextDetailPage } from './-legal-text-detail-page';
 const useLegalTextsMock = vi.fn();
 const navigateMock = vi.fn();
 
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: 'allowed' },
+    create: { status: 'allowed' },
+    update: { status: 'allowed' },
+    delete: { status: 'allowed' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
+
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,

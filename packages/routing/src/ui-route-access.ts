@@ -17,6 +17,10 @@ export const enforceUiRouteAccessRequirements = async (
 
   const user = await beforeLoadOptions.context.auth?.getUser();
 
+  if (user?.permissionStatus === 'degraded') {
+    throw redirect({ href: '/?error=auth.insufficientRole' });
+  }
+
   if (requirements.requiredModuleId && !user?.assignedModules?.includes(requirements.requiredModuleId)) {
     throw redirect({ href: '/?error=auth.insufficientRole' });
   }

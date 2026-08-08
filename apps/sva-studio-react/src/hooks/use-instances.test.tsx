@@ -32,7 +32,7 @@ const archiveInstanceMock = vi.fn();
 const getInstanceAuditRunMock = vi.fn();
 const getSingleInstanceAuditRunMock = vi.fn();
 const authMockValue = {
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 const createDeferred = <T,>() => {
@@ -67,7 +67,13 @@ vi.mock('../lib/iam-api', () => ({
     }
   },
   asIamError: (cause: unknown) => {
-    if (cause && typeof cause === 'object' && 'status' in cause && 'code' in cause && 'message' in cause) {
+    if (
+      cause &&
+      typeof cause === 'object' &&
+      'status' in cause &&
+      'code' in cause &&
+      'message' in cause
+    ) {
       return cause;
     }
     return {
@@ -80,15 +86,19 @@ vi.mock('../lib/iam-api', () => ({
   getInstance: (...args: unknown[]) => getInstanceMock(...args),
   getInstanceKeycloakStatus: (...args: unknown[]) => getInstanceKeycloakStatusMock(...args),
   getInstanceKeycloakPreflight: (...args: unknown[]) => getInstanceKeycloakPreflightMock(...args),
-  getInstanceKeycloakProvisioningRun: (...args: unknown[]) => getInstanceKeycloakProvisioningRunMock(...args),
+  getInstanceKeycloakProvisioningRun: (...args: unknown[]) =>
+    getInstanceKeycloakProvisioningRunMock(...args),
   getInstanceAuditRun: (...args: unknown[]) => getInstanceAuditRunMock(...args),
   getSingleInstanceAuditRun: (...args: unknown[]) => getSingleInstanceAuditRunMock(...args),
-  planInstanceKeycloakProvisioning: (...args: unknown[]) => planInstanceKeycloakProvisioningMock(...args),
-  executeInstanceKeycloakProvisioning: (...args: unknown[]) => executeInstanceKeycloakProvisioningMock(...args),
+  planInstanceKeycloakProvisioning: (...args: unknown[]) =>
+    planInstanceKeycloakProvisioningMock(...args),
+  executeInstanceKeycloakProvisioning: (...args: unknown[]) =>
+    executeInstanceKeycloakProvisioningMock(...args),
   rotateInstanceSecret: (...args: unknown[]) => rotateInstanceSecretMock(...args),
   probeTenantIamAccess: (...args: unknown[]) => probeTenantIamAccessMock(...args),
   assignInstanceModule: (...args: unknown[]) => assignInstanceModuleMock(...args),
-  bootstrapInstanceAdminStructure: (...args: unknown[]) => bootstrapInstanceAdminStructureMock(...args),
+  bootstrapInstanceAdminStructure: (...args: unknown[]) =>
+    bootstrapInstanceAdminStructureMock(...args),
   revokeInstanceModule: (...args: unknown[]) => revokeInstanceModuleMock(...args),
   seedInstanceIamBaseline: (...args: unknown[]) => seedInstanceIamBaselineMock(...args),
   createInstance: (...args: unknown[]) => createInstanceMock(...args),
@@ -111,6 +121,8 @@ describe('useInstances', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    authMockValue.refreshSession.mockReset();
+    authMockValue.refreshSession.mockResolvedValue(undefined);
     listInstancesMock.mockResolvedValue({
       data: [
         {
@@ -200,9 +212,19 @@ describe('useInstances', () => {
     probeTenantIamAccessMock.mockResolvedValue({
       data: {
         configuration: { status: 'ready', summary: 'ok', source: 'registry' },
-        access: { status: 'blocked', summary: 'forbidden', source: 'access_probe', requestId: 'req-probe-1' },
+        access: {
+          status: 'blocked',
+          summary: 'forbidden',
+          source: 'access_probe',
+          requestId: 'req-probe-1',
+        },
         reconcile: { status: 'unknown', summary: 'unknown', source: 'role_reconcile' },
-        overall: { status: 'blocked', summary: 'blocked', source: 'access_probe', requestId: 'req-probe-1' },
+        overall: {
+          status: 'blocked',
+          summary: 'blocked',
+          source: 'access_probe',
+          requestId: 'req-probe-1',
+        },
       },
     });
     assignInstanceModuleMock.mockResolvedValue({
@@ -307,12 +329,15 @@ describe('useInstances', () => {
       result.current.setStatus('active');
     });
 
-    await waitFor(() => {
-      expect(listInstancesMock).toHaveBeenLastCalledWith({
-        search: 'demo',
-        status: 'active',
-      });
-    }, { timeout: 1_000 });
+    await waitFor(
+      () => {
+        expect(listInstancesMock).toHaveBeenLastCalledWith({
+          search: 'demo',
+          status: 'active',
+        });
+      },
+      { timeout: 1_000 }
+    );
 
     await act(async () => {
       await result.current.loadInstance('demo');
@@ -411,7 +436,7 @@ describe('useInstances', () => {
     );
   });
 
-  it('invalidates permissions on forbidden load and mutation failures', async () => {
+  it('does not refresh the session on forbidden load and mutation failures', async () => {
     listInstancesMock.mockRejectedValueOnce({
       status: 403,
       code: 'forbidden',
@@ -472,7 +497,7 @@ describe('useInstances', () => {
     });
 
     expect(result.current.mutationError).toBeNull();
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(4);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('keeps instance details loaded when keycloak status refresh during load fails', async () => {
@@ -499,7 +524,7 @@ describe('useInstances', () => {
     );
   });
 
-  it('invalidates permissions when loading keycloak status during detail fetch returns forbidden', async () => {
+  it('does not refresh the session when loading keycloak status during detail fetch returns forbidden', async () => {
     getInstanceKeycloakStatusMock.mockRejectedValueOnce({
       status: 403,
       code: 'forbidden',
@@ -515,13 +540,13 @@ describe('useInstances', () => {
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
     expect(result.current.selectedInstance?.keycloakStatus).toBeUndefined();
-    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 403, code: 'forbidden' })
+    );
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
-  it('invalidates permissions only once when detail and keycloak status both return forbidden', async () => {
-    const invalidateDeferred = createDeferred<void>();
-    authMockValue.invalidatePermissions.mockImplementationOnce(() => invalidateDeferred.promise);
+  it('does not refresh the session when detail and keycloak status both return forbidden', async () => {
     getInstanceMock.mockRejectedValueOnce({
       status: 403,
       code: 'forbidden',
@@ -536,27 +561,15 @@ describe('useInstances', () => {
     const { result } = renderUseInstancesHook();
     await waitForInstancesLoaded(result);
 
-    const loadPromise = result.current.loadInstance('demo');
-
-    await waitFor(() => {
-      expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    });
-
-    invalidateDeferred.resolve();
-
     await act(async () => {
-      await loadPromise;
+      await result.current.loadInstance('demo');
     });
 
-    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(browserLoggerMock.info).toHaveBeenCalledTimes(1);
-    expect(browserLoggerMock.info).toHaveBeenCalledWith(
-      'permission_invalidated_after_403',
-      expect.objectContaining({
-        instance_id: 'demo',
-      })
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 403, code: 'forbidden' })
     );
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
+    expect(browserLoggerMock.info).not.toHaveBeenCalled();
   });
 
   it('surfaces normalized non-keycloak detail warnings after the instance detail itself loads successfully', async () => {
@@ -574,10 +587,12 @@ describe('useInstances', () => {
     });
 
     expect(result.current.selectedInstance?.instanceId).toBe('demo');
-    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 502, code: 'keycloak_unavailable' }));
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 502, code: 'keycloak_unavailable' })
+    );
   });
 
-  it('refreshes keycloak status in-place and handles forbidden refreshes', async () => {
+  it('refreshes keycloak status in-place without refreshing the session on forbidden responses', async () => {
     const { result } = renderHook(() => useInstances());
 
     await waitFor(() => {
@@ -625,8 +640,10 @@ describe('useInstances', () => {
       expect(refreshed).toBeNull();
     });
 
-    expect(result.current.mutationError).toEqual(expect.objectContaining({ status: 403, code: 'forbidden' }));
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalled();
+    expect(result.current.mutationError).toEqual(
+      expect.objectContaining({ status: 403, code: 'forbidden' })
+    );
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('normalizes unexpected preflight and plan failures to keycloak_unavailable', async () => {
@@ -708,7 +725,9 @@ describe('useInstances', () => {
     });
 
     await act(async () => {
-      const queued = await result.current.executeKeycloakProvisioning('demo', { intent: 'provision' });
+      const queued = await result.current.executeKeycloakProvisioning('demo', {
+        intent: 'provision',
+      });
       expect(queued).toEqual(queuedRun);
     });
 
@@ -734,8 +753,13 @@ describe('useInstances', () => {
   it('uses the dedicated secret rotation API for the critical provisioning intent', async () => {
     const { result } = renderHook(() => useInstances());
     const queuedRun = {
-      id: 'run-rotate', intent: 'rotate_client_secret', mode: 'existing', overallStatus: 'planned',
-      driftSummary: 'queued', requestId: 'req-rotate', steps: [],
+      id: 'run-rotate',
+      intent: 'rotate_client_secret',
+      mode: 'existing',
+      overallStatus: 'planned',
+      driftSummary: 'queued',
+      requestId: 'req-rotate',
+      steps: [],
     };
     rotateInstanceSecretMock.mockResolvedValueOnce({ data: queuedRun });
 
@@ -743,7 +767,9 @@ describe('useInstances', () => {
       expect(result.current.isLoading).toBe(false);
     });
     await act(async () => {
-      await expect(result.current.executeKeycloakProvisioning('demo', { intent: 'rotate_client_secret' })).resolves.toEqual(queuedRun);
+      await expect(
+        result.current.executeKeycloakProvisioning('demo', { intent: 'rotate_client_secret' })
+      ).resolves.toEqual(queuedRun);
     });
 
     expect(rotateInstanceSecretMock).toHaveBeenCalledWith('demo');
@@ -797,21 +823,21 @@ describe('useInstances', () => {
       expect(assigned).toEqual(expect.objectContaining({ assignedModules: ['news'] }));
     });
     expect(assignInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       const seeded = await result.current.seedIamBaseline('demo');
       expect(seeded).toEqual(expect.objectContaining({ assignedModules: ['news'] }));
     });
     expect(seedInstanceIamBaselineMock).toHaveBeenCalledWith('demo');
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(2);
 
     await act(async () => {
       const revoked = await result.current.revokeModule('demo', 'news');
       expect(revoked).toEqual(expect.objectContaining({ assignedModules: [] }));
     });
     expect(revokeInstanceModuleMock).toHaveBeenCalledWith('demo', 'news');
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(3);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(3);
   });
 
   it('keeps the current selected instance until the post-mutation reload finishes', async () => {
@@ -903,7 +929,7 @@ describe('useInstances', () => {
     });
 
     expect(bootstrapInstanceAdminStructureMock).toHaveBeenCalledWith('demo', ['news']);
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(1);
   });
 
   it('loads a full audit run for the instances overview', async () => {
@@ -963,7 +989,7 @@ describe('useInstances', () => {
     expect(result.current.instanceAuditRun).toBeNull();
   });
 
-  it('surfaces audit refresh failures and invalidates permissions on 403', async () => {
+  it('surfaces audit refresh failures without refreshing the session on 403', async () => {
     getSingleInstanceAuditRunMock.mockRejectedValueOnce({
       status: 403,
       code: 'forbidden',
@@ -988,7 +1014,7 @@ describe('useInstances', () => {
     expect(result.current.mutationError).toEqual(
       expect.objectContaining({ status: 403, code: 'forbidden' })
     );
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
 
     await act(async () => {
       expect(
@@ -1003,7 +1029,7 @@ describe('useInstances', () => {
       includeOnlyActive: false,
       instanceIds: ['demo', 'bb-guben'],
     });
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
+    expect(authMockValue.refreshSession).not.toHaveBeenCalled();
   });
 
   it('preserves an existing detail error while a successful audit refresh runs', async () => {
@@ -1061,7 +1087,14 @@ describe('useInstances', () => {
           skipCount?: number;
         };
         checks: never[];
-        instances: Array<{ instanceId: string; displayName: string; primaryHostname: string; status: string; overallStatus: string; checks: never[] }>;
+        instances: Array<{
+          instanceId: string;
+          displayName: string;
+          primaryHostname: string;
+          status: string;
+          overallStatus: string;
+          checks: never[];
+        }>;
       };
     }>();
 

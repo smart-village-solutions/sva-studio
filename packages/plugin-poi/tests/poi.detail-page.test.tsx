@@ -159,7 +159,17 @@ describe('PoiDetailPage', () => {
   beforeEach(() => {
     publishSessionAccessSnapshot({
       isResolved: true,
-      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      permissionActions: [
+        'poi.read',
+        'poi.create',
+        'poi.update',
+        'poi.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+      ],
+      assignedModules: ['poi'],
       roles: [],
     });
     navigateMock.mockReset();

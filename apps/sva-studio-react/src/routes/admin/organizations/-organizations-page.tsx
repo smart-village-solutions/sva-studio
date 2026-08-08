@@ -1,5 +1,9 @@
 import { IconEdit, IconTrash, IconUsersGroup } from '@tabler/icons-react';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  StudioDataTable,
+  StudioListPageTemplate,
+  type StudioColumnDef,
+} from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -14,6 +18,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { Switch } from '../../../components/ui/switch';
 import { useOrganizations } from '../../../hooks/use-organizations';
+import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { t } from '../../../i18n';
 import {
   getOrganizationTypeTranslationKey,
@@ -24,8 +29,14 @@ import {
 export const OrganizationsPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
   const organizationsApi = useOrganizations();
+  const access = useIamResourceAccess('organization');
+  const canCreateOrganizations = isIamAccessAllowed(access.create);
+  const canUpdateOrganizations = isIamAccessAllowed(access.update);
+  const canDeleteOrganizations = isIamAccessAllowed(access.delete);
   const [deleteOrganizationId, setDeleteOrganizationId] = React.useState<string | null>(null);
-  const [statusMutationOrganizationIds, setStatusMutationOrganizationIds] = React.useState<readonly string[]>([]);
+  const [statusMutationOrganizationIds, setStatusMutationOrganizationIds] = React.useState<
+    readonly string[]
+  >([]);
 
   const pageCount = Math.max(1, Math.ceil(organizationsApi.total / organizationsApi.pageSize));
 
@@ -57,7 +68,9 @@ export const OrganizationsPage = () => {
     Promise.resolve(onConfirmDelete()).catch(() => undefined);
   }, [onConfirmDelete]);
 
-  const organizationColumns = React.useMemo<readonly StudioColumnDef<(typeof organizationsApi.organizations)[number]>[]>(
+  const organizationColumns = React.useMemo<
+    readonly StudioColumnDef<(typeof organizationsApi.organizations)[number]>[]
+  >(
     () => [
       {
         id: 'organization',
@@ -84,12 +97,14 @@ export const OrganizationsPage = () => {
         header: t('admin.organizations.table.headerType'),
         cell: (organization) => t(getOrganizationTypeTranslationKey(organization.organizationType)),
         sortable: true,
-        sortValue: (organization) => t(getOrganizationTypeTranslationKey(organization.organizationType)).toLocaleLowerCase(),
+        sortValue: (organization) =>
+          t(getOrganizationTypeTranslationKey(organization.organizationType)).toLocaleLowerCase(),
       },
       {
         id: 'parent',
         header: t('admin.organizations.table.headerParent'),
-        cell: (organization) => organization.parentDisplayName ?? t('admin.organizations.messages.root'),
+        cell: (organization) =>
+          organization.parentDisplayName ?? t('admin.organizations.messages.root'),
         sortable: true,
         sortValue: (organization) => (organization.parentDisplayName ?? '').toLocaleLowerCase(),
       },
@@ -114,7 +129,9 @@ export const OrganizationsPage = () => {
           <div className="flex items-center gap-3">
             <Switch
               checked={organization.isActive}
-              disabled={statusMutationOrganizationIds.includes(organization.id)}
+              disabled={
+                !canUpdateOrganizations || statusMutationOrganizationIds.includes(organization.id)
+              }
               aria-label={t('admin.organizations.messages.statusSwitchLabel', {
                 name: organization.displayName,
               })}
@@ -133,7 +150,7 @@ export const OrganizationsPage = () => {
         sortValue: (organization) => (organization.isActive ? 'active' : 'inactive'),
       },
     ],
-    [statusMutationOrganizationIds, organizationsApi.organizations]
+    [canUpdateOrganizations, statusMutationOrganizationIds, organizationsApi.organizations]
   );
 
   return (
@@ -141,14 +158,20 @@ export const OrganizationsPage = () => {
       <StudioListPageTemplate
         title={t('admin.organizations.page.title')}
         description={t('admin.organizations.page.subtitle')}
-        primaryAction={{
-          label: t('admin.organizations.actions.create'),
-          render: (
-            <Button asChild type="button">
-              <Link to="/admin/organizations/new">{t('admin.organizations.actions.create')}</Link>
-            </Button>
-          ),
-        }}
+        primaryAction={
+          canCreateOrganizations
+            ? {
+                label: t('admin.organizations.actions.create'),
+                render: (
+                  <Button asChild type="button">
+                    <Link to="/admin/organizations/new">
+                      {t('admin.organizations.actions.create')}
+                    </Link>
+                  </Button>
+                ),
+              }
+            : undefined
+        }
       >
         {organizationsApi.error ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
@@ -168,7 +191,12 @@ export const OrganizationsPage = () => {
             <AlertDescription className="flex flex-col gap-3">
               <span>{organizationErrorMessage(organizationsApi.mutationError)}</span>
               <div>
-                <Button type="button" size="sm" variant="outline" onClick={organizationsApi.clearMutationError}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={organizationsApi.clearMutationError}
+                >
                   {t('shell.permissionsDegraded.dismiss')}
                 </Button>
               </div>
@@ -187,13 +215,18 @@ export const OrganizationsPage = () => {
           isLoading={organizationsApi.isLoading}
           loadingState={t('content.messages.loading')}
           emptyState={
-            <Card className="border-none p-0 text-sm text-muted-foreground shadow-none" role="status">
+            <Card
+              className="border-none p-0 text-sm text-muted-foreground shadow-none"
+              role="status"
+            >
               {t('admin.organizations.messages.emptyState')}
             </Card>
           }
           toolbarStart={
             <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-              <Label htmlFor="organizations-search">{t('admin.organizations.filters.searchLabel')}</Label>
+              <Label htmlFor="organizations-search">
+                {t('admin.organizations.filters.searchLabel')}
+              </Label>
               <Input
                 id="organizations-search"
                 placeholder={t('admin.organizations.filters.searchPlaceholder')}
@@ -205,7 +238,9 @@ export const OrganizationsPage = () => {
           toolbarEnd={
             <>
               <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                <Label htmlFor="organizations-type">{t('admin.organizations.filters.typeLabel')}</Label>
+                <Label htmlFor="organizations-type">
+                  {t('admin.organizations.filters.typeLabel')}
+                </Label>
                 <Select
                   id="organizations-type"
                   value={organizationsApi.filters.organizationType}
@@ -224,7 +259,9 @@ export const OrganizationsPage = () => {
                 </Select>
               </div>
               <div className="flex flex-col gap-1 text-xs uppercase tracking-wide text-muted-foreground">
-                <Label htmlFor="organizations-status">{t('admin.organizations.filters.statusLabel')}</Label>
+                <Label htmlFor="organizations-status">
+                  {t('admin.organizations.filters.statusLabel')}
+                </Label>
                 <Select
                   id="organizations-status"
                   value={organizationsApi.filters.status}
@@ -234,7 +271,9 @@ export const OrganizationsPage = () => {
                 >
                   <option value="all">{t('admin.organizations.filters.statusAll')}</option>
                   <option value="active">{t('admin.organizations.filters.statusActive')}</option>
-                  <option value="inactive">{t('admin.organizations.filters.statusInactive')}</option>
+                  <option value="inactive">
+                    {t('admin.organizations.filters.statusInactive')}
+                  </option>
                 </Select>
               </div>
             </>
@@ -261,16 +300,18 @@ export const OrganizationsPage = () => {
                   <IconUsersGroup aria-hidden="true" className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button
-                type="button"
-                size="icon"
-                variant="destructive"
-                onClick={() => setDeleteOrganizationId(organization.id)}
-                aria-label={t('admin.organizations.actions.delete')}
-                title={t('admin.organizations.actions.delete')}
-              >
-                <IconTrash aria-hidden="true" className="h-4 w-4" />
-              </Button>
+              {canDeleteOrganizations ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  onClick={() => setDeleteOrganizationId(organization.id)}
+                  aria-label={t('admin.organizations.actions.delete')}
+                  title={t('admin.organizations.actions.delete')}
+                >
+                  <IconTrash aria-hidden="true" className="h-4 w-4" />
+                </Button>
+              ) : null}
             </>
           )}
           footer={
@@ -282,7 +323,11 @@ export const OrganizationsPage = () => {
                 <p role="status" aria-live="polite">
                   {t('admin.organizations.messages.resultCount', { count: organizationsApi.total })}
                 </p>
-                <p key={organizationsApi.page} className="animate-pagination-active" aria-live="polite">
+                <p
+                  key={organizationsApi.page}
+                  className="animate-pagination-active"
+                  aria-live="polite"
+                >
                   {t('admin.organizations.pagination.pageLabel', {
                     page: organizationsApi.page,
                     totalPages: pageCount,
@@ -313,7 +358,7 @@ export const OrganizationsPage = () => {
       </StudioListPageTemplate>
 
       <ConfirmDialog
-        open={deleteOrganizationId !== null}
+        open={canDeleteOrganizations && deleteOrganizationId !== null}
         title={t('admin.organizations.confirm.deleteTitle')}
         description={t('admin.organizations.confirm.deleteDescription')}
         confirmLabel={t('admin.organizations.actions.delete')}

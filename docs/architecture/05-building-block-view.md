@@ -23,7 +23,7 @@ Abhängigkeiten des aktuellen Systems.
    - Runtime-Health-Bausteine: `RuntimeHealthIndicator` und `useRuntimeHealth` für die globale Anzeige des Plattformzustands
    - Skeleton-Bausteine für Kopfzeile, Seitenleiste und Contentbereich
    - Theme-Bausteine: `ThemeProvider`, semantische CSS-Token und `Sheet`-Primitive für mobile Shell-Navigation
-   - Auth- und Diagnose-Bausteine: `AuthProvider` für `/auth/me`, Silent-Recovery und den clientseitigen Grundzustand; `iam-api.ts` für Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
+   - Auth- und Diagnose-Bausteine: `AuthProvider` für Identität, `/auth/me`, Silent-Recovery und Session-Lifecycle; ein anwendungsweiter Organisationskontext und `EffectiveAccessProvider` für Plattform-/Tenant-Scope, `/iam/me/permissions`, Modulzuweisung und fail-closed UI-Entscheidungen; `iam-api.ts` für Browser-Timeouts, `requestId`-Aufnahme und Safe-Detail-Parsing
    - Account-Self-Service-Bausteine: `/account/privacy` als Aktivitätscockpit für Datenschutz- und Transparenzvorgänge, `/account/privacy/$caseId` als Deep-Link-Detailansicht und `/account/rules` als getrennte Oberfläche für tenantweite Löschregeln und persönliche Inhaltsregeln
 
 - Host-Standard-Bausteine für Admin-Ressourcen: `appAdminResources` als kanonische Capability-Deklaration, route-addressable Listensteuerung in den Admin-/Content-Seiten und dünne Label-/Routing-Bindings für `@sva/studio-ui-react` statt app-eigener Tabellen-Owner-Schicht
@@ -45,7 +45,7 @@ Abhängigkeiten des aktuellen Systems.
    - Runtime-Adapter für fachliche IAM-, Governance-, Content- und Registry-Routen
    - Diagnosebausteine für Session-Hydration/-Refresh, Hostvalidierung, Schema-Guard, Runtime-Health und allowlist-basierte API-Fehlerdetails
 5. Plugin SDK, Studio Module IAM und Server Runtime (`packages/plugin-sdk`, `packages/studio-module-iam`, `packages/server-runtime`)
-   - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge
+   - `@sva/plugin-sdk`: öffentlicher Plugin-Vertrag v1, Build-time-Registry, Admin-Ressourcen, Content-Type- und Translation-Verträge sowie hostpublizierter, read-only Session-Access-Snapshot für Plugin-UI
    - erweitert um deklarative Operations-Beiträge für registrierte Jobtypen und Importprofile im bestehenden Build-time-Snapshot
    - erweitert um deklarative `externalInterfaceTypes`, damit Plugins zusätzliche Schnittstellentyp-Metadaten beisteuern können, ohne eigene Persistenz- oder Secret-Pfade einzuführen
    - bündelt außerdem wiederverwendbare Helper für standardisierte Content-Plugins, Mainserver-CRUD-Basis und kleine UI-nahe Plugin-Utilities

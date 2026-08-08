@@ -1,9 +1,5 @@
 import React from 'react';
-import type {
-  ApiPagination,
-  IamContentListItem,
-  IamContentListQuery,
-} from '@sva/core';
+import type { ApiPagination, IamContentListItem, IamContentListQuery } from '@sva/core';
 
 import {
   asIamError,
@@ -21,7 +17,7 @@ import {
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import { useIamAdminList } from './use-iam-admin-list';
-import { contentsLogger, PERMISSION_INVALIDATED_EVENT } from './use-contents.shared.js';
+import { contentsLogger, SESSION_REFRESHED_EVENT } from './use-contents.shared.js';
 
 type UseContentsResult = {
   readonly contents: readonly IamContentListItem[];
@@ -107,15 +103,21 @@ const useContentProjectionRevalidation = (
   }, [refetch, shouldRevalidate]);
 };
 
-export const useContents = (query: IamContentListQuery, options: UseContentsOptions = {}): UseContentsResult => {
-  const { invalidatePermissions } = useAuth();
+export const useContents = (
+  query: IamContentListQuery,
+  options: UseContentsOptions = {}
+): UseContentsResult => {
+  const { refreshSession } = useAuth();
   const enabled = options.enabled ?? true;
   const [pagination, setPagination] = React.useState<ApiPagination>(DEFAULT_CONTENT_PAGINATION);
   const [metadata, setMetadata] = React.useState<IamContentListMetadata | null>(null);
   const [refreshProjectionPending, setRefreshProjectionPending] = React.useState(false);
   const listItems = React.useCallback(() => listContents(query), [query]);
   const handleLoaded = React.useCallback(
-    (response: { readonly pagination?: ApiPagination; readonly metadata?: IamContentListMetadata }) => {
+    (response: {
+      readonly pagination?: ApiPagination;
+      readonly metadata?: IamContentListMetadata;
+    }) => {
       const nextPagination = response.pagination ?? DEFAULT_CONTENT_PAGINATION;
       setPagination((currentPagination) =>
         currentPagination.page === nextPagination.page &&
@@ -128,7 +130,7 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
     },
     []
   );
-  const adminList = useIamAdminList(listItems, invalidatePermissions, {
+  const adminList = useIamAdminList(listItems, refreshSession, {
     enabled,
     onLoaded: handleLoaded,
   });
@@ -150,7 +152,10 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
   const runBulkMutation = React.useCallback(
     async (
       input: ContentBulkMutationInput,
-      mutateOne: (contentId: string, content: IamContentListItem | undefined) => Promise<'accepted' | 'skipped'>
+      mutateOne: (
+        contentId: string,
+        content: IamContentListItem | undefined
+      ) => Promise<'accepted' | 'skipped'>
     ): Promise<ContentBulkMutationResult> => {
       const byId = new Map(adminList.items.map((content) => [content.id, content] as const));
       const meta = {
@@ -162,7 +167,9 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
         page: input.page,
         page_size: input.pageSize,
         ...(input.statusFilter ? { status_filter: input.statusFilter } : {}),
-        ...(input.sort ? { sort_field: input.sort.field, sort_direction: input.sort.direction } : {}),
+        ...(input.sort
+          ? { sort_field: input.sort.field, sort_direction: input.sort.direction }
+          : {}),
       } as const;
 
       logBrowserOperationStart(contentsLogger, 'content_bulk_action_started', meta);
@@ -236,7 +243,9 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
       metadata?.mainserverSyncStates
         ?.map((entry) => entry.contentType)
         .filter((contentType) => typeof contentType === 'string' && contentType.length > 0) ??
-      query.visibleTypes?.filter((contentType) => typeof contentType === 'string' && contentType.length > 0) ??
+      query.visibleTypes?.filter(
+        (contentType) => typeof contentType === 'string' && contentType.length > 0
+      ) ??
       [],
     [metadata, query.visibleTypes]
   );
@@ -253,9 +262,9 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          contentsLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          contentsLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'refresh_projected_contents',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -267,7 +276,7 @@ export const useContents = (query: IamContentListQuery, options: UseContentsOpti
         setRefreshProjectionPending(false);
       }
     },
-    [adminList, invalidatePermissions, refreshProjectionState]
+    [adminList, refreshSession, refreshProjectionState]
   );
 
   return {

@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 
 export const PermissionsDegradedBanner = () => {
-  const { permissionsDegraded, invalidatePermissions, isLoading } = useAuth();
+  const { permissionsDegraded, refreshSession, isLoading } = useAuth();
   const [dismissed, setDismissed] = React.useState(false);
   const [isRetrying, setIsRetrying] = React.useState(false);
 
@@ -23,7 +23,7 @@ export const PermissionsDegradedBanner = () => {
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      await invalidatePermissions();
+      await refreshSession();
     } finally {
       setIsRetrying(false);
     }
@@ -48,7 +48,10 @@ export const PermissionsDegradedBanner = () => {
           onClick={() => void handleRetry()}
           className="h-auto gap-1.5 px-2 py-1 text-amber-800 hover:bg-amber-500/20 hover:text-amber-900 dark:text-amber-200 dark:hover:text-amber-100"
         >
-          <RefreshCw aria-hidden="true" className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            aria-hidden="true"
+            className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`}
+          />
           {t('shell.permissionsDegraded.retry')}
         </Button>
         <Button

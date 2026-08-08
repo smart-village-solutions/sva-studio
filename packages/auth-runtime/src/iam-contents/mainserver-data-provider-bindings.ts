@@ -1,5 +1,4 @@
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
-
 type InstanceScopedClient = Parameters<Parameters<typeof withInstanceScopedDb>[1]>[0];
 
 export type MainserverPrincipalType = 'organization' | 'user';

@@ -27,6 +27,7 @@ describe('pluginGenericItems contract', () => {
           kind: 'tenant',
           moduleId: 'generic-items',
           actions: { mode: 'allOf', values: ['generic-items.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

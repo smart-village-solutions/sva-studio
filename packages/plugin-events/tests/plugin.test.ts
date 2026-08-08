@@ -27,6 +27,7 @@ describe('pluginEvents contract', () => {
           kind: 'tenant',
           moduleId: 'events',
           actions: { mode: 'allOf', values: ['events.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

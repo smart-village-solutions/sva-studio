@@ -19,6 +19,7 @@ describe('pluginPoi contract', () => {
           kind: 'tenant',
           moduleId: 'poi',
           actions: { mode: 'allOf', values: ['poi.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

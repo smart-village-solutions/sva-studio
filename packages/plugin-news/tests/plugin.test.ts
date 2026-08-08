@@ -19,6 +19,7 @@ describe('pluginNews contract', () => {
           kind: 'tenant',
           moduleId: 'news',
           actions: { mode: 'allOf', values: ['news.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

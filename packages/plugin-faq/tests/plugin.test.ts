@@ -20,6 +20,7 @@ describe('pluginFaq contract', () => {
           kind: 'tenant',
           moduleId: 'faq',
           actions: { mode: 'allOf', values: ['faq.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

@@ -21,6 +21,7 @@ describe('pluginSurveys contract', () => {
           kind: 'tenant',
           moduleId: 'surveys',
           actions: { mode: 'allOf', values: ['surveys.read'] },
+          resourceContext: 'collection',
         },
       },
     ]);

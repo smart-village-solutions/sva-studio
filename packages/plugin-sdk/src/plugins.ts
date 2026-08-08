@@ -910,6 +910,16 @@ const assertPluginRegistryNavigation = ({
         `plugin_navigation_action_guard_mismatch:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
       );
     }
+    if (
+      !hasMatchingPluginAccessRequirement(
+        navigationItem.accessRequirement,
+        action.accessRequirement
+      )
+    ) {
+      throw new Error(
+        `plugin_navigation_action_access_requirement_mismatch:${pluginNamespace}:${navigationItem.id}:${navigationActionId}`
+      );
+    }
   }
 };
 

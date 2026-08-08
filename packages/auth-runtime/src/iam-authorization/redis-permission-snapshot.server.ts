@@ -64,9 +64,19 @@ const buildBinding = (key: PermSnapshotKey): StoredSnapshot['binding'] => ({
   userRevision: key.userRevision,
 });
 
+const readSnapshotHmacSecret = (): string => {
+  const configuredSecret = process.env.REDIS_SNAPSHOT_HMAC_SECRET?.trim();
+  if (configuredSecret) {
+    return configuredSecret;
+  }
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+    return 'dev-hmac-secret-change-in-prod';
+  }
+  throw new Error('redis_snapshot_hmac_secret_missing');
+};
+
 const computeHmac = (data: string): string => {
-  const secret = process.env.REDIS_SNAPSHOT_HMAC_SECRET ?? 'dev-hmac-secret-change-in-prod';
-  return createHmac('sha256', secret).update(data).digest('hex');
+  return createHmac('sha256', readSnapshotHmacSecret()).update(data).digest('hex');
 };
 
 const serializeSignedPayload = (

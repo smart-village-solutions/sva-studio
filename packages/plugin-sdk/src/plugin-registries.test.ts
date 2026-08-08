@@ -910,6 +910,29 @@ describe('plugin registries', () => {
     ).toThrow('plugin_navigation_action_guard_mismatch:news:news.nav-guard-mismatch:news.read');
     expect(() =>
       createPluginRegistry([
+        {
+          ...newsPlugin,
+          navigation: [
+            {
+              id: 'news.nav-requirement-mismatch',
+              to: '/plugins/news',
+              titleKey: 'news.nav',
+              section: 'dataManagement',
+              actionId: 'news.read',
+              accessRequirement: {
+                kind: 'tenant',
+                moduleId: 'news',
+                actions: { mode: 'allOf', values: ['news.read', 'news.create'] },
+              },
+            },
+          ],
+        },
+      ])
+    ).toThrow(
+      'plugin_navigation_action_access_requirement_mismatch:news:news.nav-requirement-mismatch:news.read'
+    );
+    expect(() =>
+      createPluginRegistry([
         { ...newsPlugin, contentTypes: [{ contentType: 'invalid', displayName: 'Invalid' }] },
       ])
     ).toThrow('invalid_plugin_content_type:invalid');

@@ -96,7 +96,7 @@ Die Middleware `withLegalTextCompliance` prüft, ob der Nutzer alle aktiven Rech
 - Consent-Export-API ermöglicht DSGVO-Auskunftsanfragen ohne manuelle DB-Queries
 
 ### Negativ / zu beachten
-- `REDIS_SNAPSHOT_HMAC_SECRET` muss in Produktion ein starkes Secret sein (nicht der Default)
+- `REDIS_SNAPSHOT_HMAC_SECRET` muss außerhalb von Entwicklung und Tests gesetzt sein; ohne Secret schlägt der Snapshot-Cache geschlossen fehl. In Produktion muss ein starkes Secret verwendet werden.
 - Die Geo-Hierarchie-Closure-Table muss bei Import von Organisationsstrukturen explizit befüllt werden
 - Maximal 2 Import-Typen für `LegalAcceptanceActionType` (`accepted`, `revoked`, `prompted`) – Erweiterungen erfordern ADR-Revision
 

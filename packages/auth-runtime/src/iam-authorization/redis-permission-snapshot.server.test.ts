@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   logger: {
@@ -27,7 +27,12 @@ describe('redis permission snapshot server', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    vi.stubEnv('NODE_ENV', 'test');
     delete process.env.REDIS_SNAPSHOT_HMAC_SECRET;
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it('returns miss and evicts invalid snapshot metadata', async () => {
@@ -127,6 +132,50 @@ describe('redis permission snapshot server', () => {
       permissions,
     });
     expect(redisKey).toContain('tenant-a:user-1');
+  });
+
+  it('fails closed outside development and test when the HMAC secret is missing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    const { getRedisPermissionSnapshot, setRedisPermissionSnapshot } = await import(
+      './redis-permission-snapshot.server.js'
+    );
+    const key = {
+      instanceId: 'tenant-a',
+      userId: 'user-1',
+      instanceRevision: 1,
+      userRevision: 1,
+    };
+    state.redis.get.mockResolvedValueOnce(
+      JSON.stringify({
+        permissions: [{ actionId: 'news.read', scope: 'instance' }],
+        version: 'forged',
+        schema_version: 2,
+        signed_at: new Date().toISOString(),
+        hmac: 'publicly-forged',
+        binding: {
+          instanceId: 'tenant-a',
+          userId: 'user-1',
+          organizationHash: 'none',
+          geoContextHash: 'none',
+          instanceRevision: 1,
+          userRevision: 1,
+        },
+      })
+    );
+
+    await expect(getRedisPermissionSnapshot(key)).resolves.toEqual({
+      hit: false,
+      reason: 'redis_unavailable',
+    });
+    await expect(setRedisPermissionSnapshot(key, [])).resolves.toEqual({
+      ok: false,
+      reason: 'redis_unavailable',
+    });
+    expect(state.redis.setex).not.toHaveBeenCalled();
+    expect(state.logger.error).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ error: 'redis_snapshot_hmac_secret_missing' })
+    );
   });
 
   it('returns redis_unavailable on read or write failures and invalidates matching keys', async () => {

@@ -32,6 +32,12 @@ const state = vi.hoisted(() => ({
       'media.create',
       'media.update',
     ],
+    unscopedPermissionActions: [
+      'projects.read',
+      'projects.create',
+      'projects.update',
+      'projects.delete',
+    ],
     roles: [],
   },
 }));
@@ -150,6 +156,12 @@ describe('projects pages', () => {
         'media.reference.manage',
         'media.create',
         'media.update',
+      ],
+      unscopedPermissionActions: [
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
       ],
       roles: [],
     };
@@ -393,6 +405,12 @@ describe('projects pages', () => {
       isResolved: true,
       assignedModules: ['projects'],
       permissionActions: ['projects.read', 'projects.create', 'projects.update', 'projects.delete'],
+      unscopedPermissionActions: [
+        'projects.read',
+        'projects.create',
+        'projects.update',
+        'projects.delete',
+      ],
       roles: [],
     };
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');

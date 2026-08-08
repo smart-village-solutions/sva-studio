@@ -100,6 +100,59 @@ describe('evaluateUiAccess', () => {
     ).toEqual({ status: 'denied', reason: 'scope_mismatch' });
   });
 
+  it('fails closed for invalid platform snapshots and missing platform roles', () => {
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: {
+          kind: 'platform',
+          roles: { mode: 'anyOf', values: ['instance_registry_admin'] },
+        },
+        snapshot: readyTenantSnapshot([]),
+      })
+    ).toEqual({ status: 'denied', reason: 'scope_mismatch' });
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: {
+          kind: 'platform',
+          roles: { mode: 'anyOf', values: ['instance_registry_admin'] },
+        },
+        snapshot: {
+          status: 'ready',
+          scope: { kind: 'platform', authGeneration: 1 },
+          generation: 1,
+        } as unknown as EffectiveAccessSnapshot,
+      })
+    ).toEqual({ status: 'denied', reason: 'scope_mismatch' });
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: {
+          kind: 'platform',
+          roles: { mode: 'allOf', values: ['instance_registry_admin'] },
+        },
+        snapshot: {
+          status: 'ready',
+          scope: { kind: 'platform', authGeneration: 1 },
+          generation: 1,
+          platformRoles: [],
+        },
+      })
+    ).toEqual({ status: 'denied', reason: 'platform_role_missing' });
+  });
+
+  it('allows authenticated surfaces after session resolution', () => {
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: { kind: 'authenticated' },
+      })
+    ).toEqual({ status: 'allowed', reason: 'authenticated_surface' });
+  });
+
   it('requires module assignment in addition to an unscoped action', () => {
     const snapshot = readyTenantSnapshot(
       [{ action: 'news.update', resourceType: 'content', accessScope: 'all' }],
@@ -171,6 +224,57 @@ describe('evaluateUiAccess', () => {
         snapshot,
       })
     ).toEqual({ status: 'allowed', reason: 'allowed_by_resource_capability' });
+  });
+
+  it('rejects denied capabilities and accepts tenant-wide capabilities', () => {
+    const snapshot = readyTenantSnapshot([
+      { action: 'news.update', resourceType: 'content', accessScope: 'organization' },
+    ]);
+    const requirement = tenantRequirement(['news.update'], { moduleId: 'news' });
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: {
+          ...requirement,
+          resourceCapability: {
+            action: 'news.update',
+            allowed: false,
+            instanceId: 'tenant-a',
+            resourceType: 'content',
+            resourceId: 'news-1',
+          },
+        },
+        snapshot,
+      })
+    ).toEqual({ status: 'denied', reason: 'resource_capability_denied' });
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: {
+          ...requirement,
+          resourceCapability: {
+            action: 'news.update',
+            allowed: true,
+            instanceId: 'tenant-a',
+            resourceType: 'content',
+            resourceId: 'news-1',
+          },
+        },
+        snapshot,
+      })
+    ).toEqual({ status: 'allowed', reason: 'allowed_by_resource_capability' });
+  });
+
+  it('rejects empty action requirements', () => {
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement([]),
+        snapshot: readyTenantSnapshot([]),
+      })
+    ).toEqual({ status: 'denied', reason: 'permission_missing' });
   });
 
   it('rejects unknown short action ids', () => {

@@ -271,6 +271,86 @@ describe('interfaces.server', () => {
     });
   });
 
+  it.each([
+    ['non-object overview', null],
+    ['primitive overview', 'invalid-overview'],
+    ['non-object status', { instanceId: 'de-musterhausen', status: null }],
+    ['missing checkedAt', { instanceId: 'de-musterhausen', status: { status: 'connected' } }],
+    [
+      'invalid nested config',
+      {
+        instanceId: 'de-musterhausen',
+        status: { status: 'connected', checkedAt: '2026-08-08T12:00:00.000Z', config: true },
+      },
+    ],
+    [
+      'invalid query root typename',
+      {
+        instanceId: 'de-musterhausen',
+        status: {
+          status: 'connected',
+          checkedAt: '2026-08-08T12:00:00.000Z',
+          queryRootTypename: 1,
+        },
+      },
+    ],
+    [
+      'invalid mutation root typename',
+      {
+        instanceId: 'de-musterhausen',
+        status: {
+          status: 'connected',
+          checkedAt: '2026-08-08T12:00:00.000Z',
+          mutationRootTypename: 1,
+        },
+      },
+    ],
+    [
+      'invalid error code',
+      {
+        instanceId: 'de-musterhausen',
+        status: { status: 'error', checkedAt: '2026-08-08T12:00:00.000Z', errorCode: 1 },
+      },
+    ],
+    [
+      'invalid error message',
+      {
+        instanceId: 'de-musterhausen',
+        status: { status: 'error', checkedAt: '2026-08-08T12:00:00.000Z', errorMessage: 1 },
+      },
+    ],
+  ])('rejects a %s response from the authenticated overview boundary', async (_label, payload) => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
+
+    await expect(loadSvaMainserverInterfacesOverview(createRequest())).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({ status: 'error', errorCode: 'network_error' }),
+    });
+  });
+
+  it('rejects non-json overview responses at the authenticated boundary', async () => {
+    state.withAuthenticatedUser.mockResolvedValue(
+      new Response('upstream proxy response', {
+        status: 502,
+        headers: { 'Content-Type': 'text/plain' },
+      })
+    );
+
+    const { loadSvaMainserverInterfacesOverview } = await import('./interfaces-contract');
+
+    await expect(loadSvaMainserverInterfacesOverview(createRequest())).resolves.toMatchObject({
+      instanceId: '',
+      status: expect.objectContaining({ status: 'error', errorCode: 'network_error' }),
+    });
+  });
+
   it('returns a network error when overview loading throws unexpectedly', async () => {
     state.withAuthenticatedUser.mockRejectedValue(new Error('auth transport failed'));
 

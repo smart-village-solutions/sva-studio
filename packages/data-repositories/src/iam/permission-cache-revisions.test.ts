@@ -33,6 +33,14 @@ describe('permission cache revision repository', () => {
     expect(statements[0]?.text).toContain('permission_cache_user_revisions');
   });
 
+  it('accepts numeric revision values returned by database adapters', async () => {
+    const { executor } = createExecutor([{ instance_revision: 4, user_revision: 7 }]);
+
+    await expect(
+      createPermissionCacheRevisionRepository(executor).readVector('tenant-a', 'subject-a')
+    ).resolves.toEqual({ instanceRevision: 4, userRevision: 7 });
+  });
+
   it('bumps an absent logical revision from one to two and publishes in the same statement', async () => {
     const { executor, statements } = createExecutor([{ revision: '2' }]);
 

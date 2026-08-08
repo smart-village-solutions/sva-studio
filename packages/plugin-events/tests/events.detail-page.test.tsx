@@ -326,6 +326,30 @@ describe('EventsDetailPage', () => {
     });
   });
 
+  it('keeps read-only event editors from saving or deleting', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['events.read'],
+      assignedModules: ['events'],
+      roles: [],
+    });
+    vi.mocked(getEvent).mockResolvedValueOnce({ id: 'event-read-only', title: 'Nur lesen' } as never);
+
+    const { container } = render(<EventsDetailPage mode="edit" contentId="event-read-only" />);
+
+    await screen.findByDisplayValue('Nur lesen');
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
+
+    const form = container.querySelector('form');
+    if (!form) throw new Error('event_form_missing');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(vi.mocked(updateEvent)).not.toHaveBeenCalled();
+    });
+  });
+
   it('renders the event editor after the core item loaded', async () => {
     vi.mocked(getEvent).mockResolvedValueOnce({
       id: 'event-1944004',

@@ -533,6 +533,9 @@ describe('app.routes', () => {
     expect(routeMap.has('/admin/content')).toBe(true);
     expect(routeMap.has('/admin/content/new')).toBe(true);
     expect(routeMap.has('/admin/content/$id')).toBe(true);
+    expect(
+      readRouteOptions(expectDefined(routeMap.get('/admin/api/phase1-test'))).getParentRoute?.()
+    ).toBe(rootRoute);
   });
 
   it('defaults admin resources to an empty list when ui route factories are created without options', () => {

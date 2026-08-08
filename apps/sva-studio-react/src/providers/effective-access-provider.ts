@@ -172,7 +172,9 @@ export const EffectiveAccessProvider = ({ children }: Readonly<{ children: React
     )
       .then(async (response) => {
         if (!response.ok) {
-          throw await readIamErrorResponse(response);
+          throw await readIamErrorResponse(response, {
+            emitEffectiveAccessInvalidation: false,
+          });
         }
         const payload: unknown = await response.json();
         if (!isMePermissionsResponse(payload) || payload.instanceId !== auth.user?.instanceId) {

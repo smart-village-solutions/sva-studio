@@ -2,6 +2,7 @@ import { redirect } from '@tanstack/react-router';
 import type { PluginDefinition } from '@sva/plugin-sdk';
 
 import type { RouteGuardContext } from './protected.routes.js';
+import { buildLoginHref } from './protected-route-redirects.js';
 
 type PluginRouteAccessRequirement = NonNullable<
   PluginDefinition['routes'][number]['accessRequirement']
@@ -48,7 +49,10 @@ const satisfiesRequiredValues = (
 
 export const enforceRouteAccessRequirement = async (
   requirement: PluginRouteAccessRequirement | undefined,
-  beforeLoadOptions: { readonly context: RouteGuardContext }
+  beforeLoadOptions: {
+    readonly context: RouteGuardContext;
+    readonly location: { readonly href: string };
+  }
 ): Promise<void> => {
   if (!requirement || requirement.kind === 'public') {
     return;
@@ -56,7 +60,7 @@ export const enforceRouteAccessRequirement = async (
 
   const user = await beforeLoadOptions.context.auth?.getUser();
   if (!user) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
+    throw redirect({ href: buildLoginHref('/auth/login', beforeLoadOptions.location.href) });
   }
   if (requirement.kind === 'authenticated') {
     return;

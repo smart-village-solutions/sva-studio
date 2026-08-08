@@ -31,6 +31,7 @@ const createBeforeLoadOptions = (
           : null,
     },
   },
+  location: { href: '/plugins/news?page=2' },
 });
 
 describe('enforceUiRouteAccessRequirements', () => {
@@ -106,6 +107,9 @@ describe('enforceUiRouteAccessRequirements', () => {
 
 describe('enforceRouteAccessRequirement', () => {
   const insufficientRoleRedirect = redirect({ href: '/?error=auth.insufficientRole' });
+  const loginRedirect = redirect({
+    href: '/?auth=login&returnTo=%2Fplugins%2Fnews%3Fpage%3D2',
+  });
 
   it.each([undefined, { kind: 'public' } as const])(
     'allows a route without a protected requirement (%s)',
@@ -116,13 +120,13 @@ describe('enforceRouteAccessRequirement', () => {
     }
   );
 
-  it('rejects protected routes without an authenticated user', async () => {
+  it('redirects protected routes without an authenticated user to login with return-to', async () => {
     await expect(
       enforceRouteAccessRequirement(
         { kind: 'authenticated' },
         createBeforeLoadOptions(null)
       )
-    ).rejects.toMatchObject(insufficientRoleRedirect);
+    ).rejects.toMatchObject(loginRedirect);
   });
 
   it('allows authenticated routes without further authorization requirements', async () => {

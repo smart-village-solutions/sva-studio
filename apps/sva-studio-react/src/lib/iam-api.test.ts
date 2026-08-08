@@ -71,6 +71,7 @@ import {
   removeGroupRole,
   requestDataExport,
   requestLegalConsentExport,
+  readIamErrorResponse,
   saveAdminDeletionRules,
   saveMyDeletionRulesContentPreference,
   revokeInstanceModule,
@@ -487,6 +488,7 @@ describe('iam-api organization helpers', () => {
     });
     expect(dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
     expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
   });
 
   it('dispatches effective-access invalidation for stale signals and forbidden responses', async () => {
@@ -528,6 +530,23 @@ describe('iam-api organization helpers', () => {
     expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
       EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT
     );
+  });
+
+  it('can read a permission snapshot 403 without recursively invalidating effective access', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+
+    await expect(
+      readIamErrorResponse(
+        new Response(JSON.stringify({ error: 'forbidden' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        }),
+        { emitEffectiveAccessInvalidation: false }
+      )
+    ).resolves.toMatchObject({ status: 403, code: 'forbidden' });
+    expect(dispatchEvent).not.toHaveBeenCalled();
   });
 
   it('supports the flat error response shape and request id header', async () => {

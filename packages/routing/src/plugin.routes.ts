@@ -49,6 +49,7 @@ export const getPluginRouteFactories = (
             if (routeDefinition.accessRequirement) {
               await enforceRouteAccessRequirement(routeDefinition.accessRequirement, {
                 context: userContext.options.context as RouteGuardContext,
+                location: userContext.options.location,
               });
             } else {
               await guard?.(userContext.options);

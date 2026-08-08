@@ -189,7 +189,9 @@ describe('EffectiveAccessProvider', () => {
 
     await waitFor(() => expect(result.current.snapshot.status).toBe('error'));
 
-    expect(iamMocks.readIamErrorResponse).toHaveBeenCalledWith(failedResponse);
+    expect(iamMocks.readIamErrorResponse).toHaveBeenCalledWith(failedResponse, {
+      emitEffectiveAccessInvalidation: false,
+    });
     expect(result.current.snapshot).toMatchObject({ errorCode: 'forbidden' });
   });
 

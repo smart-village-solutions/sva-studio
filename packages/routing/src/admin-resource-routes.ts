@@ -197,6 +197,7 @@ export const createAdminResourceRouteFactories = (
             if (accessRequirement) {
               await enforceRouteAccessRequirement(accessRequirement, {
                 context: userContext.options.context as RouteGuardContext,
+                location: userContext.options.location,
               });
             } else {
               await ensureRequiredPermissions(definition.resource, definition.routeKind, user);

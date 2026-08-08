@@ -166,7 +166,10 @@ const mergeAbortSignals = (input: {
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
-export const readIamErrorResponse = async (response: Response): Promise<IamHttpError> => {
+export const readIamErrorResponse = async (
+  response: Response,
+  options: Readonly<{ emitEffectiveAccessInvalidation?: boolean }> = {}
+): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
@@ -188,6 +191,8 @@ export const readIamErrorResponse = async (response: Response): Promise<IamHttpE
 
   if (
     globalThis.window !== undefined &&
+    options.emitEffectiveAccessInvalidation !== false &&
+    code !== 'legal_acceptance_required' &&
     (response.status === 403 || effectiveAccessInvalidationErrorCodes.has(code))
   ) {
     globalThis.dispatchEvent(

@@ -226,6 +226,30 @@ describe('evaluateUiAccess', () => {
     ).toEqual({ status: 'allowed', reason: 'allowed_by_resource_capability' });
   });
 
+  it('allows collection access with a scoped permission without treating it as an item capability', () => {
+    const snapshot = readyTenantSnapshot([
+      { action: 'news.read', resourceType: 'content', accessScope: 'organization', organizationId: 'org-a' },
+    ]);
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement(['news.read'], {
+          moduleId: 'news',
+          resourceContext: 'collection',
+        }),
+        snapshot,
+      })
+    ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement(['news.read'], { moduleId: 'news' }),
+        snapshot,
+      })
+    ).toEqual({ status: 'denied', reason: 'resource_capability_missing' });
+  });
+
   it('rejects denied capabilities and accepts tenant-wide capabilities', () => {
     const snapshot = readyTenantSnapshot([
       { action: 'news.update', resourceType: 'content', accessScope: 'organization' },

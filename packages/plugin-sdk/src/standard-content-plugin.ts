@@ -220,6 +220,7 @@ export const createStandardContentAdminResource = (
       kind: 'tenant',
       moduleId: options.pluginId,
       actions: { mode: 'allOf', values: [`${options.pluginId}.read`] },
+      resourceContext: 'collection',
     },
     create: {
       kind: 'tenant',
@@ -267,7 +268,6 @@ export const createStandardContentTypeDefinition = (
       },
     },
   ] as const);
-
 export const createStandardContentPluginContribution = (
   options: StandardContentPluginContributionOptions
 ): StandardContentPluginContribution => ({
@@ -282,6 +282,7 @@ export const createStandardContentPluginContribution = (
         kind: 'tenant',
         moduleId: options.pluginId,
         actions: { mode: 'allOf', values: [`${options.pluginId}.read`] },
+        resourceContext: 'collection',
       },
     },
   ],

@@ -155,6 +155,7 @@ describe('standard content plugin helpers', () => {
           kind: 'tenant',
           moduleId: 'events',
           actions: { mode: 'allOf', values: ['events.read'] },
+          resourceContext: 'collection',
         },
         create: {
           kind: 'tenant',
@@ -207,6 +208,12 @@ describe('standard content plugin helpers', () => {
           titleKey: 'poi.navigation.title',
           section: 'dataManagement',
           requiredAction: 'poi.read',
+          accessRequirement: {
+            kind: 'tenant',
+            moduleId: 'poi',
+            actions: { mode: 'allOf', values: ['poi.read'] },
+            resourceContext: 'collection',
+          },
         },
       ],
       actions: [

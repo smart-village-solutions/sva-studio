@@ -18,6 +18,7 @@ Identität, effektive Tenant-Rechte, Organisationskontext und Modulzuweisung wur
 6. Datensatzbezogene `own`-, Organisations- und Geo-Rechte benötigen eine passende serverautoritativ gelieferte Ressourcen-Capability. Eine globale Action oder ein Cache-Hit reicht nicht.
 7. Plugin-Actions, Routen, Navigation und Admin-Ressourcen deklarieren `UiAccessRequirement`. Der Host löst den Snapshot auf und veröffentlicht eine read-only Projektion über `@sva/plugin-sdk`.
 8. Identitäts-/Session-Refresh, Access-Refetch und Session-Widerruf bleiben getrennte Operationen. Ein erwartbarer Ressourcen-`403` löst ohne stabiles Stale-Signal keinen globalen Refetch aus.
+9. Scope-beschränkte Read-Permissions dürfen den Einstieg in eine ausdrücklich als Sammlung deklarierte, serverseitig gefilterte Listenfläche freigeben. Daraus folgt keine Capability für einen konkreten Datensatz oder eine Mutation.
 
 ## Konsequenzen
 

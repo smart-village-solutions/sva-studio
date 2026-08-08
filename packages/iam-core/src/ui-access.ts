@@ -52,6 +52,7 @@ export type UiAccessRequirement =
       kind: 'tenant';
       actions: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>;
       moduleId?: string;
+      resourceContext?: 'collection';
       resourceCapability?: UiResourceCapability;
     }>;
 
@@ -196,6 +197,9 @@ const evaluateTenantRequirement = (
   );
   if (!satisfiesSet(requirement.actions, presentActions)) {
     return deny('permission_missing');
+  }
+  if (requirement.resourceContext === 'collection') {
+    return { status: 'allowed', reason: 'allowed_by_permission' };
   }
 
   const capability = requirement.resourceCapability;

@@ -484,6 +484,7 @@ const hasMatchingPluginAccessRequirement = (
   const rightCapability = right.resourceCapability;
   return (
     left.moduleId === right.moduleId &&
+    left.resourceContext === right.resourceContext &&
     left.actions.mode === right.actions.mode &&
     leftActions.size === rightActions.size &&
     [...leftActions].every((action) => rightActions.has(action)) &&

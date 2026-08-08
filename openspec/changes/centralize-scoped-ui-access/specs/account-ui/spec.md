@@ -139,6 +139,12 @@ Das System MUST den lesenden Zugriff auf eine Route oder Detailseite getrennt vo
 - **UND** zeigt die UI keine ausführbaren Create-, Submit-, Delete- oder vergleichbaren Mutationscontrols
 - **UND** kann keine Mutation über Tastatur, impliziten Formular-Submit oder fokussierbare Rest-Controls ausgelöst werden
 
+#### Scenario: Scope-beschränktes Read-Recht öffnet eine gefilterte Sammlung
+
+- **WENN** ein Benutzer ein `own`- oder organisationsgebundenes Read-Recht für einen Content-Typ besitzt
+- **DANN** bleiben Navigation und Listenroute für die serverseitig gefilterte Sammlung erreichbar
+- **UND** wird daraus keine Capability für einen konkreten Datensatz oder eine Mutation abgeleitet
+
 #### Scenario: Permission fehlt für eine sensitive Aktion
 
 - **WENN** die effektive Permission für Löschen, Reprovisionierung, Import, Reset, Seed oder eine andere sensitive Mutation fehlt

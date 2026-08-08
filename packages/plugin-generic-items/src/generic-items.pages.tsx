@@ -17,7 +17,10 @@ import { GenericItemsDataTable, GenericItemsPagination } from './generic-items.p
 
 export function GenericItemsListPage() {
   const pt = usePluginTranslation('genericItems');
-  const search = useSearch({ strict: false }) as { readonly page?: number; readonly pageSize?: number };
+  const search = useSearch({ strict: false }) as {
+    readonly page?: number;
+    readonly pageSize?: number;
+  };
   const { page, pageSize } = normalizeListSearch(search);
   const [result, setResult] = React.useState<GenericItemListResult>({
     data: [],
@@ -64,7 +67,9 @@ export function GenericItemsListPage() {
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length === 0 ? (
+        <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
+      ) : null}
       {!loading && !error && result.data.length > 0 ? (
         <div className="space-y-4">
           <GenericItemsDataTable data={result.data} pt={pt} />
@@ -75,9 +80,26 @@ export function GenericItemsListPage() {
   );
 }
 
-export const GenericItemsCreatePage = () => <GenericItemsDetailPage mode="create" />;
+export const GenericItemsCreatePage = ({
+  principalControl,
+}: Readonly<{
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) => <GenericItemsDetailPage mode="create" principalControl={principalControl} />;
 
-export const GenericItemsEditPage = () => {
-  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  return <GenericItemsDetailPage mode="edit" contentId={params.contentId ?? params.id} />;
+export const GenericItemsEditPage = ({
+  principalControl,
+}: Readonly<{
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) => {
+  const params = useParams({ strict: false }) as {
+    readonly contentId?: string;
+    readonly id?: string;
+  };
+  return (
+    <GenericItemsDetailPage
+      mode="edit"
+      contentId={params.contentId ?? params.id}
+      principalControl={principalControl}
+    />
+  );
 };

@@ -26,6 +26,30 @@ const getAuditLogContext = (input: {
         action_owner: input.event.pluginAction.actionOwner,
         plugin_action_result: input.event.pluginAction.result,
         reason_code: input.event.pluginAction.reasonCode,
+        ...(input.event.pluginAction.mainserverMutation
+          ? {
+              acting_principal_type:
+                input.event.pluginAction.mainserverMutation.actingPrincipalType,
+              acting_principal_id: input.event.pluginAction.mainserverMutation.actingPrincipalId,
+              active_organization_id:
+                input.event.pluginAction.mainserverMutation.activeOrganizationId,
+              credential_source: input.event.pluginAction.mainserverMutation.credentialSource,
+              credential_fingerprint:
+                input.event.pluginAction.mainserverMutation.credentialFingerprint,
+              data_provider_id: input.event.pluginAction.mainserverMutation.dataProviderId,
+              authorization_mode: input.event.pluginAction.mainserverMutation.authorizationMode,
+              resolver_mode: input.event.pluginAction.mainserverMutation.resolverMode,
+              candidate_authorization_mode:
+                input.event.pluginAction.mainserverMutation.candidateAuthorizationMode,
+              candidate_allowed: input.event.pluginAction.mainserverMutation.candidateAllowed,
+              shadow_difference: input.event.pluginAction.mainserverMutation.shadowDifference,
+              operation_external_id:
+                input.event.pluginAction.mainserverMutation.operationExternalId,
+              provider_outcome: input.event.pluginAction.mainserverMutation.providerOutcome,
+              reconciliation_status:
+                input.event.pluginAction.mainserverMutation.reconciliationStatus,
+            }
+          : {}),
       }
     : {}),
 });
@@ -39,9 +63,9 @@ const getDbAuditReasonCode = (scope?: ReturnType<typeof getRuntimeScopeRef>) =>
 export const emitAuthAuditEvent = async (event: AuthAuditEvent): Promise<void> => {
   const context = getWorkspaceContext();
   const scope =
-    event.scope
-    ?? getRuntimeScopeRef({ workspaceId: event.workspaceId ?? context.workspaceId });
-  const workspaceId = getWorkspaceIdForScope(scope) ?? event.workspaceId ?? context.workspaceId ?? 'default';
+    event.scope ?? getRuntimeScopeRef({ workspaceId: event.workspaceId ?? context.workspaceId });
+  const workspaceId =
+    getWorkspaceIdForScope(scope) ?? event.workspaceId ?? context.workspaceId ?? 'default';
   const requestId = event.requestId ?? context.requestId;
   const traceId = event.traceId ?? context.traceId;
   const logContext = getAuditLogContext({
@@ -81,7 +105,9 @@ export const emitAuthAuditEvent = async (event: AuthAuditEvent): Promise<void> =
 
     logger.info('Auth audit event persisted to DB sink', {
       ...logContext,
-      additional_event_types: dbResult.writtenEventTypes.filter((entry) => entry !== event.eventType),
+      additional_event_types: dbResult.writtenEventTypes.filter(
+        (entry) => entry !== event.eventType
+      ),
       sink: 'db',
       status: 'persisted',
     });

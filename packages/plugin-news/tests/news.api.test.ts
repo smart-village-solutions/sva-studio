@@ -99,7 +99,10 @@ describe('news api', () => {
       data: [expect.objectContaining({ id: 'news-1' })],
       pagination: { page: 2, pageSize: 50, hasNextPage: true },
     });
-    expect(fetch).toHaveBeenCalledWith('/api/v1/mainserver/news?page=2&pageSize=50', expect.any(Object));
+    expect(fetch).toHaveBeenCalledWith(
+      '/api/v1/mainserver/news?page=2&pageSize=50',
+      expect.any(Object)
+    );
   });
 
   it('loads available categories from the mainserver facade', async () => {
@@ -172,7 +175,9 @@ describe('news api', () => {
       }),
     } as Response);
 
-    await expect(saveNewsEditorItem({ values: { ...editorValuesFixture, publicationMode: 'draft' } })).resolves.toEqual(
+    await expect(
+      saveNewsEditorItem({ values: { ...editorValuesFixture, publicationMode: 'draft' } })
+    ).resolves.toEqual(
       expect.objectContaining({
         id: 'news-1',
         visible: false,
@@ -187,10 +192,10 @@ describe('news api', () => {
     expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual(
       expect.objectContaining({
         title: 'Neue News',
-        author: 'Redaktion',
         visible: false,
       })
     );
+    expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).not.toHaveProperty('author');
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -198,30 +203,42 @@ describe('news api', () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({ 'X-SVA-Context-Binding': 'v1.loaded-context' }),
         json: async () => ({
           data: sampleResponse,
         }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ data: sampleResponse }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ data: { id: 'news-1' } }),
       } as Response);
 
-    await expect(updateNews('news-1', sampleInput)).resolves.toEqual(expect.objectContaining({ id: 'news-1' }));
+    await expect(updateNews('news-1', sampleInput)).resolves.toEqual(
+      expect.objectContaining({ id: 'news-1' })
+    );
     await expect(deleteNews('news-1')).resolves.toBeUndefined();
 
     expect(fetch).toHaveBeenNthCalledWith(
       1,
       '/api/v1/mainserver/news/news-1',
+      expect.any(Object)
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'PATCH' })
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual(
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual(
       expect.objectContaining({
         pushNotification: true,
       })
     );
     expect(fetch).toHaveBeenNthCalledWith(
-      2,
+      3,
       '/api/v1/mainserver/news/news-1',
       expect.objectContaining({ method: 'DELETE' })
     );
@@ -231,32 +248,46 @@ describe('news api', () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({
         ok: true,
+        headers: new Headers({ 'X-SVA-Context-Binding': 'v1.loaded-context' }),
         json: async () => ({
           data: sampleResponse,
         }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
+        json: async () => ({ data: sampleResponse }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
         json: async () => ({ status: 'ok' }),
       } as Response);
 
-    await expect(updateNewsPartial('news-1', { title: 'Nur Titel' })).resolves.toEqual(
+    await expect(updateNewsPartial('news-1/with slash', { title: 'Nur Titel' })).resolves.toEqual(
       expect.objectContaining({ id: 'news-1' })
     );
     await expect(setNewsVisibility('news-1/with slash', false)).resolves.toBeUndefined();
 
     expect(fetch).toHaveBeenNthCalledWith(
       1,
-      '/api/v1/mainserver/news/news-1',
-      expect.objectContaining({ method: 'PATCH' })
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash',
+      expect.any(Object)
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[0]?.[1]?.body as string)).toEqual({ title: 'Nur Titel' });
     expect(fetch).toHaveBeenNthCalledWith(
       2,
+      '/api/v1/mainserver/news/news-1%2Fwith%20slash',
+      expect.objectContaining({ method: 'PATCH' })
+    );
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual({
+      title: 'Nur Titel',
+    });
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
       '/api/v1/mainserver/news/news-1%2Fwith%20slash/visibility',
       expect.objectContaining({ method: 'PATCH' })
     );
-    expect(JSON.parse(vi.mocked(fetch).mock.calls[1]?.[1]?.body as string)).toEqual({ visible: false });
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[2]?.[1]?.body as string)).toEqual({
+      visible: false,
+    });
   });
 
   it('loads a single news item and surfaces non-ok responses as typed errors', async () => {
@@ -328,12 +359,13 @@ describe('news api', () => {
 
     expect(buildNewsBasisMutation(values)).toEqual({
       title: 'Neue News',
-      author: 'Redaktion',
       categories: [{ name: 'Allgemein' }],
     });
     expect(buildNewsContentMutation(values)).toEqual({
       sourceUrl: { url: 'https://example.org/details' },
-      contentBlocks: [{ title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] }],
+      contentBlocks: [
+        { title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] },
+      ],
       address: {
         street: 'Marktplatz 1',
         zip: '12345',
@@ -388,10 +420,12 @@ describe('news api', () => {
       )
     ).resolves.toEqual(
       expect.objectContaining({
-        author: '',
+        author: 'Persistierter Autor',
         categories: [],
         sourceUrl: { url: '', description: '' },
-        contentBlocks: [{ title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] }],
+        contentBlocks: [
+          { title: 'Neue News', intro: 'Kurztext', body: '<p>Inhalt</p>', mediaContents: [] },
+        ],
         visible: false,
       })
     );
@@ -400,7 +434,8 @@ describe('news api', () => {
       expect.objectContaining({
         title: 'Neue News',
         visible: false,
-      })
+      }),
+      'user'
     );
   });
 });

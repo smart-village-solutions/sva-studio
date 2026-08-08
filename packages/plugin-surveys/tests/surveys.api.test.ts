@@ -32,14 +32,19 @@ describe('surveys api payload mapping', () => {
   it('sends explicit clear values for optional survey fields during updates', async () => {
     const { updateSurvey } = await import('../src/surveys.api.js');
 
-    const payload = await updateSurvey('survey-1', {
-      title: 'Bestandsumfrage',
-      status: 'DRAFT',
-      isAnonymous: false,
-      resultVisibility: 'NONE',
-      targetAreaIds: [],
-      showResultsInApp: false,
-    });
+    const payload = await updateSurvey(
+      'survey-1',
+      {
+        title: 'Bestandsumfrage',
+        status: 'DRAFT',
+        isAnonymous: false,
+        resultVisibility: 'NONE',
+        targetAreaIds: [],
+        showResultsInApp: false,
+      },
+      undefined,
+      'user'
+    );
 
     expect(capturedOptions?.updateBody).toBeTypeOf('function');
     expect(payload).toEqual({
@@ -61,12 +66,17 @@ describe('surveys api payload mapping', () => {
   it('sends question clears only when the update input explicitly sets the field', async () => {
     const { updateSurvey } = await import('../src/surveys.api.js');
 
-    const payload = await updateSurvey('survey-1', {
-      title: 'Bestandsumfrage',
-      status: 'DRAFT',
-      isAnonymous: false,
-      questions: [],
-    });
+    const payload = await updateSurvey(
+      'survey-1',
+      {
+        title: 'Bestandsumfrage',
+        status: 'DRAFT',
+        isAnonymous: false,
+        questions: [],
+      },
+      undefined,
+      'user'
+    );
 
     expect(payload).toEqual({
       title: { de: 'Bestandsumfrage' },
@@ -86,33 +96,41 @@ describe('surveys api payload mapping', () => {
   it('keeps required titles explicit and trimmed in create and update payloads', async () => {
     const { createSurvey, updateSurvey } = await import('../src/surveys.api.js');
 
-    const createPayload = await createSurvey({
-      title: '  Neue Umfrage  ',
-      status: 'DRAFT',
-      isAnonymous: false,
-      questions: [
-        {
-          title: '  Frage 1  ',
-          type: 'SINGLE_CHOICE',
-          required: true,
-          position: 0,
-          options: [
-            {
-              title: '  Option A  ',
-              position: 0,
-              enablesFreeText: false,
-            },
-          ],
-        },
-      ],
-    });
+    const createPayload = await createSurvey(
+      {
+        title: '  Neue Umfrage  ',
+        status: 'DRAFT',
+        isAnonymous: false,
+        questions: [
+          {
+            title: '  Frage 1  ',
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [
+              {
+                title: '  Option A  ',
+                position: 0,
+                enablesFreeText: false,
+              },
+            ],
+          },
+        ],
+      },
+      'organization'
+    );
 
-    const updatePayload = await updateSurvey('survey-1', {
-      title: '   ',
-      status: 'DRAFT',
-      isAnonymous: false,
-      questions: [],
-    });
+    const updatePayload = await updateSurvey(
+      'survey-1',
+      {
+        title: '   ',
+        status: 'DRAFT',
+        isAnonymous: false,
+        questions: [],
+      },
+      undefined,
+      'user'
+    );
 
     expect(createPayload).toMatchObject({
       title: { de: 'Neue Umfrage' },
@@ -131,40 +149,45 @@ describe('surveys api payload mapping', () => {
   it('forwards nested ids, delete markers, and null description clears during updates', async () => {
     const { updateSurvey } = await import('../src/surveys.api.js');
 
-    const payload = await updateSurvey('survey-1', {
-      title: 'Bestandsumfrage',
-      status: 'ACTIVE',
-      startAt: '2026-07-02T08:00:00.000Z',
-      isAnonymous: true,
-      resultVisibility: 'AFTER_SUBMISSION',
-      targetAreaIds: ['area-1'],
-      showResultsInApp: true,
-      questions: [
-        {
-          id: 'question-1',
-          title: 'Frage',
-          type: 'SINGLE_CHOICE',
-          required: true,
-          position: 0,
-          options: [
-            {
-              id: 'option-1',
-              title: 'Option A',
-              position: 0,
-              enablesFreeText: false,
-            },
-            {
-              id: 'option-2',
-              delete: true,
-            },
-          ],
-        },
-        {
-          id: 'question-2',
-          delete: true,
-        },
-      ],
-    });
+    const payload = await updateSurvey(
+      'survey-1',
+      {
+        title: 'Bestandsumfrage',
+        status: 'ACTIVE',
+        startAt: '2026-07-02T08:00:00.000Z',
+        isAnonymous: true,
+        resultVisibility: 'AFTER_SUBMISSION',
+        targetAreaIds: ['area-1'],
+        showResultsInApp: true,
+        questions: [
+          {
+            id: 'question-1',
+            title: 'Frage',
+            type: 'SINGLE_CHOICE',
+            required: true,
+            position: 0,
+            options: [
+              {
+                id: 'option-1',
+                title: 'Option A',
+                position: 0,
+                enablesFreeText: false,
+              },
+              {
+                id: 'option-2',
+                delete: true,
+              },
+            ],
+          },
+          {
+            id: 'question-2',
+            delete: true,
+          },
+        ],
+      },
+      undefined,
+      'user'
+    );
 
     expect(payload).toEqual({
       title: { de: 'Bestandsumfrage' },
@@ -261,7 +284,10 @@ describe('surveys api payload mapping', () => {
             id: 'question-1',
             surveyId: 'survey-1',
             title: { de: 'Bestehende Frage', en: 'Existing question' },
-            description: { de: 'Bestehende Fragebeschreibung', en: 'Existing question description' },
+            description: {
+              de: 'Bestehende Fragebeschreibung',
+              en: 'Existing question description',
+            },
             type: 'SINGLE_CHOICE',
             required: true,
             position: 0,
@@ -281,7 +307,8 @@ describe('surveys api payload mapping', () => {
         submissionCount: 0,
         createdAt: '2026-07-01T08:00:00.000Z',
         updatedAt: '2026-07-02T08:00:00.000Z',
-      }
+      },
+      'organization'
     );
 
     expect(payload).toMatchObject({
@@ -352,7 +379,10 @@ describe('surveys api payload mapping', () => {
             id: 'question-1',
             surveyId: 'survey-1',
             title: { de: 'Bestehende Frage', en: 'Existing question' },
-            description: { de: 'Bestehende Fragebeschreibung', en: 'Existing question description' },
+            description: {
+              de: 'Bestehende Fragebeschreibung',
+              en: 'Existing question description',
+            },
             type: 'SINGLE_CHOICE',
             required: true,
             position: 0,
@@ -364,7 +394,8 @@ describe('surveys api payload mapping', () => {
         submissionCount: 0,
         createdAt: '2026-07-01T08:00:00.000Z',
         updatedAt: '2026-07-02T08:00:00.000Z',
-      }
+      },
+      'user'
     );
 
     expect(payload).toMatchObject({
@@ -384,7 +415,10 @@ describe('surveys api payload mapping', () => {
   it('keeps the list/get/delete wrappers and the custom surveys error contract wired through the CRUD client', async () => {
     const { deleteSurvey, getSurvey, listSurveys } = await import('../src/surveys.api.js');
 
-    await expect(listSurveys({ page: 2, pageSize: 50 })).resolves.toEqual({ page: 2, pageSize: 50 });
+    await expect(listSurveys({ page: 2, pageSize: 50 })).resolves.toEqual({
+      page: 2,
+      pageSize: 50,
+    });
     await expect(getSurvey('survey-42')).resolves.toBe('survey-42');
     await expect(deleteSurvey('survey-42')).resolves.toBeUndefined();
 

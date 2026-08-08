@@ -1,4 +1,5 @@
 import { createMainserverCrudClient } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type { GenericItemFaqInput, GenericItemFaqRecord } from './faq.types.js';
 
@@ -42,7 +43,15 @@ export const listFaqs = (
   }>
 ) => client.list(query);
 export const getFaq = (id: string) => client.get(id);
-export const createFaq = (input: GenericItemFaqInput) => client.create(input);
-export const updateFaq = (id: string, input: GenericItemFaqInput) => client.update(id, input);
-export const deleteFaq = (id: string) => client.remove(id);
+export const createFaq = (
+  input: GenericItemFaqInput,
+  actingPrincipalType: MainserverActingPrincipalType
+) => client.create(input, actingPrincipalType);
+export const updateFaq = (
+  id: string,
+  input: GenericItemFaqInput,
+  actingPrincipalType: MainserverActingPrincipalType
+) => client.update(id, input, actingPrincipalType);
+export const deleteFaq = (id: string, actingPrincipalType: MainserverActingPrincipalType) =>
+  client.remove(id, actingPrincipalType);
 export { FaqApiError };

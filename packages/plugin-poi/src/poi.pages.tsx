@@ -17,7 +17,8 @@ import type { PoiContentItem, PoiListResult } from './poi.types.js';
 
 type ListSearchState = Record<string, unknown>;
 
-const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) => pt(fallbackKey);
+const errorMessage = (pt: ReturnType<typeof usePluginTranslation>, fallbackKey: string) =>
+  pt(fallbackKey);
 
 const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
   { id: 'name', header: pt('fields.name'), cell: (item: PoiContentItem) => item.name },
@@ -29,7 +30,8 @@ const createPoiListColumns = (pt: ReturnType<typeof usePluginTranslation>) => [
   {
     id: 'active',
     header: pt('fields.active'),
-    cell: (item: PoiContentItem) => (item.active === false ? pt('values.notAvailable') : pt('values.active')),
+    cell: (item: PoiContentItem) =>
+      item.active === false ? pt('values.notAvailable') : pt('values.active'),
   },
 ];
 
@@ -44,15 +46,30 @@ const PoiPaginationNav = ({
   onPageChange: (page: number) => void;
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
-  <nav aria-label={pt('pagination.ariaLabel')} className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+  <nav
+    aria-label={pt('pagination.ariaLabel')}
+    className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
+  >
     <p key={page} aria-live="polite" className="animate-pagination-active">
       {pt('pagination.pageLabel', { page })}
     </p>
     <div className="flex items-center gap-2">
-      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(Math.max(1, page - 1))}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={page <= 1}
+        onClick={() => onPageChange(Math.max(1, page - 1))}
+      >
         {pt('pagination.previous')}
       </Button>
-      <Button type="button" size="sm" variant="outline" disabled={!hasNextPage} onClick={() => onPageChange(page + 1)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={!hasNextPage}
+        onClick={() => onPageChange(page + 1)}
+      >
         {pt('pagination.next')}
       </Button>
     </div>
@@ -124,7 +141,9 @@ export function PoiListPage() {
     >
       {loading ? <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState> : null}
       {error ? <StudioErrorState>{error}</StudioErrorState> : null}
-      {!loading && !error && result.data.length === 0 ? <StudioEmptyState>{pt('empty.title')}</StudioEmptyState> : null}
+      {!loading && !error && result.data.length === 0 ? (
+        <StudioEmptyState>{pt('empty.title')}</StudioEmptyState>
+      ) : null}
       {!loading && !error && result.data.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
@@ -161,11 +180,35 @@ export function PoiListPage() {
   );
 }
 
-export function PoiCreatePage({ instanceId }: Readonly<{ instanceId?: string }> = {}) {
-  return <PoiDetailPage mode="create" instanceId={instanceId} />;
+export function PoiCreatePage({
+  instanceId,
+  principalControl,
+}: Readonly<{
+  instanceId?: string;
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) {
+  return (
+    <PoiDetailPage mode="create" instanceId={instanceId} principalControl={principalControl} />
+  );
 }
 
-export function PoiEditPage({ instanceId }: Readonly<{ instanceId?: string }> = {}) {
-  const params = useParams({ strict: false }) as { readonly contentId?: string; readonly id?: string };
-  return <PoiDetailPage mode="edit" contentId={params.contentId ?? params.id} instanceId={instanceId} />;
+export function PoiEditPage({
+  instanceId,
+  principalControl,
+}: Readonly<{
+  instanceId?: string;
+  principalControl?: import('@sva/studio-ui-react').MainserverPrincipalControlModel;
+}> = {}) {
+  const params = useParams({ strict: false }) as {
+    readonly contentId?: string;
+    readonly id?: string;
+  };
+  return (
+    <PoiDetailPage
+      mode="edit"
+      contentId={params.contentId ?? params.id}
+      instanceId={instanceId}
+      principalControl={principalControl}
+    />
+  );
 }

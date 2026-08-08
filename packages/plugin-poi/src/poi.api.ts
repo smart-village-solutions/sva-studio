@@ -1,4 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type {
   PoiCategoryOption,
@@ -36,13 +37,21 @@ export const getPoi = async (contentId: string): Promise<PoiContentItem> =>
   poiClient.get(contentId);
 export const getPoiDetail = async (contentId: string) => poiClient.getDetail(contentId);
 
-export const createPoi = async (input: PoiFormInput): Promise<PoiContentItem> =>
-  poiClient.create(input);
+export const createPoi = async (
+  input: PoiFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<PoiContentItem> => poiClient.create(input, actingPrincipalType);
 
-export const updatePoi = async (contentId: string, input: PoiFormInput): Promise<PoiContentItem> =>
-  poiClient.update(contentId, input);
+export const updatePoi = async (
+  contentId: string,
+  input: PoiFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<PoiContentItem> => poiClient.update(contentId, input, actingPrincipalType);
 
-export const deletePoi = async (contentId: string): Promise<void> => poiClient.remove(contentId);
+export const deletePoi = async (
+  contentId: string,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => poiClient.remove(contentId, actingPrincipalType);
 
 export const listPoiCategories = async (): Promise<readonly PoiCategoryOption[]> => {
   const response = await requestMainserverJson<

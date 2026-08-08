@@ -108,6 +108,13 @@ describe('NewsDetailPage', () => {
         'news.messages.categoryOptionsLoadError': 'Die Kategorien konnten nicht geladen werden.',
         'news.fields.title': 'Titel',
         'news.fields.author': 'Autor',
+        'news.fields.createAs': 'Erstellen als',
+        'news.fields.actAs': 'Handeln als',
+        'news.fields.actingPrincipalHelp': 'Schreibkontext auswählen.',
+        'news.fields.dataProvider': 'Datenanbieter',
+        'news.fields.dataProviderUnavailable': 'Noch nicht verfügbar',
+        'news.principals.organization': 'Aktive Organisation',
+        'news.principals.user': 'Persönlich',
         'news.fields.categories': 'Kategorien',
         'news.fields.categoriesHelp': 'Kategorien auswählen.',
         'news.fields.categoriesSearch': 'Kategorien suchen',
@@ -231,7 +238,7 @@ describe('NewsDetailPage', () => {
   });
 
   it('renders the same save action in the page header and after the editor', async () => {
-    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    render(<NewsDetailPage mode="create" />);
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
@@ -296,7 +303,7 @@ describe('NewsDetailPage', () => {
       },
     } as never);
 
-    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    render(<NewsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Bereich auswählen'), {
       target: { value: 'content' },
@@ -340,7 +347,7 @@ describe('NewsDetailPage', () => {
         license: 'CC0',
       },
     } as never);
-    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    render(<NewsDetailPage mode="create" />);
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Bild aus Mediathek' }));
     fireEvent.click(await screen.findByRole('button', { name: 'news.actions.selectImage' }));
@@ -361,73 +368,74 @@ describe('NewsDetailPage', () => {
     expect(await screen.findByText('news.media.refreshTitle')).toBeTruthy();
   });
 
-  it('renders the author as a fixed readonly field when authorship is fixed', async () => {
+  it('renders a fixed principal without exposing an editable author', async () => {
     render(
       <NewsDetailPage
         mode="create"
-        authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }}
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Stadt Musterhausen' }}
       />
     );
 
-    const authorInput = await screen.findByLabelText('Autor');
-    expect((authorInput as HTMLInputElement).value).toBe('Stadt Musterhausen');
-    expect(authorInput.getAttribute('readonly')).not.toBeNull();
+    const principalInput = await screen.findByLabelText('Erstellen als');
+    expect((principalInput as HTMLInputElement).value).toBe('Stadt Musterhausen');
+    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
-  it('renders the author as a dropdown when organizations may publish personally', async () => {
+  it('renders the principal as a typed dropdown when both contexts are allowed', async () => {
     render(
       <NewsDetailPage
         mode="create"
-        authorControl={{
+        principalControl={{
           kind: 'selectable',
-          value: 'Stadt Musterhausen',
+          value: 'organization',
           options: [
-            { value: 'Stadt Musterhausen', label: 'Stadt Musterhausen' },
-            { value: 'Max Mustermann', label: 'Max Mustermann' },
+            { value: 'organization', label: 'Stadt Musterhausen' },
+            { value: 'user', label: 'Max Mustermann' },
           ],
         }}
       />
     );
 
-    const authorSelect = await screen.findByRole('combobox', { name: 'Autor' });
-    expect((authorSelect as HTMLSelectElement).value).toBe('Stadt Musterhausen');
+    const principalSelect = await screen.findByRole('combobox', { name: 'Erstellen als' });
+    expect((principalSelect as HTMLSelectElement).value).toBe('organization');
     expect(
-      Array.from((authorSelect as HTMLSelectElement).options).map((option) => option.textContent)
+      Array.from((principalSelect as HTMLSelectElement).options).map((option) => option.textContent)
     ).toEqual(['Stadt Musterhausen', 'Max Mustermann']);
   });
 
-  it('keeps the author editable when no author policy is provided', async () => {
-    render(<NewsDetailPage mode="create" initialAuthor="Max Mustermann" />);
+  it('defaults to a fixed personal principal when no principal policy is provided', async () => {
+    render(<NewsDetailPage mode="create" />);
 
-    const authorInput = await screen.findByLabelText('Autor');
-    expect(authorInput.getAttribute('readonly')).toBeNull();
-
-    fireEvent.change(authorInput, { target: { value: 'Erika Musterfrau' } });
-
-    expect((authorInput as HTMLInputElement).value).toBe('Erika Musterfrau');
+    const principalInput = await screen.findByLabelText('Erstellen als');
+    expect((principalInput as HTMLInputElement).value).toBe('Persönlich');
+    expect(principalInput.getAttribute('readonly')).not.toBeNull();
+    expect(screen.queryByLabelText('Autor')).toBeNull();
   });
 
-  it('applies a later author policy update while the author field is still pristine', async () => {
-    const { rerender } = render(<NewsDetailPage mode="create" initialAuthor="Max Mustermann" />);
+  it('applies a later principal policy update', async () => {
+    const { rerender } = render(<NewsDetailPage mode="create" />);
 
-    expect(((await screen.findByLabelText('Autor')) as HTMLInputElement).value).toBe(
-      'Max Mustermann'
+    expect(((await screen.findByLabelText('Erstellen als')) as HTMLInputElement).value).toBe(
+      'Persönlich'
     );
 
     rerender(
       <NewsDetailPage
         mode="create"
-        authorControl={{ kind: 'fixed', value: 'Stadt Musterhausen' }}
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Stadt Musterhausen' }}
       />
     );
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Autor') as HTMLInputElement).value).toBe('Stadt Musterhausen');
+      expect((screen.getByLabelText('Erstellen als') as HTMLInputElement).value).toBe(
+        'Stadt Musterhausen'
+      );
     });
   });
 
   it('renders four editorial tabs and no separate Freigabe tab', async () => {
-    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    render(<NewsDetailPage mode="create" />);
 
     await screen.findByRole('tab', { name: 'Basis' });
 
@@ -439,7 +447,7 @@ describe('NewsDetailPage', () => {
   });
 
   it('shows the scheduled date field only for the scheduled publication mode', async () => {
-    render(<NewsDetailPage mode="create" initialAuthor="Redaktion" />);
+    render(<NewsDetailPage mode="create" />);
 
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'settings' } });
 

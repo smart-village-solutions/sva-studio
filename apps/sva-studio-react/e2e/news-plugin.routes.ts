@@ -51,7 +51,7 @@ export const fulfillContentRoute = async (route: Route, newsItems: NewsRecord[])
   if (!detailMatch) return route.fallback();
   const contentId = detailMatch[1];
   const item = newsItems.find((entry) => entry.id === contentId);
-  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
+  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined, body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
   if (method === 'PATCH') {
     if (!item) return route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not_found' }) });
     const body = request.postDataJSON() as Record<string, unknown>;

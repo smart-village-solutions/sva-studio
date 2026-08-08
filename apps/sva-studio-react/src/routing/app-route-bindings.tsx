@@ -1,17 +1,31 @@
-import { normalizeIamTab, normalizeRoleDetailTab, type AppRouteBindings as BaseAppRouteBindings } from '@sva/routing';
-import { resolveUserDisplayName, type IamOrganizationContextOption, type IamOrganizationDetail } from '@sva/core';
+import {
+  normalizeIamTab,
+  normalizeRoleDetailTab,
+  type AppRouteBindings as BaseAppRouteBindings,
+} from '@sva/routing';
+import {
+  resolveUserDisplayName,
+  type IamOrganizationContextOption,
+  type IamOrganizationDetail,
+} from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
-import { CockpitCardsCreatePage, CockpitCardsEditPage, CockpitCardsListPage } from '@sva/plugin-cockpit-cards';
+import {
+  CockpitCardsCreatePage,
+  CockpitCardsEditPage,
+  CockpitCardsListPage,
+} from '@sva/plugin-cockpit-cards';
 import { EventsCreatePage, EventsEditPage } from '@sva/plugin-events';
 import { FaqCreatePage, FaqEditPage, FaqListPage } from '@sva/plugin-faq';
 import { GenericItemsCreatePage, GenericItemsEditPage } from '@sva/plugin-generic-items';
-import { NewsDetailPage, NewsEditPage, type NewsAuthorControl } from '@sva/plugin-news';
+import { NewsDetailPage, NewsEditPage } from '@sva/plugin-news';
 import { PoiCreatePage, PoiEditPage } from '@sva/plugin-poi';
 import { ProjectsCreatePage, ProjectsEditPage, ProjectsListPage } from '@sva/plugin-projects';
 import { SurveyCreatePage, SurveyEditPage } from '@sva/plugin-surveys';
+import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
+import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
 import { getOrganization } from '../lib/iam-api';
@@ -40,7 +54,10 @@ import { UserCreatePage } from '../routes/admin/users/-user-create-page';
 import { UserListPage } from '../routes/admin/users/-user-list-page';
 import { MediaPage } from '../routes/admin/media/-media-page';
 import { MediaUsagePage } from '../routes/admin/media/-media-usage-page';
-import { ContentEditorPage, normalizeContentEditorTab } from '../routes/content/-content-editor-page';
+import {
+  ContentEditorPage,
+  normalizeContentEditorTab,
+} from '../routes/content/-content-editor-page';
 import { ContentListPage } from '../routes/content/-content-list-page';
 import { ContentTypePickerPage } from '../routes/content/-content-type-picker-page';
 import { HomePage } from '../routes/-home-page';
@@ -52,42 +69,42 @@ const readStringParam = (value: unknown, fallback = ''): string => {
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
-const resolveNewsAuthorControl = (input: {
+export const resolveMainserverPrincipalControl = (input: {
   readonly organizations: readonly IamOrganizationContextOption[];
   readonly organizationDetails: ReadonlyMap<string, IamOrganizationDetail>;
   readonly userDisplayName?: string;
-}): NewsAuthorControl => {
+}): MainserverPrincipalControlModel => {
   const activeOrganization = input.organizations.find((organization) => organization.isActive);
-  const userDisplayName = input.userDisplayName?.trim() || 'Benutzer';
+  const userDisplayName = input.userDisplayName?.trim() || t('content.principal.user');
   const organizationName = activeOrganization?.displayName.trim() ?? '';
   const policy = activeOrganization
     ? input.organizationDetails.get(activeOrganization.organizationId)?.contentAuthorPolicy
     : undefined;
 
   if (policy === 'org_only' && organizationName.length > 0) {
-    return { kind: 'fixed', value: organizationName };
+    return { kind: 'fixed', value: 'organization', label: organizationName };
   }
 
   if (policy === 'org_or_personal' && organizationName.length > 0) {
     return {
       kind: 'selectable',
-      value: organizationName,
+      value: 'organization',
       options: [
-        { value: organizationName, label: organizationName },
-        { value: userDisplayName, label: userDisplayName },
+        { value: 'organization', label: organizationName },
+        { value: 'user', label: userDisplayName },
       ],
     };
   }
 
-  return { kind: 'fixed', value: userDisplayName };
+  return { kind: 'fixed', value: 'user', label: userDisplayName };
 };
 
-const useNewsCreateAuthorControl = () => {
+const useMainserverPrincipalControl = () => {
   const { isAuthenticated, user } = useAuth();
   const organizationContext = useOrganizationContext();
-  const [organizationDetails, setOrganizationDetails] = React.useState<ReadonlyMap<string, IamOrganizationDetail>>(
-    () => new Map()
-  );
+  const [organizationDetails, setOrganizationDetails] = React.useState<
+    ReadonlyMap<string, IamOrganizationDetail>
+  >(() => new Map());
 
   const organizations = organizationContext.context?.organizations ?? EMPTY_ORGANIZATIONS;
   const activeOrganizations = React.useMemo(
@@ -135,7 +152,7 @@ const useNewsCreateAuthorControl = () => {
     };
   }, [activeOrganizations, isAuthenticated, organizationIdsKey]);
 
-  return resolveNewsAuthorControl({
+  return resolveMainserverPrincipalControl({
     organizations,
     organizationDetails,
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
@@ -143,8 +160,22 @@ const useNewsCreateAuthorControl = () => {
 };
 
 const AppPlaceholderRoutePage = () => (
-  <PlaceholderPage section={t('shell.sidebar.sections.applications')} title={t('shell.sidebar.app')} />
+  <PlaceholderPage
+    section={t('shell.sidebar.sections.applications')}
+    title={t('shell.sidebar.app')}
+  />
 );
+
+const ContentListRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  return (
+    <ContentListPage
+      enabledMainserverMutationActions={mutationCapabilities.enabledActions}
+      principalControl={principalControl}
+    />
+  );
+};
 
 const LazyMonitoringOverviewPage = React.lazy(async () => {
   const mod = await import('../routes/monitoring/-overview-page');
@@ -154,44 +185,107 @@ const LazyMonitoringOverviewPage = React.lazy(async () => {
 const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
 
 const NewsCreateRoutePage = () => {
-  const authorControl = useNewsCreateAuthorControl();
-  return <NewsDetailPage mode="create" authorControl={authorControl} />;
+  const principalControl = useMainserverPrincipalControl();
+  return <NewsDetailPage mode="create" principalControl={principalControl} />;
+};
+
+const NewsEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <NewsEditPage principalControl={principalControl} />;
+};
+
+const EventsCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <EventsCreatePage principalControl={principalControl} />;
+};
+
+const EventsEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <EventsEditPage principalControl={principalControl} />;
+};
+
+const GenericItemsCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <GenericItemsCreatePage principalControl={principalControl} />;
+};
+
+const GenericItemsEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <GenericItemsEditPage principalControl={principalControl} />;
+};
+
+const FaqCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <FaqCreatePage principalControl={principalControl} />;
+};
+
+const FaqEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <FaqEditPage principalControl={principalControl} />;
+};
+
+const CockpitCardsCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <CockpitCardsCreatePage principalControl={principalControl} />;
+};
+
+const CockpitCardsEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <CockpitCardsEditPage principalControl={principalControl} />;
+};
+
+const ProjectsCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <ProjectsCreatePage principalControl={principalControl} />;
+};
+
+const ProjectsEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <ProjectsEditPage principalControl={principalControl} />;
 };
 
 const PoiCreateRoutePage = () => {
   const { user } = useAuth();
-  return <PoiCreatePage instanceId={user?.instanceId} />;
+  const principalControl = useMainserverPrincipalControl();
+  return <PoiCreatePage instanceId={user?.instanceId} principalControl={principalControl} />;
 };
 
 const PoiEditRoutePage = () => {
   const { user } = useAuth();
-  return <PoiEditPage instanceId={user?.instanceId} />;
+  const principalControl = useMainserverPrincipalControl();
+  return <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />;
+};
+
+const SurveyCreateRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  return <SurveyCreatePage principalControl={principalControl} />;
+};
+
+const SurveyEditRoutePage = () => {
+  const principalControl = useMainserverPrincipalControl();
+  const mutationCapabilities = useMainserverMutationCapabilities();
+  return (
+    <SurveyEditPage
+      canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
+      principalControl={principalControl}
+    />
+  );
 };
 
 const HelpPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.help')}
-    title={t('shell.sidebar.help')}
-  />
+  <PlaceholderPage section={t('shell.sidebar.help')} title={t('shell.sidebar.help')} />
 );
 
 const SupportPlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.support')}
-    title={t('shell.sidebar.support')}
-  />
+  <PlaceholderPage section={t('shell.sidebar.support')} title={t('shell.sidebar.support')} />
 );
 
 const LicensePlaceholderRoutePage = () => (
-  <PlaceholderPage
-    section={t('shell.sidebar.license')}
-    title={t('shell.sidebar.license')}
-  />
+  <PlaceholderPage section={t('shell.sidebar.license')} title={t('shell.sidebar.license')} />
 );
 
 type RenderableRouteComponent<TProps extends object> =
-  | React.ComponentType<TProps>
-  | React.LazyExoticComponent<React.ComponentType<TProps>>;
+  React.ComponentType<TProps> | React.LazyExoticComponent<React.ComponentType<TProps>>;
 
 type StudioAppRouteBindings = BaseAppRouteBindings & {
   readonly mediaUsage: React.ComponentType;
@@ -225,7 +319,9 @@ const renderLazyPage = <TProps extends object>(
   Component: RenderableRouteComponent<TProps>,
   props?: TProps
 ) => (
-  <React.Suspense fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}>
+  <React.Suspense
+    fallback={<p className="text-sm text-muted-foreground">{t('interfaces.messages.loading')}</p>}
+  >
     <Component {...(props ?? ({} as TProps))} />
   </React.Suspense>
 );
@@ -391,34 +487,34 @@ export const appRouteBindings: StudioAppRouteBindings = {
   accountPrivacy: AccountPrivacyPage,
   accountPrivacyDetail: AccountPrivacyDetailRoutePage,
   accountRules: AccountRulesPage,
-  content: ContentListPage,
+  content: ContentListRoutePage,
   contentCreate: ContentTypePickerPage,
   contentDetail: ContentDetailRoutePage,
   mediaUsage: MediaUsagePage,
-  newsList: ContentListPage,
-  newsDetail: NewsEditPage,
+  newsList: ContentListRoutePage,
+  newsDetail: NewsEditRoutePage,
   newsEditor: NewsCreateRoutePage,
-  eventsList: ContentListPage,
-  eventsDetail: EventsEditPage,
-  eventsEditor: EventsCreatePage,
-  genericItemsList: ContentListPage,
-  genericItemsDetail: GenericItemsEditPage,
-  genericItemsEditor: GenericItemsCreatePage,
+  eventsList: ContentListRoutePage,
+  eventsDetail: EventsEditRoutePage,
+  eventsEditor: EventsCreateRoutePage,
+  genericItemsList: ContentListRoutePage,
+  genericItemsDetail: GenericItemsEditRoutePage,
+  genericItemsEditor: GenericItemsCreateRoutePage,
   faqList: FaqListPage,
-  faqDetail: FaqEditPage,
-  faqEditor: FaqCreatePage,
+  faqDetail: FaqEditRoutePage,
+  faqEditor: FaqCreateRoutePage,
   cockpitCardsList: CockpitCardsListPage,
-  cockpitCardsDetail: CockpitCardsEditPage,
-  cockpitCardsEditor: CockpitCardsCreatePage,
+  cockpitCardsDetail: CockpitCardsEditRoutePage,
+  cockpitCardsEditor: CockpitCardsCreateRoutePage,
   projectsList: ProjectsListPage,
-  projectsDetail: ProjectsEditPage,
-  projectsEditor: ProjectsCreatePage,
-  poiList: ContentListPage,
+  projectsDetail: ProjectsEditRoutePage,
+  projectsEditor: ProjectsCreateRoutePage,
+  poiList: ContentListRoutePage,
   poiDetail: PoiEditRoutePage,
   poiEditor: PoiCreateRoutePage,
-  surveysList: ContentListPage,
-  surveysDetail: SurveyEditPage,
-  surveysEditor: SurveyCreatePage,
+  surveysList: ContentListRoutePage,
+  surveysDetail: SurveyEditRoutePage,
+  surveysEditor: SurveyCreateRoutePage,
   media: MediaPage,
   adminMedia: MediaPage,
   categories: CategoriesPage,

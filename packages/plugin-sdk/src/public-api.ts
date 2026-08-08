@@ -123,6 +123,7 @@ export {
 } from './map-geocoding-client.js';
 export type {
   MainserverCrudClientOptions,
+  MainserverActingPrincipalType,
   MainserverErrorFactory,
   MainserverListQuery,
 } from './mainserver-client.js';
@@ -135,6 +136,7 @@ export {
   buildMainserverListUrl,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
+  createMainserverMutationHeaders,
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';

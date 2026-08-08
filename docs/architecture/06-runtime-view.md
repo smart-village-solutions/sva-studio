@@ -957,3 +957,12 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 5. Katalogentfernung und explizite Grant-Ausnahmen wirken additiv: Bereits materialisierte Definitionen und Grants eines weiterhin aktiven Moduls bleiben bestehen. Bei echter Moduldeaktivierung entfernt das Repository ausschließlich eindeutig als `module_sync` markierte Grants des deaktivierten Moduls.
 6. Der Service invalidiert den Tenant-Permission-Snapshot und persistiert Audit-Evidenz mit sicheren Reconcile-Zählern.
 7. Der kontrollierte Bootstrap eines Releases liest dieselbe kompilierte Katalogsicht aus dem Image und reconciliiert Core-Permissions sowie die Beiträge der in `iam.instance_modules` zugewiesenen Module für alle erlaubten Tenants. Er führt keine katalogbedingten Löschungen aus.
+
+### Szenario 4c: DataProvider-gebundene Mainserver-Mutation
+
+1. Der V2-Client übermittelt `actingPrincipalType`, Operations-ID und gegebenenfalls die beim Detail-Read geladene Kontextbindung.
+2. Der Host validiert Session, Actor, aktive Organisation, Policy, Credential-Verfügbarkeit und die fachliche fully-qualified Action und erzeugt einen unveränderlichen Principal-Kontext mit Credential-Fingerprint.
+3. Bestehender Inhalt wird mit genau diesem Kontext frisch gelesen; sein DataProvider ist die Autorisierungs- und Preimage-Quelle. Projection oder Cache werden dafür nicht verwendet.
+4. Read-Merge-Write, Provider-Mutation sowie ein Status- oder Visibility-Zweitschritt verwenden denselben Kontext. Hard Delete besitzt bewusst keinen Post-Read.
+5. Im Standardmodus `shadow` wird die exakte Scope-Entscheidung nur als Kandidat persistiert und der credential-sichtbare Vertrag erzwungen. `automatic` erzwingt konfliktfreie Bindungen; `compatibility` stellt den rollbackfähigen Übergangsvertrag wieder her.
+6. Ein Provider-Erfolg wird im Journal finalisiert und danach in Projection, Audit und genau einen host-owned History-Eintrag mit `coverage = studio_mutations` überführt. Lokale Folgefehler führen zu Reconciliation und ändern den Provider-Erfolg nicht.

@@ -56,6 +56,14 @@ export {
   type MainserverDeviationSummaryProps,
 } from './mainserver-deviation-summary.js';
 export {
+  MainserverPrincipalControl,
+  resolveMainserverPrincipalOptions,
+  type MainserverPrincipalControlModel,
+  type MainserverPrincipalControlProps,
+  type MainserverPrincipalOption,
+  type MainserverPrincipalType,
+} from './mainserver-principal-control.js';
+export {
   RichTextHtmlEditor,
   type RichTextBlockTypeOption,
   type RichTextBlockTypeValue,

@@ -23,6 +23,7 @@ import {
 } from './generic-items.detail-form.js';
 import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
+import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 
 export type StatusMessage = Readonly<{
   kind: 'success' | 'error';
@@ -165,6 +166,7 @@ export const useGenericItemsDetailActions = ({
   navigate,
   pt,
   setStatus,
+  actingPrincipalType,
 }: Readonly<{
   contentId?: string;
   methods: UseFormReturn<GenericItemsDetailFormValues>;
@@ -172,6 +174,7 @@ export const useGenericItemsDetailActions = ({
   navigate: NavigateFn;
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
+  actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [deleting, setDeleting] = React.useState(false);
 
@@ -182,14 +185,14 @@ export const useGenericItemsDetailActions = ({
     setDeleting(true);
 
     try {
-      await deleteGenericItem(contentId);
+      await deleteGenericItem(contentId, actingPrincipalType);
       await navigate(genericItemsListNavigationTarget);
     } catch (error) {
       setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.deleteError') });
     } finally {
       setDeleting(false);
     }
-  }, [contentId, deleting, mode, navigate, pt, setStatus]);
+  }, [actingPrincipalType, contentId, deleting, mode, navigate, pt, setStatus]);
 
   const onSubmit = methods.handleSubmit(async (values) => {
     setStatus(null);
@@ -197,14 +200,14 @@ export const useGenericItemsDetailActions = ({
     try {
       const input = mapGenericItemsDetailFormValuesToInput(values);
       if (mode === 'create') {
-        const createdItem = await createGenericItem(input);
+        const createdItem = await createGenericItem(input, actingPrincipalType);
         setStatus({ kind: 'success', text: pt('messages.createSuccess') });
         await navigate({ to: '/admin/generic-items/$id', params: { id: createdItem.id } });
         return;
       }
 
       if (contentId) {
-        await updateGenericItem(contentId, input);
+        await updateGenericItem(contentId, input, actingPrincipalType);
         setStatus({ kind: 'success', text: pt('messages.updateSuccess') });
       }
     } catch (error) {

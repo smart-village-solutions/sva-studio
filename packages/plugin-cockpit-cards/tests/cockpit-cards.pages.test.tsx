@@ -277,6 +277,7 @@ describe('cockpit cards pages', () => {
       categories: [{ name: 'Startseite' }],
       webUrls: [{ url: 'https://example.test/ziel' }],
     });
+    expect(state.create.mock.calls[0]?.[1]).toBe('user');
     expect(state.navigate).toHaveBeenCalledWith({
       to: '/admin/cockpit-cards/$id',
       params: { id: 'card-new' },
@@ -309,12 +310,13 @@ describe('cockpit cards pages', () => {
           contentBlocks: [{ body: 'Geändert' }],
           payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
           visible: true,
-        })
+        }),
+        'user'
       )
     );
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'deleteDialog.confirm' }));
-    await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1'));
+    await waitFor(() => expect(state.delete).toHaveBeenCalledWith('card-1', 'user'));
     expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
   });
 

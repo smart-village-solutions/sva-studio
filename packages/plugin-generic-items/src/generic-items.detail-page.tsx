@@ -26,8 +26,12 @@ import {
   StudioMediaPickerOverlay,
   contentMediaUsageToReference,
   isPersistableContentMediaUrl,
+  MainserverPrincipalControl,
+  resolveMainserverPrincipalOptions,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
+  type MainserverPrincipalControlModel,
+  type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
@@ -36,9 +40,16 @@ import {
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { createGenericItem, updateGenericItem } from './generic-items.api.js';
-import { genericItemMediaContentsToUsages, genericItemMediaUsagesToContents } from './generic-items.content-media-adapter.js';
+import {
+  genericItemMediaContentsToUsages,
+  genericItemMediaUsagesToContents,
+} from './generic-items.content-media-adapter.js';
 
-import { createDefaultGenericItemsDetailFormValues, mapGenericItemsDetailFormValuesToInput, mapGenericItemToDetailFormValues } from './generic-items.detail-form.js';
+import {
+  createDefaultGenericItemsDetailFormValues,
+  mapGenericItemsDetailFormValuesToInput,
+  mapGenericItemToDetailFormValues,
+} from './generic-items.detail-form.js';
 import {
   isSupportedUploadFile,
   mediaContentFromAsset,
@@ -98,7 +109,9 @@ const createSummaryErrors = (
 type GenericItemsMediaPickerAsset = StudioMediaPickerAssetDetail;
 const genericItemsMediaReferenceTargetType = 'generic-items.generic-item';
 
-export const resolveGenericItemsPersistentDeliveryUrl = (delivery: Readonly<{ deliveryUrl: string; isPublicUrl?: boolean }>): string | null =>
+export const resolveGenericItemsPersistentDeliveryUrl = (
+  delivery: Readonly<{ deliveryUrl: string; isPublicUrl?: boolean }>
+): string | null =>
   delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
     ? delivery.deliveryUrl
     : null;
@@ -247,9 +260,11 @@ const DetailPageActions = ({
 export function GenericItemsDetailPage({
   mode,
   contentId,
+  principalControl,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
+  principalControl?: MainserverPrincipalControlModel;
 }>) {
   const pt = usePluginTranslation('genericItems');
   const navigate = useNavigate();
@@ -264,15 +279,36 @@ export function GenericItemsDetailPage({
     [methods.formState.errors]
   );
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
+  const [loadedItem, setLoadedItem] = React.useState<
+    import('./generic-items.api-types.js').GenericItemContentItem | null
+  >(null);
+  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+  React.useEffect(() => {
+    if (principalControl) setActingPrincipalType(principalControl.value);
+  }, [principalControl]);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
-  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(null);
-  const sessionAccess = React.useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
-  const mediaCapabilities = React.useMemo(() => resolveContentMediaCapabilities({
-    canEditContent: sessionAccess.permissionActions.includes(mode === 'create' ? 'generic-items.create' : 'generic-items.update'),
-    permissionActions: sessionAccess.permissionActions,
-  }), [mode, sessionAccess.permissionActions]);
+  const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
+    null
+  );
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  const mediaCapabilities = React.useMemo(
+    () =>
+      resolveContentMediaCapabilities({
+        canEditContent: sessionAccess.permissionActions.includes(
+          mode === 'create' ? 'generic-items.create' : 'generic-items.update'
+        ),
+        permissionActions: sessionAccess.permissionActions,
+      }),
+    [mode, sessionAccess.permissionActions]
+  );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
   const canUpdateMedia = mediaCapabilities.canEditAssetMetadata;
@@ -280,29 +316,53 @@ export function GenericItemsDetailPage({
   const mediaAssetsRef = React.useRef(mediaAssets);
   const { categoryOptions, categoryOptionsError, categoryOptionsLoading } =
     useGenericItemsCategoryOptions(pt);
-  const handleLoadedItem = React.useCallback((item: Parameters<typeof mapGenericItemToDetailFormValues>[0]) => {
-    if (!contentId) return;
-    const sourceMedia = item.mediaContents ?? [];
-    setMediaUsages(genericItemMediaContentsToUsages(sourceMedia));
-    void listHostMediaReferencesByTarget({ fetch: globalThis.fetch.bind(globalThis), targetType: genericItemsMediaReferenceTargetType, targetId: contentId })
-      .then((references) => {
-        setMediaUsages(genericItemMediaContentsToUsages(sourceMedia, alignHostMediaReferencesByOrder({ itemCount: sourceMedia.length, role: 'gallery_item', references })));
-        setRequiresReferenceSync(references.length > 0);
+  const handleLoadedItem = React.useCallback(
+    (item: Parameters<typeof mapGenericItemToDetailFormValues>[0]) => {
+      if (!contentId) return;
+      setLoadedItem(item);
+      const sourceMedia = item.mediaContents ?? [];
+      setMediaUsages(genericItemMediaContentsToUsages(sourceMedia));
+      void listHostMediaReferencesByTarget({
+        fetch: globalThis.fetch.bind(globalThis),
+        targetType: genericItemsMediaReferenceTargetType,
+        targetId: contentId,
       })
-      .catch(() => {
-        setStatus({ kind: 'error', text: pt('messages.loadError') });
-      });
-  }, [contentId, pt]);
-  const loading = useGenericItemsDetailLoader({ contentId, methods, mode, pt, setStatus, onLoaded: handleLoadedItem });
-  const { activeTab, deleting, handleDelete, setActiveTab } =
-    useGenericItemsDetailActions({
-      contentId,
-      methods,
-      mode,
-      navigate,
-      pt,
-      setStatus,
-    });
+        .then((references) => {
+          setMediaUsages(
+            genericItemMediaContentsToUsages(
+              sourceMedia,
+              alignHostMediaReferencesByOrder({
+                itemCount: sourceMedia.length,
+                role: 'gallery_item',
+                references,
+              })
+            )
+          );
+          setRequiresReferenceSync(references.length > 0);
+        })
+        .catch(() => {
+          setStatus({ kind: 'error', text: pt('messages.loadError') });
+        });
+    },
+    [contentId, pt]
+  );
+  const loading = useGenericItemsDetailLoader({
+    contentId,
+    methods,
+    mode,
+    pt,
+    setStatus,
+    onLoaded: handleLoadedItem,
+  });
+  const { activeTab, deleting, handleDelete, setActiveTab } = useGenericItemsDetailActions({
+    contentId,
+    methods,
+    mode,
+    navigate,
+    pt,
+    setStatus,
+    actingPrincipalType,
+  });
   const isAssetSelectable = React.useCallback(
     (asset: GenericItemsMediaPickerAsset) => {
       if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
@@ -363,17 +423,30 @@ export function GenericItemsDetailPage({
         ],
         { shouldDirty: true }
       );
-      setMediaUsages((current) => [...current, {
-        uiId: `generic-item-asset-${asset.id}-${current.length}`, assetId: asset.id,
-        persistentUrl, previewUrl: asset.previewUrl ?? undefined,
-        altText: asset.metadata.altText || asset.fileName,
-        caption: asset.metadata.description || asset.title,
-        credit: asset.metadata.copyright, license: asset.metadata.license,
-        role: 'gallery_item', sortOrder: current.length,
-        additionalData: { contentType: nextMedia.contentType ?? '', width: '', height: '' },
-        assetSnapshot: toContentMediaAssetSnapshot({ persistentUrl, altText: asset.metadata.altText || asset.fileName, caption: asset.metadata.description || asset.title, credit: asset.metadata.copyright, license: asset.metadata.license }),
-        referenceStatus: 'pending',
-      }]);
+      setMediaUsages((current) => [
+        ...current,
+        {
+          uiId: `generic-item-asset-${asset.id}-${current.length}`,
+          assetId: asset.id,
+          persistentUrl,
+          previewUrl: asset.previewUrl ?? undefined,
+          altText: asset.metadata.altText || asset.fileName,
+          caption: asset.metadata.description || asset.title,
+          credit: asset.metadata.copyright,
+          license: asset.metadata.license,
+          role: 'gallery_item',
+          sortOrder: current.length,
+          additionalData: { contentType: nextMedia.contentType ?? '', width: '', height: '' },
+          assetSnapshot: toContentMediaAssetSnapshot({
+            persistentUrl,
+            altText: asset.metadata.altText || asset.fileName,
+            caption: asset.metadata.description || asset.title,
+            credit: asset.metadata.copyright,
+            license: asset.metadata.license,
+          }),
+          referenceStatus: 'pending',
+        },
+      ]);
       setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
@@ -396,7 +469,11 @@ export function GenericItemsDetailPage({
         getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
       ]);
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      return toGenericItemsMediaPickerDetail(detail, summary, resolveGenericItemsPersistentDeliveryUrl(delivery));
+      return toGenericItemsMediaPickerDetail(
+        detail,
+        summary,
+        resolveGenericItemsPersistentDeliveryUrl(delivery)
+      );
     },
     saveAssetMetadata: async (assetId, metadata) => {
       const detail = await updateHostMediaAsset({
@@ -408,8 +485,15 @@ export function GenericItemsDetailPage({
       const assets = await refreshMediaAssets();
       mediaAssetsRef.current = assets;
       const summary = mediaAssetsRef.current.find((asset) => asset.id === assetId);
-      const delivery = await getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId });
-      return toGenericItemsMediaPickerDetail(detail, summary, resolveGenericItemsPersistentDeliveryUrl(delivery));
+      const delivery = await getHostMediaDelivery({
+        fetch: globalThis.fetch.bind(globalThis),
+        assetId,
+      });
+      return toGenericItemsMediaPickerDetail(
+        detail,
+        summary,
+        resolveGenericItemsPersistentDeliveryUrl(delivery)
+      );
     },
   });
 
@@ -425,20 +509,43 @@ export function GenericItemsDetailPage({
   const onSubmit = methods.handleSubmit(async (values) => {
     setStatus(null);
     try {
-      const input = { ...mapGenericItemsDetailFormValuesToInput(values), mediaContents: genericItemMediaUsagesToContents(mediaUsages) };
-      const saveContent = () => mode === 'create' ? createGenericItem(input) : updateGenericItem(contentId ?? '', input);
+      const input = {
+        ...mapGenericItemsDetailFormValuesToInput(values),
+        mediaContents: genericItemMediaUsagesToContents(mediaUsages),
+      };
+      const saveContent = () =>
+        mode === 'create'
+          ? createGenericItem(input, actingPrincipalType)
+          : updateGenericItem(contentId ?? '', input, actingPrincipalType);
       const result = requiresReferenceSync
-        ? await saveContentWithHostMediaReferences({ fetch: globalThis.fetch.bind(globalThis), saveContent, getTargetId: (saved) => saved.id, targetType: genericItemsMediaReferenceTargetType, references: mediaUsages.flatMap((usage) => { const reference = contentMediaUsageToReference(usage); return reference ? [reference] : []; }) })
+        ? await saveContentWithHostMediaReferences({
+            fetch: globalThis.fetch.bind(globalThis),
+            saveContent,
+            getTargetId: (saved) => saved.id,
+            targetType: genericItemsMediaReferenceTargetType,
+            references: mediaUsages.flatMap((usage) => {
+              const reference = contentMediaUsageToReference(usage);
+              return reference ? [reference] : [];
+            }),
+          })
         : { status: 'complete' as const, saved: await saveContent() };
       if (result.status === 'reference_failed') {
         setRetryReferenceSync(() => result.retryReferenceSync);
-        setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage));
+        setMediaUsages((current) =>
+          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
+        );
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         return;
       }
-      setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
-      setStatus({ kind: 'success', text: pt(mode === 'create' ? 'messages.createSuccess' : 'messages.updateSuccess') });
-      if (mode === 'create') await navigate({ to: '/admin/generic-items/$id', params: { id: result.saved.id } });
+      setMediaUsages((current) =>
+        current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+      );
+      setStatus({
+        kind: 'success',
+        text: pt(mode === 'create' ? 'messages.createSuccess' : 'messages.updateSuccess'),
+      });
+      if (mode === 'create')
+        await navigate({ to: '/admin/generic-items/$id', params: { id: result.saved.id } });
     } catch {
       setStatus({ kind: 'error', text: pt('messages.saveError') });
     }
@@ -524,12 +631,42 @@ export function GenericItemsDetailPage({
             {status.text}
           </StudioFormSummary>
         ) : null}
+        <MainserverPrincipalControl
+          id="generic-items-acting-principal"
+          label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+          description={pt('principal.description')}
+          value={actingPrincipalType}
+          options={resolveMainserverPrincipalOptions(principalControl, {
+            value: actingPrincipalType,
+            label: pt(`principal.${actingPrincipalType}`),
+          })}
+          onChange={setActingPrincipalType}
+          dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
+          dataProviderLabel={pt('principal.dataProvider')}
+          dataProviderUnavailableLabel={pt('principal.unavailable')}
+        />
         {retryReferenceSync ? (
-          <Button type="button" variant="outline" onClick={() => void retryReferenceSync().then(() => {
-            setRetryReferenceSync(null);
-            setMediaUsages((current) => current.map((usage) => usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage));
-            setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
-          }, () => setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') }))}>{pt('actions.retryMediaReferences')}</Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              void retryReferenceSync().then(
+                () => {
+                  setRetryReferenceSync(null);
+                  setMediaUsages((current) =>
+                    current.map((usage) =>
+                      usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+                    )
+                  );
+                  setStatus({ kind: 'success', text: pt('messages.mediaReferenceRetrySuccess') });
+                },
+                () =>
+                  setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') })
+              )
+            }
+          >
+            {pt('actions.retryMediaReferences')}
+          </Button>
         ) : null}
         <GenericItemsDetailTabs
           activeTab={activeTab}
@@ -544,18 +681,35 @@ export function GenericItemsDetailPage({
           onTabChange={setActiveTab}
           pt={pt}
           mediaUsages={mediaUsages}
-          onChangeMediaUsages={(usages) => { setMediaUsages(usages); setRequiresReferenceSync((current) => current || usages.some((usage) => Boolean(usage.assetId))); }}
+          onChangeMediaUsages={(usages) => {
+            setMediaUsages(usages);
+            setRequiresReferenceSync(
+              (current) => current || usages.some((usage) => Boolean(usage.assetId))
+            );
+          }}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
           onLoadAssetSnapshot={async (usage) => {
             if (!usage.assetId) throw new Error('asset_unavailable');
             const [detail, delivery] = await Promise.all([
-              getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
-              getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId: usage.assetId }),
+              getHostMediaAsset({
+                fetch: globalThis.fetch.bind(globalThis),
+                assetId: usage.assetId,
+              }),
+              getHostMediaDelivery({
+                fetch: globalThis.fetch.bind(globalThis),
+                assetId: usage.assetId,
+              }),
             ]);
             const persistentUrl = resolveGenericItemsPersistentDeliveryUrl(delivery);
             if (!persistentUrl) throw new Error('asset_unavailable');
-            return toContentMediaAssetSnapshot({ persistentUrl, altText: detail.metadata.altText ?? '', caption: detail.metadata.description ?? detail.metadata.title ?? '', credit: detail.metadata.copyright ?? '', license: detail.metadata.license ?? '' });
+            return toContentMediaAssetSnapshot({
+              persistentUrl,
+              altText: detail.metadata.altText ?? '',
+              caption: detail.metadata.description ?? detail.metadata.title ?? '',
+              credit: detail.metadata.copyright ?? '',
+              license: detail.metadata.license ?? '',
+            });
           }}
         />
         <StudioConfirmDialog

@@ -121,6 +121,9 @@ export const contentENResources = {
     access: 'Access state',
     accessContext: 'Organization context: {{value}}',
   },
+  principal: {
+    user: 'Personally',
+  },
   access: {
     states: {
       editable: 'Editable',
@@ -181,6 +184,28 @@ export const contentENResources = {
       'The displayed Mainserver content comes from the last successful sync at {{value}}. A background refresh was started.',
     staleWithError:
       'The displayed Mainserver content comes from the last successful sync at {{value}}. The last background refresh reported {{errorCode}}.',
+  },
+  diagnostics: {
+    title: 'Mainserver authoring diagnostics',
+    description:
+      'Instance-scoped, read-only overview of automatically derived DataProvider bindings and Studio mutations.',
+    loading: 'Loading authoring diagnostics ...',
+    loadError: 'The Mainserver authoring diagnostics could not be loaded.',
+    retry: 'Load again',
+    readOnlyNotice:
+      'Bindings are created automatically from confirmed Mainserver evidence only. Manual assignment is not available.',
+    metrics: {
+      verifiedBindings: 'Verified bindings',
+      conflicts: 'Binding conflicts',
+      rotations: 'Principals with rotation',
+      compatibility: 'Compatibility decisions',
+      exact: 'Exact decisions',
+      modeSwitches: 'Automatic mode switches',
+      shadowEvaluations: 'Shadow evaluations',
+      shadowDifferences: 'Shadow differences',
+      reconciliationRequired: 'Reconciliation required',
+      reconciliationFailed: 'Reconciliation failed',
+    },
   },
   errors: {
     forbidden: 'You do not have sufficient permissions for this content action.',

@@ -591,7 +591,8 @@ describe('PoiDetailPage', () => {
           name: 'Neuer POI',
           categoryName: 'Verwaltung',
           categories: [{ name: 'Verwaltung' }],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -831,7 +832,8 @@ describe('PoiDetailPage', () => {
               },
             }),
           ],
-        })
+        }),
+        'user'
       );
       expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
     });
@@ -915,7 +917,8 @@ describe('PoiDetailPage', () => {
           certificates: [{ name: 'Reisen für Alle' }],
           accessibilityInformation: { description: 'Stufenlos', types: 'wheelchair' },
           payload: ['legacy', { source: 'mainserver' }],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -1002,7 +1005,8 @@ describe('PoiDetailPage', () => {
               sourceUrl: { url: 'https://cdn.example.test/neu.jpg', description: 'neu.jpg' },
             }),
           ],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -1040,7 +1044,8 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(vi.mocked(updatePoi)).toHaveBeenCalledWith(
         'poi-1',
-        expect.objectContaining({ mediaContents: [] })
+        expect.objectContaining({ mediaContents: [] }),
+        'user'
       );
     });
   });
@@ -1126,7 +1131,8 @@ describe('PoiDetailPage', () => {
               },
             }),
           ],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -1196,7 +1202,8 @@ describe('PoiDetailPage', () => {
               },
             }),
           ],
-        })
+        }),
+        'user'
       );
     });
   });
@@ -1352,7 +1359,8 @@ describe('PoiDetailPage', () => {
     await waitFor(() => {
       expect(updatePoi).toHaveBeenCalledWith(
         'poi-1',
-        expect.not.objectContaining({ addresses: expect.anything() })
+        expect.not.objectContaining({ addresses: expect.anything() }),
+        'user'
       );
     });
   });
@@ -1377,7 +1385,7 @@ describe('PoiDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => {
-      expect(vi.mocked(deletePoi)).toHaveBeenCalledWith('poi-1');
+      expect(vi.mocked(deletePoi)).toHaveBeenCalledWith('poi-1', 'user');
       expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
     });
   });

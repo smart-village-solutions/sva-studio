@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { persistAuthAuditEventToDb, persistAuthAuditEventWithClient, type AuditSqlClient } from './audit-db-sink';
+import {
+  persistAuthAuditEventToDb,
+  persistAuthAuditEventWithClient,
+  type AuditSqlClient,
+} from './audit-db-sink';
 
 type LoggedQuery = {
   text: string;
@@ -93,7 +97,9 @@ describe('persistAuthAuditEventWithClient', () => {
     expect(result.persisted).toBe(true);
     expect(result.writtenEventTypes).toEqual(['logout']);
 
-    const accountInserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.accounts'));
+    const accountInserts = queries.filter((entry) =>
+      entry.text.includes('INSERT INTO iam.accounts')
+    );
     expect(accountInserts.length).toBe(0);
   });
 
@@ -117,7 +123,9 @@ describe('persistAuthAuditEventWithClient', () => {
     );
     expect(platformInserts).toHaveLength(1);
 
-    const tenantInserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.activity_logs'));
+    const tenantInserts = queries.filter((entry) =>
+      entry.text.includes('INSERT INTO iam.activity_logs')
+    );
     expect(tenantInserts).toHaveLength(0);
   });
 
@@ -139,6 +147,22 @@ describe('persistAuthAuditEventWithClient', () => {
         reasonCode: 'permission_missing',
         resourceType: 'news',
         resourceId: 'news-1',
+        mainserverMutation: {
+          actingPrincipalType: 'organization',
+          actingPrincipalId: '11111111-1111-1111-8111-111111111111',
+          activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+          credentialSource: 'organization',
+          credentialFingerprint: 'a'.repeat(64),
+          dataProviderId: 'dp-org-1',
+          authorizationMode: 'credential_visible_compatibility',
+          resolverMode: 'shadow',
+          candidateAuthorizationMode: 'exact',
+          candidateAllowed: false,
+          shadowDifference: true,
+          operationExternalId: 'operation-1',
+          providerOutcome: 'failed',
+          reconciliationStatus: 'reconciliation_required',
+        },
       },
     });
 
@@ -158,7 +182,22 @@ describe('persistAuthAuditEventWithClient', () => {
       reason_code: 'permission_missing',
       resource_type: 'news',
       resource_id: 'news-1',
+      acting_principal_type: 'organization',
+      acting_principal_id: '11111111-1111-1111-8111-111111111111',
+      active_organization_id: '11111111-1111-1111-8111-111111111111',
+      credential_source: 'organization',
+      credential_fingerprint: 'a'.repeat(64),
+      data_provider_id: 'dp-org-1',
+      authorization_mode: 'credential_visible_compatibility',
+      resolver_mode: 'shadow',
+      candidate_authorization_mode: 'exact',
+      candidate_allowed: false,
+      shadow_difference: true,
+      operation_external_id: 'operation-1',
+      provider_outcome: 'failed',
+      reconciliation_status: 'reconciliation_required',
     });
+    expect(JSON.stringify(payload)).not.toContain('access_token');
   });
 
   it('updates an existing account instead of attempting a conflicting insert on login', async () => {
@@ -194,7 +233,9 @@ describe('persistAuthAuditEventWithClient', () => {
     expect(result.persisted).toBe(true);
     expect(result.writtenEventTypes).toEqual(['login']);
 
-    const accountInserts = queries.filter((entry) => entry.text.includes('INSERT INTO iam.accounts'));
+    const accountInserts = queries.filter((entry) =>
+      entry.text.includes('INSERT INTO iam.accounts')
+    );
     expect(accountInserts.length).toBe(0);
 
     const accountUpdates = queries.filter((entry) => entry.text.includes('UPDATE iam.accounts'));

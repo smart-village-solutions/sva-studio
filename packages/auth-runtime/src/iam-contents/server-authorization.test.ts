@@ -11,16 +11,16 @@ const {
   resolveActorAccountIdWithProvisionMock,
   resolveEffectivePermissionsMock,
 } = vi.hoisted(() => ({
-    accountLogger: {
-      error: vi.fn(),
-      warn: vi.fn(),
-    },
-    evaluateAuthorizeDecisionMock: vi.fn(),
-    getWorkspaceContextMock: vi.fn(),
-    getSessionMock: vi.fn(),
-    resolveActorAccountIdWithProvisionMock: vi.fn(),
-    resolveEffectivePermissionsMock: vi.fn(),
-  }));
+  accountLogger: {
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+  evaluateAuthorizeDecisionMock: vi.fn(),
+  getWorkspaceContextMock: vi.fn(),
+  getSessionMock: vi.fn(),
+  resolveActorAccountIdWithProvisionMock: vi.fn(),
+  resolveEffectivePermissionsMock: vi.fn(),
+}));
 
 vi.mock('@sva/iam-core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sva/iam-core')>();
@@ -55,7 +55,7 @@ const { authorizeContentPrimitiveForUser } = await import('./server-authorizatio
 const permission: EffectivePermission = {
   action: 'content.read',
   resourceType: 'content',
-  };
+};
 
 const scopedPermission: EffectivePermission = {
   action: 'news.read',
@@ -375,7 +375,10 @@ describe('authorizeContentPrimitiveForUser', () => {
       ok: true,
       permissions: [scopedPermission],
     });
-    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({
+      allowed: false,
+      reason: 'permission_missing',
+    });
 
     await expect(
       authorizeContentPrimitiveForUser({
@@ -400,7 +403,10 @@ describe('authorizeContentPrimitiveForUser', () => {
       ok: true,
       permissions: [scopedPermission],
     });
-    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({
+      allowed: false,
+      reason: 'permission_missing',
+    });
 
     await expect(
       authorizeContentPrimitiveForUser({
@@ -559,7 +565,10 @@ describe('authorizeContentPrimitiveForUser', () => {
   });
 
   it('returns forbidden when the core authorization decision denies the action', async () => {
-    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'missing_permission' });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({
+      allowed: false,
+      reason: 'missing_permission',
+    });
 
     await expect(
       authorizeContentPrimitiveForUser({
@@ -582,5 +591,30 @@ describe('authorizeContentPrimitiveForUser', () => {
         reason: 'missing_permission',
       })
     );
+  });
+
+  it('allows an own-scoped action in credential-visible compatibility mode only after scope projection succeeds', async () => {
+    const ownUpdatePermission: EffectivePermission = {
+      action: 'news.update',
+      resourceType: 'news',
+      accessScope: 'own',
+    };
+    evaluateAuthorizeDecisionMock
+      .mockReturnValueOnce({ allowed: false, reason: 'scope_mismatch' })
+      .mockReturnValueOnce({ allowed: true, reason: 'allowed' });
+
+    await expect(
+      authorizeContentPrimitiveForUser({
+        ctx: createCtx(),
+        action: 'news.update',
+        resource: { contentType: 'news.article', contentId: 'news-1' },
+        permissions: [ownUpdatePermission],
+        credentialVisibleCompatibility: true,
+      })
+    ).resolves.toMatchObject({ ok: true });
+
+    expect(evaluateAuthorizeDecisionMock).toHaveBeenNthCalledWith(2, expect.any(Object), [
+      expect.objectContaining({ action: 'news.update', accessScope: undefined }),
+    ]);
   });
 });

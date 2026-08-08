@@ -1,15 +1,22 @@
 import { formatDateTimeInEditorTimeZone, readFieldError } from '@sva/plugin-sdk';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
 import { getStudioFormFieldProps, StudioFormSummaryErrors } from '@sva/studio-ui-react';
-import { Input, Select, StudioField } from '@sva/studio-ui-react';
+import { Input, MainserverPrincipalControl, StudioField } from '@sva/studio-ui-react';
 
 import { NewsCategoryMultiselect } from './news.category-multiselect.js';
 import { NewsDetailCard } from './news.detail-card.js';
-import type { NewsAuthorControl, NewsCategoryOption, NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import type {
+  NewsPrincipalControl,
+  NewsCategoryOption,
+  NewsContentItem,
+  NewsDetailFormValues,
+} from './news.types.js';
 
 export type NewsDetailBasisTabProps = Readonly<{
   availableCategories: readonly NewsCategoryOption[];
-  authorControl?: NewsAuthorControl;
+  principalControl?: NewsPrincipalControl;
+  actingPrincipalType: 'organization' | 'user';
+  onActingPrincipalTypeChange: (value: 'organization' | 'user') => void;
   categoryOptionsError?: string | null;
   categoryOptionsLoading: boolean;
   mode: 'create' | 'edit';
@@ -19,9 +26,8 @@ export type NewsDetailBasisTabProps = Readonly<{
 
 const missingDateValue = '--.--.-- --:--';
 
-const collectSummaryErrors = (
-  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
-) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]) =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
 const translateFieldError = (
   error: FieldError | undefined,
@@ -47,7 +53,9 @@ const formatMetadataDate = (value?: string) => {
 
 export function NewsDetailBasisTab({
   availableCategories,
-  authorControl,
+  principalControl,
+  actingPrincipalType,
+  onActingPrincipalTypeChange,
   categoryOptionsError,
   categoryOptionsLoading,
   mode,
@@ -65,16 +73,12 @@ export function NewsDetailBasisTab({
     id: 'news-title',
     error: translateFieldError(errors.title, pt),
   });
-  const authorField = getStudioFormFieldProps({
-    id: 'news-author',
-    error: translateFieldError(errors.author, pt),
-  });
   const categoriesField = getStudioFormFieldProps({
     id: 'news-categories',
     error: translateFieldError(readFieldError<FieldError>(errors.categories), pt),
     hasDescription: true,
   });
-  const summaryErrors = collectSummaryErrors([titleField, authorField, categoriesField]);
+  const summaryErrors = collectSummaryErrors([titleField, categoriesField]);
 
   return (
     <div className="space-y-6">
@@ -123,47 +127,26 @@ export function NewsDetailBasisTab({
         title={pt('cards.basis.authorMeta.title')}
         description={pt('cards.basis.authorMeta.description')}
       >
-        <StudioField {...authorField} label={pt('fields.author')}>
-          <Controller
-            name="author"
-            control={control}
-            render={({ field }) => {
-              if (authorControl?.kind === 'selectable') {
-                return (
-                  <Select
-                    {...authorField.controlProps}
-                    value={field.value ?? authorControl.value}
-                    onChange={(event) => field.onChange(event.target.value)}
-                  >
-                    {authorControl.options.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                );
-              }
-
-              if (authorControl?.kind === 'fixed') {
-                return (
-                  <Input
-                    {...authorField.controlProps}
-                    readOnly
-                    value={field.value ?? authorControl.value}
-                  />
-                );
-              }
-
-              return (
-                <Input
-                  {...authorField.controlProps}
-                  {...field}
-                  value={field.value ?? ''}
-                />
-              );
-            }}
-          />
-        </StudioField>
+        <MainserverPrincipalControl
+          id="news-acting-principal"
+          label={mode === 'create' ? pt('fields.createAs') : pt('fields.actAs')}
+          description={pt('fields.actingPrincipalHelp')}
+          value={actingPrincipalType}
+          options={
+            principalControl?.kind === 'selectable'
+              ? principalControl.options
+              : [
+                  {
+                    value: principalControl?.value ?? actingPrincipalType,
+                    label: principalControl?.label ?? pt(`principals.${actingPrincipalType}`),
+                  },
+                ]
+          }
+          onChange={onActingPrincipalTypeChange}
+          dataProvider={mode === 'edit' ? (loadedItem?.dataProvider ?? null) : undefined}
+          dataProviderLabel={pt('fields.dataProvider')}
+          dataProviderUnavailableLabel={pt('fields.dataProviderUnavailable')}
+        />
 
         {mode === 'edit' ? (
           <dl className="grid gap-4 rounded-xl border border-border/60 bg-muted/20 p-4 text-sm md:grid-cols-3">
@@ -173,7 +156,9 @@ export function NewsDetailBasisTab({
             </div>
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.publishedAt')}</dt>
-              <dd className="text-muted-foreground">{formatMetadataDate(loadedItem?.publishedAt)}</dd>
+              <dd className="text-muted-foreground">
+                {formatMetadataDate(loadedItem?.publishedAt)}
+              </dd>
             </div>
             <div className="space-y-1">
               <dt className="font-medium text-foreground">{pt('fields.updatedAt')}</dt>

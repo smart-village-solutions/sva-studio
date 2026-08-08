@@ -18,16 +18,18 @@ export function SurveyEditorActions({
 }
 
 export function SurveyEditorPrimaryAction({
+  disabled = false,
   mode,
   formId,
   pt,
 }: Readonly<{
   mode: SurveyEditorMode;
+  disabled?: boolean;
   formId: string;
   pt: (key: string) => string;
 }>) {
   return (
-    <Button type="submit" form={formId}>
+    <Button type="submit" form={formId} disabled={disabled}>
       {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
     </Button>
   );

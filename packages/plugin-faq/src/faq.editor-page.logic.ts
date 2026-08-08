@@ -1,5 +1,6 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import type { UseFormReturn } from 'react-hook-form';
+import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 import * as React from 'react';
 
 import { createFaq, deleteFaq, FaqApiError, getFaq, updateFaq } from './faq.api.js';
@@ -29,12 +30,16 @@ export const useFaqEditorLoader = ({
   mode: 'create' | 'edit';
 }>) => {
   const [existingPayload, setExistingPayload] = React.useState<unknown>();
+  const [loadedItem, setLoadedItem] = React.useState<Awaited<ReturnType<typeof getFaq>> | null>(
+    null
+  );
   const [loadError, setLoadError] = React.useState(false);
   const [loading, setLoading] = React.useState(mode === 'edit');
 
   React.useEffect(() => {
     if (mode !== 'edit') return;
     setExistingPayload(undefined);
+    setLoadedItem(null);
     setLoadError(false);
     setLoading(true);
     if (!contentId) {
@@ -48,6 +53,7 @@ export const useFaqEditorLoader = ({
         if (active) {
           form.reset(mapGenericItemToFaqFormValues(item));
           setExistingPayload(item.payload);
+          setLoadedItem(item);
         }
       })
       .catch(() => active && setLoadError(true))
@@ -57,7 +63,7 @@ export const useFaqEditorLoader = ({
     };
   }, [contentId, form, mode]);
 
-  return { existingPayload, loadError, loading };
+  return { existingPayload, loadedItem, loadError, loading };
 };
 
 export const useFaqEditorActions = ({
@@ -68,6 +74,7 @@ export const useFaqEditorActions = ({
   pt,
   setDeleteErrorMessage,
   setSaveErrorMessage,
+  actingPrincipalType,
 }: Readonly<{
   contentId?: string;
   existingPayload: unknown;
@@ -76,6 +83,7 @@ export const useFaqEditorActions = ({
   pt: Translation;
   setDeleteErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
   setSaveErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [deletePending, setDeletePending] = React.useState(false);
 
@@ -84,10 +92,10 @@ export const useFaqEditorActions = ({
     try {
       const input = mapFaqFormValuesToGenericItemInput(values, existingPayload);
       if (mode === 'create') {
-        const item = await createFaq(input);
+        const item = await createFaq(input, actingPrincipalType);
         await navigate({ to: '/admin/faq/$id', params: { id: item.id } });
       } else if (contentId) {
-        await updateFaq(contentId, input);
+        await updateFaq(contentId, input, actingPrincipalType);
       }
     } catch (error) {
       setSaveErrorMessage(resolveSaveErrorMessage(error, pt));
@@ -99,7 +107,7 @@ export const useFaqEditorActions = ({
     setDeleteErrorMessage(null);
     setDeletePending(true);
     try {
-      await deleteFaq(contentId);
+      await deleteFaq(contentId, actingPrincipalType);
       await navigate({ to: '/admin/content' });
       return true;
     } catch (error) {

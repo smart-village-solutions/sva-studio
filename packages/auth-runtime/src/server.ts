@@ -3,9 +3,16 @@ export {
   readEffectiveSvaMainserverCredentialsWithStatus,
 } from './mainserver-effective-credentials.js';
 export type {
+  EffectiveMainserverCredentialsInput,
   EffectiveMainserverCredentialSource,
   EffectiveSvaMainserverCredentialsResult,
 } from './mainserver-effective-credentials.js';
+export { resolveMutationPrincipalContext } from './mainserver-mutation-principal.js';
+export type {
+  MainserverActingPrincipalType,
+  MutationPrincipalContext,
+  ResolveMutationPrincipalContextResult,
+} from './mainserver-mutation-principal.js';
 export {
   readSvaMainserverCredentials,
   readSvaMainserverCredentialsWithStatus,
@@ -30,7 +37,11 @@ export {
   normalizePublicUpstreamUrl,
 } from './upstream-url-validation.js';
 export { emitAuthAuditEvent } from './audit-events.js';
-export type { AuthAuditEvent, AuthAuditEventType, PluginActionAuditPayload } from './audit-events.types.js';
+export type {
+  AuthAuditEvent,
+  AuthAuditEventType,
+  PluginActionAuditPayload,
+} from './audit-events.types.js';
 export {
   ensureStudioJobWorkerStarted,
   ensurePrivilegedStudioJobWorkerStarted,
@@ -48,7 +59,10 @@ export {
   dsrExportStudioJobRegistration,
   dsrExportStudioJobTypeId,
 } from './iam-data-subject-rights/export-worker.js';
-export type { PluginOperationExecutionHandler, PluginOperationExecutionResult } from './plugin-operations/runner.js';
+export type {
+  PluginOperationExecutionHandler,
+  PluginOperationExecutionResult,
+} from './plugin-operations/runner.js';
 export type {
   PluginOperationExecutionHandlerContext,
   PluginOperationExecutionRegistration,
@@ -96,7 +110,39 @@ export {
   type ExternalContentReconciliationStatus,
   type ExternalContentReference,
 } from './iam-contents/external-content-references.js';
-export { recordSuccessfulExternalContentMutation } from './iam-contents/external-content-mutations.js';
+export {
+  loadCurrentMainserverDataProviderBinding,
+  recordMainserverDataProviderObservation,
+  type MainserverDataProviderBinding,
+  type MainserverDataProviderBindingStatus,
+  type MainserverDataProviderEvidenceKind,
+  type MainserverPrincipalType,
+  type RecordMainserverDataProviderObservationResult,
+} from './iam-contents/mainserver-data-provider-bindings.js';
+export {
+  beginMainserverMutationJournal,
+  finalizeMainserverMutationJournal,
+  loadMainserverMutationJournal,
+  type MainserverMutationJournalEntry,
+  type MainserverMutationProviderOutcome,
+  type MainserverMutationReconciliationStatus,
+} from './iam-contents/mainserver-mutation-journal.js';
+export {
+  loadMainserverAuthoringDiagnostics,
+  type MainserverAuthoringDiagnostics,
+} from './iam-contents/mainserver-authoring-diagnostics.js';
+export {
+  authorizeMainserverCreatePrincipal,
+  authorizeMainserverDataProviderAccess,
+  readMainserverScopeResolverMode,
+  type MainserverContentAuthorizationDecision,
+  type MainserverContentAuthorizationMode,
+  type MainserverScopeResolverMode,
+} from './iam-contents/mainserver-content-authorization.js';
+export {
+  recordSuccessfulExternalContentDeletion,
+  recordSuccessfulExternalContentMutation,
+} from './iam-contents/external-content-mutations.js';
 export {
   authorizeInstancePermissionForUser,
   type InstancePermissionAuthorizationResult,

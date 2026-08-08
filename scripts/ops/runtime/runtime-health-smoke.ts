@@ -78,6 +78,34 @@ const assertMainserverSmoke = async (env: NodeJS.ProcessEnv) => {
   if (Array.isArray(graphqlPayload.errors) && graphqlPayload.errors.length > 0) {
     throw new Error(`Mainserver GraphQL antwortete mit Fehlern: ${JSON.stringify(graphqlPayload.errors)}`);
   }
+
+  const dataProviderIdentityResponse = await fetch(
+    new URL('/data_provider.json', env.SVA_MAINSERVER_GRAPHQL_URL ?? ''),
+    {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${tokenPayload.access_token}`,
+      },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  if (!dataProviderIdentityResponse.ok) {
+    throw new Error(
+      `Mainserver DataProvider-Identity fehlgeschlagen: ${dataProviderIdentityResponse.status}`,
+    );
+  }
+
+  const dataProviderIdentityPayload = (await dataProviderIdentityResponse.json()) as unknown;
+  if (
+    typeof dataProviderIdentityPayload !== 'object'
+    || dataProviderIdentityPayload === null
+    || !('data_provider' in dataProviderIdentityPayload)
+    || typeof dataProviderIdentityPayload.data_provider !== 'object'
+    || dataProviderIdentityPayload.data_provider === null
+    || Array.isArray(dataProviderIdentityPayload.data_provider)
+  ) {
+    throw new Error('Mainserver DataProvider-Identity liefert keinen gültigen data_provider.');
+  }
 };
 
 const assertOtelLocal = async (env: NodeJS.ProcessEnv) => {

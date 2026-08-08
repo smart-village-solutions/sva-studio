@@ -121,6 +121,7 @@ export type EventContentItem = EventFormInput & {
   readonly status: 'published';
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: Readonly<{ id?: string; name?: string }>;
 };
 
 export type PoiSelectItem = {

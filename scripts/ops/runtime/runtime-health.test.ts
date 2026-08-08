@@ -13,8 +13,108 @@ import { buildExpectedLiveRuntimeFlags } from './runtime-health-doctor-checks.ts
 afterEach(() => {
   vi.unstubAllGlobals();
 });
-
 describe('runtime-health helpers', () => {
+  it('checks the DataProvider identity with the same bearer token and accepts a missing stable ID', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'contract-token' }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { __typename: 'Query' } }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data_provider: { name: 'Contract Provider' } }), { status: 200 }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(),
+      getRemoteAppServiceName: vi.fn(),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.assertMainserverSmoke({
+      SVA_MAINSERVER_CLIENT_ID: 'contract-client',
+      SVA_MAINSERVER_CLIENT_SECRET: 'contract-secret',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+    })).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      new URL('https://mainserver.example/data_provider.json'),
+      expect.objectContaining({
+        headers: {
+          Accept: 'application/json',
+          Authorization: 'Bearer contract-token',
+        },
+      }),
+    );
+  });
+
+  it('rejects an invalid DataProvider identity without including its raw payload', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ access_token: 'contract-token' }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ data: { __typename: 'Query' } }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ contact: 'pii@example.test' }), { status: 200 }),
+        ),
+    );
+    const ops = createRuntimeHealthOps({
+      assertRuntimeEnv: vi.fn(),
+      checkHttpHealth: vi.fn(),
+      commandExists: vi.fn(),
+      getConfiguredQuantumEndpoint: vi.fn(),
+      getConfiguredStackName: vi.fn(),
+      getRemoteAppServiceName: vi.fn(),
+      getRuntimeProfileDefinition: vi.fn(),
+      inspectRemoteServiceContract: vi.fn(),
+      isExpectedOidcRedirect: vi.fn(),
+      isMainserverCheckRequired: vi.fn(),
+      isMockAuthRuntimeProfile: vi.fn(),
+      readRemoteStackEvidence: vi.fn(),
+      resolveTenantRuntimeTargets: vi.fn(),
+      runCapture: vi.fn(),
+      runSchemaGuard: vi.fn(),
+      summarizeSchemaGuardFailures: vi.fn(),
+      toDoctorCheck: vi.fn(),
+      wait: vi.fn(),
+      waitForRemoteSmokeWarmup: vi.fn(),
+      withoutDebugEnv: vi.fn(),
+    });
+
+    await expect(ops.assertMainserverSmoke({
+      SVA_MAINSERVER_CLIENT_ID: 'contract-client',
+      SVA_MAINSERVER_CLIENT_SECRET: 'contract-secret',
+      SVA_MAINSERVER_GRAPHQL_URL: 'https://mainserver.example/graphql',
+      SVA_MAINSERVER_OAUTH_TOKEN_URL: 'https://mainserver.example/oauth/token',
+    })).rejects.toThrow('Mainserver DataProvider-Identity liefert keinen gültigen data_provider.');
+  });
+
   it('requires complete local runtime variables before a local smoke', async () => {
     const assertRuntimeEnv = vi.fn(() => {
       throw new Error('missing local runtime variables');

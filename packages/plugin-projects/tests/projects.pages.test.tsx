@@ -147,9 +147,6 @@ describe('projects pages', () => {
       target: { value: 'https://example.test/project.jpg' },
     });
     fireEvent.change(screen.getByLabelText('fields.altText'), { target: { value: 'Projektbild' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings' }));
-    fireEvent.change(screen.getByLabelText('fields.authorId'), { target: { value: 'org-1' } });
-    fireEvent.change(screen.getByLabelText('fields.authorName'), { target: { value: 'Stadt' } });
     fireEvent.click(
       screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
     );
@@ -161,15 +158,19 @@ describe('projects pages', () => {
       description: 'Kurztext',
       fullText: '<p>Inhalt</p>',
       images: [{ url: 'https://example.test/project.jpg', altText: 'Projektbild', position: 0 }],
-      author: { type: 'organization', id: 'org-1', displayName: 'Stadt' },
     });
+    expect(state.create.mock.calls[0]?.[0]).not.toHaveProperty('author');
   });
 
   it('marks invalid controls for the shared validation styling', async () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
-    fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement);
-    await waitFor(() => expect(screen.getByLabelText('fields.title').getAttribute('aria-invalid')).toBe('true'));
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('fields.title').getAttribute('aria-invalid')).toBe('true')
+    );
   });
 
   it('loads, reorders, updates and soft-deletes an existing project', async () => {
@@ -197,7 +198,7 @@ describe('projects pages', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
     fireEvent.click(screen.getByRole('button', { name: 'actions.delete' }));
-    await waitFor(() => expect(state.delete).toHaveBeenCalledWith('project-1'));
+    await waitFor(() => expect(state.delete).toHaveBeenCalledWith('project-1', 'user'));
     expect(state.navigate).toHaveBeenCalledWith({ to: '/admin/content' });
   });
 
@@ -414,9 +415,6 @@ describe('projects pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.useMedia' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings' }));
-    fireEvent.change(screen.getByLabelText('fields.authorId'), { target: { value: 'org-1' } });
-    fireEvent.change(screen.getByLabelText('fields.authorName'), { target: { value: 'Stadt' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
     await screen.findByText('messages.mediaReferencePartialFailure');
     expect(
@@ -486,9 +484,6 @@ describe('projects pages', () => {
     state.listAssets.mockRejectedValueOnce(new Error('media failed'));
     const createView = render(<ProjectsCreatePage />);
     fillRequiredFields();
-    fireEvent.click(screen.getByRole('tab', { name: 'tabs.settings' }));
-    fireEvent.change(screen.getByLabelText('fields.authorId'), { target: { value: 'org-1' } });
-    fireEvent.change(screen.getByLabelText('fields.authorName'), { target: { value: 'Stadt' } });
     fireEvent.click(
       screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
     );

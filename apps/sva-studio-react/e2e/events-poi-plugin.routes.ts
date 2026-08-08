@@ -27,7 +27,7 @@ export const routeEvents = async (route: Route, events: EventRecord[]) => {
   const detailMatch = path.match(/^\/api\/v1\/mainserver\/events\/([^/]+)\/?$/);
   if (!detailMatch) return route.fallback();
   const item = events.find((entry) => entry.id === detailMatch[1]);
-  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
+  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined, body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
   if (method === 'PATCH' && item) { const body = request.postDataJSON() as Partial<EventRecord>; item.title = String(body.title ?? item.title); item.categoryName = body.categoryName ?? item.categoryName; item.updatedAt = '2026-04-13T12:20:00.000Z'; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: item }) }); }
   if (method === 'DELETE') { const index = events.findIndex((entry) => entry.id === detailMatch[1]); if (index >= 0) events.splice(index, 1); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { id: detailMatch[1] } }) }); }
   await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not_found' }) });
@@ -44,7 +44,7 @@ export const routePoi = async (route: Route, pois: PoiRecord[]) => {
   const detailMatch = path.match(/^\/api\/v1\/mainserver\/poi\/([^/]+)\/?$/);
   if (!detailMatch) return route.fallback();
   const item = pois.find((entry) => entry.id === detailMatch[1]);
-  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
+  if (method === 'GET') return route.fulfill({ status: item ? 200 : 404, contentType: 'application/json', headers: item ? { 'X-SVA-Context-Binding': 'v1.loaded-context' } : undefined, body: JSON.stringify(item ? { data: item } : { error: 'not_found' }) });
   if (method === 'PATCH' && item) { const body = request.postDataJSON() as Partial<PoiRecord>; item.name = String(body.name ?? item.name); item.categoryName = body.categoryName ?? item.categoryName; item.updatedAt = '2026-04-13T12:20:00.000Z'; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: item }) }); }
   if (method === 'DELETE') { const index = pois.findIndex((entry) => entry.id === detailMatch[1]); if (index >= 0) pois.splice(index, 1); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { id: detailMatch[1] } }) }); }
   await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not_found' }) });

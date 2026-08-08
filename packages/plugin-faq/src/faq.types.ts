@@ -24,6 +24,7 @@ export type GenericItemFaqRecord = Readonly<{
   readonly publicationDate?: string;
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly dataProvider?: Readonly<{ readonly id?: string; readonly name?: string }>;
 }>;
 
 export type GenericItemFaqInput = Readonly<{

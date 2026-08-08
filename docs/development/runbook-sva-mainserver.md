@@ -46,6 +46,8 @@ Betriebsrelevante Regeln:
 - Die Listen-Pagination der Übersicht ist serverseitig führend. Große Bestände müssen sich daher zuerst über die Antwortzeiten von `/api/v1/iam/contents` und erst danach über einzelne Mainserver-Adapter diagnostizieren lassen.
 - Die Detail- und Mutationspfade der Fachplugins bleiben unverändert auf den jeweiligen Host-Fassaden unter `/api/v1/mainserver/*`.
 - Nach erfolgreichen hostgeführten Mainserver-Mutationen für News, Events und POI stößt der Host direkt einen typbezogenen Projektions-Refresh an, damit ein anschließender Refetch auf `/admin/content` den neuen Stand sieht.
+- Bei `org_or_personal` verwenden implizite Listen- und Hintergrund-Reads persönliche Credentials; `org_only` verwendet organisatorische Credentials. Explizite Mutation-Refreshes liegen in getrennten `user`-/`organization`-Scopes und werden von einem Full-Refresh des automatischen Scopes nicht gelöscht.
+- V2-Updates und -Deletes benötigen die vom Detail-Read gelieferte Kontextbindung. Fehlt sie, lädt der aktuelle Client das Detail einmal vor; bleibt die Bindung aus, wird die Mutation vor dem Provider-Write abgebrochen.
 - Die Übersicht zeigt pro Datensatz die technische ID sowie vorhandene Erstellungs- und Veröffentlichungszeitpunkte. Fehlende Veröffentlichungszeitpunkte werden ausdrücklich als nicht gesetzt dargestellt.
 - Ein Status-Badge ist nur mit Schreibrecht und für fachlich unterstützte Übergänge interaktiv. News, Veranstaltungen, Orte und generische Inhalte verwenden `Entwurf` und `Veröffentlicht`; Umfragen unterstützen zusätzlich `Archiviert`. Die Änderung läuft über die jeweilige Host-Fassade des Fachplugins und anschließend über einen Refetch der Projektion.
 - Unsichtbare News, Veranstaltungen und generische Inhalte sowie inaktive Orte werden sowohl im Projektions- als auch im Legacy-Listenadapter als `Entwurf` abgebildet. Der technische Mainserver-Default `published` darf diese Sichtbarkeitsinformation nicht überschreiben.
@@ -117,6 +119,12 @@ Surveys folgen demselben Boundary-Muster wie News, Events und POI. Das Plugin er
 | `POST /api/v1/mainserver/surveys`             | `surveys.create` | `createOrUpdateSurvey`                                                         | Der Host mappt das vereinfachte Studio-Zielmodell auf den Mainserver-Vertrag.                                                                                |
 | `PATCH /api/v1/mainserver/surveys/$surveyId`  | `surveys.update` | `createOrUpdateSurvey(id)`                                                     | Updates bleiben hostgeführt und verwenden keinen Plugin-eigenen GraphQL-Pfad.                                                                                |
 | `DELETE /api/v1/mainserver/surveys/$surveyId` | `surveys.delete` | `destroyRecord(id, recordType: "Survey")` oder Survey-spezifischer Delete-Pfad | Der konkrete Mainserver-Löschpfad bleibt im typed Adapter gekapselt.                                                                                         |
+
+`GET /api/v1/mainserver/mutation-capabilities` liefert authentifizierten Studio-Clients die
+effektiv aktivierten fully-qualified Mutations-Actions. Die Survey-Liste und der Survey-Editor
+schalten Update, Statuswechsel und Delete nur frei, wenn die jeweilige Action in dieser Antwort
+enthalten ist. Bei Ladefehlern bleibt die Oberfläche für diese unbestätigten Mutationen
+fail-closed; `surveys.create` bleibt davon unabhängig.
 
 Fachliche Regeln des Studio-Vertrags:
 
@@ -322,6 +330,14 @@ Die Inhaltsübersicht verwendet standardmäßig schlanke Mainserver-Listenadapte
 - `SVA_CONTENT_PROJECTION_ADAPTER_MODE=slim|legacy` (Standard: `slim`)
 - `SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED=true|false` (Standard: `true`)
 - `SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED=true|false` (Standard: `true`)
+
+Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
+
+- `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow|automatic|compatibility` (Standard: `shadow`)
+- `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE=legacy_compatible|required` (Standard: `legacy_compatible`)
+- `SVA_MAINSERVER_CONFIRMED_CAPABILITIES=<Action-ID,...>` (Standard: leer)
+
+Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
 
 Ein nicht finaler Listenstand meldet `availableCount` und `isTotalFinal=false`; `totalCount` fehlt dann bewusst. Pro Typ liefern die Refresh-Metadaten Snapshot-Zustand, Phase, abgeschlossene Page, verfügbare Anzahl, Invalid-Zähler und den letzten Fehler.
 

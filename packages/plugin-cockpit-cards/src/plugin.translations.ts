@@ -1,5 +1,6 @@
 import type { PluginTranslations } from '@sva/plugin-sdk';
 import { cockpitCardsHistoryTranslations } from './cockpit-cards.history-translations.js';
+import { cockpitCardsMediaTranslations } from './cockpit-cards.media-translations.js';
 
 export const pluginCockpitCardsTranslations = {
   de: {
@@ -21,13 +22,7 @@ export const pluginCockpitCardsTranslations = {
         removeImage: 'Bild entfernen',
         retryMediaReferences: 'Medienreferenzen erneut speichern',
       },
-      media: {
-        description: 'Verwalte Bilder, Metadaten und ihre Reihenfolge.', empty: 'Noch keine Bilder vorhanden.',
-        refresh: 'Metadaten aktualisieren', cancel: 'Abbrechen', apply: 'Übernehmen', altText: 'Alternativtext', caption: 'Bildunterschrift', credit: 'Urheberrecht', license: 'Lizenz',
-        linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Synchronisiert', pending: 'Ausstehend', missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Nicht aufgelöst', failed: 'Synchronisierung fehlgeschlagen', moved: 'Bild an Position {{position}} von {{total}} verschoben.', removed: 'Bild wurde entfernt.',
-        refreshTitle: 'Metadaten aktualisieren?', refreshDescription: 'Wähle aus, welche aktuellen Mediathek-Werte übernommen werden.', assetValue: 'Mediathek', contentValue: 'Inhalt',
-        pickerTitle: 'Bild auswählen', pickerDescription: 'Wähle ein vorhandenes Bild oder lade ein neues hoch.', review: 'Bild prüfen', search: 'Bilder durchsuchen', uploadRegion: 'Bild hochladen', uploadDescription: 'JPEG-, PNG- oder WebP-Datei auswählen.', browse: 'Datei auswählen', support: 'JPEG, PNG oder WebP', reviewDescription: 'Prüfe Bild und Metadaten vor der Übernahme.', backLibrary: 'Zurück zur Mediathek', backUpload: 'Zurück zum Hochladen', openManagement: 'In Medienverwaltung öffnen', use: 'Bild verwenden',
-      },
+      media: cockpitCardsMediaTranslations.de,
       permissions: {
         read: 'Kacheln lesen',
         create: 'Kacheln anlegen',
@@ -39,6 +34,15 @@ export const pluginCockpitCardsTranslations = {
         createDescription: 'Erfasse Inhalt, Bilder und Darstellung der neuen Kachel.',
         editTitle: 'Kachel bearbeiten',
         editDescription: 'Passe Inhalt, Bilder und Darstellung der Kachel an.',
+      },
+      principal: {
+        createAs: 'Erstellen als',
+        actAs: 'Handeln als',
+        description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+        organization: 'Aktive Organisation',
+        user: 'Persönlicher Account',
+        dataProvider: 'Ursprünglicher DataProvider',
+        unavailable: 'Nicht verfügbar',
       },
       tabs: {
         ariaLabel: 'Cockpit-Card-Bereiche',
@@ -106,7 +110,8 @@ export const pluginCockpitCardsTranslations = {
         categoriesError: 'Kategorien konnten nicht geladen werden.',
         mediaError: 'Bilder konnten nicht geladen oder hochgeladen werden.',
         imagePreviewEmpty: 'Bildvorschau erscheint nach Eingabe einer URL.',
-        mediaReferencePartialFailure: 'Die Kachel wurde gespeichert, aber ihre Medienreferenzen konnten nicht vollständig gespeichert werden.',
+        mediaReferencePartialFailure:
+          'Die Kachel wurde gespeichert, aber ihre Medienreferenzen konnten nicht vollständig gespeichert werden.',
       },
       validation: {
         summaryTitle: 'Bitte prüfe folgende Felder:',
@@ -139,13 +144,7 @@ export const pluginCockpitCardsTranslations = {
         removeImage: 'Remove image',
         retryMediaReferences: 'Retry saving media references',
       },
-      media: {
-        description: 'Manage images, metadata, and their order.', empty: 'No images yet.',
-        refresh: 'Refresh metadata', cancel: 'Cancel', apply: 'Apply', altText: 'Alternative text', caption: 'Caption', credit: 'Copyright', license: 'License',
-        linked: 'Linked to media library', manual: 'Manual URL', synced: 'Synced', pending: 'Pending', missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Unresolved', failed: 'Sync failed', moved: 'Image moved to position {{position}} of {{total}}.', removed: 'Image removed.',
-        refreshTitle: 'Refresh metadata?', refreshDescription: 'Select which current media-library values to apply.', assetValue: 'Media library', contentValue: 'Content',
-        pickerTitle: 'Select image', pickerDescription: 'Select an existing image or upload a new one.', review: 'Review image', search: 'Search images', uploadRegion: 'Upload image', uploadDescription: 'Select a JPEG, PNG, or WebP file.', browse: 'Select file', support: 'JPEG, PNG, or WebP', reviewDescription: 'Review the image and metadata before using it.', backLibrary: 'Back to library', backUpload: 'Back to upload', openManagement: 'Open in media management', use: 'Use image',
-      },
+      media: cockpitCardsMediaTranslations.en,
       permissions: {
         read: 'Read cockpit cards',
         create: 'Create cockpit cards',
@@ -157,6 +156,15 @@ export const pluginCockpitCardsTranslations = {
         createDescription: 'Add content, images, and display settings for the new cockpit card.',
         editTitle: 'Edit cockpit card',
         editDescription: 'Update content, images, and display settings for this cockpit card.',
+      },
+      principal: {
+        createAs: 'Create as',
+        actAs: 'Act as',
+        description: 'Determines the credentials for this Mainserver action.',
+        organization: 'Active organization',
+        user: 'Personal account',
+        dataProvider: 'Original DataProvider',
+        unavailable: 'Unavailable',
       },
       tabs: {
         ariaLabel: 'Cockpit card sections',
@@ -219,7 +227,8 @@ export const pluginCockpitCardsTranslations = {
         categoriesError: 'Could not load categories.',
         mediaError: 'Images could not be loaded or uploaded.',
         imagePreviewEmpty: 'The image preview appears after entering a URL.',
-        mediaReferencePartialFailure: 'The cockpit card was saved, but its media references could not be saved completely.',
+        mediaReferencePartialFailure:
+          'The cockpit card was saved, but its media references could not be saved completely.',
       },
       validation: {
         summaryTitle: 'Please check the following fields:',

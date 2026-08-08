@@ -48,6 +48,7 @@ describe('iam content list visibility', () => {
         allowGlobal: true,
         allowOrganizationIds: [],
         allowOwn: false,
+        allowCredentialCompatibility: false,
       });
     }
   );
@@ -74,12 +75,14 @@ describe('iam content list visibility', () => {
       allowGlobal: false,
       allowOrganizationIds: ['org-1'],
       allowOwn: true,
+      allowCredentialCompatibility: true,
     });
     expect(findRule(rules, 'news.article')).toEqual({
       contentType: 'news.article',
       allowGlobal: true,
       allowOrganizationIds: [],
       allowOwn: false,
+      allowCredentialCompatibility: false,
     });
   });
 
@@ -101,6 +104,7 @@ describe('iam content list visibility', () => {
       allowGlobal: false,
       allowOrganizationIds: ['org-1'],
       allowOwn: true,
+      allowCredentialCompatibility: true,
     });
     expect(
       isProjectionRowVisibleForRead(
@@ -158,6 +162,7 @@ describe('iam content list visibility', () => {
       allowGlobal: false,
       allowOrganizationIds: ['org-1'],
       allowOwn: true,
+      allowCredentialCompatibility: true,
     });
   });
 
@@ -177,7 +182,55 @@ describe('iam content list visibility', () => {
       allowGlobal: true,
       allowOrganizationIds: [],
       allowOwn: false,
+      allowCredentialCompatibility: false,
     });
+  });
+
+  it('allows credential-compatible Mainserver rows only for scoped compatibility reads', () => {
+    const [rule] = buildProjectionReadVisibilityRules(
+      ['news.article'],
+      [
+        createPermission({
+          action: 'news.read',
+          resourceType: 'news',
+          accessScope: 'own',
+        }),
+      ]
+    );
+
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          sourceSystem: 'mainserver',
+          authorizationMode: 'credential_visible_compatibility',
+        },
+        'account-a'
+      )
+    ).toBe(true);
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          sourceSystem: 'mainserver',
+          authorizationMode: 'exact',
+        },
+        'account-a'
+      )
+    ).toBe(false);
+    expect(
+      isProjectionRowVisibleForRead(
+        rule,
+        {
+          contentType: 'news.article',
+          sourceSystem: 'iam',
+          authorizationMode: 'credential_visible_compatibility',
+        },
+        'account-a'
+      )
+    ).toBe(false);
   });
 
   it('evaluates row visibility with own fallback', () => {
@@ -279,13 +332,25 @@ describe('iam content list visibility', () => {
     );
 
     expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'news.article', ownerUserId: 'account-a' }, 'account-a')
+      isProjectionRowVisibleForRead(
+        rule,
+        { contentType: 'news.article', ownerUserId: 'account-a' },
+        'account-a'
+      )
     ).toBe(false);
     expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', ownerUserId: 'account-a' }, 'account-b')
+      isProjectionRowVisibleForRead(
+        rule,
+        { contentType: 'events.event-record', ownerUserId: 'account-a' },
+        'account-b'
+      )
     ).toBe(false);
     expect(
-      isProjectionRowVisibleForRead(rule, { contentType: 'events.event-record', ownerUserId: 'account-a' }, 'account-a')
+      isProjectionRowVisibleForRead(
+        rule,
+        { contentType: 'events.event-record', ownerUserId: 'account-a' },
+        'account-a'
+      )
     ).toBe(true);
   });
 });

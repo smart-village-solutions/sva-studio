@@ -1,4 +1,5 @@
 import { createMainserverCrudClient } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type { SurveyMutationInput } from './surveys.mutation.types.js';
 import type {
@@ -58,7 +59,9 @@ const optionalScalarField = <TValue>(key: string, value: TValue | undefined) =>
 const hasOwnField = <TKey extends PropertyKey>(value: object, key: TKey): boolean =>
   Object.prototype.hasOwnProperty.call(value, key);
 
-const mapCreateOption = (option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]) => ({
+const mapCreateOption = (
+  option: NonNullable<NonNullable<SurveyMutationInput['questions']>[number]['options']>[number]
+) => ({
   title: toRequiredLocalizedText(option.title),
   position: option.position,
   enablesFreeText: option.enablesFreeText,
@@ -161,7 +164,10 @@ const buildUpdateSurveyBody = (input: SurveyMutationInputWithLocales) => ({
   ...optionalScalarField('showResultsInApp', input.showResultsInApp),
   isAnonymous: input.isAnonymous,
   privacyNotice: toLocalizedTextUpdate(input.privacyNotice, input.privacyNoticeLocales),
-  transparencyNotice: toLocalizedTextUpdate(input.transparencyNotice, input.transparencyNoticeLocales),
+  transparencyNotice: toLocalizedTextUpdate(
+    input.transparencyNotice,
+    input.transparencyNoticeLocales
+  ),
   ...(hasOwnField(input, 'questions')
     ? { questions: (input.questions ?? []).map(mapUpdateQuestion) }
     : {}),
@@ -186,7 +192,9 @@ const enrichUpdateInputWithLocales = (
     transparencyNoticeLocales: loadedItem.transparencyNotice,
     questions: input.questions?.map((question) => {
       const loadedQuestion = question.id ? questionsById.get(question.id) : undefined;
-      const optionsById = new Map((loadedQuestion?.options ?? []).map((option) => [option.id, option]));
+      const optionsById = new Map(
+        (loadedQuestion?.options ?? []).map((option) => [option.id, option])
+      );
 
       return {
         ...question,
@@ -215,16 +223,30 @@ const surveysClient = createMainserverCrudClient<
   mapListResponse: (response) => response,
 });
 
-export const listSurveys = async (query: SurveyListQuery): Promise<SurveyListResult> => surveysClient.list(query);
+export const listSurveys = async (query: SurveyListQuery): Promise<SurveyListResult> =>
+  surveysClient.list(query);
 
-export const getSurvey = async (contentId: string): Promise<SurveyContentItem> => surveysClient.get(contentId);
+export const getSurvey = async (contentId: string): Promise<SurveyContentItem> =>
+  surveysClient.get(contentId);
 
-export const createSurvey = async (input: SurveyMutationInput): Promise<SurveyContentItem> => surveysClient.create(input);
+export const createSurvey = async (
+  input: SurveyMutationInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<SurveyContentItem> => surveysClient.create(input, actingPrincipalType);
 
 export const updateSurvey = async (
   contentId: string,
   input: SurveyMutationInput,
-  loadedItem?: SurveyContentItem
-): Promise<SurveyContentItem> => surveysClient.update(contentId, enrichUpdateInputWithLocales(input, loadedItem));
+  loadedItem: SurveyContentItem | undefined,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<SurveyContentItem> =>
+  surveysClient.update(
+    contentId,
+    enrichUpdateInputWithLocales(input, loadedItem),
+    actingPrincipalType
+  );
 
-export const deleteSurvey = async (contentId: string): Promise<void> => surveysClient.remove(contentId);
+export const deleteSurvey = async (
+  contentId: string,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => surveysClient.remove(contentId, actingPrincipalType);

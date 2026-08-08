@@ -1,8 +1,12 @@
 import React from 'react';
 import { type UseFormReturn } from 'react-hook-form';
+import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 
 import { createSurvey, getSurvey, updateSurvey } from './surveys.api.js';
-import { createDefaultSurveyDetailFormValues, type SurveyDetailFormValues } from './surveys.detail-form.js';
+import {
+  createDefaultSurveyDetailFormValues,
+  type SurveyDetailFormValues,
+} from './surveys.detail-form.js';
 import {
   getSurveyEditorErrorMessage,
   mapSurveyItemToFormValues,
@@ -12,9 +16,7 @@ import {
 import type { SurveyContentItem } from './surveys.types.js';
 
 export type SurveyEditorStatus =
-  | { kind: 'success'; text: string }
-  | { kind: 'error'; text: string }
-  | null;
+  { kind: 'success'; text: string } | { kind: 'error'; text: string } | null;
 
 type SurveyEditorTranslation = (key: string) => string;
 
@@ -68,7 +70,10 @@ const useSurveyEditorLoader = ({
         if (!cancelled) {
           setLoadedItem(null);
           methods.reset(createDefaultSurveyDetailFormValues());
-          setStatus({ kind: 'error', text: getSurveyEditorErrorMessage(error, pt('messages.loadError')) });
+          setStatus({
+            kind: 'error',
+            text: getSurveyEditorErrorMessage(error, pt('messages.loadError')),
+          });
         }
       })
       .finally(() => {
@@ -88,6 +93,7 @@ const createSurveyEditorSubmit = (input: {
   readonly mode: SurveyEditorMode;
   readonly contentId?: string;
   readonly loadedItem: SurveyContentItem | null;
+  readonly actingPrincipalType: MainserverPrincipalType;
   readonly pt: SurveyEditorTranslation;
   readonly navigateToContentList: () => Promise<void>;
   readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
@@ -108,8 +114,13 @@ const createSurveyEditorSubmit = (input: {
       const contentId = input.contentId;
       const mutationResult =
         input.mode === 'create'
-          ? await createSurvey(mutation)
-          : await updateSurvey(contentId as string, mutation, input.loadedItem ?? undefined);
+          ? await createSurvey(mutation, input.actingPrincipalType)
+          : await updateSurvey(
+              contentId as string,
+              mutation,
+              input.loadedItem ?? undefined,
+              input.actingPrincipalType
+            );
       const savedItem =
         input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
           ? { ...mutationResult, results: input.loadedItem.results }
@@ -119,7 +130,10 @@ const createSurveyEditorSubmit = (input: {
       input.methods.reset(mapSurveyItemToFormValues(savedItem));
       input.setStatus({
         kind: 'success',
-        text: input.mode === 'create' ? input.pt('messages.createSuccess') : input.pt('messages.updateSuccess'),
+        text:
+          input.mode === 'create'
+            ? input.pt('messages.createSuccess')
+            : input.pt('messages.updateSuccess'),
       });
 
       if (input.mode === 'create') {
@@ -130,7 +144,9 @@ const createSurveyEditorSubmit = (input: {
         kind: 'error',
         text: getSurveyEditorErrorMessage(
           error,
-          input.mode === 'create' ? input.pt('messages.createError') : input.pt('messages.updateError')
+          input.mode === 'create'
+            ? input.pt('messages.createError')
+            : input.pt('messages.updateError')
         ),
       });
     }
@@ -142,12 +158,14 @@ export const useSurveyEditorController = ({
   methods,
   pt,
   navigateToContentList,
+  actingPrincipalType,
 }: Readonly<{
   mode: SurveyEditorMode;
   contentId?: string;
   methods: UseFormReturn<SurveyDetailFormValues>;
   pt: SurveyEditorTranslation;
   navigateToContentList: () => Promise<void>;
+  actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
@@ -158,6 +176,7 @@ export const useSurveyEditorController = ({
     mode,
     contentId,
     loadedItem,
+    actingPrincipalType,
     pt,
     navigateToContentList,
     setLoadedItem,

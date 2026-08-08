@@ -36,14 +36,14 @@ describe('cockpit cards api', () => {
 
     api.listCockpitCards({ page: 2, pageSize: 50 });
     api.getCockpitCard('card-1');
-    api.createCockpitCard({} as never);
-    api.updateCockpitCard('card-1', {} as never);
-    api.deleteCockpitCard('card-1');
+    api.createCockpitCard({} as never, 'organization');
+    api.updateCockpitCard('card-1', {} as never, 'organization');
+    api.deleteCockpitCard('card-1', 'organization');
     expect(state.list).toHaveBeenCalledWith({ page: 2, pageSize: 50 });
     expect(state.get).toHaveBeenCalledWith('card-1');
-    expect(state.create).toHaveBeenCalledWith({});
-    expect(state.update).toHaveBeenCalledWith('card-1', {});
-    expect(state.remove).toHaveBeenCalledWith('card-1');
+    expect(state.create).toHaveBeenCalledWith({}, 'organization');
+    expect(state.update).toHaveBeenCalledWith('card-1', {}, 'organization');
+    expect(state.remove).toHaveBeenCalledWith('card-1', 'organization');
   });
 
   it('loads category options through the host boundary', async () => {

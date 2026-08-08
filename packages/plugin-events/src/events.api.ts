@@ -3,6 +3,7 @@ import {
   createMainserverCrudClient,
   requestMainserverJson,
 } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type {
   EventCategoryOption,
@@ -44,16 +45,21 @@ export const getEvent = async (contentId: string): Promise<EventContentItem> =>
   eventsClient.get(contentId);
 export const getEventDetail = async (contentId: string) => eventsClient.getDetail(contentId);
 
-export const createEvent = async (input: EventFormInput): Promise<EventContentItem> =>
-  eventsClient.create(input);
+export const createEvent = async (
+  input: EventFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<EventContentItem> => eventsClient.create(input, actingPrincipalType);
 
 export const updateEvent = async (
   contentId: string,
-  input: EventFormInput
-): Promise<EventContentItem> => eventsClient.update(contentId, input);
+  input: EventFormInput,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<EventContentItem> => eventsClient.update(contentId, input, actingPrincipalType);
 
-export const deleteEvent = async (contentId: string): Promise<void> =>
-  eventsClient.remove(contentId);
+export const deleteEvent = async (
+  contentId: string,
+  actingPrincipalType: MainserverActingPrincipalType
+): Promise<void> => eventsClient.remove(contentId, actingPrincipalType);
 
 export const listEventCategories = async (): Promise<readonly EventCategoryOption[]> => {
   const response = await requestMainserverJson<

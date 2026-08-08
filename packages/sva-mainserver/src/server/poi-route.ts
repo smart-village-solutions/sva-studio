@@ -17,6 +17,7 @@ import {
   readString,
   type RouteMatch as SharedRouteMatch,
 } from './content-route-core.js';
+import { withMainserverContextBinding } from './content-route-context.js';
 import {
   parseAccessibilityInformation,
   parseAddressList,
@@ -41,6 +42,17 @@ import {
   updateSvaMainserverPoi,
 } from './service.js';
 import { toMainserverErrorResponse } from './mainserver-error-response.js';
+import {
+  authorizeMainserverCreateForPrincipal,
+  authorizeMainserverExistingContent,
+  finalizeMainserverMutation,
+  recordCreatedMainserverDataProvider,
+  runMainserverMutationWithFailureFinalization,
+  resolveMainserverVisibilityAction,
+  resolveMainserverMutationActor,
+  toMainserverAdditionalActions,
+  type MainserverMutationActor,
+} from './mutation-principal.js';
 
 const POI_CONTENT_TYPE = 'poi.point-of-interest';
 const POI_COLLECTION_PATH = '/api/v1/mainserver/poi';
@@ -213,6 +225,7 @@ const authorizeOrResponse = async (
       contentType: contentTypeFor(contentKind),
       ...(contentId ? { contentId } : {}),
     },
+    credentialVisibleCompatibility: action !== 'poi.read',
   });
   if (!result.ok) {
     const workspaceContext = getWorkspaceContext();
@@ -295,22 +308,60 @@ const authorizeMutation = async (
   actionName: 'create' | 'update' | 'delete',
   requestId?: string,
   contentId?: string
-): Promise<Response | ContentActor> => {
+): Promise<Response | MainserverMutationActor> => {
   const csrfError = validateMutationRequest(request, requestId);
   if (csrfError) {
     return csrfError;
   }
 
-  return authorizeOrResponse(ctx, contentKind, pluginActionFor(contentKind, actionName), contentId);
+  const authorizedActor = await authorizeOrResponse(
+    ctx,
+    contentKind,
+    pluginActionFor(contentKind, actionName),
+    contentId
+  );
+  if (isResponse(authorizedActor)) {
+    return authorizedActor;
+  }
+  return resolveMainserverMutationActor({ request, ctx, authorizedActor });
 };
 
-const createPoiContent = async (request: Request, actor: ContentActor) => {
+const createPoiContent = async (request: Request, actor: MainserverMutationActor) => {
   const parsed = await parsePoiInput(request);
   if (isResponse(parsed)) {
     return parsed;
   }
 
-  return { data: await createSvaMainserverPoi({ ...actor, poi: parsed }) };
+  const principalAuthorization = await authorizeMainserverCreateForPrincipal({
+    actor,
+    action: 'poi.create',
+    contentType: POI_CONTENT_TYPE,
+  });
+  if (isResponse(principalAuthorization)) return principalAuthorization;
+  const data = await createSvaMainserverPoi({ ...actor, poi: parsed });
+  const bindingResult = await recordCreatedMainserverDataProvider({
+    actor,
+    created: data,
+    reread: async () => (await getSvaMainserverPoiDetail({ ...actor, poiId: data.id })).data,
+    contentType: POI_CONTENT_TYPE,
+  });
+  await finalizeMainserverMutation({
+    actor,
+    providerOutcome: 'succeeded',
+    reconciliationStatus:
+      bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
+        ? 'reconciliation_required'
+        : 'complete',
+    completedSteps: ['provider_write', 'binding_observation'],
+    contentId: data.id,
+    observedDataProviderId: data.dataProvider?.id ?? bindingResult.observedDataProviderId,
+  });
+  return {
+    data,
+    ...(bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required'
+      ? { meta: { reconciliationStatus: 'reconciliation_required' as const } }
+      : {}),
+  };
 };
 
 const handleCollectionCreate = async (
@@ -325,22 +376,18 @@ const handleCollectionCreate = async (
     return actor;
   }
 
-  const result = await createPoiContent(request, actor);
-  if (isResponse(result)) {
-    return result;
-  }
+  return runMainserverMutationWithFailureFinalization({
+    actor,
+    operation: async () => {
+      const result = await createPoiContent(request, actor);
+      if (isResponse(result)) {
+        return result;
+      }
 
-  logSuccess(`mainserver_${route.contentKind}_create`, result.data.id);
-  return json(result, 201);
-};
-
-const updatePoiContent = async (request: Request, actor: ContentActor, itemId: string) => {
-  const parsed = await parsePoiInput(request);
-  if (isResponse(parsed)) {
-    return parsed;
-  }
-
-  return { data: await updateSvaMainserverPoi({ ...actor, poiId: itemId, poi: parsed }) };
+      logSuccess(`mainserver_${route.contentKind}_create`, result.data.id);
+      return json(result, 201);
+    },
+  });
 };
 
 const handleItemUpdate = async (
@@ -362,13 +409,45 @@ const handleItemUpdate = async (
     return actor;
   }
 
-  const result = await updatePoiContent(request, actor, route.itemId);
-  if (isResponse(result)) {
-    return result;
-  }
+  return runMainserverMutationWithFailureFinalization({
+    actor,
+    contentId: route.itemId,
+    operation: async () => {
+      const parsed = await parsePoiInput(request);
+      if (isResponse(parsed)) {
+        return parsed;
+      }
 
-  logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
-  return json(result);
+      const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+      const providerAuthorization = await authorizeMainserverExistingContent({
+        actor,
+        action: 'poi.update',
+        contentType: POI_CONTENT_TYPE,
+        contentId: route.itemId,
+        item: existing?.data,
+        additionalActions: existing?.data
+          ? toMainserverAdditionalActions(
+              resolveMainserverVisibilityAction(existing.data.visible, parsed.active)
+            )
+          : [],
+      });
+      if (isResponse(providerAuthorization)) return providerAuthorization;
+      const result = {
+        data: await updateSvaMainserverPoi({ ...actor, poiId: route.itemId, poi: parsed }),
+      };
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write'],
+        contentId: route.itemId,
+        observedDataProviderId: existing?.data?.dataProvider?.id,
+      });
+
+      logSuccess(`mainserver_${route.contentKind}_update`, route.itemId);
+      return json(result);
+    },
+  });
 };
 
 const handleItemDelete = async (
@@ -390,9 +469,32 @@ const handleItemDelete = async (
     return actor;
   }
 
-  const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
-  logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
-  return json({ data });
+  return runMainserverMutationWithFailureFinalization({
+    actor,
+    contentId: route.itemId,
+    operation: async () => {
+      const existing = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+      const providerAuthorization = await authorizeMainserverExistingContent({
+        actor,
+        action: 'poi.delete',
+        contentType: POI_CONTENT_TYPE,
+        contentId: route.itemId,
+        item: existing?.data,
+      });
+      if (isResponse(providerAuthorization)) return providerAuthorization;
+      const data = await deleteSvaMainserverPoi({ ...actor, poiId: route.itemId });
+      await finalizeMainserverMutation({
+        actor,
+        providerOutcome: 'succeeded',
+        reconciliationStatus: 'complete',
+        completedSteps: ['provider_write', 'tombstone'],
+        contentId: route.itemId,
+        observedDataProviderId: existing?.data?.dataProvider?.id,
+      });
+      logSuccess(`mainserver_${route.contentKind}_delete`, route.itemId);
+      return json({ data });
+    },
+  });
 };
 
 const dispatchAuthenticated = async (
@@ -420,7 +522,7 @@ const dispatchAuthenticated = async (
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      return await handleItemRead(route, ctx, logSuccess);
+      return withMainserverContextBinding(await handleItemRead(route, ctx, logSuccess), ctx);
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {

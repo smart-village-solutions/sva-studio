@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dataProviderSchema } from './mappers-shared.js';
 
 export const localizedTextSchema = z.union([z.record(z.string(), z.string()), z.string()]);
 const surveyFreeTextStatusSchema = z.enum(['INTERNAL', 'PUBLIC']);
@@ -90,6 +91,7 @@ export const surveySchema = z.object({
   updatedAt: z.string().nullish(),
   publishedAt: z.string().nullish(),
   archivedAt: z.string().nullish(),
+  dataProvider: dataProviderSchema.nullish(),
 });
 export const surveyMutationErrorSchema = z.object({
   code: surveyMutationErrorCodeSchema,

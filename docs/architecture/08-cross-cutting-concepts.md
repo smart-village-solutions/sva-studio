@@ -671,3 +671,11 @@ FAQ, Kacheln und GenericItems verwenden für Detailnavigation, Panel-Flächen, F
 - Anzeige-Defaults sind keine Persistenzwerte. Eine beschädigte oder nicht rekonstruierbare Feldgruppe darf nicht durch einen Default überschrieben werden.
 
 Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die die Treffermenge verändern, müssen vor Sortierung, Gesamtzahl und Pagination auf der vollständigen hostseitigen Teilmenge wirken. Bestätigungsdialoge sperren während einer laufenden Mutation sowohl Bestätigen als auch Abbrechen und zeigen Fehler innerhalb des Dialogkontexts.
+
+### DataProvider, Principal und Scope
+
+- Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Nur ein erfolgreicher Create oder künftig eine stabile Identity-ID darf eine Principal-Bindung beweisen.
+- Fingerprints sind nicht reversibel und werden in Diagnoseansichten nur gekürzt angezeigt; API-Key, Secret, Token und rohe `/data_provider.json`-Antworten gelangen weder in Projection, Audit, Metriken noch Logs.
+- `own` und `organization` verwenden ohne vollständige konfliktfreie Bindungen `credential_visible_compatibility`. Die tatsächlich ausgewählten Credentials und der verpflichtende frische Pre-Read begrenzen die sichtbare Menge weiterhin.
+- Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
+- Das Mutation-Journal ist technische Reconciliation- und Audit-Evidenz, keine zweite sichtbare History. Abgelehnte oder fehlgeschlagene Mutationen erzeugen keinen History-Erfolg.

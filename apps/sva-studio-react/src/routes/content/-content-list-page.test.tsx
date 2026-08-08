@@ -8,6 +8,7 @@ import { ContentListPage } from './-content-list-page';
 const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
 const useAuthMock = vi.fn();
+const useOrganizationContextMock = vi.fn();
 const deleteNewsMock = vi.fn();
 const deleteEventMock = vi.fn();
 const deleteFaqMock = vi.fn();
@@ -120,6 +121,10 @@ vi.mock('../../hooks/use-content-access', () => ({
   useContentAccess: () => useContentAccessMock(),
 }));
 
+vi.mock('../../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => useOrganizationContextMock(),
+}));
+
 vi.mock('../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
@@ -169,6 +174,7 @@ describe('ContentListPage', () => {
     useContentsMock.mockReset();
     useContentAccessMock.mockReset();
     useAuthMock.mockReset();
+    useOrganizationContextMock.mockReset();
     deleteNewsMock.mockReset();
     deleteEventMock.mockReset();
     deleteFaqMock.mockReset();
@@ -204,6 +210,14 @@ describe('ContentListPage', () => {
       },
       isLoading: false,
       hasResolvedSession: true,
+    });
+    useOrganizationContextMock.mockReturnValue({
+      context: { activeOrganizationId: 'org-1', organizations: [] },
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
     });
     useContentAccessMock.mockReturnValue({
       access: {
@@ -476,13 +490,31 @@ describe('ContentListPage', () => {
     );
     deleteSurveyMock.mockResolvedValue(undefined);
 
-    render(<ContentListPage />);
+    const view = render(
+      <ContentListPage
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+      />
+    );
+    expect(
+      (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.queryByRole('button', { name: /Status von Beteiligung ändern/ })).toBeNull();
+
+    view.rerender(
+      <ContentListPage
+        enabledMainserverMutationActions={['surveys.delete', 'surveys.update']}
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Organisation' }}
+      />
+    );
+    expect(
+      screen.getAllByRole('button', { name: /Status von Beteiligung ändern/ }).length
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
 
     expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
     await waitFor(() => {
-      expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1');
+      expect(deleteSurveyMock).toHaveBeenCalledWith('survey-1', 'organization');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();
@@ -526,13 +558,21 @@ describe('ContentListPage', () => {
       })
     );
     deleteFaqMock.mockResolvedValue(undefined);
+    useOrganizationContextMock.mockReturnValue({
+      context: null,
+      isLoading: false,
+      isUpdating: false,
+      error: null,
+      refetch: vi.fn(),
+      switchOrganization: vi.fn(),
+    });
 
     render(<ContentListPage />);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
 
     await waitFor(() => {
-      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1');
+      expect(deleteFaqMock).toHaveBeenCalledWith('faq-1', 'user');
     });
     await waitFor(() => {
       expect(refetch).toHaveBeenCalled();

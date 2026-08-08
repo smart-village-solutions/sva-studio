@@ -1,24 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  resolveActorAccountId: vi.fn(),
-  withAuthenticatedUser: vi.fn(),
-  withInstanceScopedDb: vi.fn(),
+  loadMainserverMutationJournal: vi.fn(),
+  readMainserverMutationFollowUpContext: vi.fn(),
   refreshProjectedContentsForMainserverMutation: vi.fn(),
   loggerWarn: vi.fn(),
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
-  resolveActorAccountId: state.resolveActorAccountId,
-  withAuthenticatedUser: state.withAuthenticatedUser,
-  withInstanceScopedDb: state.withInstanceScopedDb,
+  loadMainserverMutationJournal: state.loadMainserverMutationJournal,
+}));
+
+vi.mock('@sva/sva-mainserver/server', () => ({
+  readMainserverMutationFollowUpContext: state.readMainserverMutationFollowUpContext,
 }));
 
 vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => ({
     warn: state.loggerWarn,
   }),
-  getWorkspaceContext: () => ({ requestId: 'request-1' }),
 }));
 
 vi.mock('./iam-content-list-projection.server', () => ({
@@ -30,22 +30,24 @@ import { refreshProjectionAfterMainserverMutation } from './mainserver-projectio
 
 describe('mainserver projection refresh', () => {
   beforeEach(() => {
-    state.resolveActorAccountId.mockReset();
-    state.withAuthenticatedUser.mockReset();
-    state.withInstanceScopedDb.mockReset();
+    state.loadMainserverMutationJournal.mockReset();
+    state.readMainserverMutationFollowUpContext.mockReset();
     state.refreshProjectedContentsForMainserverMutation.mockReset();
     state.loggerWarn.mockReset();
-    state.resolveActorAccountId.mockResolvedValue('account-1');
-    state.withInstanceScopedDb.mockImplementation(async (_instanceId, work) => work({}));
-    state.withAuthenticatedUser.mockImplementation(async (_request, handler) =>
-      handler({
-        activeOrganizationId: 'org-1',
-        user: {
-          id: 'kc-user-1',
-          instanceId: 'de-musterhausen',
-        },
-      })
-    );
+    state.readMainserverMutationFollowUpContext.mockReturnValue({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      activeOrganizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialSource: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      operationExternalId: 'operation-1',
+    });
+    state.loadMainserverMutationJournal.mockResolvedValue({
+      authorizationMode: 'exact',
+    });
   });
 
   it('refreshes the projection after successful mutating mainserver responses', async () => {
@@ -62,13 +64,45 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
-      actorDisplayName: 'kc-user-1',
-      mutationRef: 'request-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-1',
       contentType: 'news.article',
       organizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      authorizationMode: 'exact',
       operation: 'create',
       entityId: 'news-1',
     });
+  });
+
+  it('uses the immutable mainserver operation id as the history correlation reference', async () => {
+    state.readMainserverMutationFollowUpContext.mockReturnValueOnce({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      activeOrganizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialSource: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      operationExternalId: 'operation-immutable-1',
+    });
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        headers: { 'x-sva-operation-id': 'operation-immutable-1' },
+      }),
+      new Response(JSON.stringify({ data: { id: 'news-1' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+      'news.article'
+    );
+
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith(
+      expect.objectContaining({ mutationRef: 'operation-immutable-1' })
+    );
   });
 
   it('accepts generic item projection refreshes', async () => {
@@ -85,10 +119,13 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
-      actorDisplayName: 'kc-user-1',
-      mutationRef: 'request-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-1',
       contentType: 'generic-items.generic-item',
       organizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      authorizationMode: 'exact',
       operation: 'create',
       entityId: 'generic-1',
     });
@@ -145,11 +182,13 @@ describe('mainserver projection refresh', () => {
   });
 
   it('preserves a successful create response when no item identity can be resolved', async () => {
-    await expect(refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
-      new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
-      'generic-items.generic-item'
-    )).resolves.toBeUndefined();
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/generic-items', { method: 'POST' }),
+        new Response('created', { status: 200, headers: { 'content-type': 'text/plain' } }),
+        'generic-items.generic-item'
+      )
+    ).resolves.toBeUndefined();
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
     expect(state.loggerWarn).toHaveBeenCalledWith(
@@ -172,10 +211,13 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
-      actorDisplayName: 'kc-user-1',
-      mutationRef: 'request-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-1',
       contentType: 'events.event-record',
       organizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      authorizationMode: 'exact',
       operation: 'delete',
       entityId: 'event-9',
     });
@@ -194,10 +236,13 @@ describe('mainserver projection refresh', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
-      actorDisplayName: 'kc-user-1',
-      mutationRef: 'request-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-1',
       contentType: 'news.article',
       organizationId: 'org-1',
+      actingPrincipalType: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+      authorizationMode: 'exact',
       operation: 'update',
       entityId: 'news-42',
     });
@@ -222,26 +267,32 @@ describe('mainserver projection refresh', () => {
   });
 
   it('skips targeted entity id derivation when the request path is outside known mainserver collections', async () => {
-    await expect(refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/other/news/news-42', {
-        method: 'PATCH',
-      }),
-      new Response(null, { status: 204 }),
-      'news.article'
-    )).resolves.toBeUndefined();
-    await expect(refreshProjectionAfterMainserverMutation(
-      new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
-        method: 'PATCH',
-      }),
-      new Response(null, { status: 204 }),
-      'news.article'
-    )).resolves.toBeUndefined();
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/other/news/news-42', {
+          method: 'PATCH',
+        }),
+        new Response(null, { status: 204 }),
+        'news.article'
+      )
+    ).resolves.toBeUndefined();
+    await expect(
+      refreshProjectionAfterMainserverMutation(
+        new Request('https://studio.test/api/v1/mainserver/unknown/news-42', {
+          method: 'PATCH',
+        }),
+        new Response(null, { status: 204 }),
+        'news.article'
+      )
+    ).resolves.toBeUndefined();
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
   });
 
   it('preserves a successful provider write when the projection follow-up fails', async () => {
-    state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(new Error('projection down'));
+    state.refreshProjectedContentsForMainserverMutation.mockRejectedValueOnce(
+      new Error('projection down')
+    );
 
     await expect(
       refreshProjectionAfterMainserverMutation(
@@ -253,7 +304,11 @@ describe('mainserver projection refresh', () => {
 
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Mainserver mutation projection refresh failed after a successful provider write',
-      expect.objectContaining({ contentType: 'news.article', entityId: 'news-1', error: 'projection down' })
+      expect.objectContaining({
+        contentType: 'news.article',
+        entityId: 'news-1',
+        error: 'projection down',
+      })
     );
   });
 
@@ -272,15 +327,8 @@ describe('mainserver projection refresh', () => {
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
   });
 
-  it('skips projection refresh when the authenticated user has no instance context', async () => {
-    state.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
-      handler({
-        activeOrganizationId: 'org-1',
-        user: {
-          id: 'kc-user-1',
-        },
-      })
-    );
+  it('skips projection refresh when no mutation principal context was bound', async () => {
+    state.readMainserverMutationFollowUpContext.mockReturnValueOnce(undefined);
 
     await refreshProjectionAfterMainserverMutation(
       new Request('https://studio.test/api/v1/mainserver/news/news-1', { method: 'PATCH' }),
@@ -292,10 +340,14 @@ describe('mainserver projection refresh', () => {
     );
 
     expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
+    expect(state.loggerWarn).toHaveBeenCalledWith(
+      'Skipped Mainserver mutation projection refresh without a bound principal context',
+      expect.objectContaining({ contentType: 'news.article', method: 'PATCH' })
+    );
   });
 
-  it('keeps the mutation fachlich successful when actor account resolution fails', async () => {
-    state.resolveActorAccountId.mockRejectedValue(new Error('db down'));
+  it('keeps the mutation fachlich successful when journal loading fails', async () => {
+    state.loadMainserverMutationJournal.mockRejectedValueOnce(new Error('db down'));
 
     await expect(
       refreshProjectionAfterMainserverMutation(
@@ -312,8 +364,18 @@ describe('mainserver projection refresh', () => {
     expect(state.loggerWarn).toHaveBeenCalledTimes(1);
   });
 
-  it('skips the mutation follow-up when actor account resolution returns no account', async () => {
-    state.resolveActorAccountId.mockResolvedValueOnce(undefined);
+  it('keeps a personal principal with an active organization bound to personal credentials', async () => {
+    state.readMainserverMutationFollowUpContext.mockReturnValueOnce({
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Persönliche Redaktion',
+      activeOrganizationId: 'org-1',
+      actingPrincipalType: 'user',
+      credentialSource: 'user',
+      credentialFingerprint: 'b'.repeat(64),
+      operationExternalId: 'operation-user-1',
+    });
 
     await expect(
       refreshProjectionAfterMainserverMutation(
@@ -326,14 +388,12 @@ describe('mainserver projection refresh', () => {
       )
     ).resolves.toBeUndefined();
 
-    expect(state.refreshProjectedContentsForMainserverMutation).not.toHaveBeenCalled();
-    expect(state.loggerWarn).toHaveBeenCalledWith(
-      'Skipped mainserver mutation projection refresh because actor account resolution returned no account',
+    expect(state.refreshProjectedContentsForMainserverMutation).toHaveBeenCalledWith(
       expect.objectContaining({
-        instanceId: 'de-musterhausen',
-        keycloakSubject: 'kc-user-1',
-        contentType: 'poi.point-of-interest',
-        method: 'POST',
+        organizationId: 'org-1',
+        actingPrincipalType: 'user',
+        credentialFingerprint: 'b'.repeat(64),
+        mutationRef: 'operation-user-1',
       })
     );
   });

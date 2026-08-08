@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict ZNOgquFmT6VS0nXNko3rmWH3jdmNR1X5StZsDexn9DW3WJxpBCc5f4gNNh6SRCp
+\restrict Vz93Qza3mVEhAoAJnMkD97olJzNtaKDczfYAfvGcSYheXGs9olggcW3zNPWoc56
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -585,7 +585,11 @@ CREATE TABLE iam.content_list_projection (
     source_data_provider_name text,
     credential_source text,
     projection_scope_key text NOT NULL,
+    credential_fingerprint text,
+    authorization_mode text DEFAULT 'credential_visible_compatibility'::text NOT NULL,
     CONSTRAINT content_list_projection_author_display_mode_chk CHECK ((author_display_mode = ANY (ARRAY['organization'::text, 'user'::text]))),
+    CONSTRAINT content_list_projection_authorization_mode_chk CHECK ((authorization_mode = ANY (ARRAY['credential_visible_compatibility'::text, 'exact'::text]))),
+    CONSTRAINT content_list_projection_credential_fingerprint_chk CHECK (((credential_fingerprint IS NULL) OR (credential_fingerprint ~ '^[a-f0-9]{64}$'::text))),
     CONSTRAINT content_list_projection_credential_source_chk CHECK (((credential_source IS NULL) OR (credential_source = ANY (ARRAY['organization'::text, 'user'::text])))),
     CONSTRAINT content_list_projection_source_system_chk CHECK ((source_system = ANY (ARRAY['iam'::text, 'mainserver'::text]))),
     CONSTRAINT content_list_projection_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'in_review'::text, 'approved'::text, 'published'::text, 'archived'::text]))),
@@ -1339,6 +1343,84 @@ CREATE TABLE iam.legal_text_versions (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT legal_text_versions_status_chk CHECK ((status = ANY (ARRAY['draft'::text, 'valid'::text, 'archived'::text])))
 );
+
+
+--
+-- Name: mainserver_data_provider_bindings; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.mainserver_data_provider_bindings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    instance_id text NOT NULL,
+    principal_type text NOT NULL,
+    principal_id uuid NOT NULL,
+    credential_fingerprint text NOT NULL,
+    data_provider_id text NOT NULL,
+    data_provider_name text,
+    status text DEFAULT 'verified'::text NOT NULL,
+    evidence_kind text NOT NULL,
+    first_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    superseded_at timestamp with time zone,
+    CONSTRAINT mainserver_data_provider_bindings_evidence_chk CHECK ((evidence_kind = ANY (ARRAY['create_response'::text, 'create_reread'::text, 'identity_endpoint'::text]))),
+    CONSTRAINT mainserver_data_provider_bindings_fingerprint_chk CHECK ((credential_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT mainserver_data_provider_bindings_principal_type_chk CHECK ((principal_type = ANY (ARRAY['organization'::text, 'user'::text]))),
+    CONSTRAINT mainserver_data_provider_bindings_provider_id_chk CHECK ((length(btrim(data_provider_id)) > 0)),
+    CONSTRAINT mainserver_data_provider_bindings_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'verified'::text, 'conflict'::text, 'historical'::text, 'revoked'::text])))
+);
+
+ALTER TABLE ONLY iam.mainserver_data_provider_bindings FORCE ROW LEVEL SECURITY;
+
+
+--
+-- Name: mainserver_mutation_journal; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.mainserver_mutation_journal (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    instance_id text NOT NULL,
+    operation_external_id text NOT NULL,
+    actor_account_id uuid,
+    acting_principal_type text NOT NULL,
+    acting_principal_id uuid NOT NULL,
+    active_organization_id uuid,
+    credential_source text NOT NULL,
+    credential_fingerprint text NOT NULL,
+    action_id text NOT NULL,
+    content_type text NOT NULL,
+    content_id text,
+    expected_data_provider_id text,
+    observed_data_provider_id text,
+    authorization_mode text NOT NULL,
+    resolver_mode text DEFAULT 'shadow'::text NOT NULL,
+    candidate_authorization_mode text,
+    candidate_allowed boolean,
+    shadow_difference boolean DEFAULT false NOT NULL,
+    provider_outcome text DEFAULT 'pending'::text NOT NULL,
+    reconciliation_status text DEFAULT 'pending'::text NOT NULL,
+    attempt_count integer DEFAULT 1 NOT NULL,
+    completed_steps jsonb DEFAULT '[]'::jsonb NOT NULL,
+    preimage jsonb,
+    last_error_code text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    CONSTRAINT mainserver_mutation_journal_action_chk CHECK ((action_id ~ '^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$'::text)),
+    CONSTRAINT mainserver_mutation_journal_attempt_count_chk CHECK ((attempt_count > 0)),
+    CONSTRAINT mainserver_mutation_journal_authorization_mode_chk CHECK ((authorization_mode = ANY (ARRAY['credential_visible_compatibility'::text, 'exact'::text]))),
+    CONSTRAINT mainserver_mutation_journal_candidate_mode_chk CHECK (((candidate_authorization_mode IS NULL) OR (candidate_authorization_mode = ANY (ARRAY['credential_visible_compatibility'::text, 'exact'::text])))),
+    CONSTRAINT mainserver_mutation_journal_credential_source_chk CHECK ((credential_source = ANY (ARRAY['organization'::text, 'user'::text]))),
+    CONSTRAINT mainserver_mutation_journal_fingerprint_chk CHECK ((credential_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT mainserver_mutation_journal_preimage_chk CHECK (((preimage IS NULL) OR (jsonb_typeof(preimage) = 'object'::text))),
+    CONSTRAINT mainserver_mutation_journal_principal_type_chk CHECK ((acting_principal_type = ANY (ARRAY['organization'::text, 'user'::text]))),
+    CONSTRAINT mainserver_mutation_journal_provider_outcome_chk CHECK ((provider_outcome = ANY (ARRAY['pending'::text, 'succeeded'::text, 'failed'::text, 'unknown'::text]))),
+    CONSTRAINT mainserver_mutation_journal_reconciliation_chk CHECK ((reconciliation_status = ANY (ARRAY['pending'::text, 'complete'::text, 'reconciliation_required'::text, 'failed'::text]))),
+    CONSTRAINT mainserver_mutation_journal_resolver_mode_chk CHECK ((resolver_mode = ANY (ARRAY['shadow'::text, 'automatic'::text, 'compatibility'::text]))),
+    CONSTRAINT mainserver_mutation_journal_shadow_evidence_chk CHECK (((resolver_mode = 'shadow'::text) OR ((candidate_authorization_mode IS NULL) AND (candidate_allowed IS NULL) AND (shadow_difference = false)))),
+    CONSTRAINT mainserver_mutation_journal_steps_chk CHECK ((jsonb_typeof(completed_steps) = 'array'::text))
+);
+
+ALTER TABLE ONLY iam.mainserver_mutation_journal FORCE ROW LEVEL SECURITY;
 
 
 --
@@ -2193,6 +2275,38 @@ ALTER TABLE ONLY iam.legal_text_versions
 
 
 --
+-- Name: mainserver_data_provider_bindings mainserver_data_provider_bindings_observation_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_data_provider_bindings
+    ADD CONSTRAINT mainserver_data_provider_bindings_observation_key UNIQUE (instance_id, principal_type, principal_id, credential_fingerprint, data_provider_id);
+
+
+--
+-- Name: mainserver_data_provider_bindings mainserver_data_provider_bindings_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_data_provider_bindings
+    ADD CONSTRAINT mainserver_data_provider_bindings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: mainserver_mutation_journal mainserver_mutation_journal_operation_key; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_mutation_journal
+    ADD CONSTRAINT mainserver_mutation_journal_operation_key UNIQUE (instance_id, operation_external_id);
+
+
+--
+-- Name: mainserver_mutation_journal mainserver_mutation_journal_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_mutation_journal
+    ADD CONSTRAINT mainserver_mutation_journal_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: media_assets media_assets_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -2985,6 +3099,34 @@ CREATE INDEX idx_studio_jobs_instance_status_updated_at ON iam.studio_jobs USING
 --
 
 CREATE INDEX idx_studio_jobs_parent_job_id ON iam.studio_jobs USING btree (parent_job_id);
+
+
+--
+-- Name: mainserver_data_provider_bindings_principal_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX mainserver_data_provider_bindings_principal_idx ON iam.mainserver_data_provider_bindings USING btree (instance_id, principal_type, principal_id, credential_fingerprint, status);
+
+
+--
+-- Name: mainserver_data_provider_bindings_provider_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX mainserver_data_provider_bindings_provider_idx ON iam.mainserver_data_provider_bindings USING btree (instance_id, data_provider_id, status);
+
+
+--
+-- Name: mainserver_mutation_journal_content_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX mainserver_mutation_journal_content_idx ON iam.mainserver_mutation_journal USING btree (instance_id, content_type, content_id, created_at DESC);
+
+
+--
+-- Name: mainserver_mutation_journal_reconciliation_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX mainserver_mutation_journal_reconciliation_idx ON iam.mainserver_mutation_journal USING btree (instance_id, reconciliation_status, updated_at);
 
 
 --
@@ -3815,6 +3957,22 @@ ALTER TABLE ONLY iam.legal_text_versions
 
 
 --
+-- Name: mainserver_data_provider_bindings mainserver_data_provider_bindings_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_data_provider_bindings
+    ADD CONSTRAINT mainserver_data_provider_bindings_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: mainserver_mutation_journal mainserver_mutation_journal_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.mainserver_mutation_journal
+    ADD CONSTRAINT mainserver_mutation_journal_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
 -- Name: media_assets media_assets_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4295,6 +4453,32 @@ CREATE POLICY legal_text_versions_isolation_policy ON iam.legal_text_versions US
 
 
 --
+-- Name: mainserver_data_provider_bindings; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.mainserver_data_provider_bindings ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mainserver_data_provider_bindings mainserver_data_provider_bindings_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY mainserver_data_provider_bindings_isolation_policy ON iam.mainserver_data_provider_bindings USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
+-- Name: mainserver_mutation_journal; Type: ROW SECURITY; Schema: iam; Owner: -
+--
+
+ALTER TABLE iam.mainserver_mutation_journal ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: mainserver_mutation_journal mainserver_mutation_journal_isolation_policy; Type: POLICY; Schema: iam; Owner: -
+--
+
+CREATE POLICY mainserver_mutation_journal_isolation_policy ON iam.mainserver_mutation_journal USING ((instance_id = iam.current_instance_id())) WITH CHECK ((instance_id = iam.current_instance_id()));
+
+
+--
 -- Name: organization_mainserver_credentials; Type: ROW SECURITY; Schema: iam; Owner: -
 --
 
@@ -4359,4 +4543,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ZNOgquFmT6VS0nXNko3rmWH3jdmNR1X5StZsDexn9DW3WJxpBCc5f4gNNh6SRCp
+\unrestrict Vz93Qza3mVEhAoAJnMkD97olJzNtaKDczfYAfvGcSYheXGs9olggcW3zNPWoc56

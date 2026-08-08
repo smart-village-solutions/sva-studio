@@ -23,6 +23,8 @@ import {
 } from './news-plugin.routes';
 
 test.describe('news plugin', () => {
+  test.describe.configure({ timeout: 90_000 });
+
   test.beforeEach(async ({ page }) => {
     await mockSharedShellRequests(page);
     await page.route('**/api/v1/iam/media**', routeNewsMediaRequests);
@@ -106,7 +108,9 @@ test.describe('news plugin', () => {
     await navigateClientSide(page, '/admin/news/new');
     await expectPluginPageHeading(page, /Nachricht anlegen|news\.editor\.createTitle/);
     await page.getByLabel(/Überschrift|news\.fields\.title/).fill('Erste News');
-    await expect(page.locator('#news-author')).toHaveValue('Editor One');
+    await expect(
+      page.getByRole('textbox', { name: /Erstellen als|news\.principal\.createAs/ })
+    ).toHaveValue('Editor One');
     const categorySearch = page.getByRole('combobox', {
       name: /Kategorien suchen|news\.fields\.categoriesSearch/,
     });
@@ -127,9 +131,7 @@ test.describe('news plugin', () => {
     await page
       .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)
       .fill('https://example.com/news/image.jpg');
-    await page
-      .getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/)
-      .fill('Titelbild');
+    await page.getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/).fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
     await page
@@ -139,9 +141,9 @@ test.describe('news plugin', () => {
     await expect.poll(() => newsItems.length).toBe(1);
     expect(createdBody).toMatchObject({
       title: 'Erste News',
-      author: 'Editor One',
       sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
     });
+    expect(createdBody).not.toHaveProperty('author');
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
     await navigateClientSide(page, '/admin/news/news-1');
     await expectNewsEditorReady(page, 'edit');

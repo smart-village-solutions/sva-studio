@@ -11,6 +11,10 @@ const state = vi.hoisted(() => ({
   prepareExternalContent: vi.fn(),
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
+  resolveMutationPrincipalContext: vi.fn(),
+  recordMainserverDataProviderObservation: vi.fn(),
+  beginMainserverMutationJournal: vi.fn(),
+  finalizeMainserverMutationJournal: vi.fn(),
   updateCore: vi.fn(),
   updateReconciliation: vi.fn(),
   validateCsrf: vi.fn(),
@@ -26,6 +30,17 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  authorizeMainserverCreatePrincipal: vi.fn(() => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   authorizeContentPrimitiveForUser: state.authorize,
   bindExternalContentReference: state.bindReference,
   completeIdempotency: state.completeIdempotency,
@@ -36,6 +51,10 @@ vi.mock('@sva/auth-runtime/server', () => ({
   prepareExternalContent: state.prepareExternalContent,
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
+  resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
+  beginMainserverMutationJournal: state.beginMainserverMutationJournal,
+  finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
   updateExternalContentCore: state.updateCore,
   updateExternalContentReconciliationStatus: state.updateReconciliation,
   validateCsrf: state.validateCsrf,
@@ -62,6 +81,7 @@ vi.mock('./service.js', () => ({
 
 import { dispatchSvaMainserverProjectsRequest } from './projects-route.js';
 import { SvaMainserverError } from './errors.js';
+import { createMainserverContextBinding } from './content-route-context.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
 const accountId = '22222222-2222-4222-8222-222222222222';
@@ -152,6 +172,9 @@ const request = (path: string, init?: RequestInit) =>
     headers: {
       Origin: 'https://studio.test',
       'X-Requested-With': 'XMLHttpRequest',
+      ...(init?.method && init.method !== 'GET'
+        ? { 'X-SVA-Acting-Principal-Type': 'organization' }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -170,6 +193,24 @@ const prepareDefaults = () => {
   });
   state.resolveActorInfo.mockResolvedValue({
     actor: { instanceId: 'tenant-1', actorAccountId: accountId },
+  });
+  state.resolveMutationPrincipalContext.mockResolvedValue({
+    ok: true,
+    context: {
+      version: 1,
+      instanceId: 'tenant-1',
+      actorAccountId: accountId,
+      keycloakSubject: 'subject-1',
+      activeOrganizationId: organizationId,
+      actingPrincipalType: 'organization',
+      actingPrincipalId: organizationId,
+      credentialSource: 'organization',
+      credentialFingerprint: 'a'.repeat(64),
+    },
+  });
+  state.recordMainserverDataProviderObservation.mockResolvedValue({
+    outcome: 'created',
+    binding: { status: 'verified' },
   });
   state.listGenericItems.mockResolvedValue({
     data: [],
@@ -254,7 +295,7 @@ describe('projects route', () => {
     );
   });
 
-  it('uses the local person author and stable content id for bound legacy projects', async () => {
+  it('keeps local IAM ownership separate from upstream author metadata', async () => {
     prepareDefaults();
     state.loadReferenceByContentId.mockResolvedValue(reference);
     state.loadCore.mockResolvedValue({
@@ -273,7 +314,11 @@ describe('projects route', () => {
     await expect(response?.json()).resolves.toMatchObject({
       data: {
         id: contentId,
-        author: { type: 'person', id: accountId, displayName: 'Person Redaktion' },
+        author: {
+          type: 'organization',
+          id: 'mainserver:external-1',
+          displayName: 'Gemeinde',
+        },
       },
     });
   });
@@ -304,11 +349,127 @@ describe('projects route', () => {
     expect(state.getGenericItem).not.toHaveBeenCalled();
   });
 
+  it('rejects stale editor organization contexts while retaining the legacy transition', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.loadCore.mockResolvedValue(core);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const stale = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SVA-Context-Binding': 'v1.stale-context',
+        },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(stale?.status).toBe(409);
+    await expect(stale?.json()).resolves.toMatchObject({
+      error: 'stale_mainserver_context',
+    });
+    expect(state.getGenericItem).not.toHaveBeenCalled();
+
+    const missingV2Binding = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SVA-Mainserver-Contract-Version': '2',
+        },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(missingV2Binding?.status).toBe(409);
+    await expect(missingV2Binding?.json()).resolves.toMatchObject({
+      error: 'stale_mainserver_context',
+    });
+
+    const currentContextBinding = createMainserverContextBinding({
+      user: { id: ctx.user.id, instanceId: ctx.user.instanceId },
+      activeOrganizationId: ctx.activeOrganizationId,
+    });
+    const current = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SVA-Mainserver-Contract-Version': '2',
+          'X-SVA-Context-Binding': currentContextBinding,
+        },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(current?.status).toBe(200);
+
+    const legacy = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input),
+      })
+    );
+    expect(legacy?.status).toBe(200);
+  });
+
+  it('pre-reads again with the newly selected personal principal before updating', async () => {
+    prepareDefaults();
+    state.resolveMutationPrincipalContext.mockResolvedValueOnce({
+      ok: true,
+      context: {
+        version: 1,
+        instanceId: 'tenant-1',
+        actorAccountId: accountId,
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: organizationId,
+        actingPrincipalType: 'user',
+        actingPrincipalId: accountId,
+        credentialSource: 'user',
+        credentialFingerprint: 'b'.repeat(64),
+      },
+    });
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.getGenericItem.mockResolvedValue(genericItem);
+    state.loadCore.mockResolvedValue(core);
+    state.updateGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-SVA-Acting-Principal-Type': 'user',
+        },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.getGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericItemId: 'external-1',
+        actingPrincipalType: 'user',
+        credentialFingerprint: 'b'.repeat(64),
+      })
+    );
+    expect(state.updateGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actingPrincipalType: 'user',
+        credentialFingerprint: 'b'.repeat(64),
+      })
+    );
+  });
+
   it('creates local core and stable external reference before binding the provider result', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
-    state.prepareExternalContent.mockResolvedValue({ contentId, reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' } });
+    state.prepareExternalContent.mockResolvedValue({
+      contentId,
+      reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' },
+    });
     state.loadCore.mockResolvedValue(core);
     state.createGenericItem.mockResolvedValue(genericItem);
     state.bindReference.mockResolvedValue(reference);
@@ -350,7 +511,7 @@ describe('projects route', () => {
     );
   });
 
-  it('creates a hidden draft with the authenticated person as author', async () => {
+  it('uses the resolved organization principal independently of a legacy request author', async () => {
     prepareDefaults();
     state.authorize.mockResolvedValue({
       ok: true,
@@ -381,8 +542,15 @@ describe('projects route', () => {
 
     expect(response?.status).toBe(201);
     expect(state.prepareExternalContent).toHaveBeenCalledWith(
-      expect.objectContaining({ authorDisplayMode: 'user', status: 'draft' })
+      expect.objectContaining({
+        authorDisplayMode: 'organization',
+        organizationId,
+        status: 'draft',
+      })
     );
+    const createdItem = state.createGenericItem.mock.calls[0]?.[0]?.genericItem;
+    expect(createdItem).not.toHaveProperty('author');
+    expect(createdItem?.payload).not.toHaveProperty('author');
     expect(state.changeVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ visible: false })
     );
@@ -392,7 +560,10 @@ describe('projects route', () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
-    state.prepareExternalContent.mockResolvedValue({ contentId, reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' } });
+    state.prepareExternalContent.mockResolvedValue({
+      contentId,
+      reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' },
+    });
     state.loadCore.mockResolvedValue(core);
     state.createGenericItem.mockRejectedValue(new Error('connection_lost'));
 
@@ -508,8 +679,15 @@ describe('projects route', () => {
       request(`/api/v1/mainserver/projects/${contentId}`)
     );
     expect(success?.status).toBe(200);
+    expect(success?.headers.get('x-sva-context-binding')).toMatch(/^v1\.[A-Za-z0-9_-]+$/);
     await expect(success?.json()).resolves.toMatchObject({
-      data: { author: { type: 'organization', id: organizationId, displayName: 'Gemeinde' } },
+      data: {
+        author: {
+          type: 'organization',
+          id: 'mainserver:external-1',
+          displayName: 'Gemeinde',
+        },
+      },
     });
 
     state.loadReferenceByContentId.mockResolvedValueOnce(undefined);
@@ -577,19 +755,23 @@ describe('projects route', () => {
     prepareDefaults();
     state.validateCsrf.mockReturnValueOnce(new Response(null, { status: 403 }));
     expect(
-      (await dispatchSvaMainserverProjectsRequest(
-        request('/api/v1/mainserver/projects', { method: 'POST', body: JSON.stringify(input) })
-      ))?.status
+      (
+        await dispatchSvaMainserverProjectsRequest(
+          request('/api/v1/mainserver/projects', { method: 'POST', body: JSON.stringify(input) })
+        )
+      )?.status
     ).toBe(403);
 
     expect(
-      (await dispatchSvaMainserverProjectsRequest(
-        request('/api/v1/mainserver/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input),
-        })
-      ))?.status
+      (
+        await dispatchSvaMainserverProjectsRequest(
+          request('/api/v1/mainserver/projects', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(input),
+          })
+        )
+      )?.status
     ).toBe(400);
 
     state.loadReferenceByOperation.mockResolvedValue(undefined);
@@ -676,35 +858,8 @@ describe('projects route', () => {
     );
   });
 
-  it('rejects author impersonation and preserves provider success across local finalize failures', async () => {
+  it('ignores legacy author claims and preserves provider success across local finalize failures', async () => {
     prepareDefaults();
-    state.loadReferenceByOperation.mockResolvedValue(undefined);
-    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
-
-    const invalidAuthor = await dispatchSvaMainserverProjectsRequest(
-      request('/api/v1/mainserver/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
-        body: JSON.stringify({
-          ...input,
-          author: { type: 'organization', id: 'different-org', displayName: 'Fremd' },
-        }),
-      })
-    );
-    expect(invalidAuthor?.status).toBe(400);
-
-    const invalidPerson = await dispatchSvaMainserverProjectsRequest(
-      request('/api/v1/mainserver/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-person' },
-        body: JSON.stringify({
-          ...input,
-          author: { type: 'person', id: 'different-person', displayName: 'Fremd' },
-        }),
-      })
-    );
-    expect(invalidPerson?.status).toBe(400);
-
     state.loadReferenceByContentId.mockResolvedValue(reference);
     state.getGenericItem.mockResolvedValue(genericItem);
     state.loadCore.mockResolvedValue(core);
@@ -715,10 +870,16 @@ describe('projects route', () => {
       request(`/api/v1/mainserver/projects/${contentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          ...input,
+          author: { type: 'person', id: 'different-person', displayName: 'Fremd' },
+        }),
       })
     );
     expect(update?.status).toBe(200);
+    const updatedItem = state.updateGenericItem.mock.calls[0]?.[0]?.genericItem;
+    expect(updatedItem).toHaveProperty('author', 'Gemeinde');
+    expect(updatedItem?.payload).not.toHaveProperty('author');
     expect(state.updateReconciliation).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'reconciliation_required',
@@ -744,7 +905,7 @@ describe('projects route', () => {
     );
   });
 
-  it('normalizes provider-only authors and never updates a foreign local content core', async () => {
+  it('preserves provider-only author metadata and never updates a foreign local content core', async () => {
     prepareDefaults();
     state.loadReferenceByContentId.mockResolvedValue(reference);
     state.getGenericItem.mockResolvedValue(genericItem);
@@ -770,12 +931,12 @@ describe('projects route', () => {
     expect(state.updateGenericItem).toHaveBeenCalledWith(
       expect.objectContaining({
         genericItem: expect.objectContaining({
-          payload: expect.objectContaining({
-            author: expect.objectContaining({ id: organizationId }),
-          }),
+          author: 'Gemeinde',
         }),
       })
     );
+    const updatedItem = state.updateGenericItem.mock.calls[0]?.[0]?.genericItem;
+    expect(updatedItem?.payload).not.toHaveProperty('author');
     expect(state.updateCore).not.toHaveBeenCalled();
   });
 });

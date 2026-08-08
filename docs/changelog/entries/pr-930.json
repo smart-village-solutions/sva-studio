@@ -1,0 +1,4 @@
+{
+  "prNumber": 930,
+  "body": "Mainserver-DataProvider werden automatisch zu Content-Autoren\n\n- Persönliche und organisatorische Mainserver-Credentials bestimmen beim Erstellen und Bearbeiten den handelnden Principal.\n- Automatische, credential-versionierte Bindungen ersetzen manuelle Zuordnungen und Namens-Mappings.\n- Same-Credential-Prüfungen, Shadow-Auswertung und Diagnose sichern Bearbeitungen ab, solange der Mainserver noch keine stabile DataProvider-ID liefert."
+}

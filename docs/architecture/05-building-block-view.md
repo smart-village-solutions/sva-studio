@@ -720,3 +720,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/studio-module-iam` komponiert die bestehenden Modulverträge zur validierten Gesamtsicht `studioPermissionCatalog`.
 - `@sva/data-repositories` materialisiert Definitionen und verwaltete Grants additiv und liefert sichere Änderungszähler.
 - `@sva/instance-registry` bindet denselben Vertrag an Tenant-Bootstrap, Modul-Lifecycle und explizites `seedIamBaseline`.
+
+### Ergänzung 2026-08: DataProvider-gebundene Mainserver-Autorenschaft
+
+- `@sva/auth-runtime` besitzt die instanz- und credential-versionierten Principal-Bindungen, den Shadow-/Automatic-/Compatibility-Resolver, das persistente Mutation-Journal und die read-only Admin-Diagnose.
+- `@sva/sva-mainserver` bindet jede Schreiboperation an einen unveränderlichen `MutationPrincipalContext`; derselbe Kontext trägt Pre-Read, Provider-Write, Statusschritt, Audit und kausalen Projection-Refresh.
+- `@sva/plugin-sdk` versioniert Mutationsrequests mit Vertrag V2 und übermittelt ausschließlich den Principal-Typ, die Operations-ID und die nicht autorisierende Editor-Kontextbindung. Credentials, Principal-IDs und DataProvider-IDs kommen nie aus dem Browser.
+- `@sva/studio-ui-react` stellt das gemeinsame übersetzte Principal-Control und die schreibgeschützte DataProvider-Anzeige für alle Mainserver-Content-Plugins bereit.

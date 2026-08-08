@@ -9,8 +9,12 @@ import type {
 } from './news.types.js';
 
 type NewsEditorialStatus = NewsSavePlan['editorialStatus'];
-type NewsLegacyCompatibilitySnapshot = NonNullable<NewsDetailEditorialFormValues['__legacySnapshot']>;
-type NewsItemMediaContent = NonNullable<NonNullable<NewsContentItem['contentBlocks']>[number]['mediaContents']>[number];
+type NewsLegacyCompatibilitySnapshot = NonNullable<
+  NewsDetailEditorialFormValues['__legacySnapshot']
+>;
+type NewsItemMediaContent = NonNullable<
+  NonNullable<NewsContentItem['contentBlocks']>[number]['mediaContents']
+>[number];
 
 const mapNewsItemMediaContent = (media: NewsItemMediaContent): NewsMediaContentFormValue => ({
   captionText: media.captionText ?? '',
@@ -56,7 +60,8 @@ const mapNewsItemCategories = (item: NewsContentItem): string[] => {
   return item.payload.category ? [item.payload.category] : [];
 };
 
-const hasMeaningfulString = (value?: string | null): value is string => Boolean(value && value.trim().length > 0);
+const hasMeaningfulString = (value?: string | null): value is string =>
+  Boolean(value && value.trim().length > 0);
 
 const getMeaningfulCharactersToBeShown = (value?: number | string) => {
   if (typeof value === 'number') {
@@ -85,7 +90,9 @@ const getMeaningfulAddress = (address?: NewsLegacyCompatibilitySnapshot['address
   const zip = hasMeaningfulString(address.zip) ? address.zip : undefined;
   const city = hasMeaningfulString(address.city) ? address.city : undefined;
 
-  return street || zip || city ? { ...(street ? { street } : {}), ...(zip ? { zip } : {}), ...(city ? { city } : {}) } : undefined;
+  return street || zip || city
+    ? { ...(street ? { street } : {}), ...(zip ? { zip } : {}), ...(city ? { city } : {}) }
+    : undefined;
 };
 
 const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySnapshot => ({
@@ -129,7 +136,9 @@ export const deriveNewsEditorialStatus = (
     return 'draft';
   }
 
-  return new Date(input.publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';
+  return new Date(input.publishedAt).getTime() > new Date(nowIso).getTime()
+    ? 'scheduled'
+    : 'published';
 };
 
 const getExistingPublishedAt = (snapshot: NewsLegacyCompatibilitySnapshot | null) =>
@@ -158,9 +167,10 @@ const resolvePublishedAt = (
     return existingPublishedAt ?? nowIso;
   }
 
-  return snapshot?.visible === false || wasScheduledPublication(snapshot, existingPublishedAt, nowIso)
+  return snapshot?.visible === false ||
+    wasScheduledPublication(snapshot, existingPublishedAt, nowIso)
     ? nowIso
-    : existingPublishedAt ?? nowIso;
+    : (existingPublishedAt ?? nowIso);
 };
 
 const resolvePublicationDate = (
@@ -169,7 +179,8 @@ const resolvePublicationDate = (
   effectivePublicationTimestamp: string
 ) => {
   if (
-    (values.__compatibilityTouched?.publicationDate || values.__compatibilityTouched?.publishedAt) &&
+    (values.__compatibilityTouched?.publicationDate ||
+      values.__compatibilityTouched?.publishedAt) &&
     hasMeaningfulString(snapshot?.publicationDate)
   ) {
     return snapshot.publicationDate;
@@ -191,20 +202,28 @@ const buildLegacyMutationFields = (
     ...(snapshot?.fullVersion !== undefined ? { fullVersion: snapshot.fullVersion } : {}),
     ...(charactersToBeShown !== undefined ? { charactersToBeShown } : {}),
     ...(hasMeaningfulString(snapshot?.newsType) ? { newsType: snapshot.newsType } : {}),
-    ...(snapshot?.showPublishDate !== undefined ? { showPublishDate: snapshot.showPublishDate } : {}),
+    ...(snapshot?.showPublishDate !== undefined
+      ? { showPublishDate: snapshot.showPublishDate }
+      : {}),
     ...(address ? { address } : {}),
-    ...(hasMeaningfulString(snapshot?.pointOfInterestId) ? { pointOfInterestId: snapshot.pointOfInterestId } : {}),
-    ...(snapshot?.pushNotificationsSentAt ? {} : { pushNotification: values.pushNotificationEnabled }),
+    ...(hasMeaningfulString(snapshot?.pointOfInterestId)
+      ? { pointOfInterestId: snapshot.pointOfInterestId }
+      : {}),
+    ...(snapshot?.pushNotificationsSentAt
+      ? {}
+      : { pushNotification: values.pushNotificationEnabled }),
   };
 };
 
-export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailEditorialFormValues => {
+export const createNewsEditorFormValues = (
+  item: NewsContentItem
+): NewsDetailEditorialFormValues => {
   const contentBlocks = mapNewsItemContentBlocks(item);
   const firstBlock = contentBlocks[0];
   const editorialStatus = deriveNewsEditorialStatus(item, new Date().toISOString());
 
   return {
-    title: item.title.trim().length > 0 ? item.title : firstBlock?.title ?? '',
+    title: item.title.trim().length > 0 ? item.title : (firstBlock?.title ?? ''),
     author: item.author ?? '',
     categories: mapNewsItemCategories(item),
     contentIntro: firstBlock?.intro ?? '',
@@ -216,7 +235,12 @@ export const createNewsEditorFormValues = (item: NewsContentItem): NewsDetailEdi
     },
     sourceUrlDescription: item.sourceUrl?.description ?? '',
     pushNotificationEnabled: false,
-    publicationMode: editorialStatus === 'draft' ? 'draft' : editorialStatus === 'scheduled' ? 'scheduled' : 'immediate',
+    publicationMode:
+      editorialStatus === 'draft'
+        ? 'draft'
+        : editorialStatus === 'scheduled'
+          ? 'scheduled'
+          : 'immediate',
     scheduledPublicationAt: editorialStatus === 'scheduled' ? item.publishedAt : '',
     __legacySnapshot: createLegacySnapshot(item),
     __compatibilityTouched: {},
@@ -230,10 +254,15 @@ export const buildNewsSavePayload = (
 ): NewsSavePlan => {
   const existingPublishedAt = getExistingPublishedAt(existingSnapshot);
   const publishedAt = resolvePublishedAt(values, existingSnapshot, existingPublishedAt, nowIso);
-  const effectivePublicationTimestamp = values.publicationMode === 'draft' ? existingPublishedAt ?? nowIso : publishedAt;
+  const effectivePublicationTimestamp =
+    values.publicationMode === 'draft' ? (existingPublishedAt ?? nowIso) : publishedAt;
   const visible = values.publicationMode !== 'draft';
   const sourceUrlDescription = values.sourceUrlDescription || values.sourceUrl.description || '';
-  const publicationDate = resolvePublicationDate(values, existingSnapshot, effectivePublicationTimestamp);
+  const publicationDate = resolvePublicationDate(
+    values,
+    existingSnapshot,
+    effectivePublicationTimestamp
+  );
 
   return {
     visible,
@@ -241,7 +270,6 @@ export const buildNewsSavePayload = (
     mutation: {
       ...buildLegacyMutationFields(existingSnapshot, values),
       title: values.title,
-      author: values.author,
       categories: values.categories.map((name) => ({ name })),
       publishedAt: effectivePublicationTimestamp,
       publicationDate,

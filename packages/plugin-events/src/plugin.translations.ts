@@ -19,6 +19,15 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     editTitle: 'Veranstaltung bearbeiten',
     editDescription: 'Aktualisieren oder löschen Sie den Veranstaltungseintrag.',
   },
+  principal: {
+    createAs: 'Erstellen als',
+    actAs: 'Handeln als',
+    description: 'Bestimmt die Credentials für diese Mainserver-Aktion.',
+    organization: 'Aktive Organisation',
+    user: 'Persönlicher Account',
+    dataProvider: 'Ursprünglicher DataProvider',
+    unavailable: 'Nicht verfügbar',
+  },
   fields: {
     title: 'Überschrift',
     description: 'Beschreibung',
@@ -378,6 +387,15 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     createDescription: 'Create a new event record.',
     editTitle: 'Edit event',
     editDescription: 'Update or delete the event record.',
+  },
+  principal: {
+    createAs: 'Create as',
+    actAs: 'Act as',
+    description: 'Determines the credentials for this Mainserver action.',
+    organization: 'Active organization',
+    user: 'Personal account',
+    dataProvider: 'Original DataProvider',
+    unavailable: 'Unavailable',
   },
   fields: {
     title: 'Title',

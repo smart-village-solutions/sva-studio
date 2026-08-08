@@ -9,12 +9,14 @@ import {
   categorySchema,
   contactSchema,
   dateSchema,
+  dataProviderSchema,
   locationSchema,
   mapAccessibilityInformation,
   mapAddress,
   mapCategory,
   mapContact,
   mapDate,
+  mapDataProvider,
   mapLocation,
   mapMediaContent,
   mapOperatingCompany,
@@ -67,6 +69,7 @@ const eventItemSchema = z.object({
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
   visible: z.boolean().nullish(),
+  dataProvider: dataProviderSchema.nullish(),
 });
 
 export const mapEventItemDetail = (
@@ -159,6 +162,9 @@ export const mapEventItemDetail = (
       visible: parsed.data.visible !== false,
       createdAt,
       updatedAt: parsed.data.updatedAt ?? createdAt,
+      ...(mapDataProvider(parsed.data.dataProvider)
+        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
+        : {}),
     },
     deviations: parsed.deviations,
   };

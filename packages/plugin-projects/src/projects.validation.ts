@@ -12,19 +12,6 @@ export const projectImageSchema = z.object({
   position: z.number().int().nonnegative(),
 });
 
-export const projectAuthorSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('organization'),
-    id: requiredText('Organisation ist erforderlich.'),
-    displayName: requiredText('Autorenname ist erforderlich.'),
-  }),
-  z.object({
-    type: z.literal('person'),
-    id: requiredText('Person ist erforderlich.'),
-    displayName: requiredText('Autorenname ist erforderlich.'),
-  }),
-]);
-
 export const projectFormSchema = z
   .object({
     language: z.string().trim(),
@@ -33,7 +20,6 @@ export const projectFormSchema = z
     fullText: z.string().trim(),
     images: z.array(projectImageSchema),
     status: z.enum(projectStatuses),
-    author: projectAuthorSchema,
   })
   .superRefine((value, ctx) => {
     const positions = value.images.map((image) => image.position);

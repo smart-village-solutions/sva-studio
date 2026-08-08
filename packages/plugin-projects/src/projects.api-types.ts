@@ -21,7 +21,6 @@ export type ProjectFormInput = Readonly<{
   fullText: string;
   images: readonly ProjectImage[];
   status: ProjectStatus;
-  author: ProjectAuthor;
 }>;
 
 export type ProjectContentItem = ProjectFormInput &
@@ -32,6 +31,8 @@ export type ProjectContentItem = ProjectFormInput &
     deleted: boolean;
     createdAt: string;
     updatedAt: string;
+    author: ProjectAuthor;
+    dataProvider?: Readonly<{ id?: string; name?: string }>;
   }>;
 
 export type ProjectListQuery = Readonly<{ page: number; pageSize: number }>;

@@ -64,6 +64,11 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     imageSearch: 'Bild suchen',
     technicalDetails: 'Technische Details',
     dataProvider: 'Datenanbieter',
+    dataProviderUnavailable: 'Noch nicht verfügbar',
+    createAs: 'Erstellen als',
+    actAs: 'Handeln als',
+    actingPrincipalHelp:
+      'Legt fest, welche Mainserver-Zugangsdaten für diesen Schreibvorgang verwendet werden.',
     visible: 'Sichtbar',
     visibleFor: 'Sichtbarkeit für {{title}}',
     likeCount: 'Likes',
@@ -75,6 +80,10 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     actions: 'Aktionen',
     characterCount: '{{count}} Zeichen',
   },
+  principals: {
+    organization: 'Aktive Organisation',
+    user: 'Persönlich',
+  },
   tabs: {
     ariaLabel: 'Detailbereiche',
     mobileLabel: 'Bereich auswählen',
@@ -82,7 +91,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     basis: {
       label: 'Basis',
       title: 'Basisdaten',
-      description: 'Überschrift, Kategorien, Autor und redaktionelle Metadaten der Nachricht.',
+      description: 'Überschrift, Kategorien und redaktionelle Metadaten der Nachricht.',
     },
     content: {
       label: 'Inhalte',
@@ -108,8 +117,9 @@ const newsTranslationsDe = createNewsLocaleTranslations({
           'Pflegen Sie die redaktionelle Überschrift und ordnen Sie passende Kategorien zu.',
       },
       authorMeta: {
-        title: 'Autor & Metadaten',
-        description: 'Autorenschaft und zeitliche Einordnung dieser Nachricht.',
+        title: 'Schreibkontext & Metadaten',
+        description:
+          'Mainserver-Schreibkontext, Datenanbieter und zeitliche Einordnung dieser Nachricht.',
       },
     },
     content: {
@@ -148,7 +158,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     },
   },
   history: {
-    sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+    sourceNotice:
+      'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
     createHint: 'Die Historie wird nach dem ersten Speichern verfügbar.',
     loading: 'Historie wird geladen.',
     empty: 'Noch keine Historie vorhanden.',
@@ -341,11 +352,25 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     },
   },
   media: {
-    moveUp: 'Nach oben', moveDown: 'Nach unten', refresh: 'Metadaten aus Mediathek aktualisieren', apply: 'Auswahl übernehmen',
-    linked: 'Mit Mediathek verknüpft', manual: 'Manuelle URL', synced: 'Referenz synchron', pending: 'Referenz ausstehend',
-    missing: 'Referenz fehlt', additional: 'Zusätzliche Referenz', unresolved: 'Referenz nicht auflösbar', failed: 'Referenzfehler',
-    previewUnavailable: 'Keine Vorschau verfügbar', moved: 'Bild an Position {{position}} von {{total}} verschoben.', removed: 'Bild wurde entfernt.',
-    refreshTitle: 'Metadaten aktualisieren', refreshDescription: 'Wählen Sie die zu übernehmenden Felder.', assetValue: 'Mediathek', contentValue: 'Inhalt',
+    moveUp: 'Nach oben',
+    moveDown: 'Nach unten',
+    refresh: 'Metadaten aus Mediathek aktualisieren',
+    apply: 'Auswahl übernehmen',
+    linked: 'Mit Mediathek verknüpft',
+    manual: 'Manuelle URL',
+    synced: 'Referenz synchron',
+    pending: 'Referenz ausstehend',
+    missing: 'Referenz fehlt',
+    additional: 'Zusätzliche Referenz',
+    unresolved: 'Referenz nicht auflösbar',
+    failed: 'Referenzfehler',
+    previewUnavailable: 'Keine Vorschau verfügbar',
+    moved: 'Bild an Position {{position}} von {{total}} verschoben.',
+    removed: 'Bild wurde entfernt.',
+    refreshTitle: 'Metadaten aktualisieren',
+    refreshDescription: 'Wählen Sie die zu übernehmenden Felder.',
+    assetValue: 'Mediathek',
+    contentValue: 'Inhalt',
   },
   validation: {
     title: 'Die Überschrift ist erforderlich.',
@@ -422,6 +447,11 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     imageSearch: 'Search image',
     technicalDetails: 'Technical details',
     dataProvider: 'Data provider',
+    dataProviderUnavailable: 'Not available yet',
+    createAs: 'Create as',
+    actAs: 'Act as',
+    actingPrincipalHelp:
+      'Determines which Mainserver credentials are used for this write operation.',
     visible: 'Visible',
     visibleFor: 'Visibility for {{title}}',
     likeCount: 'Likes',
@@ -433,6 +463,10 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     actions: 'Actions',
     characterCount: '{{count}} characters',
   },
+  principals: {
+    organization: 'Active organization',
+    user: 'Personally',
+  },
   tabs: {
     ariaLabel: 'Detail sections',
     mobileLabel: 'Select section',
@@ -440,7 +474,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     basis: {
       label: 'Basics',
       title: 'Basics',
-      description: 'Title, categories, author, and editorial metadata of the news entry.',
+      description: 'Title, categories, and editorial metadata of the news entry.',
     },
     content: {
       label: 'Content',
@@ -465,8 +499,8 @@ const newsTranslationsEn = createNewsLocaleTranslations({
         description: 'Maintain the editorial title and assign matching categories.',
       },
       authorMeta: {
-        title: 'Author & Metadata',
-        description: 'Authorship and timestamps of this news entry.',
+        title: 'Write Context & Metadata',
+        description: 'Mainserver write context, data provider, and timestamps of this news entry.',
       },
     },
     content: {
@@ -689,11 +723,25 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     },
   },
   media: {
-    moveUp: 'Move up', moveDown: 'Move down', refresh: 'Refresh metadata from media library', apply: 'Apply selection',
-    linked: 'Linked to media library', manual: 'Manual URL', synced: 'Reference synchronized', pending: 'Reference pending',
-    missing: 'Reference missing', additional: 'Additional reference', unresolved: 'Reference unresolved', failed: 'Reference failed',
-    previewUnavailable: 'Preview unavailable', moved: 'Image moved to position {{position}} of {{total}}.', removed: 'Image removed.',
-    refreshTitle: 'Refresh metadata', refreshDescription: 'Select the fields to apply.', assetValue: 'Media library', contentValue: 'Content',
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    refresh: 'Refresh metadata from media library',
+    apply: 'Apply selection',
+    linked: 'Linked to media library',
+    manual: 'Manual URL',
+    synced: 'Reference synchronized',
+    pending: 'Reference pending',
+    missing: 'Reference missing',
+    additional: 'Additional reference',
+    unresolved: 'Reference unresolved',
+    failed: 'Reference failed',
+    previewUnavailable: 'Preview unavailable',
+    moved: 'Image moved to position {{position}} of {{total}}.',
+    removed: 'Image removed.',
+    refreshTitle: 'Refresh metadata',
+    refreshDescription: 'Select the fields to apply.',
+    assetValue: 'Media library',
+    contentValue: 'Content',
   },
   validation: {
     title: 'The title is required.',

@@ -1,8 +1,4 @@
-import type {
-  ProjectContentItem,
-  ProjectFormInput,
-  ProjectImage,
-} from './projects.api-types.js';
+import type { ProjectContentItem, ProjectFormInput, ProjectImage } from './projects.api-types.js';
 import { projectFormSchema, type ProjectFormValues } from './projects.validation.js';
 
 export const normalizeProjectImages = (
@@ -29,11 +25,6 @@ export const normalizeProjectInput = (input: ProjectFormValues): ProjectFormInpu
     fullText: parsed.fullText.trim(),
     images: normalizeProjectImages(parsed.images),
     status: parsed.status,
-    author: {
-      type: parsed.author.type,
-      id: parsed.author.id.trim(),
-      displayName: parsed.author.displayName.trim(),
-    },
   };
 };
 
@@ -44,7 +35,6 @@ export const projectToFormValues = (project: ProjectContentItem): ProjectFormVal
   fullText: project.fullText,
   images: project.images.map((image) => ({ ...image })),
   status: project.status,
-  author: { ...project.author },
 });
 
 export const createDefaultProjectFormValues = (): ProjectFormValues => ({
@@ -54,5 +44,4 @@ export const createDefaultProjectFormValues = (): ProjectFormValues => ({
   fullText: '',
   images: [],
   status: 'draft',
-  author: { type: 'organization', id: '', displayName: '' },
 });

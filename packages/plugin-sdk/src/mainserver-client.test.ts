@@ -110,6 +110,12 @@ describe('mainserver-client', () => {
           status: 200,
         });
       }
+      if (url.endsWith('/list/news-2') && !init?.method) {
+        return new Response(JSON.stringify({ data: { id: 'news-2', title: 'Zweite' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+        });
+      }
       if (url.endsWith('/list/news-2') && init?.method === 'PATCH') {
         return new Response(JSON.stringify({ data: { id: 'news-2', title: 'Aktualisiert' } }), {
           status: 200,
@@ -149,15 +155,15 @@ describe('mainserver-client', () => {
         expect.objectContaining({ fieldPath: 'contentBlocks[]', fieldGroup: 'contentBlocks' }),
       ],
     });
-    await expect(client.create({ title: 'Zweite' })).resolves.toEqual({
+    await expect(client.create({ title: 'Zweite' }, 'user')).resolves.toEqual({
       id: 'news-2',
       title: 'Zweite',
     });
-    await expect(client.update('news-2', { title: 'Aktualisiert' })).resolves.toEqual({
+    await expect(client.update('news-2', { title: 'Aktualisiert' }, 'user')).resolves.toEqual({
       id: 'news-2',
       title: 'Aktualisiert',
     });
-    await expect(client.remove('news-2')).resolves.toBeUndefined();
+    await expect(client.remove('news-2', 'user')).resolves.toBeUndefined();
 
     await expect(
       requestMainserverJson({ url: '/forbidden', fetch: fetchMock as typeof fetch })
@@ -174,11 +180,14 @@ describe('mainserver-client', () => {
         body: JSON.stringify({ title: 'Zweite', created: true }),
       }),
     ]);
-    expect(readHeaders(fetchMock.mock.calls[3]?.[1]?.headers)).toEqual({
+    expect(readHeaders(fetchMock.mock.calls[3]?.[1]?.headers)).toMatchObject({
       accept: 'application/json',
+      'content-type': 'application/json',
       'x-create': 'yes',
+      'x-requested-with': 'XMLHttpRequest',
+      'x-sva-acting-principal-type': 'user',
     });
-    expect(fetchMock.mock.calls[4]).toEqual([
+    expect(fetchMock.mock.calls[5]).toEqual([
       '/list/news-2',
       expect.objectContaining({
         method: 'PATCH',
@@ -186,9 +195,107 @@ describe('mainserver-client', () => {
         body: JSON.stringify({ title: 'Aktualisiert', updated: true }),
       }),
     ]);
-    expect(readHeaders(fetchMock.mock.calls[4]?.[1]?.headers)).toEqual({
+    expect(readHeaders(fetchMock.mock.calls[5]?.[1]?.headers)).toMatchObject({
       accept: 'application/json',
+      'content-type': 'application/json',
       'x-update': 'yes',
+      'x-requested-with': 'XMLHttpRequest',
+      'x-sva-acting-principal-type': 'user',
+    });
+  });
+
+  it('returns the editor context binding on subsequent item mutations', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Neu' } }), {
+          status: 200,
+        })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ data: { id: 'news-1' } }), { status: 200 })
+      );
+    const client = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/items',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response) => response.data,
+    });
+
+    await client.get('news-1');
+    await client.update('news-1', { title: 'Neu' }, 'organization');
+    await client.remove('news-1', 'organization');
+
+    expect(readHeaders(fetchMock.mock.calls[1]?.[1]?.headers)).toMatchObject({
+      'x-sva-context-binding': 'v1.loaded-context',
+      'x-sva-acting-principal-type': 'organization',
+    });
+    expect(readHeaders(fetchMock.mock.calls[2]?.[1]?.headers)).toMatchObject({
+      'x-sva-context-binding': 'v1.loaded-context',
+      'x-sva-acting-principal-type': 'organization',
+    });
+  });
+
+  it('fails closed before a mutation when the detail response has no context binding', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 })
+    );
+    const client = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/items',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response) => response.data,
+    });
+
+    await expect(client.update('news-1', { title: 'Neu' }, 'user')).rejects.toMatchObject({
+      code: 'mainserver_context_binding_missing',
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBeUndefined();
+  });
+
+  it('loads an encoded detail path before custom mutations request binding headers', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'news/1', title: 'Erste' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+        })
+    );
+    const client = createMainserverCrudClient<
+      { id: string; title: string },
+      { title: string },
+      { readonly data: readonly { id: string; title: string }[] },
+      readonly { id: string; title: string }[]
+    >({
+      basePath: '/items',
+      fetch: fetchMock as typeof fetch,
+      errorFactory: (code, message) => new MainserverApiError(code, message),
+      mapListResponse: (response) => response.data,
+    });
+
+    await client.ensureMutationContext('news/1');
+
+    expect(fetchMock).toHaveBeenCalledWith('/items/news%2F1', expect.any(Object));
+    expect(readHeaders(client.mutationHeaders('news/1', 'user'))).toMatchObject({
+      'x-sva-context-binding': 'v1.loaded-context',
     });
   });
 
@@ -362,7 +469,10 @@ describe('mainserver-client', () => {
   it('preserves tuple and Headers instances when merging request headers', async () => {
     const fetchMock = vi.fn(
       async () =>
-        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), { status: 200 })
+        new Response(JSON.stringify({ data: { id: 'news-1', title: 'Erste' } }), {
+          status: 200,
+          headers: { 'X-SVA-Context-Binding': 'v1.loaded-context' },
+        })
     );
     const headerClient = createMainserverCrudClient<
       { id: string; title: string },
@@ -378,16 +488,18 @@ describe('mainserver-client', () => {
       updateHeaders: () => [['X-From-Tuples', 'two']],
     });
 
-    await headerClient.create({ title: 'Neu' });
-    await headerClient.update('news-1', { title: 'Update' });
+    await headerClient.create({ title: 'Neu' }, 'user');
+    await headerClient.update('news-1', { title: 'Update' }, 'user');
 
-    expect(readHeaders(fetchMock.mock.calls[0]?.[1]?.headers)).toEqual({
+    expect(readHeaders(fetchMock.mock.calls[0]?.[1]?.headers)).toMatchObject({
       accept: 'application/json',
       'x-from-headers': 'one',
+      'x-sva-acting-principal-type': 'user',
     });
-    expect(readHeaders(fetchMock.mock.calls[1]?.[1]?.headers)).toEqual({
+    expect(readHeaders(fetchMock.mock.calls[2]?.[1]?.headers)).toMatchObject({
       accept: 'application/json',
       'x-from-tuples': 'two',
+      'x-sva-acting-principal-type': 'user',
     });
   });
 });

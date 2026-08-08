@@ -1,4 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
 
 import type {
   GenericItemCockpitCardInput,
@@ -37,10 +38,17 @@ const client = createMainserverCrudClient<
 export const listCockpitCards = (query: Readonly<{ page: number; pageSize: number }>) =>
   client.list(query);
 export const getCockpitCard = (id: string) => client.get(id);
-export const createCockpitCard = (input: GenericItemCockpitCardInput) => client.create(input);
-export const updateCockpitCard = (id: string, input: GenericItemCockpitCardInput) =>
-  client.update(id, input);
-export const deleteCockpitCard = (id: string) => client.remove(id);
+export const createCockpitCard = (
+  input: GenericItemCockpitCardInput,
+  actingPrincipalType: MainserverActingPrincipalType
+) => client.create(input, actingPrincipalType);
+export const updateCockpitCard = (
+  id: string,
+  input: GenericItemCockpitCardInput,
+  actingPrincipalType: MainserverActingPrincipalType
+) => client.update(id, input, actingPrincipalType);
+export const deleteCockpitCard = (id: string, actingPrincipalType: MainserverActingPrincipalType) =>
+  client.remove(id, actingPrincipalType);
 
 export const listCockpitCardCategories = async (): Promise<
   readonly CockpitCardCategoryOption[]

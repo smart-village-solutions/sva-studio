@@ -4,6 +4,8 @@ import { SvaMainserverError } from './errors.js';
 const MAINSERVER_ERROR_STATUS_BY_CODE = {
   missing_credentials: 400,
   organization_mainserver_credentials_missing: 409,
+  acting_principal_not_allowed: 403,
+  credential_context_changed: 409,
   invalid_config: 400,
   config_not_found: 400,
   integration_disabled: 400,

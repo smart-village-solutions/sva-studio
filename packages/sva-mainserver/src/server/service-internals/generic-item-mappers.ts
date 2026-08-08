@@ -12,12 +12,14 @@ import {
   categorySchema,
   contactSchema,
   contentBlockSchema,
+  dataProviderSchema,
   dateSchema,
   locationSchema,
   mapAddress,
   mapCategory,
   mapContact,
   mapDate,
+  mapDataProvider,
   mapLocation,
   mapMediaContent,
   mapOpeningHour,
@@ -57,6 +59,7 @@ const genericItemSchema = z.object({
   priceInformations: z.array(priceSchema).nullish(),
   createdAt: z.string().nullish(),
   updatedAt: z.string().nullish(),
+  dataProvider: dataProviderSchema.nullish(),
 });
 
 const mapContentBlock = (value: z.infer<typeof contentBlockSchema>): SvaMainserverContentBlock => ({
@@ -142,6 +145,9 @@ export const mapGenericItemDetail = (item: SvaMainserverGenericItemFragment | nu
       genericType: parsed.data.genericType,
       ...mapGenericItemScalarFields(parsed.data, createdAt),
       ...mapGenericItemRelationFields(parsed.data),
+      ...(mapDataProvider(parsed.data.dataProvider)
+        ? { dataProvider: mapDataProvider(parsed.data.dataProvider) }
+        : {}),
     },
     deviations: parsed.deviations,
   };

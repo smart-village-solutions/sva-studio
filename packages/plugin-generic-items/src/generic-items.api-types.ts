@@ -60,6 +60,7 @@ export type GenericItemContentItem = GenericItemFormInput & {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly description?: string;
+  readonly dataProvider?: Readonly<{ id?: string; name?: string }>;
 };
 
 export type GenericItemListResult = {

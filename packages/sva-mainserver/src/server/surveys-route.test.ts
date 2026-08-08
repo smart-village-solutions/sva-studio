@@ -1,10 +1,15 @@
 // fallow-ignore-file code-duplication
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   withAuthenticatedUser: vi.fn(),
   authorizeContentPrimitiveForUser: vi.fn(),
   validateCsrf: vi.fn(),
+  resolveActorInfo: vi.fn(),
+  resolveMutationPrincipalContext: vi.fn(),
+  recordMainserverDataProviderObservation: vi.fn(),
+  beginMainserverMutationJournal: vi.fn(),
+  finalizeMainserverMutationJournal: vi.fn(),
   listSvaMainserverSurveys: vi.fn(),
   getSvaMainserverSurvey: vi.fn(),
   getSvaMainserverSurveyResults: vi.fn(),
@@ -19,9 +24,25 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@sva/auth-runtime/server', () => ({
+  authorizeMainserverCreatePrincipal: vi.fn(() => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  })),
+  resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   withAuthenticatedUser: state.withAuthenticatedUser,
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
   validateCsrf: state.validateCsrf,
+  resolveActorInfo: state.resolveActorInfo,
+  resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
+  beginMainserverMutationJournal: state.beginMainserverMutationJournal,
+  finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
 }));
 
 vi.mock('@sva/server-runtime', async () => {
@@ -60,6 +81,9 @@ const createRequest = (url: string, init?: RequestInit): Request =>
     headers: {
       Origin: 'https://studio.test',
       'X-Requested-With': 'XMLHttpRequest',
+      ...(init?.method && init.method !== 'GET'
+        ? { 'X-SVA-Acting-Principal-Type': 'organization' }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -79,8 +103,61 @@ const mockAuthorizedRequest = () => {
 };
 
 describe('dispatchSvaMainserverSurveysRequest', () => {
+  beforeEach(() => {
+    process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES =
+      'surveys.update,surveys.delete,surveys.moderate';
+    state.resolveActorInfo.mockResolvedValue({
+      actor: {
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+      },
+    });
+    state.resolveMutationPrincipalContext.mockResolvedValue({
+      ok: true,
+      context: {
+        version: 1,
+        instanceId: 'de-musterhausen',
+        actorAccountId: '00000000-0000-4000-8000-000000000001',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        actingPrincipalType: 'organization',
+        actingPrincipalId: '11111111-1111-1111-8111-111111111111',
+        credentialSource: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      },
+    });
+    state.getSvaMainserverSurvey.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+    });
+    state.recordMainserverDataProviderObservation.mockResolvedValue({
+      outcome: 'created',
+      binding: { status: 'verified' },
+    });
+  });
+
   afterEach(() => {
+    delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
     vi.resetAllMocks();
+  });
+
+  it('fails closed before authorization when an unconfirmed survey capability is requested', async () => {
+    delete process.env.SVA_MAINSERVER_CONFIRMED_CAPABILITIES;
+    mockAuthorizedRequest();
+
+    const response = await dispatchSvaMainserverSurveysRequest(
+      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ title: { de: 'Neu' } }),
+      })
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'mainserver_capability_unconfirmed',
+    });
+    expect(state.authorizeContentPrimitiveForUser).not.toHaveBeenCalled();
+    expect(state.updateSvaMainserverSurvey).not.toHaveBeenCalled();
   });
 
   it('ignores unrelated routes', async () => {
@@ -322,12 +399,16 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       data: { id: 'survey-1' },
     });
-    expect(state.deleteSvaMainserverSurvey).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-      surveyId: 'survey-1',
-    });
+    expect(state.deleteSvaMainserverSurvey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        surveyId: 'survey-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
   });
 
   it('propagates authorization status and normalized actor data', async () => {
@@ -407,9 +488,13 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     );
 
     expect(createResponse?.status).toBe(201);
-    await expect(createResponse?.json()).resolves.toEqual({ data: { id: 'survey-new', title: { de: 'Neu' } } });
+    await expect(createResponse?.json()).resolves.toEqual({
+      data: { id: 'survey-new', title: { de: 'Neu' } },
+    });
     expect(updateResponse?.status).toBe(200);
-    await expect(updateResponse?.json()).resolves.toEqual({ data: { id: 'survey-1', title: { de: 'Aktualisiert' } } });
+    await expect(updateResponse?.json()).resolves.toEqual({
+      data: { id: 'survey-1', title: { de: 'Aktualisiert' } },
+    });
     expect(deleteResponse?.status).toBe(200);
     await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'survey-1' } });
   });
@@ -486,7 +571,9 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
 
   it('rejects mutating survey requests when csrf validation fails before hitting the service', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
-    state.validateCsrf.mockReturnValue(new Response(JSON.stringify({ error: 'csrf_validation_failed' }), { status: 403 }));
+    state.validateCsrf.mockReturnValue(
+      new Response(JSON.stringify({ error: 'csrf_validation_failed' }), { status: 403 })
+    );
 
     const response = await dispatchSvaMainserverSurveysRequest(
       createRequest('https://studio.test/api/v1/mainserver/surveys', {
@@ -635,19 +722,23 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     );
 
     expect(response?.status).toBe(200);
-    expect(state.updateSvaMainserverSurvey).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-      surveyId: 'survey-1',
-      survey: {
-        title: { de: 'Bestandsumfrage' },
-        shortDescription: null,
-        description: null,
-        privacyNotice: null,
-        transparencyNotice: null,
-      },
-    });
+    expect(state.updateSvaMainserverSurvey).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        surveyId: 'survey-1',
+        survey: {
+          title: { de: 'Bestandsumfrage' },
+          shortDescription: null,
+          description: null,
+          privacyNotice: null,
+          transparencyNotice: null,
+        },
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
   });
 
   it('rejects localized survey fields with non-string locale values before hitting the service', async () => {
@@ -679,31 +770,41 @@ describe('dispatchSvaMainserverSurveysRequest', () => {
     });
 
     const response = await dispatchSvaMainserverSurveysRequest(
-      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1', {
-        method: 'PATCH',
-      })
+      createRequest(
+        'https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1',
+        {
+          method: 'PATCH',
+        }
+      )
     );
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toEqual({
       data: { id: 'response-1', status: 'PUBLIC' },
     });
-    expect(state.releaseSvaMainserverSurveyFreeTextResponse).toHaveBeenCalledWith({
-      instanceId: 'de-musterhausen',
-      keycloakSubject: 'subject-1',
-      activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-      surveyId: 'survey-1',
-      freeTextResponseId: 'response-1',
-    });
+    expect(state.releaseSvaMainserverSurveyFreeTextResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+        surveyId: 'survey-1',
+        freeTextResponseId: 'response-1',
+        actingPrincipalType: 'organization',
+        credentialFingerprint: 'a'.repeat(64),
+      })
+    );
   });
 
   it('rejects free-text response deletes that are unsupported by the snapshot moderation schema', async () => {
     mockAuthorizedRequest();
 
     const response = await dispatchSvaMainserverSurveysRequest(
-      createRequest('https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1', {
-        method: 'DELETE',
-      })
+      createRequest(
+        'https://studio.test/api/v1/mainserver/surveys/survey-1/free-text-responses/response-1',
+        {
+          method: 'DELETE',
+        }
+      )
     );
 
     expect(response?.status).toBe(501);

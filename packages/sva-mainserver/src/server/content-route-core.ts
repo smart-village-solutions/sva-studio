@@ -26,7 +26,7 @@ const decodePathSegment = (value: string): string | null => {
 export const matchRequestRoute = <ContentKind extends string>(
   request: Request,
   collectionPath: string,
-  contentKind: ContentKind,
+  contentKind: ContentKind
 ): RouteMatch<ContentKind> | null => {
   const pathname = new URL(request.url).pathname;
   if (pathname === collectionPath) {
@@ -47,14 +47,16 @@ export const matchRequestRoute = <ContentKind extends string>(
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && Array.isArray(value) === false;
 
-export const isResponse = <T>(value: ParsedValue<T>): value is Response => value instanceof Response;
+export const isResponse = <T>(value: ParsedValue<T>): value is Response =>
+  value instanceof Response;
 
 export const readString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 
 export const isTimeOfDay = (value: string): boolean => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 
-export const readBoolean = (value: unknown): boolean | undefined => (typeof value === 'boolean' ? value : undefined);
+export const readBoolean = (value: unknown): boolean | undefined =>
+  typeof value === 'boolean' ? value : undefined;
 
 export const readNumber = (value: unknown): number | undefined => {
   if (typeof value === 'number' && Number.isFinite(value)) {
@@ -69,7 +71,7 @@ export const readNumber = (value: unknown): number | undefined => {
 
 export const parseJsonObjectBody = async (
   request: Request,
-  message: string,
+  message: string
 ): Promise<Record<string, unknown> | Response> => {
   const body = (await request.json().catch(() => null)) as unknown;
   return isRecord(body) ? body : errorJson(400, 'invalid_request', message);

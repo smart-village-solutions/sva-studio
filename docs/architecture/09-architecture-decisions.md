@@ -528,3 +528,11 @@ Zuordnung:
 
 - Abschnitt 06/07/08/09/11: ADR-048 und OpenSpec-Change `add-controlled-database-restore`
 - Abschnitt 04/05/06/08/09: ADR-049 und OpenSpec-Change `add-canonical-permission-catalog`
+
+### Fortschreibung 2026-08: DataProvider als Mainserver-Inhaber ohne neue ADR
+
+- ADR-021 bleibt für die serverseitige Mainserver-Integrationsgrenze maßgeblich; ADR-045 bleibt für organisationsgebundene Credentials und `contentAuthorPolicy` maßgeblich.
+- Präzisiert wird, dass der Mainserver-DataProvider der unveränderliche ursprüngliche Inhaber ist, während der Actor und der explizit ausgewählte persönliche oder organisatorische Mutationsprincipal getrennt bleiben.
+- Wegen der noch fehlenden stabilen ID aus `/data_provider.json` werden Bindungen nur automatisch aus bestätigten Creates abgeleitet. Namens-Mapping und administrative Zuordnung sind ausgeschlossen.
+- Die Einführung erfolgt additiv über einen standardmäßig beobachtenden Shadow-Resolver, einen versionierten V2-Transport und einen expliziten Compatibility-Rollback. Diese Betriebszustände ändern keine fachliche Source-of-Truth-Entscheidung und rechtfertigen deshalb keine neue ADR.
+- Der vollständige Betriebsvertrag steht im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md).

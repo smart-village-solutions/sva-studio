@@ -1,4 +1,5 @@
 import type { IamContentListItem, IamContentStatus } from '@sva/core';
+import type { MainserverPrincipalType } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -53,10 +54,16 @@ export const ContentStatusBadge = ({ status }: { readonly status: IamContentStat
 type ContentStatusDialogProps = Readonly<{
   item: IamContentListItem;
   canUpdate: boolean;
+  actingPrincipalType: MainserverPrincipalType;
   onUpdated: () => Promise<void>;
 }>;
 
-export const ContentStatusDialog = ({ item, canUpdate, onUpdated }: ContentStatusDialogProps) => {
+export const ContentStatusDialog = ({
+  item,
+  canUpdate,
+  actingPrincipalType,
+  onUpdated,
+}: ContentStatusDialogProps) => {
   const [open, setOpen] = React.useState(false);
   const [pendingStatus, setPendingStatus] = React.useState<IamContentStatus | null>(null);
   const [error, setError] = React.useState(false);
@@ -76,7 +83,7 @@ export const ContentStatusDialog = ({ item, canUpdate, onUpdated }: ContentStatu
     setPendingStatus(status);
     setError(false);
     try {
-      await updateMainserverContentStatus(item, status);
+      await updateMainserverContentStatus(item, status, actingPrincipalType);
       await onUpdated();
       setOpen(false);
     } catch {

@@ -9,7 +9,9 @@ type OptionalTestProjectionField =
   | 'author_display_mode'
   | 'source_data_provider_id'
   | 'source_data_provider_name'
-  | 'credential_source';
+  | 'credential_source'
+  | 'credential_fingerprint'
+  | 'authorization_mode';
 
 type TestProjectionRow = Omit<ProjectionRow, OptionalTestProjectionField | 'payload_json'> &
   Partial<Pick<ProjectionRow, OptionalTestProjectionField>> & {
@@ -24,6 +26,12 @@ const state = vi.hoisted(() => ({
   loggerWarn: vi.fn(),
   resolveActorAccountId: vi.fn(),
   resolveEffectivePermissions: vi.fn(),
+  readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
+  readMainserverScopeResolverMode: vi.fn(
+    () => process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE ?? 'shadow'
+  ),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
+  recordSuccessfulExternalContentDeletion: vi.fn(),
   recordSuccessfulExternalContentMutation: vi.fn(),
   withInstanceScopedDb: vi.fn(),
   getSvaMainserverNews: vi.fn(),
@@ -79,6 +87,9 @@ const mapInsertedProjectionRow = (row: Record<string, unknown>): TestProjectionR
     row.credential_source === 'organization' || row.credential_source === 'user'
       ? row.credential_source
       : null,
+  credential_fingerprint: readNullableString(row.credential_fingerprint),
+  authorization_mode:
+    row.authorization_mode === 'exact' ? 'exact' : 'credential_visible_compatibility',
   source_system: 'mainserver',
   source_entity_type: String(row.source_entity_type),
   source_entity_id: String(row.source_entity_id),
@@ -86,8 +97,13 @@ const mapInsertedProjectionRow = (row: Record<string, unknown>): TestProjectionR
 
 vi.mock('@sva/auth-runtime/server', () => ({
   authorizeContentPrimitiveForUser: state.authorizeContentPrimitiveForUser,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
+  readEffectiveSvaMainserverCredentialsWithStatus:
+    state.readEffectiveSvaMainserverCredentialsWithStatus,
+  readMainserverScopeResolverMode: state.readMainserverScopeResolverMode,
   resolveActorAccountId: state.resolveActorAccountId,
   resolveEffectivePermissions: state.resolveEffectivePermissions,
+  recordSuccessfulExternalContentDeletion: state.recordSuccessfulExternalContentDeletion,
   recordSuccessfulExternalContentMutation: state.recordSuccessfulExternalContentMutation,
   withInstanceScopedDb: state.withInstanceScopedDb,
 }));
@@ -118,9 +134,32 @@ vi.mock('@sva/server-runtime', () => ({
 import {
   listProjectedContents,
   refreshProjectedContents,
-  refreshProjectedContentsForMainserverMutation,
+  refreshProjectedContentsForMainserverMutation as refreshProjectedContentsForMainserverMutationBase,
   resetContentProjectionRuntimeStateForTests,
 } from './iam-content-list-projection.server';
+
+type MutationProjectionRefreshInput = Parameters<
+  typeof refreshProjectedContentsForMainserverMutationBase
+>[0];
+
+const refreshProjectedContentsForMainserverMutation = (
+  input: Omit<
+    MutationProjectionRefreshInput,
+    'actingPrincipalType' | 'authorizationMode' | 'credentialFingerprint'
+  > &
+    Partial<
+      Pick<
+        MutationProjectionRefreshInput,
+        'actingPrincipalType' | 'authorizationMode' | 'credentialFingerprint'
+      >
+    >
+) =>
+  refreshProjectedContentsForMainserverMutationBase({
+    actingPrincipalType: 'organization',
+    authorizationMode: 'credential_visible_compatibility',
+    credentialFingerprint: 'a'.repeat(64),
+    ...input,
+  });
 
 describe('content list projection', () => {
   const ctx = {
@@ -180,7 +219,7 @@ describe('content list projection', () => {
       row.source_system,
       row.source_entity_type,
       row.source_entity_id,
-      row.projection_scope_key,
+      ...(projectionScopeKeyColumnAvailable ? [row.projection_scope_key] : []),
     ].join('::');
 
   const applyProjectionFilters = (
@@ -212,9 +251,23 @@ describe('content list projection', () => {
       .filter((match) => match.index < mainserverSourceGuardIndex || mainserverSourceGuardIndex < 0)
       .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
       .filter((value): value is string => typeof value === 'string');
+    const allowsCredentialCompatibility = text.includes(
+      "projection.authorization_mode = 'credential_visible_compatibility'"
+    );
+    const allowsAllMainserverRows = text.includes("(projection.source_system = 'mainserver')");
 
     if (allowedOrganizationIds.length > 0 || visibilityOwnerUserIds.length > 0) {
       rows = rows.filter((row) => {
+        if (allowsAllMainserverRows && row.source_system === 'mainserver') {
+          return true;
+        }
+        if (
+          allowsCredentialCompatibility &&
+          row.source_system === 'mainserver' &&
+          row.authorization_mode !== 'exact'
+        ) {
+          return true;
+        }
         const effectiveOwnerOrganizationId = row.owner_organization_id ?? row.organization_id;
         return (
           (effectiveOwnerOrganizationId != null &&
@@ -222,20 +275,6 @@ describe('content list projection', () => {
           (row.owner_user_id != null && visibilityOwnerUserIds.includes(row.owner_user_id))
         );
       });
-    }
-
-    const sourceGuardActorAccountIds = [...text.matchAll(/projection\.owner_user_id::text = \$(\d+)/g)]
-      .filter((match) => match.index > mainserverSourceGuardIndex && mainserverSourceGuardIndex >= 0)
-      .map((match) => values?.[Number.parseInt(match[1] ?? '0', 10) - 1])
-      .filter((value): value is string => typeof value === 'string');
-    if (mainserverSourceGuardIndex >= 0) {
-      rows = rows.filter(
-        (row) =>
-          row.source_system !== 'mainserver' ||
-          row.organization_id !== null ||
-          row.owner_user_id == null ||
-          sourceGuardActorAccountIds.includes(row.owner_user_id)
-      );
     }
 
     const projectionScopeMatches = [
@@ -259,6 +298,7 @@ describe('content list projection', () => {
   };
 
   beforeEach(() => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'automatic';
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'legacy';
     process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'false';
     process.env.SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED = 'false';
@@ -276,6 +316,9 @@ describe('content list projection', () => {
     state.authorizeContentPrimitiveForUser.mockReset();
     state.resolveActorAccountId.mockReset();
     state.resolveEffectivePermissions.mockReset();
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockReset();
+    state.loadCurrentMainserverDataProviderBinding.mockReset();
+    state.recordSuccessfulExternalContentDeletion.mockReset();
     state.recordSuccessfulExternalContentMutation.mockReset();
     state.withInstanceScopedDb.mockReset();
     state.getSvaMainserverNews.mockReset();
@@ -324,6 +367,16 @@ describe('content list projection', () => {
       ],
     });
     state.resolveActorAccountId.mockResolvedValue('account-1');
+    state.readEffectiveSvaMainserverCredentialsWithStatus.mockImplementation(
+      async (input: { actingPrincipalType: 'organization' | 'user' }) => ({
+        status: 'ok',
+        source: input.actingPrincipalType,
+        credentials: { apiKey: 'key', apiSecret: 'secret' },
+        credentialFingerprint:
+          input.actingPrincipalType === 'organization' ? 'b'.repeat(64) : 'a'.repeat(64),
+      })
+    );
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue(undefined);
 
     state.withInstanceScopedDb.mockImplementation(
       async (
@@ -353,8 +406,14 @@ describe('content list projection', () => {
             if (text.includes('FROM iam.content_list_projection_sync_state')) {
               const contentType = String(values?.[1] ?? '');
               const syncScopeKey = String(values?.[2] ?? '');
-              const row = syncStates.get(`${contentType}::${syncScopeKey}`) ?? syncStates.get(contentType);
-              return { rows: row ? ([row] as TRow[]) : [], rowCount: row ? 1 : 0 };
+              const row =
+                syncStates.get(`${contentType}::${syncScopeKey}`) ?? syncStates.get(contentType);
+              const selectedRow =
+                row && !syncScopeKeyColumnAvailable ? { ...row, sync_scope_key: undefined } : row;
+              return {
+                rows: selectedRow ? ([selectedRow] as TRow[]) : [],
+                rowCount: selectedRow ? 1 : 0,
+              };
             }
 
             if (text.includes('SELECT DISTINCT projection.content_type')) {
@@ -415,7 +474,8 @@ describe('content list projection', () => {
                 };
                 syncStates.set(syncStateKey, nextValue);
                 syncStates.set(contentType, nextValue);
-              } else if ((values?.length ?? 0) === 5) {
+              } else if (text.includes('last_failed_at') && !text.includes('last_succeeded_at')) {
+                const errorCodeIndex = syncScopeKeyColumnAvailable ? 3 : 2;
                 const nextValue = {
                   ...(syncStates.get(syncStateKey) ?? {
                     sync_scope_key: syncScopeKey,
@@ -427,12 +487,13 @@ describe('content list projection', () => {
                     projected_count: 0,
                   }),
                   last_failed_at: new Date().toISOString(),
-                  last_error_code: String(values?.[3] ?? ''),
-                  last_error_message: String(values?.[4] ?? ''),
+                  last_error_code: String(values?.[errorCodeIndex] ?? ''),
+                  last_error_message: String(values?.[errorCodeIndex + 1] ?? ''),
                 };
                 syncStates.set(syncStateKey, nextValue);
                 syncStates.set(contentType, nextValue);
-              } else if ((values?.length ?? 0) === 4) {
+              } else if (text.includes('last_succeeded_at')) {
+                const projectedCountIndex = syncScopeKeyColumnAvailable ? 3 : 2;
                 const nextValue = {
                   ...(syncStates.get(syncStateKey) ?? {
                     sync_scope_key: syncScopeKey,
@@ -447,7 +508,12 @@ describe('content list projection', () => {
                   last_failed_at: null,
                   last_error_code: null,
                   last_error_message: null,
-                  projected_count: Number(values?.[3] ?? 0),
+                  projected_count: Number(values?.[projectedCountIndex] ?? 0),
+                  snapshot_state: 'complete_fresh',
+                  available_count: Number(values?.[projectedCountIndex] ?? 0),
+                  is_total_final: true,
+                  refresh_run_id: null,
+                  refresh_phase: null,
                 };
                 syncStates.set(syncStateKey, nextValue);
                 syncStates.set(contentType, nextValue);
@@ -471,29 +537,43 @@ describe('content list projection', () => {
 
             if (text.includes('UPDATE iam.content_list_projection_sync_state')) {
               const contentType = String(values?.[1] ?? '');
-              const syncScopeKey = String(values?.[2] ?? contentType);
+              const syncScopeKey = syncScopeKeyColumnAvailable
+                ? String(values?.[2] ?? contentType)
+                : contentType;
               const syncStateKey = `${contentType}::${syncScopeKey}`;
               const current = syncStates.get(syncStateKey) ?? syncStates.get(contentType);
-              if (!current || current.refresh_run_id !== String(values?.[3] ?? '')) {
+              const refreshRunId = String(values?.[syncScopeKeyColumnAvailable ? 3 : 2] ?? '');
+              if (!current || current.refresh_run_id !== refreshRunId) {
                 return { rows: [], rowCount: 0 };
               }
+              const firstPayloadIndex = syncScopeKeyColumnAvailable ? 4 : 3;
               const nextValue = text.includes('last_failed_at = NOW()')
                 ? {
                     ...current,
                     last_failed_at: new Date().toISOString(),
-                    last_error_code: String(values?.[4] ?? ''),
-                    last_error_message: String(values?.[5] ?? ''),
-                    snapshot_state: current.last_succeeded_at ? 'complete_failed' : 'partial_failed',
+                    last_error_code: String(values?.[firstPayloadIndex] ?? ''),
+                    last_error_message: String(values?.[firstPayloadIndex + 1] ?? ''),
+                    snapshot_state: current.last_succeeded_at
+                      ? 'complete_failed'
+                      : 'partial_failed',
                     is_total_final: false,
                   }
                 : text.includes('refresh_phase = $5')
-                  ? { ...current, refresh_phase: String(values?.[4]) as 'reconciliation' }
-                  : {
+                  ? {
                       ...current,
-                      completed_page: Number(values?.[4] ?? 0),
-                      available_count: Number(values?.[5] ?? 0),
-                      is_total_final: false,
-                    };
+                      refresh_phase: String(values?.[firstPayloadIndex]) as 'reconciliation',
+                    }
+                  : text.includes('refresh_phase = $4')
+                    ? {
+                        ...current,
+                        refresh_phase: String(values?.[firstPayloadIndex]) as 'reconciliation',
+                      }
+                    : {
+                        ...current,
+                        completed_page: Number(values?.[firstPayloadIndex] ?? 0),
+                        available_count: Number(values?.[firstPayloadIndex + 1] ?? 0),
+                        is_total_final: false,
+                      };
               syncStates.set(syncStateKey, nextValue);
               syncStates.set(contentType, nextValue);
               return { rows: [], rowCount: 1 };
@@ -506,8 +586,9 @@ describe('content list projection', () => {
             ) {
               const instanceId = String(values?.[0] ?? '');
               const contentType = String(values?.[1] ?? '');
-              const projectionScopeKey =
-                projectionScopeKeyColumnAvailable ? String(values?.[2] ?? '') : null;
+              const projectionScopeKey = projectionScopeKeyColumnAvailable
+                ? String(values?.[2] ?? '')
+                : null;
               const total = projectionRows.filter(
                 (row) =>
                   row.instance_id === instanceId &&
@@ -522,8 +603,9 @@ describe('content list projection', () => {
 
             if (text.includes('DELETE FROM iam.content_list_projection')) {
               const contentType = String(values?.[1] ?? '');
-              const projectionScopeKey =
-                projectionScopeKeyColumnAvailable ? String(values?.[2] ?? '') : null;
+              const projectionScopeKey = projectionScopeKeyColumnAvailable
+                ? String(values?.[2] ?? '')
+                : null;
               const entityValue = values?.[projectionScopeKeyColumnAvailable ? 4 : 3];
               const sourceEntityId = typeof entityValue === 'string' ? entityValue : null;
               const retainedEntityIds = Array.isArray(entityValue)
@@ -537,11 +619,9 @@ describe('content list projection', () => {
                     (projectionScopeKeyColumnAvailable
                       ? row.projection_scope_key === projectionScopeKey
                       : true) &&
-                    (
-                      retainedEntityIds
-                        ? !retainedEntityIds.includes(row.source_entity_id)
-                        : sourceEntityId === null || row.source_entity_id === sourceEntityId
-                    )
+                    (retainedEntityIds
+                      ? !retainedEntityIds.includes(row.source_entity_id)
+                      : sourceEntityId === null || row.source_entity_id === sourceEntityId)
                   )
               );
               return { rows: [], rowCount: 0 };
@@ -586,7 +666,9 @@ describe('content list projection', () => {
                 );
 
                 if (existingIndex >= 0) {
-                  if (!text.includes('ON CONFLICT ON CONSTRAINT content_list_projection_scope_key')) {
+                  if (
+                    !text.includes('ON CONFLICT ON CONSTRAINT content_list_projection_scope_key')
+                  ) {
                     const error = new Error(
                       'duplicate key value violates unique constraint "content_list_projection_scope_key"'
                     ) as Error & { code?: string };
@@ -708,7 +790,7 @@ describe('content list projection', () => {
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
-        owner_organization_id: 'org-1',
+        owner_organization_id: null,
         content_type: 'news.article',
         title: 'Legacy Snapshot',
         published_at: '2026-06-21T09:00:00.000Z',
@@ -725,6 +807,7 @@ describe('content list projection', () => {
         history_ref: 'history-legacy-1',
         current_revision_ref: null,
         last_audit_event_ref: null,
+        authorization_mode: 'credential_visible_compatibility',
         source_system: 'mainserver',
         source_entity_type: 'news.article',
         source_entity_id: 'news-1',
@@ -737,6 +820,23 @@ describe('content list projection', () => {
       last_error_code: null,
       last_error_message: null,
       projected_count: 1,
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-1',
+          title: 'Legacy Snapshot',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
 
     const response = await listProjectedContents(ctx, {
@@ -800,6 +900,23 @@ describe('content list projection', () => {
       last_error_code: null,
       last_error_message: null,
       projected_count: 1,
+    });
+    state.listSvaMainserverNews.mockResolvedValue({
+      data: [
+        {
+          id: 'news-legacy-projection-1',
+          title: 'Legacy Projection',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
 
     const response = await refreshProjectedContents(ctx, {
@@ -893,16 +1010,14 @@ describe('content list projection', () => {
         hasSnapshot: true,
       }),
     ]);
-    expect(
-      syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')
-    ).toEqual(
+    expect(syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')).toEqual(
       expect.objectContaining({
         sync_scope_key: 'de-musterhausen::account-1::org-1::news.article',
       })
     );
   });
 
-  it('persists the resolved mainserver credential source for organization-scoped projections', async () => {
+  it('persists compatibility state and credential fingerprint without inventing ownership', async () => {
     state.listSvaMainserverNews.mockResolvedValue({
       credentialSource: 'user',
       data: [
@@ -937,8 +1052,125 @@ describe('content list projection', () => {
     expect(insertedRows).toEqual([
       expect.objectContaining({
         organization_id: 'org-1',
-        owner_organization_id: 'org-1',
+        owner_organization_id: null,
         credential_source: 'user',
+        credential_fingerprint: 'a'.repeat(64),
+        authorization_mode: 'credential_visible_compatibility',
+      }),
+    ]);
+  });
+
+  it('derives exact projection owners only from current verified bindings', async () => {
+    state.loadCurrentMainserverDataProviderBinding.mockImplementation(
+      async (input: { principalType: 'organization' | 'user' }) => ({
+        dataProviderId:
+          input.principalType === 'organization' ? 'provider-organization' : 'provider-user',
+      })
+    );
+    state.listSvaMainserverNews.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [
+        {
+          id: 'news-organization',
+          title: 'Organisation',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          dataProvider: { id: 'provider-organization', name: 'Organisation' },
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+        {
+          id: 'news-foreign',
+          title: 'Fremd',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          dataProvider: { id: 'provider-foreign', name: 'Fremd' },
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    const insertedRows = JSON.parse(String(projectionInsertArgs?.[0] ?? '[]')) as Array<
+      Record<string, unknown>
+    >;
+    expect(insertedRows).toEqual([
+      expect.objectContaining({
+        id: 'news-organization',
+        owner_user_id: null,
+        owner_organization_id: 'org-1',
+        credential_fingerprint: 'b'.repeat(64),
+        authorization_mode: 'exact',
+      }),
+      expect.objectContaining({
+        id: 'news-foreign',
+        owner_user_id: null,
+        owner_organization_id: null,
+        authorization_mode: 'exact',
+      }),
+    ]);
+  });
+
+  it('populates binding metadata in shadow mode without changing projected read ownership', async () => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'shadow';
+    state.loadCurrentMainserverDataProviderBinding.mockImplementation(
+      async (input: { principalType: 'organization' | 'user' }) => ({
+        dataProviderId:
+          input.principalType === 'organization' ? 'provider-organization' : 'provider-user',
+      })
+    );
+    state.listSvaMainserverNews.mockResolvedValue({
+      credentialSource: 'organization',
+      data: [
+        {
+          id: 'news-shadow',
+          title: 'Shadow',
+          contentType: 'news.article',
+          payload: {},
+          status: 'published',
+          author: 'Redaktion',
+          dataProvider: { id: 'provider-organization', name: 'Organisation' },
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+          publishedAt: '2026-06-21T09:00:00.000Z',
+          contentBlocks: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    const response = await refreshProjectedContents(ctx, {
+      visibleTypes: ['news.article'],
+      force: true,
+    });
+
+    expect(response.status).toBe(200);
+    const insertedRows = JSON.parse(String(projectionInsertArgs?.[0] ?? '[]')) as Array<
+      Record<string, unknown>
+    >;
+    expect(insertedRows).toEqual([
+      expect.objectContaining({
+        id: 'news-shadow',
+        source_data_provider_id: 'provider-organization',
+        credential_fingerprint: 'b'.repeat(64),
+        authorization_mode: 'credential_visible_compatibility',
+        owner_user_id: null,
+        owner_organization_id: null,
       }),
     ]);
   });
@@ -969,12 +1201,14 @@ describe('content list projection', () => {
         history_ref: 'history-1',
         current_revision_ref: null,
         last_audit_event_ref: null,
+        authorization_mode: 'credential_visible_compatibility',
         source_system: 'mainserver',
         source_entity_type: 'news.article',
         source_entity_id: 'news-1',
       },
     ];
-    syncStates.set('news.article', {
+    syncStates.set('news.article::de-musterhausen::account-1::org-1::news.article', {
+      sync_scope_key: 'de-musterhausen::account-1::org-1::news.article',
       last_started_at: null,
       last_succeeded_at: '2020-06-20T10:00:00.000Z',
       last_failed_at: null,
@@ -1121,6 +1355,77 @@ describe('content list projection', () => {
         total: 1,
       },
       requestId: 'req-1',
+    });
+  });
+
+  it('rolls stale exact projection rows back to credential visibility outside automatic mode', async () => {
+    process.env.SVA_MAINSERVER_SCOPE_RESOLVER_MODE = 'compatibility';
+    projectionRows = [
+      {
+        id: 'news-stale-exact-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+        organization_id: 'org-2',
+        owner_subject_id: null,
+        owner_user_id: 'account-2',
+        owner_organization_id: null,
+        content_type: 'news.article',
+        title: 'Mit Credential sichtbar',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'DataProvider',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-news-stale-exact-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        authorization_mode: 'exact',
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-stale-exact-1',
+      },
+    ];
+    syncStates.set('news.article', {
+      last_started_at: null,
+      last_succeeded_at: new Date().toISOString(),
+      last_failed_at: null,
+      last_error_code: null,
+      last_error_message: null,
+      projected_count: 1,
+    });
+    const permissions = [
+      { action: 'news.read', resourceType: 'news', accessScope: 'own' as const },
+      { action: 'news.update', resourceType: 'news', accessScope: 'own' as const },
+    ];
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'kc-user-1' },
+      permissions,
+    });
+    state.resolveEffectivePermissions.mockResolvedValue({ ok: true, permissions });
+
+    const response = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      visibleTypes: ['news.article'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'news-stale-exact-1',
+          access: expect.objectContaining({ state: 'editable', canUpdate: true }),
+        }),
+      ],
+      pagination: { total: 1 },
     });
   });
 
@@ -1498,7 +1803,9 @@ describe('content list projection', () => {
     };
 
     expect(response.status).toBe(200);
-    expect(payload.data).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'news-1' })]));
+    expect(payload.data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'news-1' })])
+    );
     expect(payload.pagination.total).toBe(1);
     expect(payload.metadata.hasBlockingSyncGap).toBe(true);
     expect(payload.metadata.mainserverSyncStates).toEqual(
@@ -1831,8 +2138,7 @@ describe('content list projection', () => {
       {
         id: 'news-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key:
-          'de-musterhausen::account-1::no-organization::news.article',
+        projection_scope_key: 'de-musterhausen::account-1::no-organization::news.article',
         organization_id: null,
         owner_subject_id: null,
         owner_user_id: 'account-1',
@@ -2401,29 +2707,29 @@ describe('content list projection', () => {
         ['card-1', 'Kachel', 'COCKPIT_CARD'],
         ['future-1', 'Zukünftiger Typ', 'FUTURE_TYPE'],
       ].map(([id, title, genericType]) => ({
-          id: id!,
-          title: title!,
-          contentType: 'generic-items.generic-item',
-          genericType: genericType!,
-          teaser: null,
-          keywords: [],
-          payload: {},
-          categories: [],
-          contacts: [],
-          webUrls: [],
-          addresses: [],
-          contentBlocks: [],
-          openingHours: [],
-          mediaContents: [],
-          locations: [],
-          dates: [],
-          accessibilityInformations: [],
-          priceInformations: [],
-          visible: true,
-          author: null,
-          createdAt: '2026-08-04T10:00:00.000Z',
-          updatedAt: '2026-08-04T11:00:00.000Z',
-        })),
+        id: id!,
+        title: title!,
+        contentType: 'generic-items.generic-item',
+        genericType: genericType!,
+        teaser: null,
+        keywords: [],
+        payload: {},
+        categories: [],
+        contacts: [],
+        webUrls: [],
+        addresses: [],
+        contentBlocks: [],
+        openingHours: [],
+        mediaContents: [],
+        locations: [],
+        dates: [],
+        accessibilityInformations: [],
+        priceInformations: [],
+        visible: true,
+        author: null,
+        createdAt: '2026-08-04T10:00:00.000Z',
+        updatedAt: '2026-08-04T11:00:00.000Z',
+      })),
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
 
@@ -2730,7 +3036,7 @@ describe('content list projection', () => {
     );
   });
 
-  it('keeps user-scoped mainserver mutation refreshes bound to the actor account', async () => {
+  it('does not invent user ownership for mutation projection refreshes', async () => {
     state.getSvaMainserverPoi.mockResolvedValue({
       id: 'poi-user-1',
       name: 'User POI',
@@ -2751,7 +3057,10 @@ describe('content list projection', () => {
     });
 
     await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'user',
+      authorizationMode: 'credential_visible_compatibility',
       contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'c'.repeat(64),
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
@@ -2762,8 +3071,73 @@ describe('content list projection', () => {
     expect(projectionRows).toEqual([
       expect.objectContaining({
         organization_id: null,
-        owner_user_id: 'account-1',
+        owner_user_id: null,
+        projection_scope_key:
+          'de-musterhausen::account-1::no-organization::user::poi.point-of-interest',
         source_entity_id: 'poi-user-1',
+      }),
+    ]);
+  });
+
+  it('derives a targeted personal owner only from the exact verified binding of the immutable context', async () => {
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      dataProviderId: 'provider-user',
+    });
+    state.getSvaMainserverPoi.mockResolvedValue({
+      id: 'poi-user-exact-1',
+      name: 'Persönlicher POI',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      active: true,
+      categories: [],
+      addresses: [],
+      priceInformations: [],
+      openingHours: [],
+      webUrls: [],
+      mediaContents: [],
+      certificates: [],
+      tags: [],
+      visible: true,
+      dataProvider: { id: 'provider-user', name: 'Persönlich' },
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      actingPrincipalType: 'user',
+      authorizationMode: 'exact',
+      contentType: 'poi.point-of-interest',
+      credentialFingerprint: 'c'.repeat(64),
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'poi-user-exact-1',
+    });
+
+    expect(state.getSvaMainserverPoi).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activeOrganizationId: 'org-1',
+        actingPrincipalType: 'user',
+        credentialFingerprint: 'c'.repeat(64),
+      })
+    );
+    expect(state.loadCurrentMainserverDataProviderBinding).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      principalType: 'user',
+      principalId: 'account-1',
+      credentialFingerprint: 'c'.repeat(64),
+    });
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        organization_id: 'org-1',
+        owner_user_id: 'account-1',
+        owner_organization_id: null,
+        credential_source: 'user',
+        credential_fingerprint: 'c'.repeat(64),
+        authorization_mode: 'exact',
+        source_data_provider_id: 'provider-user',
       }),
     ]);
   });
@@ -2815,6 +3189,8 @@ describe('content list projection', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-generic-update-1',
       organizationId: 'org-1',
       operation: 'update',
       entityId: 'generic-mutation-1',
@@ -2939,11 +3315,7 @@ describe('content list projection', () => {
       ok: true,
       permissions: [{ action: 'projects.read', resourceType: 'projects' }],
     });
-    const genericItem = (input: {
-      id: string;
-      genericType: string;
-      deleted?: boolean;
-    }) => ({
+    const genericItem = (input: { id: string; genericType: string; deleted?: boolean }) => ({
       id: input.id,
       title: input.id,
       contentType: 'generic-items.generic-item' as const,
@@ -2997,11 +3369,11 @@ describe('content list projection', () => {
       {
         id: 'generic-type-change-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::faq.faq',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::organization::faq.faq',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
-        owner_organization_id: 'org-1',
+        owner_organization_id: null,
         content_type: 'faq.faq',
         title: 'Ehemalige FAQ',
         published_at: null,
@@ -3071,7 +3443,8 @@ describe('content list projection', () => {
       {
         id: 'generic-delete-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::generic-items.generic-item',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::generic-items.generic-item',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3099,7 +3472,8 @@ describe('content list projection', () => {
       {
         id: 'generic-keep-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::generic-items.generic-item',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::generic-items.generic-item',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3131,6 +3505,8 @@ describe('content list projection', () => {
       instanceId: 'de-musterhausen',
       keycloakSubject: 'kc-user-1',
       actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-delete-1',
       organizationId: 'org-1',
       operation: 'delete',
       entityId: 'generic-delete-1',
@@ -3141,6 +3517,15 @@ describe('content list projection', () => {
         source_entity_id: 'generic-keep-1',
       }),
     ]);
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'operation-delete-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'generic-items.generic-item',
+      sourceEntityId: 'generic-delete-1',
+    });
   });
 
   it('removes only the targeted mainserver projection row after delete mutations', async () => {
@@ -3148,7 +3533,8 @@ describe('content list projection', () => {
       {
         id: 'poi-delete-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3176,7 +3562,8 @@ describe('content list projection', () => {
       {
         id: 'poi-keep-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
@@ -3202,15 +3589,19 @@ describe('content list projection', () => {
         source_entity_id: 'poi-keep-1',
       },
     ];
-    syncStates.set('poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest', {
-      sync_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
-      last_started_at: null,
-      last_succeeded_at: new Date().toISOString(),
-      last_failed_at: null,
-      last_error_code: null,
-      last_error_message: null,
-      projected_count: 2,
-    });
+    syncStates.set(
+      'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+      {
+        sync_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        last_started_at: null,
+        last_succeeded_at: new Date().toISOString(),
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 2,
+      }
+    );
 
     await refreshProjectedContentsForMainserverMutation({
       contentType: 'poi.point-of-interest',
@@ -3229,7 +3620,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('serializes targeted mutation refreshes behind a running batch refresh for the same scope', async () => {
+  it('runs targeted mutation refreshes independently from the automatic batch scope', async () => {
     const releaseBatchList = { current: null as (() => void) | null };
     const batchListRelease = new Promise<void>((resolve) => {
       releaseBatchList.current = resolve;
@@ -3305,7 +3696,7 @@ describe('content list projection', () => {
     for (let index = 0; index < 10; index += 1) {
       await Promise.resolve();
     }
-    expect(state.getSvaMainserverPoi).not.toHaveBeenCalled();
+    expect(state.getSvaMainserverPoi).toHaveBeenCalledTimes(1);
 
     releaseBatchList.current?.();
 
@@ -3325,11 +3716,13 @@ describe('content list projection', () => {
       {
         id: 'poi-stale-1',
         instance_id: 'de-musterhausen',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         organization_id: 'org-1',
         owner_subject_id: null,
         owner_user_id: null,
         owner_organization_id: 'org-1',
+        authorization_mode: 'credential_visible_compatibility',
         content_type: 'poi.point-of-interest',
         title: 'Alter Snapshot',
         published_at: null,
@@ -3351,15 +3744,31 @@ describe('content list projection', () => {
         source_entity_id: 'poi-stale-1',
       },
     ];
-    syncStates.set('poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest', {
-      sync_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
-      last_started_at: null,
-      last_succeeded_at: staleSucceededAt,
-      last_failed_at: null,
-      last_error_code: null,
-      last_error_message: null,
-      projected_count: 1,
-    });
+    syncStates.set(
+      'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+      {
+        sync_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        last_started_at: null,
+        last_succeeded_at: staleSucceededAt,
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 1,
+      }
+    );
+    syncStates.set(
+      'poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest',
+      {
+        sync_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        last_started_at: null,
+        last_succeeded_at: staleSucceededAt,
+        last_failed_at: null,
+        last_error_code: null,
+        last_error_message: null,
+        projected_count: 0,
+      }
+    );
     state.getSvaMainserverPoi.mockRejectedValue(new Error('detail failed'));
     state.listSvaMainserverPoi.mockResolvedValue({
       data: [],
@@ -3385,7 +3794,9 @@ describe('content list projection', () => {
       }),
     ]);
     expect(
-      syncStates.get('poi.point-of-interest::de-musterhausen::account-1::org-1::poi.point-of-interest')
+      syncStates.get(
+        'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest'
+      )
     ).toEqual(
       expect.objectContaining({
         last_succeeded_at: staleSucceededAt,
@@ -3451,8 +3862,7 @@ describe('content list projection', () => {
         page: 1,
         page_size: 100,
         refresh_trigger: 'reconciliation',
-        projection_scope_key:
-          'de-musterhausen::account-1::org-1::events.event-record',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::events.event-record',
       })
     );
     expect(state.loggerWarn).toHaveBeenCalledWith(
@@ -3462,7 +3872,8 @@ describe('content list projection', () => {
         entity_id: 'poi-log-1',
         operation: 'update',
         refresh_trigger: 'mutation_follow_up',
-        projection_scope_key: 'de-musterhausen::account-1::org-1::poi.point-of-interest',
+        projection_scope_key:
+          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       })
     );
   });
@@ -3509,18 +3920,16 @@ describe('content list projection', () => {
 
     expect(projectionRows).toEqual([
       expect.objectContaining({
-        projection_scope_key:
-          'de-musterhausen::account-1::org-1::events.event-record',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::events.event-record',
         organization_id: 'org-1',
         owner_user_id: null,
-        owner_organization_id: 'org-1',
+        owner_organization_id: null,
         source_entity_id: 'event-shared-1',
       }),
       expect.objectContaining({
-        projection_scope_key:
-          'de-musterhausen::account-1::no-organization::events.event-record',
+        projection_scope_key: 'de-musterhausen::account-1::no-organization::events.event-record',
         organization_id: null,
-        owner_user_id: 'account-1',
+        owner_user_id: null,
         owner_organization_id: null,
         source_entity_id: 'event-shared-1',
       }),
@@ -3832,29 +4241,31 @@ describe('content list projection', () => {
   it('loads page 1 of every visible mainserver type with page size 100 before page 2', async () => {
     const calls: string[] = [];
 
-    state.listSvaMainserverNews.mockImplementation(async ({ page, pageSize }: { page: number; pageSize: number }) => {
-      calls.push(`news:${page}:${pageSize}`);
-      return {
-        data:
-          page === 1
-            ? [
-                {
-                  id: 'news-page-1',
-                  title: 'Neueste Nachricht',
-                  contentType: 'news.article',
-                  payload: { teaser: 'A' },
-                  status: 'published',
-                  author: 'Redaktion',
-                  createdAt: '2026-06-20T10:00:00.000Z',
-                  updatedAt: '2026-06-21T10:00:00.000Z',
-                  publishedAt: '2026-06-21T09:00:00.000Z',
-                  contentBlocks: [],
-                },
-              ]
-            : [],
-        pagination: { page, pageSize, hasNextPage: page === 1 },
-      };
-    });
+    state.listSvaMainserverNews.mockImplementation(
+      async ({ page, pageSize }: { page: number; pageSize: number }) => {
+        calls.push(`news:${page}:${pageSize}`);
+        return {
+          data:
+            page === 1
+              ? [
+                  {
+                    id: 'news-page-1',
+                    title: 'Neueste Nachricht',
+                    contentType: 'news.article',
+                    payload: { teaser: 'A' },
+                    status: 'published',
+                    author: 'Redaktion',
+                    createdAt: '2026-06-20T10:00:00.000Z',
+                    updatedAt: '2026-06-21T10:00:00.000Z',
+                    publishedAt: '2026-06-21T09:00:00.000Z',
+                    contentBlocks: [],
+                  },
+                ]
+              : [],
+          pagination: { page, pageSize, hasNextPage: page === 1 },
+        };
+      }
+    );
 
     state.listSvaMainserverEvents.mockImplementation(
       async ({ page, pageSize }: { page: number; pageSize: number }) => {
@@ -3894,12 +4305,7 @@ describe('content list projection', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(calls).toEqual([
-      'news:1:100',
-      'events:1:100',
-      'news:2:100',
-      'events:2:100',
-    ]);
+    expect(calls).toEqual(['news:1:100', 'events:1:100', 'news:2:100', 'events:2:100']);
   });
 
   it('loads 582 news entries with no more than six page requests', async () => {
@@ -3928,20 +4334,27 @@ describe('content list projection', () => {
 
   it('answers after the hot page while reconciliation continues', async () => {
     process.env.SVA_CONTENT_PROJECTION_HOT_COMPLETION_ENABLED = 'true';
-    let resolvePageTwo: ((value: { data: []; pagination: { page: number; pageSize: number; hasNextPage: false } }) => void) | undefined;
+    let resolvePageTwo:
+      | ((value: {
+          data: [];
+          pagination: { page: number; pageSize: number; hasNextPage: false };
+        }) => void)
+      | undefined;
     state.listSvaMainserverNews
       .mockResolvedValueOnce({
-        data: [{
-          id: 'news-hot-1',
-          title: 'Hot Page',
-          contentType: 'news.article',
-          payload: {},
-          status: 'published',
-          author: 'Redaktion',
-          createdAt: '2026-06-20T10:00:00.000Z',
-          updatedAt: '2026-06-21T10:00:00.000Z',
-          contentBlocks: [],
-        }],
+        data: [
+          {
+            id: 'news-hot-1',
+            title: 'Hot Page',
+            contentType: 'news.article',
+            payload: {},
+            status: 'published',
+            author: 'Redaktion',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+            contentBlocks: [],
+          },
+        ],
         pagination: { page: 1, pageSize: 100, hasNextPage: true },
       })
       .mockImplementationOnce(
@@ -3958,9 +4371,7 @@ describe('content list projection', () => {
     const payload = (await response.json()) as { data: { status: string } };
 
     expect(payload.data.status).toBe('accepted');
-    expect(projectionRows).toEqual([
-      expect.objectContaining({ source_entity_id: 'news-hot-1' }),
-    ]);
+    expect(projectionRows).toEqual([expect.objectContaining({ source_entity_id: 'news-hot-1' })]);
     resolvePageTwo?.({ data: [], pagination: { page: 2, pageSize: 100, hasNextPage: false } });
     await vi.waitFor(() => expect(state.listSvaMainserverNews).toHaveBeenCalledTimes(2));
     await vi.waitFor(() =>
@@ -3974,13 +4385,15 @@ describe('content list projection', () => {
   it('persists slim projection rows without a fachliche payload', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.listSvaMainserverProjection.mockResolvedValue({
-      data: [{
-        id: 'news-slim-1',
-        contentType: 'news.article',
-        title: 'Kompakt',
-        createdAt: '2026-06-20T10:00:00.000Z',
-        updatedAt: '2026-06-21T10:00:00.000Z',
-      }],
+      data: [
+        {
+          id: 'news-slim-1',
+          contentType: 'news.article',
+          title: 'Kompakt',
+          createdAt: '2026-06-20T10:00:00.000Z',
+          updatedAt: '2026-06-21T10:00:00.000Z',
+        },
+      ],
       skippedInvalidCount: 0,
       pagination: { page: 1, pageSize: 100, hasNextPage: false },
     });
@@ -3996,13 +4409,15 @@ describe('content list projection', () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.listSvaMainserverProjection.mockImplementation(
       async ({ page, pageSize }: { page: number; pageSize: number }) => ({
-        data: [{
-          id: `news-slim-${page}`,
-          contentType: 'news.article',
-          title: `Kompakt ${page}`,
-          createdAt: '2026-06-20T10:00:00.000Z',
-          updatedAt: '2026-06-21T10:00:00.000Z',
-        }],
+        data: [
+          {
+            id: `news-slim-${page}`,
+            contentType: 'news.article',
+            title: `Kompakt ${page}`,
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
         skippedInvalidCount: 0,
         pagination: { page: Math.min(page, 50), pageSize, hasNextPage: true },
       })
@@ -4071,8 +4486,9 @@ describe('content list projection', () => {
       }),
     ]);
     await vi.waitFor(() => {
-      expect(syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article'))
-        .toEqual(
+      expect(
+        syncStates.get('news.article::de-musterhausen::account-1::org-1::news.article')
+      ).toEqual(
         expect.objectContaining({
           last_succeeded_at: null,
           last_failed_at: expect.any(String),

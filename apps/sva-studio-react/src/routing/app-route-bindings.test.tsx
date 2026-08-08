@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import type { ComponentType } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const routeState = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ const routeState = vi.hoisted(() => ({
     organizations: [] as Array<{ organizationId: string; displayName: string; isActive: boolean }>,
   },
   getOrganization: vi.fn(),
+  enabledMainserverMutationActions: [] as string[],
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -32,7 +34,7 @@ vi.mock('@sva/routing', () => ({
 vi.mock('../i18n', () => ({
   t: (key: string) =>
     (
-      {
+      ({
         'interfaces.messages.loading': 'Interfaces loading fallback',
         'shell.sidebar.sections.dataManagement': 'Data management',
         'shell.sidebar.media': 'Media',
@@ -48,12 +50,13 @@ vi.mock('../i18n', () => ({
         'shell.sidebar.help': 'Help',
         'shell.sidebar.support': 'Support',
         'shell.sidebar.license': 'License',
-      } as Record<string, string>
+      }) as Record<string, string>
     )[key] ?? key,
 }));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => ({
+    hasResolvedSession: true,
     isAuthenticated: Boolean(routeState.authUser),
     user: routeState.authUser,
   }),
@@ -62,6 +65,14 @@ vi.mock('../providers/auth-provider', () => ({
 vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => ({
     context: routeState.organizationContext,
+  }),
+}));
+
+vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
+  useMainserverMutationCapabilities: () => ({
+    enabledActions: routeState.enabledMainserverMutationActions,
+    isLoading: false,
+    error: null,
   }),
 }));
 
@@ -122,7 +133,9 @@ vi.mock('../routes/admin/groups/-groups-page', () => ({
 }));
 
 vi.mock('../routes/admin/groups/-group-detail-page', () => ({
-  GroupDetailPage: ({ groupId }: { groupId: string }) => <div data-testid="group-detail-page">{groupId}</div>,
+  GroupDetailPage: ({ groupId }: { groupId: string }) => (
+    <div data-testid="group-detail-page">{groupId}</div>
+  ),
 }));
 
 vi.mock('../routes/admin/instances/-instance-create-page', () => ({
@@ -208,18 +221,41 @@ vi.mock('../routes/admin/users/-user-list-page', () => ({
 }));
 
 vi.mock('../routes/admin/users/-user-edit-page', () => ({
-  UserEditPage: ({ userId }: { userId: string }) => <div data-testid="user-edit-page">{userId}</div>,
+  UserEditPage: ({ userId }: { userId: string }) => (
+    <div data-testid="user-edit-page">{userId}</div>
+  ),
 }));
 
 vi.mock('../routes/content/-content-editor-page', () => ({
-  ContentEditorPage: ({ mode, contentId, activeTab }: { mode: string; contentId?: string; activeTab?: string }) => (
+  ContentEditorPage: ({
+    mode,
+    contentId,
+    activeTab,
+  }: {
+    mode: string;
+    contentId?: string;
+    activeTab?: string;
+  }) => (
     <div data-testid="content-editor-page">{`${mode}:${contentId ?? ''}:${activeTab ?? ''}`}</div>
   ),
-  normalizeContentEditorTab: (tab: unknown) => (typeof tab === 'string' && (tab === 'general' || tab === 'history') ? tab : 'general'),
+  normalizeContentEditorTab: (tab: unknown) =>
+    typeof tab === 'string' && (tab === 'general' || tab === 'history') ? tab : 'general',
 }));
 
 vi.mock('../routes/content/-content-list-page', () => ({
-  ContentListPage: () => <div data-testid="content-list-page" />,
+  ContentListPage: ({
+    enabledMainserverMutationActions,
+    principalControl,
+  }: {
+    enabledMainserverMutationActions?: readonly string[];
+    principalControl?: { value: string };
+  }) => (
+    <div
+      data-mutation-actions={enabledMainserverMutationActions?.join(',')}
+      data-principal={principalControl?.value}
+      data-testid="content-list-page"
+    />
+  ),
 }));
 
 vi.mock('../routes/content/-content-type-picker-page', () => ({
@@ -249,70 +285,137 @@ vi.mock('../routes/monitoring/-overview-page', () => ({
 }));
 
 vi.mock('../routes/monitoring/-job-detail-page', () => ({
-  MonitoringJobDetailPage: ({ jobId }: { jobId: string }) => <div data-testid="monitoring-job-detail-page">{jobId}</div>,
+  MonitoringJobDetailPage: ({ jobId }: { jobId: string }) => (
+    <div data-testid="monitoring-job-detail-page">{jobId}</div>
+  ),
 }));
 
 vi.mock('@sva/plugin-news', () => ({
-  NewsCreatePage: ({ initialAuthor }: { initialAuthor?: string }) => (
-    <div data-testid="news-create-page">
-      <span data-testid="news-create-author-value">{initialAuthor ?? ''}</span>
-    </div>
-  ),
+  NewsCreatePage: () => <div data-testid="news-create-page" />,
   NewsDetailPage: ({
     mode,
-    initialAuthor,
-    authorControl,
+    principalControl,
   }: {
     mode: 'create' | 'edit';
-    initialAuthor?: string;
-    authorControl?:
-      | { kind: 'fixed'; value: string }
+    principalControl?:
+      | { kind: 'fixed'; value: 'organization' | 'user'; label: string }
       | {
           kind: 'selectable';
-          value: string;
-          options: ReadonlyArray<{ value: string; label: string }>;
+          value: 'organization' | 'user';
+          options: ReadonlyArray<{ value: 'organization' | 'user'; label: string }>;
         };
   }) =>
     mode === 'create' ? (
-      <div data-testid="news-create-page">
-        <span data-testid="news-create-author-kind">{authorControl?.kind ?? 'none'}</span>
-        <span data-testid="news-create-author-value">{authorControl?.value ?? initialAuthor ?? ''}</span>
-        <span data-testid="news-create-author-options">
-          {authorControl?.kind === 'selectable'
-            ? authorControl.options.map((option) => option.label).join('|')
+      <div data-testid="news-create-page" data-principal-value={principalControl?.value}>
+        <span data-testid="news-create-principal-kind">{principalControl?.kind ?? 'none'}</span>
+        <span data-testid="news-create-principal-value">{principalControl?.value ?? ''}</span>
+        <span data-testid="news-create-principal-label">
+          {principalControl?.kind === 'fixed' ? principalControl.label : ''}
+        </span>
+        <span data-testid="news-create-principal-options">
+          {principalControl?.kind === 'selectable'
+            ? principalControl.options.map((option) => option.label).join('|')
             : ''}
         </span>
       </div>
     ) : (
-      <div data-testid="news-edit-page" />
+      <div data-testid="news-edit-page" data-principal-value={principalControl?.value} />
     ),
-  NewsEditPage: () => <div data-testid="news-edit-page" />,
+  NewsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="news-edit-page" data-principal-value={principalControl?.value} />
+  ),
 }));
 
 vi.mock('@sva/plugin-events', () => ({
-  EventsCreatePage: () => <div data-testid="events-create-page" />,
-  EventsEditPage: () => <div data-testid="events-edit-page" />,
+  EventsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="events-create-page" data-principal-value={principalControl?.value} />
+  ),
+  EventsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="events-edit-page" data-principal-value={principalControl?.value} />
+  ),
 }));
 
 vi.mock('@sva/plugin-generic-items', () => ({
-  GenericItemsCreatePage: () => <div data-testid="generic-items-create-page" />,
-  GenericItemsEditPage: () => <div data-testid="generic-items-edit-page" />,
+  GenericItemsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="generic-items-create-page" data-principal-value={principalControl?.value} />
+  ),
+  GenericItemsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="generic-items-edit-page" data-principal-value={principalControl?.value} />
+  ),
+}));
+
+vi.mock('@sva/plugin-faq', () => ({
+  FaqCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="faq-create-page" data-principal-value={principalControl?.value} />
+  ),
+  FaqEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="faq-edit-page" data-principal-value={principalControl?.value} />
+  ),
+  FaqListPage: () => <div data-testid="faq-list-page" />,
+}));
+
+vi.mock('@sva/plugin-cockpit-cards', () => ({
+  CockpitCardsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="cockpit-cards-create-page" data-principal-value={principalControl?.value} />
+  ),
+  CockpitCardsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="cockpit-cards-edit-page" data-principal-value={principalControl?.value} />
+  ),
+  CockpitCardsListPage: () => <div data-testid="cockpit-cards-list-page" />,
 }));
 
 vi.mock('@sva/plugin-projects', () => ({
-  ProjectsCreatePage: () => <div data-testid="projects-create-page" />,
-  ProjectsEditPage: () => <div data-testid="projects-edit-page" />,
+  ProjectsCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="projects-create-page" data-principal-value={principalControl?.value} />
+  ),
+  ProjectsEditPage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="projects-edit-page" data-principal-value={principalControl?.value} />
+  ),
   ProjectsListPage: () => <div data-testid="projects-list-page" />,
 }));
 
 vi.mock('@sva/plugin-poi', () => ({
-  PoiCreatePage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-create-page">{instanceId ?? ''}</div>,
-  PoiEditPage: ({ instanceId }: { instanceId?: string }) => <div data-testid="poi-edit-page">{instanceId ?? ''}</div>,
+  PoiCreatePage: ({
+    instanceId,
+    principalControl,
+  }: {
+    instanceId?: string;
+    principalControl?: { value: string };
+  }) => (
+    <div data-testid="poi-create-page" data-principal-value={principalControl?.value}>
+      {instanceId ?? ''}
+    </div>
+  ),
+  PoiEditPage: ({
+    instanceId,
+    principalControl,
+  }: {
+    instanceId?: string;
+    principalControl?: { value: string };
+  }) => (
+    <div data-testid="poi-edit-page" data-principal-value={principalControl?.value}>
+      {instanceId ?? ''}
+    </div>
+  ),
 }));
 
 vi.mock('@sva/plugin-surveys', () => ({
-  SurveyCreatePage: () => <div data-testid="surveys-create-page" />,
-  SurveyEditPage: () => <div data-testid="surveys-edit-page" />,
+  SurveyCreatePage: ({ principalControl }: { principalControl?: { value: string } }) => (
+    <div data-testid="surveys-create-page" data-principal-value={principalControl?.value} />
+  ),
+  SurveyEditPage: ({
+    canUpdate,
+    principalControl,
+  }: {
+    canUpdate?: boolean;
+    principalControl?: { value: string };
+  }) => (
+    <div
+      data-can-update={String(canUpdate)}
+      data-testid="surveys-edit-page"
+      data-principal-value={principalControl?.value}
+    />
+  ),
 }));
 
 vi.mock('@sva/plugin-categories', () => ({
@@ -331,6 +434,7 @@ describe('appRouteBindings', () => {
       organizations: [],
     };
     routeState.getOrganization.mockReset();
+    routeState.enabledMainserverMutationActions = [];
   });
 
   afterEach(() => {
@@ -363,8 +467,9 @@ describe('appRouteBindings', () => {
     createView.unmount();
 
     routeState.params = { id: 'survey-1' };
+    routeState.enabledMainserverMutationActions = ['surveys.update'];
     render(<appRouteBindings.surveysDetail />);
-    expect(screen.getByTestId('surveys-edit-page')).toBeTruthy();
+    expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
   });
 
   it('renders the concrete categories plugin page instead of the placeholder', async () => {
@@ -384,7 +489,7 @@ describe('appRouteBindings', () => {
     expect(screen.getByTestId('modules-page').textContent).toBe('modules');
   });
 
-  it('passes organization-based author defaults into the news create page when memberships require org authorship', async () => {
+  it('passes the organization principal into the news create page when policy requires it', async () => {
     routeState.authUser = {
       id: 'user-1',
       displayName: 'Philipp Wilimzig',
@@ -418,18 +523,23 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Stadt Musterhausen');
-      });
+      expect(screen.getByTestId('news-create-principal-value').textContent).toBe('organization');
+      expect(screen.getByTestId('news-create-principal-label').textContent).toBe(
+        'Stadt Musterhausen'
+      );
+    });
   });
 
-  it('falls back to the current user as author when no org-only membership is configured', async () => {
+  it('offers both principals and defaults to the organization for an active organization', async () => {
     routeState.authUser = {
       id: 'user-1',
       displayName: 'Philipp Wilimzig',
     };
     routeState.organizationContext = {
       activeOrganizationId: 'org-2',
-      organizations: [{ organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true }],
+      organizations: [
+        { organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true },
+      ],
     };
     routeState.getOrganization.mockResolvedValue({
       data: {
@@ -453,8 +563,12 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Philipp Wilimzig');
-      });
+      expect(screen.getByTestId('news-create-principal-kind').textContent).toBe('selectable');
+    });
+    expect(screen.getByTestId('news-create-principal-value').textContent).toBe('organization');
+    expect(screen.getByTestId('news-create-principal-options').textContent).toBe(
+      'Redaktion Musterhausen|Philipp Wilimzig'
+    );
   });
 
   it('stays stable with an authenticated user while the org context is still empty', async () => {
@@ -468,20 +582,59 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-        expect(screen.getByTestId('news-create-author-value').textContent).toBe('Philipp Wilimzig');
-      });
+      expect(screen.getByTestId('news-create-principal-value').textContent).toBe('user');
+    });
 
     expect(routeState.getOrganization).not.toHaveBeenCalled();
   });
 
-  it('offers organization or personal author choice when contentAuthorPolicy is org_or_personal', async () => {
+  it('forwards the resolved principal contract to every Mainserver editor route', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+      instanceId: 'de-musterhausen',
+    };
+    routeState.params = { id: 'content-1' };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const cases: Array<[ComponentType, string]> = [
+      [appRouteBindings.newsEditor, 'news-create-page'],
+      [appRouteBindings.newsDetail, 'news-edit-page'],
+      [appRouteBindings.eventsEditor, 'events-create-page'],
+      [appRouteBindings.eventsDetail, 'events-edit-page'],
+      [appRouteBindings.genericItemsEditor, 'generic-items-create-page'],
+      [appRouteBindings.genericItemsDetail, 'generic-items-edit-page'],
+      [appRouteBindings.faqEditor, 'faq-create-page'],
+      [appRouteBindings.faqDetail, 'faq-edit-page'],
+      [appRouteBindings.cockpitCardsEditor, 'cockpit-cards-create-page'],
+      [appRouteBindings.cockpitCardsDetail, 'cockpit-cards-edit-page'],
+      [appRouteBindings.projectsEditor, 'projects-create-page'],
+      [appRouteBindings.projectsDetail, 'projects-edit-page'],
+      [appRouteBindings.poiEditor, 'poi-create-page'],
+      [appRouteBindings.poiDetail, 'poi-edit-page'],
+      [appRouteBindings.surveysEditor, 'surveys-create-page'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page'],
+    ];
+
+    for (const [Binding, testId] of cases) {
+      render(<Binding />);
+      expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      cleanup();
+    }
+
+    expect(routeState.getOrganization).not.toHaveBeenCalled();
+  });
+
+  it('offers organization or personal principal choice when contentAuthorPolicy is org_or_personal', async () => {
     routeState.authUser = {
       id: 'user-1',
       displayName: 'Max Mustermann',
     };
     routeState.organizationContext = {
       activeOrganizationId: 'org-1',
-      organizations: [{ organizationId: 'org-1', displayName: 'Organisation Musterstadt', isActive: true }],
+      organizations: [
+        { organizationId: 'org-1', displayName: 'Organisation Musterstadt', isActive: true },
+      ],
     };
     routeState.getOrganization.mockResolvedValue({
       data: {
@@ -505,10 +658,10 @@ describe('appRouteBindings', () => {
     render(<appRouteBindings.newsEditor />);
 
     await waitFor(() => {
-      expect(screen.getByTestId('news-create-author-kind').textContent).toBe('selectable');
+      expect(screen.getByTestId('news-create-principal-kind').textContent).toBe('selectable');
     });
-    expect(screen.getByTestId('news-create-author-value').textContent).toBe('Organisation Musterstadt');
-    expect(screen.getByTestId('news-create-author-options').textContent).toBe(
+    expect(screen.getByTestId('news-create-principal-value').textContent).toBe('organization');
+    expect(screen.getByTestId('news-create-principal-options').textContent).toBe(
       'Organisation Musterstadt|Max Mustermann'
     );
   });
@@ -541,7 +694,9 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.adminGroupDetail />);
-    await waitFor(() => expect(screen.getByTestId('group-detail-page').textContent).toBe('group-5'));
+    await waitFor(() =>
+      expect(screen.getByTestId('group-detail-page').textContent).toBe('group-5')
+    );
     cleanup();
 
     render(<appRouteBindings.adminOrganizations />);
@@ -549,7 +704,9 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.adminOrganizationDetail />);
-    await waitFor(() => expect(screen.getByTestId('organization-detail-page').textContent).toBe('org-4'));
+    await waitFor(() =>
+      expect(screen.getByTestId('organization-detail-page').textContent).toBe('org-4')
+    );
     cleanup();
 
     render(<appRouteBindings.adminRoles />);
@@ -619,7 +776,9 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.monitoringJobDetail />);
-    await waitFor(() => expect(screen.getByTestId('monitoring-job-detail-page').textContent).toBe('job-9'));
+    await waitFor(() =>
+      expect(screen.getByTestId('monitoring-job-detail-page').textContent).toBe('job-9')
+    );
   });
 
   it('falls back to empty string route params when router params are not strings', async () => {
@@ -661,7 +820,9 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.adminOrganizationDetail />);
-    await waitFor(() => expect(screen.getByTestId('organization-detail-page').textContent).toBe(''));
+    await waitFor(() =>
+      expect(screen.getByTestId('organization-detail-page').textContent).toBe('')
+    );
     cleanup();
 
     render(<appRouteBindings.adminUserDetail />);
@@ -705,7 +866,8 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.content />);
-    expect(screen.getByTestId('content-list-page')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBe('user');
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
     cleanup();
 
     render(<appRouteBindings.media />);

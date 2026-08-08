@@ -28,6 +28,8 @@ import {
   StudioFormSummary,
   StudioLoadingState,
   MainserverDeviationSummary,
+  MainserverPrincipalControl,
+  resolveMainserverPrincipalOptions,
   StudioMediaPickerOverlay,
   Tabs,
   TabsContent,
@@ -39,6 +41,8 @@ import {
   type StudioMediaPickerOverlayLabels,
   type ContentMediaAssetSnapshot,
   type ContentMediaUsage,
+  type MainserverPrincipalControlModel,
+  type MainserverPrincipalType,
   useStudioMediaPickerOverlay,
 } from '@sva/studio-ui-react';
 
@@ -230,10 +234,12 @@ export function PoiDetailPage({
   mode,
   contentId,
   instanceId,
+  principalControl,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
   instanceId?: string;
+  principalControl?: MainserverPrincipalControlModel;
 }>) {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
@@ -246,6 +252,12 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
+  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+  React.useEffect(() => {
+    if (principalControl) setActingPrincipalType(principalControl.value);
+  }, [principalControl]);
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [retryReferenceSync, setRetryReferenceSync] = React.useState<(() => Promise<void>) | null>(
@@ -667,12 +679,13 @@ export function PoiDetailPage({
       }
       const saveContent = () =>
         mode === 'create'
-          ? createPoi(mutation)
+          ? createPoi(mutation, actingPrincipalType)
           : updatePoi(
               contentId as string,
               omitDeviatedMainserverFields(mutation, deviations, {
                 retainedFieldGroups: correctedDegradedFields,
-              })
+              }),
+              actingPrincipalType
             );
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
@@ -719,7 +732,7 @@ export function PoiDetailPage({
     }
 
     try {
-      await deletePoi(contentId);
+      await deletePoi(contentId, actingPrincipalType);
       await navigate({ to: '/admin/content' });
     } catch (deleteError) {
       setStatus({ kind: 'error', text: errorMessage(pt, deleteError, 'messages.deleteError') });
@@ -855,6 +868,20 @@ export function PoiDetailPage({
         />
         <form id={formId} onSubmit={(event) => void submit(event)} className="space-y-5" noValidate>
           {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
+          <MainserverPrincipalControl
+            id="poi-acting-principal"
+            label={pt(mode === 'create' ? 'principal.createAs' : 'principal.actAs')}
+            description={pt('principal.description')}
+            value={actingPrincipalType}
+            options={resolveMainserverPrincipalOptions(principalControl, {
+              value: actingPrincipalType,
+              label: pt(`principal.${actingPrincipalType}`),
+            })}
+            onChange={setActingPrincipalType}
+            dataProvider={mode === 'edit' ? loadedItem?.dataProvider : undefined}
+            dataProviderLabel={pt('principal.dataProvider')}
+            dataProviderUnavailableLabel={pt('principal.unavailable')}
+          />
           <MainserverDeviationSummary
             deviations={deviations}
             title={pt('messages.degradedDataWarning')}

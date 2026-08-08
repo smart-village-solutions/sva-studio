@@ -294,7 +294,8 @@ describe('EventsListPage', () => {
               sourceUrl: { url: 'https://example.com/event.jpg' },
             }),
           ],
-        })
+        }),
+        'user'
       );
     });
 
@@ -324,7 +325,8 @@ describe('EventsListPage', () => {
         expect.objectContaining({
           title: 'Konzertabend',
           dates: [],
-        })
+        }),
+        'user'
       );
     });
 
@@ -372,7 +374,8 @@ describe('EventsListPage', () => {
           title: 'Bestehendes Event',
           description: 'Beschreibung',
           urls: [{ url: 'https://example.com/events' }],
-        })
+        }),
+        'user'
       );
       expect(screen.getByText('Event wurde aktualisiert.')).toBeTruthy();
     });

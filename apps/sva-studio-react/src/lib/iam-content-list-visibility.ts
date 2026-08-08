@@ -7,6 +7,8 @@ type ProjectionRowReadView = {
   readonly organizationId?: string;
   readonly ownerUserId?: string;
   readonly ownerOrganizationId?: string;
+  readonly sourceSystem?: 'iam' | 'mainserver';
+  readonly authorizationMode?: 'credential_visible_compatibility' | 'exact';
 };
 
 export type ProjectionReadVisibilityRule = {
@@ -14,13 +16,8 @@ export type ProjectionReadVisibilityRule = {
   readonly allowGlobal: boolean;
   readonly allowOrganizationIds: readonly string[];
   readonly allowOwn: boolean;
+  readonly allowCredentialCompatibility: boolean;
 };
-
-const ORGANIZATION_OPTIONAL_CONTENT_TYPES = new Set([
-  'events.event-record',
-  'news.article',
-  'poi.point-of-interest',
-]);
 
 const buildReadAction = (contentType: string): string =>
   isMainserverContentType(contentType)
@@ -43,23 +40,18 @@ export const buildProjectionReadVisibilityRules = (
 ): readonly ProjectionReadVisibilityRule[] =>
   contentTypes.map((contentType) => {
     const action = buildReadAction(contentType);
-    const matchingPermissions = permissions
-      .filter((permission) => matchesReadPermission(permission, action))
-      .map((permission) =>
-        ORGANIZATION_OPTIONAL_CONTENT_TYPES.has(contentType) && !permission.organizationId
-          ? {
-              ...permission,
-              ...(permission.accessScope === 'organization' ? { accessScope: undefined } : {}),
-            }
-          : permission
-      );
+    const matchingPermissions = permissions.filter((permission) =>
+      matchesReadPermission(permission, action)
+    );
     const hasOwnFallback = (permission: EffectivePermission): boolean =>
       permission.accessScope === 'own' || permission.accessScope === 'organization';
 
     return {
       contentType,
       allowGlobal: matchingPermissions.some(
-        (permission) => !permission.organizationId && permission.accessScope !== 'own'
+        (permission) =>
+          !permission.organizationId &&
+          (permission.accessScope === undefined || permission.accessScope === 'all')
       ),
       allowOrganizationIds: uniqueSortedStrings(
         matchingPermissions.flatMap((permission) =>
@@ -67,6 +59,10 @@ export const buildProjectionReadVisibilityRules = (
         )
       ),
       allowOwn: matchingPermissions.some(hasOwnFallback),
+      allowCredentialCompatibility: matchingPermissions.some(
+        (permission) =>
+          permission.accessScope === 'own' || permission.accessScope === 'organization'
+      ),
     };
   });
 
@@ -84,6 +80,11 @@ export const isProjectionRowVisibleForRead = (
     row.ownerOrganizationId && rule.allowOrganizationIds.includes(row.ownerOrganizationId)
   );
 
-  const allowed = rule.allowGlobal || organizationMatch || (rule.allowOwn && ownMatch);
+  const compatibilityMatch =
+    row.sourceSystem === 'mainserver' &&
+    row.authorizationMode === 'credential_visible_compatibility' &&
+    rule.allowCredentialCompatibility;
+  const allowed =
+    rule.allowGlobal || compatibilityMatch || organizationMatch || (rule.allowOwn && ownMatch);
   return allowed;
 };

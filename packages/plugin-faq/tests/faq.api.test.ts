@@ -53,15 +53,15 @@ describe('faq api wrapper', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
     await expect(getFaq('faq-1')).resolves.toEqual({ id: 'faq-1' });
-    await expect(createFaq(input)).resolves.toEqual({ id: 'faq-2' });
-    await expect(updateFaq('faq-3', input)).resolves.toEqual({ id: 'faq-3' });
-    await expect(deleteFaq('faq-4')).resolves.toBeUndefined();
+    await expect(createFaq(input, 'organization')).resolves.toEqual({ id: 'faq-2' });
+    await expect(updateFaq('faq-3', input, 'organization')).resolves.toEqual({ id: 'faq-3' });
+    await expect(deleteFaq('faq-4', 'organization')).resolves.toBeUndefined();
 
     expect(listMock).toHaveBeenCalledWith({ page: 1, pageSize: 25, languageCode: 'de' });
     expect(getMock).toHaveBeenCalledWith('faq-1');
-    expect(createMock).toHaveBeenCalledWith(input);
-    expect(updateMock).toHaveBeenCalledWith('faq-3', input);
-    expect(removeMock).toHaveBeenCalledWith('faq-4');
+    expect(createMock).toHaveBeenCalledWith(input, 'organization');
+    expect(updateMock).toHaveBeenCalledWith('faq-3', input, 'organization');
+    expect(removeMock).toHaveBeenCalledWith('faq-4', 'organization');
   });
 
   it('creates stable faq api errors through the configured error factory', async () => {

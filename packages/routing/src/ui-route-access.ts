@@ -42,9 +42,9 @@ const satisfiesRequiredValues = (
   required: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>,
   available: ReadonlySet<string>
 ): boolean =>
-  required.mode === 'allOf'
+  required.values.length > 0 && required.mode === 'allOf'
     ? required.values.every((value) => available.has(value))
-    : required.values.some((value) => available.has(value));
+    : required.values.length > 0 && required.values.some((value) => available.has(value));
 
 export const enforceRouteAccessRequirement = async (
   requirement: PluginRouteAccessRequirement | undefined,
@@ -68,6 +68,8 @@ export const enforceRouteAccessRequirement = async (
       : Boolean(user.instanceId) &&
         user.permissionStatus !== 'degraded' &&
         (!requirement.moduleId || user.assignedModules?.includes(requirement.moduleId)) &&
+        // Route guards do not receive the resource-scoped authorization evidence needed to
+        // verify a capability. Keep access closed until the capability is evaluated server-side.
         !requirement.resourceCapability &&
         satisfiesRequiredValues(requirement.actions, new Set(user.permissionActions ?? []));
 

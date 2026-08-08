@@ -3,6 +3,7 @@ import { assertPluginRoutePathAllowed, createPluginGuardrailError } from '@sva/p
 import { createRoute, redirect, type AnyRoute, type RootRoute } from '@tanstack/react-router';
 
 import type { AppRouteBindings } from './app-route-bindings.js';
+import { createMemoizedUserContext } from './admin-resource-authorization.js';
 import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import { resolvePluginRouteGuard } from './plugin-route-guards.js';
 import type { RouteGuardContext } from './protected.routes.js';
@@ -44,19 +45,20 @@ export const getPluginRouteFactories = (
           path: routeDefinition.path,
           validateSearch: routeDefinition.validateSearch,
           beforeLoad: async (beforeLoadOptions) => {
+            const userContext = createMemoizedUserContext(beforeLoadOptions);
             if (routeDefinition.accessRequirement) {
               await enforceRouteAccessRequirement(routeDefinition.accessRequirement, {
-                context: beforeLoadOptions.context as RouteGuardContext,
+                context: userContext.options.context as RouteGuardContext,
               });
             } else {
-              await guard?.(beforeLoadOptions);
+              await guard?.(userContext.options);
             }
 
             if (!requiredModuleId || accessRequirementCoversModule) {
               return;
             }
 
-            const user = await beforeLoadOptions.context.auth?.getUser();
+            const user = await userContext.getUser();
             if (!user?.assignedModules?.includes(requiredModuleId)) {
               throw redirect({ href: '/?error=auth.insufficientRole' });
             }

@@ -306,7 +306,9 @@ describe('app.routes', () => {
     expect(guardSpies.monitoring).toHaveBeenCalledWith({ href: '/monitoring' });
     expect(guardSpies.monitoringJobs).toHaveBeenCalledWith({ href: '/monitoring/jobs' });
     expect(guardSpies.monitoringJobDetail).toHaveBeenCalledWith({ href: '/monitoring/jobs/job-1' });
-    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/news' });
+    expect(guardSpies.content).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/news' })
+    );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith('account', undefined, '/account');
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
       'accountPrivacyDetail',
@@ -472,11 +474,15 @@ describe('app.routes', () => {
       href: '/plugins/plugin-guards/write',
     });
 
-    expect(guardSpies.content).toHaveBeenCalledWith({ href: '/plugins/plugin-guards/read' });
-    expect(guardSpies.contentCreate).toHaveBeenCalledWith({
-      href: '/plugins/plugin-guards/create',
-    });
-    expect(guardSpies.contentDetail).toHaveBeenCalledWith({ href: '/plugins/plugin-guards/write' });
+    expect(guardSpies.content).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/read' })
+    );
+    expect(guardSpies.contentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/create' })
+    );
+    expect(guardSpies.contentDetail).toHaveBeenCalledWith(
+      expect.objectContaining({ href: '/plugins/plugin-guards/write' })
+    );
     expect(createAccountUiRouteGuardMock).toHaveBeenCalledWith(
       'content',
       undefined,
@@ -784,6 +790,61 @@ describe('app.routes', () => {
     ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
   });
 
+  it.each([
+    {
+      name: 'empty action sets',
+      accessRequirement: {
+        kind: 'tenant' as const,
+        actions: { mode: 'allOf' as const, values: [] },
+      },
+    },
+    {
+      name: 'resource capabilities without route-level authorization evidence',
+      accessRequirement: {
+        kind: 'tenant' as const,
+        actions: { mode: 'allOf' as const, values: ['news.read'] },
+        resourceCapability: {
+          action: 'news.read',
+          allowed: true,
+          instanceId: 'instance-1',
+          resourceType: 'news.article',
+          resourceId: 'article-1',
+        },
+      },
+    },
+  ])('denies $name in plugin route guards', async ({ accessRequirement }) => {
+    const [routeFactory] = getPluginRouteFactories([
+      {
+        id: 'news',
+        displayName: 'News',
+        routes: [
+          {
+            id: 'news.list',
+            path: '/plugins/news',
+            accessRequirement,
+            component: () => 'news',
+          },
+        ],
+      },
+    ]);
+    const route = routeFactory?.({ id: 'root' } as never);
+
+    await expect(
+      readRouteOptions(route).beforeLoad?.({
+        context: {
+          auth: {
+            getUser: () => ({
+              instanceId: 'instance-1',
+              roles: [],
+              permissionActions: ['news.read'],
+            }),
+          },
+        },
+        location: { href: '/plugins/news' },
+      })
+    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+  });
+
   it('normalizes surrounding whitespace for registered plugin permission guards', async () => {
     const routeFactories = getPluginRouteFactories([
       {
@@ -873,16 +934,17 @@ describe('app.routes', () => {
     ]);
     const rootRoute = { id: 'root' };
     const [route] = routeFactories.map((factory) => factory(rootRoute as never));
+    const deniedGetUser = vi.fn(() => ({
+      roles: ['custom_role'],
+      permissionActions: ['news.read'],
+      assignedModules: [],
+    }));
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
         context: {
           auth: {
-            getUser: () => ({
-              roles: ['custom_role'],
-              permissionActions: ['news.read'],
-              assignedModules: [],
-            }),
+            getUser: deniedGetUser,
           },
         },
         location: { href: '/plugins/news' },
@@ -890,21 +952,25 @@ describe('app.routes', () => {
     ).rejects.toMatchObject({
       href: '/?error=auth.insufficientRole',
     });
+    expect(deniedGetUser).toHaveBeenCalledTimes(1);
+
+    const allowedGetUser = vi.fn(() => ({
+      roles: ['custom_role'],
+      permissionActions: ['news.read'],
+      assignedModules: ['news'],
+    }));
 
     await expect(
       readRouteOptions(route).beforeLoad?.({
         context: {
           auth: {
-            getUser: () => ({
-              roles: ['custom_role'],
-              permissionActions: ['news.read'],
-              assignedModules: ['news'],
-            }),
+            getUser: allowedGetUser,
           },
         },
         location: { href: '/plugins/news' },
       })
     ).resolves.toBeUndefined();
+    expect(allowedGetUser).toHaveBeenCalledTimes(1);
   });
 
   it('blocks static media usage routes when module assignment or media.read is missing', async () => {

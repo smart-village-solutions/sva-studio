@@ -17,7 +17,15 @@ vi.mock('../providers/effective-access-provider', () => ({
 }));
 
 vi.mock('../lib/iam-api', () => ({
-  asIamError: (input: { status: number; code: string; message: string }) => input,
+  IamHttpError: class IamHttpError extends Error {
+    status: number;
+    code: string;
+    constructor(input: { status: number; code: string; message: string }) {
+      super(input.message);
+      this.status = input.status;
+      this.code = input.code;
+    }
+  },
 }));
 
 describe('useContentAccess', () => {
@@ -99,5 +107,19 @@ describe('useContentAccess', () => {
     expect(result.current.access).toMatchObject({ state: 'server_denied', canRead: false, canUpdate: false });
     expect(result.current.permissionActions).toEqual([]);
     expect(result.current.error).toMatchObject({ status: 403, code: 'forbidden' });
+  });
+
+  it('preserves non-forbidden snapshot error codes as unavailable IAM errors', () => {
+    effectiveAccessMock.snapshot = {
+      status: 'error',
+      scope: { kind: 'tenant', authGeneration: 4, instanceId: 'instance-1', organizationId: null, moduleAssignmentGeneration: 4 },
+      generation: 4,
+      errorCode: 'database_unavailable',
+    };
+
+    const { result } = renderHook(() => useContentAccess());
+
+    expect(result.current.access).toBeNull();
+    expect(result.current.error).toMatchObject({ status: 503, code: 'database_unavailable' });
   });
 });

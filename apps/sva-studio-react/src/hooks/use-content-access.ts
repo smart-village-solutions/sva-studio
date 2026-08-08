@@ -1,6 +1,6 @@
 import { summarizeContentAccess, withServerDeniedContentAccess, type IamContentAccessSummary } from '@sva/core';
 
-import { asIamError, type IamHttpError } from '../lib/iam-api';
+import { IamHttpError } from '../lib/iam-api';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 
 type UseContentAccessResult = {
@@ -15,7 +15,7 @@ export const useContentAccess = (): UseContentAccessResult => {
   const { snapshot } = effectiveAccess;
 
   if (snapshot.status === 'error') {
-    const error = asIamError({
+    const error = new IamHttpError({
       status: snapshot.errorCode === 'forbidden' ? 403 : 503,
       code: snapshot.errorCode,
       message: snapshot.errorCode,

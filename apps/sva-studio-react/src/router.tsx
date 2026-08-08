@@ -205,31 +205,35 @@ const loadScopedRouteGuardUser = async (
     return { ...user, permissionActions: [] };
   }
 
-  const contextResponse = await fetchWithRequestTimeout(
-    new URL('/api/v1/iam/me/context', url).toString(),
-    init,
-    { timeoutMs: 5_000 }
-  );
-  if (!contextResponse.ok) {
+  try {
+    const contextResponse = await fetchWithRequestTimeout(
+      new URL('/api/v1/iam/me/context', url).toString(),
+      init,
+      { timeoutMs: 5_000 }
+    );
+    if (!contextResponse.ok) {
+      return { ...user, permissionActions: [], permissionStatus: 'degraded' };
+    }
+    const activeOrganizationId = readActiveOrganizationId(await contextResponse.json());
+    const searchParams = new URLSearchParams({ instanceId: user.instanceId });
+    if (activeOrganizationId) {
+      searchParams.set('organizationId', activeOrganizationId);
+    }
+    const permissionsResponse = await fetchWithRequestTimeout(
+      new URL(`/iam/me/permissions?${searchParams.toString()}`, url).toString(),
+      init,
+      { timeoutMs: 5_000 }
+    );
+    if (!permissionsResponse.ok) {
+      return { ...user, permissionActions: [], permissionStatus: 'degraded' };
+    }
+    const permissionActions = readEffectivePermissionActions(await permissionsResponse.json());
+    return permissionActions
+      ? { ...user, permissionActions }
+      : { ...user, permissionActions: [], permissionStatus: 'degraded' };
+  } catch {
     return { ...user, permissionActions: [], permissionStatus: 'degraded' };
   }
-  const activeOrganizationId = readActiveOrganizationId(await contextResponse.json());
-  const searchParams = new URLSearchParams({ instanceId: user.instanceId });
-  if (activeOrganizationId) {
-    searchParams.set('organizationId', activeOrganizationId);
-  }
-  const permissionsResponse = await fetchWithRequestTimeout(
-    new URL(`/iam/me/permissions?${searchParams.toString()}`, url).toString(),
-    init,
-    { timeoutMs: 5_000 }
-  );
-  if (!permissionsResponse.ok) {
-    return { ...user, permissionActions: [], permissionStatus: 'degraded' };
-  }
-  const permissionActions = readEffectivePermissionActions(await permissionsResponse.json());
-  return permissionActions
-    ? { ...user, permissionActions }
-    : { ...user, permissionActions: [], permissionStatus: 'degraded' };
 };
 
 const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {

@@ -389,6 +389,35 @@ describe('router runtime helpers', () => {
     );
   });
 
+  it('keeps authenticated client route guards degraded when scoped access loading throws', async () => {
+    const { getRouter } = await import('./router');
+    const getUser = readRouteGuardGetUser(await getRouter());
+
+    routerMocks.fetchWithRequestTimeoutSpy
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            user: {
+              instanceId: 'instance-1',
+              roles: ['editor'],
+              permissionActions: ['legacy.must-not-authorize'],
+              assignedModules: ['news'],
+            },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
+      )
+      .mockRejectedValueOnce(new Error('context timeout'));
+
+    await expect(getUser()).resolves.toEqual({
+      instanceId: 'instance-1',
+      roles: ['editor'],
+      permissionActions: [],
+      permissionStatus: 'degraded',
+      assignedModules: ['news'],
+    });
+  });
+
   it('does not bypass auth-me when dev auth is only available but no dev auth cookie exists', async () => {
     const { getRouter } = await import('./router');
 

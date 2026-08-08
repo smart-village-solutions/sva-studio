@@ -3,14 +3,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const useAuthMock = vi.fn();
 const refreshSessionMock = vi.fn();
+const retryEffectiveAccessMock = vi.fn();
+const effectiveAccessMock = {
+  snapshot: { status: 'ready' } as { status: 'ready' | 'error' },
+  retry: retryEffectiveAccessMock,
+};
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => effectiveAccessMock,
+}));
+
 describe('PermissionsDegradedBanner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    effectiveAccessMock.snapshot = { status: 'ready' };
   });
 
   afterEach(() => {
@@ -95,5 +105,21 @@ describe('PermissionsDegradedBanner', () => {
     });
     view.rerender(<PermissionsDegradedBanner />);
     expect(screen.getByRole('alert')).toBeTruthy();
+  });
+
+  it('surfaces effective-access failures and retries only the failed snapshot', async () => {
+    effectiveAccessMock.snapshot = { status: 'error' };
+    useAuthMock.mockReturnValue({
+      permissionsDegraded: false,
+      refreshSession: refreshSessionMock,
+      isLoading: false,
+    });
+
+    const { PermissionsDegradedBanner } = await import('./PermissionsDegradedBanner');
+    render(<PermissionsDegradedBanner />);
+    fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
+
+    await waitFor(() => expect(retryEffectiveAccessMock).toHaveBeenCalledTimes(1));
+    expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 });

@@ -3,27 +3,36 @@ import { AlertTriangle, X, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
+import { useEffectiveAccess } from '../providers/effective-access-provider';
 
 export const PermissionsDegradedBanner = () => {
   const { permissionsDegraded, refreshSession, isLoading } = useAuth();
+  const effectiveAccess = useEffectiveAccess();
+  const effectiveAccessDegraded = effectiveAccess.snapshot.status === 'error';
+  const isDegraded = permissionsDegraded || effectiveAccessDegraded;
   const [dismissed, setDismissed] = React.useState(false);
   const [isRetrying, setIsRetrying] = React.useState(false);
 
   // Wenn der Nutzer Berechtigungen neu lädt und sie jetzt ok sind, Banner ausblenden.
   React.useEffect(() => {
-    if (!permissionsDegraded) {
+    if (!isDegraded) {
       setDismissed(false);
     }
-  }, [permissionsDegraded]);
+  }, [isDegraded]);
 
-  if (!permissionsDegraded || dismissed || isLoading) {
+  if (!isDegraded || dismissed || isLoading) {
     return null;
   }
 
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
-      await refreshSession();
+      if (permissionsDegraded) {
+        await refreshSession();
+      }
+      if (effectiveAccessDegraded) {
+        effectiveAccess.retry();
+      }
     } finally {
       setIsRetrying(false);
     }

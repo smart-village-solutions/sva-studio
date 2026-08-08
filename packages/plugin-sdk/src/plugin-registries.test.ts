@@ -825,6 +825,39 @@ describe('plugin registries', () => {
       createPluginRegistry([
         {
           ...newsPlugin,
+          actions: [
+            ...newsPlugin.actions,
+            {
+              id: 'news.secure',
+              titleKey: 'news.actions.secure',
+              accessRequirement: {
+                kind: 'tenant',
+                moduleId: 'news',
+                actions: { mode: 'allOf', values: ['news.secure'] },
+              },
+            },
+          ],
+          permissions: [
+            ...newsPlugin.permissions,
+            { id: 'news.secure', titleKey: 'news.permissions.secure' },
+          ],
+          routes: [
+            {
+              id: 'news.requirement-missing',
+              path: '/plugins/news/requirement-missing',
+              actionId: 'news.secure',
+              component,
+            },
+          ],
+        },
+      ])
+    ).toThrow(
+      'plugin_route_action_access_requirement_mismatch:news:news.requirement-missing:news.secure'
+    );
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
           navigation: [
             {
               id: 'news.invalid-nav-action',

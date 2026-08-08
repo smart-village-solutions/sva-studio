@@ -468,6 +468,34 @@ const assertPluginAccessRequirement = (
   }
 };
 
+const hasMatchingPluginAccessRequirement = (
+  left: UiAccessRequirement | undefined,
+  right: UiAccessRequirement | undefined
+): boolean => {
+  if (!left || !right) {
+    return left === right;
+  }
+  if (left.kind !== 'tenant' || right.kind !== 'tenant') {
+    return left.kind === right.kind;
+  }
+  const leftActions = new Set(left.actions.values);
+  const rightActions = new Set(right.actions.values);
+  const leftCapability = left.resourceCapability;
+  const rightCapability = right.resourceCapability;
+  return (
+    left.moduleId === right.moduleId &&
+    left.actions.mode === right.actions.mode &&
+    leftActions.size === rightActions.size &&
+    [...leftActions].every((action) => rightActions.has(action)) &&
+    leftCapability?.action === rightCapability?.action &&
+    leftCapability?.allowed === rightCapability?.allowed &&
+    leftCapability?.instanceId === rightCapability?.instanceId &&
+    leftCapability?.organizationId === rightCapability?.organizationId &&
+    leftCapability?.resourceType === rightCapability?.resourceType &&
+    leftCapability?.resourceId === rightCapability?.resourceId
+  );
+};
+
 const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
   const normalizedPath = trimTrailingSlashes(path.trim()) || '/';
   const pluginRoot = `/plugins/${pluginNamespace}`;
@@ -805,6 +833,11 @@ const assertPluginRegistryRoutes = ({
     if (route.guard !== action.requiredAction) {
       throw new Error(
         `plugin_route_action_guard_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
+      );
+    }
+    if (!hasMatchingPluginAccessRequirement(route.accessRequirement, action.accessRequirement)) {
+      throw new Error(
+        `plugin_route_action_access_requirement_mismatch:${pluginNamespace}:${route.id}:${routeActionId}`
       );
     }
   }

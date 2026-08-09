@@ -25,12 +25,12 @@ jobs:
     environment: prod
     runs-on: ubuntu-latest
     steps:
-      - name: checkout
+      - name: checkout current backup tooling source
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: bind executor source to image revision
+      - name: verify image revision belongs to main
         env:
           CHANGE_HEAD: ${{ inputs.change_head }}
         run: |
@@ -38,7 +38,6 @@ jobs:
           git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
           head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
           git merge-base --is-ancestor "${head}" origin/main
-          git checkout --detach "${head}"
 
       - name: setup pnpm workspace
         uses: ./.github/actions/setup-pnpm-workspace

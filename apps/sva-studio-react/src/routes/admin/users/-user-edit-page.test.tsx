@@ -18,10 +18,13 @@ const useOrganizationsMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
 const navigateMock = vi.fn();
+const routerState = vi.hoisted(() => ({
+  locationState: {} as Record<string, unknown>,
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: ReactNode }) => <>{children}</>,
-  useLocation: () => ({ state: {} }),
+  useLocation: () => ({ state: routerState.locationState }),
   useNavigate: () => navigateMock,
 }));
 
@@ -109,6 +112,8 @@ describe('UserEditPage', () => {
     useOrganizationsMock.mockReset();
     useRolePermissionsMock.mockReset();
     getUserTimelineMock.mockReset();
+    navigateMock.mockReset();
+    routerState.locationState = {};
     getUserTimelineMock.mockResolvedValue({ data: [] });
     useGroupsMock.mockReturnValue({
       groups: [],
@@ -238,6 +243,49 @@ describe('UserEditPage', () => {
 
     render(<UserEditPage userId="user-1" invitationStatus="failed" />);
 
+    expect(
+      screen.getByText(
+        'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('preserves invite search parameters when consuming create save feedback', async () => {
+    routerState.locationState = {
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'user-1',
+        resourceType: 'users',
+      },
+    };
+    useUserMock.mockReturnValue({
+      user: baseUser,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      save: vi.fn(),
+    });
+    useRolesMock.mockReturnValue({
+      roles: [],
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+    });
+
+    render(<UserEditPage userId="user-1" invitationStatus="failed" />);
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/users/$userId',
+        params: { userId: 'user-1' },
+        search: true,
+        replace: true,
+        state: expect.any(Function),
+      });
+    });
     expect(
       screen.getByText(
         'Der Nutzer wurde angelegt, aber die Einladungs-E-Mail zum Passwort setzen konnte nicht versendet werden.'

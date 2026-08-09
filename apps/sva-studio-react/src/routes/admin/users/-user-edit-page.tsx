@@ -171,6 +171,7 @@ export const UserEditPage = ({
     void navigate({
       to: '/admin/users/$userId',
       params: { userId },
+      search: true,
       replace: true,
       state: (previous) => removeStudioSaveFeedback(previous),
     });

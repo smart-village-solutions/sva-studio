@@ -369,11 +369,13 @@ export const NewsDetailPage = ({
   contentId,
   principalControl,
   initiallySaved = false,
+  onInitialSavedConsumed,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
   principalControl?: NewsPrincipalControl;
   initiallySaved?: boolean;
+  onInitialSavedConsumed?: () => void;
 }>) => {
   const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
@@ -446,8 +448,9 @@ export const NewsDetailPage = ({
     if (!isLoading && initiallySaved && !initialSaveFeedbackShownRef.current) {
       initialSaveFeedbackShownRef.current = true;
       saveFeedback.showSaved();
+      onInitialSavedConsumed?.();
     }
-  }, [initiallySaved, isLoading, saveFeedback]);
+  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {

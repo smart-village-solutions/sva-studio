@@ -22,9 +22,8 @@ export const NewsEditPage = ({ principalControl }: NewsCreatePageProps = {}) => 
   };
   const contentId = resolveNewsContentId(params);
   const initiallySaved = hasNewsCreatedSaveFeedback(location.state, contentId);
-
-  React.useEffect(() => {
-    if (!initiallySaved || !contentId) {
+  const consumeInitialSaved = React.useCallback(() => {
+    if (!contentId) {
       return;
     }
 
@@ -34,7 +33,7 @@ export const NewsEditPage = ({ principalControl }: NewsCreatePageProps = {}) => 
       replace: true,
       state: (previous) => removeNewsSaveFeedback(previous),
     });
-  }, [contentId, initiallySaved, navigate]);
+  }, [contentId, navigate]);
 
   return (
     <NewsDetailPage
@@ -42,6 +41,7 @@ export const NewsEditPage = ({ principalControl }: NewsCreatePageProps = {}) => 
       contentId={contentId}
       principalControl={principalControl}
       initiallySaved={initiallySaved}
+      onInitialSavedConsumed={consumeInitialSaved}
     />
   );
 };

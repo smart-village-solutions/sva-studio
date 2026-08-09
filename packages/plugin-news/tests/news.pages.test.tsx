@@ -1054,6 +1054,37 @@ describe('News editor pages', () => {
     ).toEqual({ __TSR_index: 0, studioSaveFeedback: undefined });
   });
 
+  it('keeps create feedback until the generated detail page has loaded', async () => {
+    const load = createDeferred<Awaited<ReturnType<typeof getNews>>>();
+    vi.mocked(getNews).mockReturnValueOnce(load.promise);
+    locationStateMock.mockReturnValue({
+      studioSaveFeedback: { kind: 'created', resourceType: 'news', resourceId: 'news-1' },
+    });
+
+    render(<NewsEditPage />);
+
+    expect(screen.getByText('News werden geladen.')).toBeTruthy();
+    expect(navigateMock).not.toHaveBeenCalled();
+
+    await actResolve(load, {
+      id: 'news-1',
+      title: 'Bestehende News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: { category: 'Allgemein' },
+      contentBlocks: [{ intro: 'Kurztext', body: '<p>Body</p>', mediaContents: [] }],
+      status: 'published',
+      author: 'Editor',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      publishedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Gespeichert' })).toHaveLength(2);
+      expect(navigateMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('renders the publication card inside the settings tab for scheduled news', async () => {
     vi.mocked(getNews).mockResolvedValueOnce({
       id: 'news-future',

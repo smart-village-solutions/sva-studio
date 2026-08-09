@@ -54,6 +54,7 @@ export const createDeps = (overrides: Partial<AcceptanceRuntimeCheckDeps> = {}):
       POSTGRES_DB: 'sva_studio',
       POSTGRES_PASSWORD: 'postgres-secret',
       REDIS_PASSWORD: 'redis-secret',
+      REDIS_SNAPSHOT_HMAC_SECRET: 'redis-snapshot-hmac-secret',
       SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
       SVA_AUTH_CLIENT_SECRET: 'auth-secret',
       SVA_AUTH_STATE_SECRET: 'state-secret',

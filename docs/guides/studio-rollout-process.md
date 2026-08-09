@@ -15,6 +15,7 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 - Vor jedem Deployment nach Staging oder Production muss ein erfolgreich verifiziertes PostgreSQL-Backup vorliegen. Sobald `WASTE_POSTGRES_BACKUP_ENABLED=true` gesetzt ist, gilt dieses Gate getrennt für `sva_studio` und das vollständige Registry-Inventar aller `ready`- oder `disabled`-Waste-Tenant-Datenbanken.
 - Backup, Migration, Bootstrap, Postconditions und Verifikation sind fail-closed: Ein Fehler blockiert alle nachfolgenden mutierenden Phasen.
 - Secrets kommen ausschließlich aus dem jeweiligen GitHub-Environment. Sie werden weder in Workflow-Inputs noch in Logs, Reports oder Dokumentation geschrieben.
+- `REDIS_SNAPSHOT_HMAC_SECRET` liegt je Umgebung als eigenständiges GitHub-Environment-Secret vor, wird vor jeder Mutation auf Mindeststärke geprüft und ausschließlich beim Stack-Render an die App übergeben. Es ist nicht Bestandteil von `APP_CONFIG` und darf nicht zwischen Dev, Staging und Production wiederverwendet werden.
 - Direkte Portainer-Änderungen, Docker-Service-Updates, rohe `quantum-cli stacks deploy/update`-Aufrufe und `env:release:studio:local` sind kein regulärer Rolloutpfad.
 
 ## Umgebungsvertrag

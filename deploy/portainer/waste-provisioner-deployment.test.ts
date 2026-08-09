@@ -4,8 +4,13 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const compose = readFileSync(resolve(import.meta.dirname, 'docker-compose.studio.yml'), 'utf8');
+const canonicalCompose = readFileSync(resolve(import.meta.dirname, '../../compose.yaml'), 'utf8');
 const entrypoint = readFileSync(resolve(import.meta.dirname, 'provisioner-entrypoint.sh'), 'utf8');
 const appSection = compose.slice(compose.indexOf('  app:'), compose.indexOf('  provisioner:'));
+const canonicalAppSection = canonicalCompose.slice(
+  canonicalCompose.indexOf('  app:'),
+  canonicalCompose.indexOf('  provisioner:')
+);
 const provisionerSection = compose.slice(
   compose.indexOf('  provisioner:'),
   compose.indexOf('  migrate:')
@@ -17,6 +22,11 @@ describe('waste tenant database provisioning deployment', () => {
     expect(appSection).toContain("SVA_PLUGIN_OPERATION_WORKER_LANE: 'default'");
     expect(appSection).not.toContain('POSTGRES_PASSWORD');
     expect(appSection).not.toContain('WASTE_DATABASE_PROVISIONER');
+  });
+
+  it('injects the permission snapshot HMAC secret into both Studio app definitions', () => {
+    expect(appSection).toContain("REDIS_SNAPSHOT_HMAC_SECRET: '${REDIS_SNAPSHOT_HMAC_SECRET}'");
+    expect(canonicalAppSection).toContain('"REDIS_SNAPSHOT_HMAC_SECRET=${REDIS_SNAPSHOT_HMAC_SECRET}"');
   });
 
   it('defaults Mainserver authoring to shadow evaluation and a rollback-compatible client transition', () => {

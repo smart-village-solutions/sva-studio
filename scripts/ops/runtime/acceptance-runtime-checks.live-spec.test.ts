@@ -27,6 +27,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
         POSTGRES_DB: 'sva_studio',
         POSTGRES_PASSWORD: '',
         REDIS_PASSWORD: '',
+        REDIS_SNAPSHOT_HMAC_SECRET: '',
         SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
         SVA_AUTH_CLIENT_SECRET: '',
         SVA_AUTH_STATE_SECRET: '',
@@ -98,6 +99,7 @@ describe('acceptance runtime checks live spec and readiness', () => {
         'APP_DB_PASSWORD',
         'POSTGRES_PASSWORD',
         'REDIS_PASSWORD',
+        'REDIS_SNAPSHOT_HMAC_SECRET',
       ],
     });
   });

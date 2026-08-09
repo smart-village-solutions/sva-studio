@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { canonicalBackupRequest } from '../../scripts/ci/backup-agent-contract.ts';
+
 import {
   archiveSchemaCompatible,
   backupDumpArgs,
@@ -207,6 +209,15 @@ describe('backup agent runtime contract', () => {
     expect(validRequest({ ...request, database: 'other' }, now)).toBe(false);
     expect(canonicalRequest(request)).not.toContain('database');
     expect(canonicalRequest({ ...request, database: 'waste' })).toContain('"database":"waste"');
+    const versionTwoWasteRequest = {
+      ...request,
+      version: 2 as const,
+      database: 'waste' as const,
+      tenantInstanceId: 'bb-prignitz',
+    };
+    expect(canonicalRequest(versionTwoWasteRequest)).toBe(
+      canonicalBackupRequest(versionTwoWasteRequest)
+    );
     expect(
       validRequest({ ...request, database: 'waste', tenantInstanceId: 'bb-prignitz' }, now)
     ).toBe(true);

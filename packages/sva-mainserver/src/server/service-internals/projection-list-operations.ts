@@ -1,6 +1,7 @@
 import type {
   SvaMainserverConnectionInput,
   SvaMainserverInstanceConfig,
+  SvaMainserverGenericTypeOwnership,
   SvaMainserverListQuery,
   SvaMainserverProjectionContentType,
   SvaMainserverProjectionListItem,
@@ -13,6 +14,7 @@ import {
   svaMainserverPoiProjectionListDocument,
   svaMainserverSurveyProjectionListDocument,
 } from '../../generated/projection-lists.js';
+import { loadFilteredGenericItemProjectionPage } from './projection-filtered-pagination.js';
 import { normalizeVisibleListQuery, type GraphqlExecutor } from './shared.js';
 
 type RawItem = Record<string, unknown>;
@@ -62,7 +64,8 @@ const mapItem = (
   const source = value as RawItem;
   const id = stringValue(source.id);
   if (!id) return null;
-  const createdAt = stringValue(source.createdAt) ?? stringValue(source.updatedAt) ?? new Date(0).toISOString();
+  const createdAt =
+    stringValue(source.createdAt) ?? stringValue(source.updatedAt) ?? new Date(0).toISOString();
   const updatedAt = stringValue(source.updatedAt) ?? createdAt;
   const title = resolveTitle(source, contentType, titleField) ?? id;
   const publication = stringValue(source.publishedAt) ?? stringValue(source.publicationDate);
@@ -93,58 +96,128 @@ type ProjectionDefinition = Readonly<{
 }>;
 
 const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefinition> = {
-  'news.article': { document: svaMainserverNewsProjectionListDocument, operationName: 'SvaMainserverNewsProjectionList', responseField: 'newsItems', contentType: 'news.article', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'events.event-record': { document: svaMainserverEventProjectionListDocument, operationName: 'SvaMainserverEventProjectionList', responseField: 'eventRecords', contentType: 'events.event-record', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'poi.point-of-interest': { document: svaMainserverPoiProjectionListDocument, operationName: 'SvaMainserverPoiProjectionList', responseField: 'pointsOfInterest', contentType: 'poi.point-of-interest', titleField: 'name', order: 'updatedAt_DESC', paginated: true },
-  'generic-items.generic-item': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'generic-items.generic-item', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'faq.faq': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'faq.faq', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'cockpit-cards.cockpit-card': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'cockpit-cards.cockpit-card', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'projects.project': { document: svaMainserverGenericItemProjectionListDocument, operationName: 'SvaMainserverGenericItemProjectionList', responseField: 'genericItems', contentType: 'projects.project', titleField: 'title', order: 'updatedAt_DESC', paginated: true },
-  'surveys.survey': { document: svaMainserverSurveyProjectionListDocument, operationName: 'SvaMainserverSurveyProjectionList', responseField: 'surveys', contentType: 'surveys.survey', titleField: 'title', order: 'updatedAt_DESC', paginated: false },
-};
-
-const specializedGenericTypes = {
-  'faq.faq': 'FAQ',
-  'cockpit-cards.cockpit-card': 'COCKPIT_CARD',
-  'projects.project': 'FeaturedProject',
-} as const;
-
-const matchesProjectionContentType = (
-  item: unknown,
-  contentType: SvaMainserverProjectionContentType
-): boolean => {
-  if (!(contentType in specializedGenericTypes)) return true;
-  if (item === null || typeof item !== 'object') return false;
-  const record = item as Record<string, unknown>;
-  const expectedGenericType = specializedGenericTypes[
-    contentType as keyof typeof specializedGenericTypes
-  ];
-  if (record.genericType !== expectedGenericType) return false;
-  if (contentType !== 'projects.project') return true;
-  const payload = record.payload;
-  return !(
-    payload !== null &&
-    typeof payload === 'object' &&
-    !Array.isArray(payload) &&
-    (payload as Record<string, unknown>).deleted === true
-  );
+  'news.article': {
+    document: svaMainserverNewsProjectionListDocument,
+    operationName: 'SvaMainserverNewsProjectionList',
+    responseField: 'newsItems',
+    contentType: 'news.article',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'events.event-record': {
+    document: svaMainserverEventProjectionListDocument,
+    operationName: 'SvaMainserverEventProjectionList',
+    responseField: 'eventRecords',
+    contentType: 'events.event-record',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'poi.point-of-interest': {
+    document: svaMainserverPoiProjectionListDocument,
+    operationName: 'SvaMainserverPoiProjectionList',
+    responseField: 'pointsOfInterest',
+    contentType: 'poi.point-of-interest',
+    titleField: 'name',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'generic-items.generic-item': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'generic-items.generic-item',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'faq.faq': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'faq.faq',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'cockpit-cards.cockpit-card': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'cockpit-cards.cockpit-card',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'projects.project': {
+    document: svaMainserverGenericItemProjectionListDocument,
+    operationName: 'SvaMainserverGenericItemProjectionList',
+    responseField: 'genericItems',
+    contentType: 'projects.project',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: true,
+  },
+  'surveys.survey': {
+    document: svaMainserverSurveyProjectionListDocument,
+    operationName: 'SvaMainserverSurveyProjectionList',
+    responseField: 'surveys',
+    contentType: 'surveys.survey',
+    titleField: 'title',
+    order: 'updatedAt_DESC',
+    paginated: false,
+  },
 };
 
 export const createProjectionListOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listProjectionWithConfig: async (
     contentType: SvaMainserverProjectionContentType,
     input: SvaMainserverConnectionInput & SvaMainserverListQuery,
-    config: SvaMainserverInstanceConfig
+    config: SvaMainserverInstanceConfig,
+    genericTypeOwnership: SvaMainserverGenericTypeOwnership
   ): Promise<SvaMainserverProjectionListResult> => {
     const definition = definitions[contentType];
     const query = normalizeVisibleListQuery(input);
+    if (definition.paginated && definition.responseField === 'genericItems') {
+      const page = await loadFilteredGenericItemProjectionPage({
+        executeGraphqlWithConfig,
+        definition,
+        connectionInput: input,
+        config,
+        page: query.page,
+        pageSize: query.pageSize,
+        ...(input.genericItemScanOffset !== undefined
+          ? { genericItemScanOffset: input.genericItemScanOffset }
+          : {}),
+        genericTypeOwnership,
+      });
+      const mapped = page.items.map((item) => mapItem(item, contentType, definition.titleField));
+      const skippedInvalidCount = mapped.filter((item) => item === null).length;
+      return {
+        data: mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null),
+        skippedInvalidCount,
+        pagination: {
+          page: query.page,
+          pageSize: query.pageSize,
+          hasNextPage: page.hasNextPage,
+          ...(page.nextGenericItemScanOffset !== undefined
+            ? { nextGenericItemScanOffset: page.nextGenericItemScanOffset }
+            : {}),
+        },
+      };
+    }
     const response = await executeGraphqlWithConfig<Record<string, unknown>>(
       {
         ...input,
         document: definition.document,
         operationName: definition.operationName,
         variables: definition.paginated
-          ? { limit: query.pageSize + 1, skip: (query.page - 1) * query.pageSize, order: definition.order }
+          ? {
+              limit: query.pageSize + 1,
+              skip: (query.page - 1) * query.pageSize,
+              order: definition.order,
+            }
           : { archived: true, order: definition.order },
       },
       config
@@ -156,9 +229,7 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     const upstreamPageItems = definition.paginated
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
-    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) =>
-      matchesProjectionContentType(item, contentType)
-    );
+    const rawItems: readonly unknown[] = upstreamPageItems;
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;
     const data = mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null);

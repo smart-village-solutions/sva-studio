@@ -4,13 +4,14 @@ import {
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
-import { PROJECTS_CONTENT_TYPE } from './projects.constants.js';
+import { projectsMainserverGenericItemOwnership } from './generic-item-ownership.js';
 import { pluginProjectsTranslations } from './plugin.translations.js';
 
 const contribution = createStandardContentPluginContribution({
   pluginId: 'projects',
   displayName: 'Projekte',
-  contentType: PROJECTS_CONTENT_TYPE,
+  contentType: projectsMainserverGenericItemOwnership.contentType,
+  mainserverGenericType: projectsMainserverGenericItemOwnership.mainserverGenericType,
   titleKey: 'projects.navigation.title',
   listBindingKey: 'projectsList',
   detailBindingKey: 'projectsDetail',

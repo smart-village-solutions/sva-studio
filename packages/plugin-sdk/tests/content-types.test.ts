@@ -7,6 +7,10 @@ import {
   genericContentTypeDefinition,
   getContentTypeDefinition,
 } from '../src/content-types.js';
+import {
+  createMainserverGenericTypeRegistry,
+  resolveMainserverGenericItemContentType,
+} from '../src/mainserver-generic-type-registry.js';
 
 describe('content type registry', () => {
   it('registers and resolves content types', () => {
@@ -56,7 +60,9 @@ describe('content type registry', () => {
     ).toThrow('invalid_plugin_namespace:News');
 
     expect(() =>
-      definePluginContentTypes('content', [{ contentType: 'content.article', displayName: 'Content' }])
+      definePluginContentTypes('content', [
+        { contentType: 'content.article', displayName: 'Content' },
+      ])
     ).toThrow('reserved_plugin_namespace:content');
 
     expect(() =>
@@ -70,5 +76,40 @@ describe('content type registry', () => {
     expect(() =>
       definePluginContentTypes('news', [{ contentType: 'events.article', displayName: 'News' }])
     ).toThrow('plugin_content_type_namespace_mismatch:news:events:events.article');
+  });
+
+  it('registers exact Mainserver GenericItem ownership with a generic fallback', () => {
+    const registry = createMainserverGenericTypeRegistry([
+      {
+        contentType: 'faq.faq',
+        displayName: 'FAQ',
+        mainserverGenericType: 'FAQ',
+      },
+    ]);
+
+    expect(
+      resolveMainserverGenericItemContentType(registry, 'FAQ', 'generic-items.generic-item')
+    ).toBe('faq.faq');
+    expect(
+      resolveMainserverGenericItemContentType(registry, 'faq', 'generic-items.generic-item')
+    ).toBe('generic-items.generic-item');
+    expect(
+      resolveMainserverGenericItemContentType(registry, 'UNKNOWN', 'generic-items.generic-item')
+    ).toBe('generic-items.generic-item');
+  });
+
+  it('rejects invalid and duplicate Mainserver GenericItem ownership', () => {
+    expect(() =>
+      definePluginContentTypes('faq', [
+        { contentType: 'faq.faq', displayName: 'FAQ', mainserverGenericType: ' FAQ ' },
+      ])
+    ).toThrow('invalid_mainserver_generic_type:faq.faq');
+
+    expect(() =>
+      createMainserverGenericTypeRegistry([
+        { contentType: 'faq.faq', displayName: 'FAQ', mainserverGenericType: 'FAQ' },
+        { contentType: 'other.faq', displayName: 'Other FAQ', mainserverGenericType: 'FAQ' },
+      ])
+    ).toThrow('duplicate_mainserver_generic_type:FAQ:faq.faq:other.faq');
   });
 });

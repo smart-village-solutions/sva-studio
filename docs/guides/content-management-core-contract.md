@@ -55,7 +55,11 @@ Content-Operationen verwenden keine groben Schreibrechte mehr. Kanonisch sind:
 
 Das Modul „Generische Inhalte“ bildet alle Mainserver-`GenericItem`s unabhängig vom `genericType` ab. Dies schließt `FeaturedProject`, `FAQ`, `COCKPIT_CARD` sowie unbekannte oder zukünftige Typkennungen ein. Generische Listen, Details und Mutationen prüfen ausschließlich die jeweilige Action unter `generic-items.*`; zusätzliche Rechte der Fachplugins sind nicht erforderlich.
 
-Die generische Bearbeitung ist ein technischer Vollzugriff und erzwingt nicht die engeren Validierungen der Fachplugins. Reguläre Live-Rollen sollen deshalb keine `generic-items.*`-Actions erhalten. Wenn eine Person sowohl generische als auch fachliche Leserechte besitzt, kann derselbe Mainserver-Datensatz in der gemeinsamen Inhaltsübersicht in beiden Content-Type-Repräsentationen erscheinen.
+Die generische Bearbeitung ist ein technischer Vollzugriff und erzwingt nicht die engeren Validierungen der Fachplugins. Reguläre Live-Rollen sollen deshalb keine `generic-items.*`-Actions erhalten.
+
+Für die gemeinsame Inhaltsübersicht deklariert jedes GenericItem-Fachplugin seinen exakten `genericType` im Build-time-Registry-Vertrag. Ein solcher Datensatz erscheint dort ausschließlich unter dem registrierten Fach-Content-Type; nur unbekannte oder nicht übernommene Diskriminatoren fallen auf `generic-items.generic-item` zurück. Diese Klassifikation erfolgt vor der Autorisierung: Fehlende Fachrechte erzeugen in der gemeinsamen Übersicht keinen generischen Ersatz. Der technische Vollzugriff auf alle GenericItems bleibt ausschließlich im eigenständigen Modul „Generische Inhalte“ erhalten.
+
+Der Server liest diese Zuordnung aus einem kleinen Ownership-Modul des aktivierten Plugins und lädt dafür weder React-Flächen noch den Browser-Plugin-Snapshot. Die Mainserver-Fassade akzeptiert nur registrierte GenericItem-Projektionstypen und füllt gefilterte Seiten über weitere Upstream-Seiten auf, bis die angeforderte Seite vollständig oder das Ende erreicht ist. Progressive Folgeseiten setzen den Scan am zurückgegebenen Upstream-Offset fort, statt vorherige Mainserver-Seiten erneut zu laden.
 
 ## Scoped Rollen-Permissions fuer Content
 

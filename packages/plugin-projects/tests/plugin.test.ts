@@ -13,6 +13,12 @@ describe('projects plugin contract', () => {
     expect(pluginProjects.navigation).toEqual([]);
     expect(pluginProjects.actions).toEqual(pluginProjectsActionDefinitions);
     expect(pluginProjects.permissions).toEqual(pluginProjectsPermissionDefinitions);
+    expect(pluginProjects.contentTypes).toEqual([
+      expect.objectContaining({
+        contentType: 'projects.project',
+        mainserverGenericType: 'FeaturedProject',
+      }),
+    ]);
     expect(pluginProjects.permissions?.map((permission) => permission.id)).toEqual([
       'projects.read',
       'projects.create',

@@ -29,6 +29,7 @@ import {
 } from './plugins.js';
 import type { ContentTypeDefinition, RegisteredStudioContentType } from './content-types.js';
 import { collectRegisteredStudioContentTypes } from './content-types.js';
+import { createMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.js';
 import {
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
@@ -64,7 +65,10 @@ export type BuildTimeRegistry = {
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
-  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<string, PluginExternalInterfaceTypeRegistryEntry>;
+  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
+    string,
+    PluginExternalInterfaceTypeRegistryEntry
+  >;
   readonly pluginPermissions: readonly PluginPermissionDefinition[];
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly jobTypes: readonly PluginJobTypeDefinition[];
@@ -74,6 +78,7 @@ export type BuildTimeRegistry = {
   readonly navigation: readonly PluginNavigationItem[];
   readonly contentTypes: readonly ContentTypeDefinition[];
   readonly studioContentTypes: readonly RegisteredStudioContentType[];
+  readonly mainserverGenericTypeRegistry: ReadonlyMap<string, string>;
   readonly auditEvents: readonly PluginAuditEventDefinition[];
   readonly translations: PluginTranslations;
   readonly adminResources: readonly AdminResourceDefinition[];
@@ -88,6 +93,7 @@ type PreflightPhaseOutput = {
 type ContentPhaseOutput = {
   readonly contentTypes: readonly ContentTypeDefinition[];
   readonly studioContentTypes: readonly RegisteredStudioContentType[];
+  readonly mainserverGenericTypeRegistry: ReadonlyMap<string, string>;
 };
 
 type AdminPhaseOutput = {
@@ -119,7 +125,10 @@ type OperationsPhaseOutput = {
   readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
-  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<string, PluginExternalInterfaceTypeRegistryEntry>;
+  readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
+    string,
+    PluginExternalInterfaceTypeRegistryEntry
+  >;
 };
 
 const validateAdminResourceContentTypes = (
@@ -155,6 +164,7 @@ const runContentPhase = (plugins: readonly PluginDefinition[]): ContentPhaseOutp
   return {
     contentTypes,
     studioContentTypes: collectRegisteredStudioContentTypes(contentTypes),
+    mainserverGenericTypeRegistry: createMainserverGenericTypeRegistry(contentTypes),
   };
 };
 
@@ -235,6 +245,7 @@ const publishBuildTimeRegistry = ({
   navigation: routing.navigation,
   contentTypes: content.contentTypes,
   studioContentTypes: content.studioContentTypes,
+  mainserverGenericTypeRegistry: content.mainserverGenericTypeRegistry,
   auditEvents: audit.auditEvents,
   translations: mergePluginTranslations(preflight.plugins),
   adminResources: admin.adminResources,
@@ -254,5 +265,13 @@ export const createBuildTimeRegistry = ({
   const operations = runOperationsPhase(preflight.plugins);
   const routing = runRoutingPhase(preflight.plugins);
 
-  return publishBuildTimeRegistry({ preflight, content, admin, audit, routing, permissions, operations });
+  return publishBuildTimeRegistry({
+    preflight,
+    content,
+    admin,
+    audit,
+    routing,
+    permissions,
+    operations,
+  });
 };

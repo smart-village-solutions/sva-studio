@@ -26,6 +26,9 @@ describe('pluginFaq contract', () => {
     ]);
     expect(pluginFaq.actions).toEqual(pluginFaqActionDefinitions);
     expect(pluginFaq.permissions).toEqual(pluginFaqPermissionDefinitions);
+    expect(pluginFaq.contentTypes).toEqual([
+      expect.objectContaining({ contentType: 'faq.faq', mainserverGenericType: 'FAQ' }),
+    ]);
     expect(pluginFaq.translations).toEqual(pluginFaqTranslations);
     expect(pluginFaq.adminResources).toEqual([
       expect.objectContaining({

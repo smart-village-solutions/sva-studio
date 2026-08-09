@@ -1256,6 +1256,27 @@ describe('plugin registries', () => {
       '/admin/news/news-7'
     );
   });
+
+  it('publishes unique Mainserver GenericItem ownership in the build-time snapshot', () => {
+    const registry = createBuildTimeRegistry({
+      plugins: [
+        {
+          id: 'faq',
+          displayName: 'FAQ',
+          routes: [],
+          contentTypes: [
+            {
+              contentType: 'faq.faq',
+              displayName: 'FAQ',
+              mainserverGenericType: 'FAQ',
+            },
+          ],
+        },
+      ],
+    });
+
+    expect([...registry.mainserverGenericTypeRegistry.entries()]).toEqual([['FAQ', 'faq.faq']]);
+  });
 });
 
 describe('admin resource registry', () => {

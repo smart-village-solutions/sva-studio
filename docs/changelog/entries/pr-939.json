@@ -1,0 +1,4 @@
+{
+  "prNumber": 939,
+  "body": "Berechtigungen im Studio wieder zuverlässig verfügbar\n\n- Der Schlüssel für signierte Berechtigungs-Snapshots wird je Umgebung getrennt und außerhalb der allgemeinen App-Konfiguration verwaltet.\n- Promotions prüfen den Schlüssel vor dem Deployment und stellen ihn ausschließlich der Studio-App bereit.\n- Die Runtime-Diagnose erkennt eine fehlende Konfiguration, bevor sie erneut zu nicht verfügbaren Berechtigungen führt."
+}

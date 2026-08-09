@@ -20,8 +20,24 @@ const productionBackupWorkflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
   'utf8'
 );
+const stagingBackupWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'),
+  'utf8'
+);
 
 describe('staging parity evidence', () => {
+  it.each([
+    ['staging', stagingBackupWorkflow],
+    ['production', productionBackupWorkflow],
+  ])('uses current %s backup tooling while validating the immutable image revision', (_, workflow) => {
+    expect(workflow).toContain('checkout current backup tooling source');
+    expect(workflow).toContain('git merge-base --is-ancestor');
+    expect(workflow).not.toContain('git checkout --detach');
+    expect(workflow).toContain(
+      '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
+    );
+  });
+
   it('binds the production backup drill to the immutable image reference and digest', () => {
     const parityStep = productionBackupWorkflow.match(
       /- name: require successful staging backup parity[\s\S]*?run: pnpm exec tsx scripts\/ci\/verify-staging-promote-evidence\.ts backup-drill/u

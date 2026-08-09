@@ -1,17 +1,41 @@
-import type { WasteCalendarPdfDocument, WasteOutputPickupEntry } from './waste-management-output.types.js';
+import type {
+  WasteCalendarPdfDocument,
+  WasteOutputLegendHint,
+  WasteOutputPickupEntry,
+} from './waste-management-output.types.js';
+import {
+  buildHolidayMap,
+  formatIsoDate,
+  getIsoWeekNumber,
+  MONTH_NAMES,
+  normalizeWeekday,
+  WEEKDAY_SHORT_NAMES,
+} from './waste-management-output.calendar.js';
 
 type RgbColor = readonly [red: number, green: number, blue: number];
 
 type WasteCalendarPdfEntry = Readonly<{
   code: string;
   fillColor: RgbColor;
+  isShifted: boolean;
 }>;
 
 type WasteCalendarPdfLegendEntry = Readonly<{
+  kind: 'fraction';
   code: string;
   label: string;
+  description?: string;
   fillColor: RgbColor;
 }>;
+
+type WasteCalendarPdfLegendRow =
+  | WasteCalendarPdfLegendEntry
+  | Readonly<{ kind: 'hint'; label: string; description: string }>
+  | Readonly<{ kind: 'shift'; label: string }>;
+
+const MAX_LEGEND_ROWS = 8;
+
+const normalizeLegendText = (value: string): string => value.trim().replace(/\s+/gu, ' ');
 
 type WasteCalendarPdfDay = Readonly<{
   isoDate: string;
@@ -28,27 +52,6 @@ type WasteCalendarPdfMonth = Readonly<{
   days: readonly WasteCalendarPdfDay[];
 }>;
 
-const MONTH_NAMES = [
-  'Januar',
-  'Februar',
-  'März',
-  'April',
-  'Mai',
-  'Juni',
-  'Juli',
-  'August',
-  'September',
-  'Oktober',
-  'November',
-  'Dezember',
-] as const;
-
-const WEEKDAY_SHORT_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
-
-const normalizeWeekday = (utcDay: number): number => (utcDay === 0 ? 6 : utcDay - 1);
-
-const formatIsoDate = (date: Date): string => date.toISOString().slice(0, 10);
-
 const parseHexColor = (value: string): RgbColor => {
   const normalized = value.trim();
   const hex = normalized.startsWith('#') ? normalized.slice(1) : normalized;
@@ -63,53 +66,6 @@ const parseHexColor = (value: string): RgbColor => {
   ];
 };
 
-const getIsoWeekNumber = (date: Date): number => {
-  const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-  const day = target.getUTCDay() || 7;
-  target.setUTCDate(target.getUTCDate() + 4 - day);
-  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
-  return Math.ceil(((target.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-};
-
-const computeEasterSunday = (year: number): Date => {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-  return new Date(Date.UTC(year, month - 1, day));
-};
-
-const addUtcDays = (value: Date, days: number): Date => {
-  const copy = new Date(value.getTime());
-  copy.setUTCDate(copy.getUTCDate() + days);
-  return copy;
-};
-
-const buildHolidayMap = (year: number): ReadonlyMap<string, string> => {
-  const easterSunday = computeEasterSunday(year);
-  return new Map<string, string>([
-    [`${year}-01-01`, 'Neujahr'],
-    [formatIsoDate(addUtcDays(easterSunday, -2)), 'Karfreitag'],
-    [formatIsoDate(addUtcDays(easterSunday, 1)), 'Ostermontag'],
-    [`${year}-05-01`, 'Maifeiertag'],
-    [formatIsoDate(addUtcDays(easterSunday, 39)), 'Christi Himmelfahrt'],
-    [formatIsoDate(addUtcDays(easterSunday, 50)), 'Pfingstmontag'],
-    [`${year}-10-03`, 'Tag der Deutschen Einheit'],
-    [`${year}-12-25`, '1. Weihnachtstag'],
-    [`${year}-12-26`, '2. Weihnachtstag'],
-  ]);
-};
-
 const normalizeFractionCode = (value: string): string =>
   value
     .replace(/[^A-Za-z0-9]+/g, '')
@@ -117,7 +73,11 @@ const normalizeFractionCode = (value: string): string =>
     .toUpperCase()
     .slice(0, 4);
 
-const buildFractionCode = (label: string, shortLabel: string | undefined, usedCodes: Set<string>): string => {
+const buildFractionCode = (
+  label: string,
+  shortLabel: string | undefined,
+  usedCodes: Set<string>
+): string => {
   const preferredCode = shortLabel ? normalizeFractionCode(shortLabel) : '';
   if (preferredCode && !usedCodes.has(preferredCode)) {
     usedCodes.add(preferredCode);
@@ -129,7 +89,10 @@ const buildFractionCode = (label: string, shortLabel: string | undefined, usedCo
     .trim()
     .split(/\s+/)
     .filter(Boolean);
-  const initials = normalized.map((part) => part[0] ?? '').join('').toUpperCase();
+  const initials = normalized
+    .map((part) => part[0] ?? '')
+    .join('')
+    .toUpperCase();
   const compact = normalized.join('').toUpperCase();
   const base = (initials.length >= 2 ? initials : compact.slice(0, 3) || 'FR').slice(0, 4);
 
@@ -159,17 +122,27 @@ const buildEntriesByDate = (pickups: readonly WasteOutputPickupEntry[]) => {
     const dayEntries = entriesByDate.get(pickup.date) ?? [];
     for (const fraction of pickup.fractions) {
       const existingLegend = legendFractions.get(fraction.id);
-      const legendEntry =
-        existingLegend ??
-        {
-          code: buildFractionCode(fraction.label, fraction.shortLabel, usedCodes),
-          label: fraction.label,
-          fillColor: parseHexColor(fraction.color),
-        };
+      const legendEntry = existingLegend
+        ? {
+            ...existingLegend,
+            ...(!existingLegend.description && fraction.description?.trim()
+              ? { description: normalizeLegendText(fraction.description) }
+              : {}),
+          }
+        : {
+            kind: 'fraction' as const,
+            code: buildFractionCode(fraction.label, fraction.shortLabel, usedCodes),
+            label: fraction.label,
+            ...(fraction.description?.trim()
+              ? { description: normalizeLegendText(fraction.description) }
+              : {}),
+            fillColor: parseHexColor(fraction.color),
+          };
       legendFractions.set(fraction.id, legendEntry);
       dayEntries.push({
         code: legendEntry.code,
         fillColor: legendEntry.fillColor,
+        isShifted: fraction.isShifted === true,
       });
     }
     dayEntries.sort((left, right) => left.code.localeCompare(right.code, 'de'));
@@ -213,31 +186,50 @@ const buildMonth = (
 export const buildWasteCalendarPdfDocument = (input: {
   readonly year: number;
   readonly locationLabel: string;
+  readonly contactBlock?: string;
   readonly pickups: readonly WasteOutputPickupEntry[];
-  readonly notes?: readonly string[];
-  readonly footerLine?: string;
+  readonly legendHints?: readonly WasteOutputLegendHint[];
   readonly brandingPlaceholderLabel?: string;
   readonly brandingImage?: WasteCalendarPdfDocument['pages'][number]['brandingImage'];
 }): WasteCalendarPdfDocument => {
   const { entriesByDate, legendFractions } = buildEntriesByDate(input.pickups);
   const holidayMap = buildHolidayMap(input.year);
-  const legend = Array.from(legendFractions.values()).sort((left, right) => left.label.localeCompare(right.label, 'de'));
-  const notes =
-    input.notes !== undefined
-      ? [...input.notes]
-      : [`Stand ${new Date().toISOString().slice(0, 10)}`, 'Alle wirksamen Fraktionen und Verschiebungen sind enthalten.'];
-  const footerLine =
-    input.footerLine ??
-    `Abfallkalender ${input.year} · ${input.locationLabel}`;
+  const fractionLegend = Array.from(legendFractions.values()).sort((left, right) =>
+    left.label.localeCompare(right.label, 'de')
+  );
+  const seenHintIds = new Set<string>();
+  const hintLegend = (input.legendHints ?? []).flatMap((hint) => {
+    const id = hint.id.trim();
+    const label = normalizeLegendText(hint.label);
+    const description = normalizeLegendText(hint.description);
+    if (!id || !label || !description || seenHintIds.has(id)) {
+      return [];
+    }
+    seenHintIds.add(id);
+    return [{ kind: 'hint' as const, label, description }];
+  });
+  const hasShiftedPickups = input.pickups.some((pickup) =>
+    pickup.fractions.some((fraction) => fraction.isShifted === true)
+  );
+  const contentRowLimit = MAX_LEGEND_ROWS - (hasShiftedPickups ? 1 : 0);
+  const reservedHintRows = hintLegend.length > 0 ? 1 : 0;
+  const visibleFractions = fractionLegend.slice(0, contentRowLimit - reservedHintRows);
+  const visibleHints = hintLegend.slice(0, contentRowLimit - visibleFractions.length);
+  const legend: WasteCalendarPdfLegendRow[] = [
+    ...(hasShiftedPickups ? ([{ kind: 'shift', label: '= Ausweichtermin' }] as const) : []),
+    ...visibleFractions,
+    ...visibleHints,
+  ];
   const buildPage = (months: readonly number[]) => ({
     title: `Abfallkalender ${input.year}`,
     locationLabel: input.locationLabel,
+    ...(input.contactBlock?.trim()
+      ? { contactBlock: normalizeLegendText(input.contactBlock) }
+      : {}),
     brandingPlaceholderLabel: input.brandingPlaceholderLabel ?? 'Kommunales Waste-Management',
     ...(input.brandingImage ? { brandingImage: input.brandingImage } : {}),
     months: months.map((month) => buildMonth(input.year, month, holidayMap, entriesByDate)),
     legend,
-    notes,
-    footerLine,
   });
 
   return {

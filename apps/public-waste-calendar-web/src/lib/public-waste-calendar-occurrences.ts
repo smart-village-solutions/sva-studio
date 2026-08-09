@@ -330,6 +330,7 @@ export const calculatePublicWasteCalendarEntries = (
           ...(linkedTour.tour.description?.trim()
             ? { tourDescription: linkedTour.tour.description.trim() }
             : {}),
+          ...(shiftedDate !== occurrence.date ? { isShifted: true } : {}),
           note,
         });
       }

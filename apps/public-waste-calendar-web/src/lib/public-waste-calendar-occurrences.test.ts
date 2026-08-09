@@ -106,6 +106,7 @@ describe('public waste calendar occurrences', () => {
         tourName: 'Papiertour',
         tourDescription: 'Blaue Tonne fuer Papier und Kartonagen.',
         note: 'Straßenfest',
+        isShifted: true,
       },
       {
         id: 'tour-paper:2026-05-28:paper',
@@ -136,6 +137,7 @@ describe('public waste calendar occurrences', () => {
         tourName: 'Biotour',
         tourDescription: 'Regelabfuhr fuer die Innenstadt.',
         note: 'Verschoben wegen Feiertag',
+        isShifted: true,
       },
       {
         id: 'tour-bio:2026-06-05:bio',
@@ -212,6 +214,7 @@ describe('public waste calendar occurrences', () => {
         fractionColor: '#444444',
         tourName: 'Restmüll',
         note: 'Verschoben nach Neujahr',
+        isShifted: true,
       },
     ]);
   });
@@ -303,6 +306,7 @@ describe('public waste calendar occurrences', () => {
         fractionColor: '#444444',
         tourName: 'Restmüll',
         note: null,
+        isShifted: true,
       },
       {
         id: 'tour-rest:2026-01-08:rest',

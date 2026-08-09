@@ -754,6 +754,7 @@ export const createPublicWasteRepository = (input: {
           ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
           ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),
           ...(row.tour_description?.trim() ? { tourDescription: row.tour_description.trim() } : {}),
+          ...(shiftedDate !== pickupDate ? { isShifted: true } : {}),
           note,
         });
       }

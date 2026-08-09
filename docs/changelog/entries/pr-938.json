@@ -1,0 +1,4 @@
+{
+  "prNumber": 938,
+  "body": "Geschützter Waste-Cutover für bb-prignitz\n\n- Tenantgenaue Waste-Sicherungen erhalten den fehlenden Provisionierer-Zugriff.\n- Der geprüfte Supabase-Bestand kann einmalig und ausschließlich nach bb-prignitz importiert werden.\n- Public Waste wird während des Imports kontrolliert gestoppt und erst nach Daten-, Rechte- und Smoke-Prüfungen mit der neuen PostgreSQL-Datenbank gestartet."
+}

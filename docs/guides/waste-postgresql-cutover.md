@@ -29,7 +29,32 @@ Ein verlustfreier Rückwechsel ist nur möglich, solange nach dem finalen Dump k
 5. Den freien Speicher auf dem PostgreSQL-Host in Bytes ermitteln. Der Migrationslauf verlangt mindestens das Dreifache der finalen Dump-Größe für Dump, Restore und Sicherheitsreserve.
 6. Einen regulären Waste-Backup-Auftrag ausführen. Das Ergebnis muss ein Manifest unter `<umgebung>/waste/inventory/` und einen Eintrag für `bb-prignitz` unter `<umgebung>/waste/bb-prignitz/` enthalten.
 
+Für den produktiven Einmallauf müssen zusätzlich der Studio-Build mit dem
+Provisionierer-Fix und das dazugehörige Backup-Agent-Image über die regulären,
+geschützten Rollout-Workflows ausgerollt sein. Anschließend wird die
+Provisionierung von `bb-prignitz` erneut ausgeführt. Dadurch erhält die bereits
+vorhandene Tenant-Datenbank den fehlenden `CONNECT`-Grant für den
+Provisionierer; zugleich werden die Runtime-Passwörter kontrolliert rotiert.
+Die dabei erzeugte Public-Verbindungs-URL wird ausschließlich als Environment-
+Secret `PUBLIC_WASTE_POSTGRESQL_DATABASE_URL` im geschützten GitHub Environment
+`web-waste-calendar` hinterlegt.
+
+Der geprüfte PG16-Datenexport wird einmalig unter
+`prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql` in den
+Produktions-Backup-Bucket geladen. Dateipfad und SHA-256
+`df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc`
+sind Teil des Agent-Vertrags. Andere Tenants, Umgebungen, Pfade oder Inhalte
+werden abgewiesen.
+
 ## Offline-Fenster
+
+Der produktive Ablauf wird ausschließlich über den manuell freigegebenen
+GitHub-Actions-Workflow **Waste bb-prignitz Cutover** gestartet. Dessen drei
+geschützte Jobs verwenden die Environments `web-waste-calendar`, `prod` und
+erneut `web-waste-calendar`. Der Workflow stoppt zunächst nur die öffentliche
+Waste-Runtime. Schlägt danach Import oder Verifikation fehl, bleibt sie
+gestoppt; ein automatischer Start auf einem ungeprüften Ziel findet nicht
+statt.
 
 Am vereinbarten Sonntag werden über den bestehenden Betriebsweg Studio-App, öffentliche Waste-App und relevante Worker gestoppt. Ein eigener Wartungsmodus ist nicht vorgesehen. Vor dem Dump müssen folgende Prüfungen leer sein:
 
@@ -78,14 +103,28 @@ scripts/ops/migrate-waste-postgresql.sh
 
 `SOURCE_PG_BIN` muss auf einen Client zeigen, dessen Hauptversion mindestens der Supabase-Quellversion entspricht. Die lokale PostgreSQL-Serverinstanz muss dafür nicht gewechselt werden. Der Import überträgt ausschließlich Daten aus `public.waste_*` in das durch die versionierten Waste-Migrationen vorbereitete Schema; Owner und Supabase-ACLs werden nicht übernommen.
 
+Der produktive Workflow wiederholt den mutierenden Teil nicht lokal. Der
+signierte Backup-Agent lädt ausschließlich das fest verdrahtete, per SHA-256
+gebundene Daten-SQL, wartet auf abgeflossene App-Sitzungen, verlangt ein leeres
+Ziel und erstellt vor der ersten Mutation ein tenantgenaues Sicherheitsbackup.
+Der Import läuft in einer einzelnen Transaktion unter der Owner-Rolle. Danach
+werden die bekannten Legacy-Abholtermine idempotent in Tour-Zuordnungen
+überführt.
+
 ## Verifikation und Evidenz
 
-Der Lauf vergleicht Tabelleninventar und Zeilenzahlen. Zusätzlich sind fachliche Stichproben für Regionen, Orte, Touren, Termine, Einstellungen und Reminder-Daten durchzuführen. Anschließend:
+Der Lauf vergleicht Tabelleninventar und Zeilenzahlen. Für den gebundenen
+Produktionsbestand müssen genau 13 Quelltabellen mit insgesamt 7.494 Zeilen
+vorliegen; aus 160 Legacy-Abholterminen müssen 160 Tour-Zuordnungen und 160
+Ortsverknüpfungen entstehen. Zusätzlich sind fachliche Stichproben für
+Regionen, Orte, Touren, Termine, Einstellungen und Reminder-Daten
+durchzuführen. Anschließend:
 
 1. den Waste-Reconcile-/Migrationsjob für `bb-prignitz` erneut ausführen,
 2. Status `ready` und erfolgreiche Studio-/Public-Rechteproben prüfen,
 3. Studio-Smoke für lesenden und schreibenden Waste-Zugriff ausführen,
-4. Public-Waste-Smoke mit der tenantbezogenen Public-Rolle ausführen,
+4. Public-Waste-Smoke mit der tenantbezogenen Public-Rolle ausführen; der
+   Cutover-Workflow verlangt dafür mindestens eine nicht leere Ortsauswahl,
 5. einen Registry-basierten Backup-Lauf und den Workflow **Waste Database Restore Drill** mit `tenant_instance_id: bb-prignitz` erfolgreich abschließen.
 
 Das geschützte Evidenzverzeichnis enthält mindestens:

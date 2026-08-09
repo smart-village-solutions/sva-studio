@@ -131,6 +131,9 @@ const ensureDatabase = async (
   await client.query(
     `GRANT CONNECT ON DATABASE ${quoteIdentifier(names.database)} TO ${quoteIdentifier(names.migratorRole)}, ${quoteIdentifier(names.appRole)}, ${quoteIdentifier(names.publicAppRole)};`
   );
+  await client.query(
+    `GRANT CONNECT ON DATABASE ${quoteIdentifier(names.database)} TO CURRENT_USER;`
+  );
 };
 
 const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabaseNames) => {

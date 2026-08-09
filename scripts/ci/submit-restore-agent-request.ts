@@ -24,7 +24,17 @@ const parseEnvironment = (value: string | undefined): BackupEnvironment => {
   throw new Error('Der Restore-Agent akzeptiert nur staging oder prod.');
 };
 
+export const parseRestoreMode = (
+  value: string | undefined
+): Readonly<{ database: BackupDatabase; action: RestoreRequest['action'] }> => {
+  if (value === undefined) return { database: 'studio', action: 'restore-and-verify-v1' };
+  if (value === 'waste') return { database: 'waste', action: 'restore-and-verify-v1' };
+  if (value === 'waste-import') return { database: 'waste', action: 'import-waste-data-v1' };
+  throw new Error('Der Restore-Agent akzeptiert nur die Modi studio, waste oder waste-import.');
+};
+
 export const buildRestoreAgentRequest = (input: {
+  action?: RestoreRequest['action'];
   environment: BackupEnvironment;
   maintenanceWindowReference: string;
   now: Date;
@@ -35,7 +45,7 @@ export const buildRestoreAgentRequest = (input: {
   tenantInstanceId?: string;
 }): RestoreRequest => ({
   version: 1,
-  action: 'restore-and-verify-v1',
+  action: input.action ?? 'restore-and-verify-v1',
   requestId: input.requestId,
   environment: input.environment,
   expiresAt: new Date(input.now.getTime() + 10 * 60_000).toISOString(),
@@ -92,6 +102,18 @@ export const hasRuntimePrincipalRestoreEvidence = (result: Record<string, unknow
   hasSucceededStep(result, 'runtime-principal-reconciliation') &&
   hasSucceededStep(result, 'runtime-principal-probe');
 
+export const hasWasteImportEvidence = (result: Record<string, unknown>): boolean =>
+  [
+    'source-object-and-checksum-verify',
+    'runtime-connect-lock',
+    'app-session-drain',
+    'empty-target-verify',
+    'safety-backup',
+    'waste-data-import',
+    'source-inventory-verify',
+    'legacy-pickup-backfill',
+  ].every((step) => hasSucceededStep(result, step)) && hasRuntimePrincipalRestoreEvidence(result);
+
 const waitForRestoreResult = async (
   target: BackupEnvironment,
   request: RestoreRequest,
@@ -118,13 +140,22 @@ const waitForRestoreResult = async (
       )
         throw new Error('Das Restore-Ergebnis stimmt nicht mit dem Auftrag überein.');
       if (
-        result.status !== 'database-restored' ||
+        result.status !==
+          (request.action === 'import-waste-data-v1'
+            ? 'waste-data-imported'
+            : 'database-restored') ||
         result.mutationStarted !== true ||
         typeof result.safetyObjectKey !== 'string' ||
-        !hasRuntimePrincipalRestoreEvidence(result)
+        !(request.action === 'import-waste-data-v1'
+          ? hasWasteImportEvidence(result)
+          : hasRuntimePrincipalRestoreEvidence(result))
       ) {
         const errorCode = typeof result.errorCode === 'string' ? result.errorCode : 'unknown';
-        throw new Error(`Der Restore-Agent meldet keinen erfolgreichen DB-Restore (${errorCode}).`);
+        const operation =
+          request.action === 'import-waste-data-v1' ? 'Waste-Datenimport' : 'DB-Restore';
+        throw new Error(
+          `Der Restore-Agent meldet keinen erfolgreichen ${operation} (${errorCode}).`
+        );
       }
       return result;
     } catch (error) {
@@ -144,23 +175,29 @@ const waitForRestoreResult = async (
 
 const main = async () => {
   const target = parseEnvironment(process.argv[2]);
-  const database: BackupDatabase = process.argv[3] === 'waste' ? 'waste' : 'studio';
+  const { database, action } = parseRestoreMode(process.argv[3]);
   const request = buildRestoreAgentRequest({
+    action,
     environment: target,
     maintenanceWindowReference: required(
       process.env.MAINTENANCE_WINDOW_REFERENCE,
       'MAINTENANCE_WINDOW_REFERENCE'
     ),
     now: new Date(),
-    requestId: `restore-gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(
+    requestId: `${action === 'import-waste-data-v1' ? 'waste-import' : 'restore'}-gha-${required(process.env.GITHUB_RUN_ID, 'GITHUB_RUN_ID')}-${required(
       process.env.GITHUB_RUN_ATTEMPT,
       'GITHUB_RUN_ATTEMPT'
-    )}${database === 'waste' ? '-waste' : ''}`,
+    )}${database === 'waste' && action === 'restore-and-verify-v1' ? '-waste' : ''}`,
     sourceObjectKey: required(process.env.RESTORE_SOURCE_OBJECT_KEY, 'RESTORE_SOURCE_OBJECT_KEY'),
     sourceSha256: required(process.env.RESTORE_SOURCE_SHA256, 'RESTORE_SOURCE_SHA256'),
     database,
     ...(database === 'waste'
-      ? { tenantInstanceId: required(process.env.WASTE_TENANT_INSTANCE_ID, 'WASTE_TENANT_INSTANCE_ID') }
+      ? {
+          tenantInstanceId: required(
+            process.env.WASTE_TENANT_INSTANCE_ID,
+            'WASTE_TENANT_INSTANCE_ID'
+          ),
+        }
       : {}),
   });
   if (!isValidRestoreRequest(request))

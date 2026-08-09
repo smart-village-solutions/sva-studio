@@ -16,6 +16,7 @@ import type {
   SvaMainserverConnectionStatus,
   SvaMainserverEventInput,
   SvaMainserverGenericItemInput,
+  SvaMainserverGenericTypeOwnership,
   SvaMainserverInstanceConfig,
   SvaMainserverListQuery,
   SvaMainserverNewsListInput,
@@ -352,7 +353,10 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
 
   const listProjection = async (
     input: SvaMainserverConnectionInput &
-      SvaMainserverListQuery & { readonly contentType: SvaMainserverProjectionContentType }
+      SvaMainserverListQuery & {
+        readonly contentType: SvaMainserverProjectionContentType;
+        readonly genericTypeOwnership: SvaMainserverGenericTypeOwnership;
+      }
   ) => {
     const config = await loadValidatedInstanceConfig(input, 'load_instance_config');
     const credentialMetadata = await loadListCredentialMetadata(input);
@@ -360,7 +364,8 @@ export const createSvaMainserverService = (options: SvaMainserverServiceOptions 
       ...(await projectionListOperations.listProjectionWithConfig(
         input.contentType,
         input,
-        config
+        config,
+        input.genericTypeOwnership
       )),
       ...credentialMetadata,
     };
@@ -785,7 +790,10 @@ export const listSvaMainserverNews = (
 
 export const listSvaMainserverProjection = (
   input: SvaMainserverConnectionInput &
-    SvaMainserverListQuery & { readonly contentType: SvaMainserverProjectionContentType }
+    SvaMainserverListQuery & {
+      readonly contentType: SvaMainserverProjectionContentType;
+      readonly genericTypeOwnership: SvaMainserverGenericTypeOwnership;
+    }
 ) => getDefaultService().listProjection(input);
 
 export const getSvaMainserverNews = (

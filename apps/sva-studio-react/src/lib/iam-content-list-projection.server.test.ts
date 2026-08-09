@@ -2699,7 +2699,7 @@ describe('content list projection', () => {
     );
   });
 
-  it('includes every known and unknown discriminator in the legacy generic-item projection', async () => {
+  it('keeps only unclaimed discriminators in the legacy generic-item projection', async () => {
     state.listSvaMainserverGenericItems.mockResolvedValue({
       data: [
         ['featured-project-1', 'Featured Project', 'FeaturedProject'],
@@ -2738,18 +2738,13 @@ describe('content list projection', () => {
       force: true,
     });
 
-    expect(projectionRows.map((row) => row.source_entity_id)).toEqual([
-      'featured-project-1',
-      'faq-1',
-      'card-1',
-      'future-1',
-    ]);
+    expect(projectionRows.map((row) => row.source_entity_id)).toEqual(['future-1']);
     expect(projectionRows.every((row) => row.content_type === 'generic-items.generic-item')).toBe(
       true
     );
   });
 
-  it('keeps generic and specialized projection rows for the same mainserver item distinct', async () => {
+  it('persists only the registered specialized projection for the same mainserver item', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [
@@ -2796,7 +2791,7 @@ describe('content list projection', () => {
         .filter((row) => row.source_entity_id === 'faq-shared-1')
         .map((row) => row.content_type)
         .sort()
-    ).toEqual(['faq.faq', 'generic-items.generic-item']);
+    ).toEqual(['faq.faq']);
   });
 
   it('upserts only the latest loaded page during progressive batch refreshes', async () => {
@@ -3213,7 +3208,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('refreshes the generic sibling projection after FAQ mutations', async () => {
+  it('refreshes only the registered FAQ projection after FAQ mutations', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'faq-mutation-1',
       title: 'Mutation FAQ',
@@ -3247,22 +3242,15 @@ describe('content list projection', () => {
     });
 
     expect(state.getSvaMainserverGenericItem).toHaveBeenCalledTimes(1);
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          content_type: 'generic-items.generic-item',
-          source_entity_id: 'faq-mutation-1',
-        }),
-        expect.objectContaining({
-          content_type: 'faq.faq',
-          source_entity_id: 'faq-mutation-1',
-        }),
-      ])
-    );
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'faq.faq',
+        source_entity_id: 'faq-mutation-1',
+      }),
+    ]);
   });
 
-  it('refreshes the generic sibling projection for externally created FeaturedProject items', async () => {
+  it('refreshes only the registered project projection for externally created FeaturedProject items', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'project-mutation-1',
       title: 'Externes Projekt',
@@ -3295,19 +3283,12 @@ describe('content list projection', () => {
       entityId: 'project-mutation-1',
     });
 
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          content_type: 'generic-items.generic-item',
-          source_entity_id: 'project-mutation-1',
-        }),
-        expect.objectContaining({
-          content_type: 'projects.project',
-          source_entity_id: 'project-mutation-1',
-        }),
-      ])
-    );
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-mutation-1',
+      }),
+    ]);
   });
 
   it('continues project refresh after filtered pages and excludes soft-deleted projects', async () => {
@@ -3427,15 +3408,83 @@ describe('content list projection', () => {
       entityId: 'generic-type-change-1',
     });
 
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ content_type: 'generic-items.generic-item' }),
-        expect.objectContaining({ content_type: 'cockpit-cards.cockpit-card' }),
-      ])
-    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ content_type: 'cockpit-cards.cockpit-card' }),
+    ]);
     expect(projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toHaveLength(1);
     expect([...syncStates.keys()].some((key) => key.startsWith('faq.faq::'))).toBe(false);
+  });
+
+  it('falls back to the generic projection when a specialized item gets an unclaimed type', async () => {
+    projectionRows = [
+      {
+        id: 'generic-type-fallback-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::organization::faq.faq',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: null,
+        content_type: 'faq.faq',
+        title: 'Ehemalige FAQ',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-generic-type-fallback-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'faq.faq',
+        source_entity_id: 'generic-type-fallback-1',
+      },
+    ];
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-type-fallback-1',
+      title: 'Jetzt technisch',
+      contentType: 'generic-items.generic-item',
+      genericType: 'FUTURE_TYPE',
+      payload: {},
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'faq.faq',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'generic-type-fallback-1',
+    });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'generic-items.generic-item',
+        source_entity_id: 'generic-type-fallback-1',
+      }),
+    ]);
   });
 
   it('removes only the targeted generic item projection row after delete mutations', async () => {
@@ -3592,8 +3641,7 @@ describe('content list projection', () => {
     syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
-        sync_scope_key:
-          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        sync_scope_key: 'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         last_started_at: null,
         last_succeeded_at: new Date().toISOString(),
         last_failed_at: null,
@@ -3747,8 +3795,7 @@ describe('content list projection', () => {
     syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
-        sync_scope_key:
-          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        sync_scope_key: 'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         last_started_at: null,
         last_succeeded_at: staleSucceededAt,
         last_failed_at: null,
@@ -4400,6 +4447,15 @@ describe('content list projection', () => {
 
     await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
 
+    expect(state.listSvaMainserverProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericTypeOwnership: {
+          FAQ: 'faq.faq',
+          COCKPIT_CARD: 'cockpit-cards.cockpit-card',
+          FeaturedProject: 'projects.project',
+        },
+      })
+    );
     expect(projectionRows).toEqual([
       expect.objectContaining({ source_entity_id: 'news-slim-1', payload_json: {} }),
     ]);

@@ -103,6 +103,8 @@ export type SvaMainserverProjectionContentType =
   | 'projects.project'
   | 'surveys.survey';
 
+export type SvaMainserverGenericTypeOwnership = Readonly<Record<string, string>>;
+
 export type SvaMainserverProjectionListItem = Readonly<{
   id: string;
   contentType: SvaMainserverProjectionContentType;

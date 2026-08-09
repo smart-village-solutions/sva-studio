@@ -545,6 +545,7 @@ Referenzen:
 - Produktive Fachplugins deklarieren eigene Rechtefamilien über `PluginDefinition.permissions`; die Permission-ID folgt `<pluginId>.<actionName>`.
 - `content.*` bleibt ein Core-/Legacy-Content-Vertrag und darf nicht mehr als produktiver Guard für Fachplugins verwendet werden.
 - Build-time-Validierung verhindert reservierte Plugin-Namespaces, doppelte Permission-IDs, fremde Namespace-Referenzen und nicht registrierte Guards.
+- GenericItem-Fachplugins deklarieren zusätzlich ihren exakten Mainserver-`genericType`; die Registry weist leere oder doppelt beanspruchte Diskriminatoren fail-fast zurück.
 - IAM speichert Plugin-Rechte als normale strukturierte Permissions mit `action` und `resourceType` aus dem Plugin-Namespace, zum Beispiel `news.update` und `news`.
 - Navigation, Routing und Server-Fassaden prüfen dieselbe plugin-spezifische Permission; UI-Gates sind Komfort- und Transparenzschicht, die serverseitige Autorisierung bleibt maßgeblich.
 - Die Rollenverwaltung gruppiert Plugin-Rechte fachlich, nutzt aber weiterhin den bestehenden Rollen-Permission-Vertrag.
@@ -603,9 +604,9 @@ Referenzen:
 - Redaktionelle Einleitungen sind blocklokal und werden über `contentBlocks[].intro` transportiert. Featured Projects kontrollieren `intro` und `body` des ersten Blocks; weitere Blocks bleiben beim Read-Merge-Write erhalten.
 - News verwenden denselben blocklokalen Textvertrag. `payload.teaser` und `payload.body` gehören nicht zum Studio-Modell und werden nicht als Legacy-Fallback in Content-Blocks umgewandelt.
 
-- Generische Listen, Projektionen, Details und Mutationen filtern nicht nach `genericType` und verlangen ausschließlich die passende Action unter `generic-items.*`.
-- Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen.
-- Besitzt eine Person generische und fachliche Rechte, darf derselbe Mainserver-Datensatz in beiden Content-Type-Repräsentationen erscheinen.
+- Das eigenständige Generic-Items-Modul filtert Liste, Details und Mutationen nicht nach `genericType` und verlangt ausschließlich die passende Action unter `generic-items.*`.
+- Die gemeinsame Inhaltsübersicht löst den `genericType` dagegen vor der Autorisierung gegen den Build-time-Registry-Snapshot auf. Ein registriertes Fachplugin übernimmt die einzige Repräsentation; nur nicht übernommene Typen verwenden `generic-items.generic-item`.
+- Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen. Fehlende Fachrechte erzeugen in `/admin/content` keinen generischen Fallback.
 - `generic-items.*` kann fachliche Validierung umgehen und soll deshalb regulären Live-Rollen nicht zugewiesen werden; diese Betriebsgrenze wird durch Rollenvergabe und nicht durch umgebungsabhängige Codepfade umgesetzt.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service

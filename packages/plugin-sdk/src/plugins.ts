@@ -177,6 +177,7 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
   'titleKey',
+  'mainserverGenericType',
   'studioContentType',
   'editorFields',
   'listColumns',

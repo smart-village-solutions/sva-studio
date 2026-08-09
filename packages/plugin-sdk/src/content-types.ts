@@ -5,6 +5,7 @@ import {
   type IamContentDomainCapability,
 } from '@sva/core';
 import { assertPluginContributionAllowedKeys } from './guardrails.js';
+import { validateMainserverGenericType } from './mainserver-generic-type-registry.js';
 import {
   isReservedPluginNamespace,
   normalizePluginIdentifier,
@@ -51,6 +52,7 @@ export type ContentTypeDefinition = {
   readonly contentType: string;
   readonly displayName: string;
   readonly titleKey?: string;
+  readonly mainserverGenericType?: string;
   readonly studioContentType?: StudioContentTypeDefinition;
   readonly editorFields?: readonly ContentTypeEditorFieldDefinition[];
   readonly listColumns?: readonly ContentTypeListColumnDefinition[];
@@ -62,13 +64,18 @@ const contentTypeDefinitionAllowedKeys = new Set([
   'contentType',
   'displayName',
   'titleKey',
+  'mainserverGenericType',
   'studioContentType',
   'editorFields',
   'listColumns',
   'actions',
   'validatePayload',
 ] as const);
-const contentTypeActionDefinitionAllowedKeys = new Set(['key', 'label', 'domainCapability'] as const);
+const contentTypeActionDefinitionAllowedKeys = new Set([
+  'key',
+  'label',
+  'domainCapability',
+] as const);
 const studioContentTypeDefinitionAllowedKeys = new Set([
   'description',
   'icon',
@@ -89,7 +96,9 @@ const normalizeStudioContentTypeDefinition = (
   detailPath: definition.detailPath.trim(),
 });
 
-const normalizeContentTypeDefinition = (definition: ContentTypeDefinition): ContentTypeDefinition => ({
+const normalizeContentTypeDefinition = (
+  definition: ContentTypeDefinition
+): ContentTypeDefinition => ({
   ...definition,
   contentType: normalizePluginIdentifier(definition.contentType),
   displayName: definition.displayName.trim(),
@@ -139,10 +148,16 @@ const validateStudioContentTypeDefinition = (
     `${normalizePluginIdentifier(contentType)}.studioContentType`
   );
 
-  if (studioContentType.requiredReadAction.length === 0 || studioContentType.requiredCreateAction.length === 0) {
+  if (
+    studioContentType.requiredReadAction.length === 0 ||
+    studioContentType.requiredCreateAction.length === 0
+  ) {
     throw new Error(`invalid_studio_content_type_action:${contentType}`);
   }
-  if (studioContentType.createPath.startsWith('/') === false || studioContentType.createPath.length === 0) {
+  if (
+    studioContentType.createPath.startsWith('/') === false ||
+    studioContentType.createPath.length === 0
+  ) {
     throw new Error(`invalid_studio_content_type_create_path:${contentType}`);
   }
   if (
@@ -167,7 +182,9 @@ export const genericContentTypeDefinition: ContentTypeDefinition = {
   ],
 };
 
-export const definePluginContentTypes = <const TDefinitions extends readonly ContentTypeDefinition[]>(
+export const definePluginContentTypes = <
+  const TDefinitions extends readonly ContentTypeDefinition[],
+>(
   namespace: string,
   definitions: TDefinitions
 ): TDefinitions => {
@@ -194,6 +211,7 @@ export const definePluginContentTypes = <const TDefinitions extends readonly Con
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(definition);
+    validateMainserverGenericType(definition);
     if (definition.studioContentType) {
       validateStudioContentTypeDefinition(definition.contentType, definition.studioContentType);
     }
@@ -231,6 +249,7 @@ export const createContentTypeRegistry = (
       throw new Error('invalid_content_type_definition');
     }
     validateContentTypeActions(normalizedDefinition);
+    validateMainserverGenericType(normalizedDefinition);
     if (normalizedDefinition.studioContentType) {
       validateStudioContentTypeDefinition(normalizedType, normalizedDefinition.studioContentType);
     }

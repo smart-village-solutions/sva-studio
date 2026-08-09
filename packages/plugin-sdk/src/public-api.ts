@@ -159,6 +159,10 @@ export {
   getContentTypeDefinition,
   resolveStudioContentDetailPath,
 } from './content-types.js';
+export {
+  createMainserverGenericTypeRegistry,
+  resolveMainserverGenericItemContentType,
+} from './mainserver-generic-type-registry.js';
 export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,

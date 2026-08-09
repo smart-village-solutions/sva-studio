@@ -21,3 +21,9 @@ Der lokale Content-Core ist für Status, Veröffentlichungsmetadaten und Autoren
 Create-Aufrufe verwenden eine stabile Operations-ID als `Idempotency-Key` und Mainserver-`externalId`. Eine allgemeine External-Content-Referenz bindet den lokalen Inhalt an die Mainserver-ID. Geht eine Providerantwort verloren, wird der Datensatz zur Reconciliation vorgemerkt und vor einer erneuten Anlage anhand der `externalId` gesucht.
 
 Updates lesen den Mainserver-Datensatz unmittelbar vor dem Schreiben und erhalten nicht sichtbare GenericItem-Felder sowie unbekannte Payload-Schlüssel. Da der Mainserver keine Revision als Schreibvorbedingung anbietet, garantiert dieser Ablauf keine konfliktfreie Zusammenführung paralleler externer Änderungen.
+
+Die Sichtbarkeit von Featured Projects wird über die bestehende Mainserver-Mutation `SvaMainserverChangeNewsVisibility` mit `recordType: GenericItem` gesetzt. Der übertragene `operationName` muss dabei dem Namen im GraphQL-Dokument entsprechen. Ist der Provider-Create bereits erfolgreich, ein nachgelagerter Schritt aber fehlgeschlagen, wird der vorhandene Datensatz ausschließlich über seine `externalId` identifiziert und gebunden; ein zweiter Create ist nicht zulässig.
+
+## Lokale Fehlerdiagnose
+
+Schlägt das Speichern im lokalen Development-Modus fehl, protokolliert der Projekt-Editor die ursprüngliche Exception ohne Formulardaten als `Project save failed` in der Browser-Konsole. Der lokale Vite-Server übernimmt diese Meldung einschließlich Stacktrace in das konfigurierte Runtime-Log. Sichere, typisierte Fehlermeldungen der Studio-API werden im Editor als konkrete Ursache angezeigt; unbekannte Fehler bleiben auch in Produktionsoberflächen generisch.

@@ -91,6 +91,7 @@ const de = {
       loading: 'Projekte werden geladen.',
       loadError: 'Projekt konnte nicht geladen werden.',
       saveError: 'Projekt konnte nicht gespeichert werden.',
+      saveErrorWithReason: 'Projekt konnte nicht gespeichert werden: {{reason}}',
       deleteError: 'Projekt konnte nicht gelöscht werden.',
       mediaError: 'Bilder konnten nicht geladen oder hochgeladen werden.',
       imagePreviewEmpty: 'Keine Bildvorschau verfügbar.',
@@ -205,6 +206,11 @@ const en = {
       yes: 'Yes',
       no: 'No',
       notAvailable: 'Not available',
+    },
+    messages: {
+      ...de.projects.messages,
+      saveError: 'Project could not be saved.',
+      saveErrorWithReason: 'Project could not be saved: {{reason}}',
     },
     media: {
       ...de.projects.media,

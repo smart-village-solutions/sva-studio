@@ -3,6 +3,15 @@ import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
+  ProjectsApiError: class ProjectsApiError extends Error {
+    public constructor(
+      public readonly code: string,
+      message = code
+    ) {
+      super(message);
+      this.name = 'ProjectsApiError';
+    }
+  },
   create: vi.fn(),
   delete: vi.fn(),
   get: vi.fn(),
@@ -43,6 +52,7 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('../src/projects.api.js', () => ({
+  ProjectsApiError: state.ProjectsApiError,
   createProject: state.create,
   deleteProject: state.delete,
   getProject: state.get,
@@ -136,6 +146,7 @@ describe('projects pages', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.params = {};
+    state.create.mockResolvedValue(project);
     state.listAssets.mockResolvedValue([]);
     state.listReferences.mockResolvedValue([]);
     state.replaceReferences.mockResolvedValue([]);
@@ -208,6 +219,24 @@ describe('projects pages', () => {
     await waitFor(() =>
       expect(screen.getByLabelText('fields.title').getAttribute('aria-invalid')).toBe('true')
     );
+  });
+
+  it('shows the server reason for a typed project API save failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    state.create.mockRejectedValueOnce(
+      new state.ProjectsApiError(
+        'organization_mainserver_credentials_missing',
+        'Für die aktive Organisation fehlen Mainserver-Credentials.'
+      )
+    );
+    const { ProjectsCreatePage } = await import('../src/projects.pages.js');
+    render(<ProjectsCreatePage />);
+    fillRequiredFields();
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
+    );
+
+    await screen.findByText('messages.saveErrorWithReason');
   });
 
   it('loads, reorders, updates and soft-deletes an existing project', async () => {
@@ -521,6 +550,7 @@ describe('projects pages', () => {
   });
 
   it('shows load, save, media and delete failures without navigating', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     state.params = { id: 'project-1' };
     state.get.mockRejectedValueOnce(new Error('offline'));
     const { ProjectsEditPage, ProjectsCreatePage } = await import('../src/projects.pages.js');
@@ -528,7 +558,8 @@ describe('projects pages', () => {
     await screen.findByText('messages.loadError');
     failedLoad.unmount();
 
-    state.create.mockRejectedValueOnce(new Error('failed'));
+    const saveFailure = new Error('failed before fetch');
+    state.create.mockRejectedValueOnce(saveFailure);
     state.listAssets.mockRejectedValueOnce(new Error('media failed'));
     const createView = render(<ProjectsCreatePage />);
     fillRequiredFields();
@@ -536,6 +567,7 @@ describe('projects pages', () => {
       screen.getAllByRole('button', { name: 'actions.create' }).at(-1) as HTMLElement
     );
     await screen.findByText('messages.saveError');
+    expect(consoleError).toHaveBeenCalledWith('Project save failed', saveFailure);
     createView.unmount();
 
     state.get.mockResolvedValueOnce(project);

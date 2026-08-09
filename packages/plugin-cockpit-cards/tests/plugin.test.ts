@@ -11,6 +11,12 @@ describe('cockpit cards plugin contract', () => {
     expect(pluginCockpitCards.id).toBe('cockpit-cards');
     expect(pluginCockpitCards.actions).toEqual(pluginCockpitCardsActionDefinitions);
     expect(pluginCockpitCards.permissions).toEqual(pluginCockpitCardsPermissionDefinitions);
+    expect(pluginCockpitCards.contentTypes).toEqual([
+      expect.objectContaining({
+        contentType: 'cockpit-cards.cockpit-card',
+        mainserverGenericType: 'COCKPIT_CARD',
+      }),
+    ]);
     expect(pluginCockpitCards.adminResources).toEqual([
       expect.objectContaining({
         resourceId: 'cockpit-cards.content',

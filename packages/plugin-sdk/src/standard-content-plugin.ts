@@ -16,20 +16,16 @@ import {
   type PluginRouteDefinition,
   type PluginTranslations,
 } from './plugins.js';
-
 export type StandardContentPluginActionName = 'create' | 'edit' | 'update' | 'delete';
-
 export type StandardContentPluginActionIds<TPluginId extends string = string> = Readonly<{
   create: `${TPluginId}.create`;
   edit: `${TPluginId}.edit`;
   update: `${TPluginId}.update`;
   delete: `${TPluginId}.delete`;
 }>;
-
 export type StandardContentPluginActionOptions = Readonly<{
   legacyAliases?: Partial<Readonly<Record<StandardContentPluginActionName, readonly string[]>>>;
 }>;
-
 export type StandardContentAccessCapabilities = Readonly<{
   isResolved: boolean;
   canRead: boolean;
@@ -69,6 +65,7 @@ export type StandardContentAdminResourceOptions = Readonly<{
 export type StandardContentPluginContributionOptions = StandardContentAdminResourceOptions &
   Readonly<{
     displayName: string;
+    mainserverGenericType?: string;
     actionOptions?: StandardContentPluginActionOptions;
   }>;
 
@@ -253,13 +250,15 @@ export const createStandardContentTypeDefinition = (
   contentType: string,
   displayName: string,
   basePath?: string,
-  titleKey?: string
+  titleKey?: string,
+  mainserverGenericType?: string
 ): readonly ContentTypeDefinition[] =>
   definePluginContentTypes(pluginId, [
     {
       contentType,
       displayName,
       titleKey,
+      ...(mainserverGenericType !== undefined ? { mainserverGenericType } : {}),
       studioContentType: {
         requiredReadAction: `${pluginId}.read`,
         requiredCreateAction: `${pluginId}.create`,
@@ -294,7 +293,8 @@ export const createStandardContentPluginContribution = (
     options.contentType,
     options.displayName,
     options.basePath,
-    options.titleKey
+    options.titleKey,
+    options.mainserverGenericType
   ),
   adminResources: definePluginAdminResources(options.pluginId, [
     createStandardContentAdminResource(options),

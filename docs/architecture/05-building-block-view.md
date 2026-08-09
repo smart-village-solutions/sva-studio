@@ -125,7 +125,7 @@ Abhängigkeiten des aktuellen Systems.
 - auch das News-Plugin liest und schreibt Einleitung und Haupttext ausschließlich über `contentBlocks[].intro/body`; der News-Payload enthält keine Textkopie und erzeugt keinen Fallback-Block
 - autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
 - lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
-- darf denselben Mainserver-Datensatz bei kombinierten Rechten zusätzlich zur fachlichen Repräsentation als `generic-items.generic-item` projizieren
+- bleibt als eigenständiges Modul technischer Vollzugriff auf alle GenericItems; in der gemeinsamen Inhaltsübersicht übernimmt dagegen genau ein registriertes Fachplugin den Datensatz oder der generische Content-Type greift als Fallback
 
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
@@ -241,7 +241,7 @@ Abhängigkeiten des aktuellen Systems.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für alle Mainserver-basierten Content Items; Studio-IAM autorisiert ausschließlich typspezifische Actions und ersetzt keine fachlichen Mainserver-Felder durch lokale Ownership-, Lifecycle- oder Autorenwerte.
-- Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Studio-Listenquelle; Mainserver-News, -Events, -POI, -GenericItems, -FAQ, -Cockpit-Cards, -FeaturedProjects und -Surveys werden serverseitig in das rekonstruierbare Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt. Ein lokaler Content-Core oder eine External-Content-Reference ist keine Projektionsvoraussetzung.
+- Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Studio-Listenquelle; Mainserver-News, -Events, -POI, -GenericItems, -FAQ, -Cockpit-Cards, -FeaturedProjects und -Surveys werden serverseitig in das rekonstruierbare Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt. GenericItem-Fachplugins deklarieren ihre exakte Discriminator-Zuständigkeit im Build-time-Registry-Snapshot; die Projektion persistiert je Mainserver-GenericItem genau den fachlichen Content-Type oder den generischen Fallback. Ein lokaler Content-Core oder eine External-Content-Reference ist keine Projektionsvoraussetzung.
 - Surveys folgen denselben Boundary-Regeln wie News, Events und POI: pluginseitige Browser-UI, hostgeführte HTTP-Fassade, typed Adapter in `@sva/sva-mainserver` und kein direkter GraphQL- oder Secret-Zugriff aus dem Plugin.
 - Survey-spezifische Snapshot-Drift wird innerhalb von `@sva/sva-mainserver` abgefangen: `SurveyPoll`-Reads bleiben snapshot-nah, während das Plugin weiterhin das stabile Studio-Modell inklusive `startAt`, `resultVisibility`, `showResultsInApp`, `privacyNotice` und `transparencyNotice` konsumiert.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.

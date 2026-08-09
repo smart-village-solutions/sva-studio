@@ -17,6 +17,12 @@ const input = {
   pageSize: 100,
 };
 
+const genericTypeOwnership = {
+  FAQ: 'faq.faq',
+  COCKPIT_CARD: 'cockpit-cards.cockpit-card',
+  FeaturedProject: 'projects.project',
+} as const;
+
 describe('projection list operations', () => {
   it('loads only allowlisted compact fields and skips invalid rows', async () => {
     const execute = vi.fn().mockResolvedValue({
@@ -34,7 +40,12 @@ describe('projection list operations', () => {
     });
     const operations = createProjectionListOperations(execute);
 
-    const result = await operations.listProjectionWithConfig('news.article', input, config);
+    const result = await operations.listProjectionWithConfig(
+      'news.article',
+      input,
+      config,
+      genericTypeOwnership
+    );
 
     expect(result.data).toEqual([
       expect.objectContaining({ id: 'news-1', title: 'Headline aus dem ersten Inhaltsblock' }),
@@ -59,7 +70,12 @@ describe('projection list operations', () => {
     });
     const operations = createProjectionListOperations(execute);
 
-    const result = await operations.listProjectionWithConfig('news.article', input, config);
+    const result = await operations.listProjectionWithConfig(
+      'news.article',
+      input,
+      config,
+      genericTypeOwnership
+    );
 
     expect(result.data[0]?.title).toBe('News-Titel');
   });
@@ -68,7 +84,12 @@ describe('projection list operations', () => {
     const execute = vi.fn().mockResolvedValue({ surveys: [{ id: 'survey-1', title: 'Umfrage' }] });
     const operations = createProjectionListOperations(execute);
 
-    const result = await operations.listProjectionWithConfig('surveys.survey', input, config);
+    const result = await operations.listProjectionWithConfig(
+      'surveys.survey',
+      input,
+      config,
+      genericTypeOwnership
+    );
 
     expect(execute).toHaveBeenCalledTimes(1);
     expect(execute.mock.calls[0]?.[0]).toEqual(
@@ -77,7 +98,7 @@ describe('projection list operations', () => {
     expect(result.pagination).toEqual({ page: 1, pageSize: 1, hasNextPage: false, total: 1 });
   });
 
-  it('keeps generic projections unfiltered while applying the complementary FAQ filter', async () => {
+  it('keeps claimed FAQ items out of the complementary generic projection', async () => {
     const faqItems = Array.from({ length: 99 }, (_, index) => ({
       id: `faq-${index + 1}`,
       title: `Frage ${index + 1}`,
@@ -92,25 +113,27 @@ describe('projection list operations', () => {
     });
     const operations = createProjectionListOperations(execute);
 
-    const faqResult = await operations.listProjectionWithConfig('faq.faq', input, config);
+    const faqResult = await operations.listProjectionWithConfig(
+      'faq.faq',
+      input,
+      config,
+      genericTypeOwnership
+    );
     const genericResult = await operations.listProjectionWithConfig(
       'generic-items.generic-item',
       input,
-      config
+      config,
+      genericTypeOwnership
     );
 
     expect(faqResult.data).toHaveLength(99);
     expect(faqResult.data.map((item) => item.id)).not.toContain('faq-sentinel');
-    expect(genericResult.data).toHaveLength(100);
-    expect(genericResult.data.map((item) => item.id)).toEqual([
-      'generic-1',
-      ...faqItems.map((item) => item.id),
-    ]);
+    expect(genericResult.data.map((item) => item.id)).toEqual(['generic-1']);
     expect(faqResult.pagination.hasNextPage).toBe(true);
     expect(genericResult.pagination.hasNextPage).toBe(true);
   });
 
-  it('includes every known and unknown discriminator in generic projections', async () => {
+  it('keeps only unclaimed discriminators in generic projections', async () => {
     const execute = vi.fn().mockResolvedValue({
       genericItems: [
         { id: 'project-1', title: 'Projekt', genericType: 'FeaturedProject' },
@@ -124,15 +147,22 @@ describe('projection list operations', () => {
     const result = await operations.listProjectionWithConfig(
       'generic-items.generic-item',
       input,
-      config
+      config,
+      genericTypeOwnership
     );
 
-    expect(result.data.map((item) => item.id)).toEqual([
-      'project-1',
-      'faq-1',
-      'card-1',
-      'future-1',
-    ]);
+    expect(result.data.map((item) => item.id)).toEqual(['future-1']);
+  });
+
+  it('fails closed for a specialized generic-item projection without a matching owner', async () => {
+    const execute = vi.fn().mockResolvedValue({
+      genericItems: [{ id: 'faq-1', title: 'FAQ', genericType: 'FAQ' }],
+    });
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig('faq.faq', input, config, {});
+
+    expect(result.data).toEqual([]);
   });
 
   it('projects FeaturedProject items without requiring local Studio records', async () => {
@@ -140,13 +170,23 @@ describe('projection list operations', () => {
       genericItems: [
         { id: 'project-1', title: 'Projekt', genericType: 'FeaturedProject' },
         { id: 'legacy-1', title: 'Alt', genericType: 'PROJECT' },
-        { id: 'deleted-project', title: 'Gelöscht', genericType: 'FeaturedProject', payload: { deleted: true } },
+        {
+          id: 'deleted-project',
+          title: 'Gelöscht',
+          genericType: 'FeaturedProject',
+          payload: { deleted: true },
+        },
         { id: 'faq-1', title: 'FAQ', genericType: 'FAQ' },
       ],
     });
     const operations = createProjectionListOperations(execute);
 
-    const result = await operations.listProjectionWithConfig('projects.project', input, config);
+    const result = await operations.listProjectionWithConfig(
+      'projects.project',
+      input,
+      config,
+      genericTypeOwnership
+    );
 
     const request = execute.mock.calls[0]?.[0] as { document: string };
     expect(request.document).toMatch(/genericType\s+author\s+payload/);
@@ -160,10 +200,12 @@ describe('projection list operations', () => {
   });
 
   it('rejects malformed projection pages', async () => {
-    const operations = createProjectionListOperations(vi.fn().mockResolvedValue({ newsItems: null }));
+    const operations = createProjectionListOperations(
+      vi.fn().mockResolvedValue({ newsItems: null })
+    );
 
     await expect(
-      operations.listProjectionWithConfig('news.article', input, config)
+      operations.listProjectionWithConfig('news.article', input, config, genericTypeOwnership)
     ).rejects.toThrow('Invalid projection page structure');
   });
 });

@@ -4,13 +4,14 @@ import {
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
-import { FAQ_CONTENT_TYPE } from './faq.constants.js';
+import { FAQ_CONTENT_TYPE, FAQ_GENERIC_TYPE } from './faq.constants.js';
 import { pluginFaqTranslations } from './plugin.translations.js';
 
 const contribution = createStandardContentPluginContribution({
   pluginId: 'faq',
   displayName: 'FAQ',
   contentType: FAQ_CONTENT_TYPE,
+  mainserverGenericType: FAQ_GENERIC_TYPE,
   titleKey: 'faq.navigation.title',
   listBindingKey: 'faqList',
   detailBindingKey: 'faqDetail',

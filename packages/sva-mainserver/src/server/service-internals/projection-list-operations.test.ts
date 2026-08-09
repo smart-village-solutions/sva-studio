@@ -229,6 +229,8 @@ describe('projection list operations', () => {
         { id: 'faq-1', title: 'FAQ', genericType: 'FAQ' },
         { id: 'card-1', title: 'Kachel', genericType: 'COCKPIT_CARD' },
         { id: 'future-1', title: 'Zukünftiger Typ', genericType: 'FUTURE_TYPE' },
+        { id: 'prototype-1', title: 'Prototyp', genericType: 'toString' },
+        { id: 'prototype-2', title: 'Prototyp 2', genericType: '__proto__' },
       ],
     });
     const operations = createProjectionListOperations(execute);
@@ -240,7 +242,7 @@ describe('projection list operations', () => {
       genericTypeOwnership
     );
 
-    expect(result.data.map((item) => item.id)).toEqual(['future-1']);
+    expect(result.data.map((item) => item.id)).toEqual(['future-1', 'prototype-1', 'prototype-2']);
   });
 
   it('fails closed for a specialized generic-item projection without a matching owner', async () => {

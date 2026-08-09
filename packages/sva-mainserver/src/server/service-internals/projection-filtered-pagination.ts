@@ -24,8 +24,13 @@ const matchesProjectionContentType = (
   if (item === null || typeof item !== 'object') return false;
   const record = item as Record<string, unknown>;
   if (typeof record.genericType !== 'string') return false;
-  const resolvedContentType =
-    genericTypeOwnership[record.genericType] ?? 'generic-items.generic-item';
+  const ownedContentType = Object.prototype.hasOwnProperty.call(
+    genericTypeOwnership,
+    record.genericType
+  )
+    ? genericTypeOwnership[record.genericType]
+    : undefined;
+  const resolvedContentType = ownedContentType ?? 'generic-items.generic-item';
   if (resolvedContentType !== contentType) return false;
   if (contentType !== 'projects.project') return true;
   const payload = record.payload;

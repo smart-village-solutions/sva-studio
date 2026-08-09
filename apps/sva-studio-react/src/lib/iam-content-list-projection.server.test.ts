@@ -4461,6 +4461,56 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('continues slim GenericItem projection pages from the returned upstream scan offset', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.listSvaMainserverProjection
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'generic-slim-1',
+            contentType: 'generic-items.generic-item',
+            title: 'Allgemein 1',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        skippedInvalidCount: 0,
+        pagination: {
+          page: 1,
+          pageSize: 100,
+          hasNextPage: true,
+          nextGenericItemScanOffset: 237,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'generic-slim-2',
+            contentType: 'generic-items.generic-item',
+            title: 'Allgemein 2',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        skippedInvalidCount: 0,
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverProjection).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        page: 2,
+        pageSize: 100,
+        genericItemScanOffset: 237,
+      })
+    );
+  });
+
   it('stops slim projection pagination at the local scan cap', async () => {
     process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
     state.listSvaMainserverProjection.mockImplementation(

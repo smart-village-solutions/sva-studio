@@ -1618,6 +1618,7 @@ type MainserverProjectionLoadedPage = Readonly<{
   readonly rows: readonly MainserverProjectionRowInput[];
   readonly hasNextPage: boolean;
   readonly nextPage: number;
+  readonly nextGenericItemScanOffset?: number;
   readonly skippedInvalidCount: number;
 }>;
 
@@ -1627,6 +1628,7 @@ type MainserverProjectionPageResult<TItem> = {
   readonly pagination: {
     readonly hasNextPage: boolean;
     readonly page?: number;
+    readonly nextGenericItemScanOffset?: number;
   };
 };
 
@@ -2028,6 +2030,7 @@ const loadMainserverProjectionPage = async (
   pageQuery: {
     readonly page: number;
     readonly pageSize: number;
+    readonly genericItemScanOffset?: number;
   }
 ): Promise<MainserverProjectionLoadedPage> => {
   if (!target.instanceId) {
@@ -2085,6 +2088,9 @@ const loadMainserverProjectionPage = async (
           registeredGenericItemContentTypes.has(target.contentType)
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
+      ...(result.pagination.nextGenericItemScanOffset !== undefined
+        ? { nextGenericItemScanOffset: result.pagination.nextGenericItemScanOffset }
+        : {}),
       skippedInvalidCount: result.skippedInvalidCount,
     });
   }
@@ -2108,6 +2114,7 @@ const refreshMainserverProjectionBatch = (
   const accumulatedRows = new Map<string, MainserverProjectionRowInput[]>();
   const refreshRunIds = new Map<string, string>();
   const skippedInvalidCounts = new Map<string, number>();
+  const genericItemScanOffsets = new Map<string, number>();
   let resolveHotCompletion: ((responses: Map<string, Response | null>) => void) | undefined;
   const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
     resolveHotCompletion = resolve;
@@ -2127,8 +2134,17 @@ const refreshMainserverProjectionBatch = (
       targets,
       MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
       async (target, pageQuery) => {
-        const result = await loadMainserverProjectionPage(target, pageQuery);
         const targetKey = buildProjectionTargetKey(target);
+        const genericItemScanOffset = genericItemScanOffsets.get(targetKey);
+        const result = await loadMainserverProjectionPage(target, {
+          ...pageQuery,
+          ...(genericItemScanOffset !== undefined ? { genericItemScanOffset } : {}),
+        });
+        if (result.nextGenericItemScanOffset !== undefined) {
+          genericItemScanOffsets.set(targetKey, result.nextGenericItemScanOffset);
+        } else {
+          genericItemScanOffsets.delete(targetKey);
+        }
         skippedInvalidCounts.set(
           targetKey,
           (skippedInvalidCounts.get(targetKey) ?? 0) + result.skippedInvalidCount

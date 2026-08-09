@@ -72,6 +72,7 @@ export type SvaMainserverListQuery = {
   readonly page: number;
   readonly pageSize: number;
   readonly includeInvisible?: boolean;
+  readonly genericItemScanOffset?: number;
 };
 
 export type SvaMainserverNewsListInput = SvaMainserverListQuery & {
@@ -85,6 +86,7 @@ export type SvaMainserverListPagination = {
   readonly pageSize: number;
   readonly hasNextPage: boolean;
   readonly total?: number;
+  readonly nextGenericItemScanOffset?: number;
 };
 
 export type SvaMainserverListResult<TItem> = {

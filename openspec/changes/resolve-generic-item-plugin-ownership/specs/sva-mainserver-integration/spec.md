@@ -40,6 +40,13 @@ Das System MUST Slim-, Legacy- und mutationsbezogene Projektionspfade mit dersel
 - **THEN** scannt er bis zum passenden Datensatz oder bis zum Upstream-Ende weiter
 - **AND** beendet der Host den Snapshot nicht aufgrund der leeren gefilterten Zwischenmenge
 
+#### Scenario: Eine gefilterte Projektion lädt mehrere Folgeseiten
+
+- **GIVEN** ein progressiver Refresh lädt mehrere Seiten derselben GenericItem-Projektion
+- **WHEN** der Adapter eine gefilterte Seite mit einer weiteren Folgeseite zurückgibt
+- **THEN** liefert er den Upstream-Offset hinter dem letzten ausgegebenen Datensatz mit
+- **AND** setzt der nächste Seitenaufruf den Scan an diesem Offset fort, ohne vorherige Upstream-Seiten erneut zu laden
+
 #### Scenario: Registry-Ziel besitzt keine GenericItem-Projektion
 
 - **GIVEN** eine Ownership-Deklaration verweist auf einen Content-Type ohne Mainserver-GenericItem-Projektion

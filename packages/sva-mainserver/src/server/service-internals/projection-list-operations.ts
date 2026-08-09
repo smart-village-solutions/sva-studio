@@ -14,6 +14,7 @@ import {
   svaMainserverPoiProjectionListDocument,
   svaMainserverSurveyProjectionListDocument,
 } from '../../generated/projection-lists.js';
+import { loadFilteredGenericItemProjectionPage } from './projection-filtered-pagination.js';
 import { normalizeVisibleListQuery, type GraphqlExecutor } from './shared.js';
 
 type RawItem = Record<string, unknown>;
@@ -169,84 +170,6 @@ const definitions: Record<SvaMainserverProjectionContentType, ProjectionDefiniti
   },
 };
 
-const matchesProjectionContentType = (
-  item: unknown,
-  contentType: SvaMainserverProjectionContentType,
-  genericTypeOwnership: SvaMainserverGenericTypeOwnership
-): boolean => {
-  const isGenericItemProjection = definitions[contentType].responseField === 'genericItems';
-  if (!isGenericItemProjection) return true;
-  if (item === null || typeof item !== 'object') return false;
-  const record = item as Record<string, unknown>;
-  if (typeof record.genericType !== 'string') return false;
-  const resolvedContentType =
-    genericTypeOwnership[record.genericType] ?? 'generic-items.generic-item';
-  if (resolvedContentType !== contentType) return false;
-  if (contentType !== 'projects.project') return true;
-  const payload = record.payload;
-  return !(
-    payload !== null &&
-    typeof payload === 'object' &&
-    !Array.isArray(payload) &&
-    (payload as Record<string, unknown>).deleted === true
-  );
-};
-
-const MAX_GENERIC_ITEM_PROJECTION_SCAN_ITEMS = 5_000;
-const loadPaginatedProjectionItems = async (input: {
-  executeGraphqlWithConfig: GraphqlExecutor;
-  definition: ProjectionDefinition;
-  connectionInput: SvaMainserverConnectionInput & SvaMainserverListQuery;
-  config: SvaMainserverInstanceConfig;
-  page: number;
-  pageSize: number;
-  genericTypeOwnership: SvaMainserverGenericTypeOwnership;
-}): Promise<Readonly<{ items: readonly unknown[]; hasNextPage: boolean }>> => {
-  const requestedEnd = input.page * input.pageSize + 1;
-  const requestedStart = (input.page - 1) * input.pageSize;
-  const requestLimit = input.pageSize + 1;
-  const matchingItems: unknown[] = [];
-  let upstreamSkip = 0;
-
-  while (matchingItems.length < requestedEnd) {
-    const response = await input.executeGraphqlWithConfig<Record<string, unknown>>(
-      {
-        ...input.connectionInput,
-        document: input.definition.document,
-        operationName: input.definition.operationName,
-        variables: {
-          limit: requestLimit,
-          skip: upstreamSkip,
-          order: input.definition.order,
-        },
-      },
-      input.config
-    );
-    const responseItems = response[input.definition.responseField];
-    if (!Array.isArray(responseItems)) {
-      throw new Error(`Invalid projection page structure for ${input.definition.responseField}.`);
-    }
-    matchingItems.push(
-      ...responseItems.filter((item) =>
-        matchesProjectionContentType(item, input.definition.contentType, input.genericTypeOwnership)
-      )
-    );
-    upstreamSkip += responseItems.length;
-    if (responseItems.length < requestLimit) break;
-    if (matchingItems.length >= requestedEnd) break;
-    if (upstreamSkip >= MAX_GENERIC_ITEM_PROJECTION_SCAN_ITEMS) {
-      throw new Error(
-        `GenericItem projection scan limit exceeded for ${input.definition.contentType}.`
-      );
-    }
-  }
-  const requestedItems = matchingItems.slice(requestedStart, requestedEnd);
-  return {
-    items: requestedItems.slice(0, input.pageSize),
-    hasNextPage: requestedItems.length > input.pageSize,
-  };
-};
-
 export const createProjectionListOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listProjectionWithConfig: async (
     contentType: SvaMainserverProjectionContentType,
@@ -257,13 +180,16 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     const definition = definitions[contentType];
     const query = normalizeVisibleListQuery(input);
     if (definition.paginated && definition.responseField === 'genericItems') {
-      const page = await loadPaginatedProjectionItems({
+      const page = await loadFilteredGenericItemProjectionPage({
         executeGraphqlWithConfig,
         definition,
         connectionInput: input,
         config,
         page: query.page,
         pageSize: query.pageSize,
+        ...(input.genericItemScanOffset !== undefined
+          ? { genericItemScanOffset: input.genericItemScanOffset }
+          : {}),
         genericTypeOwnership,
       });
       const mapped = page.items.map((item) => mapItem(item, contentType, definition.titleField));
@@ -275,6 +201,9 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
           page: query.page,
           pageSize: query.pageSize,
           hasNextPage: page.hasNextPage,
+          ...(page.nextGenericItemScanOffset !== undefined
+            ? { nextGenericItemScanOffset: page.nextGenericItemScanOffset }
+            : {}),
         },
       };
     }

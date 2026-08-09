@@ -171,8 +171,6 @@ export const studioPlugins = studioBuildTimeRegistry.plugins;
 export const studioPluginActionRegistry = studioBuildTimeRegistry.pluginActionRegistry;
 export const studioAdminResources = studioBuildTimeRegistry.adminResources;
 export const studioContentTypes = studioBuildTimeRegistry.studioContentTypes;
-export const studioMainserverGenericTypeRegistry =
-  studioBuildTimeRegistry.mainserverGenericTypeRegistry;
 const unifiedContentNavigationTargets = new Set(
   studioAdminResources
     .filter(

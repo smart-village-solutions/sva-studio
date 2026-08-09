@@ -44,7 +44,7 @@ Vollständige und mutationsbezogene Projektionsaktualisierungen persistieren fü
 
 Progressive Aktualisierung darf keinen abgeschlossenen Snapshot mit beiden Repräsentationen veröffentlichen. Während eines laufenden Refreshs gelten die bestehenden Snapshot- und Fehlersemantiken.
 
-Die gefilterte Pagination richtet sich nach den fachlich passenden Datensätzen und nicht nach einer einzelnen Upstream-Seite. Der Adapter scannt weitere GenericItem-Seiten, bis die angeforderte Projektionsseite gefüllt oder das Upstream-Ende erreicht ist; eine ausschließlich aus fremden Diskriminatoren bestehende Seite beendet den Snapshot nicht vorzeitig.
+Die gefilterte Pagination richtet sich nach den fachlich passenden Datensätzen und nicht nach einer einzelnen Upstream-Seite. Der Adapter scannt weitere GenericItem-Seiten, bis die angeforderte Projektionsseite gefüllt oder das Upstream-Ende erreicht ist; eine ausschließlich aus fremden Diskriminatoren bestehende Seite beendet den Snapshot nicht vorzeitig. Für Folgeseiten gibt der Adapter den erreichten Upstream-Offset zurück, damit der progressive Refresh den Scan dort fortsetzt und bereits geprüfte Seiten nicht erneut lädt.
 
 ## Alternatives Considered
 

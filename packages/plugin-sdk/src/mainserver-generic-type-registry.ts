@@ -29,7 +29,7 @@ export const createMainserverGenericTypeRegistry = (
     if (genericType === undefined) continue;
     validateMainserverGenericType(definition);
     const existingContentType = registry.get(genericType);
-    if (existingContentType) {
+    if (existingContentType !== undefined) {
       throw new Error(
         `duplicate_mainserver_generic_type:${genericType}:${existingContentType}:${definition.contentType}`
       );

@@ -169,6 +169,59 @@ describe('projection list operations', () => {
     expect(result.pagination.hasNextPage).toBe(false);
   });
 
+  it('continues filtered pagination from the prior upstream scan offset', async () => {
+    const upstreamItems = [
+      ...Array.from({ length: 26 }, (_, index) => ({
+        id: `faq-${index + 1}`,
+        title: `FAQ ${index + 1}`,
+        genericType: 'FAQ',
+      })),
+      ...Array.from({ length: 30 }, (_, index) => ({
+        id: `generic-${index + 1}`,
+        title: `Allgemein ${index + 1}`,
+        genericType: 'ARTICLE',
+      })),
+    ];
+    const execute = vi.fn().mockImplementation(({ variables }) => ({
+      genericItems: upstreamItems.slice(variables.skip, variables.skip + variables.limit),
+    }));
+    const operations = createProjectionListOperations(execute);
+
+    const firstPage = await operations.listProjectionWithConfig(
+      'generic-items.generic-item',
+      { ...input, pageSize: 25 },
+      config,
+      genericTypeOwnership
+    );
+    const secondPage = await operations.listProjectionWithConfig(
+      'generic-items.generic-item',
+      {
+        ...input,
+        page: 2,
+        pageSize: 25,
+        genericItemScanOffset: firstPage.pagination.nextGenericItemScanOffset,
+      },
+      config,
+      genericTypeOwnership
+    );
+
+    expect(firstPage.data).toHaveLength(25);
+    expect(firstPage.pagination).toEqual({
+      page: 1,
+      pageSize: 25,
+      hasNextPage: true,
+      nextGenericItemScanOffset: 51,
+    });
+    expect(secondPage.data.map((item) => item.id)).toEqual([
+      'generic-26',
+      'generic-27',
+      'generic-28',
+      'generic-29',
+      'generic-30',
+    ]);
+    expect(execute.mock.calls.map((call) => call[0].variables.skip)).toEqual([0, 26, 51]);
+  });
+
   it('keeps only unclaimed discriminators in generic projections', async () => {
     const execute = vi.fn().mockResolvedValue({
       genericItems: [

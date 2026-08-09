@@ -1,0 +1,4 @@
+{
+  "prNumber": 934,
+  "body": "Production-Backups prüfen Staging wieder vollständig\n\n- Der Production-Backup-Drill bindet den Staging-Nachweis an Digest und unveränderliche Image-Referenz.\n- Der Workflow-Vertrag ist durch einen gezielten Regressionstest abgesichert."
+}

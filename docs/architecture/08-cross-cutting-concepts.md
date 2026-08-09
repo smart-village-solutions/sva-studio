@@ -643,7 +643,7 @@ Referenzen:
 
 ## Backup-Sicherheitsvertrag
 
-Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
+Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret außerhalb von `APP_CONFIG` geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
 
 Der Backup-Agent kombiniert GitHub-OIDC mit umgebungsspezifischen HMAC-Signaturen. OIDC ist auf Repository, Environment und freigegebene Workflows auf `main` gebunden. Requests sind höchstens zehn Minuten gültig und über ihre persistierte Request-ID vor Replay geschützt. HTTP-Antworten und terminale Fehler enthalten nur stabile Fehlercodes; Credentials, Connection-Strings, Datenbankinhalte und Shell-Traces werden nicht ausgegeben.
 

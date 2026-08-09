@@ -2,7 +2,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { commandExists, runCapture } from '../runtime/process.ts';
-import { resolveQuantumOperatorEnv, resolveRemoteDockerEndpointId } from '../runtime/remote-portainer.ts';
+import {
+  resolveQuantumOperatorEnv,
+  resolveRemoteDockerEndpointId,
+} from '../runtime/remote-portainer.ts';
 
 type StackEnvEntry = {
   readonly name: string;
@@ -26,7 +29,11 @@ type PortainerStackRecord = {
 type ReleaseDeps = {
   readonly commandExists: (commandName: string) => boolean;
   readonly fetch: typeof fetch;
-  readonly runCapture: (commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => string;
+  readonly runCapture: (
+    commandName: string,
+    args: readonly string[],
+    env?: NodeJS.ProcessEnv
+  ) => string;
 };
 
 type ReleaseResult = {
@@ -39,8 +46,14 @@ type ReleaseResult = {
   readonly version: string;
 };
 
+type MaintenanceResult = {
+  readonly endpointId: number;
+  readonly mode: 'start' | 'stop';
+  readonly stackId: number;
+  readonly stackName: string;
+};
+
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const currentScriptPath = fileURLToPath(import.meta.url);
 
 const defaultDeps: ReleaseDeps = {
   commandExists: (commandName) => commandExists(rootDir, commandName),
@@ -128,7 +141,10 @@ export const parseWasteWebReleaseTag = (ref: string) => {
   } as const;
 };
 
-export const updateStackEnv = (env: readonly StackEnvEntry[], imageTag: string): StackEnvEntry[] => {
+export const updateStackEnv = (
+  env: readonly StackEnvEntry[],
+  imageTag: string
+): StackEnvEntry[] => {
   const nextEnv = [...env];
   const imageTagIndex = nextEnv.findIndex((entry) => entry.name === 'PUBLIC_WASTE_IMAGE_TAG');
 
@@ -147,19 +163,109 @@ export const updateStackEnv = (env: readonly StackEnvEntry[], imageTag: string):
   return nextEnv;
 };
 
+export const updatePublicWasteDatabaseUrl = (
+  env: readonly StackEnvEntry[],
+  databaseUrl: string
+): StackEnvEntry[] => {
+  const nextEnv = [...env];
+  const index = nextEnv.findIndex((entry) => entry.name === 'PUBLIC_WASTE_DATABASE_URL');
+  const entry = { name: 'PUBLIC_WASTE_DATABASE_URL', value: databaseUrl };
+  if (index === -1) nextEnv.push(entry);
+  else nextEnv[index] = entry;
+  return nextEnv;
+};
+
+export const updatePublicWasteReplicas = (stackFileContent: string, replicas: 0 | 1): string => {
+  const matches = [...stackFileContent.matchAll(/^(\s{6}replicas:)\s+\d+\s*$/gmu)];
+  if (matches.length !== 1)
+    throw new Error('Der Public-Waste-Stack besitzt keinen eindeutigen app-replicas-Eintrag.');
+  return stackFileContent.replace(/^(\s{6}replicas:)\s+\d+\s*$/gmu, `$1 ${String(replicas)}`);
+};
+
+export const setPublicWasteStackMaintenance = async (
+  input: Readonly<{ mode: 'start' | 'stop'; databaseUrl?: string }>,
+  env: NodeJS.ProcessEnv = process.env,
+  deps: ReleaseDeps = defaultDeps
+): Promise<MaintenanceResult> => {
+  const databaseUrl = input.databaseUrl?.trim();
+  if (input.mode === 'start' && !databaseUrl)
+    throw new Error('PUBLIC_WASTE_POSTGRESQL_DATABASE_URL fehlt.');
+  const operatorEnv = resolveQuantumOperatorEnv(env);
+  const host = trimTrailingSlash(
+    operatorEnv.QUANTUM_HOST?.trim() || 'https://console.planetary-quantum.com'
+  );
+  const apiKey = requireEnvValue(operatorEnv.QUANTUM_API_KEY, 'QUANTUM_API_KEY');
+  const stackName = requireEnvValue(
+    env.PUBLIC_WASTE_STACK_NAME ?? operatorEnv.PUBLIC_WASTE_STACK_NAME,
+    'PUBLIC_WASTE_STACK_NAME'
+  );
+  const endpointId = resolveRemoteDockerEndpointId(
+    deps,
+    operatorEnv,
+    env.PORTAINER_ENDPOINT_NAME?.trim() || 'sva'
+  );
+  const stacks = (await (
+    await portainerRequest({ deps, host, apiKey, path: '/api/stacks' })
+  ).json()) as PortainerStackRecord[];
+  const stack = stacks.find(
+    (candidate) =>
+      candidate.Name === stackName &&
+      (candidate.EndpointId === undefined || candidate.EndpointId === endpointId)
+  );
+  if (!stack?.Id) throw new Error(`Portainer-Stack ${stackName} wurde nicht gefunden.`);
+  const details = (await (
+    await portainerRequest({ deps, host, apiKey, path: `/api/stacks/${String(stack.Id)}` })
+  ).json()) as PortainerStackRecord;
+  const stackFileContent = parseStackFileContent(
+    await (
+      await portainerRequest({ deps, host, apiKey, path: `/api/stacks/${String(stack.Id)}/file` })
+    ).text()
+  );
+  const currentEnv = normalizeStackEnv(details.Env ?? stack.Env);
+  const nextEnv =
+    input.mode === 'start'
+      ? updatePublicWasteDatabaseUrl(currentEnv, databaseUrl ?? '')
+      : currentEnv;
+  await portainerRequest({
+    deps,
+    host,
+    apiKey,
+    path: `/api/stacks/${String(stack.Id)}?endpointId=${String(endpointId)}`,
+    init: {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        Env: nextEnv,
+        Prune: false,
+        StackFileContent: updatePublicWasteReplicas(
+          stackFileContent,
+          input.mode === 'stop' ? 0 : 1
+        ),
+      }),
+    },
+  });
+  return { endpointId, mode: input.mode, stackId: stack.Id, stackName };
+};
+
 export const releasePublicWasteStack = async (
   env: NodeJS.ProcessEnv = process.env,
   deps: ReleaseDeps = defaultDeps
 ): Promise<ReleaseResult> => {
   const release = parseWasteWebReleaseTag(requireEnvValue(env.GITHUB_REF, 'GITHUB_REF'));
   const operatorEnv = resolveQuantumOperatorEnv(env);
-  const host = trimTrailingSlash(operatorEnv.QUANTUM_HOST?.trim() || 'https://console.planetary-quantum.com');
+  const host = trimTrailingSlash(
+    operatorEnv.QUANTUM_HOST?.trim() || 'https://console.planetary-quantum.com'
+  );
   const apiKey = requireEnvValue(operatorEnv.QUANTUM_API_KEY, 'QUANTUM_API_KEY');
   const stackName = requireEnvValue(
     env.PUBLIC_WASTE_STACK_NAME ?? operatorEnv.PUBLIC_WASTE_STACK_NAME,
     'PUBLIC_WASTE_STACK_NAME'
   );
-  const endpointId = resolveRemoteDockerEndpointId(deps, operatorEnv, env.PORTAINER_ENDPOINT_NAME?.trim() || 'sva');
+  const endpointId = resolveRemoteDockerEndpointId(
+    deps,
+    operatorEnv,
+    env.PORTAINER_ENDPOINT_NAME?.trim() || 'sva'
+  );
 
   const stacksResponse = await portainerRequest({
     deps,
@@ -169,7 +275,9 @@ export const releasePublicWasteStack = async (
   });
   const stacks = (await stacksResponse.json()) as PortainerStackRecord[];
   const stack = stacks.find(
-    (candidate) => candidate.Name === stackName && (candidate.EndpointId === undefined || candidate.EndpointId === endpointId)
+    (candidate) =>
+      candidate.Name === stackName &&
+      (candidate.EndpointId === undefined || candidate.EndpointId === endpointId)
   );
 
   if (!stack?.Id) {
@@ -193,7 +301,8 @@ export const releasePublicWasteStack = async (
   const stackFileContent = parseStackFileContent(await stackFileResponse.text());
 
   const currentEnv = normalizeStackEnv(stackDetails.Env ?? stack.Env);
-  const previousImageTag = currentEnv.find((entry) => entry.name === 'PUBLIC_WASTE_IMAGE_TAG')?.value ?? null;
+  const previousImageTag =
+    currentEnv.find((entry) => entry.name === 'PUBLIC_WASTE_IMAGE_TAG')?.value ?? null;
   const nextEnv = updateStackEnv(currentEnv, release.imageTag);
 
   await portainerRequest({
@@ -235,4 +344,4 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     });
 }
 
-export type { ReleaseDeps, ReleaseResult, StackEnvEntry };
+export type { MaintenanceResult, ReleaseDeps, ReleaseResult, StackEnvEntry };

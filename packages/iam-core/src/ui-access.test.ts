@@ -183,6 +183,49 @@ describe('evaluateUiAccess', () => {
     ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
   });
 
+  it('treats an empty structured scope as unscoped', () => {
+    const snapshot = readyTenantSnapshot(
+      [
+        {
+          action: 'waste-management.read',
+          resourceType: 'waste-management',
+          accessScope: 'all',
+          scope: {},
+        },
+      ],
+      ['waste-management']
+    );
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement(['waste-management.read'], {
+          moduleId: 'waste-management',
+        }),
+        snapshot,
+      })
+    ).toEqual({ status: 'allowed', reason: 'allowed_by_permission' });
+  });
+
+  it('keeps a non-empty structured scope resource-scoped', () => {
+    const snapshot = readyTenantSnapshot([
+      {
+        action: 'news.read',
+        resourceType: 'content',
+        accessScope: 'all',
+        scope: { contentType: 'news.article' },
+      },
+    ]);
+
+    expect(
+      evaluateUiAccess({
+        isAuthenticated: true,
+        requirement: tenantRequirement(['news.read'], { moduleId: 'news' }),
+        snapshot,
+      })
+    ).toEqual({ status: 'denied', reason: 'resource_capability_missing' });
+  });
+
   it('accepts existing camel-case segments in fully-qualified IAM actions', () => {
     const snapshot = readyTenantSnapshot([
       { action: 'iam.legalText.read', resourceType: 'legalText', accessScope: 'all' },

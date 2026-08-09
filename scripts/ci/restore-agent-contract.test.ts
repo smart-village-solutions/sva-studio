@@ -77,7 +77,45 @@ describe('restore agent contract', () => {
     expect(
       isValidRestoreRequest({ ...wasteRequest, sourceObjectKey: request.sourceObjectKey }, now)
     ).toBe(false);
-    expect(signRestoreRequest(wasteRequest, 'secret')).not.toBe(signRestoreRequest(request, 'secret'));
-    expect(isValidRestoreRequest({ ...wasteRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(false);
+    expect(signRestoreRequest(wasteRequest, 'secret')).not.toBe(
+      signRestoreRequest(request, 'secret')
+    );
+    expect(isValidRestoreRequest({ ...wasteRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(
+      false
+    );
+  });
+
+  it('binds the one-time Waste import to production bb-prignitz SQL', () => {
+    const now = new Date('2026-08-01T10:00:00.000Z');
+    const importRequest: RestoreRequest = {
+      ...request,
+      action: 'import-waste-data-v1',
+      environment: 'prod',
+      database: 'waste',
+      tenantInstanceId: 'bb-prignitz',
+      sourceObjectKey: 'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql',
+      sourceSha256: 'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc',
+    };
+
+    expect(isValidRestoreRequest(importRequest, now)).toBe(true);
+    expect(isValidRestoreRequest({ ...importRequest, environment: 'staging' }, now)).toBe(false);
+    expect(isValidRestoreRequest({ ...importRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(
+      false
+    );
+    expect(
+      isValidRestoreRequest(
+        { ...importRequest, sourceObjectKey: 'prod/waste/bb-prignitz/source.dump' },
+        now
+      )
+    ).toBe(false);
+    expect(
+      isValidRestoreRequest(
+        {
+          ...importRequest,
+          sourceObjectKey: 'prod/waste/bb-prignitz/import/other/waste-data-pg16.sql',
+        },
+        now
+      )
+    ).toBe(false);
   });
 });

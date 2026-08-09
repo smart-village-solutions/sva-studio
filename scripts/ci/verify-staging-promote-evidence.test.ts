@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -6,13 +9,48 @@ import {
   isSuccessfulStagingBackupWorkflowRun,
   listArtifacts,
   matchesSuccessfulStagingBackupEvidence,
+  matchesSuccessfulStagingBackupEvidenceSet,
   matchesSuccessfulStagingEvidence,
   requiresStagingParity,
   selectEvidenceJsonFile,
-  selectStagingBackupEvidenceJsonFile,
+  selectStagingBackupEvidenceJsonFiles,
 } from './verify-staging-promote-evidence.ts';
 
+const productionBackupWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
+  'utf8'
+);
+const stagingBackupWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/staging-backup-drill.yml'),
+  'utf8'
+);
+
 describe('staging parity evidence', () => {
+  it.each([
+    ['staging', stagingBackupWorkflow],
+    ['production', productionBackupWorkflow],
+  ])('uses current %s backup tooling while validating the immutable image revision', (_, workflow) => {
+    expect(workflow).toContain('checkout current backup tooling source');
+    expect(workflow).toContain('git merge-base --is-ancestor');
+    expect(workflow).not.toContain('git checkout --detach');
+    expect(workflow).toContain(
+      '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
+    );
+  });
+
+  it('binds the production backup drill to the immutable image reference and digest', () => {
+    const parityStep = productionBackupWorkflow.match(
+      /- name: require successful staging backup parity[\s\S]*?run: pnpm exec tsx scripts\/ci\/verify-staging-promote-evidence\.ts backup-drill/u
+    )?.[0];
+
+    expect(parityStep).toContain(
+      'DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}'
+    );
+    expect(parityStep).toContain(
+      'DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}'
+    );
+  });
+
   it('requires staging evidence only when production would change the live digest', () => {
     const target = `ghcr.io/example/app@sha256:${'a'.repeat(64)}`;
     expect(requiresStagingParity(target, target)).toBe(false);
@@ -117,6 +155,29 @@ describe('staging parity evidence', () => {
     ).toBe(false);
   });
 
+  it('accepts distinct Studio and Waste evidence only when both match the target digest', () => {
+    const studio = {
+      database: 'studio',
+      deployImageDigest: 'sha256:expected',
+      environment: 'staging',
+      status: 'succeeded',
+    };
+    const waste = { ...studio, database: 'waste' };
+
+    expect(matchesSuccessfulStagingBackupEvidenceSet([studio, waste], 'sha256:expected')).toBe(
+      true
+    );
+    expect(
+      matchesSuccessfulStagingBackupEvidenceSet(
+        [studio, { ...waste, deployImageDigest: 'sha256:other' }],
+        'sha256:expected'
+      )
+    ).toBe(false);
+    expect(matchesSuccessfulStagingBackupEvidenceSet([studio, studio], 'sha256:expected')).toBe(
+      false
+    );
+  });
+
   it('reads paginated artifact responses before filtering parity evidence', () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({ id: index + 1 }));
     const artifacts = listArtifacts((page) =>
@@ -145,18 +206,26 @@ describe('staging parity evidence', () => {
     expect(selectEvidenceJsonFile('README.md\n')).toBeUndefined();
   });
 
-  it('selects the unique agent result when a staging drill artifact contains verification evidence', () => {
+  it('selects one or two agent results when a staging drill artifact contains verification evidence', () => {
     const archiveEntries = [
       'promote-backup-agent-gha-30512741172-1.json',
       'promote-backup-verification-30512741172-1.json',
     ].join('\n');
 
-    expect(selectStagingBackupEvidenceJsonFile(archiveEntries)).toBe(
-      'promote-backup-agent-gha-30512741172-1.json'
-    );
+    expect(selectStagingBackupEvidenceJsonFiles(archiveEntries)).toEqual([
+      'promote-backup-agent-gha-30512741172-1.json',
+    ]);
     expect(
-      selectStagingBackupEvidenceJsonFile(
-        `${archiveEntries}\npromote-backup-agent-gha-duplicate.json\n`
+      selectStagingBackupEvidenceJsonFiles(
+        `${archiveEntries}\npromote-backup-agent-gha-30512741172-1-waste.json\n`
+      )
+    ).toEqual([
+      'promote-backup-agent-gha-30512741172-1.json',
+      'promote-backup-agent-gha-30512741172-1-waste.json',
+    ]);
+    expect(
+      selectStagingBackupEvidenceJsonFiles(
+        `${archiveEntries}\npromote-backup-agent-gha-30512741172-1-waste.json\npromote-backup-agent-gha-duplicate.json\n`
       )
     ).toBeUndefined();
   });

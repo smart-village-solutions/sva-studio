@@ -155,6 +155,11 @@ describe('waste tenant database provisioner', () => {
     expect(statements.some(({ text }) => text.includes('REVOKE ALL ON DATABASE'))).toBe(true);
     expect(
       statements.some(({ text }) =>
+        text.includes('GRANT CONNECT ON DATABASE') && text.includes('TO CURRENT_USER')
+      )
+    ).toBe(true);
+    expect(
+      statements.some(({ text }) =>
         text.includes('public.waste_email_reminder_subscriptions')
       )
     ).toBe(true);

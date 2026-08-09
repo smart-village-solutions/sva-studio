@@ -3,7 +3,10 @@ export const WasteSchedulingTableMeta = ({ children }: { readonly children: stri
 );
 
 export const joinSchedulingMetaItems = (values: readonly string[]) =>
-  values.filter((value) => value.length > 0).join(' · ');
+  values
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .join(' · ');
 
 export const formatSchedulingDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);

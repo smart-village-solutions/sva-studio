@@ -89,7 +89,8 @@ describe('PublicWasteIndexPage', () => {
 
   it('loads selection and calendar data from the public api, stores the cookie, and restores it on the next render', async () => {
     fetchMock.mockImplementation(async (input) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
       if (
         url.includes('/api/public-waste/selection') &&
@@ -132,35 +133,35 @@ describe('PublicWasteIndexPage', () => {
     const { unmount } = render(<PublicWasteIndexPage />);
     await act(async () => {});
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Ort suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Ort suchen' }), {
       target: { value: 'Rat' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'Rathenow' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Rathenow' }));
     await act(async () => {});
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Straße suchen' }), {
       target: { value: 'Hafen' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'Am alten Hafen' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
     await act(async () => {});
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Hausnummer suchen' }), {
       target: { value: '12' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '12' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: '12' })).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: '12' }));
+    fireEvent.click(screen.getByRole('option', { name: '12' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Kalender exportieren' })).toBeTruthy();
     });
 
     expect(document.cookie).toContain(
@@ -180,7 +181,7 @@ describe('PublicWasteIndexPage', () => {
     expect(screen.getByText('Rathenow')).toBeTruthy();
     expect(screen.getByText('Am alten Hafen')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kalender exportieren' })).toBeTruthy();
   });
 
   it('clears stale stored selections and falls back to the next valid selection step', async () => {
@@ -188,9 +189,13 @@ describe('PublicWasteIndexPage', () => {
       'sva_public_waste_location=~%3A22222222-2222-4222-8222-222222222222%3A33333333-3333-4333-8333-333333333333%3A44444444-4444-4444-8444-444444444444; Path=/';
 
     fetchMock.mockImplementation(async (input) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
-      if (url.includes('/api/public-waste/selection') && url.includes('cityId=22222222-2222-4222-8222-222222222222')) {
+      if (
+        url.includes('/api/public-waste/selection') &&
+        url.includes('cityId=22222222-2222-4222-8222-222222222222')
+      ) {
         return new Response(
           JSON.stringify({
             status: 'incomplete',
@@ -216,11 +221,11 @@ describe('PublicWasteIndexPage', () => {
     render(<PublicWasteIndexPage />);
     await act(async () => {});
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Straße suchen' }), {
       target: { value: 'Ber' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Berliner Straße' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'Berliner Straße' })).toBeTruthy();
     });
 
     expect(document.cookie).toBe('');
@@ -229,7 +234,8 @@ describe('PublicWasteIndexPage', () => {
     );
     expect(
       fetchMock.mock.calls.some(([input]) => {
-        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
         return url.includes('/api/public-waste/calendar');
       })
     ).toBe(false);
@@ -237,7 +243,8 @@ describe('PublicWasteIndexPage', () => {
 
   it('renders the public reminder signup when the calendar response provides it', async () => {
     fetchMock.mockImplementation(async (input) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
 
       if (
         url.includes('/api/public-waste/selection') &&
@@ -280,34 +287,34 @@ describe('PublicWasteIndexPage', () => {
     render(<PublicWasteIndexPage />);
     await act(async () => {});
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Ort suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Ort suchen' }), {
       target: { value: 'Rat' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Rathenow' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'Rathenow' })).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Rathenow' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Rathenow' }));
     await act(async () => {});
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Straße suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Straße suchen' }), {
       target: { value: 'Hafen' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Am alten Hafen' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: 'Am alten Hafen' })).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Am alten Hafen' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Am alten Hafen' }));
     await act(async () => {});
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Hausnummer suchen' }), {
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Hausnummer suchen' }), {
       target: { value: '12' },
     });
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: '12' })).toBeTruthy();
+      expect(screen.getByRole('option', { name: '12' })).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole('button', { name: '12' }));
+    fireEvent.click(screen.getByRole('option', { name: '12' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('tab', { name: 'E-Mail-Abo' })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'E-Mail-Erinnerung' })).toBeTruthy();
     });
   });
 });

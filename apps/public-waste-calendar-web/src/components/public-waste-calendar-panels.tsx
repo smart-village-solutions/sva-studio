@@ -261,6 +261,7 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
 }>) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
+  const tabButtonRefs = React.useRef(new Map<'list' | 'month' | 'year', HTMLButtonElement>());
   const today = React.useRef(new Date()).current;
   const lowerBoundMonth = React.useRef(startOfYear(addYears(today, -1))).current;
   const maxMonth = React.useRef(startOfMonth(addYears(today, 1))).current;
@@ -310,18 +311,32 @@ export function PublicWasteCalendarPanels(props: Readonly<{
     setVisibleYear((current) => Math.min(maxYear, Math.max(minYear, current)));
   }, [maxYear, minYear]);
 
-  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, tab: 'list' | 'month' | 'year') => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+  const handleTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    tab: 'list' | 'month' | 'year'
+  ) => {
+    if (
+      event.key !== 'ArrowLeft' &&
+      event.key !== 'ArrowRight' &&
+      event.key !== 'Home' &&
+      event.key !== 'End'
+    ) {
       return;
     }
 
     event.preventDefault();
     const currentIndex = tabs.indexOf(tab);
     const nextIndex =
-      event.key === 'ArrowRight'
-        ? (currentIndex + 1) % tabs.length
-        : (currentIndex - 1 + tabs.length) % tabs.length;
-    setActiveTab(tabs[nextIndex]);
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? tabs.length - 1
+          : event.key === 'ArrowRight'
+            ? (currentIndex + 1) % tabs.length
+            : (currentIndex - 1 + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIndex];
+    setActiveTab(nextTab);
+    tabButtonRefs.current.get(nextTab)?.focus();
   };
 
   return (
@@ -331,6 +346,9 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           type="button"
           role="tab"
           id="public-waste-tab-list"
+          ref={(element) => {
+            if (element) tabButtonRefs.current.set('list', element);
+          }}
           aria-controls="public-waste-panel-list"
           aria-selected={activeTab === 'list'}
           tabIndex={activeTab === 'list' ? 0 : -1}
@@ -344,6 +362,9 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           type="button"
           role="tab"
           id="public-waste-tab-month"
+          ref={(element) => {
+            if (element) tabButtonRefs.current.set('month', element);
+          }}
           aria-controls="public-waste-panel-month"
           aria-selected={activeTab === 'month'}
           tabIndex={activeTab === 'month' ? 0 : -1}
@@ -357,6 +378,9 @@ export function PublicWasteCalendarPanels(props: Readonly<{
           type="button"
           role="tab"
           id="public-waste-tab-year"
+          ref={(element) => {
+            if (element) tabButtonRefs.current.set('year', element);
+          }}
           aria-controls="public-waste-panel-year"
           aria-selected={activeTab === 'year'}
           tabIndex={activeTab === 'year' ? 0 : -1}

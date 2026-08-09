@@ -289,6 +289,7 @@ export {
 export type {
   WasteCalendarPdfBrandingImage,
   WasteCalendarPdfDocument,
+  WasteOutputLegendHint,
   WasteOutputPickupEntry,
   WasteOutputFraction,
 } from './waste-management-output.types.js';

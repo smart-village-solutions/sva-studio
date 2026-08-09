@@ -6,11 +6,14 @@ import {
   buildBrandingImageCommand,
   createBrandingImageResource,
   getEntryLabelWidth,
+  truncateHelveticaText,
   pad2,
   type RgbColor,
 } from './waste-management-output.render.helpers.js';
 const PAGE_WIDTH = 841.89;
 const PAGE_HEIGHT = 595.28;
+const SHIFT_MARKER_COLOR: RgbColor = [0.78, 0.05, 0.05];
+const SHIFT_MARKER_ADVANCE = 7;
 
 type TextDrawInput = Readonly<{
   color?: RgbColor;
@@ -97,8 +100,8 @@ const renderHeader = (
   page: WasteCalendarPdfDocument['pages'][number],
   imageObjectName?: string
 ): void => {
-  drawText({ commands, x: 38, top: 28, fontSize: 24, text: page.title, fontName: 'F2' });
-  drawText({ commands, x: 38, top: 64, fontSize: 12, text: page.locationLabel, fontName: 'F1' });
+  drawText({ commands, x: 38, top: 16, fontSize: 20, text: page.title, fontName: 'F2' });
+  drawText({ commands, x: 38, top: 44, fontSize: 10.5, text: page.locationLabel, fontName: 'F1' });
   if (page.brandingImage && imageObjectName) {
     commands.push(buildBrandingImageCommand(page, imageObjectName, PAGE_HEIGHT) ?? '');
     return;
@@ -118,7 +121,7 @@ const renderHeader = (
 };
 
 const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  const monthTop = 100;
+  const monthTop = 78;
   const monthLeft = 34;
   const monthWidth = 116;
   const monthGap = 18;
@@ -190,37 +193,71 @@ const renderMonthGrid = (commands: string[], page: WasteCalendarPdfDocument['pag
           text: entry.code,
           fontName: 'F1',
         });
-        labelX += labelWidth + 2;
+        if (entry.isShifted) {
+          drawText({
+            commands,
+            x: labelX + labelWidth + 2,
+            top: centeredTextTop(8),
+            fontSize: 8,
+            text: '*',
+            fontName: 'F2',
+            color: SHIFT_MARKER_COLOR,
+          });
+        }
+        labelX += labelWidth + 2 + (entry.isShifted ? SHIFT_MARKER_ADVANCE : 0);
       }
     }
   }
 };
 
-const renderNotes = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  for (const [index, note] of page.notes.slice(0, 4).entries()) {
-    drawText({ commands, x: 38, top: 512 + index * 16, fontSize: 10.2, text: note, fontName: 'F1' });
-  }
-};
-
 const renderLegend = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
   const baseX = 38;
-  const baseY = 500;
+  const baseY = 476;
   const boxWidth = 22;
-  const gap = 12;
-  const availableWidth = PAGE_WIDTH - baseX * 2;
-  const slotWidth =
-    page.legend.length > 0 ? (availableWidth - gap * (page.legend.length - 1)) / page.legend.length : availableWidth;
+  const rowHeight = 12;
+  const labelX = baseX + boxWidth + 8;
+  const rightEdge = PAGE_WIDTH - baseX;
+  const fontSize = 8;
 
   for (const [index, entry] of page.legend.entries()) {
-    const x = baseX + index * (slotWidth + gap);
-    drawFilledRectangle({ commands, x, top: baseY, width: boxWidth, height: 14 }, entry.fillColor);
-    drawText({ commands, x: x + 4, top: baseY + 2.2, fontSize: 7.8, text: entry.code, fontName: 'F1' });
-    drawText({ commands, x: x + boxWidth + 8, top: baseY + 8.7, fontSize: 8, text: entry.label, fontName: 'F1' });
-  }
-};
+    const rowTop = baseY + index * rowHeight;
+    if (entry.kind === 'shift') {
+      drawText({ commands, x: baseX, top: rowTop + 1, fontSize: 9, text: '*', fontName: 'F2', color: SHIFT_MARKER_COLOR });
+      drawText({ commands, x: baseX + 12, top: rowTop + 1.5, fontSize, text: entry.label, fontName: 'F1' });
+      continue;
+    }
 
-const renderFooter = (commands: string[], page: WasteCalendarPdfDocument['pages'][number]): void => {
-  drawText({ commands, x: 38, top: 568, fontSize: 9.6, text: page.footerLine, fontName: 'F1' });
+    if (entry.kind === 'fraction') {
+      drawFilledRectangle({ commands, x: baseX, top: rowTop + 0.8, width: boxWidth, height: 10.4 }, entry.fillColor);
+      drawText({ commands, x: baseX + 4, top: rowTop + 1.9, fontSize: 7.2, text: entry.code, fontName: 'F1' });
+      drawText({
+        commands,
+        x: labelX,
+        top: rowTop + 1.5,
+        fontSize,
+        text: truncateHelveticaText(
+          entry.description ? `${entry.label} - ${entry.description}` : entry.label,
+          fontSize,
+          rightEdge - labelX
+        ),
+        fontName: 'F1',
+      });
+      continue;
+    }
+
+    drawText({
+      commands,
+      x: baseX,
+      top: rowTop + 1.5,
+      fontSize,
+      text: truncateHelveticaText(
+        `${entry.label} - ${entry.description}`,
+        fontSize,
+        rightEdge - baseX
+      ),
+      fontName: 'F1',
+    });
+  }
 };
 
 const renderPageCommands = (
@@ -231,17 +268,19 @@ const renderPageCommands = (
   drawFilledRectangle({ commands, x: 0, top: 0, width: PAGE_WIDTH, height: PAGE_HEIGHT }, [1, 1, 1]);
   renderHeader(commands, page, imageObjectName);
   renderMonthGrid(commands, page);
-  renderNotes(commands, page);
   renderLegend(commands, page);
-  renderFooter(commands, page);
   return commands.join('\n');
 };
 const escapePdfText = (value: string): string =>
   value.replaceAll('\\', '\\\\').replaceAll('(', '\\(').replaceAll(')', '\\)');
 export const renderWasteCalendarPdf = (document: WasteCalendarPdfDocument): Buffer => {
   const pdf = new PdfBuilder();
-  const regularFontId = pdf.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const boldFontId = pdf.addObject('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  const regularFontId = pdf.addObject(
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
+  );
+  const boldFontId = pdf.addObject(
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'
+  );
   const pagesId = pdf.reserveObject();
   const brandingImageResource = createBrandingImageResource({
     document,

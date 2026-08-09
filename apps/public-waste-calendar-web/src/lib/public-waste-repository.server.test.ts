@@ -347,6 +347,7 @@ describe('public waste repository', () => {
         fractionLabel: 'Restmuell',
         fractionShortLabel: 'RM',
         tourDescription: 'Importierte Sammeltermine.',
+        isShifted: true,
         note: 'Dienstag 14:00-16:30 Uhr, Parkplatz am Rathaus',
       })
     );
@@ -609,6 +610,7 @@ describe('public waste repository', () => {
       expect.objectContaining({
         id: 'assignment-1:fraction-1',
         date: '2026-01-02',
+        isShifted: true,
         note: 'Sondertermin',
       })
     );

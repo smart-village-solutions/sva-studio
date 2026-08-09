@@ -94,11 +94,18 @@ describe('PublicWasteCalendarPanels', () => {
     );
 
     const listTab = screen.getByRole('tab', { name: 'Liste' });
+    listTab.focus();
     fireEvent.keyDown(listTab, { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Monat' }).getAttribute('aria-selected')).toBe('true');
+    const monthTab = screen.getByRole('tab', { name: 'Monat' });
+    expect(monthTab.getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(monthTab);
 
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Monat' }), { key: 'ArrowLeft' });
+    fireEvent.keyDown(monthTab, { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Liste' }).getAttribute('aria-selected')).toBe('true');
+    expect(document.activeElement).toBe(listTab);
+
+    fireEvent.keyDown(listTab, { key: 'End' });
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Jahr' }));
   });
 
   it('renders upcoming entries before a separate past section in the list view', () => {

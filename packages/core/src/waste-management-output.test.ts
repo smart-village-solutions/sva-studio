@@ -10,12 +10,17 @@ describe('waste-management output pdf', () => {
       pickups: [
         {
           date: '2026-01-14',
-          fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
+          fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666', isShifted: true }],
         },
         {
           date: '2026-01-15',
           fractions: [
-            { id: 'bio', label: 'Bioabfall', color: '#00AA00' },
+            {
+              id: 'bio',
+              label: 'Bioabfall',
+              description: 'Bitte ohne Kunststoffbeutel bereitstellen.',
+              color: '#00AA00',
+            },
             { id: 'papier', label: 'Papier und Pappe', color: '#3366FF' },
           ],
         },
@@ -23,6 +28,9 @@ describe('waste-management output pdf', () => {
           date: '2026-10-03',
           fractions: [{ id: 'lvp', label: 'Leichtverpackungen', color: '#FFDD00' }],
         },
+      ],
+      legendHints: [
+        { id: 'tour:nord', label: 'Tour: Nord', description: 'Bereitstellung am Fahrbahnrand.' },
       ],
     });
 
@@ -34,14 +42,21 @@ describe('waste-management output pdf', () => {
     const january = document.pages[0]?.months[0];
     const october = document.pages[1]?.months[3];
     expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries.map((entry) => entry.code)).toEqual(['HM']);
+    expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries[0]?.isShifted).toBe(true);
     expect(january?.days.find((day) => day.dayOfMonth === 15)?.entries).toHaveLength(2);
     expect(october?.days.find((day) => day.dayOfMonth === 3)?.holidayLabel).toBe('Tag der Deutschen Einheit');
     expect(document.pages[0]?.legend.map((entry) => entry.label)).toEqual([
+      '= Ausweichtermin',
       'Bioabfall',
       'Hausmuell',
       'Leichtverpackungen',
       'Papier und Pappe',
+      'Tour: Nord',
     ]);
+    expect(document.pages[0]?.legend[1]).toMatchObject({
+      kind: 'fraction',
+      description: 'Bitte ohne Kunststoffbeutel bereitstellen.',
+    });
     expect(document.pages[0]?.months[2]?.label).toBe('März');
   });
 
@@ -71,6 +86,20 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('HM');
   });
 
+  it('declares the Windows ANSI encoding used for German umlauts', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('/BaseFont /Helvetica /Encoding /WinAnsiEncoding');
+    expect(pdfText).toContain('/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding');
+    expect(pdfText).toContain('(Bärensprung) Tj');
+  });
+
   it('vertically centers day content inside calendar table cells', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
@@ -85,11 +114,11 @@ describe('waste-management output pdf', () => {
       })
     ).toString('latin1');
 
-    expect(pdfText).toContain('1 0 0 1 38.00 465.23 Tm (01) Tj ET');
-    expect(pdfText).toContain('1 0 0 1 58.00 465.23 Tm (Do) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 38.00 487.23 Tm (01) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 58.00 487.23 Tm (Do) Tj ET');
   });
 
-  it('uses a more compact header and leaves the footer content below the table', () => {
+  it('uses a compact header and omits the redundant footer', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -100,19 +129,21 @@ describe('waste-management output pdf', () => {
             fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
           },
         ],
-        notes: ['Stand 2026-06-14'],
-        footerLine: 'Abfallberatung · Beispielkontakt',
+        legendHints: [
+          { id: 'tour:nord', label: 'Tour: Nord', description: 'Hinweis zur\nBereitstellung.' },
+        ],
       })
     ).toString('latin1');
 
-    expect(pdfText).toContain('/F2 24.00 Tf');
-    expect(pdfText).toContain('/F1 12.00 Tf');
-    expect(pdfText).toMatch(/1 0 0 1 38\.00 543\.28 Tm \(Abfallkalender 2026\) Tj ET/);
-    expect(pdfText).toMatch(/1 0 0 1 38\.00 73\.08 Tm \(Stand 2026-06-14\) Tj ET/);
-    expect(pdfText).toMatch(/1 0 0 1 38\.00 17\.68 Tm \(Abfallberatung · Beispielkontakt\) Tj ET/);
+    expect(pdfText).toContain('/F2 20.00 Tf');
+    expect(pdfText).toContain('/F1 10.50 Tf');
+    expect(pdfText).toMatch(/1 0 0 1 38\.00 559\.28 Tm \(Abfallkalender 2026\) Tj ET/);
+    expect(pdfText).toContain('(Tour: Nord - Hinweis zur Bereitstellung.) Tj ET');
+    expect(pdfText).not.toContain('Abfallkalender 2026 · Rathenow');
+    expect(pdfText).not.toContain('Abfallberatung · Beispielkontakt');
   });
 
-  it('does not render default notes when an explicit empty notes array is provided', () => {
+  it('does not render legacy default notes or a footer', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -123,12 +154,12 @@ describe('waste-management output pdf', () => {
             fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666' }],
           },
         ],
-        notes: [],
       })
     ).toString('latin1');
 
     expect(pdfText).not.toContain('Stand ');
     expect(pdfText).not.toContain('Alle wirksamen Fraktionen und Verschiebungen sind enthalten.');
+    expect(pdfText).not.toContain('Abfallkalender 2026 · Rathenow');
   });
 
   it('embeds a branding image when one is provided', () => {
@@ -158,11 +189,11 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/Subtype /Image');
     expect(pdfText).toContain('/XObject << /Im1');
     expect(pdfText).toContain('/Im1 Do');
-    expect(pdfText).not.toContain('640.00 525.28 163.00 48.00 re f');
-    expect(pdfText).not.toContain('640.00 525.28 163.00 48.00 re S');
+    expect(pdfText).not.toContain('640.00 541.28 163.00 40.00 re f');
+    expect(pdfText).not.toContain('640.00 541.28 163.00 40.00 re S');
   });
 
-  it('renders legend labels in one horizontal row beneath the calendar', () => {
+  it('renders at most eight legend entries as vertical rows beneath the calendar', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -193,7 +224,115 @@ describe('waste-management output pdf', () => {
     expect(positions.every((value) => value !== null)).toBe(true);
     expect(new Set(positions).size).toBe(7);
     const yPositions = positions.map((value) => value?.split(':')[1]);
-    expect(new Set(yPositions).size).toBe(1);
-    expect(pdfText).toContain('1 0 0 1 42.00 85.28 Tm (F1) Tj ET');
+    expect(new Set(yPositions).size).toBe(7);
+    expect(pdfText).toContain('1 0 0 1 42.00 110.18 Tm (F1) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 68.00 109.78 Tm (Fraktion 1) Tj ET');
+  });
+
+  it('reserves the first legend row for the shift explanation', () => {
+    const document = buildWasteCalendarPdfDocument({
+      year: 2026,
+      locationLabel: 'Bärensprung',
+      pickups: [
+        {
+          date: '2026-01-14',
+          fractions: Array.from({ length: 9 }, (_, index) => ({
+            id: `fraction-${index + 1}`,
+            label: `Fraktion ${index + 1}`,
+            color: '#666666',
+            ...(index === 0 ? { isShifted: true } : {}),
+          })),
+        },
+      ],
+    });
+
+    expect(document.pages[0]?.legend).toHaveLength(8);
+    expect(document.pages[0]?.legend.at(0)).toEqual({
+      kind: 'shift',
+      label: '= Ausweichtermin',
+    });
+  });
+
+  it('renders legend descriptions inline after their labels', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              {
+                id: 'bio',
+                label: 'Biogut',
+                description: 'Bitte melden Sie die Abholung min. 2 Tage vor dem Termin an!',
+                shortLabel: 'BIO',
+                color: '#55AA33',
+              },
+            ],
+          },
+        ],
+        legendHints: [
+          {
+            id: 'tour-bio',
+            label: 'Tour: Bio.11.B.3',
+            description: 'Behälter am Straßenrand bereitstellen.',
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain(
+      '1 0 0 1 68.00 109.78 Tm (Biogut - Bitte melden Sie die Abholung min. 2 Tage vor dem Termin an!) Tj ET'
+    );
+    expect(pdfText).toContain(
+      '1 0 0 1 38.00 97.78 Tm (Tour: Bio.11.B.3 - Behälter am Straßenrand bereitstellen.) Tj ET'
+    );
+    expect(pdfText).not.toContain('1 0 0 1 238.00');
+  });
+
+  it('truncates long single-line legend descriptions with three dots', () => {
+    const longDescription = 'Dieser sehr lange Hinweis soll ausschließlich in einer einzigen Legendenzeile stehen und darf den rechten Seitenrand auf keinen Fall überschreiten, auch wenn noch viele weitere Wörter folgen. Deshalb enthält dieser Test bewusst zusätzlichen Text, der garantiert nicht mehr vollständig auf die Seite passt.';
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              { id: 'bio', label: 'Biogut', description: longDescription, shortLabel: 'BIO', color: '#55AA33' },
+            ],
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).not.toContain(`(${longDescription}) Tj ET`);
+    expect(pdfText).toMatch(/\(Biogut - Dieser sehr lange Hinweis[^)]*\.\.\.\) Tj ET/);
+  });
+
+  it('renders shifted pickup markers outside their colored boxes and explains them below the legend', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              { id: 'hm', label: 'Hausmüll', shortLabel: 'HM', color: '#666666', isShifted: true },
+              { id: 'ppk', label: 'Papier', shortLabel: 'PPK', color: '#58BCE5' },
+            ],
+          },
+        ],
+      })
+    ).toString('latin1');
+
+    expect(pdfText).toContain('76.00 330.58 18.00 9.50 re f');
+    expect(pdfText).toContain('/F2 8.00 Tf 0.780 0.050 0.050 rg 1 0 0 1 96.00 331.48 Tm (*) Tj ET');
+    expect(pdfText).toContain('103.00 330.58 22.00 9.50 re f');
+    expect(pdfText).toContain('/F2 9.00 Tf 0.780 0.050 0.050 rg 1 0 0 1 38.00 109.28 Tm (*) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 50.00 109.78 Tm (= Ausweichtermin) Tj ET');
   });
 });

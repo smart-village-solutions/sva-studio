@@ -3,12 +3,14 @@ import {
   renderWasteCalendarPdf,
   type WasteManagementEmailReminderConfig,
   type WasteCalendarPdfBrandingImage,
+  type WasteOutputLegendHint,
   type WasteOutputPickupEntry,
 } from '@sva/core';
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 
 import { loadNextPublicWasteSelection, loadResolvedPublicWasteCalendar } from './public-waste-api.js';
 import type {
+  PublicWasteCalendarEntry,
   PublicWasteReminderSignupRequest,
   PublicWasteReminderSignupResponse,
 } from './public-waste-contract.js';
@@ -106,27 +108,63 @@ const normalizePdfLocationLabel = (selectionSummary: string): string => {
   return [city, remainder].filter(Boolean).join(', ');
 };
 
-const collectPdfNotes = (notes: readonly (string | null)[]): readonly string[] =>
-  Array.from(new Set(notes.map((note) => note?.trim()).filter((note): note is string => Boolean(note)))).slice(0, 4);
+const formatPdfLegendDate = (value: string): string =>
+  `${value.slice(8, 10)}.${value.slice(5, 7)}.`;
+
+const buildPdfLegendHints = (
+  entries: readonly PublicWasteCalendarEntry[]
+): readonly WasteOutputLegendHint[] => {
+  const tourHints = new Map<string, WasteOutputLegendHint>();
+  const pickupHints = new Map<string, WasteOutputLegendHint>();
+
+  for (const entry of entries) {
+    const tourName = entry.tourName?.trim();
+    const tourDescription = entry.tourDescription?.trim();
+    if (tourName && tourDescription) {
+      const id = `tour:${tourName}:${tourDescription}`;
+      tourHints.set(id, { id, label: `Tour: ${tourName}`, description: tourDescription });
+    }
+
+    const note = entry.note?.trim();
+    if (note) {
+      const contextLabel = tourName ? `Tour: ${tourName}` : entry.fractionLabel;
+      const id = `pickup:${entry.date}:${contextLabel}:${note}`;
+      pickupHints.set(id, {
+        id,
+        label: `${formatPdfLegendDate(entry.date)} ${contextLabel}`,
+        description: note,
+      });
+    }
+  }
+
+  return [...tourHints.values(), ...pickupHints.values()];
+};
 
 const buildPdfPickups = (
   entries: readonly {
     readonly date: string;
     readonly fractionId: string;
     readonly fractionLabel: string;
+    readonly fractionDescription?: string;
     readonly fractionShortLabel?: string;
     readonly fractionColor?: string;
+    readonly isShifted?: boolean;
   }[]
 ): readonly WasteOutputPickupEntry[] => {
   const byDate = new Map<string, Map<string, WasteOutputPickupEntry['fractions'][number]>>();
 
   for (const entry of entries) {
     const fractions = byDate.get(entry.date) ?? new Map<string, WasteOutputPickupEntry['fractions'][number]>();
+    const existingFraction = fractions.get(entry.fractionId);
     fractions.set(entry.fractionId, {
       id: entry.fractionId,
       label: entry.fractionLabel,
+      ...(existingFraction?.description || entry.fractionDescription?.trim()
+        ? { description: existingFraction?.description ?? entry.fractionDescription?.trim() }
+        : {}),
       shortLabel: entry.fractionShortLabel,
       color: entry.fractionColor ?? '#808080',
+      ...(existingFraction?.isShifted || entry.isShifted ? { isShifted: true } : {}),
     });
     byDate.set(entry.date, fractions);
   }
@@ -352,8 +390,7 @@ export const handlePublicWastePdfRequest = async (input: {
         year,
         locationLabel,
         pickups: buildPdfPickups(filteredEntries),
-        notes: [],
-        footerLine: staticConfig.contactBlock?.replace(/\s*\n\s*/g, ' · '),
+        legendHints: buildPdfLegendHints(filteredEntries),
         ...(brandingImage ? { brandingImage } : {}),
         brandingPlaceholderLabel: staticConfig.brandingAssetUrl ? 'Branding-Grafik' : 'Kommunales Waste-Management',
       })

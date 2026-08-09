@@ -44,6 +44,7 @@ export type PublicWasteCalendarEntry = {
   readonly fractionColor?: string;
   readonly tourName?: string;
   readonly tourDescription?: string;
+  readonly isShifted?: boolean;
   readonly note: string | null;
 };
 

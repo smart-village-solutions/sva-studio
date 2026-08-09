@@ -140,7 +140,10 @@ describe('public waste endpoints', () => {
             date: '2026-05-19',
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
+            fractionDescription: 'Küchen- und Gartenabfälle ohne Kunststoffbeutel.',
             fractionShortLabel: 'BIO',
+            tourName: 'Tour Nord',
+            tourDescription: 'Behälter am Straßenrand bereitstellen.',
             note: 'Bitte Tonne ab 6 Uhr bereitstellen.',
           },
         ]),
@@ -161,6 +164,11 @@ describe('public waste endpoints', () => {
     expect(response.headers.get('content-disposition')).toContain('abfallkalender-2026-musterstadt-hauptstra-e-1.pdf');
     const pdfText = Buffer.from(await response.arrayBuffer()).toString('latin1');
     expect(pdfText).toContain('Abfallkalender 2026');
+    expect(pdfText).toContain('Küchen- und Gartenabfälle ohne Kunststoffbeutel.');
+    expect(pdfText).toContain('Tour: Tour Nord');
+    expect(pdfText).toContain('Behälter am Straßenrand bereitstellen.');
+    expect(pdfText).toContain('19.05. Tour: Tour Nord');
+    expect(pdfText).toContain('Bitte Tonne ab 6 Uhr bereitstellen.');
     expect(pdfText).toContain('/Subtype /Image');
     expect(loadBrandingImage).toHaveBeenCalledWith({
       assetUrl: 'https://cdn.example/logo.svg',
@@ -191,6 +199,7 @@ describe('public waste endpoints', () => {
             fractionId: 'bio',
             fractionLabel: 'Bioabfall',
             fractionShortLabel: 'BIO',
+            isShifted: true,
             note: null,
           },
           {
@@ -212,13 +221,14 @@ describe('public waste endpoints', () => {
 
     expect(buildDocumentSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        notes: [],
+        legendHints: [],
         pickups: [
           {
             date: '2026-05-19',
             fractions: [
               expect.objectContaining({
                 id: 'bio',
+                isShifted: true,
               }),
               expect.objectContaining({
                 id: 'paper',

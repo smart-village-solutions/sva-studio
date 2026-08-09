@@ -3,7 +3,7 @@ services:
     image: ${IMAGE_REF}
     environment:
       BACKUP_AGENT_ALLOWED_WORKFLOWS: promote.yml,staging-backup-drill.yml,production-backup-drill.yml
-      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml,waste-database-restore-drill.yml
+      RESTORE_AGENT_ALLOWED_WORKFLOWS: database-restore.yml,waste-database-restore-drill.yml,waste-bb-prignitz-cutover.yml
       BACKUP_AGENT_GITHUB_REPOSITORY: smart-village-solutions/sva-studio
       BACKUP_AGENT_IMAGE_REF: ${IMAGE_REF}
       BACKUP_AGENT_OIDC_AUDIENCE: studio-backup-agent

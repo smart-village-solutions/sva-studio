@@ -1,10 +1,14 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-import { backupEnvironmentConfig, type BackupDatabase, type BackupEnvironment } from './backup-agent-contract.ts';
+import {
+  backupEnvironmentConfig,
+  type BackupDatabase,
+  type BackupEnvironment,
+} from './backup-agent-contract.ts';
 
 export type RestoreRequest = Readonly<{
   version: 1;
-  action: 'restore-and-verify-v1';
+  action: 'restore-and-verify-v1' | 'import-waste-data-v1';
   requestId: string;
   environment: BackupEnvironment;
   expiresAt: string;
@@ -18,6 +22,8 @@ export type RestoreRequest = Readonly<{
 const requestIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u;
 const maintenanceWindowPattern = /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
+const bbPrignitzWasteImportSha256 =
+  'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc';
 const restoreRequestKeys = new Set([
   'action',
   'database',
@@ -61,17 +67,22 @@ const hasOnlyRestoreRequestKeys = (request: object) =>
 
 const hasValidSourceObject = (
   environment: BackupEnvironment,
+  action: RestoreRequest['action'],
   database: BackupDatabase | undefined,
   tenantInstanceId: string | undefined,
   sourceObjectKey: unknown,
   sourceSha256: unknown
 ) => {
-  const databasePrefix = database === 'waste' ? `/waste/${tenantInstanceId}/` : '/';
+  const isWasteImport = action === 'import-waste-data-v1';
+  const databasePrefix =
+    database === 'waste' ? `/waste/${tenantInstanceId}/${isWasteImport ? 'import/' : ''}` : '/';
   const prefix = `${restoreEnvironmentConfig(environment).objectPrefix}${databasePrefix}`;
   return (
     typeof sourceObjectKey === 'string' &&
     sourceObjectKey.startsWith(prefix) &&
-    /^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.dump$/u.test(sourceObjectKey) &&
+    (isWasteImport
+      ? /^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.sql$/u.test(sourceObjectKey)
+      : /^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.dump$/u.test(sourceObjectKey)) &&
     !sourceObjectKey.includes('..') &&
     typeof sourceSha256 === 'string' &&
     sha256Pattern.test(sourceSha256)
@@ -94,14 +105,33 @@ export const isValidRestoreRequest = (
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const request = value as Partial<RestoreRequest>;
   if (!hasOnlyRestoreRequestKeys(request)) return false;
-  if (request.version !== 1 || request.action !== 'restore-and-verify-v1') return false;
+  if (
+    request.version !== 1 ||
+    (request.action !== 'restore-and-verify-v1' && request.action !== 'import-waste-data-v1')
+  )
+    return false;
   if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (request.database !== undefined && request.database !== 'studio' && request.database !== 'waste') return false;
+  if (
+    request.database !== undefined &&
+    request.database !== 'studio' &&
+    request.database !== 'waste'
+  )
+    return false;
   if (
     request.database === 'waste'
-      ? typeof request.tenantInstanceId !== 'string' || !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)
+      ? typeof request.tenantInstanceId !== 'string' ||
+        !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)
       : request.tenantInstanceId !== undefined
-  ) return false;
+  )
+    return false;
+  if (
+    request.action === 'import-waste-data-v1' &&
+    (request.environment !== 'prod' ||
+      request.database !== 'waste' ||
+      request.tenantInstanceId !== 'bb-prignitz' ||
+      request.sourceSha256 !== bbPrignitzWasteImportSha256)
+  )
+    return false;
   if (typeof request.requestId !== 'string' || !requestIdPattern.test(request.requestId))
     return false;
   if (
@@ -110,8 +140,14 @@ export const isValidRestoreRequest = (
   )
     return false;
   return (
-    hasValidSourceObject(request.environment, request.database, request.tenantInstanceId, request.sourceObjectKey, request.sourceSha256) &&
-    hasValidExpiry(request.expiresAt, now)
+    hasValidSourceObject(
+      request.environment,
+      request.action,
+      request.database,
+      request.tenantInstanceId,
+      request.sourceObjectKey,
+      request.sourceSha256
+    ) && hasValidExpiry(request.expiresAt, now)
   );
 };
 

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildRestoreAgentRequest,
   hasRuntimePrincipalRestoreEvidence,
+  hasWasteImportEvidence,
 } from './submit-restore-agent-request.ts';
 
 describe('submit restore agent request', () => {
@@ -43,15 +44,47 @@ describe('submit restore agent request', () => {
   });
 
   it('includes the tenant identity in Waste restore requests', () => {
-    expect(buildRestoreAgentRequest({
-      environment: 'staging',
-      maintenanceWindowReference: 'DRILL-42',
-      now: new Date('2026-08-01T10:00:00.000Z'),
-      requestId: 'restore-gha-456-1',
-      sourceObjectKey: 'staging/waste/bb-prignitz/run/source.dump',
-      sourceSha256: 'c'.repeat(64),
-      database: 'waste',
-      tenantInstanceId: 'bb-prignitz',
-    })).toMatchObject({ database: 'waste', tenantInstanceId: 'bb-prignitz' });
+    expect(
+      buildRestoreAgentRequest({
+        environment: 'staging',
+        maintenanceWindowReference: 'DRILL-42',
+        now: new Date('2026-08-01T10:00:00.000Z'),
+        requestId: 'restore-gha-456-1',
+        sourceObjectKey: 'staging/waste/bb-prignitz/run/source.dump',
+        sourceSha256: 'c'.repeat(64),
+        database: 'waste',
+        tenantInstanceId: 'bb-prignitz',
+      })
+    ).toMatchObject({ database: 'waste', tenantInstanceId: 'bb-prignitz' });
+  });
+
+  it('builds and verifies the fixed one-time Waste import evidence', () => {
+    expect(
+      buildRestoreAgentRequest({
+        action: 'import-waste-data-v1',
+        environment: 'prod',
+        maintenanceWindowReference: 'CUTOVER-42',
+        now: new Date('2026-08-01T10:00:00.000Z'),
+        requestId: 'waste-import-gha-456-1',
+        sourceObjectKey: 'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql',
+        sourceSha256: 'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc',
+        database: 'waste',
+        tenantInstanceId: 'bb-prignitz',
+      })
+    ).toMatchObject({ action: 'import-waste-data-v1', database: 'waste' });
+
+    const steps = [
+      'runtime-connect-lock',
+      'app-session-drain',
+      'empty-target-verify',
+      'safety-backup',
+      'waste-data-import',
+      'source-inventory-verify',
+      'legacy-pickup-backfill',
+      'runtime-principal-reconciliation',
+      'runtime-principal-probe',
+    ].map((step) => ({ step, status: 'succeeded' }));
+    expect(hasWasteImportEvidence({ steps })).toBe(true);
+    expect(hasWasteImportEvidence({ steps: steps.slice(1) })).toBe(false);
   });
 });

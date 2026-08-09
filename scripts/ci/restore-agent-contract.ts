@@ -98,48 +98,48 @@ const hasValidExpiry = (expiresAt: unknown, now: Date) => {
   );
 };
 
+type RestoreRequestEnvelope = Partial<RestoreRequest> &
+  Readonly<{
+    action: RestoreRequest['action'];
+    environment: BackupEnvironment;
+  }>;
+
+const hasValidEnvelope = (request: Partial<RestoreRequest>): request is RestoreRequestEnvelope =>
+  request.version === 1 &&
+  (request.action === 'restore-and-verify-v1' || request.action === 'import-waste-data-v1') &&
+  (request.environment === 'staging' || request.environment === 'prod') &&
+  (request.database === undefined || request.database === 'studio' || request.database === 'waste');
+
+const hasValidTenantBinding = (request: RestoreRequestEnvelope): boolean =>
+  request.database === 'waste'
+    ? typeof request.tenantInstanceId === 'string' &&
+      /^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)
+    : request.tenantInstanceId === undefined;
+
+const hasValidImportBinding = (request: RestoreRequestEnvelope): boolean =>
+  request.action !== 'import-waste-data-v1' ||
+  (request.environment === 'prod' &&
+    request.database === 'waste' &&
+    request.tenantInstanceId === 'bb-prignitz' &&
+    request.sourceSha256 === bbPrignitzWasteImportSha256);
+
+const hasValidRequestMetadata = (request: RestoreRequestEnvelope): boolean =>
+  typeof request.requestId === 'string' &&
+  requestIdPattern.test(request.requestId) &&
+  typeof request.maintenanceWindowReference === 'string' &&
+  maintenanceWindowPattern.test(request.maintenanceWindowReference);
+
 export const isValidRestoreRequest = (
   value: unknown,
   now = new Date()
 ): value is RestoreRequest => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const request = value as Partial<RestoreRequest>;
-  if (!hasOnlyRestoreRequestKeys(request)) return false;
-  if (
-    request.version !== 1 ||
-    (request.action !== 'restore-and-verify-v1' && request.action !== 'import-waste-data-v1')
-  )
-    return false;
-  if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (
-    request.database !== undefined &&
-    request.database !== 'studio' &&
-    request.database !== 'waste'
-  )
-    return false;
-  if (
-    request.database === 'waste'
-      ? typeof request.tenantInstanceId !== 'string' ||
-        !/^[a-z0-9][a-z0-9-]{1,62}$/u.test(request.tenantInstanceId)
-      : request.tenantInstanceId !== undefined
-  )
-    return false;
-  if (
-    request.action === 'import-waste-data-v1' &&
-    (request.environment !== 'prod' ||
-      request.database !== 'waste' ||
-      request.tenantInstanceId !== 'bb-prignitz' ||
-      request.sourceSha256 !== bbPrignitzWasteImportSha256)
-  )
-    return false;
-  if (typeof request.requestId !== 'string' || !requestIdPattern.test(request.requestId))
-    return false;
-  if (
-    typeof request.maintenanceWindowReference !== 'string' ||
-    !maintenanceWindowPattern.test(request.maintenanceWindowReference)
-  )
-    return false;
+  if (!hasOnlyRestoreRequestKeys(request) || !hasValidEnvelope(request)) return false;
   return (
+    hasValidTenantBinding(request) &&
+    hasValidImportBinding(request) &&
+    hasValidRequestMetadata(request) &&
     hasValidSourceObject(
       request.environment,
       request.action,
@@ -147,7 +147,8 @@ export const isValidRestoreRequest = (
       request.tenantInstanceId,
       request.sourceObjectKey,
       request.sourceSha256
-    ) && hasValidExpiry(request.expiresAt, now)
+    ) &&
+    hasValidExpiry(request.expiresAt, now)
   );
 };
 

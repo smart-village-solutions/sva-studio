@@ -155,7 +155,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          if [ "${#REDIS_SNAPSHOT_HMAC_SECRET}" -lt 32 ]; then
+          trimmed_secret="${REDIS_SNAPSHOT_HMAC_SECRET#"${REDIS_SNAPSHOT_HMAC_SECRET%%[![:space:]]*}"}"
+          trimmed_secret="${trimmed_secret%"${trimmed_secret##*[![:space:]]}"}"
+
+          if [ "${#trimmed_secret}" -lt 32 ]; then
             echo "::error::REDIS_SNAPSHOT_HMAC_SECRET fehlt oder ist zu kurz." >&2
             exit 1
           fi

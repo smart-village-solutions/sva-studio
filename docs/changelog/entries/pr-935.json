@@ -1,0 +1,4 @@
+{
+  "prNumber": 935,
+  "body": "Speicher-Aktionen geben ihren Status jetzt direkt im Formular zurück\n\n- Speichern-Buttons zeigen während und nach dem Vorgang verständliche Zustände statt zusätzlicher Toast-Meldungen.\n- Technische Fehler bleiben sichtbar und können gezielt erneut versucht werden.\n- Neu angelegte Nachrichten öffnen ihre Detailseite und bestätigen dort den erfolgreichen Speichervorgang."
+}

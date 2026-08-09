@@ -88,6 +88,32 @@ describe('WasteToursValidityDialog', () => {
     );
   });
 
+  it('keeps the recurrence start anchor from being cleared', () => {
+    render(
+      <WasteToursValidityDialog
+        open
+        tours={[createTour()]}
+        saving={false}
+        onOpenChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const firstMode = screen.getByLabelText(
+      'tours.bulkValidityDialog.fields.firstMode'
+    ) as HTMLSelectElement;
+    const endMode = screen.getByLabelText(
+      'tours.bulkValidityDialog.fields.endMode'
+    ) as HTMLSelectElement;
+
+    expect([...firstMode.options].map((option) => option.value)).toEqual(['unchanged', 'set']);
+    expect([...endMode.options].map((option) => option.value)).toEqual([
+      'unchanged',
+      'set',
+      'clear',
+    ]);
+  });
+
   it('blocks the action and names tours without an applicable recurrence', () => {
     render(
       <WasteToursValidityDialog
@@ -101,9 +127,11 @@ describe('WasteToursValidityDialog', () => {
 
     expect(screen.getByRole('alert').textContent).toContain('Schadstoffmobil');
     expect(
-      (screen.getByRole('button', {
-        name: 'tours.bulkValidityDialog.apply',
-      }) as HTMLButtonElement).disabled
+      (
+        screen.getByRole('button', {
+          name: 'tours.bulkValidityDialog.apply',
+        }) as HTMLButtonElement
+      ).disabled
     ).toBe(true);
   });
 
@@ -127,9 +155,11 @@ describe('WasteToursValidityDialog', () => {
 
     expect(screen.getByRole('alert').textContent).toBe('tours.bulkValidityDialog.invalidRange');
     expect(
-      (screen.getByRole('button', {
-        name: 'tours.bulkValidityDialog.apply',
-      }) as HTMLButtonElement).disabled
+      (
+        screen.getByRole('button', {
+          name: 'tours.bulkValidityDialog.apply',
+        }) as HTMLButtonElement
+      ).disabled
     ).toBe(true);
   });
 });

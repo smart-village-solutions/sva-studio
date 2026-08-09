@@ -9,7 +9,9 @@ import { getRequestId, requireActorInstanceId, requireDeps } from './utils.js';
 
 const { updateWasteTourValidityBulkSchema } = wasteManagementTourSchemas;
 
-const resolveBulkValidityInputError = (error: unknown): Readonly<{
+const resolveBulkValidityInputError = (
+  error: unknown
+): Readonly<{
   code: 'invalid_request' | 'not_found';
   message: string;
   reasonCode: string;
@@ -34,6 +36,14 @@ const resolveBulkValidityInputError = (error: unknown): Readonly<{
       code: 'invalid_request',
       message: 'Das Gültigkeitsende darf nicht vor dem Gültigkeitsbeginn liegen.',
       reasonCode: 'invalid_validity_range',
+    };
+  }
+  if (message.startsWith('bulk_tour_validity_first_date_required:')) {
+    return {
+      code: 'invalid_request',
+      message:
+        'Der Gültigkeitsbeginn ist für die Terminberechnung turnusbasierter Touren erforderlich.',
+      reasonCode: 'tour_first_date_required',
     };
   }
   return null;

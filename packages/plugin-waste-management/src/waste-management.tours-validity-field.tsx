@@ -11,6 +11,7 @@ export const ValidityModeField = ({
   date,
   dateLabel,
   disabled,
+  allowClear = true,
   onModeChange,
   onDateChange,
 }: Readonly<{
@@ -20,6 +21,7 @@ export const ValidityModeField = ({
   date: string;
   dateLabel: string;
   disabled: boolean;
+  allowClear?: boolean;
   onModeChange: (mode: ValidityMode) => void;
   onDateChange: (date: string) => void;
 }>) => {
@@ -35,7 +37,9 @@ export const ValidityModeField = ({
         >
           <option value="unchanged">{pt('tours.bulkValidityDialog.modes.unchanged')}</option>
           <option value="set">{pt('tours.bulkValidityDialog.modes.set')}</option>
-          <option value="clear">{pt('tours.bulkValidityDialog.modes.clear')}</option>
+          {allowClear ? (
+            <option value="clear">{pt('tours.bulkValidityDialog.modes.clear')}</option>
+          ) : null}
         </Select>
       </StudioField>
       {mode === 'set' ? (

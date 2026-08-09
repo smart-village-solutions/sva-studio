@@ -45,7 +45,6 @@ export const buildTourValidityBulkUpdateStatement = (
 UPDATE waste_tours
 SET first_date = CASE $2
       WHEN 'set' THEN $3::date
-      WHEN 'clear' THEN NULL
       ELSE first_date
     END,
     end_date = CASE $4

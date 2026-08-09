@@ -7,7 +7,7 @@ Für einen frei wählbaren Zeitraum ist derzeit nicht erkennbar, ob jeder aktive
 ## What Changes
 
 - Der Abholort-Bereich erhält eine Prüfung nach Abfallfraktion, Startdatum und Enddatum.
-- Die Prüfung unterscheidet vollständig fehlende Zuordnungen von zeitlich unvollständiger Abdeckung durch die zugeordneten Touren.
+- Die Prüfung unterscheidet vollständig fehlende Zuordnungen von zeitlich unvollständiger Abdeckung durch zugeordnete aktive Touren; inaktive Touren zählen nicht als operative Abdeckung.
 - Zeitlich unvollständige Ergebnisse weisen die konkreten Lücken aus.
 - Betroffene Abholorte können über die bestehenden Einzel- und Sammelaktionen Touren zugeordnet werden.
 

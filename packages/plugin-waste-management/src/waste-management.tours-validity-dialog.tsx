@@ -125,6 +125,7 @@ const ValidityFields = ({ state, saving }: ValidityFieldsProps) => {
         date={state.firstDate}
         dateLabel={pt('tours.bulkValidityDialog.fields.firstDate')}
         disabled={saving}
+        allowClear={false}
         onModeChange={state.setFirstMode}
         onDateChange={state.setFirstDate}
       />

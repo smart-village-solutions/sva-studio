@@ -249,8 +249,8 @@ const repositoryMocks = vi.hoisted(() => ({
       endDate: '2026-12-31',
     }))
   ),
-  updateWasteTourValidityBulk: vi.fn(async (input: { tourIds: readonly string[] }) =>
-    input.tourIds.length
+  updateWasteTourValidityBulk: vi.fn(
+    async (input: { tourIds: readonly string[] }) => input.tourIds.length
   ),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
@@ -715,6 +715,19 @@ describe('waste-management server loaders', () => {
         endDate: { mode: 'set', value: '2026-04-30' },
       })
     ).rejects.toThrow('bulk_tour_validity_invalid_range:tour-1');
+
+    expect(repositoryMocks.updateWasteTourValidityBulk).not.toHaveBeenCalled();
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
+  it('rolls back instead of clearing the recurrence start anchor', async () => {
+    await expect(
+      wasteManagementEntitySavers.updateWasteTourValidityBulk('tenant-a', {
+        tourIds: ['tour-1'],
+        firstDate: { mode: 'clear' },
+        endDate: { mode: 'unchanged' },
+      })
+    ).rejects.toThrow('bulk_tour_validity_first_date_required:tour-1');
 
     expect(repositoryMocks.updateWasteTourValidityBulk).not.toHaveBeenCalled();
     expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');

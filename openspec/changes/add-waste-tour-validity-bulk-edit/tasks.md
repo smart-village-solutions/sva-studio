@@ -2,6 +2,7 @@
 
 - [x] 1.1 OpenSpec-Change strikt validieren und freigeben lassen.
 - [x] 1.2 Bulk-Request/-Response-Typen sowie die explizite `unchanged`-/`set`-/`clear`-Semantik in Core und Plugin-API ergänzen.
+- [x] 1.3 Das Entfernen von `Gültig ab` in UI, Request-Validierung und Loader blockieren, damit der Turnus-Startanker erhalten bleibt.
 
 ## 2. Serverseitige Umsetzung
 

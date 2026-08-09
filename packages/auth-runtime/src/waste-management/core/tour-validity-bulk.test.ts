@@ -93,8 +93,8 @@ describe('waste-management tour validity bulk handler', () => {
       await wasteManagementTourValidityBulkHandlers.updateWasteManagementTourValidityBulkInternal(
         createRequest({
           tourIds: ['tour-1', ' tour-1 '],
-          firstDate: { mode: 'clear' },
-          endDate: { mode: 'unchanged' },
+          firstDate: { mode: 'unchanged' },
+          endDate: { mode: 'clear' },
         }),
         actor,
         deps
@@ -115,10 +115,28 @@ describe('waste-management tour validity bulk handler', () => {
     expect(deps.updateWasteTourValidityBulk).not.toHaveBeenCalled();
   });
 
+  it('rejects clearing the recurrence start anchor before persistence', async () => {
+    const deps = createDeps();
+    const response =
+      await wasteManagementTourValidityBulkHandlers.updateWasteManagementTourValidityBulkInternal(
+        createRequest({
+          tourIds: ['tour-1'],
+          firstDate: { mode: 'clear' },
+          endDate: { mode: 'unchanged' },
+        }),
+        actor,
+        deps
+      );
+
+    expect(response.status).toBe(400);
+    expect(deps.updateWasteTourValidityBulk).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['bulk_tour_validity_not_found:tour-2', 404, 'tour_not_found'],
     ['bulk_tour_validity_not_applicable:tour-2', 400, 'tour_validity_not_applicable'],
     ['bulk_tour_validity_invalid_range:tour-2', 400, 'invalid_validity_range'],
+    ['bulk_tour_validity_first_date_required:tour-2', 400, 'tour_first_date_required'],
   ])('maps %s to a client error without revalidation', async (message, status, reasonCode) => {
     const deps = createDeps();
     deps.updateWasteTourValidityBulk.mockRejectedValueOnce(new Error(message));
@@ -137,9 +155,7 @@ describe('waste-management tour validity bulk handler', () => {
     expect(response.status).toBe(status);
     expect(updateWasteVisibleStatusMock).not.toHaveBeenCalled();
     expect(
-      deps.emitAuditEvent.mock.calls.some(
-        ([event]) => event.pluginAction.reasonCode === reasonCode
-      )
+      deps.emitAuditEvent.mock.calls.some(([event]) => event.pluginAction.reasonCode === reasonCode)
     ).toBe(true);
   });
 
@@ -151,8 +167,8 @@ describe('waste-management tour validity bulk handler', () => {
       await wasteManagementTourValidityBulkHandlers.updateWasteManagementTourValidityBulkInternal(
         createRequest({
           tourIds: ['tour-1'],
-          firstDate: { mode: 'clear' },
-          endDate: { mode: 'unchanged' },
+          firstDate: { mode: 'unchanged' },
+          endDate: { mode: 'clear' },
         }),
         actor,
         deps

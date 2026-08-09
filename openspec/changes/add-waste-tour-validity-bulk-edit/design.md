@@ -19,19 +19,19 @@ Die Tourenliste unterstützt bereits eine Auswahl über mehrere Zeilen, nutzt si
 
 ### Dedizierter atomarer Bulk-Endpunkt
 
-Die UI sendet eine Liste expliziter Tour-IDs und je Datumsgrenze eine Operation `unchanged`, `set` oder `clear`. Der Server lädt alle Touren im aktiven Instanzkontext, prüft Berechtigung und Anwendbarkeit, bildet pro Tour den resultierenden Zeitraum und persistiert alle Änderungen in einer Transaktion.
+Die UI sendet eine Liste expliziter Tour-IDs und je Datumsgrenze eine Patch-Operation. Für `Gültig ab` sind `unchanged` und `set` zulässig; für `Gültig bis` zusätzlich `clear`. Der Server lädt alle Touren im aktiven Instanzkontext, prüft Berechtigung und Anwendbarkeit, bildet pro Tour den resultierenden Zeitraum und persistiert alle Änderungen in einer Transaktion.
 
 Ein Fan-out auf den vorhandenen Einzel-Update-Endpunkt wird verworfen, weil Fehler nach einzelnen erfolgreichen Requests inkonsistente Teilstände erzeugen würden. Der Tourenimport bleibt ein Werkzeug für Dateiimporte und wird nicht als interaktive Bulk-Bearbeitung zweckentfremdet.
 
 ### Explizite Patch-Semantik
 
-Ein leeres Datumsfeld darf nicht zugleich `unverändert` und `entfernen` bedeuten. Der Dialog bildet deshalb je Grenze drei explizite Zustände ab:
+Ein leeres Datumsfeld darf nicht zugleich `unverändert` und `entfernen` bedeuten. Der Dialog bildet deshalb explizite Zustände ab:
 
 - `unchanged`: vorhandenen Wert beibehalten,
 - `set`: den angegebenen ISO-Kalendertag speichern,
-- `clear`: vorhandenen Wert entfernen.
+- `clear`: ein vorhandenes Gültigkeitsende entfernen.
 
-Mindestens eine Grenze muss `set` oder `clear` verwenden. Nach dem Zusammenführen muss `Gültig bis` bei jeder Tour am oder nach `Gültig ab` liegen, sofern beide Grenzen vorhanden sind.
+`Gültig ab` ist zugleich der Startanker der wiederkehrenden Terminberechnung und darf nicht entfernt werden. Die UI bietet diese Operation nicht an; die Request-Validierung und der transaktionale Loader lehnen sie zusätzlich ab. Mindestens eine Grenze muss `set` oder `clear` verwenden. Nach dem Zusammenführen muss `Gültig bis` bei jeder Tour am oder nach `Gültig ab` liegen, sofern beide Grenzen vorhanden sind.
 
 ### Begrenzung auf turnusbasierte Touren
 
@@ -62,7 +62,7 @@ Der Endpunkt verwendet die bestehende Berechtigung `waste-management.tours.manag
 
 - Framework-agnostische Tests für Patch-Zusammenführung, Datumsreihenfolge und Anwendbarkeit.
 - Repository-/Loader-Tests für atomaren Erfolg, Rollback, fehlende IDs und unveränderte Fremdfelder.
-- Auth-Runtime-Tests für Berechtigung, CSRF, Validierung, Instanzbindung und Auditierung.
+- Auth-Runtime-Tests für Berechtigung, CSRF, Validierung, Instanzbindung, den erforderlichen Turnus-Startanker und Auditierung.
 - React-Tests für Auswahl, Dialogzustände, nicht anwendbare Touren, Lade- und Fehlerrückmeldung.
 - Waste-E2E für eine erfolgreiche gemischte `set`-/`clear`-Änderung sowie einen abgelehnten Request ohne Teilergebnis.
 

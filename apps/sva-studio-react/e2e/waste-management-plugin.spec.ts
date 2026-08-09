@@ -278,7 +278,11 @@ const mockWasteFacade = async (page: Page, input: {
       const applicable = selectedTours.every(
         (tour) => Boolean(tour.customRecurrenceId) || !['custom', 'on-demand'].includes(tour.recurrence ?? '')
       );
-      if (selectedTours.length !== body.tourIds?.length || !applicable) {
+      if (
+        selectedTours.length !== body.tourIds?.length ||
+        !applicable ||
+        body.firstDate?.mode === 'clear'
+      ) {
         await route.fulfill({
           status: 400,
           contentType: 'application/json',
@@ -288,7 +292,6 @@ const mockWasteFacade = async (page: Page, input: {
       }
       for (const tour of selectedTours) {
         if (body.firstDate?.mode === 'set') tour.firstDate = body.firstDate.value;
-        if (body.firstDate?.mode === 'clear') tour.firstDate = undefined;
         if (body.endDate?.mode === 'set') tour.endDate = body.endDate.value;
         if (body.endDate?.mode === 'clear') tour.endDate = undefined;
         tour.updatedAt = '2026-05-10T12:40:00.000Z';

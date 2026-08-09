@@ -57,6 +57,10 @@ export const resolveWasteTourValidityDates = (
   tour: Pick<WasteTourRecord, 'firstDate' | 'endDate'>,
   input: Pick<WasteTourValidityBulkUpdateInput, 'firstDate' | 'endDate'>
 ): WasteTourValidityDates | null => {
+  if (input.firstDate.mode === 'clear') {
+    return null;
+  }
+
   const firstDate = applyValidityDateOperation(tour.firstDate, input.firstDate);
   const endDate = applyValidityDateOperation(tour.endDate, input.endDate);
 

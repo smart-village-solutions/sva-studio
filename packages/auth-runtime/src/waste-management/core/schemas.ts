@@ -388,6 +388,14 @@ const updateWasteTourValidityBulkSchema = z
         path: ['firstDate'],
       });
     }
+    if (value.firstDate.mode === 'clear') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Der Gültigkeitsbeginn ist der Startanker des Turnus und darf nicht entfernt werden.',
+        path: ['firstDate'],
+      });
+    }
   });
 
 const createWasteTourDateShiftSchema = z.object({

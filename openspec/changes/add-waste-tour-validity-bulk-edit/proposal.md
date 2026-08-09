@@ -7,7 +7,7 @@ Turnusbasierte Waste-Touren besitzen bereits ein tourweites Start- und Enddatum,
 ## What Changes
 
 - Die bestehende Mehrfachauswahl der Tourenliste erhält die Aktion `Gültigkeitszeitraum ändern`.
-- Ein Dialog erlaubt, `Gültig ab` und `Gültig bis` unabhängig voneinander unverändert zu lassen, auf ein Datum zu setzen oder zu entfernen.
+- Ein Dialog erlaubt, `Gültig ab` und `Gültig bis` unabhängig voneinander unverändert zu lassen oder auf ein Datum zu setzen; ausschließlich `Gültig bis` kann entfernt werden, weil `Gültig ab` den Startanker des Turnus bildet.
 - Ein dedizierter Bulk-Endpunkt validiert und speichert alle Änderungen serverseitig atomar.
 - Die Änderung betrifft ausschließlich die tourweiten Felder `firstDate` und `endDate`; Einzeltermine, Datumsverschiebungen und Abholort–Tour-Zuordnungen bleiben unverändert.
 - Nicht turnusbasierte Touren werden nicht stillschweigend geändert, sondern als nicht anwendbar ausgewiesen und serverseitig abgelehnt.

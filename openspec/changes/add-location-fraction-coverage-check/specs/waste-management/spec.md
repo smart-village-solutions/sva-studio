@@ -2,7 +2,7 @@
 
 ### Requirement: Waste-Management prüft die lückenlose Fraktionszuordnung aktiver Abholorte
 
-Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich begrenzten Prüfzeitraum ermitteln, ob jeder aktive Abholort durch mindestens eine Standort–Tour-Zuordnung zu einer Tour dieser Fraktion lückenlos abgedeckt ist.
+Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich begrenzten Prüfzeitraum ermitteln, ob jeder aktive Abholort durch mindestens eine Standort–Tour-Zuordnung zu einer aktiven Tour dieser Fraktion lückenlos abgedeckt ist.
 
 #### Scenario: Mehrere Zuordnungen decken den Prüfzeitraum gemeinsam ab
 
@@ -13,6 +13,12 @@ Das System SHALL für eine gewählte Abfallfraktion und einen einschließlich be
 
 - **WHEN** ein aktiver Abholort keiner Tour der gewählten Fraktion zugeordnet ist
 - **THEN** weist das System den Abholort als `Keine Zuordnung` aus
+
+#### Scenario: Abholort ist nur inaktiven Touren zugeordnet
+
+- **WHEN** ein aktiver Abholort für die gewählte Fraktion ausschließlich inaktiven Touren zugeordnet ist
+- **THEN** berücksichtigt das System diese Touren nicht als operative Abdeckung
+- **AND** weist den Abholort als `Keine Zuordnung` aus
 
 #### Scenario: Passende Zuordnungen lassen zeitliche Lücken
 

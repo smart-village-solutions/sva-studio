@@ -19,6 +19,14 @@ Das System SHALL berechtigten Benutzern erlauben, den tourweiten Gültigkeitsbeg
 - **THEN** entfernt das System das Gültigkeitsende für alle ausgewählten Touren
 - **AND** ein leeres Eingabefeld ohne die Operation `entfernen` löscht keinen vorhandenen Wert
 
+#### Scenario: Gültigkeitsbeginn bleibt als Turnus-Startanker erhalten
+
+- **GIVEN** die ausgewählten Touren berechnen wiederkehrende Termine ab ihrem Gültigkeitsbeginn
+- **WHEN** der Benutzer den Gültigkeitszeitraum gesammelt bearbeitet
+- **THEN** bietet die Oberfläche für `Gültig ab` keine Operation `entfernen` an
+- **AND** der Server lehnt einen dennoch gesendeten Request zum Entfernen des Gültigkeitsbeginns vollständig ab
+- **AND** keine ausgewählte Tour verliert ihren Startanker
+
 #### Scenario: Ungültiger resultierender Zeitraum verhindert alle Änderungen
 
 - **GIVEN** die gewählten Patch-Operationen würden bei mindestens einer ausgewählten Tour zu einem Gültigkeitsende vor dem Gültigkeitsbeginn führen

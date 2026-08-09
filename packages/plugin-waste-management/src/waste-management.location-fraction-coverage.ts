@@ -88,7 +88,7 @@ export const checkLocationFractionCoverage = ({
 }: CoverageCheckInput): readonly WasteLocationFractionCoverageIssue[] => {
   const matchingTourById = new Map(
     tours
-      .filter((tour) => tour.wasteFractionIds.includes(fractionId))
+      .filter((tour) => tour.active && tour.wasteFractionIds.includes(fractionId))
       .map((tour) => [tour.id, tour] as const)
   );
   const toursByLocationId = new Map<string, WasteTourRecord[]>();
@@ -113,16 +113,16 @@ export const checkLocationFractionCoverage = ({
 
     const matchingTours = toursByLocationId.get(location.id) ?? [];
     if (matchingTours.length === 0) {
-      return [{
-        locationId: location.id,
-        kind: 'missing',
-        gaps: [{ startDate, endDate }],
-      }];
+      return [
+        {
+          locationId: location.id,
+          kind: 'missing',
+          gaps: [{ startDate, endDate }],
+        },
+      ];
     }
 
     const gaps = findCoverageGaps(matchingTours, startDate, endDate);
-    return gaps.length === 0
-      ? []
-      : [{ locationId: location.id, kind: 'incomplete', gaps }];
+    return gaps.length === 0 ? [] : [{ locationId: location.id, kind: 'incomplete', gaps }];
   });
 };

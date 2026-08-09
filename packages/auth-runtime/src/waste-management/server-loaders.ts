@@ -1367,6 +1367,9 @@ const updateWasteTourValidityBulk = async (
       if (missingTourId) {
         throw new Error(`bulk_tour_validity_not_found:${missingTourId}`);
       }
+      if (input.firstDate.mode === 'clear') {
+        throw new Error(`bulk_tour_validity_first_date_required:${input.tourIds[0] ?? 'unknown'}`);
+      }
 
       for (const tourId of input.tourIds) {
         const tour = toursById.get(tourId);

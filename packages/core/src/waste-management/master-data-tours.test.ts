@@ -48,4 +48,16 @@ describe('waste tour validity', () => {
       )
     ).toBeNull();
   });
+
+  it('rejects clearing the recurrence start anchor', () => {
+    expect(
+      resolveWasteTourValidityDates(
+        { firstDate: '2026-05-01', endDate: '2026-12-31' },
+        {
+          firstDate: { mode: 'clear' },
+          endDate: { mode: 'unchanged' },
+        }
+      )
+    ).toBeNull();
+  });
 });

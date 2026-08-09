@@ -1034,13 +1034,10 @@ describe('waste master data repository', () => {
     expect(database.statements[0]?.values).toEqual([['tour-1']]);
     expect(database.statements[1]?.text).toContain('UPDATE waste_tours');
     expect(database.statements[1]?.text).not.toContain('name =');
-    expect(database.statements[1]?.values).toEqual([
-      ['tour-1'],
-      'unchanged',
-      null,
-      'clear',
-      null,
-    ]);
+    expect(database.statements[1]?.text).not.toMatch(
+      /SET first_date = CASE[\s\S]*?WHEN 'clear' THEN NULL[\s\S]*?end_date = CASE/
+    );
+    expect(database.statements[1]?.values).toEqual([['tour-1'], 'unchanged', null, 'clear', null]);
   });
 
   it('lists, reads and upserts custom recurrence presets', async () => {

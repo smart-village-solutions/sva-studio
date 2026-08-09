@@ -23,6 +23,7 @@ describe('Studio save feedback', () => {
     const { rerender } = render(<StudioSaveButton type="submit" status="idle" labels={labels} />);
 
     const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Speichern' });
+    expect(button.getAttribute('aria-label')).toBe('Speichern');
     button.focus();
     expect(button.disabled).toBe(false);
 

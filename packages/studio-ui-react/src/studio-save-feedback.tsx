@@ -28,9 +28,12 @@ export function StudioSaveButton({
 }: StudioSaveButtonProps) {
   const label =
     status === 'saving' ? labels.saving : status === 'saved' ? labels.saved : labels.idle;
+  const accessibleLabel =
+    typeof label === 'string' || typeof label === 'number' ? String(label) : undefined;
 
   return (
     <Button
+      aria-label={accessibleLabel}
       className={cn('min-w-36', className)}
       disabled={disabled || status === 'saving'}
       {...props}

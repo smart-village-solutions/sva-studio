@@ -1,0 +1,4 @@
+{
+  "prNumber": 944,
+  "body": "Inhaltshistorie für Projekte vollständig dokumentiert\n\n- Die Spezifikation führt Projekte nun ausdrücklich als historienpflichtige Inhalte.\n- Projekte verwenden dieselbe externe Inhaltsreferenz und Mutationszuordnung wie die übrigen Mainserver-Inhalte.\n- Eine parallele Historienidentität oder ein zweites Mutationsjournal ist ausgeschlossen."
+}

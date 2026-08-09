@@ -5,12 +5,13 @@
 - [x] 1.3 Den gemeinsamen History-Read-Client und normalisierte Fehlerverträge im passenden Host-/SDK-Boundary bereitstellen.
 - [x] 1.4 Die Plugin-Registry um eine fail-closed History-Capability-Validierung mit stabilen Diagnosecodes erweitern.
 - [x] 1.5 Contract-Tests für gültige Contributions, fehlendes History-Binding und zulässige Nicht-History-Klassifikationen ergänzen.
+- [x] 1.6 Die von `add-featured-projects-plugin` bereitgestellte External-Content-Referenz, stabile `externalId`, Idempotenz und Reconciliation als verbindliche Identitätsgrundlage prüfen und jede zusätzliche Referenz- oder Journal-Persistenz ausschließen.
 
 ## 2. Host-Runtime und Autorisierung
 
 - [x] 2.1 History-Lesezugriffe einheitlich über `content.readHistory`, Instance-Scope und Ownership-Scope autorisieren.
 - [x] 2.2 Lokale IAM-History-Einträge über den gemeinsamen Contract ausgeben, ohne `snapshot_json` offenzulegen.
-- [x] 2.3 Für Mainserver-Mutationen korrelierbare, idempotent finalisierbare Studio-History-Einträge erzeugen.
+- [x] 2.3 Für Mainserver-Mutationen auf Basis der vorhandenen External-Content-Referenz und Operationskorrelation idempotent finalisierbare Studio-History-Einträge erzeugen.
 - [x] 2.4 Erfolg, Providerfehler, Autorisierungsablehnung und Wiederholung so testen, dass nur erfolgreiche fachliche Änderungen in der sichtbaren Historie erscheinen.
 - [x] 2.5 Actor-Fallback, PII-Redaktion, Tenant-Isolation und gelöschte Accounts in Integrations- und Negativtests abdecken.
 
@@ -22,6 +23,7 @@
 - [x] 3.4 `plugin-surveys` gegen den gemeinsamen Vertrag migrieren und bestehende History-Tests angleichen.
 - [x] 3.5 `plugin-waste-management` gegen die gemeinsamen Rechte-, Scope-, Herkunfts-, Fehler- und Accessibility-Invarianten härten.
 - [x] 3.6 `plugin-categories`, `plugin-sdk` und alle weiteren nicht historienpflichtigen Contributions explizit klassifizieren und diese Entscheidung testen.
+- [x] 3.7 `plugin-projects` als historienpflichtig registrieren, `content.readHistory` und den gemeinsamen Client anbinden sowie den Tab `Historie` mit Herkunfts- und Abdeckungshinweis ergänzen.
 
 ## 4. Gemeinsame UI und Qualität
 

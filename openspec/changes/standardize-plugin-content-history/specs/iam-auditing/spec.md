@@ -20,6 +20,8 @@ Das System SHALL Historieneinträge für Plugin-Content-Mutationen ausschließli
 
 Das System MUST erfolgreiche sichtbare History-Einträge für Mainserver-Inhalte von abgelehnten und fehlgeschlagenen Versuchen trennen. Jeder Eintrag MUST als Studio-seitig identifizierbar sein und darf keine externe Vollständigkeit suggerieren.
 
+Für Mainserver-Inhalte MUST der Host die bereits etablierte External-Content-Referenz und stabile Operationskorrelation wiederverwenden. Eine History-Implementierung darf weder eine zweite externe Identität noch ein paralleles Mutation-Journal anlegen.
+
 #### Scenario: Provider-Erfolg wird historisiert
 
 - **WENN** der Mainserver den fachlichen Erfolg einer über das Studio ausgelösten Mutation bestätigt

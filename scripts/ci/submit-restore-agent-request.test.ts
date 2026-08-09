@@ -4,9 +4,26 @@ import {
   buildRestoreAgentRequest,
   hasRuntimePrincipalRestoreEvidence,
   hasWasteImportEvidence,
+  parseRestoreMode,
 } from './submit-restore-agent-request.ts';
 
 describe('submit restore agent request', () => {
+  it('rejects unknown restore modes instead of falling back to Studio', () => {
+    expect(parseRestoreMode(undefined)).toEqual({
+      database: 'studio',
+      action: 'restore-and-verify-v1',
+    });
+    expect(parseRestoreMode('waste')).toEqual({
+      database: 'waste',
+      action: 'restore-and-verify-v1',
+    });
+    expect(parseRestoreMode('waste-import')).toEqual({
+      database: 'waste',
+      action: 'import-waste-data-v1',
+    });
+    expect(() => parseRestoreMode('waste-improt')).toThrow('akzeptiert nur die Modi');
+  });
+
   it('builds the complete short-lived workflow request', () => {
     expect(
       buildRestoreAgentRequest({

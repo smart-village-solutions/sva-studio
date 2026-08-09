@@ -15,6 +15,8 @@ describe('bb-prignitz Waste cutover workflow', () => {
     expect(workflow).toContain('needs: stop-public-waste');
     expect(workflow).toContain('needs: import-waste-data');
     expect(workflow).toContain('submit-restore-agent-request.ts prod waste-import');
+    expect(workflow).toContain('PUBLIC_WASTE_BASE_URL fehlt.');
+    expect(workflow).toContain('consecutive_failures >= 3');
     expect(workflow).toContain("jq -e '.options | length > 0'");
   });
 

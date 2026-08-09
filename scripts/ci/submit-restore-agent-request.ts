@@ -24,6 +24,15 @@ const parseEnvironment = (value: string | undefined): BackupEnvironment => {
   throw new Error('Der Restore-Agent akzeptiert nur staging oder prod.');
 };
 
+export const parseRestoreMode = (
+  value: string | undefined
+): Readonly<{ database: BackupDatabase; action: RestoreRequest['action'] }> => {
+  if (value === undefined) return { database: 'studio', action: 'restore-and-verify-v1' };
+  if (value === 'waste') return { database: 'waste', action: 'restore-and-verify-v1' };
+  if (value === 'waste-import') return { database: 'waste', action: 'import-waste-data-v1' };
+  throw new Error('Der Restore-Agent akzeptiert nur die Modi studio, waste oder waste-import.');
+};
+
 export const buildRestoreAgentRequest = (input: {
   action?: RestoreRequest['action'];
   environment: BackupEnvironment;
@@ -166,10 +175,7 @@ const waitForRestoreResult = async (
 
 const main = async () => {
   const target = parseEnvironment(process.argv[2]);
-  const mode = process.argv[3];
-  const database: BackupDatabase = mode === 'waste' || mode === 'waste-import' ? 'waste' : 'studio';
-  const action: RestoreRequest['action'] =
-    mode === 'waste-import' ? 'import-waste-data-v1' : 'restore-and-verify-v1';
+  const { database, action } = parseRestoreMode(process.argv[3]);
   const request = buildRestoreAgentRequest({
     action,
     environment: target,

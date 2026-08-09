@@ -42,9 +42,16 @@ jobs:
         run: |
           set -euo pipefail
           base_url="${PUBLIC_WASTE_BASE_URL%/}"
+          [[ -n "${base_url}" ]] || { echo 'PUBLIC_WASTE_BASE_URL fehlt.' >&2; exit 1; }
+          consecutive_failures=0
           for attempt in {1..30}; do
             if ! curl --fail --silent --show-error --max-time 5 "${base_url}/health/live" >/dev/null; then
-              exit 0
+              ((consecutive_failures += 1))
+              if (( consecutive_failures >= 3 )); then
+                exit 0
+              fi
+            else
+              consecutive_failures=0
             fi
             sleep 5
           done

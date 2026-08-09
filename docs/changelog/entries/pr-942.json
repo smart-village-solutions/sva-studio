@@ -1,0 +1,4 @@
+{
+  "prNumber": 942,
+  "body": "Projekte und andere spezialisierte Inhalte richtig zugeordnet\n\n- Projekte erscheinen in der Inhaltsübersicht als Projekte und nicht mehr als generische Inhalte.\n- Installierte Plugins bestimmen einheitlich, welche generischen Inhaltstypen sie darstellen.\n- Unbekannte Inhaltstypen bleiben weiterhin unter Generische Inhalte erreichbar.\n- Fehler beim Speichern eines Projekts werden verständlicher angezeigt."
+}

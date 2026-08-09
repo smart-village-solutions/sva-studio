@@ -1,12 +1,15 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  StudioMediaPickerOverlay,
   type StudioMediaPickerAssetDetail,
   useStudioMediaPickerOverlay,
 } from './studio-media-picker-overlay.js';
 
-const createAsset = (overrides?: Partial<StudioMediaPickerAssetDetail>): StudioMediaPickerAssetDetail => ({
+const createAsset = (
+  overrides?: Partial<StudioMediaPickerAssetDetail>
+): StudioMediaPickerAssetDetail => ({
   id: 'asset-1',
   title: 'Hero',
   fileName: 'hero.jpg',
@@ -24,6 +27,66 @@ const createAsset = (overrides?: Partial<StudioMediaPickerAssetDetail>): StudioM
 });
 
 describe('useStudioMediaPickerOverlay', () => {
+  it('limits review metadata fields while retaining the read-only state', () => {
+    const asset = createAsset();
+    render(
+      <StudioMediaPickerOverlay
+        assets={[]}
+        isMetadataEditable={false}
+        labels={{
+          title: 'Media',
+          description: 'Select media',
+          modes: { library: 'Library', upload: 'Upload', review: 'Review' },
+          library: { searchLabel: 'Search', empty: 'Empty', select: 'Select' },
+          upload: {
+            regionLabel: 'Upload region',
+            title: 'Upload',
+            description: 'Upload an image',
+            browseAction: 'Browse',
+            supportLabel: 'Images only',
+          },
+          review: { title: 'Review', description: 'Review image' },
+          fields: {
+            title: 'Title',
+            altText: 'Alternative text',
+            description: 'Description field',
+            copyright: 'Copyright',
+            license: 'License',
+          },
+          actions: {
+            cancel: 'Cancel',
+            backToLibrary: 'Back',
+            backToUpload: 'Back to upload',
+            openMediaManagement: 'Open media',
+            useMedia: 'Use image',
+          },
+        }}
+        metadataDraft={asset.metadata}
+        mode="review"
+        onBackFromReview={vi.fn()}
+        onChangeMode={vi.fn()}
+        onClose={vi.fn()}
+        onConfirmSelection={vi.fn()}
+        onMetadataChange={vi.fn()}
+        onSearchValueChange={vi.fn()}
+        onSelectAsset={vi.fn()}
+        onUploadFile={vi.fn()}
+        open
+        reviewAsset={asset}
+        reviewSource="library"
+        searchValue=""
+        uploadPhase="idle"
+        visibleMetadataFields={['altText']}
+      />
+    );
+
+    expect((screen.getByLabelText('Alternative text') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('Title')).toBeNull();
+    expect(screen.queryByLabelText('Description field')).toBeNull();
+    expect(screen.queryByLabelText('Copyright')).toBeNull();
+    expect(screen.queryByLabelText('License')).toBeNull();
+  });
+
   it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {
     const asset = createAsset();
     const onAccept = vi.fn();
@@ -87,6 +150,41 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(result.current.open).toBe(false);
   });
 
+  it('saves only explicitly editable metadata fields', async () => {
+    const asset = createAsset({
+      title: 'hero.jpg',
+      metadata: {
+        title: '',
+        altText: 'Old alt text',
+        description: 'Hidden description',
+        copyright: 'Hidden copyright',
+        license: 'Hidden license',
+      },
+    });
+    const saveAssetMetadata = vi.fn(async (_assetId: string, metadata) =>
+      createAsset({ metadata: { ...asset.metadata, ...metadata } })
+    );
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        editableMetadataFields: ['altText'],
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(async () => asset),
+        saveAssetMetadata,
+      })
+    );
+
+    act(() => result.current.openLibrary());
+    await act(async () => result.current.selectAsset(asset));
+    act(() => result.current.updateMetadataField('altText', 'Updated alt text'));
+    await act(async () => result.current.confirmSelection());
+
+    expect(saveAssetMetadata).toHaveBeenCalledWith(asset.id, {
+      altText: 'Updated alt text',
+    });
+  });
+
   it('preserves the upload preview url until the host asset exposes one itself', async () => {
     const asset = createAsset({ previewUrl: '' });
     const onAccept = vi.fn();
@@ -95,7 +193,10 @@ describe('useStudioMediaPickerOverlay', () => {
       useStudioMediaPickerOverlay({
         onAccept,
         isSupportedUploadFile: () => true,
-        uploadAsset: vi.fn(async () => ({ assetId: asset.id, previewUrl: 'https://cdn.example.test/uploaded.jpg' })),
+        uploadAsset: vi.fn(async () => ({
+          assetId: asset.id,
+          previewUrl: 'https://cdn.example.test/uploaded.jpg',
+        })),
         loadAsset: vi.fn(async () => asset),
         saveAssetMetadata: vi.fn(async () => ({ ...asset, previewUrl: '' })),
       })

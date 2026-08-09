@@ -5,8 +5,14 @@ import {
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerMetadataDraft,
+  type StudioMediaPickerMetadataField,
   type StudioMediaPickerReviewSource,
 } from './studio-media-picker-overlay.shared.js';
+import {
+  useConfirmSelectionAction,
+  withPreviewUrlFallback,
+  type StudioMediaPickerMetadataUpdate,
+} from './use-studio-media-picker-overlay.confirm.js';
 import { useStudioMediaPickerOverlayState } from './use-studio-media-picker-overlay.state.js';
 
 export type StudioMediaPickerUploadAssetResult = Readonly<{
@@ -14,43 +20,19 @@ export type StudioMediaPickerUploadAssetResult = Readonly<{
   previewUrl?: string | null;
 }>;
 
-type StudioMediaPickerMetadataUpdate = Readonly<{
-  [Key in keyof StudioMediaPickerMetadataDraft]: string | null;
-}>;
-
-const metadataDraftsMatch = (left: StudioMediaPickerMetadataDraft, right: StudioMediaPickerMetadataDraft) =>
-  Object.keys(left).every((key) => left[key as keyof StudioMediaPickerMetadataDraft] === right[key as keyof StudioMediaPickerMetadataDraft]);
-
-const toMetadataUpdate = (draft: StudioMediaPickerMetadataDraft): StudioMediaPickerMetadataUpdate =>
-  Object.fromEntries(
-    Object.entries(draft).map(([key, value]) => [key, value.trim() || null])
-  ) as StudioMediaPickerMetadataUpdate;
-
-export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAssetDetail> = Readonly<{
-  onAccept: (asset: TAssetDetail) => void;
-  isSupportedUploadFile: (file: File) => boolean;
-  uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>;
-  loadAsset: (assetId: string) => Promise<TAssetDetail>;
-  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataUpdate) => Promise<TAssetDetail>;
-  canAcceptAsset?: (asset: TAssetDetail) => boolean;
-}>;
-
-const withPreviewUrlFallback = <TAssetDetail extends StudioMediaPickerAssetDetail>(
-  asset: TAssetDetail,
-  previewUrlFallback?: string | null
-): TAssetDetail => {
-  if (asset.previewUrl && asset.previewUrl.trim().length > 0) {
-    return asset;
-  }
-  if (!previewUrlFallback || previewUrlFallback.trim().length === 0) {
-    return asset;
-  }
-
-  return {
-    ...asset,
-    previewUrl: previewUrlFallback,
-  };
-};
+export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPickerAssetDetail> =
+  Readonly<{
+    onAccept: (asset: TAssetDetail) => void;
+    isSupportedUploadFile: (file: File) => boolean;
+    uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>;
+    loadAsset: (assetId: string) => Promise<TAssetDetail>;
+    saveAssetMetadata: (
+      assetId: string,
+      metadata: StudioMediaPickerMetadataUpdate
+    ) => Promise<TAssetDetail>;
+    canAcceptAsset?: (asset: TAssetDetail) => boolean;
+    editableMetadataFields?: readonly StudioMediaPickerMetadataField[];
+  }>;
 
 const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>(
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
@@ -60,7 +42,11 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
   const { actions } = state;
 
   return React.useCallback(
-    async (assetId: string, source: StudioMediaPickerReviewSource, previewUrlFallback?: string | null) => {
+    async (
+      assetId: string,
+      source: StudioMediaPickerReviewSource,
+      previewUrlFallback?: string | null
+    ) => {
       const currentRequestId = ++requestId.current;
       actions.setIsLoadingReviewAsset(true);
       actions.setErrorCode(null);
@@ -96,7 +82,11 @@ const useUploadFileAction = (
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   isSupportedUploadFile: (file: File) => boolean,
   uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>,
-  loadReviewAsset: (assetId: string, source: StudioMediaPickerReviewSource, previewUrlFallback?: string | null) => Promise<boolean>
+  loadReviewAsset: (
+    assetId: string,
+    source: StudioMediaPickerReviewSource,
+    previewUrlFallback?: string | null
+  ) => Promise<boolean>
 ) => {
   const { actions } = state;
 
@@ -115,7 +105,11 @@ const useUploadFileAction = (
         actions.setUploadPhase('uploading');
         const uploaded = await uploadAsset(file);
         actions.setUploadPhase('finalizing');
-        const didLoadReviewAsset = await loadReviewAsset(uploaded.assetId, 'upload', uploaded.previewUrl);
+        const didLoadReviewAsset = await loadReviewAsset(
+          uploaded.assetId,
+          'upload',
+          uploaded.previewUrl
+        );
         actions.setUploadPhase(didLoadReviewAsset ? 'success' : 'error');
       } catch {
         actions.setUploadPhase('error');
@@ -126,64 +120,21 @@ const useUploadFileAction = (
   );
 };
 
-const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPickerAssetDetail>(
-  state: ReturnType<typeof useStudioMediaPickerOverlayState>,
-  reviewAsset: TAssetDetail | null,
-  metadataDraft: StudioMediaPickerMetadataDraft,
-  saveAssetMetadata: (assetId: string, metadata: StudioMediaPickerMetadataUpdate) => Promise<TAssetDetail>,
-  onAccept: (asset: TAssetDetail) => void,
-  canAcceptAsset?: (asset: TAssetDetail) => boolean
-) => {
-  const { actions } = state;
-
-  return React.useCallback(async () => {
-    if (!reviewAsset) {
-      return;
-    }
-
-    actions.setErrorCode(null);
-
-    if (canAcceptAsset && !canAcceptAsset(reviewAsset)) {
-      actions.setErrorCode('asset_unavailable');
-      return;
-    }
-
-    if (metadataDraftsMatch(metadataDraft, createMetadataDraft(reviewAsset))) {
-      onAccept(reviewAsset);
-      actions.close();
-      return;
-    }
-
-    actions.setIsSavingReviewAsset(true);
-
-    try {
-      const updatedAsset = withPreviewUrlFallback(
-        await saveAssetMetadata(reviewAsset.id, toMetadataUpdate(metadataDraft)),
-        reviewAsset.previewUrl
-      );
-      if (canAcceptAsset && !canAcceptAsset(updatedAsset)) {
-        actions.setReviewAsset(updatedAsset);
-        actions.setMetadataDraft(createMetadataDraft(updatedAsset));
-        actions.setErrorCode('asset_unavailable');
-        return;
-      }
-      actions.setReviewAsset(updatedAsset);
-      actions.setMetadataDraft(createMetadataDraft(updatedAsset));
-      onAccept(updatedAsset);
-      actions.close();
-    } catch {
-      actions.setErrorCode('metadata_save_failed');
-    } finally {
-      actions.setIsSavingReviewAsset(false);
-    }
-  }, [actions, canAcceptAsset, metadataDraft, onAccept, reviewAsset, saveAssetMetadata]);
-};
-
-export const useStudioMediaPickerOverlayActions = <TAssetDetail extends StudioMediaPickerAssetDetail>(
+export const useStudioMediaPickerOverlayActions = <
+  TAssetDetail extends StudioMediaPickerAssetDetail,
+>(
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   options: StudioMediaPickerOverlayOptions<TAssetDetail>
 ) => {
-  const { canAcceptAsset, isSupportedUploadFile, loadAsset, onAccept, saveAssetMetadata, uploadAsset } = options;
+  const {
+    canAcceptAsset,
+    editableMetadataFields,
+    isSupportedUploadFile,
+    loadAsset,
+    onAccept,
+    saveAssetMetadata,
+    uploadAsset,
+  } = options;
   const { actions } = state;
   const reviewAsset = state.reviewAsset as TAssetDetail | null;
   const loadReviewAsset = useReviewAssetLoader(state, loadAsset);
@@ -195,10 +146,18 @@ export const useStudioMediaPickerOverlayActions = <TAssetDetail extends StudioMe
     [loadReviewAsset]
   );
 
-  const uploadFile = useUploadFileAction(state, isSupportedUploadFile, uploadAsset, loadReviewAsset);
+  const uploadFile = useUploadFileAction(
+    state,
+    isSupportedUploadFile,
+    uploadAsset,
+    loadReviewAsset
+  );
 
   const updateMetadataField = React.useCallback(
-    <Key extends keyof StudioMediaPickerMetadataDraft>(key: Key, value: StudioMediaPickerMetadataDraft[Key]) => {
+    <Key extends keyof StudioMediaPickerMetadataDraft>(
+      key: Key,
+      value: StudioMediaPickerMetadataDraft[Key]
+    ) => {
       actions.setMetadataDraft((current) => ({
         ...current,
         [key]: value,
@@ -219,7 +178,8 @@ export const useStudioMediaPickerOverlayActions = <TAssetDetail extends StudioMe
     state.metadataDraft,
     saveAssetMetadata,
     onAccept,
-    canAcceptAsset
+    canAcceptAsset,
+    editableMetadataFields
   );
 
   return {

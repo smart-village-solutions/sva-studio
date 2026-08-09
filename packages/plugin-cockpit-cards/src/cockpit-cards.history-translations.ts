@@ -4,9 +4,10 @@ export const cockpitCardsHistoryTranslations = {
     error: 'Historie konnte nicht geladen werden.',
     empty: 'Noch keine Historie verfügbar.',
     createHint: 'Speichere die Kachel, bevor die Historie verfügbar ist.',
-    sourceNotice: 'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
+    sourceNotice:
+      'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
     emptySummary: 'Keine weiteren Änderungsdetails.',
-    label: 'Cockpit-Card-Historie',
+    label: 'Kachelhistorie',
     time: 'Zeitpunkt',
     action: 'Aktion',
     actor: 'Bearbeitet von',

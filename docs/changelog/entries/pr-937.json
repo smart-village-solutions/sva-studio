@@ -1,0 +1,4 @@
+{
+  "prNumber": 937,
+  "body": "Backup-Drills verwenden aktuelle Operator-Logik\n\n- Staging- und Production-Backup-Drills prüfen weiterhin die exakte Image-Revision, führen Reparaturen am Operator-Tooling aber aus dem aktuellen Workflow-Stand aus.\n- Ein Readiness-Bericht dokumentiert die noch offenen Sicherheitsgates des bb-prignitz-Waste-Cutovers."
+}

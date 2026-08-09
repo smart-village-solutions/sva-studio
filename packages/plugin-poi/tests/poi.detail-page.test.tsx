@@ -1404,6 +1404,29 @@ describe('PoiDetailPage', () => {
     });
   });
 
+  it('returns the save action to idle when a degraded-field correction is cancelled', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({ id: 'poi-1', name: 'Rathaus', payload: {} } as never);
+    vi.mocked(getPoiDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getPoi)(contentId),
+      deviations: [{ fieldGroup: 'name' }] as never,
+    }));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    expect(await screen.findByDisplayValue('Rathaus')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neues Rathaus' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(updatePoi).not.toHaveBeenCalled();
+  });
+
   it('deletes poi items after confirmation and returns to the content overview', async () => {
     vi.mocked(getPoi).mockResolvedValueOnce({
       id: 'poi-1',

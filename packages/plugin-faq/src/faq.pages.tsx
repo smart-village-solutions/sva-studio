@@ -138,7 +138,7 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
     if (form.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [form.formState.isDirty, saveFeedback]);
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const { existingPayload, loadedItem, loadError, loading } = useFaqEditorLoader({
     contentId,
     form,

@@ -442,7 +442,7 @@ export const NewsDetailPage = ({
     if (formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [formState.isDirty, saveFeedback]);
+  }, [formState.isDirty, saveFeedback.markDirty]);
 
   React.useEffect(() => {
     if (!isLoading && initiallySaved && !initialSaveFeedbackShownRef.current) {

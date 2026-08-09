@@ -250,7 +250,7 @@ export const UserCreatePage = () => {
     if (isDirty) {
       saveFeedback.markDirty();
     }
-  }, [isDirty, saveFeedback]);
+  }, [isDirty, saveFeedback.markDirty]);
 
   const toggleGroup = React.useCallback(
     (groupId: string, checked: boolean) => {

@@ -20,7 +20,7 @@ export const useUserSaveActions = (
     if (hasUnsavedChanges) {
       saveFeedback.markDirty();
     }
-  }, [hasUnsavedChanges, saveFeedback]);
+  }, [hasUnsavedChanges, saveFeedback.markDirty]);
 
   const onSave = React.useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {

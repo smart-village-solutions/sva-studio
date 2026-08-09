@@ -288,7 +288,7 @@ export function GenericItemsDetailPage({
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [methods.formState.isDirty, saveFeedback]);
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
   const summaryErrors = React.useMemo(
     () => createSummaryErrors(methods.formState.errors),
     [methods.formState.errors]

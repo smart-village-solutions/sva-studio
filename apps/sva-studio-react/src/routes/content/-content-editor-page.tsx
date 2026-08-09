@@ -363,7 +363,7 @@ export const ContentEditorPage = ({
     if (isDirty) {
       saveFeedback.markDirty();
     }
-  }, [isDirty, saveFeedback]);
+  }, [isDirty, saveFeedback.markDirty]);
 
   React.useEffect(() => {
     if (mode === 'edit' && detailApi.content) {

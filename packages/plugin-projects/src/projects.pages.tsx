@@ -289,7 +289,7 @@ function ProjectEditor({
     if (form.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [form.formState.isDirty, saveFeedback]);
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const [tab, setTab] = React.useState<ProjectTab>('basis');
   const [item, setItem] = React.useState<ProjectContentItem>();
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(

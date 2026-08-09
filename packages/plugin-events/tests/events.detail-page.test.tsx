@@ -747,11 +747,40 @@ describe('EventsDetailPage', () => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
 
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neues Stadtfest' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
+  });
+
+  it('returns the save action to idle when a degraded-field correction is cancelled', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.mocked(getEventDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getEvent)(contentId),
+      deviations: [{ fieldGroup: 'title' }] as never,
+    }));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    expect(await screen.findByDisplayValue('Stadtfest')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neues Stadtfest' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(updateEvent).not.toHaveBeenCalled();
   });
 
   it('shows a localized summary for degraded Mainserver field groups', async () => {

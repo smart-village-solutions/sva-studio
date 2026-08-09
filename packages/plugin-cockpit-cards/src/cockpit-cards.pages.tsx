@@ -243,7 +243,7 @@ function Editor({
     if (form.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [form.formState.isDirty, saveFeedback]);
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const [tab, setTab] = React.useState<Tab>('basis');
   const [loading, setLoading] = React.useState(mode === 'edit');
   const initialSaveFeedbackShownRef = React.useRef(false);

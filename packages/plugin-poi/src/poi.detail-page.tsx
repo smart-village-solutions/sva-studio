@@ -278,7 +278,7 @@ export function PoiDetailPage({
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [methods.formState.isDirty, saveFeedback]);
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
   React.useEffect(() => {
     if (
       loading ||
@@ -714,6 +714,7 @@ export function PoiDetailPage({
           })
         )
       ) {
+        saveFeedback.reset();
         return;
       }
       const saveContent = () =>

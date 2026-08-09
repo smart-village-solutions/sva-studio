@@ -333,7 +333,7 @@ export function EventsDetailPage({
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [methods.formState.isDirty, saveFeedback]);
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
   React.useEffect(() => {
     if (
       loading ||
@@ -791,6 +791,7 @@ export function EventsDetailPage({
           })
         )
       ) {
+        saveFeedback.reset();
         return;
       }
       const saveContent = () =>

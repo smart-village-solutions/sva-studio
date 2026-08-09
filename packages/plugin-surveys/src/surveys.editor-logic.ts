@@ -184,7 +184,7 @@ export const useSurveyEditorController = ({
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
     }
-  }, [methods.formState.isDirty, saveFeedback]);
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
   useSurveyEditorLoader({ mode, contentId, methods, pt, setStatus, setIsLoading, setLoadedItem });
   React.useEffect(() => {
     if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {

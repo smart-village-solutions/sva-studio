@@ -1,0 +1,4 @@
+{
+  "prNumber": 940,
+  "body": "Abfallkalender wieder im Studio-Menü sichtbar\n\n- Global erteilte Modulberechtigungen werden auch mit einem technisch leeren Geltungsbereich korrekt erkannt.\n- Zugewiesene Fachmodule wie der Abfallkalender erscheinen dadurch wieder in der Navigation.\n- Tatsächlich eingeschränkte Berechtigungen bleiben weiterhin geschützt."
+}

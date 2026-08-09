@@ -122,7 +122,7 @@ const hasScopedConstraints = (permission: EffectivePermission): boolean =>
   permission.organizationId !== undefined ||
   permission.resourceId !== undefined ||
   permission.geoScope !== undefined ||
-  permission.scope !== undefined;
+  (permission.scope !== undefined && Object.keys(permission.scope).length > 0);
 
 const deny = (reason: UiAccessDecisionReason): UiAccessDecision => ({
   status: 'denied',

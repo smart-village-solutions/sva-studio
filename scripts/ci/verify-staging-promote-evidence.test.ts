@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -12,7 +15,25 @@ import {
   selectStagingBackupEvidenceJsonFile,
 } from './verify-staging-promote-evidence.ts';
 
+const productionBackupWorkflow = readFileSync(
+  resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
+  'utf8'
+);
+
 describe('staging parity evidence', () => {
+  it('binds the production backup drill to the immutable image reference and digest', () => {
+    const parityStep = productionBackupWorkflow.match(
+      /- name: require successful staging backup parity[\s\S]*?run: pnpm exec tsx scripts\/ci\/verify-staging-promote-evidence\.ts backup-drill/u
+    )?.[0];
+
+    expect(parityStep).toContain(
+      'DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}'
+    );
+    expect(parityStep).toContain(
+      'DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}'
+    );
+  });
+
   it('requires staging evidence only when production would change the live digest', () => {
     const target = `ghcr.io/example/app@sha256:${'a'.repeat(64)}`;
     expect(requiresStagingParity(target, target)).toBe(false);

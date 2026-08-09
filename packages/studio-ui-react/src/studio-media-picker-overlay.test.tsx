@@ -150,6 +150,41 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(result.current.open).toBe(false);
   });
 
+  it('saves only explicitly editable metadata fields', async () => {
+    const asset = createAsset({
+      title: 'hero.jpg',
+      metadata: {
+        title: '',
+        altText: 'Old alt text',
+        description: 'Hidden description',
+        copyright: 'Hidden copyright',
+        license: 'Hidden license',
+      },
+    });
+    const saveAssetMetadata = vi.fn(async (_assetId: string, metadata) =>
+      createAsset({ metadata: { ...asset.metadata, ...metadata } })
+    );
+    const { result } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        editableMetadataFields: ['altText'],
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(async () => asset),
+        saveAssetMetadata,
+      })
+    );
+
+    act(() => result.current.openLibrary());
+    await act(async () => result.current.selectAsset(asset));
+    act(() => result.current.updateMetadataField('altText', 'Updated alt text'));
+    await act(async () => result.current.confirmSelection());
+
+    expect(saveAssetMetadata).toHaveBeenCalledWith(asset.id, {
+      altText: 'Updated alt text',
+    });
+  });
+
   it('preserves the upload preview url until the host asset exposes one itself', async () => {
     const asset = createAsset({ previewUrl: '' });
     const onAccept = vi.fn();

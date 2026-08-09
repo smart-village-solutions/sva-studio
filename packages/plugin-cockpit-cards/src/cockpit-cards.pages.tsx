@@ -96,6 +96,7 @@ const defaults: CockpitCardFormValues = {
   openInNewTab: false,
   visible: true,
 };
+const cockpitCardMetadataFields = ['altText'] as const;
 type Tab = 'basis' | 'content' | 'settings' | 'history';
 const hasPersistablePublicDelivery = (delivery: { readonly deliveryUrl: string }): boolean =>
   (delivery as { readonly isPublicUrl?: unknown }).isPublicUrl === true &&
@@ -364,6 +365,7 @@ function Editor({
     []
   );
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
+    editableMetadataFields: cockpitCardMetadataFields,
     onAccept: (asset) => {
       if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
       const usage: ContentMediaUsage = {
@@ -835,7 +837,7 @@ function Editor({
         isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
         isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
         isMetadataEditable={canUpdateMedia}
-        visibleMetadataFields={['altText']}
+        visibleMetadataFields={cockpitCardMetadataFields}
         feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null}
         feedbackTone={mediaPicker.errorCode ? 'error' : 'default'}
         isAssetSelectable={(asset) => !mediaUsages.some((usage) => usage.assetId === asset.id)}

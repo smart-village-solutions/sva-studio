@@ -6,6 +6,43 @@ import { useState } from 'react';
 
 type Translate = ReturnType<typeof usePluginTranslation>;
 
+const AssignmentActions = ({
+  entry,
+  pt,
+  onEdit,
+  onDeleteRequest,
+}: Readonly<{
+  entry: WasteTourAssignmentRecord;
+  pt: Translate;
+  onEdit: (entry: WasteTourAssignmentRecord) => void;
+  onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
+}>) => (
+  <div className="flex justify-end gap-1">
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 w-8 px-0"
+      aria-label={pt('scheduling.assignments.actions.edit')}
+      tooltip={pt('scheduling.assignments.actions.edit')}
+      onClick={() => onEdit(entry)}
+    >
+      <IconEdit aria-hidden="true" className="h-4 w-4" />
+    </Button>
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="h-8 w-8 px-0"
+      aria-label={pt('scheduling.assignments.actions.delete')}
+      tooltip={pt('scheduling.assignments.actions.delete')}
+      onClick={() => onDeleteRequest(entry)}
+    >
+      <IconTrash aria-hidden="true" className="h-4 w-4" />
+    </Button>
+  </div>
+);
+
 const WasteTourAssignmentsTable = ({
   entries,
   tourLabels,
@@ -57,30 +94,12 @@ const WasteTourAssignmentsTable = ({
             </td>
             <td className="px-3 py-3">{entry.note ?? ''}</td>
             <td className="px-3 py-3">
-              <div className="flex justify-end gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 px-0"
-                  aria-label={pt('scheduling.assignments.actions.edit')}
-                  tooltip={pt('scheduling.assignments.actions.edit')}
-                  onClick={() => onEdit(entry)}
-                >
-                  <IconEdit aria-hidden="true" className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 px-0"
-                  aria-label={pt('scheduling.assignments.actions.delete')}
-                  tooltip={pt('scheduling.assignments.actions.delete')}
-                  onClick={() => onDeleteRequest(entry)}
-                >
-                  <IconTrash aria-hidden="true" className="h-4 w-4" />
-                </Button>
-              </div>
+              <AssignmentActions
+                entry={entry}
+                pt={pt}
+                onEdit={onEdit}
+                onDeleteRequest={onDeleteRequest}
+              />
             </td>
           </tr>
         ))}

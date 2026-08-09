@@ -17,18 +17,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Select,
-  StudioField,
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
+import { ValidityModeField, type ValidityMode } from './waste-management.tours-validity-field.js';
 
-type ValidityMode = WasteTourValidityDateOperation['mode'];
-
-const createDateOperation = (
-  mode: ValidityMode,
-  value: string
-): WasteTourValidityDateOperation =>
+const createDateOperation = (mode: ValidityMode, value: string): WasteTourValidityDateOperation =>
   mode === 'set' ? { mode, value } : { mode };
 
 export const buildTourValidityBulkInput = ({
@@ -49,84 +42,19 @@ export const buildTourValidityBulkInput = ({
   endDate: createDateOperation(endMode, endDate),
 });
 
-const ValidityModeField = ({
-  id,
-  label,
-  mode,
-  date,
-  dateLabel,
-  disabled,
-  onModeChange,
-  onDateChange,
-}: {
-  readonly id: string;
-  readonly label: string;
-  readonly mode: ValidityMode;
-  readonly date: string;
-  readonly dateLabel: string;
-  readonly disabled: boolean;
-  readonly onModeChange: (mode: ValidityMode) => void;
-  readonly onDateChange: (date: string) => void;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <>
-      <StudioField id={`${id}-mode`} label={label}>
-        <Select
-          id={`${id}-mode`}
-          value={mode}
-          disabled={disabled}
-          onChange={(event) => onModeChange(event.target.value as ValidityMode)}
-        >
-          <option value="unchanged">{pt('tours.bulkValidityDialog.modes.unchanged')}</option>
-          <option value="set">{pt('tours.bulkValidityDialog.modes.set')}</option>
-          <option value="clear">{pt('tours.bulkValidityDialog.modes.clear')}</option>
-        </Select>
-      </StudioField>
-      {mode === 'set' ? (
-        <StudioField id={`${id}-date`} label={dateLabel} required>
-          <Input
-            id={`${id}-date`}
-            type="date"
-            value={date}
-            disabled={disabled}
-            required
-            onChange={(event) => onDateChange(event.target.value)}
-          />
-        </StudioField>
-      ) : null}
-    </>
-  );
-};
-
-export const WasteToursValidityDialog = ({
-  open,
-  tours,
-  saving,
-  onOpenChange,
-  onSubmit,
-}: {
-  readonly open: boolean;
-  readonly tours: readonly WasteTourRecord[];
-  readonly saving: boolean;
-  readonly onOpenChange: (open: boolean) => void;
-  readonly onSubmit: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
+const useValidityDialogState = (tours: readonly WasteTourRecord[], open: boolean) => {
   const [firstMode, setFirstMode] = useState<ValidityMode>('unchanged');
   const [firstDate, setFirstDate] = useState('');
   const [endMode, setEndMode] = useState<ValidityMode>('unchanged');
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    if (!open) {
-      return;
+    if (open) {
+      setFirstMode('unchanged');
+      setFirstDate('');
+      setEndMode('unchanged');
+      setEndDate('');
     }
-    setFirstMode('unchanged');
-    setFirstDate('');
-    setEndMode('unchanged');
-    setEndDate('');
   }, [open]);
 
   const input = useMemo(
@@ -146,14 +74,95 @@ export const WasteToursValidityDialog = ({
   );
   const hasChange = firstMode !== 'unchanged' || endMode !== 'unchanged';
   const missingSetDate =
-    (firstMode === 'set' && firstDate.length === 0) ||
-    (endMode === 'set' && endDate.length === 0);
+    (firstMode === 'set' && firstDate.length === 0) || (endMode === 'set' && endDate.length === 0);
+
+  return {
+    firstMode,
+    setFirstMode,
+    firstDate,
+    setFirstDate,
+    endMode,
+    setEndMode,
+    endDate,
+    setEndDate,
+    input,
+    inapplicableTours,
+    hasInvalidRange,
+    hasChange,
+    missingSetDate,
+  } as const;
+};
+
+const InapplicableToursWarning = ({ tours }: Readonly<{ tours: readonly WasteTourRecord[] }>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return tours.length > 0 ? (
+    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3" role="alert">
+      <p className="text-sm font-semibold text-destructive">
+        {pt('tours.bulkValidityDialog.inapplicableTitle')}
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {pt('tours.bulkValidityDialog.inapplicableDescription', {
+          value: tours.map((tour) => tour.name).join(', '),
+        })}
+      </p>
+    </div>
+  ) : null;
+};
+
+type ValidityFieldsProps = Readonly<{
+  state: ReturnType<typeof useValidityDialogState>;
+  saving: boolean;
+}>;
+
+const ValidityFields = ({ state, saving }: ValidityFieldsProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <StudioFieldGroup>
+      <ValidityModeField
+        id="waste-tour-bulk-validity-first"
+        label={pt('tours.bulkValidityDialog.fields.firstMode')}
+        mode={state.firstMode}
+        date={state.firstDate}
+        dateLabel={pt('tours.bulkValidityDialog.fields.firstDate')}
+        disabled={saving}
+        onModeChange={state.setFirstMode}
+        onDateChange={state.setFirstDate}
+      />
+      <ValidityModeField
+        id="waste-tour-bulk-validity-end"
+        label={pt('tours.bulkValidityDialog.fields.endMode')}
+        mode={state.endMode}
+        date={state.endDate}
+        dateLabel={pt('tours.bulkValidityDialog.fields.endDate')}
+        disabled={saving}
+        onModeChange={state.setEndMode}
+        onDateChange={state.setEndDate}
+      />
+    </StudioFieldGroup>
+  );
+};
+
+export const WasteToursValidityDialog = ({
+  open,
+  tours,
+  saving,
+  onOpenChange,
+  onSubmit,
+}: {
+  readonly open: boolean;
+  readonly tours: readonly WasteTourRecord[];
+  readonly saving: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onSubmit: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const state = useValidityDialogState(tours, open);
   const canSubmit =
     tours.length > 0 &&
-    inapplicableTours.length === 0 &&
-    hasChange &&
-    !missingSetDate &&
-    !hasInvalidRange &&
+    state.inapplicableTours.length === 0 &&
+    state.hasChange &&
+    !state.missingSetDate &&
+    !state.hasInvalidRange &&
     !saving;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -161,7 +170,7 @@ export const WasteToursValidityDialog = ({
     if (!canSubmit) {
       return;
     }
-    await onSubmit(input);
+    await onSubmit(state.input);
   };
 
   return (
@@ -179,43 +188,9 @@ export const WasteToursValidityDialog = ({
             {pt('tours.bulkValidityDialog.selectedCount', { value: tours.length })}
           </p>
 
-          {inapplicableTours.length > 0 ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3" role="alert">
-              <p className="text-sm font-semibold text-destructive">
-                {pt('tours.bulkValidityDialog.inapplicableTitle')}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {pt('tours.bulkValidityDialog.inapplicableDescription', {
-                  value: inapplicableTours.map((tour) => tour.name).join(', '),
-                })}
-              </p>
-            </div>
-          ) : null}
-
-          <StudioFieldGroup>
-            <ValidityModeField
-              id="waste-tour-bulk-validity-first"
-              label={pt('tours.bulkValidityDialog.fields.firstMode')}
-              mode={firstMode}
-              date={firstDate}
-              dateLabel={pt('tours.bulkValidityDialog.fields.firstDate')}
-              disabled={saving}
-              onModeChange={setFirstMode}
-              onDateChange={setFirstDate}
-            />
-            <ValidityModeField
-              id="waste-tour-bulk-validity-end"
-              label={pt('tours.bulkValidityDialog.fields.endMode')}
-              mode={endMode}
-              date={endDate}
-              dateLabel={pt('tours.bulkValidityDialog.fields.endDate')}
-              disabled={saving}
-              onModeChange={setEndMode}
-              onDateChange={setEndDate}
-            />
-          </StudioFieldGroup>
-
-          {hasInvalidRange ? (
+          <InapplicableToursWarning tours={state.inapplicableTours} />
+          <ValidityFields state={state} saving={saving} />
+          {state.hasInvalidRange ? (
             <p className="text-sm text-destructive" role="alert">
               {pt('tours.bulkValidityDialog.invalidRange')}
             </p>
@@ -231,9 +206,7 @@ export const WasteToursValidityDialog = ({
               {pt('tours.bulkValidityDialog.cancel')}
             </Button>
             <Button type="submit" disabled={!canSubmit}>
-              {saving
-                ? pt('tours.actions.saving')
-                : pt('tours.bulkValidityDialog.apply')}
+              {saving ? pt('tours.actions.saving') : pt('tours.bulkValidityDialog.apply')}
             </Button>
           </DialogFooter>
         </form>

@@ -37,6 +37,38 @@ const WasteToursToolbarFilterField = ({
   </label>
 );
 
+const TourValidityPeriodField = ({
+  value,
+  onChange,
+}: Readonly<{
+  value: WasteManagementTourValidityPeriod;
+  onChange: (value: WasteManagementTourValidityPeriod) => void;
+}>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const referenceYear = new Date().getFullYear();
+  return (
+    <WasteToursToolbarFilterField label={pt('tours.filters.validityPeriodLabel')}>
+      <Select
+        aria-label={pt('tours.filters.validityPeriodLabel')}
+        value={value}
+        className="h-10 rounded-lg"
+        onChange={(event) => onChange(event.target.value as WasteManagementTourValidityPeriod)}
+      >
+        <option value="all">{pt('tours.filters.validityPeriod.all')}</option>
+        <option value="previous">
+          {pt('tours.filters.validityPeriod.previous', { year: referenceYear - 1 })}
+        </option>
+        <option value="current">
+          {pt('tours.filters.validityPeriod.current', { year: referenceYear })}
+        </option>
+        <option value="next">
+          {pt('tours.filters.validityPeriod.next', { year: referenceYear + 1 })}
+        </option>
+      </Select>
+    </WasteToursToolbarFilterField>
+  );
+};
+
 const WasteToursToolbarBasicFilterFields = ({
   fractions,
   draftQuery,
@@ -60,7 +92,6 @@ const WasteToursToolbarBasicFilterFields = ({
   | 'onDraftTourWasteFractionIdChange'
 >) => {
   const pt = usePluginTranslation('wasteManagement');
-  const referenceYear = new Date().getFullYear();
 
   return (
     <>
@@ -87,27 +118,10 @@ const WasteToursToolbarBasicFilterFields = ({
           <option value="inactive">{pt('tours.filters.status.inactive')}</option>
         </Select>
       </WasteToursToolbarFilterField>
-      <WasteToursToolbarFilterField label={pt('tours.filters.validityPeriodLabel')}>
-        <Select
-          aria-label={pt('tours.filters.validityPeriodLabel')}
-          value={draftTourValidityPeriod}
-          className="h-10 rounded-lg"
-          onChange={(event) =>
-            onDraftTourValidityPeriodChange(event.target.value as WasteManagementTourValidityPeriod)
-          }
-        >
-          <option value="all">{pt('tours.filters.validityPeriod.all')}</option>
-          <option value="previous">
-            {pt('tours.filters.validityPeriod.previous', { year: referenceYear - 1 })}
-          </option>
-          <option value="current">
-            {pt('tours.filters.validityPeriod.current', { year: referenceYear })}
-          </option>
-          <option value="next">
-            {pt('tours.filters.validityPeriod.next', { year: referenceYear + 1 })}
-          </option>
-        </Select>
-      </WasteToursToolbarFilterField>
+      <TourValidityPeriodField
+        value={draftTourValidityPeriod}
+        onChange={onDraftTourValidityPeriodChange}
+      />
       <WasteToursToolbarFilterField label={pt('tours.filters.fractionLabel')}>
         <Select
           aria-label={pt('tours.filters.fractionLabel')}

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   isWasteTourValidityApplicable,
   resolveWasteTourValidityDates,
-} from './master-data-tours.js';
+} from './master-data-tour-validity.js';
 
 describe('waste tour validity', () => {
   it('recognizes fixed and preset recurrences as applicable', () => {

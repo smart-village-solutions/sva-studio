@@ -140,6 +140,8 @@ describe('PublicWasteSelectionForm', () => {
     fireEvent.keyDown(combobox, { key: 'ArrowDown' });
     expect(combobox.getAttribute('aria-activedescendant')).toBe(options[0]?.id);
     expect(options[0]?.getAttribute('aria-selected')).toBe('true');
+    expect(options[0]?.classList.contains('selection-result--active')).toBe(true);
+    expect(options[1]?.classList.contains('selection-result--active')).toBe(false);
 
     fireEvent.keyDown(combobox, { key: 'ArrowDown' });
     fireEvent.keyDown(combobox, { key: 'Enter' });

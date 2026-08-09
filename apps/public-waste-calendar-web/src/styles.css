@@ -526,6 +526,7 @@ body {
 
 .selection-path-chip:hover,
 .selection-result:hover,
+.selection-result--active,
 .selection-trigger:hover,
 .selection-summary-action:hover {
   background: rgb(238 238 238);

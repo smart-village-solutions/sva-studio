@@ -32,7 +32,9 @@ export const PublicWasteSelectionResults = (
           key={option.id}
           id={`${props.comboboxId}-option-${option.id}`}
           type="button"
-          className="selection-result"
+          className={`selection-result${
+            props.activeOptionIndex === index ? ' selection-result--active' : ''
+          }`}
           role="option"
           aria-label={option.label}
           aria-selected={props.activeOptionIndex === index}

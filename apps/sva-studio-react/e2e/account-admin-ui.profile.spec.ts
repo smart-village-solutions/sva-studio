@@ -25,7 +25,7 @@ test('profile page supports loading and saving own profile', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Mein Konto' })).toBeVisible({ timeout: 10000 });
   await page.getByLabel('Nachname').fill('Updated');
   await page.getByRole('button', { name: 'Speichern' }).click();
-  await expect(page.getByText('Profil wurde erfolgreich gespeichert.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 });
 
 test('header menu opens privacy cockpit, detail view, and account rules', async ({ page }) => {

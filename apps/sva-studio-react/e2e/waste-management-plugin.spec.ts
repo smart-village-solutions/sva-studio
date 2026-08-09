@@ -588,7 +588,7 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
     expect(harness.requests.settingsUpdates).toHaveLength(1);
     expect(harness.requests.settingsUpdates[0]).toMatchObject({
       provider: 'postgresql',
@@ -646,7 +646,7 @@ test.describe('waste management plugin', () => {
     await outputPanel.getByLabel('Branding-Grafik').fill('https://cdn.example/logo.svg');
     await outputPanel.getByLabel('Kontakt- und Freitextblock').fill('Service-Telefon 03395 123456');
     await outputPanel.getByRole('button', { name: 'PDF-Inhalte speichern' }).click();
-    await expect(page.getByText('Die PDF-Inhalte wurden gespeichert.')).toBeVisible();
+    await expect(outputPanel.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
     expect(harness.requests.settingsUpdates.at(-1)).toMatchObject({
       pdfBrandingAssetUrl: 'https://cdn.example/logo.svg',
       pdfContactBlock: 'Service-Telefon 03395 123456',
@@ -764,7 +764,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
-    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 
     const createdPresetIds = (
       (harness.requests.settingsUpdates[0]?.customRecurrencePresets as Array<Record<string, unknown>> | undefined) ?? []
@@ -804,7 +804,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 
     await page.getByRole('tab', { name: 'Touren' }).click();
     await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
@@ -818,7 +818,7 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Löschen' }).click();
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
 
-    await expect(page.getByText('Die Abfall-Einstellungen wurden gespeichert und serverseitig geprüft.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 
     const finalSettingsUpdate = harness.requests.settingsUpdates.at(-1) as
       | {

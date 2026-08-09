@@ -15,7 +15,7 @@ import {
 } from './user-edit-model';
 import { useUserOrganizationMembershipState } from './-user-organization-membership-state';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
-import { useUserSaveActions } from './use-user-save-actions';
+import { useUserSaveActions } from './-use-user-save-actions';
 type UserEditControllerOptions = { readonly userId: string };
 
 const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {

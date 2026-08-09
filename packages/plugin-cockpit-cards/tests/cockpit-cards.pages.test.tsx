@@ -116,6 +116,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => state.navigate,
   useParams: () => state.params,
   useSearch: () => state.search,
+  useLocation: () => ({ state: {} }),
 }));
 
 const record = {
@@ -323,10 +324,13 @@ describe('cockpit cards pages', () => {
       webUrls: [{ url: 'https://example.test/ziel' }],
     });
     expect(state.create.mock.calls[0]?.[1]).toBe('user');
-    expect(state.navigate).toHaveBeenCalledWith({
-      to: '/admin/cockpit-cards/$id',
-      params: { id: 'card-new' },
-    });
+    expect(state.navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/admin/cockpit-cards/$id',
+        params: { id: 'card-new' },
+        state: expect.any(Function),
+      })
+    );
   });
 
   it('loads, updates and deletes an existing card', async () => {

@@ -146,6 +146,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
   useSearch: () => ({ page: 1, pageSize: 25 }),
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../src/poi.map-geocoding-client.js', () => ({
@@ -421,10 +422,13 @@ describe('PoiListPage', () => {
         }),
         'user'
       );
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/poi/$id',
-        params: { id: 'poi-created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/poi/$id',
+          params: { id: 'poi-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   }, 10_000);
 
@@ -464,7 +468,7 @@ describe('PoiListPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
     });
   });
 
@@ -478,7 +482,7 @@ describe('PoiListPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
-      expect(screen.getByText('Der Ort wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
     });
 
     switchSection('content');
@@ -491,7 +495,7 @@ describe('PoiListPage', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
-      expect(screen.queryByText('Der Ort wurde aktualisiert.')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'poi.actions.saved' })).toBeNull();
       expect(updatePoi).toHaveBeenCalledTimes(1);
     });
   });

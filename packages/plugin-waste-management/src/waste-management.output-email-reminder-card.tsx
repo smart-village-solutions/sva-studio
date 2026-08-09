@@ -2,7 +2,7 @@ import type {
   WasteManagementEmailReminderConfig,
   WasteManagementSettingsInterfaceOption,
 } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
+import { StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 import type { FormEventHandler } from 'react';
 
 import {
@@ -21,7 +21,7 @@ export const WasteEmailReminderConfigurationSection = ({
   hasMailTransportOptions,
   onChange,
   onSubmit,
-  running,
+  saveStatus,
   transportOptions,
   translate,
   value,
@@ -29,7 +29,7 @@ export const WasteEmailReminderConfigurationSection = ({
   readonly hasMailTransportOptions: boolean;
   readonly onChange: (value: WasteManagementEmailReminderConfig) => void;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
-  readonly running: boolean;
+  readonly saveStatus: StudioSaveStatus;
   readonly transportOptions: readonly WasteManagementSettingsInterfaceOption[];
   readonly translate: OutputTranslate;
   readonly value: WasteManagementEmailReminderConfig;
@@ -62,16 +62,16 @@ export const WasteEmailReminderConfigurationSection = ({
           <p className="text-sm text-muted-foreground">
             {translate('output.emailReminder.meta.runtimeHint')}
           </p>
-          <Button
+          <StudioSaveButton
             type="submit"
-            disabled={
-              running || ((value.enabled || value.publicSignupEnabled) && !hasMailTransportOptions)
-            }
-          >
-            {running
-              ? translate('output.emailReminder.actions.saving')
-              : translate('output.emailReminder.actions.save')}
-          </Button>
+            status={saveStatus}
+            disabled={(value.enabled || value.publicSignupEnabled) && !hasMailTransportOptions}
+            labels={{
+              idle: translate('output.emailReminder.actions.save'),
+              saving: translate('output.emailReminder.actions.saving'),
+              saved: translate('output.emailReminder.actions.saved'),
+            }}
+          />
         </div>
       </section>
     </form>

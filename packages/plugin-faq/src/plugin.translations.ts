@@ -11,6 +11,8 @@ export const pluginFaqTranslations = {
         update: 'FAQ speichern',
         delete: 'FAQ löschen',
         save: 'Speichern',
+        saving: 'Wird gespeichert…',
+        saved: 'Gespeichert',
       },
       permissions: {
         read: 'FAQ lesen',
@@ -126,6 +128,8 @@ export const pluginFaqTranslations = {
         update: 'Save FAQ',
         delete: 'Delete FAQ',
         save: 'Save',
+        saving: 'Saving…',
+        saved: 'Saved',
       },
       permissions: {
         read: 'Read FAQ',

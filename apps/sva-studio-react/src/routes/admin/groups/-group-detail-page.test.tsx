@@ -27,6 +27,8 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
+  useLocation: () => ({ state: {} }),
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({

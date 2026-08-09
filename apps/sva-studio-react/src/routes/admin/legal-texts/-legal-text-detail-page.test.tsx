@@ -28,6 +28,7 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../../../hooks/use-legal-texts', () => ({

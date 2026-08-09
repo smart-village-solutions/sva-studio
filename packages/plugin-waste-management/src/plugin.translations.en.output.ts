@@ -2,18 +2,22 @@ export const wasteManagementPluginTranslationsENOutput = {
   output: {
     pdf: {
       title: 'PDF content',
-      description: 'Define only the static PDF content here. The actual PDF export is generated in the public waste calendar web app.',
+      description:
+        'Define only the static PDF content here. The actual PDF export is generated in the public waste calendar web app.',
       fields: {
         brandingAssetUrl: 'Branding graphic',
         contactBlock: 'Contact and free-text block',
       },
       fieldHints: {
-        brandingAssetUrl: 'This logo or graphic URL is used for the branding area in the PDF header.',
-        contactBlock: 'This text is shown below the calendar as an additional contact or service note.',
+        brandingAssetUrl:
+          'This logo or graphic URL is used for the branding area in the PDF header.',
+        contactBlock:
+          'This text is shown below the calendar as an additional contact or service note.',
       },
       actions: {
         save: 'Save PDF content',
         saving: 'Saving PDF content…',
+        saved: 'Saved',
       },
       messages: {
         loading: 'Loading PDF content.',
@@ -24,7 +28,8 @@ export const wasteManagementPluginTranslationsENOutput = {
         saveForbidden: 'Missing permission for PDF configuration.',
       },
       meta: {
-        runtimeHint: 'The public web version generates the PDF ad hoc based on the selected address, fractions, and year.',
+        runtimeHint:
+          'The public web version generates the PDF ad hoc based on the selected address, fractions, and year.',
       },
     },
     emailReminder: {
@@ -100,6 +105,7 @@ export const wasteManagementPluginTranslationsENOutput = {
       actions: {
         save: 'Save email reminder service',
         saving: 'Saving email reminder service…',
+        saved: 'Saved',
       },
       messages: {
         noMailTransport:

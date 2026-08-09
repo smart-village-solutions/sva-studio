@@ -28,6 +28,7 @@ import { useResetOnFormContextChange } from './waste-management.master-data-enti
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 export { BulkLocationAssignmentsDialog } from './waste-management.master-data-location-bulk-dialog.js';
 
 type LocationDialogProps = {
@@ -222,9 +223,7 @@ export const CollectionLocationDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('masterData.collectionLocations.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={saving}>
-              {submitLabel}
-            </Button>
+            <WastePendingSaveButton type="submit" saving={saving} label={submitLabel} />
           </DialogFooter>
         </form>
       </DialogContent>

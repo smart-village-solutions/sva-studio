@@ -13,7 +13,12 @@ const accessState = vi.hoisted(() => ({
   snapshot: {
     isResolved: true,
     permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
-    unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+    unscopedPermissionActions: [
+      'surveys.read',
+      'surveys.create',
+      'surveys.update',
+      'surveys.delete',
+    ],
     assignedModules: ['surveys'],
     roles: [],
   },
@@ -22,6 +27,7 @@ const accessState = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -70,9 +76,13 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/surveys.editor-logic.js', () => ({
-  useSurveyEditorController: ({ navigateToContentList }: { navigateToContentList: () => void }) => {
+  useSurveyEditorController: ({
+    navigateToCreatedDetail,
+  }: {
+    navigateToCreatedDetail: (contentId: string) => void;
+  }) => {
     submitMock.mockImplementation(() => {
-      navigateToContentList();
+      navigateToCreatedDetail('survey-created');
     });
     return {
       isLoading: controllerState.isLoading,
@@ -96,7 +106,12 @@ describe('SurveyEditorPage', () => {
     accessState.snapshot = {
       isResolved: true,
       permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
-      unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+      unscopedPermissionActions: [
+        'surveys.read',
+        'surveys.create',
+        'surveys.update',
+        'surveys.delete',
+      ],
       assignedModules: ['surveys'],
       roles: [],
     };
@@ -120,7 +135,13 @@ describe('SurveyEditorPage', () => {
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
 
     expect(submitMock).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/admin/surveys/$id',
+        params: { id: 'survey-created' },
+        state: expect.any(Function),
+      })
+    );
   });
 
   it('fails closed for edits until the Mainserver update capability is enabled', () => {

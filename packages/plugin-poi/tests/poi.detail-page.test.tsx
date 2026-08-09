@@ -119,6 +119,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 const resolveMockMediaAsset = (assetId: string) => {
@@ -870,7 +871,7 @@ describe('PoiDetailPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
     });
   });
 
@@ -1098,10 +1099,13 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/poi/$id',
-        params: { id: 'poi-created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/poi/$id',
+          params: { id: 'poi-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 

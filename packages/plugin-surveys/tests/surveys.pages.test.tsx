@@ -30,6 +30,7 @@ vi.mock('@tanstack/react-router', () => ({
   useParams: () => useParamsMock(),
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useNavigate: () => vi.fn(),
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../src/surveys.api.js', () => ({

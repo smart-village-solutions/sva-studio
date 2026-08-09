@@ -57,7 +57,7 @@ Abhängigkeiten des aktuellen Systems.
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
-- besitzt mit `StudioSaveButton`, `useStudioSaveFeedback` und `StudioPersistentFormError` die gemeinsame Darstellung normaler Save-Lifecycles; fachliche Mutationen und Fehlerübersetzungen bleiben außerhalb des UI-Pakets
+- besitzt mit `StudioSaveButton`, `useStudioSaveFeedback` und `StudioPersistentFormError` die gemeinsame Darstellung normaler Save-Lifecycles; die kleinen `*StudioCreatedSaveFeedback`-Hilfen transportieren einen Create-Erfolg transient und datensatzgebunden zur Detailroute; fachliche Mutationen und Fehlerübersetzungen bleiben außerhalb des UI-Pakets
 - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
 - besitzt mit `ContentMediaUsageBlock` den kontrollierten, pluginneutralen Bildeditor. Er trennt stabile UI-Identität, optionale Asset-Identität, persistierbare Inhalts-URL, transiente Vorschau und redaktionelle Metadaten; pluginnahe Adapter erhalten alle nicht bearbeiteten Fachfelder.
 - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik

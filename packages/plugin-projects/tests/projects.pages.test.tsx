@@ -98,6 +98,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => state.navigate,
   useParams: () => state.params,
   useSearch: () => state.search,
+  useLocation: () => ({ state: {} }),
 }));
 
 const project = {

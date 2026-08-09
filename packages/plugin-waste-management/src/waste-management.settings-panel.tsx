@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useRef, useState } from 'react';
 import { usePluginTranslation, wasteManagementMasterDataContract } from '@sva/plugin-sdk';
-import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { StudioErrorState, StudioLoadingState, useStudioSaveFeedback } from '@sva/studio-ui-react';
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 
 import {
@@ -126,21 +126,10 @@ const useWasteSettingsState = (pt: ReturnType<typeof usePluginTranslation>) => {
 const persistWasteSettings = async (
   form: SettingsFormState,
   pt: ReturnType<typeof usePluginTranslation>
-): Promise<{
-  readonly message: StatusMessage;
-  readonly settings: WasteManagementSettingsRecord | null;
-}> => {
+): Promise<WasteManagementSettingsRecord | null> => {
   try {
     const response = await updateWasteManagementSettings(toSettingsInput(form));
-    const messageText = response?.lastHolidaySyncStatus
-      ? pt('settings.messages.saveSuccessWithHolidaySync', {
-          status: response.lastHolidaySyncStatus,
-        })
-      : pt('settings.messages.saveSuccess');
-    return {
-      settings: response,
-      message: { kind: 'success', text: messageText },
-    };
+    return response;
   } catch (saveError) {
     const code = resolveApiErrorCode(saveError);
     const error = new Error(
@@ -155,7 +144,7 @@ const persistWasteSettings = async (
 
 export const WasteSettingsPanel = () => {
   const pt = usePluginTranslation('wasteManagement');
-  const [saving, setSaving] = useState(false);
+  const saveFeedback = useStudioSaveFeedback();
   const [retrying, setRetrying] = useState(false);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const { error, form, loading, setForm, setSettings, settings } = useWasteSettingsState(pt);
@@ -168,31 +157,43 @@ export const WasteSettingsPanel = () => {
     return <StudioErrorState>{error}</StudioErrorState>;
   }
 
-  const applyPersistedSettings = (result: {
-    readonly message: StatusMessage;
-    readonly settings: WasteManagementSettingsRecord | null;
-  }) => {
+  const applyPersistedSettings = (result: WasteManagementSettingsRecord | null) => {
     startTransition(() => {
-      setSettings(result.settings);
-      setForm(mapSettingsToForm(result.settings));
-      setMessage(result.message);
+      setSettings(result);
+      setForm(mapSettingsToForm(result));
     });
   };
 
   const handleSubmit = async () => {
-    setSaving(true);
-    setMessage(null);
+    const operationId = saveFeedback.beginSaving();
+    const holidaySyncTriggered =
+      Boolean(form.holidayStateCode) && form.holidayStateCode !== settings?.holidayStateCode;
 
     try {
       const result = await persistWasteSettings(form, pt);
       applyPersistedSettings(result);
+      if (
+        holidaySyncTriggered &&
+        result?.lastHolidaySyncStatus &&
+        result.lastHolidaySyncStatus !== 'success'
+      ) {
+        setMessage({
+          kind: result.lastHolidaySyncStatus === 'failed' ? 'error' : 'warning',
+          text: pt('settings.messages.saveSuccessWithHolidaySync', {
+            status: result.lastHolidaySyncStatus,
+          }),
+        });
+        saveFeedback.markFailed(operationId);
+        return;
+      }
+      setMessage(null);
+      saveFeedback.markSaved(operationId);
     } catch (saveError) {
       setMessage({
         kind: 'error',
         text: saveError instanceof Error ? saveError.message : pt('settings.messages.saveError'),
       });
-    } finally {
-      setSaving(false);
+      saveFeedback.markFailed(operationId);
     }
   };
 
@@ -232,8 +233,12 @@ export const WasteSettingsPanel = () => {
       <WasteSettingsForm
         form={form}
         settings={settings}
-        saving={saving}
-        onChange={setForm}
+        saving={saveFeedback.status === 'saving'}
+        saveStatus={saveFeedback.status}
+        onChange={(value) => {
+          saveFeedback.markDirty();
+          setForm(value);
+        }}
         onSubmit={() => void handleSubmit()}
       />
     </div>

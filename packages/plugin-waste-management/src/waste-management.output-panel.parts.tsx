@@ -1,6 +1,7 @@
 import {
-  Button,
   Input,
+  StudioSaveButton,
+  type StudioSaveStatus,
   StudioField,
   Textarea,
 } from '@sva/studio-ui-react';
@@ -12,7 +13,7 @@ export const WasteOutputConfigurationSection = ({
   brandingAssetUrl,
   contactBlock,
   onSubmit,
-  running,
+  saveStatus,
   setBrandingAssetUrl,
   setContactBlock,
   translate,
@@ -20,7 +21,7 @@ export const WasteOutputConfigurationSection = ({
   readonly brandingAssetUrl: string;
   readonly contactBlock: string;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
-  readonly running: boolean;
+  readonly saveStatus: StudioSaveStatus;
   readonly setBrandingAssetUrl: (value: string) => void;
   readonly setContactBlock: (value: string) => void;
   readonly translate: OutputTranslate;
@@ -59,9 +60,15 @@ export const WasteOutputConfigurationSection = ({
       </StudioField>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{translate('output.pdf.meta.runtimeHint')}</p>
-        <Button type="submit" disabled={running}>
-          {running ? translate('output.pdf.actions.saving') : translate('output.pdf.actions.save')}
-        </Button>
+        <StudioSaveButton
+          type="submit"
+          status={saveStatus}
+          labels={{
+            idle: translate('output.pdf.actions.save'),
+            saving: translate('output.pdf.actions.saving'),
+            saved: translate('output.pdf.actions.saved'),
+          }}
+        />
       </div>
     </section>
   </form>

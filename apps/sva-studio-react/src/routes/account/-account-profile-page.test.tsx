@@ -106,7 +106,9 @@ vi.mock('../../providers/auth-provider', () => ({
 }));
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => <a {...props}>{children}</a>,
+  Link: ({ children, ...props }: AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props}>{children}</a>
+  ),
 }));
 
 describe('AccountProfilePage', () => {
@@ -183,7 +185,7 @@ describe('AccountProfilePage', () => {
 
     await waitFor(() => {
       expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Profil wurde erfolgreich gespeichert.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Gespeichert' })).toBeTruthy();
     });
     expect(updateMyProfileMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -245,12 +247,20 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Die E-Mail-Änderung ist in dieser Keycloak-Umgebung derzeit nicht verfügbar.')).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Die E-Mail-Änderung ist in dieser Keycloak-Umgebung derzeit nicht verfügbar.'
+        )
+      ).toBeTruthy();
     });
   });
 
   it('shows a cancellation status after returning from a cancelled account action', async () => {
-    window.history.replaceState({}, '', '/account?accountAction=cancelled&accountActionType=update-email');
+    window.history.replaceState(
+      {},
+      '',
+      '/account?accountAction=cancelled&accountActionType=update-email'
+    );
     getMyProfileMock.mockResolvedValue(resolvedProfile());
 
     render(<AccountProfilePage />);
@@ -283,9 +293,13 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toContain('Bitte zuerst anmelden, um Ihr Konto zu sehen.');
+      expect(screen.getByRole('status').textContent).toContain(
+        'Bitte zuerst anmelden, um Ihr Konto zu sehen.'
+      );
     });
-    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2F'
+    );
   });
 
   it('waits for resolved auth before loading the profile', () => {
@@ -314,12 +328,18 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.')).toBeTruthy();
+      expect(
+        screen.getByText(
+          'Die Sitzung konnte nicht stabil wiederhergestellt werden. Bitte erneut anmelden.'
+        )
+      ).toBeTruthy();
     });
     expect(screen.getByText('Status: Recovery läuft')).toBeTruthy();
     expect(screen.getByText('Empfohlene Aktion: Erneut anmelden')).toBeTruthy();
     expect(screen.getByText('Request-ID: req-account-profile')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe('/auth/login?returnTo=%2F');
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2F'
+    );
     expect(fetchMock).not.toHaveBeenCalled();
     expect(authMockValue.refetch).not.toHaveBeenCalled();
   });
@@ -373,7 +393,9 @@ describe('AccountProfilePage', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Plattform-Profile sind hier nur lesbar. Änderungen werden nicht über den tenantlokalen Profilpfad gespeichert.'
     );
-    expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(
+      true
+    );
     expect(updateMyProfileMock).not.toHaveBeenCalled();
   });
 
@@ -467,7 +489,9 @@ describe('AccountProfilePage', () => {
     render(<AccountProfilePage />);
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Profil konnte nicht geladen werden.');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Profil konnte nicht geladen werden.'
+      );
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
@@ -500,7 +524,9 @@ describe('AccountProfilePage', () => {
     fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Bitte korrigieren Sie die markierten Felder.');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Bitte korrigieren Sie die markierten Felder.'
+      );
       expect(updateMyProfileMock).not.toHaveBeenCalled();
     });
 
@@ -511,7 +537,9 @@ describe('AccountProfilePage', () => {
 
     await waitFor(() => {
       expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
-      expect(screen.getByRole('alert').textContent).toContain('Profil konnte nicht gespeichert werden.');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Profil konnte nicht gespeichert werden.'
+      );
     });
   });
 });

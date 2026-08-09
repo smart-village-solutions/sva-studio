@@ -100,12 +100,14 @@ describe('Studio save feedback', () => {
       <StudioPersistentFormError
         title="Speichern fehlgeschlagen"
         message="Der Server ist nicht erreichbar."
+        details={<p>Request-ID: request-1</p>}
         retryLabel="Erneut versuchen"
         onRetry={onRetry}
       />
     );
 
     expect(screen.getByRole('alert').textContent).toContain('Der Server ist nicht erreichbar.');
+    expect(screen.getByRole('alert').textContent).toContain('Request-ID: request-1');
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });

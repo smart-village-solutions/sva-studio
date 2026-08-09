@@ -1,5 +1,12 @@
-import { Link } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamGroupDetail as IamAdminGroupDetail } from '@sva/iam-core';
+import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
@@ -49,6 +56,8 @@ const formatDateTime = (value?: string) => {
 };
 
 export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const groupsApi = useGroups();
   const rolesApi = useRoles();
   const access = useIamResourceAccess('group');
@@ -77,6 +86,31 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
   });
   const [membershipForm, setMembershipForm] =
     React.useState<MembershipFormState>(emptyMembershipForm);
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      isLoading ||
+      !group ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'groups', groupId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/groups/$groupId',
+      params: { groupId },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [group, groupId, isLoading, location.state, navigate, saveFeedback]);
+  const setDirtyFormValues: typeof setFormValues = (value) => {
+    saveFeedback.markDirty();
+    setFormValues(value);
+  };
 
   const loadDetail = React.useCallback(async () => {
     const detail = await loadGroupDetail(groupId);
@@ -104,12 +138,14 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       return;
     }
 
+    const operationId = saveFeedback.beginSaving();
     const updated = await updateGroup(groupId, {
       displayName: formValues.displayName.trim(),
       description: formValues.description.trim() || undefined,
       isActive: formValues.isActive,
     });
     if (!updated) {
+      saveFeedback.markFailed(operationId);
       return;
     }
 
@@ -121,6 +157,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     for (const roleId of roleIdsToAssign) {
       const assigned = await assignRole(groupId, roleId);
       if (!assigned) {
+        saveFeedback.markFailed(operationId);
         return;
       }
     }
@@ -128,11 +165,13 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
     for (const roleId of roleIdsToRemove) {
       const removed = await removeRole(groupId, roleId);
       if (!removed) {
+        saveFeedback.markFailed(operationId);
         return;
       }
     }
 
     await loadDetail();
+    saveFeedback.markSaved(operationId);
   };
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -232,7 +271,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                   descriptionId="edit-group-description"
                   displayNameId="edit-group-name"
                   formValues={formValues}
-                  setFormValues={setFormValues}
+                  setFormValues={setDirtyFormValues}
                 />
                 <fieldset className="grid gap-2 text-sm text-foreground">
                   <legend>{t('admin.groups.dialogs.rolesLabel')}</legend>
@@ -248,7 +287,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                             type="checkbox"
                             checked={checked}
                             onChange={(event) =>
-                              setFormValues((current) => ({
+                              setDirtyFormValues((current) => ({
                                 ...current,
                                 roleIds: event.target.checked
                                   ? [...current.roleIds, role.id]
@@ -267,7 +306,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                     type="checkbox"
                     checked={formValues.isActive}
                     onChange={(event) =>
-                      setFormValues((current) => ({ ...current, isActive: event.target.checked }))
+                      setDirtyFormValues((current) => ({
+                        ...current,
+                        isActive: event.target.checked,
+                      }))
                     }
                   />
                   <span>{t('admin.groups.labels.active')}</span>
@@ -282,7 +324,15 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                       {t('admin.groups.actions.delete')}
                     </Button>
                   ) : null}
-                  <Button type="submit">{t('admin.groups.actions.save')}</Button>
+                  <StudioSaveButton
+                    type="submit"
+                    status={saveFeedback.status}
+                    labels={{
+                      idle: t('admin.groups.actions.save'),
+                      saving: t('account.actions.saving'),
+                      saved: t('account.actions.saved'),
+                    }}
+                  />
                 </div>
               </fieldset>
             </form>
@@ -444,12 +494,10 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
       ) : null}
 
       {mutationError ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-col gap-2">
-            <span>{groupErrorMessage(mutationError, 'admin.groups.messages.error')}</span>
-            <IamRuntimeDiagnosticDetails error={mutationError} />
-          </AlertDescription>
-        </Alert>
+        <StudioPersistentFormError
+          message={groupErrorMessage(mutationError, 'admin.groups.messages.error')}
+          details={<IamRuntimeDiagnosticDetails error={mutationError} />}
+        />
       ) : null}
 
       <ConfirmDialog

@@ -1,6 +1,6 @@
 import type { WasteManagementSettingsRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioConfirmDialog } from '@sva/studio-ui-react';
+import { StudioConfirmDialog, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 import { useState } from 'react';
 
 import { formatUpdatedAt } from './waste-management.page.support.js';
@@ -21,6 +21,7 @@ type WasteSettingsFormProps = {
   readonly form: SettingsFormState;
   readonly settings: WasteManagementSettingsRecord | null;
   readonly saving: boolean;
+  readonly saveStatus: StudioSaveStatus;
   readonly onChange: (
     next: SettingsFormState | ((current: SettingsFormState) => SettingsFormState)
   ) => void;
@@ -31,6 +32,7 @@ export const WasteSettingsForm = ({
   form,
   settings,
   saving,
+  saveStatus,
   onChange,
   onSubmit,
 }: Readonly<WasteSettingsFormProps>) => {
@@ -82,9 +84,15 @@ export const WasteSettingsForm = ({
         />
       </div>
       <div>
-        <Button type="submit" disabled={saving}>
-          {saving ? pt('settings.actions.saving') : pt('settings.actions.save')}
-        </Button>
+        <StudioSaveButton
+          type="submit"
+          status={saveStatus}
+          labels={{
+            idle: pt('settings.actions.save'),
+            saving: pt('settings.actions.saving'),
+            saved: pt('settings.actions.saved'),
+          }}
+        />
       </div>
       <StudioConfirmDialog
         open={holidayOverwriteDialogOpen}

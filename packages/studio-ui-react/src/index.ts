@@ -96,6 +96,11 @@ export {
   type StudioSaveFeedbackController,
   type StudioSaveStatus,
 } from './studio-save-feedback.js';
+export {
+  addStudioCreatedSaveFeedback,
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+} from './studio-save-navigation-feedback.js';
 export type {
   GetStudioFormFieldPropsOptions,
   StudioFormFieldBindings,

@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Button } from '@sva/studio-ui-react';
+import { Button, StudioSaveButton, type StudioSaveStatus } from '@sva/studio-ui-react';
 
 import { type SurveyEditorMode } from './surveys.editor.shared.js';
 
@@ -22,15 +22,25 @@ export function SurveyEditorPrimaryAction({
   mode,
   formId,
   pt,
+  saveStatus,
 }: Readonly<{
   mode: SurveyEditorMode;
   disabled?: boolean;
   formId: string;
   pt: (key: string) => string;
+  saveStatus: StudioSaveStatus;
 }>) {
   return (
-    <Button type="submit" form={formId} disabled={disabled}>
-      {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
-    </Button>
+    <StudioSaveButton
+      type="submit"
+      form={formId}
+      disabled={disabled}
+      status={saveStatus}
+      labels={{
+        idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+        saving: pt('actions.saving'),
+        saved: pt('actions.saved'),
+      }}
+    />
   );
 }

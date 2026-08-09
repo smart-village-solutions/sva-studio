@@ -653,7 +653,11 @@ describe('News editor pages', () => {
     };
     expect(navigation.state({ __TSR_index: 0 })).toEqual({
       __TSR_index: 0,
-      newsSaveFeedback: { kind: 'created', contentId: 'news-created' },
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceType: 'news',
+        resourceId: 'news-created',
+      },
     });
   });
 
@@ -1022,7 +1026,7 @@ describe('News editor pages', () => {
 
   it('consumes create feedback once on the generated detail page', async () => {
     locationStateMock.mockReturnValue({
-      newsSaveFeedback: { kind: 'created', contentId: 'news-1' },
+      studioSaveFeedback: { kind: 'created', resourceType: 'news', resourceId: 'news-1' },
     });
 
     render(<NewsEditPage />);
@@ -1045,9 +1049,9 @@ describe('News editor pages', () => {
     expect(
       navigation.state({
         __TSR_index: 0,
-        newsSaveFeedback: { kind: 'created', contentId: 'news-1' },
+        studioSaveFeedback: { kind: 'created', resourceType: 'news', resourceId: 'news-1' },
       })
-    ).toEqual({ __TSR_index: 0, newsSaveFeedback: undefined });
+    ).toEqual({ __TSR_index: 0, studioSaveFeedback: undefined });
   });
 
   it('renders the publication card inside the settings tab for scheduled news', async () => {

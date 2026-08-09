@@ -1,4 +1,5 @@
 import React from 'react';
+import type { StudioSaveStatus } from '@sva/studio-ui-react';
 
 import { Label } from '../../../components/ui/label';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
@@ -40,7 +41,8 @@ export const TENANT_IAM_AXIS_TITLE_KEYS = {
 } as const;
 
 export type WorkspaceTabKey = 'betrieb' | 'doctor' | 'einstellungen';
-export type ProvisioningIntent = 'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
+export type ProvisioningIntent =
+  'provision' | 'provision_admin_client' | 'reset_tenant_admin' | 'rotate_client_secret';
 export type WorkflowAction = NonNullable<SetupWorkflowStep['action']>;
 
 export type WorkspaceSectionCommonProps = {
@@ -54,6 +56,7 @@ export type ConfigurationSectionProps = WorkspaceSectionCommonProps & {
   readonly tenantSecretUserInputRequired: boolean;
   readonly setDetailFormValues: React.Dispatch<React.SetStateAction<DetailFormValues | null>>;
   readonly onUpdateSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  readonly saveStatus?: StudioSaveStatus;
 };
 
 export type OperationsSectionProps = WorkspaceSectionCommonProps & {
@@ -104,7 +107,11 @@ export const FormLabelWithHelp = ({
   );
 };
 
-export const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded' | 'blocked' | 'unknown' }) => {
+export const TenantIamStatusBadge = ({
+  status,
+}: {
+  status?: 'ready' | 'degraded' | 'blocked' | 'unknown';
+}) => {
   const tone =
     status === 'ready'
       ? 'bg-emerald-100 text-emerald-800'
@@ -114,5 +121,9 @@ export const TenantIamStatusBadge = ({ status }: { status?: 'ready' | 'degraded'
           ? 'bg-amber-100 text-amber-900'
           : 'bg-muted text-muted-foreground';
 
-  return <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>{status ?? 'unknown'}</span>;
+  return (
+    <span className={`rounded-full px-2 py-1 text-xs font-medium ${tone}`}>
+      {status ?? 'unknown'}
+    </span>
+  );
 };

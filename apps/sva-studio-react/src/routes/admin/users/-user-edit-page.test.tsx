@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UserEditPage } from './-user-edit-page';
@@ -16,6 +17,13 @@ const useGroupsMock = vi.fn();
 const useOrganizationsMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const getUserTimelineMock = vi.fn();
+const navigateMock = vi.fn();
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children }: { children: ReactNode }) => <>{children}</>,
+  useLocation: () => ({ state: {} }),
+  useNavigate: () => navigateMock,
+}));
 
 vi.mock('../../../hooks/use-iam-resource-access', () => ({
   useIamResourceAccess: () => ({
@@ -988,7 +996,7 @@ describe('UserEditPage', () => {
 
     await waitFor(() => {
       expect(save).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Nutzerdaten wurden gespeichert.')).toBeTruthy();
+      expect(screen.queryByText('Nutzerdaten wurden gespeichert.')).toBeNull();
     });
   });
 

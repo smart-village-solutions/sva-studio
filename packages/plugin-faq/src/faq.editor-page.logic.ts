@@ -1,6 +1,7 @@
 import type { NavigateOptions } from '@tanstack/react-router';
 import type { UseFormReturn } from 'react-hook-form';
 import type { MainserverPrincipalType } from '@sva/studio-ui-react';
+import { addStudioCreatedSaveFeedback } from '@sva/studio-ui-react';
 import * as React from 'react';
 
 import { createFaq, deleteFaq, FaqApiError, getFaq, updateFaq } from './faq.api.js';
@@ -93,12 +94,18 @@ export const useFaqEditorActions = ({
       const input = mapFaqFormValuesToGenericItemInput(values, existingPayload);
       if (mode === 'create') {
         const item = await createFaq(input, actingPrincipalType);
-        await navigate({ to: '/admin/faq/$id', params: { id: item.id } });
+        await navigate({
+          to: '/admin/faq/$id',
+          params: { id: item.id },
+          state: (previous) => addStudioCreatedSaveFeedback(previous, 'faq', item.id),
+        });
       } else if (contentId) {
         await updateFaq(contentId, input, actingPrincipalType);
       }
+      return true;
     } catch (error) {
       setSaveErrorMessage(resolveSaveErrorMessage(error, pt));
+      return false;
     }
   };
 

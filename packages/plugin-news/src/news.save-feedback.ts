@@ -1,33 +1,17 @@
-const NEWS_SAVE_FEEDBACK_KEY = 'newsSaveFeedback';
+import {
+  addStudioCreatedSaveFeedback,
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 
-type NewsCreatedSaveFeedback = Readonly<{
-  kind: 'created';
-  contentId: string;
-}>;
-
-type NewsSaveFeedbackHistoryState = Readonly<Record<string, unknown>> &
-  Readonly<{
-    newsSaveFeedback?: NewsCreatedSaveFeedback;
-  }>;
+const NEWS_RESOURCE_TYPE = 'news';
 
 export const addNewsCreatedSaveFeedback = <TState extends object>(
   state: TState,
   contentId: string
-) => ({
-  ...state,
-  [NEWS_SAVE_FEEDBACK_KEY]: { kind: 'created', contentId } satisfies NewsCreatedSaveFeedback,
-});
+) => addStudioCreatedSaveFeedback(state, NEWS_RESOURCE_TYPE, contentId);
 
-export const removeNewsSaveFeedback = <TState extends object>(state: TState) => ({
-  ...state,
-  [NEWS_SAVE_FEEDBACK_KEY]: undefined,
-});
+export const removeNewsSaveFeedback = removeStudioSaveFeedback;
 
-export const hasNewsCreatedSaveFeedback = (state: unknown, contentId: string | undefined) => {
-  if (!contentId || typeof state !== 'object' || state === null) {
-    return false;
-  }
-
-  const feedback = (state as NewsSaveFeedbackHistoryState).newsSaveFeedback;
-  return feedback?.kind === 'created' && feedback.contentId === contentId;
-};
+export const hasNewsCreatedSaveFeedback = (state: unknown, contentId: string | undefined) =>
+  hasStudioCreatedSaveFeedback(state, NEWS_RESOURCE_TYPE, contentId);

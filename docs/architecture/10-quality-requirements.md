@@ -51,7 +51,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - normale Create- und Update-Aktionen zeigen `idle`, `saving` und den exakt zwei Sekunden sichtbaren `saved`-Zustand am gemeinsamen Save-Button
   - neue Eingaben und neue Submits bereinigen bestehende Erfolgs-Timer; veraltete Request-Abschlüsse dürfen keinen neueren Zustand überschreiben
   - technische Fehler bleiben im betroffenen Formular als Alert persistent, während feldbezogene Validierungsfehler mit ihren Controls verknüpft sind
-  - Create-Routentests weisen den einmaligen, datensatzgebundenen Übergang zur erzeugten Detailseite nach; Reload oder ein fremder Datensatz dürfen den Erfolg nicht erneut anzeigen
+  - Create-Routentests weisen für seitengebundene Flows den einmaligen, datensatzgebundenen Übergang zur erzeugten Detailseite nach; Reload oder ein fremder Datensatz dürfen den Erfolg nicht erneut anzeigen
+  - Tests begründeter Create-Ausnahmen weisen entweder den unmittelbar aktualisierten Elternkontext oder den weiterhin erforderlichen mehrstufigen Setup-Kontext ohne Erfolgstoast nach
   - partielle Ergebnisse zeigen keinen vollständigen Erfolg und wiederholen ausschließlich sicher idempotente Teilschritte
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung

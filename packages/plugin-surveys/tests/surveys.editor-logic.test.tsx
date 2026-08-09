@@ -59,7 +59,7 @@ describe('useSurveyEditorController', () => {
         mode: 'edit',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'user',
       });
     });
@@ -105,7 +105,7 @@ describe('useSurveyEditorController', () => {
         mode: 'edit',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'user',
       });
     });
@@ -151,7 +151,7 @@ describe('useSurveyEditorController', () => {
           contentId,
           methods,
           pt,
-          navigateToContentList,
+          navigateToCreatedDetail: navigateToContentList,
           actingPrincipalType: 'user',
         });
       },
@@ -240,7 +240,7 @@ describe('useSurveyEditorController', () => {
         contentId: 'survey-1',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'organization',
       });
     });
@@ -299,7 +299,7 @@ describe('useSurveyEditorController', () => {
         mode: 'create',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'organization',
       });
     });
@@ -310,9 +310,10 @@ describe('useSurveyEditorController', () => {
 
     expect(createSurveyMock).toHaveBeenCalledOnce();
     expect(createSurveyMock.mock.calls[0]?.at(-1)).toBe('organization');
-    expect(result.current.status).toEqual({ kind: 'success', text: 'Umfrage wurde angelegt.' });
+    expect(result.current.status).toBeNull();
+    expect(result.current.saveStatus).toBe('saved');
     expect(result.current.loadedItem?.id).toBe('survey-created');
-    expect(navigateToContentList).toHaveBeenCalledOnce();
+    expect(navigateToContentList).toHaveBeenCalledWith('survey-created');
   });
 
   it('surfaces the translated load fallback when loading an existing survey fails without a message', async () => {
@@ -329,7 +330,7 @@ describe('useSurveyEditorController', () => {
         contentId: 'survey-1',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'user',
       });
     });
@@ -360,7 +361,7 @@ describe('useSurveyEditorController', () => {
         contentId: 'survey-1',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'user',
       });
     });
@@ -420,7 +421,7 @@ describe('useSurveyEditorController', () => {
           contentId,
           methods,
           pt,
-          navigateToContentList,
+          navigateToCreatedDetail: navigateToContentList,
           actingPrincipalType: 'user',
         });
       },
@@ -462,7 +463,7 @@ describe('useSurveyEditorController', () => {
         mode: 'create',
         methods,
         pt,
-        navigateToContentList,
+        navigateToCreatedDetail: navigateToContentList,
         actingPrincipalType: 'user',
       });
     });

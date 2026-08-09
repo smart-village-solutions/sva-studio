@@ -4,26 +4,13 @@ import type { ReactNode } from 'react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import type { FractionFormState } from './waste-management.master-data.forms.js';
-
-export type FractionFormErrors = {
-  readonly name?: string;
-  readonly pdfShortLabel?: string;
-  readonly color?: string;
-};
+import {
+  isHexColor,
+  type FractionFormErrors,
+} from './waste-management.master-data-fraction-validation.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 const normalizeColor = (value: string) => value.trim().toLowerCase();
-const isHexColor = (value: string) => /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
-
-export const validateFractionForm = (
-  form: FractionFormState,
-  pt: ReturnType<typeof usePluginTranslation>
-): FractionFormErrors => ({
-  name: form.name.trim() ? undefined : pt('masterData.fractions.createView.validation.nameRequired'),
-  pdfShortLabel: form.pdfShortLabel.trim()
-    ? undefined
-    : pt('masterData.fractions.createView.validation.pdfShortLabelRequired'),
-  color: isHexColor(form.color) ? undefined : pt('masterData.fractions.createView.validation.colorRequired'),
-});
 
 export const FractionSection = ({
   title,
@@ -55,9 +42,7 @@ export const FractionFormActions = ({
   readonly onCancel: () => void;
 }) => (
   <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
-    <Button type="submit" disabled={saving}>
-      {saveLabel}
-    </Button>
+    <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
     <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
       {cancelLabel}
     </Button>
@@ -73,7 +58,9 @@ const FractionDescriptionHint = ({
 }) => (
   <span className="flex items-center justify-between gap-3">
     <span>{pt('masterData.fractions.createView.fieldHints.description')}</span>
-    <span className="shrink-0">{pt('masterData.fractions.createView.meta.descriptionCounter', { count })}</span>
+    <span className="shrink-0">
+      {pt('masterData.fractions.createView.meta.descriptionCounter', { count })}
+    </span>
   </span>
 );
 
@@ -165,7 +152,13 @@ export const FractionBasicsSection = ({
       title={pt('masterData.fractions.createView.sections.basics')}
       description={pt('masterData.fractions.createView.sections.basicsHint')}
     >
-      <FractionBasicsFields form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} pt={pt} />
+      <FractionBasicsFields
+        form={form}
+        submitAttempted={submitAttempted}
+        errors={errors}
+        onChange={onChange}
+        pt={pt}
+      />
     </FractionSection>
   );
 };
@@ -240,13 +233,19 @@ export const FractionVisibilitySection = ({
             onChange={(active) => onChange({ active })}
           />
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</p>
+            <p className="text-sm font-medium text-foreground">
+              {form.active ? pt('common.active') : pt('common.inactive')}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {form.active ? pt('masterData.fractions.createView.statusHints.active') : pt('masterData.fractions.createView.statusHints.inactive')}
+              {form.active
+                ? pt('masterData.fractions.createView.statusHints.active')
+                : pt('masterData.fractions.createView.statusHints.inactive')}
             </p>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">{pt('masterData.fractions.createView.fieldHints.active')}</p>
+        <p className="text-sm text-muted-foreground">
+          {pt('masterData.fractions.createView.fieldHints.active')}
+        </p>
       </div>
     </FractionSection>
   );

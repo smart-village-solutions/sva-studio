@@ -1,10 +1,19 @@
-import type { WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCityRecord,
+  WasteHouseNumberRecord,
+  WasteRegionRecord,
+  WasteStreetRecord,
+} from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioFieldGroup } from '@sva/studio-ui-react';
 
 import { WasteManagementFormSwitch } from './waste-management.form-switch.js';
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
-import { LocationRegionCityFields, LocationStreetHouseNumberFields } from './waste-management.master-data-location-form.select-groups.js';
+import {
+  LocationRegionCityFields,
+  LocationStreetHouseNumberFields,
+} from './waste-management.master-data-location-form.select-groups.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 export const LocationFormActions = ({
   cancelLabel,
@@ -18,9 +27,7 @@ export const LocationFormActions = ({
   readonly onCancel: () => void;
 }) => (
   <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
-    <Button type="submit" disabled={saving}>
-      {saveLabel}
-    </Button>
+    <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
     <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
       {cancelLabel}
     </Button>
@@ -46,7 +53,13 @@ export const LocationSelectSection = ({
 }) => (
   <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
     <StudioFieldGroup columns={2}>
-      <LocationRegionCityFields form={form} regions={regions} filteredCities={filteredCities} cityError={cityError} onChange={onChange} />
+      <LocationRegionCityFields
+        form={form}
+        regions={regions}
+        filteredCities={filteredCities}
+        cityError={cityError}
+        onChange={onChange}
+      />
       <LocationStreetHouseNumberFields
         form={form}
         filteredStreets={filteredStreets}
@@ -74,7 +87,9 @@ export const LocationStatusSection = ({
           ariaLabel={pt('masterData.collectionLocations.fields.active')}
           onChange={(nextActive) => onChange({ active: nextActive })}
         />
-        <span className="text-sm text-muted-foreground">{active ? pt('common.active') : pt('common.inactive')}</span>
+        <span className="text-sm text-muted-foreground">
+          {active ? pt('common.active') : pt('common.inactive')}
+        </span>
       </div>
     </section>
   );

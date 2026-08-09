@@ -1,17 +1,20 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  addStudioCreatedSaveFeedback,
   StudioField,
   StudioFieldGroup,
   StudioFormSummaryErrors,
+  StudioPersistentFormError,
+  StudioSaveButton,
   getStudioFormFieldProps,
   type StudioFormFieldError,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
@@ -66,7 +69,9 @@ const UserCreateGroupAssignments = ({
   onToggleGroup,
 }: Pick<UserCreateAssignmentsProps, 'selectedGroupIds' | 'groups' | 'onToggleGroup'>) => (
   <fieldset className="grid gap-3 rounded-lg border border-border/60 p-4">
-    <legend className="px-1 text-sm font-medium text-foreground">{t('admin.users.createDialog.groupsLabel')}</legend>
+    <legend className="px-1 text-sm font-medium text-foreground">
+      {t('admin.users.createDialog.groupsLabel')}
+    </legend>
     <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.groupsHint')}</p>
     {groups.length === 0 ? (
       <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.groupsEmpty')}</p>
@@ -109,7 +114,9 @@ const UserCreateRoleAssignments = ({
       {t('admin.users.createDialog.advancedRolesTitle')}
     </summary>
     <div className="grid gap-3 border-t border-border/60 px-4 py-4">
-      <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.advancedRolesHint')}</p>
+      <p className="text-sm text-muted-foreground">
+        {t('admin.users.createDialog.advancedRolesHint')}
+      </p>
       <div className="grid gap-3 md:grid-cols-2">
         {roles.map((role) => {
           const selected = selectedRoleIds.includes(role.id);
@@ -130,20 +137,76 @@ const UserCreateRoleAssignments = ({
         })}
       </div>
       {roles.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t('admin.users.createDialog.rolePlaceholder')}</p>
+        <p className="text-sm text-muted-foreground">
+          {t('admin.users.createDialog.rolePlaceholder')}
+        </p>
       ) : null}
     </div>
   </details>
 );
+
+const useCreateUserSave = (
+  usersApi: ReturnType<typeof useUsers>,
+  navigate: ReturnType<typeof useNavigate>,
+  saveFeedback: ReturnType<typeof useStudioSaveFeedback>
+) =>
+  React.useCallback(
+    async (values: UserCreateFormValues) => {
+      const operationId = saveFeedback.beginSaving();
+      const created = await usersApi.createUser({
+        email: values.email.trim(),
+        firstName: values.firstName.trim() || undefined,
+        lastName: values.lastName.trim() || undefined,
+        displayName: `${values.firstName} ${values.lastName}`.trim() || undefined,
+        roleIds: values.roleIds,
+        groupIds: values.groupIds,
+        sendPasswordSetupEmail: values.sendPasswordSetupEmail,
+      });
+
+      if (!created) {
+        saveFeedback.markFailed(operationId);
+        return;
+      }
+
+      const invitationSearch =
+        created.invitation.status === 'failed'
+          ? ({
+              invite: 'failed',
+              ...(created.invitation.error?.code
+                ? { inviteCode: created.invitation.error.code }
+                : {}),
+              ...(created.invitation.error?.message
+                ? { inviteMessage: created.invitation.error.message }
+                : {}),
+            } as const)
+          : undefined;
+
+      saveFeedback.markSaved(operationId);
+      await navigate({
+        to: '/admin/users/$userId',
+        params: { userId: created.user.id },
+        search: invitationSearch,
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'users', created.user.id),
+      });
+    },
+    [navigate, saveFeedback, usersApi]
+  );
 
 export const UserCreatePage = () => {
   const navigate = useNavigate();
   const usersApi = useUsers();
   const rolesApi = useRoles();
   const groupsApi = useGroups();
-  const selectableRoles = React.useMemo(() => selectAssignableRoles(rolesApi.roles), [rolesApi.roles]);
+  const saveFeedback = useStudioSaveFeedback();
+  const selectableRoles = React.useMemo(
+    () => selectAssignableRoles(rolesApi.roles),
+    [rolesApi.roles]
+  );
   const userCreateSchema = React.useMemo(() => createUserCreateSchema(), []);
-  const selectableGroups = React.useMemo(() => selectAssignableGroups(groupsApi.groups), [groupsApi.groups]);
+  const selectableGroups = React.useMemo(
+    () => selectAssignableGroups(groupsApi.groups),
+    [groupsApi.groups]
+  );
   const form = useForm<UserCreateFormValues>({
     resolver: zodResolver(userCreateSchema as never),
     defaultValues: {
@@ -157,7 +220,8 @@ export const UserCreatePage = () => {
     reValidateMode: 'onChange',
   });
   const {
-    formState: { errors, isSubmitting },
+    formState: { errors, isDirty },
+    getValues,
     handleSubmit,
     register,
     setValue,
@@ -180,6 +244,13 @@ export const UserCreatePage = () => {
   const selectedGroupIds = watch('groupIds');
   const selectedRoleIds = watch('roleIds');
   const sendPasswordSetupEmail = watch('sendPasswordSetupEmail');
+  const saveUser = useCreateUserSave(usersApi, navigate, saveFeedback);
+
+  React.useEffect(() => {
+    if (isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [isDirty, saveFeedback]);
 
   const toggleGroup = React.useCallback(
     (groupId: string, checked: boolean) => {
@@ -201,43 +272,18 @@ export const UserCreatePage = () => {
     [selectedRoleIds, setValue]
   );
 
-  const onSubmit = handleSubmit(async (values) => {
-    const created = await usersApi.createUser({
-      email: values.email.trim(),
-      firstName: values.firstName.trim() || undefined,
-      lastName: values.lastName.trim() || undefined,
-      displayName: `${values.firstName} ${values.lastName}`.trim() || undefined,
-      roleIds: values.roleIds,
-      groupIds: values.groupIds,
-      sendPasswordSetupEmail: values.sendPasswordSetupEmail,
-    });
-
-    if (!created) {
-      return;
-    }
-
-    const invitationSearch =
-      created.invitation.status === 'failed'
-        ? ({
-            invite: 'failed',
-            ...(created.invitation.error?.code ? { inviteCode: created.invitation.error.code } : {}),
-            ...(created.invitation.error?.message ? { inviteMessage: created.invitation.error.message } : {}),
-          } as const)
-        : undefined;
-
-    await navigate({
-      to: '/admin/users/$userId',
-      params: { userId: created.user.id },
-      search: invitationSearch,
-    });
-  });
+  const onSubmit = handleSubmit(saveUser, () => saveFeedback.reset());
 
   return (
-    <section className="space-y-5" aria-busy={isSubmitting}>
+    <section className="space-y-5" aria-busy={saveFeedback.status === 'saving'}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('admin.users.createDialog.title')}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.users.createDialog.description')}</p>
+          <h1 className="text-3xl font-semibold text-foreground">
+            {t('admin.users.createDialog.title')}
+          </h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            {t('admin.users.createDialog.description')}
+          </p>
         </div>
         <Button asChild type="button" variant="outline">
           <Link to="/admin/users">{t('admin.users.detail.backToList')}</Link>
@@ -246,7 +292,10 @@ export const UserCreatePage = () => {
 
       <Card className="space-y-4 p-4">
         <form className="grid gap-4" onSubmit={onSubmit} noValidate>
-          <StudioFormSummaryErrors errors={summaryErrors} title={t('account.messages.validationSummary')} />
+          <StudioFormSummaryErrors
+            errors={summaryErrors}
+            title={t('account.messages.validationSummary')}
+          />
           <StudioField {...emailField} label={t('account.fields.email')} required>
             <Input {...register('email')} type="email" />
           </StudioField>
@@ -278,7 +327,10 @@ export const UserCreatePage = () => {
                 })
               }
             />
-            <label htmlFor="create-user-send-password-setup-email" className="cursor-pointer text-sm font-medium">
+            <label
+              htmlFor="create-user-send-password-setup-email"
+              className="cursor-pointer text-sm font-medium"
+            >
               {t('admin.users.createDialog.sendPasswordSetupEmail')}
             </label>
           </div>
@@ -287,20 +339,27 @@ export const UserCreatePage = () => {
             <Button asChild type="button" variant="outline">
               <Link to="/admin/users">{t('account.actions.cancel')}</Link>
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? t('admin.users.actions.creating') : t('admin.users.actions.create')}
-            </Button>
+            <StudioSaveButton
+              type="submit"
+              status={saveFeedback.status}
+              labels={{
+                idle: t('admin.users.actions.create'),
+                saving: t('account.actions.saving'),
+                saved: t('account.actions.saved'),
+              }}
+            />
           </div>
         </form>
       </Card>
 
       {usersApi.mutationError ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-col gap-3">
-            <span>{userErrorMessage(usersApi.mutationError, 'mutation')}</span>
-            <IamRuntimeDiagnosticDetails error={usersApi.mutationError} />
-          </AlertDescription>
-        </Alert>
+        <StudioPersistentFormError
+          message={userErrorMessage(usersApi.mutationError, 'mutation')}
+          details={<IamRuntimeDiagnosticDetails error={usersApi.mutationError} />}
+          retryLabel={t('account.actions.retry')}
+          retryDisabled={saveFeedback.status === 'saving'}
+          onRetry={() => void saveUser(getValues())}
+        />
       ) : null}
     </section>
   );

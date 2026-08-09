@@ -25,7 +25,8 @@ vi.mock('@sva/plugin-sdk', () => ({
   },
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   cn: (...parts: string[]) => parts.filter(Boolean).join(' '),
   Badge: ({ children }: { readonly children: React.ReactNode; readonly variant?: string }) => (
     <span>{children}</span>

@@ -1,5 +1,12 @@
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
-import { Link } from '@tanstack/react-router';
+import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+  StudioDetailPageTemplate,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamUserListItem } from '@sva/core';
 import React from 'react';
 
@@ -98,6 +105,8 @@ const buildMembershipDrafts = (
   );
 
 export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPageProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const organizationsApi = useOrganizations();
   const access = useIamResourceAccess('organization');
   const canUpdateOrganization = isIamAccessAllowed(access.update);
@@ -115,6 +124,12 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   >({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  const updateFormValues: typeof setFormValues = (value) => {
+    saveFeedback.markDirty();
+    setFormValues(value);
+  };
   const [parentOrganizations, setParentOrganizations] = React.useState<
     readonly OrganizationParentOption[]
   >(() => organizationsApi.organizations);
@@ -177,6 +192,33 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     organizationsApi.selectedOrganization?.id === organizationId
       ? organizationsApi.selectedOrganization
       : null;
+
+  React.useEffect(() => {
+    if (
+      organizationsApi.isLoading ||
+      !selectedOrganization ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'organizations', organizationId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/organizations/$organizationId',
+      params: { organizationId },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [
+    location.state,
+    navigate,
+    organizationId,
+    organizationsApi.isLoading,
+    saveFeedback,
+    selectedOrganization,
+  ]);
 
   React.useEffect(() => {
     const timeoutId = globalThis.setTimeout(() => {
@@ -288,10 +330,12 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     if (!canUpdateOrganization) {
       return;
     }
-    await organizationsApi.updateOrganization(
+    const operationId = saveFeedback.beginSaving();
+    const updated = await organizationsApi.updateOrganization(
       organizationId,
       toOrganizationMutationPayload(formValues)
     );
+    (updated ? saveFeedback.markSaved : saveFeedback.markFailed)(operationId);
   };
 
   const onAssignMembership = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -490,8 +534,18 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 excludeOrganizationId={organizationId}
                 organizations={parentOrganizations}
                 onSubmit={(event) => void onSubmitOrganization(event)}
-                setFormValues={setFormValues}
-                submitLabel={t('admin.organizations.actions.save')}
+                setFormValues={updateFormValues}
+                submitAction={
+                  <StudioSaveButton
+                    type="submit"
+                    status={saveFeedback.status}
+                    labels={{
+                      idle: t('admin.organizations.actions.save'),
+                      saving: t('account.actions.saving'),
+                      saved: t('account.actions.saved'),
+                    }}
+                  />
+                }
                 formValues={formValues}
                 readOnly={!canUpdateOrganization}
               />
@@ -744,11 +798,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         ) : null}
 
         {organizationsApi.mutationError && selectedOrganization ? (
-          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>
-              {organizationErrorMessage(organizationsApi.mutationError)}
-            </AlertDescription>
-          </Alert>
+          <StudioPersistentFormError
+            message={organizationErrorMessage(organizationsApi.mutationError)}
+          />
         ) : null}
       </StudioDetailPageTemplate>
 

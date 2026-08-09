@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
   getHostMediaAsset,
@@ -18,16 +18,20 @@ import {
   type HostMediaAssetDetail,
 } from '@sva/plugin-sdk';
 import {
+  addStudioCreatedSaveFeedback,
   Button,
+  hasStudioCreatedSaveFeedback,
   StudioConfirmDialog,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  StudioSaveButton,
   contentMediaUsageToReference,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
+  removeStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
@@ -38,6 +42,7 @@ import {
   type StudioMediaPickerErrorCode,
   type StudioMediaPickerOverlayLabels,
   useStudioMediaPickerOverlay,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { createGenericItem, updateGenericItem } from './generic-items.api.js';
@@ -271,12 +276,19 @@ export function GenericItemsDetailPage({
 }>) {
   const pt = usePluginTranslation('genericItems');
   const navigate = useNavigate();
+  const location = useLocation();
   const labels = React.useMemo(() => createGenericItemsDetailLabels(pt), [pt]);
   const mediaPickerLabels = React.useMemo(() => createGenericItemsMediaPickerLabels(pt), [pt]);
   const methods = useForm<GenericItemsDetailFormValues>({
     resolver: zodResolver(genericItemsDetailFormSchema),
     defaultValues: createDefaultGenericItemsDetailFormValues(),
   });
+  const saveFeedback = useStudioSaveFeedback();
+  React.useEffect(() => {
+    if (methods.formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [methods.formState.isDirty, saveFeedback]);
   const summaryErrors = React.useMemo(
     () => createSummaryErrors(methods.formState.errors),
     [methods.formState.errors]
@@ -360,9 +372,27 @@ export function GenericItemsDetailPage({
     setStatus,
     onLoaded: handleLoadedItem,
   });
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      loading ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'generic-items', contentId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/generic-items/$id',
+      params: { id: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [contentId, loading, location.state, navigate, saveFeedback]);
   const { activeTab, deleting, handleDelete, setActiveTab } = useGenericItemsDetailActions({
     contentId,
-    methods,
     mode,
     navigate,
     pt,
@@ -512,51 +542,62 @@ export function GenericItemsDetailPage({
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
   );
 
-  const onSubmit = methods.handleSubmit(async (values) => {
-    if (!canSave) return;
-    setStatus(null);
-    try {
-      const input = {
-        ...mapGenericItemsDetailFormValuesToInput(values),
-        mediaContents: genericItemMediaUsagesToContents(mediaUsages),
-      };
-      const saveContent = () =>
-        mode === 'create'
-          ? createGenericItem(input, actingPrincipalType)
-          : updateGenericItem(contentId ?? '', input, actingPrincipalType);
-      const result = requiresReferenceSync
-        ? await saveContentWithHostMediaReferences({
-            fetch: globalThis.fetch.bind(globalThis),
-            saveContent,
-            getTargetId: (saved) => saved.id,
-            targetType: genericItemsMediaReferenceTargetType,
-            references: mediaUsages.flatMap((usage) => {
-              const reference = contentMediaUsageToReference(usage);
-              return reference ? [reference] : [];
-            }),
-          })
-        : { status: 'complete' as const, saved: await saveContent() };
-      if (result.status === 'reference_failed') {
-        setRetryReferenceSync(() => result.retryReferenceSync);
+  const onSubmit = methods.handleSubmit(
+    async (values) => {
+      if (!canSave) return;
+      setStatus(null);
+      const operationId = saveFeedback.beginSaving();
+      try {
+        const input = {
+          ...mapGenericItemsDetailFormValuesToInput(values),
+          mediaContents: genericItemMediaUsagesToContents(mediaUsages),
+        };
+        const saveContent = () =>
+          mode === 'create'
+            ? createGenericItem(input, actingPrincipalType)
+            : updateGenericItem(contentId ?? '', input, actingPrincipalType);
+        const result = requiresReferenceSync
+          ? await saveContentWithHostMediaReferences({
+              fetch: globalThis.fetch.bind(globalThis),
+              saveContent,
+              getTargetId: (saved) => saved.id,
+              targetType: genericItemsMediaReferenceTargetType,
+              references: mediaUsages.flatMap((usage) => {
+                const reference = contentMediaUsageToReference(usage);
+                return reference ? [reference] : [];
+              }),
+            })
+          : { status: 'complete' as const, saved: await saveContent() };
+        if (result.status === 'reference_failed') {
+          setRetryReferenceSync(() => result.retryReferenceSync);
+          setMediaUsages((current) =>
+            current.map((usage) =>
+              usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
+            )
+          );
+          setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+          saveFeedback.markFailed(operationId);
+          return;
+        }
         setMediaUsages((current) =>
-          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
+          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
         );
-        setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
-        return;
+        setStatus(null);
+        saveFeedback.markSaved(operationId);
+        if (mode === 'create')
+          await navigate({
+            to: '/admin/generic-items/$id',
+            params: { id: result.saved.id },
+            state: (previous) =>
+              addStudioCreatedSaveFeedback(previous, 'generic-items', result.saved.id),
+          });
+      } catch {
+        setStatus({ kind: 'error', text: pt('messages.saveError') });
+        saveFeedback.markFailed(operationId);
       }
-      setMediaUsages((current) =>
-        current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
-      );
-      setStatus({
-        kind: 'success',
-        text: pt(mode === 'create' ? 'messages.createSuccess' : 'messages.updateSuccess'),
-      });
-      if (mode === 'create')
-        await navigate({ to: '/admin/generic-items/$id', params: { id: result.saved.id } });
-    } catch {
-      setStatus({ kind: 'error', text: pt('messages.saveError') });
-    }
-  });
+    },
+    () => saveFeedback.reset()
+  );
 
   if (loading) {
     return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
@@ -571,13 +612,16 @@ export function GenericItemsDetailPage({
         }
         primaryAction={
           canSave ? (
-            <Button
+            <StudioSaveButton
               type="button"
-              disabled={methods.formState.isSubmitting}
+              status={saveFeedback.status}
               onClick={() => void onSubmit()}
-            >
-              {mode === 'create' ? pt('actions.create') : pt('actions.update')}
-            </Button>
+              labels={{
+                idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),
+                saving: pt('actions.saving'),
+                saved: pt('actions.saved'),
+              }}
+            />
           ) : undefined
         }
         actions={

@@ -1,11 +1,20 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { GlobalDateShiftFormState } from './waste-management.scheduling.shared.js';
 import { WasteSchedulingGlobalFields } from './waste-management.scheduling-global-fields.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 export const GlobalDateShiftDialog = ({
   open,
@@ -34,15 +43,35 @@ export const GlobalDateShiftDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? pt('scheduling.global.dialog.createTitle') : pt('scheduling.global.dialog.editTitle')}</DialogTitle>
-          <DialogDescription>{mode === 'create' ? pt('scheduling.global.dialog.createDescription') : pt('scheduling.global.dialog.editDescription')}</DialogDescription>
+          <DialogTitle>
+            {mode === 'create'
+              ? pt('scheduling.global.dialog.createTitle')
+              : pt('scheduling.global.dialog.editTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? pt('scheduling.global.dialog.createDescription')
+              : pt('scheduling.global.dialog.editDescription')}
+          </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           <StatusNotice message={message} />
           <WasteSchedulingGlobalFields form={form} tours={tours} pt={pt} onChange={onChange} />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('scheduling.global.actions.cancel')}</Button>
-            <Button type="submit" disabled={saving}>{saving ? pt('scheduling.global.actions.saving') : mode === 'create' ? pt('scheduling.global.actions.create') : pt('scheduling.global.actions.save')}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('scheduling.global.actions.cancel')}
+            </Button>
+            <WastePendingSaveButton
+              type="submit"
+              saving={saving}
+              label={
+                saving
+                  ? pt('scheduling.global.actions.saving')
+                  : mode === 'create'
+                    ? pt('scheduling.global.actions.create')
+                    : pt('scheduling.global.actions.save')
+              }
+            />
           </DialogFooter>
         </form>
       </DialogContent>

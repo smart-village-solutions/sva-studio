@@ -17,6 +17,7 @@ import type React from 'react';
 
 import type { LocationTourLinkBulkFormState } from './waste-management.master-data.forms.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 type BulkDialogProps = {
   readonly open: boolean;
@@ -96,9 +97,12 @@ export const BulkLocationAssignmentsDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('masterData.collectionLocations.bulk.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={saving || selectedLocations.length === 0}>
-              {submitLabel}
-            </Button>
+            <WastePendingSaveButton
+              type="submit"
+              saving={saving}
+              disabled={selectedLocations.length === 0}
+              label={submitLabel}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

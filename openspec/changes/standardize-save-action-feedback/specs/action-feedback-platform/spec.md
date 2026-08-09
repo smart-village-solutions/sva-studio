@@ -100,9 +100,9 @@ Das System MUST einen erfolgreichen Primärwrite mit fehlgeschlagenem erforderli
 - **THEN** bietet die Meldung keinen irreführenden generischen Retry an
 - **AND** beschreibt sie stattdessen die nächste sichere Handlung
 
-### Requirement: Erfolgreiche Create-Flows wechseln in den erzeugten Detailkontext
+### Requirement: Erfolgreiche seitengebundene Create-Flows wechseln in den erzeugten Detailkontext
 
-Das System MUST nach einer erfolgreichen Anlage auf die kanonische Detailroute des neu erzeugten Datensatzes wechseln und dort den Save-Erfolg einmalig anzeigen.
+Das System MUST nach einer erfolgreichen Anlage in einem seitengebundenen Create-Flow auf die kanonische Detailroute des neu erzeugten Datensatzes wechseln und dort den Save-Erfolg einmalig anzeigen. Untergeordnete Dialoge ohne eigene Detailroute und mehrstufige Setup-Flows MAY stattdessen im unmittelbar sichtbaren Ergebnis- beziehungsweise Einrichtungskontext verbleiben.
 
 #### Scenario: Datensatz wird erfolgreich angelegt
 
@@ -122,6 +122,19 @@ Das System MUST nach einer erfolgreichen Anlage auf die kanonische Detailroute d
 - **WHEN** der Zielscreen einen veralteten oder zu einer anderen Datensatz-ID gehörenden transienten Zustand erhält
 - **THEN** ignoriert er diesen Zustand
 - **AND** zeigt keinen falschen Save-Erfolg
+
+#### Scenario: Untergeordneter Create-Dialog besitzt keine Detailroute
+
+- **WHEN** ein untergeordneter Create-Dialog erfolgreich einen Datensatz erzeugt und keine eigene Detailroute besitzt
+- **THEN** darf sich der Dialog schließen
+- **AND** erscheint der erzeugte Datensatz unmittelbar im unverändert sichtbaren Elternkontext
+- **AND** wird kein zusätzlicher Erfolgstoast angezeigt
+
+#### Scenario: Create ist Teil eines mehrstufigen Setup-Flows
+
+- **WHEN** ein erfolgreich erzeugter Datensatz im aktuellen Create-Kontext noch eine konkrete Einrichtungsentscheidung oder Provisionierungsanleitung benötigt
+- **THEN** darf der Flow in diesem sichtbaren Setup-Kontext verbleiben
+- **AND** bildet der gemeinsame Save-Button den abgeschlossenen Create-Lifecycle ab
 
 ### Requirement: Normale Speicherergebnisse verwenden keine globalen oder blockierenden Surfaces
 

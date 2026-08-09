@@ -20,7 +20,7 @@ Labels werden vom Host oder Plugin übersetzt übergeben. Das UI-Package besitzt
 
 Ein Formular startet jeden zulässigen Submit mit `beginSaving()` und reicht die zurückgegebene Operations-ID an `markSaved()` oder `markFailed()` weiter. Nur der aktuelle Request darf den sichtbaren Zustand abschließen. Während `saving` verhindert der Button einen weiteren Submit.
 
-Nach einem erfolgreichen Update setzt das Formular seine gespeicherten Werte zurück und ruft `markSaved()` auf. Eine spätere Eingabe ruft `markDirty()` auf und beendet den Erfolgszustand sofort. Ein technischer Fehler ruft `markFailed()` auf, lässt die persistente Fehlermeldung aber bis zu einem erfolgreichen Retry oder dem Verlassen des Kontexts sichtbar.
+Nach einem erfolgreichen Update setzt das Formular seine gespeicherten Werte zurück und ruft `markSaved()` auf. Eine spätere Eingabe ruft `markDirty()` auf und beendet den Erfolgszustand sofort. Ein technischer Fehler ruft `markFailed()` auf. Die persistente Fehlermeldung verschwindet weder per Timer noch allein durch Dirty-State-Änderungen. Ein expliziter neuer Submit darf sie durch den sichtbaren `saving`-Zustand ersetzen; bei erneutem Fehlschlag erscheint die aktuelle Fehlermeldung wieder, bei Erfolg der `saved`-Zustand.
 
 ## Create-zu-Detail-Übergang
 
@@ -28,7 +28,7 @@ Ein erfolgreicher Create-Flow navigiert auf die kanonische Detailroute des erzeu
 
 ## Sichere Retries und partielle Ergebnisse
 
-Eine Retry-Aktion darf nur angeboten werden, wenn die Wiederholung fachlich sicher ist. Während des Retry bleibt der bisherige Fehler sichtbar; erst ein erfolgreicher Abschluss entfernt ihn.
+Eine Retry-Aktion darf nur angeboten werden, wenn die Wiederholung fachlich sicher ist. Während des Retry bleibt der bisherige Fehler sichtbar oder wird eindeutig durch den laufenden `saving`-Zustand ersetzt; ein erneuter Fehlschlag muss wieder persistent erscheinen.
 
 Wenn der Primärwrite erfolgreich war, aber ein erforderlicher Folgeschritt scheitert, darf der Button nicht `Gespeichert` anzeigen. Im News-Editor wiederholt der Retry für fehlgeschlagene Medienreferenzen ausschließlich deren idempotente Synchronisierung und nicht den bereits erfolgreichen Inhaltswrite.
 
@@ -38,4 +38,4 @@ Toasts sind nur für Aktionen ohne geeigneten stabilen Kontext vorgesehen, etwa 
 
 ## Referenzflüsse und weitere Migration
 
-`/interfaces` ist der Host-Referenzfluss, der News-Editor der Plugin-Referenzfluss. Weitere Formulare werden erst nach der Inventur in `standardize-save-action-feedback` in fachlich zusammenhängenden PRs migriert. Plugins führen keine eigenen Save-Timer, Basis-Save-Buttons oder globalen Feedback-Renderer ein.
+`/interfaces` ist der Host-Referenzfluss, der News-Editor der Plugin-Referenzfluss. Die vollständige klassifizierte Migration ist in [studio-save-action-inventory.md](./studio-save-action-inventory.md) dokumentiert. Plugins führen keine eigenen Save-Timer, Basis-Save-Buttons oder globalen Feedback-Renderer ein.

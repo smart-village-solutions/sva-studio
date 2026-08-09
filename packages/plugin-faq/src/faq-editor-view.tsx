@@ -1,13 +1,14 @@
 import {
-  Button,
   MainserverPrincipalControl,
   StudioDetailPageTemplate,
   StudioFormSummary,
   StudioFormSummaryErrors,
+  StudioSaveButton,
   resolveMainserverPrincipalOptions,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioFormFieldError,
+  type StudioSaveStatus,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
@@ -58,11 +59,37 @@ type FaqEditorViewProps = Readonly<{
   principalControl?: MainserverPrincipalControlModel;
   pt: FaqTranslator;
   saveErrorMessage: string | null;
+  saveStatus: StudioSaveStatus;
   setActingPrincipalType: (value: MainserverPrincipalType) => void;
   setActiveTab: (value: FaqTab) => void;
   setDeleteDialogOpen: (value: boolean) => void;
   setDeleteErrorMessage: (value: string | null) => void;
 }>;
+
+const FaqEditorPrimaryAction = ({
+  canSave,
+  deletePending,
+  formId,
+  mode,
+  pt,
+  saveStatus,
+}: Pick<
+  FaqEditorViewProps,
+  'canSave' | 'deletePending' | 'formId' | 'mode' | 'pt' | 'saveStatus'
+>) =>
+  canSave ? (
+    <StudioSaveButton
+      type="submit"
+      form={formId}
+      status={saveStatus}
+      disabled={deletePending}
+      labels={{
+        idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+        saving: pt('actions.saving'),
+        saved: pt('actions.saved'),
+      }}
+    />
+  ) : undefined;
 
 export const FaqEditorView = (props: FaqEditorViewProps) => (
   <StudioDetailPageTemplate
@@ -79,17 +106,7 @@ export const FaqEditorView = (props: FaqEditorViewProps) => (
         pt={props.pt}
       />
     }
-    primaryAction={
-      props.canSave ? (
-        <Button
-          type="submit"
-          form={props.formId}
-          disabled={props.form.formState.isSubmitting || props.deletePending}
-        >
-          {props.pt(props.mode === 'create' ? 'actions.create' : 'actions.update')}
-        </Button>
-      ) : undefined
-    }
+    primaryAction={<FaqEditorPrimaryAction {...props} />}
   >
     <FormProvider {...props.form}>
       <form id={props.formId} className="space-y-5" onSubmit={props.onSubmit} noValidate>

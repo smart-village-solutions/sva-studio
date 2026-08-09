@@ -35,7 +35,8 @@ export const rulesAccountDEResources = {
   },
   actions: {
     save: 'Inhaltsregel speichern',
-    saving: 'Inhaltsregel wird gespeichert ...',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
   },
   messages: {
     loading: 'Kontoregeln werden geladen ...',

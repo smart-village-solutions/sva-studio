@@ -8,7 +8,11 @@ const useGroupsMock = vi.fn();
 const navigateMock = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -65,15 +69,21 @@ describe('GroupCreatePage', () => {
 
     render(<GroupCreatePage />);
 
-    fireEvent.change(screen.getByLabelText('Technischer Gruppenschlüssel', { selector: '#create-group-key' }), {
-      target: { value: ' Admins Team ' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Technischer Gruppenschlüssel', { selector: '#create-group-key' }),
+      {
+        target: { value: ' Admins Team ' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#create-group-name' }), {
       target: { value: ' Admins Team ' },
     });
-    fireEvent.change(screen.getByLabelText('Beschreibung', { selector: '#create-group-description' }), {
-      target: { value: ' Administrative Gruppe ' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Beschreibung', { selector: '#create-group-description' }),
+      {
+        target: { value: ' Administrative Gruppe ' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Gruppe anlegen' }));
 
     await waitFor(() => {
@@ -86,6 +96,7 @@ describe('GroupCreatePage', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/groups/$groupId',
       params: { groupId: 'group-99' },
+      state: expect.any(Function),
     });
   });
 
@@ -98,6 +109,8 @@ describe('GroupCreatePage', () => {
 
     render(<GroupCreatePage />);
 
-    expect(screen.getByRole('alert').textContent).toContain('Die Gruppenänderung enthält ungültige Daten.');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Die Gruppenänderung enthält ungültige Daten.'
+    );
   });
 });

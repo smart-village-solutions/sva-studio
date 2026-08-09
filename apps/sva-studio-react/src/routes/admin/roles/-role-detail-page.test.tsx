@@ -47,6 +47,7 @@ vi.mock('@tanstack/react-router', () => ({
     );
   },
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../../../hooks/use-roles', () => ({

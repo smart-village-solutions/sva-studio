@@ -1,5 +1,12 @@
 import * as React from 'react';
-import { StudioFormActionBar } from '@sva/studio-ui-react';
+import { useLocation, useNavigate } from '@tanstack/react-router';
+import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+  StudioFormActionBar,
+  StudioPersistentFormError,
+  StudioSaveButton,
+} from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -99,6 +106,8 @@ export const UserEditPage = ({
   invitationStatus,
   invitationErrorMessage,
 }: UserEditPageProps) => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const access = useIamResourceAccess('user');
   const canUpdateUser = isIamAccessAllowed(access.update);
   const {
@@ -130,7 +139,8 @@ export const UserEditPage = ({
     removeOrganizationMembership,
     resetFormValues,
     retryUserLoad,
-    saveSuccess,
+    saveStatus,
+    showSaved,
     saveOrganizationMembership,
     selectOrganizationAssignment,
     selectableGroups,
@@ -145,6 +155,26 @@ export const UserEditPage = ({
     updateOrganizationMembershipDraft,
     userApi,
   } = useUserEditController({ userId });
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      userApi.isLoading ||
+      !userApi.user ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'users', userId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    showSaved();
+    void navigate({
+      to: '/admin/users/$userId',
+      params: { userId },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [location.state, navigate, showSaved, userApi.isLoading, userApi.user, userId]);
 
   const mutationError = userApi.mutationError ?? organizationMutationError;
   const organizationOptions = React.useMemo(
@@ -290,9 +320,16 @@ export const UserEditPage = ({
 
       {canUpdateUser ? (
         <StudioFormActionBar position="start">
-          <Button type="submit" form="user-edit-form" disabled={isSaving}>
-            {isSaving ? t('account.actions.saving') : t('admin.users.edit.save')}
-          </Button>
+          <StudioSaveButton
+            type="submit"
+            form="user-edit-form"
+            status={saveStatus}
+            labels={{
+              idle: t('admin.users.edit.save'),
+              saving: t('account.actions.saving'),
+              saved: t('account.actions.saved'),
+            }}
+          />
         </StudioFormActionBar>
       ) : null}
 
@@ -916,23 +953,16 @@ export const UserEditPage = ({
           </section>
 
           {mutationError ? (
-            <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-              <AlertDescription className="flex flex-col gap-3">
-                <span>{userErrorMessage(mutationError, 'mutation')}</span>
-                <IamRuntimeDiagnosticDetails error={mutationError} />
-              </AlertDescription>
-            </Alert>
+            <StudioPersistentFormError
+              message={userErrorMessage(mutationError, 'mutation')}
+              details={<IamRuntimeDiagnosticDetails error={mutationError} />}
+            />
           ) : null}
           {invitationStatus === 'failed' ? (
             <Alert className="border-secondary/40 bg-secondary/10 text-secondary" role="status">
               <AlertDescription>
                 {invitationErrorMessage ?? t('admin.users.edit.invitationWarning')}
               </AlertDescription>
-            </Alert>
-          ) : null}
-          {saveSuccess ? (
-            <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
-              <AlertDescription>{t('admin.users.edit.saveSuccess')}</AlertDescription>
             </Alert>
           ) : null}
           {passwordSetupEmailSuccess ? (
@@ -952,9 +982,15 @@ export const UserEditPage = ({
             <Button type="button" variant="outline" onClick={resetFormValues}>
               {t('account.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('account.actions.saving') : t('admin.users.edit.save')}
-            </Button>
+            <StudioSaveButton
+              type="submit"
+              status={saveStatus}
+              labels={{
+                idle: t('admin.users.edit.save'),
+                saving: t('account.actions.saving'),
+                saved: t('account.actions.saved'),
+              }}
+            />
           </StudioFormActionBar>
         </fieldset>
       </form>

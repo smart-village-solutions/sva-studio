@@ -10,12 +10,12 @@ import {
   hasUserFormChanges,
   splitPermissionTrace,
   toUserFormValues,
-  toUserUpdatePayload,
   type UserEditTabKey,
   type UserFormValues,
 } from './user-edit-model';
 import { useUserOrganizationMembershipState } from './-user-organization-membership-state';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
+import { useUserSaveActions } from './use-user-save-actions';
 type UserEditControllerOptions = { readonly userId: string };
 
 const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
@@ -58,7 +58,9 @@ const useUserEditFormState = (user: ReturnType<typeof useUser>['user']) => {
 };
 
 const useUserTimelineState = (activeTab: UserEditTabKey, userId: string) => {
-  const [timeline, setTimeline] = React.useState<Awaited<ReturnType<typeof getUserTimeline>>['data']>([]);
+  const [timeline, setTimeline] = React.useState<
+    Awaited<ReturnType<typeof getUserTimeline>>['data']
+  >([]);
   const [isLoadingTimeline, setIsLoadingTimeline] = React.useState(false);
   const [timelineError, setTimelineError] = React.useState<string | null>(null);
   const [hasLoadedTimeline, setHasLoadedTimeline] = React.useState(false);
@@ -187,93 +189,19 @@ const useUserEditTabState = (hasUnsavedChanges: boolean) => {
   };
 };
 
-const useUserSaveActions = (
-  userApi: ReturnType<typeof useUser>,
-  formValues: UserFormValues,
-  setFormValues: React.Dispatch<React.SetStateAction<UserFormValues>>
-) => {
-  const [isSaving, setIsSaving] = React.useState(false);
-  const [isSendingPasswordSetupEmail, setIsSendingPasswordSetupEmail] = React.useState(false);
-  const [isReprovisioningMainserverData, setIsReprovisioningMainserverData] = React.useState(false);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
-  const [passwordSetupEmailSuccess, setPasswordSetupEmailSuccess] = React.useState(false);
-  const [mainserverReprovisionSuccess, setMainserverReprovisionSuccess] = React.useState(false);
-
-  const onSave = React.useCallback(
-    async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      setIsSaving(true);
-      setSaveSuccess(false);
-      setPasswordSetupEmailSuccess(false);
-      setMainserverReprovisionSuccess(false);
-
-      const result = await userApi.save(toUserUpdatePayload(formValues));
-      if (result) {
-        setFormValues(toUserFormValues(result));
-        setSaveSuccess(true);
-      }
-
-      setIsSaving(false);
-    },
-    [formValues, setFormValues, userApi]
-  );
-
-  const onSendPasswordSetupEmail = React.useCallback(async () => {
-    if (!userApi.resendPasswordSetupEmail || isSendingPasswordSetupEmail) {
-      return;
-    }
-
-    setIsSendingPasswordSetupEmail(true);
-    setSaveSuccess(false);
-    setPasswordSetupEmailSuccess(false);
-    setMainserverReprovisionSuccess(false);
-
-    const sent = await userApi.resendPasswordSetupEmail();
-    if (sent) {
-      setPasswordSetupEmailSuccess(true);
-    }
-
-    setIsSendingPasswordSetupEmail(false);
-  }, [isSendingPasswordSetupEmail, userApi]);
-
-  const onReprovisionMainserverData = React.useCallback(async () => {
-    if (!userApi.reprovisionMainserverData || isReprovisioningMainserverData) {
-      return;
-    }
-
-    setIsReprovisioningMainserverData(true);
-    setSaveSuccess(false);
-    setPasswordSetupEmailSuccess(false);
-    setMainserverReprovisionSuccess(false);
-
-    const updated = await userApi.reprovisionMainserverData();
-    if (updated) {
-      setMainserverReprovisionSuccess(true);
-    }
-
-    setIsReprovisioningMainserverData(false);
-  }, [isReprovisioningMainserverData, userApi]);
-
-  return {
-    isReprovisioningMainserverData,
-    isSaving,
-    isSendingPasswordSetupEmail,
-    mainserverReprovisionSuccess,
-    onReprovisionMainserverData,
-    onSave,
-    onSendPasswordSetupEmail,
-    passwordSetupEmailSuccess,
-    saveSuccess,
-  };
-};
-
 export const useUserEditController = ({ userId }: UserEditControllerOptions) => {
   const userApi = useUser(userId);
   const rolesApi = useRoles();
   const groupsApi = useGroups();
 
-  const selectableRoles = React.useMemo(() => selectAssignableRoles(rolesApi.roles), [rolesApi.roles]);
-  const selectableGroups = React.useMemo(() => selectAssignableGroups(groupsApi.groups), [groupsApi.groups]);
+  const selectableRoles = React.useMemo(
+    () => selectAssignableRoles(rolesApi.roles),
+    [rolesApi.roles]
+  );
+  const selectableGroups = React.useMemo(
+    () => selectAssignableGroups(groupsApi.groups),
+    [groupsApi.groups]
+  );
 
   const { formValues, hasUnsavedChanges, setFormValues } = useUserEditFormState(userApi.user);
   const {
@@ -286,7 +214,10 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     setUnsavedDialogOpen,
     unsavedDialogOpen,
   } = useUserEditTabState(hasUnsavedChanges);
-  const { isLoadingTimeline, reloadTimeline, timeline, timelineError } = useUserTimelineState(activeTab, userId);
+  const { isLoadingTimeline, reloadTimeline, timeline, timelineError } = useUserTimelineState(
+    activeTab,
+    userId
+  );
   const {
     isSaving,
     isSendingPasswordSetupEmail,
@@ -296,8 +227,9 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     onReprovisionMainserverData,
     onSendPasswordSetupEmail,
     passwordSetupEmailSuccess,
-    saveSuccess,
-  } = useUserSaveActions(userApi, formValues, setFormValues);
+    saveStatus,
+    showSaved,
+  } = useUserSaveActions(userApi, formValues, setFormValues, hasUnsavedChanges);
   const { effective: effectivePermissionTrace, inactive: inactivePermissionTrace } = React.useMemo(
     () => splitPermissionTrace(userApi.user?.permissionTrace),
     [userApi.user?.permissionTrace]
@@ -381,7 +313,8 @@ export const useUserEditController = ({ userId }: UserEditControllerOptions) => 
     retryUserLoad,
     rolesApi,
     saveOrganizationMembership,
-    saveSuccess,
+    saveStatus,
+    showSaved,
     availableOrganizations,
     selectOrganizationAssignment,
     selectableGroups,

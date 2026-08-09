@@ -1,18 +1,18 @@
 import type { IamDeletionContentStrategy, IamMyDeletionRulesOverview } from '@sva/core';
+import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { getMyDeletionRules, saveMyDeletionRulesContentPreference } from '../../lib/iam-api';
-import { t } from '../../i18n';
 
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 export const useAccountRulesState = () => {
   const [deletionRules, setDeletionRules] = React.useState<IamMyDeletionRulesOverview | null>(null);
-  const [contentPreferenceDraft, setContentPreferenceDraft] = React.useState<IamDeletionContentStrategy>('retain');
+  const [contentPreferenceDraft, setContentPreferenceDraft] =
+    React.useState<IamDeletionContentStrategy>('retain');
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const saveFeedback = useStudioSaveFeedback();
 
   const loadDeletionRules = React.useCallback(async () => {
     setIsLoading(true);
@@ -38,32 +38,41 @@ export const useAccountRulesState = () => {
       return;
     }
 
-    setIsSaving(true);
+    const operationId = saveFeedback.beginSaving();
     setErrorMessage(null);
-    setStatusMessage(null);
     try {
       const response = await saveMyDeletionRulesContentPreference({
         strategy:
-          contentPreferenceDraft === deletionRules.rules.defaultContentStrategy ? undefined : contentPreferenceDraft,
+          contentPreferenceDraft === deletionRules.rules.defaultContentStrategy
+            ? undefined
+            : contentPreferenceDraft,
       });
       setDeletionRules(response);
       setContentPreferenceDraft(response.contentPreference.effectiveStrategy);
-      setStatusMessage(t('account.rules.messages.saveSuccess'));
+      saveFeedback.markSaved(operationId);
     } catch (error) {
       setErrorMessage(toErrorMessage(error));
-    } finally {
-      setIsSaving(false);
+      saveFeedback.markFailed(operationId);
     }
-  }, [contentPreferenceDraft, deletionRules]);
+  }, [contentPreferenceDraft, deletionRules, saveFeedback]);
+
+  const updateContentPreferenceDraft = React.useCallback(
+    (value: IamDeletionContentStrategy) => {
+      saveFeedback.markDirty();
+      setErrorMessage(null);
+      setContentPreferenceDraft(value);
+    },
+    [saveFeedback]
+  );
 
   return {
     contentPreferenceDraft,
     deletionRules,
     errorMessage,
     isLoading,
-    isSaving,
+    isSaving: saveFeedback.status === 'saving',
+    saveStatus: saveFeedback.status,
     saveContentPreference,
-    setContentPreferenceDraft,
-    statusMessage,
+    setContentPreferenceDraft: updateContentPreferenceDraft,
   };
 };

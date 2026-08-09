@@ -245,7 +245,8 @@ export const iamAdminENResources = {
     },
     actions: {
       save: 'Save deletion rules',
-      saving: 'Saving deletion rules ...',
+      saving: 'Saving…',
+      saved: 'Saved',
     },
     messages: {
       loading: 'Loading tenant deletion rules ...',

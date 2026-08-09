@@ -1,40 +1,30 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { toDatetimeLocalValue } from '@sva/plugin-sdk';
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
+  StudioDetailPageTemplate,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { RichTextEditor } from '../../../components/RichTextEditor';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
-import { Input } from '../../../components/ui/input';
-import { Label } from '../../../components/ui/label';
-import { Select } from '../../../components/ui/select';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
 import { t } from '../../../i18n';
 import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import type { UpdateLegalTextPayload } from '../../../lib/iam-api';
-import {
-  formatLegalTextDateTime,
-  getLegalTextErrorMessage,
-  type LegalTextStatus,
-} from './-legal-texts-shared';
+import { getLegalTextErrorMessage } from './-legal-texts-shared';
+import { LegalTextDetailForm, type LegalTextDetailFormValues } from './-legal-text-detail-form';
 
 type LegalTextDetailPageProps = {
   readonly legalTextVersionId: string;
 };
-
-const richTextEditorCommands = {
-  bold: t('admin.legalTexts.editor.bold'),
-  italic: t('admin.legalTexts.editor.italic'),
-  underline: t('admin.legalTexts.editor.underline'),
-  paragraph: t('admin.legalTexts.editor.paragraph'),
-  heading: t('admin.legalTexts.editor.heading'),
-  bulletList: t('admin.legalTexts.editor.bulletList'),
-  clearFormatting: t('admin.legalTexts.editor.clearFormatting'),
-} as const;
 
 const splitTargetIds = (value: string): string[] =>
   Array.from(
@@ -52,7 +42,41 @@ const toDateTimeInputValue = (value?: string): string => {
   return toDatetimeLocalValue(value);
 };
 
+const getDetailDescription = (
+  legalText: ReturnType<typeof useLegalTexts>['legalTexts'][number] | null
+) =>
+  legalText
+    ? t('admin.legalTexts.dialogs.editDescription', {
+        id: legalText.id,
+        version: legalText.legalTextVersion,
+        locale: legalText.locale,
+      })
+    : t('admin.legalTexts.dialogs.editDescriptionFallback');
+
+const LegalTextSaveAction = ({
+  canUpdate,
+  hasLegalText,
+  status,
+}: Readonly<{
+  canUpdate: boolean;
+  hasLegalText: boolean;
+  status: ReturnType<typeof useStudioSaveFeedback>['status'];
+}>) =>
+  hasLegalText && canUpdate ? (
+    <StudioSaveButton
+      type="submit"
+      form="legal-text-edit-form"
+      status={status}
+      labels={{
+        idle: t('admin.legalTexts.actions.save'),
+        saving: t('account.actions.saving'),
+        saved: t('account.actions.saved'),
+      }}
+    />
+  ) : undefined;
+
 export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageProps) => {
+  const location = useLocation();
   const legalTextsApi = useLegalTexts();
   const access = useIamResourceAccess('legalText');
   const canUpdateLegalText = isIamAccessAllowed(access.update);
@@ -64,16 +88,48 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
   );
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [validationError, setValidationError] = React.useState<string | null>(null);
-  const [formValues, setFormValues] = React.useState({
+  const [formValues, setFormValues] = React.useState<LegalTextDetailFormValues>({
     name: '',
     legalTextVersion: '',
     locale: '',
     contentHtml: '<p></p>',
-    status: 'draft' as LegalTextStatus,
+    status: 'draft',
     publishedAt: '',
     targetRoleIds: '',
     targetGroupIds: '',
   });
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      legalTextsApi.isLoading ||
+      !selectedLegalText ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'legal-texts', legalTextVersionId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/legal-texts/$legalTextVersionId',
+      params: { legalTextVersionId },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [
+    legalTextVersionId,
+    legalTextsApi.isLoading,
+    location.state,
+    navigate,
+    saveFeedback,
+    selectedLegalText,
+  ]);
+  const updateFormValues: typeof setFormValues = (value) => {
+    saveFeedback.markDirty();
+    setFormValues(value);
+  };
 
   React.useEffect(() => {
     if (!selectedLegalText) {
@@ -124,7 +180,9 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
       targetGroupIds: splitTargetIds(formValues.targetGroupIds),
     };
 
-    await legalTextsApi.updateLegalText(legalTextVersionId, payload);
+    const operationId = saveFeedback.beginSaving();
+    const updated = await legalTextsApi.updateLegalText(legalTextVersionId, payload);
+    (updated ? saveFeedback.markSaved : saveFeedback.markFailed)(operationId);
   };
 
   const onDelete = async () => {
@@ -144,26 +202,18 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
     <section aria-busy={legalTextsApi.isLoading}>
       <StudioDetailPageTemplate
         title={selectedLegalText?.name ?? t('admin.legalTexts.dialogs.editTitle')}
-        description={
-          selectedLegalText
-            ? t('admin.legalTexts.dialogs.editDescription', {
-                id: selectedLegalText.id,
-                version: selectedLegalText.legalTextVersion,
-                locale: selectedLegalText.locale,
-              })
-            : t('admin.legalTexts.dialogs.editDescriptionFallback')
-        }
+        description={getDetailDescription(selectedLegalText)}
         actions={
           <Button asChild type="button" variant="outline">
             <Link to="/admin/legal-texts">{t('admin.legalTexts.detail.backToList')}</Link>
           </Button>
         }
         primaryAction={
-          selectedLegalText && canUpdateLegalText ? (
-            <Button type="submit" form="legal-text-edit-form">
-              {t('admin.legalTexts.actions.save')}
-            </Button>
-          ) : undefined
+          <LegalTextSaveAction
+            canUpdate={canUpdateLegalText}
+            hasLegalText={Boolean(selectedLegalText)}
+            status={saveFeedback.status}
+          />
         }
       >
         {!selectedLegalText && !legalTextsApi.isLoading ? (
@@ -173,180 +223,26 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
         ) : null}
 
         {selectedLegalText ? (
-          <Card className="space-y-4 p-4">
-            <form
-              id="legal-text-edit-form"
-              className="space-y-4"
-              aria-readonly={!canUpdateLegalText}
-              onSubmit={(event) => void onSubmit(event)}
-            >
-              <fieldset className="contents" disabled={!canUpdateLegalText}>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-name">
-                      {t('admin.legalTexts.fields.name')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-name"
-                      value={formValues.name}
-                      onChange={(event) =>
-                        setFormValues((current) => ({ ...current, name: event.target.value }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-version">
-                      {t('admin.legalTexts.fields.legalTextVersion')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-version"
-                      value={formValues.legalTextVersion}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          legalTextVersion: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-locale">
-                      {t('admin.legalTexts.fields.locale')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-locale"
-                      value={formValues.locale}
-                      onChange={(event) =>
-                        setFormValues((current) => ({ ...current, locale: event.target.value }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-status">
-                      {t('admin.legalTexts.fields.status')}
-                    </Label>
-                    <Select
-                      id="legal-text-edit-status"
-                      value={formValues.status}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          status: event.target.value as LegalTextStatus,
-                        }))
-                      }
-                    >
-                      <option value="draft">{t('admin.legalTexts.status.draft')}</option>
-                      <option value="valid">{t('admin.legalTexts.status.valid')}</option>
-                      <option value="archived">{t('admin.legalTexts.status.archived')}</option>
-                    </Select>
-                  </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="legal-text-edit-published">
-                      {t('admin.legalTexts.fields.publishedAt')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-published"
-                      type="datetime-local"
-                      value={formValues.publishedAt}
-                      required={formValues.status === 'valid'}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          publishedAt: event.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-role-targets">
-                      {t('admin.legalTexts.fields.targetRoleIds')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-role-targets"
-                      value={formValues.targetRoleIds}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          targetRoleIds: event.target.value,
-                        }))
-                      }
-                      placeholder={t('admin.legalTexts.fields.targetRoleIdsPlaceholder')}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="legal-text-edit-group-targets">
-                      {t('admin.legalTexts.fields.targetGroupIds')}
-                    </Label>
-                    <Input
-                      id="legal-text-edit-group-targets"
-                      value={formValues.targetGroupIds}
-                      onChange={(event) =>
-                        setFormValues((current) => ({
-                          ...current,
-                          targetGroupIds: event.target.value,
-                        }))
-                      }
-                      placeholder={t('admin.legalTexts.fields.targetGroupIdsPlaceholder')}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground md:grid-cols-3">
-                  <p>{t('admin.legalTexts.meta.uuid', { value: selectedLegalText.id })}</p>
-                  <p>
-                    {t('admin.legalTexts.meta.createdAt', {
-                      value: formatLegalTextDateTime(selectedLegalText.createdAt),
-                    })}
-                  </p>
-                  <p>
-                    {t('admin.legalTexts.meta.updatedAt', {
-                      value: formatLegalTextDateTime(selectedLegalText.updatedAt),
-                    })}
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label id="legal-text-edit-content-label" htmlFor="legal-text-edit-content">
-                    {t('admin.legalTexts.fields.contentHtml')}
-                  </Label>
-                  <RichTextEditor
-                    id="legal-text-edit-content"
-                    labelId="legal-text-edit-content-label"
-                    value={formValues.contentHtml}
-                    onChange={(contentHtml) =>
-                      setFormValues((current) => ({ ...current, contentHtml }))
-                    }
-                    placeholder={t('admin.legalTexts.fields.contentPlaceholder')}
-                    readOnly={!canUpdateLegalText}
-                    commands={richTextEditorCommands}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3">
-                  {canDeleteLegalText ? (
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => setDeleteConfirmOpen(true)}
-                    >
-                      {t('admin.legalTexts.actions.delete')}
-                    </Button>
-                  ) : null}
-                </div>
-              </fieldset>
-            </form>
-          </Card>
+          <LegalTextDetailForm
+            canDelete={canDeleteLegalText}
+            canUpdate={canUpdateLegalText}
+            formValues={formValues}
+            onDelete={() => setDeleteConfirmOpen(true)}
+            onSubmit={(event) => void onSubmit(event)}
+            selectedLegalText={selectedLegalText}
+            setFormValues={updateFormValues}
+          />
         ) : null}
 
-        {validationError || legalTextsApi.mutationError ? (
+        {validationError ? (
           <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>
-              {validationError ?? getLegalTextErrorMessage(legalTextsApi.mutationError)}
-            </AlertDescription>
+            <AlertDescription>{validationError}</AlertDescription>
           </Alert>
+        ) : null}
+        {legalTextsApi.mutationError ? (
+          <StudioPersistentFormError
+            message={getLegalTextErrorMessage(legalTextsApi.mutationError)}
+          />
         ) : null}
 
         <ConfirmDialog

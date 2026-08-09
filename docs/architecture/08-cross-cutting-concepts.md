@@ -26,8 +26,8 @@ gleichzeitig beeinflussen.
 - Normale Save-Aktionen verwenden `StudioSaveButton` und `useStudioSaveFeedback` aus `@sva/studio-ui-react`; Host und Plugins besitzen keine abweichenden Timer oder Basis-Save-Buttons.
 - Save-Erfolg wird höflich angekündigt, verschiebt keinen Fokus und bleibt genau zwei Sekunden sichtbar. Das Check-Icon ist dekorativ, die Aktionsfläche behält eine stabile Mindestbreite.
 - Validierungsfehler bleiben feldnah und über Accessibility-Attribute verbunden. Technische Fehler verwenden `StudioPersistentFormError`, verschwinden nicht automatisch und bieten nur fachlich sichere Retry-Aktionen an.
-- Bestehende Fehler bleiben während eines Retry sichtbar. Partielle Ergebnisse dürfen nicht als vollständig gespeichert erscheinen.
-- Erfolgreiche Creates transportieren den einmaligen Erfolg ausschließlich transient und datensatzgebunden zur Detailroute. Toasts sind auf separat spezifizierte Aktionen ohne geeigneten sichtbaren Kontext begrenzt.
+- Während eines Retry bleibt der Fehler sichtbar oder wird eindeutig durch den laufenden Save-Zustand ersetzt. Partielle Ergebnisse dürfen nicht als vollständig gespeichert erscheinen.
+- Erfolgreiche seitengebundene Creates transportieren den einmaligen Erfolg ausschließlich transient und datensatzgebunden zur Detailroute. Untergeordnete Dialoge ohne Detailroute nutzen die aktualisierte Elternliste, mehrstufige Setup-Flows ihren sichtbaren Einrichtungskontext. Toasts sind auf separat spezifizierte Aktionen ohne geeigneten sichtbaren Kontext begrenzt.
 - Coverage-Gates bleiben wichtig, ersetzen aber diese Foundation-Governance nicht.
 
 ### Medienmanagement

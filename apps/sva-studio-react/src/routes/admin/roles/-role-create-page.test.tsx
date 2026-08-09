@@ -8,7 +8,11 @@ const navigateMock = vi.fn();
 const createRoleMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -17,7 +21,8 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../lib/iam-api', async () => {
-  const actual = await vi.importActual<typeof import('../../../lib/iam-api')>('../../../lib/iam-api');
+  const actual =
+    await vi.importActual<typeof import('../../../lib/iam-api')>('../../../lib/iam-api');
   return {
     ...actual,
     createRole: (...args: Parameters<typeof actual.createRole>) => createRoleMock(...args),
@@ -70,6 +75,7 @@ describe('RoleCreatePage', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/roles/$roleId',
       params: { roleId: 'role-new' },
+      state: expect.any(Function),
     });
   });
 
@@ -91,7 +97,9 @@ describe('RoleCreatePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('Die Rollenänderung steht in Konflikt');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Die Rollenänderung steht in Konflikt'
+      );
     });
 
     expect(navigateMock).not.toHaveBeenCalled();

@@ -20,7 +20,7 @@ export type UseCreateContentResult = {
   readonly clearMutationError: () => void;
   readonly createContent: (
     payload: import('../lib/iam-api').CreateContentPayload
-  ) => Promise<boolean>;
+  ) => Promise<IamContentDetail | null>;
 };
 
 export const contentsLogger = createOperationLogger('contents-hook', 'debug');

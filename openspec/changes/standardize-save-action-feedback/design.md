@@ -62,7 +62,7 @@ Client- und serverseitig auf konkrete Felder abbildbare Validierungsfehler werde
 
 Technische, API- und Serverfehler verwenden eine persistente Formular- oder Bereichsmeldung mit `role="alert"`. Sie verschwindet nicht per Timer. Soweit die Wiederholung fachlich sicher ist, enthält sie eine konkrete Aktion wie `Erneut versuchen`. Die Meldung wird erst nach erfolgreicher Wiederholung, einer expliziten fachlich zulässigen Nutzeraktion oder beim Verlassen des Kontexts entfernt.
 
-Ein neuer Submit darf eine bestehende technische Fehlermeldung nicht vorsorglich ausblenden. Während des Retry darf sie als bestehender Fehler sichtbar bleiben oder eindeutig als erneuter Versuch gekennzeichnet werden; erst ein erfolgreicher Abschluss entfernt sie.
+Ein technischer Fehler darf weder per Timer noch allein durch Dirty-State-Änderungen verschwinden. Ein expliziter neuer Submit darf ihn während der laufenden Mutation durch den eindeutigen `saving`-Zustand ersetzen. Schlägt auch dieser Versuch fehl, erscheint die aktuelle Fehlermeldung erneut persistent; erst ein erfolgreicher Abschluss entfernt sie dauerhaft.
 
 ### Decision: Partielle Ergebnisse sind kein vollständiger Save-Erfolg
 
@@ -76,11 +76,27 @@ Nach erfolgreicher Anlage navigiert der Flow auf die kanonische Detailroute des 
 
 Die Übergabe erfolgt transient und typsicher. Sie wird nicht in Search-Params, dem Datensatz oder einem langlebigen globalen Store persistiert. Die Zielroute konsumiert den Zustand einmalig, sodass Reload, Zurücknavigation und späteres erneutes Öffnen keinen alten Erfolg anzeigen. Datensatz-ID und transienter Erfolgsbezug müssen übereinstimmen; fremde oder veraltete Zustände werden ignoriert.
 
+Besitzt ein untergeordneter Create-Dialog keine eigene Detailroute, darf er nach dem erfolgreichen Write unmittelbar schließen, sofern die neu erzeugte oder aktualisierte Entität danach im unverändert sichtbaren Elternkontext eindeutig erscheint. Ein künstliches Offenhalten nur für den Zwei-Sekunden-Zustand wäre in diesem Fall keine hilfreiche Rückmeldung. Der Dialog verwendet während des Writes dennoch den gemeinsamen `saving`-Zustand und zeigt technische Fehler persistent; ein zusätzlicher Erfolgstoast ist nicht zulässig.
+
 ### Decision: Toasts und Dialoge sind keine Save-Surfaces
 
 Normale Create- und Update-Ergebnisse verwenden keine Toasts. Modals und Overlays werden nicht für Erfolg oder gewöhnliche Fehler geöffnet. Sie bleiben tatsächlichen Entscheidungen vorbehalten, beispielsweise Versionskonflikten oder potenziell destruktiven Aktionen.
 
 Kontextlose Aktionen wie Kopieren, Exportstart oder Duplizieren sind nicht Teil dieses Save-Vertrags. Ein späterer globaler Rückmeldungspfad muss separat spezifiziert werden, falls dafür ein belastbarer Bedarf besteht.
+
+### Decision: Die Migration erfasst alle normalen Create- und Update-Formulare
+
+Der gemeinsame Vertrag gilt unabhängig davon, ob ein Formular einen redaktionellen Datentyp, eine Studio-Kernfunktion, eine Plugin-Konfiguration oder eine untergeordnete Facheinheit speichert. Insbesondere werden Account-, Benutzer-, Gruppen-, Rollen-, Organisations-, Rechtstext-, Instanz-, Medien- und Content-Formulare sowie normale Plugin- und Waste-Eingabeformulare inventarisiert und migriert.
+
+Begründete Ausnahmen werden nicht anhand des Paketnamens, sondern anhand der Aktionssemantik bestimmt:
+
+- Löschen, Zurücksetzen und irreversible Aktionen gehören zum separaten Destructive-Action-Change.
+- Import, Export, Synchronisation, Provisionierung, Reconcile und länger laufende Jobs verwenden Operation-/Progress-Feedback.
+- Filter-, Such-, Login- und reine Navigationsformulare speichern keinen fachlichen Datensatz.
+- Kontextlose Commands wie das erneute Senden einer Einladung oder Passwort-E-Mail sind keine Save-Aktionen.
+- Entscheidungspflichtige Konflikte und Unsaved-Changes-Abfragen dürfen weiterhin Dialoge verwenden.
+
+Jede Ausnahme wird in der abschließenden Inventur mit konkretem Flow und Begründung dokumentiert. Paket- oder Implementierungsaufwand allein ist kein Ausnahmegrund.
 
 ### Decision: Plugins liefern Fachsemantik, der Host liefert Verhaltenskonsistenz
 
@@ -96,22 +112,18 @@ Sie führen keine eigenen Save-State-Hooks, Timer, Basis-Buttons, globalen Toast
 
 ## PR-Schnitt und Migration
 
-### PR 1: Foundation und zwei Referenzflüsse
-
-PR 1 ist unabhängig review- und auslieferbar und umfasst:
+Der bestehende PR enthält sowohl Foundation und Referenzflüsse als auch die vollständige Migration aller normalen Save-Actions. Die Umsetzung erfolgt innerhalb desselben Branches in getrennten, jeweils getesteten Änderungsblöcken:
 
 1. gemeinsame Save-Button- und persistente Fehler-Primitives in `@sva/studio-ui-react`
-2. Migration von `/interfaces` als Host-Referenzfluss
-3. Migration des News-Editors als Plugin-Referenzfluss
-4. Create-zu-Detail-Übergang im News-Flow
-5. Unit-, Komponenten-, Integrations- und Accessibility-Tests
-6. Dokumentation des Patterns und Aktualisierung der betroffenen arc42-Abschnitte
+2. Host-Referenzfluss `/interfaces` und Plugin-Referenzfluss News
+3. Studio-Kernfunktionen für Account und Administration
+4. verbleibende redaktionelle Content-Plugins
+5. normale Waste-Konfigurations-, Stammdaten-, Tour- und Planungsformulare
+6. abschließende Inventur aller Submit-Flows, Entfernung abgelöster Save-Erfolgsmeldungen und dokumentierter Nachweis jeder Ausnahme
 
-PR 1 führt keine Core-, Plugin-SDK-, Plugin-Registry- oder Shell-Erweiterung ein.
+Header- und Footer-Aktionen desselben Formulars teilen immer denselben Save-Controller. Jeder Änderungsblock ergänzt oder aktualisiert Zustands-, Fehler-, Create-Navigations- und Accessibility-Tests und wird vor dem nächsten Block mit dem kleinsten relevanten Nx-Gate validiert.
 
-### Spätere PRs in diesem Change
-
-Weitere Host- und Plugin-Formulare werden anhand der Formular-Migrationsinventur in kleinen fachlich zusammenhängenden PRs migriert. Jeder PR entfernt dabei ersetzte Save-Erfolgsmeldungen oder Save-Toasts im bearbeiteten Scope und weist die relevanten Zustands-, Fehler- und Accessibility-Tests nach.
+Der PR führt weiterhin keine Core-, Plugin-SDK-, Plugin-Registry- oder Shell-Erweiterung ein.
 
 Delete/Undo und blockierende Bestätigungen liegen in `standardize-destructive-action-feedback`, globale kontextlose Rückmeldungen in `add-contextless-action-feedback` sowie Progress- und Job-Feedback in `standardize-plugin-operation-feedback`. Diese Themen gehören nicht zu den Save-Migrations-PRs und besitzen jeweils eine separate Design- und Implementierungsfreigabe.
 

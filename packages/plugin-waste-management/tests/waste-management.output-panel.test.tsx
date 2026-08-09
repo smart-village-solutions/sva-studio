@@ -21,7 +21,8 @@ vi.mock('@sva/plugin-sdk', () => ({
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Textarea: (props: React.ComponentProps<'textarea'>) => <textarea {...props} />,
@@ -303,7 +304,7 @@ describe('WasteOutputPanel', () => {
       })
     );
 
-    expect(await screen.findByText('output.pdf.messages.saveSuccess')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'output.pdf.actions.saved' })).toBeTruthy();
   });
 
   it('persists the email reminder service card through the waste settings endpoint', async () => {
@@ -381,7 +382,9 @@ describe('WasteOutputPanel', () => {
       })
     );
 
-    expect(await screen.findByText('output.emailReminder.messages.saveSuccess')).toBeTruthy();
+    expect(
+      await screen.findByRole('button', { name: 'output.emailReminder.actions.saved' })
+    ).toBeTruthy();
   });
 
   it('renders fallback email reminder defaults without mail transport options and refetches settings after null updates', async () => {
@@ -908,8 +911,11 @@ describe('WasteOutputPanel', () => {
     );
 
     expect(
-      (screen.getByLabelText('output.emailReminder.fields.unsubscribeTokenTtlDays') as HTMLInputElement)
-        .value
+      (
+        screen.getByLabelText(
+          'output.emailReminder.fields.unsubscribeTokenTtlDays'
+        ) as HTMLInputElement
+      ).value
     ).toBe('30');
   });
 

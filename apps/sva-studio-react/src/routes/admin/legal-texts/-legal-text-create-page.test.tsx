@@ -135,6 +135,7 @@ describe('LegalTextCreatePage', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/legal-texts/$legalTextVersionId',
       params: { legalTextVersionId: 'legal-1' },
+      state: expect.any(Function),
     });
   });
 
@@ -158,6 +159,7 @@ describe('LegalTextCreatePage', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/legal-texts/$legalTextVersionId',
       params: { legalTextVersionId: 'legal-2' },
+      state: expect.any(Function),
     });
   });
 

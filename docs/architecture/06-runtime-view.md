@@ -270,7 +270,7 @@ Fehlerpfad:
 21. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
 22. Der Mainserver bleibt fachlich führend; lokal werden nur Listenprojektion, Provider-Referenz und Studio-Mutationshistorie geführt. Das ist kein zweiter fachlicher Schreibpfad und keine vollständige externe Historie.
 23. Der History-Read löst externe IDs nach Möglichkeit über die Provider-Referenz auf, autorisiert `content.readHistory` und liefert kein `snapshot_json` aus. Fehlt für einen typisierten Mainserver-Inhalt der lokale History-Core, bleibt der Inhalt vollständig nutzbar und die Studio-History ist leer mit `coverage = studio_mutations`.
-24. Nach erfolgreichem News-Update zeigt der gemeinsame Save-Button den Erfolg für zwei Sekunden im Detailkontext. Nach erfolgreichem Create navigiert die host-owned Route auf die erzeugte News-Detailroute und übergibt den datensatzgebundenen Erfolg einmalig im Router-History-State; Delete bleibt ein eigener Rücknavigationspfad.
+24. Nach erfolgreichen Updates zeigen News, Events, POI, Generic Items, Projects, FAQ, Surveys und Cockpit Cards den Erfolg für zwei Sekunden am gemeinsamen Save-Button. Seitengebundene Create-Flows navigieren auf ihre erzeugte Detailroute und übergeben den datensatzgebundenen Erfolg einmalig im Router-History-State; Delete bleibt ein eigener Rücknavigationspfad.
 
 ### Szenario 4b: Kontextgebundener Save-Lifecycle
 
@@ -284,8 +284,14 @@ Fehlerpfad:
 Fehlerpfad:
 
 - Feldvalidierungsfehler erscheinen an den betroffenen Controls und optional zusätzlich in einer Formularzusammenfassung.
-- Ein Retry blendet die bestehende technische Fehlermeldung nicht vorsorglich aus; erst der erfolgreiche Abschluss entfernt sie.
+- Ein technischer Fehler verschwindet weder per Timer noch allein durch Dirty-State-Änderungen. Ein expliziter Retry darf ihn während des eindeutig sichtbaren `saving`-Zustands ersetzen; bei erneutem Fehlschlag erscheint der aktuelle Fehler wieder persistent.
 - Normale Save-Ergebnisse erzeugen weder Toast noch Modal oder Overlay.
+
+Erfolgsvarianten:
+
+- Seitengebundene Create-Flows für Core- und Content-Datentypen wechseln auf die kanonische Detailroute und konsumieren den transienten Erfolg genau einmal.
+- Untergeordnete Waste-Dialoge ohne Detailroute schließen nach Erfolg und machen das Ergebnis unmittelbar in der Elternliste sichtbar; sie verwenden während der Mutation denselben Pending-Vertrag und keinen Erfolgstoast.
+- Die Instanzanlage darf im sichtbaren Setup-Kontext verbleiben, solange dort die nachgelagerte Einrichtungs- oder Provisionierungsanleitung erforderlich ist.
 
 Fehlerpfad:
 

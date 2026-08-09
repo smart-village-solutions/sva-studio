@@ -1,5 +1,11 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import {
+  addStudioCreatedSaveFeedback,
+  StudioDetailPageTemplate,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -79,9 +85,9 @@ const useLegalTextCreatePage = () => {
   const legalTextsApi = useLegalTexts();
   const [formValues, setFormValues] = React.useState(emptyForm);
   const [validationError, setValidationError] = React.useState<string | null>(null);
+  const saveFeedback = useStudioSaveFeedback();
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveLegalText = async () => {
     setValidationError(null);
 
     const publishedAt = parseOptionalEditorDateTime(formValues.publishedAt);
@@ -105,23 +111,52 @@ const useLegalTextCreatePage = () => {
       targetGroupIds: splitTargetIds(formValues.targetGroupIds),
     };
 
+    const operationId = saveFeedback.beginSaving();
     const created = await legalTextsApi.createLegalText(payload);
     if (!created) {
+      saveFeedback.markFailed(operationId);
       return;
     }
 
+    saveFeedback.markSaved(operationId);
     await navigate({
       to: '/admin/legal-texts/$legalTextVersionId',
       params: { legalTextVersionId: created.id },
+      state: (previous) => addStudioCreatedSaveFeedback(previous, 'legal-texts', created.id),
     });
   };
 
-  return { formValues, legalTextsApi, onSubmit, setFormValues, validationError };
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void saveLegalText();
+  };
+
+  const updateFormValues: typeof setFormValues = (value) => {
+    saveFeedback.markDirty();
+    setFormValues(value);
+  };
+
+  return {
+    formValues,
+    legalTextsApi,
+    onSubmit,
+    retrySave: saveLegalText,
+    saveStatus: saveFeedback.status,
+    setFormValues: updateFormValues,
+    validationError,
+  };
 };
 
 export const LegalTextCreatePage = () => {
-  const { formValues, legalTextsApi, onSubmit, setFormValues, validationError } =
-    useLegalTextCreatePage();
+  const {
+    formValues,
+    legalTextsApi,
+    onSubmit,
+    retrySave,
+    saveStatus,
+    setFormValues,
+    validationError,
+  } = useLegalTextCreatePage();
 
   return (
     <StudioDetailPageTemplate
@@ -133,9 +168,16 @@ export const LegalTextCreatePage = () => {
         </Button>
       }
       primaryAction={
-        <Button type="submit" form="legal-text-create-form">
-          {t('admin.legalTexts.actions.create')}
-        </Button>
+        <StudioSaveButton
+          type="submit"
+          form="legal-text-create-form"
+          status={saveStatus}
+          labels={{
+            idle: t('admin.legalTexts.actions.create'),
+            saving: t('account.actions.saving'),
+            saved: t('account.actions.saved'),
+          }}
+        />
       }
     >
       <Card className="space-y-4 p-4">
@@ -265,12 +307,18 @@ export const LegalTextCreatePage = () => {
         </form>
       </Card>
 
-      {validationError || legalTextsApi.mutationError ? (
+      {validationError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription>
-            {validationError ?? legalTextErrorMessage(legalTextsApi.mutationError)}
-          </AlertDescription>
+          <AlertDescription>{validationError}</AlertDescription>
         </Alert>
+      ) : null}
+      {legalTextsApi.mutationError ? (
+        <StudioPersistentFormError
+          message={legalTextErrorMessage(legalTextsApi.mutationError)}
+          retryLabel={t('account.actions.retry')}
+          retryDisabled={saveStatus === 'saving'}
+          onRetry={() => void retrySave()}
+        />
       ) : null}
     </StudioDetailPageTemplate>
   );

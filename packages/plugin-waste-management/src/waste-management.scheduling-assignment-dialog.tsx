@@ -10,6 +10,7 @@ import {
 } from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 import {
   WasteTourExplicitAssignmentForm,
   type WasteTourExplicitAssignmentFormState,
@@ -68,9 +69,11 @@ export const WasteTourExplicitAssignmentDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('scheduling.assignments.actions.cancel')}
             </Button>
-            <Button type="submit" disabled={saving}>
-              {pt(`scheduling.assignments.actions.${mode === 'create' ? 'create' : 'save'}`)}
-            </Button>
+            <WastePendingSaveButton
+              type="submit"
+              saving={saving}
+              label={pt(`scheduling.assignments.actions.${mode === 'create' ? 'create' : 'save'}`)}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

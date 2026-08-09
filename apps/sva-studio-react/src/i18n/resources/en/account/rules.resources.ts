@@ -35,7 +35,8 @@ export const rulesAccountENResources = {
   },
   actions: {
     save: 'Save content rule',
-    saving: 'Saving content rule ...',
+    saving: 'Saving…',
+    saved: 'Saved',
   },
   messages: {
     loading: 'Loading account rules ...',

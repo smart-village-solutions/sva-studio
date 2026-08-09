@@ -1,4 +1,9 @@
 import type { IamUserDetail } from '@sva/core';
+import {
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
@@ -75,7 +80,8 @@ const editabilityTranslationKeyByValue = {
   blocked: 'account.projection.editability.blocked',
 } as const;
 
-type AccountActionStatus = 'password-updated' | 'email-update-finished' | 'email-update-unavailable' | 'cancelled';
+type AccountActionStatus =
+  'password-updated' | 'email-update-finished' | 'email-update-unavailable' | 'cancelled';
 
 const readAccountActionStatusFromLocation = (): AccountActionStatus | null => {
   const currentWindow = globalThis.window;
@@ -141,13 +147,11 @@ export const AccountProfilePage = () => {
   const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
   const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
   const [isLoading, setIsLoading] = React.useState(true);
-  const [isSaving, setIsSaving] = React.useState(false);
   const [loadError, setLoadError] = React.useState<IamHttpError | null>(null);
   const [saveError, setSaveError] = React.useState<IamHttpError | null>(null);
-  const [saveSuccess, setSaveSuccess] = React.useState(false);
   const [validationErrors, setValidationErrors] = React.useState<ProfileErrors>({});
   const errorSummaryRef = React.useRef<HTMLDivElement>(null);
-  const successMessageRef = React.useRef<HTMLDivElement>(null);
+  const saveFeedback = useStudioSaveFeedback();
   const loginHref = React.useMemo(() => createLoginHref(resolveCurrentReturnTo()), []);
 
   const loadProfile = React.useCallback(async () => {
@@ -191,24 +195,16 @@ export const AccountProfilePage = () => {
     }
   }, [validationErrors]);
 
-  React.useEffect(() => {
-    if (saveSuccess) {
-      successMessageRef.current?.focus();
-    }
-  }, [saveSuccess]);
-
   const onFieldChange = (field: keyof ProfileFormValues, value: string) => {
     setFormValues((current) => ({
       ...current,
       [field]: value,
     }));
-    setSaveSuccess(false);
+    saveFeedback.markDirty();
     setSaveError(null);
   };
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
+  const saveProfile = async () => {
     if (isPlatformScope) {
       return;
     }
@@ -219,9 +215,8 @@ export const AccountProfilePage = () => {
       return;
     }
 
-    setIsSaving(true);
+    const operationId = saveFeedback.beginSaving();
     setSaveError(null);
-    setSaveSuccess(false);
 
     try {
       const nextDerivedDisplayName = deriveDisplayName(formValues.firstName, formValues.lastName);
@@ -239,13 +234,17 @@ export const AccountProfilePage = () => {
       setProfile(response.data);
       setFormValues(toFormValues(response.data));
       notifyIamUsersUpdated();
-      setSaveSuccess(true);
       setValidationErrors({});
+      saveFeedback.markSaved(operationId);
     } catch (cause) {
       setSaveError(asIamError(cause));
-    } finally {
-      setIsSaving(false);
+      saveFeedback.markFailed(operationId);
     }
+  };
+
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void saveProfile();
   };
 
   if (isLoading || isAuthLoading || !hasResolvedSession) {
@@ -278,7 +277,11 @@ export const AccountProfilePage = () => {
       <section className="space-y-4">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertTitle>{isUnauthorized ? t('account.messages.notAuthenticated') : t('account.messages.loadError')}</AlertTitle>
+          <AlertTitle>
+            {isUnauthorized
+              ? t('account.messages.notAuthenticated')
+              : t('account.messages.loadError')}
+          </AlertTitle>
           <AlertDescription className="mt-3">
             <div className="space-y-3">
               <p>{getLoadErrorDescription(loadError)}</p>
@@ -289,10 +292,10 @@ export const AccountProfilePage = () => {
                     <a href={loginHref}>{t('shell.header.login')}</a>
                   </Button>
                 ) : (
-                    <Button type="button" variant="outline" onClick={handleRetryLoad}>
-                      {t('account.actions.retry')}
-                    </Button>
-                  )}
+                  <Button type="button" variant="outline" onClick={handleRetryLoad}>
+                    {t('account.actions.retry')}
+                  </Button>
+                )}
               </div>
             </div>
           </AlertDescription>
@@ -301,7 +304,9 @@ export const AccountProfilePage = () => {
     );
   }
 
-  const statusKey = profile?.status ? statusTranslationKeyByValue[profile.status] : statusTranslationKeyByValue.pending;
+  const statusKey = profile?.status
+    ? statusTranslationKeyByValue[profile.status]
+    : statusTranslationKeyByValue.pending;
   const displayName =
     profile?.displayName ??
     deriveDisplayName(formValues.firstName, formValues.lastName) ??
@@ -318,7 +323,8 @@ export const AccountProfilePage = () => {
   const editabilityLabel = profile?.editability
     ? t(editabilityTranslationKeyByValue[profile.editability])
     : null;
-  const diagnosticCodes = profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
+  const diagnosticCodes =
+    profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
   const isProfileReadOnly = isPlatformScope;
   const accountActionMessage =
     accountActionStatus === 'password-updated'
@@ -327,16 +333,16 @@ export const AccountProfilePage = () => {
         ? t('account.messages.emailUpdateFinished')
         : accountActionStatus === 'email-update-unavailable'
           ? t('account.messages.emailUpdateUnavailable')
-        : accountActionStatus === 'cancelled'
-          ? t('account.messages.accountActionCancelled')
-          : null;
+          : accountActionStatus === 'cancelled'
+            ? t('account.messages.accountActionCancelled')
+            : null;
   const accountActionAlertClassName =
     accountActionStatus === 'cancelled'
       ? 'border-secondary/40 bg-secondary/10 text-secondary'
       : 'border-primary/40 bg-primary/10 text-primary';
 
   return (
-    <section className="space-y-5" aria-busy={isSaving}>
+    <section className="space-y-5" aria-busy={saveFeedback.status === 'saving'}>
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
@@ -417,22 +423,13 @@ export const AccountProfilePage = () => {
       ) : null}
 
       {saveError ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-col gap-3">
-            <span>{t('account.messages.saveError')}</span>
-            <IamRuntimeDiagnosticDetails error={saveError} />
-          </AlertDescription>
-        </Alert>
-      ) : null}
-      {saveSuccess ? (
-        <Alert
-          ref={successMessageRef}
-          tabIndex={-1}
-          className="border-primary/40 bg-primary/10 text-primary"
-          role="status"
-        >
-          <AlertDescription>{t('account.messages.saveSuccess')}</AlertDescription>
-        </Alert>
+        <StudioPersistentFormError
+          message={t('account.messages.saveError')}
+          details={<IamRuntimeDiagnosticDetails error={saveError} />}
+          retryLabel={t('account.actions.retry')}
+          retryDisabled={saveFeedback.status === 'saving'}
+          onRetry={() => void saveProfile()}
+        />
       ) : null}
 
       <form className="space-y-4" onSubmit={onSubmit} noValidate>
@@ -505,22 +502,41 @@ export const AccountProfilePage = () => {
           </div>
           <div className="grid gap-2 text-sm text-foreground">
             <Label htmlFor="account-status-readonly">{t('account.fields.status')}</Label>
-            <Input id="account-status-readonly" value={t(statusKey)} readOnly aria-readonly="true" />
+            <Input
+              id="account-status-readonly"
+              value={t(statusKey)}
+              readOnly
+              aria-readonly="true"
+            />
           </div>
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
             <Label htmlFor="account-roles-readonly">{t('account.fields.role')}</Label>
             <Input id="account-roles-readonly" value={roleNames} readOnly aria-readonly="true" />
           </div>
           <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="account-keycloak-roles-readonly">{t('account.fields.keycloakRoles')}</Label>
-            <Input id="account-keycloak-roles-readonly" value={keycloakRoleNames} readOnly aria-readonly="true" />
+            <Label htmlFor="account-keycloak-roles-readonly">
+              {t('account.fields.keycloakRoles')}
+            </Label>
+            <Input
+              id="account-keycloak-roles-readonly"
+              value={keycloakRoleNames}
+              readOnly
+              aria-readonly="true"
+            />
           </div>
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={isSaving || isProfileReadOnly}>
-            {isSaving ? t('account.actions.saving') : t('account.actions.save')}
-          </Button>
+          <StudioSaveButton
+            type="submit"
+            status={saveFeedback.status}
+            disabled={isProfileReadOnly}
+            labels={{
+              idle: t('account.actions.save'),
+              saving: t('account.actions.saving'),
+              saved: t('account.actions.saved'),
+            }}
+          />
         </div>
       </form>
     </section>

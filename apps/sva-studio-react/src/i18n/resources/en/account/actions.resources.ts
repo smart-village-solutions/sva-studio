@@ -1,6 +1,7 @@
 export const actionsAccountENResources = {
   save: 'Save',
-  saving: 'Saving ...',
+  saving: 'Saving…',
+  saved: 'Saved',
   cancel: 'Cancel',
   retry: 'Retry',
   openSecuritySettings: 'Open security settings',

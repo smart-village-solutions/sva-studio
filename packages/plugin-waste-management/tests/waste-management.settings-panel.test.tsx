@@ -17,9 +17,12 @@ vi.mock('@sva/plugin-sdk', () => ({
   },
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock('../src/waste-management.api.js', () => ({
@@ -29,7 +32,8 @@ vi.mock('../src/waste-management.api.js', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
   compactOptionalString: (value: string | undefined) => {
     const trimmed = value?.trim();
     return trimmed ? trimmed : undefined;
@@ -48,7 +52,9 @@ vi.mock('../src/waste-management.settings-status-panel.js', () => ({
     <div>
       settings-status-panel:{settings?.holidayStateCode ?? 'no-state'}
       {settings?.provisioningStatus === 'failed' ? (
-        <button type="button" onClick={onRetry}>retry-provisioning</button>
+        <button type="button" onClick={onRetry}>
+          retry-provisioning
+        </button>
       ) : null}
     </div>
   ),
@@ -59,10 +65,16 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
     form,
     onChange,
     onSubmit,
+    saveStatus,
   }: {
-    readonly form: { holidayStateCode?: string; calendarWebUrl?: string; selectedInterfaceId?: string };
+    readonly form: {
+      holidayStateCode?: string;
+      calendarWebUrl?: string;
+      selectedInterfaceId?: string;
+    };
     readonly onChange: (next: unknown) => void;
     readonly onSubmit: () => void;
+    readonly saveStatus: string;
   }) => {
     capturedForms.push(form);
     return (
@@ -71,12 +83,17 @@ vi.mock('../src/waste-management.settings-form.js', () => ({
         <div>{form.calendarWebUrl ?? 'unset-url'}</div>
         <button
           type="button"
-          onClick={() => onChange((current: { holidayStateCode?: string }) => ({ ...current, holidayStateCode: 'BB' }))}
+          onClick={() =>
+            onChange((current: { holidayStateCode?: string }) => ({
+              ...current,
+              holidayStateCode: 'BB',
+            }))
+          }
         >
           change-holiday-state
         </button>
         <button type="button" onClick={onSubmit}>
-          save-settings
+          {saveStatus === 'saved' ? 'settings.actions.saved' : 'save-settings'}
         </button>
       </div>
     );
@@ -205,9 +222,7 @@ describe('WasteSettingsPanel', () => {
         })
       );
     });
-    await waitFor(() => {
-      expect(screen.getByText('settings.messages.saveSuccessWithHolidaySync:{"status":"partial_success"}')).toBeTruthy();
-    });
+    expect(await screen.findByRole('button', { name: 'settings.actions.saved' })).toBeTruthy();
   });
 
   it('saves the holiday state after the global save action', async () => {
@@ -261,8 +276,6 @@ describe('WasteSettingsPanel', () => {
         })
       );
     });
-    await waitFor(() => {
-      expect(screen.getByText('settings.messages.saveSuccessWithHolidaySync:{"status":"success"}')).toBeTruthy();
-    });
+    expect(await screen.findByRole('button', { name: 'settings.actions.saved' })).toBeTruthy();
   });
 });

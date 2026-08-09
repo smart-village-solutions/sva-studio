@@ -26,13 +26,18 @@ vi.mock('@sva/plugin-sdk', () => ({
   },
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async () => ({
+  ...(await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react')),
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock('../src/waste-management.api.js', async () => {
-  const actual = await vi.importActual<typeof import('../src/waste-management.api.js')>('../src/waste-management.api.js');
+  const actual = await vi.importActual<typeof import('../src/waste-management.api.js')>(
+    '../src/waste-management.api.js'
+  );
 
   return {
     ...actual,
@@ -117,7 +122,9 @@ describe('waste management data loaders', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'fractions' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+      scope: 'fractions',
+    });
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(0);
   });
 
@@ -140,7 +147,9 @@ describe('waste management data loaders', () => {
 
     expect(apiMocks.getWasteManagementToursOverview).toHaveBeenCalledTimes(1);
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'fractions' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+      scope: 'fractions',
+    });
     expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(0);
   });
 
@@ -167,7 +176,9 @@ describe('waste management data loaders', () => {
     });
 
     expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+      scope: 'locations',
+    });
   });
 
   it('reloads the master-data overview when the active tab scope changes', async () => {
@@ -192,12 +203,16 @@ describe('waste management data loaders', () => {
       expect(screen.getByText('loaded')).toBeTruthy();
     });
 
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, { scope: 'fractions' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
+      scope: 'fractions',
+    });
 
     rerender(<DynamicMasterDataLoaderHarness tab="locations" />);
 
     await waitFor(() => {
-      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, { scope: 'locations' });
+      expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
+        scope: 'locations',
+      });
     });
   });
 
@@ -247,7 +262,9 @@ describe('waste management data loaders', () => {
     });
 
     expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({ scope: 'locations' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledWith({
+      scope: 'locations',
+    });
   });
 
   it('loads tour fractions first and the location assignment context in the background', async () => {
@@ -288,8 +305,12 @@ describe('waste management data loaders', () => {
       expect(apiMocks.getWasteManagementSchedulingOverview).toHaveBeenCalledTimes(1);
     });
 
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, { scope: 'fractions' });
-    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, { scope: 'locations' });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(1, {
+      scope: 'fractions',
+    });
+    expect(apiMocks.getWasteManagementMasterDataOverview).toHaveBeenNthCalledWith(2, {
+      scope: 'locations',
+    });
   });
 
   it('keeps the settings loader on a single failed fetch cycle', async () => {

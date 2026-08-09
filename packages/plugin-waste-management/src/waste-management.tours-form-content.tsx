@@ -6,6 +6,7 @@ import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
 import type { TourFormState } from './waste-management.tours.types.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 type WasteToursFormContentProps = {
   readonly mode: 'create' | 'edit';
@@ -35,16 +36,23 @@ export const WasteToursFormContent = ({
   onSubmit,
 }: WasteToursFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const saveLabel = saving ? pt('tours.actions.saving') : mode === 'create' ? pt('tours.actions.create') : pt('tours.actions.save');
+  const saveLabel = saving
+    ? pt('tours.actions.saving')
+    : mode === 'create'
+      ? pt('tours.actions.create')
+      : pt('tours.actions.save');
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
         {pt('tours.actions.cancel')}
       </Button>
-      <Button type="submit" form="waste-tour-form" disabled={saving}>
-        {saveLabel}
-      </Button>
+      <WastePendingSaveButton
+        type="submit"
+        form="waste-tour-form"
+        saving={saving}
+        label={saveLabel}
+      />
     </div>
   );
 
@@ -52,7 +60,11 @@ export const WasteToursFormContent = ({
     <div className="space-y-6">
       <StudioPageHeader
         title={mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')}
-        description={mode === 'create' ? pt('tours.dialog.createDescription') : pt('tours.dialog.editDescription')}
+        description={
+          mode === 'create'
+            ? pt('tours.dialog.createDescription')
+            : pt('tours.dialog.editDescription')
+        }
         actions={topActions}
       />
 
@@ -73,9 +85,7 @@ export const WasteToursFormContent = ({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
-          <Button type="submit" disabled={saving}>
-            {saveLabel}
-          </Button>
+          <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
           <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
             {pt('tours.actions.cancel')}
           </Button>

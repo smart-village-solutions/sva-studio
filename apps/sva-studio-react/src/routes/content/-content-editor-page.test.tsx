@@ -20,6 +20,7 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../../providers/auth-provider', () => ({
@@ -173,7 +174,13 @@ describe('ContentEditorPage', () => {
         payload: { hero: 'Willkommen' },
         status: 'draft',
       });
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/content/$contentId',
+          params: { contentId: 'content-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 

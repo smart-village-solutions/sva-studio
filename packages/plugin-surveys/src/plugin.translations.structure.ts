@@ -6,6 +6,8 @@ export const pluginSurveysStructureTranslations = {
     create: 'Umfrage anlegen',
     edit: 'Umfrage ansehen',
     update: 'Umfrage speichern',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
     delete: 'Umfrage löschen',
     moderate: 'Freitexte moderieren',
     export: 'Ergebnisse exportieren',

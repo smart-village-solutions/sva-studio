@@ -90,6 +90,7 @@ vi.mock('@sva/studio-ui-react', async () => {
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 describe('EventsDetailPage', () => {
@@ -106,12 +107,7 @@ describe('EventsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
-      unscopedPermissionActions: [
-        'events.read',
-        'events.create',
-        'events.update',
-        'events.delete',
-      ],
+      unscopedPermissionActions: ['events.read', 'events.create', 'events.update', 'events.delete'],
       assignedModules: ['events'],
       roles: [],
     });
@@ -339,7 +335,10 @@ describe('EventsDetailPage', () => {
       assignedModules: ['events'],
       roles: [],
     });
-    vi.mocked(getEvent).mockResolvedValueOnce({ id: 'event-read-only', title: 'Nur lesen' } as never);
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-read-only',
+      title: 'Nur lesen',
+    } as never);
 
     const { container } = render(<EventsDetailPage mode="edit" contentId="event-read-only" />);
 
@@ -476,7 +475,7 @@ describe('EventsDetailPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
   });
 
@@ -632,10 +631,13 @@ describe('EventsDetailPage', () => {
         }),
         'user'
       );
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/events/$id',
-        params: { id: 'event-created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/events/$id',
+          params: { id: 'event-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 

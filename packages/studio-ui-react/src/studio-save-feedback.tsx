@@ -49,6 +49,7 @@ export function StudioSaveButton({
 export type StudioPersistentFormErrorProps = Readonly<{
   message: React.ReactNode;
   title?: React.ReactNode;
+  details?: React.ReactNode;
   retryLabel?: React.ReactNode;
   onRetry?: () => void;
   retryDisabled?: boolean;
@@ -58,6 +59,7 @@ export type StudioPersistentFormErrorProps = Readonly<{
 export function StudioPersistentFormError({
   message,
   title,
+  details,
   retryLabel,
   onRetry,
   retryDisabled = false,
@@ -69,6 +71,7 @@ export function StudioPersistentFormError({
       <AlertDescription className={title ? 'mt-2' : undefined}>
         <div className="space-y-3">
           <p>{message}</p>
+          {details}
           {retryLabel && onRetry ? (
             <Button type="button" variant="outline" disabled={retryDisabled} onClick={onRetry}>
               {retryLabel}

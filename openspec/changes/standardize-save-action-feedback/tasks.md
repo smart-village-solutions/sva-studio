@@ -21,13 +21,20 @@
 - [x] 2.7 Kleinste relevante Unit-, Type-, ESLint-, Accessibility- und Plugin-UI-Boundary-Gates ausführen; affected Scope vor breiten Runs messen
 - [x] 2.8 `openspec validate standardize-save-action-feedback --strict` ausführen
 
-## 3. Spätere Save-Migrations-PRs in diesem Change
+## 3. Vollständige Save-Migration im bestehenden PR
 
-- [ ] 3.1 Vollständige Host-/Plugin-Formularinventur mit dem Save-Feedback-Zielzustand abgleichen und fachlich zusammenhängende Migrations-PRs festlegen
-- [ ] 3.2 Weitere Host-Formulare auf die gemeinsamen Save- und Fehler-Primitives migrieren
-- [ ] 3.3 Weitere Plugin-Editoren auf die gemeinsamen Save- und Fehler-Primitives migrieren
-- [ ] 3.4 Pro Migrations-PR ersetzte Save-Erfolgsmeldungen und Save-Toasts entfernen sowie Zustands-, Fehler- und Accessibility-Tests nachziehen
-- [ ] 3.5 Vor Abschluss des Changes nachweisen, dass verbleibende Toasts ausschließlich einen dokumentierten kontextlosen Anwendungsfall besitzen
+- [x] 3.1 Vollständige Inventur aller Submit-Flows erstellen und jeden Flow als normale Save-Action oder konkret begründete Ausnahme klassifizieren
+- [x] 3.2 Account-Profil, Account-Regeln und normale Account-Dialogspeicherungen auf die gemeinsamen Save- und Fehler-Primitives migrieren
+- [x] 3.3 Benutzer-, Gruppen-, Rollen-, Organisations- und Rechtstext-Create-/Update-Flows migrieren; Create-Erfolg auf vorhandenen Detailrouten transient übergeben
+- [x] 3.4 Normale Instanz-, Medien-, IAM- und Monitoring-Speicherformulare migrieren und Operation-/Progress- beziehungsweise Destructive-Actions explizit abgrenzen
+- [x] 3.5 Cockpit Cards, Generic Items, Projects, Surveys, Events, FAQ und POI vollständig migrieren
+- [x] 3.6 Normale Waste-Einstellungen, Output-Konfigurationen, Stammdaten-, Tour-, Zuordnungs- und Planungsformulare migrieren
+- [x] 3.7 Bei untergeordneten Dialogen ohne Detailroute den unmittelbaren sichtbaren Elternkontext als begründete Success-Ausnahme testen; Pending und persistente Fehler bleiben verpflichtend
+- [x] 3.8 Ersetzte Save-Erfolgsmeldungen und Save-Toasts entfernen sowie sichere teilschrittspezifische Retries erhalten
+- [x] 3.9 Pro Änderungsblock Zustands-, Fehler-, Create-Navigations- und Accessibility-Tests ergänzen und den kleinsten relevanten Unit-/Type-/Lint-Gate ausführen
+- [x] 3.10 Abschließend nachweisen, dass jeder verbleibende Submit-Flow klassifiziert ist und verbleibende Toasts ausschließlich dokumentierte kontextlose Aktionen betreffen
+- [x] 3.11 Betroffene Entwickler- und arc42-Dokumentation auf den vollständigen PR-Scope aktualisieren und `openspec validate standardize-save-action-feedback --strict` ausführen
+- [ ] 3.12 Vor finaler PR-Freigabe den affected Scope messen, `pnpm test:pr` ausführen und alle GitHub-Gates auf dem veröffentlichten Head prüfen
 
 ## 4. Explizit separate Folge-Changes
 

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildWasteCalendarPdfDocument, renderWasteCalendarPdf } from './waste-management-output.js';
+import {
+  buildWasteCalendarPdfDocument,
+  renderWasteCalendarPdf,
+} from './waste-management-output.js';
 
 describe('waste-management output pdf', () => {
   it('builds a two-page yearly document with mapped pickup entries', () => {
@@ -10,7 +13,9 @@ describe('waste-management output pdf', () => {
       pickups: [
         {
           date: '2026-01-14',
-          fractions: [{ id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666', isShifted: true }],
+          fractions: [
+            { id: 'hm', label: 'Hausmuell', shortLabel: 'HM', color: '#666666', isShifted: true },
+          ],
         },
         {
           date: '2026-01-15',
@@ -41,10 +46,14 @@ describe('waste-management output pdf', () => {
 
     const january = document.pages[0]?.months[0];
     const october = document.pages[1]?.months[3];
-    expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries.map((entry) => entry.code)).toEqual(['HM']);
+    expect(
+      january?.days.find((day) => day.dayOfMonth === 14)?.entries.map((entry) => entry.code)
+    ).toEqual(['HM']);
     expect(january?.days.find((day) => day.dayOfMonth === 14)?.entries[0]?.isShifted).toBe(true);
     expect(january?.days.find((day) => day.dayOfMonth === 15)?.entries).toHaveLength(2);
-    expect(october?.days.find((day) => day.dayOfMonth === 3)?.holidayLabel).toBe('Tag der Deutschen Einheit');
+    expect(october?.days.find((day) => day.dayOfMonth === 3)?.holidayLabel).toBe(
+      'Tag der Deutschen Einheit'
+    );
     expect(document.pages[0]?.legend.map((entry) => entry.label)).toEqual([
       '= Ausweichtermin',
       'Bioabfall',
@@ -98,6 +107,33 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/BaseFont /Helvetica /Encoding /WinAnsiEncoding');
     expect(pdfText).toContain('/BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding');
     expect(pdfText).toContain('(Bärensprung) Tj');
+  });
+
+  it('encodes Windows ANSI punctuation in imported legend descriptions', () => {
+    const pdfText = renderWasteCalendarPdf(
+      buildWasteCalendarPdfDocument({
+        year: 2026,
+        locationLabel: 'Bärensprung',
+        pickups: [
+          {
+            date: '2026-01-14',
+            fractions: [
+              {
+                id: 'bio',
+                label: 'Biogut',
+                description: '09:00–11:00 Uhr „bereitstellen“…',
+                color: '#55AA33',
+              },
+            ],
+          },
+        ],
+      })
+    ).toString('latin1');
+    const winAnsiDescription = `09:00${String.fromCharCode(0x96)}11:00 Uhr ${String.fromCharCode(
+      0x84
+    )}bereitstellen${String.fromCharCode(0x93)}${String.fromCharCode(0x85)}`;
+
+    expect(pdfText).toContain(`Biogut - ${winAnsiDescription}`);
   });
 
   it('vertically centers day content inside calendar table cells', () => {
@@ -176,12 +212,7 @@ describe('waste-management output pdf', () => {
         brandingImage: {
           width: 2,
           height: 2,
-          rgbData: new Uint8Array([
-            255, 0, 0,
-            0, 255, 0,
-            0, 0, 255,
-            255, 255, 0,
-          ]),
+          rgbData: new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0]),
         },
       })
     ).toString('latin1');
@@ -216,11 +247,15 @@ describe('waste-management output pdf', () => {
     ).toString('latin1');
 
     const extractLegendPosition = (label: string): string | null => {
-      const match = pdfText.match(new RegExp(`1 0 0 1 ([0-9.]+) ([0-9.]+) Tm \\(${label}\\) Tj ET`));
+      const match = pdfText.match(
+        new RegExp(`1 0 0 1 ([0-9.]+) ([0-9.]+) Tm \\(${label}\\) Tj ET`)
+      );
       return match ? `${match[1]}:${match[2]}` : null;
     };
 
-    const positions = Array.from({ length: 7 }, (_, index) => extractLegendPosition(`Fraktion ${index + 1}`));
+    const positions = Array.from({ length: 7 }, (_, index) =>
+      extractLegendPosition(`Fraktion ${index + 1}`)
+    );
     expect(positions.every((value) => value !== null)).toBe(true);
     expect(new Set(positions).size).toBe(7);
     const yPositions = positions.map((value) => value?.split(':')[1]);
@@ -292,7 +327,8 @@ describe('waste-management output pdf', () => {
   });
 
   it('truncates long single-line legend descriptions with three dots', () => {
-    const longDescription = 'Dieser sehr lange Hinweis soll ausschließlich in einer einzigen Legendenzeile stehen und darf den rechten Seitenrand auf keinen Fall überschreiten, auch wenn noch viele weitere Wörter folgen. Deshalb enthält dieser Test bewusst zusätzlichen Text, der garantiert nicht mehr vollständig auf die Seite passt.';
+    const longDescription =
+      'Dieser sehr lange Hinweis soll ausschließlich in einer einzigen Legendenzeile stehen und darf den rechten Seitenrand auf keinen Fall überschreiten, auch wenn noch viele weitere Wörter folgen. Deshalb enthält dieser Test bewusst zusätzlichen Text, der garantiert nicht mehr vollständig auf die Seite passt.';
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({
         year: 2026,
@@ -301,7 +337,13 @@ describe('waste-management output pdf', () => {
           {
             date: '2026-01-14',
             fractions: [
-              { id: 'bio', label: 'Biogut', description: longDescription, shortLabel: 'BIO', color: '#55AA33' },
+              {
+                id: 'bio',
+                label: 'Biogut',
+                description: longDescription,
+                shortLabel: 'BIO',
+                color: '#55AA33',
+              },
             ],
           },
         ],

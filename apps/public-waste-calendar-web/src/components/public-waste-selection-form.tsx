@@ -1,7 +1,8 @@
 import React from 'react';
-import { IconChevronDown, IconChevronRight, IconSearch } from '@tabler/icons-react';
+import { IconSearch } from '@tabler/icons-react';
 
 import type { PublicWasteSelectableEntry } from '../lib/public-waste-contract.js';
+import { PublicWasteSelectionResults } from './public-waste-selection-results.js';
 
 export type PublicWasteSelectionPathItem = {
   readonly step: string;
@@ -21,6 +22,75 @@ const sortOptions = (
   options: readonly PublicWasteSelectableEntry[]
 ): readonly PublicWasteSelectableEntry[] =>
   [...options].sort((left, right) => left.label.localeCompare(right.label, 'de'));
+
+const useSelectionNavigation = (
+  input: Readonly<{
+    activeOptionIndex: number;
+    comboboxId: string;
+    filteredOptions: readonly PublicWasteSelectableEntry[];
+    onSelectOption: (optionId: string) => void;
+    searchQuery: string;
+    setActiveOptionIndex: React.Dispatch<React.SetStateAction<number>>;
+    setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  }>
+) => {
+  const activateOption = (index: number) => {
+    const option = input.filteredOptions[index];
+    if (!option) {
+      return;
+    }
+
+    input.setActiveOptionIndex(index);
+    document
+      .getElementById(`${input.comboboxId}-option-${option.id}`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Escape' && (input.searchQuery.length > 0 || input.activeOptionIndex >= 0)) {
+      event.preventDefault();
+      input.setSearchQuery('');
+      input.setActiveOptionIndex(-1);
+      return;
+    }
+
+    if (input.filteredOptions.length === 0) {
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      activateOption(Math.min(input.activeOptionIndex + 1, input.filteredOptions.length - 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      activateOption(
+        input.activeOptionIndex <= 0
+          ? input.filteredOptions.length - 1
+          : input.activeOptionIndex - 1
+      );
+      return;
+    }
+
+    if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      activateOption(event.key === 'Home' ? 0 : input.filteredOptions.length - 1);
+      return;
+    }
+
+    if (event.key === 'Enter' && input.activeOptionIndex >= 0) {
+      event.preventDefault();
+      const activeOption = input.filteredOptions[input.activeOptionIndex];
+      if (activeOption) {
+        input.onSelectOption(activeOption.id);
+      }
+    }
+  };
+
+  return { activateOption, handleSearchKeyDown };
+};
 
 export function PublicWasteSelectionForm(
   props: Readonly<{
@@ -54,62 +124,15 @@ export function PublicWasteSelectionForm(
     setActiveOptionIndex(-1);
   }, [props.nextStepLabel, props.options]);
 
-  const activateOption = (index: number) => {
-    const option = filteredOptions[index];
-    if (!option) {
-      return;
-    }
-
-    setActiveOptionIndex(index);
-    document
-      .getElementById(`${comboboxId}-option-${option.id}`)
-      ?.scrollIntoView?.({ block: 'nearest' });
-  };
-
-  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (filteredOptions.length === 0) {
-      return;
-    }
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      activateOption(Math.min(activeOptionIndex + 1, filteredOptions.length - 1));
-      return;
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      activateOption(activeOptionIndex <= 0 ? filteredOptions.length - 1 : activeOptionIndex - 1);
-      return;
-    }
-
-    if (event.key === 'Home') {
-      event.preventDefault();
-      activateOption(0);
-      return;
-    }
-
-    if (event.key === 'End') {
-      event.preventDefault();
-      activateOption(filteredOptions.length - 1);
-      return;
-    }
-
-    if (event.key === 'Enter' && activeOptionIndex >= 0) {
-      event.preventDefault();
-      const activeOption = filteredOptions[activeOptionIndex];
-      if (activeOption) {
-        props.onSelectOption(activeOption.id);
-      }
-      return;
-    }
-
-    if (event.key === 'Escape' && (searchQuery.length > 0 || activeOptionIndex >= 0)) {
-      event.preventDefault();
-      setSearchQuery('');
-      setActiveOptionIndex(-1);
-    }
-  };
+  const { activateOption, handleSearchKeyDown } = useSelectionNavigation({
+    activeOptionIndex,
+    comboboxId,
+    filteredOptions,
+    onSelectOption: props.onSelectOption,
+    searchQuery,
+    setActiveOptionIndex,
+    setSearchQuery,
+  });
 
   const updateScrollHint = React.useCallback(() => {
     const results = resultsRef.current;
@@ -205,48 +228,19 @@ export function PublicWasteSelectionForm(
             </p>
           </div>
         </div>
-        <div className="selection-results-shell">
-          <div
-            id={resultsId}
-            ref={resultsRef}
-            className="selection-results"
-            role="listbox"
-            aria-label={`${props.nextStepLabel}-Auswahl`}
-            onScroll={updateScrollHint}
-          >
-            {filteredOptions.map((option, index) => (
-              <button
-                key={option.id}
-                id={`${comboboxId}-option-${option.id}`}
-                type="button"
-                className="selection-result"
-                role="option"
-                aria-label={option.label}
-                aria-selected={activeOptionIndex === index}
-                tabIndex={-1}
-                onClick={() => props.onSelectOption(option.id)}
-                onMouseMove={() => setActiveOptionIndex(index)}
-              >
-                <span className="selection-result-label">{option.label}</span>
-                <span className="selection-result-action">
-                  <span>Übernehmen</span>
-                  <IconChevronRight size={18} stroke={1.75} aria-hidden="true" />
-                </span>
-              </button>
-            ))}
-            {filteredOptions.length === 0 && searchQuery.trim().length > 0 ? (
-              <div className="selection-empty-state" role="status">
-                Keine Treffer für diese Suche.
-              </div>
-            ) : null}
-          </div>
-          {canScrollDown ? (
-            <div className="selection-scroll-hint" aria-hidden="true">
-              <span>Weitere Einträge</span>
-              <IconChevronDown size={18} stroke={2} />
-            </div>
-          ) : null}
-        </div>
+        <PublicWasteSelectionResults
+          activeOptionIndex={activeOptionIndex}
+          canScrollDown={canScrollDown}
+          comboboxId={comboboxId}
+          filteredOptions={filteredOptions}
+          nextStepLabel={props.nextStepLabel}
+          onActivateOption={activateOption}
+          onScroll={updateScrollHint}
+          onSelectOption={props.onSelectOption}
+          resultsId={resultsId}
+          resultsRef={resultsRef}
+          searchQuery={searchQuery}
+        />
       </div>
     </section>
   );

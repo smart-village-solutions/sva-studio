@@ -146,6 +146,50 @@ describe('PublicWasteSelectionForm', () => {
     expect(onSelectOption).toHaveBeenCalledWith('2');
   });
 
+  it('clears an unsuccessful search with Escape', () => {
+    render(
+      <PublicWasteSelectionForm
+        nextStepLabel="Ort"
+        options={[
+          { id: '1', label: 'Ahrensdorf' },
+          { id: '2', label: 'Buchholz' },
+        ]}
+        selectionPath={[]}
+        onEditStep={() => undefined}
+        onSelectOption={() => undefined}
+      />
+    );
+
+    const combobox = screen.getByRole('combobox', { name: 'Ort suchen' });
+    fireEvent.change(combobox, { target: { value: 'unbekannt' } });
+    expect(screen.queryAllByRole('option')).toHaveLength(0);
+
+    fireEvent.keyDown(combobox, { key: 'Escape' });
+
+    expect((combobox as HTMLInputElement).value).toBe('');
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+  });
+
+  it('activates an option when the pointer enters it', () => {
+    render(
+      <PublicWasteSelectionForm
+        nextStepLabel="Ort"
+        options={[
+          { id: '1', label: 'Ahrensdorf' },
+          { id: '2', label: 'Buchholz' },
+        ]}
+        selectionPath={[]}
+        onEditStep={() => undefined}
+        onSelectOption={() => undefined}
+      />
+    );
+
+    const option = screen.getByRole('option', { name: 'Buchholz' });
+    fireEvent.mouseEnter(option);
+
+    expect(option.getAttribute('aria-selected')).toBe('true');
+  });
+
   it('shows a scroll hint while additional options remain below the viewport', () => {
     render(
       <PublicWasteSelectionForm

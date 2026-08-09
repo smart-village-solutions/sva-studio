@@ -1,0 +1,4 @@
+{
+  "prNumber": 935,
+  "body": "Speicher-Aktionen geben ihren Status jetzt direkt im jeweiligen Formular zurück\n\n- Speichern-Buttons in Core-Funktionen, Content-Plugins und Waste zeigen während und nach dem Vorgang einheitliche Zustände statt zusätzlicher Toast-Meldungen.\n- Technische Fehler bleiben im betroffenen Bereich sichtbar und können, soweit fachlich sicher, gezielt erneut versucht werden.\n- Seitengebundene Create-Flows öffnen die neu erzeugte Detailseite und bestätigen dort den erfolgreichen Speichervorgang.\n- Separate OpenSpec-Changes halten die späteren Standards für destruktive, kontextlose und länger laufende Aktionen fest."
+}

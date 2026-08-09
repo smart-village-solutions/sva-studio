@@ -1,5 +1,5 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioErrorState, StudioLoadingState } from '@sva/studio-ui-react';
+import { StudioErrorState, StudioLoadingState, useStudioSaveFeedback } from '@sva/studio-ui-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import type {
   WasteManagementEmailReminderConfig,
@@ -61,8 +61,8 @@ export const WasteOutputPanel = () => {
     loadForbiddenMessage: pt('output.pdf.messages.loadForbidden'),
     loadErrorMessage: pt('output.pdf.messages.loadError'),
   });
-  const [running, setRunning] = useState(false);
-  const [emailRunning, setEmailRunning] = useState(false);
+  const pdfSaveFeedback = useStudioSaveFeedback();
+  const emailSaveFeedback = useStudioSaveFeedback();
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [emailMessage, setEmailMessage] = useState<StatusMessage | null>(null);
   const [brandingAssetUrl, setBrandingAssetUrl] = useState('');
@@ -105,7 +105,7 @@ export const WasteOutputPanel = () => {
       return;
     }
 
-    setRunning(true);
+    const operationId = pdfSaveFeedback.beginSaving();
     setMessage(null);
 
     try {
@@ -126,7 +126,7 @@ export const WasteOutputPanel = () => {
       setSettings(nextSettings);
       setBrandingAssetUrl(nextSettings?.pdfBrandingAssetUrl ?? '');
       setContactBlock(nextSettings?.pdfContactBlock ?? '');
-      setMessage({ kind: 'success', text: pt('output.pdf.messages.saveSuccess') });
+      pdfSaveFeedback.markSaved(operationId);
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
       setMessage({
@@ -136,8 +136,7 @@ export const WasteOutputPanel = () => {
             ? pt('output.pdf.messages.saveForbidden')
             : pt('output.pdf.messages.saveError'),
       });
-    } finally {
-      setRunning(false);
+      pdfSaveFeedback.markFailed(operationId);
     }
   };
 
@@ -147,7 +146,7 @@ export const WasteOutputPanel = () => {
       return;
     }
 
-    setEmailRunning(true);
+    const operationId = emailSaveFeedback.beginSaving();
     setEmailMessage(null);
 
     try {
@@ -165,7 +164,7 @@ export const WasteOutputPanel = () => {
           transportOptions: getMailTransportOptions(nextSettings?.availableInterfaces ?? []),
         })
       );
-      setEmailMessage({ kind: 'success', text: pt('output.emailReminder.messages.saveSuccess') });
+      emailSaveFeedback.markSaved(operationId);
     } catch (saveError) {
       const code = resolveApiErrorCode(saveError);
       setEmailMessage({
@@ -175,8 +174,7 @@ export const WasteOutputPanel = () => {
             ? pt('output.emailReminder.messages.saveForbidden')
             : pt('output.emailReminder.messages.saveError'),
       });
-    } finally {
-      setEmailRunning(false);
+      emailSaveFeedback.markFailed(operationId);
     }
   };
 
@@ -188,17 +186,26 @@ export const WasteOutputPanel = () => {
         brandingAssetUrl={brandingAssetUrl}
         contactBlock={contactBlock}
         onSubmit={onSubmit}
-        running={running}
-        setBrandingAssetUrl={setBrandingAssetUrl}
-        setContactBlock={setContactBlock}
+        saveStatus={pdfSaveFeedback.status}
+        setBrandingAssetUrl={(value) => {
+          pdfSaveFeedback.markDirty();
+          setBrandingAssetUrl(value);
+        }}
+        setContactBlock={(value) => {
+          pdfSaveFeedback.markDirty();
+          setContactBlock(value);
+        }}
         translate={pt}
       />
       {emailReminderConfig ? (
         <WasteEmailReminderConfigurationSection
           hasMailTransportOptions={mailTransportOptions.length > 0}
-          onChange={setEmailReminderConfig}
+          onChange={(value) => {
+            emailSaveFeedback.markDirty();
+            setEmailReminderConfig(value);
+          }}
           onSubmit={onEmailReminderSubmit}
-          running={emailRunning}
+          saveStatus={emailSaveFeedback.status}
           transportOptions={mailTransportOptions}
           translate={pt}
           value={emailReminderConfig}

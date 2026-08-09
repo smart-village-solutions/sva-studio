@@ -1,11 +1,20 @@
 import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@sva/studio-ui-react';
 import type { FormEvent } from 'react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import type { TourFormState } from './waste-management.tours.types.js';
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 export const TourDialog = ({
   open,
@@ -38,8 +47,14 @@ export const TourDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')}</DialogTitle>
-          <DialogDescription>{mode === 'create' ? pt('tours.dialog.createDescription') : pt('tours.dialog.editDescription')}</DialogDescription>
+          <DialogTitle>
+            {mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create'
+              ? pt('tours.dialog.createDescription')
+              : pt('tours.dialog.editDescription')}
+          </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={onSubmit}>
           <StatusNotice message={message} />
@@ -53,8 +68,20 @@ export const TourDialog = ({
             onChange={onChange}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{pt('tours.actions.cancel')}</Button>
-            <Button type="submit" disabled={saving}>{saving ? pt('tours.actions.saving') : mode === 'create' ? pt('tours.actions.create') : pt('tours.actions.save')}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {pt('tours.actions.cancel')}
+            </Button>
+            <WastePendingSaveButton
+              type="submit"
+              saving={saving}
+              label={
+                saving
+                  ? pt('tours.actions.saving')
+                  : mode === 'create'
+                    ? pt('tours.actions.create')
+                    : pt('tours.actions.save')
+              }
+            />
           </DialogFooter>
         </form>
       </DialogContent>

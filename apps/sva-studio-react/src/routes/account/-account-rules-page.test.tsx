@@ -126,7 +126,7 @@ describe('AccountRulesPage', () => {
       expect(saveMyDeletionRulesContentPreferenceMock).toHaveBeenCalledWith({
         strategy: 'with_owner_lifecycle',
       });
-      expect(screen.getByText('Die Inhaltsregel wurde gespeichert.')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Gespeichert' })).toBeTruthy();
     });
   });
 });

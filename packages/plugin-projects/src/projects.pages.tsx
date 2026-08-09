@@ -20,13 +20,16 @@ import {
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
+  addStudioCreatedSaveFeedback,
   Button,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
   createManualContentMediaUsage,
+  hasStudioCreatedSaveFeedback,
   Input,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
+  removeStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
   RichTextHtmlEditor,
   Select,
@@ -44,6 +47,7 @@ import {
   StudioMediaPickerOverlay,
   StudioOverviewPageTemplate,
   StudioPagination,
+  StudioSaveButton,
   Textarea,
   type StudioDetailTabDefinition,
   type ContentMediaUsage,
@@ -52,8 +56,9 @@ import {
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerOverlayLabels,
   useStudioMediaPickerOverlay,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
@@ -274,10 +279,17 @@ function ProjectEditor({
 }>) {
   const pt = usePluginTranslation('projects');
   const navigate = useNavigate();
+  const location = useLocation();
   const form = useForm<ProjectFormValues>({
     defaultValues: createDefaultProjectFormValues(),
     resolver: zodResolver(projectFormSchema),
   });
+  const saveFeedback = useStudioSaveFeedback();
+  React.useEffect(() => {
+    if (form.formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const [tab, setTab] = React.useState<ProjectTab>('basis');
   const [item, setItem] = React.useState<ProjectContentItem>();
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
@@ -287,6 +299,25 @@ function ProjectEditor({
     if (principalControl) setActingPrincipalType(principalControl.value);
   }, [principalControl]);
   const [loading, setLoading] = React.useState(mode === 'edit');
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      loading ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'projects', contentId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/projects/$id',
+      params: { id: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [contentId, loading, location.state, navigate, saveFeedback]);
   const [loadError, setLoadError] = React.useState(false);
   const [mutationError, setMutationError] = React.useState<string>();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -454,6 +485,7 @@ function ProjectEditor({
         return;
       }
       setMutationError(undefined);
+      const operationId = saveFeedback.beginSaving();
       try {
         const input = normalizeProjectInput({
           ...values,
@@ -484,10 +516,12 @@ function ProjectEditor({
             )
           );
           setMutationError(pt('messages.mediaReferencePartialFailure'));
+          saveFeedback.markFailed(operationId);
           return;
         }
         setRetryReferenceSync(null);
         setRetryCreatedContentId(null);
+        saveFeedback.markSaved(operationId);
         if (requiresReferenceSync) {
           setMediaUsages((current) =>
             current.map((usage) =>
@@ -497,7 +531,11 @@ function ProjectEditor({
         }
         if (mode === 'create') {
           const created = result.saved;
-          await navigate({ to: '/admin/projects/$id', params: { id: created.id } });
+          await navigate({
+            to: '/admin/projects/$id',
+            params: { id: created.id },
+            state: (previous) => addStudioCreatedSaveFeedback(previous, 'projects', created.id),
+          });
         } else if (contentId) {
           const updated = result.saved;
           setItem(updated);
@@ -505,9 +543,11 @@ function ProjectEditor({
         }
       } catch {
         setMutationError(pt('messages.saveError'));
+        saveFeedback.markFailed(operationId);
       }
     },
     (errors) => {
+      saveFeedback.reset();
       setMutationError(pt('validation.summary'));
       if (errors.fullText || errors.images) setTab('content');
       else if (errors.status) setTab('settings');
@@ -738,13 +778,17 @@ function ProjectEditor({
       }
       primaryAction={
         canSave ? (
-          <Button
+          <StudioSaveButton
             type="submit"
             form={formId}
-            disabled={form.formState.isSubmitting || Boolean(retryReferenceSync)}
-          >
-            {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
-          </Button>
+            status={saveFeedback.status}
+            disabled={Boolean(retryReferenceSync)}
+            labels={{
+              idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+              saving: pt('actions.saving'),
+              saved: pt('actions.saved'),
+            }}
+          />
         ) : undefined
       }
     >

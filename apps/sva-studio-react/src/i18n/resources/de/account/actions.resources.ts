@@ -1,6 +1,7 @@
 export const actionsAccountDEResources = {
   save: 'Speichern',
-  saving: 'Speichern ...',
+  saving: 'Wird gespeichert…',
+  saved: 'Gespeichert',
   cancel: 'Abbrechen',
   retry: 'Erneut versuchen',
   openSecuritySettings: 'Sicherheitseinstellungen öffnen',

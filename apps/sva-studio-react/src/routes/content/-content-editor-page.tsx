@@ -1,4 +1,4 @@
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   GENERIC_CONTENT_TYPE,
@@ -8,11 +8,16 @@ import {
 } from '@sva/core';
 import { FilePenLine, History } from 'lucide-react';
 import {
+  addStudioCreatedSaveFeedback,
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
   StudioDetailPageTemplate,
   StudioField,
   StudioFieldGroup,
   StudioFormSummaryErrors,
+  StudioPersistentFormError,
   StudioResourceHeader,
+  StudioSaveButton,
   Tabs,
   TabsContent,
   TabsList,
@@ -20,6 +25,7 @@ import {
   Select as StudioSelect,
   getStudioFormFieldProps,
   type StudioFormFieldError,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
@@ -327,6 +333,7 @@ export const ContentEditorPage = ({
   onTabChange,
 }: ContentEditorPageProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [internalActiveTab, setInternalActiveTab] = React.useState<ContentEditorTabId>(
     activeTab ?? 'general'
   );
@@ -343,12 +350,19 @@ export const ContentEditorPage = ({
     reValidateMode: 'onChange',
   });
   const {
-    formState: { errors, isSubmitting },
+    formState: { errors, isDirty },
     handleSubmit,
     register,
     reset,
     watch,
   } = form;
+  const saveFeedback = useStudioSaveFeedback();
+
+  React.useEffect(() => {
+    if (isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [isDirty, saveFeedback.markDirty]);
 
   React.useEffect(() => {
     if (mode === 'edit' && detailApi.content) {
@@ -359,6 +373,26 @@ export const ContentEditorPage = ({
   const activeError = mode === 'create' ? createApi.mutationError : detailApi.mutationError;
   const isLoading = mode === 'create' ? false : detailApi.isLoading;
   const content = detailApi.content;
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      isLoading ||
+      !content ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'content', contentId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/content/$contentId',
+      params: { contentId: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [content, contentId, isLoading, location.state, navigate, saveFeedback]);
 
   const activeAccess = resolveActiveAccess({
     mode,
@@ -409,7 +443,10 @@ export const ContentEditorPage = ({
   const primaryActionLabel =
     mode === 'create' ? t('content.actions.createNow') : t('content.actions.save');
   const submitDisabled =
-    actionsDisabled || isSubmitting || isLoading || (mode === 'edit' && !content);
+    actionsDisabled ||
+    saveFeedback.status === 'saving' ||
+    isLoading ||
+    (mode === 'edit' && !content);
   const showEditorTabs = mode === 'create' || Boolean(content);
   const resolvedActiveTab = activeTab ?? internalActiveTab;
   const visibleTabs = React.useMemo<readonly ContentEditorTabId[]>(
@@ -420,17 +457,17 @@ export const ContentEditorPage = ({
     resolvedActiveTab,
   ]);
 
-  const submitCreate = async (values: ContentFormState): Promise<void> => {
+  const submitCreate = async (values: ContentFormState): Promise<boolean> => {
     const parsedPayload = parseContentPayload(values.payloadText);
     if (!parsedPayload.ok) {
-      return;
+      return false;
     }
     const publishedAt = parseOptionalEditorDateTime(
       values.publishedAt,
       detailApi.content?.publishedAt
     );
     if (publishedAt.kind === 'invalid') {
-      return;
+      return false;
     }
     const payload: CreateContentPayload = {
       title: values.title.trim(),
@@ -440,26 +477,31 @@ export const ContentEditorPage = ({
       payload: parsedPayload.payload as CreateContentPayload['payload'],
     };
 
-    const success = await createApi.createContent(payload);
-    if (success) {
-      await navigate({ to: '/admin/content' });
+    const created = await createApi.createContent(payload);
+    if (created) {
+      await navigate({
+        to: '/admin/content/$contentId',
+        params: { contentId: created.id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'content', created.id),
+      });
     }
+    return Boolean(created);
   };
 
-  const submitUpdate = async (values: ContentFormState): Promise<void> => {
+  const submitUpdate = async (values: ContentFormState): Promise<boolean> => {
     if (!contentId) {
-      return;
+      return false;
     }
     const parsedPayload = parseContentPayload(values.payloadText);
     if (!parsedPayload.ok) {
-      return;
+      return false;
     }
     const publishedAt = parseOptionalEditorDateTime(
       values.publishedAt,
       detailApi.content?.publishedAt
     );
     if (publishedAt.kind === 'invalid') {
-      return;
+      return false;
     }
 
     const payload: UpdateContentPayload = {
@@ -469,20 +511,24 @@ export const ContentEditorPage = ({
       payload: parsedPayload.payload as UpdateContentPayload['payload'],
     };
 
-    await detailApi.updateContent(payload);
+    return detailApi.updateContent(payload);
   };
 
-  const submitForm = handleSubmit(async (values) => {
+  const saveValues = async (values: ContentFormState) => {
     if (actionsDisabled) {
       return;
     }
 
+    const operationId = saveFeedback.beginSaving();
+    let success: boolean;
     if (mode === 'create') {
-      await submitCreate(values);
+      success = await submitCreate(values);
     } else {
-      await submitUpdate(values);
+      success = await submitUpdate(values);
     }
-  });
+    (success ? saveFeedback.markSaved : saveFeedback.markFailed)(operationId);
+  };
+  const submitForm = handleSubmit(saveValues, () => saveFeedback.reset());
 
   React.useEffect(() => {
     if (activeTab === undefined) {
@@ -570,7 +616,7 @@ export const ContentEditorPage = ({
   );
 
   return (
-    <section className="space-y-5" aria-busy={isLoading || isSubmitting}>
+    <section className="space-y-5" aria-busy={isLoading || saveFeedback.status === 'saving'}>
       <div>
         <Button asChild variant="outline">
           <Link to="/admin/content">{t('content.actions.back')}</Link>
@@ -583,9 +629,17 @@ export const ContentEditorPage = ({
           mode === 'create' ? t('content.editor.createSubtitle') : t('content.editor.editSubtitle')
         }
         primaryAction={
-          <Button type="submit" form={formId} disabled={submitDisabled}>
-            {primaryActionLabel}
-          </Button>
+          <StudioSaveButton
+            type="submit"
+            form={formId}
+            status={saveFeedback.status}
+            disabled={submitDisabled}
+            labels={{
+              idle: primaryActionLabel,
+              saving: t('account.actions.saving'),
+              saved: t('account.actions.saved'),
+            }}
+          />
         }
       >
         {detailApi.error && mode === 'edit' ? (
@@ -595,9 +649,12 @@ export const ContentEditorPage = ({
         ) : null}
 
         {activeError ? (
-          <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-            <AlertDescription>{contentErrorMessage(activeError)}</AlertDescription>
-          </Alert>
+          <StudioPersistentFormError
+            message={contentErrorMessage(activeError)}
+            retryLabel={t('account.actions.retry')}
+            retryDisabled={saveFeedback.status === 'saving'}
+            onRetry={() => void submitForm()}
+          />
         ) : null}
 
         {isReadOnly ? (

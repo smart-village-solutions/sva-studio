@@ -90,6 +90,7 @@ vi.mock('@sva/studio-ui-react', async () => {
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 describe('EventsDetailPage', () => {
@@ -106,12 +107,7 @@ describe('EventsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
-      unscopedPermissionActions: [
-        'events.read',
-        'events.create',
-        'events.update',
-        'events.delete',
-      ],
+      unscopedPermissionActions: ['events.read', 'events.create', 'events.update', 'events.delete'],
       assignedModules: ['events'],
       roles: [],
     });
@@ -339,7 +335,10 @@ describe('EventsDetailPage', () => {
       assignedModules: ['events'],
       roles: [],
     });
-    vi.mocked(getEvent).mockResolvedValueOnce({ id: 'event-read-only', title: 'Nur lesen' } as never);
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-read-only',
+      title: 'Nur lesen',
+    } as never);
 
     const { container } = render(<EventsDetailPage mode="edit" contentId="event-read-only" />);
 
@@ -476,7 +475,7 @@ describe('EventsDetailPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Event aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
   });
 
@@ -632,10 +631,13 @@ describe('EventsDetailPage', () => {
         }),
         'user'
       );
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/events/$id',
-        params: { id: 'event-created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/events/$id',
+          params: { id: 'event-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 
@@ -745,11 +747,40 @@ describe('EventsDetailPage', () => {
       expect(screen.getByDisplayValue('Stadtfest')).toBeTruthy();
     });
 
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neues Stadtfest' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {
       expect(vi.mocked(updateEvent)).toHaveBeenCalledTimes(1);
+      expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
+  });
+
+  it('returns the save action to idle when a degraded-field correction is cancelled', async () => {
+    vi.mocked(getEvent).mockResolvedValueOnce({
+      id: 'event-1',
+      title: 'Stadtfest',
+      dates: [{ dateStart: '2026-06-11T10:00:00.000Z' }],
+    } as never);
+    vi.mocked(getEventDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getEvent)(contentId),
+      deviations: [{ fieldGroup: 'title' }] as never,
+    }));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
+
+    render(<EventsDetailPage mode="edit" contentId="event-1" />);
+
+    expect(await screen.findByDisplayValue('Stadtfest')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neues Stadtfest' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(updateEvent).not.toHaveBeenCalled();
   });
 
   it('shows a localized summary for degraded Mainserver field groups', async () => {

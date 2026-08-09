@@ -18,6 +18,7 @@ import {
 } from '@sva/studio-ui-react';
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 import {
@@ -422,12 +423,12 @@ export const TourAssignmentsDialog = ({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {pt('tours.assignments.actions.cancel')}
             </Button>
-            <Button
+            <WastePendingSaveButton
               type="submit"
-              disabled={saving || (!selectedLocationIds.length && assignedLocationIds.length === 0)}
-            >
-              {submitLabel}
-            </Button>
+              saving={saving}
+              disabled={!selectedLocationIds.length && assignedLocationIds.length === 0}
+              label={submitLabel}
+            />
           </DialogFooter>
         </form>
       </DialogContent>

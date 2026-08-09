@@ -9,9 +9,10 @@ import {
   FractionFormActions,
   FractionPresentationSection,
   FractionVisibilitySection,
-  validateFractionForm,
 } from './waste-management.master-data-fraction-create.parts.js';
 import { FractionReminderSection } from './waste-management.master-data-fraction-reminder-section.js';
+import { validateFractionForm } from './waste-management.master-data-fraction-validation.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 type WasteMasterDataFractionCreateContentProps = {
   readonly mode: 'create' | 'edit';
@@ -19,8 +20,36 @@ type WasteMasterDataFractionCreateContentProps = {
   readonly saving: boolean;
   readonly onChange: (patch: Partial<FractionFormState>) => void;
   readonly onCancel: () => void;
-  readonly onSubmit: (event: FormEvent<HTMLFormElement>, mode?: 'create' | 'edit') => void | Promise<void>;
+  readonly onSubmit: (
+    event: FormEvent<HTMLFormElement>,
+    mode?: 'create' | 'edit'
+  ) => void | Promise<void>;
 };
+
+const getFractionCreateCopy = (
+  mode: WasteMasterDataFractionCreateContentProps['mode'],
+  saving: boolean,
+  pt: ReturnType<typeof usePluginTranslation>
+) => ({
+  title: pt(
+    mode === 'create'
+      ? 'masterData.fractions.createView.title'
+      : 'masterData.fractions.dialog.editTitle'
+  ),
+  description: pt(
+    mode === 'create'
+      ? 'masterData.fractions.createView.description'
+      : 'masterData.fractions.dialog.editDescription'
+  ),
+  saveLabel: pt(
+    saving
+      ? 'masterData.fractions.actions.saving'
+      : mode === 'create'
+        ? 'masterData.fractions.createView.actions.savePrimary'
+        : 'masterData.fractions.actions.save'
+  ),
+  cancelLabel: pt('masterData.fractions.createView.actions.cancel'),
+});
 
 export const WasteMasterDataFractionCreateContent = ({
   mode,
@@ -34,37 +63,25 @@ export const WasteMasterDataFractionCreateContent = ({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const errors = useMemo(() => validateFractionForm(form, pt), [form, pt]);
   const hasErrors = Boolean(errors.name || errors.pdfShortLabel || errors.color);
-  const title = mode === 'create' ? pt('masterData.fractions.createView.title') : pt('masterData.fractions.dialog.editTitle');
-  const description =
-    mode === 'create'
-      ? pt('masterData.fractions.createView.description')
-      : pt('masterData.fractions.dialog.editDescription');
-
-  const saveLabel = saving
-    ? pt('masterData.fractions.actions.saving')
-    : mode === 'create'
-      ? pt('masterData.fractions.createView.actions.savePrimary')
-      : pt('masterData.fractions.actions.save');
-  const cancelLabel = pt('masterData.fractions.createView.actions.cancel');
+  const { cancelLabel, description, saveLabel, title } = getFractionCreateCopy(mode, saving, pt);
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
         {cancelLabel}
       </Button>
-      <Button type="submit" form="waste-fraction-create-form" disabled={saving}>
-        {saveLabel}
-      </Button>
+      <WastePendingSaveButton
+        type="submit"
+        form="waste-fraction-create-form"
+        saving={saving}
+        label={saveLabel}
+      />
     </div>
   );
 
   return (
     <div className="space-y-6">
-      <StudioPageHeader
-        title={title}
-        description={description}
-        actions={topActions}
-      />
+      <StudioPageHeader title={title} description={description} actions={topActions} />
 
       <form
         id="waste-fraction-create-form"
@@ -78,11 +95,26 @@ export const WasteMasterDataFractionCreateContent = ({
           void onSubmit(event, mode);
         }}
       >
-        <FractionBasicsSection form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} />
-        <FractionPresentationSection form={form} submitAttempted={submitAttempted} errors={errors} onChange={onChange} />
+        <FractionBasicsSection
+          form={form}
+          submitAttempted={submitAttempted}
+          errors={errors}
+          onChange={onChange}
+        />
+        <FractionPresentationSection
+          form={form}
+          submitAttempted={submitAttempted}
+          errors={errors}
+          onChange={onChange}
+        />
         <FractionVisibilitySection form={form} onChange={onChange} />
         <FractionReminderSection form={form} onChange={onChange} />
-        <FractionFormActions cancelLabel={cancelLabel} saveLabel={saveLabel} saving={saving} onCancel={onCancel} />
+        <FractionFormActions
+          cancelLabel={cancelLabel}
+          saveLabel={saveLabel}
+          saving={saving}
+          onCancel={onCancel}
+        />
       </form>
     </div>
   );

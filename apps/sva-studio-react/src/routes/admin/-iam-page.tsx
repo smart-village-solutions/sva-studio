@@ -5,7 +5,13 @@ import type {
   IamTenantDeletionRulesOverview,
 } from '@sva/core';
 import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
-import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  StudioDataTable,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  type StudioColumnDef,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
@@ -985,7 +991,7 @@ const useDeletionRulesTabState = ({
   const [draft, setDraft] = React.useState<DeletionRulesDraft | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const saveFeedback = useStudioSaveFeedback();
 
   React.useEffect(() => {
     if (
@@ -1034,14 +1040,13 @@ const useDeletionRulesTabState = ({
     };
   }, [activeTab, allowedTabs, canAccessCockpit, cockpitEnabled, instanceId]);
 
-  const handleSave = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveDeletionRules = async () => {
     if (!instanceId || !draft) {
       setError(t('admin.iam.deletionRules.messages.instanceMissing'));
       return;
     }
 
-    setIsSaving(true);
+    const operationId = saveFeedback.beginSaving();
     setError(null);
 
     try {
@@ -1055,11 +1060,24 @@ const useDeletionRulesTabState = ({
       });
       setDeletionRules(response);
       setDraft(createDeletionRulesDraft(response));
+      saveFeedback.markSaved(operationId);
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : String(nextError));
-    } finally {
-      setIsSaving(false);
+      saveFeedback.markFailed(operationId);
     }
+  };
+
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void saveDeletionRules();
+  };
+
+  const setDraftAndMarkDirty: React.Dispatch<React.SetStateAction<DeletionRulesDraft | null>> = (
+    value
+  ) => {
+    saveFeedback.markDirty();
+    setError(null);
+    setDraft(value);
   };
 
   return {
@@ -1067,9 +1085,11 @@ const useDeletionRulesTabState = ({
     draft,
     error,
     handleSave,
+    retrySave: saveDeletionRules,
     isLoading,
-    isSaving,
-    setDraft,
+    isSaving: saveFeedback.status === 'saving',
+    saveStatus: saveFeedback.status,
+    setDraft: setDraftAndMarkDirty,
   };
 };
 
@@ -1536,9 +1556,12 @@ const DeletionRulesTabPanel = ({
         <p className="text-sm text-muted-foreground">{t('admin.iam.deletionRules.subtitle')}</p>
 
         {state.error ? (
-          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>{state.error}</AlertDescription>
-          </Alert>
+          <StudioPersistentFormError
+            message={state.error}
+            retryLabel={state.draft ? t('account.actions.retry') : undefined}
+            retryDisabled={state.isSaving}
+            onRetry={state.draft ? () => void state.retrySave() : undefined}
+          />
         ) : null}
 
         {state.isLoading || !state.draft ? (
@@ -1648,11 +1671,16 @@ const DeletionRulesTabPanel = ({
               </div>
             </div>
             <div className="md:col-span-2 flex items-center gap-3">
-              <Button type="submit" disabled={!state.deletionRules?.canEdit || state.isSaving}>
-                {state.isSaving
-                  ? t('admin.iam.deletionRules.actions.saving')
-                  : t('admin.iam.deletionRules.actions.save')}
-              </Button>
+              <StudioSaveButton
+                type="submit"
+                status={state.saveStatus}
+                disabled={!state.deletionRules?.canEdit}
+                labels={{
+                  idle: t('admin.iam.deletionRules.actions.save'),
+                  saving: t('admin.iam.deletionRules.actions.saving'),
+                  saved: t('admin.iam.deletionRules.actions.saved'),
+                }}
+              />
               {!state.deletionRules?.canEdit ? (
                 <p className="text-sm text-muted-foreground">
                   {t('admin.iam.deletionRules.messages.readOnly')}

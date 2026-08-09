@@ -1,4 +1,9 @@
 import { Link } from '@tanstack/react-router';
+import {
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
@@ -55,7 +60,9 @@ const ReviewRow = ({ label, value }: { label: string; value: string }) => (
 
 const getStepIndex = (step: CreateWizardStepKey) => stepOrder.indexOf(step);
 const getRealmModeLabel = (realmMode: 'new' | 'existing') =>
-  realmMode === 'new' ? t('admin.instances.flow.realmModeNewLabel') : t('admin.instances.flow.realmModeExistingLabel');
+  realmMode === 'new'
+    ? t('admin.instances.flow.realmModeNewLabel')
+    : t('admin.instances.flow.realmModeExistingLabel');
 const readStepStatus = (isCompleted: boolean, isCurrent: boolean) => {
   if (isCompleted) {
     return 'done' as const;
@@ -89,14 +96,18 @@ export const InstanceCreatePage = () => {
   const [stepErrors, setStepErrors] = React.useState<string[]>([]);
   const [createdInstance, setCreatedInstance] = React.useState<IamInstanceListItem | null>(null);
   const [formValues, setFormValues] = React.useState(createEmptyCreateForm());
+  const saveFeedback = useStudioSaveFeedback();
 
   React.useEffect(() => {
     const parentDomain = readSuggestedParentDomain();
     setSuggestedParentDomain(parentDomain);
-    setFormValues((current) => (current.parentDomain ? current : createEmptyCreateForm(parentDomain)));
+    setFormValues((current) =>
+      current.parentDomain ? current : createEmptyCreateForm(parentDomain)
+    );
   }, []);
 
   const updateForm = (updater: (current: CreateFormValues) => CreateFormValues) => {
+    saveFeedback.markDirty();
     setFormValues((current) => updater(current));
     setStepErrors([]);
     if (createdInstance) {
@@ -138,14 +149,14 @@ export const InstanceCreatePage = () => {
     setCurrentStep(previousStep);
   };
 
-  const onCreateSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const createCurrentInstance = async () => {
     const validationMessages = getCreateStepValidationMessages('review', formValues);
     if (validationMessages.length > 0) {
       setStepErrors(validationMessages);
       return;
     }
 
+    const operationId = saveFeedback.beginSaving();
     const instanceId = formValues.instanceId.trim();
     const created = await instancesApi.createInstance({
       instanceId,
@@ -173,10 +184,17 @@ export const InstanceCreatePage = () => {
     });
 
     if (!created) {
+      saveFeedback.markFailed(operationId);
       return;
     }
 
     setCreatedInstance(created);
+    saveFeedback.markSaved(operationId);
+  };
+
+  const onCreateSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void createCurrentInstance();
   };
 
   const readinessChecks = getCreateReadinessChecks(formValues);
@@ -187,8 +205,12 @@ export const InstanceCreatePage = () => {
     <section className="space-y-5" aria-busy={instancesApi.isLoading}>
       <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-semibold text-foreground">{t('admin.instances.form.title')}</h1>
-          <p className="max-w-3xl text-sm text-muted-foreground">{t('admin.instances.form.subtitle')}</p>
+          <h1 className="text-3xl font-semibold text-foreground">
+            {t('admin.instances.form.title')}
+          </h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            {t('admin.instances.form.subtitle')}
+          </p>
         </div>
         <Button asChild type="button" variant="outline">
           <Link to="/admin/instances">{t('admin.instances.actions.back')}</Link>
@@ -204,31 +226,39 @@ export const InstanceCreatePage = () => {
           <div className="grid gap-2 md:grid-cols-3">
             {successGuidance.nextSteps.map((item, index) => (
               <div key={item} className="rounded-lg border border-border p-3 text-sm">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{index + 1}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {index + 1}
+                </div>
                 <div className="mt-1 text-foreground">{item}</div>
               </div>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild>
-              <Link to="/admin/instances/$instanceId/setup" params={{ instanceId: createdInstance.instanceId }}>
+              <Link
+                to="/admin/instances/$instanceId/setup"
+                params={{ instanceId: createdInstance.instanceId }}
+              >
                 {t('admin.instances.setup.actions.completeSetup')}
               </Link>
             </Button>
             <Button asChild type="button" variant="outline">
-              <Link to="/admin/instances">{t('admin.instances.success.actions.backToOverview')}</Link>
+              <Link to="/admin/instances">
+                {t('admin.instances.success.actions.backToOverview')}
+              </Link>
             </Button>
           </div>
         </Card>
       ) : null}
 
       {instancesApi.mutationError && !createdInstance ? (
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertDescription className="flex flex-col gap-3">
-            <span>{getErrorMessage(instancesApi.mutationError)}</span>
-            <IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />
-          </AlertDescription>
-        </Alert>
+        <StudioPersistentFormError
+          message={getErrorMessage(instancesApi.mutationError)}
+          details={<IamRuntimeDiagnosticDetails error={instancesApi.mutationError} />}
+          retryLabel={t('account.actions.retry')}
+          retryDisabled={saveFeedback.status === 'saving'}
+          onRetry={() => void createCurrentInstance()}
+        />
       ) : null}
 
       <Card className="space-y-5 p-4">
@@ -246,7 +276,9 @@ export const InstanceCreatePage = () => {
                 }`}
                 onClick={() => moveToStep(step.key)}
               >
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">{index + 1}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  {index + 1}
+                </div>
                 <div className="mt-1 flex items-center justify-between gap-3">
                   <span className="font-medium text-foreground">{step.title}</span>
                   <WorkflowStatusBadge status={status} />
@@ -268,10 +300,14 @@ export const InstanceCreatePage = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-medium text-foreground">{t('admin.instances.flow.realmModeTitle')}</h2>
+                  <h2 className="text-sm font-medium text-foreground">
+                    {t('admin.instances.flow.realmModeTitle')}
+                  </h2>
                   <FieldHelp {...INSTANCE_FIELD_HELP.realmMode} />
                 </div>
-                <p className="text-xs text-muted-foreground">{t('admin.instances.flow.realmModeSubtitle')}</p>
+                <p className="text-xs text-muted-foreground">
+                  {t('admin.instances.flow.realmModeSubtitle')}
+                </p>
               </div>
               <div className="grid gap-2 md:grid-cols-2">
                 <label className="flex items-start gap-2 rounded-md border border-border p-3 text-sm">
@@ -288,14 +324,20 @@ export const InstanceCreatePage = () => {
                     type="radio"
                     name="instance-realm-mode"
                     checked={formValues.realmMode === 'existing'}
-                    onChange={() => updateForm((current) => ({ ...current, realmMode: 'existing' }))}
+                    onChange={() =>
+                      updateForm((current) => ({ ...current, realmMode: 'existing' }))
+                    }
                   />
                   <span>{t('admin.instances.flow.realmModeExisting')}</span>
                 </label>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
-                  <FormLabelWithHelp htmlFor="instance-id" label={t('admin.instances.form.instanceId')} helpKey="instanceId" />
+                  <FormLabelWithHelp
+                    htmlFor="instance-id"
+                    label={t('admin.instances.form.instanceId')}
+                    helpKey="instanceId"
+                  />
                   <Input
                     id="instance-id"
                     value={formValues.instanceId}
@@ -317,7 +359,9 @@ export const InstanceCreatePage = () => {
                   <Input
                     id="instance-display-name"
                     value={formValues.displayName}
-                    onChange={(event) => updateForm((current) => ({ ...current, displayName: event.target.value }))}
+                    onChange={(event) =>
+                      updateForm((current) => ({ ...current, displayName: event.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -331,7 +375,9 @@ export const InstanceCreatePage = () => {
                   id="instance-parent-domain"
                   value={formValues.parentDomain}
                   placeholder={suggestedParentDomain || undefined}
-                  onChange={(event) => updateForm((current) => ({ ...current, parentDomain: event.target.value }))}
+                  onChange={(event) =>
+                    updateForm((current) => ({ ...current, parentDomain: event.target.value }))
+                  }
                 />
               </div>
             </div>
@@ -341,11 +387,17 @@ export const InstanceCreatePage = () => {
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
-                  <FormLabelWithHelp htmlFor="instance-auth-realm" label={t('admin.instances.form.authRealm')} helpKey="authRealm" />
+                  <FormLabelWithHelp
+                    htmlFor="instance-auth-realm"
+                    label={t('admin.instances.form.authRealm')}
+                    helpKey="authRealm"
+                  />
                   <Input
                     id="instance-auth-realm"
                     value={formValues.authRealm}
-                    onChange={(event) => updateForm((current) => ({ ...current, authRealm: event.target.value }))}
+                    onChange={(event) =>
+                      updateForm((current) => ({ ...current, authRealm: event.target.value }))
+                    }
                   />
                 </div>
                 <div className="space-y-1">
@@ -357,7 +409,9 @@ export const InstanceCreatePage = () => {
                   <Input
                     id="instance-auth-client-id"
                     value={formValues.authClientId}
-                    onChange={(event) => updateForm((current) => ({ ...current, authClientId: event.target.value }))}
+                    onChange={(event) =>
+                      updateForm((current) => ({ ...current, authClientId: event.target.value }))
+                    }
                   />
                 </div>
               </div>
@@ -374,7 +428,10 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminClient: { ...current.tenantAdminClient, clientId: event.target.value },
+                        tenantAdminClient: {
+                          ...current.tenantAdminClient,
+                          clientId: event.target.value,
+                        },
                       }))
                     }
                   />
@@ -394,7 +451,10 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminClient: { ...current.tenantAdminClient, secret: event.target.value },
+                        tenantAdminClient: {
+                          ...current.tenantAdminClient,
+                          secret: event.target.value,
+                        },
                       }))
                     }
                   />
@@ -409,7 +469,9 @@ export const InstanceCreatePage = () => {
                 <Input
                   id="instance-auth-issuer-url"
                   value={formValues.authIssuerUrl}
-                  onChange={(event) => updateForm((current) => ({ ...current, authIssuerUrl: event.target.value }))}
+                  onChange={(event) =>
+                    updateForm((current) => ({ ...current, authIssuerUrl: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-1">
@@ -418,15 +480,19 @@ export const InstanceCreatePage = () => {
                   label={t('admin.instances.form.authClientSecret')}
                   helpKey="authClientSecret"
                 />
-                  <Input
-                    id="instance-auth-client-secret"
-                    type="password"
-                    disabled={!tenantSecretUserInputRequired}
-                    placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
-                    value={formValues.authClientSecret}
-                    onChange={(event) => updateForm((current) => ({ ...current, authClientSecret: event.target.value }))}
-                  />
-                <p className="text-xs text-muted-foreground">{readAuthSecretHint(tenantSecretUserInputRequired)}</p>
+                <Input
+                  id="instance-auth-client-secret"
+                  type="password"
+                  disabled={!tenantSecretUserInputRequired}
+                  placeholder={readSecretPlaceholder(tenantSecretUserInputRequired)}
+                  value={formValues.authClientSecret}
+                  onChange={(event) =>
+                    updateForm((current) => ({ ...current, authClientSecret: event.target.value }))
+                  }
+                />
+                <p className="text-xs text-muted-foreground">
+                  {readAuthSecretHint(tenantSecretUserInputRequired)}
+                </p>
               </div>
             </div>
           ) : null}
@@ -434,8 +500,12 @@ export const InstanceCreatePage = () => {
           {currentStep === 'tenantAdmin' ? (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">{t('admin.instances.form.tenantAdminTitle')}</h2>
-                <p className="text-xs text-muted-foreground">{t('admin.instances.form.tenantAdminSubtitle')}</p>
+                <h2 className="text-sm font-medium text-foreground">
+                  {t('admin.instances.form.tenantAdminTitle')}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t('admin.instances.form.tenantAdminSubtitle')}
+                </p>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
@@ -450,7 +520,10 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, username: event.target.value },
+                        tenantAdminBootstrap: {
+                          ...current.tenantAdminBootstrap,
+                          username: event.target.value,
+                        },
                       }))
                     }
                   />
@@ -467,7 +540,10 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, email: event.target.value },
+                        tenantAdminBootstrap: {
+                          ...current.tenantAdminBootstrap,
+                          email: event.target.value,
+                        },
                       }))
                     }
                   />
@@ -486,7 +562,10 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, firstName: event.target.value },
+                        tenantAdminBootstrap: {
+                          ...current.tenantAdminBootstrap,
+                          firstName: event.target.value,
+                        },
                       }))
                     }
                   />
@@ -503,45 +582,80 @@ export const InstanceCreatePage = () => {
                     onChange={(event) =>
                       updateForm((current) => ({
                         ...current,
-                        tenantAdminBootstrap: { ...current.tenantAdminBootstrap, lastName: event.target.value },
+                        tenantAdminBootstrap: {
+                          ...current.tenantAdminBootstrap,
+                          lastName: event.target.value,
+                        },
                       }))
                     }
                   />
                 </div>
               </div>
-              <p className="text-xs text-muted-foreground">{t('admin.instances.wizard.tenantAdminOptional')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('admin.instances.wizard.tenantAdminOptional')}
+              </p>
             </div>
           ) : null}
 
           {currentStep === 'review' ? (
             <div className="space-y-4">
               <div className="space-y-1">
-                <h2 className="text-sm font-medium text-foreground">{t('admin.instances.wizard.reviewTitle')}</h2>
-                <p className="text-xs text-muted-foreground">{t('admin.instances.wizard.reviewSubtitle')}</p>
+                <h2 className="text-sm font-medium text-foreground">
+                  {t('admin.instances.wizard.reviewTitle')}
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  {t('admin.instances.wizard.reviewSubtitle')}
+                </p>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
-                <ReviewRow label={t('admin.instances.form.instanceId')} value={formValues.instanceId || '—'} />
-                <ReviewRow label={t('admin.instances.form.displayName')} value={formValues.displayName || '—'} />
-                <ReviewRow label={t('admin.instances.flow.realmModeTitle')} value={getRealmModeLabel(formValues.realmMode)} />
-                <ReviewRow label={t('admin.instances.form.parentDomain')} value={formValues.parentDomain || '—'} />
-                <ReviewRow label={t('admin.instances.form.authRealm')} value={formValues.authRealm || '—'} />
-                <ReviewRow label={t('admin.instances.form.authClientId')} value={formValues.authClientId || '—'} />
+                <ReviewRow
+                  label={t('admin.instances.form.instanceId')}
+                  value={formValues.instanceId || '—'}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.displayName')}
+                  value={formValues.displayName || '—'}
+                />
+                <ReviewRow
+                  label={t('admin.instances.flow.realmModeTitle')}
+                  value={getRealmModeLabel(formValues.realmMode)}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.parentDomain')}
+                  value={formValues.parentDomain || '—'}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.authRealm')}
+                  value={formValues.authRealm || '—'}
+                />
+                <ReviewRow
+                  label={t('admin.instances.form.authClientId')}
+                  value={formValues.authClientId || '—'}
+                />
                 <ReviewRow
                   label={t('admin.instances.form.tenantAdminClientId')}
                   value={formValues.tenantAdminClient.clientId || '—'}
                 />
                 <ReviewRow
                   label={t('admin.instances.form.authIssuerUrl')}
-                  value={formValues.authIssuerUrl || t('admin.instances.wizard.reviewDefaultIssuer')}
+                  value={
+                    formValues.authIssuerUrl || t('admin.instances.wizard.reviewDefaultIssuer')
+                  }
                 />
                 <ReviewRow
                   label={t('admin.instances.form.tenantAdminUsername')}
-                  value={formValues.tenantAdminBootstrap.username || t('admin.instances.wizard.reviewNotConfigured')}
+                  value={
+                    formValues.tenantAdminBootstrap.username ||
+                    t('admin.instances.wizard.reviewNotConfigured')
+                  }
                 />
               </div>
               <div className="grid gap-2">
                 {readinessChecks.map((check) => (
-                  <div key={check.key} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
+                  <div
+                    key={check.key}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-border p-3"
+                  >
                     <div>
                       <div className="font-medium text-foreground">{check.title}</div>
                       <p className="mt-1 text-xs text-muted-foreground">{check.summary}</p>
@@ -550,13 +664,20 @@ export const InstanceCreatePage = () => {
                   </div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">{t('admin.instances.flow.createHint')}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('admin.instances.flow.createHint')}
+              </p>
             </div>
           ) : null}
 
           <div className="flex flex-wrap justify-between gap-2">
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={moveToPreviousStep} disabled={currentStep === 'basics'}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={moveToPreviousStep}
+                disabled={currentStep === 'basics'}
+              >
                 {t('admin.instances.wizard.actions.back')}
               </Button>
               {currentStep !== 'review' ? (
@@ -565,7 +686,17 @@ export const InstanceCreatePage = () => {
                 </Button>
               ) : null}
             </div>
-            {currentStep === 'review' ? <Button type="submit">{t('admin.instances.actions.create')}</Button> : null}
+            {currentStep === 'review' ? (
+              <StudioSaveButton
+                type="submit"
+                status={saveFeedback.status}
+                labels={{
+                  idle: t('admin.instances.actions.create'),
+                  saving: t('account.actions.saving'),
+                  saved: t('account.actions.saved'),
+                }}
+              />
+            ) : null}
           </div>
         </form>
       </Card>

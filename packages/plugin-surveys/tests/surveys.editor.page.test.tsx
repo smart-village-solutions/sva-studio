@@ -8,12 +8,18 @@ const controllerState = vi.hoisted(() => ({
   isLoading: false,
   loadedItem: null,
   status: null as null | { kind: 'success' | 'error'; text: string },
+  onInitialSavedConsumed: undefined as undefined | (() => void),
 }));
 const accessState = vi.hoisted(() => ({
   snapshot: {
     isResolved: true,
     permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
-    unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+    unscopedPermissionActions: [
+      'surveys.read',
+      'surveys.create',
+      'surveys.update',
+      'surveys.delete',
+    ],
     assignedModules: ['surveys'],
     roles: [],
   },
@@ -22,6 +28,7 @@ const accessState = vi.hoisted(() => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -70,9 +77,16 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/surveys.editor-logic.js', () => ({
-  useSurveyEditorController: ({ navigateToContentList }: { navigateToContentList: () => void }) => {
+  useSurveyEditorController: ({
+    navigateToCreatedDetail,
+    onInitialSavedConsumed,
+  }: {
+    navigateToCreatedDetail: (contentId: string) => void;
+    onInitialSavedConsumed: () => void;
+  }) => {
+    controllerState.onInitialSavedConsumed = onInitialSavedConsumed;
     submitMock.mockImplementation(() => {
-      navigateToContentList();
+      navigateToCreatedDetail('survey-created');
     });
     return {
       isLoading: controllerState.isLoading,
@@ -91,12 +105,18 @@ describe('SurveyEditorPage', () => {
     controllerState.isLoading = false;
     controllerState.loadedItem = null;
     controllerState.status = null;
+    controllerState.onInitialSavedConsumed = undefined;
     submitMock.mockReset();
     navigateMock.mockReset();
     accessState.snapshot = {
       isResolved: true,
       permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
-      unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+      unscopedPermissionActions: [
+        'surveys.read',
+        'surveys.create',
+        'surveys.update',
+        'surveys.delete',
+      ],
       assignedModules: ['surveys'],
       roles: [],
     };
@@ -120,7 +140,40 @@ describe('SurveyEditorPage', () => {
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
 
     expect(submitMock).toHaveBeenCalledTimes(1);
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/admin/surveys/$id',
+        params: { id: 'survey-created' },
+        state: expect.any(Function),
+      })
+    );
+
+    const createNavigation = navigateMock.mock.calls.at(-1)?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(createNavigation.state({ preserved: true })).toEqual({
+      preserved: true,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'survey-created',
+        resourceType: 'surveys',
+      },
+    });
+
+    controllerState.onInitialSavedConsumed?.();
+    const consumeNavigation = navigateMock.mock.calls.at(-1)?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(
+      consumeNavigation.state({
+        preserved: true,
+        studioSaveFeedback: {
+          kind: 'created',
+          resourceId: 'survey-created',
+          resourceType: 'surveys',
+        },
+      })
+    ).toEqual({ preserved: true });
   });
 
   it('fails closed for edits until the Mainserver update capability is enabled', () => {

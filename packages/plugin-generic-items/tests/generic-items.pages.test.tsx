@@ -2,7 +2,11 @@ import React from 'react';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { GenericItemsCreatePage, GenericItemsEditPage, GenericItemsListPage } from '../src/generic-items.pages.js';
+import {
+  GenericItemsCreatePage,
+  GenericItemsEditPage,
+  GenericItemsListPage,
+} from '../src/generic-items.pages.js';
 import { listGenericItems } from '../src/generic-items.api.js';
 import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
@@ -37,6 +41,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
   useSearch: () => ({ page: 1, pageSize: 25 }),
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('@sva/plugin-sdk', async () => {
@@ -44,7 +49,10 @@ vi.mock('@sva/plugin-sdk', async () => {
   return {
     ...actual,
     listHostMediaAssets: vi.fn(async () => []),
-    uploadHostMediaFile: vi.fn(async () => ({ assetId: 'uploaded-asset', uploadSessionId: 'upload-1' })),
+    uploadHostMediaFile: vi.fn(async () => ({
+      assetId: 'uploaded-asset',
+      uploadSessionId: 'upload-1',
+    })),
   };
 });
 
@@ -233,15 +241,19 @@ describe('generic items pages', () => {
         'genericItems.richText.linkInput': 'Link-URL',
         'genericItems.messages.imagePickerEmpty': 'Keine passenden Bilder gefunden.',
         'genericItems.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
-        'genericItems.messages.categoryOptionsLoadError': 'Kategorien konnten nicht geladen werden.',
+        'genericItems.messages.categoryOptionsLoadError':
+          'Kategorien konnten nicht geladen werden.',
         'genericItems.messages.mediaUploadInitializing': 'Upload wird vorbereitet.',
         'genericItems.messages.mediaUploadUploading': 'Bild wird hochgeladen.',
         'genericItems.messages.mediaUploadFinalizing': 'Bild wird eingebunden.',
         'genericItems.messages.mediaUploadSuccess': 'Bild wurde hinzugefügt.',
         'genericItems.messages.mediaUploadError': 'Bild konnte nicht hochgeladen werden.',
-        'genericItems.messages.mediaUploadUnsupportedType': 'Dieser Dateityp wird nicht unterstützt.',
-        'genericItems.messages.mediaUploadUnavailableUrl': 'Dieses Medium hat keine öffentliche URL.',
-        'genericItems.validation.categories': 'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
+        'genericItems.messages.mediaUploadUnsupportedType':
+          'Dieser Dateityp wird nicht unterstützt.',
+        'genericItems.messages.mediaUploadUnavailableUrl':
+          'Dieses Medium hat keine öffentliche URL.',
+        'genericItems.validation.categories':
+          'Kategorien benötigen einen Namen mit maximal 128 Zeichen.',
         'genericItems.validation.priceInformations': 'Preisangaben müssen valide Zahlen enthalten.',
         'genericItems.validation.webUrls': 'URLs müssen mit https:// beginnen.',
         'genericItems.editor.createTitle': 'Generic Item anlegen',

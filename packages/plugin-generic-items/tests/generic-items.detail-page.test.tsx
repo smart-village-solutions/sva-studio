@@ -56,6 +56,7 @@ vi.mock('@tanstack/react-router', () => ({
     <a href={search?.type ? `${to}?type=${encodeURIComponent(search.type)}` : to}>{children}</a>
   ),
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('@sva/plugin-sdk', async () => {
@@ -340,10 +341,13 @@ describe('GenericItemsDetailPage', () => {
     });
 
     await waitFor(() => {
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/generic-items/$id',
-        params: { id: 'created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/generic-items/$id',
+          params: { id: 'created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 

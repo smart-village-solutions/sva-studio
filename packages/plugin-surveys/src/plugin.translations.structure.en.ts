@@ -6,6 +6,8 @@ export const pluginSurveysStructureEnTranslations = {
     create: 'Create survey',
     edit: 'View survey',
     update: 'Save survey',
+    saving: 'Saving…',
+    saved: 'Saved',
     delete: 'Delete survey',
     moderate: 'Moderate free text',
     export: 'Export results',

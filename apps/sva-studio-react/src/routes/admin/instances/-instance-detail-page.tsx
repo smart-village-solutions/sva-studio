@@ -1,4 +1,5 @@
 import React from 'react';
+import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
@@ -58,7 +59,10 @@ const InstanceRuntimeEvidence = ({
     return null;
   }
 
-  if (classification !== 'registry_or_provisioning_drift' && classification !== 'keycloak_reconcile') {
+  if (
+    classification !== 'registry_or_provisioning_drift' &&
+    classification !== 'keycloak_reconcile'
+  ) {
     return null;
   }
 
@@ -80,7 +84,11 @@ const InstanceRuntimeEvidence = ({
         </p>
       ) : null}
       {instance.keycloakPlan ? (
-        <p>{t('admin.instances.diagnostics.planEvidence', { summary: instance.keycloakPlan.driftSummary })}</p>
+        <p>
+          {t('admin.instances.diagnostics.planEvidence', {
+            summary: instance.keycloakPlan.driftSummary,
+          })}
+        </p>
       ) : null}
       {latestRun ? (
         <p>
@@ -97,7 +105,10 @@ const InstanceRuntimeEvidence = ({
 export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
   const instancesApi = useInstances();
   const { loadInstance, isLoading, detailLoading, statusLoading } = instancesApi;
-  const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<typeof createDetailForm> | null>(null);
+  const [detailFormValues, setDetailFormValues] = React.useState<ReturnType<
+    typeof createDetailForm
+  > | null>(null);
+  const saveFeedback = useStudioSaveFeedback();
   const [actionFeedback, setActionFeedback] = React.useState<ActionFeedback | null>(null);
   const [actionFeedbackFading, setActionFeedbackFading] = React.useState(false);
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<WorkspaceTab>('betrieb');
@@ -107,11 +118,20 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     void loadInstance(instanceId);
   }, [instanceId, loadInstance]);
 
-  const selectedInstance = instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
-  const tenantSecretUserInputRequired = readTenantSecretUserInputRequired(detailFormValues, selectedInstance);
-  const configurationAssessment = selectedInstance ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError) : null;
+  const selectedInstance =
+    instancesApi.selectedInstance?.instanceId === instanceId ? instancesApi.selectedInstance : null;
+  const tenantSecretUserInputRequired = readTenantSecretUserInputRequired(
+    detailFormValues,
+    selectedInstance
+  );
+  const configurationAssessment = selectedInstance
+    ? evaluateInstanceConfiguration(selectedInstance, instancesApi.mutationError)
+    : null;
   const operationsModel = readOperationsModel(selectedInstance, instancesApi.mutationError);
-  const historyModel = selectedInstance && operationsModel ? buildHistoryWorkspaceModel(selectedInstance, operationsModel) : null;
+  const historyModel =
+    selectedInstance && operationsModel
+      ? buildHistoryWorkspaceModel(selectedInstance, operationsModel)
+      : null;
   const primaryAction = operationsModel ? buildOperationsPrimaryAction(operationsModel) : null;
   const doctorModel =
     selectedInstance && configurationAssessment && operationsModel && primaryAction
@@ -129,7 +149,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     selectedInstance,
     WORKER_UNAVAILABLE_WARNING_THRESHOLD_MS
   );
-  const hasRunningOperations = Boolean(operationsModel?.steps.some((step) => step.status === 'läuft'));
+  const hasRunningOperations = Boolean(
+    operationsModel?.steps.some((step) => step.status === 'läuft')
+  );
 
   React.useEffect(() => {
     if (selectedInstance) {
@@ -213,7 +235,8 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       return;
     }
 
-    await instancesApi.updateInstance(selectedInstance.instanceId, {
+    const operationId = saveFeedback.beginSaving();
+    const updated = await instancesApi.updateInstance(selectedInstance.instanceId, {
       displayName: detailFormValues.displayName.trim(),
       parentDomain: detailFormValues.parentDomain.trim(),
       realmMode: detailFormValues.realmMode,
@@ -237,7 +260,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
         : undefined,
     });
 
-    setDetailFormValues(clearSensitiveDetailFields);
+    if (updated) {
+      setDetailFormValues(clearSensitiveDetailFields);
+      saveFeedback.markSaved(operationId);
+    } else {
+      saveFeedback.markFailed(operationId);
+    }
   };
 
   const executeProvisioning = async (
@@ -250,7 +278,8 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
     setActionFeedback(null);
     const result = await instancesApi.executeKeycloakProvisioning(selectedInstance.instanceId, {
       intent,
-      tenantAdminTemporaryPassword: detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
+      tenantAdminTemporaryPassword:
+        detailFormValues.tenantAdminTemporaryPassword.trim() || undefined,
     });
     if (result) {
       setActionFeedback({
@@ -259,7 +288,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
       });
     }
     await instancesApi.loadInstance(selectedInstance.instanceId);
-    setDetailFormValues((current) => (current ? { ...current, tenantAdminTemporaryPassword: '' } : current));
+    setDetailFormValues((current) =>
+      current ? { ...current, tenantAdminTemporaryPassword: '' } : current
+    );
   };
 
   const triggerWorkflowAction = async (
@@ -411,11 +442,20 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
             doctorWarning={doctorModel?.warning}
           />
 
-          <Tabs value={activeWorkspaceTab} onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)} className="space-y-4">
-            <TabsList aria-label={t('admin.instances.cockpit.tabsAriaLabel')} className="h-auto flex-wrap justify-start">
+          <Tabs
+            value={activeWorkspaceTab}
+            onValueChange={(value) => setActiveWorkspaceTab(value as WorkspaceTab)}
+            className="space-y-4"
+          >
+            <TabsList
+              aria-label={t('admin.instances.cockpit.tabsAriaLabel')}
+              className="h-auto flex-wrap justify-start"
+            >
               <TabsTrigger value="betrieb">{t('admin.instances.detail.tabs.betrieb')}</TabsTrigger>
               <TabsTrigger value="doctor">{t('admin.instances.detail.tabs.doctor')}</TabsTrigger>
-              <TabsTrigger value="einstellungen">{t('admin.instances.detail.tabs.einstellungen')}</TabsTrigger>
+              <TabsTrigger value="einstellungen">
+                {t('admin.instances.detail.tabs.einstellungen')}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="betrieb" className="space-y-5">
@@ -431,7 +471,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
               <InstanceDetailAuditSection
                 auditRun={instancesApi.instanceAuditRun}
                 auditLoading={instancesApi.auditLoading}
-                onRefresh={async () => instancesApi.refreshInstanceAudit(selectedInstance.instanceId)}
+                onRefresh={async () =>
+                  instancesApi.refreshInstanceAudit(selectedInstance.instanceId)
+                }
               />
             </TabsContent>
 
@@ -443,7 +485,9 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                   selectedInstance={selectedInstance}
                   statusLoading={instancesApi.statusLoading}
                   onRunDetailAction={runDetailAction}
-                  onLoadProvisioningRun={(runId) => instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)}
+                  onLoadProvisioningRun={(runId) =>
+                    instancesApi.loadKeycloakProvisioningRun(selectedInstance.instanceId, runId)
+                  }
                 />
               ) : null}
             </TabsContent>
@@ -455,8 +499,12 @@ export const InstanceDetailPage = ({ instanceId }: InstanceDetailPageProps) => {
                 statusLoading={statusLoading}
                 configurationAssessment={configurationAssessment}
                 tenantSecretUserInputRequired={tenantSecretUserInputRequired}
-                setDetailFormValues={setDetailFormValues}
+                setDetailFormValues={(value) => {
+                  saveFeedback.markDirty();
+                  setDetailFormValues(value);
+                }}
                 onUpdateSubmit={onUpdateSubmit}
+                saveStatus={saveFeedback.status}
               />
             </TabsContent>
           </Tabs>

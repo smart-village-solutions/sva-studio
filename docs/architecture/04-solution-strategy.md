@@ -139,6 +139,13 @@ Referenzen:
 - Plugins dürfen keine App-internen Komponenten aus `apps/sva-studio-react/src/**` importieren und keine parallelen Basiscontrols für Buttons, Inputs, Tabellen, Tabs, Dialoge oder Alerts einführen.
 - Spezialisierte Fach-Controls wie Rich-Text, Upload, Medienauswahl, Farbe, Icon oder Geo-Auswahl werden erst bei pluginübergreifendem Bedarf in `@sva/studio-ui-react` aufgenommen; bis dahin bleiben nur fachspezifische Wrapper erlaubt, die Studio-Primitives erhalten.
 
+### Fortschreibung 2026-08: Kontextgebundenes Speicherfeedback
+
+- Normale Create- und Update-Aktionen verwenden ihren sichtbaren Formular- und Buttonkontext statt Toast, Modal oder Overlay.
+- `@sva/studio-ui-react` besitzt die gemeinsame Save-Darstellung, das feste Zwei-Sekunden-Timing, die Live-Region und persistente technische Formularfehler; Fachvalidierung, Mutation, Fehlermapping und sichere Retry-Semantik verbleiben im Host- oder Plugin-Flow.
+- Erfolgreiche Create-Flows wechseln auf die kanonische Detailroute und übergeben den an die Datensatz-ID gebundenen Erfolg einmalig im transienten Router-History-State.
+- Delete/Undo, kontextlose Aktionen sowie Job- und Progress-Feedback bleiben separate Architekturthemen und erzeugen keine generische Outcome- oder Feedback-Registry im Core oder Plugin-SDK.
+
 ### Fortschreibung 2026-05: Plugin-Plattform v2 als Zielbild für externe Distribution
 
 - Der statische Plugin-SDK-Vertrag v1 bleibt ein bewusst dokumentierter Zwischenstand, ist aber nicht mehr das vollständige Zielbild der Plattform.

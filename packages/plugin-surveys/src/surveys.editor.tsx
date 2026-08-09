@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
 import {
   readSessionAccessSnapshot,
@@ -8,7 +8,10 @@ import {
   usePluginTranslation,
 } from '@sva/plugin-sdk';
 import {
+  addStudioCreatedSaveFeedback,
+  hasStudioCreatedSaveFeedback,
   MainserverPrincipalControl,
+  removeStudioSaveFeedback,
   StudioDetailPageTemplate,
   StudioDetailTabs,
   StudioFormSummary,
@@ -123,6 +126,46 @@ const SurveyEditorForm = ({
   </FormProvider>
 );
 
+const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlModel) => {
+  const [value, setValue] = React.useState<MainserverPrincipalType>(
+    principalControl?.value ?? 'user'
+  );
+
+  React.useEffect(() => {
+    if (principalControl) {
+      setValue(principalControl.value);
+    }
+  }, [principalControl]);
+
+  return [value, setValue] as const;
+};
+
+const useSurveyAccessCapabilities = () => {
+  const sessionAccess = React.useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
+  return React.useMemo(
+    () => resolveStandardContentAccessCapabilities('surveys', sessionAccess),
+    [sessionAccess]
+  );
+};
+
+const useSurveyForm = () =>
+  useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
+
+const useSurveyTabs = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  mode: SurveyEditorMode,
+  loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'],
+  contentId?: string
+) =>
+  React.useMemo(
+    () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
+    [contentId, loadedItem, mode, pt]
+  );
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
@@ -136,39 +179,33 @@ export const SurveyEditorPage = ({
 }>) => {
   const pt = usePluginTranslation('surveys');
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
-  const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
-    principalControl?.value ?? 'user'
-  );
-  React.useEffect(() => {
-    if (principalControl) {
-      setActingPrincipalType(principalControl.value);
-    }
-  }, [principalControl]);
-  const methods = useForm<SurveyDetailFormValues>({
-    defaultValues: createDefaultSurveyDetailFormValues(),
-  });
-  const { isLoading, loadedItem, status, submit } = useSurveyEditorController({
+  const [actingPrincipalType, setActingPrincipalType] = useSurveyActingPrincipal(principalControl);
+  const methods = useSurveyForm();
+  const { isLoading, loadedItem, saveStatus, status, submit } = useSurveyEditorController({
     mode,
     contentId,
     methods,
     pt,
     actingPrincipalType,
-    navigateToContentList: () => navigate({ to: '/admin/content' }),
+    initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
+    onInitialSavedConsumed: () =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id: contentId ?? '' },
+        replace: true,
+        state: (previous) => removeStudioSaveFeedback(previous),
+      }),
+    navigateToCreatedDetail: (id) =>
+      navigate({
+        to: '/admin/surveys/$id',
+        params: { id },
+        state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
+      }),
   });
-  const tabs = React.useMemo(
-    () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
-    [contentId, loadedItem, mode, pt]
-  );
-  const sessionAccess = React.useSyncExternalStore(
-    subscribeSessionAccessSnapshot,
-    readSessionAccessSnapshot,
-    readSessionAccessSnapshot
-  );
-  const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('surveys', sessionAccess),
-    [sessionAccess]
-  );
+  const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
+  const accessCapabilities = useSurveyAccessCapabilities();
   const canMutate =
     mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate;
 
@@ -182,7 +219,13 @@ export const SurveyEditorPage = ({
       description={pt(mode === 'create' ? 'pages.createDescription' : 'pages.editDescription')}
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
-        <SurveyEditorPrimaryAction disabled={!canMutate} mode={mode} formId={formId} pt={pt} />
+        <SurveyEditorPrimaryAction
+          disabled={!canMutate}
+          mode={mode}
+          formId={formId}
+          pt={pt}
+          saveStatus={saveStatus}
+        />
       }
     >
       <SurveyEditorForm

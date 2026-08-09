@@ -14,7 +14,10 @@ const createMainserverDraft = (): Extract<InstanceInterfaceDraft, { type: 'mains
   },
 });
 
-const createMailTransportDraft = (): Extract<InstanceInterfaceDraft, { type: 'mailTransport' }> => ({
+const createMailTransportDraft = (): Extract<
+  InstanceInterfaceDraft,
+  { type: 'mailTransport' }
+> => ({
   type: 'mailTransport',
   name: 'Mail-Transport',
   enabled: true,
@@ -104,7 +107,8 @@ describe('interfaces-page dialogs', () => {
     render(
       <InterfaceForm
         draft={createMainserverDraft()}
-        isSaving={false}
+        saveStatus="idle"
+        saveErrorMessage={null}
         onChange={onChange}
         onCancel={onCancel}
         onSubmit={onSubmit}
@@ -118,7 +122,9 @@ describe('interfaces-page dialogs', () => {
       target: { value: 'https://next.example/oauth/token' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Abbrechen' }));
-    fireEvent.submit(screen.getByRole('button', { name: 'Einstellungen speichern' }).closest('form')!);
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Einstellungen speichern' }).closest('form')!
+    );
 
     expect(onChange).toHaveBeenNthCalledWith(
       1,
@@ -149,7 +155,8 @@ describe('interfaces-page dialogs', () => {
     render(
       <InterfaceForm
         draft={createMailTransportDraft()}
-        isSaving={false}
+        saveStatus="idle"
+        saveErrorMessage={null}
         onChange={onChange}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
@@ -193,7 +200,8 @@ describe('interfaces-page dialogs', () => {
     render(
       <InterfaceForm
         draft={createMapGeocodingDraft()}
-        isSaving={false}
+        saveStatus="idle"
+        saveErrorMessage={null}
         onChange={onChange}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}

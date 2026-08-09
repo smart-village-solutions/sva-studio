@@ -8,6 +8,7 @@ const useRolesMock = vi.fn();
 const useRolePermissionsMock = vi.fn();
 const useUsersMock = vi.fn();
 const navigateMock = vi.fn();
+let locationState: Record<string, unknown> = {};
 
 vi.mock('../../../hooks/use-iam-resource-access', () => ({
   useIamResourceAccess: () => ({
@@ -47,6 +48,7 @@ vi.mock('@tanstack/react-router', () => ({
     );
   },
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: locationState }),
 }));
 
 vi.mock('../../../hooks/use-roles', () => ({
@@ -66,6 +68,7 @@ describe('RoleDetailPage', () => {
     useRolesMock.mockReset();
     useRolePermissionsMock.mockReset();
     navigateMock.mockReset();
+    locationState = {};
 
     useRolePermissionsMock.mockReturnValue({
       permissions: [
@@ -147,6 +150,13 @@ describe('RoleDetailPage', () => {
 
   it('renders tabbed role detail page and saves general data', async () => {
     const updateRole = vi.fn().mockResolvedValue(true);
+    locationState = {
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'role-2',
+        resourceType: 'roles',
+      },
+    };
 
     useRolesMock.mockReturnValue({
       roles: [
@@ -183,6 +193,15 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="general" />);
 
     expect(screen.getByRole('heading', { name: 'Editor' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Gespeichert' })).toBeTruthy();
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/roles/$roleId',
+        params: { roleId: 'role-2' },
+        replace: true,
+        state: expect.any(Function),
+      });
+    });
     expect(screen.getByRole('tab', { name: 'Allgemein' }).getAttribute('aria-selected')).toBe(
       'true'
     );

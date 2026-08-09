@@ -7,6 +7,8 @@ const de = {
       create: 'Projekt anlegen',
       edit: 'Projekt bearbeiten',
       update: 'Projekt speichern',
+      saving: 'Wird gespeichert…',
+      saved: 'Gespeichert',
       delete: 'Projekt löschen',
       back: 'Zurück',
       addImage: 'Bild hinzufügen',
@@ -164,6 +166,11 @@ const en = {
   projects: {
     ...de.projects,
     navigation: { title: 'Projects' },
+    actions: {
+      ...de.projects.actions,
+      saving: 'Saving…',
+      saved: 'Saved',
+    },
     list: { title: 'Projects', description: 'Manage featured projects.' },
     principal: {
       createAs: 'Create as',

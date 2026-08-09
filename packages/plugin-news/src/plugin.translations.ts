@@ -256,6 +256,10 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     create: 'Nachricht anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
+    retry: 'Erneut versuchen',
+    openCreatedDetail: 'Erzeugte Nachricht öffnen',
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',
@@ -282,6 +286,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     pageLabel: 'Seite {{page}}',
   },
   messages: {
+    detailNavigationError:
+      'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.',
     mediaReferencePartialFailure:
       'Die Nachricht wurde gespeichert, die Medienreferenzen jedoch nicht. Sie können die Referenzen erneut speichern.',
     loading: 'Nachrichten werden geladen.',
@@ -633,6 +639,10 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     create: 'Create news',
     update: 'Save changes',
     save: 'Save',
+    saving: 'Saving…',
+    saved: 'Saved',
+    retry: 'Try again',
+    openCreatedDetail: 'Open created news',
     back: 'Back to list',
     edit: 'Edit',
     delete: 'Delete',
@@ -659,6 +669,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     pageLabel: 'Page {{page}}',
   },
   messages: {
+    detailNavigationError: 'The news was saved, but its detail page could not be opened.',
     mediaReferencePartialFailure:
       'The news entry was saved, but its media references were not. You can retry the references.',
     loading: 'Loading news.',

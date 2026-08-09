@@ -43,7 +43,7 @@ export const AccountRulesPage = () => {
         isSaving={state.isSaving}
         onContentPreferenceChange={state.setContentPreferenceDraft}
         onSave={() => void state.saveContentPreference()}
-        statusMessage={state.statusMessage}
+        saveStatus={state.saveStatus}
       />
     </section>
   );

@@ -1,8 +1,13 @@
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import {
+  addStudioCreatedSaveFeedback,
+  StudioDetailPageTemplate,
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
-import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { useOrganizations } from '../../../hooks/use-organizations';
@@ -23,11 +28,12 @@ import {
 export const OrganizationCreatePage = () => {
   const navigate = useNavigate();
   const organizationsApi = useOrganizations();
+  const saveFeedback = useStudioSaveFeedback();
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
   const [organizationKeyMode, setOrganizationKeyMode] = React.useState<'auto' | 'manual'>('auto');
-  const [parentOrganizations, setParentOrganizations] = React.useState<readonly OrganizationParentOption[]>(
-    () => organizationsApi.organizations
-  );
+  const [parentOrganizations, setParentOrganizations] = React.useState<
+    readonly OrganizationParentOption[]
+  >(() => organizationsApi.organizations);
 
   React.useEffect(() => {
     setParentOrganizations((current) => {
@@ -41,7 +47,9 @@ export const OrganizationCreatePage = () => {
 
     const loadParentOrganizations = async () => {
       try {
-        const organizations = await loadAllOrganizationParentOptions((query) => listOrganizations(query));
+        const organizations = await loadAllOrganizationParentOptions((query) =>
+          listOrganizations(query)
+        );
         if (!active) {
           return;
         }
@@ -79,14 +87,20 @@ export const OrganizationCreatePage = () => {
   }, [generatedOrganizationKey, organizationKeyMode]);
 
   const onOrganizationKeyChange = (value: string) => {
+    saveFeedback.markDirty();
     const nextKey = value;
     const normalizedTypedKey = nextKey.trim().toLocaleLowerCase();
     const normalizedGeneratedKey = generatedOrganizationKey.trim().toLocaleLowerCase();
-    setOrganizationKeyMode(normalizedTypedKey.length === 0 || normalizedTypedKey === normalizedGeneratedKey ? 'auto' : 'manual');
+    setOrganizationKeyMode(
+      normalizedTypedKey.length === 0 || normalizedTypedKey === normalizedGeneratedKey
+        ? 'auto'
+        : 'manual'
+    );
     setFormValues((current) => ({ ...current, organizationKey: nextKey }));
   };
 
   const onDisplayNameChange = (value: string) => {
+    saveFeedback.markDirty();
     setFormValues((current) => ({
       ...current,
       displayName: value,
@@ -98,8 +112,7 @@ export const OrganizationCreatePage = () => {
     }));
   };
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const saveOrganization = async () => {
     const submittedValues =
       organizationKeyMode === 'auto'
         ? {
@@ -107,16 +120,32 @@ export const OrganizationCreatePage = () => {
             organizationKey: suggestOrganizationKey(formValues.displayName, parentOrganizations),
           }
         : formValues;
-    const created = await organizationsApi.createOrganization(toOrganizationMutationPayload(submittedValues));
+    const operationId = saveFeedback.beginSaving();
+    const created = await organizationsApi.createOrganization(
+      toOrganizationMutationPayload(submittedValues)
+    );
 
     if (!created) {
+      saveFeedback.markFailed(operationId);
       return;
     }
 
+    saveFeedback.markSaved(operationId);
     await navigate({
       to: '/admin/organizations/$organizationId',
       params: { organizationId: created.id },
+      state: (previous) => addStudioCreatedSaveFeedback(previous, 'organizations', created.id),
     });
+  };
+
+  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void saveOrganization();
+  };
+
+  const updateFormValues: typeof setFormValues = (value) => {
+    saveFeedback.markDirty();
+    setFormValues(value);
   };
 
   return (
@@ -137,8 +166,18 @@ export const OrganizationCreatePage = () => {
             onSubmit={(event) => void onSubmit(event)}
             onDisplayNameChange={onDisplayNameChange}
             onOrganizationKeyChange={onOrganizationKeyChange}
-            setFormValues={setFormValues}
-            submitLabel={t('admin.organizations.actions.create')}
+            setFormValues={updateFormValues}
+            submitAction={
+              <StudioSaveButton
+                type="submit"
+                status={saveFeedback.status}
+                labels={{
+                  idle: t('admin.organizations.actions.create'),
+                  saving: t('account.actions.saving'),
+                  saved: t('account.actions.saved'),
+                }}
+              />
+            }
             formValues={formValues}
             actions={
               <Button asChild type="button" variant="outline">
@@ -149,9 +188,12 @@ export const OrganizationCreatePage = () => {
         </Card>
 
         {organizationsApi.mutationError ? (
-          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription>{organizationErrorMessage(organizationsApi.mutationError)}</AlertDescription>
-          </Alert>
+          <StudioPersistentFormError
+            message={organizationErrorMessage(organizationsApi.mutationError)}
+            retryLabel={t('account.actions.retry')}
+            retryDisabled={saveFeedback.status === 'saving'}
+            onRetry={() => void saveOrganization()}
+          />
         ) : null}
       </StudioDetailPageTemplate>
     </section>

@@ -20,6 +20,7 @@ vi.mock('@tanstack/react-router', () => ({
     </a>
   ),
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 vi.mock('../../providers/auth-provider', () => ({
@@ -173,7 +174,13 @@ describe('ContentEditorPage', () => {
         payload: { hero: 'Willkommen' },
         status: 'draft',
       });
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/content/$contentId',
+          params: { contentId: 'content-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 
@@ -453,9 +460,11 @@ describe('ContentEditorPage', () => {
   });
 
   it('renders rate-limit errors in create mode after a failed save', async () => {
+    let createRequests = 0;
     studioMswServer.use(
-      http.post('/api/v1/iam/contents', async () =>
-        HttpResponse.json(
+      http.post('/api/v1/iam/contents', async () => {
+        createRequests += 1;
+        return HttpResponse.json(
           {
             error: {
               code: 'rate_limited',
@@ -463,8 +472,8 @@ describe('ContentEditorPage', () => {
             },
           },
           { status: 429 }
-        )
-      )
+        );
+      })
     );
 
     render(<ContentEditorPage mode="create" />);
@@ -483,6 +492,16 @@ describe('ContentEditorPage', () => {
           'Zu viele Anfragen in kurzer Zeit. Bitte kurz warten und erneut versuchen.'
         )
       ).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Überschrift'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+
+    await waitFor(() => {
+      expect(createRequests).toBe(1);
+      expect(screen.getByLabelText('Überschrift').getAttribute('aria-invalid')).toBe('true');
     });
   });
 

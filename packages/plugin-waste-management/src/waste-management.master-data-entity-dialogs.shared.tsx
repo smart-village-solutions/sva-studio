@@ -11,6 +11,7 @@ import React from 'react';
 import type { FieldValues, UseFormHandleSubmit, UseFormReset } from 'react-hook-form';
 
 import type { StatusMessage } from './waste-management.page.support.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 export type BaseProps<TForm> = {
   readonly open: boolean;
@@ -109,9 +110,7 @@ export const MasterDataDialogActions = ({
       <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
         {cancelLabel}
       </Button>
-      <Button type="submit" disabled={saving}>
-        {submitLabel}
-      </Button>
+      <WastePendingSaveButton type="submit" saving={saving} label={submitLabel} />
     </DialogFooter>
   );
 };

@@ -38,7 +38,11 @@ vi.mock('@sva/plugin-sdk', () => ({
   subscribeSessionAccessSnapshot: () => () => undefined,
   resolveStandardContentAccessCapabilities: (
     pluginId: string,
-    snapshot: { isResolved: boolean; assignedModules: readonly string[]; permissionActions: readonly string[] }
+    snapshot: {
+      isResolved: boolean;
+      assignedModules: readonly string[];
+      permissionActions: readonly string[];
+    }
   ) => {
     const actions = new Set(snapshot.permissionActions);
     const allows = (action: string) =>
@@ -66,6 +70,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => state.navigateMock,
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useSearch: () => ({ page: 1, pageSize: 25 }),
+  useLocation: () => ({ state: {} }),
 }));
 
 describe('faq editor pages', () => {
@@ -111,10 +116,13 @@ describe('faq editor pages', () => {
       )
     );
     await waitFor(() =>
-      expect(state.navigateMock).toHaveBeenCalledWith({
-        to: '/admin/faq/$id',
-        params: { id: 'faq-new' },
-      })
+      expect(state.navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/faq/$id',
+          params: { id: 'faq-new' },
+          state: expect.any(Function),
+        })
+      )
     );
   }, 30_000);
 
@@ -199,7 +207,7 @@ describe('faq editor pages', () => {
     await waitFor(() =>
       expect(
         screen
-          .getAllByRole('button', { name: 'actions.create' })
+          .getAllByRole('button', { name: 'actions.saving' })
           .every((button) => button.hasAttribute('disabled'))
       ).toBe(true)
     );

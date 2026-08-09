@@ -2,18 +2,22 @@ export const wasteManagementPluginTranslationsDEOutput = {
   output: {
     pdf: {
       title: 'PDF-Inhalte',
-      description: 'Definieren Sie hier nur die statischen Inhalte des PDF-Exports. Die eigentliche PDF-Erzeugung erfolgt in der öffentlichen Webversion des Abfallkalenders.',
+      description:
+        'Definieren Sie hier nur die statischen Inhalte des PDF-Exports. Die eigentliche PDF-Erzeugung erfolgt in der öffentlichen Webversion des Abfallkalenders.',
       fields: {
         brandingAssetUrl: 'Branding-Grafik',
         contactBlock: 'Kontakt- und Freitextblock',
       },
       fieldHints: {
-        brandingAssetUrl: 'Oben rechts im PDF wird diese Grafik oder Logo-URL für das Branding verwendet.',
-        contactBlock: 'Dieser Text erscheint unterhalb des Kalenders als zusätzlicher Kontakt- oder Servicehinweis.',
+        brandingAssetUrl:
+          'Oben rechts im PDF wird diese Grafik oder Logo-URL für das Branding verwendet.',
+        contactBlock:
+          'Dieser Text erscheint unterhalb des Kalenders als zusätzlicher Kontakt- oder Servicehinweis.',
       },
       actions: {
         save: 'PDF-Inhalte speichern',
         saving: 'PDF-Inhalte werden gespeichert…',
+        saved: 'Gespeichert',
       },
       messages: {
         loading: 'PDF-Inhalte werden geladen.',
@@ -24,7 +28,8 @@ export const wasteManagementPluginTranslationsDEOutput = {
         saveForbidden: 'Für die PDF-Konfiguration fehlt die Berechtigung.',
       },
       meta: {
-        runtimeHint: 'Die öffentliche Webversion erzeugt das PDF ad hoc auf Basis der gewählten Adresse, Fraktionen und des Jahres.',
+        runtimeHint:
+          'Die öffentliche Webversion erzeugt das PDF ad hoc auf Basis der gewählten Adresse, Fraktionen und des Jahres.',
       },
     },
     emailReminder: {
@@ -93,19 +98,22 @@ export const wasteManagementPluginTranslationsDEOutput = {
         unsubscribeTokenTtlDays: 'Abmelde-Token-Gültigkeit (Tage)',
       },
       fieldHints: {
-        enabled: 'Schaltet den gesamten öffentlichen E-Mail-Erinnerungsdienst für diese Instanz frei.',
+        enabled:
+          'Schaltet den gesamten öffentlichen E-Mail-Erinnerungsdienst für diese Instanz frei.',
         publicSignupEnabled: 'Steuert, ob der öffentliche CTA in der Webversion sichtbar ist.',
         transportId: 'Nur Mail-Transporte aus /interfaces stehen hier zur Auswahl.',
       },
       actions: {
         save: 'E-Mail-Erinnerungsdienst speichern',
         saving: 'E-Mail-Erinnerungsdienst wird gespeichert…',
+        saved: 'Gespeichert',
       },
       messages: {
         noMailTransport:
           'Für diese Instanz ist noch kein Mail-Transport in den Schnittstellen konfiguriert. Legen Sie zuerst dort eine technische Anbindung an.',
         saveSuccess: 'Die Konfiguration des E-Mail-Erinnerungsdienstes wurde gespeichert.',
-        saveError: 'Die Konfiguration des E-Mail-Erinnerungsdienstes konnte nicht gespeichert werden.',
+        saveError:
+          'Die Konfiguration des E-Mail-Erinnerungsdienstes konnte nicht gespeichert werden.',
         saveForbidden: 'Für den E-Mail-Erinnerungsdienst fehlt die Berechtigung.',
       },
       transportStatus: {

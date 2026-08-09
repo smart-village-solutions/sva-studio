@@ -100,6 +100,8 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     create: 'Anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
     edit: 'Bearbeiten',
     delete: 'Löschen',
     back: 'Zurück zur Liste',

@@ -20,10 +20,13 @@ import {
   type HostMediaAssetDetail,
 } from '@sva/plugin-sdk';
 import {
+  addStudioCreatedSaveFeedback,
   Button,
   Checkbox,
+  hasStudioCreatedSaveFeedback,
   Input,
   MainserverPrincipalControl,
+  removeStudioSaveFeedback,
   Select,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
@@ -43,9 +46,11 @@ import {
   StudioMediaPickerOverlay,
   StudioOverviewPageTemplate,
   StudioPagination,
+  StudioSaveButton,
   Textarea,
   toContentMediaAssetSnapshot,
   useStudioMediaPickerOverlay,
+  useStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
   type ContentMediaUsage,
   type StudioMediaPickerAssetDetail,
@@ -54,7 +59,7 @@ import {
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
 } from '@sva/studio-ui-react';
-import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
@@ -228,12 +233,38 @@ function Editor({
 }>) {
   const pt = usePluginTranslation('cockpit-cards');
   const navigate = useNavigate();
+  const location = useLocation();
   const form = useForm<CockpitCardFormValues>({
     defaultValues: defaults,
     resolver: zodResolver(cockpitCardFormSchema),
   });
+  const saveFeedback = useStudioSaveFeedback();
+  React.useEffect(() => {
+    if (form.formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [form.formState.isDirty, saveFeedback.markDirty]);
   const [tab, setTab] = React.useState<Tab>('basis');
   const [loading, setLoading] = React.useState(mode === 'edit');
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (
+      loading ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'cockpit-cards', contentId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/cockpit-cards/$id',
+      params: { id: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [contentId, loading, location.state, navigate, saveFeedback]);
   const [error, setError] = React.useState(false);
   const [mutationError, setMutationError] = React.useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -469,6 +500,7 @@ function Editor({
     async (values) => {
       if (!canSave) return;
       setMutationError(null);
+      const operationId = saveFeedback.beginSaving();
       try {
         const input = mapCockpitCardFormValuesToGenericItemInput(
           { ...values, images: [...cockpitCardUsagesToMedia(mediaUsages)] },
@@ -498,11 +530,18 @@ function Editor({
             )
           );
           setMutationError(pt('messages.mediaReferencePartialFailure'));
+          saveFeedback.markFailed(operationId);
           return;
         }
         setRetryReferenceSync(null);
+        saveFeedback.markSaved(operationId);
         if (mode === 'create')
-          await navigate({ to: '/admin/cockpit-cards/$id', params: { id: result.saved.id } });
+          await navigate({
+            to: '/admin/cockpit-cards/$id',
+            params: { id: result.saved.id },
+            state: (previous) =>
+              addStudioCreatedSaveFeedback(previous, 'cockpit-cards', result.saved.id),
+          });
       } catch (cause) {
         const reason = cause instanceof Error ? cause.message : '';
         setMutationError(
@@ -510,9 +549,11 @@ function Editor({
             ? pt('messages.saveErrorWithReason').replace('{{reason}}', reason)
             : pt('messages.saveError')
         );
+        saveFeedback.markFailed(operationId);
       }
     },
     (errors) => {
+      saveFeedback.reset();
       setMutationError(pt('messages.validationError'));
       if (errors.text || errors.images) setTab('content');
       else if (errors.link || errors.sortWeight) setTab('settings');
@@ -726,13 +767,17 @@ function Editor({
       }
       primaryAction={
         canSave ? (
-          <Button
+          <StudioSaveButton
             type="submit"
             form={formId}
-            disabled={form.formState.isSubmitting || deletePending}
-          >
-            {pt(mode === 'create' ? 'actions.create' : 'actions.update')}
-          </Button>
+            status={saveFeedback.status}
+            disabled={deletePending}
+            labels={{
+              idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
+              saving: pt('actions.saving'),
+              saved: pt('actions.saved'),
+            }}
+          />
         ) : undefined
       }
     >

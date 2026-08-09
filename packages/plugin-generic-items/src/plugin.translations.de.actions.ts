@@ -3,6 +3,8 @@ export const genericItemsTranslationsDeActions = {
     create: 'Generischen Inhalt anlegen',
     update: 'Änderungen speichern',
     save: 'Speichern',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',

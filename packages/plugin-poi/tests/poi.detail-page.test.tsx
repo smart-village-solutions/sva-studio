@@ -119,6 +119,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
+  useLocation: () => ({ state: {} }),
 }));
 
 const resolveMockMediaAsset = (assetId: string) => {
@@ -870,7 +871,7 @@ describe('PoiDetailPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Ort aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
     });
   });
 
@@ -1098,10 +1099,13 @@ describe('PoiDetailPage', () => {
 
     await waitFor(() => {
       expect(vi.mocked(createPoi)).toHaveBeenCalledTimes(1);
-      expect(navigateMock).toHaveBeenCalledWith({
-        to: '/admin/poi/$id',
-        params: { id: 'poi-created' },
-      });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/poi/$id',
+          params: { id: 'poi-created' },
+          state: expect.any(Function),
+        })
+      );
     });
   });
 
@@ -1398,6 +1402,29 @@ describe('PoiDetailPage', () => {
         'user'
       );
     });
+  });
+
+  it('returns the save action to idle when a degraded-field correction is cancelled', async () => {
+    vi.mocked(getPoi).mockResolvedValueOnce({ id: 'poi-1', name: 'Rathaus', payload: {} } as never);
+    vi.mocked(getPoiDetail).mockImplementationOnce(async (contentId) => ({
+      data: await vi.mocked(getPoi)(contentId),
+      deviations: [{ fieldGroup: 'name' }] as never,
+    }));
+    vi.stubGlobal(
+      'confirm',
+      vi.fn(() => false)
+    );
+
+    render(<PoiDetailPage mode="edit" contentId="poi-1" />);
+
+    expect(await screen.findByDisplayValue('Rathaus')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Neues Rathaus' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[0]!);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(updatePoi).not.toHaveBeenCalled();
   });
 
   it('deletes poi items after confirmation and returns to the content overview', async () => {

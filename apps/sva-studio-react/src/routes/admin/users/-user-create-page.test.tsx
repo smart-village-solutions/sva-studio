@@ -13,7 +13,11 @@ const useGroupsMock = vi.fn();
 const refreshSessionMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -22,7 +26,9 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('../../../hooks/use-users', async () => {
-  const actual = await vi.importActual<typeof import('../../../hooks/use-users')>('../../../hooks/use-users');
+  const actual = await vi.importActual<typeof import('../../../hooks/use-users')>(
+    '../../../hooks/use-users'
+  );
   return {
     useUsers: () => (useRealUsersHook.current ? actual.useUsers() : useUsersMock()),
   };
@@ -78,7 +84,9 @@ describe('UserCreatePage', () => {
       roles: [{ id: 'role-1', roleName: 'Editor' }],
     });
     useGroupsMock.mockReturnValue({
-      groups: [{ id: 'group-1', displayName: 'Redaktion', description: 'Redaktionsteam', isActive: true }],
+      groups: [
+        { id: 'group-1', displayName: 'Redaktion', description: 'Redaktionsteam', isActive: true },
+      ],
     });
   });
 
@@ -86,9 +94,11 @@ describe('UserCreatePage', () => {
     cleanup();
   });
 
-  it('renders mutation-specific client errors without load wording', () => {
+  it('renders mutation-specific client errors without load wording and retries in place', async () => {
+    const createUser = vi.fn(async () => null);
     useUsersMock.mockReturnValue(
       createUsersApiState({
+        createUser,
         mutationError: {
           status: 500,
           code: 'internal_error',
@@ -102,14 +112,54 @@ describe('UserCreatePage', () => {
     expect(screen.getByRole('alert').textContent).toContain(
       'Technischer Fehler bei der Nutzeraktion: Einladungs-E-Mail zum Passwort setzen konnte nicht gesendet werden.'
     );
-    expect(screen.getByRole('alert').textContent).not.toContain('Technischer Fehler beim Laden der Nutzer');
+    expect(screen.getByRole('alert').textContent).not.toContain(
+      'Technischer Fehler beim Laden der Nutzer'
+    );
+
+    fireEvent.change(screen.getByLabelText('E-Mail'), {
+      target: { value: 'alice@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('Vorname'), {
+      target: { value: 'Alice' },
+    });
+    fireEvent.change(screen.getByLabelText('Nachname'), {
+      target: { value: 'Example' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    await waitFor(() => expect(createUser).toHaveBeenCalledOnce());
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('validates changed values before retrying a failed creation', async () => {
+    const createUser = vi.fn(async () => null);
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        createUser,
+        mutationError: {
+          status: 500,
+          code: 'internal_error',
+          message: 'Nutzer konnte nicht angelegt werden.',
+        },
+      })
+    );
+
+    render(<UserCreatePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+
+    await waitFor(() => {
+      expect(createUser).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('E-Mail').getAttribute('aria-invalid')).toBe('true');
+    });
   });
 
   it('renders the password setup invite option enabled by default', () => {
     useUsersMock.mockReturnValue(createUsersApiState());
 
     const { container } = render(<UserCreatePage />);
-    const checkbox = container.querySelector<HTMLInputElement>('#create-user-send-password-setup-email');
+    const checkbox = container.querySelector<HTMLInputElement>(
+      '#create-user-send-password-setup-email'
+    );
 
     expect(checkbox?.checked).toBe(true);
   });
@@ -144,7 +194,9 @@ describe('UserCreatePage', () => {
 
     await waitFor(() => {
       expect(createUser).not.toHaveBeenCalled();
-      expect(screen.getByRole('alert').textContent).toContain('Bitte eine gültige E-Mail-Adresse eingeben.');
+      expect(screen.getByRole('alert').textContent).toContain(
+        'Bitte eine gültige E-Mail-Adresse eingeben.'
+      );
     });
 
     expect(document.activeElement).toBe(screen.getByLabelText('E-Mail'));
@@ -226,6 +278,7 @@ describe('UserCreatePage', () => {
         to: '/admin/users/$userId',
         params: { userId: 'user-msw-1' },
         search: { invite: 'failed' },
+        state: expect.any(Function),
       });
     });
   });
@@ -244,7 +297,8 @@ describe('UserCreatePage', () => {
         status: 'failed',
         error: {
           code: 'keycloak_user_not_ready',
-          message: 'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
+          message:
+            'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
           retryable: true,
         },
       },
@@ -283,10 +337,24 @@ describe('UserCreatePage', () => {
         search: {
           invite: 'failed',
           inviteCode: 'keycloak_user_not_ready',
-          inviteMessage: 'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
+          inviteMessage:
+            'Der Nutzer wurde angelegt, aber Keycloak war fuer den Einladungsversand noch nicht bereit.',
         },
+        state: expect.any(Function),
       })
     );
+
+    const navigation = navigateMock.mock.calls.at(-1)?.[0] as
+      | { state?: (previous: Record<string, unknown>) => Record<string, unknown> }
+      | undefined;
+    expect(navigation?.state?.({ preserved: true })).toEqual({
+      preserved: true,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'user-1',
+        resourceType: 'users',
+      },
+    });
   });
 
   it('submits the invite flag as false when the checkbox is disabled', async () => {
@@ -306,7 +374,9 @@ describe('UserCreatePage', () => {
     useUsersMock.mockReturnValue(createUsersApiState({ createUser }));
 
     const { container } = render(<UserCreatePage />);
-    const checkbox = container.querySelector<HTMLInputElement>('#create-user-send-password-setup-email');
+    const checkbox = container.querySelector<HTMLInputElement>(
+      '#create-user-send-password-setup-email'
+    );
     const emailInput = container.querySelector<HTMLInputElement>('#create-user-email');
     const firstNameInput = container.querySelector<HTMLInputElement>('#create-user-first-name');
     const lastNameInput = container.querySelector<HTMLInputElement>('#create-user-last-name');
@@ -361,6 +431,10 @@ describe('UserCreatePage', () => {
     fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
     fireEvent.change(lastNameInput, { target: { value: 'Example' } });
     fireEvent.click(groupCheckbox);
+    fireEvent.click(groupCheckbox);
+    fireEvent.click(groupCheckbox);
+    fireEvent.click(roleCheckbox);
+    fireEvent.click(roleCheckbox);
     fireEvent.click(roleCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
 
@@ -409,6 +483,7 @@ describe('UserCreatePage', () => {
         to: '/admin/users/$userId',
         params: { userId: 'user-2' },
         search: undefined,
+        state: expect.any(Function),
       })
     );
   });
@@ -457,6 +532,7 @@ describe('UserCreatePage', () => {
           inviteCode: 'internal_error',
           inviteMessage: 'smtp failed',
         },
+        state: expect.any(Function),
       })
     );
   });

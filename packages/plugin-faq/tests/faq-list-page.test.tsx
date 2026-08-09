@@ -18,6 +18,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => state.navigateMock,
   useSearch: () => state.search,
+  useLocation: () => ({ state: {} }),
 }));
 
 describe('FaqListPage', () => {

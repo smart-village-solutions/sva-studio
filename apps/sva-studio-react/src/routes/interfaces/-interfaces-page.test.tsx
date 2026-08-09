@@ -148,13 +148,9 @@ const mapGeocodingEntry = {
 
 const createListResponse = (
   entries: readonly unknown[],
-  availableTypes: readonly ('mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding')[] = [
-    'mainserver',
-    's3',
-    'supabase',
-    'mailTransport',
-    'mapGeocoding',
-  ]
+  availableTypes: readonly (
+    'mainserver' | 's3' | 'supabase' | 'mailTransport' | 'mapGeocoding'
+  )[] = ['mainserver', 's3', 'supabase', 'mailTransport', 'mapGeocoding']
 ) => ({
   instanceId: 'de-musterhausen',
   availableTypes,
@@ -210,11 +206,14 @@ describe('InterfacesPage', () => {
     });
 
     expect(state.upsertInterface).not.toHaveBeenCalled();
-    expect(screen.getByText('Schnittstellen-Einstellungen wurden gespeichert.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Gespeichert' })).toBeTruthy();
+    expect(screen.queryByText('Schnittstellen-Einstellungen wurden gespeichert.')).toBeNull();
   });
 
   it('shows a blocking load error instead of the empty state when the interfaces payload is malformed', async () => {
-    state.listInterfaces.mockResolvedValueOnce(undefined).mockResolvedValueOnce(createListResponse([mainserverEntry]));
+    state.listInterfaces
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(createListResponse([mainserverEntry]));
 
     render(<InterfacesPage />);
 
@@ -223,7 +222,9 @@ describe('InterfacesPage', () => {
     });
 
     expect(screen.queryByText('0 Schnittstelle(n)')).toBeNull();
-    expect(screen.queryByText('Für diese Instanz sind noch keine Schnittstellen hinterlegt.')).toBeNull();
+    expect(
+      screen.queryByText('Für diese Instanz sind noch keine Schnittstellen hinterlegt.')
+    ).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Neu laden' }));
 
@@ -341,7 +342,9 @@ describe('InterfacesPage', () => {
     fireEvent.change(textboxes[1]!, { target: { value: 'https://tenant.supabase.co' } });
     fireEvent.change(textboxes[2]!, { target: { value: 'waste' } });
     fireEvent.change(textboxes[3]!, { target: { value: 'postgres://db.example.local' } });
-    fireEvent.change(document.getElementById('supabase-key')!, { target: { value: 'service-role-1' } });
+    fireEvent.change(document.getElementById('supabase-key')!, {
+      target: { value: 'service-role-1' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {
@@ -531,7 +534,8 @@ describe('InterfacesPage', () => {
         {
           ...supabaseEntry,
           status: 'error',
-          statusMessage: 'Die Datenbankverbindung wurde abgelehnt. Benutzername oder Passwort der DB-URL sind falsch.',
+          statusMessage:
+            'Die Datenbankverbindung wurde abgelehnt. Benutzername oder Passwort der DB-URL sind falsch.',
         },
       ])
     );
@@ -643,7 +647,9 @@ describe('InterfacesPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Neue Schnittstelle' }));
     fireEvent.click(document.getElementById('interface-type-supabase-description')!);
 
-    expect((screen.getByRole('radio', { name: /Supabase/i }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole('radio', { name: /Supabase/i }) as HTMLInputElement).checked).toBe(
+      true
+    );
   });
 
   it('deletes non-mainserver interfaces through the destructive confirm dialog', async () => {
@@ -680,7 +686,9 @@ describe('InterfacesPage', () => {
     });
 
     const interfacesTable = screen.getByRole('table', { name: 'Schnittstellen der Instanz' });
-    const mainserverRow = within(interfacesTable).getAllByRole('cell', { name: 'SVA Mainserver' })[0]?.closest('tr');
+    const mainserverRow = within(interfacesTable)
+      .getAllByRole('cell', { name: 'SVA Mainserver' })[0]
+      ?.closest('tr');
     expect(mainserverRow).toBeTruthy();
     fireEvent.click(within(mainserverRow!).getByRole('button', { name: 'Löschen' }));
     fireEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }));
@@ -694,7 +702,9 @@ describe('InterfacesPage', () => {
 
   it('shows the translated backend error when the backend rejects an invalid interface mutation', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mainserverEntry]));
-    state.upsertInterface.mockRejectedValue(new Error('interface_type_change_not_supported'));
+    state.upsertInterface
+      .mockRejectedValueOnce(new Error('interface_type_change_not_supported'))
+      .mockResolvedValueOnce(s3Entry);
 
     render(<InterfacesPage />);
 
@@ -716,9 +726,27 @@ describe('InterfacesPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.')
+        screen.getByText(
+          'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.'
+        )
       ).toBeTruthy();
     });
+
+    const errorAlert = screen.getByRole('alert');
+    expect(errorAlert.textContent).toContain(
+      'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.'
+    );
+    fireEvent.click(within(errorAlert).getByRole('button', { name: 'Erneut versuchen' }));
+
+    await waitFor(() => {
+      expect(state.upsertInterface).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole('button', { name: 'Gespeichert' })).toBeTruthy();
+    });
+    expect(
+      screen.queryByText(
+        'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.'
+      )
+    ).toBeNull();
   });
 
   it('shows translated load errors before any mutation interaction', async () => {
@@ -756,7 +784,9 @@ describe('InterfacesPage', () => {
     fireEvent.change(screen.getByDisplayValue('Uploads'), {
       target: { value: 'Uploads aktualisiert' },
     });
-    fireEvent.change(document.getElementById('s3-secret-key')!, { target: { value: 'rotated-secret' } });
+    fireEvent.change(document.getElementById('s3-secret-key')!, {
+      target: { value: 'rotated-secret' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Einstellungen speichern' }));
 
     await waitFor(() => {

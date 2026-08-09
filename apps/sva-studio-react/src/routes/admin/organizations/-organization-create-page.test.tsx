@@ -9,7 +9,11 @@ const navigateMock = vi.fn().mockResolvedValue(undefined);
 const listOrganizationsMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -30,7 +34,9 @@ vi.mock('../../../lib/iam-api', async () => {
 });
 
 const createState = (overrides: Record<string, unknown> = {}) => ({
-  organizations: [{ id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' }],
+  organizations: [
+    { id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' },
+  ],
   total: 1,
   page: 1,
   pageSize: 25,
@@ -72,7 +78,9 @@ describe('OrganizationCreatePage', () => {
     navigateMock.mockClear();
     listOrganizationsMock.mockReset();
     listOrganizationsMock.mockResolvedValue({
-      data: [{ id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' }],
+      data: [
+        { id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' },
+      ],
       pagination: { page: 1, pageSize: 100, total: 1 },
     });
   });
@@ -86,15 +94,24 @@ describe('OrganizationCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#organization-name' }), {
       target: { value: ' Landkreis Beta ' },
     });
-    fireEvent.change(screen.getByLabelText('Organisationstyp', { selector: '#organization-type' }), {
-      target: { value: 'county' },
-    });
-    fireEvent.change(screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }), {
-      target: { value: 'org_or_personal' },
-    });
-    fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
-      target: { value: 'parent-1' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Organisationstyp', { selector: '#organization-type' }),
+      {
+        target: { value: 'county' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Autoren-Policy', { selector: '#organization-policy' }),
+      {
+        target: { value: 'org_or_personal' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      {
+        target: { value: 'parent-1' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Organisation anlegen' }));
 
     await waitFor(() => {
@@ -109,6 +126,7 @@ describe('OrganizationCreatePage', () => {
     expect(navigateMock).toHaveBeenCalledWith({
       to: '/admin/organizations/$organizationId',
       params: { organizationId: 'org-2' },
+      state: expect.any(Function),
     });
   });
 
@@ -131,9 +149,13 @@ describe('OrganizationCreatePage', () => {
     });
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }) as HTMLInputElement).value).toBe(
-        'landkreis-alpha-3'
-      );
+      expect(
+        (
+          screen.getByLabelText('Technischer Schlüssel', {
+            selector: '#organization-key',
+          }) as HTMLInputElement
+        ).value
+      ).toBe('landkreis-alpha-3');
     });
   });
 
@@ -146,9 +168,12 @@ describe('OrganizationCreatePage', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#organization-name' }), {
       target: { value: 'Landkreis Gamma' },
     });
-    fireEvent.change(screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }), {
-      target: { value: 'gamma-custom' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }),
+      {
+        target: { value: 'gamma-custom' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#organization-name' }), {
       target: { value: 'Landkreis Gamma Neu' },
     });
@@ -173,7 +198,9 @@ describe('OrganizationCreatePage', () => {
 
     render(<OrganizationCreatePage />);
 
-    expect(screen.getByRole('alert').textContent).toContain('Die IAM-Datenbank ist derzeit nicht erreichbar.');
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Die IAM-Datenbank ist derzeit nicht erreichbar.'
+    );
   });
 
   it('loads parent options and key suggestions across multiple organization pages', async () => {
@@ -181,7 +208,9 @@ describe('OrganizationCreatePage', () => {
     useOrganizationsMock.mockReturnValue(
       createState({
         createOrganization,
-        organizations: [{ id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' }],
+        organizations: [
+          { id: 'parent-1', displayName: 'Landkreis Alpha', organizationKey: 'landkreis-alpha' },
+        ],
       })
     );
     listOrganizationsMock
@@ -193,7 +222,9 @@ describe('OrganizationCreatePage', () => {
         pagination: { page: 1, pageSize: 100, total: 101 },
       })
       .mockResolvedValueOnce({
-        data: [{ id: 'parent-2', displayName: 'Landkreis Beta', organizationKey: 'landkreis-beta' }],
+        data: [
+          { id: 'parent-2', displayName: 'Landkreis Beta', organizationKey: 'landkreis-beta' },
+        ],
         pagination: { page: 2, pageSize: 100, total: 101 },
       });
 
@@ -215,15 +246,22 @@ describe('OrganizationCreatePage', () => {
     });
 
     await waitFor(() => {
-      expect((screen.getByLabelText('Technischer Schlüssel', { selector: '#organization-key' }) as HTMLInputElement).value).toBe(
-        'landkreis-alpha-3'
-      );
+      expect(
+        (
+          screen.getByLabelText('Technischer Schlüssel', {
+            selector: '#organization-key',
+          }) as HTMLInputElement
+        ).value
+      ).toBe('landkreis-alpha-3');
       expect(screen.getByRole('option', { name: 'Landkreis Beta' })).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }), {
-      target: { value: 'parent-2' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Parent-Organisation', { selector: '#organization-parent' }),
+      {
+        target: { value: 'parent-2' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Organisation anlegen' }));
 
     await waitFor(() => {

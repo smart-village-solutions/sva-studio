@@ -9,18 +9,13 @@ import React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
-  createGenericItem,
   deleteGenericItem,
   GenericItemsApiError,
   getGenericItem,
   listGenericItemCategories,
-  updateGenericItem,
 } from './generic-items.api.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
-import {
-  mapGenericItemsDetailFormValuesToInput,
-  mapGenericItemToDetailFormValues,
-} from './generic-items.detail-form.js';
+import { mapGenericItemToDetailFormValues } from './generic-items.detail-form.js';
 import type { GenericItemsDetailTabId } from './generic-items.detail-tabs.js';
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
 import type { MainserverPrincipalType } from '@sva/studio-ui-react';
@@ -161,7 +156,6 @@ export const useGenericItemsDetailLoader = ({
 
 export const useGenericItemsDetailActions = ({
   contentId,
-  methods,
   mode,
   navigate,
   pt,
@@ -169,7 +163,6 @@ export const useGenericItemsDetailActions = ({
   actingPrincipalType,
 }: Readonly<{
   contentId?: string;
-  methods: UseFormReturn<GenericItemsDetailFormValues>;
   mode: 'create' | 'edit';
   navigate: NavigateFn;
   pt: ReturnType<typeof usePluginTranslation>;
@@ -194,28 +187,7 @@ export const useGenericItemsDetailActions = ({
     }
   }, [actingPrincipalType, contentId, deleting, mode, navigate, pt, setStatus]);
 
-  const onSubmit = methods.handleSubmit(async (values) => {
-    setStatus(null);
-
-    try {
-      const input = mapGenericItemsDetailFormValuesToInput(values);
-      if (mode === 'create') {
-        const createdItem = await createGenericItem(input, actingPrincipalType);
-        setStatus({ kind: 'success', text: pt('messages.createSuccess') });
-        await navigate({ to: '/admin/generic-items/$id', params: { id: createdItem.id } });
-        return;
-      }
-
-      if (contentId) {
-        await updateGenericItem(contentId, input, actingPrincipalType);
-        setStatus({ kind: 'success', text: pt('messages.updateSuccess') });
-      }
-    } catch (error) {
-      setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.saveError') });
-    }
-  });
-
   const [activeTab, setActiveTab] = React.useState<GenericItemsDetailTabId>('basis');
 
-  return { activeTab, deleting, handleDelete, onSubmit, setActiveTab };
+  return { activeTab, deleting, handleDelete, setActiveTab };
 };

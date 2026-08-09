@@ -11,15 +11,17 @@ import type {
   WasteTourRecord,
 } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  Button,
-  StudioPageHeader,
-} from '@sva/studio-ui-react';
+import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
 import { LocationAssignmentsSection } from './waste-management.master-data-location-assignments.js';
-import { LocationFormActions, LocationSelectSection, LocationStatusSection } from './waste-management.master-data-location-form.parts.js';
+import {
+  LocationFormActions,
+  LocationSelectSection,
+  LocationStatusSection,
+} from './waste-management.master-data-location-form.parts.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 type WasteMasterDataLocationFormContentProps = {
   readonly mode: 'create' | 'edit';
@@ -72,10 +74,11 @@ export const WasteMasterDataLocationFormContent = ({
   onReloadAssignments,
 }: WasteMasterDataLocationFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const { handleSubmit, register, reset, setValue, watch, formState } = useForm<CollectionLocationFormState>({
-    defaultValues: form,
-    resolver: locationFormResolver,
-  });
+  const { handleSubmit, register, reset, setValue, watch, formState } =
+    useForm<CollectionLocationFormState>({
+      defaultValues: form,
+      resolver: locationFormResolver,
+    });
 
   useResetOnFormContextChange(reset, form, `${mode}:${form.id}`);
 
@@ -89,15 +92,26 @@ export const WasteMasterDataLocationFormContent = ({
   }, [register]);
 
   const formValues = watch();
-  const filteredCities = formValues.regionId ? cities.filter((city) => city.regionId === formValues.regionId) : cities;
-  const filteredStreets = formValues.cityId ? streets.filter((street) => street.cityId === formValues.cityId) : [];
-  const filteredHouseNumbers = formValues.streetId ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId) : [];
+  const filteredCities = formValues.regionId
+    ? cities.filter((city) => city.regionId === formValues.regionId)
+    : cities;
+  const filteredStreets = formValues.cityId
+    ? streets.filter((street) => street.cityId === formValues.cityId)
+    : [];
+  const filteredHouseNumbers = formValues.streetId
+    ? houseNumbers.filter((houseNumber) => houseNumber.streetId === formValues.streetId)
+    : [];
   const currentLocationTourLinks = useMemo(
     () => locationTourLinks.filter((link) => link.locationId === formValues.id),
     [formValues.id, locationTourLinks]
   );
   const handleFormChange = (patch: Partial<CollectionLocationFormState>) => {
-    for (const [key, value] of Object.entries(patch) as Array<[keyof CollectionLocationFormState, CollectionLocationFormState[keyof CollectionLocationFormState]]>) {
+    for (const [key, value] of Object.entries(patch) as Array<
+      [
+        keyof CollectionLocationFormState,
+        CollectionLocationFormState[keyof CollectionLocationFormState],
+      ]
+    >) {
       setValue(key, value, {
         shouldDirty: true,
         shouldTouch: true,
@@ -122,9 +136,12 @@ export const WasteMasterDataLocationFormContent = ({
       <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
         {cancelLabel}
       </Button>
-      <Button type="submit" form="waste-location-form" disabled={saving}>
-        {saveLabel}
-      </Button>
+      <WastePendingSaveButton
+        type="submit"
+        form="waste-location-form"
+        saving={saving}
+        label={saveLabel}
+      />
     </div>
   );
 
@@ -151,7 +168,9 @@ export const WasteMasterDataLocationFormContent = ({
           filteredCities={filteredCities}
           filteredStreets={filteredStreets}
           filteredHouseNumbers={filteredHouseNumbers}
-          cityError={formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined}
+          cityError={
+            formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined
+          }
           onChange={handleFormChange}
         />
         <LocationStatusSection active={formValues.active} onChange={handleFormChange} />
@@ -165,7 +184,12 @@ export const WasteMasterDataLocationFormContent = ({
             onReload={onReloadAssignments}
           />
         ) : null}
-        <LocationFormActions cancelLabel={cancelLabel} saveLabel={saveLabel} saving={saving} onCancel={onCancel} />
+        <LocationFormActions
+          cancelLabel={cancelLabel}
+          saveLabel={saveLabel}
+          saving={saving}
+          onCancel={onCancel}
+        />
       </form>
     </div>
   );

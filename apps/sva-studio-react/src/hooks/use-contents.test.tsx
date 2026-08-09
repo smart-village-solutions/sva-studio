@@ -268,22 +268,25 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('refreshes the session only when the initial content list fetch fails with 401 (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    listContentsMock.mockRejectedValueOnce(new Error('protected-list'));
+  ])(
+    'refreshes the session only when the initial content list fetch fails with 401 (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      listContentsMock.mockRejectedValueOnce(new Error('protected-list'));
 
-    const { result } = renderHook(() => useContents(contentListQuery));
+      const { result } = renderHook(() => useContents(contentListQuery));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(protectedError);
-      expect(result.current.contents).toEqual([]);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe(protectedError);
+        expect(result.current.contents).toEqual([]);
+      });
 
-    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
-      protectedError.status === 401 ? 1 : 0
-    );
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+    }
+  );
 
   it('keeps the last successful items when a later refetch times out', async () => {
     const timeoutError = { status: 0, code: 'timeout', message: 'request_timeout' };
@@ -329,49 +332,52 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('refreshes the session only when a content list refetch fails with 401 (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockImplementation((cause: unknown) => cause);
-    listContentsMock
-      .mockResolvedValueOnce({
-        data: [
-          {
-            id: 'content-1',
-            contentType: 'generic',
-            title: 'Startseite',
-            createdAt: '2026-03-21T10:00:00.000Z',
-            updatedAt: '2026-03-21T11:00:00.000Z',
-            author: 'Editor',
-            payload: { blocks: [] },
-            status: 'draft',
-          },
-        ],
-        pagination: { page: 1, pageSize: 1, total: 1 },
-      })
-      .mockRejectedValueOnce(new Error('protected-refetch'));
+  ])(
+    'refreshes the session only when a content list refetch fails with 401 (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockImplementation((cause: unknown) => cause);
+      listContentsMock
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'content-1',
+              contentType: 'generic',
+              title: 'Startseite',
+              createdAt: '2026-03-21T10:00:00.000Z',
+              updatedAt: '2026-03-21T11:00:00.000Z',
+              author: 'Editor',
+              payload: { blocks: [] },
+              status: 'draft',
+            },
+          ],
+          pagination: { page: 1, pageSize: 1, total: 1 },
+        })
+        .mockRejectedValueOnce(new Error('protected-refetch'));
 
-    const { result } = renderHook(() => useContents(contentListQuery));
+      const { result } = renderHook(() => useContents(contentListQuery));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.contents).toHaveLength(1);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.contents).toHaveLength(1);
+      });
 
-    asIamErrorMock.mockReturnValue(protectedError);
+      asIamErrorMock.mockReturnValue(protectedError);
 
-    await act(async () => {
-      await result.current.refetch();
-    });
+      await act(async () => {
+        await result.current.refetch();
+      });
 
-    await waitFor(() => {
-      expect(result.current.error).toBe(protectedError);
-      expect(result.current.contents).toHaveLength(1);
-      expect(result.current.contents[0]?.id).toBe('content-1');
-    });
+      await waitFor(() => {
+        expect(result.current.error).toBe(protectedError);
+        expect(result.current.contents).toHaveLength(1);
+        expect(result.current.contents[0]?.id).toBe('content-1');
+      });
 
-    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
-      protectedError.status === 401 ? 1 : 0
-    );
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+    }
+  );
 
   it('runs bulk archive and delete actions with safe audit metadata', async () => {
     asIamErrorMock.mockImplementation((cause: unknown) => cause);
@@ -478,7 +484,7 @@ describe('useContents', () => {
         payload: { hero: 'Hello' },
         status: 'draft',
       });
-      expect(created).toBe(true);
+      expect(created).toEqual({ id: 'content-2' });
     });
 
     const conflictError = { status: 409, code: 'conflict', message: 'Conflict' };
@@ -492,7 +498,7 @@ describe('useContents', () => {
         payload: { hero: 'Hello' },
         status: 'draft',
       });
-      expect(created).toBe(false);
+      expect(created).toBeNull();
     });
 
     expect(result.current.mutationError).toBe(conflictError);
@@ -520,7 +526,7 @@ describe('useContents', () => {
           payload: { hero: 'Hello' },
           status: 'draft',
         });
-        expect(created).toBe(false);
+        expect(created).toBeNull();
       });
 
       expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
@@ -592,66 +598,75 @@ describe('useContents', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores detail errors and refreshes the session only on 401 detail-load failures (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    getContentMock.mockRejectedValueOnce(new Error('protected-detail'));
-    getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
+  ])(
+    'stores detail errors and refreshes the session only on 401 detail-load failures (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      getContentMock.mockRejectedValueOnce(new Error('protected-detail'));
+      getContentHistoryMock.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, pageSize: 0, total: 0 },
+      });
 
-    const { result } = renderHook(() => useContentDetail('content-1'));
+      const { result } = renderHook(() => useContentDetail('content-1'));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(protectedError);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe(protectedError);
+      });
 
-    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
-      protectedError.status === 401 ? 1 : 0
-    );
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+    }
+  );
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores update errors and refreshes the session only on 401 update failures (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockImplementation((cause: unknown) => cause);
-    getContentMock.mockResolvedValue({
-      data: {
-        id: 'content-1',
-        contentType: 'generic',
-        title: 'Startseite',
-        createdAt: '2026-03-21T10:00:00.000Z',
-        updatedAt: '2026-03-21T11:00:00.000Z',
-        author: 'Editor',
-        payload: { blocks: [] },
-        status: 'draft',
-        history: [],
-      },
-    });
-    getContentHistoryMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 0, total: 0 },
-    });
+  ])(
+    'stores update errors and refreshes the session only on 401 update failures (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockImplementation((cause: unknown) => cause);
+      getContentMock.mockResolvedValue({
+        data: {
+          id: 'content-1',
+          contentType: 'generic',
+          title: 'Startseite',
+          createdAt: '2026-03-21T10:00:00.000Z',
+          updatedAt: '2026-03-21T11:00:00.000Z',
+          author: 'Editor',
+          payload: { blocks: [] },
+          status: 'draft',
+          history: [],
+        },
+      });
+      getContentHistoryMock.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, pageSize: 0, total: 0 },
+      });
 
-    const { result } = renderHook(() => useContentDetail('content-1'));
+      const { result } = renderHook(() => useContentDetail('content-1'));
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.content?.title).toBe('Startseite');
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.content?.title).toBe('Startseite');
+      });
 
-    asIamErrorMock.mockReturnValue(protectedError);
-    updateContentMock.mockRejectedValueOnce(new Error('protected-update'));
+      asIamErrorMock.mockReturnValue(protectedError);
+      updateContentMock.mockRejectedValueOnce(new Error('protected-update'));
 
-    await act(async () => {
-      const updated = await result.current.updateContent({ title: 'Neu' });
-      expect(updated).toBe(false);
-    });
+      await act(async () => {
+        const updated = await result.current.updateContent({ title: 'Neu' });
+        expect(updated).toBe(false);
+      });
 
-    expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
-      protectedError.status === 401 ? 1 : 0
-    );
-    expect(result.current.mutationError).toBe(protectedError);
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+      expect(result.current.mutationError).toBe(protectedError);
+    }
+  );
 
   it('clears stored mutation errors for create mutations', async () => {
     const createConflict = { status: 409, code: 'conflict', message: 'Conflict' };
@@ -668,7 +683,7 @@ describe('useContents', () => {
           payload: { hero: 'Hello' },
           status: 'draft',
         })
-      ).toBe(false);
+      ).toBeNull();
     });
 
     expect(createResult.current.mutationError).toBe(createConflict);
@@ -702,7 +717,10 @@ describe('useContents', () => {
     const genericError = { status: 500, code: 'database_unavailable', message: 'db down' };
     asIamErrorMock.mockReturnValue(genericError);
     getContentMock.mockRejectedValueOnce(new Error('db down'));
-    getContentHistoryMock.mockResolvedValue({ data: [], pagination: { page: 1, pageSize: 0, total: 0 } });
+    getContentHistoryMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 0, total: 0 },
+    });
 
     const { result } = renderHook(() => useContentDetail('content-1'));
 

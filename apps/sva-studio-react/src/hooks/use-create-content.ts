@@ -29,11 +29,11 @@ export const useCreateContent = (): UseCreateContentResult => {
         operation: 'create_content',
       });
       try {
-        await createContent(payload);
+        const response = await createContent(payload);
         logBrowserOperationSuccess(contentsLogger, 'content_create_succeeded', {
           operation: 'create_content',
         });
-        return true;
+        return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
         if (resolvedError.status === 401) {
@@ -48,7 +48,7 @@ export const useCreateContent = (): UseCreateContentResult => {
         logBrowserOperationFailure(contentsLogger, 'content_create_failed', resolvedError, {
           operation: 'create_content',
         });
-        return false;
+        return null;
       }
     },
     [refreshSession]

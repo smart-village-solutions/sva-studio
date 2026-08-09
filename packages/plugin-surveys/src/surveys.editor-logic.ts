@@ -1,6 +1,6 @@
 import React from 'react';
 import { type UseFormReturn } from 'react-hook-form';
-import type { MainserverPrincipalType } from '@sva/studio-ui-react';
+import { useStudioSaveFeedback, type MainserverPrincipalType } from '@sva/studio-ui-react';
 
 import { createSurvey, getSurvey, updateSurvey } from './surveys.api.js';
 import {
@@ -95,82 +95,106 @@ const createSurveyEditorSubmit = (input: {
   readonly loadedItem: SurveyContentItem | null;
   readonly actingPrincipalType: MainserverPrincipalType;
   readonly pt: SurveyEditorTranslation;
-  readonly navigateToContentList: () => Promise<void>;
+  readonly navigateToCreatedDetail: (contentId: string) => Promise<void>;
   readonly setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
   readonly setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
+  readonly saveFeedback: ReturnType<typeof useStudioSaveFeedback>;
 }) =>
-  input.methods.handleSubmit(async (values) => {
-    try {
-      if (input.mode === 'edit' && !input.contentId) {
-        input.setStatus({ kind: 'error', text: input.pt('messages.missingContentId') });
-        return;
-      }
-      if (input.mode === 'edit' && !input.loadedItem) {
-        input.setStatus({ kind: 'error', text: input.pt('messages.loadError') });
-        return;
-      }
+  input.methods.handleSubmit(
+    async (values) => {
+      let operationId: number | null = null;
+      try {
+        if (input.mode === 'edit' && !input.contentId) {
+          input.setStatus({ kind: 'error', text: input.pt('messages.missingContentId') });
+          return;
+        }
+        if (input.mode === 'edit' && !input.loadedItem) {
+          input.setStatus({ kind: 'error', text: input.pt('messages.loadError') });
+          return;
+        }
 
-      const mutation = toSurveyMutationInput(values, input.loadedItem);
-      const contentId = input.contentId;
-      const mutationResult =
-        input.mode === 'create'
-          ? await createSurvey(mutation, input.actingPrincipalType)
-          : await updateSurvey(
-              contentId as string,
-              mutation,
-              input.loadedItem ?? undefined,
-              input.actingPrincipalType
-            );
-      const savedItem =
-        input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
-          ? { ...mutationResult, results: input.loadedItem.results }
-          : mutationResult;
-
-      input.setLoadedItem(savedItem);
-      input.methods.reset(mapSurveyItemToFormValues(savedItem));
-      input.setStatus({
-        kind: 'success',
-        text:
+        operationId = input.saveFeedback.beginSaving();
+        const mutation = toSurveyMutationInput(values, input.loadedItem);
+        const contentId = input.contentId;
+        const mutationResult =
           input.mode === 'create'
-            ? input.pt('messages.createSuccess')
-            : input.pt('messages.updateSuccess'),
-      });
+            ? await createSurvey(mutation, input.actingPrincipalType)
+            : await updateSurvey(
+                contentId as string,
+                mutation,
+                input.loadedItem ?? undefined,
+                input.actingPrincipalType
+              );
+        const savedItem =
+          input.mode === 'edit' && input.loadedItem?.results && mutationResult.results === undefined
+            ? { ...mutationResult, results: input.loadedItem.results }
+            : mutationResult;
 
-      if (input.mode === 'create') {
-        await input.navigateToContentList();
+        input.setLoadedItem(savedItem);
+        input.methods.reset(mapSurveyItemToFormValues(savedItem));
+        input.setStatus(null);
+        input.saveFeedback.markSaved(operationId);
+
+        if (input.mode === 'create') {
+          await input.navigateToCreatedDetail(savedItem.id);
+        }
+      } catch (error) {
+        if (operationId !== null) {
+          input.saveFeedback.markFailed(operationId);
+        }
+        input.setStatus({
+          kind: 'error',
+          text: getSurveyEditorErrorMessage(
+            error,
+            input.mode === 'create'
+              ? input.pt('messages.createError')
+              : input.pt('messages.updateError')
+          ),
+        });
       }
-    } catch (error) {
-      input.setStatus({
-        kind: 'error',
-        text: getSurveyEditorErrorMessage(
-          error,
-          input.mode === 'create'
-            ? input.pt('messages.createError')
-            : input.pt('messages.updateError')
-        ),
-      });
-    }
-  });
+    },
+    () => input.saveFeedback.reset()
+  );
 
 export const useSurveyEditorController = ({
   mode,
   contentId,
   methods,
   pt,
-  navigateToContentList,
+  navigateToCreatedDetail,
+  initiallySaved = false,
+  onInitialSavedConsumed,
   actingPrincipalType,
 }: Readonly<{
   mode: SurveyEditorMode;
   contentId?: string;
   methods: UseFormReturn<SurveyDetailFormValues>;
   pt: SurveyEditorTranslation;
-  navigateToContentList: () => Promise<void>;
+  navigateToCreatedDetail: (contentId: string) => Promise<void>;
+  initiallySaved?: boolean;
+  onInitialSavedConsumed?: () => Promise<void>;
   actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  React.useEffect(() => {
+    if (methods.formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
   useSurveyEditorLoader({ mode, contentId, methods, pt, setStatus, setIsLoading, setLoadedItem });
+  React.useEffect(() => {
+    if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void onInitialSavedConsumed?.();
+  }, [initiallySaved, isLoading, onInitialSavedConsumed, saveFeedback]);
   const submit = createSurveyEditorSubmit({
     methods,
     mode,
@@ -178,10 +202,11 @@ export const useSurveyEditorController = ({
     loadedItem,
     actingPrincipalType,
     pt,
-    navigateToContentList,
+    navigateToCreatedDetail,
     setLoadedItem,
     setStatus,
+    saveFeedback,
   });
 
-  return { isLoading, loadedItem, status, submit };
+  return { isLoading, loadedItem, saveStatus: saveFeedback.status, status, submit };
 };

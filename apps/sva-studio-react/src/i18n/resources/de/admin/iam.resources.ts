@@ -255,7 +255,8 @@ export const iamAdminDEResources = {
     },
     actions: {
       save: 'Löschregeln speichern',
-      saving: 'Löschregeln werden gespeichert ...',
+      saving: 'Wird gespeichert…',
+      saved: 'Gespeichert',
     },
     messages: {
       loading: 'Tenant-Löschregeln werden geladen ...',

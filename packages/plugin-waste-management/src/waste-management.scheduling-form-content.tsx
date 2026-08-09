@@ -11,6 +11,7 @@ import type {
   GlobalDateShiftFormState,
   TourDateShiftFormState,
 } from './waste-management.scheduling.shared.js';
+import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
 
 type WasteSchedulingFormContentProps =
   | {
@@ -39,18 +40,19 @@ type WasteSchedulingFormContentProps =
 export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProps) => {
   const pt = usePluginTranslation('wasteManagement');
   const copy = resolveWasteSchedulingFormCopy(props.variant, props.mode);
-  const saveLabel = props.saving
-    ? pt(copy.savingKey)
-    : pt(copy.submitKey);
+  const saveLabel = props.saving ? pt(copy.savingKey) : pt(copy.submitKey);
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
       <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
         {pt(copy.cancelKey)}
       </Button>
-      <Button type="submit" form="waste-scheduling-form" disabled={props.saving}>
-        {saveLabel}
-      </Button>
+      <WastePendingSaveButton
+        type="submit"
+        form="waste-scheduling-form"
+        saving={props.saving}
+        label={saveLabel}
+      />
     </div>
   );
 
@@ -62,7 +64,11 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
         actions={topActions}
       />
 
-      <form id="waste-scheduling-form" className="space-y-6" onSubmit={(event) => void props.onSubmit(event)}>
+      <form
+        id="waste-scheduling-form"
+        className="space-y-6"
+        onSubmit={(event) => void props.onSubmit(event)}
+      >
         <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
           {props.beforeFields}
           {props.variant === 'global' ? (
@@ -83,9 +89,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
         </section>
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
-          <Button type="submit" disabled={props.saving}>
-            {saveLabel}
-          </Button>
+          <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
           <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
             {pt(copy.cancelKey)}
           </Button>

@@ -93,6 +93,7 @@ vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
   useSearch: () => ({ page: 1, pageSize: 25 }),
+  useLocation: () => ({ state: {} }),
 }));
 
 const navigateMock = vi.fn();
@@ -310,10 +311,13 @@ describe('EventsListPage', () => {
       );
     });
 
-    expect(navigateMock).toHaveBeenCalledWith({
-      to: '/admin/events/$id',
-      params: { id: 'event-created' },
-    });
+    expect(navigateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: '/admin/events/$id',
+        params: { id: 'event-created' },
+        state: expect.any(Function),
+      })
+    );
   }, 10_000);
 
   it('ignores impossible browser date values and still submits with the remaining valid input', async () => {
@@ -388,7 +392,7 @@ describe('EventsListPage', () => {
         }),
         'user'
       );
-      expect(screen.getByText('Event wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
   });
 });

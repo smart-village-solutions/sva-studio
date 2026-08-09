@@ -5,7 +5,6 @@ import type {
 } from '@sva/core';
 import React from 'react';
 
-import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
@@ -216,7 +215,7 @@ type OrganizationFormProps = {
   readonly onDisplayNameChange?: (value: string) => void;
   readonly onOrganizationKeyChange?: (value: string) => void;
   readonly setFormValues: React.Dispatch<React.SetStateAction<OrganizationFormValues>>;
-  readonly submitLabel: string;
+  readonly submitAction: React.ReactNode;
   readonly formValues: OrganizationFormValues;
   readonly readOnly?: boolean;
 };
@@ -229,7 +228,7 @@ export const OrganizationForm = ({
   onDisplayNameChange,
   onOrganizationKeyChange,
   setFormValues,
-  submitLabel,
+  submitAction,
   formValues,
   readOnly = false,
 }: OrganizationFormProps) => {
@@ -362,7 +361,7 @@ export const OrganizationForm = ({
         {readOnly ? null : (
           <div className="flex justify-end gap-2">
             {actions}
-            <Button type="submit">{submitLabel}</Button>
+            {submitAction}
           </div>
         )}
       </fieldset>

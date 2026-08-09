@@ -1,10 +1,15 @@
 import React from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  hasStudioCreatedSaveFeedback,
+  removeStudioSaveFeedback,
   StudioDataTable,
   StudioDetailPageTemplate,
   StudioFormActionBar,
+  StudioPersistentFormError,
+  StudioSaveButton,
   type StudioColumnDef,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
@@ -249,6 +254,7 @@ const buildPermissionScopeDraft = (
 };
 
 export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
+  const location = useLocation();
   const rolesApi = useRoles();
   const access = useIamResourceAccess('role');
   const canUpdateRole = isIamAccessAllowed(access.update);
@@ -274,13 +280,38 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<
     Record<string, PermissionAccessScope>
   >({});
-  const [isSavingMeta, setIsSavingMeta] = React.useState(false);
-  const [isSavingPermissions, setIsSavingPermissions] = React.useState(false);
+  const metaSaveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
+  const permissionsSaveFeedback = useStudioSaveFeedback();
   const [isUpdatingAssignmentsForUserIds, setIsUpdatingAssignmentsForUserIds] = React.useState<
     string[]
   >([]);
   const [showTechnicalDetails, setShowTechnicalDetails] = React.useState(false);
   const [permissionSearch, setPermissionSearch] = React.useState('');
+  const updateEditForm: typeof setEditForm = (value) => {
+    metaSaveFeedback.markDirty();
+    setEditForm(value);
+  };
+
+  React.useEffect(() => {
+    if (
+      rolesApi.isLoading ||
+      !role ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'roles', roleId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    metaSaveFeedback.showSaved();
+    void navigate({
+      to: '/admin/roles/$roleId',
+      params: { roleId },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [location.state, metaSaveFeedback, navigate, role, roleId, rolesApi.isLoading]);
 
   React.useEffect(() => {
     if (!role) {
@@ -409,12 +440,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             <Select
               value={permission.accessScope}
               disabled={isReadOnly}
-              onChange={(event) =>
+              onChange={(event) => {
+                permissionsSaveFeedback.markDirty();
                 setPermissionScopeDraft((current) => ({
                   ...current,
                   [permission.id]: event.target.value as PermissionAccessScope,
-                }))
-              }
+                }));
+              }}
             >
               {permission.supportedAccessScopes.map((scope) => (
                 <option key={scope} value={scope}>
@@ -447,10 +479,11 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           ] satisfies readonly StudioColumnDef<RolePermissionTableRow>[])
         : []),
     ],
-    [isReadOnly, showTechnicalDetails]
+    [isReadOnly, permissionsSaveFeedback, showTechnicalDetails]
   );
 
   const assignAllPermissions = React.useCallback(() => {
+    permissionsSaveFeedback.markDirty();
     setPermissionDraft(
       sortPermissionIdsByCatalog(
         permissionsApi.permissions.map((permission) => permission.id),
@@ -466,14 +499,16 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         { ...current }
       )
     );
-  }, [permissionsApi.permissions]);
+  }, [permissionsApi.permissions, permissionsSaveFeedback]);
 
   const removeAllPermissions = React.useCallback(() => {
+    permissionsSaveFeedback.markDirty();
     setPermissionDraft([]);
-  }, []);
+  }, [permissionsSaveFeedback]);
 
   const applyPermissionBulkAssignment = React.useCallback(
     (permissionIds: readonly string[], nextAssigned: boolean) => {
+      permissionsSaveFeedback.markDirty();
       setPermissionDraft((current) => {
         const nextIds = nextAssigned
           ? [...new Set([...current, ...permissionIds])]
@@ -493,7 +528,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         );
       }
     },
-    [permissionsApi.permissions]
+    [permissionsApi.permissions, permissionsSaveFeedback]
   );
 
   const assignVisiblePermissions = React.useCallback(() => {
@@ -547,16 +582,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
-    setIsSavingMeta(true);
-    try {
-      await rolesApi.updateRole(role.id, {
-        displayName: editForm.displayName.trim(),
-        description: editForm.description.trim() || undefined,
-        roleLevel: Number(editForm.roleLevel),
-      });
-    } finally {
-      setIsSavingMeta(false);
-    }
+    const operationId = metaSaveFeedback.beginSaving();
+    const updated = await rolesApi.updateRole(role.id, {
+      displayName: editForm.displayName.trim(),
+      description: editForm.description.trim() || undefined,
+      roleLevel: Number(editForm.roleLevel),
+    });
+    (updated ? metaSaveFeedback.markSaved : metaSaveFeedback.markFailed)(operationId);
   };
 
   const onSavePermissions = async () => {
@@ -564,21 +596,18 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
-    setIsSavingPermissions(true);
-    try {
-      await rolesApi.updateRole(role.id, {
-        permissionAssignments: sortPermissionAssignmentsByCatalog(
-          permissionDraft,
-          permissionDraft.reduce<Record<string, PermissionAccessScope>>((acc, permissionId) => {
-            acc[permissionId] = permissionScopeDraft[permissionId] ?? 'all';
-            return acc;
-          }, {}),
-          permissionsApi.permissions
-        ),
-      });
-    } finally {
-      setIsSavingPermissions(false);
-    }
+    const operationId = permissionsSaveFeedback.beginSaving();
+    const updated = await rolesApi.updateRole(role.id, {
+      permissionAssignments: sortPermissionAssignmentsByCatalog(
+        permissionDraft,
+        permissionDraft.reduce<Record<string, PermissionAccessScope>>((acc, permissionId) => {
+          acc[permissionId] = permissionScopeDraft[permissionId] ?? 'all';
+          return acc;
+        }, {}),
+        permissionsApi.permissions
+      ),
+    });
+    (updated ? permissionsSaveFeedback.markSaved : permissionsSaveFeedback.markFailed)(operationId);
   };
 
   const resetPermissionDraft = () => {
@@ -586,6 +615,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
+    permissionsSaveFeedback.markDirty();
     setPermissionDraft(
       sortPermissionIdsByCatalog(
         role.permissions.map((permission) => permission.id),
@@ -629,6 +659,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   };
 
   const togglePermissionDraft = (permissionId: string) => {
+    permissionsSaveFeedback.markDirty();
     setPermissionDraft((current) => {
       const nextIds = current.includes(permissionId)
         ? current.filter((entry) => entry !== permissionId)
@@ -685,20 +716,22 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   }
 
   const savePermissionsAction = (
-    <Button
+    <StudioSaveButton
       type="button"
+      status={permissionsSaveFeedback.status}
       disabled={
         isReadOnly ||
         permissionsApi.isLoading ||
         Boolean(permissionsApi.error) ||
-        isSavingPermissions
+        permissionsSaveFeedback.status === 'saving'
       }
       onClick={() => void onSavePermissions()}
-    >
-      {isSavingPermissions
-        ? t('admin.roles.workspace.savingPermissions')
-        : t('admin.roles.workspace.savePermissions')}
-    </Button>
+      labels={{
+        idle: t('admin.roles.workspace.savePermissions'),
+        saving: t('admin.roles.workspace.savingPermissions'),
+        saved: t('account.actions.saved'),
+      }}
+    />
   );
 
   return (
@@ -721,20 +754,20 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     >
       <section
         className="space-y-5"
-        aria-busy={rolesApi.isLoading || isSavingMeta || isSavingPermissions}
+        aria-busy={
+          rolesApi.isLoading ||
+          metaSaveFeedback.status === 'saving' ||
+          permissionsSaveFeedback.status === 'saving'
+        }
       >
         {rolesApi.mutationError ? (
-          <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-            <AlertDescription className="flex flex-col gap-3">
-              <span>
-                {roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error', {
-                  includeKeycloakReconcileError: true,
-                  includeRecoveryRunningError: true,
-                })}
-              </span>
-              <IamRuntimeDiagnosticDetails error={rolesApi.mutationError} />
-            </AlertDescription>
-          </Alert>
+          <StudioPersistentFormError
+            message={roleErrorMessage(rolesApi.mutationError, 'admin.roles.messages.error', {
+              includeKeycloakReconcileError: true,
+              includeRecoveryRunningError: true,
+            })}
+            details={<IamRuntimeDiagnosticDetails error={rolesApi.mutationError} />}
+          />
         ) : null}
 
         {isReadOnly ? (
@@ -873,7 +906,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     value={editForm.displayName}
                     disabled={isReadOnly}
                     onChange={(event) =>
-                      setEditForm((current) => ({ ...current, displayName: event.target.value }))
+                      updateEditForm((current) => ({ ...current, displayName: event.target.value }))
                     }
                   />
                 </div>
@@ -889,7 +922,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     value={editForm.roleLevel}
                     disabled={isReadOnly}
                     onChange={(event) =>
-                      setEditForm((current) => ({ ...current, roleLevel: event.target.value }))
+                      updateEditForm((current) => ({ ...current, roleLevel: event.target.value }))
                     }
                   />
                 </div>
@@ -902,7 +935,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     value={editForm.description}
                     disabled={isReadOnly}
                     onChange={(event) =>
-                      setEditForm((current) => ({ ...current, description: event.target.value }))
+                      updateEditForm((current) => ({ ...current, description: event.target.value }))
                     }
                   />
                 </div>
@@ -912,6 +945,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     variant="outline"
                     disabled={isReadOnly}
                     onClick={() => {
+                      metaSaveFeedback.markDirty();
                       setEditForm({
                         displayName: role.roleName,
                         description: role.description ?? '',
@@ -921,11 +955,16 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   >
                     {t('admin.roles.detail.general.reset')}
                   </Button>
-                  <Button type="submit" disabled={isReadOnly || isSavingMeta}>
-                    {isSavingMeta
-                      ? t('admin.roles.detail.general.saving')
-                      : t('admin.roles.detail.general.save')}
-                  </Button>
+                  <StudioSaveButton
+                    type="submit"
+                    status={metaSaveFeedback.status}
+                    disabled={isReadOnly}
+                    labels={{
+                      idle: t('admin.roles.detail.general.save'),
+                      saving: t('admin.roles.detail.general.saving'),
+                      saved: t('account.actions.saved'),
+                    }}
+                  />
                 </div>
               </form>
             </CardContent>

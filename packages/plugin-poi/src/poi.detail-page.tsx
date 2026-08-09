@@ -1,6 +1,6 @@
 import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   getHostMediaAsset,
   getHostMediaDelivery,
@@ -21,7 +21,9 @@ import {
   type HostMediaAssetListItem,
 } from '@sva/plugin-sdk';
 import {
+  addStudioCreatedSaveFeedback,
   Button,
+  hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
   Select,
   StudioDetailTabIcon,
@@ -30,8 +32,10 @@ import {
   StudioLoadingState,
   MainserverDeviationSummary,
   MainserverPrincipalControl,
+  removeStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
   StudioMediaPickerOverlay,
+  StudioSaveButton,
   Tabs,
   TabsContent,
   TabsList,
@@ -45,6 +49,7 @@ import {
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   useStudioMediaPickerOverlay,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 
 import {
@@ -244,11 +249,14 @@ export function PoiDetailPage({
 }>) {
   const pt = usePluginTranslation('poi');
   const navigate = useNavigate();
+  const location = useLocation();
   const formId = React.useId();
   const methods = useForm<PoiDetailFormValues>({
     defaultValues: createDefaultPoiDetailFormValues(),
   });
   const { reset } = methods;
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
@@ -266,6 +274,29 @@ export function PoiDetailPage({
   );
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
   const [mediaReferencesReady, setMediaReferencesReady] = React.useState(mode === 'create');
+  React.useEffect(() => {
+    if (methods.formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [methods.formState.isDirty, saveFeedback.markDirty]);
+  React.useEffect(() => {
+    if (
+      loading ||
+      initialSaveFeedbackShownRef.current ||
+      !hasStudioCreatedSaveFeedback(location.state, 'poi', contentId)
+    ) {
+      return;
+    }
+
+    initialSaveFeedbackShownRef.current = true;
+    saveFeedback.showSaved();
+    void navigate({
+      to: '/admin/poi/$id',
+      params: { id: contentId ?? '' },
+      replace: true,
+      state: (previous) => removeStudioSaveFeedback(previous),
+    });
+  }, [contentId, loading, location.state, navigate, saveFeedback]);
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -642,6 +673,7 @@ export function PoiDetailPage({
       return;
     }
 
+    const operationId = saveFeedback.beginSaving();
     try {
       const deviationFormPaths: Readonly<
         Record<string, Parameters<typeof methods.getFieldState>[0]>
@@ -682,6 +714,7 @@ export function PoiDetailPage({
           })
         )
       ) {
+        saveFeedback.reset();
         return;
       }
       const saveContent = () =>
@@ -715,21 +748,25 @@ export function PoiDetailPage({
           current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
         );
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+        saveFeedback.markFailed(operationId);
         return;
       }
       setRetryReferenceSync(null);
       setMediaUsages((current) =>
         current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
       );
-      setStatus({
-        kind: 'success',
-        text: mode === 'create' ? pt('messages.createSuccess') : pt('messages.updateSuccess'),
-      });
+      setStatus(null);
+      saveFeedback.markSaved(operationId);
       if (mode === 'create') {
-        await navigate({ to: '/admin/poi/$id', params: { id: saved.id } });
+        await navigate({
+          to: '/admin/poi/$id',
+          params: { id: saved.id },
+          state: (previous) => addStudioCreatedSaveFeedback(previous, 'poi', saved.id),
+        });
       }
     } catch (saveError) {
       setStatus({ kind: 'error', text: errorMessage(pt, saveError, 'messages.saveError') });
+      saveFeedback.markFailed(operationId);
     }
   });
 
@@ -816,9 +853,16 @@ export function PoiDetailPage({
         }
         primaryAction={
           canSave ? (
-            <Button type="submit" form={formId}>
-              {pt('actions.save')}
-            </Button>
+            <StudioSaveButton
+              type="submit"
+              form={formId}
+              status={saveFeedback.status}
+              labels={{
+                idle: pt('actions.save'),
+                saving: pt('actions.saving'),
+                saved: pt('actions.saved'),
+              }}
+            />
           ) : undefined
         }
         actions={

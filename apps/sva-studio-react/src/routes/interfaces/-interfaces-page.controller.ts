@@ -1,5 +1,6 @@
 import { useServerFn } from '@tanstack/react-start';
 import React from 'react';
+import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { t } from '../../i18n';
 import { readErrorMessage } from '../../lib/error-message-utils';
@@ -167,7 +168,7 @@ export const useInterfacesPageController = () => {
     useServerFnRefs();
   const [isLoading, setIsLoading] = React.useState(true);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = React.useState<string | null>(null);
+  const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [instanceId, setInstanceId] = React.useState('');
   const [interfaces, setInterfaces] = React.useState<readonly InstanceInterface[]>([]);
   const [availableTypes, setAvailableTypes] =
@@ -176,37 +177,48 @@ export const useInterfacesPageController = () => {
   const [pickerType, setPickerType] = React.useState<InstanceInterfaceType>('s3');
   const [editState, setEditState] = React.useState<EditState>({ mode: 'closed' });
   const [pendingDelete, setPendingDelete] = React.useState<InstanceInterface | null>(null);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const saveFeedback = useStudioSaveFeedback();
 
-  const refresh = React.useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const result = await listInterfacesRef.current();
-      if (!isInstanceInterfacesResponse(result)) {
-        throw new Error('invalid_interfaces_payload');
+  const refresh = React.useCallback(
+    async (reportError = true) => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      try {
+        const result = await listInterfacesRef.current();
+        if (!isInstanceInterfacesResponse(result)) {
+          throw new Error('invalid_interfaces_payload');
+        }
+
+        const nextAvailableTypes =
+          result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
+        setInstanceId(result.instanceId);
+        setInterfaces(result.entries);
+        setAvailableTypes(nextAvailableTypes);
+        setPickerType((current) =>
+          nextAvailableTypes.includes(current) ? current : (nextAvailableTypes[0] ?? 's3')
+        );
+        return result;
+      } catch (error) {
+        if (reportError) {
+          setErrorMessage(
+            translateInterfacesErrorMessage(error, t('interfaces.messages.loadError'))
+          );
+        }
+        return null;
+      } finally {
+        setIsLoading(false);
       }
-
-      const nextAvailableTypes =
-        result.availableTypes.length > 0 ? result.availableTypes : DEFAULT_AVAILABLE_TYPES;
-      setInstanceId(result.instanceId);
-      setInterfaces(result.entries);
-      setAvailableTypes(nextAvailableTypes);
-      setPickerType((current) =>
-        nextAvailableTypes.includes(current) ? current : (nextAvailableTypes[0] ?? 's3')
-      );
-    } catch (error) {
-      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.loadError')));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [listInterfacesRef]);
+    },
+    [listInterfacesRef]
+  );
 
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
 
   const onConfirmType = () => {
+    saveFeedback.reset();
+    setSaveErrorMessage(null);
     setEditState({
       mode: 'create',
       type: pickerType,
@@ -220,11 +232,10 @@ export const useInterfacesPageController = () => {
       return;
     }
 
-    setIsSaving(true);
-    setErrorMessage(null);
-    setStatusMessage(null);
+    const operationId = saveFeedback.beginSaving();
     try {
       const draft = editState.draft;
+      let savedEntry: InstanceInterface | null = null;
       if (draft.type === 'mainserver') {
         await saveMainserverRef.current({
           data: {
@@ -234,17 +245,28 @@ export const useInterfacesPageController = () => {
           },
         });
       } else {
-        await upsertInterfaceRef.current({
+        savedEntry = await upsertInterfaceRef.current({
           data: buildUpsertPayload(instanceId, editState),
         });
       }
-      setStatusMessage(t('interfaces.messages.saveSuccess'));
-      setEditState({ mode: 'closed' });
-      await refresh();
+      const refreshed = await refresh(false);
+      if (!refreshed) {
+        throw new Error(t('interfaces.messages.refreshAfterSaveError'));
+      }
+      savedEntry ??=
+        refreshed?.entries.find((entry) =>
+          editState.mode === 'edit' ? entry.id === editState.entry.id : entry.type === draft.type
+        ) ?? null;
+      if (savedEntry) {
+        setEditState({ mode: 'edit', entry: savedEntry, draft: draftFromEntry(savedEntry) });
+      }
+      setSaveErrorMessage(null);
+      saveFeedback.markSaved(operationId);
     } catch (error) {
-      setErrorMessage(translateInterfacesErrorMessage(error, t('interfaces.messages.saveError')));
-    } finally {
-      setIsSaving(false);
+      setSaveErrorMessage(
+        translateInterfacesErrorMessage(error, t('interfaces.messages.saveError'))
+      );
+      saveFeedback.markFailed(operationId);
     }
   };
 
@@ -277,7 +299,8 @@ export const useInterfacesPageController = () => {
     instanceId,
     interfaces,
     isLoading,
-    isSaving,
+    saveErrorMessage,
+    saveStatus: saveFeedback.status,
     pendingDelete,
     pickerOpen,
     pickerType,
@@ -286,7 +309,7 @@ export const useInterfacesPageController = () => {
     setPendingDelete,
     setPickerOpen,
     setPickerType,
-    statusMessage,
+    markDraftDirty: saveFeedback.markDirty,
     onConfirmDelete,
     onConfirmType,
     onSaveDraft,

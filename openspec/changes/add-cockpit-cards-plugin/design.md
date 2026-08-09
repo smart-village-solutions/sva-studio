@@ -1,6 +1,6 @@
 ## Kontext
 
-Cockpit Cards sind fachlich abgegrenzte GenericItems. Sie ähneln FAQ in Navigation, Lifecycle und Publikationsmetadaten, erweitern das reduzierte Modell aber um eine bestehende Kategorie, ein oder mehrere Bilder und einen Link.
+Kacheln sind fachlich abgegrenzte GenericItems. Sie ähneln FAQ in Navigation, Lifecycle und Publikationsmetadaten, erweitern das reduzierte Modell aber um eine bestehende Kategorie, optionale Bilder und einen Link.
 
 ## Ziele und Nicht-Ziele
 
@@ -15,19 +15,21 @@ Cockpit Cards sind fachlich abgegrenzte GenericItems. Sie ähneln FAQ in Navigat
 
 ### Kanonische Abbildung
 
-| Fachfeld                   | GenericItem-Feld        |
-| -------------------------- | ----------------------- |
-| Überschrift                | `title`                 |
-| Text                       | `contentBlocks[0].body` |
-| Sprachcode                 | `payload.languageCode`  |
-| Sortiergewicht             | `payload.sortWeight`    |
-| Kategorie                  | `categories[0]`         |
-| Bilder                     | `mediaContents`         |
-| Link                       | `webUrls[0]`            |
-| Sichtbarkeit               | `visible`               |
-| Veröffentlichungszeitpunkt | `publicationDate`       |
+| Fachfeld                   | GenericItem-Feld         |
+| -------------------------- | ------------------------ |
+| Überschrift                | `title`                  |
+| Text                       | `contentBlocks[0].body`  |
+| Sprachcode                 | `payload.languageCode`   |
+| Sortiergewicht             | `payload.sortWeight`     |
+| Kategorie                  | `categories[0]`          |
+| Bilder                     | `mediaContents`          |
+| Link                       | `webUrls[0].url`         |
+| Linktext                   | `webUrls[0].description` |
+| In neuem Tab öffnen        | `payload.openInNewTab`   |
+| Sichtbarkeit               | `visible`                |
+| Veröffentlichungszeitpunkt | `publicationDate`        |
 
-Überschrift, Text, Sprachcode, genau eine Kategorie und mindestens ein Bild sind Pflicht. Der Text bleibt reiner Text. Medien müssen Bilder sein; die vorhandene Medienverwaltung und deren Upload werden wiederverwendet. Der optionale Link muss eine HTTPS-URL sein. Beim Schreiben werden Kategorie und Link auf ihre erlaubte Kardinalität normalisiert. Unbekannte bestehende Payload-Schlüssel bleiben erhalten; kontrolliert werden ausschließlich `languageCode` und `sortWeight`.
+Nur Überschrift und genau eine Kategorie sind Pflicht. Der optionale Text bleibt reiner Text und wird leer ohne Content-Block gespeichert. Medien müssen Bilder mit HTTPS-URL sein; die vorhandene Medienverwaltung, persistente Delivery-URLs und Media-References werden wiederverwendet. Der optionale Link muss eine HTTPS-URL sein. Ohne Link wird `openInNewTab` auf `false` normalisiert. Beim Schreiben werden Kategorie und Link auf ihre erlaubte Kardinalität normalisiert. Unbekannte bestehende Payload-Schlüssel, `externalId` und unterstützte Medienmetadaten bleiben erhalten; kontrolliert werden ausschließlich `languageCode`, `sortWeight` und `openInNewTab`.
 
 ### Typ- und Projektionsabgrenzung
 
@@ -35,7 +37,7 @@ Cockpit Cards sind fachlich abgegrenzte GenericItems. Sie ähneln FAQ in Navigat
 
 ### Editor-Workspace
 
-Die Tab-Reihenfolge lautet `Basis`, `Inhalt`, `Einstellungen`, `Historie`; beim Anlegen fehlt `Historie`. `Basis` enthält Überschrift, Sprachcode und die einzelne Kategorie. `Inhalt` enthält Text und Bilder gemeinsam. `Einstellungen` enthält Link, Sichtbarkeit, Veröffentlichungszeitpunkt und Sortiergewicht. Bilder können aus der Mediathek gewählt oder über den vorhandenen Bild-Upload ergänzt, sortiert und entfernt werden.
+Die Tab-Reihenfolge lautet `Basis`, `Inhalt`, `Einstellungen`, `Historie`; beim Anlegen fehlt `Historie`. `Basis` enthält Überschrift, Sprachcode und die einzelne Kategorie. `Inhalt` enthält Text und Bilder gemeinsam. `Einstellungen` enthält Link, Linktext, Öffnungsverhalten, Sichtbarkeit, Veröffentlichungszeitpunkt und Sortiergewicht. Bilder können aus der Mediathek gewählt oder über den vorhandenen Bild-Upload ergänzt, als Vorschaukarten geprüft, sortiert und entfernt werden. Die Kachel-Variante begrenzt die bearbeitbaren Medienmetadaten im gemeinsamen Auswahldialog auf den Alternativtext, ohne die Media-Reference-, Delivery- oder Berechtigungsverträge zu umgehen.
 
 ### Listen und Pagination
 

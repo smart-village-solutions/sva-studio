@@ -20,30 +20,33 @@ export const validateCockpitCardItemOrResponse = (
   const firstBlock = contentBlocks[0];
   const text = firstBlock?.body?.trim() ?? '';
   if (contentBlocks.length > 1)
-    return errorJson(400, 'invalid_request', 'Cockpit Cards unterstützen höchstens einen Textblock.');
+    return errorJson(400, 'invalid_request', 'Kacheln unterstützen höchstens einen Textblock.');
   if (firstBlock && (!text || Object.keys(firstBlock).some((key) => key !== 'body')))
     return errorJson(
       400,
       'invalid_request',
-      'Cockpit-Card-Textblöcke dürfen ausschließlich nicht leeren Text enthalten.'
+      'Kachel-Textblöcke dürfen ausschließlich nicht leeren Text enthalten.'
     );
   if (htmlPattern.test(text))
-    return errorJson(400, 'invalid_request', 'HTML im Cockpit-Card-Text ist nicht erlaubt.');
+    return errorJson(400, 'invalid_request', 'HTML im Kacheltext ist nicht erlaubt.');
   const payload = payloadRecord(item.payload);
   if (
     payload.languageCode !== undefined &&
     (typeof payload.languageCode !== 'string' ||
-      (payload.languageCode.trim().length > 0 && !languagePattern.test(payload.languageCode.trim())))
+      (payload.languageCode.trim().length > 0 &&
+        !languagePattern.test(payload.languageCode.trim())))
   )
-    return errorJson(400, 'invalid_request', 'Der Cockpit-Card-Sprachcode ist ungültig.');
+    return errorJson(400, 'invalid_request', 'Der Kachel-Sprachcode ist ungültig.');
   if (
     typeof payload.sortWeight !== 'number' ||
     !Number.isInteger(payload.sortWeight) ||
     !Number.isFinite(payload.sortWeight)
   )
-    return errorJson(400, 'invalid_request', 'Das Cockpit-Card-Sortiergewicht ist ungültig.');
+    return errorJson(400, 'invalid_request', 'Das Kachel-Sortiergewicht ist ungültig.');
+  if (payload.openInNewTab !== undefined && typeof payload.openInNewTab !== 'boolean')
+    return errorJson(400, 'invalid_request', 'Die Kachel-Linkoption ist ungültig.');
   if (item.categories?.length !== 1 || !item.categories[0]?.name?.trim())
-    return errorJson(400, 'invalid_request', 'Genau eine Cockpit-Card-Kategorie ist erforderlich.');
+    return errorJson(400, 'invalid_request', 'Genau eine Kachel-Kategorie ist erforderlich.');
   if (
     item.mediaContents?.some(
       (media) => media.contentType !== 'image' || !media.sourceUrl?.url.startsWith('https://')
@@ -52,17 +55,13 @@ export const validateCockpitCardItemOrResponse = (
     return errorJson(
       400,
       'invalid_request',
-      'Cockpit Cards unterstützen ausschließlich gültige HTTPS-Bilder.'
+      'Kacheln unterstützen ausschließlich gültige HTTPS-Bilder.'
     );
   if (
     (item.webUrls?.length ?? 0) > 1 ||
     item.webUrls?.some((link) => !link.url.startsWith('https://'))
   )
-    return errorJson(
-      400,
-      'invalid_request',
-      'Cockpit Cards unterstützen höchstens einen HTTPS-Link.'
-    );
+    return errorJson(400, 'invalid_request', 'Kacheln unterstützen höchstens einen HTTPS-Link.');
   if (
     (item.contacts?.length ?? 0) ||
     (item.addresses?.length ?? 0) ||
@@ -71,7 +70,7 @@ export const validateCockpitCardItemOrResponse = (
     return errorJson(
       400,
       'invalid_request',
-      'Cockpit Cards unterstützen keine Kontakte, Adressen oder Orte.'
+      'Kacheln unterstützen keine Kontakte, Adressen oder Orte.'
     );
   return null;
 };
@@ -84,14 +83,16 @@ export const validateCockpitCardWriteOrResponse = async (
   const validation = validateCockpitCardItemOrResponse(item);
   if (validation) return validation;
   const payload = payloadRecord(item.payload);
+  const webUrls = item.webUrls ?? [];
   return {
     ...item,
     contentBlocks: item.contentBlocks ?? [],
     mediaContents: item.mediaContents ?? [],
-    webUrls: item.webUrls ?? [],
+    webUrls,
     payload: {
       ...payload,
       languageCode: typeof payload.languageCode === 'string' ? payload.languageCode : '',
+      openInNewTab: webUrls.length > 0 && payload.openInNewTab === true,
     },
   };
 };

@@ -11,7 +11,7 @@ const validItem: SvaMainserverGenericItemInput = {
   title: 'Überschrift',
   genericType: 'COCKPIT_CARD',
   contentBlocks: [{ body: 'Text' }],
-  payload: { languageCode: 'de', sortWeight: 0 },
+  payload: { languageCode: 'de', sortWeight: 0, openInNewTab: true },
   categoryName: 'Startseite',
   categories: [{ name: 'Startseite' }],
   mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'image' }],
@@ -40,12 +40,35 @@ describe('cockpit card route validation', () => {
     [{ ...validItem, payload: { languageCode: 'invalid!', sortWeight: 0 } }, 'Sprachcode'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: '0' } }, 'Sortiergewicht'],
     [{ ...validItem, payload: { languageCode: 'de', sortWeight: 1.5 } }, 'Sortiergewicht'],
-    [{ ...validItem, payload: { languageCode: 'de', sortWeight: Number.POSITIVE_INFINITY } }, 'Sortiergewicht'],
+    [
+      { ...validItem, payload: { languageCode: 'de', sortWeight: Number.POSITIVE_INFINITY } },
+      'Sortiergewicht',
+    ],
+    [
+      { ...validItem, payload: { languageCode: 'de', sortWeight: 0, openInNewTab: 'yes' } },
+      'Linkoption',
+    ],
     [{ ...validItem, categories: [] }, 'Kategorie'],
     [{ ...validItem, categories: [{ name: ' ' }] }, 'Kategorie'],
     [{ ...validItem, categories: [{ name: 'A' }, { name: 'B' }] }, 'Kategorie'],
-    [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'video' }] }, 'Bild'],
-    [{ ...validItem, mediaContents: [{ sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' }] }, 'Bild'],
+    [
+      {
+        ...validItem,
+        mediaContents: [
+          { sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'video' },
+        ],
+      },
+      'Bild',
+    ],
+    [
+      {
+        ...validItem,
+        mediaContents: [
+          { sourceUrl: { url: 'http://example.test/image.jpg' }, contentType: 'image' },
+        ],
+      },
+      'Bild',
+    ],
     [{ ...validItem, webUrls: [{ url: 'https://one.test' }, { url: 'https://two.test' }] }, 'Link'],
     [{ ...validItem, webUrls: [{ url: 'http://example.test' }] }, 'Link'],
     [{ ...validItem, contentBlocks: [{ body: '<b>Text</b>' }] }, 'HTML'],
@@ -78,7 +101,7 @@ describe('cockpit card route validation', () => {
         body: JSON.stringify({
           title: validItem.title,
           genericType: validItem.genericType,
-          payload: { sortWeight: 0 },
+          payload: { sortWeight: 0, openInNewTab: true },
           categoryName: validItem.categoryName,
           categories: validItem.categories,
           visible: true,
@@ -91,7 +114,24 @@ describe('cockpit card route validation', () => {
         contentBlocks: [],
         mediaContents: [],
         webUrls: [],
-        payload: { languageCode: '', sortWeight: 0 },
+        payload: { languageCode: '', sortWeight: 0, openInNewTab: false },
+      })
+    );
+  });
+
+  it('keeps the opening option only when a link is present', async () => {
+    const result = await validateCockpitCardWriteOrResponse(
+      new Request('https://studio.test/api/v1/mainserver/generic-items/card-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(validItem),
+      })
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        payload: expect.objectContaining({ openInNewTab: true }),
+        webUrls: validItem.webUrls,
       })
     );
   });

@@ -594,9 +594,11 @@ Referenzen:
 ### Ergänzung 2026-08: Cockpit Cards als gefilterter GenericItem-Fachtyp
 
 - Cockpit-Cards-Fassaden verwenden ausschließlich die Actions `cockpit-cards.read`, `cockpit-cards.create`, `cockpit-cards.update` und `cockpit-cards.delete`.
-- Der Server erzwingt `genericType: "COCKPIT_CARD"`, genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
+- Der Server erzwingt `genericType: "COCKPIT_CARD"`, eine Überschrift, genau eine Kategorie, optionale Bilder und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
 - Beobachtbarkeitsdaten des vollständigen Paging-Lesewegs enthalten nur technische Zähler und Laufzeiten, keine Überschriften, Texte, Kategorien oder URLs.
-- Sprachcode und Sortiergewicht sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel bleiben bei Updates erhalten. Die Antwort ist Klartext und wird vor dem Write gegen HTML geprüft.
+- Sprachcode, Sortiergewicht und Öffnungsverhalten sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel und die serverseitige `externalId` bleiben bei Updates erhalten. Kacheltext ist Klartext und wird vor dem Write gegen HTML geprüft.
+- Linktext liegt als Beschreibung der einen Web-URL vor. Ohne Link werden weder Linktext noch Öffnen-in-neuem-Tab gespeichert.
+- Die gemeinsame Medienauswahl zeigt für Kacheln nur den Alternativtext, behält jedoch die zentralen Read-only-Zustände sowie persistente Delivery-URLs und Media-References bei.
 
 ### Ergänzung 2026-08: GenericItems als technischer Vollzugriff
 

@@ -358,6 +358,8 @@ Referenzen:
 - FAQ-Sprachfilter müssen URL-stabil sein und vor Sortierung, Gesamtzahl und Pagination auf der vollständigen FAQ-Menge wirken.
 - Löschaktionen benötigen einen zugänglichen Bestätigungsdialog, eine Pending-Sperre und sichtbare Fehler; eine erfolgreiche Aktion darf genau eine Mutation auslösen.
 - Die deutschen sichtbaren Texte des Cockpit-Card-Plugins verwenden durchgängig „Kachel“ beziehungsweise „Kacheln“.
+- Kacheln lassen sich mit Überschrift und Kategorie ohne Sprache, Text oder Bild anlegen; Linktext und Öffnungsverhalten sind nur bei vorhandenem HTTPS-Link aktiv.
+- Updates erhalten die serverseitige `externalId`, unbekannte Payload-Schlüssel und nicht sichtbare Web-URL-Metadaten; Browser-CRUD-Tests sichern Create, Read, Update und Delete gemeinsam ab.
 - Schlanke und Legacy-GenericItem-Projektionen müssen bekannte wie unbekannte `genericType`-Werte vollständig und mit identischer Typmenge abbilden.
 - Tests müssen die getrennte Autorisierung fachlicher und generischer Pfade sowie die mögliche Mehrfachdarstellung bei kombinierten Rechten absichern.
 - Reguläre Live-Rollen sollen keine `generic-items.*`-Actions erhalten, weil der technische Vollzugriff fachliche Validierungen bewusst umgehen kann.

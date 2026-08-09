@@ -43,7 +43,7 @@ Grundlage: Reale Codeinspektion der im Plan `docs/superpowers/plans/2026-05-21-s
 ### Fortschreibung 2026-08: FAQ, Kacheln und GenericItems
 
 - `plugin-faq`: RHF/Zod bleibt fachlich erhalten; Detail-Tabs, Fehlerzusammenfassung, URL-Sprachfilter, Pagination und Löschdialog sind auf den Studio-Standard migriert.
-- `plugin-cockpit-cards`: Der deutsche Redaktionsbegriff ist „Kachel“; Detail-Tabs, Formularstatus, History-Fläche, Pagination und Löschdialog verwenden den gemeinsamen Studio-Pfad.
+- `plugin-cockpit-cards`: Der deutsche Redaktionsbegriff ist „Kachel“; Detail-Tabs, Formularstatus, History-Fläche, Pagination und Löschdialog verwenden den gemeinsamen Studio-Pfad. Überschrift und Kategorie sind die einzigen Pflichtfelder. Linktext und Öffnungsverhalten liegen unter `Einstellungen`; Medienvorschau und Medienauswahl bearbeiten für Kacheln ausschließlich den Alternativtext.
 - `plugin-generic-items`: Die lokale Tab- und Detailkartenhülle wurde auf `StudioDetailTabs` und `StudioDetailCard` reduziert; die Löschbestätigung verwendet keinen Browserdialog mehr.
 - Referenzentscheidung: News liefert den Seiten- und Tabzustand, POIs die Karten- und Listenstruktur, Events die URL-Normalisierung. Pluginlokale Doppelimplementierungen dieser Referenzen werden nicht als neue Shared-Basis übernommen.
 

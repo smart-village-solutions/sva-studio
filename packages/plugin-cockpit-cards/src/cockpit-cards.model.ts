@@ -13,15 +13,19 @@ import type {
 
 const htmlTagPattern = /<\/?[a-z][^>]*>/i;
 const languageCodePattern = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
-const imageSchema = z.object({
-  sourceUrl: z.object({
-    url: z.string().url().startsWith('https://'),
-    description: z.string().optional(),
-  }).passthrough(),
-  contentType: z.literal('image'),
-  captionText: z.string().optional(),
-  copyright: z.string().optional(),
-}).passthrough();
+const imageSchema = z
+  .object({
+    sourceUrl: z
+      .object({
+        url: z.string().url().startsWith('https://'),
+        description: z.string().optional(),
+      })
+      .passthrough(),
+    contentType: z.literal('image'),
+    captionText: z.string().optional(),
+    copyright: z.string().optional(),
+  })
+  .passthrough();
 
 export const cockpitCardFormSchema = z.object({
   heading: z.string().trim().min(1),
@@ -29,14 +33,19 @@ export const cockpitCardFormSchema = z.object({
     .string()
     .trim()
     .refine((value) => !htmlTagPattern.test(value), 'html_not_allowed'),
-  languageCode: z.string().trim().refine(
-    (value) => value.length === 0 || languageCodePattern.test(value),
-    'invalid_language_code'
-  ),
+  languageCode: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value.length === 0 || languageCodePattern.test(value),
+      'invalid_language_code'
+    ),
   sortWeight: z.number().int().finite(),
   category: z.string().trim().min(1),
   images: z.array(imageSchema),
   link: z.string().trim().url().startsWith('https://').optional().or(z.literal('')),
+  linkText: z.string().trim(),
+  openInNewTab: z.boolean(),
   visible: z.boolean(),
   publicationDate: z.string().trim().min(1).optional().or(z.literal('')),
 });
@@ -59,14 +68,15 @@ export const readCockpitCardPayload = (value: unknown): CockpitCardPayload => {
   const payload = toPayloadRecord(value);
   const languageCode =
     typeof payload.languageCode === 'string' &&
-    (payload.languageCode.trim().length === 0 || languageCodePattern.test(payload.languageCode.trim()))
+    (payload.languageCode.trim().length === 0 ||
+      languageCodePattern.test(payload.languageCode.trim()))
       ? normalizeLanguageCode(payload.languageCode)
       : DEFAULT_COCKPIT_CARD_LANGUAGE_CODE;
   const sortWeight =
     typeof payload.sortWeight === 'number' && Number.isInteger(payload.sortWeight)
       ? payload.sortWeight
       : 0;
-  return { languageCode, sortWeight };
+  return { languageCode, sortWeight, openInNewTab: payload.openInNewTab === true };
 };
 
 export const mapGenericItemToCockpitCardFormValues = (
@@ -81,6 +91,8 @@ export const mapGenericItemToCockpitCardFormValues = (
     category: item.categories[0]?.name ?? '',
     images: [...item.mediaContents],
     link: item.webUrls[0]?.url ?? '',
+    linkText: item.webUrls[0]?.description ?? '',
+    openInNewTab: payload.openInNewTab,
     visible: item.visible,
     ...(item.publicationDate ? { publicationDate: item.publicationDate } : {}),
   };
@@ -88,22 +100,40 @@ export const mapGenericItemToCockpitCardFormValues = (
 
 export const mapCockpitCardFormValuesToGenericItemInput = (
   values: CockpitCardFormValues,
-  existingPayload?: unknown
+  existing?: Pick<GenericItemCockpitCardRecord, 'externalId' | 'payload' | 'webUrls'>
 ): GenericItemCockpitCardInput => {
   const parsed = cockpitCardFormSchema.parse(values);
+  const existingLink = existing?.webUrls[0];
+  const {
+    url: existingUrl,
+    description: existingDescription,
+    ...existingLinkData
+  } = existingLink ?? { url: undefined, description: undefined };
+  void existingUrl;
+  void existingDescription;
   return {
     title: parsed.heading,
     genericType: COCKPIT_CARD_GENERIC_TYPE,
+    ...(existing?.externalId ? { externalId: existing.externalId } : {}),
     contentBlocks: parsed.text ? [{ body: parsed.text }] : [],
     payload: {
-      ...toPayloadRecord(existingPayload),
+      ...toPayloadRecord(existing?.payload),
       languageCode: normalizeLanguageCode(parsed.languageCode),
       sortWeight: parsed.sortWeight,
+      openInNewTab: parsed.link ? parsed.openInNewTab : false,
     },
     categoryName: parsed.category,
     categories: [{ name: parsed.category }],
     mediaContents: parsed.images,
-    webUrls: parsed.link ? [{ url: parsed.link }] : [],
+    webUrls: parsed.link
+      ? [
+          {
+            ...existingLinkData,
+            url: parsed.link,
+            ...(parsed.linkText ? { description: parsed.linkText } : {}),
+          },
+        ]
+      : [],
     visible: parsed.visible,
     ...(parsed.publicationDate ? { publicationDate: parsed.publicationDate } : {}),
   };

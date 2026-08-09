@@ -121,15 +121,16 @@ vi.mock('@tanstack/react-router', () => ({
 
 const record = {
   id: 'card-1',
+  externalId: 'source-card-1',
   title: 'Bestehende Karte',
   genericType: 'CockpitCard' as const,
   contentBlocks: [{ body: 'Bestehender Text' }],
-  payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
+  payload: { languageCode: 'de', sortWeight: 2, openInNewTab: true, legacy: 'keep' },
   categories: [{ name: 'Startseite' }],
   mediaContents: [
     { sourceUrl: { url: 'https://example.test/old.jpg' }, contentType: 'image' as const },
   ],
-  webUrls: [{ url: 'https://example.test/alt' }],
+  webUrls: [{ url: 'https://example.test/alt', description: 'Alte Kachel', source: 'import' }],
   visible: false,
   publicationDate: '2026-08-02T10:00:00.000Z',
   createdAt: '',
@@ -248,8 +249,11 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
     await screen.findAllByRole('button', { name: 'actions.selectImage' });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.selectImage' }).at(-1)!);
-    await screen.findByDisplayValue('Titel');
-    fireEvent.change(screen.getByDisplayValue('Titel'), { target: { value: 'Neuer Titel' } });
+    const altText = await screen.findByLabelText('media.altText');
+    expect(screen.queryByLabelText('media.caption')).toBeNull();
+    expect(screen.queryByLabelText('media.credit')).toBeNull();
+    expect(screen.queryByLabelText('media.license')).toBeNull();
+    fireEvent.change(altText, { target: { value: 'Neuer Alternativtext' } });
     fireEvent.click(screen.getByRole('button', { name: 'media.use' }));
 
     await waitFor(() =>
@@ -290,7 +294,7 @@ describe('cockpit cards pages', () => {
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
     });
-    await screen.findByDisplayValue('asset.jpg');
+    await screen.findByLabelText('media.altText');
     fireEvent.click(screen.getByRole('button', { name: 'media.use' }));
     await waitFor(() =>
       expect(screen.getByDisplayValue('https://example.test/upload.jpg')).toBeTruthy()
@@ -311,6 +315,10 @@ describe('cockpit cards pages', () => {
     fireEvent.change(screen.getByLabelText('fields.link'), {
       target: { value: 'https://example.test/ziel' },
     });
+    fireEvent.change(screen.getByLabelText('fields.linkText'), {
+      target: { value: 'Mehr erfahren' },
+    });
+    fireEvent.click(screen.getByLabelText('fields.openInNewTab'));
     fireEvent.change(screen.getByLabelText('fields.sortWeight'), { target: { value: '7' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);
 
@@ -318,10 +326,10 @@ describe('cockpit cards pages', () => {
     expect(state.create.mock.calls[0]?.[0]).toMatchObject({
       title: 'Neue Karte',
       contentBlocks: [{ body: 'Neuer Text' }],
-      payload: { languageCode: 'en-US', sortWeight: 7 },
+      payload: { languageCode: 'en-US', sortWeight: 7, openInNewTab: true },
       categoryName: 'Startseite',
       categories: [{ name: 'Startseite' }],
-      webUrls: [{ url: 'https://example.test/ziel' }],
+      webUrls: [{ url: 'https://example.test/ziel', description: 'Mehr erfahren' }],
     });
     expect(state.create.mock.calls[0]?.[1]).toBe('user');
     expect(state.navigate).toHaveBeenCalledWith(
@@ -357,7 +365,20 @@ describe('cockpit cards pages', () => {
         'card-1',
         expect.objectContaining({
           contentBlocks: [{ body: 'Geändert' }],
-          payload: { languageCode: 'de', sortWeight: 2, legacy: 'keep' },
+          externalId: 'source-card-1',
+          payload: {
+            languageCode: 'de',
+            sortWeight: 2,
+            openInNewTab: true,
+            legacy: 'keep',
+          },
+          webUrls: [
+            {
+              url: 'https://example.test/alt',
+              description: 'Alte Kachel',
+              source: 'import',
+            },
+          ],
           visible: true,
         }),
         'user'

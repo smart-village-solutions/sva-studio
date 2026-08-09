@@ -31,9 +31,10 @@ import {
   type ContentMediaUsage,
   Select,
   StudioDetailPageTemplate,
-  StudioFormSummary,
   StudioLoadingState,
   StudioMediaPickerOverlay,
+  StudioPersistentFormError,
+  StudioSaveButton,
   type MainserverPrincipalType,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
@@ -44,6 +45,7 @@ import {
   TabsList,
   TabsTrigger,
   useStudioMediaPickerOverlay,
+  useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 
 import {
@@ -75,6 +77,7 @@ import {
   uploadPhaseMessageKey,
 } from './news.detail-media.helpers.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
+import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';
 import type {
   NewsPrincipalControl,
@@ -85,7 +88,7 @@ import type {
 } from './news.types.js';
 
 type StatusMessage = Readonly<{
-  kind: 'success' | 'error';
+  source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
 }>;
 
@@ -365,10 +368,12 @@ export const NewsDetailPage = ({
   mode,
   contentId,
   principalControl,
+  initiallySaved = false,
 }: Readonly<{
   mode: 'create' | 'edit';
   contentId?: string;
   principalControl?: NewsPrincipalControl;
+  initiallySaved?: boolean;
 }>) => {
   const navigate = useNavigate();
   const pt = React.useCallback<PluginTranslator>(
@@ -376,7 +381,8 @@ export const NewsDetailPage = ({
     []
   );
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
-  const headerSaveLabel = pt('actions.save');
+  const saveFeedback = useStudioSaveFeedback();
+  const initialSaveFeedbackShownRef = React.useRef(false);
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
@@ -429,6 +435,19 @@ export const NewsDetailPage = ({
     resolver: newsDetailFormResolver,
   });
   const { formState, reset } = methods;
+
+  React.useEffect(() => {
+    if (formState.isDirty) {
+      saveFeedback.markDirty();
+    }
+  }, [formState.isDirty, saveFeedback]);
+
+  React.useEffect(() => {
+    if (!isLoading && initiallySaved && !initialSaveFeedbackShownRef.current) {
+      initialSaveFeedbackShownRef.current = true;
+      saveFeedback.showSaved();
+    }
+  }, [initiallySaved, isLoading, saveFeedback]);
 
   const refreshMediaAssets = React.useCallback(async () => {
     try {
@@ -644,7 +663,7 @@ export const NewsDetailPage = ({
 
     if (!contentId) {
       setIsLoading(false);
-      setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
+      setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
       return;
     }
 
@@ -685,7 +704,7 @@ export const NewsDetailPage = ({
       .catch((error: unknown) => {
         if (active && requestId === editLoadRequestIdRef.current) {
           setStatusMessage({
-            kind: 'error',
+            source: 'load',
             text: resolveNewsErrorMessage(pt, error, 'messages.loadError'),
           });
         }
@@ -701,24 +720,33 @@ export const NewsDetailPage = ({
     };
   }, [contentId, mode, pt, reset]);
 
+  const navigateToCreatedDetail = React.useCallback(
+    (createdContentId: string) =>
+      navigate({
+        to: '/admin/news/$id',
+        params: { id: createdContentId },
+        state: (previous) => addNewsCreatedSaveFeedback(previous, createdContentId),
+      }),
+    [navigate]
+  );
+
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
       if (!canSave) return;
       if (retryReferenceSync) {
         setStatusMessage({
-          kind: 'error',
+          source: 'reference',
           text: pt('messages.mediaReferencePartialFailure'),
         });
         return;
       }
 
-      setStatusMessage(null);
-
       if (mode === 'edit' && !contentId) {
-        setStatusMessage({ kind: 'error', text: pt('messages.missingContent') });
+        setStatusMessage({ source: 'load', text: pt('messages.missingContent') });
         return;
       }
 
+      const operationId = saveFeedback.beginSaving();
       try {
         const saveContent = () =>
           saveNewsEditorItem(
@@ -756,12 +784,26 @@ export const NewsDetailPage = ({
               usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
             )
           );
-          setStatusMessage({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
+          setStatusMessage({
+            source: 'reference',
+            text: pt('messages.mediaReferencePartialFailure'),
+          });
+          saveFeedback.markFailed(operationId);
           return;
         }
 
         if (mode === 'create') {
-          await navigate({ to: '/admin/content' });
+          saveFeedback.markSaved(operationId);
+          try {
+            await navigateToCreatedDetail(saved.id);
+          } catch {
+            setRetryCreatedContentId(saved.id);
+            setStatusMessage({
+              source: 'navigation',
+              text: pt('messages.detailNavigationError'),
+            });
+            saveFeedback.markFailed(operationId);
+          }
           return;
         }
 
@@ -775,16 +817,19 @@ export const NewsDetailPage = ({
         setLoadedItem(saved);
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
-        setStatusMessage({ kind: 'success', text: pt('messages.updateSuccess') });
+        setStatusMessage(null);
+        saveFeedback.markSaved(operationId);
       } catch (error) {
         setStatusMessage({
-          kind: 'error',
+          source: 'save',
           text: resolveNewsErrorMessage(pt, error, 'messages.saveError'),
         });
+        saveFeedback.markFailed(operationId);
       }
     },
     () => {
-      setStatusMessage({ kind: 'error', text: pt('messages.validationError') });
+      setStatusMessage(null);
+      saveFeedback.reset();
     }
   );
 
@@ -804,7 +849,7 @@ export const NewsDetailPage = ({
       await navigate({ to: '/admin/content' });
     } catch (error) {
       setStatusMessage({
-        kind: 'error',
+        source: 'delete',
         text: resolveNewsErrorMessage(pt, error, 'messages.deleteError'),
       });
     } finally {
@@ -951,9 +996,17 @@ export const NewsDetailPage = ({
       }
       primaryAction={
         canSave ? (
-          <Button type="submit" form={formId} disabled={Boolean(retryReferenceSync)}>
-            {headerSaveLabel}
-          </Button>
+          <StudioSaveButton
+            type="submit"
+            form={formId}
+            disabled={Boolean(retryReferenceSync)}
+            status={saveFeedback.status}
+            labels={{
+              idle: pt('actions.save'),
+              saving: pt('actions.saving'),
+              saved: pt('actions.saved'),
+            }}
+          />
         ) : undefined
       }
       actions={
@@ -1019,43 +1072,75 @@ export const NewsDetailPage = ({
           }}
         >
           {statusMessage ? (
-            <StudioFormSummary kind={statusMessage.kind}>{statusMessage.text}</StudioFormSummary>
-          ) : null}
-          {retryReferenceSync ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                void retryReferenceSync().then(
-                  () => {
-                    setRetryReferenceSync(null);
-                    setRetryCreatedContentId(null);
-                    setMediaUsages((current) =>
-                      current.map((usage) =>
-                        usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
-                      )
-                    );
-                    setStatusMessage({
-                      kind: 'success',
-                      text: pt('messages.mediaReferenceRetrySuccess'),
-                    });
-                    if (retryCreatedContentId) {
-                      void navigate({
-                        to: '/admin/news/$id',
-                        params: { id: retryCreatedContentId },
-                      });
-                    }
-                  },
-                  () =>
-                    setStatusMessage({
-                      kind: 'error',
-                      text: pt('messages.mediaReferencePartialFailure'),
-                    })
-                )
+            <StudioPersistentFormError
+              message={statusMessage.text}
+              retryLabel={
+                statusMessage.source === 'save'
+                  ? pt('actions.retry')
+                  : statusMessage.source === 'navigation'
+                    ? pt('actions.openCreatedDetail')
+                    : statusMessage.source === 'reference'
+                      ? pt('actions.retryMediaReferences')
+                      : undefined
               }
-            >
-              {pt('actions.retryMediaReferences')}
-            </Button>
+              retryDisabled={saveFeedback.status === 'saving'}
+              onRetry={
+                statusMessage.source === 'save'
+                  ? () => void saveCurrentItem()
+                  : statusMessage.source === 'navigation' && retryCreatedContentId
+                    ? () => {
+                        const operationId = saveFeedback.beginSaving();
+                        void navigateToCreatedDetail(retryCreatedContentId).then(
+                          () => {
+                            setStatusMessage(null);
+                            setRetryCreatedContentId(null);
+                            saveFeedback.markSaved(operationId);
+                          },
+                          () => saveFeedback.markFailed(operationId)
+                        );
+                      }
+                    : retryReferenceSync
+                      ? () => {
+                          const operationId = saveFeedback.beginSaving();
+                          void retryReferenceSync().then(
+                            () => {
+                              setRetryReferenceSync(null);
+                              setMediaUsages((current) =>
+                                current.map((usage) =>
+                                  usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+                                )
+                              );
+                              setStatusMessage(null);
+                              saveFeedback.markSaved(operationId);
+                              if (retryCreatedContentId) {
+                                const createdContentId = retryCreatedContentId;
+                                void navigateToCreatedDetail(createdContentId).then(
+                                  () => setRetryCreatedContentId(null),
+                                  () => {
+                                    setRetryCreatedContentId(createdContentId);
+                                    setStatusMessage({
+                                      source: 'navigation',
+                                      text: pt('messages.detailNavigationError'),
+                                    });
+                                    saveFeedback.markFailed(operationId);
+                                  }
+                                );
+                              } else {
+                                setRetryCreatedContentId(null);
+                              }
+                            },
+                            () => {
+                              setStatusMessage({
+                                source: 'reference',
+                                text: pt('messages.mediaReferencePartialFailure'),
+                              });
+                              saveFeedback.markFailed(operationId);
+                            }
+                          );
+                        }
+                      : undefined
+              }
+            />
           ) : null}
           <Tabs
             value={activeTab}

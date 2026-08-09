@@ -20,6 +20,14 @@ gleichzeitig beeinflussen.
 - Modul-Mocks bleiben für rein lokale Logik ohne HTTP-Bezug zulässig, sind aber kein gleichwertiger Ersatz für HTTP-Verhalten.
 - Für kritische framework-agnostische Kernlogik wird `fast-check` selektiv über dokumentierte Hotspots und Review-Entscheidungen eingesetzt.
 - Legacy- und Spezialausnahmen müssen in `docs/development/studio-foundations-governance.md`, in der konkreten Formularinventur `docs/development/studio-form-migrationsinventur.md` und im PR- oder Arbeitskontext nachvollziehbar dokumentiert werden.
+
+### Kontextgebundenes Speicherfeedback
+
+- Normale Save-Aktionen verwenden `StudioSaveButton` und `useStudioSaveFeedback` aus `@sva/studio-ui-react`; Host und Plugins besitzen keine abweichenden Timer oder Basis-Save-Buttons.
+- Save-Erfolg wird höflich angekündigt, verschiebt keinen Fokus und bleibt genau zwei Sekunden sichtbar. Das Check-Icon ist dekorativ, die Aktionsfläche behält eine stabile Mindestbreite.
+- Validierungsfehler bleiben feldnah und über Accessibility-Attribute verbunden. Technische Fehler verwenden `StudioPersistentFormError`, verschwinden nicht automatisch und bieten nur fachlich sichere Retry-Aktionen an.
+- Bestehende Fehler bleiben während eines Retry sichtbar. Partielle Ergebnisse dürfen nicht als vollständig gespeichert erscheinen.
+- Erfolgreiche Creates transportieren den einmaligen Erfolg ausschließlich transient und datensatzgebunden zur Detailroute. Toasts sind auf separat spezifizierte Aktionen ohne geeigneten sichtbaren Kontext begrenzt.
 - Coverage-Gates bleiben wichtig, ersetzen aber diese Foundation-Governance nicht.
 
 ### Medienmanagement

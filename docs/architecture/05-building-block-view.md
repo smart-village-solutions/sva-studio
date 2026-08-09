@@ -57,6 +57,7 @@ Abhängigkeiten des aktuellen Systems.
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
+- besitzt mit `StudioSaveButton`, `useStudioSaveFeedback` und `StudioPersistentFormError` die gemeinsame Darstellung normaler Save-Lifecycles; fachliche Mutationen und Fehlerübersetzungen bleiben außerhalb des UI-Pakets
 - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten
 - besitzt mit `ContentMediaUsageBlock` den kontrollierten, pluginneutralen Bildeditor. Er trennt stabile UI-Identität, optionale Asset-Identität, persistierbare Inhalts-URL, transiente Vorschau und redaktionelle Metadaten; pluginnahe Adapter erhalten alle nicht bearbeiteten Fachfelder.
 - bleibt UI-only: keine Plugin-Registry, keine Route-Materialisierung, keine Persistenz, keine IAM- oder Server-Runtime-Logik
@@ -91,6 +92,7 @@ Abhängigkeiten des aktuellen Systems.
 - kapselt ein redaktionell vereinfachtes Editor-Mapping in `news.editor-model.ts`, das UI-Felder gezielt auf `contentBlocks[0]`, Kategorien, Veröffentlichungsmodus und den nachgelagerten Visibility-Schritt abbildet
 - verwendet in der Bearbeitung card-basierte Tabpanels mit globalem Speichern, während Legacy-Felder außerhalb der vereinfachten Oberfläche bei Updates aus dem geladenen Datensatz erhalten bleiben
 - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
+- führt erfolgreiche Creates auf die kanonische News-Detailroute und konsumiert dort den transienten, datensatzgebundenen Save-Erfolg einmalig; partielle Medienreferenzfehler wiederholen nur den fehlgeschlagenen Referenzschritt
 - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
   11a. Plugin FAQ (`packages/plugin-faq`)
 

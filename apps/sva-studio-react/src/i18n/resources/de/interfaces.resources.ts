@@ -21,7 +21,9 @@ export const interfacesDEResources = {
   },
   actions: {
     save: 'Einstellungen speichern',
-    saving: 'Speichert ...',
+    saving: 'Wird gespeichert…',
+    saved: 'Gespeichert',
+    retry: 'Erneut versuchen',
     reload: 'Neu laden',
   },
   messages: {
@@ -29,6 +31,8 @@ export const interfacesDEResources = {
     loadError: 'Schnittstellen konnten nicht geladen werden.',
     saveSuccess: 'Schnittstellen-Einstellungen wurden gespeichert.',
     saveError: 'Schnittstellen-Einstellungen konnten nicht gespeichert werden.',
+    refreshAfterSaveError:
+      'Die Einstellungen wurden übertragen, konnten aber nicht neu geladen werden. Bitte erneut versuchen.',
   },
   errors: {
     configNotFound: 'Für diese Instanz ist noch keine Mainserver-Konfiguration hinterlegt.',

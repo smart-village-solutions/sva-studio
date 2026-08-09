@@ -1,5 +1,10 @@
 import { t } from '../../i18n';
 import {
+  StudioPersistentFormError,
+  StudioSaveButton,
+  type StudioSaveStatus,
+} from '@sva/studio-ui-react';
+import {
   instanceInterfaceTypeMeta,
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
@@ -95,7 +100,8 @@ export const TypePickerDialog = ({
 
 type InterfaceFormProps = Readonly<{
   draft: InstanceInterfaceDraft;
-  isSaving: boolean;
+  saveStatus: StudioSaveStatus;
+  saveErrorMessage: string | null;
   onChange: (next: InstanceInterfaceDraft) => void;
   onCancel: () => void;
   onSubmit: () => void;
@@ -103,7 +109,8 @@ type InterfaceFormProps = Readonly<{
 
 export const InterfaceForm = ({
   draft,
-  isSaving,
+  saveStatus,
+  saveErrorMessage,
   onChange,
   onCancel,
   onSubmit,
@@ -150,11 +157,26 @@ export const InterfaceForm = ({
       </span>
     </div>
 
+    {saveErrorMessage ? (
+      <StudioPersistentFormError
+        message={saveErrorMessage}
+        retryLabel={t('interfaces.actions.retry')}
+        retryDisabled={saveStatus === 'saving'}
+        onRetry={onSubmit}
+      />
+    ) : null}
+
     <div className="flex flex-wrap gap-3">
-      <Button type="submit" disabled={isSaving}>
-        {isSaving ? t('interfaces.actions.saving') : t('interfaces.actions.save')}
-      </Button>
-      <Button type="button" variant="outline" disabled={isSaving} onClick={onCancel}>
+      <StudioSaveButton
+        type="submit"
+        status={saveStatus}
+        labels={{
+          idle: t('interfaces.actions.save'),
+          saving: t('interfaces.actions.saving'),
+          saved: t('interfaces.actions.saved'),
+        }}
+      />
+      <Button type="button" variant="outline" disabled={saveStatus === 'saving'} onClick={onCancel}>
         {t('interfaces.edit.cancel')}
       </Button>
     </div>

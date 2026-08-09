@@ -86,6 +86,16 @@ export {
   getStudioFieldError,
   getStudioFormFieldProps,
 } from './studio-form-bridge.js';
+export {
+  StudioPersistentFormError,
+  StudioSaveButton,
+  useStudioSaveFeedback,
+  type StudioPersistentFormErrorProps,
+  type StudioSaveButtonLabels,
+  type StudioSaveButtonProps,
+  type StudioSaveFeedbackController,
+  type StudioSaveStatus,
+} from './studio-save-feedback.js';
 export type {
   GetStudioFormFieldPropsOptions,
   StudioFormFieldBindings,

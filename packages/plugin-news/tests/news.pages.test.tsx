@@ -137,6 +137,7 @@ vi.mock('../src/news.api.js', async () => {
 
 const navigateMock = vi.fn();
 const paramsMock = vi.fn(() => ({ contentId: 'news-1' }));
+const locationStateMock = vi.fn<Record<string, unknown>, []>(() => ({}));
 
 const stubConfirm = (result: boolean) => {
   const confirmMock = vi.fn(() => result);
@@ -152,6 +153,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   useNavigate: () => navigateMock,
   useParams: () => paramsMock(),
+  useLocation: () => ({ state: locationStateMock() }),
 }));
 
 vi.mock('@sva/plugin-sdk', async () => {
@@ -232,7 +234,9 @@ const waitForCategoryControls = async () => {
 
 const clickPrimaryAction = (label: string) => {
   const targetLabel =
-    label === 'News anlegen' || label === 'Änderungen speichern' ? 'Speichern' : label;
+    label === 'News anlegen' || label === 'Änderungen speichern'
+      ? /^(Speichern|Gespeichert)$/
+      : label;
   const actions = screen.getAllByRole('button', { name: targetLabel });
   fireEvent.click(actions.at(-1)!);
 };
@@ -259,6 +263,7 @@ describe('News editor pages', () => {
     }));
     navigateMock.mockReset();
     paramsMock.mockReset();
+    locationStateMock.mockReset();
     vi.mocked(getNews).mockResolvedValue({
       id: 'news-1',
       title: 'Bestehende News',
@@ -277,6 +282,7 @@ describe('News editor pages', () => {
     vi.mocked(updateNews).mockResolvedValue({ id: 'news-1' });
     vi.mocked(deleteNews).mockResolvedValue(undefined);
     paramsMock.mockReturnValue({ contentId: 'news-1' });
+    locationStateMock.mockReturnValue({});
     window.sessionStorage.clear();
     registerPluginTranslationResolver((key, variables) => {
       const labels: Record<string, string> = {
@@ -285,6 +291,8 @@ describe('News editor pages', () => {
         'news.messages.missingContent':
           'Der angeforderte News-Eintrag konnte nicht geladen werden.',
         'news.messages.saveError': 'News konnten nicht gespeichert werden.',
+        'news.messages.detailNavigationError':
+          'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.',
         'news.messages.validationError': 'Bitte korrigieren Sie die markierten Felder.',
         'news.messages.validationSummary': 'Bitte prüfen Sie die folgenden Felder:',
         'news.messages.createSuccess': 'News-Eintrag wurde erstellt.',
@@ -326,6 +334,10 @@ describe('News editor pages', () => {
         'news.actions.create': 'News anlegen',
         'news.actions.update': 'Änderungen speichern',
         'news.actions.save': 'Speichern',
+        'news.actions.saving': 'Wird gespeichert…',
+        'news.actions.saved': 'Gespeichert',
+        'news.actions.retry': 'Erneut versuchen',
+        'news.actions.openCreatedDetail': 'Erzeugte Nachricht öffnen',
         'news.actions.back': 'Zurück zur Liste',
         'news.actions.delete': 'Löschen',
         'news.actions.addCategory': 'Kategorie hinzufügen',
@@ -607,7 +619,7 @@ describe('News editor pages', () => {
     ).toBe('true');
   });
 
-  it('navigates back to the shared content list after creating a news entry', async () => {
+  it('navigates to the created detail page with transient save feedback', async () => {
     render(<NewsCreatePage />);
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
@@ -627,8 +639,42 @@ describe('News editor pages', () => {
           contentBlocks: [expect.objectContaining({ intro: 'Kurztext', body: '<p>Body</p>' })],
         })
       );
-      expect(navigateMock).toHaveBeenCalledWith({ to: '/admin/content' });
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/news/$id',
+          params: { id: 'news-created' },
+          state: expect.any(Function),
+        })
+      );
     });
+
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.state({ __TSR_index: 0 })).toEqual({
+      __TSR_index: 0,
+      newsSaveFeedback: { kind: 'created', contentId: 'news-created' },
+    });
+  });
+
+  it('retries only detail navigation when a created news route cannot be opened', async () => {
+    navigateMock
+      .mockRejectedValueOnce(new Error('navigation failed'))
+      .mockResolvedValueOnce(undefined);
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Neue News' } });
+    clickPrimaryAction('News anlegen');
+
+    await screen.findByText(
+      'Die Nachricht wurde gespeichert, ihre Detailseite konnte aber nicht geöffnet werden.'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Erzeugte Nachricht öffnen' }));
+
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledTimes(2);
+    });
+    expect(createNews).toHaveBeenCalledTimes(1);
   });
 
   it('stores inline media in the first content block without host reference side effects', async () => {
@@ -952,7 +998,7 @@ describe('News editor pages', () => {
     expect((screen.getByLabelText('Inhalt') as HTMLTextAreaElement).value).toContain('Neu');
   });
 
-  it('shows an inline success message after updating an existing news entry', async () => {
+  it('shows success on the save button after updating an existing news entry', async () => {
     render(<NewsEditPage />);
 
     await waitFor(() => {
@@ -969,8 +1015,39 @@ describe('News editor pages', () => {
           title: 'Aktualisierte News',
         })
       );
-      expect(screen.getByText('News-Eintrag wurde aktualisiert.')).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'Gespeichert' })).toHaveLength(2);
     });
+    expect(screen.queryByText('News-Eintrag wurde aktualisiert.')).toBeNull();
+  });
+
+  it('consumes create feedback once on the generated detail page', async () => {
+    locationStateMock.mockReturnValue({
+      newsSaveFeedback: { kind: 'created', contentId: 'news-1' },
+    });
+
+    render(<NewsEditPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Gespeichert' })).toHaveLength(2);
+      expect(navigateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: '/admin/news/$id',
+          params: { id: 'news-1' },
+          replace: true,
+          state: expect.any(Function),
+        })
+      );
+    });
+
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(
+      navigation.state({
+        __TSR_index: 0,
+        newsSaveFeedback: { kind: 'created', contentId: 'news-1' },
+      })
+    ).toEqual({ __TSR_index: 0, newsSaveFeedback: undefined });
   });
 
   it('renders the publication card inside the settings tab for scheduled news', async () => {

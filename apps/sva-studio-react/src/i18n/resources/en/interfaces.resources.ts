@@ -124,7 +124,9 @@ export const interfacesENResources = {
   },
   actions: {
     save: 'Save settings',
-    saving: 'Saving ...',
+    saving: 'Saving…',
+    saved: 'Saved',
+    retry: 'Try again',
     reload: 'Reload',
   },
   create: {
@@ -149,6 +151,8 @@ export const interfacesENResources = {
     loadError: 'Interfaces could not be loaded.',
     saveSuccess: 'Interface settings were saved.',
     saveError: 'Interface settings could not be saved.',
+    refreshAfterSaveError:
+      'The settings were submitted but could not be reloaded. Please try again.',
   },
   errors: {
     configNotFound: 'No mainserver configuration exists for this instance yet.',

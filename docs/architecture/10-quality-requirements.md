@@ -47,6 +47,12 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Pull Requests ohne UI-relevante Änderungen enden bewusst als erfolgreicher No-op
   - UI-relevante Änderungen an `apps/sva-studio-react`, `packages/routing`, `packages/studio-ui-react` und Plugin-UI blockieren den Merge erst nach einem grünen `pnpm test:a11y`
   - der A11y-Pfad bleibt ein eigener Signaltyp und darf Build-, E2E- oder i18n-Gates nicht doppelt ausführen
+- Save-Feedback-Gate:
+  - normale Create- und Update-Aktionen zeigen `idle`, `saving` und den exakt zwei Sekunden sichtbaren `saved`-Zustand am gemeinsamen Save-Button
+  - neue Eingaben und neue Submits bereinigen bestehende Erfolgs-Timer; veraltete Request-Abschlüsse dürfen keinen neueren Zustand überschreiben
+  - technische Fehler bleiben im betroffenen Formular als Alert persistent, während feldbezogene Validierungsfehler mit ihren Controls verknüpft sind
+  - Create-Routentests weisen den einmaligen, datensatzgebundenen Übergang zur erzeugten Detailseite nach; Reload oder ein fremder Datensatz dürfen den Erfolg nicht erneut anzeigen
+  - partielle Ergebnisse zeigen keinen vollständigen Erfolg und wiederholen ausschließlich sicher idempotente Teilschritte
 - IAM-Acceptance-Gate:
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben

@@ -85,7 +85,7 @@ export const InterfacesPage = () => {
     instanceId,
     interfaces,
     isLoading,
-    isSaving,
+    markDraftDirty,
     pendingDelete,
     pickerOpen,
     pickerType,
@@ -94,7 +94,8 @@ export const InterfacesPage = () => {
     setPendingDelete,
     setPickerOpen,
     setPickerType,
-    statusMessage,
+    saveErrorMessage,
+    saveStatus,
     onConfirmDelete,
     onConfirmType,
     onSaveDraft,
@@ -177,11 +178,6 @@ export const InterfacesPage = () => {
         ) : null}
       </header>
 
-      {statusMessage ? (
-        <Alert className="border-primary/40 bg-primary/10 text-primary">
-          <AlertDescription>{statusMessage}</AlertDescription>
-        </Alert>
-      ) : null}
       {errorMessage && !showBlockingLoadError ? (
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{errorMessage}</AlertDescription>
@@ -240,12 +236,14 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
-              isSaving={isSaving}
-              onChange={(next) =>
+              saveStatus={saveStatus}
+              saveErrorMessage={saveErrorMessage}
+              onChange={(next) => {
+                markDraftDirty();
                 setEditState((current) =>
                   current.mode === 'closed' ? current : { ...current, draft: next }
-                )
-              }
+                );
+              }}
               onCancel={() => setEditState({ mode: 'closed' })}
               onSubmit={() => void onSaveDraft()}
             />

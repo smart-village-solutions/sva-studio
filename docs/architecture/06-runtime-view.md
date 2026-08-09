@@ -270,7 +270,22 @@ Fehlerpfad:
 21. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
 22. Der Mainserver bleibt fachlich führend; lokal werden nur Listenprojektion, Provider-Referenz und Studio-Mutationshistorie geführt. Das ist kein zweiter fachlicher Schreibpfad und keine vollständige externe Historie.
 23. Der History-Read löst externe IDs nach Möglichkeit über die Provider-Referenz auf, autorisiert `content.readHistory` und liefert kein `snapshot_json` aus. Fehlt für einen typisierten Mainserver-Inhalt der lokale History-Core, bleibt der Inhalt vollständig nutzbar und die Studio-History ist leer mit `coverage = studio_mutations`.
-24. Nach erfolgreichem Speichern oder Löschen zeigt die host-owned Route Statusfeedback und navigiert zurück zur jeweiligen Admin-Liste.
+24. Nach erfolgreichem News-Update zeigt der gemeinsame Save-Button den Erfolg für zwei Sekunden im Detailkontext. Nach erfolgreichem Create navigiert die host-owned Route auf die erzeugte News-Detailroute und übergibt den datensatzgebundenen Erfolg einmalig im Router-History-State; Delete bleibt ein eigener Rücknavigationspfad.
+
+### Szenario 4b: Kontextgebundener Save-Lifecycle
+
+1. Das Host- oder Plugin-Formular validiert die Eingaben feldnah und startet eine zulässige Mutation über `useStudioSaveFeedback.beginSaving()`.
+2. `StudioSaveButton` zeigt `Wird gespeichert…` und blockiert einen weiteren Submit derselben Aktion.
+3. Bei vollständigem Erfolg setzt der Fachflow seine gespeicherten Werte zurück und meldet die aktuelle Operations-ID als erfolgreich; der Button zeigt für zwei Sekunden `✓ Gespeichert`.
+4. Eine neue Eingabe beendet den Erfolgszustand sofort. Ein verspäteter Abschluss einer älteren Operations-ID wird ignoriert.
+5. Bei einem technischen Fehler kehrt der Button zu `Speichern` zurück. `StudioPersistentFormError` bleibt mit Alert-Semantik und, soweit sicher, einer konkreten Retry-Aktion sichtbar.
+6. Schlägt nach einem erfolgreichen Primärwrite nur ein erforderlicher Folgeschritt fehl, erscheint kein vollständiger Save-Erfolg. Der Retry wiederholt ausschließlich den idempotenten Folgeschritt.
+
+Fehlerpfad:
+
+- Feldvalidierungsfehler erscheinen an den betroffenen Controls und optional zusätzlich in einer Formularzusammenfassung.
+- Ein Retry blendet die bestehende technische Fehlermeldung nicht vorsorglich aus; erst der erfolgreiche Abschluss entfernt sie.
+- Normale Save-Ergebnisse erzeugen weder Toast noch Modal oder Overlay.
 
 Fehlerpfad:
 

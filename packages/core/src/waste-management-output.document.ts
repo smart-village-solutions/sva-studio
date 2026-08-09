@@ -212,9 +212,13 @@ export const buildWasteCalendarPdfDocument = (input: {
     pickup.fractions.some((fraction) => fraction.isShifted === true)
   );
   const contentRowLimit = MAX_LEGEND_ROWS - (hasShiftedPickups ? 1 : 0);
+  const reservedHintRows = hintLegend.length > 0 ? 1 : 0;
+  const visibleFractions = fractionLegend.slice(0, contentRowLimit - reservedHintRows);
+  const visibleHints = hintLegend.slice(0, contentRowLimit - visibleFractions.length);
   const legend: WasteCalendarPdfLegendRow[] = [
     ...(hasShiftedPickups ? ([{ kind: 'shift', label: '= Ausweichtermin' }] as const) : []),
-    ...[...fractionLegend, ...hintLegend].slice(0, contentRowLimit),
+    ...visibleFractions,
+    ...visibleHints,
   ];
   const buildPage = (months: readonly number[]) => ({
     title: `Abfallkalender ${input.year}`,

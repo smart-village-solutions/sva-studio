@@ -290,6 +290,33 @@ describe('waste-management output pdf', () => {
     });
   });
 
+  it('reserves a legend row for contextual hints when fractions fill the row limit', () => {
+    const document = buildWasteCalendarPdfDocument({
+      year: 2026,
+      locationLabel: 'Bärensprung',
+      pickups: [
+        {
+          date: '2026-01-14',
+          fractions: Array.from({ length: 8 }, (_, index) => ({
+            id: `fraction-${index + 1}`,
+            label: `Fraktion ${index + 1}`,
+            color: '#666666',
+          })),
+        },
+      ],
+      legendHints: [
+        { id: 'tour:nord', label: 'Tour: Nord', description: 'Am Fahrbahnrand bereitstellen.' },
+        { id: 'pickup:14', label: '14.01.', description: 'Zufahrt freihalten.' },
+      ],
+    });
+
+    expect(document.pages[0]?.legend).toHaveLength(8);
+    expect(document.pages[0]?.legend.at(-1)).toMatchObject({
+      kind: 'hint',
+      label: 'Tour: Nord',
+    });
+  });
+
   it('renders legend descriptions inline after their labels', () => {
     const pdfText = renderWasteCalendarPdf(
       buildWasteCalendarPdfDocument({

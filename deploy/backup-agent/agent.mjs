@@ -162,11 +162,11 @@ export const readBackupAgentRevision = (env = process.env) => env.BACKUP_AGENT_I
 export const canonicalRequest = (request) =>
   JSON.stringify({
     action: request.action,
-    ...(request.database ? { database: request.database } : {}),
-    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
     deployImageDigest: request.deployImageDigest,
     environment: request.environment,
     expiresAt: request.expiresAt,
+    ...(request.database ? { database: request.database } : {}),
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
     ...(request.version === 1
       ? { maintenanceWindowReference: request.maintenanceWindowReference ?? null }
       : {}),

@@ -27,6 +27,10 @@ describe('server-safe Mainserver GenericItem registry', () => {
       workspaceModules: {
         '../../../../packages/plugin-faq/src/generic-item-ownership.ts': {
           faqOwnership: { contentType: 'faq.faq', mainserverGenericType: 'FAQ' },
+          legacyFaqOwnership: {
+            contentType: 'faq.faq',
+            mainserverGenericType: 'LEGACY_FAQ',
+          },
         },
         '../../../../packages/plugin-projects/src/generic-item-ownership.ts': {
           projectsOwnership: {
@@ -38,7 +42,10 @@ describe('server-safe Mainserver GenericItem registry', () => {
       nodeModules: {},
     });
 
-    expect([...registry]).toEqual([['FAQ', 'faq.faq']]);
+    expect([...registry]).toEqual([
+      ['FAQ', 'faq.faq'],
+      ['LEGACY_FAQ', 'faq.faq'],
+    ]);
   });
 
   it('rejects ownership for content types that are not GenericItem projections', () => {

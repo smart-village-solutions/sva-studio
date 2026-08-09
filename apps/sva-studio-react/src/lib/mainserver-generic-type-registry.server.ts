@@ -26,12 +26,14 @@ const isOwnershipDefinition = (value: unknown): value is MainserverGenericItemOw
 const collectOwnershipModules = (
   modules: Readonly<Record<string, OwnershipModule>>,
   resolveSourceRef: (path: string) => string | undefined
-): ReadonlyMap<string, MainserverGenericItemOwnershipDefinition> => {
-  const result = new Map<string, MainserverGenericItemOwnershipDefinition>();
+): ReadonlyMap<string, readonly MainserverGenericItemOwnershipDefinition[]> => {
+  const result = new Map<string, readonly MainserverGenericItemOwnershipDefinition[]>();
   for (const [path, moduleExports] of Object.entries(modules)) {
     const sourceRef = resolveSourceRef(path);
-    const definition = Object.values(moduleExports).find(isOwnershipDefinition);
-    if (sourceRef && definition) result.set(sourceRef, definition);
+    const definitions = Object.values(moduleExports).filter(isOwnershipDefinition);
+    if (sourceRef && definitions.length > 0) {
+      result.set(sourceRef, [...(result.get(sourceRef) ?? []), ...definitions]);
+    }
   }
   return result;
 };
@@ -48,17 +50,18 @@ export const createStudioMainserverGenericTypeRegistry = (input: {
   const nodeDefinitions = collectOwnershipModules(input.nodeModules, getNodeSourceRefFromGlobPath);
   const enabledDefinitions = input.catalogConfig.flatMap((entry) => {
     if (!entry.enabled) return [];
-    const definition =
+    const definitions =
       entry.sourceType === 'workspace'
         ? workspaceDefinitions.get(entry.sourceRef)
         : nodeDefinitions.get(entry.sourceRef);
-    if (!definition) return [];
-    if (definition.contentType.split('.')[0] !== entry.pluginId) {
-      throw new Error(
-        `mainserver_generic_item_plugin_mismatch:${entry.pluginId}:${definition.contentType}`
-      );
-    }
-    return [definition];
+    return (definitions ?? []).map((definition) => {
+      if (definition.contentType.split('.')[0] !== entry.pluginId) {
+        throw new Error(
+          `mainserver_generic_item_plugin_mismatch:${entry.pluginId}:${definition.contentType}`
+        );
+      }
+      return definition;
+    });
   });
   const genericTypeRegistry = createMainserverGenericTypeRegistry(enabledDefinitions);
   const validatedRegistry = new Map<string, SvaMainserverGenericItemProjectionContentType>();

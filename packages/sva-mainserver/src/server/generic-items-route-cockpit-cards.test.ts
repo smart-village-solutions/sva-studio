@@ -135,4 +135,47 @@ describe('cockpit card route validation', () => {
       })
     );
   });
+
+  it('preserves additional link and media metadata', async () => {
+    const result = await validateCockpitCardWriteOrResponse(
+      new Request('https://studio.test/api/v1/mainserver/generic-items/card-1', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...validItem,
+          webUrls: [{ ...validItem.webUrls[0], source: 'legacy-link-source' }],
+          mediaContents: [
+            {
+              ...validItem.mediaContents[0],
+              legacyMediaKey: 'legacy-media-value',
+              sourceUrl: {
+                ...validItem.mediaContents[0]?.sourceUrl,
+                source: 'legacy-media-source',
+              },
+            },
+          ],
+        }),
+      })
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        webUrls: [
+          {
+            source: 'legacy-link-source',
+            url: 'https://example.test/details',
+          },
+        ],
+        mediaContents: [
+          expect.objectContaining({
+            legacyMediaKey: 'legacy-media-value',
+            sourceUrl: {
+              source: 'legacy-media-source',
+              url: 'https://example.test/image.jpg',
+            },
+          }),
+        ],
+      })
+    );
+  });
 });

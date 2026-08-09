@@ -49,7 +49,14 @@ const readGeoLocation = (
   return { latitude, longitude };
 };
 
-export const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response | undefined => {
+type ParseWebUrlOptions = {
+  readonly preserveAdditionalFields?: boolean;
+};
+
+export const parseWebUrl = (
+  value: unknown,
+  options?: ParseWebUrlOptions,
+): SvaMainserverWebUrlInput | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -60,13 +67,20 @@ export const parseWebUrl = (value: unknown): SvaMainserverWebUrlInput | Response
   if (!url || !isHttpsUrl(url)) {
     return errorJson(400, 'invalid_request', 'URL-Angaben müssen eine gültige HTTPS-URL enthalten.');
   }
+  const { url: ignoredUrl, description: ignoredDescription, ...additionalFields } = value;
+  void ignoredUrl;
+  void ignoredDescription;
   return {
+    ...(options?.preserveAdditionalFields ? additionalFields : {}),
     url,
     ...(readString(value.description) ? { description: readString(value.description) } : {}),
   };
 };
 
-export const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[] | Response | undefined => {
+export const parseWebUrls = (
+  value: unknown,
+  options?: ParseWebUrlOptions,
+): readonly SvaMainserverWebUrlInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -76,7 +90,7 @@ export const parseWebUrls = (value: unknown): readonly SvaMainserverWebUrlInput[
 
   const urls: SvaMainserverWebUrlInput[] = [];
   for (const item of value) {
-    const parsed = parseWebUrl(item);
+    const parsed = parseWebUrl(item, options);
     if (parsed instanceof Response) {
       return parsed;
     }

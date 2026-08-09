@@ -96,7 +96,14 @@ export const parseOperatingCompany = (value: unknown): SvaMainserverOperatingCom
   };
 };
 
-export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaContentInput[] | Response | undefined => {
+type ParseMediaContentsOptions = {
+  readonly preserveAdditionalFields?: boolean;
+};
+
+export const parseMediaContents = (
+  value: unknown,
+  options?: ParseMediaContentsOptions,
+): readonly SvaMainserverMediaContentInput[] | Response | undefined => {
   if (value === undefined || value === null) {
     return undefined;
   }
@@ -109,12 +116,28 @@ export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaC
     if (!isRecord(media)) {
       return errorJson(400, 'invalid_request', 'MediaContent-Einträge müssen Objekte sein.');
     }
-    const sourceUrl = parseWebUrl(media.sourceUrl);
+    const sourceUrl = parseWebUrl(media.sourceUrl, options);
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }
+    const {
+      captionText: ignoredCaptionText,
+      copyright: ignoredCopyright,
+      contentType: ignoredContentType,
+      height: ignoredHeight,
+      width: ignoredWidth,
+      sourceUrl: ignoredSourceUrl,
+      ...additionalFields
+    } = media;
+    void ignoredCaptionText;
+    void ignoredCopyright;
+    void ignoredContentType;
+    void ignoredHeight;
+    void ignoredWidth;
+    void ignoredSourceUrl;
 
     mediaContents.push({
+      ...(options?.preserveAdditionalFields ? additionalFields : {}),
       ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
       ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),
       ...(readString(media.contentType) ? { contentType: readString(media.contentType) } : {}),

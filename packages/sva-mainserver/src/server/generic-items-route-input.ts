@@ -33,15 +33,26 @@ import { parseContactList } from './generic-items-route-input.contacts.js';
 import { parseDates } from './generic-items-route-input.dates.js';
 import { parseLocations } from './generic-items-route-input.locations.js';
 
-const parseGenericItemSections = (body: Record<string, unknown>) => ({
+type ParseGenericItemInputOptions = {
+  readonly preserveWebAndMediaAdditionalFields?: boolean;
+};
+
+const parseGenericItemSections = (
+  body: Record<string, unknown>,
+  options?: ParseGenericItemInputOptions,
+) => ({
   categories: parseCategories(body.categories),
   contacts: parseContactList(body.contacts),
-  webUrls: parseWebUrls(body.webUrls),
+  webUrls: parseWebUrls(body.webUrls, {
+    preserveAdditionalFields: options?.preserveWebAndMediaAdditionalFields,
+  }),
   addresses: parseAddressList(body.addresses),
   contentBlocks: parseContentBlocks(body.contentBlocks),
   openingHours: parseOpeningHours(body.openingHours),
   priceInformations: parsePrices(body.priceInformations),
-  mediaContents: parseMediaContents(body.mediaContents),
+  mediaContents: parseMediaContents(body.mediaContents, {
+    preserveAdditionalFields: options?.preserveWebAndMediaAdditionalFields,
+  }),
   locations: parseLocations(body.locations),
   dates: parseDates(body.dates),
   accessibilityInformations: parseAccessibilityInformations(body.accessibilityInformations),
@@ -57,7 +68,10 @@ const hasSectionParseError = (
 const findSectionParseError = (sections: ParsedGenericItemSections) =>
   Object.values(sections).find((parsed): parsed is Response => parsed instanceof Response);
 
-export const parseGenericItemInput = async (request: Request): Promise<SvaMainserverGenericItemInput | Response> => {
+export const parseGenericItemInput = async (
+  request: Request,
+  options?: ParseGenericItemInputOptions,
+): Promise<SvaMainserverGenericItemInput | Response> => {
   const body = await parseJsonObjectBody(request, 'Generic-Item-Daten müssen als Objekt gesendet werden.');
   if (isResponse(body)) {
     return body;
@@ -73,7 +87,7 @@ export const parseGenericItemInput = async (request: Request): Promise<SvaMainse
     return errorJson(400, 'invalid_request', 'Der Generic-Type ist erforderlich.');
   }
 
-  const sections = parseGenericItemSections(body);
+  const sections = parseGenericItemSections(body, options);
   if (hasSectionParseError(sections)) {
     return findSectionParseError(sections) ?? errorJson(400, 'invalid_request', 'Ungültige Generic-Item-Daten.');
   }

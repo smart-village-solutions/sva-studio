@@ -6,3 +6,4 @@
 - [x] 1.4 Deutsche Übersetzungen und barrierefreie Validierung ergänzen
 - [x] 1.5 Fokussierte Unit-, Type- und OpenSpec-Prüfungen ausführen
 - [x] 1.6 Inaktive Touren aus der operativen Fraktionsabdeckung ausschließen und per Regressionstest absichern
+- [x] 1.7 Die Sammelzuweisung auf die exakte Ergebnisauswahl begrenzen

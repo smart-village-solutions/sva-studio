@@ -38,7 +38,8 @@ Das System SHALL problematische Abholorte im Abholort-Bereich anzeigen und die b
 #### Scenario: Benutzer behebt gefundene Zuordnungslücken
 
 - **WHEN** die Prüfung fehlende oder unvollständige Zuordnungen findet
-- **THEN** kann der Benutzer betroffene Abholorte auswählen und einer Tour zuordnen
+- **THEN** kann der Benutzer die betroffenen Abholorte als exakte Auswahl übernehmen und einer Tour zuordnen
+- **AND** zuvor ausgewählte, nicht betroffene Abholorte werden nicht in die Sammelzuweisung übernommen
 - **AND** kann er einen einzelnen Abholort zur detaillierten Pflege seiner Tour-Zuordnungen öffnen
 
 ### Requirement: Ungültige Prüfzeiträume werden zugänglich abgewiesen

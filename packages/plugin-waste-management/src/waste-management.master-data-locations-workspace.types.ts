@@ -31,6 +31,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
+  readonly onReplaceLocationSelection: (locationIds: readonly string[]) => void;
   readonly onOpenCreateRegion: () => void;
   readonly onOpenCreateCity: () => void;
   readonly onOpenCreateStreet: () => void;

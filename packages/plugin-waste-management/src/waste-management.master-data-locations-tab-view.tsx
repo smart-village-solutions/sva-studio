@@ -60,6 +60,7 @@ export const WasteMasterDataLocationsTabView = ({
       onPageSizeChange={navigation.setPageSize}
       onToggleSelectAll={controller.toggleSelectAllFilteredLocations}
       onToggleLocation={controller.toggleLocationSelection}
+      onReplaceLocationSelection={controller.replaceLocationSelection}
       onOpenCreateRegion={controller.openCreateRegionDialog}
       onOpenCreateCity={controller.openCreateCityDialog}
       onOpenCreateStreet={controller.openCreateStreetDialog}

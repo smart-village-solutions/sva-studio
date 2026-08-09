@@ -67,7 +67,7 @@ afterEach(() => cleanup());
 
 describe('WasteLocationFractionCoverageCheck', () => {
   it('shows missing and incomplete assignments separately and opens bulk assignment for all issues', () => {
-    const onToggleLocation = vi.fn();
+    const onReplaceLocationSelection = vi.fn();
     const onOpenBulkAssignments = vi.fn();
 
     render(
@@ -76,7 +76,7 @@ describe('WasteLocationFractionCoverageCheck', () => {
         fractions={fractions}
         tours={tours}
         links={links}
-        onToggleLocation={onToggleLocation}
+        onReplaceLocationSelection={onReplaceLocationSelection}
         onOpenBulkAssignments={onOpenBulkAssignments}
         onOpenEditLocation={vi.fn()}
         getLocationLabel={(location) => `Ort ${location.id}`}
@@ -112,8 +112,8 @@ describe('WasteLocationFractionCoverageCheck', () => {
       })
     );
 
-    expect(onToggleLocation).toHaveBeenNthCalledWith(1, 'missing', true);
-    expect(onToggleLocation).toHaveBeenNthCalledWith(2, 'partial', true);
+    expect(onReplaceLocationSelection).toHaveBeenCalledWith(['missing', 'partial']);
+    expect(onReplaceLocationSelection).toHaveBeenCalledTimes(1);
     expect(onOpenBulkAssignments).toHaveBeenCalledTimes(1);
   });
 
@@ -124,7 +124,7 @@ describe('WasteLocationFractionCoverageCheck', () => {
         fractions={fractions}
         tours={tours}
         links={links}
-        onToggleLocation={vi.fn()}
+        onReplaceLocationSelection={vi.fn()}
         onOpenBulkAssignments={vi.fn()}
         onOpenEditLocation={vi.fn()}
         getLocationLabel={(location) => location.id}

@@ -20,7 +20,7 @@ type CoverageCheckProps = Readonly<{
   fractions: readonly WasteFractionRecord[];
   tours: readonly WasteTourRecord[];
   links: readonly WasteLocationTourLinkRecord[];
-  onToggleLocation: (locationId: string, checked: boolean) => void;
+  onReplaceLocationSelection: (locationIds: readonly string[]) => void;
   onOpenBulkAssignments: () => void;
   onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
   getLocationLabel: (location: WasteCollectionLocationRecord) => string;
@@ -65,7 +65,7 @@ export const WasteLocationFractionCoverageCheck = (props: CoverageCheckProps) =>
     );
   };
   const assignIssues = () => {
-    for (const issue of result?.issues ?? []) props.onToggleLocation(issue.locationId, true);
+    props.onReplaceLocationSelection((result?.issues ?? []).map((issue) => issue.locationId));
     props.onOpenBulkAssignments();
   };
   return (

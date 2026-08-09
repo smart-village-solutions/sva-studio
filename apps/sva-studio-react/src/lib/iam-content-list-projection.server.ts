@@ -59,7 +59,10 @@ import {
 } from './iam-content-list-mainserver.js';
 import { runMainserverProjectionRoundRobin } from './mainserver-projection-refresh-coordinator.server.js';
 import { buildMainserverProjectionScopeKey } from './mainserver-projection-scope.server.js';
-import { studioMainserverGenericTypeRegistry } from './plugins.js';
+import {
+  studioMainserverGenericTypeOwnership,
+  studioMainserverGenericTypeRegistry,
+} from './mainserver-generic-type-registry.server.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
@@ -180,9 +183,6 @@ type TargetedMutationContentType =
 type ProjectionRefreshTrigger = 'manual' | 'mutation_follow_up' | 'reconciliation' | 'scheduler';
 
 const GENERIC_ITEMS_CONTENT_TYPE = 'generic-items.generic-item' as const;
-const mainserverGenericTypeOwnership = Object.fromEntries(
-  studioMainserverGenericTypeRegistry.entries()
-);
 const registeredGenericItemContentTypes = new Set<string>(
   studioMainserverGenericTypeRegistry.values()
 );
@@ -2044,7 +2044,7 @@ const loadMainserverProjectionPage = async (
       activeOrganizationId: target.organizationId,
       ...toProjectionPrincipalContext(target),
       contentType: target.contentType,
-      genericTypeOwnership: mainserverGenericTypeOwnership,
+      genericTypeOwnership: studioMainserverGenericTypeOwnership,
       includeInvisible: true,
       ...pageQuery,
     });
@@ -2081,9 +2081,8 @@ const loadMainserverProjectionPage = async (
       hasNextPage: hasNextProjectionPage(
         result,
         pageQuery,
-        target.contentType === 'faq.faq' ||
-          target.contentType === 'cockpit-cards.cockpit-card' ||
-          target.contentType === 'projects.project'
+        target.contentType === GENERIC_ITEMS_CONTENT_TYPE ||
+          registeredGenericItemContentTypes.has(target.contentType)
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
       skippedInvalidCount: result.skippedInvalidCount,

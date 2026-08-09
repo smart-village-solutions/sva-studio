@@ -1261,21 +1261,21 @@ describe('plugin registries', () => {
     const registry = createBuildTimeRegistry({
       plugins: [
         {
-          ...newsPlugin,
+          id: 'faq',
+          displayName: 'FAQ',
+          routes: [],
           contentTypes: [
             {
-              contentType: 'news.article',
-              displayName: 'Article',
-              mainserverGenericType: 'SPECIAL_ARTICLE',
+              contentType: 'faq.faq',
+              displayName: 'FAQ',
+              mainserverGenericType: 'FAQ',
             },
           ],
         },
       ],
     });
 
-    expect([...registry.mainserverGenericTypeRegistry.entries()]).toEqual([
-      ['SPECIAL_ARTICLE', 'news.article'],
-    ]);
+    expect([...registry.mainserverGenericTypeRegistry.entries()]).toEqual([['FAQ', 'faq.faq']]);
   });
 });
 

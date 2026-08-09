@@ -4,14 +4,14 @@ import {
   type PluginDefinition,
 } from '@sva/plugin-sdk';
 
-import { COCKPIT_CARD_CONTENT_TYPE, COCKPIT_CARD_GENERIC_TYPE } from './cockpit-cards.constants.js';
+import { cockpitCardsMainserverGenericItemOwnership } from './generic-item-ownership.js';
 import { pluginCockpitCardsTranslations } from './plugin.translations.js';
 
 const contribution = createStandardContentPluginContribution({
   pluginId: 'cockpit-cards',
   displayName: 'Kacheln',
-  contentType: COCKPIT_CARD_CONTENT_TYPE,
-  mainserverGenericType: COCKPIT_CARD_GENERIC_TYPE,
+  contentType: cockpitCardsMainserverGenericItemOwnership.contentType,
+  mainserverGenericType: cockpitCardsMainserverGenericItemOwnership.mainserverGenericType,
   titleKey: 'cockpit-cards.navigation.title',
   listBindingKey: 'cockpitCardsList',
   detailBindingKey: 'cockpitCardsDetail',

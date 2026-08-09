@@ -30,7 +30,7 @@ Das Generic-Items-Plugin registriert keinen Wildcard-Diskriminator. Es ist der d
 
 Framework-agnostische Kernlogik erzeugt aus dem Build-time-Registry-Snapshot eine unveränderliche Zuordnung von `genericType` zu `contentType`. Für jedes GenericItem liefert sie entweder den registrierten Fach-Content-Type oder `generic-items.generic-item` zurück. Host, Projektionsadapter und Mutation-Follow-up verwenden dieselbe Zuordnung; weitere fest codierte Listen in App oder Mainserver-Adapter sind nicht zulässig.
 
-Der Mainserver-Adapter erhält die Zuordnung über seinen Host-Vertrag. Er importiert weder die React-App noch einzelne Fachplugins.
+Der Server erzeugt dieselbe Zuordnung aus kleinen, codefreien Ownership-Modulen der aktivierten Plugins. Diese Module teilen sich ihre kanonische Deklaration mit dem Content-Type-Beitrag, importieren aber weder React-Flächen noch Browser-Logger. Der Mainserver-Adapter erhält die validierte Zuordnung über seinen Host-Vertrag und akzeptiert ausschließlich Content-Types, für die er eine GenericItem-Projektion bereitstellt.
 
 ### Die gemeinsame Inhaltsübersicht klassifiziert vor der Autorisierung
 
@@ -43,6 +43,8 @@ Das eigenständige Generic-Items-Modul bleibt davon unberührt und darf mit `gen
 Vollständige und mutationsbezogene Projektionsaktualisierungen persistieren für die gemeinsame Inhaltsübersicht nur den aufgelösten Content-Type. Bei einer Änderung des `genericType`, bei Plugin-Zuordnungsänderungen und beim Löschen werden zuvor passende Geschwisterzeilen entfernt. Ein vollständiger Refresh bereinigt bereits vorhandene doppelte Projektionszeilen ohne Datenmigration.
 
 Progressive Aktualisierung darf keinen abgeschlossenen Snapshot mit beiden Repräsentationen veröffentlichen. Während eines laufenden Refreshs gelten die bestehenden Snapshot- und Fehlersemantiken.
+
+Die gefilterte Pagination richtet sich nach den fachlich passenden Datensätzen und nicht nach einer einzelnen Upstream-Seite. Der Adapter scannt weitere GenericItem-Seiten, bis die angeforderte Projektionsseite gefüllt oder das Upstream-Ende erreicht ist; eine ausschließlich aus fremden Diskriminatoren bestehende Seite beendet den Snapshot nicht vorzeitig.
 
 ## Alternatives Considered
 

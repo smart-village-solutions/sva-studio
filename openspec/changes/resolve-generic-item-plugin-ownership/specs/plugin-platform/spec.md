@@ -24,3 +24,10 @@ Das System MUST einem registrierten Plugin-Content-Type erlauben, genau einen ü
 - **WHEN** ein GenericItem den Wert `faq` besitzt
 - **THEN** beansprucht das Fachplugin diesen Datensatz nicht
 - **AND** bleibt er dem generischen Fallback zugeordnet
+
+#### Scenario: Server baut die Zuordnung ohne Browser-Entrypoint auf
+
+- **GIVEN** ein aktiviertes Fachplugin deklariert seine GenericItem-Zuständigkeit in einem server-sicheren Ownership-Modul
+- **WHEN** der Host die Mainserver-Zuordnung materialisiert
+- **THEN** verwendet er ausschließlich diese kleine Deklaration
+- **AND** lädt weder den Browser-Plugin-Snapshot noch React-Flächen oder Browser-Logger

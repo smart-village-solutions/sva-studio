@@ -31,3 +31,18 @@ Das System MUST Slim-, Legacy- und mutationsbezogene Projektionspfade mit dersel
 - **WHEN** der Host einen Projektionsadapter initialisiert
 - **THEN** übergibt er die aus der Plugin-Registry abgeleitete Zuständigkeitszuordnung über einen expliziten Vertrag
 - **AND** importiert der Mainserver-Adapter weder die React-Anwendung noch einzelne Fachplugins
+
+#### Scenario: Fremde Diskriminatoren füllen eine Upstream-Seite
+
+- **GIVEN** eine angeforderte GenericItem-Projektion findet auf der ersten Upstream-Seite keinen passenden Diskriminator
+- **AND** eine spätere Upstream-Seite enthält einen passenden Datensatz
+- **WHEN** der Adapter die fachliche Projektionsseite lädt
+- **THEN** scannt er bis zum passenden Datensatz oder bis zum Upstream-Ende weiter
+- **AND** beendet der Host den Snapshot nicht aufgrund der leeren gefilterten Zwischenmenge
+
+#### Scenario: Registry-Ziel besitzt keine GenericItem-Projektion
+
+- **GIVEN** eine Ownership-Deklaration verweist auf einen Content-Type ohne Mainserver-GenericItem-Projektion
+- **WHEN** der Host die serverseitige Zuordnung validiert
+- **THEN** schlägt der Registry-Aufbau fail-fast fehl
+- **AND** wird der Content-Type nicht für GenericItem-Mutation-Follow-ups verwendet

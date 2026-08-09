@@ -19,6 +19,7 @@
 - [x] 3.3 Typwechsel zwischen generisch, FAQ, Kachel und Projekt sowie Delete testen.
 - [x] 3.4 Verifizieren, dass fehlende Fachrechte in `/admin/content` keinen generischen Fallback erzeugen.
 - [x] 3.5 Verifizieren, dass das eigenständige Generic-Items-Modul mit `generic-items.*` weiterhin alle GenericItems anbietet.
+- [x] 3.6 Gefilterte GenericItem-Pagination über Upstream-Seitengrenzen hinweg und den server-sicheren Registry-Aufbau verifizieren.
 
 ## 4. Dokumentation und Gates
 

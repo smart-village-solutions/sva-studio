@@ -1,6 +1,16 @@
-import type { ContentTypeDefinition } from './content-types.js';
+export type MainserverGenericItemOwnershipDefinition = Readonly<{
+  contentType: string;
+  mainserverGenericType: string;
+}>;
 
-export const validateMainserverGenericType = (definition: ContentTypeDefinition): void => {
+type OptionalMainserverGenericItemOwnershipDefinition = Readonly<{
+  contentType: string;
+  mainserverGenericType?: string;
+}>;
+
+export const validateMainserverGenericType = (
+  definition: OptionalMainserverGenericItemOwnershipDefinition
+): void => {
   if (definition.mainserverGenericType === undefined) return;
   if (
     definition.mainserverGenericType.length === 0 ||
@@ -11,7 +21,7 @@ export const validateMainserverGenericType = (definition: ContentTypeDefinition)
 };
 
 export const createMainserverGenericTypeRegistry = (
-  definitions: readonly ContentTypeDefinition[]
+  definitions: readonly OptionalMainserverGenericItemOwnershipDefinition[]
 ): ReadonlyMap<string, string> => {
   const registry = new Map<string, string>();
   for (const definition of definitions) {
@@ -27,6 +37,19 @@ export const createMainserverGenericTypeRegistry = (
     registry.set(genericType, definition.contentType);
   }
   return registry;
+};
+
+export const defineMainserverGenericItemOwnership = (
+  definition: MainserverGenericItemOwnershipDefinition
+): MainserverGenericItemOwnershipDefinition => {
+  validateMainserverGenericType(definition);
+  if (
+    definition.contentType.trim() !== definition.contentType ||
+    definition.contentType.length === 0
+  ) {
+    throw new Error(`invalid_mainserver_generic_item_content_type:${definition.contentType}`);
+  }
+  return Object.freeze({ ...definition });
 };
 
 export const resolveMainserverGenericItemContentType = (

@@ -545,7 +545,7 @@ Referenzen:
 - Produktive Fachplugins deklarieren eigene Rechtefamilien über `PluginDefinition.permissions`; die Permission-ID folgt `<pluginId>.<actionName>`.
 - `content.*` bleibt ein Core-/Legacy-Content-Vertrag und darf nicht mehr als produktiver Guard für Fachplugins verwendet werden.
 - Build-time-Validierung verhindert reservierte Plugin-Namespaces, doppelte Permission-IDs, fremde Namespace-Referenzen und nicht registrierte Guards.
-- GenericItem-Fachplugins deklarieren zusätzlich ihren exakten Mainserver-`genericType`; die Registry weist leere oder doppelt beanspruchte Diskriminatoren fail-fast zurück.
+- GenericItem-Fachplugins deklarieren zusätzlich ihren exakten Mainserver-`genericType`; die Registry weist leere oder doppelt beanspruchte Diskriminatoren fail-fast zurück. Ein separates, server-sicheres Ownership-Modul teilt dieselbe kanonische Deklaration mit dem Content-Type-Beitrag und verhindert, dass Serverpfade dafür Browser-Plugin-Entrypoints laden.
 - IAM speichert Plugin-Rechte als normale strukturierte Permissions mit `action` und `resourceType` aus dem Plugin-Namespace, zum Beispiel `news.update` und `news`.
 - Navigation, Routing und Server-Fassaden prüfen dieselbe plugin-spezifische Permission; UI-Gates sind Komfort- und Transparenzschicht, die serverseitige Autorisierung bleibt maßgeblich.
 - Die Rollenverwaltung gruppiert Plugin-Rechte fachlich, nutzt aber weiterhin den bestehenden Rollen-Permission-Vertrag.
@@ -606,6 +606,7 @@ Referenzen:
 
 - Das eigenständige Generic-Items-Modul filtert Liste, Details und Mutationen nicht nach `genericType` und verlangt ausschließlich die passende Action unter `generic-items.*`.
 - Die gemeinsame Inhaltsübersicht löst den `genericType` dagegen vor der Autorisierung gegen den Build-time-Registry-Snapshot auf. Ein registriertes Fachplugin übernimmt die einzige Repräsentation; nur nicht übernommene Typen verwenden `generic-items.generic-item`.
+- Die Mainserver-Grenze akzeptiert als Registry-Ziele ausschließlich unterstützte GenericItem-Projektionstypen. Gefilterte Listen werden über Upstream-Seitengrenzen hinweg aufgefüllt, damit fremde Diskriminatoren auf einer Seite weder leere Ergebnisse noch einen vorzeitig abgeschlossenen Snapshot erzeugen.
 - Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen. Fehlende Fachrechte erzeugen in `/admin/content` keinen generischen Fallback.
 - `generic-items.*` kann fachliche Validierung umgehen und soll deshalb regulären Live-Rollen nicht zugewiesen werden; diese Betriebsgrenze wird durch Rollenvergabe und nicht durch umgebungsabhängige Codepfade umgesetzt.
 

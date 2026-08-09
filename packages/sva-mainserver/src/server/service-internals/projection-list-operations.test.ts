@@ -104,13 +104,17 @@ describe('projection list operations', () => {
       title: `Frage ${index + 1}`,
       genericType: 'FAQ',
     }));
-    const execute = vi.fn().mockResolvedValue({
-      genericItems: [
-        { id: 'generic-1', title: 'Allgemein', genericType: 'ARTICLE' },
-        ...faqItems,
-        { id: 'faq-sentinel', title: 'Nächste Frage', genericType: 'FAQ' },
-      ],
-    });
+    const execute = vi.fn().mockImplementation(({ variables }) =>
+      variables.skip === 0
+        ? {
+            genericItems: [
+              { id: 'generic-1', title: 'Allgemein', genericType: 'ARTICLE' },
+              ...faqItems,
+              { id: 'faq-sentinel', title: 'Nächste Frage', genericType: 'FAQ' },
+            ],
+          }
+        : { genericItems: [] }
+    );
     const operations = createProjectionListOperations(execute);
 
     const faqResult = await operations.listProjectionWithConfig(
@@ -126,11 +130,43 @@ describe('projection list operations', () => {
       genericTypeOwnership
     );
 
-    expect(faqResult.data).toHaveLength(99);
-    expect(faqResult.data.map((item) => item.id)).not.toContain('faq-sentinel');
+    expect(faqResult.data).toHaveLength(100);
+    expect(faqResult.data.map((item) => item.id)).toContain('faq-sentinel');
     expect(genericResult.data.map((item) => item.id)).toEqual(['generic-1']);
-    expect(faqResult.pagination.hasNextPage).toBe(true);
-    expect(genericResult.pagination.hasNextPage).toBe(true);
+    expect(faqResult.pagination.hasNextPage).toBe(false);
+    expect(genericResult.pagination.hasNextPage).toBe(false);
+  });
+
+  it('continues scanning when an upstream page contains only claimed GenericItems', async () => {
+    const execute = vi.fn().mockImplementation(({ variables }) =>
+      variables.skip === 0
+        ? {
+            genericItems: Array.from({ length: 26 }, (_, index) => ({
+              id: `faq-${index + 1}`,
+              title: `FAQ ${index + 1}`,
+              genericType: 'FAQ',
+            })),
+          }
+        : {
+            genericItems: [{ id: 'generic-1', title: 'Allgemein', genericType: 'ARTICLE' }],
+          }
+    );
+    const operations = createProjectionListOperations(execute);
+
+    const result = await operations.listProjectionWithConfig(
+      'generic-items.generic-item',
+      { ...input, pageSize: 25 },
+      config,
+      genericTypeOwnership
+    );
+
+    expect(execute.mock.calls.map((call) => call[0].variables)).toEqual([
+      { limit: 26, skip: 0, order: 'updatedAt_DESC' },
+      { limit: 26, skip: 26, order: 'updatedAt_DESC' },
+    ]);
+    expect(execute).toHaveBeenCalledTimes(2);
+    expect(result.data.map((item) => item.id)).toEqual(['generic-1']);
+    expect(result.pagination.hasNextPage).toBe(false);
   });
 
   it('keeps only unclaimed discriminators in generic projections', async () => {

@@ -103,7 +103,24 @@ export type SvaMainserverProjectionContentType =
   | 'projects.project'
   | 'surveys.survey';
 
-export type SvaMainserverGenericTypeOwnership = Readonly<Record<string, string>>;
+export type SvaMainserverGenericItemProjectionContentType =
+  'generic-items.generic-item' | 'faq.faq' | 'cockpit-cards.cockpit-card' | 'projects.project';
+
+const svaMainserverGenericItemProjectionContentTypes = new Set<string>([
+  'generic-items.generic-item',
+  'faq.faq',
+  'cockpit-cards.cockpit-card',
+  'projects.project',
+]);
+
+export const isSvaMainserverGenericItemProjectionContentType = (
+  value: string
+): value is SvaMainserverGenericItemProjectionContentType =>
+  svaMainserverGenericItemProjectionContentTypes.has(value);
+
+export type SvaMainserverGenericTypeOwnership = Readonly<
+  Record<string, SvaMainserverGenericItemProjectionContentType>
+>;
 
 export type SvaMainserverProjectionListItem = Readonly<{
   id: string;

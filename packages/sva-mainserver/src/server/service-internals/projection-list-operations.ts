@@ -192,6 +192,61 @@ const matchesProjectionContentType = (
   );
 };
 
+const MAX_GENERIC_ITEM_PROJECTION_SCAN_ITEMS = 5_000;
+const loadPaginatedProjectionItems = async (input: {
+  executeGraphqlWithConfig: GraphqlExecutor;
+  definition: ProjectionDefinition;
+  connectionInput: SvaMainserverConnectionInput & SvaMainserverListQuery;
+  config: SvaMainserverInstanceConfig;
+  page: number;
+  pageSize: number;
+  genericTypeOwnership: SvaMainserverGenericTypeOwnership;
+}): Promise<Readonly<{ items: readonly unknown[]; hasNextPage: boolean }>> => {
+  const requestedEnd = input.page * input.pageSize + 1;
+  const requestedStart = (input.page - 1) * input.pageSize;
+  const requestLimit = input.pageSize + 1;
+  const matchingItems: unknown[] = [];
+  let upstreamSkip = 0;
+
+  while (matchingItems.length < requestedEnd) {
+    const response = await input.executeGraphqlWithConfig<Record<string, unknown>>(
+      {
+        ...input.connectionInput,
+        document: input.definition.document,
+        operationName: input.definition.operationName,
+        variables: {
+          limit: requestLimit,
+          skip: upstreamSkip,
+          order: input.definition.order,
+        },
+      },
+      input.config
+    );
+    const responseItems = response[input.definition.responseField];
+    if (!Array.isArray(responseItems)) {
+      throw new Error(`Invalid projection page structure for ${input.definition.responseField}.`);
+    }
+    matchingItems.push(
+      ...responseItems.filter((item) =>
+        matchesProjectionContentType(item, input.definition.contentType, input.genericTypeOwnership)
+      )
+    );
+    upstreamSkip += responseItems.length;
+    if (responseItems.length < requestLimit) break;
+    if (matchingItems.length >= requestedEnd) break;
+    if (upstreamSkip >= MAX_GENERIC_ITEM_PROJECTION_SCAN_ITEMS) {
+      throw new Error(
+        `GenericItem projection scan limit exceeded for ${input.definition.contentType}.`
+      );
+    }
+  }
+  const requestedItems = matchingItems.slice(requestedStart, requestedEnd);
+  return {
+    items: requestedItems.slice(0, input.pageSize),
+    hasNextPage: requestedItems.length > input.pageSize,
+  };
+};
+
 export const createProjectionListOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
   listProjectionWithConfig: async (
     contentType: SvaMainserverProjectionContentType,
@@ -201,6 +256,28 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
   ): Promise<SvaMainserverProjectionListResult> => {
     const definition = definitions[contentType];
     const query = normalizeVisibleListQuery(input);
+    if (definition.paginated && definition.responseField === 'genericItems') {
+      const page = await loadPaginatedProjectionItems({
+        executeGraphqlWithConfig,
+        definition,
+        connectionInput: input,
+        config,
+        page: query.page,
+        pageSize: query.pageSize,
+        genericTypeOwnership,
+      });
+      const mapped = page.items.map((item) => mapItem(item, contentType, definition.titleField));
+      const skippedInvalidCount = mapped.filter((item) => item === null).length;
+      return {
+        data: mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null),
+        skippedInvalidCount,
+        pagination: {
+          page: query.page,
+          pageSize: query.pageSize,
+          hasNextPage: page.hasNextPage,
+        },
+      };
+    }
     const response = await executeGraphqlWithConfig<Record<string, unknown>>(
       {
         ...input,
@@ -223,9 +300,7 @@ export const createProjectionListOperations = (executeGraphqlWithConfig: Graphql
     const upstreamPageItems = definition.paginated
       ? responseItems.slice(0, query.pageSize)
       : responseItems;
-    const rawItems: readonly unknown[] = upstreamPageItems.filter((item) =>
-      matchesProjectionContentType(item, contentType, genericTypeOwnership)
-    );
+    const rawItems: readonly unknown[] = upstreamPageItems;
     const mapped = rawItems.map((item) => mapItem(item, contentType, definition.titleField));
     const skippedInvalidCount = mapped.filter((item) => item === null).length;
     const data = mapped.filter((item): item is SvaMainserverProjectionListItem => item !== null);

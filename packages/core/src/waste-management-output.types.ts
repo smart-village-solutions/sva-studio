@@ -72,6 +72,7 @@ type WasteCalendarPdfLegendEntry =
 type WasteCalendarPdfPage = Readonly<{
   title: string;
   locationLabel: string;
+  contactBlock?: string;
   brandingPlaceholderLabel: string;
   brandingImage?: WasteCalendarPdfBrandingImage;
   months: readonly WasteCalendarPdfMonth[];

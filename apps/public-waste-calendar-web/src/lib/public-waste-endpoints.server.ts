@@ -8,7 +8,10 @@ import {
 } from '@sva/core';
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 
-import { loadNextPublicWasteSelection, loadResolvedPublicWasteCalendar } from './public-waste-api.js';
+import {
+  loadNextPublicWasteSelection,
+  loadResolvedPublicWasteCalendar,
+} from './public-waste-api.js';
 import type {
   PublicWasteCalendarEntry,
   PublicWasteReminderSignupRequest,
@@ -28,7 +31,8 @@ import type { PublicWasteRepository } from './public-waste-repository.server.js'
 
 const INVALID_REQUEST_MESSAGE = 'Ungültige Anfrage.';
 const NO_PDF_ENTRIES_MESSAGE = 'Für diese Auswahl konnten keine PDF-Termine ermittelt werden.';
-const REMINDER_SIGNUP_NOT_READY_MESSAGE = 'Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.';
+const REMINDER_SIGNUP_NOT_READY_MESSAGE =
+  'Der E-Mail-Erinnerungsdienst ist derzeit nicht verfügbar.';
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const jsonResponse = (payload: unknown, status = 200): Response =>
@@ -96,7 +100,10 @@ const buildPublicWasteIcalEventDescription = (entry: {
 };
 
 const normalizePdfLocationLabel = (selectionSummary: string): string => {
-  const parts = selectionSummary.split(',').map((part) => part.trim()).filter(Boolean);
+  const parts = selectionSummary
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
   const city = parts[0] ?? '';
   const remainder = parts
     .slice(1)
@@ -154,7 +161,8 @@ const buildPdfPickups = (
   const byDate = new Map<string, Map<string, WasteOutputPickupEntry['fractions'][number]>>();
 
   for (const entry of entries) {
-    const fractions = byDate.get(entry.date) ?? new Map<string, WasteOutputPickupEntry['fractions'][number]>();
+    const fractions =
+      byDate.get(entry.date) ?? new Map<string, WasteOutputPickupEntry['fractions'][number]>();
     const existingFraction = fractions.get(entry.fractionId);
     fractions.set(entry.fractionId, {
       id: entry.fractionId,
@@ -173,12 +181,19 @@ const buildPdfPickups = (
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([date, fractions]) => ({
       date,
-      fractions: Array.from(fractions.values()).sort((left, right) => left.label.localeCompare(right.label, 'de')),
+      fractions: Array.from(fractions.values()).sort((left, right) =>
+        left.label.localeCompare(right.label, 'de')
+      ),
     }));
 };
 
 const toPdfFilename = (year: number, locationLabel: string): string =>
-  `abfallkalender-${year}-${locationLabel.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'standort'}.pdf`;
+  `abfallkalender-${year}-${
+    locationLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-+|-+$/g, '') || 'standort'
+  }.pdf`;
 
 export const handlePublicWasteSelectionRequest = async (input: {
   readonly repository: Pick<PublicWasteRepository, 'listSelectionOptions'>;
@@ -200,27 +215,31 @@ export const handlePublicWasteSelectionRequest = async (input: {
 };
 
 export const handlePublicWasteCalendarRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'>;
+  readonly repository: Pick<
+    PublicWasteRepository,
+    'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
+  >;
   readonly request: Request;
   readonly reminderConfig?: WasteManagementEmailReminderConfig;
 }): Promise<Response> => {
   try {
     const url = new URL(input.request.url);
     const selection = readPublicWasteResolvedSelection(url);
-    const [payload, selectionSummary, emailReminderFractions, calendarReminderFractions] = await Promise.all([
-      loadResolvedPublicWasteCalendar({
-        repository: input.repository,
-        input: {
-          selection,
-          referenceDate: readPublicWasteReferenceDate(url),
-        },
-      }),
-      input.repository.loadSelectionSummary({ selection }),
-      input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled
-        ? input.repository.loadReminderOptions({ selection, channel: 'email' })
-        : Promise.resolve([]),
-      input.repository.loadReminderOptions({ selection, channel: 'calendar' }),
-    ]);
+    const [payload, selectionSummary, emailReminderFractions, calendarReminderFractions] =
+      await Promise.all([
+        loadResolvedPublicWasteCalendar({
+          repository: input.repository,
+          input: {
+            selection,
+            referenceDate: readPublicWasteReferenceDate(url),
+          },
+        }),
+        input.repository.loadSelectionSummary({ selection }),
+        input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled
+          ? input.repository.loadReminderOptions({ selection, channel: 'email' })
+          : Promise.resolve([]),
+        input.repository.loadReminderOptions({ selection, channel: 'calendar' }),
+      ]);
     const baseIcalUrl = `/api/public-waste/ical?${new URLSearchParams({
       ...(selection.regionId ? { regionId: selection.regionId } : {}),
       cityId: selection.cityId,
@@ -239,7 +258,9 @@ export const handlePublicWasteCalendarRequest = async (input: {
             },
           }
         : {}),
-      ...(input.reminderConfig?.enabled && input.reminderConfig.publicSignupEnabled && emailReminderFractions.length > 0
+      ...(input.reminderConfig?.enabled &&
+      input.reminderConfig.publicSignupEnabled &&
+      emailReminderFractions.length > 0
         ? {
             reminderSignup: {
               enabled: true,
@@ -256,7 +277,9 @@ export const handlePublicWasteCalendarRequest = async (input: {
   }
 };
 
-const isPublicWasteReminderSignupRequest = (value: unknown): value is PublicWasteReminderSignupRequest => {
+const isPublicWasteReminderSignupRequest = (
+  value: unknown
+): value is PublicWasteReminderSignupRequest => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }
@@ -265,10 +288,18 @@ const isPublicWasteReminderSignupRequest = (value: unknown): value is PublicWast
   if (typeof record.email !== 'string' || !EMAIL_PATTERN.test(record.email.trim())) {
     return false;
   }
-  if (record.consentAccepted !== true || !Array.isArray(record.items) || record.items.length === 0) {
+  if (
+    record.consentAccepted !== true ||
+    !Array.isArray(record.items) ||
+    record.items.length === 0
+  ) {
     return false;
   }
-  if (!record.selection || typeof record.selection !== 'object' || Array.isArray(record.selection)) {
+  if (
+    !record.selection ||
+    typeof record.selection !== 'object' ||
+    Array.isArray(record.selection)
+  ) {
     return false;
   }
 
@@ -278,7 +309,12 @@ const isPublicWasteReminderSignupRequest = (value: unknown): value is PublicWast
     }
 
     const next = item as Record<string, unknown>;
-    return typeof next.fractionId === 'string' && next.fractionId.length > 0 && typeof next.slotId === 'string' && next.slotId.length > 0;
+    return (
+      typeof next.fractionId === 'string' &&
+      next.fractionId.length > 0 &&
+      typeof next.slotId === 'string' &&
+      next.slotId.length > 0
+    );
   });
 };
 
@@ -389,10 +425,13 @@ export const handlePublicWastePdfRequest = async (input: {
       buildWasteCalendarPdfDocument({
         year,
         locationLabel,
+        ...(staticConfig.contactBlock ? { contactBlock: staticConfig.contactBlock } : {}),
         pickups: buildPdfPickups(filteredEntries),
         legendHints: buildPdfLegendHints(filteredEntries),
         ...(brandingImage ? { brandingImage } : {}),
-        brandingPlaceholderLabel: staticConfig.brandingAssetUrl ? 'Branding-Grafik' : 'Kommunales Waste-Management',
+        brandingPlaceholderLabel: staticConfig.brandingAssetUrl
+          ? 'Branding-Grafik'
+          : 'Kommunales Waste-Management',
       })
     );
     const pdfBody = new Blob([Uint8Array.from(pdf)], { type: 'application/pdf' });
@@ -410,7 +449,10 @@ export const handlePublicWastePdfRequest = async (input: {
 };
 
 export const handlePublicWasteIcalRequest = async (input: {
-  readonly repository: Pick<PublicWasteRepository, 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'>;
+  readonly repository: Pick<
+    PublicWasteRepository,
+    'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
+  >;
   readonly request: Request;
 }): Promise<Response> => {
   try {

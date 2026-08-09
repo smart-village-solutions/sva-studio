@@ -163,6 +163,9 @@ describe('PublicWasteSelectionForm', () => {
     const combobox = screen.getByRole('combobox', { name: 'Ort suchen' });
     fireEvent.change(combobox, { target: { value: 'unbekannt' } });
     expect(screen.queryAllByRole('option')).toHaveLength(0);
+    expect(
+      screen.getByText('Keine Treffer für diese Suche.').parentElement?.getAttribute('role')
+    ).not.toBe('listbox');
 
     fireEvent.keyDown(combobox, { key: 'Escape' });
 

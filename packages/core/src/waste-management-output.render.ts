@@ -111,6 +111,16 @@ const renderHeader = (
 ): void => {
   drawText({ commands, x: 38, top: 16, fontSize: 20, text: page.title, fontName: 'F2' });
   drawText({ commands, x: 38, top: 44, fontSize: 10.5, text: page.locationLabel, fontName: 'F1' });
+  if (page.contactBlock) {
+    drawText({
+      commands,
+      x: 38,
+      top: 60,
+      fontSize: 7.5,
+      text: truncateHelveticaText(page.contactBlock, 7.5, 570),
+      fontName: 'F1',
+    });
+  }
   if (page.brandingImage && imageObjectName) {
     commands.push(buildBrandingImageCommand(page, imageObjectName, PAGE_HEIGHT) ?? '');
     return;

@@ -47,12 +47,12 @@ export const PublicWasteSelectionResults = (
           </span>
         </button>
       ))}
-      {props.filteredOptions.length === 0 && props.searchQuery.trim().length > 0 ? (
-        <div className="selection-empty-state" role="status">
-          Keine Treffer für diese Suche.
-        </div>
-      ) : null}
     </div>
+    {props.filteredOptions.length === 0 && props.searchQuery.trim().length > 0 ? (
+      <div className="selection-empty-state" role="status">
+        Keine Treffer für diese Suche.
+      </div>
+    ) : null}
     {props.canScrollDown ? (
       <div className="selection-scroll-hint" aria-hidden="true">
         <span>Weitere Einträge</span>

@@ -159,6 +159,7 @@ describe('waste-management output pdf', () => {
       buildWasteCalendarPdfDocument({
         year: 2026,
         locationLabel: 'Rathenow, Berliner Str. 12',
+        contactBlock: 'Abfallberatung\n03395 / 1234',
         pickups: [
           {
             date: '2026-01-14',
@@ -175,6 +176,7 @@ describe('waste-management output pdf', () => {
     expect(pdfText).toContain('/F1 10.50 Tf');
     expect(pdfText).toMatch(/1 0 0 1 38\.00 559\.28 Tm \(Abfallkalender 2026\) Tj ET/);
     expect(pdfText).toContain('(Tour: Nord - Hinweis zur Bereitstellung.) Tj ET');
+    expect(pdfText).toContain('1 0 0 1 38.00 527.78 Tm (Abfallberatung 03395 / 1234) Tj ET');
     expect(pdfText).not.toContain('Abfallkalender 2026 · Rathenow');
     expect(pdfText).not.toContain('Abfallberatung · Beispielkontakt');
   });

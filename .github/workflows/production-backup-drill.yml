@@ -65,6 +65,7 @@ jobs:
       - name: require successful staging backup parity
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
         run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts backup-drill
 

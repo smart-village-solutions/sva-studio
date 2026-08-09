@@ -47,7 +47,7 @@ export const pluginCockpitCardsTranslations = {
         unavailable: 'Nicht verfügbar',
       },
       tabs: {
-        ariaLabel: 'Cockpit-Card-Bereiche',
+        ariaLabel: 'Kachelbereiche',
         mobileLabel: 'Bereich auswählen',
         basis: {
           label: 'Basis',
@@ -78,6 +78,8 @@ export const pluginCockpitCardsTranslations = {
         images: 'Bilder',
         imageUrl: 'Bild-URL',
         link: 'Link',
+        linkText: 'Linktext',
+        openInNewTab: 'Link in neuem Tab öffnen',
         sortWeight: 'Sortiergewicht',
         visible: 'Sichtbar',
         publicationDate: 'Veröffentlichungszeitpunkt',
@@ -96,7 +98,7 @@ export const pluginCockpitCardsTranslations = {
         cancel: 'Abbrechen',
       },
       pagination: {
-        ariaLabel: 'Cockpit-Cards-Paginierung',
+        ariaLabel: 'Kachelpaginierung',
         pageLabel: 'Seite {{page}}',
         previous: 'Zurück',
         next: 'Weiter',
@@ -198,6 +200,8 @@ export const pluginCockpitCardsTranslations = {
         images: 'Images',
         imageUrl: 'Image URL',
         link: 'Link',
+        linkText: 'Link text',
+        openInNewTab: 'Open link in a new tab',
         sortWeight: 'Sort weight',
         visible: 'Visible',
         publicationDate: 'Publication date',

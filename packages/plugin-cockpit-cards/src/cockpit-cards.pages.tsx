@@ -92,8 +92,11 @@ const defaults: CockpitCardFormValues = {
   category: '',
   images: [],
   link: '',
+  linkText: '',
+  openInNewTab: false,
   visible: true,
 };
+const cockpitCardMetadataFields = ['altText'] as const;
 type Tab = 'basis' | 'content' | 'settings' | 'history';
 const hasPersistablePublicDelivery = (delivery: { readonly deliveryUrl: string }): boolean =>
   (delivery as { readonly isPublicUrl?: unknown }).isPublicUrl === true &&
@@ -169,7 +172,7 @@ function ContentFields({
           onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
           onLoadAssetSnapshot={onLoadAssetSnapshot}
           showHeader={false}
-          supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+          supportedFields={{ altText: true, caption: false, credit: false, license: false }}
           labels={{
             title: pt('fields.images'),
             description: pt('media.description'),
@@ -238,6 +241,16 @@ function Editor({
     defaultValues: defaults,
     resolver: zodResolver(cockpitCardFormSchema),
   });
+  const link = form.watch('link');
+  React.useEffect(() => {
+    if (link.trim()) return;
+    if (form.getValues('linkText')) {
+      form.setValue('linkText', '', { shouldDirty: true });
+    }
+    if (form.getValues('openInNewTab')) {
+      form.setValue('openInNewTab', false, { shouldDirty: true });
+    }
+  }, [form, link]);
   const saveFeedback = useStudioSaveFeedback();
   React.useEffect(() => {
     if (form.formState.isDirty) {
@@ -269,7 +282,6 @@ function Editor({
   const [mutationError, setMutationError] = React.useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
   const [deletePending, setDeletePending] = React.useState(false);
-  const [payload, setPayload] = React.useState<unknown>();
   const [loadedItem, setLoadedItem] = React.useState<Awaited<
     ReturnType<typeof getCockpitCard>
   > | null>(null);
@@ -353,6 +365,7 @@ function Editor({
     []
   );
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
+    editableMetadataFields: cockpitCardMetadataFields,
     onAccept: (asset) => {
       if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
       const usage: ContentMediaUsage = {
@@ -483,7 +496,6 @@ function Editor({
               )
             );
             setRequiresReferenceSync(references.length > 0);
-            setPayload(item.payload);
             setLoadedItem(item);
           }
         },
@@ -504,7 +516,7 @@ function Editor({
       try {
         const input = mapCockpitCardFormValuesToGenericItemInput(
           { ...values, images: [...cockpitCardUsagesToMedia(mediaUsages)] },
-          payload
+          loadedItem ?? undefined
         );
         const saveContent = () =>
           mode === 'create'
@@ -692,6 +704,27 @@ function Editor({
                 {...form.register('link')}
               />
             </StudioField>
+            <StudioField id="cockpit-card-link-text" label={pt('fields.linkText')}>
+              <Input
+                id="cockpit-card-link-text"
+                disabled={!link.trim()}
+                {...form.register('linkText')}
+              />
+            </StudioField>
+            <StudioField id="cockpit-card-open-new-tab" label={pt('fields.openInNewTab')}>
+              <Controller
+                control={form.control}
+                name="openInNewTab"
+                render={({ field }) => (
+                  <Checkbox
+                    id="cockpit-card-open-new-tab"
+                    checked={field.value}
+                    disabled={!link.trim()}
+                    onChange={(event) => field.onChange(event.currentTarget.checked)}
+                  />
+                )}
+              />
+            </StudioField>
           </StudioDetailCard>
           <StudioField id="cockpit-card-publication" label={pt('fields.publicationDate')}>
             <Input id="cockpit-card-publication" {...form.register('publicationDate')} />
@@ -804,6 +837,7 @@ function Editor({
         isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
         isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
         isMetadataEditable={canUpdateMedia}
+        visibleMetadataFields={cockpitCardMetadataFields}
         feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null}
         feedbackTone={mediaPicker.errorCode ? 'error' : 'default'}
         isAssetSelectable={(asset) => !mediaUsages.some((usage) => usage.assetId === asset.id)}

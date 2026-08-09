@@ -105,9 +105,9 @@ Abhängigkeiten des aktuellen Systems.
 11b. Plugin Cockpit Cards (`packages/plugin-cockpit-cards`)
 
 - eigenständiges Standard-Content-Plugin mit `cockpit-cards.cockpit-card` und festem GenericItem-Discriminator `COCKPIT_CARD`
-- begrenzt die Bearbeitung auf Überschrift, Klartext, Sprache, genau eine bestehende Kategorie, Bilder, einen HTTPS-Link und Publikationsmetadaten
+- begrenzt die Bearbeitung auf die erforderliche Überschrift und genau eine bestehende Kategorie sowie optional Klartext, Sprache, Bilder, einen HTTPS-Link mit Linktext und Öffnungsverhalten und Publikationsmetadaten
 - nutzt die hostgeführte Fassade `/api/v1/mainserver/cockpit-cards`, die eigenen `cockpit-cards.*`-Rechte sowie vorhandene Kategorien- und Medienbausteine
-- heißt in der deutschen Redaktion „Kacheln“ und nutzt gemeinsame Detail-Tabs, semantische Kartenflächen, History-Darstellung, Löschbestätigung und URL-gesteuerte Pagination
+- heißt in der deutschen Redaktion „Kacheln“ und nutzt gemeinsame Detail-Tabs, semantische Kartenflächen, History-Darstellung, Löschbestätigung und URL-gesteuerte Pagination; die Kachel-Variante der Medienauswahl zeigt ausschließlich den Alternativtext, erhält aber den gemeinsamen Berechtigungs-, Referenz- und Delivery-Vertrag
   11c. Plugin Surveys (`packages/plugin-surveys`)
 
 - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`

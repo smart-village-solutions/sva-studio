@@ -113,7 +113,6 @@ export const parseMediaContents = (value: unknown): readonly SvaMainserverMediaC
     if (sourceUrl instanceof Response) {
       return sourceUrl;
     }
-
     mediaContents.push({
       ...(readString(media.captionText) ? { captionText: readString(media.captionText) } : {}),
       ...(readString(media.copyright) ? { copyright: readString(media.copyright) } : {}),

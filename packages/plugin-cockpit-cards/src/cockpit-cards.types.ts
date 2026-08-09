@@ -1,4 +1,8 @@
-export type CockpitCardPayload = Readonly<{ languageCode: string; sortWeight: number }>;
+export type CockpitCardPayload = Readonly<{
+  languageCode: string;
+  sortWeight: number;
+  openInNewTab: boolean;
+}>;
 
 export type CockpitCardCategory = Readonly<{ name: string }>;
 export type CockpitCardWebUrl = Readonly<{
@@ -22,12 +26,15 @@ export type CockpitCardFormValues = Readonly<{
   category: string;
   images: CockpitCardMedia[];
   link: string;
+  linkText: string;
+  openInNewTab: boolean;
   visible: boolean;
   publicationDate?: string;
 }>;
 
 export type GenericItemCockpitCardRecord = Readonly<{
   id: string;
+  externalId?: string;
   title: string;
   genericType: string;
   contentBlocks: readonly Readonly<{ body?: string }>[];
@@ -45,6 +52,7 @@ export type GenericItemCockpitCardRecord = Readonly<{
 export type GenericItemCockpitCardInput = Readonly<{
   title: string;
   genericType: 'COCKPIT_CARD';
+  externalId?: string;
   contentBlocks: readonly Readonly<{ body: string }>[];
   payload: Readonly<Record<string, unknown>>;
   categories: readonly CockpitCardCategory[];

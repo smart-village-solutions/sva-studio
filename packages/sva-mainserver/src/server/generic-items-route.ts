@@ -70,6 +70,21 @@ const preserveEditorialAuthor = (
   ...(existing?.author ? { author: existing.author } : {}),
 });
 
+const preserveCockpitCardIdentity = (
+  genericItem: SvaMainserverGenericItemInput,
+  existing: { readonly author?: string; readonly externalId?: string } | null | undefined
+): SvaMainserverGenericItemInput => {
+  const { externalId, ...genericItemWithoutExternalId } = preserveEditorialAuthor(
+    genericItem,
+    existing
+  );
+  void externalId;
+  return {
+    ...genericItemWithoutExternalId,
+    ...(existing?.externalId ? { externalId: existing.externalId } : {}),
+  };
+};
+
 type ContentKind = 'generic-items' | 'faq' | 'cockpit-cards';
 
 type ContentActor = {
@@ -219,7 +234,7 @@ const handleListRequest = async (
     });
   }
   if (cockpitCardsResult)
-    logger.info('Cockpit Cards list upstream pagination completed', {
+    logger.info('Kachel list upstream pagination completed', {
       operation: 'mainserver_cockpit_cards_list_upstream',
       upstream_page_count: cockpitCardsResult.observability.upstreamPageCount,
       matching_item_count: cockpitCardsResult.observability.matchingItemCount,
@@ -256,7 +271,7 @@ const handleDetailRequest = async (
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
   if (contentKind === 'cockpit-cards' && data.genericType !== 'COCKPIT_CARD')
-    return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+    return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
   logSuccess('mainserver_generic-items_detail', itemId);
   return json({ data });
 };
@@ -297,7 +312,7 @@ const handleCreateRequest = async (
           contentKind === 'faq'
             ? { ...withoutEditorialAuthor(genericItem), genericType: 'FAQ' }
             : contentKind === 'cockpit-cards'
-              ? { ...withoutEditorialAuthor(genericItem), genericType: 'COCKPIT_CARD' }
+              ? { ...preserveCockpitCardIdentity(genericItem, null), genericType: 'COCKPIT_CARD' }
               : withoutEditorialAuthor(genericItem),
       });
       const bindingResult = await recordCreatedMainserverDataProvider({
@@ -359,7 +374,7 @@ const handleUpdateRequest = async (
         existingItem &&
         existingItem.genericType !== 'COCKPIT_CARD'
       )
-        return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+        return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
       const genericItem =
         contentKind === 'faq'
           ? await validateFaqWriteOrResponse(request)
@@ -370,7 +385,7 @@ const handleUpdateRequest = async (
       if (contentKind === 'faq' && !existingItem)
         return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
       if (contentKind === 'cockpit-cards' && !existingItem)
-        return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+        return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
       const providerAuthorization = await authorizeMainserverExistingContent({
         actor,
         action: pluginActionFor(contentKind, 'update'),
@@ -396,7 +411,7 @@ const handleUpdateRequest = async (
               }
             : contentKind === 'cockpit-cards'
               ? {
-                  ...preserveEditorialAuthor(genericItem, existingItem),
+                  ...preserveCockpitCardIdentity(genericItem, existingItem),
                   genericType: 'COCKPIT_CARD',
                   payload: mergeCockpitCardPayload(existingItem?.payload, genericItem.payload),
                 }
@@ -438,7 +453,7 @@ const handleDeleteRequest = async (
         return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
       }
       if (contentKind === 'cockpit-cards' && existingItem?.genericType !== 'COCKPIT_CARD')
-        return errorJson(404, 'not_found', 'Cockpit Card wurde nicht gefunden.');
+        return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
       const providerAuthorization = await authorizeMainserverExistingContent({
         actor,
         action: pluginActionFor(contentKind, 'delete'),

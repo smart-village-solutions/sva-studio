@@ -2,9 +2,9 @@ import type { IamInstanceId, IamUuid } from '@sva/iam-core';
 import type { IamDeletionContentStrategy, IamDeletionLifecycleState } from '@sva/core';
 
 export const deletionRulesBaselineDefaults = {
-  deactivateAfterDays: 90,
-  pseudonymizeAfterDays: 180,
-  deleteAfterDays: 365,
+  deactivateAfterDays: 365,
+  pseudonymizeAfterDays: 730,
+  deleteAfterDays: 1_095,
   defaultContentStrategy: 'retain',
   allowContentPreferenceOverride: false,
 } as const satisfies Readonly<{
@@ -54,8 +54,10 @@ export const resolveTenantDeletionThresholds = (input: {
   pseudonymize_after_days: number | null;
   delete_after_days: number | null;
 }) => ({
-  deactivateAfterDays: input.deactivate_after_days ?? deletionRulesBaselineDefaults.deactivateAfterDays,
-  pseudonymizeAfterDays: input.pseudonymize_after_days ?? deletionRulesBaselineDefaults.pseudonymizeAfterDays,
+  deactivateAfterDays:
+    input.deactivate_after_days ?? deletionRulesBaselineDefaults.deactivateAfterDays,
+  pseudonymizeAfterDays:
+    input.pseudonymize_after_days ?? deletionRulesBaselineDefaults.pseudonymizeAfterDays,
   deleteAfterDays: input.delete_after_days ?? deletionRulesBaselineDefaults.deleteAfterDays,
 });
 

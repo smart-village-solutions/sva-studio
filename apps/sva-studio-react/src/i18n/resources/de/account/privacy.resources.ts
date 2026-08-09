@@ -105,9 +105,9 @@ export const privacyAccountDEResources = {
     summary: {
       lastLoginAt: 'Zuletzt eingeloggt',
       lifecycleState: 'Kontostatus',
-      deactivateAfterDays: 'Deaktivierung nach Tagen',
-      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen',
-      deleteAfterDays: 'Löschung nach Tagen',
+      deactivateAfterDays: 'Deaktivierung nach Tagen seit dem letzten erfolgreichen Login',
+      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen seit dem letzten erfolgreichen Login',
+      deleteAfterDays: 'Tombstone-Soft-Delete nach Tagen seit dem letzten erfolgreichen Login',
       tenantDefaultStrategy: 'Tenant-Standard für Inhalte',
       effectiveStrategy: 'Wirksame Inhaltsregel',
     },

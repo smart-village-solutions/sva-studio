@@ -108,11 +108,11 @@ Die drei Fristen sind absolute Schwellwerte relativ zum selben Referenzzeitpunkt
 
 Beispiel für Defaults:
 
-- Deaktivierung nach 90 Tagen
-- Pseudonymisierung nach 180 Tagen
-- Löschung nach 365 Tagen
+- Deaktivierung nach 365 Tagen
+- Pseudonymisierung nach 730 Tagen
+- finaler Tombstone-Soft-Delete nach 1.095 Tagen
 
-Ein Tenant kann diese Werte anpassen. Die Default-Annahme für den ersten Entwurf ist `90 / 180 / 365`.
+Ein Tenant kann diese Werte anpassen. Die Baseline-Defaults sind `365 / 730 / 1.095`.
 
 ### Account-Zustände
 

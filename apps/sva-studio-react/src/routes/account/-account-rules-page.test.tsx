@@ -25,9 +25,9 @@ describe('AccountRulesPage', () => {
         instanceId: 'de-test',
         allowContentPreferenceOverride: true,
         defaultContentStrategy: 'retain',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
+        deactivateAfterDays: 365,
+        pseudonymizeAfterDays: 730,
+        deleteAfterDays: 1_095,
         canEdit: false,
       },
       contentPreference: { isOverridden: false, effectiveStrategy: 'retain' },
@@ -47,7 +47,21 @@ describe('AccountRulesPage', () => {
 
     expect(screen.getByText('Deaktivierung nach')).toBeTruthy();
     expect(screen.getByText('Pseudonymisierung nach')).toBeTruthy();
-    expect(screen.getByText('Löschung nach')).toBeTruthy();
+    expect(screen.getByText('Tombstone-Soft-Delete nach')).toBeTruthy();
+    expect(screen.getByText('365')).toBeTruthy();
+    expect(screen.getByText('730')).toBeTruthy();
+    expect(screen.getByText('1095')).toBeTruthy();
+    expect(
+      screen.getByText('Tage seit dem letzten erfolgreichen Login bis zur Deaktivierung.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText('Tage seit dem letzten erfolgreichen Login bis zur Pseudonymisierung.')
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Tage seit dem letzten erfolgreichen Login bis zum finalen Tombstone-Soft-Delete.'
+      )
+    ).toBeTruthy();
     expect(screen.getByLabelText('Regel für eigene Inhalte')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Inhaltsregel speichern' })).toBeTruthy();
   });
@@ -61,9 +75,9 @@ describe('AccountRulesPage', () => {
         instanceId: 'de-test',
         allowContentPreferenceOverride: false,
         defaultContentStrategy: 'retain',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
+        deactivateAfterDays: 365,
+        pseudonymizeAfterDays: 730,
+        deleteAfterDays: 1_095,
         canEdit: false,
       },
       contentPreference: { isOverridden: false, effectiveStrategy: 'retain' },
@@ -85,9 +99,9 @@ describe('AccountRulesPage', () => {
         instanceId: 'de-test',
         allowContentPreferenceOverride: true,
         defaultContentStrategy: 'retain',
-        deactivateAfterDays: 90,
-        pseudonymizeAfterDays: 180,
-        deleteAfterDays: 365,
+        deactivateAfterDays: 365,
+        pseudonymizeAfterDays: 730,
+        deleteAfterDays: 1_095,
         canEdit: false,
       },
       contentPreference: {

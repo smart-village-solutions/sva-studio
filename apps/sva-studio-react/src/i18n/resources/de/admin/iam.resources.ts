@@ -244,9 +244,9 @@ export const iamAdminDEResources = {
     subtitle:
       'Verwalten Sie die tenantweiten Fristen für Deaktivierung, Pseudonymisierung und Soft-Delete sowie die Standardregel für Inhalte.',
     fields: {
-      deactivateAfterDays: 'Deaktivierung nach Tagen',
-      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen',
-      deleteAfterDays: 'Löschung nach Tagen',
+      deactivateAfterDays: 'Deaktivierung nach Tagen seit dem letzten erfolgreichen Login',
+      pseudonymizeAfterDays: 'Pseudonymisierung nach Tagen seit dem letzten erfolgreichen Login',
+      deleteAfterDays: 'Tombstone-Soft-Delete nach Tagen seit dem letzten erfolgreichen Login',
       defaultContentStrategy: 'Standardregel für Inhalte',
       allowContentPreferenceOverride:
         'Nutzer dürfen die Standardregel für eigene Inhalte überschreiben',

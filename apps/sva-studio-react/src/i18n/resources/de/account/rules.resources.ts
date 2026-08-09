@@ -5,22 +5,24 @@ export const rulesAccountDEResources = {
     'Prüfen Sie tenantweite Löschregeln und die Behandlung Ihrer eigenen Inhalte in einer separaten Ansicht.',
   summary: {
     deactivateAfterDays: 'Deaktivierung nach',
-    deactivateAfterDaysHint: 'Zeit bis zur Deaktivierung in Tagen.',
+    deactivateAfterDaysHint: 'Tage seit dem letzten erfolgreichen Login bis zur Deaktivierung.',
     pseudonymizeAfterDays: 'Pseudonymisierung nach',
-    pseudonymizeAfterDaysHint: 'Zeit bis zur Pseudonymisierung in Tagen.',
-    deleteAfterDays: 'Löschung nach',
-    deleteAfterDaysHint: 'Zeit bis zur endgültigen Löschung in Tagen.',
+    pseudonymizeAfterDaysHint:
+      'Tage seit dem letzten erfolgreichen Login bis zur Pseudonymisierung.',
+    deleteAfterDays: 'Tombstone-Soft-Delete nach',
+    deleteAfterDaysHint:
+      'Tage seit dem letzten erfolgreichen Login bis zum finalen Tombstone-Soft-Delete.',
     defaultContentStrategy: 'Standardregel für Inhalte',
   },
   sections: {
     global: {
       title: 'Tenantweite Regeln',
       deactivateAfterDays:
-        'Nach der konfigurierten Frist wird das Konto zunächst deaktiviert und für direkte Logins gesperrt.',
+        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login wird das Konto deaktiviert und für direkte Logins gesperrt.',
       pseudonymizeAfterDays:
-        'Nach der zweiten Frist werden personenbezogene Daten pseudonymisiert, soweit keine Aufbewahrungspflicht greift.',
+        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login werden personenbezogene Daten pseudonymisiert, soweit keine Aufbewahrungspflicht greift.',
       deleteAfterDays:
-        'Nach Ablauf der letzten Frist wird das Konto endgültig entfernt, sofern keine rechtliche Sperre besteht.',
+        'Nach der konfigurierten Anzahl von Tagen seit dem letzten erfolgreichen Login erhält das Konto den finalen Tombstone-Soft-Delete-Zustand; es wird dabei nicht physisch entfernt.',
       defaultContentStrategy:
         'Die Standardregel für Inhalte legt fest, ob eigene Inhalte erhalten bleiben oder mit dem Besitzer-Lebenszyklus mitlaufen.',
     },

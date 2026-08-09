@@ -1,0 +1,4 @@
+{
+  "prNumber": 932,
+  "body": "Kontolöschfristen verlängert und verständlicher erklärt\n\n- Ohne eigene Tenant-Konfiguration werden Konten nach 365 Tagen deaktiviert, nach 730 Tagen pseudonymisiert und nach 1.095 Tagen als finaler Tombstone-Soft-Delete markiert.\n- Alle drei Fristen beziehen sich eindeutig auf denselben letzten erfolgreichen Login und werden nicht nacheinander addiert.\n- Individuell gespeicherte Tenant-Regeln bleiben unverändert."
+}

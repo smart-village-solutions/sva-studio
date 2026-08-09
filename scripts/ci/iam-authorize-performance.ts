@@ -1,5 +1,11 @@
 export type AuthorizeBenchmarkScenario = 'cache-hit' | 'cache-miss' | 'recompute';
 
+export const authorizeBenchmarkP95ThresholdMs = {
+  'cache-hit': 10,
+  'cache-miss': 80,
+  recompute: 300,
+} as const satisfies Record<AuthorizeBenchmarkScenario, number>;
+
 export type AuthorizeBenchmarkPayload = {
   readonly instanceId: string;
   readonly action: string;
@@ -14,6 +20,40 @@ export type AuthorizeBenchmarkPayload = {
     readonly geoHierarchy?: readonly string[];
     readonly requestId?: string;
   };
+};
+
+type BenchmarkQueryClient = {
+  query: <T = unknown>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{ rowCount: number | null; rows: T[] }>;
+  release: () => void;
+};
+
+type BenchmarkDbPool = {
+  connect: () => Promise<BenchmarkQueryClient>;
+};
+
+export const withBenchmarkInstanceDb = async <T>(
+  pool: BenchmarkDbPool,
+  instanceId: string,
+  work: (client: BenchmarkQueryClient) => Promise<T>
+): Promise<T> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query('SET LOCAL ROLE iam_app;');
+    await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 export type DurationSummary = {
@@ -143,7 +183,9 @@ export const renderAuthorizePerformanceMarkdownReport = (
 ): string => {
   const cacheHit = report.scenarios.find((scenario) => scenario.scenario === 'cache-hit');
   const cacheHitVerdict =
-    cacheHit && cacheHit.summary.p95Ms < 100 ? 'erfüllt' : 'nicht erfüllt';
+    cacheHit && cacheHit.summary.p95Ms < authorizeBenchmarkP95ThresholdMs['cache-hit']
+      ? 'erfüllt'
+      : 'nicht erfüllt';
 
   const lines = [
     '# Performance-Nachweis IAM Authorize',
@@ -169,7 +211,9 @@ export const renderAuthorizePerformanceMarkdownReport = (
     '',
     '## Abnahmeaussage',
     '',
-    `- p95 < 100 ms im Cache-Hit-Szenario: ${cacheHitVerdict}`,
+    `- p95 < ${authorizeBenchmarkP95ThresholdMs['cache-hit']} ms im Cache-Hit-Szenario: ${cacheHitVerdict}`,
+    `- p95 < ${authorizeBenchmarkP95ThresholdMs['cache-miss']} ms im Cache-Miss-Szenario`,
+    `- p95 < ${authorizeBenchmarkP95ThresholdMs.recompute} ms im Recompute-Szenario`,
     '',
     '## Rohbeobachtungen',
     '',

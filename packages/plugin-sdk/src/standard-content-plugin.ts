@@ -1,5 +1,6 @@
 import { definePluginAdminResources, type AdminResourceDefinition } from './admin-resources.js';
 import { definePluginContentTypes, type ContentTypeDefinition } from './content-types.js';
+import type { SessionAccessSnapshot } from './session-access.js';
 import {
   definePluginActions,
   definePluginAuditEvents,
@@ -28,6 +29,32 @@ export type StandardContentPluginActionIds<TPluginId extends string = string> = 
 export type StandardContentPluginActionOptions = Readonly<{
   legacyAliases?: Partial<Readonly<Record<StandardContentPluginActionName, readonly string[]>>>;
 }>;
+
+export type StandardContentAccessCapabilities = Readonly<{
+  isResolved: boolean;
+  canRead: boolean;
+  canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
+}>;
+
+export const resolveStandardContentAccessCapabilities = (
+  pluginId: string,
+  snapshot: SessionAccessSnapshot
+): StandardContentAccessCapabilities => {
+  const hasAssignedModule = snapshot.assignedModules.includes(pluginId);
+  const actions = new Set(snapshot.permissionActions);
+  const unscopedActions = new Set(snapshot.unscopedPermissionActions ?? []);
+  const allows = (action: string): boolean =>
+    snapshot.isResolved && hasAssignedModule && actions.has(`${pluginId}.${action}`);
+  return {
+    isResolved: snapshot.isResolved,
+    canRead: allows('read'),
+    canCreate: allows('create'),
+    canUpdate: allows('update') && unscopedActions.has(`${pluginId}.update`),
+    canDelete: allows('delete') && unscopedActions.has(`${pluginId}.delete`),
+  };
+};
 
 export type StandardContentAdminResourceOptions = Readonly<{
   pluginId: string;
@@ -80,7 +107,9 @@ export const createStandardContentPluginActionIds = <const TPluginId extends str
     delete: `${pluginId}.delete`,
   }) as const;
 
-export const createStandardContentPluginPermissions = (pluginId: string): readonly PluginPermissionDefinition[] =>
+export const createStandardContentPluginPermissions = (
+  pluginId: string
+): readonly PluginPermissionDefinition[] =>
   definePluginPermissions(pluginId, [
     { id: `${pluginId}.read`, titleKey: `${pluginId}.permissions.read` },
     { id: `${pluginId}.create`, titleKey: `${pluginId}.permissions.create` },
@@ -99,24 +128,44 @@ export const createStandardContentPluginActions = (
       id: actionIds.create,
       titleKey: `${pluginId}.actions.create`,
       requiredAction: `${pluginId}.create`,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: pluginId,
+        actions: { mode: 'allOf', values: [`${pluginId}.create`] },
+      },
       legacyAliases: options?.legacyAliases?.create,
     },
     {
       id: actionIds.edit,
       titleKey: `${pluginId}.actions.edit`,
       requiredAction: `${pluginId}.read`,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: pluginId,
+        actions: { mode: 'allOf', values: [`${pluginId}.read`] },
+      },
       legacyAliases: options?.legacyAliases?.edit,
     },
     {
       id: actionIds.update,
       titleKey: `${pluginId}.actions.update`,
       requiredAction: `${pluginId}.update`,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: pluginId,
+        actions: { mode: 'allOf', values: [`${pluginId}.update`] },
+      },
       legacyAliases: options?.legacyAliases?.update,
     },
     {
       id: actionIds.delete,
       titleKey: `${pluginId}.actions.delete`,
       requiredAction: `${pluginId}.delete`,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: pluginId,
+        actions: { mode: 'allOf', values: [`${pluginId}.delete`] },
+      },
       legacyAliases: options?.legacyAliases?.delete,
     },
   ] as const);
@@ -127,14 +176,24 @@ export const createStandardContentPluginSystemRoles = (
 ): readonly PluginModuleIamSystemRoleDefinition[] => [
   {
     roleName: 'system_admin',
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
+    permissionIds: [
+      `${pluginId}.read`,
+      `${pluginId}.create`,
+      `${pluginId}.update`,
+      `${pluginId}.delete`,
+    ],
   },
 ];
 
 export const createStandardContentModuleIamContract = (pluginId: string): PluginModuleIamContract =>
   definePluginModuleIamContract(pluginId, {
     moduleId: pluginId,
-    permissionIds: [`${pluginId}.read`, `${pluginId}.create`, `${pluginId}.update`, `${pluginId}.delete`],
+    permissionIds: [
+      `${pluginId}.read`,
+      `${pluginId}.create`,
+      `${pluginId}.update`,
+      `${pluginId}.delete`,
+    ],
     systemRoles: createStandardContentPluginSystemRoles(pluginId),
   });
 
@@ -155,6 +214,24 @@ export const createStandardContentAdminResource = (
     list: [`${options.pluginId}.read`],
     create: [`${options.pluginId}.create`],
     detail: [`${options.pluginId}.read`],
+  },
+  accessRequirements: {
+    list: {
+      kind: 'tenant',
+      moduleId: options.pluginId,
+      actions: { mode: 'allOf', values: [`${options.pluginId}.read`] },
+      resourceContext: 'collection',
+    },
+    create: {
+      kind: 'tenant',
+      moduleId: options.pluginId,
+      actions: { mode: 'allOf', values: [`${options.pluginId}.create`] },
+    },
+    detail: {
+      kind: 'tenant',
+      moduleId: options.pluginId,
+      actions: { mode: 'allOf', values: [`${options.pluginId}.read`] },
+    },
   },
   capabilities: {
     list: {
@@ -191,7 +268,6 @@ export const createStandardContentTypeDefinition = (
       },
     },
   ] as const);
-
 export const createStandardContentPluginContribution = (
   options: StandardContentPluginContributionOptions
 ): StandardContentPluginContribution => ({
@@ -202,6 +278,12 @@ export const createStandardContentPluginContribution = (
       titleKey: options.titleKey,
       section: 'dataManagement',
       requiredAction: `${options.pluginId}.read`,
+      accessRequirement: {
+        kind: 'tenant',
+        moduleId: options.pluginId,
+        actions: { mode: 'allOf', values: [`${options.pluginId}.read`] },
+        resourceContext: 'collection',
+      },
     },
   ],
   actions: createStandardContentPluginActions(options.pluginId, options.actionOptions),
@@ -214,24 +296,24 @@ export const createStandardContentPluginContribution = (
     options.basePath,
     options.titleKey
   ),
-  adminResources: definePluginAdminResources(options.pluginId, [createStandardContentAdminResource(options)]),
+  adminResources: definePluginAdminResources(options.pluginId, [
+    createStandardContentAdminResource(options),
+  ]),
 });
 
 export const createStandardContentPluginDefinition = (
   options: StandardContentPluginDefinitionOptions
-): PluginDefinition => {
-  return {
-    id: options.pluginId,
-    displayName: options.displayName,
-    routes: options.routes ?? [],
-    navigation: options.contribution.navigation,
-    actions: options.contribution.actions,
-    permissions: options.contribution.permissions,
-    moduleIam: options.contribution.moduleIam,
-    contentTypes: options.contribution.contentTypes,
-    contentHistory: { mode: 'host', coverage: 'studio_mutations' },
-    adminResources: options.contribution.adminResources,
-    auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
-    translations: options.translations,
-  };
-};
+): PluginDefinition => ({
+  id: options.pluginId,
+  displayName: options.displayName,
+  routes: options.routes ?? [],
+  navigation: options.contribution.navigation,
+  actions: options.contribution.actions,
+  permissions: options.contribution.permissions,
+  moduleIam: options.contribution.moduleIam,
+  contentTypes: options.contribution.contentTypes,
+  contentHistory: { mode: 'host', coverage: 'studio_mutations' },
+  adminResources: options.contribution.adminResources,
+  auditEvents: definePluginAuditEvents(options.pluginId, options.auditEvents ?? []),
+  translations: options.translations,
+});

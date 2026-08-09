@@ -70,7 +70,7 @@ export default [
             },
             {
               sourceTag: 'scope:plugin-sdk',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk'],
+              onlyDependOnLibsWithTags: ['scope:core', 'scope:iam-core', 'scope:plugin-sdk'],
             },
             {
               sourceTag: 'scope:server-runtime',

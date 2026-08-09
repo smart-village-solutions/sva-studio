@@ -4,6 +4,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MediaLibraryPage } from './-media-library-page';
 
+const accessState = vi.hoisted(() => ({ deniedActions: new Set<string>() }));
+
+vi.mock('../../../providers/effective-access-provider', () => ({
+  useAccessDecision: (requirement: { actions: { values: readonly string[] } }) =>
+    requirement.actions.values.some((action) => accessState.deniedActions.has(action))
+      ? { status: 'denied', reason: 'permission_missing' }
+      : { status: 'allowed', reason: 'allowed_by_permission' },
+}));
+
 const useMediaLibraryMock = vi.fn();
 const useSingleFileMediaUploadMock = vi.fn();
 const navigateMock = vi.fn();
@@ -21,7 +30,7 @@ vi.mock('@tanstack/react-router', () => ({
     const href = typeof params?.mediaId === 'string' ? to.replace('$mediaId', params.mediaId) : to;
     return (
       <a href={href} {...props}>
-      {children}
+        {children}
       </a>
     );
   },
@@ -37,6 +46,7 @@ describe('MediaLibraryPage', () => {
   const uploadFileMock = vi.fn();
 
   beforeEach(() => {
+    accessState.deniedActions.clear();
     useMediaLibraryMock.mockReset();
     useSingleFileMediaUploadMock.mockReset();
     uploadFileMock.mockReset();
@@ -139,7 +149,8 @@ describe('MediaLibraryPage', () => {
         {
           source: 'bucket',
           registrationStatus: 'unregistered',
-          storageKey: 'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
+          storageKey:
+            'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
           fileName: 'mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
           folderPath: 'cms_uploads',
           relativePath: 'cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg',
@@ -166,7 +177,8 @@ describe('MediaLibraryPage', () => {
         'asset-unused': 'ready',
         'asset-pdf': 'ready',
         'instance-1/uploads/2026/06/manual.pdf': 'unavailable',
-        'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg': 'unavailable',
+        'instance-1/cms_uploads/mew1020_greatEastern2-521baae3a2ee4ee542334ded26368ddb.jpg':
+          'unavailable',
       },
       isUsageLoading: false,
       isLoading: false,
@@ -204,7 +216,9 @@ describe('MediaLibraryPage', () => {
   });
 
   it('opens the hidden file input from the intake CTA and forwards the selected file into the upload hook', () => {
-    const inputClickSpy = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
+    const inputClickSpy = vi
+      .spyOn(HTMLInputElement.prototype, 'click')
+      .mockImplementation(() => undefined);
     uploadFileMock.mockResolvedValue(null);
 
     render(<MediaLibraryPage />);
@@ -348,7 +362,9 @@ describe('MediaLibraryPage', () => {
     });
     rerender(<MediaLibraryPage />);
     expect(
-      screen.getByText('Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.')
+      screen.getByText(
+        'Die Mediendaten konnten wegen eines Datenbankproblems nicht verarbeitet werden.'
+      )
     ).toBeTruthy();
   });
 
@@ -402,9 +418,9 @@ describe('MediaLibraryPage', () => {
     expect(readyLink.getAttribute('href')).toBe('/admin/media/asset-ready');
     expect(readyLink.className).toContain('h-full');
     expect(readyLink.firstElementChild?.className).toContain('h-full');
-    expect(screen.getByRole('img', { name: 'Stadtfest 2024 - Hauptbühne' }).getAttribute('src')).toBe(
-      'https://cdn.example.test/media/asset-ready.jpg'
-    );
+    expect(
+      screen.getByRole('img', { name: 'Stadtfest 2024 - Hauptbühne' }).getAttribute('src')
+    ).toBe('https://cdn.example.test/media/asset-ready.jpg');
   });
 
   it('keeps image labels visible when no preview URL is available', () => {
@@ -675,5 +691,15 @@ describe('MediaLibraryPage', () => {
 
     fireEvent.change(screen.getByLabelText('Einträge pro Seite'), { target: { value: '72' } });
     expect(useMediaLibraryMock).toHaveBeenLastCalledWith({ page: 1, pageSize: 72 });
+  });
+
+  it('hides all create entry points without media.create', () => {
+    accessState.deniedActions.add('media.create');
+
+    render(<MediaLibraryPage />);
+
+    expect(screen.queryByRole('link', { name: 'Medium vorbereiten' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dateien auswählen' })).toBeNull();
+    expect(screen.queryByTestId('media-intake-shelf')).toBeNull();
   });
 });

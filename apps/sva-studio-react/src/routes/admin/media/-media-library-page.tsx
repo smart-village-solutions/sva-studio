@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button';
 import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 import { MediaAssetGrid } from './-media-asset-grid.js';
 import { MediaIntakeShelf } from './-media-intake-shelf.js';
@@ -27,6 +28,12 @@ const mediaErrorMessage = (error: IamHttpError | null): string => {
 };
 
 export const MediaLibraryPage = () => {
+  const createDecision = useAccessDecision({
+    kind: 'tenant',
+    moduleId: 'media',
+    actions: { mode: 'allOf', values: ['media.create'] },
+  });
+  const canCreateMedia = createDecision.status === 'allowed';
   const navigate = useNavigate();
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(36);
@@ -80,18 +87,22 @@ export const MediaLibraryPage = () => {
           <h1 className="text-3xl font-semibold text-foreground">{t('media.page.title')}</h1>
           <p className="max-w-3xl text-sm text-muted-foreground">{t('media.page.subtitle')}</p>
         </div>
-        <Button asChild>
-          <Link to="/admin/media/new">{t('media.actions.create')}</Link>
-        </Button>
+        {canCreateMedia ? (
+          <Button asChild>
+            <Link to="/admin/media/new">{t('media.actions.create')}</Link>
+          </Button>
+        ) : null}
       </header>
 
-      <MediaIntakeShelf
-        error={singleFileUpload.error}
-        phase={singleFileUpload.phase}
-        onFileSelected={(file) => {
-          void handleFileSelected(file);
-        }}
-      />
+      {canCreateMedia ? (
+        <MediaIntakeShelf
+          error={singleFileUpload.error}
+          phase={singleFileUpload.phase}
+          onFileSelected={(file) => {
+            void handleFileSelected(file);
+          }}
+        />
+      ) : null}
       <MediaLibraryToolbar
         page={mediaApi.page}
         pageCount={totalPages}

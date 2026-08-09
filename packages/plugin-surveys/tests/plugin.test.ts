@@ -17,6 +17,12 @@ describe('pluginSurveys contract', () => {
         titleKey: 'surveys.navigation.title',
         section: 'dataManagement',
         requiredAction: 'surveys.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'surveys',
+          actions: { mode: 'allOf', values: ['surveys.read'] },
+          resourceContext: 'collection',
+        },
       },
     ]);
     expect(pluginSurveys.actions).toEqual(pluginSurveysActionDefinitions);

@@ -11,6 +11,8 @@ Er ergänzt den Plugin-SDK-Vertrag, die IAM-/Audit-Regeln und den OpenSpec-Chang
 - Legacy-Kurzformen bleiben nur als explizit deklarierte Alias-Einträge zulässig.
 - Aus Kurzformen darf nie implizit ein Namespace abgeleitet werden.
 - Neue Plugins und neue Actions führen keine unqualifizierten Kurzformen mehr ein.
+- Autorisierbare Actions, Routen, Navigation und Admin-Ressourcen deklarieren zusätzlich eine explizite `accessRequirement` mit Tenant-Scope, vollständig qualifizierter Action-ID und dem Plugin-eigenen Modul-Gate.
+- Standard-Content-Editoren lesen Create/Update/Delete ausschließlich aus dem hostpublizierten Session-Access-Snapshot; Rollen- oder `canEditContent: true`-Bypässe sind nicht zulässig.
 
 ## Wann ein Legacy-Alias noch zulässig ist
 
@@ -110,6 +112,8 @@ Nach der Deklaration müssen alle aktiven Laufzeitpfade die kanonische ID verwen
 
 Der Alias bleibt nur für Alt-Aufrufer als kompatibler Leseweg bestehen.
 
+Für Standard-Content-Plugins wird die UI-Fähigkeit über `resolveStandardContentAccessCapabilities(pluginId, snapshot)` bestimmt. Der Helper gibt eine Aktion nur frei, wenn der Snapshot aufgelöst ist, das Modul zugewiesen ist und die exakt passende `<pluginId>.<action>`-Permission vorliegt. Save-, Delete- und implizite Formularpfade müssen dieselbe Entscheidung verwenden.
+
 ### 5. Deprecation-Warnungen prüfen
 
 Alias-Aufrufe müssen zur Laufzeit erkennbar sein.
@@ -191,6 +195,7 @@ Wenn eine dieser Fragen mit Nein beantwortet wird, bleibt der Alias ein bewusste
 ## Referenzen
 
 - [Plugin-Entwicklung](./plugin-development.md)
+- [Servergrenze für scopegebundenen UI-Zugriff](./ui-access-server-enforcement.md)
 - [arc42 Querschnittliche Konzepte](../architecture/08-cross-cutting-concepts.md)
 - [arc42 Architekturentscheidungen](../architecture/09-architecture-decisions.md)
 - [ADR-034: Plugin-SDK-Vertrag v1](../adr/ADR-034-plugin-sdk-vertrag-v1.md)

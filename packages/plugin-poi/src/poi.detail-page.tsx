@@ -11,6 +11,7 @@ import {
   omitDeviatedMainserverFields,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
@@ -270,13 +271,18 @@ export function PoiDetailPage({
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('poi', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
-        canEditContent: true,
+        canEditContent: canSave,
         permissionActions: sessionAccess.permissionActions,
       }),
-    [sessionAccess.permissionActions]
+    [canSave, sessionAccess.permissionActions]
   );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
@@ -535,6 +541,7 @@ export function PoiDetailPage({
   }, [activeTab]);
 
   const submit = methods.handleSubmit(async (values) => {
+    if (!canSave) return;
     methods.clearErrors();
     setStatus(null);
     const payload = parsePoiPayloadText(values.content.payloadText);
@@ -808,16 +815,18 @@ export function PoiDetailPage({
           mode === 'create' ? pt('detail.createDescription') : pt('detail.editDescription')
         }
         primaryAction={
-          <Button type="submit" form={formId}>
-            {pt('actions.save')}
-          </Button>
+          canSave ? (
+            <Button type="submit" form={formId}>
+              {pt('actions.save')}
+            </Button>
+          ) : undefined
         }
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="outline">
               <Link to="/admin/content">{pt('actions.back')}</Link>
             </Button>
-            {mode === 'edit' ? (
+            {mode === 'edit' && accessCapabilities.canDelete ? (
               <Button type="button" variant="destructive" onClick={() => void remove()}>
                 {pt('actions.delete')}
               </Button>

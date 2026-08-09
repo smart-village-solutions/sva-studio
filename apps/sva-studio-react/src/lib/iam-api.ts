@@ -70,6 +70,7 @@ import { requestSingleFlight } from './request-singleflight';
 
 export {
   asIamError,
+  EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT,
   fetchWithRequestTimeout,
   IamHttpError,
   LEGAL_ACCEPTANCE_REQUIRED_EVENT,

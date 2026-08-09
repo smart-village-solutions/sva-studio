@@ -9,6 +9,15 @@ const controllerState = vi.hoisted(() => ({
   loadedItem: null,
   status: null as null | { kind: 'success' | 'error'; text: string },
 }));
+const accessState = vi.hoisted(() => ({
+  snapshot: {
+    isResolved: true,
+    permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+    unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+    assignedModules: ['surveys'],
+    roles: [],
+  },
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -16,6 +25,23 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
+  readSessionAccessSnapshot: () => accessState.snapshot,
+  resolveStandardContentAccessCapabilities: (
+    pluginId: string,
+    snapshot: typeof accessState.snapshot
+  ) => {
+    const permits = (action: string) =>
+      snapshot.isResolved &&
+      snapshot.assignedModules.includes(pluginId) &&
+      snapshot.permissionActions.includes(`${pluginId}.${action}`);
+    return {
+      canRead: permits('read'),
+      canCreate: permits('create'),
+      canUpdate: permits('update'),
+      canDelete: permits('delete'),
+    };
+  },
+  subscribeSessionAccessSnapshot: () => () => undefined,
   usePluginTranslation: () => (key: string) =>
     ({
       'pages.createTitle': 'Umfrage anlegen',
@@ -67,6 +93,13 @@ describe('SurveyEditorPage', () => {
     controllerState.status = null;
     submitMock.mockReset();
     navigateMock.mockReset();
+    accessState.snapshot = {
+      isResolved: true,
+      permissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+      unscopedPermissionActions: ['surveys.read', 'surveys.create', 'surveys.update', 'surveys.delete'],
+      assignedModules: ['surveys'],
+      roles: [],
+    };
   });
 
   it('renders the loading state before the editor is ready', () => {
@@ -110,5 +143,30 @@ describe('SurveyEditorPage', () => {
     ).toBe(true);
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
     expect(submitMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails closed when the surveys module or matching action is missing', () => {
+    accessState.snapshot = {
+      isResolved: true,
+      permissionActions: ['surveys.create'],
+      unscopedPermissionActions: ['surveys.create'],
+      assignedModules: [],
+      roles: [],
+    };
+    const view = render(<SurveyEditorPage mode="create" />);
+
+    fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+    expect(submitMock).not.toHaveBeenCalled();
+
+    accessState.snapshot = {
+      isResolved: true,
+      permissionActions: ['surveys.read'],
+      unscopedPermissionActions: ['surveys.read'],
+      assignedModules: ['surveys'],
+      roles: [],
+    };
+    view.rerender(<SurveyEditorPage mode="create" />);
+    fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+    expect(submitMock).not.toHaveBeenCalled();
   });
 });

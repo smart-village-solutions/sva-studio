@@ -7,8 +7,22 @@ import { GroupDetailPage } from './-group-detail-page';
 const useGroupsMock = vi.fn();
 const useRolesMock = vi.fn();
 
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: 'allowed' },
+    create: { status: 'allowed' },
+    update: { status: 'allowed' },
+    delete: { status: 'allowed' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
+
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ to, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -123,9 +137,12 @@ describe('GroupDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#edit-group-name' }), {
       target: { value: ' Admins Updated ' },
     });
-    fireEvent.change(screen.getByLabelText('Beschreibung', { selector: '#edit-group-description' }), {
-      target: { value: ' Neue Beschreibung ' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Beschreibung', { selector: '#edit-group-description' }),
+      {
+        target: { value: ' Neue Beschreibung ' },
+      }
+    );
     fireEvent.click(screen.getByLabelText('Editor'));
     fireEvent.click(screen.getByLabelText('Manager'));
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen speichern' }));
@@ -140,15 +157,24 @@ describe('GroupDetailPage', () => {
     expect(assignRole).toHaveBeenCalledWith('group-1', 'role-2');
     expect(removeRole).toHaveBeenCalledWith('group-1', 'role-1');
 
-    fireEvent.change(screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' }), {
-      target: { value: ' user-2 ' },
-    });
-    fireEvent.change(screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }), {
-      target: { value: '2026-04-10T12:00' },
-    });
-    fireEvent.change(screen.getByLabelText('Gültig bis', { selector: '#group-membership-valid-until' }), {
-      target: { value: '2026-04-20T12:00' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' }),
+      {
+        target: { value: ' user-2 ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }),
+      {
+        target: { value: '2026-04-10T12:00' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Gültig bis', { selector: '#group-membership-valid-until' }),
+      {
+        target: { value: '2026-04-20T12:00' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft zuweisen' }));
 
     await waitFor(() => {
@@ -167,15 +193,23 @@ describe('GroupDetailPage', () => {
     render(<GroupDetailPage groupId="group-1" />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' })).toBeTruthy();
+      expect(
+        screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' })
+      ).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' }), {
-      target: { value: 'user-2' },
-    });
-    fireEvent.change(screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }), {
-      target: { value: '2026-03-29T02:30' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Keycloak-Subject', { selector: '#group-membership-subject' }),
+      {
+        target: { value: 'user-2' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Gültig ab', { selector: '#group-membership-valid-from' }),
+      {
+        target: { value: '2026-03-29T02:30' },
+      }
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Mitgliedschaft zuweisen' }));
 
     await waitFor(() => {
@@ -191,7 +225,12 @@ describe('GroupDetailPage', () => {
     useGroupsMock.mockReturnValue(
       createGroupsState({
         deleteGroup,
-        mutationError: { status: 503, code: 'database_unavailable', message: 'kaputt', requestId: 'req-mutation-1' },
+        mutationError: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-mutation-1',
+        },
       })
     );
 
@@ -259,7 +298,12 @@ describe('GroupDetailPage', () => {
     useGroupsMock.mockReturnValue(
       createGroupsState({
         loadGroupDetail: vi.fn().mockResolvedValue(null),
-        detailError: { status: 503, code: 'database_unavailable', message: 'kaputt', requestId: 'req-detail-1' },
+        detailError: {
+          status: 503,
+          code: 'database_unavailable',
+          message: 'kaputt',
+          requestId: 'req-detail-1',
+        },
       })
     );
 

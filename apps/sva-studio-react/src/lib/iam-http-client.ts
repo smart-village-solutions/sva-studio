@@ -22,6 +22,15 @@ export const IAM_HEADERS = {
 } as const;
 
 export const LEGAL_ACCEPTANCE_REQUIRED_EVENT = 'sva:legal-acceptance-required';
+export const EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT =
+  'sva:effective-access-invalidation-required';
+const effectiveAccessInvalidationErrorCodes = new Set([
+  'frontend_state_stale',
+  'instance_scope_mismatch',
+  'permission_revision_mismatch',
+  'permission_snapshot_stale',
+  'permission_snapshot_version_mismatch',
+]);
 export const DEFAULT_IAM_REQUEST_TIMEOUT_MS = 10_000;
 export const HEALTH_REQUEST_TIMEOUT_MS = 5_000;
 export const HEAVY_IAM_REQUEST_TIMEOUT_MS = 20_000;
@@ -157,7 +166,10 @@ const mergeAbortSignals = (input: {
 
 const createIdempotencyKey = () => crypto.randomUUID();
 
-export const readIamErrorResponse = async (response: Response): Promise<IamHttpError> => {
+export const readIamErrorResponse = async (
+  response: Response,
+  options: Readonly<{ emitEffectiveAccessInvalidation?: boolean }> = {}
+): Promise<IamHttpError> => {
   const payload = (await response.json().catch(() => null)) as IamErrorPayload | null;
   const code = readErrorCodeFromPayload(payload) ?? 'internal_error';
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
@@ -174,6 +186,17 @@ export const readIamErrorResponse = async (response: Response): Promise<IamHttpE
   if (code === 'legal_acceptance_required' && globalThis.window !== undefined) {
     globalThis.dispatchEvent(
       new CustomEvent(LEGAL_ACCEPTANCE_REQUIRED_EVENT, { detail: diagnostics.safeDetails })
+    );
+  }
+
+  if (
+    globalThis.window !== undefined &&
+    options.emitEffectiveAccessInvalidation !== false &&
+    code !== 'legal_acceptance_required' &&
+    (response.status === 403 || effectiveAccessInvalidationErrorCodes.has(code))
+  ) {
+    globalThis.dispatchEvent(
+      new CustomEvent(EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT, { detail: { code } })
     );
   }
 

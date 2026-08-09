@@ -1,22 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { parseInvalidationEvent } from '../iam-authorization-cache-events.js';
 import { publishGroupEvent } from './events.js';
 
 const createClient = () => ({
-  query: vi.fn(async () => ({ rows: [], rowCount: 1 })),
+  query: vi.fn(async () => ({ rows: [{ revision: '2' }], rowCount: 1 })),
 });
 
-const readPublishedPayload = (client: ReturnType<typeof createClient>): Record<string, unknown> => {
-  const params = client.query.mock.calls[0]?.[1] as [string, string] | undefined;
-  if (!params) {
-    throw new Error('pg_notify was not called');
-  }
-  return JSON.parse(params[1]) as Record<string, unknown>;
-};
-
 describe('group event publishing', () => {
-  it('publishes compact group deletion payloads when pg_notify would exceed its safe size', async () => {
+  it('falls back to an instance revision for group deletion with a broad affected set', async () => {
     const client = createClient();
     const affectedAccountIds = Array.from({ length: 1_200 }, (_, index) => `account-${index}`);
     const affectedKeycloakSubjects = Array.from({ length: 1_200 }, (_, index) => `subject-${index}`);
@@ -30,43 +21,28 @@ describe('group event publishing', () => {
       eventId: 'event-1',
     });
 
-    const payload = readPublishedPayload(client);
-
-    expect(Buffer.byteLength(JSON.stringify(payload), 'utf8')).toBeLessThanOrEqual(7_500);
-    expect(payload).toMatchObject({
-      event: 'GroupDeleted',
-      groupId: 'group-1',
-      affectedAccountIds: [],
-      affectedAccountCount: affectedAccountIds.length,
-      affectedKeycloakSubjectCount: affectedKeycloakSubjects.length,
-      compacted: true,
-    });
-    expect(parseInvalidationEvent(JSON.stringify(payload))).toMatchObject({
-      event: {
-        type: 'group_deleted',
-        affectedAccountIds: [],
-      },
-    });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.permission_cache_instance_revisions'),
+      ['instance-1']
+    );
   });
 
-  it('keeps targeted group deletion payloads when they fit pg_notify limits', async () => {
+  it('bumps only the targeted user revision for a known membership subject', async () => {
     const client = createClient();
 
     await publishGroupEvent(client, {
-      event: 'GroupDeleted',
+      event: 'GroupMembershipChanged',
       instanceId: 'instance-1',
       groupId: 'group-1',
-      affectedAccountIds: ['account-1'],
-      affectedKeycloakSubjects: ['subject-1'],
+      accountId: 'account-1',
+      keycloakSubject: 'subject-1',
+      changeType: 'added',
       eventId: 'event-1',
     });
 
-    const payload = readPublishedPayload(client);
-    expect(payload).toMatchObject({
-      event: 'GroupDeleted',
-      affectedAccountIds: ['account-1'],
-      affectedKeycloakSubjects: ['subject-1'],
-    });
-    expect(payload).not.toHaveProperty('compacted');
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.permission_cache_user_revisions'),
+      ['instance-1', 'subject-1']
+    );
   });
 });

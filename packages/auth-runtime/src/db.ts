@@ -106,7 +106,8 @@ const connectWithStudioBootstrap = async (pool: Pool): Promise<PoolClient & Quer
 export const withResolvedInstanceDb = async <T>(
   resolvePool: () => Pool | null,
   instanceId: string,
-  work: (client: QueryClient) => Promise<T>
+  work: (client: QueryClient) => Promise<T>,
+  options?: Readonly<{ isolationLevel?: 'repeatable read' }>
 ): Promise<T> => {
   const pool = resolvePool();
   if (!pool) {
@@ -117,6 +118,9 @@ export const withResolvedInstanceDb = async <T>(
 
   try {
     await client.query('BEGIN');
+    if (options?.isolationLevel === 'repeatable read') {
+      await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    }
     await client.query('SET LOCAL ROLE iam_app;');
     await client.query('SELECT set_config($1, $2, true);', ['app.instance_id', instanceId]);
     const result = await work(client);

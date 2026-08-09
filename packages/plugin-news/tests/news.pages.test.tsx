@@ -6,6 +6,7 @@ import {
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   registerPluginTranslationResolver,
+  publishSessionAccessSnapshot,
   saveContentWithHostMediaReferences,
 } from '@sva/plugin-sdk';
 
@@ -245,6 +246,13 @@ describe('News editor pages', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['news'],
+      permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      roles: [],
+    });
     vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({
       status: 'complete',
       saved: await input.saveContent(),

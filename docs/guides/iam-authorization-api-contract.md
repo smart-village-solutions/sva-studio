@@ -85,6 +85,21 @@ Liefert die effektiven Berechtigungen für den aktuell authentifizierten Benutze
 - Diagnosefelder bleiben allowlist-basiert. Die UI zeigt keine Roh-Policy-Dumps, Secrets oder Ciphertexte an.
 - `instanceId` bleibt der fachliche String-Scope. Ein technisches UUID-Format ist für Clients nicht vorausgesetzt.
 
+### Revisionsgebundener Cache-Vertrag
+
+- PostgreSQL speichert je Instanz eine monotone `instanceRevision` und je Instanz/Keycloak-Subject eine monotone `userRevision`.
+- Vor jedem L1- oder Redis-Hit liest der Server diesen Vektor über einen schmalen indizierten Query. Ein Read-Fehler endet fail-closed mit `503 database_unavailable`.
+- L1- und Redis-v2-Keys enthalten beide Revisionen sowie Instanz, Subject, optionalen Organisationskontext und Geo-Kontext-Hash.
+- Recompute läuft in `REPEATABLE READ`, prüft den Vektor vor der Berechnung und erneut vor Publish. Ein veralteter Kandidat wird nicht veröffentlicht und höchstens einmal wiederholt.
+- `pg_notify` beschleunigt L1-Eviction und Redis-Cleanup. Verlorene, verspätete oder doppelte Events beeinflussen die Gültigkeit nicht, weil alte Revisionskeys logisch unadressierbar sind.
+- Identitäts-/Session-Refresh, Browser-Refetch des Effective-Access-Snapshots und Session-Widerruf sind getrennte Operationen. Ein manueller Permission-Cache-Reset ist nicht Teil dieses Vertrags.
+
+### Verwendung in der Browser-UI
+
+`/auth/me` bleibt der Identitäts-/Session-Read. Route-, Sidebar- und Aktionsentscheidungen verwenden den gemeinsamen `EffectiveAccessProvider`: Im Tenant-Scope kombiniert er diese Antwort mit `/iam/me/permissions` und der aktuellen Modulzuweisung; im Plattform-Scope verwendet er ausschließlich technische Plattformrollen. `unresolved`, `loading` und `error` geben keine geschützte Aktion frei.
+
+Die Zuordnung der migrierten Mutationsflächen zu ihren fachlich führenden Serverprüfungen dokumentiert [Servergrenze für scopegebundenen UI-Zugriff](./ui-access-server-enforcement.md).
+
 ### Fehlerantwort (`4xx/5xx`)
 
 ```json

@@ -18,6 +18,7 @@ import {
 } from '../lib/browser-operation-logging';
 import { subscribeIamUsersUpdated } from '../lib/iam-user-events';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 
 type UseUserResult = {
   readonly user: IamUserDetail | null;
@@ -32,10 +33,10 @@ type UseUserResult = {
 };
 
 const userLogger = createOperationLogger('user-hook', 'debug');
-const PERMISSION_INVALIDATED_EVENT = 'permission_invalidated_after_401_or_403';
+const SESSION_REFRESHED_EVENT = 'session_refreshed_after_401';
 
 export const useUser = (userId: string): UseUserResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [user, setUser] = React.useState<IamUserDetail | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<IamHttpError | null>(null);
@@ -62,9 +63,9 @@ export const useUser = (userId: string): UseUserResult => {
       });
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        userLogger.info(SESSION_REFRESHED_EVENT, {
           operation: 'get_user',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -80,7 +81,7 @@ export const useUser = (userId: string): UseUserResult => {
     } finally {
       setIsLoading(false);
     }
-  }, [invalidatePermissions, userId]);
+  }, [refreshSession, userId]);
 
   React.useEffect(() => {
     void refetch();
@@ -97,6 +98,7 @@ export const useUser = (userId: string): UseUserResult => {
       });
       try {
         const response = await updateUser(userId, payload);
+        requestEffectiveAccessInvalidation();
         setUser(response.data);
         logBrowserOperationSuccess(userLogger, 'user_save_succeeded', {
           operation: 'update_user',
@@ -105,9 +107,9 @@ export const useUser = (userId: string): UseUserResult => {
         return response.data;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 401 || resolvedError.status === 403) {
-          await invalidatePermissions();
-          userLogger.info(PERMISSION_INVALIDATED_EVENT, {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          userLogger.info(SESSION_REFRESHED_EVENT, {
             operation: 'update_user',
             status: resolvedError.status,
             error_code: resolvedError.code,
@@ -122,7 +124,7 @@ export const useUser = (userId: string): UseUserResult => {
         return null;
       }
     },
-    [invalidatePermissions, userId]
+    [refreshSession, userId]
   );
 
   const resendPasswordSetupEmailAction = React.useCallback(async () => {
@@ -141,9 +143,9 @@ export const useUser = (userId: string): UseUserResult => {
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        userLogger.info(SESSION_REFRESHED_EVENT, {
           operation: 'send_password_setup_email',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -157,7 +159,7 @@ export const useUser = (userId: string): UseUserResult => {
       });
       return false;
     }
-  }, [invalidatePermissions, userId]);
+  }, [refreshSession, userId]);
 
   const reprovisionMainserverDataAction = React.useCallback(async () => {
     setMutationError(null);
@@ -176,9 +178,9 @@ export const useUser = (userId: string): UseUserResult => {
       return true;
     } catch (cause) {
       const resolvedError = asIamError(cause);
-      if (resolvedError.status === 401 || resolvedError.status === 403) {
-        await invalidatePermissions();
-        userLogger.info(PERMISSION_INVALIDATED_EVENT, {
+      if (resolvedError.status === 401) {
+        await refreshSession();
+        userLogger.info(SESSION_REFRESHED_EVENT, {
           operation: 'reprovision_mainserver_user',
           status: resolvedError.status,
           error_code: resolvedError.code,
@@ -192,7 +194,7 @@ export const useUser = (userId: string): UseUserResult => {
       });
       return false;
     }
-  }, [invalidatePermissions, refetch, userId]);
+  }, [refreshSession, refetch, userId]);
 
   return {
     user,

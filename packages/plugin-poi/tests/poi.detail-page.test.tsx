@@ -159,7 +159,18 @@ describe('PoiDetailPage', () => {
   beforeEach(() => {
     publishSessionAccessSnapshot({
       isResolved: true,
-      permissionActions: ['media.read', 'media.create', 'media.update', 'media.reference.manage'],
+      permissionActions: [
+        'poi.read',
+        'poi.create',
+        'poi.update',
+        'poi.delete',
+        'media.read',
+        'media.create',
+        'media.update',
+        'media.reference.manage',
+      ],
+      unscopedPermissionActions: ['poi.read', 'poi.create', 'poi.update', 'poi.delete'],
+      assignedModules: ['poi'],
       roles: [],
     });
     navigateMock.mockReset();
@@ -497,6 +508,30 @@ describe('PoiDetailPage', () => {
     expect(
       screen.getByText('Speichern Sie den Ort, bevor die Historie verfügbar ist.')
     ).toBeTruthy();
+  });
+
+  it('keeps read-only poi editors from saving or deleting', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['poi.read'],
+      assignedModules: ['poi'],
+      roles: [],
+    });
+    vi.mocked(getPoi).mockResolvedValueOnce({ id: 'poi-read-only', name: 'Nur lesen' } as never);
+
+    const { container } = render(<PoiDetailPage mode="edit" contentId="poi-read-only" />);
+
+    await screen.findByDisplayValue('Nur lesen');
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
+
+    const form = container.querySelector('form');
+    if (!form) throw new Error('poi_form_missing');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(vi.mocked(updatePoi)).not.toHaveBeenCalled();
+    });
   });
 
   it('loads the poi editor from GraphQL content and keeps missing legacy media references optional', async () => {

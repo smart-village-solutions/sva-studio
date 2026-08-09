@@ -18,6 +18,10 @@ vi.mock('../../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../../providers/effective-access-provider', () => ({
+  useEffectiveAuth: () => useAuthMock(),
+}));
+
 vi.mock('../../lib/iam-api', () => ({
   getGovernanceCase: (...args: unknown[]) => getGovernanceCaseMock(...args),
 }));

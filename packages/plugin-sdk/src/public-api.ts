@@ -87,6 +87,7 @@ export type {
   AdminResourceListSearchCapability,
   AdminResourceListSortingCapability,
   AdminResourceViewDefinition,
+  AdminResourceViewAccessRequirements,
   AdminResourceViews,
 } from './admin-resources.js';
 export {
@@ -161,6 +162,7 @@ export {
 export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,
+  PluginAccessTransitionDiagnostic,
   PluginAdminResourceDefinition,
   PluginAuditEventDefinition,
   PluginAuditEventRegistryEntry,
@@ -179,6 +181,7 @@ export type {
 } from './plugins.js';
 export {
   createPluginActionRegistry,
+  collectPluginAccessTransitionDiagnostics,
   createPluginAuditEventRegistry,
   createPluginModuleIamRegistry,
   createPluginPermissionRegistry,
@@ -261,6 +264,7 @@ export type {
   StandardContentPluginActionIds,
   StandardContentPluginActionName,
   StandardContentPluginActionOptions,
+  StandardContentAccessCapabilities,
   // fallow-ignore-next-line unused-type
   StandardContentPluginContribution,
   StandardContentPluginContributionOptions,
@@ -277,7 +281,15 @@ export {
   createStandardContentPluginPermissions,
   createStandardContentPluginSystemRoles,
   createStandardContentTypeDefinition,
+  resolveStandardContentAccessCapabilities,
 } from './standard-content-plugin.js';
+export type {
+  EffectiveAccessSnapshot,
+  UiAccessDecision,
+  UiAccessRequirement,
+  UiAccessScope,
+  UiResourceCapability,
+} from '@sva/iam-core';
 export type {
   PluginTranslationResolver,
   PluginTranslationVariables,

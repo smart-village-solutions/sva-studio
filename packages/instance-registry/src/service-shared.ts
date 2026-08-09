@@ -171,5 +171,9 @@ export const invalidateInstancePermissionSnapshots = async (
   instanceId: string,
   trigger: string
 ): Promise<void> => {
+  if (deps.repository.bumpPermissionCacheInstanceRevision) {
+    await deps.repository.bumpPermissionCacheInstanceRevision(instanceId);
+    return;
+  }
   await deps.invalidatePermissionSnapshots?.({ instanceId, trigger });
 };

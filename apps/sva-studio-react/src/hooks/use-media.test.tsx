@@ -43,7 +43,7 @@ const registerBucketMediaMock = vi.fn();
 const updateMediaMock = vi.fn();
 const getMediaDeliveryMock = vi.fn();
 const deleteMediaMock = vi.fn();
-const invalidatePermissionsMock = vi.fn();
+const refreshSessionMock = vi.fn();
 
 const browserLoggerState = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -55,21 +55,26 @@ const browserLoggerState = vi.hoisted(() => ({
 vi.mock('../lib/iam-api', () => ({
   asIamError: (error: unknown) => error,
   deleteMedia: (...args: Parameters<typeof deleteMediaMock>) => deleteMediaMock(...args),
-  getMediaLibraryItemKey: (asset: { id?: string; storageKey: string }) => asset.id ?? asset.storageKey,
+  getMediaLibraryItemKey: (asset: { id?: string; storageKey: string }) =>
+    asset.id ?? asset.storageKey,
   getMedia: (...args: Parameters<typeof getMediaMock>) => getMediaMock(...args),
-  getMediaDelivery: (...args: Parameters<typeof getMediaDeliveryMock>) => getMediaDeliveryMock(...args),
+  getMediaDelivery: (...args: Parameters<typeof getMediaDeliveryMock>) =>
+    getMediaDeliveryMock(...args),
   getMediaUsage: (...args: Parameters<typeof getMediaUsageMock>) => getMediaUsageMock(...args),
-  initializeMediaUpload: (...args: Parameters<typeof initializeMediaUploadMock>) => initializeMediaUploadMock(...args),
-  completeMediaUpload: (...args: Parameters<typeof completeMediaUploadMock>) => completeMediaUploadMock(...args),
+  initializeMediaUpload: (...args: Parameters<typeof initializeMediaUploadMock>) =>
+    initializeMediaUploadMock(...args),
+  completeMediaUpload: (...args: Parameters<typeof completeMediaUploadMock>) =>
+    completeMediaUploadMock(...args),
   isRegisteredMediaAsset: (asset: { id?: string }) => typeof asset.id === 'string',
   listMedia: (...args: Parameters<typeof listMediaMock>) => listMediaMock(...args),
-  registerBucketMedia: (...args: Parameters<typeof registerBucketMediaMock>) => registerBucketMediaMock(...args),
+  registerBucketMedia: (...args: Parameters<typeof registerBucketMediaMock>) =>
+    registerBucketMediaMock(...args),
   updateMedia: (...args: Parameters<typeof updateMediaMock>) => updateMediaMock(...args),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => ({
-    invalidatePermissions: invalidatePermissionsMock,
+    refreshSession: refreshSessionMock,
   }),
 }));
 
@@ -77,12 +82,17 @@ vi.mock('@sva/monitoring-client/logging', () => ({
   createBrowserLogger: () => browserLoggerState,
 }));
 
-function MediaLibraryProbe(props: { readonly search?: string; readonly visibility?: 'all' | 'public' | 'protected' }) {
+function MediaLibraryProbe(props: {
+  readonly search?: string;
+  readonly visibility?: 'all' | 'public' | 'protected';
+}) {
   const media = useMediaLibrary(props);
   const firstAsset = media.assets[0];
-  const firstUsageCount = firstAsset ? media.usageByAssetId[getMediaLibraryItemKey(firstAsset)] : null;
+  const firstUsageCount = firstAsset
+    ? media.usageByAssetId[getMediaLibraryItemKey(firstAsset)]
+    : null;
   const firstUsageStatus = firstAsset
-    ? media.usageStatusByAssetId[getMediaLibraryItemKey(firstAsset)] ?? 'none'
+    ? (media.usageStatusByAssetId[getMediaLibraryItemKey(firstAsset)] ?? 'none')
     : 'none';
 
   return (
@@ -90,7 +100,9 @@ function MediaLibraryProbe(props: { readonly search?: string; readonly visibilit
       <span data-testid="loading">{String(media.isLoading)}</span>
       <span data-testid="usage-loading">{String(media.isUsageLoading)}</span>
       <span data-testid="asset-count">{String(media.assets.length)}</span>
-      <span data-testid="usage-count">{firstUsageCount === null ? 'unknown' : String(firstUsageCount)}</span>
+      <span data-testid="usage-count">
+        {firstUsageCount === null ? 'unknown' : String(firstUsageCount)}
+      </span>
       <span data-testid="usage-status">{firstUsageStatus}</span>
       <span data-testid="error-code">{media.error?.code ?? 'none'}</span>
       <button type="button" onClick={() => void media.refetch()}>
@@ -232,7 +244,7 @@ describe('useMediaLibrary', () => {
     updateMediaMock.mockReset();
     getMediaDeliveryMock.mockReset();
     deleteMediaMock.mockReset();
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     browserLoggerState.debug.mockReset();
     browserLoggerState.error.mockReset();
     browserLoggerState.info.mockReset();
@@ -332,22 +344,25 @@ describe('useMediaLibrary', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores API errors, clears assets, and invalidates permissions on protected responses (status $status, code $code)', async (protectedError) => {
-    listMediaMock.mockRejectedValue(protectedError);
+  ])(
+    'stores API errors, clears assets, and invalidates permissions on protected responses (status $status, code $code)',
+    async (protectedError) => {
+      listMediaMock.mockRejectedValue(protectedError);
 
-    render(<MediaLibraryProbe />);
+      render(<MediaLibraryProbe />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('loading').textContent).toBe('false');
-      expect(screen.getByTestId('usage-loading').textContent).toBe('false');
-      expect(screen.getByTestId('asset-count').textContent).toBe('0');
-      expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
-      expect(screen.getByTestId('usage-status').textContent).toBe('none');
-      expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId('loading').textContent).toBe('false');
+        expect(screen.getByTestId('usage-loading').textContent).toBe('false');
+        expect(screen.getByTestId('asset-count').textContent).toBe('0');
+        expect(screen.getByTestId('usage-count').textContent).toBe('unknown');
+        expect(screen.getByTestId('usage-status').textContent).toBe('none');
+        expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
+      });
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
-  });
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
+    }
+  );
 
   it('ignores stale list failures after a newer refetch has already succeeded', async () => {
     const firstListRequest = createDeferred<{
@@ -426,7 +441,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('error-code').textContent).toBe('none');
     });
 
-    expect(invalidatePermissionsMock).not.toHaveBeenCalled();
+    expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 
   it('keeps assets visible when usage enrichment fails and marks counts as unknown', async () => {
@@ -469,7 +484,7 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('error-code').textContent).toBe('none');
     });
 
-    expect(invalidatePermissionsMock).not.toHaveBeenCalled();
+    expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 
   it('hydrates usage counts incrementally while enrichment is still running', async () => {
@@ -619,7 +634,7 @@ describe('useMediaLibrary', () => {
     });
   });
 
-  it('invalidates permissions when usage enrichment returns a protected error', async () => {
+  it('does not refresh the session when usage enrichment returns 403', async () => {
     listMediaMock.mockResolvedValue({
       data: [
         {
@@ -658,13 +673,13 @@ describe('useMediaLibrary', () => {
       expect(screen.getByTestId('error-code').textContent).toBe('none');
     });
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+    expect(refreshSessionMock).not.toHaveBeenCalled();
   });
 });
 
 describe('useCreateMediaUpload', () => {
   beforeEach(() => {
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     initializeMediaUploadMock.mockReset();
   });
 
@@ -717,7 +732,7 @@ describe('useCreateMediaUpload', () => {
         expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
       });
 
-      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
 
       fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 
@@ -728,7 +743,7 @@ describe('useCreateMediaUpload', () => {
 
 describe('useSingleFileMediaUpload', () => {
   beforeEach(() => {
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     initializeMediaUploadMock.mockReset();
     completeMediaUploadMock.mockReset();
     vi.restoreAllMocks();
@@ -790,7 +805,7 @@ describe('useSingleFileMediaUpload', () => {
     expect(completeMediaUploadMock).toHaveBeenCalledWith('upload-1');
   });
 
-  it('stores initialize failures and invalidates permissions on protected responses', async () => {
+  it('stores initialize failures without refreshing the session on 403', async () => {
     initializeMediaUploadMock.mockRejectedValue({
       status: 403,
       code: 'forbidden',
@@ -811,7 +826,7 @@ describe('useSingleFileMediaUpload', () => {
       expect(screen.getByTestId('upload-error').textContent).toBe('Forbidden');
     });
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+    expect(refreshSessionMock).not.toHaveBeenCalled();
     expect(completeMediaUploadMock).not.toHaveBeenCalled();
   });
 
@@ -840,7 +855,9 @@ describe('useSingleFileMediaUpload', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('upload-phase').textContent).toBe('error');
-      expect(screen.getByTestId('upload-error').textContent).toContain('media_upload_put_failed:500');
+      expect(screen.getByTestId('upload-error').textContent).toContain(
+        'media_upload_put_failed:500'
+      );
     });
 
     expect(completeMediaUploadMock).not.toHaveBeenCalled();
@@ -885,7 +902,7 @@ describe('useSingleFileMediaUpload', () => {
 
 describe('useRegisterBucketMedia', () => {
   beforeEach(() => {
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     registerBucketMediaMock.mockReset();
   });
 
@@ -948,7 +965,7 @@ describe('useRegisterBucketMedia', () => {
         expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
       });
 
-      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
 
       fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 
@@ -985,7 +1002,7 @@ describe('deriveMimeTypeFromUnregisteredMedia', () => {
 
 describe('useMediaDetail', () => {
   beforeEach(() => {
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     getMediaMock.mockReset();
     getMediaUsageMock.mockReset();
     updateMediaMock.mockReset();
@@ -1080,7 +1097,9 @@ describe('useMediaDetail', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('loading').textContent).toBe('false');
-      expect(screen.getByTestId('delivery-url').textContent).toBe('https://delivery.example.test/asset-2.png');
+      expect(screen.getByTestId('delivery-url').textContent).toBe(
+        'https://delivery.example.test/asset-2.png'
+      );
     });
 
     expect(getMediaDeliveryMock).toHaveBeenCalledWith('asset-2');
@@ -1138,45 +1157,48 @@ describe('useMediaDetail', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores delivery errors and invalidates permissions on protected resolve responses (status $status)', async (protectedError) => {
-    getMediaMock.mockResolvedValue({
-      data: {
-        id: 'asset-delivery',
-        instanceId: 'instance-1',
-        storageKey: 'media/asset-delivery',
-        mediaType: 'document',
-        mimeType: 'application/pdf',
-        byteSize: 2048,
-        visibility: 'protected',
-        uploadStatus: 'processed',
-        processingStatus: 'ready',
-        metadata: { title: 'Doc' },
-        technical: {},
-      },
-    });
-    getMediaUsageMock.mockResolvedValue({
-      data: {
-        assetId: 'asset-delivery',
-        totalReferences: 1,
-        references: [],
-      },
-    });
-    getMediaDeliveryMock.mockRejectedValue(protectedError);
+  ])(
+    'stores delivery errors and invalidates permissions on protected resolve responses (status $status)',
+    async (protectedError) => {
+      getMediaMock.mockResolvedValue({
+        data: {
+          id: 'asset-delivery',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-delivery',
+          mediaType: 'document',
+          mimeType: 'application/pdf',
+          byteSize: 2048,
+          visibility: 'protected',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: { title: 'Doc' },
+          technical: {},
+        },
+      });
+      getMediaUsageMock.mockResolvedValue({
+        data: {
+          assetId: 'asset-delivery',
+          totalReferences: 1,
+          references: [],
+        },
+      });
+      getMediaDeliveryMock.mockRejectedValue(protectedError);
 
-    render(<MediaDetailProbe assetId="asset-delivery" />);
+      render(<MediaDetailProbe assetId="asset-delivery" />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('loading').textContent).toBe('false');
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId('loading').textContent).toBe('false');
+      });
 
-    fireEvent.click(screen.getByRole('button', { name: 'delivery' }));
+      fireEvent.click(screen.getByRole('button', { name: 'delivery' }));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
+      });
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
-  });
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
+    }
+  );
 
   it('loads asset and usage data, updates metadata, and refreshes detail state', async () => {
     getMediaMock
@@ -1251,69 +1273,75 @@ describe('useMediaDetail', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores mutation errors and invalidates permissions for protected update failures (status $status, code $code)', async (protectedError) => {
-    getMediaMock.mockResolvedValue({
-      data: {
-        id: 'asset-2',
-        instanceId: 'instance-1',
-        storageKey: 'media/asset-2',
-        mediaType: 'image',
-        mimeType: 'image/png',
-        byteSize: 2048,
-        visibility: 'protected',
-        uploadStatus: 'processed',
-        processingStatus: 'ready',
-        metadata: { title: 'Initial' },
-        technical: {},
-      },
-    });
-    getMediaUsageMock.mockResolvedValue({
-      data: {
-        assetId: 'asset-2',
-        totalReferences: 0,
-        references: [],
-      },
-    });
-    updateMediaMock.mockRejectedValue(protectedError);
+  ])(
+    'stores mutation errors and invalidates permissions for protected update failures (status $status, code $code)',
+    async (protectedError) => {
+      getMediaMock.mockResolvedValue({
+        data: {
+          id: 'asset-2',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-2',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'protected',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: { title: 'Initial' },
+          technical: {},
+        },
+      });
+      getMediaUsageMock.mockResolvedValue({
+        data: {
+          assetId: 'asset-2',
+          totalReferences: 0,
+          references: [],
+        },
+      });
+      updateMediaMock.mockRejectedValue(protectedError);
 
-    render(<MediaDetailProbe assetId="asset-2" />);
+      render(<MediaDetailProbe assetId="asset-2" />);
 
-    await waitFor(() => {
+      await waitFor(() => {
+        expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'update' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
+      });
+
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
       expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'update' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
-    });
-
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
-  });
+    }
+  );
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores detail errors and invalidates permissions for protected refetch failures (status $status, code $code)', async (protectedError) => {
-    getMediaMock.mockRejectedValue(protectedError);
-    getMediaUsageMock.mockResolvedValue({
-      data: {
-        assetId: 'asset-2',
-        totalReferences: 0,
-        references: [],
-      },
-    });
+  ])(
+    'stores detail errors and invalidates permissions for protected refetch failures (status $status, code $code)',
+    async (protectedError) => {
+      getMediaMock.mockRejectedValue(protectedError);
+      getMediaUsageMock.mockResolvedValue({
+        data: {
+          assetId: 'asset-2',
+          totalReferences: 0,
+          references: [],
+        },
+      });
 
-    render(<MediaDetailProbe assetId="asset-2" />);
+      render(<MediaDetailProbe assetId="asset-2" />);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
-      expect(screen.getByTestId('asset-id').textContent).toBe('none');
-    });
+      await waitFor(() => {
+        expect(screen.getByTestId('error-code').textContent).toBe(protectedError.code);
+        expect(screen.getByTestId('asset-id').textContent).toBe('none');
+      });
 
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
-  });
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
+    }
+  );
 
   it('resolves delivery links and keeps mutation errors clear on success', async () => {
     getMediaMock.mockResolvedValue({
@@ -1362,46 +1390,49 @@ describe('useMediaDetail', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('stores mutation errors and invalidates permissions for protected delete failures (status $status, code $code)', async (protectedError) => {
-    getMediaMock.mockResolvedValue({
-      data: {
-        id: 'asset-2',
-        instanceId: 'instance-1',
-        storageKey: 'media/asset-2',
-        mediaType: 'image',
-        mimeType: 'image/png',
-        byteSize: 2048,
-        visibility: 'protected',
-        uploadStatus: 'processed',
-        processingStatus: 'ready',
-        metadata: { title: 'Initial' },
-        technical: {},
-      },
-    });
-    getMediaUsageMock.mockResolvedValue({
-      data: {
-        assetId: 'asset-2',
-        totalReferences: 0,
-        references: [],
-      },
-    });
-    deleteMediaMock.mockRejectedValue(protectedError);
+  ])(
+    'stores mutation errors and invalidates permissions for protected delete failures (status $status, code $code)',
+    async (protectedError) => {
+      getMediaMock.mockResolvedValue({
+        data: {
+          id: 'asset-2',
+          instanceId: 'instance-1',
+          storageKey: 'media/asset-2',
+          mediaType: 'image',
+          mimeType: 'image/png',
+          byteSize: 2048,
+          visibility: 'protected',
+          uploadStatus: 'processed',
+          processingStatus: 'ready',
+          metadata: { title: 'Initial' },
+          technical: {},
+        },
+      });
+      getMediaUsageMock.mockResolvedValue({
+        data: {
+          assetId: 'asset-2',
+          totalReferences: 0,
+          references: [],
+        },
+      });
+      deleteMediaMock.mockRejectedValue(protectedError);
 
-    render(<MediaDetailProbe assetId="asset-2" />);
+      render(<MediaDetailProbe assetId="asset-2" />);
 
-    await waitFor(() => {
+      await waitFor(() => {
+        expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'delete' }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
+      });
+
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 1 : 0);
       expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'delete' }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('mutation-error').textContent).toBe(protectedError.code);
-    });
-
-    expect(invalidatePermissionsMock).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('asset-id').textContent).toBe('asset-2');
-  });
+    }
+  );
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
@@ -1459,7 +1490,7 @@ describe('useMediaDetail', () => {
       fireEvent.click(screen.getByRole('button', { name: 'clear' }));
 
       expect(screen.getByTestId('mutation-error').textContent).toBe('none');
-      expect(invalidatePermissionsMock).toHaveBeenCalledTimes(2);
+      expect(refreshSessionMock).toHaveBeenCalledTimes(protectedError.status === 401 ? 2 : 0);
     }
   );
 

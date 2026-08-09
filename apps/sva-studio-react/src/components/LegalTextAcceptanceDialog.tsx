@@ -1,6 +1,11 @@
 import React from 'react';
 
-import { acceptLegalText, asIamError, getMyPendingLegalTexts, LEGAL_ACCEPTANCE_REQUIRED_EVENT } from '../lib/iam-api';
+import {
+  acceptLegalText,
+  asIamError,
+  getMyPendingLegalTexts,
+  LEGAL_ACCEPTANCE_REQUIRED_EVENT,
+} from '../lib/iam-api';
 import { formatEditorDateTime } from '../lib/editor-date-time';
 import {
   createOperationLogger,
@@ -29,9 +34,14 @@ type LegalTextAcceptanceDialogProps = Readonly<{
 const EXEMPT_PATH_PREFIXES = ['/admin/legal-texts'];
 const legalAcceptanceLogger = createOperationLogger('legal-acceptance-dialog', 'debug');
 const isAcceptedUiReturnTo = (value: string | undefined): value is string =>
-  typeof value === 'string' && value.startsWith('/') && !value.startsWith('//') && !value.startsWith('/api/') && !value.startsWith('/auth/');
+  typeof value === 'string' &&
+  value.startsWith('/') &&
+  !value.startsWith('//') &&
+  !value.startsWith('/api/') &&
+  !value.startsWith('/auth/');
 
-const isPromptSuppressed = (pathname: string) => EXEMPT_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+const isPromptSuppressed = (pathname: string) =>
+  EXEMPT_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
 const formatDateTime = (value?: string) => {
   if (!value) {
@@ -41,12 +51,16 @@ const formatDateTime = (value?: string) => {
 };
 
 export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialogProps) => {
-  const { isAuthenticated, isLoading: isAuthLoading, invalidatePermissions, user } = useAuth();
-  const [pendingTexts, setPendingTexts] = React.useState<Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']>([]);
+  const { isAuthenticated, isLoading: isAuthLoading, refreshSession, user } = useAuth();
+  const [pendingTexts, setPendingTexts] = React.useState<
+    Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']
+  >([]);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [isLoadingPending, setIsLoadingPending] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const inFlightLoadRef = React.useRef<Promise<Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']> | null>(null);
+  const inFlightLoadRef = React.useRef<Promise<
+    Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data']
+  > | null>(null);
 
   const promptSuppressed = isPromptSuppressed(pathname);
 
@@ -100,11 +114,16 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
           } else {
             setLoadError(t('admin.legalAcceptance.errorLoading'));
           }
-          logBrowserOperationFailure(legalAcceptanceLogger, 'pending_legal_texts_load_failed', iamError, {
-            operation: 'get_my_pending_legal_texts',
-            pathname,
-            silent,
-          });
+          logBrowserOperationFailure(
+            legalAcceptanceLogger,
+            'pending_legal_texts_load_failed',
+            iamError,
+            {
+              operation: 'get_my_pending_legal_texts',
+              pathname,
+              silent,
+            }
+          );
           return [] as Awaited<ReturnType<typeof getMyPendingLegalTexts>>['data'];
         } finally {
           inFlightLoadRef.current = null;
@@ -150,7 +169,9 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         },
         'debug'
       );
-      storeLegalAcceptanceReturnTo(isAcceptedUiReturnTo(detail?.return_to) ? detail.return_to : pathname);
+      storeLegalAcceptanceReturnTo(
+        isAcceptedUiReturnTo(detail?.return_to) ? detail.return_to : pathname
+      );
       void loadPendingTexts(true);
     };
 
@@ -158,7 +179,10 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
     globalThis.addEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
     return () => {
       globalThis.removeEventListener('focus', handleFocus);
-      globalThis.removeEventListener(LEGAL_ACCEPTANCE_REQUIRED_EVENT, handleLegalAcceptanceRequired);
+      globalThis.removeEventListener(
+        LEGAL_ACCEPTANCE_REQUIRED_EVENT,
+        handleLegalAcceptanceRequired
+      );
     };
   }, [isAuthenticated, loadPendingTexts, pathname, promptSuppressed]);
 
@@ -186,7 +210,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         });
       }
 
-      await invalidatePermissions();
+      await refreshSession();
       const remaining = await loadPendingTexts(true);
       if (remaining.length === 0 && globalThis.window) {
         const returnTo = readLegalAcceptanceReturnTo();
@@ -211,7 +235,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
     } finally {
       setIsSubmitting(false);
     }
-  }, [invalidatePermissions, loadPendingTexts, pendingTexts, user?.instanceId]);
+  }, [refreshSession, loadPendingTexts, pendingTexts, user?.instanceId]);
 
   if (!isAuthenticated || isAuthLoading || promptSuppressed) {
     return null;
@@ -251,7 +275,9 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
                   {legalText.legalTextVersion} · {legalText.locale}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {t('admin.legalAcceptance.publishedAt', { value: formatDateTime(legalText.publishedAt) })}
+                  {t('admin.legalAcceptance.publishedAt', {
+                    value: formatDateTime(legalText.publishedAt),
+                  })}
                 </p>
               </div>
               <div
@@ -261,12 +287,19 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
             </Card>
           ))}
           {isLoadingPending && pendingTexts.length === 0 ? (
-            <Card className="p-4 text-sm text-muted-foreground">{t('admin.legalAcceptance.loading')}</Card>
+            <Card className="p-4 text-sm text-muted-foreground">
+              {t('admin.legalAcceptance.loading')}
+            </Card>
           ) : null}
         </div>
 
         <div className="flex flex-wrap justify-end gap-3">
-          <Button type="button" variant="outline" onClick={() => void loadPendingTexts()} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void loadPendingTexts()}
+            disabled={isSubmitting}
+          >
             {t('admin.legalAcceptance.retry')}
           </Button>
           <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
@@ -275,8 +308,14 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
               {t('admin.legalAcceptance.logout')}
             </Button>
           </form>
-          <Button type="button" onClick={() => void handleAcceptAll()} disabled={isSubmitting || pendingTexts.length === 0}>
-            {isSubmitting ? t('admin.legalAcceptance.accepting') : t('admin.legalAcceptance.acceptAll')}
+          <Button
+            type="button"
+            onClick={() => void handleAcceptAll()}
+            disabled={isSubmitting || pendingTexts.length === 0}
+          >
+            {isSubmitting
+              ? t('admin.legalAcceptance.accepting')
+              : t('admin.legalAcceptance.acceptAll')}
           </Button>
         </div>
       </div>

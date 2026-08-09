@@ -16,6 +16,12 @@ describe('pluginFaq contract', () => {
         titleKey: 'faq.navigation.title',
         section: 'dataManagement',
         requiredAction: 'faq.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'faq',
+          actions: { mode: 'allOf', values: ['faq.read'] },
+          resourceContext: 'collection',
+        },
       },
     ]);
     expect(pluginFaq.actions).toEqual(pluginFaqActionDefinitions);

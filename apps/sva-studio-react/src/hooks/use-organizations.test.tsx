@@ -22,7 +22,7 @@ const authMockValue = {
   error: null,
   refetch: vi.fn(),
   logout: vi.fn(),
-  invalidatePermissions: vi.fn(),
+  refreshSession: vi.fn(),
 };
 
 vi.mock('../lib/iam-api', () => ({
@@ -137,11 +137,10 @@ describe('useOrganizations', () => {
   });
 
   it('loads organization details', async () => {
-    listOrganizationsMock
-      .mockResolvedValueOnce({
-        data: [],
-        pagination: { page: 1, pageSize: 25, total: 0 },
-      });
+    listOrganizationsMock.mockResolvedValueOnce({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
     getOrganizationMock.mockResolvedValue({ data: createOrganizationDetail() });
 
     const { result } = renderHook(() => useOrganizations());
@@ -165,8 +164,14 @@ describe('useOrganizations', () => {
   });
 
   it('keeps the newest list response when older requests resolve later', async () => {
-    const initialRequest = createDeferred<{ data: ReturnType<typeof createOrganizationListItem>[]; pagination: { page: number; pageSize: number; total: number } }>();
-    const searchRequest = createDeferred<{ data: ReturnType<typeof createOrganizationListItem>[]; pagination: { page: number; pageSize: number; total: number } }>();
+    const initialRequest = createDeferred<{
+      data: ReturnType<typeof createOrganizationListItem>[];
+      pagination: { page: number; pageSize: number; total: number };
+    }>();
+    const searchRequest = createDeferred<{
+      data: ReturnType<typeof createOrganizationListItem>[];
+      pagination: { page: number; pageSize: number; total: number };
+    }>();
 
     listOrganizationsMock.mockImplementation(({ search }: { search?: string }) => {
       if (search === 'beta') {
@@ -197,7 +202,9 @@ describe('useOrganizations', () => {
 
     await act(async () => {
       searchRequest.resolve({
-        data: [createOrganizationListItem({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta' })],
+        data: [
+          createOrganizationListItem({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta' }),
+        ],
         pagination: { page: 1, pageSize: 25, total: 1 },
       });
       await searchRequest.promise;
@@ -249,12 +256,21 @@ describe('useOrganizations', () => {
     });
 
     await act(async () => {
-      secondDetail.resolve({ data: createOrganizationDetail({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta' }) });
+      secondDetail.resolve({
+        data: createOrganizationDetail({
+          id: 'org-2',
+          organizationKey: 'beta',
+          displayName: 'Beta',
+        }),
+      });
       await secondPromise;
     });
 
     await waitFor(() => {
-      expect(result.current.selectedOrganization).toMatchObject({ id: 'org-2', displayName: 'Beta' });
+      expect(result.current.selectedOrganization).toMatchObject({
+        id: 'org-2',
+        displayName: 'Beta',
+      });
     });
 
     await act(async () => {
@@ -289,7 +305,9 @@ describe('useOrganizations', () => {
 
     await act(async () => {
       await result.current.loadOrganization('org-1');
-      await expect(result.current.updateOrganization('org-1', { displayName: 'Alpha 2' })).resolves.toMatchObject({
+      await expect(
+        result.current.updateOrganization('org-1', { displayName: 'Alpha 2' })
+      ).resolves.toMatchObject({
         id: 'org-1',
       });
     });
@@ -348,7 +366,12 @@ describe('useOrganizations', () => {
         pagination: { page: 1, pageSize: 25, total: 1 },
       });
     createOrganizationMock.mockResolvedValue({
-      data: createOrganizationDetail({ id: 'org-2', organizationKey: 'beta', displayName: 'Beta', organizationType: 'municipality' }),
+      data: createOrganizationDetail({
+        id: 'org-2',
+        organizationKey: 'beta',
+        displayName: 'Beta',
+        organizationType: 'municipality',
+      }),
     });
 
     const { result } = renderHook(() => useOrganizations());
@@ -435,65 +458,77 @@ describe('useOrganizations', () => {
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('invalidates permissions on protected list and mutation errors (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    listOrganizationsMock.mockRejectedValueOnce(new Error('protected-list'));
+  ])(
+    'refreshes the session only on 401 list and mutation errors (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      listOrganizationsMock.mockRejectedValueOnce(new Error('protected-list'));
 
-    const { result } = renderHook(() => useOrganizations());
+      const { result } = renderHook(() => useOrganizations());
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toBe(protectedError);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+        expect(result.current.error).toBe(protectedError);
+      });
 
-    listOrganizationsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, total: 0 },
-    });
-    updateOrganizationMock.mockRejectedValueOnce(new Error('protected-update'));
+      listOrganizationsMock.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      });
+      updateOrganizationMock.mockRejectedValueOnce(new Error('protected-update'));
 
-    await act(async () => {
-      await result.current.refetch();
-      const updated = await result.current.updateOrganization('org-1', { displayName: 'blocked' });
-      expect(updated).toBeNull();
-    });
+      await act(async () => {
+        await result.current.refetch();
+        const updated = await result.current.updateOrganization('org-1', {
+          displayName: 'blocked',
+        });
+        expect(updated).toBeNull();
+      });
 
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(2);
-    expect(result.current.mutationError).toBe(protectedError);
-  });
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 2 : 0
+      );
+      expect(result.current.mutationError).toBe(protectedError);
+    }
+  );
 
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },
-  ])('handles protected detail errors and clears transient organization state helpers (status $status, code $code)', async (protectedError) => {
-    asIamErrorMock.mockReturnValue(protectedError);
-    listOrganizationsMock.mockResolvedValue({
-      data: [],
-      pagination: { page: 1, pageSize: 25, total: 0 },
-    });
-    getOrganizationMock.mockRejectedValueOnce(new Error('protected-detail'));
-    deleteOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
+  ])(
+    'handles protected detail errors and clears transient organization state helpers (status $status, code $code)',
+    async (protectedError) => {
+      asIamErrorMock.mockReturnValue(protectedError);
+      listOrganizationsMock.mockResolvedValue({
+        data: [],
+        pagination: { page: 1, pageSize: 25, total: 0 },
+      });
+      getOrganizationMock.mockRejectedValueOnce(new Error('protected-detail'));
+      deleteOrganizationMock.mockResolvedValue({ data: { id: 'org-1' } });
 
-    const { result } = renderHook(() => useOrganizations());
+      const { result } = renderHook(() => useOrganizations());
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
 
-    await act(async () => {
-      const detail = await result.current.loadOrganization('org-1');
-      expect(detail).toBeNull();
-    });
+      await act(async () => {
+        const detail = await result.current.loadOrganization('org-1');
+        expect(detail).toBeNull();
+      });
 
-    expect(result.current.mutationError).toBe(protectedError);
+      expect(result.current.mutationError).toBe(protectedError);
 
-    act(() => {
-      result.current.clearMutationError();
-      result.current.clearSelectedOrganization();
-    });
+      act(() => {
+        result.current.clearMutationError();
+        result.current.clearSelectedOrganization();
+      });
 
-    expect(result.current.mutationError).toBeNull();
-    expect(result.current.selectedOrganization).toBeNull();
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-  });
+      expect(result.current.mutationError).toBeNull();
+      expect(result.current.selectedOrganization).toBeNull();
+      expect(authMockValue.refreshSession).toHaveBeenCalledTimes(
+        protectedError.status === 401 ? 1 : 0
+      );
+    }
+  );
 });

@@ -69,7 +69,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0077_mainserver_data_provider_identity.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung
+- Enthält strukturell den Repo-Sollstand bis `0078_iam_permission_cache_revisions.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung, `0078` die monotonen instanz- und benutzerbezogenen Permission-Cache-Revisionen
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -90,6 +90,8 @@ Zentrale Identitäts- und Berechtigungsstruktur:
 - `iam.account_organizations`
 - `iam.account_roles`
 - `iam.role_permissions`
+- `iam.permission_cache_instance_revisions`
+- `iam.permission_cache_user_revisions`
 
 Kernidee:
 
@@ -99,6 +101,13 @@ Kernidee:
 - `organization_mainserver_credentials` hält organisationsgebundene Mainserver-Application-IDs und verschlüsselte Secrets getrennt vom normalen Organisations-Read-Modell.
 - Rollen und Rechte werden über `account_roles` und `role_permissions` zugewiesen.
 - `role_permissions.access_scope` ergänzt für datensatzbezogene Rechte den Zugriffsmodus einer Rollen-Rechte-Zuordnung (`all`, `own`, `organization`).
+- `permission_cache_instance_revisions` und `permission_cache_user_revisions` liefern den PostgreSQL-autoritativen Revisionsvektor für Permission-Snapshots. Fehlende Zeilen entsprechen logisch Revision `1`; jeder erfolgreiche Bump ist monoton und wird gemeinsam mit der fachlichen Mutation transaktional committed.
+
+### Permission-Cache-Revisionen
+
+`iam.permission_cache_instance_revisions` speichert pro Instanz die Revision für rollen-, permission-, katalog-, hierarchie-, modul- und instanzweite Änderungen. `iam.permission_cache_user_revisions` speichert gezielte Revisionen über den eindeutigen Schlüssel `(instance_id, keycloak_subject)`.
+
+Authorize- und Me-Permissions-Reads bestätigen beide Werte vor jedem L1-/Redis-Hit. Snapshots sind an den exakten Revisionsvektor gebunden; `pg_notify` beschleunigt lediglich Eviction und Cleanup und ist nicht für die Korrektheit erforderlich.
 
 ### `iam.organization_mainserver_credentials`
 

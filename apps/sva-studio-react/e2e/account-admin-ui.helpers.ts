@@ -106,6 +106,19 @@ export const registerAccountAdminAuthRoute = async (page: Page, payload: Account
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload) });
   });
+  if (payload.user.instanceId) {
+    await page.route('**/iam/me/permissions?**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          instanceId: payload.user.instanceId,
+          permissions: payload.user.permissionActions.map((action) => ({ action })),
+          snapshotVersion: 'account-admin-e2e',
+        }),
+      });
+    });
+  }
 };
 
 export const registerPlatformAccountAdminAuthRoute = async (page: Page) => {

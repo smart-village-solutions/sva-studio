@@ -498,6 +498,12 @@ Referenzen:
 
 ### Ergänzung 2026-03: AuthProvider-Pattern und Permission-Checking
 
+- Identitäts-/Session-Refresh, Browser-Refetch des effektiven Access-Snapshots und Session-Widerruf sind getrennte Operationen. Dieser Vertrag stellt keinen manuellen Permission-Cache-Reset bereit.
+- `UiAccessRequirement` und `EffectiveAccessSnapshot` liegen framework-agnostisch in `@sva/iam-core`; React bindet sie ausschließlich im Host.
+- Plattform- und Tenant-Scope sind diskriminiert. Tenant-Entscheidungen kombinieren vollständig qualifizierte Actions mit einem additiven Modul-Gate; technische Plattformrollen dürfen nicht als Tenant-Permission-Ersatz dienen.
+- Ressourcenbezogene `own`-, Organisations- oder Geo-Rechte benötigen eine passende serverautoritativ gelieferte Capability. Globale Action-Mitgliedschaft allein gibt keine Datensatzmutation frei.
+- Plugin-Actions, Navigation, Routen und Admin-Ressourcen deklarieren Access-Anforderungen. Der Host veröffentlicht daraus einen aufgelösten Session-Snapshot; Plugin-UI führt keinen eigenen Auth-Read aus.
+
 - `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
 - UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.
 - Route-Guards (`createProtectedRoute`, `createAdminRoute`) erzwingen Auth/Rollenprüfung vor Seitenrendering.

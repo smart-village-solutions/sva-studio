@@ -69,8 +69,6 @@ export const deriveWasteManagementUiAccess = (
 
 export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) => {
   const sessionAccess = useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
-  const sessionRoles = (sessionAccess as { readonly roles?: readonly string[] }).roles ?? [];
-  const canDeleteHistoryEntries = sessionRoles.some((role) => role.trim() === 'system_admin');
 
   return {
     ...deriveWasteManagementUiAccess(
@@ -78,6 +76,5 @@ export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) =>
       sessionAccess.isResolved ? undefined : currentTab
     ),
     isResolved: sessionAccess.isResolved,
-    canDeleteHistoryEntries,
   };
 };

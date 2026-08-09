@@ -4,6 +4,7 @@ import { readSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plug
 
 import { clearAuthDiagnosticTrail, readAuthDiagnosticTrail } from '../lib/auth-diagnostics';
 import { AuthProvider, useAuth } from './auth-provider';
+import { getEffectiveAccessInvalidationGeneration } from './effective-access-invalidation';
 
 const browserLoggerMock = vi.hoisted(() => ({
   debug: vi.fn(),
@@ -91,8 +92,8 @@ const AuthProbe = () => {
       <button type="button" onClick={() => void auth.loginWithDevAuth()}>
         dev-login
       </button>
-      <button type="button" onClick={() => void auth.invalidatePermissions()}>
-        invalidate
+      <button type="button" onClick={() => void auth.refreshSession()}>
+        refresh-session
       </button>
       <button type="button" onClick={() => void auth.logout()}>
         logout
@@ -188,12 +189,12 @@ describe('AuthProvider', () => {
         instance_id: 'instance-1',
       })
     );
-    await waitFor(() => {
-      expect(readSessionAccessSnapshot()).toEqual({
-        isResolved: true,
-        permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
-        roles: ['editor'],
-      });
+    expect(readSessionAccessSnapshot()).toEqual({
+      isResolved: false,
+      permissionActions: [],
+      unscopedPermissionActions: [],
+      assignedModules: [],
+      roles: [],
     });
   });
 
@@ -289,17 +290,19 @@ describe('AuthProvider', () => {
     const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(now.getTime());
     let scheduledCallback: (() => void) | null = null;
     const originalSetTimeout = window.setTimeout.bind(window);
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(
-      ((handler: TimerHandler, timeout?: number, ...args: unknown[]): number => {
-        if (timeout === 60_000 && scheduledCallback === null && typeof handler === 'function') {
-          const callback = handler as (...callbackArgs: unknown[]) => void;
-          scheduledCallback = () => {
-            callback(...args);
-          };
-        }
-        return originalSetTimeout(handler, timeout, ...args);
-      }) as typeof window.setTimeout
-    );
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number,
+      ...args: unknown[]
+    ): number => {
+      if (timeout === 60_000 && scheduledCallback === null && typeof handler === 'function') {
+        const callback = handler as (...callbackArgs: unknown[]) => void;
+        scheduledCallback = () => {
+          callback(...args);
+        };
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    }) as typeof window.setTimeout);
 
     const fetchMock = vi
       .fn()
@@ -367,23 +370,25 @@ describe('AuthProvider', () => {
     const scheduledCallbacks: Array<() => void> = [];
     const scheduledAuthTimeouts: number[] = [];
     const originalSetTimeout = window.setTimeout.bind(window);
-    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(
-      ((handler: TimerHandler, timeout?: number, ...args: unknown[]): number => {
-        if (
-          typeof handler === 'function' &&
-          typeof timeout === 'number' &&
-          timeout >= 59_000 &&
-          timeout <= 60_000
-        ) {
-          const callback = handler as (...callbackArgs: unknown[]) => void;
-          scheduledAuthTimeouts.push(timeout);
-          scheduledCallbacks.push(() => {
-            callback(...args);
-          });
-        }
-        return originalSetTimeout(handler, timeout, ...args);
-      }) as typeof window.setTimeout
-    );
+    const setTimeoutSpy = vi.spyOn(window, 'setTimeout').mockImplementation(((
+      handler: TimerHandler,
+      timeout?: number,
+      ...args: unknown[]
+    ): number => {
+      if (
+        typeof handler === 'function' &&
+        typeof timeout === 'number' &&
+        timeout >= 59_000 &&
+        timeout <= 60_000
+      ) {
+        const callback = handler as (...callbackArgs: unknown[]) => void;
+        scheduledAuthTimeouts.push(timeout);
+        scheduledCallbacks.push(() => {
+          callback(...args);
+        });
+      }
+      return originalSetTimeout(handler, timeout, ...args);
+    }) as typeof window.setTimeout);
 
     const fetchMock = vi
       .fn()
@@ -745,7 +750,9 @@ describe('AuthProvider', () => {
     });
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(assignMock).toHaveBeenCalledWith('/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2');
+    expect(assignMock).toHaveBeenCalledWith(
+      '/?auth=session-expired&returnTo=%2Fadmin%2Fusers%3Fpage%3D2'
+    );
 
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -1139,7 +1146,7 @@ describe('AuthProvider', () => {
     }
   });
 
-  it('keeps the last confirmed user snapshot while invalidating permissions silently', async () => {
+  it('keeps the last confirmed user snapshot while refreshing the session silently', async () => {
     let resolveSecondFetch: ((response: Response) => void) | null = null;
     const fetchMock = vi
       .fn()
@@ -1171,7 +1178,7 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'invalidate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'refresh-session' }));
 
     expect(screen.getByTestId('status').textContent).toBe('ready');
     expect(screen.getByTestId('authenticated').textContent).toBe('yes');
@@ -1193,7 +1200,7 @@ describe('AuthProvider', () => {
     });
   });
 
-  it('does not expose a foreground auth error when silent invalidation fails', async () => {
+  it('does not expose a foreground auth error when a silent session refresh fails', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -1219,7 +1226,7 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('user-id').textContent).toBe('user-1');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'invalidate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'refresh-session' }));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -1230,7 +1237,8 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('error-code').textContent).toBe('none');
   });
 
-  it('invalidates permissions via silent auth refresh', async () => {
+  it('refreshes only the session snapshot and does not invalidate effective access or revoke the session', async () => {
+    const initialInvalidationGeneration = getEffectiveAccessInvalidationGeneration();
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -1264,7 +1272,7 @@ describe('AuthProvider', () => {
       expect(screen.getByTestId('status').textContent).toBe('ready');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'invalidate' }));
+    fireEvent.click(screen.getByRole('button', { name: 'refresh-session' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('user-roles').textContent).toBe('system_admin');
@@ -1272,6 +1280,10 @@ describe('AuthProvider', () => {
 
     expect(screen.getByTestId('status').textContent).toBe('ready');
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenNthCalledWith(1, '/auth/me', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(2, '/auth/me', expect.any(Object));
+    expect(fetchMock).not.toHaveBeenCalledWith('/auth/logout', expect.any(Object));
+    expect(getEffectiveAccessInvalidationGeneration()).toBe(initialInvalidationGeneration);
   });
 
   it('resets local auth state on logout', async () => {

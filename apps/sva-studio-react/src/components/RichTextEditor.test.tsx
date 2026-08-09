@@ -156,4 +156,37 @@ describe('RichTextEditor', () => {
     expect(editor?.getAttribute('aria-multiline')).toBe('true');
     expect(editor?.getAttribute('tabindex')).toBe('0');
   });
+
+  it('removes editing controls and input callbacks in read-only mode', () => {
+    const onChange = vi.fn();
+
+    render(
+      <RichTextEditor
+        id="editor"
+        labelId="editor-label"
+        value="<p>Hallo</p>"
+        onChange={onChange}
+        readOnly
+        commands={{
+          bold: 'Fett',
+          italic: 'Kursiv',
+          underline: 'Unterstrichen',
+          paragraph: 'Absatz',
+          heading: 'Überschrift',
+          bulletList: 'Liste',
+          clearFormatting: 'Formatierung entfernen',
+        }}
+      />
+    );
+
+    const editor = document.getElementById('editor') as HTMLElement;
+    expect(screen.queryByRole('button', { name: 'Fett' })).toBeNull();
+    expect(editor.getAttribute('contenteditable')).toBe('false');
+    expect(editor.getAttribute('aria-readonly')).toBe('true');
+    expect(editor.getAttribute('tabindex')).toBe('-1');
+
+    fireEvent.input(editor, { target: { innerHTML: '<p>Manipuliert</p>' } });
+    fireEvent.blur(editor);
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });

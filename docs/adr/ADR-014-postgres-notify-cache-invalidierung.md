@@ -12,24 +12,26 @@ Rein TTL-basierte Invalidierung erzeugt zu lange Stale-Fenster. Eine synchrone D
 
 ## Entscheidung
 
-Wir verwenden **Postgres NOTIFY** als primären Trigger für Cache-Invalidierung und kombinieren ihn mit **TTL/Recompute-Begrenzung**:
+Wir verwenden einen monotonen PostgreSQL-Revisionsvektor als Korrektheitsgrenze. `NOTIFY` ist nur der schnelle Trigger für Eviction und Cleanup:
 
-1. Änderungen an IAM-Rechten emittieren ein Event auf Kanal `iam_permission_snapshot_invalidation` mit `eventId`.
-2. Authorize-Instanzen hören auf den Kanal (`LISTEN`) und deduplizieren Ereignisse pro `eventId`.
-3. Betroffene Snapshot-Scopes werden invalidiert (User- oder Instanzscope).
-4. Falls Events verloren gehen, begrenzt TTL die Stale-Dauer; ein technischer Fehler führt jedoch nicht zu einem fachlichen Fallback.
-5. Redis-Lookup-, Snapshot-Write- und Recompute-Fehler enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`.
+1. Änderungen an IAM-Rechten erhöhen in derselben Transaktion entweder die benutzerbezogene `userRevision` oder konservativ die instanzweite `instanceRevision`.
+2. Dieselbe SQL-Anweisung emittiert ein Event auf Kanal `iam_permission_snapshot_invalidation` mit `eventId`, Revisionsscope und neuer Revision. PostgreSQL stellt es erst nach erfolgreichem Commit zu.
+3. Jeder L1- oder Redis-Hit wird erst nach einem schmalen PostgreSQL-Read des aktuellen Revisionsvektors verwendet; Snapshots sind durch beide Revisionen adressiert.
+4. Authorize-Instanzen hören auf den Kanal (`LISTEN`), deduplizieren Ereignisse pro `eventId` und entfernen betroffene L1-/Redis-Einträge best-effort.
+5. Verlorene, verspätete oder doppelte Events ändern die fachliche Gültigkeit nicht. Alte Revisionskeys werden nach einem Bump nicht mehr adressiert und laufen über TTL aus.
+6. Recompute läuft in einem konsistenten PostgreSQL-Snapshot. Vor Publish wird die Revision erneut gelesen; veraltete Kandidaten werden verworfen und höchstens einmal wiederholt.
+7. Redis-Lookup-, Snapshot-Write-, Revisions-Read- und Recompute-Fehler enden fail-closed mit HTTP `503` und Fehlercode `database_unavailable`.
 
 ## Begründung
 
 - Event-getriebene Invalidierung reduziert Stale-Risiko deutlich gegenüber reinem TTL-Ansatz.
 - Postgres NOTIFY ist ohne zusätzliche Broker-Infrastruktur verfügbar.
-- TTL/Recompute begrenzt Eventverlust, ohne einen unsicheren Stale-Fallback einzuführen.
+- Der autoritative Revisions-Read beseitigt Eventverlust als Korrektheitsrisiko; TTL begrenzt nur noch physische Altlasten.
 
 ## Verbindliche Leitplanken
 
 - Snapshot-TTL: `300s`
-- Maximal tolerierte Stale-Dauer: `300s`
+- Maximal tolerierte fachliche Stale-Dauer nach bestätigtem Revisions-Read: `0s`
 - Invalidation-End-to-End-Latenz: `P95 <= 2s`, `P99 <= 5s`
 - Logging-Pflichtfelder: `workspace_id` (= `instanceId`), `component`, `environment`, `level`, plus `request_id`/`trace_id`
 
@@ -52,7 +54,7 @@ Wir verwenden **Postgres NOTIFY** als primären Trigger für Cache-Invalidierung
 ### Positiv
 
 - Niedrigere Authorize-Latenz durch Snapshot-Hits
-- Konsistente Invalidierung mit klaren Fallbacks
+- Revisionsgebundene Gültigkeit unabhängig von der Zuverlässigkeit des Eventkanals
 - Gute Beobachtbarkeit über strukturierte Cache-Events und OTEL-Metriken
 
 ### Negativ

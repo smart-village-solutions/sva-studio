@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
-import { navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
+import {
+  gotoHomeAsAuthenticatedUser,
+  navigateClientSide,
+  registerSharedIamRoutes,
+} from './studio-shell.helpers';
 
 type RecordedServerFnResponse = {
   body: string;
@@ -86,6 +90,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
             'poi.create',
             'poi.update',
             'poi.delete',
+            'integration.manage',
           ],
         },
       }),
@@ -110,6 +115,7 @@ const mockAuthenticatedPluginShell = async (page: Page) => {
           { action: 'poi.create', resourceType: 'poi' },
           { action: 'poi.update', resourceType: 'poi' },
           { action: 'poi.delete', resourceType: 'poi' },
+          { action: 'integration.manage', resourceType: 'integration' },
         ],
         subject: {
           actorUserId: 'kc-editor-1',
@@ -182,13 +188,10 @@ test('GET / returns 200 and renders app shell', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'SVA Studio' })).toBeVisible();
 });
 
-test('GET /interfaces returns 200', async ({ page }) => {
-  const response = await page.goto('/interfaces');
-  expect(response).not.toBeNull();
-  if (!response) {
-    throw new Error('Antwort für GET /interfaces erwartet.');
-  }
-  expect(response.status()).toBeLessThan(400);
+test('authenticated client navigation renders /interfaces', async ({ page }) => {
+  await mockAuthenticatedPluginShell(page);
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/interfaces');
   await expectInterfacesShellReady(page);
 });
 
@@ -225,8 +228,11 @@ test('interfaces page uses the real /_server transport during overview load', as
     pageErrors.push(error.message);
   });
 
-  await page.goto('/interfaces');
-  await expect(page.getByRole('heading', { name: 'Schnittstellen' })).toBeVisible({ timeout: 20_000 });
+  await gotoHomeAsAuthenticatedUser(page);
+  await navigateClientSide(page, '/interfaces');
+  await expect(
+    page.getByRole('heading', { name: 'Schnittstellen', exact: true })
+  ).toBeVisible({ timeout: 20_000 });
   await expect
     .poll(
       () => serverFnResponses.find((response) => response.method === 'GET')?.status,

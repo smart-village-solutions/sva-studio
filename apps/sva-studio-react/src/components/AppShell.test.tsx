@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AppShell from './AppShell';
 
 const useAuthMock = vi.fn();
+const retryEffectiveAccessMock = vi.fn();
 
 /**
  * Mockt den TanStack-Link für DOM-basierte Komponententests.
@@ -29,6 +30,24 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => ({
+    snapshot: { status: 'ready' },
+    retry: retryEffectiveAccessMock,
+  }),
+}));
+
+vi.mock('../hooks/use-organization-context', () => ({
+  useOrganizationContext: () => ({
+    context: null,
+    organizations: [],
+    isLoading: false,
+    error: null,
+    setActiveOrganization: vi.fn(),
+    refresh: vi.fn(),
+  }),
 }));
 
 vi.mock('../providers/theme-provider', () => ({
@@ -74,6 +93,7 @@ vi.mock('./Sidebar', () => ({
 afterEach(() => {
   cleanup();
   useAuthMock.mockReset();
+  retryEffectiveAccessMock.mockReset();
 });
 
 beforeEach(() => {
@@ -88,7 +108,7 @@ beforeEach(() => {
     error: null,
     refetch: vi.fn(),
     logout: vi.fn(),
-    invalidatePermissions: vi.fn(),
+    refreshSession: vi.fn(),
   });
   Object.defineProperty(window, 'localStorage', {
     configurable: true,
@@ -160,7 +180,7 @@ describe('AppShell', () => {
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     render(
@@ -182,7 +202,7 @@ describe('AppShell', () => {
       error: null,
       refetch: vi.fn(),
       logout: vi.fn(),
-      invalidatePermissions: vi.fn(),
+      refreshSession: vi.fn(),
     });
 
     render(

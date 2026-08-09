@@ -23,6 +23,12 @@ describe('pluginGenericItems contract', () => {
         titleKey: 'genericItems.navigation.title',
         section: 'dataManagement',
         requiredAction: 'generic-items.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'generic-items',
+          actions: { mode: 'allOf', values: ['generic-items.read'] },
+          resourceContext: 'collection',
+        },
       },
     ]);
     expect(pluginGenericItems.actions?.map((action) => action.id)).toEqual([

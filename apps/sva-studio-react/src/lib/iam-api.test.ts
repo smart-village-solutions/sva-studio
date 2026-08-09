@@ -71,6 +71,7 @@ import {
   removeGroupRole,
   requestDataExport,
   requestLegalConsentExport,
+  readIamErrorResponse,
   saveAdminDeletionRules,
   saveMyDeletionRulesContentPreference,
   revokeInstanceModule,
@@ -84,6 +85,7 @@ import {
   updateOrganizationMembership,
   updateGroup,
   updateOrganization,
+  EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT,
   LEGAL_ACCEPTANCE_REQUIRED_EVENT,
   normalizeRuntimeHealthResponse,
 } from './iam-api';
@@ -486,6 +488,65 @@ describe('iam-api organization helpers', () => {
     });
     expect(dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
     expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispatches effective-access invalidation for stale signals and forbidden responses', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'permission_snapshot_stale' }), {
+          status: 409,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      code: 'permission_snapshot_stale',
+    });
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
+      EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT
+    );
+
+    dispatchEvent.mockClear();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'forbidden' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        })
+      )
+    );
+    await expect(updateOrganization('org-1', { displayName: 'Alpha 2' })).rejects.toMatchObject({
+      code: 'forbidden',
+    });
+    expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
+      EFFECTIVE_ACCESS_INVALIDATION_REQUIRED_EVENT
+    );
+  });
+
+  it('can read a permission snapshot 403 without recursively invalidating effective access', async () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal('window', {});
+    vi.stubGlobal('dispatchEvent', dispatchEvent);
+
+    await expect(
+      readIamErrorResponse(
+        new Response(JSON.stringify({ error: 'forbidden' }), {
+          status: 403,
+          headers: { 'content-type': 'application/json' },
+        }),
+        { emitEffectiveAccessInvalidation: false }
+      )
+    ).resolves.toMatchObject({ status: 403, code: 'forbidden' });
+    expect(dispatchEvent).not.toHaveBeenCalled();
   });
 
   it('supports the flat error response shape and request id header', async () => {
@@ -874,7 +935,6 @@ describe('iam-api organization helpers', () => {
     );
   });
 });
-
 describe('iam-api user sync helper', () => {
   beforeEach(() => {
     vi.restoreAllMocks();

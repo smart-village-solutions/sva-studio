@@ -90,6 +90,11 @@ export type IamPermissionProvenance = {
 
 export type SnapshotCacheStatus = 'hit' | 'miss' | 'recompute' | 'degraded' | 'warming' | 'empty';
 
+export type PermissionRevisionVector = Readonly<{
+  instanceRevision: number;
+  userRevision: number;
+}>;
+
 export type AuthorizeResponse = {
   readonly allowed: boolean;
   readonly reason: AuthorizeReasonCode;
@@ -104,6 +109,7 @@ export type AuthorizeResponse = {
   // Snapshot metadata
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
+  readonly permissionRevision?: PermissionRevisionVector;
   readonly matchedPermissions?: readonly MatchedPermissionSummary[];
   readonly denialCode?: DenyReasonCode;
   readonly provenance?: IamPermissionProvenance;
@@ -161,6 +167,7 @@ export type MePermissionsResponse = {
   // Snapshot metadata
   readonly snapshotVersion?: string;
   readonly cacheStatus?: SnapshotCacheStatus;
+  readonly permissionRevision?: PermissionRevisionVector;
   readonly provenance?: Readonly<{
     readonly hasGroupDerivedPermissions: boolean;
     readonly hasGeoInheritance: boolean;

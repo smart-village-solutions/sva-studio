@@ -161,7 +161,7 @@ describe('protected routes', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('keeps degraded permission snapshots routable when the required permission is present', async () => {
+  it('fails closed for degraded permission snapshots even when a legacy action is present', async () => {
     const guard = createProtectedRoute({ route: '/plugins/news', requiredPermissions: ['news.read'] });
 
     await expect(
@@ -170,7 +170,7 @@ describe('protected routes', () => {
         { roles: ['custom_role'], permissionActions: ['news.read'], permissionStatus: 'degraded' },
         '/plugins/news'
       )
-    ).resolves.toBeUndefined();
+    ).rejects.toBeDefined();
   });
 
   it('uses explicit admin permissions in createAdminRoute', async () => {

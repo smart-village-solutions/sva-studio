@@ -8,9 +8,62 @@ import {
   createStandardContentPluginPermissions,
   createStandardContentPluginSystemRoles,
   createStandardContentPluginActionIds,
+  resolveStandardContentAccessCapabilities,
 } from './index.js';
 
 describe('standard content plugin helpers', () => {
+  it('resolves mutation capabilities only from a resolved snapshot with the assigned module', () => {
+    expect(
+      resolveStandardContentAccessCapabilities('news', {
+        isResolved: true,
+        assignedModules: ['news'],
+        permissionActions: ['news.read', 'news.update'],
+        unscopedPermissionActions: ['news.read', 'news.update'],
+        roles: [],
+      })
+    ).toEqual({
+      isResolved: true,
+      canRead: true,
+      canCreate: false,
+      canUpdate: true,
+      canDelete: false,
+    });
+
+    expect(
+      resolveStandardContentAccessCapabilities('news', {
+        isResolved: true,
+        assignedModules: [],
+        permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        roles: [],
+      })
+    ).toEqual({
+      isResolved: true,
+      canRead: false,
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
+    });
+  });
+
+  it('does not promote scoped update or delete grants to global detail capabilities', () => {
+    expect(
+      resolveStandardContentAccessCapabilities('news', {
+        isResolved: true,
+        assignedModules: ['news'],
+        permissionActions: ['news.read', 'news.update', 'news.delete'],
+        unscopedPermissionActions: ['news.read'],
+        roles: [],
+      })
+    ).toEqual({
+      isResolved: true,
+      canRead: true,
+      canCreate: false,
+      canUpdate: false,
+      canDelete: false,
+    });
+  });
+
   it('builds canonical action ids, actions, permissions and module iam contracts', () => {
     const actionIds = createStandardContentPluginActionIds('news');
     const actions = createStandardContentPluginActions('news', {
@@ -33,23 +86,43 @@ describe('standard content plugin helpers', () => {
         id: 'news.create',
         titleKey: 'news.actions.create',
         requiredAction: 'news.create',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'news',
+          actions: { mode: 'allOf', values: ['news.create'] },
+        },
         legacyAliases: ['create'],
       },
       {
         id: 'news.edit',
         titleKey: 'news.actions.edit',
         requiredAction: 'news.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'news',
+          actions: { mode: 'allOf', values: ['news.read'] },
+        },
       },
       {
         id: 'news.update',
         titleKey: 'news.actions.update',
         requiredAction: 'news.update',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'news',
+          actions: { mode: 'allOf', values: ['news.update'] },
+        },
         legacyAliases: ['save', 'update'],
       },
       {
         id: 'news.delete',
         titleKey: 'news.actions.delete',
         requiredAction: 'news.delete',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'news',
+          actions: { mode: 'allOf', values: ['news.delete'] },
+        },
       },
     ]);
     expect(permissions).toEqual([
@@ -97,6 +170,24 @@ describe('standard content plugin helpers', () => {
         create: ['events.create'],
         detail: ['events.read'],
       },
+      accessRequirements: {
+        list: {
+          kind: 'tenant',
+          moduleId: 'events',
+          actions: { mode: 'allOf', values: ['events.read'] },
+          resourceContext: 'collection',
+        },
+        create: {
+          kind: 'tenant',
+          moduleId: 'events',
+          actions: { mode: 'allOf', values: ['events.create'] },
+        },
+        detail: {
+          kind: 'tenant',
+          moduleId: 'events',
+          actions: { mode: 'allOf', values: ['events.read'] },
+        },
+      },
       capabilities: {
         list: {
           pagination: {
@@ -137,10 +228,26 @@ describe('standard content plugin helpers', () => {
           titleKey: 'poi.navigation.title',
           section: 'dataManagement',
           requiredAction: 'poi.read',
+          accessRequirement: {
+            kind: 'tenant',
+            moduleId: 'poi',
+            actions: { mode: 'allOf', values: ['poi.read'] },
+            resourceContext: 'collection',
+          },
         },
       ],
-      actions: [{ id: 'poi.create' }, { id: 'poi.edit' }, { id: 'poi.update' }, { id: 'poi.delete' }],
-      permissions: [{ id: 'poi.read' }, { id: 'poi.create' }, { id: 'poi.update' }, { id: 'poi.delete' }],
+      actions: [
+        { id: 'poi.create' },
+        { id: 'poi.edit' },
+        { id: 'poi.update' },
+        { id: 'poi.delete' },
+      ],
+      permissions: [
+        { id: 'poi.read' },
+        { id: 'poi.create' },
+        { id: 'poi.update' },
+        { id: 'poi.delete' },
+      ],
       contentTypes: [
         {
           contentType: 'poi.point-of-interest',

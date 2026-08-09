@@ -39,6 +39,11 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.navigation.title',
         section: 'dataManagement',
         requiredAction: 'waste-management.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'waste-management',
+          actions: { mode: 'allOf', values: ['waste-management.read'] },
+        },
       },
     ]);
     expect(pluginWasteManagement.permissions).toEqual(wasteManagementPermissionDefinitions);

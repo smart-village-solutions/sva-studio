@@ -7,7 +7,7 @@ import { ContentEditorPage } from './-content-editor-page';
 
 const navigateMock = vi.fn();
 const useContentAccessMock = vi.fn();
-const invalidatePermissionsMock = vi.fn();
+const refreshSessionMock = vi.fn();
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -35,7 +35,7 @@ vi.mock('../../providers/auth-provider', () => ({
     error: null,
     refetch: vi.fn(),
     logout: vi.fn(),
-    invalidatePermissions: invalidatePermissionsMock,
+    refreshSession: refreshSessionMock,
     updateProfile: vi.fn(),
   }),
 }));
@@ -99,7 +99,7 @@ const createHistoryEntry = (overrides: Record<string, unknown> = {}) => ({
 describe('ContentEditorPage', () => {
   beforeEach(() => {
     navigateMock.mockReset();
-    invalidatePermissionsMock.mockReset();
+    refreshSessionMock.mockReset();
     useContentAccessMock.mockReset();
     useContentAccessMock.mockReturnValue(defaultAccess);
   });

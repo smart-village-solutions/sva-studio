@@ -22,7 +22,19 @@ const state = vi.hoisted(() => ({
   params: {} as { id?: string; contentId?: string },
   search: { page: 1, pageSize: 25 } as { page?: number; pageSize?: number },
   sessionAccess: {
-    permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'],
+    isResolved: true,
+    assignedModules: ['cockpit-cards'],
+    permissionActions: [
+      'cockpit-cards.read',
+      'cockpit-cards.create',
+      'cockpit-cards.update',
+      'cockpit-cards.delete',
+      'media.read',
+      'media.reference.manage',
+      'media.create',
+      'media.update',
+    ],
+    roles: [],
   },
 }));
 
@@ -69,6 +81,27 @@ vi.mock('@sva/plugin-sdk', () => ({
       canSelect,
       canUpload: canSelect && permissions.has('media.create'),
       canEditAssetMetadata: canEditContent && permissions.has('media.update'),
+    };
+  },
+  resolveStandardContentAccessCapabilities: (
+    pluginId: string,
+    snapshot: {
+      isResolved: boolean;
+      assignedModules: readonly string[];
+      permissionActions: readonly string[];
+    }
+  ) => {
+    const permissions = new Set(snapshot.permissionActions);
+    const allows = (action: string) =>
+      snapshot.isResolved &&
+      snapshot.assignedModules.includes(pluginId) &&
+      permissions.has(`${pluginId}.${action}`);
+    return {
+      isResolved: snapshot.isResolved,
+      canRead: allows('read'),
+      canCreate: allows('create'),
+      canUpdate: allows('update'),
+      canDelete: allows('delete'),
     };
   },
   replaceHostMediaReferences: state.replaceReferences,
@@ -119,7 +152,19 @@ describe('cockpit cards pages', () => {
     state.params = {};
     state.search = { page: 1, pageSize: 25 };
     state.sessionAccess = {
-      permissionActions: ['media.read', 'media.reference.manage', 'media.create', 'media.update'],
+      isResolved: true,
+      assignedModules: ['cockpit-cards'],
+      permissionActions: [
+        'cockpit-cards.read',
+        'cockpit-cards.create',
+        'cockpit-cards.update',
+        'cockpit-cards.delete',
+        'media.read',
+        'media.reference.manage',
+        'media.create',
+        'media.update',
+      ],
+      roles: [],
     };
     state.listCategories.mockResolvedValue([{ id: 'category-1', name: 'Startseite' }]);
     state.listAssets.mockResolvedValue([
@@ -321,7 +366,17 @@ describe('cockpit cards pages', () => {
   });
 
   it('keeps library and upload actions unavailable without media permissions', async () => {
-    state.sessionAccess = { permissionActions: [] };
+    state.sessionAccess = {
+      isResolved: true,
+      assignedModules: ['cockpit-cards'],
+      permissionActions: [
+        'cockpit-cards.read',
+        'cockpit-cards.create',
+        'cockpit-cards.update',
+        'cockpit-cards.delete',
+      ],
+      roles: [],
+    };
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));

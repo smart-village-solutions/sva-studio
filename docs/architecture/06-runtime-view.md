@@ -1,5 +1,23 @@
 # 06 Laufzeitsicht
 
+## Scopegebundene UI-Autorisierung
+
+1. `/auth/me` löst ausschließlich Identität, Session, technische Plattformrollen und die fail-closed Modulprojektion auf.
+2. Der gemeinsame Organisationskontext bestimmt den aktiven Tenant-/Organisationsscope.
+3. Im Tenant-Scope liest der `EffectiveAccessProvider` `/iam/me/permissions`; im Plattform-Scope verwendet er ausschließlich die validierte technische Session-Sicht.
+4. Scope-, Organisations-, Session- oder Invalidation-Wechsel erhöhen eine Generation, verwerfen alte Actions atomar und brechen den vorherigen Request ab. Verspätete Antworten einer alten Generation werden ignoriert.
+5. Routing, Sidebar, Host-Seiten und Plugin-Session-Snapshot konsumieren dieselbe Generation. `unresolved`, `loading` und `error` sind fail-closed.
+6. Eine UI-Freigabe ersetzt niemals die serverseitige Action-, Instanz-, Organisations- oder Ressourcenprüfung.
+
+## Revisionsgebundener Permission-Cache
+
+1. Der Read-Pfad liest den aktuellen `instanceRevision`-/`userRevision`-Vektor aus PostgreSQL.
+2. Nur ein L1-/Redis-v2-Snapshot mit exakt diesem Vektor ist adressierbar.
+3. Bei Miss wird aus einer `REPEATABLE READ`-Transaktion neu berechnet; identische Recomputes werden pro Replikat zusammengeführt.
+4. Vor Redis-/L1-Publish bestätigt ein zweiter Revisions-Read den Kandidaten. Bei Drift wird er verworfen und einmal gegen die neue Revision wiederholt.
+5. Eine IAM-Mutation schreibt Fachdaten, Revisions-Bump und `pg_notify` in derselben Transaktion. Rollback veröffentlicht weder Revision noch Event.
+6. Listener-Eviction und Redis-Cleanup sind Best-Effort-Lastreduktion; verlorene oder verspätete Events können keinen alten Revisionskey wieder gültig machen.
+
 ## Tenant-Aktivierung über Registry, Ingress und TLS
 
 1. Eine Instanz wird mit primärem Host und Auth-Kontext in der Registry vorbereitet.

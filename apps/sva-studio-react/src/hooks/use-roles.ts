@@ -20,6 +20,7 @@ import {
   logBrowserOperationSuccess,
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
+import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
 import { useIamAdminList } from './use-iam-admin-list';
 
 type UseRolesResult = {
@@ -40,9 +41,11 @@ type UseRolesResult = {
 const rolesLogger = createOperationLogger('roles-hook', 'debug');
 
 export const useRoles = (): UseRolesResult => {
-  const { invalidatePermissions } = useAuth();
+  const { refreshSession } = useAuth();
   const [reconcileReport, setReconcileReport] = React.useState<RoleReconcileReport | null>(null);
-  const adminList = useIamAdminList(listRoles, invalidatePermissions);
+  const adminList = useIamAdminList(listRoles, refreshSession, {
+    invalidateEffectiveAccessOnMutation: true,
+  });
 
   return {
     roles: adminList.items,
@@ -52,10 +55,16 @@ export const useRoles = (): UseRolesResult => {
     reconcileReport,
     refetch: adminList.refetch,
     clearMutationError: adminList.clearMutationError,
-    createRole: (payload) => adminList.runMutation(() => createRole(payload), { operation: 'create_role' }),
-    updateRole: (roleId, payload) => adminList.runMutation(() => updateRole(roleId, payload), { operation: 'update_role' }),
-    deleteRole: (roleId) => adminList.runMutation(() => deleteRole(roleId), { operation: 'delete_role' }),
-    retryRoleSync: (roleId) => adminList.runMutation(() => updateRole(roleId, { retrySync: true }), { operation: 'retry_role_sync' }),
+    createRole: (payload) =>
+      adminList.runMutation(() => createRole(payload), { operation: 'create_role' }),
+    updateRole: (roleId, payload) =>
+      adminList.runMutation(() => updateRole(roleId, payload), { operation: 'update_role' }),
+    deleteRole: (roleId) =>
+      adminList.runMutation(() => deleteRole(roleId), { operation: 'delete_role' }),
+    retryRoleSync: (roleId) =>
+      adminList.runMutation(() => updateRole(roleId, { retrySync: true }), {
+        operation: 'retry_role_sync',
+      }),
     reconcile: async () => {
       adminList.setError(null);
       setReconcileReport(null);
@@ -64,6 +73,7 @@ export const useRoles = (): UseRolesResult => {
       });
       try {
         const response = await reconcileRoles();
+        requestEffectiveAccessInvalidation();
         setReconcileReport(response.data);
         await adminList.refetch();
         logBrowserOperationSuccess(rolesLogger, 'roles_reconcile_succeeded', {
@@ -72,9 +82,9 @@ export const useRoles = (): UseRolesResult => {
         return true;
       } catch (cause) {
         const resolvedError = asIamError(cause);
-        if (resolvedError.status === 403) {
-          await invalidatePermissions();
-          rolesLogger.info('permission_invalidated_after_403', {
+        if (resolvedError.status === 401) {
+          await refreshSession();
+          rolesLogger.info('session_refreshed_after_401', {
             operation: 'reconcile_roles',
             status: resolvedError.status,
             error_code: resolvedError.code,

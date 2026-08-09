@@ -57,6 +57,14 @@ vi.mock('../providers/auth-provider', () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock('../hooks/use-organization-context', () => ({
+  OrganizationContextProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock('../providers/effective-access-provider', () => ({
+  EffectiveAccessProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
 vi.mock('../providers/locale-provider', () => ({
   LocaleProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));

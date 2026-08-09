@@ -1,7 +1,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerPluginTranslationResolver } from '@sva/plugin-sdk';
+import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from '@sva/plugin-sdk';
 
 import {
   createGenericItem,
@@ -73,6 +73,23 @@ vi.mock('@sva/plugin-sdk', async () => {
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['generic-items'],
+      permissionActions: [
+        'generic-items.read',
+        'generic-items.create',
+        'generic-items.update',
+        'generic-items.delete',
+      ],
+      unscopedPermissionActions: [
+        'generic-items.read',
+        'generic-items.create',
+        'generic-items.update',
+        'generic-items.delete',
+      ],
+      roles: [],
+    });
     navigateMock.mockReset();
     vi.stubGlobal(
       'confirm',

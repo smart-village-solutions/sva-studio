@@ -6,6 +6,17 @@ import { RolesPage } from './-roles-page';
 
 const useRolesMock = vi.fn();
 const useAuthMock = vi.fn();
+const iamAccessAllowedMock = vi.fn();
+
+vi.mock('../../../hooks/use-iam-resource-access', () => ({
+  useIamResourceAccess: () => ({
+    read: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    create: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    update: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+    delete: { status: iamAccessAllowedMock() ? 'allowed' : 'denied' },
+  }),
+  isIamAccessAllowed: (decision: { status: string }) => decision.status === 'allowed',
+}));
 
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
@@ -46,9 +57,13 @@ vi.mock('../../../providers/auth-provider', () => ({
 
 describe('RolesPage', () => {
   beforeEach(() => {
+    iamAccessAllowedMock.mockReset();
+    iamAccessAllowedMock.mockReturnValue(true);
     useRolesMock.mockReset();
     useAuthMock.mockReset();
-    useAuthMock.mockReturnValue({ user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] } });
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-admin', instanceId: 'de-musterhausen', roles: ['system_admin'] },
+    });
   });
 
   afterEach(() => {
@@ -96,7 +111,9 @@ describe('RolesPage', () => {
           memberCount: 3,
           syncState: 'failed',
           syncError: { code: 'IDP_UNAVAILABLE' },
-          permissions: [{ id: 'perm-2', permissionKey: 'content.updatePayload', description: null }],
+          permissions: [
+            { id: 'perm-2', permissionKey: 'content.updatePayload', description: null },
+          ],
         },
       ],
       isLoading: false,
@@ -132,7 +149,9 @@ describe('RolesPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Rolle' }));
 
-    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe('/admin/roles/role-2');
+    expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' })[0]?.getAttribute('href')).toBe(
+      '/admin/roles/role-2'
+    );
     expect(screen.getAllByText('Editorial role').length).toBeGreaterThan(0);
   });
 
@@ -156,8 +175,12 @@ describe('RolesPage', () => {
 
     render(<RolesPage />);
 
-    expect(screen.getByRole('link', { name: 'Rolle anlegen' }).getAttribute('href')).toBe('/admin/roles/new');
-    fireEvent.click(screen.getByRole('button', { name: 'Bereits in Keycloak angelegte Rollen importieren' }));
+    expect(screen.getByRole('link', { name: 'Rolle anlegen' }).getAttribute('href')).toBe(
+      '/admin/roles/new'
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Bereits in Keycloak angelegte Rollen importieren' })
+    );
     expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
@@ -176,7 +199,9 @@ describe('RolesPage', () => {
           memberCount: 0,
           syncState: 'synced',
           editability: 'read_only',
-          diagnostics: [{ code: 'built_in_role', objectId: 'realm:default-roles', objectType: 'role' }],
+          diagnostics: [
+            { code: 'built_in_role', objectId: 'realm:default-roles', objectType: 'role' },
+          ],
           permissions: [],
         },
       ],
@@ -309,7 +334,9 @@ describe('RolesPage', () => {
             action: 'report',
             status: 'requires_manual_action',
             errorCode: 'IDP_FORBIDDEN',
-            diagnostics: [{ code: 'forbidden_role_mapping', objectId: 'role-1', objectType: 'role' }],
+            diagnostics: [
+              { code: 'forbidden_role_mapping', objectId: 'role-1', objectType: 'role' },
+            ],
           },
         ],
       },
@@ -332,7 +359,9 @@ describe('RolesPage', () => {
 
   it('renders platform roles on root scope without tenant mutations', () => {
     const reconcile = vi.fn();
-    useAuthMock.mockReturnValue({ user: { id: 'platform-admin', roles: ['instance_registry_admin'] } });
+    useAuthMock.mockReturnValue({
+      user: { id: 'platform-admin', roles: ['instance_registry_admin'] },
+    });
     useRolesMock.mockReturnValue({
       roles: [
         {
@@ -430,8 +459,49 @@ describe('RolesPage', () => {
     render(<RolesPage />);
 
     expect(screen.getAllByRole('link', { name: 'Rolle bearbeiten' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Erneut synchronisieren' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('button', { name: 'Erneut synchronisieren' }).length
+    ).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Rolle löschen' }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('Writes content').length).toBeGreaterThan(0);
+  });
+
+  it('removes all role mutation controls without write access', () => {
+    iamAccessAllowedMock.mockReturnValue(false);
+    useRolesMock.mockReturnValue({
+      roles: [
+        {
+          id: 'role-9',
+          roleKey: 'writer',
+          roleName: 'writer',
+          externalRoleName: 'writer',
+          managedBy: 'studio',
+          description: 'Writes content',
+          isSystemRole: false,
+          roleLevel: 15,
+          memberCount: 2,
+          syncState: 'failed',
+          permissions: [],
+        },
+      ],
+      isLoading: false,
+      error: null,
+      mutationError: null,
+      reconcileReport: null,
+      refetch: vi.fn(),
+      clearMutationError: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      retryRoleSync: vi.fn(),
+      reconcile: vi.fn(),
+    });
+
+    render(<RolesPage />);
+
+    expect(screen.queryByRole('link', { name: 'Rolle anlegen' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Aus Keycloak importieren' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Erneut synchronisieren' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Rolle löschen' })).toBeNull();
   });
 });

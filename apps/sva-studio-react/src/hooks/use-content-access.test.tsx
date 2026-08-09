@@ -1,414 +1,131 @@
-import { renderHook, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { resetRequestSingleFlight } from '../lib/request-singleflight';
 import { useContentAccess } from './use-content-access';
 
-const browserLoggerMock = vi.hoisted(() => ({
-  debug: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-}));
-const authMockValue = {
-  user: {
-    id: 'editor-1',
-    name: 'Editor',
-    roles: ['editor'],
-    instanceId: 'de-musterhausen',
-  },
-  invalidatePermissions: vi.fn(),
+const effectiveAccessMock = {
+  snapshot: {
+    status: 'unresolved',
+    scope: { kind: 'tenant', authGeneration: 1, instanceId: 'instance-1', organizationId: null, moduleAssignmentGeneration: 1 },
+    generation: 1,
+  } as Record<string, unknown>,
+  permissionActions: [] as readonly string[],
+  unscopedPermissionActions: [] as readonly string[],
 };
 
-const asIamErrorMock = vi.fn((error: unknown) => error);
+vi.mock('../providers/effective-access-provider', () => ({
+  useEffectiveAccess: () => effectiveAccessMock,
+}));
 
 vi.mock('../lib/iam-api', () => ({
   IamHttpError: class IamHttpError extends Error {
     status: number;
     code: string;
-
     constructor(input: { status: number; code: string; message: string }) {
       super(input.message);
       this.status = input.status;
       this.code = input.code;
     }
   },
-  asIamError: (...args: Parameters<typeof asIamErrorMock>) => asIamErrorMock(...args),
-  fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
 }));
-
-vi.mock('../providers/auth-provider', () => ({
-  useAuth: () => authMockValue,
-}));
-
-const organizationContextMockValue = {
-  context: null as { activeOrganizationId?: string | null } | null,
-  isLoading: false,
-  isUpdating: false,
-  error: null,
-  refetch: vi.fn(),
-  switchOrganization: vi.fn(),
-};
-
-vi.mock('./use-organization-context', () => ({
-  useOrganizationContext: () => organizationContextMockValue,
-}));
-
-vi.mock('@sva/monitoring-client/logging', () => ({
-  createBrowserLogger: () => browserLoggerMock,
-}));
-
-type PermissionResponseEntry = {
-  readonly action: string;
-  readonly resourceType: string;
-  readonly organizationId?: string;
-  readonly provenance?: { readonly sourceKinds: readonly ('direct_role' | 'group_role')[] };
-};
-
-const stubPermissionResponse = (permissions: readonly PermissionResponseEntry[]) => {
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ permissions }),
-  });
-  vi.stubGlobal('fetch', fetchMock);
-  return fetchMock;
-};
-
-const expectPermissionRequest = (fetchMock: ReturnType<typeof vi.fn>, url: string) => {
-  expect(fetchMock).toHaveBeenCalledWith(url, undefined, {
-    timeoutMs: 10_000,
-  });
-};
 
 describe('useContentAccess', () => {
   beforeEach(() => {
-    resetRequestSingleFlight();
-    authMockValue.user = {
-      id: 'editor-1',
-      name: 'Editor',
-      roles: ['editor'],
-      instanceId: 'de-musterhausen',
+    effectiveAccessMock.snapshot = {
+      status: 'unresolved',
+      scope: { kind: 'tenant', authGeneration: 1, instanceId: 'instance-1', organizationId: null, moduleAssignmentGeneration: 1 },
+      generation: 1,
     };
-    authMockValue.invalidatePermissions.mockReset();
-    organizationContextMockValue.context = null;
-    organizationContextMockValue.isLoading = false;
-    organizationContextMockValue.isUpdating = false;
-    organizationContextMockValue.error = null;
-    organizationContextMockValue.refetch.mockReset();
-    organizationContextMockValue.switchOrganization.mockReset();
-    asIamErrorMock.mockReset();
-    asIamErrorMock.mockImplementation((error: unknown) => error);
-    browserLoggerMock.debug.mockReset();
-    browserLoggerMock.info.mockReset();
-    browserLoggerMock.warn.mockReset();
-    browserLoggerMock.error.mockReset();
+    effectiveAccessMock.permissionActions = [];
+    effectiveAccessMock.unscopedPermissionActions = [];
   });
 
-  afterEach(() => {
-    resetRequestSingleFlight();
-    vi.unstubAllGlobals();
-  });
-
-  it('returns an idle state when no instance is available', () => {
-    authMockValue.user = {
-      id: 'editor-1',
-      name: 'Editor',
-      roles: ['editor'],
-      instanceId: undefined,
-    } as unknown as typeof authMockValue.user;
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
+  it('fails closed while the shared access snapshot is unresolved', () => {
     const { result } = renderHook(() => useContentAccess());
-
     expect(result.current).toEqual({
       access: null,
       permissionActions: [],
+      unscopedPermissionActions: [],
+      isLoading: true,
+      error: null,
+    });
+  });
+
+  it('projects content access from the shared ready snapshot', () => {
+    effectiveAccessMock.snapshot = {
+      status: 'ready',
+      scope: { kind: 'tenant', authGeneration: 2, instanceId: 'instance-1', organizationId: 'org-1', moduleAssignmentGeneration: 2 },
+      generation: 2,
+      assignedModules: ['news'],
+      permissions: [
+        { action: 'content.read', organizationId: 'org-1', provenance: { sourceKinds: ['direct_role'] } },
+        { action: 'content.updatePayload', organizationId: 'org-1', provenance: { sourceKinds: ['group_role'] } },
+        { action: 'news.read' },
+      ],
+    };
+    effectiveAccessMock.permissionActions = ['content.read', 'content.updatePayload', 'news.read'];
+    effectiveAccessMock.unscopedPermissionActions = ['content.read', 'news.read'];
+
+    const { result } = renderHook(() => useContentAccess());
+    expect(result.current.access).toEqual({
+      state: 'editable',
+      canRead: true,
+      canCreate: false,
+      canUpdate: true,
+      organizationIds: ['org-1'],
+      sourceKinds: ['direct_role', 'group_role'],
+    });
+    expect(result.current.permissionActions).toEqual([
+      'content.read',
+      'content.updatePayload',
+      'news.read',
+    ]);
+    expect(result.current.unscopedPermissionActions).toEqual(['content.read', 'news.read']);
+  });
+
+  it('does not reuse tenant actions for a platform snapshot', () => {
+    effectiveAccessMock.snapshot = {
+      status: 'ready',
+      scope: { kind: 'platform', authGeneration: 2 },
+      generation: 2,
+      platformRoles: ['instance_registry_admin'],
+    };
+    effectiveAccessMock.permissionActions = ['content.read'];
+
+    expect(renderHook(() => useContentAccess()).result.current).toEqual({
+      access: null,
+      permissionActions: [],
+      unscopedPermissionActions: [],
       isLoading: false,
       error: null,
     });
-    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('summarizes fetched permissions into content access', async () => {
-    const fetchMock = stubPermissionResponse([
-      {
-        action: 'content.read',
-        resourceType: 'content',
-        organizationId: 'org-1',
-        provenance: { sourceKinds: ['direct_role'] },
-      },
-      {
-        action: 'content.updatePayload',
-        resourceType: 'content',
-        organizationId: 'org-1',
-        provenance: { sourceKinds: ['group_role'] },
-      },
-      {
-        action: 'news.read',
-        resourceType: 'news',
-      },
-    ]);
-
-    const { result } = renderHook(() => useContentAccess());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.access).toEqual({
-        state: 'editable',
-        canRead: true,
-        canCreate: false,
-        canUpdate: true,
-        organizationIds: ['org-1'],
-        sourceKinds: ['direct_role', 'group_role'],
-      });
-      expect(result.current.permissionActions).toEqual([
-        'content.read',
-        'content.updatePayload',
-        'news.read',
-      ]);
-      expect(result.current.error).toBeNull();
-    });
-
-    expectPermissionRequest(fetchMock, '/iam/me/permissions?instanceId=de-musterhausen');
-    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
-      'content_access_load_succeeded',
-      expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
-    );
-  });
-
-  it('includes the active organization context in the permissions request', async () => {
-    organizationContextMockValue.context = {
-      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+  it('returns a denied summary for a server forbidden snapshot without triggering a refetch', () => {
+    effectiveAccessMock.snapshot = {
+      status: 'error',
+      scope: { kind: 'tenant', authGeneration: 3, instanceId: 'instance-1', organizationId: null, moduleAssignmentGeneration: 3 },
+      generation: 3,
+      errorCode: 'forbidden',
     };
-    const fetchMock = stubPermissionResponse([
-      {
-        action: 'content.read',
-        resourceType: 'content',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      },
-      {
-        action: 'content.create',
-        resourceType: 'content',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      },
-    ]);
 
     const { result } = renderHook(() => useContentAccess());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.access?.canCreate).toBe(true);
-    });
-
-    expectPermissionRequest(
-      fetchMock,
-      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
-    );
+    expect(result.current.access).toMatchObject({ state: 'server_denied', canRead: false, canUpdate: false });
+    expect(result.current.permissionActions).toEqual([]);
+    expect(result.current.error).toMatchObject({ status: 403, code: 'forbidden' });
   });
 
-  it('waits for the organization context before requesting permissions', async () => {
-    organizationContextMockValue.isLoading = true;
-    const fetchMock = stubPermissionResponse([
-      {
-        action: 'content.read',
-        resourceType: 'content',
-        organizationId: '11111111-1111-4111-8111-111111111111',
-      },
-    ]);
-
-    const { result, rerender } = renderHook(() => useContentAccess());
-
-    expect(result.current.isLoading).toBe(true);
-    expect(fetchMock).not.toHaveBeenCalled();
-
-    organizationContextMockValue.isLoading = false;
-    organizationContextMockValue.context = {
-      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+  it('preserves non-forbidden snapshot error codes as unavailable IAM errors', () => {
+    effectiveAccessMock.snapshot = {
+      status: 'error',
+      scope: { kind: 'tenant', authGeneration: 4, instanceId: 'instance-1', organizationId: null, moduleAssignmentGeneration: 4 },
+      generation: 4,
+      errorCode: 'database_unavailable',
     };
-    rerender();
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.permissionActions).toEqual(['content.read']);
-    });
-
-    expectPermissionRequest(
-      fetchMock,
-      '/iam/me/permissions?instanceId=de-musterhausen&organizationId=11111111-1111-4111-8111-111111111111'
-    );
-  });
-
-  it('deduplicates repeated allow-only action entries', async () => {
-    stubPermissionResponse([
-      {
-        action: 'news.read',
-        resourceType: 'news',
-      },
-      {
-        action: 'news.read',
-        resourceType: 'news',
-      },
-      {
-        action: 'events.read',
-        resourceType: 'events',
-      },
-    ]);
 
     const { result } = renderHook(() => useContentAccess());
 
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.permissionActions).toEqual(['events.read', 'news.read']);
-      expect(result.current.error).toBeNull();
-    });
-  });
-
-  it('invalidates permissions and exposes a server denied access state on 403', async () => {
-    const forbiddenError = { status: 403, code: 'forbidden', message: 'Forbidden' };
-    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 403 });
-    vi.stubGlobal('fetch', fetchMock);
-    asIamErrorMock.mockImplementation(() => forbiddenError);
-
-    const { result } = renderHook(() => useContentAccess());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toEqual(forbiddenError);
-      expect(result.current.access).toEqual({
-        state: 'server_denied',
-        canRead: false,
-        canCreate: false,
-        canUpdate: false,
-        reasonCode: 'server_forbidden',
-        organizationIds: [],
-        sourceKinds: [],
-      });
-    });
-
-    expect(authMockValue.invalidatePermissions).toHaveBeenCalledTimes(1);
-    expect(browserLoggerMock.debug).toHaveBeenCalledWith(
-      'permission_invalidated_after_403',
-      expect.objectContaining({ operation: 'load_content_access', instance_id: 'de-musterhausen' })
-    );
-    expect(browserLoggerMock.warn).toHaveBeenCalledWith(
-      'content_access_load_failed',
-      expect.objectContaining({
-        operation: 'load_content_access',
-        instance_id: 'de-musterhausen',
-        status: 403,
-      })
-    );
-  });
-
-  it('stores non-forbidden errors without invalidating permissions', async () => {
-    const serverError = { status: 500, code: 'http_500', message: 'http_500' };
-    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 500 });
-    vi.stubGlobal('fetch', fetchMock);
-    asIamErrorMock.mockImplementation(() => serverError);
-
-    const { result } = renderHook(() => useContentAccess());
-
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-      expect(result.current.error).toEqual(serverError);
-      expect(result.current.access).toBeNull();
-    });
-
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
-  });
-
-  it('aborts pending requests on unmount without updating state afterwards', async () => {
-    let rejectFetch: ((reason?: unknown) => void) | undefined;
-    const fetchMock = vi.fn().mockImplementation(
-      () =>
-        new Promise((_resolve, reject) => {
-          rejectFetch = reject;
-        })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { result, unmount } = renderHook(() => useContentAccess());
-
-    expect(result.current.isLoading).toBe(true);
-
-    unmount();
-    rejectFetch?.(new Error('late failure'));
-    await Promise.resolve();
-
-    expect(asIamErrorMock).not.toHaveBeenCalled();
-    expect(authMockValue.invalidatePermissions).not.toHaveBeenCalled();
-  });
-
-  it('deduplicates overlapping permission loads across multiple hook instances', async () => {
-    let resolveResponse: ((value: unknown) => void) | undefined;
-    const fetchMock = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveResponse = resolve;
-        })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    const firstHook = renderHook(() => useContentAccess());
-    const secondHook = renderHook(() => useContentAccess());
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    resolveResponse?.({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'content.read',
-            resourceType: 'content',
-          },
-        ],
-      }),
-    });
-
-    await waitFor(() => {
-      expect(firstHook.result.current.isLoading).toBe(false);
-      expect(secondHook.result.current.isLoading).toBe(false);
-    });
-
-    expect(firstHook.result.current.permissionActions).toEqual(['content.read']);
-    expect(secondHook.result.current.permissionActions).toEqual(['content.read']);
-  });
-
-  it('keeps a shared permission request alive when an earlier hook instance unmounts', async () => {
-    let resolveResponse: ((value: unknown) => void) | undefined;
-    const fetchMock = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          resolveResponse = resolve;
-        })
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    const firstHook = renderHook(() => useContentAccess());
-    const secondHook = renderHook(() => useContentAccess());
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-
-    firstHook.unmount();
-    resolveResponse?.({
-      ok: true,
-      json: async () => ({
-        permissions: [
-          {
-            action: 'waste-management.read',
-            resourceType: 'waste-management',
-          },
-        ],
-      }),
-    });
-
-    await waitFor(() => {
-      expect(secondHook.result.current.isLoading).toBe(false);
-      expect(secondHook.result.current.permissionActions).toEqual(['waste-management.read']);
-    });
-
-    expect(asIamErrorMock).not.toHaveBeenCalled();
+    expect(result.current.access).toBeNull();
+    expect(result.current.error).toMatchObject({ status: 503, code: 'database_unavailable' });
   });
 });

@@ -9,6 +9,12 @@ const state = vi.hoisted(() => ({
   updateFaqMock: vi.fn(),
   navigateMock: vi.fn(),
   params: { id: 'faq-1' } as { id?: string; contentId?: string },
+  accessSnapshot: {
+    isResolved: true,
+    assignedModules: ['faq'],
+    permissionActions: ['faq.read', 'faq.create', 'faq.update', 'faq.delete'],
+    roles: [],
+  },
 }));
 
 vi.mock('../src/faq.api.js', () => ({
@@ -28,6 +34,25 @@ vi.mock('../src/faq.api.js', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
+  readSessionAccessSnapshot: () => state.accessSnapshot,
+  subscribeSessionAccessSnapshot: () => () => undefined,
+  resolveStandardContentAccessCapabilities: (
+    pluginId: string,
+    snapshot: { isResolved: boolean; assignedModules: readonly string[]; permissionActions: readonly string[] }
+  ) => {
+    const actions = new Set(snapshot.permissionActions);
+    const allows = (action: string) =>
+      snapshot.isResolved &&
+      snapshot.assignedModules.includes(pluginId) &&
+      actions.has(`${pluginId}.${action}`);
+    return {
+      isResolved: snapshot.isResolved,
+      canRead: allows('read'),
+      canCreate: allows('create'),
+      canUpdate: allows('update'),
+      canDelete: allows('delete'),
+    };
+  },
   usePluginTranslation: () =>
     ((key: string, values?: Record<string, unknown>) =>
       typeof values?.page === 'number' ? `${key}:${values.page}` : key) as (

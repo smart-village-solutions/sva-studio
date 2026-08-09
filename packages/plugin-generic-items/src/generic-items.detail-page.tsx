@@ -8,6 +8,7 @@ import {
   listHostMediaReferencesByTarget,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   alignHostMediaReferencesByOrder,
@@ -228,12 +229,14 @@ const resolveGenericItemsMediaPickerFeedback = (
 };
 
 const DetailPageActions = ({
+  canDelete,
   disableActions,
   mode,
   deleting,
   onDelete,
   pt,
 }: Readonly<{
+  canDelete: boolean;
   disableActions: boolean;
   deleting: boolean;
   mode: 'create' | 'edit';
@@ -244,7 +247,7 @@ const DetailPageActions = ({
     <Button asChild variant="outline">
       <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
     </Button>
-    {mode === 'edit' ? (
+    {mode === 'edit' && canDelete ? (
       <Button
         type="button"
         variant="outline"
@@ -299,15 +302,18 @@ export function GenericItemsDetailPage({
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
+  const accessCapabilities = React.useMemo(
+    () => resolveStandardContentAccessCapabilities('generic-items', sessionAccess),
+    [sessionAccess]
+  );
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
-        canEditContent: sessionAccess.permissionActions.includes(
-          mode === 'create' ? 'generic-items.create' : 'generic-items.update'
-        ),
+        canEditContent: canSave,
         permissionActions: sessionAccess.permissionActions,
       }),
-    [mode, sessionAccess.permissionActions]
+    [canSave, sessionAccess.permissionActions]
   );
   const canSelectMedia = mediaCapabilities.canSelect;
   const canUploadMedia = mediaCapabilities.canUpload;
@@ -507,6 +513,7 @@ export function GenericItemsDetailPage({
   );
 
   const onSubmit = methods.handleSubmit(async (values) => {
+    if (!canSave) return;
     setStatus(null);
     try {
       const input = {
@@ -563,16 +570,19 @@ export function GenericItemsDetailPage({
           mode === 'create' ? pt('editor.createDescription') : pt('editor.editDescription')
         }
         primaryAction={
-          <Button
-            type="button"
-            disabled={methods.formState.isSubmitting}
-            onClick={() => void onSubmit()}
-          >
-            {mode === 'create' ? pt('actions.create') : pt('actions.update')}
-          </Button>
+          canSave ? (
+            <Button
+              type="button"
+              disabled={methods.formState.isSubmitting}
+              onClick={() => void onSubmit()}
+            >
+              {mode === 'create' ? pt('actions.create') : pt('actions.update')}
+            </Button>
+          ) : undefined
         }
         actions={
           <DetailPageActions
+            canDelete={accessCapabilities.canDelete}
             disableActions={methods.formState.isSubmitting}
             deleting={deleting}
             mode={mode}
@@ -712,21 +722,23 @@ export function GenericItemsDetailPage({
             });
           }}
         />
-        <StudioConfirmDialog
-          open={deleteDialogOpen}
-          title={pt('actions.delete')}
-          description={pt('actions.deleteConfirm')}
-          confirmLabel={pt('actions.delete')}
-          cancelLabel={pt('actions.back')}
-          confirmDisabled={deleting}
-          cancelDisabled={deleting}
-          onConfirm={() => void handleDelete()}
-          onCancel={() => setDeleteDialogOpen(false)}
-        >
-          {status?.kind === 'error' ? (
-            <StudioFormSummary kind="error">{status.text}</StudioFormSummary>
-          ) : null}
-        </StudioConfirmDialog>
+        {accessCapabilities.canDelete ? (
+          <StudioConfirmDialog
+            open={deleteDialogOpen}
+            title={pt('actions.delete')}
+            description={pt('actions.deleteConfirm')}
+            confirmLabel={pt('actions.delete')}
+            cancelLabel={pt('actions.back')}
+            confirmDisabled={deleting}
+            cancelDisabled={deleting}
+            onConfirm={() => void handleDelete()}
+            onCancel={() => setDeleteDialogOpen(false)}
+          >
+            {status?.kind === 'error' ? (
+              <StudioFormSummary kind="error">{status.text}</StudioFormSummary>
+            ) : null}
+          </StudioConfirmDialog>
+        ) : null}
       </StudioDetailPageTemplate>
     </FormProvider>
   );

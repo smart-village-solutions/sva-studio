@@ -6,7 +6,7 @@ import { Card } from '../../../components/ui/card';
 import { useInstances } from '../../../hooks/use-instances';
 import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
-import { useAuth } from '../../../providers/auth-provider';
+import { useEffectiveAuth } from '../../../providers/effective-access-provider';
 import { InstanceModulesWorkspace } from './-instance-modules-workspace';
 import { resolveModuleDescription } from './-module-description';
 
@@ -123,7 +123,7 @@ const AdminModulesPage = () => {
 };
 
 export const ModulesPage = () => {
-  const { user } = useAuth();
+  const { user } = useEffectiveAuth();
 
   if (user?.instanceId) {
     return <TenantModulesPage assignedModules={user.assignedModules ?? []} />;

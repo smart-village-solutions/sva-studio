@@ -172,13 +172,17 @@ WHERE a.keycloak_subject = $2
   return unscopedQuery.rows;
 };
 
-export const loadPermissionsFromDb = async (
+export const loadPermissionsWithClient = async (
+  client: QueryClient,
   input: PermissionLookupInput
 ): Promise<readonly EffectivePermission[]> => {
-  const rows = await withInstanceScopedDb(input.instanceId, async (client) =>
-    input.organizationId
-      ? listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
-      : listUnscopedPermissionRows(client, input)
-  );
+  const rows = input.organizationId
+    ? await listScopedPermissionRows(client, { ...input, organizationId: input.organizationId })
+    : await listUnscopedPermissionRows(client, input);
   return toEffectivePermissions(rows);
 };
+
+export const loadPermissionsFromDb = async (
+  input: PermissionLookupInput
+): Promise<readonly EffectivePermission[]> =>
+  withInstanceScopedDb(input.instanceId, (client) => loadPermissionsWithClient(client, input));

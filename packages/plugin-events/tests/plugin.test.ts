@@ -23,6 +23,12 @@ describe('pluginEvents contract', () => {
         titleKey: 'events.navigation.title',
         section: 'dataManagement',
         requiredAction: 'events.read',
+        accessRequirement: {
+          kind: 'tenant',
+          moduleId: 'events',
+          actions: { mode: 'allOf', values: ['events.read'] },
+          resourceContext: 'collection',
+        },
       },
     ]);
     expect(pluginEvents.actions?.map((action) => action.id)).toEqual([

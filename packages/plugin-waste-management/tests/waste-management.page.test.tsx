@@ -1534,7 +1534,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' })
+    );
     clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createRegion');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.regions.fields.name'), {
       target: { value: 'Region West' },
@@ -1607,7 +1609,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' })
+    );
     clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createCity');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.cities.fields.name'), {
       target: { value: 'Musterstadt West' },
@@ -1664,7 +1668,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' })
+    );
     clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createStreet');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.streets.fields.name'), {
       target: { value: 'Bahnhofstraße' },
@@ -1729,7 +1735,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.getWasteManagementMasterDataOverview).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'wasteManagement.masterData.locationsWorkspace.actions.createMenu' })
+    );
     clickMenuItemContaining('wasteManagement.masterData.locationsWorkspace.actions.createHouseNumber');
     fireEvent.change(screen.getByLabelText('wasteManagement.masterData.houseNumbers.fields.number'), {
       target: { value: '42a' },

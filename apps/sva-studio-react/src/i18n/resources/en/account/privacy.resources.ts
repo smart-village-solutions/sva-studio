@@ -104,9 +104,9 @@ export const privacyAccountENResources = {
     summary: {
       lastLoginAt: 'Last login',
       lifecycleState: 'Account state',
-      deactivateAfterDays: 'Deactivation after days',
-      pseudonymizeAfterDays: 'Pseudonymization after days',
-      deleteAfterDays: 'Deletion after days',
+      deactivateAfterDays: 'Deactivation after days since the last successful login',
+      pseudonymizeAfterDays: 'Pseudonymization after days since the last successful login',
+      deleteAfterDays: 'Tombstone soft delete after days since the last successful login',
       tenantDefaultStrategy: 'Tenant default for content',
       effectiveStrategy: 'Effective content rule',
     },

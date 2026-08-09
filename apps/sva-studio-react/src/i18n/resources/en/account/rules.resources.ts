@@ -5,22 +5,23 @@ export const rulesAccountENResources = {
     'Review tenant-wide deletion rules and the handling of your own content in a dedicated view.',
   summary: {
     deactivateAfterDays: 'Deactivate after',
-    deactivateAfterDaysHint: 'Time until account deactivation in days.',
+    deactivateAfterDaysHint: 'Days since the last successful login until account deactivation.',
     pseudonymizeAfterDays: 'Pseudonymize after',
-    pseudonymizeAfterDaysHint: 'Time until pseudonymization in days.',
-    deleteAfterDays: 'Delete after',
-    deleteAfterDaysHint: 'Time until final deletion in days.',
+    pseudonymizeAfterDaysHint: 'Days since the last successful login until pseudonymization.',
+    deleteAfterDays: 'Tombstone soft delete after',
+    deleteAfterDaysHint:
+      'Days since the last successful login until the final tombstone soft delete.',
     defaultContentStrategy: 'Default content rule',
   },
   sections: {
     global: {
       title: 'Tenant-wide rules',
       deactivateAfterDays:
-        'After the configured period the account is deactivated first and blocked for direct sign-ins.',
+        'After the configured number of days since the last successful login, the account is deactivated and blocked for direct sign-ins.',
       pseudonymizeAfterDays:
-        'After the second period personal data is pseudonymized unless retention duties still apply.',
+        'After the configured number of days since the last successful login, personal data is pseudonymized unless retention duties still apply.',
       deleteAfterDays:
-        'After the final period the account is permanently removed unless a legal hold is active.',
+        'After the configured number of days since the last successful login, the account enters the final tombstone soft-delete state; it is not physically removed.',
       defaultContentStrategy:
         'The default content rule defines whether personal content is kept or follows the owner lifecycle.',
     },

@@ -235,9 +235,9 @@ export const iamAdminENResources = {
     subtitle:
       'Manage the tenant-wide deadlines for deactivation, pseudonymization, and soft delete as well as the default content rule.',
     fields: {
-      deactivateAfterDays: 'Deactivation after days',
-      pseudonymizeAfterDays: 'Pseudonymization after days',
-      deleteAfterDays: 'Deletion after days',
+      deactivateAfterDays: 'Deactivation after days since the last successful login',
+      pseudonymizeAfterDays: 'Pseudonymization after days since the last successful login',
+      deleteAfterDays: 'Tombstone soft delete after days since the last successful login',
       defaultContentStrategy: 'Default content rule',
       allowContentPreferenceOverride: 'Users may override the default rule for their own content',
       allowContentPreferenceOverrideHint:

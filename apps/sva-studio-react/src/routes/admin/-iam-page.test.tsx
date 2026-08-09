@@ -703,15 +703,26 @@ describe('IamViewerPage', () => {
       expect(screen.getByRole('heading', { name: 'Tenant-Löschregeln' })).toBeTruthy();
     });
 
-    fireEvent.change(screen.getByLabelText('Deaktivierung nach Tagen'), {
-      target: { value: '120' },
-    });
-    fireEvent.change(screen.getByLabelText('Pseudonymisierung nach Tagen'), {
-      target: { value: '240' },
-    });
-    fireEvent.change(screen.getByLabelText('Löschung nach Tagen'), {
-      target: { value: '480' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Deaktivierung nach Tagen seit dem letzten erfolgreichen Login'),
+      {
+        target: { value: '120' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Pseudonymisierung nach Tagen seit dem letzten erfolgreichen Login'),
+      {
+        target: { value: '240' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        'Tombstone-Soft-Delete nach Tagen seit dem letzten erfolgreichen Login'
+      ),
+      {
+        target: { value: '480' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Standardregel für Inhalte'), {
       target: { value: 'with_owner_lifecycle' },
     });

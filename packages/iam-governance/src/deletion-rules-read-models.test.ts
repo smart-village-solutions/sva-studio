@@ -45,9 +45,9 @@ describe('deletion-rules/read-models', () => {
 
     expect(overview).toEqual({
       instanceId: 'de-test',
-      deactivateAfterDays: 90,
-      pseudonymizeAfterDays: 180,
-      deleteAfterDays: 365,
+      deactivateAfterDays: 365,
+      pseudonymizeAfterDays: 730,
+      deleteAfterDays: 1_095,
       defaultContentStrategy: 'retain',
       allowContentPreferenceOverride: false,
       canEdit: false,

@@ -389,6 +389,9 @@ export const WasteMasterDataLocationsRow = ({
   const street = location.streetId ? maps.streetsById.get(location.streetId) : undefined;
   const houseNumber = location.houseNumberId ? maps.houseNumbersById.get(location.houseNumberId) : undefined;
   const linkedTourNames = maps.locationTourNamesByLocationId.get(location.id) ?? [];
+  const editLabel = pt('masterData.collectionLocations.actions.edit');
+  const copyLabel = pt('masterData.collectionLocations.actions.copy');
+  const deleteLabel = pt('masterData.collectionLocations.actions.delete');
 
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20">
@@ -434,7 +437,8 @@ export const WasteMasterDataLocationsRow = ({
             variant="ghost"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-            aria-label={pt('masterData.collectionLocations.actions.edit')}
+            aria-label={editLabel}
+            tooltip={editLabel}
             onClick={() => onOpenEditLocation(location)}
           >
             <IconEdit aria-hidden="true" className="h-4 w-4" />
@@ -444,7 +448,8 @@ export const WasteMasterDataLocationsRow = ({
             variant="ghost"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-            aria-label={pt('masterData.collectionLocations.actions.copy')}
+            aria-label={copyLabel}
+            tooltip={copyLabel}
             onClick={() => onCopyLocation(location)}
           >
             <IconCopy aria-hidden="true" className="h-4 w-4" />
@@ -454,7 +459,8 @@ export const WasteMasterDataLocationsRow = ({
             variant="ghost"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-            aria-label={pt('masterData.collectionLocations.actions.delete')}
+            aria-label={deleteLabel}
+            tooltip={deleteLabel}
             onClick={() => {
               void onDeleteLocation(location);
             }}

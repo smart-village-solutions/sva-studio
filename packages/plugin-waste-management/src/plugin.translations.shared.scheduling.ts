@@ -104,6 +104,7 @@ type WasteManagementToursCopy = Readonly<{
   deleteDialog?: Readonly<Record<string, string>>;
   statusDialog?: Readonly<Record<string, string>>;
   bulkDeleteDialog?: Readonly<Record<string, string>>;
+  bulkValidityDialog?: Readonly<Record<string, unknown>>;
   messages: Readonly<Record<string, string>>;
   assignments?: WasteManagementToursAssignmentsCopy;
   yearCalendar?: WasteManagementToursYearCalendarCopy;
@@ -196,6 +197,7 @@ export const createWasteManagementToursTranslations = <
           deleteDialog: copy.deleteDialog,
           statusDialog: copy.statusDialog,
           bulkDeleteDialog: copy.bulkDeleteDialog,
+          bulkValidityDialog: copy.bulkValidityDialog,
           messages: copy.messages,
         } as const,
         'assignments',

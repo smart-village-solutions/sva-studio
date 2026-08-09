@@ -24,8 +24,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     description: 'Beschreibung',
     recurrence: 'Turnus',
     customRecurrenceGroup: 'Eigene Abstände',
-    firstDate: 'Erster Termin',
-    endDate: 'Letzter Termin',
+    firstDate: 'Gültig ab',
+    endDate: 'Gültig bis',
     customDates: 'Individuelle Termine',
     wasteFractions: 'Abfallfraktionen',
     noFractionsAvailable: 'Es sind noch keine Abfallfraktionen vorhanden.',
@@ -39,12 +39,13 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     nameLabel: 'Name',
     namePlaceholder: 'Nach Name suchen',
     statusLabel: 'Status',
+    validityPeriodLabel: 'Gültigkeitszeitraum',
     fractionLabel: 'Abfallart',
     fractionAll: 'Alle',
-    firstDateFromLabel: 'Erster Termin von',
-    firstDateToLabel: 'Erster Termin bis',
-    endDateFromLabel: 'Letzter Termin von',
-    endDateToLabel: 'Letzter Termin bis',
+    firstDateFromLabel: 'Gültig ab – von',
+    firstDateToLabel: 'Gültig ab – bis',
+    endDateFromLabel: 'Gültig bis – von',
+    endDateToLabel: 'Gültig bis – bis',
     cancel: 'Abbrechen',
     apply: 'Anwenden',
     status: {
@@ -52,20 +53,29 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       active: 'Aktive Touren',
       inactive: 'Inaktive Touren',
     },
+    validityPeriod: {
+      all: 'Alle Touren',
+      previous: 'Letztes Jahr ({{year}})',
+      current: 'Aktuelles Jahr ({{year}})',
+      next: 'Nächstes Jahr ({{year}})',
+    },
   },
   sections: {
     basics: 'Grunddaten',
     basicsHint: 'Erfassen Sie die Tour selbst und ordnen Sie die betroffenen Abfallfraktionen zu.',
     scheduling: 'Terminlogik',
-    schedulingHint: 'Legen Sie fest, ob die Tour im festen Turnus läuft oder über einzelne Termine gepflegt wird.',
+    schedulingHint:
+      'Legen Sie fest, ob die Tour im festen Turnus läuft oder über einzelne Termine gepflegt wird.',
     visibility: 'Sichtbarkeit',
     visibilityHint: 'Steuern Sie, ob die Tour sofort aktiv im Studio verfügbar ist.',
   },
   fieldHints: {
     name: 'Vergeben Sie einen sprechenden Namen, damit die Tour später in Listen und Zuordnungen schnell gefunden wird.',
     description: 'Optional: kurze öffentliche Einordnung oder Besonderheiten dieser Tour.',
-    recurrence: 'Standard ist die Pflege über individuelle Termine. Feste Datumsfelder erscheinen nur für echte Turnusvarianten.',
-    customDates: 'Pflegen Sie einzelne Abholtage im Jahreskalender und ordnen Sie je Termin die passenden Abholorte mit Freitext-Hinweis direkt in der Tour zu.',
+    recurrence:
+      'Standard ist die Pflege über individuelle Termine. Feste Datumsfelder erscheinen nur für echte Turnusvarianten.',
+    customDates:
+      'Pflegen Sie einzelne Abholtage im Jahreskalender und ordnen Sie je Termin die passenden Abholorte mit Freitext-Hinweis direkt in der Tour zu.',
     wasteFractions: 'Wählen Sie alle Fraktionen aus, die über diese Tour abgeholt werden.',
     active: 'Aktive Touren stehen direkt für Zuordnungen und weitere Pflege zur Verfügung.',
   },
@@ -75,7 +85,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   },
   dialog: {
     createTitle: 'Tour anlegen',
-    createDescription: 'Erstellen Sie die erste bearbeitbare Tour inklusive Fraktionen und Terminlogik.',
+    createDescription:
+      'Erstellen Sie die erste bearbeitbare Tour inklusive Fraktionen und Terminlogik.',
     editTitle: 'Tour bearbeiten',
     editDescription: 'Passen Sie Fraktionen, Turnus und Datumslogik der Tour an.',
   },
@@ -94,7 +105,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   },
   table: {
     ariaLabel: 'Abfall-Touren',
-    caption: 'Tabelle der Abfall-Touren mit Abfallarten, Turnus, Terminen, Verschiebungen und Aktionen.',
+    caption:
+      'Tabelle der Abfall-Touren mit Abfallarten, Turnus, Terminen, Verschiebungen und Aktionen.',
     filtersTitle: 'Filter',
     deleteSelected: 'Touren löschen',
     selectAll: 'Alle sichtbaren Touren auswählen',
@@ -105,7 +117,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     recurrence: 'Turnus',
     fractions: 'Abfallarten',
     locations: 'Abholorte',
-    dateRange: 'Termine',
+    dateRange: 'Gültigkeit',
     shifts: 'Verschiebungen',
     actions: 'Aktionen',
     loadingAssignments: 'Zuordnungen werden geladen',
@@ -114,7 +126,12 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     noAssignments: 'Keine Zuordnungen',
     noCustomDates: 'Keine individuellen Termine',
   },
-  deleteDialog: { title: 'Tour löschen', description: 'Die Tour {{value}} wird dauerhaft gelöscht.', confirm: 'Löschen', cancel: 'Abbrechen' },
+  deleteDialog: {
+    title: 'Tour löschen',
+    description: 'Die Tour {{value}} wird dauerhaft gelöscht.',
+    confirm: 'Löschen',
+    cancel: 'Abbrechen',
+  },
   statusDialog: {
     activateTitle: 'Tour aktivieren',
     activateDescription: 'Die Tour {{value}} wird aktiviert.',
@@ -123,11 +140,46 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     confirm: 'Bestätigen',
     cancel: 'Abbrechen',
   },
-  bulkDeleteDialog: { title: 'Touren löschen', description: '{{value}} markierte Touren werden dauerhaft gelöscht.', confirm: 'Löschen', cancel: 'Abbrechen' },
-  recurrence: { weekly: 'Wöchentlich', biweekly: 'Zweiwöchentlich', fourweekly: 'Vierwöchentlich', yearly: 'Jährlich', onDemand: 'Bedarfsabhängig', custom: 'Individuell' },
+  bulkDeleteDialog: {
+    title: 'Touren löschen',
+    description: '{{value}} markierte Touren werden dauerhaft gelöscht.',
+    confirm: 'Löschen',
+    cancel: 'Abbrechen',
+  },
+  bulkValidityDialog: {
+    title: 'Gültigkeitszeitraum ändern',
+    description: 'Ändern Sie den tourweiten Gültigkeitszeitraum für {{value}} ausgewählte Touren.',
+    selectedCount: '{{value}} Touren ausgewählt',
+    inapplicableTitle: 'Nicht anwendbare Touren',
+    inapplicableDescription:
+      'Individuelle oder bedarfsabhängige Touren besitzen keinen turnusbasierten Gültigkeitszeitraum. Entfernen Sie diese Touren aus der Auswahl: {{value}}',
+    invalidRange: 'Der resultierende Zeitraum wäre bei mindestens einer Tour ungültig.',
+    fields: {
+      firstMode: 'Gültig ab',
+      firstDate: 'Neuer Gültigkeitsbeginn',
+      endMode: 'Gültig bis',
+      endDate: 'Neues Gültigkeitsende',
+    },
+    modes: {
+      unchanged: 'Unverändert lassen',
+      set: 'Datum setzen',
+      clear: 'Datum entfernen',
+    },
+    apply: 'Zeitraum ändern',
+    cancel: 'Abbrechen',
+  },
+  recurrence: {
+    weekly: 'Wöchentlich',
+    biweekly: 'Zweiwöchentlich',
+    fourweekly: 'Vierwöchentlich',
+    yearly: 'Jährlich',
+    onDemand: 'Bedarfsabhängig',
+    custom: 'Individuell',
+  },
   customDates: {
     title: 'Individuelle Termine',
-    description: 'Wählen Sie Termine im Jahreskalender aus. Kommentare, Abholorte und Hinweise pflegen Sie anschließend direkt je Termin in der Liste.',
+    description:
+      'Wählen Sie Termine im Jahreskalender aus. Kommentare, Abholorte und Hinweise pflegen Sie anschließend direkt je Termin in der Liste.',
     empty: 'Es sind noch keine individuellen Termine ausgewählt.',
     commentHint: 'Optionaler Kommentar für diesen Einzeltermin',
     actions: {
@@ -154,19 +206,22 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     },
     assignmentSection: {
       title: 'Abholorte für diesen Termin',
-      description: 'Ordnen Sie diesem Einzeltermin einen oder mehrere vorhandene Abholorte samt Hinweis zu.',
+      description:
+        'Ordnen Sie diesem Einzeltermin einen oder mehrere vorhandene Abholorte samt Hinweis zu.',
       empty: 'Für diesen Termin sind noch keine Abholorte hinterlegt.',
       summaryEmpty: 'Noch keine Abholorte',
       summaryCount: '{{value}} Abholorte hinterlegt',
       summaryHintEmpty: 'Öffnen Sie den Termin, um die passenden Stationen zu pflegen.',
-      summaryHintReady: 'Öffnen Sie den Termin, um vorhandene Zuordnungen zu prüfen oder zu ändern.',
+      summaryHintReady:
+        'Öffnen Sie den Termin, um vorhandene Zuordnungen zu prüfen oder zu ändern.',
     },
     messages: {
       duplicateLocation: 'Dieser Abholort ist für den ausgewählten Termin bereits vorhanden.',
     },
     dialog: {
       title: 'Einzeltermine auswählen',
-      description: 'Klicken Sie im Jahreskalender einzelne Tage an oder ab, um individuelle Termine für diese Tour festzulegen.',
+      description:
+        'Klicken Sie im Jahreskalender einzelne Tage an oder ab, um individuelle Termine für diese Tour festzulegen.',
       removeTitle: 'Einzeltermin entfernen',
       removeDescription: 'Der Termin {{value}} wird aus den individuellen Terminen entfernt.',
       removeConfirm: 'Entfernen',
@@ -193,19 +248,15 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       tourUnset: 'Tour auswählen',
       locationId: 'Abholort',
       locationUnset: 'Abholort auswählen',
-      startDate: 'Startdatum',
-      endDate: 'Enddatum',
     },
     dialog: {
       createTitle: 'Tour-Zuordnung anlegen',
       editTitle: 'Tour-Zuordnung bearbeiten',
-      description: 'Pflegen Sie Abholorte und optionale Gültigkeitszeiträume für {{value}}.',
-      descriptionFallback: 'Pflegen Sie Abholorte und optionale Gültigkeitszeiträume.',
+      description:
+        'Pflegen Sie die Abholorte für {{value}}. Für alle Zuordnungen gilt der Zeitraum der Tour.',
+      descriptionFallback: 'Pflegen Sie die Abholorte der Tour.',
     },
-    meta: {
-      startDate: 'Start: {{value}}',
-      endDate: 'Ende: {{value}}',
-    },
+    meta: {},
     workspace: {
       availableTitle: 'Abholorte der Tour',
       selectedCount: '{{value}} ausgewählt',
@@ -241,8 +292,12 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     emptyBody: 'Passen Sie die Filter an oder hinterlegen Sie Touren in der Abfall-Datenquelle.',
     createSuccess: 'Die Abfall-Tour wurde angelegt.',
     updateSuccess: 'Die Abfall-Tour wurde aktualisiert.',
-    duplicateHint: 'Zuordnungen und tourbezogene Datumsverschiebungen werden erst nach dem Speichern der duplizierten Tour übernommen.',
-    assignmentIncomplete: 'Bitte hinterlegen Sie für jede Termin-Ort-Zuordnung sowohl einen Abholort als auch einen Hinweis.',
+    validityUpdateSuccess: 'Der Gültigkeitszeitraum von {{value}} Touren wurde aktualisiert.',
+    validityUpdateError: 'Die Gültigkeitszeiträume konnten nicht aktualisiert werden.',
+    duplicateHint:
+      'Alle Abholort-Zuordnungen, Einzeltermine und tourbezogenen Datumsverschiebungen werden nach dem Speichern übernommen. Für die Zuordnungen gilt der Zeitraum der neuen Tour.',
+    assignmentIncomplete:
+      'Bitte hinterlegen Sie für jede Termin-Ort-Zuordnung sowohl einen Abholort als auch einen Hinweis.',
     deleteSuccess: 'Die Abfall-Tour wurde gelöscht.',
     deletePartialSuccess: '{{count}} von {{total}} Abfall-Touren wurden gelöscht.',
     saveError: 'Die Abfall-Tour konnte nicht gespeichert werden.',

@@ -110,13 +110,14 @@ Fehlerpfad:
 5. Für Settings, Ausgabe-Stamminhalte, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
-8. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
-9. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
-10. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
-11. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
-12. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
-13. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
-14. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
+8. Die Mehrfachbearbeitung tourweiter Gültigkeitszeiträume sperrt die vollständige Auswahl in einer Fachdatenbank-Transaktion, validiert die resultierenden Zeiträume und schreibt ausschließlich `first_date` und `end_date`; bei einer ungültigen oder nicht anwendbaren Tour wird die gesamte Änderung zurückgerollt.
+9. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
+10. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
+11. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
+12. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+13. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
+14. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
+15. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
 
 Fehlerpfad:
 

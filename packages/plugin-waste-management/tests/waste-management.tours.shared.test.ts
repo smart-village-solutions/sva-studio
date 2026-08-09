@@ -20,7 +20,8 @@ import {
 describe('waste-management.tours.shared', () => {
   beforeEach(() => {
     vi.stubGlobal('crypto', {
-      randomUUID: vi.fn()
+      randomUUID: vi
+        .fn()
         .mockReturnValueOnce('link-default-id')
         .mockReturnValueOnce('tour-default-id'),
     });
@@ -377,6 +378,7 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'active',
+        tourValidityPeriod: 'all',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-active', 'tour-unknown']);
 
@@ -387,6 +389,7 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'inactive',
+        tourValidityPeriod: 'all',
         tourWasteFractionId: 'fraction-2',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-inactive']);
@@ -398,6 +401,7 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'all',
+        tourValidityPeriod: 'all',
         firstDateFrom: '2026-02-01',
         firstDateTo: '2026-03-31',
         endDateFrom: '2026-09-01',
@@ -412,6 +416,7 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'all',
+        tourValidityPeriod: 'all',
         firstDateFrom: '2026-01-10',
         firstDateTo: '2026-01-31',
         endDateTo: '2026-12-20',
@@ -425,6 +430,7 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'all',
+        tourValidityPeriod: 'all',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-active']);
 
@@ -435,9 +441,56 @@ describe('waste-management.tours.shared', () => {
         page: 1,
         pageSize: 25,
         status: 'all',
+        tourValidityPeriod: 'all',
         tourId: 'tour-inactive',
       } as never).map((tour) => tour.id)
     ).toEqual(['tour-inactive']);
+  });
+
+  it('combines the relative validity year with validity ranges and explicit dates', () => {
+    const tours = [
+      {
+        id: 'overlap-on-boundary',
+        name: 'Boundary',
+        wasteFractionIds: ['fraction-1'],
+        active: true,
+        firstDate: '2025-01-01',
+        endDate: '2026-01-01',
+      },
+      {
+        id: 'explicit-date',
+        name: 'Explicit',
+        wasteFractionIds: ['fraction-1'],
+        active: true,
+        firstDate: '2027-01-01',
+        endDate: '2027-12-31',
+        customDates: [{ date: '2026-06-15' }],
+      },
+      {
+        id: 'future',
+        name: 'Future',
+        wasteFractionIds: ['fraction-1'],
+        active: true,
+        firstDate: '2027-01-01',
+        endDate: '2027-12-31',
+      },
+    ] as never;
+
+    expect(
+      filterTours(
+        tours,
+        {
+          tab: 'tours',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'active',
+          tourValidityPeriod: 'current',
+          tourWasteFractionId: 'fraction-1',
+        } as never,
+        2026
+      ).map((tour) => tour.id)
+    ).toEqual(['overlap-on-boundary', 'explicit-date']);
   });
 
   it('resolves active fractions by matching ids only', () => {

@@ -183,12 +183,16 @@ export type {
   WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityBulkUpdateResult,
+  WasteTourValidityDateOperation,
 } from './public-api.js';
 
 export {
   resolveContentMediaCapabilities,
   type ContentMediaCapabilities,
 } from './content-media-permissions.js';
+export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

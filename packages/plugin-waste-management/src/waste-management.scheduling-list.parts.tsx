@@ -17,6 +17,7 @@ export const WasteSchedulingListActionCell = ({
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
         aria-label={ariaLabel}
+        tooltip={ariaLabel}
         onClick={onClick}
       >
         <IconEdit aria-hidden="true" className="h-4 w-4" />

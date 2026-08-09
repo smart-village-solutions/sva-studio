@@ -1,0 +1,4 @@
+{
+  "prNumber": 946,
+  "body": "Waste Management: Tour-Gültigkeit und Abdeckungsprüfung erweitert\n\n- Touren können nach Vorjahr, aktuellem Jahr und Folgejahr gefiltert werden; standardmäßig werden weiterhin alle Touren angezeigt.\n- Beginn und Ende der Tour-Gültigkeit lassen sich für mehrere Touren gemeinsam bearbeiten.\n- Abholorte ohne vollständige Tourabdeckung können nach Fraktion und Zeitraum ermittelt und direkt einer Tour zugeordnet werden.\n- Die Gültigkeit wird ausschließlich an der Tour gepflegt; Standort–Tour-Zuordnungen besitzen keine eigenen Zeiträume mehr.\n- Icon-Aktionen zeigen erklärende Tooltips."
+}

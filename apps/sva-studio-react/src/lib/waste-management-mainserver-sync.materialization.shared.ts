@@ -264,29 +264,6 @@ export const collectRecurrenceDates = (
   return [...dates];
 };
 
-export const isDateInRange = (
-  date: string,
-  startDate: string | undefined,
-  endDate: string | undefined
-): boolean => {
-  const normalized = parseIsoDateUtc(date);
-  if (!normalized) {
-    return false;
-  }
-
-  const start = startDate ? parseIsoDateUtc(startDate) : null;
-  if (start && normalized < start) {
-    return false;
-  }
-
-  const end = endDate ? parseIsoDateUtc(endDate) : null;
-  if (end && normalized > end) {
-    return false;
-  }
-
-  return true;
-};
-
 const getWeekStartIso = (value: string): string | undefined => {
   const date = parseIsoDateUtc(value);
   if (!date) {

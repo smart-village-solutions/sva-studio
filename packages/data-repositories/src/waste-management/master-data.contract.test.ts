@@ -36,6 +36,8 @@ describe('waste master-data repository contract', () => {
       'deleteWasteCustomRecurrencePreset',
       'listWasteTours',
       'getWasteTourById',
+      'lockWasteToursByIds',
+      'updateWasteTourValidityBulk',
       'upsertWasteTour',
       'deleteWasteTour',
       'listWasteLocationTourLinks',

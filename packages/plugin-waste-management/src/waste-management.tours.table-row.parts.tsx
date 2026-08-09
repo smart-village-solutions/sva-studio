@@ -31,6 +31,7 @@ const RowActionButton = ({
       destructive ? 'hover:text-destructive' : null
     )}
     aria-label={ariaLabel}
+    tooltip={ariaLabel}
     onClick={onClick}
   >
     {children}

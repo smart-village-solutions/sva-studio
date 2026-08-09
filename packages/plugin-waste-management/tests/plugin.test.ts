@@ -53,14 +53,26 @@ describe('pluginWasteManagement contract', () => {
         id: 'waste-management.master-data.manage',
         titleKey: 'wasteManagement.permissions.masterDataManage.title',
       },
-      { id: 'waste-management.tours.manage', titleKey: 'wasteManagement.permissions.toursManage.title' },
+      {
+        id: 'waste-management.tours.manage',
+        titleKey: 'wasteManagement.permissions.toursManage.title',
+      },
       {
         id: 'waste-management.scheduling.manage',
         titleKey: 'wasteManagement.permissions.schedulingManage.title',
       },
-      { id: 'waste-management.import.execute', titleKey: 'wasteManagement.permissions.importExecute.title' },
-      { id: 'waste-management.seed.execute', titleKey: 'wasteManagement.permissions.seedExecute.title' },
-      { id: 'waste-management.reset.execute', titleKey: 'wasteManagement.permissions.resetExecute.title' },
+      {
+        id: 'waste-management.import.execute',
+        titleKey: 'wasteManagement.permissions.importExecute.title',
+      },
+      {
+        id: 'waste-management.seed.execute',
+        titleKey: 'wasteManagement.permissions.seedExecute.title',
+      },
+      {
+        id: 'waste-management.reset.execute',
+        titleKey: 'wasteManagement.permissions.resetExecute.title',
+      },
       {
         id: 'waste-management.settings.manage',
         titleKey: 'wasteManagement.permissions.settingsManage.title',
@@ -101,7 +113,9 @@ describe('pluginWasteManagement contract', () => {
       path: '/plugins/waste-management',
       guard: 'waste-management.read',
     });
-    expect(pluginWasteManagement.routes[0]?.validateSearch?.({ tab: 'settings', page: '2' })).toEqual({
+    expect(
+      pluginWasteManagement.routes[0]?.validateSearch?.({ tab: 'settings', page: '2' })
+    ).toEqual({
       tab: 'settings',
       masterDataTab: 'locations',
       fractionsView: 'list',
@@ -113,6 +127,7 @@ describe('pluginWasteManagement contract', () => {
       pageSize: 25,
       fractionsStatus: 'all',
       status: 'all',
+      tourValidityPeriod: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
       fractionsSortDirection: 'asc',
@@ -122,6 +137,13 @@ describe('pluginWasteManagement contract', () => {
       collectionLocationId: undefined,
       tourId: undefined,
       duplicateFromTourId: undefined,
+      tourWasteFractionId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -137,6 +159,7 @@ describe('pluginWasteManagement contract', () => {
       pageSize: 25,
       fractionsStatus: 'all',
       status: 'all',
+      tourValidityPeriod: 'all',
       shiftContext: 'all',
       fractionsSortBy: 'name',
       fractionsSortDirection: 'asc',
@@ -146,6 +169,13 @@ describe('pluginWasteManagement contract', () => {
       collectionLocationId: undefined,
       tourId: undefined,
       duplicateFromTourId: undefined,
+      tourWasteFractionId: undefined,
+      firstDateFrom: undefined,
+      firstDateTo: undefined,
+      endDateFrom: undefined,
+      endDateTo: undefined,
+      schedulingEntryType: undefined,
+      schedulingEntryId: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -166,7 +196,10 @@ describe('pluginWasteManagement contract', () => {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Geografie und Abholorte',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.geografie-abholorte.schema',
         mappingStrategy: 'waste-management.geografie-abholorte.mapping',
@@ -176,7 +209,10 @@ describe('pluginWasteManagement contract', () => {
         profileId: 'waste-management.touren',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Touren',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.touren.schema',
         mappingStrategy: 'waste-management.touren.mapping',
@@ -186,7 +222,10 @@ describe('pluginWasteManagement contract', () => {
         profileId: 'waste-management.ausweichtermine',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Ausweichtermine',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.ausweichtermine.schema',
         mappingStrategy: 'waste-management.ausweichtermine.mapping',
@@ -208,15 +247,36 @@ describe('pluginWasteManagement contract', () => {
   it('registers the canonical waste audit events for settings, master data and technical tools', () => {
     expect(pluginWasteManagement.auditEvents).toEqual(wasteManagementAuditEventDefinitions);
     expect(pluginWasteManagement.auditEvents).toEqual([
-      { eventType: 'waste-management.settings.updated', titleKey: 'wasteManagement.audit.settingsUpdated' },
-      { eventType: 'waste-management.fraction.created', titleKey: 'wasteManagement.audit.fractionCreated' },
-      { eventType: 'waste-management.fraction.updated', titleKey: 'wasteManagement.audit.fractionUpdated' },
-      { eventType: 'waste-management.region.created', titleKey: 'wasteManagement.audit.regionCreated' },
-      { eventType: 'waste-management.region.updated', titleKey: 'wasteManagement.audit.regionUpdated' },
+      {
+        eventType: 'waste-management.settings.updated',
+        titleKey: 'wasteManagement.audit.settingsUpdated',
+      },
+      {
+        eventType: 'waste-management.fraction.created',
+        titleKey: 'wasteManagement.audit.fractionCreated',
+      },
+      {
+        eventType: 'waste-management.fraction.updated',
+        titleKey: 'wasteManagement.audit.fractionUpdated',
+      },
+      {
+        eventType: 'waste-management.region.created',
+        titleKey: 'wasteManagement.audit.regionCreated',
+      },
+      {
+        eventType: 'waste-management.region.updated',
+        titleKey: 'wasteManagement.audit.regionUpdated',
+      },
       { eventType: 'waste-management.city.created', titleKey: 'wasteManagement.audit.cityCreated' },
       { eventType: 'waste-management.city.updated', titleKey: 'wasteManagement.audit.cityUpdated' },
-      { eventType: 'waste-management.street.created', titleKey: 'wasteManagement.audit.streetCreated' },
-      { eventType: 'waste-management.street.updated', titleKey: 'wasteManagement.audit.streetUpdated' },
+      {
+        eventType: 'waste-management.street.created',
+        titleKey: 'wasteManagement.audit.streetCreated',
+      },
+      {
+        eventType: 'waste-management.street.updated',
+        titleKey: 'wasteManagement.audit.streetUpdated',
+      },
       {
         eventType: 'waste-management.house-number.created',
         titleKey: 'wasteManagement.audit.houseNumberCreated',
@@ -252,6 +312,10 @@ describe('pluginWasteManagement contract', () => {
       { eventType: 'waste-management.tour.created', titleKey: 'wasteManagement.audit.tourCreated' },
       { eventType: 'waste-management.tour.updated', titleKey: 'wasteManagement.audit.tourUpdated' },
       {
+        eventType: 'waste-management.tour.validity-bulk-updated',
+        titleKey: 'wasteManagement.audit.tourValidityBulkUpdated',
+      },
+      {
         eventType: 'waste-management.tour-date-shift.created',
         titleKey: 'wasteManagement.audit.tourDateShiftCreated',
       },
@@ -275,10 +339,19 @@ describe('pluginWasteManagement contract', () => {
         eventType: 'waste-management.global-date-shift.deleted',
         titleKey: 'wasteManagement.audit.globalDateShiftDeleted',
       },
-      { eventType: 'waste-management.migrations.started', titleKey: 'wasteManagement.audit.migrationsStarted' },
-      { eventType: 'waste-management.import.started', titleKey: 'wasteManagement.audit.importStarted' },
+      {
+        eventType: 'waste-management.migrations.started',
+        titleKey: 'wasteManagement.audit.migrationsStarted',
+      },
+      {
+        eventType: 'waste-management.import.started',
+        titleKey: 'wasteManagement.audit.importStarted',
+      },
       { eventType: 'waste-management.seed.started', titleKey: 'wasteManagement.audit.seedStarted' },
-      { eventType: 'waste-management.reset.started', titleKey: 'wasteManagement.audit.resetStarted' },
+      {
+        eventType: 'waste-management.reset.started',
+        titleKey: 'wasteManagement.audit.resetStarted',
+      },
       {
         eventType: 'waste-management.mainserver-sync.started',
         titleKey: 'wasteManagement.audit.mainserverSyncStarted',

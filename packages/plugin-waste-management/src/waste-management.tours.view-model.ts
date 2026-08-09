@@ -1,4 +1,4 @@
-import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourRecord, WasteTourValidityBulkUpdateInput } from '@sva/plugin-sdk';
 
 import type {
   WasteManagementMasterDataOverview,
@@ -8,6 +8,7 @@ import type {
   WasteToursFilterDate,
   WasteToursFilterFraction,
   WasteToursFilterStatus,
+  WasteToursFilterValidityPeriod,
 } from './waste-management.tours.filter-state.js';
 
 export const createTourAssignmentSelectionSummary = ({
@@ -34,7 +35,42 @@ export const createTourAssignmentSelectionSummary = ({
   };
 };
 
-export const orderTourAssignmentLocations = <T extends { readonly id: string }>(
+type TourAssignmentSortValue = Readonly<{
+  id: string;
+  label?: string;
+  regionName?: string;
+  cityName?: string;
+  streetName?: string;
+}>;
+
+const tourAssignmentCollator = new Intl.Collator('de', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+const compareOptionalTourAssignmentValue = (
+  left: string | undefined,
+  right: string | undefined
+): number => {
+  const normalizedLeft = left?.trim() ?? '';
+  const normalizedRight = right?.trim() ?? '';
+  if (!normalizedLeft) return normalizedRight ? 1 : 0;
+  if (!normalizedRight) return -1;
+  return tourAssignmentCollator.compare(normalizedLeft, normalizedRight);
+};
+
+const compareTourAssignmentLocations = <T extends TourAssignmentSortValue>(
+  left: T,
+  right: T
+): number => {
+  for (const key of ['regionName', 'cityName', 'streetName', 'label', 'id'] as const) {
+    const comparison = compareOptionalTourAssignmentValue(left[key], right[key]);
+    if (comparison !== 0) return comparison;
+  }
+  return 0;
+};
+
+export const orderTourAssignmentLocations = <T extends TourAssignmentSortValue>(
   locations: readonly T[],
   selectedLocationIds: readonly string[]
 ): readonly T[] => {
@@ -50,7 +86,10 @@ export const orderTourAssignmentLocations = <T extends { readonly id: string }>(
     }
   }
 
-  return [...selectedLocations, ...unselectedLocations];
+  return [
+    ...selectedLocations.sort(compareTourAssignmentLocations),
+    ...unselectedLocations.sort(compareTourAssignmentLocations),
+  ];
 };
 
 export type WasteToursDataProps = {
@@ -72,6 +111,7 @@ export type WasteToursActionsProps = {
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
+  readonly onUpdateTourValidityBulk: (input: WasteTourValidityBulkUpdateInput) => Promise<boolean>;
 };
 
 export type WasteToursCapabilitiesProps = {
@@ -84,6 +124,7 @@ export type WasteToursQueryProps = {
   readonly pageSize: number;
   readonly query: string;
   readonly status: WasteToursFilterStatus;
+  readonly tourValidityPeriod: WasteToursFilterValidityPeriod;
   readonly tourWasteFractionId: WasteToursFilterFraction;
   readonly firstDateFrom: WasteToursFilterDate;
   readonly firstDateTo: WasteToursFilterDate;
@@ -97,6 +138,7 @@ export type WasteToursQueryProps = {
   readonly onFiltersChange?: (
     query: string,
     status: WasteToursFilterStatus,
+    tourValidityPeriod: WasteToursFilterValidityPeriod,
     tourWasteFractionId: WasteToursFilterFraction,
     firstDateFrom: WasteToursFilterDate,
     firstDateTo: WasteToursFilterDate,

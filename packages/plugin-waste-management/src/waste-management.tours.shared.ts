@@ -20,6 +20,7 @@ import type {
   TourDateLocationAssignmentFormState,
   TourFormState,
 } from './waste-management.tours.types.js';
+import { matchesWasteTourValidityPeriod } from './waste-management.tours.validity-filter.js';
 
 const createId = () => crypto.randomUUID();
 
@@ -272,7 +273,8 @@ const matchesDateUpperBound = (
 
 export const filterTours = (
   tours: readonly WasteTourRecord[],
-  search: WasteManagementSearchParams
+  search: WasteManagementSearchParams,
+  referenceYear = new Date().getFullYear()
 ): readonly WasteTourRecord[] =>
   tours.filter((tour) => {
     if (search.tourId && tour.id !== search.tourId) {
@@ -282,6 +284,9 @@ export const filterTours = (
       return false;
     }
     if (search.tourWasteFractionId && !tour.wasteFractionIds.includes(search.tourWasteFractionId)) {
+      return false;
+    }
+    if (!matchesWasteTourValidityPeriod(tour, search.tourValidityPeriod, referenceYear)) {
       return false;
     }
     if (!matchesDateLowerBound(tour.firstDate, search.firstDateFrom)) {

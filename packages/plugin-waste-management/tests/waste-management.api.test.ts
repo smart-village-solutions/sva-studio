@@ -44,6 +44,7 @@ import {
   updateWasteManagementRegion,
   updateWasteManagementStreet,
   updateWasteManagementTour,
+  updateWasteManagementTourValidityBulk,
   updateWasteManagementTourDateShift,
   updateWasteManagementTourAssignment,
   updateWasteManagementSettings,
@@ -1100,6 +1101,35 @@ describe('waste-management api client', () => {
           customRecurrenceId: undefined,
           firstDate: '2026-05-19',
           active: true,
+        }),
+      })
+    );
+  });
+
+  it('updates selected tour validity through the atomic host facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: { updatedCount: 2 } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
+
+    await expect(
+      updateWasteManagementTourValidityBulk({
+        tourIds: ['tour-1', 'tour-2'],
+        firstDate: { mode: 'unchanged' },
+        endDate: { mode: 'set', value: '2026-12-31' },
+      })
+    ).resolves.toEqual({ updatedCount: 2 });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/tours/bulk-validity',
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({
+          tourIds: ['tour-1', 'tour-2'],
+          firstDate: { mode: 'unchanged' },
+          endDate: { mode: 'set', value: '2026-12-31' },
         }),
       })
     );

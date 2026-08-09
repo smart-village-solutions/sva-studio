@@ -241,6 +241,17 @@ const repositoryMocks = vi.hoisted(() => ({
   upsertWasteHolidayRule: vi.fn(async () => undefined),
   deleteWasteHolidayRule: vi.fn(async () => undefined),
   getWasteTourById: vi.fn(async (_id: string) => ({ id: 'tour-1' })),
+  lockWasteToursByIds: vi.fn(async (ids: readonly string[]) =>
+    ids.map((id) => ({
+      id,
+      recurrence: 'weekly',
+      firstDate: '2026-01-01',
+      endDate: '2026-12-31',
+    }))
+  ),
+  updateWasteTourValidityBulk: vi.fn(
+    async (input: { tourIds: readonly string[] }) => input.tourIds.length
+  ),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
@@ -667,6 +678,59 @@ describe('waste-management server loaders', () => {
       'SET search_path TO "wm", public;'
     );
     expect(poolFactoryInstances.at(-1)?.end).not.toHaveBeenCalled();
+  });
+
+  it('updates tour validity atomically after locking and validating every tour', async () => {
+    const result = await wasteManagementEntitySavers.updateWasteTourValidityBulk('tenant-a', {
+      tourIds: ['tour-1', 'tour-2'],
+      firstDate: { mode: 'set', value: '2026-02-01' },
+      endDate: { mode: 'clear' },
+    });
+
+    expect(result).toEqual({ updatedCount: 2 });
+    expect(repositoryMocks.lockWasteToursByIds).toHaveBeenCalledWith(['tour-1', 'tour-2']);
+    expect(repositoryMocks.updateWasteTourValidityBulk).toHaveBeenCalledWith({
+      tourIds: ['tour-1', 'tour-2'],
+      firstDate: { mode: 'set', value: '2026-02-01' },
+      endDate: { mode: 'clear' },
+    });
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('BEGIN');
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('rolls back tour validity changes when one resulting range is invalid', async () => {
+    repositoryMocks.lockWasteToursByIds.mockResolvedValueOnce([
+      {
+        id: 'tour-1',
+        recurrence: 'weekly',
+        firstDate: '2026-05-01',
+        endDate: '2026-12-31',
+      },
+    ]);
+
+    await expect(
+      wasteManagementEntitySavers.updateWasteTourValidityBulk('tenant-a', {
+        tourIds: ['tour-1'],
+        firstDate: { mode: 'unchanged' },
+        endDate: { mode: 'set', value: '2026-04-30' },
+      })
+    ).rejects.toThrow('bulk_tour_validity_invalid_range:tour-1');
+
+    expect(repositoryMocks.updateWasteTourValidityBulk).not.toHaveBeenCalled();
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
+  it('rolls back instead of clearing the recurrence start anchor', async () => {
+    await expect(
+      wasteManagementEntitySavers.updateWasteTourValidityBulk('tenant-a', {
+        tourIds: ['tour-1'],
+        firstDate: { mode: 'clear' },
+        endDate: { mode: 'unchanged' },
+      })
+    ).rejects.toThrow('bulk_tour_validity_first_date_required:tour-1');
+
+    expect(repositoryMocks.updateWasteTourValidityBulk).not.toHaveBeenCalled();
+    expect(poolFactoryInstances.at(-1)?.query).toHaveBeenCalledWith('ROLLBACK');
   });
 
   it('requires explicit fallback mappings before deleting referenced custom recurrence presets', async () => {

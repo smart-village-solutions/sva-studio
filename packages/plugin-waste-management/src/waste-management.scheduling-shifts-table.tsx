@@ -1,15 +1,11 @@
 import { useMemo, useRef, useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  Button,
-  StudioDataTable,
-  type StudioBulkAction,
-} from '@sva/studio-ui-react';
+import { Button, StudioDataTable, type StudioBulkAction } from '@sva/studio-ui-react';
 
 import type { WasteSchedulingTableEntry } from './waste-management.scheduling.shared.js';
+import { WasteSchedulingDeleteDialog } from './waste-management.scheduling-delete-dialog.js';
 import {
   useSchedulingColumns,
-  WasteSchedulingDeleteDialog,
   useSchedulingTableLabels,
   WasteSchedulingRowActions,
 } from './waste-management.scheduling-shifts-table.parts.js';
@@ -22,9 +18,15 @@ import {
 type WasteSchedulingShiftsTableProps = {
   readonly entries: readonly WasteSchedulingTableEntry[];
   readonly onOpenCreateShiftDialog: () => void;
-  readonly onEditHolidayRule: (rule: Extract<WasteSchedulingTableEntry, { kind: 'holiday' }>['rule']) => void;
-  readonly onEditGlobalShiftDialog: (shift: Extract<WasteSchedulingTableEntry, { kind: 'global' }>['shift']) => void;
-  readonly onEditTourShiftDialog: (shift: Extract<WasteSchedulingTableEntry, { kind: 'tour' }>['shift']) => void;
+  readonly onEditHolidayRule: (
+    rule: Extract<WasteSchedulingTableEntry, { kind: 'holiday' }>['rule']
+  ) => void;
+  readonly onEditGlobalShiftDialog: (
+    shift: Extract<WasteSchedulingTableEntry, { kind: 'global' }>['shift']
+  ) => void;
+  readonly onEditTourShiftDialog: (
+    shift: Extract<WasteSchedulingTableEntry, { kind: 'tour' }>['shift']
+  ) => void;
   readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
   readonly saving: boolean;
   readonly page: number;
@@ -49,11 +51,16 @@ export const WasteSchedulingShiftsTable = ({
   onPageSizeChange,
 }: WasteSchedulingShiftsTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const [pendingDeleteRows, setPendingDeleteRows] = useState<readonly WasteSchedulingTableEntry[]>([]);
+  const [pendingDeleteRows, setPendingDeleteRows] = useState<readonly WasteSchedulingTableEntry[]>(
+    []
+  );
   const clearSelectionRef = useRef<() => void>(() => undefined);
   const labels = useSchedulingTableLabels();
   const columns = useSchedulingColumns();
-  const pagedRows = useMemo(() => createPagedItems({ items: entries, page, pageSize }), [entries, page, pageSize]);
+  const pagedRows = useMemo(
+    () => createPagedItems({ items: entries, page, pageSize }),
+    [entries, page, pageSize]
+  );
   const bulkActions = useMemo<readonly StudioBulkAction<WasteSchedulingTableEntry>[]>(
     () => [
       {
@@ -88,7 +95,9 @@ export const WasteSchedulingShiftsTable = ({
             {pt('scheduling.actions.openCreate')}
           </Button>
         }
-        emptyState={<p className="text-sm text-muted-foreground">{pt('scheduling.messages.emptyBody')}</p>}
+        emptyState={
+          <p className="text-sm text-muted-foreground">{pt('scheduling.messages.emptyBody')}</p>
+        }
         rowActions={(row) => (
           <WasteSchedulingRowActions
             row={row}

@@ -31,6 +31,7 @@ const createSearch = (): WasteManagementSearchParams => ({
   page: 3,
   pageSize: 25,
   status: 'active',
+  tourValidityPeriod: 'all',
   tourWasteFractionId: 'fraction-1',
   firstDateFrom: '2026-01-01',
   firstDateTo: undefined,
@@ -49,9 +50,7 @@ const createSearch = (): WasteManagementSearchParams => ({
 
 type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 
-const createController = (
-  overrides: Partial<WasteViewModel> = {}
-): WasteViewModel =>
+const createController = (overrides: Partial<WasteViewModel> = {}): WasteViewModel =>
   ({
     setDialogMode: vi.fn(),
     setTourForm: vi.fn(),
@@ -121,6 +120,7 @@ describe('waste-management.tours-list-view.navigation', () => {
         search,
         'papier',
         'inactive',
+        search.tourValidityPeriod,
         search.tourWasteFractionId,
         search.firstDateFrom,
         search.firstDateTo,
@@ -140,6 +140,7 @@ describe('waste-management.tours-list-view.navigation', () => {
         search,
         'papier',
         'inactive',
+        'current',
         'fraction-2',
         '2026-02-01',
         '2026-03-31',
@@ -150,6 +151,7 @@ describe('waste-management.tours-list-view.navigation', () => {
       ...search,
       q: 'papier',
       status: 'inactive',
+      tourValidityPeriod: 'current',
       tourWasteFractionId: 'fraction-2',
       firstDateFrom: '2026-02-01',
       firstDateTo: '2026-03-31',
@@ -205,6 +207,8 @@ describe('waste-management.tours-list-view.navigation', () => {
         name: 'Bio Nord (Kopie)',
         recurrence: 'weekly',
         firstDate: '2026-01-07',
+        endDate: '2026-12-31',
+        customDates: [],
       })
     );
 

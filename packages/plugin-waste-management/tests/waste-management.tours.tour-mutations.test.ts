@@ -6,6 +6,7 @@ const apiMocks = vi.hoisted(() => ({
   appendWasteManagementDebugLog: vi.fn(),
   createWasteManagementTour: vi.fn(),
   updateWasteManagementTour: vi.fn(),
+  updateWasteManagementTourValidityBulk: vi.fn(),
   deleteWasteManagementTour: vi.fn(),
   createWasteManagementLocationTourPickupDate: vi.fn(),
   updateWasteManagementLocationTourPickupDate: vi.fn(),
@@ -296,6 +297,51 @@ describe('createWasteToursTourMutationHandlers', () => {
       kind: 'success',
       text: 'tours.messages.deleteSuccess',
     });
+  });
+
+  it('updates tour validity in bulk and refreshes the overview', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    apiMocks.updateWasteManagementTourValidityBulk.mockResolvedValue({ updatedCount: 2 });
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+    const input = {
+      tourIds: ['tour-1', 'tour-2'],
+      firstDate: { mode: 'set', value: '2027-01-01' },
+      endDate: { mode: 'clear' },
+    } as const;
+
+    await expect(mutations.onUpdateTourValidityBulk(input)).resolves.toBe(true);
+
+    expect(apiMocks.updateWasteManagementTourValidityBulk).toHaveBeenCalledWith(input);
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'success',
+      text: 'tours.messages.validityUpdateSuccess',
+    });
+    expect(state.setSaving).toHaveBeenNthCalledWith(1, true);
+    expect(state.setSaving).toHaveBeenLastCalledWith(false);
+  });
+
+  it('keeps the bulk validity dialog actionable after an update failure', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    apiMocks.updateWasteManagementTourValidityBulk.mockRejectedValue(new Error('invalid_request'));
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(
+      mutations.onUpdateTourValidityBulk({
+        tourIds: ['tour-1'],
+        firstDate: { mode: 'unchanged' },
+        endDate: { mode: 'clear' },
+      })
+    ).resolves.toBe(false);
+
+    expect(loadOverview).not.toHaveBeenCalled();
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'error',
+      text: 'tours.messages.validityUpdateError',
+    });
+    expect(state.setSaving).toHaveBeenLastCalledWith(false);
   });
 
   it('maps bulk delete failures and outer delete errors through the shared delete error helper', async () => {

@@ -14,6 +14,7 @@ import { wasteManagementSettingsHandlers } from './core/settings.js';
 import { wasteManagementStreetHandlers } from './core/streets.js';
 import { wasteManagementTourDateShiftHandlers } from './core/tour-date-shifts.js';
 import { wasteManagementTourHandlers } from './core/tours.js';
+import { wasteManagementTourValidityBulkHandlers } from './core/tour-validity-bulk.js';
 import { wasteManagementTourAssignmentHandlers } from './core/tour-assignments.js';
 
 export const wasteManagementCoreHandlers = {
@@ -29,6 +30,7 @@ export const wasteManagementCoreHandlers = {
   ...wasteManagementLocationTourLinkBulkHandlers,
   ...wasteManagementLocationTourPickupDateHandlers,
   ...wasteManagementTourHandlers,
+  ...wasteManagementTourValidityBulkHandlers,
   ...wasteManagementTourAssignmentHandlers,
   ...wasteManagementTourDateShiftHandlers,
   ...wasteManagementGlobalDateShiftHandlers,

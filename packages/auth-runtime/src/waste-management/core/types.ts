@@ -31,6 +31,8 @@ import type {
   WasteStreetRecord,
   WasteTourDateShiftRecord,
   WasteTourRecord,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityBulkUpdateResult,
   WasteTenantProvisioningRecord,
 } from '@sva/core';
 import type { EffectivePermission } from '@sva/iam-core';
@@ -265,6 +267,10 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>
   ) => Promise<void>;
+  readonly updateWasteTourValidityBulk?: (
+    instanceId: string,
+    input: WasteTourValidityBulkUpdateInput
+  ) => Promise<WasteTourValidityBulkUpdateResult>;
   readonly loadWasteTourById?: (
     instanceId: string,
     tourId: string

@@ -39,6 +39,8 @@ export const WasteMasterDataLocationsTabView = ({
 
   return (
     <WasteMasterDataLocationsWorkspace
+      fractions={controller.overview?.fractions ?? []}
+      auditCollectionLocations={controller.overview?.collectionLocations ?? []}
       regions={controller.filteredRegions}
       cities={controller.filteredCities}
       streets={controller.filteredStreets}
@@ -58,6 +60,7 @@ export const WasteMasterDataLocationsTabView = ({
       onPageSizeChange={navigation.setPageSize}
       onToggleSelectAll={controller.toggleSelectAllFilteredLocations}
       onToggleLocation={controller.toggleLocationSelection}
+      onReplaceLocationSelection={controller.replaceLocationSelection}
       onOpenCreateRegion={controller.openCreateRegionDialog}
       onOpenCreateCity={controller.openCreateCityDialog}
       onOpenCreateStreet={controller.openCreateStreetDialog}

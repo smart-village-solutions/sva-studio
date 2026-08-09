@@ -12,10 +12,13 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
-  countHolidayShiftedTourOccurrences: (_tour: unknown, schedulingOverview: { holidayRules?: unknown[] } | null) =>
-    schedulingOverview?.holidayRules?.length ? 2 : 0,
+  countHolidayShiftedTourOccurrences: (
+    _tour: unknown,
+    schedulingOverview: { holidayRules?: unknown[] } | null
+  ) => (schedulingOverview?.holidayRules?.length ? 2 : 0),
   formatTourDateRange: (tour: { id: string }) => `range:${tour.id}`,
-  formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) => `recurrence:${recurrence ?? 'none'}`,
+  formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) =>
+    `recurrence:${recurrence ?? 'none'}`,
 }));
 
 vi.mock('../src/waste-management.tours.locations.js', () => ({
@@ -23,7 +26,8 @@ vi.mock('../src/waste-management.tours.locations.js', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -33,19 +37,29 @@ vi.mock('@sva/studio-ui-react', () => ({
   }: {
     readonly children: React.ReactNode;
     readonly variant?: string;
-  }) => <span data-testid="badge" data-variant={variant ?? 'default'}>{children}</span>,
+  }) => (
+    <span data-testid="badge" data-variant={variant ?? 'default'}>
+      {children}
+    </span>
+  ),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Checkbox: ({ indeterminate, ...props }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
+  Checkbox: ({
+    indeterminate,
+    ...props
+  }: React.ComponentProps<'input'> & { readonly indeterminate?: boolean }) => {
     void indeterminate;
     return <input type="checkbox" {...props} />;
   },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
-  Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) => (open ? <div>{children}</div> : null),
+  Dialog: ({ open, children }: { readonly open?: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  DialogDescription: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   StudioConfirmDialog: ({
     open,
@@ -76,7 +90,9 @@ vi.mock('@sva/studio-ui-react', () => ({
         </button>
       </div>
     ) : null,
-  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="empty-state">{children}</div>,
+  StudioEmptyState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div data-testid="empty-state">{children}</div>
+  ),
   cn: (...values: Array<string | false | null | undefined>) => values.filter(Boolean).join(' '),
 }));
 
@@ -134,10 +150,12 @@ describe('WasteToursContent', () => {
         assignmentContextLoading={false}
         message={{ tone: 'info', text: 'tour message' } as never}
         tours={[tour] as never}
-        fractions={[
-          { id: 'fraction-1', name: 'Restmüll' },
-          { id: 'fraction-2', name: 'Biomüll' },
-        ] as never}
+        fractions={
+          [
+            { id: 'fraction-1', name: 'Restmüll' },
+            { id: 'fraction-2', name: 'Biomüll' },
+          ] as never
+        }
         masterDataOverview={{} as never}
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
@@ -155,6 +173,7 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourValidityPeriod="all"
         tourWasteFractionId={undefined}
         firstDateFrom={undefined}
         firstDateTo={undefined}
@@ -169,8 +188,12 @@ describe('WasteToursContent', () => {
 
     expect(screen.getByText('tour message')).toBeTruthy();
     expect(screen.getByRole('table', { name: 'tours.table.caption' })).toBeTruthy();
-    const filterButtonCard = screen.getByRole('button', { name: 'tours.filters.open' }).closest('section.bg-card');
-    const toursTableCard = screen.getByRole('table', { name: 'tours.table.caption' }).closest('section.bg-card');
+    const filterButtonCard = screen
+      .getByRole('button', { name: 'tours.filters.open' })
+      .closest('section.bg-card');
+    const toursTableCard = screen
+      .getByRole('table', { name: 'tours.table.caption' })
+      .closest('section.bg-card');
     expect(filterButtonCard).toBeTruthy();
     expect(filterButtonCard).toBe(toursTableCard);
     expect(screen.getByRole('columnheader', { name: 'tours.table.name none' })).toBeTruthy();
@@ -192,7 +215,9 @@ describe('WasteToursContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
-    fireEvent.click(screen.getByRole('switch', { name: 'tours.actions.deactivateStatus:Restmüll Nord' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'tours.actions.deactivateStatus:Restmüll Nord' })
+    );
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
@@ -212,17 +237,19 @@ describe('WasteToursContent', () => {
       <WasteToursContent
         assignmentContextLoading
         message={null}
-        tours={[
-          {
-            id: 'tour-1',
-            name: 'Restmüll Nord',
-            recurrence: 'weekly',
-            wasteFractionIds: [],
-            locationCount: 0,
-            customDates: [],
-            active: true,
-          },
-        ] as never}
+        tours={
+          [
+            {
+              id: 'tour-1',
+              name: 'Restmüll Nord',
+              recurrence: 'weekly',
+              wasteFractionIds: [],
+              locationCount: 0,
+              customDates: [],
+              active: true,
+            },
+          ] as never
+        }
         fractions={[{ id: 'fraction-1', name: 'Papier' }] as never}
         masterDataOverview={null}
         schedulingOverview={null}
@@ -241,6 +268,7 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourValidityPeriod="all"
         tourWasteFractionId={undefined}
         firstDateFrom={undefined}
         firstDateTo={undefined}
@@ -263,20 +291,24 @@ describe('WasteToursContent', () => {
       <WasteToursContent
         assignmentContextLoading={false}
         message={null}
-        tours={[
-          {
-            id: 'tour-1',
-            name: 'Restmüll Nord',
-            recurrence: 'weekly',
-            wasteFractionIds: [],
-            locationCount: 0,
-            customDates: [],
-            active: true,
-          },
-        ] as never}
+        tours={
+          [
+            {
+              id: 'tour-1',
+              name: 'Restmüll Nord',
+              recurrence: 'weekly',
+              wasteFractionIds: [],
+              locationCount: 0,
+              customDates: [],
+              active: true,
+            },
+          ] as never
+        }
         fractions={[{ id: 'fraction-1', name: 'Papier' }] as never}
         masterDataOverview={null}
-        schedulingOverview={{ holidayRules: [{ id: 'holiday-1' }], globalDateShifts: [], tourDateShifts: [] } as never}
+        schedulingOverview={
+          { holidayRules: [{ id: 'holiday-1' }], globalDateShifts: [], tourDateShifts: [] } as never
+        }
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
@@ -292,6 +324,7 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourValidityPeriod="all"
         tourWasteFractionId={undefined}
         firstDateFrom={undefined}
         firstDateTo={undefined}
@@ -316,18 +349,25 @@ describe('WasteToursContent', () => {
       <WasteToursContent
         assignmentContextLoading={false}
         message={null}
-        tours={[
-          {
-            id: 'tour-1',
-            name: 'Restmüll Nord',
-            recurrence: 'weekly',
-            wasteFractionIds: [],
-            locationCount: 0,
-            customDates: [],
-            active: true,
-          },
-        ] as never}
-        fractions={[{ id: 'fraction-1', name: 'Papier' }, { id: 'fraction-2', name: 'Bio' }] as never}
+        tours={
+          [
+            {
+              id: 'tour-1',
+              name: 'Restmüll Nord',
+              recurrence: 'weekly',
+              wasteFractionIds: [],
+              locationCount: 0,
+              customDates: [],
+              active: true,
+            },
+          ] as never
+        }
+        fractions={
+          [
+            { id: 'fraction-1', name: 'Papier' },
+            { id: 'fraction-2', name: 'Bio' },
+          ] as never
+        }
         masterDataOverview={null}
         schedulingOverview={null}
         onOpenCreateDialog={vi.fn()}
@@ -345,6 +385,7 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query=""
         status="all"
+        tourValidityPeriod="all"
         tourWasteFractionId={undefined}
         firstDateFrom={undefined}
         firstDateTo={undefined}
@@ -370,6 +411,9 @@ describe('WasteToursContent', () => {
     fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
       target: { value: 'inactive' },
     });
+    fireEvent.change(screen.getByLabelText('tours.filters.validityPeriodLabel'), {
+      target: { value: 'next' },
+    });
     fireEvent.change(screen.getByLabelText('tours.filters.fractionLabel'), {
       target: { value: 'fraction-1' },
     });
@@ -390,6 +434,9 @@ describe('WasteToursContent', () => {
     fireEvent.change(screen.getByLabelText('tours.filters.statusLabel'), {
       target: { value: 'inactive' },
     });
+    fireEvent.change(screen.getByLabelText('tours.filters.validityPeriodLabel'), {
+      target: { value: 'current' },
+    });
     fireEvent.change(screen.getByLabelText('tours.filters.fractionLabel'), {
       target: { value: 'fraction-1' },
     });
@@ -404,6 +451,7 @@ describe('WasteToursContent', () => {
     expect(onFiltersChange).toHaveBeenCalledWith(
       'Papier',
       'inactive',
+      'current',
       'fraction-1',
       '2026-02-01',
       undefined,
@@ -421,17 +469,19 @@ describe('WasteToursContent', () => {
       <WasteToursContent
         assignmentContextLoading={false}
         message={null}
-        tours={[
-          {
-            id: 'tour-1',
-            name: 'Restmüll Nord',
-            recurrence: 'weekly',
-            wasteFractionIds: [],
-            locationCount: 0,
-            customDates: [],
-            active: true,
-          },
-        ] as never}
+        tours={
+          [
+            {
+              id: 'tour-1',
+              name: 'Restmüll Nord',
+              recurrence: 'weekly',
+              wasteFractionIds: [],
+              locationCount: 0,
+              customDates: [],
+              active: true,
+            },
+          ] as never
+        }
         fractions={[] as never}
         masterDataOverview={null}
         schedulingOverview={null}
@@ -450,6 +500,7 @@ describe('WasteToursContent', () => {
         pageSize={25}
         query="Bio"
         status="active"
+        tourValidityPeriod="current"
         tourWasteFractionId={'fraction-2'}
         firstDateFrom={'2026-01-01'}
         firstDateTo={undefined}
@@ -464,6 +515,15 @@ describe('WasteToursContent', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.filters.reset' }));
-    expect(onFiltersChange).toHaveBeenCalledWith('', 'all', undefined, undefined, undefined, undefined, undefined);
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      '',
+      'all',
+      'all',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
   });
 });

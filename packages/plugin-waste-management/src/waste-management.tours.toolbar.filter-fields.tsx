@@ -2,10 +2,13 @@ import type { ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Input, Select } from '@sva/studio-ui-react';
 
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
+
 type WasteToursToolbarFilterFieldsProps = {
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly draftQuery: string;
   readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -13,6 +16,7 @@ type WasteToursToolbarFilterFieldsProps = {
   readonly draftEndDateTo: string | undefined;
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -33,22 +37,58 @@ const WasteToursToolbarFilterField = ({
   </label>
 );
 
+const TourValidityPeriodField = ({
+  value,
+  onChange,
+}: Readonly<{
+  value: WasteManagementTourValidityPeriod;
+  onChange: (value: WasteManagementTourValidityPeriod) => void;
+}>) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const referenceYear = new Date().getFullYear();
+  return (
+    <WasteToursToolbarFilterField label={pt('tours.filters.validityPeriodLabel')}>
+      <Select
+        aria-label={pt('tours.filters.validityPeriodLabel')}
+        value={value}
+        className="h-10 rounded-lg"
+        onChange={(event) => onChange(event.target.value as WasteManagementTourValidityPeriod)}
+      >
+        <option value="all">{pt('tours.filters.validityPeriod.all')}</option>
+        <option value="previous">
+          {pt('tours.filters.validityPeriod.previous', { year: referenceYear - 1 })}
+        </option>
+        <option value="current">
+          {pt('tours.filters.validityPeriod.current', { year: referenceYear })}
+        </option>
+        <option value="next">
+          {pt('tours.filters.validityPeriod.next', { year: referenceYear + 1 })}
+        </option>
+      </Select>
+    </WasteToursToolbarFilterField>
+  );
+};
+
 const WasteToursToolbarBasicFilterFields = ({
   fractions,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
 }: Pick<
   WasteToursToolbarFilterFieldsProps,
   | 'fractions'
   | 'draftQuery'
   | 'draftStatus'
+  | 'draftTourValidityPeriod'
   | 'draftTourWasteFractionId'
   | 'onDraftQueryChange'
   | 'onDraftStatusChange'
+  | 'onDraftTourValidityPeriodChange'
   | 'onDraftTourWasteFractionIdChange'
 >) => {
   const pt = usePluginTranslation('wasteManagement');
@@ -69,13 +109,19 @@ const WasteToursToolbarBasicFilterFields = ({
           aria-label={pt('tours.filters.statusLabel')}
           value={draftStatus}
           className="h-10 rounded-lg"
-          onChange={(event) => onDraftStatusChange(event.target.value as 'all' | 'active' | 'inactive')}
+          onChange={(event) =>
+            onDraftStatusChange(event.target.value as 'all' | 'active' | 'inactive')
+          }
         >
           <option value="all">{pt('tours.filters.status.all')}</option>
           <option value="active">{pt('tours.filters.status.active')}</option>
           <option value="inactive">{pt('tours.filters.status.inactive')}</option>
         </Select>
       </WasteToursToolbarFilterField>
+      <TourValidityPeriodField
+        value={draftTourValidityPeriod}
+        onChange={onDraftTourValidityPeriodChange}
+      />
       <WasteToursToolbarFilterField label={pt('tours.filters.fractionLabel')}>
         <Select
           aria-label={pt('tours.filters.fractionLabel')}
@@ -163,6 +209,7 @@ export const WasteToursToolbarFilterFields = ({
   fractions,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -170,6 +217,7 @@ export const WasteToursToolbarFilterFields = ({
   draftEndDateTo,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
   onDraftFirstDateFromChange,
   onDraftFirstDateToChange,
@@ -182,9 +230,11 @@ export const WasteToursToolbarFilterFields = ({
         fractions={fractions}
         draftQuery={draftQuery}
         draftStatus={draftStatus}
+        draftTourValidityPeriod={draftTourValidityPeriod}
         draftTourWasteFractionId={draftTourWasteFractionId}
         onDraftQueryChange={onDraftQueryChange}
         onDraftStatusChange={onDraftStatusChange}
+        onDraftTourValidityPeriodChange={onDraftTourValidityPeriodChange}
         onDraftTourWasteFractionIdChange={onDraftTourWasteFractionIdChange}
       />
       <WasteToursToolbarDateFilterFields

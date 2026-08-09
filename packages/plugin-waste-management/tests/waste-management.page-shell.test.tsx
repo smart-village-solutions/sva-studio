@@ -20,11 +20,19 @@ const searchState = {
   page: 3,
   pageSize: 50,
   status: 'active',
+  tourValidityPeriod: 'all',
+  tourWasteFractionId: undefined,
   shiftContext: 'tour',
   regionId: undefined,
   cityId: undefined,
   wasteFractionId: undefined,
   tourId: undefined,
+  firstDateFrom: undefined,
+  firstDateTo: undefined,
+  endDateFrom: undefined,
+  endDateTo: undefined,
+  schedulingEntryType: undefined,
+  schedulingEntryId: undefined,
 };
 const useWasteManagementUiAccessMock = vi.fn(() => ({
   isResolved: true,
@@ -60,9 +68,13 @@ vi.mock('../src/waste-management.api.js', () => ({
 vi.mock('@sva/studio-ui-react', () => ({
   Alert: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertTitle: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  AlertDescription: ({ children, className }: { readonly children: React.ReactNode; readonly className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
+  AlertDescription: ({
+    children,
+    className,
+  }: {
+    readonly children: React.ReactNode;
+    readonly className?: string;
+  }) => <div className={className}>{children}</div>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
   StudioOverviewPageTemplate: ({
     title,
@@ -130,7 +142,15 @@ describe('WasteManagementPage shell', () => {
     useWasteManagementUiAccessMock.mockReset();
     useWasteManagementUiAccessMock.mockReturnValue({
       isResolved: true,
-      visibleTabIds: ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'],
+      visibleTabIds: [
+        'fractions',
+        'tours',
+        'locations',
+        'scheduling',
+        'output',
+        'tools',
+        'settings',
+      ],
       canAccessSettings: true,
       canAccessTools: true,
       canRunInitialize: true,
@@ -159,8 +179,12 @@ describe('WasteManagementPage shell', () => {
 
     expect(screen.getByText('page.title')).toBeTruthy();
     expect(screen.getByText('page.description')).toBeTruthy();
-    const publicCalendarLink = await screen.findByRole('link', { name: 'page.webVersionLinkLabel' });
-    expect(publicCalendarLink.getAttribute('href')).toBe('https://bb-prignitz.abfallkalender.smart-village.app/');
+    const publicCalendarLink = await screen.findByRole('link', {
+      name: 'page.webVersionLinkLabel',
+    });
+    expect(publicCalendarLink.getAttribute('href')).toBe(
+      'https://bb-prignitz.abfallkalender.smart-village.app/'
+    );
     expect(publicCalendarLink.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.queryByRole('button', { name: 'change-search' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'change-status' })).toBeNull();

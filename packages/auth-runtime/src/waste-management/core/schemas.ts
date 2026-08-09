@@ -309,8 +309,6 @@ const createWasteLocationTourLinkSchema = z.object({
   id: z.string().trim().min(1),
   locationId: z.string().trim().min(1),
   tourId: z.string().trim().min(1),
-  startDate: wasteTourDateSchema.optional(),
-  endDate: wasteTourDateSchema.optional(),
 });
 
 const updateWasteLocationTourLinkSchema = createWasteLocationTourLinkSchema.omit({ id: true });
@@ -339,8 +337,6 @@ const updateWasteTourAssignmentSchema = createWasteTourAssignmentSchema.omit({ i
 const createWasteLocationTourLinksBulkSchema = z.object({
   locationIds: z.array(z.string().trim().min(1)).min(1).max(100),
   tourId: z.string().trim().min(1),
-  startDate: wasteTourDateSchema.optional(),
-  endDate: wasteTourDateSchema.optional(),
 });
 
 const wasteCustomTourDateSchema = z.object({
@@ -363,6 +359,44 @@ const createWasteTourSchema = z.object({
 });
 
 const updateWasteTourSchema = createWasteTourSchema.omit({ id: true });
+
+const wasteTourValidityDateOperationSchema = z.discriminatedUnion('mode', [
+  z.object({ mode: z.literal('unchanged') }).strict(),
+  z.object({ mode: z.literal('clear') }).strict(),
+  z.object({ mode: z.literal('set'), value: wasteTourDateSchema }).strict(),
+]);
+
+const updateWasteTourValidityBulkSchema = z
+  .object({
+    tourIds: z.array(z.string().trim().min(1)).min(1).max(100),
+    firstDate: wasteTourValidityDateOperationSchema,
+    endDate: wasteTourValidityDateOperationSchema,
+  })
+  .superRefine((value, ctx) => {
+    const normalizedTourIds = value.tourIds.map((tourId) => tourId.trim());
+    if (new Set(normalizedTourIds).size !== normalizedTourIds.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'tourIds dürfen keine Duplikate enthalten.',
+        path: ['tourIds'],
+      });
+    }
+    if (value.firstDate.mode === 'unchanged' && value.endDate.mode === 'unchanged') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Mindestens eine Datumsgrenze muss geändert werden.',
+        path: ['firstDate'],
+      });
+    }
+    if (value.firstDate.mode === 'clear') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          'Der Gültigkeitsbeginn ist der Startanker des Turnus und darf nicht entfernt werden.',
+        path: ['firstDate'],
+      });
+    }
+  });
 
 const createWasteTourDateShiftSchema = z.object({
   id: z.string().trim().min(1),
@@ -428,6 +462,7 @@ export const wasteManagementTourSchemas = {
   createWasteLocationTourLinksBulkSchema,
   createWasteTourSchema,
   updateWasteTourSchema,
+  updateWasteTourValidityBulkSchema,
   createWasteTourDateShiftSchema,
   updateWasteTourDateShiftSchema,
   createWasteGlobalDateShiftSchema,

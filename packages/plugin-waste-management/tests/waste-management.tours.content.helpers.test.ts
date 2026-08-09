@@ -46,7 +46,13 @@ describe('waste-management tours content helpers', () => {
   it('sorts tours by recurrence, first date, and location count in both directions', () => {
     const tours = [
       createTour({ id: 'tour-1', name: 'Alpha', recurrence: null, firstDate: '2026-02-10' }),
-      createTour({ id: 'tour-2', name: 'Beta', customRecurrenceName: 'Flex', customRecurrenceIntervalDays: 10, firstDate: '2026-01-05' }),
+      createTour({
+        id: 'tour-2',
+        name: 'Beta',
+        customRecurrenceName: 'Flex',
+        customRecurrenceIntervalDays: 10,
+        firstDate: '2026-01-05',
+      }),
       createTour({ id: 'tour-3', name: 'Gamma', recurrence: 'weekly', firstDate: '2026-03-01' }),
     ];
     const locationCountByTourId = new Map<string, number>([
@@ -123,6 +129,7 @@ describe('waste-management tours content helpers', () => {
       setFilterDialogOpen,
       draftQuery: 'Bio',
       draftStatus: 'inactive',
+      draftTourValidityPeriod: 'current',
       draftTourWasteFractionId: 'fraction-1',
       draftFirstDateFrom: '2026-01-01',
       draftFirstDateTo: '2026-01-31',
@@ -133,6 +140,7 @@ describe('waste-management tours content helpers', () => {
     expect(onFiltersChange).toHaveBeenCalledWith(
       'Bio',
       'inactive',
+      'current',
       'fraction-1',
       '2026-01-01',
       '2026-01-31',
@@ -156,6 +164,7 @@ describe('waste-management tours content helpers', () => {
       setFilterDialogOpen,
       draftQuery: 'Papier',
       draftStatus: 'active',
+      draftTourValidityPeriod: 'all',
       draftTourWasteFractionId: undefined,
       draftFirstDateFrom: undefined,
       draftFirstDateTo: undefined,
@@ -174,7 +183,16 @@ describe('waste-management tours content helpers', () => {
     const onStatusChange = vi.fn();
 
     resetWasteToursFilters({ onFiltersChange, onQueryChange, onStatusChange });
-    expect(onFiltersChange).toHaveBeenCalledWith('', 'all', undefined, undefined, undefined, undefined, undefined);
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      '',
+      'all',
+      'all',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
 
     resetWasteToursFilters({
       onFiltersChange: undefined,

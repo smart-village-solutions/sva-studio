@@ -2,7 +2,17 @@ import type { WasteTourListFilter, WasteTourRecord } from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
-import { buildLikePattern, normalizeCustomDates, normalizeStringArray } from './master-data.shared.js';
+import {
+  buildLikePattern,
+  normalizeCustomDates,
+  normalizeStringArray,
+} from './master-data.shared.js';
+import {
+  buildTourValidityBulkUpdateStatement,
+  buildTourValidityLockStatement,
+  mapWasteTourValidityRow,
+  type WasteTourValidityRow,
+} from './master-data.tour-validity.js';
 
 type WasteTourRow = {
   readonly id: string;
@@ -125,7 +135,9 @@ LIMIT 1;
   values: [id],
 });
 
-const buildTourUpsertStatement = (input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>): SqlStatement => ({
+const buildTourUpsertStatement = (
+  input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => ({
   text: `
 INSERT INTO waste_tours (
   id,
@@ -176,7 +188,15 @@ WHERE id = $1::uuid;
 
 export const createWasteTourRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteTours' | 'getWasteTourById' | 'upsertWasteTour' | 'deleteWasteTour'> => ({
+): Pick<
+  WasteMasterDataRepository,
+  | 'listWasteTours'
+  | 'getWasteTourById'
+  | 'lockWasteToursByIds'
+  | 'updateWasteTourValidityBulk'
+  | 'upsertWasteTour'
+  | 'deleteWasteTour'
+> => ({
   async listWasteTours(filter) {
     const result = await executor.execute<WasteTourRow>(buildTourListStatement(filter));
     return result.rows.map(mapWasteTourRow);
@@ -184,6 +204,16 @@ export const createWasteTourRepositoryPart = (
   async getWasteTourById(id) {
     const result = await executor.execute<WasteTourRow>(buildTourSelectStatement(id));
     return result.rows[0] ? mapWasteTourRow(result.rows[0]) : null;
+  },
+  async lockWasteToursByIds(ids) {
+    const result = await executor.execute<WasteTourValidityRow>(
+      buildTourValidityLockStatement(ids)
+    );
+    return result.rows.map(mapWasteTourValidityRow);
+  },
+  async updateWasteTourValidityBulk(input) {
+    const result = await executor.execute(buildTourValidityBulkUpdateStatement(input));
+    return result.rowCount;
   },
   async upsertWasteTour(input) {
     await executor.execute(buildTourUpsertStatement(input));
@@ -196,6 +226,8 @@ export const createWasteTourRepositoryPart = (
 export const wasteTourStatements = {
   listWasteTours: buildTourListStatement,
   getWasteTourById: buildTourSelectStatement,
+  lockWasteToursByIds: buildTourValidityLockStatement,
+  updateWasteTourValidityBulk: buildTourValidityBulkUpdateStatement,
   upsertWasteTour: buildTourUpsertStatement,
   deleteWasteTour: buildTourDeleteStatement,
 } as const;

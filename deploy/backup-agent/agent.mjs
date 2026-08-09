@@ -1195,7 +1195,8 @@ ON CONFLICT (assignment_id, collection_location_id) DO NOTHING;`;
 export const wasteRuntimeConnectLockSql = (target, locked) => {
   assertRuntimePrincipalTarget(target);
   if (target.database !== 'waste') throw new Error('runtime_principal_target_invalid');
-  return `${locked ? 'REVOKE' : 'GRANT'} CONNECT ON DATABASE ${sqlIdentifier(target.postgresDatabase)} ${locked ? 'FROM' : 'TO'} ${sqlIdentifier(target.runtimeUser)}, ${sqlIdentifier(target.publicRuntimeUser)};`;
+  return `SET ROLE ${sqlIdentifier(target.schemaOwner)};
+${locked ? 'REVOKE' : 'GRANT'} CONNECT ON DATABASE ${sqlIdentifier(target.postgresDatabase)} ${locked ? 'FROM' : 'TO'} ${sqlIdentifier(target.runtimeUser)}, ${sqlIdentifier(target.publicRuntimeUser)};`;
 };
 
 export const archiveSchemaCompatible = (listing) =>
@@ -1574,41 +1575,44 @@ const executeResolvedWasteImportForIntegration = async (request, target) => {
 };
 
 export const executeWasteImportForIntegration = async (request) => {
+  let targetResolved = false;
   try {
     const target = deriveWasteInventoryTarget(
       request.environment,
       (await discoverWasteInventory(request.environment, request.tenantInstanceId))[0],
       'backup'
     );
+    targetResolved = true;
     await executeResolvedWasteImportForIntegration(request, target);
   } catch (error) {
-    try {
-      await uploadJson(
-        targets[request.environment],
-        restoreControlKeysFor(request.requestId).result,
-        {
-          version: 1,
-          action: request.action,
-          requestId: request.requestId,
-          environment: request.environment,
-          database: 'waste',
-          tenantInstanceId: request.tenantInstanceId,
-          sourceObjectKey: request.sourceObjectKey,
-          sourceSha256: request.sourceSha256,
-          maintenanceWindowReference: request.maintenanceWindowReference,
-          status: 'failed',
-          mutationStarted: false,
-          errorCode: safeErrorCode(error),
-          steps: [],
-          completedAt: new Date().toISOString(),
-        }
-      );
-    } catch {
-      // The slot must still be released if even failure evidence cannot be persisted.
-    } finally {
-      terminalRequests.add(request.requestId);
-      active = false;
+    if (!targetResolved) {
+      try {
+        await uploadJson(
+          targets[request.environment],
+          restoreControlKeysFor(request.requestId).result,
+          {
+            version: 1,
+            action: request.action,
+            requestId: request.requestId,
+            environment: request.environment,
+            database: 'waste',
+            tenantInstanceId: request.tenantInstanceId,
+            sourceObjectKey: request.sourceObjectKey,
+            sourceSha256: request.sourceSha256,
+            maintenanceWindowReference: request.maintenanceWindowReference,
+            status: 'failed',
+            mutationStarted: false,
+            errorCode: safeErrorCode(error),
+            steps: [],
+            completedAt: new Date().toISOString(),
+          }
+        );
+      } catch {
+        // The slot must still be released if even setup-failure evidence cannot be persisted.
+      }
     }
+    terminalRequests.add(request.requestId);
+    active = false;
   }
 };
 

@@ -95,6 +95,7 @@ export const hasRuntimePrincipalRestoreEvidence = (result: Record<string, unknow
 
 export const hasWasteImportEvidence = (result: Record<string, unknown>): boolean =>
   [
+    'source-object-and-checksum-verify',
     'runtime-connect-lock',
     'app-session-drain',
     'empty-target-verify',

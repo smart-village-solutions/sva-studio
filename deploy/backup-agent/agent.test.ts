@@ -576,6 +576,9 @@ describe('backup agent runtime contract', () => {
       'backup'
     );
     expect(wasteRuntimeConnectLockSql(target, true)).toContain(
+      'SET ROLE "sva_w_bb_prignitz_4fc528d5be47_owner";'
+    );
+    expect(wasteRuntimeConnectLockSql(target, true)).toContain(
       'REVOKE CONNECT ON DATABASE "sva_w_bb_prignitz_4fc528d5be47_db"'
     );
     expect(wasteRuntimeConnectLockSql(target, false)).toContain(

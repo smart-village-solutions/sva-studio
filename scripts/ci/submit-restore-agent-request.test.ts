@@ -74,6 +74,7 @@ describe('submit restore agent request', () => {
     ).toMatchObject({ action: 'import-waste-data-v1', database: 'waste' });
 
     const steps = [
+      'source-object-and-checksum-verify',
       'runtime-connect-lock',
       'app-session-drain',
       'empty-target-verify',

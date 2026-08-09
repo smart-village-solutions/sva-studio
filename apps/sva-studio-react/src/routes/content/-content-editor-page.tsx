@@ -351,7 +351,6 @@ export const ContentEditorPage = ({
   });
   const {
     formState: { errors, isDirty },
-    getValues,
     handleSubmit,
     register,
     reset,
@@ -654,7 +653,7 @@ export const ContentEditorPage = ({
             message={contentErrorMessage(activeError)}
             retryLabel={t('account.actions.retry')}
             retryDisabled={saveFeedback.status === 'saving'}
-            onRetry={() => void saveValues(getValues())}
+            onRetry={() => void submitForm()}
           />
         ) : null}
 

@@ -221,7 +221,6 @@ export const UserCreatePage = () => {
   });
   const {
     formState: { errors, isDirty },
-    getValues,
     handleSubmit,
     register,
     setValue,
@@ -358,7 +357,7 @@ export const UserCreatePage = () => {
           details={<IamRuntimeDiagnosticDetails error={usersApi.mutationError} />}
           retryLabel={t('account.actions.retry')}
           retryDisabled={saveFeedback.status === 'saving'}
-          onRetry={() => void saveUser(getValues())}
+          onRetry={() => void onSubmit()}
         />
       ) : null}
     </section>

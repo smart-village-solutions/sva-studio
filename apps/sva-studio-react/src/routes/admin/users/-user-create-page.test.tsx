@@ -116,9 +116,41 @@ describe('UserCreatePage', () => {
       'Technischer Fehler beim Laden der Nutzer'
     );
 
+    fireEvent.change(screen.getByLabelText('E-Mail'), {
+      target: { value: 'alice@example.org' },
+    });
+    fireEvent.change(screen.getByLabelText('Vorname'), {
+      target: { value: 'Alice' },
+    });
+    fireEvent.change(screen.getByLabelText('Nachname'), {
+      target: { value: 'Example' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     await waitFor(() => expect(createUser).toHaveBeenCalledOnce());
     expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('validates changed values before retrying a failed creation', async () => {
+    const createUser = vi.fn(async () => null);
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        createUser,
+        mutationError: {
+          status: 500,
+          code: 'internal_error',
+          message: 'Nutzer konnte nicht angelegt werden.',
+        },
+      })
+    );
+
+    render(<UserCreatePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+
+    await waitFor(() => {
+      expect(createUser).not.toHaveBeenCalled();
+      expect(screen.getByLabelText('E-Mail').getAttribute('aria-invalid')).toBe('true');
+    });
   });
 
   it('renders the password setup invite option enabled by default', () => {

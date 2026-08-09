@@ -85,6 +85,7 @@ export const runtimeContractSecretPresenceKeys = [
   'APP_DB_PASSWORD',
   'POSTGRES_PASSWORD',
   'REDIS_PASSWORD',
+  'REDIS_SNAPSHOT_HMAC_SECRET',
 ] as const;
 
 export type RunHttpProbeInput = {

@@ -149,6 +149,17 @@ jobs:
               ;;
           esac
 
+      - name: validate permission snapshot secret
+        env:
+          REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
+        run: |
+          set -euo pipefail
+
+          if [ "${#REDIS_SNAPSHOT_HMAC_SECRET}" -lt 32 ]; then
+            echo "::error::REDIS_SNAPSHOT_HMAC_SECRET fehlt oder ist zu kurz." >&2
+            exit 1
+          fi
+
       - name: checkout
         uses: actions/checkout@v7
         with:
@@ -453,6 +464,7 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
+          REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
         run: |
           set -euo pipefail
           umask 077

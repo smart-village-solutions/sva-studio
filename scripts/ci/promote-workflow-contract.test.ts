@@ -34,4 +34,10 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).toContain('"environment":"%s"');
     expect(workflow).toContain('"summary":');
   });
+
+  it('injects the permission snapshot HMAC as a dedicated protected secret', () => {
+    expect(workflow.match(/REDIS_SNAPSHOT_HMAC_SECRET: \$\{\{ secrets\.REDIS_SNAPSHOT_HMAC_SECRET \}\}/gu)).toHaveLength(2);
+    expect(workflow).toContain('REDIS_SNAPSHOT_HMAC_SECRET fehlt oder ist zu kurz.');
+    expect(workflow.indexOf('validate permission snapshot secret')).toBeLessThan(workflow.indexOf('capture previous live app digest'));
+  });
 });

@@ -72,9 +72,14 @@ describe('cockpit card route validation', () => {
     [{ ...validItem, webUrls: [{ url: 'https://one.test' }, { url: 'https://two.test' }] }, 'Link'],
     [{ ...validItem, webUrls: [{ url: 'http://example.test' }] }, 'Link'],
     [{ ...validItem, contentBlocks: [{ body: '<b>Text</b>' }] }, 'HTML'],
-    [{ ...validItem, contacts: [{ email: 'person@example.test' }] }, 'Kontakte'],
-    [{ ...validItem, addresses: [{}] }, 'Kontakte'],
-    [{ ...validItem, locations: [{}] }, 'Kontakte'],
+    [
+      { ...validItem, contacts: [{ email: 'person@example.test' }] },
+      'fachfremden GenericItem-Felder',
+    ],
+    [{ ...validItem, addresses: [{}] }, 'fachfremden GenericItem-Felder'],
+    [{ ...validItem, locations: [{}] }, 'fachfremden GenericItem-Felder'],
+    [{ ...validItem, keywords: 'fachfremd' }, 'fachfremden GenericItem-Felder'],
+    [{ ...validItem, contacts: [] }, 'fachfremden GenericItem-Felder'],
   ])('rejects a contract violation', async (item, message) => {
     const response = validateCockpitCardItemOrResponse(item);
     expect(response?.status).toBe(400);
@@ -136,20 +141,28 @@ describe('cockpit card route validation', () => {
     );
   });
 
-  it('preserves additional link and media metadata', async () => {
+  it('forwards only schema-supported link and media fields', async () => {
     const result = await validateCockpitCardWriteOrResponse(
       new Request('https://studio.test/api/v1/mainserver/generic-items/card-1', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...validItem,
-          webUrls: [{ ...validItem.webUrls[0], source: 'legacy-link-source' }],
+          webUrls: [
+            {
+              ...validItem.webUrls[0],
+              id: 'response-link-id',
+              source: 'legacy-link-source',
+            },
+          ],
           mediaContents: [
             {
               ...validItem.mediaContents[0],
+              id: 'response-media-id',
               legacyMediaKey: 'legacy-media-value',
               sourceUrl: {
                 ...validItem.mediaContents[0]?.sourceUrl,
+                id: 'response-source-id',
                 source: 'legacy-media-source',
               },
             },
@@ -160,20 +173,12 @@ describe('cockpit card route validation', () => {
 
     expect(result).toEqual(
       expect.objectContaining({
-        webUrls: [
-          {
-            source: 'legacy-link-source',
-            url: 'https://example.test/details',
-          },
-        ],
+        webUrls: [{ url: 'https://example.test/details' }],
         mediaContents: [
-          expect.objectContaining({
-            legacyMediaKey: 'legacy-media-value',
-            sourceUrl: {
-              source: 'legacy-media-source',
-              url: 'https://example.test/image.jpg',
-            },
-          }),
+          {
+            contentType: 'image',
+            sourceUrl: { url: 'https://example.test/image.jpg' },
+          },
         ],
       })
     );

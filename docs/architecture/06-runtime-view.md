@@ -98,7 +98,7 @@ Fehlerpfad:
 2. Das Plugin lädt die bestehende Kategorienliste und öffentliche Bildmedien hostgeführt; Text und Bilder werden gemeinsam im Tab `Inhalt` bearbeitet.
 3. Die Fassade autorisiert mit `cockpit-cards.*`, validiert Überschrift, genau eine Kategorie, optionale Bilder und höchstens einen HTTPS-Link und erzwingt `genericType: "COCKPIT_CARD"`. Linktext und Öffnen-in-neuem-Tab werden nur gemeinsam mit dem Link gespeichert.
 4. Der Leseweg sammelt alle GenericItem-Upstream-Seiten, filtert und sortiert die Cockpit Cards und paginiert anschließend lokal.
-5. Beim Update bleiben die serverseitige `externalId`, unbekannte Payload-Schlüssel und nicht durch die Kachel-Oberfläche bearbeitete Web-URL-Metadaten erhalten; beim Create wird keine clientseitige `externalId` akzeptiert.
+5. Beim Update bleiben die serverseitige `externalId`, unbekannte Payload-Schlüssel und schema-kompatible Medienmetadaten erhalten; Response-only- und unbekannte Rohfelder werden nicht in GraphQL-Inputs übernommen. Beim Create wird keine clientseitige `externalId` akzeptiert.
 6. Die Inhaltsprojektion führt den Datensatz als `cockpit-cards.cockpit-card`; in der gemeinsamen Inhaltsübersicht erscheint kein generischer Ersatz. Der getrennte technische GenericItem-Vollzugriff bleibt davon unberührt.
 
 ### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools

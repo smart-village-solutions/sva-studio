@@ -27,7 +27,6 @@ describe('cockpit card model', () => {
       mapCockpitCardFormValuesToGenericItemInput(values, {
         externalId: 'source-1',
         payload: { legacy: true },
-        webUrls: [{ url: 'https://example.test/old', description: 'Alt', source: 'import' }],
       })
     ).toEqual(
       expect.objectContaining({
@@ -48,7 +47,6 @@ describe('cockpit card model', () => {
           {
             url: 'https://example.test/details',
             description: 'Mehr erfahren',
-            source: 'import',
           },
         ],
       })

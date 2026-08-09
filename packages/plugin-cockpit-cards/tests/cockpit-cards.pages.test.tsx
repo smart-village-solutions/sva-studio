@@ -376,7 +376,6 @@ describe('cockpit cards pages', () => {
             {
               url: 'https://example.test/alt',
               description: 'Alte Kachel',
-              source: 'import',
             },
           ],
           visible: true,

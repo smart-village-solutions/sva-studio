@@ -4,6 +4,18 @@ import { parseGenericItemInput } from './generic-items-route-input.js';
 
 const htmlPattern = /<\/?[a-z][^>]*>/i;
 const languagePattern = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
+const unsupportedCockpitCardFields = [
+  'author',
+  'keywords',
+  'publishedAt',
+  'contacts',
+  'addresses',
+  'openingHours',
+  'priceInformations',
+  'locations',
+  'dates',
+  'accessibilityInformations',
+] as const satisfies readonly (keyof SvaMainserverGenericItemInput)[];
 const payloadRecord = (payload: unknown): Record<string, unknown> =>
   payload && typeof payload === 'object' && !Array.isArray(payload)
     ? (payload as Record<string, unknown>)
@@ -62,15 +74,11 @@ export const validateCockpitCardItemOrResponse = (
     item.webUrls?.some((link) => !link.url.startsWith('https://'))
   )
     return errorJson(400, 'invalid_request', 'Kacheln unterstützen höchstens einen HTTPS-Link.');
-  if (
-    (item.contacts?.length ?? 0) ||
-    (item.addresses?.length ?? 0) ||
-    (item.locations?.length ?? 0)
-  )
+  if (unsupportedCockpitCardFields.some((field) => item[field] !== undefined))
     return errorJson(
       400,
       'invalid_request',
-      'Kacheln unterstützen keine Kontakte, Adressen oder Orte.'
+      'Kacheln unterstützen keine fachfremden GenericItem-Felder.'
     );
   return null;
 };
@@ -78,9 +86,7 @@ export const validateCockpitCardItemOrResponse = (
 export const validateCockpitCardWriteOrResponse = async (
   request: Request
 ): Promise<SvaMainserverGenericItemInput | Response> => {
-  const item = await parseGenericItemInput(request, {
-    preserveWebAndMediaAdditionalFields: true,
-  });
+  const item = await parseGenericItemInput(request);
   if (isResponse(item)) return item;
   const validation = validateCockpitCardItemOrResponse(item);
   if (validation) return validation;

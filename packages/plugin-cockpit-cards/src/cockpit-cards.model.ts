@@ -100,17 +100,9 @@ export const mapGenericItemToCockpitCardFormValues = (
 
 export const mapCockpitCardFormValuesToGenericItemInput = (
   values: CockpitCardFormValues,
-  existing?: Pick<GenericItemCockpitCardRecord, 'externalId' | 'payload' | 'webUrls'>
+  existing?: Pick<GenericItemCockpitCardRecord, 'externalId' | 'payload'>
 ): GenericItemCockpitCardInput => {
   const parsed = cockpitCardFormSchema.parse(values);
-  const existingLink = existing?.webUrls[0];
-  const {
-    url: existingUrl,
-    description: existingDescription,
-    ...existingLinkData
-  } = existingLink ?? { url: undefined, description: undefined };
-  void existingUrl;
-  void existingDescription;
   return {
     title: parsed.heading,
     genericType: COCKPIT_CARD_GENERIC_TYPE,
@@ -128,7 +120,6 @@ export const mapCockpitCardFormValuesToGenericItemInput = (
     webUrls: parsed.link
       ? [
           {
-            ...existingLinkData,
             url: parsed.link,
             ...(parsed.linkText ? { description: parsed.linkText } : {}),
           },

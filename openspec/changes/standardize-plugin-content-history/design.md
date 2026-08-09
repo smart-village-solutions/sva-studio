@@ -37,7 +37,7 @@ Alternativen:
 
 Der Change `add-featured-projects-plugin` ist die technische Vorleistung für externe Content-Identität und Provider-Reconciliation. Dieser History-Change verwendet dieselbe Zuordnung von `iam.contents` zu Mainserver-Entitäten, dieselbe stabile Operations-/`externalId` und denselben Idempotenz- und Reconciliation-Vertrag. Er führt weder eine zweite externe Referenztabelle noch ein paralleles plugin- oder historylokales Mutation-Journal ein.
 
-Die External-Content-Referenz identifiziert den lokalen History-Subject. Der History-Change ergänzt ausschließlich die korrelierbare Erfolgsfinalisierung, History-Read-Verträge und Darstellung. Lifecycle-, Autoren- und fachliche Reconciliation-Regeln bleiben bei Content-Core und jeweiligem Fachadapter.
+Die External-Content-Referenz ordnet den lokalen Historiengegenstand eindeutig zu. Der History-Change ergänzt ausschließlich die korrelierbare Erfolgsfinalisierung, History-Read-Verträge und Darstellung. Lifecycle-, Autoren- und fachliche Reconciliation-Regeln bleiben bei Content-Core und jeweiligem Fachadapter.
 
 ### Decision: Mainserver-Historie bedeutet Studio-Mutationshistorie
 

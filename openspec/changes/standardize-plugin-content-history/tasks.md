@@ -5,7 +5,7 @@
 - [x] 1.3 Den gemeinsamen History-Read-Client und normalisierte Fehlerverträge im passenden Host-/SDK-Boundary bereitstellen.
 - [x] 1.4 Die Plugin-Registry um eine fail-closed History-Capability-Validierung mit stabilen Diagnosecodes erweitern.
 - [x] 1.5 Contract-Tests für gültige Contributions, fehlendes History-Binding und zulässige Nicht-History-Klassifikationen ergänzen.
-- [x] 1.6 Die von `add-featured-projects-plugin` bereitgestellte External-Content-Referenz, stabile `externalId`, Idempotenz und Reconciliation als verbindliche Identitätsgrundlage prüfen und jede zweite Referenz- oder Journal-Persistenz ausschließen.
+- [x] 1.6 Die von `add-featured-projects-plugin` bereitgestellte External-Content-Referenz, stabile `externalId`, Idempotenz und Reconciliation als verbindliche Identitätsgrundlage prüfen und jede zusätzliche Referenz- oder Journal-Persistenz ausschließen.
 
 ## 2. Host-Runtime und Autorisierung
 

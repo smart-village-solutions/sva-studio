@@ -141,7 +141,11 @@ const waitForRestoreResult = async (
           : hasRuntimePrincipalRestoreEvidence(result))
       ) {
         const errorCode = typeof result.errorCode === 'string' ? result.errorCode : 'unknown';
-        throw new Error(`Der Restore-Agent meldet keinen erfolgreichen DB-Restore (${errorCode}).`);
+        const operation =
+          request.action === 'import-waste-data-v1' ? 'Waste-Datenimport' : 'DB-Restore';
+        throw new Error(
+          `Der Restore-Agent meldet keinen erfolgreichen ${operation} (${errorCode}).`
+        );
       }
       return result;
     } catch (error) {

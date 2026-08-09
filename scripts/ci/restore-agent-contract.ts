@@ -24,6 +24,8 @@ const maintenanceWindowPattern = /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u;
 const sha256Pattern = /^[a-f0-9]{64}$/u;
 const bbPrignitzWasteImportSha256 =
   'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc';
+const bbPrignitzWasteImportObjectKey =
+  'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql';
 const restoreRequestKeys = new Set([
   'action',
   'database',
@@ -121,6 +123,7 @@ const hasValidImportBinding = (request: RestoreRequestEnvelope): boolean =>
   (request.environment === 'prod' &&
     request.database === 'waste' &&
     request.tenantInstanceId === 'bb-prignitz' &&
+    request.sourceObjectKey === bbPrignitzWasteImportObjectKey &&
     request.sourceSha256 === bbPrignitzWasteImportSha256);
 
 const hasValidRequestMetadata = (request: RestoreRequestEnvelope): boolean =>

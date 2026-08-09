@@ -26,6 +26,8 @@ const maxBodyBytes = 16_384;
 const maxRequestLifetimeMs = 10 * 60_000;
 const bbPrignitzWasteImportSha256 =
   'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc';
+const bbPrignitzWasteImportObjectKey =
+  'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql';
 const acceptanceCommandTimeoutMs = 10_000;
 export const minioAwsCompatibilityEnv = {
   AWS_REQUEST_CHECKSUM_CALCULATION: 'when_required',
@@ -292,6 +294,7 @@ export const validRestoreRequest = (request, now = Date.now()) => {
     (request.environment !== 'prod' ||
       request.database !== 'waste' ||
       request.tenantInstanceId !== 'bb-prignitz' ||
+      request.sourceObjectKey !== bbPrignitzWasteImportObjectKey ||
       request.sourceSha256 !== bbPrignitzWasteImportSha256)
   )
     return false;
@@ -1370,12 +1373,7 @@ const readWasteImportInventory = async (target, pgEnv) => {
   }
 };
 
-export const executeWasteImportForIntegration = async (request) => {
-  const target = deriveWasteInventoryTarget(
-    request.environment,
-    (await discoverWasteInventory(request.environment, request.tenantInstanceId))[0],
-    'backup'
-  );
+const executeResolvedWasteImportForIntegration = async (request, target) => {
   const keys = restoreControlKeysFor(request.requestId);
   const workdir = join(tmpdir(), `waste-import-${request.requestId}-${randomUUID()}`);
   const sourceSql = join(workdir, 'source.sql');
@@ -1572,6 +1570,45 @@ export const executeWasteImportForIntegration = async (request) => {
     terminalRequests.add(request.requestId);
     active = false;
     await rm(workdir, { recursive: true, force: true });
+  }
+};
+
+export const executeWasteImportForIntegration = async (request) => {
+  try {
+    const target = deriveWasteInventoryTarget(
+      request.environment,
+      (await discoverWasteInventory(request.environment, request.tenantInstanceId))[0],
+      'backup'
+    );
+    await executeResolvedWasteImportForIntegration(request, target);
+  } catch (error) {
+    try {
+      await uploadJson(
+        targets[request.environment],
+        restoreControlKeysFor(request.requestId).result,
+        {
+          version: 1,
+          action: request.action,
+          requestId: request.requestId,
+          environment: request.environment,
+          database: 'waste',
+          tenantInstanceId: request.tenantInstanceId,
+          sourceObjectKey: request.sourceObjectKey,
+          sourceSha256: request.sourceSha256,
+          maintenanceWindowReference: request.maintenanceWindowReference,
+          status: 'failed',
+          mutationStarted: false,
+          errorCode: safeErrorCode(error),
+          steps: [],
+          completedAt: new Date().toISOString(),
+        }
+      );
+    } catch {
+      // The slot must still be released if even failure evidence cannot be persisted.
+    } finally {
+      terminalRequests.add(request.requestId);
+      active = false;
+    }
   }
 };
 

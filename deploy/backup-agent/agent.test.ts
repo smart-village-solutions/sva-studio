@@ -524,6 +524,15 @@ describe('backup agent runtime contract', () => {
         now
       )
     ).toBe(false);
+    expect(
+      validRestoreRequest(
+        {
+          ...importRequest,
+          sourceObjectKey: 'prod/waste/bb-prignitz/import/other/waste-data-pg16.sql',
+        },
+        now
+      )
+    ).toBe(false);
   });
 
   it('binds the one-time import to the audited source inventory and legacy backfill', () => {

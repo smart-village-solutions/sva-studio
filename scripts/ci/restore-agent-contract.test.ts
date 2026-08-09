@@ -108,5 +108,14 @@ describe('restore agent contract', () => {
         now
       )
     ).toBe(false);
+    expect(
+      isValidRestoreRequest(
+        {
+          ...importRequest,
+          sourceObjectKey: 'prod/waste/bb-prignitz/import/other/waste-data-pg16.sql',
+        },
+        now
+      )
+    ).toBe(false);
   });
 });

@@ -91,6 +91,7 @@ const search: WasteManagementSearchParams = {
   page: 1,
   pageSize: 25,
   status: 'all',
+  tourValidityPeriod: 'all',
   shiftContext: 'all',
   fractionsSortBy: 'name',
   fractionsSortDirection: 'asc',

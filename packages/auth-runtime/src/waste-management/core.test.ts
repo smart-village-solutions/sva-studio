@@ -1475,8 +1475,6 @@ describe('waste-management auth runtime handlers', () => {
           id: 'link-new',
           locationId: 'location-1',
           tourId: 'tour-1',
-          startDate: '2026-05-01',
-          endDate: '2026-12-31',
         }),
       }),
       actor,
@@ -1495,8 +1493,6 @@ describe('waste-management auth runtime handlers', () => {
       id: 'link-new',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({
@@ -1539,8 +1535,6 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           locationId: 'location-1',
           tourId: 'tour-1',
-          startDate: '2026-05-01',
-          endDate: '2026-12-31',
         }),
       }),
       actor,
@@ -1560,8 +1554,6 @@ describe('waste-management auth runtime handlers', () => {
       id: 'link-1',
       locationId: 'location-1',
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: '2026-12-31',
     });
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
@@ -1704,7 +1696,7 @@ describe('waste-management auth runtime handlers', () => {
     });
   });
 
-  it('duplicates tour links and date shifts after creating a duplicated waste tour', async () => {
+  it('duplicates all tour contents after creating a duplicated waste tour', async () => {
     const savedTour: WasteTourRecord = {
       id: 'tour-copy-1',
       name: 'Papier Mitte (Kopie)',
@@ -1743,11 +1735,37 @@ describe('waste-management auth runtime handlers', () => {
         updatedAt: '2026-05-01T00:00:00.000Z',
       },
     ];
+    const sourcePickupDates = [
+      {
+        id: 'pickup-source-1',
+        locationId: 'location-1',
+        tourId: 'tour-source-1',
+        pickupDate: '2026-06-02',
+        note: 'Seiteneingang',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ] as const;
+    const sourceTourAssignments = [
+      {
+        id: 'assignment-source-1',
+        tourId: 'tour-source-1',
+        pickupDate: '2026-06-03',
+        note: 'Sammelplatz',
+        locationIds: ['location-1'],
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-01T00:00:00.000Z',
+      },
+    ] as const;
 
     const saveWasteTour = vi.fn(async () => undefined);
     const loadWasteTourById = vi.fn(async () => savedTour);
     const listWasteLocationTourLinksByTourId = vi.fn(async () => sourceLinks);
     const saveWasteLocationTourLink = vi.fn(async () => undefined);
+    const listWasteLocationTourPickupDates = vi.fn(async () => sourcePickupDates);
+    const saveWasteLocationTourPickupDate = vi.fn(async () => undefined);
+    const listWasteTourAssignments = vi.fn(async () => sourceTourAssignments);
+    const saveWasteTourAssignment = vi.fn(async () => undefined);
     const listWasteTourDateShiftsByTourId = vi.fn(async () => sourceShifts);
     const saveWasteTourDateShift = vi.fn(async () => undefined);
     const deleteWasteTour = vi.fn(async () => undefined);
@@ -1779,6 +1797,10 @@ describe('waste-management auth runtime handlers', () => {
         loadWasteTourById,
         listWasteLocationTourLinksByTourId,
         saveWasteLocationTourLink,
+        listWasteLocationTourPickupDates,
+        saveWasteLocationTourPickupDate,
+        listWasteTourAssignments,
+        saveWasteTourAssignment,
         listWasteTourDateShiftsByTourId,
         saveWasteTourDateShift,
         deleteWasteTour,
@@ -1798,6 +1820,30 @@ describe('waste-management auth runtime handlers', () => {
       expect.objectContaining({
         locationId: 'location-1',
         tourId: 'tour-copy-1',
+      })
+    );
+    expect(listWasteLocationTourPickupDates).toHaveBeenCalledWith('tenant-a', {
+      tourId: 'tour-source-1',
+    });
+    expect(saveWasteLocationTourPickupDate).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        locationId: 'location-1',
+        tourId: 'tour-copy-1',
+        pickupDate: '2026-06-02',
+        note: 'Seiteneingang',
+      })
+    );
+    expect(listWasteTourAssignments).toHaveBeenCalledWith('tenant-a', {
+      tourId: 'tour-source-1',
+    });
+    expect(saveWasteTourAssignment).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({
+        tourId: 'tour-copy-1',
+        pickupDate: '2026-06-03',
+        note: 'Sammelplatz',
+        locationIds: ['location-1'],
       })
     );
     expect(listWasteTourDateShiftsByTourId).toHaveBeenCalledWith('tenant-a', 'tour-source-1');
@@ -1871,6 +1917,8 @@ describe('waste-management auth runtime handlers', () => {
       throw new Error('copy_failed');
     });
     const listWasteTourDateShiftsByTourId = vi.fn(async () => []);
+    const listWasteLocationTourPickupDates = vi.fn(async () => []);
+    const listWasteTourAssignments = vi.fn(async () => []);
     const deleteWasteTour = vi.fn(async () => undefined);
 
     const response = await createWasteManagementTourInternal(
@@ -1896,6 +1944,8 @@ describe('waste-management auth runtime handlers', () => {
         loadWasteTourById,
         listWasteLocationTourLinksByTourId,
         saveWasteLocationTourLink,
+        listWasteLocationTourPickupDates,
+        listWasteTourAssignments,
         listWasteTourDateShiftsByTourId,
         deleteWasteTour,
         resolvePermissions: vi.fn(async () => ({
@@ -2903,7 +2953,6 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           locationIds: ['location-1', 'location-2'],
           tourId: 'tour-1',
-          startDate: '2026-05-01',
         }),
       }),
       actor,
@@ -2920,8 +2969,6 @@ describe('waste-management auth runtime handlers', () => {
     expect(saveWasteLocationTourLinksBulk).toHaveBeenCalledWith('tenant-a', {
       locationIds: ['location-1', 'location-2'],
       tourId: 'tour-1',
-      startDate: '2026-05-01',
-      endDate: undefined,
     });
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({

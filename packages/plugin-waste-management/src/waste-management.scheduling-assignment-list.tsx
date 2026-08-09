@@ -64,6 +64,7 @@ const WasteTourAssignmentsTable = ({
                   size="sm"
                   className="h-8 w-8 px-0"
                   aria-label={pt('scheduling.assignments.actions.edit')}
+                  tooltip={pt('scheduling.assignments.actions.edit')}
                   onClick={() => onEdit(entry)}
                 >
                   <IconEdit aria-hidden="true" className="h-4 w-4" />
@@ -74,6 +75,7 @@ const WasteTourAssignmentsTable = ({
                   size="sm"
                   className="h-8 w-8 px-0"
                   aria-label={pt('scheduling.assignments.actions.delete')}
+                  tooltip={pt('scheduling.assignments.actions.delete')}
                   onClick={() => onDeleteRequest(entry)}
                 >
                   <IconTrash aria-hidden="true" className="h-4 w-4" />

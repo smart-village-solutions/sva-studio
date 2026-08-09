@@ -162,6 +162,7 @@ describe('WasteToursContent sorting and delete flows', () => {
         pageSize={25}
         query=""
         status="all"
+        tourValidityPeriod="all"
         tourWasteFractionId={undefined}
         firstDateFrom={undefined}
         firstDateTo={undefined}

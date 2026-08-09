@@ -25,6 +25,7 @@ import type {
   WasteToursSortField,
 } from './waste-management.tours.table.parts.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
+import { WasteToursValidityDialog } from './waste-management.tours-validity-dialog.js';
 
 export { WasteToursEmptyState };
 
@@ -45,12 +46,14 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onToggleTourStatus,
     onDeleteTour,
     onDeleteTours,
+    onUpdateTourValidityBulk,
     canDuplicateTour = false,
     saving = false,
     page,
     pageSize,
     query,
     status,
+    tourValidityPeriod,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -87,6 +90,8 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setDraftQuery,
     draftStatus,
     setDraftStatus,
+    draftTourValidityPeriod,
+    setDraftTourValidityPeriod,
     draftTourWasteFractionId,
     setDraftTourWasteFractionId,
     draftFirstDateFrom,
@@ -103,6 +108,8 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     setTourPendingDelete,
     bulkDeleteOpen,
     setBulkDeleteOpen,
+    bulkValidityOpen,
+    setBulkValidityOpen,
     allVisibleSelected,
     someVisibleSelected,
     toggleSelectAllVisible,
@@ -113,6 +120,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     pageSize,
     query,
     status,
+    tourValidityPeriod,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -126,6 +134,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     filterDialogOpen,
     query,
     status,
+    tourValidityPeriod,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -133,6 +142,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     endDateTo,
     draftQuery,
     draftStatus,
+    draftTourValidityPeriod,
     draftTourWasteFractionId,
     draftFirstDateFrom,
     draftFirstDateTo,
@@ -146,6 +156,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     onFilterDialogOpenChange: setFilterDialogOpen,
     onDraftQueryChange: setDraftQuery,
     onDraftStatusChange: setDraftStatus,
+    onDraftTourValidityPeriodChange: setDraftTourValidityPeriod,
     onDraftTourWasteFractionIdChange: setDraftTourWasteFractionId,
     onDraftFirstDateFromChange: setDraftFirstDateFrom,
     onDraftFirstDateToChange: setDraftFirstDateTo,
@@ -159,6 +170,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         setFilterDialogOpen,
         draftQuery,
         draftStatus,
+        draftTourValidityPeriod,
         draftTourWasteFractionId,
         draftFirstDateFrom,
         draftFirstDateTo,
@@ -206,11 +218,28 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
       <StatusNotice message={message} />
       <WasteToursContentBody
         setBulkDeleteOpen={setBulkDeleteOpen}
+        setBulkValidityOpen={setBulkValidityOpen}
         fractions={fractions}
         onOpenCreateDialog={onOpenCreateDialog}
         filters={filters}
         table={table}
       />
+      {bulkValidityOpen ? (
+        <WasteToursValidityDialog
+          open
+          tours={sortedTours.filter((tour) => selectedTourIds.includes(tour.id))}
+          saving={saving}
+          onOpenChange={setBulkValidityOpen}
+          onSubmit={async (input) => {
+            const succeeded = await onUpdateTourValidityBulk(input);
+            if (succeeded) {
+              setSelectedTourIds([]);
+              setBulkValidityOpen(false);
+            }
+            return succeeded;
+          }}
+        />
+      ) : null}
       <WasteToursDeleteDialogs
         tourPendingDelete={tourPendingDelete}
         tourPendingStatusChange={tourPendingStatusChange}

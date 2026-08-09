@@ -108,12 +108,18 @@ describe('waste tour write support', () => {
     });
   });
 
-  it('duplicates linked tour dependencies including shifts', async () => {
+  it('duplicates all linked tour dependencies without location-specific validity dates', async () => {
     const saveLink = vi.fn(async () => undefined);
+    const savePickupDate = vi.fn(async () => undefined);
+    const saveTourAssignment = vi.fn(async () => undefined);
     const saveShift = vi.fn(async () => undefined);
 
     const randomUuidSpy = vi.spyOn(globalThis.crypto, 'randomUUID');
-    randomUuidSpy.mockReturnValueOnce('link-copy-id').mockReturnValueOnce('shift-copy-id');
+    randomUuidSpy
+      .mockReturnValueOnce('link-copy-id')
+      .mockReturnValueOnce('pickup-copy-id')
+      .mockReturnValueOnce('assignment-copy-id')
+      .mockReturnValueOnce('shift-copy-id');
 
     await duplicateWasteTourDependencies({
       deps: {
@@ -123,8 +129,6 @@ describe('waste tour write support', () => {
             id: 'link-1',
             locationId: 'location-1',
             tourId: 'source-tour',
-            startDate: '2026-01-01',
-            endDate: '2026-12-31',
           },
         ]),
         listWasteTourDateShiftsByTourId: vi.fn(async () => [
@@ -140,7 +144,27 @@ describe('waste tour write support', () => {
             description: 'Holiday shift',
           },
         ]),
+        listWasteLocationTourPickupDates: vi.fn(async () => [
+          {
+            id: 'pickup-1',
+            locationId: 'location-1',
+            tourId: 'source-tour',
+            pickupDate: '2026-03-05',
+            note: 'Seiteneingang',
+          },
+        ]),
+        listWasteTourAssignments: vi.fn(async () => [
+          {
+            id: 'assignment-1',
+            tourId: 'source-tour',
+            pickupDate: '2026-03-06',
+            note: 'Sammelplatz',
+            locationIds: ['location-1', 'location-2'],
+          },
+        ]),
         saveWasteLocationTourLink: saveLink,
+        saveWasteLocationTourPickupDate: savePickupDate,
+        saveWasteTourAssignment: saveTourAssignment,
         saveWasteTourDateShift: saveShift,
       },
       instanceId: 'tenant-a',
@@ -152,6 +176,20 @@ describe('waste tour write support', () => {
       id: 'link-copy-id',
       locationId: 'location-1',
       tourId: 'target-tour',
+    });
+    expect(savePickupDate).toHaveBeenCalledWith('tenant-a', {
+      id: 'pickup-copy-id',
+      locationId: 'location-1',
+      tourId: 'target-tour',
+      pickupDate: '2026-03-05',
+      note: 'Seiteneingang',
+    });
+    expect(saveTourAssignment).toHaveBeenCalledWith('tenant-a', {
+      id: 'assignment-copy-id',
+      tourId: 'target-tour',
+      pickupDate: '2026-03-06',
+      note: 'Sammelplatz',
+      locationIds: ['location-1', 'location-2'],
     });
     expect(saveShift).toHaveBeenCalledWith('tenant-a', {
       id: 'shift-copy-id',
@@ -184,8 +222,19 @@ describe('waste tour write support', () => {
               endDate: undefined,
             },
           ]),
+          listWasteLocationTourPickupDates: vi.fn(async () => [
+            {
+              id: 'pickup-1',
+              locationId: 'location-1',
+              tourId: 'source-tour',
+              pickupDate: '2026-04-01',
+              note: null,
+            },
+          ]),
+          listWasteTourAssignments: vi.fn(async () => []),
           listWasteTourDateShiftsByTourId: vi.fn(async () => []),
-          saveWasteLocationTourLink: vi.fn(async () => {
+          saveWasteLocationTourLink: vi.fn(async () => undefined),
+          saveWasteLocationTourPickupDate: vi.fn(async () => {
             throw new Error('copy failed');
           }),
         },
@@ -331,6 +380,8 @@ describe('waste tour write support', () => {
       deps: {
         deleteWasteTour: vi.fn(async () => undefined),
         listWasteLocationTourLinksByTourId: vi.fn(async () => []),
+        listWasteLocationTourPickupDates: vi.fn(async () => []),
+        listWasteTourAssignments: vi.fn(async () => []),
         listWasteTourDateShiftsByTourId: vi.fn(async () => []),
         loadWasteTourById: loadSavedTour,
         saveWasteLocationTourLink: vi.fn(async () => undefined),

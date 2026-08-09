@@ -1,5 +1,6 @@
 import { startTransition, type FormEvent } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteTourValidityBulkUpdateInput } from '@sva/plugin-sdk';
 
 import {
   createWasteManagementTour,
@@ -8,6 +9,7 @@ import {
   deleteWasteManagementTour,
   updateWasteManagementLocationTourPickupDate,
   updateWasteManagementTour,
+  updateWasteManagementTourValidityBulk,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
 import {
@@ -242,9 +244,45 @@ const createDeleteToursHandler = ({ state, pt, loadOverview }: WasteToursSubmiss
   }
 };
 
+const createUpdateTourValidityBulkHandler = ({
+  state,
+  pt,
+  loadOverview,
+}: WasteToursSubmissionContext) => async (
+  input: WasteTourValidityBulkUpdateInput
+): Promise<boolean> => {
+  state.setSaving(true);
+  state.setMessage(null);
+  state.setLastOutcome(null);
+  try {
+    const result = await updateWasteManagementTourValidityBulk(input);
+    await loadOverview(true);
+    startTransition(() => {
+      state.setMessage({
+        kind: 'success',
+        text: pt('tours.messages.validityUpdateSuccess', { value: result.updatedCount }),
+      });
+    });
+    return true;
+  } catch (saveError) {
+    const code = resolveApiErrorCode(saveError);
+    state.setMessage({
+      kind: 'error',
+      text:
+        code === 'forbidden'
+          ? pt('tours.messages.saveForbidden')
+          : pt('tours.messages.validityUpdateError'),
+    });
+    return false;
+  } finally {
+    state.setSaving(false);
+  }
+};
+
 export const createWasteToursTourMutationHandlers = ({ state, pt, loadOverview }: WasteToursSubmissionContext) => ({
   onSubmitTour: createSubmitTourHandler({ state, pt, loadOverview }),
   onToggleTourStatus: createToggleTourStatusHandler({ state, pt, loadOverview }),
   onDeleteTour: createDeleteTourHandler({ state, pt, loadOverview }),
   onDeleteTours: createDeleteToursHandler({ state, pt, loadOverview }),
+  onUpdateTourValidityBulk: createUpdateTourValidityBulkHandler({ state, pt, loadOverview }),
 });

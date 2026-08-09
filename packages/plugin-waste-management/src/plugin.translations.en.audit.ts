@@ -19,6 +19,7 @@ export const wasteManagementPluginTranslationsENAudit = {
     locationTourLinkBulkCreated: 'Created tour assignments in bulk',
     tourCreated: 'Created tour',
     tourUpdated: 'Updated tour',
+    tourValidityBulkUpdated: 'Updated tour validity periods in bulk',
     tourDateShiftCreated: 'Created tour-specific date shift',
     tourDateShiftUpdated: 'Updated tour-specific date shift',
     tourDateShiftDeleted: 'Deleted tour-specific date shift',

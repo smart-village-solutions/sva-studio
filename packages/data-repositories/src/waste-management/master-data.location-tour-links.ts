@@ -7,8 +7,6 @@ type WasteLocationTourLinkRow = {
   readonly id: string;
   readonly location_id: string;
   readonly tour_id: string;
-  readonly start_date: string | null;
-  readonly end_date: string | null;
   readonly created_at: string;
   readonly updated_at: string;
 };
@@ -19,8 +17,6 @@ const mapWasteLocationTourLinkRow = (
   id: row.id,
   locationId: row.location_id,
   tourId: row.tour_id,
-  startDate: row.start_date ?? undefined,
-  endDate: row.end_date ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -47,8 +43,6 @@ SELECT
   id::text,
   location_id::text,
   tour_id::text,
-  start_date::text,
-  end_date::text,
   created_at::text,
   updated_at::text
 FROM waste_location_tour_links
@@ -65,8 +59,6 @@ SELECT
   id::text,
   location_id::text,
   tour_id::text,
-  start_date::text,
-  end_date::text,
   created_at::text,
   updated_at::text
 FROM waste_location_tour_links
@@ -83,19 +75,15 @@ const buildLocationTourLinkUpsertStatement = (
 INSERT INTO waste_location_tour_links (
   id,
   location_id,
-  tour_id,
-  start_date,
-  end_date
+  tour_id
 )
-VALUES ($1::uuid, $2::uuid, $3::uuid, $4::date, $5::date)
+VALUES ($1::uuid, $2::uuid, $3::uuid)
 ON CONFLICT (id) DO UPDATE
 SET location_id = EXCLUDED.location_id,
     tour_id = EXCLUDED.tour_id,
-    start_date = EXCLUDED.start_date,
-    end_date = EXCLUDED.end_date,
     updated_at = NOW();
 `,
-  values: [input.id, input.locationId, input.tourId, input.startDate ?? null, input.endDate ?? null],
+  values: [input.id, input.locationId, input.tourId],
 });
 
 const buildLocationTourLinkDeleteStatement = (id: string): SqlStatement => ({

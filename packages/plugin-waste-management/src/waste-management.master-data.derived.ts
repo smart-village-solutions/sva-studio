@@ -28,7 +28,7 @@ export const createWasteMasterDataDerivedState = (
     search,
     overview
   );
-  const selectedCollectionLocations = filteredCollectionLocations.filter((location) =>
+  const selectedCollectionLocations = overview.collectionLocations.filter((location) =>
     state.selectedLocationIds.includes(location.id)
   );
 

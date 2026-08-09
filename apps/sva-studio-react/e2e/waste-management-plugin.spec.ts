@@ -103,6 +103,7 @@ type WasteHarness = {
     settingsUpdates: Array<Record<string, unknown>>;
     createdFractions: Array<Record<string, unknown>>;
     createdTours: Array<Record<string, unknown>>;
+    tourValidityUpdates: Array<Record<string, unknown>>;
     startedJobTypes: string[];
   };
 };
@@ -179,6 +180,7 @@ const mockWasteFacade = async (page: Page, input: {
     settingsUpdates: [] as Array<Record<string, unknown>>,
     createdFractions: [] as Array<Record<string, unknown>>,
     createdTours: [] as Array<Record<string, unknown>>,
+    tourValidityUpdates: [] as Array<Record<string, unknown>>,
     startedJobTypes: [] as string[],
   };
 
@@ -261,6 +263,40 @@ const mockWasteFacade = async (page: Page, input: {
           tours: toursState,
           customRecurrencePresets: settingsState.customRecurrencePresets ?? [],
         }),
+      });
+      return;
+    }
+
+    if (method === 'PUT' && path === '/api/v1/waste-management/tours/bulk-validity') {
+      const body = request.postDataJSON() as {
+        tourIds?: string[];
+        firstDate?: { mode?: string; value?: string };
+        endDate?: { mode?: string; value?: string };
+      };
+      requests.tourValidityUpdates.push(body);
+      const selectedTours = toursState.filter((tour) => body.tourIds?.includes(tour.id));
+      const applicable = selectedTours.every(
+        (tour) => Boolean(tour.customRecurrenceId) || !['custom', 'on-demand'].includes(tour.recurrence ?? '')
+      );
+      if (selectedTours.length !== body.tourIds?.length || !applicable) {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'invalid_request', message: 'Ungültige Tourauswahl.' }),
+        });
+        return;
+      }
+      for (const tour of selectedTours) {
+        if (body.firstDate?.mode === 'set') tour.firstDate = body.firstDate.value;
+        if (body.firstDate?.mode === 'clear') tour.firstDate = undefined;
+        if (body.endDate?.mode === 'set') tour.endDate = body.endDate.value;
+        if (body.endDate?.mode === 'clear') tour.endDate = undefined;
+        tour.updatedAt = '2026-05-10T12:40:00.000Z';
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: createApiItem({ updatedCount: selectedTours.length }),
       });
       return;
     }
@@ -832,5 +868,82 @@ test.describe('waste management plugin', () => {
 
     await page.getByRole('tab', { name: 'Touren' }).click();
     await expect(page.getByRole('row', { name: /Ferienroute.*14 Tage Fallback \(alle 14 Tage\)/ })).toBeVisible();
+  });
+
+  test('updates selected tour validity atomically and blocks inapplicable selections', async ({ page }) => {
+    await mockSharedShellRequests(page, {
+      instanceId: 'de-tour-validity',
+      permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
+    });
+    const harness = await mockWasteFacade(page, {
+      instanceId: 'de-tour-validity',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_validity',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'tour-weekly',
+          name: 'Restmüll Nord',
+          wasteFractionIds: [],
+          recurrence: 'weekly',
+          firstDate: '2026-01-01',
+          endDate: '2026-12-31',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'tour-biweekly',
+          name: 'Biomüll Süd',
+          wasteFractionIds: [],
+          recurrence: 'biweekly',
+          firstDate: '2026-02-01',
+          endDate: '2026-11-30',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'tour-on-demand',
+          name: 'Schadstoffmobil',
+          wasteFractionIds: [],
+          recurrence: 'on-demand',
+          active: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    });
+
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('checkbox', { name: 'Tour Restmüll Nord auswählen' }).check();
+    await page.getByRole('checkbox', { name: 'Tour Biomüll Süd auswählen' }).check();
+    await page.getByRole('button', { name: 'Gültigkeitszeitraum ändern' }).click();
+    await page.getByLabel('Gültig ab').selectOption('set');
+    await page.getByLabel('Neuer Gültigkeitsbeginn').fill('2026-03-01');
+    await page.getByLabel('Gültig bis').selectOption('clear');
+    await page.getByRole('button', { name: 'Zeitraum ändern' }).click();
+
+    await expect(page.getByText('Der Gültigkeitszeitraum von 2 Touren wurde aktualisiert.')).toBeVisible();
+    expect(harness.requests.tourValidityUpdates).toEqual([
+      {
+        tourIds: ['tour-weekly', 'tour-biweekly'],
+        firstDate: { mode: 'set', value: '2026-03-01' },
+        endDate: { mode: 'clear' },
+      },
+    ]);
+
+    await page.getByRole('checkbox', { name: 'Tour Restmüll Nord auswählen' }).check();
+    await page.getByRole('checkbox', { name: 'Tour Schadstoffmobil auswählen' }).check();
+    await page.getByRole('button', { name: 'Gültigkeitszeitraum ändern' }).click();
+    await expect(page.getByRole('alert')).toContainText('Schadstoffmobil');
+    await expect(page.getByRole('button', { name: 'Zeitraum ändern' })).toBeDisabled();
+    expect(harness.requests.tourValidityUpdates).toHaveLength(1);
   });
 });

@@ -1,0 +1,16 @@
+# Gültigkeitszeiträume von Waste-Touren bearbeiten
+
+Der Bereich `Touren` im Waste-Management-Plugin erlaubt, den tourweiten Gültigkeitszeitraum mehrerer Touren gemeinsam zu ändern. Der Zeitraum besteht aus `Gültig ab` und `Gültig bis` und beeinflusst den wiederkehrenden Turnus der Tour. Einzelne Abholtermine und Terminverschiebungen bleiben unverändert. Abholort-Zuordnungen besitzen keinen eigenen Gültigkeitszeitraum und übernehmen immer den Zeitraum ihrer Tour.
+
+## Mehrere Touren bearbeiten
+
+1. Wählen Sie in der Tourentabelle die gewünschten Touren aus.
+2. Öffnen Sie `Gültigkeitszeitraum ändern`.
+3. Legen Sie für `Gültig ab` und `Gültig bis` jeweils fest, ob das vorhandene Datum unverändert bleiben, durch ein neues Datum ersetzt oder entfernt werden soll.
+4. Prüfen Sie die Zusammenfassung und bestätigen Sie mit `Zeitraum ändern`.
+
+Die Änderung wird für die gesamte Auswahl atomar gespeichert. Ist eine Tour nicht mehr vorhanden, nicht geeignet oder würde bei mindestens einer Tour ein Enddatum vor dem Startdatum entstehen, wird keine der ausgewählten Touren geändert.
+
+## Unterstützte Touren
+
+Die Mehrfachbearbeitung gilt für feste Wiederholungen wie wöchentlich, zweiwöchentlich, vierwöchentlich und jährlich sowie für Touren mit einem benutzerdefinierten Wiederholungsabstand. Individuelle Touren und bedarfsabhängige Touren besitzen keinen turnusbasierten Gültigkeitszeitraum. Der Dialog nennt solche Touren und blockiert das Speichern, bis sie aus der Auswahl entfernt wurden.

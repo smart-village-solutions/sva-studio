@@ -1,4 +1,9 @@
-import type { WasteTourListFilter, WasteTourRecord } from '@sva/core';
+import type {
+  WasteTourListFilter,
+  WasteTourRecord,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityRecord,
+} from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -20,6 +25,14 @@ type WasteTourRow = {
   readonly location_count?: number | null;
   readonly created_at: string;
   readonly updated_at: string;
+};
+
+type WasteTourValidityRow = {
+  readonly id: string;
+  readonly recurrence: WasteTourRecord['recurrence'];
+  readonly custom_recurrence_id: string | null;
+  readonly first_date: string | null;
+  readonly end_date: string | null;
 };
 
 const mapWasteTourRow = (row: WasteTourRow): WasteTourRecord => ({
@@ -125,6 +138,57 @@ LIMIT 1;
   values: [id],
 });
 
+const buildTourValidityLockStatement = (ids: readonly string[]): SqlStatement => ({
+  text: `
+SELECT
+  id::text,
+  recurrence,
+  custom_recurrence_id::text,
+  first_date::text,
+  end_date::text
+FROM waste_tours
+WHERE id = ANY($1::uuid[])
+ORDER BY id
+FOR UPDATE;
+`,
+  values: [ids],
+});
+
+const mapWasteTourValidityRow = (row: WasteTourValidityRow): WasteTourValidityRecord => ({
+  id: row.id,
+  recurrence: row.recurrence ?? null,
+  customRecurrenceId: row.custom_recurrence_id ?? undefined,
+  firstDate: row.first_date ?? undefined,
+  endDate: row.end_date ?? undefined,
+});
+
+const buildTourValidityBulkUpdateStatement = (
+  input: WasteTourValidityBulkUpdateInput
+): SqlStatement => ({
+  text: `
+UPDATE waste_tours
+SET first_date = CASE $2
+      WHEN 'set' THEN $3::date
+      WHEN 'clear' THEN NULL
+      ELSE first_date
+    END,
+    end_date = CASE $4
+      WHEN 'set' THEN $5::date
+      WHEN 'clear' THEN NULL
+      ELSE end_date
+    END,
+    updated_at = NOW()
+WHERE id = ANY($1::uuid[]);
+`,
+  values: [
+    input.tourIds,
+    input.firstDate.mode,
+    input.firstDate.mode === 'set' ? input.firstDate.value : null,
+    input.endDate.mode,
+    input.endDate.mode === 'set' ? input.endDate.value : null,
+  ],
+});
+
 const buildTourUpsertStatement = (input: Omit<WasteTourRecord, 'createdAt' | 'updatedAt'>): SqlStatement => ({
   text: `
 INSERT INTO waste_tours (
@@ -176,7 +240,15 @@ WHERE id = $1::uuid;
 
 export const createWasteTourRepositoryPart = (
   executor: SqlExecutor
-): Pick<WasteMasterDataRepository, 'listWasteTours' | 'getWasteTourById' | 'upsertWasteTour' | 'deleteWasteTour'> => ({
+): Pick<
+  WasteMasterDataRepository,
+  | 'listWasteTours'
+  | 'getWasteTourById'
+  | 'lockWasteToursByIds'
+  | 'updateWasteTourValidityBulk'
+  | 'upsertWasteTour'
+  | 'deleteWasteTour'
+> => ({
   async listWasteTours(filter) {
     const result = await executor.execute<WasteTourRow>(buildTourListStatement(filter));
     return result.rows.map(mapWasteTourRow);
@@ -184,6 +256,16 @@ export const createWasteTourRepositoryPart = (
   async getWasteTourById(id) {
     const result = await executor.execute<WasteTourRow>(buildTourSelectStatement(id));
     return result.rows[0] ? mapWasteTourRow(result.rows[0]) : null;
+  },
+  async lockWasteToursByIds(ids) {
+    const result = await executor.execute<WasteTourValidityRow>(
+      buildTourValidityLockStatement(ids)
+    );
+    return result.rows.map(mapWasteTourValidityRow);
+  },
+  async updateWasteTourValidityBulk(input) {
+    const result = await executor.execute(buildTourValidityBulkUpdateStatement(input));
+    return result.rowCount;
   },
   async upsertWasteTour(input) {
     await executor.execute(buildTourUpsertStatement(input));
@@ -196,6 +278,8 @@ export const createWasteTourRepositoryPart = (
 export const wasteTourStatements = {
   listWasteTours: buildTourListStatement,
   getWasteTourById: buildTourSelectStatement,
+  lockWasteToursByIds: buildTourValidityLockStatement,
+  updateWasteTourValidityBulk: buildTourValidityBulkUpdateStatement,
   upsertWasteTour: buildTourUpsertStatement,
   deleteWasteTour: buildTourDeleteStatement,
 } as const;

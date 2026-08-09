@@ -102,6 +102,10 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
     titleKey: 'wasteManagement.audit.tourUpdated',
   },
   {
+    eventType: 'waste-management.tour.validity-bulk-updated',
+    titleKey: 'wasteManagement.audit.tourValidityBulkUpdated',
+  },
+  {
     eventType: 'waste-management.tour-date-shift.created',
     titleKey: 'wasteManagement.audit.tourDateShiftCreated',
   },

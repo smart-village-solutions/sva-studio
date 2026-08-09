@@ -1,4 +1,4 @@
-import { IconFilter, IconTrash } from '@tabler/icons-react';
+import { IconCalendarTime, IconFilter, IconTrash } from '@tabler/icons-react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Button,
@@ -12,11 +12,13 @@ import {
 } from '@sva/studio-ui-react';
 
 import { WasteToursToolbarFilterFields } from './waste-management.tours.toolbar.filter-fields.js';
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
 
 type WasteToursToolbarFiltersProps = {
   readonly filterDialogOpen: boolean;
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
+  readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -25,6 +27,7 @@ type WasteToursToolbarFiltersProps = {
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
   readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -33,6 +36,7 @@ type WasteToursToolbarFiltersProps = {
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -45,6 +49,7 @@ const toWasteToursToolbarFilterFieldProps = ({
   fractions,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -52,6 +57,7 @@ const toWasteToursToolbarFilterFieldProps = ({
   draftEndDateTo,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
   onDraftFirstDateFromChange,
   onDraftFirstDateToChange,
@@ -61,6 +67,7 @@ const toWasteToursToolbarFilterFieldProps = ({
   fractions,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -68,6 +75,7 @@ const toWasteToursToolbarFilterFieldProps = ({
   draftEndDateTo,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
   onDraftFirstDateFromChange,
   onDraftFirstDateToChange,
@@ -80,6 +88,7 @@ export const WasteToursToolbarActions = ({
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
+  onOpenBulkValidity,
   onOpenFilterDialog,
   onResetFilters,
 }: {
@@ -87,6 +96,7 @@ export const WasteToursToolbarActions = ({
   readonly filterDialogOpen: boolean;
   readonly hasActiveFilters: boolean;
   readonly onOpenBulkDelete: () => void;
+  readonly onOpenBulkValidity: () => void;
   readonly onOpenFilterDialog: () => void;
   readonly onResetFilters: () => void;
 }) => {
@@ -94,6 +104,16 @@ export const WasteToursToolbarActions = ({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        className="h-10 rounded-lg px-3"
+        disabled={selectedCount === 0}
+        onClick={onOpenBulkValidity}
+      >
+        <IconCalendarTime aria-hidden="true" className="h-4 w-4" />
+        {pt('tours.bulkValidityDialog.title')}
+      </Button>
       <Button
         type="button"
         variant="ghost"
@@ -108,7 +128,12 @@ export const WasteToursToolbarActions = ({
         {pt('tours.table.deleteSelected')}
       </Button>
       {hasActiveFilters ? (
-        <Button type="button" variant="ghost" className="h-10 rounded-lg px-3" onClick={onResetFilters}>
+        <Button
+          type="button"
+          variant="ghost"
+          className="h-10 rounded-lg px-3"
+          onClick={onResetFilters}
+        >
           {pt('tours.filters.reset')}
         </Button>
       ) : null}
@@ -129,6 +154,7 @@ export const WasteToursToolbarActions = ({
 const hasWasteToursDraftFilterChanges = ({
   query,
   status,
+  tourValidityPeriod,
   tourWasteFractionId,
   firstDateFrom,
   firstDateTo,
@@ -136,6 +162,7 @@ const hasWasteToursDraftFilterChanges = ({
   endDateTo,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -144,6 +171,7 @@ const hasWasteToursDraftFilterChanges = ({
 }: {
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
+  readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
   readonly firstDateTo: string | undefined;
@@ -151,6 +179,7 @@ const hasWasteToursDraftFilterChanges = ({
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
   readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -159,6 +188,7 @@ const hasWasteToursDraftFilterChanges = ({
 }) =>
   draftQuery !== query ||
   draftStatus !== status ||
+  draftTourValidityPeriod !== tourValidityPeriod ||
   draftTourWasteFractionId !== tourWasteFractionId ||
   draftFirstDateFrom !== firstDateFrom ||
   draftFirstDateTo !== firstDateTo ||
@@ -179,7 +209,11 @@ export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) =
         </DialogHeader>
         <WasteToursToolbarFilterFields {...filterFieldProps} />
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => props.onFilterDialogOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => props.onFilterDialogOpenChange(false)}
+          >
             {pt('tours.filters.cancel')}
           </Button>
           <Button type="button" onClick={props.onApplyFilters} disabled={!hasDraftChanges}>

@@ -206,6 +206,8 @@ export const WasteSchedulingRowActions = ({
   readonly onRequestDeleteRows: (rows: readonly WasteSchedulingTableEntry[]) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const editLabel = resolveEditLabel(pt, row);
+  const deleteLabel = pt('scheduling.actions.delete');
 
   return (
     <div className="flex items-center justify-end gap-1">
@@ -214,7 +216,8 @@ export const WasteSchedulingRowActions = ({
         variant="ghost"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-        aria-label={resolveEditLabel(pt, row)}
+        aria-label={editLabel}
+        tooltip={editLabel}
         onClick={() => handleEditRow(row, onEditHolidayRule, onEditGlobalShiftDialog, onEditTourShiftDialog)}
       >
         <IconEdit aria-hidden="true" className="h-4 w-4" />
@@ -225,7 +228,8 @@ export const WasteSchedulingRowActions = ({
           variant="ghost"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-          aria-label={pt('scheduling.actions.delete')}
+          aria-label={deleteLabel}
+          tooltip={deleteLabel}
           onClick={() => onRequestDeleteRows([row])}
         >
           <IconTrash aria-hidden="true" className="h-4 w-4" />

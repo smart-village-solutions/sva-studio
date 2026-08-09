@@ -4,9 +4,14 @@ import type { usePluginTranslation } from '@sva/plugin-sdk';
 
 import { formatTourRecurrence } from './waste-management.tours.presentation.js';
 import type { WasteToursContentProps } from './waste-management.tours.content.parts.js';
-import type { WasteToursSortDirection, WasteToursSortField } from './waste-management.tours.table.parts.js';
+import type {
+  WasteToursSortDirection,
+  WasteToursSortField,
+} from './waste-management.tours.table.parts.js';
 
-export const createLocationCountByTourId = (locationTourLinks: readonly { readonly tourId: string }[] | undefined) => {
+export const createLocationCountByTourId = (
+  locationTourLinks: readonly { readonly tourId: string }[] | undefined
+) => {
   const counts = new Map<string, number>();
   for (const link of locationTourLinks ?? []) {
     counts.set(link.tourId, (counts.get(link.tourId) ?? 0) + 1);
@@ -33,7 +38,7 @@ const resolveTourSortValue = ({
         pt,
         tour.recurrence,
         tour.customRecurrenceName,
-        tour.customRecurrenceIntervalDays,
+        tour.customRecurrenceIntervalDays
       );
       return recurrenceValue === '—' ? '' : recurrenceValue;
     }
@@ -64,13 +69,18 @@ export const sortWasteTours = ({
   }
 
   return [...tours].sort((left, right) => {
-    const comparison = resolveTourSortValue({ tour: left, sortField, locationCountByTourId, pt }).localeCompare(
+    const comparison = resolveTourSortValue({
+      tour: left,
+      sortField,
+      locationCountByTourId,
+      pt,
+    }).localeCompare(
       resolveTourSortValue({ tour: right, sortField, locationCountByTourId, pt }),
       'de',
       {
         numeric: true,
         sensitivity: 'base',
-      },
+      }
     );
     return sortDirection === 'asc' ? comparison : comparison * -1;
   });
@@ -83,6 +93,7 @@ export const applyWasteToursFilters = ({
   setFilterDialogOpen,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -95,6 +106,7 @@ export const applyWasteToursFilters = ({
   readonly setFilterDialogOpen: (open: boolean) => void;
   readonly draftQuery: string;
   readonly draftStatus: WasteToursContentProps['status'];
+  readonly draftTourValidityPeriod: WasteToursContentProps['tourValidityPeriod'];
   readonly draftTourWasteFractionId: WasteToursContentProps['tourWasteFractionId'];
   readonly draftFirstDateFrom: WasteToursContentProps['firstDateFrom'];
   readonly draftFirstDateTo: WasteToursContentProps['firstDateTo'];
@@ -105,11 +117,12 @@ export const applyWasteToursFilters = ({
     onFiltersChange(
       draftQuery,
       draftStatus,
+      draftTourValidityPeriod,
       draftTourWasteFractionId,
       draftFirstDateFrom,
       draftFirstDateTo,
       draftEndDateFrom,
-      draftEndDateTo,
+      draftEndDateTo
     );
     setFilterDialogOpen(false);
     return;
@@ -130,7 +143,7 @@ export const resetWasteToursFilters = ({
   readonly onStatusChange: WasteToursContentProps['onStatusChange'];
 }) => {
   if (onFiltersChange) {
-    onFiltersChange('', 'all', undefined, undefined, undefined, undefined, undefined);
+    onFiltersChange('', 'all', 'all', undefined, undefined, undefined, undefined, undefined);
     return;
   }
 

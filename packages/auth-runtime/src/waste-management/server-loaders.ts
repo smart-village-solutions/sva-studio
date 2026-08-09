@@ -11,6 +11,8 @@ import {
 } from '@sva/data-repositories/server';
 import {
   findSelectedWasteManagementInterfaceRecord,
+  isWasteTourValidityApplicable,
+  resolveWasteTourValidityDates,
   WasteCollectionLocationRecord,
   type WasteCustomRecurrencePresetRecord,
   WasteGlobalDateShiftRecord,
@@ -32,6 +34,8 @@ import {
   WasteTourAssignmentRecord,
   type WasteTourRecurrence,
   WasteTourRecord,
+  type WasteTourValidityBulkUpdateInput,
+  type WasteTourValidityBulkUpdateResult,
 } from '@sva/core';
 import { createSdkLogger, resolveWasteDataSource } from '@sva/server-runtime';
 import {
@@ -1349,6 +1353,47 @@ const saveWasteLocationTourLinksBulk = async (
   });
 };
 
+const updateWasteTourValidityBulk = async (
+  instanceId: string,
+  input: WasteTourValidityBulkUpdateInput
+): Promise<WasteTourValidityBulkUpdateResult> =>
+  withWasteClient(instanceId, 'update_waste_tour_validity_bulk', async (client) => {
+    try {
+      await client.query('BEGIN');
+      const repository = createWasteMasterDataRepository(createSqlExecutor(client));
+      const tours = await repository.lockWasteToursByIds(input.tourIds);
+      const toursById = new Map(tours.map((tour) => [tour.id, tour] as const));
+      const missingTourId = input.tourIds.find((tourId) => !toursById.has(tourId));
+      if (missingTourId) {
+        throw new Error(`bulk_tour_validity_not_found:${missingTourId}`);
+      }
+
+      for (const tourId of input.tourIds) {
+        const tour = toursById.get(tourId);
+        if (!tour) {
+          throw new Error(`bulk_tour_validity_not_found:${tourId}`);
+        }
+        if (!isWasteTourValidityApplicable(tour)) {
+          throw new Error(`bulk_tour_validity_not_applicable:${tourId}`);
+        }
+        if (!resolveWasteTourValidityDates(tour, input)) {
+          throw new Error(`bulk_tour_validity_invalid_range:${tourId}`);
+        }
+      }
+
+      const updatedCount = await repository.updateWasteTourValidityBulk(input);
+      if (updatedCount !== input.tourIds.length) {
+        throw new Error(`bulk_tour_validity_verification_failed:${updatedCount}`);
+      }
+
+      await client.query('COMMIT');
+      return { updatedCount };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  });
+
 export const wasteManagementOverviewLoaders = {
   loadMasterDataOverview,
   loadMasterDataFractionsOverview,
@@ -1403,6 +1448,7 @@ export const wasteManagementEntitySavers = {
   deleteWasteTourAssignment,
   saveWasteLocationTourLinksBulk,
   saveWasteTour,
+  updateWasteTourValidityBulk,
   deleteWasteTour,
   deleteWasteTourDateShift,
   saveWasteTourDateShift,

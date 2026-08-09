@@ -1,6 +1,7 @@
 import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
+  WasteFractionRecord,
   WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
@@ -9,6 +10,8 @@ import type {
 } from '@sva/plugin-sdk';
 
 export type WasteMasterDataLocationsWorkspaceProps = {
+  readonly fractions?: readonly WasteFractionRecord[];
+  readonly auditCollectionLocations?: readonly WasteCollectionLocationRecord[];
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];

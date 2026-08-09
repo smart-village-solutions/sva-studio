@@ -69,14 +69,25 @@ export const duplicateWasteTourDependencies = async ({
     deps.listWasteTourDateShiftsByTourId,
     'listWasteTourDateShiftsByTourId'
   );
+  const listPickupDates = requireDeps(
+    deps.listWasteLocationTourPickupDates,
+    'listWasteLocationTourPickupDates'
+  );
+  const listTourAssignments = requireDeps(
+    deps.listWasteTourAssignments,
+    'listWasteTourAssignments'
+  );
   const saveLink = requireDeps(deps.saveWasteLocationTourLink, 'saveWasteLocationTourLink');
   const deleteTour = requireDeps(deps.deleteWasteTour, 'deleteWasteTour');
 
   try {
-    const [sourceLinks, sourceShifts] = await Promise.all([
+    const [sourceLinks, sourcePickupDates, sourceTourAssignments, sourceShifts] =
+      await Promise.all([
       listLinks(instanceId, sourceTourId),
+      listPickupDates(instanceId, { tourId: sourceTourId }),
+      listTourAssignments(instanceId, { tourId: sourceTourId }),
       listShifts(instanceId, sourceTourId),
-    ]);
+      ]);
 
     for (const sourceLink of sourceLinks) {
       await saveLink(instanceId, {
@@ -84,6 +95,38 @@ export const duplicateWasteTourDependencies = async ({
         locationId: sourceLink.locationId,
         tourId: targetTourId,
       });
+    }
+
+    if (sourcePickupDates.length > 0) {
+      const savePickupDate = requireDeps(
+        deps.saveWasteLocationTourPickupDate,
+        'saveWasteLocationTourPickupDate'
+      );
+      for (const sourcePickupDate of sourcePickupDates) {
+        await savePickupDate(instanceId, {
+          id: crypto.randomUUID(),
+          locationId: sourcePickupDate.locationId,
+          tourId: targetTourId,
+          pickupDate: sourcePickupDate.pickupDate,
+          note: sourcePickupDate.note,
+        });
+      }
+    }
+
+    if (sourceTourAssignments.length > 0) {
+      const saveTourAssignment = requireDeps(
+        deps.saveWasteTourAssignment,
+        'saveWasteTourAssignment'
+      );
+      for (const sourceTourAssignment of sourceTourAssignments) {
+        await saveTourAssignment(instanceId, {
+          id: crypto.randomUUID(),
+          tourId: targetTourId,
+          pickupDate: sourceTourAssignment.pickupDate,
+          note: sourceTourAssignment.note,
+          locationIds: [...sourceTourAssignment.locationIds],
+        });
+      }
     }
 
     if (sourceShifts.length > 0) {

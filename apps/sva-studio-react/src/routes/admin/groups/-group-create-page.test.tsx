@@ -98,6 +98,18 @@ describe('GroupCreatePage', () => {
       params: { groupId: 'group-99' },
       state: expect.any(Function),
     });
+
+    const navigation = navigateMock.mock.calls[0]?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.state({ __TSR_index: 0 })).toEqual({
+      __TSR_index: 0,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceType: 'groups',
+        resourceId: 'group-99',
+      },
+    });
   });
 
   it('renders mutation errors', () => {

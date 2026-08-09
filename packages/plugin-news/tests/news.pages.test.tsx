@@ -1024,6 +1024,22 @@ describe('News editor pages', () => {
     expect(screen.queryByText('News-Eintrag wurde aktualisiert.')).toBeNull();
   });
 
+  it('preloads edit tab contents on pointer and keyboard intent', async () => {
+    render(<NewsEditPage />);
+
+    await screen.findByDisplayValue('Bestehende News');
+
+    fireEvent.mouseEnter(screen.getByRole('tab', { name: 'Inhalte' }));
+    await waitFor(() => {
+      expect(screen.getByLabelText('Inhalt')).toBeTruthy();
+    });
+
+    fireEvent.focus(screen.getByRole('tab', { name: 'Einstellungen' }));
+    await waitFor(() => {
+      expect(screen.getByRole('radio', { name: /Sofort/ })).toBeTruthy();
+    });
+  });
+
   it('consumes create feedback once on the generated detail page', async () => {
     locationStateMock.mockReturnValue({
       studioSaveFeedback: { kind: 'created', resourceType: 'news', resourceId: 'news-1' },

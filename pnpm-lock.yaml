@@ -18,7 +18,7 @@ overrides:
   form-data: 4.0.6
   follow-redirects: 1.16.0
   launch-editor: 2.14.1
-  postcss: 8.5.18
+  postcss: 8.5.23
   protobufjs: 7.6.3
   rollup: 4.59.0
   srvx: 0.11.15
@@ -74,7 +74,7 @@ importers:
         version: 4.1.10(vitest@4.1.10)
       autoprefixer:
         specifier: 10.5.2
-        version: 10.5.2(postcss@8.5.18)
+        version: 10.5.2(postcss@8.5.23)
       eslint:
         specifier: ^10.6.0
         version: 10.6.0(jiti@2.7.0)
@@ -91,8 +91,8 @@ importers:
         specifier: 23.0.1
         version: 23.0.1
       postcss:
-        specifier: 8.5.18
-        version: 8.5.18
+        specifier: 8.5.23
+        version: 8.5.23
       prettier:
         specifier: ^3.9.6
         version: 3.9.6
@@ -348,8 +348,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       postcss:
-        specifier: 8.5.18
-        version: 8.5.18
+        specifier: 8.5.23
+        version: 8.5.23
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -496,8 +496,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       postcss:
-        specifier: 8.5.18
-        version: 8.5.18
+        specifier: 8.5.23
+        version: 8.5.23
       sanitize-html:
         specifier: ^2.17.6
         version: 2.17.6
@@ -652,8 +652,8 @@ importers:
         specifier: workspace:*
         version: file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       postcss:
-        specifier: 8.5.18
-        version: 8.5.18
+        specifier: 8.5.23
+        version: 8.5.23
       sanitize-html:
         specifier: ^2.17.6
         version: 2.17.6
@@ -6331,7 +6331,7 @@ packages:
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
     peerDependencies:
-      postcss: 8.5.18
+      postcss: 8.5.23
 
   aws4fetch@1.0.20:
     resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
@@ -7962,8 +7962,8 @@ packages:
     resolution: {integrity: sha512-gSrprq0fJ3EiOErzjdIZrjysVVmJ4uu1QWfCDss5LypA5OXvrMje5Ym5z6V6RLyJ2eF87lasX7t6a0AnFvZblg==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
-  nanoid@3.3.12:
-    resolution: {integrity: sha512-ZB9RH/39qpq5Vu6Y+NmUaFhQR6pp+M2Xt76XBnEwDaGcVAqhlvxrl3B2bKS5D3NH3QR76v3aSrKaF/Kiy7lEtQ==}
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -8325,8 +8325,8 @@ packages:
   postcss-value-parser@4.2.0:
     resolution: {integrity: sha512-1NNCs6uurfkVbeXG4S8JFT9t19m45ICnif8zWLd5oPSZ50QnwMfK+H3jv408d4jw/7Bttv5axS5IiHoLaVNHeQ==}
 
-  postcss@8.5.18:
-    resolution: {integrity: sha512-xdB1oSLHbz1vRWgCDalrCqEFTWzFlhqFC5tIHLMOSUIjhm3XXQ1qrFy8S/ESr1JYRRXqM3c1QFiMZUJdUTqyMQ==}
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
   postgres-array@2.0.0:
@@ -13727,7 +13727,7 @@ snapshots:
       jose: 6.2.7
       openid-client: 6.8.4
       pg: 8.22.0
-      postcss: 8.5.18
+      postcss: 8.5.23
       sanitize-html: 2.17.6
       sharp: 0.35.2
       zod: 4.4.3
@@ -13759,7 +13759,7 @@ snapshots:
       jose: 6.2.7
       openid-client: 6.8.4
       pg: 8.22.0
-      postcss: 8.5.18
+      postcss: 8.5.23
       sanitize-html: 2.17.6
       sharp: 0.35.2
       zod: 4.4.3
@@ -13801,7 +13801,7 @@ snapshots:
       '@sva/core': file:packages/core
       '@sva/iam-core': file:packages/iam-core
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
-      postcss: 8.5.18
+      postcss: 8.5.23
       sanitize-html: 2.17.6
       zod: 4.4.3
     transitivePeerDependencies:
@@ -14020,7 +14020,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.3.3
       '@tailwindcss/oxide': 4.3.3
-      postcss: 8.5.18
+      postcss: 8.5.23
       tailwindcss: 4.3.3
 
   '@tailwindcss/vite@4.3.3(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0))':
@@ -15045,13 +15045,13 @@ snapshots:
 
   atomic-sleep@1.0.0: {}
 
-  autoprefixer@10.5.2(postcss@8.5.18):
+  autoprefixer@10.5.2(postcss@8.5.23):
     dependencies:
       browserslist: 4.28.4
       caniuse-lite: 1.0.30001800
       fraction.js: 5.3.4
       picocolors: 1.1.1
-      postcss: 8.5.18
+      postcss: 8.5.23
       postcss-value-parser: 4.2.0
 
   aws4fetch@1.0.20:
@@ -16761,7 +16761,7 @@ snapshots:
 
   mute-stream@4.0.0: {}
 
-  nanoid@3.3.12: {}
+  nanoid@3.3.18: {}
 
   natural-compare@1.4.0: {}
 
@@ -17309,9 +17309,9 @@ snapshots:
 
   postcss-value-parser@4.2.0: {}
 
-  postcss@8.5.18:
+  postcss@8.5.23:
     dependencies:
-      nanoid: 3.3.12
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -17729,7 +17729,7 @@ snapshots:
       is-plain-object: 5.0.0
       launder: 1.7.1
       parse-srcset: 1.0.2
-      postcss: 8.5.18
+      postcss: 8.5.23
 
   saxes@5.0.1:
     dependencies:
@@ -18224,7 +18224,7 @@ snapshots:
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
-      postcss: 8.5.18
+      postcss: 8.5.23
       rolldown: 1.0.3
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -18239,7 +18239,7 @@ snapshots:
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
-      postcss: 8.5.18
+      postcss: 8.5.23
       rolldown: 1.2.1
       tinyglobby: 0.2.17
     optionalDependencies:

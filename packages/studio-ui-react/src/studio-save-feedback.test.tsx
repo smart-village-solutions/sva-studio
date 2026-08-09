@@ -42,6 +42,23 @@ describe('Studio save feedback', () => {
     );
   });
 
+  it('supports caller-disabled buttons and non-text labels without inventing an accessible name', () => {
+    render(
+      <StudioSaveButton
+        type="submit"
+        status="idle"
+        disabled
+        className="custom-save-button"
+        labels={{ ...labels, idle: <span>Formular sichern</span> }}
+      />
+    );
+
+    const button = screen.getByRole<HTMLButtonElement>('button', { name: 'Formular sichern' });
+    expect(button.disabled).toBe(true);
+    expect(button.hasAttribute('aria-label')).toBe(false);
+    expect(button.className).toContain('custom-save-button');
+  });
+
   it('returns from saved to idle after two seconds and resets immediately when changed', () => {
     const { result } = renderHook(() => useStudioSaveFeedback());
 
@@ -81,6 +98,30 @@ describe('Studio save feedback', () => {
     expect(result.current.status).toBe('idle');
   });
 
+  it('supports initial, explicit, reset, and unchanged feedback transitions', () => {
+    const { result } = renderHook(() => useStudioSaveFeedback(true));
+    expect(result.current.status).toBe('saved');
+
+    act(() => result.current.reset());
+    expect(result.current.status).toBe('idle');
+
+    act(() => result.current.showSaved());
+    expect(result.current.status).toBe('saved');
+
+    act(() => result.current.markDirty());
+    expect(result.current.status).toBe('idle');
+
+    act(() => result.current.markDirty());
+    expect(result.current.status).toBe('idle');
+
+    act(() => {
+      const staleOperationId = result.current.beginSaving();
+      result.current.reset();
+      result.current.markFailed(staleOperationId);
+    });
+    expect(result.current.status).toBe('idle');
+  });
+
   it('cleans up a pending success timer on unmount', () => {
     const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
     const { result, unmount } = renderHook(() => useStudioSaveFeedback());
@@ -110,5 +151,24 @@ describe('Studio save feedback', () => {
     expect(screen.getByRole('alert').textContent).toContain('Request-ID: request-1');
     fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
     expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it('renders compact errors and keeps a disabled retry action visible', () => {
+    const { rerender } = render(<StudioPersistentFormError message="Speichern fehlgeschlagen." />);
+
+    expect(screen.getByRole('alert').textContent).toContain('Speichern fehlgeschlagen.');
+    expect(screen.queryByRole('button')).toBeNull();
+
+    rerender(
+      <StudioPersistentFormError
+        message="Speichern fehlgeschlagen."
+        retryLabel="Erneut versuchen"
+        onRetry={vi.fn()}
+        retryDisabled
+      />
+    );
+    expect(
+      screen.getByRole<HTMLButtonElement>('button', { name: 'Erneut versuchen' }).disabled
+    ).toBe(true);
   });
 });

@@ -94,9 +94,11 @@ describe('UserCreatePage', () => {
     cleanup();
   });
 
-  it('renders mutation-specific client errors without load wording', () => {
+  it('renders mutation-specific client errors without load wording and retries in place', async () => {
+    const createUser = vi.fn(async () => null);
     useUsersMock.mockReturnValue(
       createUsersApiState({
+        createUser,
         mutationError: {
           status: 500,
           code: 'internal_error',
@@ -113,6 +115,10 @@ describe('UserCreatePage', () => {
     expect(screen.getByRole('alert').textContent).not.toContain(
       'Technischer Fehler beim Laden der Nutzer'
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+    await waitFor(() => expect(createUser).toHaveBeenCalledOnce());
+    expect(navigateMock).not.toHaveBeenCalled();
   });
 
   it('renders the password setup invite option enabled by default', () => {
@@ -305,6 +311,18 @@ describe('UserCreatePage', () => {
         state: expect.any(Function),
       })
     );
+
+    const navigation = navigateMock.mock.calls.at(-1)?.[0] as
+      | { state?: (previous: Record<string, unknown>) => Record<string, unknown> }
+      | undefined;
+    expect(navigation?.state?.({ preserved: true })).toEqual({
+      preserved: true,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'user-1',
+        resourceType: 'users',
+      },
+    });
   });
 
   it('submits the invite flag as false when the checkbox is disabled', async () => {
@@ -381,6 +399,10 @@ describe('UserCreatePage', () => {
     fireEvent.change(firstNameInput, { target: { value: 'Alice' } });
     fireEvent.change(lastNameInput, { target: { value: 'Example' } });
     fireEvent.click(groupCheckbox);
+    fireEvent.click(groupCheckbox);
+    fireEvent.click(groupCheckbox);
+    fireEvent.click(roleCheckbox);
+    fireEvent.click(roleCheckbox);
     fireEvent.click(roleCheckbox);
     fireEvent.click(screen.getByRole('button', { name: 'Nutzer anlegen' }));
 

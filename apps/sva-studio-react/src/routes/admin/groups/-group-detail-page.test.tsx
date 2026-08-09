@@ -6,6 +6,8 @@ import { GroupDetailPage } from './-group-detail-page';
 
 const useGroupsMock = vi.fn();
 const useRolesMock = vi.fn();
+const navigateMock = vi.fn();
+let locationState: Record<string, unknown> = {};
 
 vi.mock('../../../hooks/use-iam-resource-access', () => ({
   useIamResourceAccess: () => ({
@@ -27,8 +29,8 @@ vi.mock('@tanstack/react-router', () => ({
       {children}
     </a>
   ),
-  useLocation: () => ({ state: {} }),
-  useNavigate: () => vi.fn(),
+  useLocation: () => ({ state: locationState }),
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('../../../hooks/use-groups', () => ({
@@ -89,6 +91,8 @@ describe('GroupDetailPage', () => {
   beforeEach(() => {
     useGroupsMock.mockReset();
     useRolesMock.mockReset();
+    navigateMock.mockReset();
+    locationState = {};
     useRolesMock.mockReturnValue({
       roles: [
         { id: 'role-1', roleName: 'Editor' },
@@ -100,6 +104,35 @@ describe('GroupDetailPage', () => {
       refetch: vi.fn(),
       clearMutationError: vi.fn(),
     });
+  });
+
+  it('consumes create feedback on the generated detail page', async () => {
+    locationState = {
+      preserved: true,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'group-1',
+        resourceType: 'groups',
+      },
+    };
+    useGroupsMock.mockReturnValue(createGroupsState());
+
+    render(<GroupDetailPage groupId="group-1" />);
+
+    expect(await screen.findByRole('button', { name: 'Gespeichert' })).toBeTruthy();
+    await waitFor(() => {
+      expect(navigateMock).toHaveBeenCalledWith({
+        to: '/admin/groups/$groupId',
+        params: { groupId: 'group-1' },
+        replace: true,
+        state: expect.any(Function),
+      });
+    });
+
+    const navigation = navigateMock.mock.calls.at(-1)?.[0] as
+      | { state?: (previous: Record<string, unknown>) => Record<string, unknown> }
+      | undefined;
+    expect(navigation?.state?.(locationState)).toEqual({ preserved: true });
   });
 
   it('loads the detail view and persists edits, roles, and memberships', async () => {

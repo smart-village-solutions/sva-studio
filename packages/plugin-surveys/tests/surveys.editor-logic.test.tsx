@@ -316,6 +316,87 @@ describe('useSurveyEditorController', () => {
     expect(navigateToContentList).toHaveBeenCalledWith('survey-created');
   });
 
+  it('consumes create-to-detail feedback once and clears it when the form becomes dirty', async () => {
+    const onInitialSavedConsumed = vi.fn(async () => undefined);
+    let methodsRef: ReturnType<typeof useForm<SurveyDetailFormValues>> | undefined;
+    const { result, rerender } = renderHook(
+      ({ initiallySaved }: { initiallySaved: boolean }) => {
+        const methods = useForm<SurveyDetailFormValues>({
+          defaultValues: createEmptyFormValues(),
+        });
+        methodsRef = methods;
+
+        return useSurveyEditorController({
+          mode: 'create',
+          methods,
+          pt,
+          navigateToCreatedDetail: vi.fn(async () => undefined),
+          initiallySaved,
+          onInitialSavedConsumed,
+          actingPrincipalType: 'user',
+        });
+      },
+      { initialProps: { initiallySaved: true } }
+    );
+
+    await waitFor(() => {
+      expect(result.current.saveStatus).toBe('saved');
+      expect(onInitialSavedConsumed).toHaveBeenCalledOnce();
+    });
+
+    rerender({ initiallySaved: true });
+    expect(onInitialSavedConsumed).toHaveBeenCalledOnce();
+
+    act(() => {
+      methodsRef?.setValue('title', 'Geänderte Umfrage', { shouldDirty: true });
+    });
+    await waitFor(() => expect(result.current.saveStatus).toBe('idle'));
+  });
+
+  it('returns failed edit saves to idle and uses the edit error fallback', async () => {
+    getSurveyMock.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+      status: 'DRAFT',
+      isAnonymous: false,
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+      targetAreaIds: [],
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:00:00.000Z',
+    });
+    updateSurveyMock.mockRejectedValue({});
+
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: createEmptyFormValues(),
+      });
+      return useSurveyEditorController({
+        mode: 'edit',
+        contentId: 'survey-1',
+        methods,
+        pt,
+        navigateToCreatedDetail: vi.fn(async () => undefined),
+        actingPrincipalType: 'user',
+      });
+    });
+
+    await waitFor(() => expect(result.current.loadedItem?.id).toBe('survey-1'));
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(result.current.saveStatus).toBe('idle');
+    expect(result.current.status).toEqual({
+      kind: 'error',
+      text: 'Umfrage konnte nicht gespeichert werden.',
+    });
+  });
+
   it('surfaces the translated load fallback when loading an existing survey fails without a message', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     getSurveyMock.mockRejectedValue({});

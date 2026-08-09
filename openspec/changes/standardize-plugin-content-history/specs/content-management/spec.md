@@ -41,10 +41,10 @@ Das System MUST für Mainserver-basierte Inhalte eine Studio-Mutationshistorie f
 
 #### Scenario: Featured Project erhält die nachgelagerte Historie
 
-- **GIVEN** ein Featured Project besitzt bereits die allgemeine External-Content-Referenz aus `add-featured-projects-plugin`
-- **WHEN** der History-Change das Projekte-Plugin anbindet
-- **THEN** verwendet der Host dieselbe lokale Content-ID und externe Referenz als History-Subject
-- **AND** ergänzt das Plugin den gemeinsamen Historien-Tab ohne zweite Identitäts- oder Mutation-Persistenz
+- **WENN** ein Featured Project bereits die allgemeine External-Content-Referenz aus `add-featured-projects-plugin` besitzt
+- **UND** der History-Change das Projekte-Plugin anbindet
+- **DANN** verwendet der Host dieselbe lokale Content-ID und externe Referenz als History-Subject
+- **UND** ergänzt das Plugin den gemeinsamen Historien-Tab ohne zweite Identitäts- oder Mutation-Persistenz
 
 ### Requirement: Plugin-Historien verwenden ein gemeinsames Darstellungsmodell
 

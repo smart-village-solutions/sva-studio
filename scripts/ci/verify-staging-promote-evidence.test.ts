@@ -9,10 +9,11 @@ import {
   isSuccessfulStagingBackupWorkflowRun,
   listArtifacts,
   matchesSuccessfulStagingBackupEvidence,
+  matchesSuccessfulStagingBackupEvidenceSet,
   matchesSuccessfulStagingEvidence,
   requiresStagingParity,
   selectEvidenceJsonFile,
-  selectStagingBackupEvidenceJsonFile,
+  selectStagingBackupEvidenceJsonFiles,
 } from './verify-staging-promote-evidence.ts';
 
 const productionBackupWorkflow = readFileSync(
@@ -138,6 +139,29 @@ describe('staging parity evidence', () => {
     ).toBe(false);
   });
 
+  it('accepts distinct Studio and Waste evidence only when both match the target digest', () => {
+    const studio = {
+      database: 'studio',
+      deployImageDigest: 'sha256:expected',
+      environment: 'staging',
+      status: 'succeeded',
+    };
+    const waste = { ...studio, database: 'waste' };
+
+    expect(matchesSuccessfulStagingBackupEvidenceSet([studio, waste], 'sha256:expected')).toBe(
+      true
+    );
+    expect(
+      matchesSuccessfulStagingBackupEvidenceSet(
+        [studio, { ...waste, deployImageDigest: 'sha256:other' }],
+        'sha256:expected'
+      )
+    ).toBe(false);
+    expect(matchesSuccessfulStagingBackupEvidenceSet([studio, studio], 'sha256:expected')).toBe(
+      false
+    );
+  });
+
   it('reads paginated artifact responses before filtering parity evidence', () => {
     const firstPage = Array.from({ length: 100 }, (_, index) => ({ id: index + 1 }));
     const artifacts = listArtifacts((page) =>
@@ -166,18 +190,26 @@ describe('staging parity evidence', () => {
     expect(selectEvidenceJsonFile('README.md\n')).toBeUndefined();
   });
 
-  it('selects the unique agent result when a staging drill artifact contains verification evidence', () => {
+  it('selects one or two agent results when a staging drill artifact contains verification evidence', () => {
     const archiveEntries = [
       'promote-backup-agent-gha-30512741172-1.json',
       'promote-backup-verification-30512741172-1.json',
     ].join('\n');
 
-    expect(selectStagingBackupEvidenceJsonFile(archiveEntries)).toBe(
-      'promote-backup-agent-gha-30512741172-1.json'
-    );
+    expect(selectStagingBackupEvidenceJsonFiles(archiveEntries)).toEqual([
+      'promote-backup-agent-gha-30512741172-1.json',
+    ]);
     expect(
-      selectStagingBackupEvidenceJsonFile(
-        `${archiveEntries}\npromote-backup-agent-gha-duplicate.json\n`
+      selectStagingBackupEvidenceJsonFiles(
+        `${archiveEntries}\npromote-backup-agent-gha-30512741172-1-waste.json\n`
+      )
+    ).toEqual([
+      'promote-backup-agent-gha-30512741172-1.json',
+      'promote-backup-agent-gha-30512741172-1-waste.json',
+    ]);
+    expect(
+      selectStagingBackupEvidenceJsonFiles(
+        `${archiveEntries}\npromote-backup-agent-gha-30512741172-1-waste.json\npromote-backup-agent-gha-duplicate.json\n`
       )
     ).toBeUndefined();
   });

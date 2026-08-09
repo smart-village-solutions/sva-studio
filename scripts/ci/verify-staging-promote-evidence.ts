@@ -10,6 +10,7 @@ import { matchesExpectedLiveImage } from './promote-live-digest.ts';
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
 type ArtifactPage = { artifacts?: Artifact[]; total_count?: number };
 type StagingEvidence = {
+  database?: string;
   deployImageDigest?: string;
   digest?: string;
   environment?: string;
@@ -35,6 +36,17 @@ export const matchesSuccessfulStagingBackupEvidence = (
   evidence.environment === 'staging' &&
   evidence.status === 'succeeded' &&
   evidence.deployImageDigest === targetDigest;
+
+export const matchesSuccessfulStagingBackupEvidenceSet = (
+  evidence: StagingEvidence[],
+  targetDigest: string
+) => {
+  if (evidence.length < 1 || evidence.length > 2) return false;
+  const databases = evidence.map((entry) => entry.database);
+  if (databases.some((database) => database !== 'studio' && database !== 'waste')) return false;
+  if (new Set(databases).size !== databases.length) return false;
+  return evidence.every((entry) => matchesSuccessfulStagingBackupEvidence(entry, targetDigest));
+};
 
 export const listArtifacts = (readPage: (page: number) => ArtifactPage): Artifact[] => {
   const artifacts: Artifact[] = [];
@@ -65,11 +77,11 @@ export const selectEvidenceJsonFile = (archiveEntries: string) => {
   return files.length === 1 ? files[0] : undefined;
 };
 
-export const selectStagingBackupEvidenceJsonFile = (archiveEntries: string) => {
+export const selectStagingBackupEvidenceJsonFiles = (archiveEntries: string) => {
   const files = archiveEntries
     .split('\n')
     .filter((entry) => /(^|\/)promote-backup-agent-[^/]+\.json$/u.test(entry));
-  return files.length === 1 ? files[0] : undefined;
+  return files.length >= 1 && files.length <= 2 ? files : undefined;
 };
 const required = (value: string | undefined, name: string) => {
   const trimmed = value?.trim();
@@ -124,20 +136,24 @@ const main = () => {
         })
       );
       const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
-      const evidenceFile =
-        evidenceKind === 'promote'
-          ? selectEvidenceJsonFile(archiveEntries)
-          : selectStagingBackupEvidenceJsonFile(archiveEntries);
-      if (!evidenceFile) continue;
-      const evidence = JSON.parse(
-        execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
-      ) as StagingEvidence;
-      if (
-        evidenceKind === 'promote'
-          ? matchesSuccessfulStagingEvidence(evidence, targetDigest)
-          : matchesSuccessfulStagingBackupEvidence(evidence, targetDigest)
-      )
-        return;
+      if (evidenceKind === 'promote') {
+        const evidenceFile = selectEvidenceJsonFile(archiveEntries);
+        if (!evidenceFile) continue;
+        const evidence = JSON.parse(
+          execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
+        ) as StagingEvidence;
+        if (matchesSuccessfulStagingEvidence(evidence, targetDigest)) return;
+        continue;
+      }
+      const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
+      if (!evidenceFiles) continue;
+      const evidence = evidenceFiles.map(
+        (evidenceFile) =>
+          JSON.parse(
+            execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
+          ) as StagingEvidence
+      );
+      if (matchesSuccessfulStagingBackupEvidenceSet(evidence, targetDigest)) return;
     }
     throw new Error(`Kein erfolgreicher Staging-Paritätsnachweis für ${targetDigest} gefunden.`);
   } finally {

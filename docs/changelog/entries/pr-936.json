@@ -1,0 +1,4 @@
+{
+  "prNumber": 936,
+  "body": "Staging-Parität umfasst Studio- und Waste-Backups\n\n- Der Production-Backup-Drill wertet getrennte Studio- und Waste-Nachweise gemeinsam aus.\n- Alle vorhandenen Backup-Nachweise müssen erfolgreich sein und exakt zum Ziel-Digest gehören."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 933,
+  "body": "Waste-Datenbank-Backups werden wieder korrekt autorisiert\n\n- Workflow und Backup-Agent verwenden dieselbe kanonische Darstellung für signierte Waste-Aufträge.\n- Ein gemeinsamer Vertragstest verhindert, dass optionale Waste-Felder künftig unbemerkt zu HTTP-401-Fehlern führen."
+}

@@ -8,6 +8,7 @@ const controllerState = vi.hoisted(() => ({
   isLoading: false,
   loadedItem: null,
   status: null as null | { kind: 'success' | 'error'; text: string },
+  onInitialSavedConsumed: undefined as undefined | (() => void),
 }));
 const accessState = vi.hoisted(() => ({
   snapshot: {
@@ -78,9 +79,12 @@ vi.mock('@sva/plugin-sdk', () => ({
 vi.mock('../src/surveys.editor-logic.js', () => ({
   useSurveyEditorController: ({
     navigateToCreatedDetail,
+    onInitialSavedConsumed,
   }: {
     navigateToCreatedDetail: (contentId: string) => void;
+    onInitialSavedConsumed: () => void;
   }) => {
+    controllerState.onInitialSavedConsumed = onInitialSavedConsumed;
     submitMock.mockImplementation(() => {
       navigateToCreatedDetail('survey-created');
     });
@@ -101,6 +105,7 @@ describe('SurveyEditorPage', () => {
     controllerState.isLoading = false;
     controllerState.loadedItem = null;
     controllerState.status = null;
+    controllerState.onInitialSavedConsumed = undefined;
     submitMock.mockReset();
     navigateMock.mockReset();
     accessState.snapshot = {
@@ -142,6 +147,33 @@ describe('SurveyEditorPage', () => {
         state: expect.any(Function),
       })
     );
+
+    const createNavigation = navigateMock.mock.calls.at(-1)?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(createNavigation.state({ preserved: true })).toEqual({
+      preserved: true,
+      studioSaveFeedback: {
+        kind: 'created',
+        resourceId: 'survey-created',
+        resourceType: 'surveys',
+      },
+    });
+
+    controllerState.onInitialSavedConsumed?.();
+    const consumeNavigation = navigateMock.mock.calls.at(-1)?.[0] as {
+      state: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(
+      consumeNavigation.state({
+        preserved: true,
+        studioSaveFeedback: {
+          kind: 'created',
+          resourceId: 'survey-created',
+          resourceType: 'surveys',
+        },
+      })
+    ).toEqual({ preserved: true });
   });
 
   it('fails closed for edits until the Mainserver update capability is enabled', () => {

@@ -252,6 +252,7 @@ describe('projects contract', () => {
         payload: {
           ...existing.payload,
           author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
+          deleted: true,
         },
       },
     });
@@ -259,7 +260,7 @@ describe('projects contract', () => {
     expect(merged.payload).toEqual(
       expect.objectContaining({
         author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
-        deleted: false,
+        deleted: true,
       })
     );
   });

@@ -3618,7 +3618,7 @@ describe('content list projection', () => {
       actorDisplayName: 'Redaktion',
       mutationRef: 'operation-delete-1',
       sourceSystem: 'mainserver',
-      sourceEntityType: 'GenericItem',
+      sourceEntityType: 'generic-items.generic-item',
       sourceEntityId: 'generic-delete-1',
     });
   });

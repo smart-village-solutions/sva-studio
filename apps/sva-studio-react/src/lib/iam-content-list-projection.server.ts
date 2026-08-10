@@ -2701,7 +2701,10 @@ const refreshGenericItemSiblingProjections = async (input: {
       actorDisplayName: input.target.actorDisplayName,
       mutationRef: input.target.mutationRef,
       sourceSystem: 'mainserver',
-      sourceEntityType: 'GenericItem',
+      sourceEntityType:
+        input.target.contentType === 'projects.project'
+          ? 'GenericItem'
+          : input.target.contentType,
       sourceEntityId: input.entityId,
     });
   }

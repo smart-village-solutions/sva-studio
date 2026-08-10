@@ -168,7 +168,6 @@ describe('projects contract', () => {
         payload: {
           language: 'de',
           status: 'published',
-          deleted: false,
         },
         contentBlocks: [{ intro: 'Kurz', body: '<p>Text</p>' }],
         mediaContents: [
@@ -245,7 +244,7 @@ describe('projects contract', () => {
     ]);
   });
 
-  it('preserves an existing legacy author when soft-deleting', () => {
+  it('preserves legacy payload markers without interpreting them', () => {
     const merged = mergeProjectIntoGenericItem({
       project,
       existing: {
@@ -253,9 +252,9 @@ describe('projects contract', () => {
         payload: {
           ...existing.payload,
           author: { type: 'person', id: 'person-1', displayName: 'Ursprünglich' },
+          deleted: true,
         },
       },
-      deleted: true,
     });
 
     expect(merged.payload).toEqual(
@@ -323,7 +322,6 @@ describe('projects contract', () => {
       published: true,
       publishedAt: '2026-01-03T00:00:00.000Z',
       author: { type: 'organization', id: 'org-1', displayName: 'Gemeinde' },
-      deleted: false,
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
     });

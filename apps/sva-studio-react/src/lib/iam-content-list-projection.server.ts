@@ -1829,13 +1829,7 @@ const mainserverProjectionPageLoaders: Record<
           ...result,
           data: result.data.filter(
             (item) =>
-              resolveGenericItemProjectionContentType(item.genericType) === target.contentType &&
-              !(
-                item.payload &&
-                typeof item.payload === 'object' &&
-                !Array.isArray(item.payload) &&
-                (item.payload as Record<string, unknown>).deleted === true
-              )
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
           ),
         },
         pagingResult: result,
@@ -2701,15 +2695,21 @@ const refreshGenericItemSiblingProjections = async (input: {
     input.target.actorDisplayName &&
     input.target.mutationRef
   ) {
-    await recordSuccessfulExternalContentDeletion({
-      instanceId: input.target.instanceId,
-      actorAccountId: input.target.actorAccountId,
-      actorDisplayName: input.target.actorDisplayName,
-      mutationRef: input.target.mutationRef,
-      sourceSystem: 'mainserver',
-      sourceEntityType: input.target.contentType,
-      sourceEntityId: input.entityId,
-    });
+    const sourceEntityTypes =
+      input.target.contentType === 'projects.project'
+        ? ['GenericItem', 'projects.project']
+        : [input.target.contentType];
+    for (const sourceEntityType of sourceEntityTypes) {
+      await recordSuccessfulExternalContentDeletion({
+        instanceId: input.target.instanceId,
+        actorAccountId: input.target.actorAccountId,
+        actorDisplayName: input.target.actorDisplayName,
+        mutationRef: input.target.mutationRef,
+        sourceSystem: 'mainserver',
+        sourceEntityType,
+        sourceEntityId: input.entityId,
+      });
+    }
   }
   let item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
   try {
@@ -3177,11 +3177,7 @@ LEFT JOIN LATERAL (
     AND reference.reconciliation_status = 'bound'
   LIMIT 1
 ) AS project_reference ON TRUE
-${whereClause}
-  AND NOT (
-    projection.content_type = 'projects.project'
-    AND projection.payload_json->>'deleted' = 'true'
-  );
+${whereClause};
       `,
         params
       );

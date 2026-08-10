@@ -125,7 +125,6 @@ const project = {
   published: true,
   publishedAt: '2026-08-03T10:00:00.000Z',
   author: { type: 'organization' as const, id: 'org-1', displayName: 'Stadt' },
-  deleted: false,
   createdAt: '2026-08-03T09:00:00.000Z',
   updatedAt: '2026-08-03T10:00:00.000Z',
 };

@@ -14,7 +14,7 @@ Der Editor gliedert sich in die Bereiche „Basis“, „Inhalt“ und „Einste
 - „Inhalt“ enthält Rich Text und eine optionale, geordnete Bildergalerie. URL und Alternativtext sind je Bild verpflichtend; Bildunterschrift und Bildnachweis sind optional. Das erste Bild ist Titel- und Vorschaubild.
 - „Einstellungen“ enthält Status und genau einen sichtbaren Autor als Organisation oder Person. Veröffentlichungszeitpunkt und technische Metadaten sind nur lesbar.
 
-Der lokale Content-Core ist für Status, Veröffentlichungsmetadaten und Autorenschaft führend. Der Adapter spiegelt den Status für die Mainserver-Kompatibilität nach `payload.status` und setzt `visible` nur bei `published` auf `true`. Ein Löschvorgang markiert das Mainserver-Payload mit `deleted: true` und entfernt das Projekt aus aktiven Studio-Listen.
+Der lokale Content-Core ist für Status, Veröffentlichungsmetadaten und Autorenschaft führend. Der Adapter spiegelt den Status für die Mainserver-Kompatibilität nach `payload.status` und setzt `visible` nur bei `published` auf `true`. Ein vorhandenes Mainserver-GenericItem mit `genericType: "FeaturedProject"` wird unabhängig von einem älteren Payload-Feld `deleted` als Projekt behandelt und im Studio angezeigt. Ein Löschvorgang entfernt das GenericItem physisch aus dem Mainserver. Neue oder aktualisierte Projekte setzen selbst keinen `deleted`-Projektzustand; unbekannte bestehende Payload-Schlüssel bleiben bei Aktualisierungen unverändert erhalten.
 
 ## Konsistenz und Wiederholung
 

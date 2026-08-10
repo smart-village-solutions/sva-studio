@@ -3291,7 +3291,40 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('continues project refresh after filtered pages and excludes soft-deleted projects', async () => {
+  it('archives the bound GenericItem reference after deleting a project', async () => {
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      organizationId: 'org-1',
+      operation: 'delete',
+      entityId: 'project-delete-1',
+    });
+
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'project-delete-1',
+    });
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-delete-1',
+    });
+  });
+
+  it('continues project refresh after filtered pages and projects every payload variant', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [{ action: 'projects.read', resourceType: 'projects' }],
@@ -3342,6 +3375,28 @@ describe('content list projection', () => {
         content_type: 'projects.project',
         source_entity_id: 'project-active',
       }),
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-deleted',
+      }),
+    ]);
+
+    const listResponse = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      type: 'projects.project',
+      visibleTypes: ['projects.project'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const listPayload = (await listResponse.json()) as {
+      data: Array<{ id: string }>;
+      pagination: { total: number };
+    };
+    expect(listPayload.pagination.total).toBe(2);
+    expect(listPayload.data.map((item) => item.id).sort()).toEqual([
+      'project-active',
+      'project-deleted',
     ]);
   });
 

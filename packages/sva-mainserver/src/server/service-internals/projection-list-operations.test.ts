@@ -287,6 +287,11 @@ describe('projection list operations', () => {
         contentType: 'projects.project',
         title: 'Projekt',
       }),
+      expect.objectContaining({
+        id: 'deleted-project',
+        contentType: 'projects.project',
+        title: 'Gelöscht',
+      }),
     ]);
   });
 

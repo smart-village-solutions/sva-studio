@@ -3306,6 +3306,30 @@ describe('content list projection', () => {
     ]);
   });
 
+  it('archives the bound GenericItem reference after deleting a project', async () => {
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      organizationId: 'org-1',
+      operation: 'delete',
+      entityId: 'project-delete-1',
+    });
+
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'project-delete-1',
+    });
+  });
+
   it('continues project refresh after filtered pages and projects every payload variant', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
@@ -3609,7 +3633,7 @@ describe('content list projection', () => {
       actorDisplayName: 'Redaktion',
       mutationRef: 'operation-delete-1',
       sourceSystem: 'mainserver',
-      sourceEntityType: 'generic-items.generic-item',
+      sourceEntityType: 'GenericItem',
       sourceEntityId: 'generic-delete-1',
     });
   });

@@ -31,15 +31,7 @@ const matchesProjectionContentType = (
     ? genericTypeOwnership[record.genericType]
     : undefined;
   const resolvedContentType = ownedContentType ?? 'generic-items.generic-item';
-  if (resolvedContentType !== contentType) return false;
-  if (contentType !== 'projects.project') return true;
-  const payload = record.payload;
-  return !(
-    payload !== null &&
-    typeof payload === 'object' &&
-    !Array.isArray(payload) &&
-    (payload as Record<string, unknown>).deleted === true
-  );
+  return resolvedContentType === contentType;
 };
 
 export const loadFilteredGenericItemProjectionPage = async (input: {

@@ -2701,7 +2701,7 @@ const refreshGenericItemSiblingProjections = async (input: {
       actorDisplayName: input.target.actorDisplayName,
       mutationRef: input.target.mutationRef,
       sourceSystem: 'mainserver',
-      sourceEntityType: input.target.contentType,
+      sourceEntityType: 'GenericItem',
       sourceEntityId: input.entityId,
     });
   }

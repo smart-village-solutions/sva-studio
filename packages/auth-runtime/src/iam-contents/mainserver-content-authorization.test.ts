@@ -185,6 +185,27 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it.each(['database_unavailable', 'identity_provider_unavailable'] as const)(
+    'preserves the retryable %s status while resolving a secondary principal binding',
+    async (status) => {
+      state.loadBinding.mockResolvedValue({ dataProviderId: 'provider-user' });
+      state.readCredentials.mockResolvedValue({ status });
+
+      await expect(
+        authorizeMainserverDataProviderAccess({
+          ...context,
+          permissions: [permission('organization')],
+          dataProviderId: 'provider-foreign',
+        })
+      ).resolves.toEqual({
+        allowed: false,
+        authorizationMode: 'exact',
+        reason: status,
+        resolverMode: 'automatic',
+      });
+    }
+  );
+
   it('requires only the organization binding for org_only', async () => {
     state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
       input.principalType === 'organization'

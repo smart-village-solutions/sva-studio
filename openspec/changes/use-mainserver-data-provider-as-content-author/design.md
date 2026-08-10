@@ -96,7 +96,7 @@ Eine bereits verifizierte Bindung darf nur für exakt denselben aktuellen Creden
 
 ### Credential-visible Compatibility ist der definierte Übergangsvertrag
 
-`credential_visible_compatibility` wird nur im expliziten Resolvermodus `shadow` oder `compatibility` erzwungen. Im Modus `automatic` führt eine fehlende oder konfliktbehaftete erforderliche Bindung zu einer exakten Ablehnung.
+`credential_visible_compatibility` wird nur im expliziten Resolvermodus `shadow` oder `compatibility` erzwungen. Im Modus `automatic` führt eine fehlende oder konfliktbehaftete erforderliche Bindung zu einer exakten Ablehnung. Ist die Bindungsauflösung wegen eines Datenbank- oder Identity-Provider-Ausfalls nicht entscheidbar, bleibt der zugrunde liegende Fehler als wiederholbarer `503` erhalten; er wird nicht in eine fachliche `403`-Ablehnung umgedeutet.
 
 In diesem Modus:
 

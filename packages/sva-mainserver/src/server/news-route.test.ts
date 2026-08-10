@@ -926,6 +926,38 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
   });
 
+  it('returns a retryable response when provider binding authorization is unavailable', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'database_unavailable',
+      resolverMode: 'automatic',
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1/visibility', {
+        method: 'PATCH',
+        body: JSON.stringify({ visible: true }),
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'database_unavailable',
+      message: 'Die DataProvider-Bindung konnte nicht geprüft werden.',
+    });
+    expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
+    expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
   it('rejects mutating requests without CSRF and idempotency safeguards', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf

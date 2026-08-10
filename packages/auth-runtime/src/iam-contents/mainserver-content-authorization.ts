@@ -25,7 +25,13 @@ export const readMainserverScopeResolverMode = (): MainserverScopeResolverMode =
 export type MainserverContentAuthorizationDecision = Readonly<{
   allowed: boolean;
   authorizationMode: MainserverContentAuthorizationMode;
-  reason: 'allowed' | 'data_provider_mismatch' | 'data_provider_missing' | 'forbidden';
+  reason:
+    | 'allowed'
+    | 'data_provider_mismatch'
+    | 'data_provider_missing'
+    | 'forbidden'
+    | 'database_unavailable'
+    | 'identity_provider_unavailable';
   resolverMode: MainserverScopeResolverMode;
   candidateAuthorizationMode?: MainserverContentAuthorizationMode;
   candidateAllowed?: boolean;
@@ -132,13 +138,25 @@ const hasScopedPermission = (
   );
 };
 
+type BindingLookupError = 'database_unavailable' | 'identity_provider_unavailable';
+
+const loadCurrentBinding = async (
+  input: Parameters<typeof loadCurrentMainserverDataProviderBinding>[0]
+): Promise<MainserverDataProviderBinding | BindingLookupError | undefined> => {
+  try {
+    return await loadCurrentMainserverDataProviderBinding(input);
+  } catch {
+    return 'database_unavailable';
+  }
+};
+
 const loadBinding = async (input: {
   readonly context: BoundAuthorizationContext;
   readonly principalType: 'organization' | 'user';
   readonly principalId: string;
 }) => {
   if (input.principalType === input.context.actingPrincipalType) {
-    return loadCurrentMainserverDataProviderBinding({
+    return loadCurrentBinding({
       instanceId: input.context.instanceId,
       principalType: input.principalType,
       principalId: input.principalId,
@@ -152,11 +170,17 @@ const loadBinding = async (input: {
     activeOrganizationId: input.context.activeOrganizationId,
     actingPrincipalType: input.principalType,
   });
+  if (
+    credentials.status === 'database_unavailable' ||
+    credentials.status === 'identity_provider_unavailable'
+  ) {
+    return credentials.status;
+  }
   if (credentials.status !== 'ok') {
     return undefined;
   }
 
-  return loadCurrentMainserverDataProviderBinding({
+  return loadCurrentBinding({
     instanceId: input.context.instanceId,
     principalType: input.principalType,
     principalId: input.principalId,
@@ -178,6 +202,7 @@ type RelevantBindings = Readonly<{
   needsOrganization: boolean;
   user?: MainserverDataProviderBinding;
   organization?: MainserverDataProviderBinding;
+  error?: BindingLookupError;
 }>;
 
 const loadRelevantBindings = async (
@@ -189,7 +214,7 @@ const loadRelevantBindings = async (
     needsOwn ||
     (needsOrganization &&
       (!input.activeOrganizationId || input.contentAuthorPolicy !== 'org_only'));
-  const [user, organization] = await Promise.all([
+  const [userLookup, organizationLookup] = await Promise.all([
     needsUserBinding
       ? loadBinding({ context: input, principalType: 'user', principalId: input.actorAccountId })
       : undefined,
@@ -201,11 +226,17 @@ const loadRelevantBindings = async (
         })
       : undefined,
   ]);
+  const error = [userLookup, organizationLookup].find(
+    (lookup): lookup is BindingLookupError => typeof lookup === 'string'
+  );
+  const user = typeof userLookup === 'object' ? userLookup : undefined;
+  const organization = typeof organizationLookup === 'object' ? organizationLookup : undefined;
   return {
     needsOwn,
     needsOrganization,
     ...(user ? { user } : {}),
     ...(organization ? { organization } : {}),
+    ...(error ? { error } : {}),
   };
 };
 
@@ -218,9 +249,11 @@ const isAllowedForOwnership = (
 
 const resolveBoundAuthorizationCandidate = (
   input: BoundAuthorizationContext & Readonly<{ dataProviderId: string }>,
-  bindings: RelevantBindings,
-  compatibilityAllowed: boolean
+  bindings: RelevantBindings
 ): AuthorizationCandidate => {
+  if (bindings.error) {
+    return { allowed: false, authorizationMode: 'exact', reason: bindings.error };
+  }
   if (
     bindings.user?.dataProviderId === input.dataProviderId &&
     isAllowedForOwnership(input, { ownerUserId: input.actorAccountId })
@@ -279,11 +312,7 @@ export const authorizeMainserverDataProviderAccess = async (
   const compatibilityAllowed = resolveCompatibilityAllowed(input);
   const bindings = await loadRelevantBindings(input);
   return applyScopeResolverMode(
-    resolveBoundAuthorizationCandidate(
-      { ...input, dataProviderId: providerId },
-      bindings,
-      compatibilityAllowed
-    ),
+    resolveBoundAuthorizationCandidate({ ...input, dataProviderId: providerId }, bindings),
     compatibilityAllowed
   );
 };

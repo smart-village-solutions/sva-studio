@@ -26,7 +26,7 @@ Implizite Reads und Hintergrundabgleiche verwenden bei `org_or_personal` persön
 `SVA_MAINSERVER_SCOPE_RESOLVER_MODE` besitzt drei Werte:
 
 - `shadow` ist der Standard. Studio berechnet die automatische exakte Entscheidung, erzwingt aber weiterhin `credential_visible_compatibility`. Kandidaten, Ergebnisunterschiede und Resolvermodus werden im Mutation-Journal, Audit und in der Admin-Diagnose erfasst.
-- `automatic` aktiviert exakte `own`- beziehungsweise `organization`-Entscheidungen. Fehlende oder konfliktbehaftete erforderliche Bindungen werden fail-closed abgelehnt und nicht automatisch durch Credential-Sichtbarkeit verbreitert.
+- `automatic` aktiviert exakte `own`- beziehungsweise `organization`-Entscheidungen. Fehlende oder konfliktbehaftete erforderliche Bindungen werden fail-closed abgelehnt und nicht automatisch durch Credential-Sichtbarkeit verbreitert. Vorübergehende Datenbank- oder Identity-Provider-Fehler bei der Bindungsauflösung bleiben als wiederholbare `503`-Antwort erhalten und werden nicht als `403` fehlklassifiziert.
 - `compatibility` ist der Rollback. Scope-gebundene Mutationen verwenden wieder ausschließlich den credential-sichtbaren Kompatibilitätsvertrag; Action, Instanz, Principal-Policy, Pre-Read und Mainserver-Autorisierung bleiben verbindlich.
 
 `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE` steuert den Transport-Cutover:

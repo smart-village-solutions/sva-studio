@@ -190,7 +190,6 @@ const providerDenialResponse = (decision: ProviderDecision): Response =>
         'Der Mainserver hat für diesen Inhalt keinen DataProvider geliefert.'
       )
     : errorJson(403, decision.reason, 'Keine Berechtigung für den DataProvider dieses Inhalts.');
-
 const evaluateProviderActions = async (input: {
   actor: MainserverMutationActor;
   actions: readonly string[];
@@ -242,7 +241,6 @@ const evaluateProviderActions = async (input: {
   }
   return aggregate;
 };
-
 const beginExistingContentJournal = async (input: {
   actor: MainserverMutationActor;
   action: string;

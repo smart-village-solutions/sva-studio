@@ -841,10 +841,6 @@ export const ContentListPage = ({
         </Alert>
       ) : null}
 
-      <MainserverAuthoringDiagnosticsPanel
-        enabled={effectivePermissionActions.includes('iam.monitoring.read')}
-      />
-
       <section>
         <StudioDataTable
           ariaLabel={t('content.table.ariaLabel')}
@@ -977,6 +973,10 @@ export const ContentListPage = ({
           )}
         />
       </section>
+
+      <MainserverAuthoringDiagnosticsPanel
+        enabled={effectivePermissionActions.includes('iam.monitoring.read')}
+      />
     </section>
   );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { ChevronDown } from 'lucide-react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
@@ -9,6 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '../../components/ui/collapsible';
 import { t } from '../../i18n';
 import {
   getMainserverAuthoringDiagnostics,
@@ -37,6 +43,7 @@ export type MainserverAuthoringDiagnosticsPanelProps = Readonly<{
 export const MainserverAuthoringDiagnosticsPanel = ({
   enabled,
 }: MainserverAuthoringDiagnosticsPanelProps) => {
+  const [isOpen, setIsOpen] = React.useState(false);
   const [diagnostics, setDiagnostics] = React.useState<MainserverAuthoringDiagnostics | null>(null);
   const [error, setError] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -44,13 +51,19 @@ export const MainserverAuthoringDiagnosticsPanel = ({
 
   React.useEffect(() => {
     if (!enabled) {
+      setIsOpen(false);
       setDiagnostics(null);
       setError(false);
       setIsLoading(false);
       return;
     }
 
+    if (!isOpen) {
+      return;
+    }
+
     let isActive = true;
+    setDiagnostics(null);
     setIsLoading(true);
     setError(false);
 
@@ -75,7 +88,7 @@ export const MainserverAuthoringDiagnosticsPanel = ({
     return () => {
       isActive = false;
     };
-  }, [enabled, reloadToken]);
+  }, [enabled, isOpen, reloadToken]);
 
   if (!enabled) {
     return null;
@@ -83,92 +96,102 @@ export const MainserverAuthoringDiagnosticsPanel = ({
 
   return (
     <section aria-labelledby="mainserver-authoring-diagnostics-title">
-      <Card>
-        <CardHeader>
-          <CardTitle id="mainserver-authoring-diagnostics-title">
-            {t('content.diagnostics.title')}
-          </CardTitle>
-          <CardDescription>{t('content.diagnostics.description')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
-              {t('content.diagnostics.loading')}
-            </p>
-          ) : null}
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card>
+          <CardHeader>
+            <CardTitle id="mainserver-authoring-diagnostics-title">
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-4 text-left">
+                <span>{t('content.diagnostics.title')}</span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-5 w-5 shrink-0 transition-transform group-data-[state=open]:rotate-180"
+                />
+              </CollapsibleTrigger>
+            </CardTitle>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-4">
+              <CardDescription>{t('content.diagnostics.description')}</CardDescription>
+              {isLoading ? (
+                <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+                  {t('content.diagnostics.loading')}
+                </p>
+              ) : null}
 
-          {error ? (
-            <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-              <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
-                <span>{t('content.diagnostics.loadError')}</span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setReloadToken((value) => value + 1)}
-                >
-                  {t('content.diagnostics.retry')}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          ) : null}
+              {error ? (
+                <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+                  <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+                    <span>{t('content.diagnostics.loadError')}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setReloadToken((value) => value + 1)}
+                    >
+                      {t('content.diagnostics.retry')}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
 
-          {diagnostics ? (
-            <>
-              <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.verifiedBindings')}
-                  value={readCount(diagnostics.bindings.byStatus, 'verified')}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.conflicts')}
-                  value={readCount(diagnostics.bindings.byStatus, 'conflict')}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.rotations')}
-                  value={diagnostics.bindings.rotationPrincipalCount}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.compatibility')}
-                  value={readCount(
-                    diagnostics.mutations.byAuthorizationMode,
-                    'credential_visible_compatibility'
-                  )}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.exact')}
-                  value={readCount(diagnostics.mutations.byAuthorizationMode, 'exact')}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.modeSwitches')}
-                  value={diagnostics.mutations.automaticModeSwitchCount}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.shadowEvaluations')}
-                  value={readCount(diagnostics.mutations.byResolverMode, 'shadow')}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.shadowDifferences')}
-                  value={diagnostics.mutations.shadowDifferenceCount}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.reconciliationRequired')}
-                  value={readCount(
-                    diagnostics.mutations.byReconciliationStatus,
-                    'reconciliation_required'
-                  )}
-                />
-                <DiagnosticMetric
-                  label={t('content.diagnostics.metrics.reconciliationFailed')}
-                  value={readCount(diagnostics.mutations.byReconciliationStatus, 'failed')}
-                />
-              </dl>
-              <p className="text-xs text-muted-foreground">
-                {t('content.diagnostics.readOnlyNotice')}
-              </p>
-            </>
-          ) : null}
-        </CardContent>
-      </Card>
+              {diagnostics ? (
+                <>
+                  <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.verifiedBindings')}
+                      value={readCount(diagnostics.bindings.byStatus, 'verified')}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.conflicts')}
+                      value={readCount(diagnostics.bindings.byStatus, 'conflict')}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.rotations')}
+                      value={diagnostics.bindings.rotationPrincipalCount}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.compatibility')}
+                      value={readCount(
+                        diagnostics.mutations.byAuthorizationMode,
+                        'credential_visible_compatibility'
+                      )}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.exact')}
+                      value={readCount(diagnostics.mutations.byAuthorizationMode, 'exact')}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.modeSwitches')}
+                      value={diagnostics.mutations.automaticModeSwitchCount}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.shadowEvaluations')}
+                      value={readCount(diagnostics.mutations.byResolverMode, 'shadow')}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.shadowDifferences')}
+                      value={diagnostics.mutations.shadowDifferenceCount}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.reconciliationRequired')}
+                      value={readCount(
+                        diagnostics.mutations.byReconciliationStatus,
+                        'reconciliation_required'
+                      )}
+                    />
+                    <DiagnosticMetric
+                      label={t('content.diagnostics.metrics.reconciliationFailed')}
+                      value={readCount(diagnostics.mutations.byReconciliationStatus, 'failed')}
+                    />
+                  </dl>
+                  <p className="text-xs text-muted-foreground">
+                    {t('content.diagnostics.readOnlyNotice')}
+                  </p>
+                </>
+              ) : null}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </section>
   );
 };

@@ -47,6 +47,14 @@ describe('MainserverAuthoringDiagnosticsPanel', () => {
   it('renders the automatic binding, mode-switch, and reconciliation metrics read-only', async () => {
     render(<MainserverAuthoringDiagnosticsPanel enabled />);
 
+    const toggle = screen.getByRole('button', { name: 'Mainserver-Autorendiagnose' });
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Bestätigte Bindungen')).toBeNull();
+    expect(state.getDiagnostics).not.toHaveBeenCalled();
+
+    fireEvent.click(toggle);
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('status').textContent).toContain('Autorendiagnose wird geladen');
     expect(await screen.findByRole('heading', { name: 'Mainserver-Autorendiagnose' })).toBeTruthy();
 
@@ -64,13 +72,18 @@ describe('MainserverAuthoringDiagnosticsPanel', () => {
     expect(screen.getByText('Abgleich erforderlich').nextElementSibling?.textContent).toBe('4');
     expect(screen.getByText('Abgleich fehlgeschlagen').nextElementSibling?.textContent).toBe('1');
     expect(screen.queryByRole('textbox')).toBeNull();
-    expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByText(/Eine manuelle Zuordnung ist nicht verfügbar/)).toBeTruthy();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Bestätigte Bindungen')).toBeNull();
   });
 
   it('announces failures and retries only the read operation', async () => {
     state.getDiagnostics.mockRejectedValueOnce(new Error('offline'));
     render(<MainserverAuthoringDiagnosticsPanel enabled />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Autorendiagnose' }));
 
     expect(
       await screen.findByText('Die Mainserver-Autorendiagnose konnte nicht geladen werden.')

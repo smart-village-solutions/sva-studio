@@ -1829,13 +1829,7 @@ const mainserverProjectionPageLoaders: Record<
           ...result,
           data: result.data.filter(
             (item) =>
-              resolveGenericItemProjectionContentType(item.genericType) === target.contentType &&
-              !(
-                item.payload &&
-                typeof item.payload === 'object' &&
-                !Array.isArray(item.payload) &&
-                (item.payload as Record<string, unknown>).deleted === true
-              )
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
           ),
         },
         pagingResult: result,
@@ -3177,11 +3171,7 @@ LEFT JOIN LATERAL (
     AND reference.reconciliation_status = 'bound'
   LIMIT 1
 ) AS project_reference ON TRUE
-${whereClause}
-  AND NOT (
-    projection.content_type = 'projects.project'
-    AND projection.payload_json->>'deleted' = 'true'
-  );
+${whereClause};
       `,
         params
       );

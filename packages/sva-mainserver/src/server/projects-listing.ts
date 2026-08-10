@@ -4,14 +4,6 @@ import type { listSvaMainserverGenericItems } from './service.js';
 const MAX_UPSTREAM_PAGES = 500;
 type GenericItem = Awaited<ReturnType<typeof listSvaMainserverGenericItems>>['data'][number];
 
-const isDeleted = (item: GenericItem): boolean => {
-  const payload =
-    item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
-      ? (item.payload as Record<string, unknown>)
-      : {};
-  return payload.deleted === true;
-};
-
 export const listAllActiveProjectItems = async (
   input: Parameters<typeof listSvaMainserverGenericItems>[0],
   listItems: typeof listSvaMainserverGenericItems
@@ -34,9 +26,7 @@ export const listAllActiveProjectItems = async (
     page += 1;
   }
 
-  const data = upstreamItems.filter(
-    (item) => item.genericType === 'FeaturedProject' && !isDeleted(item)
-  );
+  const data = upstreamItems.filter((item) => item.genericType === 'FeaturedProject');
   return {
     data,
     observability: {

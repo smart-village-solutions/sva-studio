@@ -640,7 +640,6 @@ export type SvaMainserverProject = SvaMainserverProjectInput &
     id: string;
     published: boolean;
     publishedAt?: string;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     author: SvaMainserverProjectAuthor;

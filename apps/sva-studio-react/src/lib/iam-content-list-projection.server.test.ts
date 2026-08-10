@@ -294,6 +294,21 @@ describe('content list projection', () => {
       );
     }
 
+    if (text.includes("projection.payload_json->>'deleted' = 'true'")) {
+      rows = rows.filter((row) => {
+        if (row.content_type !== 'projects.project') return true;
+        const payload =
+          row.payload_json &&
+          typeof row.payload_json === 'object' &&
+          !Array.isArray(row.payload_json)
+            ? (row.payload_json as Record<string, unknown>)
+            : {};
+        return (
+          payload.deleted !== undefined && payload.deleted !== null && payload.deleted !== true
+        );
+      });
+    }
+
     return rows;
   };
 
@@ -3291,7 +3306,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('continues project refresh after filtered pages and excludes soft-deleted projects', async () => {
+  it('continues project refresh after filtered pages and projects every payload variant', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [{ action: 'projects.read', resourceType: 'projects' }],
@@ -3342,6 +3357,28 @@ describe('content list projection', () => {
         content_type: 'projects.project',
         source_entity_id: 'project-active',
       }),
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-deleted',
+      }),
+    ]);
+
+    const listResponse = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      type: 'projects.project',
+      visibleTypes: ['projects.project'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const listPayload = (await listResponse.json()) as {
+      data: Array<{ id: string }>;
+      pagination: { total: number };
+    };
+    expect(listPayload.pagination.total).toBe(2);
+    expect(listPayload.data.map((item) => item.id).sort()).toEqual([
+      'project-active',
+      'project-deleted',
     ]);
   });
 

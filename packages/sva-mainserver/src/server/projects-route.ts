@@ -53,6 +53,7 @@ import { listAllActiveProjectItems } from './projects-listing.js';
 import {
   changeSvaMainserverGenericItemVisibility,
   createSvaMainserverGenericItem,
+  deleteSvaMainserverGenericItem,
   getSvaMainserverGenericItem,
   listSvaMainserverGenericItems,
   updateSvaMainserverGenericItem,
@@ -113,10 +114,9 @@ const idempotencyKeyOrResponse = (request: Request): string | Response => {
     : errorJson(400, 'idempotency_key_required', 'Header Idempotency-Key ist erforderlich.');
 };
 
-const projectPayload = (input: SvaMainserverProjectInput, deleted = false) => ({
+const projectPayload = (input: SvaMainserverProjectInput) => ({
   language: input.language,
   status: input.status,
-  deleted,
 });
 
 const publishedAtFor = (input: SvaMainserverProjectInput, current?: string): string | undefined =>
@@ -212,11 +212,6 @@ const loadProjectContext = async (
   }
   if (!item) return undefined;
   if (item.genericType !== PROJECTS_GENERIC_TYPE) return undefined;
-  const payload =
-    item.payload && typeof item.payload === 'object' && !Array.isArray(item.payload)
-      ? (item.payload as Record<string, unknown>)
-      : {};
-  if (payload.deleted === true) return undefined;
   return { core, reference, item };
 };
 
@@ -772,50 +767,15 @@ const deleteProject = async (
           item: freshItem,
         });
         if (isResponse(providerAuthorization)) return providerAuthorization;
-        const freshProject = mapAndValidate(freshItem);
-        await updateSvaMainserverGenericItem({
+        await deleteSvaMainserverGenericItem({
           ...actor,
           genericItemId: freshItem.id,
-          genericItem: mergeProjectIntoGenericItem({
-            project: freshProject,
-            existing: freshItem,
-            deleted: true,
-            publishedAt: freshItem.publishedAt,
-          }),
         });
-        await changeSvaMainserverGenericItemVisibility({
-          ...actor,
-          genericItemId: freshItem.id,
-          visible: false,
-        });
-        let localFollowUpFailed = false;
-        if (context.core && context.reference) {
-          await Promise.resolve(
-            updateExternalContentCore({
-              ...actorInfo,
-              actorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-              contentId: context.reference.contentId,
-              title: freshItem.title,
-              payload: { ...projectPayload(freshProject, true) },
-              status: freshProject.status,
-              publishedAt: freshItem.publishedAt,
-              authorDisplayMode: actor.mutationPrincipalContext.actingPrincipalType,
-              authorDisplayName: ctx.user.displayName ?? ctx.user.username ?? ctx.user.id,
-            })
-          ).catch((error: unknown) => {
-            localFollowUpFailed = true;
-            logger.warn('Project local follow-up failed after provider delete', {
-              operation: 'mainserver_projects_local_follow_up',
-              instance_id: instanceId,
-              error_code: error instanceof Error ? error.name : 'local_finalize_failed',
-            });
-          });
-        }
         await finalizeMainserverMutation({
           actor,
           providerOutcome: 'succeeded',
-          reconciliationStatus: localFollowUpFailed ? 'reconciliation_required' : 'complete',
-          completedSteps: ['provider_write', 'soft_delete'],
+          reconciliationStatus: 'complete',
+          completedSteps: ['provider_write', 'tombstone'],
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });
@@ -833,7 +793,7 @@ const deleteProject = async (
           instanceId,
           referenceId: context.reference.id,
           status: 'reconciliation_required',
-          errorCode: 'soft_delete_finalize_failed',
+          errorCode: 'provider_delete_failed',
         })
       ).catch(() => undefined);
     return toMainserverErrorResponse(error, 'Projekt konnte nicht gelöscht werden.');

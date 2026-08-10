@@ -28,7 +28,6 @@ export type ProjectContentItem = ProjectFormInput &
     id: string;
     published: boolean;
     publishedAt?: string;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     author: ProjectAuthor;

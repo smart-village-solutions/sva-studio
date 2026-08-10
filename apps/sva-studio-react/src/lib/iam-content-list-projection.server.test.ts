@@ -3313,6 +3313,15 @@ describe('content list projection', () => {
       sourceEntityType: 'GenericItem',
       sourceEntityId: 'project-delete-1',
     });
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-delete-1',
+    });
   });
 
   it('continues project refresh after filtered pages and projects every payload variant', async () => {

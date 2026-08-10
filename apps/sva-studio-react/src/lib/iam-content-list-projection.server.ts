@@ -2695,18 +2695,21 @@ const refreshGenericItemSiblingProjections = async (input: {
     input.target.actorDisplayName &&
     input.target.mutationRef
   ) {
-    await recordSuccessfulExternalContentDeletion({
-      instanceId: input.target.instanceId,
-      actorAccountId: input.target.actorAccountId,
-      actorDisplayName: input.target.actorDisplayName,
-      mutationRef: input.target.mutationRef,
-      sourceSystem: 'mainserver',
-      sourceEntityType:
-        input.target.contentType === 'projects.project'
-          ? 'GenericItem'
-          : input.target.contentType,
-      sourceEntityId: input.entityId,
-    });
+    const sourceEntityTypes =
+      input.target.contentType === 'projects.project'
+        ? ['GenericItem', 'projects.project']
+        : [input.target.contentType];
+    for (const sourceEntityType of sourceEntityTypes) {
+      await recordSuccessfulExternalContentDeletion({
+        instanceId: input.target.instanceId,
+        actorAccountId: input.target.actorAccountId,
+        actorDisplayName: input.target.actorDisplayName,
+        mutationRef: input.target.mutationRef,
+        sourceSystem: 'mainserver',
+        sourceEntityType,
+        sourceEntityId: input.entityId,
+      });
+    }
   }
   let item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
   try {

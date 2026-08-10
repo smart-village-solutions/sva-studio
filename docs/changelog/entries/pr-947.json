@@ -1,0 +1,4 @@
+{
+  "prNumber": 947,
+  "body": "Waste Management: Repository-Tests für Tour-Gültigkeit vervollständigt\n\n- Zusätzliche Randfälle für Tour-Gültigkeiten und Standort–Tour-Zuordnungen sichern die neue Repository-Logik ab.\n- Der vollständige Coverage-Gate-Lauf bleibt damit auch nach der Erweiterung stabil grün."
+}

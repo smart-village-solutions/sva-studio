@@ -240,4 +240,6 @@ Der Kompatibilitätsmodus ist nur noch ein expliziter Rollout- und Rollbackvertr
 - `organization`: bei `org_only` die aktive organisatorische Credential-Version und bei `org_or_personal` persönliche sowie aktive organisatorische Credential-Version konfliktfrei zugeordnet sind;
 - keine konkurrierenden Claims für die benötigten DataProvider bestehen.
 
+Der erste Cutover erfolgt über das getrackte Development-Profil. Staging und Production bleiben bis zur erfolgreichen Dev-Abnahme auf `shadow`; ihre spätere Promotion folgt dem regulären Same-Digest-Rolloutprozess.
+
 Global kann der Pfad erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können, die Principal-zu-DataProvider-Kardinalität bestätigt ist und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsentscheidungen mehr zeigen.

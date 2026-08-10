@@ -85,5 +85,6 @@
 - [x] 8.2 Vor jeder Mutation eine verifizierte Bindung für den aktuellen Credential-Fingerprint sicherstellen; vorhandene aktuelle Bindungen als Cache verwenden.
 - [x] 8.3 Identity-, Datenbank- und Mapping-Konflikte vor dem Provider-Write deterministisch ablehnen und ohne PII protokollieren.
 - [x] 8.4 Automatische Scope-Auswertung bei fehlender Readiness fail-closed machen und `org_only` ausschließlich von der Organisationsbindung abhängig machen.
-- [x] 8.5 Resolvermodus in allen getrackten Remote-Profilen explizit als validierten Shadow-Wert materialisieren.
+- [x] 8.5 Resolvermodus in allen getrackten Remote-Profilen explizit als validierten Rolloutwert materialisieren.
 - [x] 8.6 Parser-, Identity-, Rotation-/Cache-, Konflikt-, Policy- und Remote-Config-Tests ergänzen.
+- [x] 8.7 Development als ersten Cutover auf `automatic` vorbereiten; Staging und Production bis zur erfolgreichen Dev-Abnahme auf `shadow` belassen.

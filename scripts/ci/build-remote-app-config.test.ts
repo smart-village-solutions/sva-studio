@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig } from './build-remote-app-config.ts';
@@ -21,6 +23,20 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it.each([
+    ['dev', 'automatic'],
+    ['staging', 'shadow'],
+    ['prod', 'shadow'],
+  ] as const)('materializes the %s resolver rollout mode as %s', (environment, resolverMode) => {
+    const remoteProfile = readFileSync(
+      new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
+      'utf8'
+    );
+    const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
+
+    expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
+  });
+
   it('merges deterministically while evidence contains references but no secret values', () => {
     const result = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
     expect(result.source.split('\n').filter(Boolean)).toEqual([...result.source.split('\n').filter(Boolean)].sort());

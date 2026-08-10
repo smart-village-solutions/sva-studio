@@ -339,7 +339,7 @@ Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
 
 Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
 
-Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
+Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. Development ist als erster Cutover auf `automatic` vorbereitet; Staging und Production bleiben bis zur erfolgreichen Dev-Abnahme auf `shadow`. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
 
 Ein nicht finaler Listenstand meldet `availableCount` und `isTotalFinal=false`; `totalCount` fehlt dann bewusst. Pro Typ liefern die Refresh-Metadaten Snapshot-Zustand, Phase, abgeschlossene Page, verfügbare Anzahl, Invalid-Zähler und den letzten Fehler.
 

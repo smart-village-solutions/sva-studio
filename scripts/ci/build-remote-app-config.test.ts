@@ -11,6 +11,7 @@ const profile = Object.entries(remoteConfigContract)
     if (contract.type === 'boolean') return `${key}=false`;
     if (contract.type === 'integer') return `${key}=5000`;
     if (contract.type === 'url') return `${key}=https://example.test/${key.toLowerCase()}`;
+    if (contract.allowedValues?.[0]) return `${key}=${contract.allowedValues[0]}`;
     return `${key}=value`;
   }).join('\n');
 
@@ -48,6 +49,7 @@ describe('remote app config builder', () => {
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=__SET__'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=   '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=  __SET__  '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow', 'SVA_MAINSERVER_SCOPE_RESOLVER_MODE=unsafe'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
   it('compares only keys, non-sensitive values and reference names', () => {

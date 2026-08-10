@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   authorizeMainserverDataProviderAccess: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -139,6 +141,10 @@ const createRequest = (url: string, init?: RequestInit): Request =>
 
 describe('dispatchSvaMainserverNewsRequest', () => {
   beforeEach(() => {
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      status: 'verified',
+      dataProviderId: 'dp-org-1',
+    });
     state.authorizeMainserverDataProviderAccess.mockResolvedValue({
       allowed: true,
       authorizationMode: 'exact',

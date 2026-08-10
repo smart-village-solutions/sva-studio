@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
   finalizeMainserverMutationJournal: vi.fn(),
@@ -53,6 +54,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -182,6 +184,10 @@ const request = (path: string, init?: RequestInit) =>
   });
 
 const prepareDefaults = () => {
+  state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+    status: 'verified',
+    dataProviderId: 'dp-org-1',
+  });
   state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
   state.validateCsrf.mockReturnValue(null);
   state.authorize.mockResolvedValue({

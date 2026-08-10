@@ -1,4 +1,5 @@
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
+import type { IamContentAuthorPolicy } from '@sva/core';
 
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 import {
@@ -46,6 +47,7 @@ type BoundAuthorizationContext = AuthorizationContext &
   Readonly<{
     actingPrincipalType: 'organization' | 'user';
     credentialFingerprint: string;
+    contentAuthorPolicy?: IamContentAuthorPolicy;
   }>;
 
 const buildRequest = (
@@ -183,8 +185,12 @@ const loadRelevantBindings = async (
 ): Promise<RelevantBindings> => {
   const needsOwn = hasScopedPermission(input.permissions, input.action, 'own');
   const needsOrganization = hasScopedPermission(input.permissions, input.action, 'organization');
+  const needsUserBinding =
+    needsOwn ||
+    (needsOrganization &&
+      (!input.activeOrganizationId || input.contentAuthorPolicy !== 'org_only'));
   const [user, organization] = await Promise.all([
-    needsOwn || needsOrganization
+    needsUserBinding
       ? loadBinding({ context: input, principalType: 'user', principalId: input.actorAccountId })
       : undefined,
     needsOrganization && input.activeOrganizationId
@@ -233,15 +239,17 @@ const resolveBoundAuthorizationCandidate = (
   const organizationReady =
     !bindings.needsOrganization ||
     (input.activeOrganizationId
-      ? Boolean(bindings.user && bindings.organization)
+      ? input.contentAuthorPolicy === 'org_only'
+        ? Boolean(bindings.organization)
+        : Boolean(bindings.user && bindings.organization)
       : Boolean(bindings.user));
   if (ownReady && organizationReady) {
     return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
   }
   return {
-    allowed: compatibilityAllowed,
-    authorizationMode: 'credential_visible_compatibility',
-    reason: compatibilityAllowed ? 'allowed' : 'forbidden',
+    allowed: false,
+    authorizationMode: 'exact',
+    reason: 'forbidden',
   };
 };
 

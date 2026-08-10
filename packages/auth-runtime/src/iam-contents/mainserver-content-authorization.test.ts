@@ -37,6 +37,7 @@ const context = {
   contentId: 'news-1',
   actingPrincipalType: 'user',
   credentialFingerprint: 'a'.repeat(64),
+  contentAuthorPolicy: 'org_or_personal' as const,
 } as const;
 
 describe('Mainserver content authorization', () => {
@@ -112,7 +113,7 @@ describe('Mainserver content authorization', () => {
     }
   );
 
-  it('uses compatibility while the current own binding is missing', async () => {
+  it('fails closed while the current own binding is missing', async () => {
     state.loadBinding.mockResolvedValue(undefined);
     await expect(
       authorizeMainserverDataProviderAccess({
@@ -121,9 +122,9 @@ describe('Mainserver content authorization', () => {
         dataProviderId: 'provider-foreign',
       })
     ).resolves.toEqual({
-      allowed: true,
-      authorizationMode: 'credential_visible_compatibility',
-      reason: 'allowed',
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'forbidden',
       resolverMode: 'automatic',
     });
   });
@@ -167,7 +168,7 @@ describe('Mainserver content authorization', () => {
     });
   });
 
-  it('keeps organization scope compatible until both bindings are current', async () => {
+  it('fails closed for org_or_personal until both bindings are current', async () => {
     state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
       input.principalType === 'user' ? { dataProviderId: 'provider-user' } : undefined
     );
@@ -178,9 +179,34 @@ describe('Mainserver content authorization', () => {
         dataProviderId: 'provider-foreign',
       })
     ).resolves.toMatchObject({
-      allowed: true,
-      authorizationMode: 'credential_visible_compatibility',
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'forbidden',
     });
+  });
+
+  it('requires only the organization binding for org_only', async () => {
+    state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
+      input.principalType === 'organization'
+        ? { dataProviderId: 'provider-organization' }
+        : undefined
+    );
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...context,
+        actingPrincipalType: 'organization',
+        contentAuthorPolicy: 'org_only',
+        permissions: [permission('organization')],
+        dataProviderId: 'provider-organization',
+      })
+    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+    expect(state.loadBinding).not.toHaveBeenCalledWith(
+      expect.objectContaining({ principalType: 'user' })
+    );
+    expect(state.readCredentials).not.toHaveBeenCalledWith(
+      expect.objectContaining({ actingPrincipalType: 'user' })
+    );
   });
 
   it('enforces organization scope exactly once both current bindings exist', async () => {

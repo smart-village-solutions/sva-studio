@@ -5,6 +5,7 @@ type RemoteConfigKeyContract = Readonly<{
   kind: RemoteConfigKind;
   required?: boolean;
   type?: 'boolean' | 'integer' | 'url' | 'string';
+  allowedValues?: readonly string[];
 }>;
 
 const configKeys = [
@@ -22,7 +23,8 @@ const configKeys = [
   'RESTORE_IAM_SMOKE_USERNAME', 'S3_BUCKET_PROD', 'S3_BUCKET_STAGING', 'S3_URL',
   'SVA_DEPLOY_REVISION', 'SVA_IMAGE_DIGEST', 'SVA_IMAGE_REF', 'SVA_IMAGE_TAG',
   'SVA_MAINSERVER_CLIENT_ID', 'SVA_MAINSERVER_GRAPHQL_URL', 'SVA_MAINSERVER_OAUTH_TOKEN_URL',
-  'SVA_MONITORING_CONFIG_INIT_IMAGE_TAG', 'SVA_MONITORING_REGISTRY',
+  'SVA_MAINSERVER_SCOPE_RESOLVER_MODE', 'SVA_MONITORING_CONFIG_INIT_IMAGE_TAG',
+  'SVA_MONITORING_REGISTRY',
 ] as const;
 
 const secretValueKeys = [
@@ -43,6 +45,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   SVA_PUBLIC_BASE_URL: { kind: 'config', required: true, type: 'url' },
   SVA_AUTH_ISSUER: { kind: 'config', required: true, type: 'url' },
   SVA_AUTH_REDIRECT_URI: { kind: 'config', required: true, type: 'url' },
+  SVA_MAINSERVER_SCOPE_RESOLVER_MODE: { kind: 'config', required: true, type: 'string', allowedValues: ['shadow', 'automatic', 'compatibility'] },
 };
 
 const requiredKeys = new Set([

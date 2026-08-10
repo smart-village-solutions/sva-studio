@@ -47,6 +47,7 @@ const validateValue = (environment: RemoteEnvironment, key: string, value: strin
   if (contract.kind === 'secret-reference' && !referencePattern.test(normalizedValue)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Secret-Referenz ${key} ist ungueltig.`, 'Nur den Namen des vorhandenen externen Secrets eintragen.');
   if (contract.type === 'boolean' && normalizedValue !== 'true' && normalizedValue !== 'false') fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet true oder false.`, 'Einen booleschen Wert setzen.');
   if (contract.type === 'integer' && (!/^\d+$/u.test(normalizedValue) || Number(normalizedValue) < 1)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine positive Ganzzahl.`, 'Eine positive Ganzzahl setzen.');
+  if (contract.allowedValues && !contract.allowedValues.includes(normalizedValue)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} enthaelt keinen erlaubten Wert.`, `Einen der Werte ${contract.allowedValues.join(', ')} setzen.`);
   if (contract.type === 'url') {
     try { new URL(normalizedValue); } catch { fail(environment, 'PROMOTE_CONFIG_INVALID', `Schluessel ${key} erwartet eine absolute URL.`, 'Eine gueltige absolute URL setzen.'); }
   }

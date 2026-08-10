@@ -31,6 +31,7 @@ export type EffectiveSvaMainserverCredentialsResult =
       readonly credentials: SvaMainserverCredentials;
       readonly credentialFingerprint: string;
       readonly organizationId?: string;
+      readonly contentAuthorPolicy?: IamContentAuthorPolicy;
     }
   | {
       readonly status: 'organization_mainserver_credentials_missing';
@@ -189,7 +190,13 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
   }
 
   if (input.actingPrincipalType === 'user') {
-    return resolveUserCredentials(input);
+    const userCredentials = await resolveUserCredentials(input);
+    return userCredentials.status === 'ok'
+      ? {
+          ...userCredentials,
+          contentAuthorPolicy: organizationCredentialRow.content_author_policy,
+        }
+      : userCredentials;
   }
 
   const organizationCredentials = resolveOrganizationCredentials(
@@ -212,6 +219,7 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
             credentials: organizationCredentials,
           }),
           organizationId: input.activeOrganizationId,
+          contentAuthorPolicy: organizationCredentialRow.content_author_policy,
         }
       : {
           status: 'organization_mainserver_credentials_missing',
@@ -219,7 +227,13 @@ export const readEffectiveSvaMainserverCredentialsWithStatus = async (
         };
   }
 
-  return resolveUserCredentials(input);
+  const userCredentials = await resolveUserCredentials(input);
+  return userCredentials.status === 'ok'
+    ? {
+        ...userCredentials,
+        contentAuthorPolicy: organizationCredentialRow.content_author_policy,
+      }
+    : userCredentials;
 };
 
 export const readEffectiveSvaMainserverCredentials = async (

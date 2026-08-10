@@ -824,9 +824,8 @@ describe('projects route', () => {
     );
   });
 
-  it('rebinds a recreated project after its previously bound provider item was deleted', async () => {
+  it('replays the completed create without recreating a physically deleted project', async () => {
     prepareDefaults();
-    const recreatedItem = { ...genericItem, id: 'external-2' };
     state.loadReferenceByOperation.mockResolvedValue(reference);
     state.getGenericItem.mockRejectedValue(
       new SvaMainserverError({
@@ -835,8 +834,11 @@ describe('projects route', () => {
         statusCode: 404,
       })
     );
-    state.createGenericItem.mockResolvedValue(recreatedItem);
-    state.bindReference.mockResolvedValue({ ...reference, sourceEntityId: recreatedItem.id });
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'replay',
+      responseBody: { data: { id: contentId } },
+      responseStatus: 201,
+    });
 
     const response = await dispatchSvaMainserverProjectsRequest(
       request('/api/v1/mainserver/projects', {
@@ -847,12 +849,10 @@ describe('projects route', () => {
     );
 
     expect(response?.status).toBe(201);
-    expect(state.createGenericItem).toHaveBeenCalledTimes(1);
-    expect(state.bindReference).toHaveBeenCalledWith({
-      instanceId: 'tenant-1',
-      referenceId,
-      sourceEntityId: 'external-2',
-    });
+    await expect(response?.json()).resolves.toEqual({ data: { id: contentId } });
+    expect(state.reserveIdempotency).toHaveBeenCalledTimes(1);
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+    expect(state.bindReference).not.toHaveBeenCalled();
   });
 
   it('preserves provider create success when local create follow-up is unavailable', async () => {

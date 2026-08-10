@@ -376,6 +376,14 @@ const createProject = async (
   if (isResponse(project)) return project;
   const actorInfo = await actorInfoOrResponse(request, ctx);
   if (isResponse(actorInfo)) return actorInfo;
+  const reserveCreateIdempotency = () =>
+    reserveIdempotency({
+      instanceId: actor.instanceId,
+      actorAccountId: actorInfo.actorAccountId,
+      endpoint: CREATE_ENDPOINT,
+      idempotencyKey: key,
+      payloadHash: createHash('sha256').update(rawBody).digest('hex'),
+    });
   const principalAuthorization = await authorizeMainserverCreateForPrincipal({
     actor,
     action: 'projects.create',
@@ -438,15 +446,35 @@ const createProject = async (
       return projectMutationJson(responseBody, existing.id, 201);
     }
 
+    if (reference?.sourceEntityId) {
+      try {
+        const reserved = await reserveCreateIdempotency();
+        if (reserved.status === 'replay')
+          return json(reserved.responseBody, reserved.responseStatus);
+        return errorJson(
+          409,
+          'idempotency_key_reuse',
+          reserved.status === 'conflict'
+            ? reserved.message
+            : 'Idempotency-Key verweist auf ein gelöschtes Projekt.'
+        );
+      } catch (error) {
+        logger.warn('Project create replay could not verify its deleted provider binding', {
+          operation: 'mainserver_projects_local_follow_up',
+          instance_id: actor.instanceId,
+          error_code: error instanceof Error ? error.name : 'idempotency_unavailable',
+        });
+        return errorJson(
+          503,
+          'idempotency_unavailable',
+          'Projektwiederholung konnte nicht geprüft werden.'
+        );
+      }
+    }
+
     if (!reference)
       try {
-        const reserved = await reserveIdempotency({
-          instanceId: actor.instanceId,
-          actorAccountId: actorInfo.actorAccountId,
-          endpoint: CREATE_ENDPOINT,
-          idempotencyKey: key,
-          payloadHash: createHash('sha256').update(rawBody).digest('hex'),
-        });
+        const reserved = await reserveCreateIdempotency();
         if (reserved.status === 'replay')
           return json(reserved.responseBody, reserved.responseStatus);
         if (reserved.status === 'conflict')
@@ -523,7 +551,7 @@ const createProject = async (
         });
         reference = prepared.reference;
       }
-      if (reference.sourceEntityId !== created.id) {
+      if (!reference.sourceEntityId) {
         reference = await bindExternalContentReference({
           instanceId: actor.instanceId,
           referenceId: reference.id,

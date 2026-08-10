@@ -1,0 +1,4 @@
+{
+  "prNumber": 949,
+  "body": "Projekte: Bestehende Einträge wieder sichtbar und Löschen korrigiert\n\n- Alle vorhandenen Projekte erscheinen unabhängig von älteren technischen Löschmarkierungen in der Inhaltsübersicht.\n- Beim Löschen wird das Projekt jetzt vollständig aus dem Mainserver entfernt."
+}

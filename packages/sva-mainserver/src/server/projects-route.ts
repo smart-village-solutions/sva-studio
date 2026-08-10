@@ -523,7 +523,7 @@ const createProject = async (
         });
         reference = prepared.reference;
       }
-      if (!reference.sourceEntityId) {
+      if (reference.sourceEntityId !== created.id) {
         reference = await bindExternalContentReference({
           instanceId: actor.instanceId,
           referenceId: reference.id,

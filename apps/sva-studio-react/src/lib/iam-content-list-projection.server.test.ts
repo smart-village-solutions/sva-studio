@@ -294,21 +294,6 @@ describe('content list projection', () => {
       );
     }
 
-    if (text.includes("projection.payload_json->>'deleted' = 'true'")) {
-      rows = rows.filter((row) => {
-        if (row.content_type !== 'projects.project') return true;
-        const payload =
-          row.payload_json &&
-          typeof row.payload_json === 'object' &&
-          !Array.isArray(row.payload_json)
-            ? (row.payload_json as Record<string, unknown>)
-            : {};
-        return (
-          payload.deleted !== undefined && payload.deleted !== null && payload.deleted !== true
-        );
-      });
-    }
-
     return rows;
   };
 

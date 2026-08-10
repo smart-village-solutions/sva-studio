@@ -824,6 +824,37 @@ describe('projects route', () => {
     );
   });
 
+  it('rebinds a recreated project after its previously bound provider item was deleted', async () => {
+    prepareDefaults();
+    const recreatedItem = { ...genericItem, id: 'external-2' };
+    state.loadReferenceByOperation.mockResolvedValue(reference);
+    state.getGenericItem.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'not_found',
+        message: 'GenericItem wurde nicht gefunden.',
+        statusCode: 404,
+      })
+    );
+    state.createGenericItem.mockResolvedValue(recreatedItem);
+    state.bindReference.mockResolvedValue({ ...reference, sourceEntityId: recreatedItem.id });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.createGenericItem).toHaveBeenCalledTimes(1);
+    expect(state.bindReference).toHaveBeenCalledWith({
+      instanceId: 'tenant-1',
+      referenceId,
+      sourceEntityId: 'external-2',
+    });
+  });
+
   it('preserves provider create success when local create follow-up is unavailable', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);

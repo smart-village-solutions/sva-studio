@@ -1038,6 +1038,42 @@ describe('waste master data repository', () => {
       /SET first_date = CASE[\s\S]*?WHEN 'clear' THEN NULL[\s\S]*?end_date = CASE/
     );
     expect(database.statements[1]?.values).toEqual([['tour-1'], 'unchanged', null, 'clear', null]);
+
+    const nullableTour = createExecutor([
+      {
+        id: 'tour-2',
+        recurrence: null,
+        custom_recurrence_id: 'preset-14',
+        first_date: null,
+        end_date: null,
+      },
+    ]);
+
+    await expect(
+      createWasteMasterDataRepository(nullableTour.executor).lockWasteToursByIds(['tour-2'])
+    ).resolves.toEqual([
+      {
+        id: 'tour-2',
+        recurrence: null,
+        customRecurrenceId: 'preset-14',
+        firstDate: undefined,
+        endDate: undefined,
+      },
+    ]);
+
+    expect(
+      wasteMasterDataStatements.updateWasteTourValidityBulk({
+        tourIds: ['tour-1', 'tour-2'],
+        firstDate: { mode: 'set', value: '2027-01-01' },
+        endDate: { mode: 'set', value: '2027-12-31' },
+      }).values
+    ).toEqual([
+      ['tour-1', 'tour-2'],
+      'set',
+      '2027-01-01',
+      'set',
+      '2027-12-31',
+    ]);
   });
 
   it('lists, reads and upserts custom recurrence presets', async () => {
@@ -1203,6 +1239,19 @@ describe('waste master data repository', () => {
     expect(write.statements[0]?.values).toEqual(['link-3', 'location-3', 'tour-3']);
     expect(write.statements[0]?.text).not.toContain('start_date');
     expect(write.statements[0]?.text).not.toContain('end_date');
+
+    const unfilteredStatement = wasteMasterDataStatements.listWasteLocationTourLinks({
+      locationId: ' ',
+      tourId: ' ',
+    });
+    expect(unfilteredStatement.values).toEqual([]);
+    expect(unfilteredStatement.text).not.toContain('WHERE');
+
+    await expect(
+      createWasteMasterDataRepository(createExecutor().executor).getWasteLocationTourLinkById(
+        'missing-link'
+      )
+    ).resolves.toBeNull();
   });
 
   it('lists, reads and upserts location-tour pickup dates idempotently by location, tour and pickup date', async () => {

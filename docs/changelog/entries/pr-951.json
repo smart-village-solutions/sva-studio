@@ -1,0 +1,4 @@
+{
+  "prNumber": 951,
+  "body": "Inhalte: Automatische DataProvider-Scope-Auswertung auf Staging\n\n- Staging aktiviert nach erfolgreicher Development-Abnahme die exakte DataProvider-Scope-Auswertung automatisch.\n- Fehlende oder konfliktbehaftete erforderliche Bindungen bleiben damit auch auf Staging fail-closed.\n- Production verbleibt bis zur erfolgreichen Staging-Abnahme im Shadow-Modus."
+}

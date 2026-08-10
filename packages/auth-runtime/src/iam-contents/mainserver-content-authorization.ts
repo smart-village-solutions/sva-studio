@@ -254,6 +254,17 @@ const resolveBoundAuthorizationCandidate = (
   if (bindings.error) {
     return { allowed: false, authorizationMode: 'exact', reason: bindings.error };
   }
+  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
+  const organizationReady =
+    !bindings.needsOrganization ||
+    (input.activeOrganizationId
+      ? input.contentAuthorPolicy === 'org_only'
+        ? Boolean(bindings.organization)
+        : Boolean(bindings.user && bindings.organization)
+      : Boolean(bindings.user));
+  if (!ownReady || !organizationReady) {
+    return { allowed: false, authorizationMode: 'exact', reason: 'forbidden' };
+  }
   if (
     bindings.user?.dataProviderId === input.dataProviderId &&
     isAllowedForOwnership(input, { ownerUserId: input.actorAccountId })
@@ -267,23 +278,7 @@ const resolveBoundAuthorizationCandidate = (
   ) {
     return { allowed: true, authorizationMode: 'exact', reason: 'allowed' };
   }
-
-  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
-  const organizationReady =
-    !bindings.needsOrganization ||
-    (input.activeOrganizationId
-      ? input.contentAuthorPolicy === 'org_only'
-        ? Boolean(bindings.organization)
-        : Boolean(bindings.user && bindings.organization)
-      : Boolean(bindings.user));
-  if (ownReady && organizationReady) {
-    return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
-  }
-  return {
-    allowed: false,
-    authorizationMode: 'exact',
-    reason: 'forbidden',
-  };
+  return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
 };
 
 export const authorizeMainserverDataProviderAccess = async (

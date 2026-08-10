@@ -185,6 +185,26 @@ describe('Mainserver content authorization', () => {
     });
   });
 
+  it('does not let a matching organization binding bypass org_or_personal readiness', async () => {
+    state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
+      input.principalType === 'organization'
+        ? { dataProviderId: 'provider-organization' }
+        : undefined
+    );
+
+    await expect(
+      authorizeMainserverDataProviderAccess({
+        ...context,
+        permissions: [permission('organization')],
+        dataProviderId: 'provider-organization',
+      })
+    ).resolves.toMatchObject({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'forbidden',
+    });
+  });
+
   it.each(['database_unavailable', 'identity_provider_unavailable'] as const)(
     'preserves the retryable %s status while resolving a secondary principal binding',
     async (status) => {

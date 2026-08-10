@@ -855,6 +855,37 @@ describe('projects route', () => {
     expect(state.bindReference).not.toHaveBeenCalled();
   });
 
+  it('completes a new reservation when a deleted project idempotency record expired', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(reference);
+    state.getGenericItem.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'not_found',
+        message: 'GenericItem wurde nicht gefunden.',
+        statusCode: 404,
+      })
+    );
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(409);
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: 'operation-1',
+        responseStatus: 409,
+        status: 'FAILED',
+      })
+    );
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+  });
+
   it('preserves provider create success when local create follow-up is unavailable', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);

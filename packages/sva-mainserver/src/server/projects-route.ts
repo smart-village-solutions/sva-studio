@@ -451,13 +451,22 @@ const createProject = async (
         const reserved = await reserveCreateIdempotency();
         if (reserved.status === 'replay')
           return json(reserved.responseBody, reserved.responseStatus);
-        return errorJson(
-          409,
-          'idempotency_key_reuse',
+        const message =
           reserved.status === 'conflict'
             ? reserved.message
-            : 'Idempotency-Key verweist auf ein gelöschtes Projekt.'
-        );
+            : 'Idempotency-Key verweist auf ein gelöschtes Projekt.';
+        const responseBody = { error: 'idempotency_key_reuse', message };
+        if (reserved.status === 'reserved') {
+          await completeCreate({
+            instanceId: actor.instanceId,
+            actorAccountId: actorInfo.actorAccountId,
+            idempotencyKey: key,
+            responseBody,
+            responseStatus: 409,
+            status: 'FAILED',
+          });
+        }
+        return json(responseBody, 409);
       } catch (error) {
         logger.warn('Project create replay could not verify its deleted provider binding', {
           operation: 'mainserver_projects_local_follow_up',

@@ -151,7 +151,6 @@ export const authorizeMainserverCreateForPrincipal = async (input: {
   });
   return toMutationAuthorization(input.actor, decision);
 };
-
 type AuthorizationAggregate = {
   authorizationMode: MainserverMutationAuthorization['authorizationMode'];
   resolverMode: MainserverMutationAuthorization['resolverMode'];
@@ -159,9 +158,7 @@ type AuthorizationAggregate = {
   candidateAllowed?: boolean;
   shadowDifference: boolean;
 };
-
 type ProviderDecision = Awaited<ReturnType<typeof authorizeMainserverDataProviderAccess>>;
-
 const mergeProviderDecision = (
   aggregate: AuthorizationAggregate,
   decision: ProviderDecision
@@ -189,8 +186,10 @@ const providerDenialResponse = (decision: ProviderDecision): Response =>
         decision.reason,
         'Der Mainserver hat für diesen Inhalt keinen DataProvider geliefert.'
       )
-    : errorJson(403, decision.reason, 'Keine Berechtigung für den DataProvider dieses Inhalts.');
-
+    : decision.reason === 'database_unavailable' ||
+        decision.reason === 'identity_provider_unavailable'
+      ? errorJson(503, decision.reason, 'Die DataProvider-Bindung konnte nicht geprüft werden.')
+      : errorJson(403, decision.reason, 'Keine Berechtigung für den DataProvider dieses Inhalts.');
 const evaluateProviderActions = async (input: {
   actor: MainserverMutationActor;
   actions: readonly string[];
@@ -211,6 +210,9 @@ const evaluateProviderActions = async (input: {
       actorAccountId: input.actor.actorAccountId,
       actingPrincipalType: input.actor.mutationPrincipalContext.actingPrincipalType,
       credentialFingerprint: input.actor.mutationPrincipalContext.credentialFingerprint,
+      ...(input.actor.mutationPrincipalContext.contentAuthorPolicy
+        ? { contentAuthorPolicy: input.actor.mutationPrincipalContext.contentAuthorPolicy }
+        : {}),
       ...(input.actor.activeOrganizationId
         ? { activeOrganizationId: input.actor.activeOrganizationId }
         : {}),
@@ -239,7 +241,6 @@ const evaluateProviderActions = async (input: {
   }
   return aggregate;
 };
-
 const beginExistingContentJournal = async (input: {
   actor: MainserverMutationActor;
   action: string;

@@ -1,27 +1,27 @@
 ## ADDED Requirements
 
-### Requirement: Mainserver-Content-Scopes verwenden automatische Bindungen oder credential-sichtbare Kompatibilität
+### Requirement: Mainserver-Content-Scopes verwenden im Zielzustand exakte automatische Bindungen
 
-Das System SHALL Mainserver-Inhalte abhängig von der Readiness der automatisch erzeugten Principal-zu-DataProvider-Bindungen autorisieren. Solange die für den angeforderten Scope erforderlichen aktuellen Bindungen fehlen oder konfliktbehaftet sind, SHALL es `credential_visible_compatibility` verwenden. In diesem Modus SHALL `own` und `organization` alle Inhalte erlauben, die mit den für die konkrete Aktion ausgewählten Credentials unmittelbar gelesen und vom Mainserver mutiert werden können. Die passende fully-qualified Action-Permission, Instanzgrenze, aktive Organisation, Principal-Policy und Mainserver-Autorisierung SHALL weiterhin erforderlich sein.
+Das System SHALL Mainserver-Inhalte im automatischen Resolver ausschließlich anhand der aktuellen konfliktfreien Principal-zu-DataProvider-Bindungen autorisieren. Fehlende oder konfliktbehaftete erforderliche Bindungen SHALL fail-closed ablehnen. `credential_visible_compatibility` SHALL nur in den expliziten Rolloutmodi `shadow` und `compatibility` erzwungen werden. Die passende fully-qualified Action-Permission, Instanzgrenze, aktive Organisation, Principal-Policy und Mainserver-Autorisierung SHALL in jedem Modus erforderlich bleiben.
 
 Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. Update, Publish, Archive, Restore und Hard Delete SHALL jeweils einen frischen erfolgreichen Pre-Read mit exakt demselben Credential-Kontext wie der anschließende Write verlangen. Jede Aktion SHALL ihre eigene fully-qualified Permission verlangen.
 
-#### Scenario: Own-Scope verwendet credential-sichtbare Kompatibilität
+#### Scenario: Own-Scope ohne aktuelle Bindung wird automatisch abgelehnt
 
 - **GIVEN** der persönliche Principal besitzt für seine aktuelle Credential-Version noch keine konfliktfreie DataProvider-Bindung
 - **AND** der Benutzer besitzt die fully-qualified Update-Permission mit `own`
 - **WHEN** er einen Mainserver-Inhalt mit `actingPrincipalType = user` aktualisiert
-- **THEN** erlaubt Studio die Mutation nur nach erfolgreichem Same-Credential-Pre-Read
-- **AND** schränkt es den Inhalt nicht anhand lokaler oder vermuteter Owner-Felder ein
-- **AND** bleiben Mainserver-`401`, `403` oder `404` fail-closed
+- **THEN** lehnt Studio die Mutation im automatischen Resolver vor dem Write ab
+- **AND** erfindet es kein lokales Owner-Mapping
+- **AND** bleiben Mainserver-`401`, `403` oder `404` ebenfalls fail-closed
 
-#### Scenario: Organization-Scope verwendet credential-sichtbare Kompatibilität
+#### Scenario: Organization-Scope ohne vollständige policy-gesteuerte Bindung wird abgelehnt
 
-- **GIVEN** für den persönlichen Principal oder die aktive Organisation fehlt eine aktuelle konfliktfreie Bindung
+- **GIVEN** bei `org_only` fehlt die aktuelle Organisationsbindung oder bei `org_or_personal` eine der persönlichen beziehungsweise organisatorischen Bindungen
 - **AND** der Benutzer besitzt die passende Content-Action mit `organization`
 - **WHEN** er mit einem zulässigen expliziten Principal handelt
-- **THEN** verwendet Studio `credential_visible_compatibility` für diesen Scope
-- **AND** autorisiert nur Inhalte, die mit genau dessen Credentials unmittelbar verfügbar sind
+- **THEN** lehnt Studio die Mutation im automatischen Resolver ab
+- **AND** verbreitert es den Scope nicht anhand der Credential-Sichtbarkeit
 - **AND** berücksichtigt keine andere Membership oder einen anderen Credential-Kontext
 
 #### Scenario: Hard Delete bleibt separat autorisiert
@@ -56,20 +56,20 @@ Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. U
 - **AND** verwendet es für diesen Scope nicht mehr `credential_visible_compatibility`
 - **AND** auditiert den automatischen Zustandswechsel
 
-#### Scenario: Organization-Scope wechselt erst bei vollständiger Readiness
+#### Scenario: Organization-Scope verwendet policy-gesteuerte Readiness
 
-- **GIVEN** persönlicher Principal und aktive Organisation sind für ihre aktuellen Credential-Versionen konfliktfrei zugeordnet
+- **GIVEN** bei `org_only` ist die aktive Organisation konfliktfrei zugeordnet oder bei `org_or_personal` sind persönlicher Principal und aktive Organisation konfliktfrei zugeordnet
 - **WHEN** Studio `organization` auswertet
 - **THEN** erlaubt es Inhalte des persönlichen oder organisatorischen DataProviders
 - **AND** DataProvider anderer Memberships matchen nicht
 - **AND** ohne aktive Organisation fällt der Scope auf `own` zurück
 
-#### Scenario: Konflikt hält den Scope im Kompatibilitätsmodus
+#### Scenario: Konflikt blockiert den automatischen Resolver
 
-- **GIVEN** eine automatische Create- oder Identity-Beobachtung widerspricht einer bestehenden Bindung
+- **GIVEN** eine Identity- oder nachgelagerte Create-Beobachtung widerspricht einer bestehenden Bindung
 - **WHEN** Studio `own` oder `organization` auswertet
 - **THEN** überschreibt es keine Bindung
-- **AND** verwendet für den betroffenen Scope weiterhin `credential_visible_compatibility`
+- **AND** lehnt der automatische Resolver den betroffenen Scope fail-closed ab
 - **AND** macht den Konflikt in Administration und Diagnose sichtbar
 
 #### Scenario: All-Scope bleibt durch Mainserver-Sichtbarkeit begrenzt

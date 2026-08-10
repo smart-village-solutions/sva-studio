@@ -6,6 +6,7 @@ const state = vi.hoisted(() => ({
   validateCsrf: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
   finalizeMainserverMutationJournal: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   validateCsrf: state.validateCsrf,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -130,6 +132,10 @@ const mockAuthorizedMutation = () => {
 
 describe('mainserver content route contracts', () => {
   beforeEach(() => {
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      status: 'verified',
+      dataProviderId: 'dp-org-1',
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: {
         instanceId: 'de-musterhausen',

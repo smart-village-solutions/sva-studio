@@ -26,6 +26,7 @@ describe('resolveMutationPrincipalContext', () => {
       organizationId: '22222222-2222-2222-8222-222222222222',
       credentials: { apiKey: 'org-key', apiSecret: 'org-secret' },
       credentialFingerprint: 'a'.repeat(64),
+      contentAuthorPolicy: 'org_only',
     });
 
     const result = await resolveMutationPrincipalContext({
@@ -48,6 +49,7 @@ describe('resolveMutationPrincipalContext', () => {
         actingPrincipalId: '22222222-2222-2222-8222-222222222222',
         credentialSource: 'organization',
         credentialFingerprint: 'a'.repeat(64),
+        contentAuthorPolicy: 'org_only',
       },
     });
     expect(result.ok && Object.isFrozen(result.context)).toBe(true);

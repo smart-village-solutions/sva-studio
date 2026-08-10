@@ -1,4 +1,5 @@
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
+import type { IamContentAuthorPolicy } from '@sva/core';
 
 import { readEffectiveSvaMainserverCredentialsWithStatus } from '../mainserver-effective-credentials.js';
 import {
@@ -24,7 +25,13 @@ export const readMainserverScopeResolverMode = (): MainserverScopeResolverMode =
 export type MainserverContentAuthorizationDecision = Readonly<{
   allowed: boolean;
   authorizationMode: MainserverContentAuthorizationMode;
-  reason: 'allowed' | 'data_provider_mismatch' | 'data_provider_missing' | 'forbidden';
+  reason:
+    | 'allowed'
+    | 'data_provider_mismatch'
+    | 'data_provider_missing'
+    | 'forbidden'
+    | 'database_unavailable'
+    | 'identity_provider_unavailable';
   resolverMode: MainserverScopeResolverMode;
   candidateAuthorizationMode?: MainserverContentAuthorizationMode;
   candidateAllowed?: boolean;
@@ -46,6 +53,7 @@ type BoundAuthorizationContext = AuthorizationContext &
   Readonly<{
     actingPrincipalType: 'organization' | 'user';
     credentialFingerprint: string;
+    contentAuthorPolicy?: IamContentAuthorPolicy;
   }>;
 
 const buildRequest = (
@@ -130,13 +138,25 @@ const hasScopedPermission = (
   );
 };
 
+type BindingLookupError = 'database_unavailable' | 'identity_provider_unavailable';
+
+const loadCurrentBinding = async (
+  input: Parameters<typeof loadCurrentMainserverDataProviderBinding>[0]
+): Promise<MainserverDataProviderBinding | BindingLookupError | undefined> => {
+  try {
+    return await loadCurrentMainserverDataProviderBinding(input);
+  } catch {
+    return 'database_unavailable';
+  }
+};
+
 const loadBinding = async (input: {
   readonly context: BoundAuthorizationContext;
   readonly principalType: 'organization' | 'user';
   readonly principalId: string;
 }) => {
   if (input.principalType === input.context.actingPrincipalType) {
-    return loadCurrentMainserverDataProviderBinding({
+    return loadCurrentBinding({
       instanceId: input.context.instanceId,
       principalType: input.principalType,
       principalId: input.principalId,
@@ -150,11 +170,17 @@ const loadBinding = async (input: {
     activeOrganizationId: input.context.activeOrganizationId,
     actingPrincipalType: input.principalType,
   });
+  if (
+    credentials.status === 'database_unavailable' ||
+    credentials.status === 'identity_provider_unavailable'
+  ) {
+    return credentials.status;
+  }
   if (credentials.status !== 'ok') {
     return undefined;
   }
 
-  return loadCurrentMainserverDataProviderBinding({
+  return loadCurrentBinding({
     instanceId: input.context.instanceId,
     principalType: input.principalType,
     principalId: input.principalId,
@@ -176,6 +202,7 @@ type RelevantBindings = Readonly<{
   needsOrganization: boolean;
   user?: MainserverDataProviderBinding;
   organization?: MainserverDataProviderBinding;
+  error?: BindingLookupError;
 }>;
 
 const loadRelevantBindings = async (
@@ -183,8 +210,12 @@ const loadRelevantBindings = async (
 ): Promise<RelevantBindings> => {
   const needsOwn = hasScopedPermission(input.permissions, input.action, 'own');
   const needsOrganization = hasScopedPermission(input.permissions, input.action, 'organization');
-  const [user, organization] = await Promise.all([
-    needsOwn || needsOrganization
+  const needsUserBinding =
+    needsOwn ||
+    (needsOrganization &&
+      (!input.activeOrganizationId || input.contentAuthorPolicy !== 'org_only'));
+  const [userLookup, organizationLookup] = await Promise.all([
+    needsUserBinding
       ? loadBinding({ context: input, principalType: 'user', principalId: input.actorAccountId })
       : undefined,
     needsOrganization && input.activeOrganizationId
@@ -195,11 +226,17 @@ const loadRelevantBindings = async (
         })
       : undefined,
   ]);
+  const error = [userLookup, organizationLookup].find(
+    (lookup): lookup is BindingLookupError => typeof lookup === 'string'
+  );
+  const user = typeof userLookup === 'object' ? userLookup : undefined;
+  const organization = typeof organizationLookup === 'object' ? organizationLookup : undefined;
   return {
     needsOwn,
     needsOrganization,
     ...(user ? { user } : {}),
     ...(organization ? { organization } : {}),
+    ...(error ? { error } : {}),
   };
 };
 
@@ -212,9 +249,22 @@ const isAllowedForOwnership = (
 
 const resolveBoundAuthorizationCandidate = (
   input: BoundAuthorizationContext & Readonly<{ dataProviderId: string }>,
-  bindings: RelevantBindings,
-  compatibilityAllowed: boolean
+  bindings: RelevantBindings
 ): AuthorizationCandidate => {
+  if (bindings.error) {
+    return { allowed: false, authorizationMode: 'exact', reason: bindings.error };
+  }
+  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
+  const organizationReady =
+    !bindings.needsOrganization ||
+    (input.activeOrganizationId
+      ? input.contentAuthorPolicy === 'org_only'
+        ? Boolean(bindings.organization)
+        : Boolean(bindings.user && bindings.organization)
+      : Boolean(bindings.user));
+  if (!ownReady || !organizationReady) {
+    return { allowed: false, authorizationMode: 'exact', reason: 'forbidden' };
+  }
   if (
     bindings.user?.dataProviderId === input.dataProviderId &&
     isAllowedForOwnership(input, { ownerUserId: input.actorAccountId })
@@ -228,21 +278,7 @@ const resolveBoundAuthorizationCandidate = (
   ) {
     return { allowed: true, authorizationMode: 'exact', reason: 'allowed' };
   }
-
-  const ownReady = !bindings.needsOwn || Boolean(bindings.user);
-  const organizationReady =
-    !bindings.needsOrganization ||
-    (input.activeOrganizationId
-      ? Boolean(bindings.user && bindings.organization)
-      : Boolean(bindings.user));
-  if (ownReady && organizationReady) {
-    return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
-  }
-  return {
-    allowed: compatibilityAllowed,
-    authorizationMode: 'credential_visible_compatibility',
-    reason: compatibilityAllowed ? 'allowed' : 'forbidden',
-  };
+  return { allowed: false, authorizationMode: 'exact', reason: 'data_provider_mismatch' };
 };
 
 export const authorizeMainserverDataProviderAccess = async (
@@ -271,11 +307,7 @@ export const authorizeMainserverDataProviderAccess = async (
   const compatibilityAllowed = resolveCompatibilityAllowed(input);
   const bindings = await loadRelevantBindings(input);
   return applyScopeResolverMode(
-    resolveBoundAuthorizationCandidate(
-      { ...input, dataProviderId: providerId },
-      bindings,
-      compatibilityAllowed
-    ),
+    resolveBoundAuthorizationCandidate({ ...input, dataProviderId: providerId }, bindings),
     compatibilityAllowed
   );
 };

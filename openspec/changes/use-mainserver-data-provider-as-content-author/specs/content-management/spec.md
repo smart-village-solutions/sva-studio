@@ -2,7 +2,7 @@
 
 ### Requirement: Mainserver-Schreibaktionen behandeln Inhaber und Mutationsprincipal getrennt
 
-Das System SHALL bei der Erstellung eines Mainserver-basierten Contents den serverseitig validierten `actingPrincipalType` als Quelle der OAuth-Credentials verwenden und den daraus vom Mainserver gesetzten `dataProvider` als unveränderlichen ursprünglichen Inhaber übernehmen. Der bestätigte Create-DataProvider SHALL die aktuelle Credential-Version des Principal automatisch binden oder eine bestehende Bindung bestätigen.
+Das System SHALL bei der Erstellung eines Mainserver-basierten Contents den serverseitig validierten `actingPrincipalType` als Quelle der OAuth-Credentials verwenden und den daraus vom Mainserver gesetzten `dataProvider` als unveränderlichen ursprünglichen Inhaber übernehmen. Vor dem Create SHALL der Identity-Endpunkt die aktuelle Credential-Version binden; der bestätigte Create-DataProvider SHALL diese Bindung anschließend konsistent bestätigen.
 
 Jede Studio-initiierte Schreibaktion zum Erstellen, Aktualisieren, Veröffentlichen, Archivieren, Wiederherstellen oder Löschen SHALL einen expliziten Principal-Typ verwenden. Bei allen Aktionen nach dem Erstellen SHALL die Auswahl nur Mutationsprincipal und Credential-Quelle bestimmen; sie SHALL kein neues Principal-Mapping begründen und den bestehenden DataProvider weder ändern noch als geändert darstellen.
 
@@ -53,11 +53,11 @@ Jede Studio-initiierte Schreibaktion zum Erstellen, Aktualisieren, Veröffentlic
 
 ### Requirement: Mainserver-Inhalte bleiben bis zur automatischen Bindung credential-sichtbar bearbeitbar
 
-Das System SHALL für `own` und `organization` `credential_visible_compatibility` verwenden, solange die für den angeforderten Scope erforderlichen aktuellen Principal-Bindungen fehlen oder konfliktbehaftet sind. In diesem Modus SHALL ein bestehender Inhalt bearbeitet, veröffentlicht, archiviert, wiederhergestellt oder hart gelöscht werden dürfen, wenn der Benutzer die jeweils passende fully-qualified Action-Permission besitzt und der Inhalt mit den für die Aktion ausgewählten Credentials unmittelbar gelesen und vom Mainserver mutiert werden kann.
+Das System SHALL für `own` und `organization` `credential_visible_compatibility` ausschließlich verwenden, wenn der Resolver explizit im beobachtenden `shadow`- oder im Rollbackmodus `compatibility` läuft. Im automatischen Zielmodus SHALL eine fehlende oder konfliktbehaftete erforderliche Principal-Bindung die Mutation fail-closed ablehnen.
 
-#### Scenario: Credential-sichtbarer fremder Provider wird aktualisiert
+#### Scenario: Shadow-Modus wertet credential-sichtbaren fremden Provider aus
 
-- **GIVEN** der relevante Scope ist noch nicht exakt auswertbar
+- **GIVEN** der Resolver läuft explizit im Shadow-Modus
 - **AND** der Benutzer besitzt die passende Update-Permission
 - **AND** der Mainserver liefert den Inhalt mit dem ausgewählten Credential
 - **WHEN** Studio das Update ausführt
@@ -145,12 +145,11 @@ Bei lokalen Inhalten SHALL `ownerUserId` und `ownerOrganizationId` ausschließli
 
 #### Scenario: Fehlende Principal-Bindung erfindet keinen lokalen Inhaber
 
-- **GIVEN** `/data_provider.json` liefert noch keine ID
-- **AND** der relevante Principal besitzt noch keine konfliktfreie Create-Beobachtung
+- **GIVEN** die aktuelle Credential-Version besitzt keine konfliktfreie Identity-Bindung
 - **WHEN** Studio einen Mainserver-Inhalt anzeigt oder autorisiert
 - **THEN** zeigt es den Content-DataProvider soweit vorhanden an
 - **AND** erfindet keine lokale Owner-Zuordnung
-- **AND** verwendet für den Scope `credential_visible_compatibility`
+- **AND** lehnt der automatische Resolver eine Scope-Mutation fail-closed ab
 
 ### Requirement: Featured Projects verwenden den host-owned Autorenvertrag
 

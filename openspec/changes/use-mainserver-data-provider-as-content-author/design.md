@@ -1,6 +1,6 @@
 ## Context
 
-Persönliche und organisatorische Mainserver-Credentials erzeugen jeweils einen OAuth-Token. Beim Create setzt der Mainserver den an das Credential gebundenen DataProvider am neuen Content. Der Identity-Endpunkt `/data_provider.json` liefert derzeit jedoch noch keine stabile ID. Eine sichere Vorabzuordnung von Principal zu DataProvider ist deshalb nicht generell möglich.
+Persönliche und organisatorische Mainserver-Credentials erzeugen jeweils einen OAuth-Token. Der authentifizierte Identity-Endpunkt `/data_provider.json` liefert inzwischen eine stabile DataProvider-ID. Beim Create setzt der Mainserver denselben an das Credential gebundenen DataProvider am neuen Content. Damit ist die sichere Principal-Zuordnung vor dem ersten schreibenden Provider-Aufruf möglich.
 
 Studio muss während dieser Übergangszeit arbeitsfähig bleiben. Die bewusste Produktentscheidung lautet: Solange die für einen Scope erforderlichen Bindungen noch nicht automatisch und konfliktfrei entstanden sind, dürfen alle Inhalte bearbeitet und gelöscht werden, die mit den für die konkrete Aktion verwendeten Credentials unmittelbar verfügbar sind. Dies ist keine instanzweite Freigabe und ersetzt weder die Studio-Action-Permission noch die Mainserver-Autorisierung.
 
@@ -18,8 +18,9 @@ Das Studio führt folgende getrennte Identitäten:
 
 - Goals:
   - Mainserver-`dataProvider` als unveränderliche ursprüngliche Inhaber- und Autorenidentität verwenden.
-  - Principal-Bindungen ohne manuelle Zuordnung automatisch aus Create-Beobachtungen und später aus einer stabilen Identity-ID erzeugen.
-  - Bis zur vollständigen automatischen Bindung alle credential-sichtbaren Inhalte unter normaler Action-Autorisierung bearbeitbar halten.
+  - Principal-Bindungen ohne manuelle Zuordnung automatisch aus der stabilen Identity-ID erzeugen und durch Create-Beobachtungen bestätigen.
+  - Fehlende oder konfliktbehaftete aktuelle Bindungen im automatischen Resolver fail-closed behandeln.
+  - Credential-sichtbare Kompatibilität ausschließlich als beobachtenden Rollout- und Rollbackpfad erhalten.
   - `own`, `organization` und `all` nach automatischem Mapping deterministisch auswerten.
   - Persönlichen oder organisatorischen Mutationsprincipal explizit und ohne stillen Credential-Fallback bestimmen.
   - Actor, Mutationsprincipal, Credential-Quelle und Content-Inhaber auditierbar auseinanderhalten.
@@ -51,31 +52,32 @@ Die Matrix hält mindestens fest:
 
 News, Events, POI, Generic Items, FAQ, Cockpit Cards, Projects und Surveys werden nur für bestätigte Aktionen aktiviert. Insbesondere darf eine typenbezogene Abweichung nicht hinter der pauschalen Aufzählung Create, Update, Publish, Archive, Restore und Delete verschwinden.
 
-### Create erzeugt die automatische Principal-Bindung
+### Identity-Endpunkt erzeugt die automatische Principal-Bindung
 
-Vor einer stabilen ID aus `/data_provider.json` ist ein erfolgreicher Create der einzige zulässige Nachweis für eine neue Principal-Bindung:
+Vor jeder Mutation benötigt die aktuelle Credential-Version eine verifizierte Identity-Bindung:
 
 1. Studio validiert Actor, aktive Organisation, Action-Permission, Principal-Policy und Credential-Verfügbarkeit.
 2. Studio bindet einen `MutationPrincipalContext` einschließlich Credential-Fingerprint.
-3. Der Create läuft ausschließlich mit diesem Credential.
-4. Studio liest `dataProvider.id` aus der Create-Response oder einem unmittelbaren Re-Read mit demselben Credential.
-5. Die Beobachtung erzeugt oder bestätigt die instanzgebundene Principal-Bindung.
-6. Eine abweichende Provider-ID oder ein konkurrierender Principal-Claim erzeugt `conflict` und überschreibt keine bestehende Bindung.
-7. Ein bestätigter Upstream-Erfolg bleibt Erfolg; Konflikte markieren lokale Folgearbeit als `reconciliation_required`.
+3. Studio verwendet denselben Bearer Token für `/data_provider.json` und verlangt eine nicht leere String- oder Ganzzahl-ID.
+4. Die Identity-Beobachtung erzeugt oder bestätigt die instanzgebundene Principal-Bindung.
+5. Eine abweichende Provider-ID oder ein konkurrierender Principal-Claim erzeugt `conflict` und überschreibt keine bestehende Bindung.
+6. Erst danach darf der Provider-Write beginnen.
+7. Create-Response oder Same-Credential-Re-Read müssen denselben DataProvider bestätigen. Ein abweichender bestätigter Upstream-Erfolg bleibt Erfolg, markiert lokale Folgearbeit aber als `reconciliation_required`.
 
 Listen, Details, Updates, Statusänderungen, Deletes, Namen, Client-Werte und administrative Eingaben dürfen kein neues Mapping begründen. Ein Update-Resultat beschreibt den Inhaber des bestehenden Contents und ist daher kein Nachweis für den handelnden Principal.
 
-Eine Bindung ist mindestens nach Instanz, Principal-Typ, Principal-ID, DataProvider-ID und Credential-Fingerprint versioniert. Credential-Rotation macht die aktuelle Bindung solange nicht exakt nutzbar, bis ein späterer Create oder der zukünftige Identity-Endpunkt denselben Provider für die neue Credential-Version bestätigt. Historische Bindungen bleiben für bestehende Inhalte erhalten.
+Eine Bindung ist mindestens nach Instanz, Principal-Typ, Principal-ID, DataProvider-ID und Credential-Fingerprint versioniert. Credential-Rotation macht die historische Bindung für die neue Credential-Version unbrauchbar, bis der Identity-Endpunkt diese Version bestätigt. Historische Bindungen bleiben für Audit und bestehende Inhalte erhalten.
 
-### Identity-Endpunkt ergänzt später den automatischen Nachweis
+### Identity-Endpunkt ist der autoritative Credential-Nachweis
 
 Der Identity-Aufruf verwendet denselben Bearer Token wie GraphQL. Studio verarbeitet den tatsächlichen HTTP-Status und ausschließlich den JSON-Body.
 
-Der derzeitige Body enthält sinngemäß:
+Der bestätigte Body enthält sinngemäß:
 
 ```json
 {
   "data_provider": {
+    "id": 832,
     "name": "Anzeigename",
     "description": "",
     "notice": "",
@@ -86,15 +88,15 @@ Der derzeitige Body enthält sinngemäß:
 }
 ```
 
-Eine erfolgreiche Antwort ohne ID ist ein erwarteter Vertragszustand. Sie begründet weder ein Mapping noch eine zusätzliche Berechtigung. Kontakt, Adresse, Beschreibung, Notice, Logo und Rohantwort werden nicht persistiert oder protokolliert.
+Eine erfolgreiche Antwort ohne nicht leere ID ist eine ungültige Vertragsantwort. Kontakt, Adresse, Beschreibung, Notice, Logo und Rohantwort werden nicht persistiert oder protokolliert.
 
-Sobald `data_provider.id` verfügbar ist, normalisiert Studio eine nicht leere String- oder Ganzzahl-ID. Eine gleiche ID bestätigt die aktuelle Credential-Bindung. Eine abweichende ID erzeugt `conflict`. Der Identity-Endpunkt überschreibt weder historische Bindungen noch schaltet er einen konfliktbehafteten Scope stillschweigend um.
+Studio normalisiert `data_provider.id` aus einer nicht leeren String- oder Ganzzahl-ID. Eine gleiche ID bestätigt die aktuelle Credential-Bindung. Eine abweichende ID erzeugt `conflict`. Der Identity-Endpunkt überschreibt weder historische Bindungen noch schaltet er einen konfliktbehafteten Scope stillschweigend um.
 
-Technische oder strukturelle Fehler des Identity-Endpunkts erweitern keine Berechtigung. Sie blockieren aber nicht automatisch eine Content-Aktion, deren konkrete Credential-Verfügbarkeit durch OAuth und den verpflichtenden Same-Credential-Read nachgewiesen ist.
+Eine bereits verifizierte Bindung darf nur für exakt denselben aktuellen Credential-Fingerprint weiterverwendet werden. Fehlt sie, blockieren technische oder strukturelle Identity-Fehler die Mutation vor dem Provider-Write. Ein Same-Credential-Read ersetzt den Identitätsnachweis nicht.
 
 ### Credential-visible Compatibility ist der definierte Übergangsvertrag
 
-Solange die für den jeweiligen Scope erforderlichen aktuellen Bindungen fehlen oder konfliktbehaftet sind, verwendet Studio `credential_visible_compatibility`.
+`credential_visible_compatibility` wird nur im expliziten Resolvermodus `shadow` oder `compatibility` erzwungen. Im Modus `automatic` führt eine fehlende oder konfliktbehaftete erforderliche Bindung zu einer exakten Ablehnung. Ist die Bindungsauflösung wegen eines Datenbank- oder Identity-Provider-Ausfalls nicht entscheidbar, bleibt der zugrunde liegende Fehler als wiederholbarer `503` erhalten; er wird nicht in eine fachliche `403`-Ablehnung umgedeutet.
 
 In diesem Modus:
 
@@ -113,15 +115,16 @@ Der Modus wird strukturiert auditiert und metrisch gezählt. Er ist ein bewusste
 
 ### Exakte Scope-Auswertung wird automatisch readiness-gesteuert
 
-Die Readiness wird pro aktuellem Scope-Kontext bestimmt:
+Die Readiness wird pro aktuellem Scope- und Policy-Kontext bestimmt:
 
 - `own` ist exakt, wenn der persönliche Principal für seine aktuelle Credential-Version konfliktfrei gebunden ist.
-- `organization` ist exakt, wenn sowohl der persönliche Principal als auch die aktive Organisation für ihre aktuellen Credential-Versionen konfliktfrei gebunden sind.
+- `organization` ist bei `org_only` exakt, wenn die aktive Organisation für ihre aktuelle Credential-Version konfliktfrei gebunden ist.
+- `organization` ist bei `org_or_personal` exakt, wenn sowohl der persönliche Principal als auch die aktive Organisation für ihre aktuellen Credential-Versionen konfliktfrei gebunden sind.
 - Ohne aktive Organisation fällt `organization` auf `own` zurück.
 - `all` benötigt keine Principal-Bindung; es erlaubt alle Inhalte, die im verwendeten Mainserver-Read-Kontext verfügbar sind.
 - Andere Memberships und frühere Organisationskontexte erweitern keinen Scope.
 
-Sobald die erforderlichen Bindungen automatisch vollständig und konfliktfrei sind, wechselt der betreffende Scope ohne manuelle Zuordnung zur exakten DataProvider-Auswertung. Der Wechsel wird auditiert. Bei Rotation, Konflikt oder Verlust der aktuellen Evidenz fällt nur der betroffene Scope zurück auf `credential_visible_compatibility`; historische Bindungen werden nicht gelöscht.
+Sobald die erforderlichen Bindungen automatisch vollständig und konfliktfrei sind, ist der betreffende Scope exakt auswertbar. Der Wechsel wird auditiert. Bei Rotation, Konflikt oder Verlust der aktuellen Evidenz lehnt `automatic` fail-closed ab; nur die expliziten Rolloutmodi erzwingen weiterhin `credential_visible_compatibility`. Historische Bindungen werden nicht gelöscht.
 
 In der exakten Auswertung gilt:
 
@@ -139,7 +142,7 @@ Vor einer bestehenden Content-Mutation prüft der Server:
 1. Principal-Policy, aktive Organisation, Membership und Credential-Verfügbarkeit.
 2. Einen frischen Read des adressierten Contents mit dem gebundenen Write-Credential.
 3. Die fully-qualified Action.
-4. Je nach Readiness entweder die exakte DataProvider-Scope-Regel oder `credential_visible_compatibility`.
+4. Im automatischen Resolver die exakte DataProvider-Scope-Regel; im expliziten Shadow- oder Rollbackmodus die credential-sichtbare Vergleichsentscheidung.
 5. Den Mainserver-Write mit demselben Credential-Kontext.
 
 Eine andere Credential-Quelle erweitert niemals die credential-sichtbare Menge. Der Client übermittelt ausschließlich `actingPrincipalType: 'organization' | 'user'`. Account-, Organisations-, DataProvider- oder Credential-Werte aus dem Client bestimmen keine Autorisierung.
@@ -201,17 +204,17 @@ Audit und Mutation-Journal erfassen PII-minimiert mindestens Actor, Principal, a
 
 - DataProvider-Namen als Mapping-Schlüssel verwenden: verworfen, weil Namen nicht stabil oder eindeutig sind.
 - Manuelle administrative Zuordnung: verworfen, weil Principal-Bindungen ausschließlich automatisch entstehen sollen.
-- Bis zur Identity-ID sämtliche Mainserver-Mutationen blockieren: verworfen, weil das Studio in der Übergangszeit arbeitsfähig bleiben muss.
+- Identity-Abfrage bei jeder Mutation trotz unverändertem Fingerprint: verworfen, weil die verifizierte credential-versionierte Bindung als PII-minimierter Cache und Auditnachweis dient.
 - `own` und `organization` abstrakt instanzweit wie `all` behandeln: verworfen, weil Studio keine Inhalte freigeben kann, die das verwendete Mainserver-Credential nicht sieht.
 - Mapping aus Listen, Details oder Updates ableiten: verworfen, weil diese den Content-Inhaber, nicht den Provider des handelnden Principal beweisen.
 - Direkte Mainserver-Änderungen als vollständige Studio-History rekonstruieren: verworfen, weil kein vollständiger Event-Vertrag existiert.
 
 ## Risks / Trade-offs
 
-- Bis zur automatischen Bindung können Benutzer mit `own` oder `organization` fremde DataProvider-Inhalte bearbeiten und löschen, sofern ihre konkret verwendeten Mainserver-Credentials diese Inhalte lesen und mutieren dürfen. Dies ist der bewusst akzeptierte Kompatibilitätsvertrag.
-- Die effektive Breite hängt von Mainserver-Rollen ab. Studio-IAM bleibt notwendiges Gate, kann die Upstream-Sichtbarkeit im Kompatibilitätsmodus aber nicht weiter nach DataProvider einschränken.
+- Während `shadow` oder eines bewussten Rollbacks können Benutzer mit `own` oder `organization` fremde DataProvider-Inhalte bearbeiten und löschen, sofern ihre konkret verwendeten Mainserver-Credentials diese Inhalte lesen und mutieren dürfen. Dieser Übergang ist zeitlich begrenzt und wird metrisch ausgewertet.
+- Die effektive Breite des Rollbackpfads hängt von Mainserver-Rollen ab. Der automatische Zielzustand verbreitert fehlende Bindungen nicht.
 - Ein Create kann einen automatischen Wechsel zu exakten Scopes auslösen; Inhalte anderer Provider können dadurch unmittelbar verschwinden. Der Wechsel wird auditiert und die UI lädt ihren Scope neu.
-- Geteilte oder rotierte Credentials können Konflikte erzeugen und den Kompatibilitätsmodus verlängern.
+- Geteilte oder rotierte Credentials können Konflikte erzeugen und im automatischen Resolver Mutationen blockieren; Diagnose und Reconciliation müssen den Konflikt sichtbar machen.
 - Typen ohne idempotenten Create können bei Lost Responses Duplikate erzeugen. Die Typ-/Aktionsmatrix und das Mutation-Journal müssen dieses Risiko offen ausweisen.
 - Bestehende Clients ohne `actingPrincipalType` benötigen einen versionierten Übergang.
 - Direkte Mainserver-Änderungen fehlen bewusst in der Studio-History.
@@ -219,22 +222,24 @@ Audit und Mutation-Journal erfassen PII-minimiert mindestens Actor, Principal, a
 ## Migration Plan
 
 1. Überlappende Changes und Base-Specs zu Credential-Auflösung, Projektion, Autorenschaft und History komponieren.
-2. Typ-/Aktionsmatrix durch reale Mainserver-Contract-Tests bestätigen.
+2. Den Objektvertrag und die stabile Identity-ID mit persönlichen und organisatorischen Credentials bestätigen; die zulässige Principal-zu-DataProvider-Kardinalität vor dem Cutover belegen.
 3. Automatisches, credential-versioniertes Binding-Modell mit Konfliktzuständen, Mutation-Journal, Tombstone und Admin-Diagnose additiv einführen.
 4. Alle Projektionen im Shadow-Modus um DataProvider und Credential-Kontext ergänzen; keine Berechtigungsänderung.
 5. Gemeinsamen `MutationPrincipalContext` und versionierten `actingPrincipalType`-Transport typenweise einführen.
 6. Same-Credential-Pre-Read für Update, Statusaktionen und Hard Delete erzwingen.
-7. Create-Beobachtungen automatisch binden und Readiness für `own` und `organization` berechnen.
-8. `credential_visible_compatibility` und exakte Scope-Auswertung pro aktuellem Scope-Kontext aktivieren; Entscheidungen und Wechsel auditieren.
+7. Identity-Beobachtungen vor dem Provider-Write automatisch binden und Readiness policy-gesteuert für `own` und `organization` berechnen.
+8. Im Shadow-Modus die exakte Scope-Auswertung gegen `credential_visible_compatibility` vergleichen; im automatischen Modus fehlende Bindungen fail-closed behandeln.
 9. Editor, History und Diagnose anbinden; Legacy-`author` serverseitig erhalten.
-10. Sobald `/data_provider.json` stabile IDs liefert, diese als zusätzliche automatische Evidenz aktivieren und Konflikte statt stiller Überschreibung erzeugen.
+10. Nach ausgewertetem Dev-, Staging- und Production-Cutover den Shadow- und Kompatibilitätscode in einem separaten Cleanup entfernen, historische Auditdaten aber erhalten.
 
 ## Exit-Kriterien für den Kompatibilitätsmodus
 
-Der Kompatibilitätsmodus ist solange Bestandteil des unterstützten Vertrags, wie aktuelle persönliche oder organisatorische Credential-Bindungen fehlen oder konfliktbehaftet sind. Er endet für einen konkreten Scope automatisch, wenn:
+Der Kompatibilitätsmodus ist nur noch ein expliziter Rollout- und Rollbackvertrag. Der automatische Resolver verwendet ihn nicht bei fehlenden Bindungen. Der Rollout kann auf `automatic` wechseln, wenn:
 
 - `own`: die aktuelle persönliche Credential-Version konfliktfrei einem DataProvider zugeordnet ist;
-- `organization`: aktuelle persönliche und aktive organisatorische Credential-Version konfliktfrei zugeordnet sind;
+- `organization`: bei `org_only` die aktive organisatorische Credential-Version und bei `org_or_personal` persönliche sowie aktive organisatorische Credential-Version konfliktfrei zugeordnet sind;
 - keine konkurrierenden Claims für die benötigten DataProvider bestehen.
 
-Global kann der Pfad erst entfernt werden, wenn der Identity-Endpunkt stabile IDs liefert, alle aktiven Credentials automatisch verifiziert werden können und produktive Metriken keine Kompatibilitätsentscheidungen mehr zeigen.
+Der erste Cutover erfolgt über das getrackte Development-Profil. Staging und Production bleiben bis zur erfolgreichen Dev-Abnahme auf `shadow`; ihre spätere Promotion folgt dem regulären Same-Digest-Rolloutprozess.
+
+Global kann der Pfad erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können, die Principal-zu-DataProvider-Kardinalität bestätigt ist und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsentscheidungen mehr zeigen.

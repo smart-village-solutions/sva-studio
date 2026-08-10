@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig } from './build-remote-app-config.ts';
@@ -11,6 +13,7 @@ const profile = Object.entries(remoteConfigContract)
     if (contract.type === 'boolean') return `${key}=false`;
     if (contract.type === 'integer') return `${key}=5000`;
     if (contract.type === 'url') return `${key}=https://example.test/${key.toLowerCase()}`;
+    if (contract.allowedValues?.[0]) return `${key}=${contract.allowedValues[0]}`;
     return `${key}=value`;
   }).join('\n');
 
@@ -20,6 +23,20 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
+  it.each([
+    ['dev', 'automatic'],
+    ['staging', 'shadow'],
+    ['prod', 'shadow'],
+  ] as const)('materializes the %s resolver rollout mode as %s', (environment, resolverMode) => {
+    const remoteProfile = readFileSync(
+      new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
+      'utf8'
+    );
+    const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
+
+    expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
+  });
+
   it('merges deterministically while evidence contains references but no secret values', () => {
     const result = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
     expect(result.source.split('\n').filter(Boolean)).toEqual([...result.source.split('\n').filter(Boolean)].sort());
@@ -48,6 +65,7 @@ describe('remote app config builder', () => {
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=__SET__'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=   '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_RUNTIME_PROFILE=value', 'SVA_RUNTIME_PROFILE=  __SET__  '), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => buildRemoteAppConfig({ environment: 'dev', profile: profile.replace('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow', 'SVA_MAINSERVER_SCOPE_RESOLVER_MODE=unsafe'), overrides })).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
   it('compares only keys, non-sensitive values and reference names', () => {

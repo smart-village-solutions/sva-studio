@@ -247,10 +247,9 @@ export type SvaMainserverDataProvider = {
 
 export type SvaMainserverDataProviderIdentity = Readonly<{
   dataProvider: Readonly<{
-    id?: string;
+    id: string;
     name?: string;
   }>;
-  hasStableId: boolean;
 }>;
 
 export type SvaMainserverSetting = {

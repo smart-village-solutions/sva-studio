@@ -692,8 +692,8 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 
 ### DataProvider, Principal und Scope
 
-- Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Nur ein erfolgreicher Create oder künftig eine stabile Identity-ID darf eine Principal-Bindung beweisen.
+- Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Die stabile authentifizierte Identity-ID beweist die aktuelle credential-versionierte Principal-Bindung; Create und Same-Credential-Re-Read bestätigen anschließend nur deren Konsistenz zum Content-Inhaber.
 - Fingerprints sind nicht reversibel und werden in Diagnoseansichten nur gekürzt angezeigt; API-Key, Secret, Token und rohe `/data_provider.json`-Antworten gelangen weder in Projection, Audit, Metriken noch Logs.
-- `own` und `organization` verwenden ohne vollständige konfliktfreie Bindungen `credential_visible_compatibility`. Die tatsächlich ausgewählten Credentials und der verpflichtende frische Pre-Read begrenzen die sichtbare Menge weiterhin.
+- Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
 - Das Mutation-Journal ist technische Reconciliation- und Audit-Evidenz, keine zweite sichtbare History. Abgelehnte oder fehlgeschlagene Mutationen erzeugen keinen History-Erfolg.

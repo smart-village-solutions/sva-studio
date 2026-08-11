@@ -259,6 +259,38 @@ describe('useUnifiedContentList', () => {
     expect(listSurveysMock).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps content without a publication date last in descending order', async () => {
+    const visibleTypes = ['news.article', 'events.event-record'] as const;
+
+    setMainserverSources({
+      news: createListResult([
+        createNewsItem({
+          id: 'news-published',
+          publishedAt: '2026-05-03T10:00:00.000Z',
+        }),
+      ]),
+      events: createListResult([createEventItem({ id: 'event-unpublished' })]),
+    });
+
+    const { result } = renderUnifiedContentList(
+      {
+        page: 1,
+        pageSize: 25,
+        sortBy: 'publishedAt',
+        sortDirection: 'desc',
+        visibleTypes,
+      },
+      visibleTypes
+    );
+
+    await waitForLoaded(result);
+
+    expect(result.current.contents.map((item) => item.id)).toEqual([
+      'news-published',
+      'event-unpublished',
+    ]);
+  });
+
   it('falls back to the first news content block headline when the news title is missing', async () => {
     const visibleTypes = ['news.article'] as const;
     const permissionActions: readonly string[] = [];

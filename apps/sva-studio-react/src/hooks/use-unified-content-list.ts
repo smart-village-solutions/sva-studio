@@ -47,8 +47,6 @@ const compareItemsBySortField = (
     case 'createdAt':
       return left.createdAt.localeCompare(right.createdAt);
     case 'publishedAt':
-      if (!left.publishedAt && right.publishedAt) return 1;
-      if (left.publishedAt && !right.publishedAt) return -1;
       return (left.publishedAt ?? '').localeCompare(right.publishedAt ?? '');
     default:
       return left.updatedAt.localeCompare(right.updatedAt);
@@ -64,6 +62,10 @@ const sortItems = (
   const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });
 
   return [...items].sort((left, right) => {
+    if (sortBy === 'publishedAt' && Boolean(left.publishedAt) !== Boolean(right.publishedAt)) {
+      return left.publishedAt ? -1 : 1;
+    }
+
     const result = compareItemsBySortField(left, right, sortBy, collator);
 
     if (result !== 0) {

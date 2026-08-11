@@ -719,6 +719,50 @@ describe('studio-ui-react primitives', () => {
     );
   });
 
+  it('keeps client sorting limited to one active field after a modified click', () => {
+    render(
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={clientSorting}
+        labels={tableLabels}
+        data={[
+          { id: 'a', title: 'Alpha', priority: 2 },
+          { id: 'b', title: 'Beta', priority: 1 },
+        ]}
+        getRowId={(row) => row.id}
+        columns={[
+          {
+            id: 'title',
+            header: 'Titel',
+            cell: (row) => row.title,
+            sortable: true,
+            sortLabel: 'Titel',
+            sortValue: (row) => row.title,
+          },
+          {
+            id: 'priority',
+            header: 'Priorität',
+            cell: (row) => row.priority,
+            sortable: true,
+            sortLabel: 'Priorität',
+            sortValue: (row) => row.priority,
+          },
+        ]}
+        emptyState={<p>Keine Daten</p>}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Titel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Priorität' }), { shiftKey: true });
+
+    expect(screen.getByRole('columnheader', { name: 'Titel' }).getAttribute('aria-sort')).toBe(
+      'none'
+    );
+    expect(screen.getByRole('columnheader', { name: 'Priorität' }).getAttribute('aria-sort')).not.toBe(
+      'none'
+    );
+  });
+
   it('keeps externally sorted rows in server order and emits one non-empty sort field', () => {
     const onChange = vi.fn();
     const { container } = render(

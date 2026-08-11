@@ -391,7 +391,7 @@ export function StudioDataTable<TData>({
     ...(sortingConfig.mode === 'client' ? { getSortedRowModel: getSortedRowModel() } : {}),
     manualSorting: sortingConfig.mode === 'external',
     enableSortingRemoval: sortingConfig.mode !== 'external',
-    enableMultiSort: sortingConfig.mode === 'client',
+    enableMultiSort: false,
     getRowId,
     enableRowSelection:
       selectionMode === 'multiple'

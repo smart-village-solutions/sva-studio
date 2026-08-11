@@ -444,10 +444,14 @@ describe('OrganizationDetailPage', () => {
       expect(listOrganizationsMock).toHaveBeenNthCalledWith(1, {
         page: 1,
         pageSize: 100,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       });
       expect(listOrganizationsMock).toHaveBeenNthCalledWith(2, {
         page: 2,
         pageSize: 100,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       });
       expect(screen.getByRole('option', { name: 'Landkreis Beta' })).toBeTruthy();
     });

@@ -44,7 +44,7 @@ Der daraus erzeugte `MutationPrincipalContext` MUST für Pre-Read, Read-Merge-Wr
 
 ### Requirement: DataProvider-Bindungen entstehen ausschließlich automatisch
 
-Das System MUST Principal-zu-DataProvider-Bindungen instanzgebunden und credential-versioniert führen. Eine neue aktuelle Bindung MUST vor dem ersten Provider-Write aus der stabilen authentifizierten ID von `/data_provider.json` entstehen. Create-Response oder Same-Credential-Re-Read MUST anschließend die Konsistenz des Content-DataProviders bestätigen, dürfen aber keine neue Credential-Identität begründen.
+Das System MUST Principal-zu-DataProvider-Bindungen instanzgebunden und credential-versioniert führen. Eine neue aktuelle Bindung MUST regulär vor dem ersten Content-Provider-Write aus der stabilen authentifizierten ID von `/data_provider.json` entstehen. Als eng begrenzte Ausnahme darf die laut Mainserver-API-Vertrag identische `data_provider_id` einer erfolgreichen Benutzer-Provisioning-Antwort die Erstbindung neu erzeugter Organisations-Credentials begründen. Normale Content-Create-Responses oder Same-Credential-Re-Reads MUST anschließend nur die Konsistenz des Content-DataProviders bestätigen und dürfen keine neue Credential-Identität begründen.
 
 Namen, Listen, Details, Updates, Statusänderungen, Deletes, Client-Payloads und administrative Eingaben MUST als Mapping-Beweis ausgeschlossen sein. Abweichende Provider-IDs oder konkurrierende Principal-Claims MUST einen Konflikt erzeugen und dürfen keine bestehende Bindung überschreiben.
 
@@ -62,6 +62,14 @@ Namen, Listen, Details, Updates, Statusänderungen, Deletes, Client-Payloads und
 - **THEN** bindet es die aktuelle organisatorische Credential-Version vor dem Create an `dp-org-1`
 - **AND** der Mainserver muss beim Create denselben DataProvider bestätigen
 - **AND** verwendet keine andere Membership als Principal
+
+#### Scenario: Organisations-Benutzer-Provisioning begründet eine Erstbindung
+
+- **GIVEN** der Mainserver-Benutzer-Provisioning-Vertrag garantiert dieselbe DataProvider-ID in Provisioning-Antwort und `/data_provider.json`
+- **WHEN** Studio neue Organisations-Credentials zusammen mit einer gültigen `data_provider_id` erhält
+- **THEN** darf es diese ID als `create_response`-Evidenz für die neue credential-versionierte Organisationsbindung verwenden
+- **AND** muss eine spätere Identity-Verifikation dieselbe ID bestätigen
+- **AND** erhält eine normale Content-Create-Antwort dadurch keine bindungsbegründende Wirkung
 
 #### Scenario: Wiederholte Identity-Abfrage bestätigt bestehende Bindung
 
@@ -99,6 +107,13 @@ Namen, Listen, Details, Updates, Statusänderungen, Deletes, Client-Payloads und
 - **WHEN** Key oder Secret rotiert wird
 - **THEN** bleibt die historische Bindung für bestehende Inhalte erhalten
 - **AND** darf die neue Credential-Version erst nach erfolgreicher Identity-Bestätigung mutieren
+
+#### Scenario: Identity-Verifikation widerspricht garantierter Provisioning-Evidenz
+
+- **GIVEN** eine Organisations-Erstbindung entstand aus einer garantierten Benutzer-Provisioning-Antwort
+- **WHEN** `/data_provider.json` für exakt dieselben Credentials eine andere ID zurückgibt
+- **THEN** überschreibt Studio keine bestehende Bindung
+- **AND** markiert den Claim als Konflikt und die Folgearbeit als `reconciliation_required`
 
 ### Requirement: DataProvider-Identity-Response wird strikt und PII-minimiert verarbeitet
 

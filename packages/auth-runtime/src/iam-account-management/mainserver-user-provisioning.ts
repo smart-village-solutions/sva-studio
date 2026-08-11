@@ -24,6 +24,7 @@ const tokenResponseSchema = z.object({
 });
 
 const provisioningResponseSchema = z.object({
+  data_provider_id: z.union([z.string().min(1), z.number().int()]).transform(String),
   keycloak: z.object({
     attributes: z.object({
       mainserverUserApplicationId: z.string().min(1),
@@ -33,6 +34,7 @@ const provisioningResponseSchema = z.object({
 });
 
 export type ProvisionedMainserverUserCredentials = {
+  readonly dataProviderId: string;
   readonly mainserverUserApplicationId: string;
   readonly mainserverUserApplicationSecret: string;
 };
@@ -50,7 +52,9 @@ const resolveProvisioningUrl = (graphqlBaseUrl: string): string => {
   return new URL(USER_PROVISIONINGS_PATH, graphqlUrl.origin).toString();
 };
 
-const loadProvisioningConfig = async (instanceId: string): Promise<MainserverProvisioningConfig | null> => {
+const loadProvisioningConfig = async (
+  instanceId: string
+): Promise<MainserverProvisioningConfig | null> => {
   const record = await loadDefaultExternalInterfaceRecord(instanceId, SVA_MAINSERVER_TYPE_KEY);
   if (!record || !record.enabled) {
     logger.info('SVA Mainserver user provisioning skipped because integration is not configured', {
@@ -65,8 +69,10 @@ const loadProvisioningConfig = async (instanceId: string): Promise<MainserverPro
   }
 
   const publicConfig = isRecord(record.publicConfig) ? record.publicConfig : {};
-  const graphqlBaseUrl = typeof publicConfig.graphqlBaseUrl === 'string' ? publicConfig.graphqlBaseUrl.trim() : '';
-  const oauthTokenUrl = typeof publicConfig.oauthTokenUrl === 'string' ? publicConfig.oauthTokenUrl.trim() : '';
+  const graphqlBaseUrl =
+    typeof publicConfig.graphqlBaseUrl === 'string' ? publicConfig.graphqlBaseUrl.trim() : '';
+  const oauthTokenUrl =
+    typeof publicConfig.oauthTokenUrl === 'string' ? publicConfig.oauthTokenUrl.trim() : '';
   if (!graphqlBaseUrl || !oauthTokenUrl) {
     throw new MainserverUserProvisioningError({
       code: 'mainserver_user_provisioning_config_incomplete',
@@ -93,7 +99,6 @@ const loadProvisioningBearerToken = async (input: {
   const credentialResult = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: input.actor.instanceId,
     keycloakSubject: input.actorSubject,
-    activeOrganizationId: input.actor.activeOrganizationId,
   });
   if (credentialResult.status !== 'ok') {
     throw new MainserverUserProvisioningError({
@@ -145,6 +150,35 @@ const loadProvisioningBearerToken = async (input: {
   return parsed.data.access_token;
 };
 
+const parseProvisioningResponse = async (
+  response: Response
+): Promise<z.infer<typeof provisioningResponseSchema>> => {
+  let responseBody: unknown;
+  try {
+    responseBody = await parseMainserverJsonBody(
+      response,
+      'Ungültige Antwort des SVA-Mainserver-Provisionings.'
+    );
+  } catch (error) {
+    throw new MainserverUserProvisioningError({
+      code: error instanceof MainserverUserProvisioningError ? error.code : 'invalid_response',
+      message: 'Ungültige Antwort des SVA-Mainserver-Provisionings.',
+      statusCode: 502,
+      outcomeUnknown: true,
+    });
+  }
+  const parsed = provisioningResponseSchema.safeParse(responseBody);
+  if (!parsed.success) {
+    throw new MainserverUserProvisioningError({
+      code: 'invalid_response',
+      message: 'Ungültige Antwort des SVA-Mainserver-Provisionings.',
+      statusCode: 502,
+      outcomeUnknown: true,
+    });
+  }
+  return parsed.data;
+};
+
 export const provisionMainserverUserCredentials = async (input: {
   readonly actor: CreateUserActorInfo;
   readonly actorSubject: string;
@@ -167,41 +201,52 @@ export const provisionMainserverUserCredentials = async (input: {
     signal: provisioningSignal,
   });
 
-  const response = await fetchMainserverUpstream({
-    fetchImpl,
-    url: config.provisioningUrl,
-    signal: provisioningSignal,
-    init: {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+  let response: Response;
+  try {
+    response = await fetchMainserverUpstream({
+      fetchImpl,
+      url: config.provisioningUrl,
+      signal: provisioningSignal,
+      init: {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: input.payload.email,
+          keycloak_id: input.keycloakSubject,
+          first_name: input.payload.firstName,
+          last_name: input.payload.lastName,
+        }),
       },
-      body: JSON.stringify({
-        email: input.payload.email,
-        keycloak_id: input.keycloakSubject,
-        first_name: input.payload.firstName,
-        last_name: input.payload.lastName,
-      }),
-    },
-    timeoutMessage: 'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.',
-  });
+      timeoutMessage: 'Zeitüberschreitung beim Provisionieren des Mainserver-Benutzers.',
+    });
+  } catch (error) {
+    if (error instanceof MainserverUserProvisioningError) {
+      throw new MainserverUserProvisioningError({
+        code: error.code,
+        message: error.message,
+        statusCode: error.statusCode,
+        retryable: error.retryable,
+        outcomeUnknown: true,
+      });
+    }
+    throw new MainserverUserProvisioningError({
+      code: 'network_error',
+      message: 'Netzwerkfehler beim Provisionieren des Mainserver-Benutzers.',
+      statusCode: 503,
+      retryable: true,
+      outcomeUnknown: true,
+    });
+  }
 
   if (!response.ok) {
     await createProvisioningErrorFromResponse(response);
   }
 
-  const parsed = provisioningResponseSchema.safeParse(
-    await parseMainserverJsonBody(response, 'Ungültige Antwort des SVA-Mainserver-Provisionings.')
-  );
-  if (!parsed.success) {
-    throw new MainserverUserProvisioningError({
-      code: 'invalid_response',
-      message: 'Ungültige Antwort des SVA-Mainserver-Provisionings.',
-      statusCode: 502,
-    });
-  }
+  const parsed = await parseProvisioningResponse(response);
 
   logger.info('SVA Mainserver user provisioning succeeded', {
     workspace_id: input.actor.instanceId,
@@ -215,7 +260,8 @@ export const provisionMainserverUserCredentials = async (input: {
   });
 
   return {
-    mainserverUserApplicationId: parsed.data.keycloak.attributes.mainserverUserApplicationId,
-    mainserverUserApplicationSecret: parsed.data.keycloak.attributes.mainserverUserApplicationSecret,
+    dataProviderId: parsed.data_provider_id,
+    mainserverUserApplicationId: parsed.keycloak.attributes.mainserverUserApplicationId,
+    mainserverUserApplicationSecret: parsed.keycloak.attributes.mainserverUserApplicationSecret,
   };
 };

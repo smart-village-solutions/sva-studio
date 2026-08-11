@@ -189,6 +189,29 @@ describe('useUsers', () => {
     );
   });
 
+  it('excludes technical accounts by default and resets pagination when they are included', async () => {
+    listUsersMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 3, pageSize: 25, total: 0 },
+    });
+    const { result } = renderHook(() => useUsers({ page: 3 }));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.filters.includeTechnicalAccounts).toBe(false);
+    expect(listUsersMock).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 3, includeTechnicalAccounts: false })
+    );
+
+    act(() => result.current.setIncludeTechnicalAccounts(true));
+
+    expect(result.current.filters).toMatchObject({ page: 1, includeTechnicalAccounts: true });
+    await waitFor(() =>
+      expect(listUsersMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, includeTechnicalAccounts: true })
+      )
+    );
+  });
+
   it('returns a structured sync error without overwriting the list error state', async () => {
     listUsersMock.mockResolvedValue({
       data: [],

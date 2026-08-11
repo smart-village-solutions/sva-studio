@@ -697,3 +697,12 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
 - Das Mutation-Journal ist technische Reconciliation- und Audit-Evidenz, keine zweite sichtbare History. Abgelehnte oder fehlgeschlagene Mutationen erzeugen keinen History-Erfolg.
+
+### Technische Accounts und Organisations-Provisioning
+
+- `isTechnicalAccount` ist eine auditierte Klassifikation und kein Identitäts-, Rollen- oder Statusautomatismus. Unmapped Keycloak-Benutzer gelten als nicht technisch; lokale Klassifikationen bleiben bei Projektion und Reconcile erhalten.
+- Accountlisten filtern technische Accounts serverseitig vor Gesamtzahl und Pagination. Die UI schließt sie standardmäßig aus, kann sie bewusst einblenden und kennzeichnet sie sichtbar.
+- Der Inaktivitäts-Lifecycle prüft die aktuelle Klassifikation vor jeder Zustandsentscheidung. Das Flag restauriert keinen früheren Zustand; nach Entfernen nimmt der Account wieder regulär teil.
+- Organisations-Provisioning ist über eine persistente Lease, Operationsreferenz und phasengenaue Zustände idempotent. Externe Side Effects beginnen erst nach Konfigurations- und persönlichem Credential-Preflight.
+- Die `data_provider_id` der Create-Antwort und die Identität aus `/data_provider.json` sind zwei Evidenzwege desselben garantierten Mainserver-Vertrags. Konflikte werden nicht überschrieben, sondern benötigen Reconciliation.
+- Geheimnisse bleiben write-only und verschlüsselt. Read-Models exponieren nur Vorhandensein, Status, Versuchszähler, sicheren Fehlercode und technische IDs.

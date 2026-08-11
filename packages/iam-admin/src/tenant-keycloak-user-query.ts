@@ -18,6 +18,7 @@ type AccountProjectionRow = {
   position: string | null;
   department: string | null;
   status: UserStatus;
+  is_technical_account: boolean;
   last_login_at: string | null;
   role_rows: Array<{
     id: string;
@@ -28,6 +29,28 @@ type AccountProjectionRow = {
     role_level: number;
     is_system_role: boolean;
   }> | null;
+};
+
+type TechnicalAccountSubjectRow = {
+  keycloak_subject: string;
+};
+
+export const loadTechnicalAccountSubjects = async (
+  client: QueryClient,
+  input: { instanceId: string }
+): Promise<ReadonlySet<string>> => {
+  const result = await client.query<TechnicalAccountSubjectRow>(
+    `
+SELECT a.keycloak_subject
+FROM iam.accounts a
+JOIN iam.instance_memberships im
+  ON im.account_id = a.id
+ AND im.instance_id = $1
+WHERE a.is_technical_account = TRUE;
+`,
+    [input.instanceId]
+  );
+  return new Set(result.rows.map((row) => row.keycloak_subject));
 };
 
 const mapRoleRows = (roleRows: AccountProjectionRow['role_rows']): readonly IamRoleRow[] =>
@@ -61,6 +84,7 @@ SELECT
   a.position,
   a.department,
   a.status,
+  a.is_technical_account,
   MAX(al.created_at)::text AS last_login_at,
   COALESCE(
     json_agg(

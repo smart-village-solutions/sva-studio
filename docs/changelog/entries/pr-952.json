@@ -1,0 +1,4 @@
+{
+  "prNumber": 952,
+  "body": "Organisationen: Technische Mainserver-Accounts automatisch bereitstellen\n\n- Beim Erstellen einer Organisation wird der zugehörige technische Mainserver-Account automatisch vorbereitet, ohne zusätzliche Nutzerrechte neben der Organisationsverwaltung zu verlangen.\n- Technische Accounts sind klar gekennzeichnet, standardmäßig aus der Accountliste ausgeblendet und von automatischen Kontolöschungsregeln ausgenommen.\n- Fehlgeschlagene oder unvollständige Bereitstellungen lassen sich sicher in der Organisationsansicht nachvollziehen und erneut anstoßen."
+}

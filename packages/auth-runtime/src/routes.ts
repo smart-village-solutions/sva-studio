@@ -26,6 +26,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/users/me/profile'
   | '/api/v1/iam/organizations'
   | '/api/v1/iam/organizations/$organizationId'
+  | '/api/v1/iam/organizations/$organizationId/provision-mainserver'
   | '/api/v1/iam/organizations/$organizationId/memberships'
   | '/api/v1/iam/organizations/$organizationId/memberships/$accountId'
   | '/api/v1/iam/me/context'
@@ -166,6 +167,7 @@ export const authRoutePaths = [
   '/api/v1/iam/users/me/profile',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',
+  '/api/v1/iam/organizations/$organizationId/provision-mainserver',
   '/api/v1/iam/organizations/$organizationId/memberships',
   '/api/v1/iam/organizations/$organizationId/memberships/$accountId',
   '/api/v1/iam/me/context',

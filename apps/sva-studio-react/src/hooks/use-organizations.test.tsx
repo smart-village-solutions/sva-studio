@@ -8,6 +8,7 @@ const getOrganizationMock = vi.fn();
 const createOrganizationMock = vi.fn();
 const updateOrganizationMock = vi.fn();
 const deleteOrganizationMock = vi.fn();
+const provisionOrganizationMainserverMock = vi.fn();
 const assignOrganizationMembershipMock = vi.fn();
 const removeOrganizationMembershipMock = vi.fn();
 const asIamErrorMock = vi.fn();
@@ -42,6 +43,8 @@ vi.mock('../lib/iam-api', () => ({
   createOrganization: (...args: unknown[]) => createOrganizationMock(...args),
   updateOrganization: (...args: unknown[]) => updateOrganizationMock(...args),
   deleteOrganization: (...args: unknown[]) => deleteOrganizationMock(...args),
+  provisionOrganizationMainserver: (...args: unknown[]) =>
+    provisionOrganizationMainserverMock(...args),
   assignOrganizationMembership: (...args: unknown[]) => assignOrganizationMembershipMock(...args),
   removeOrganizationMembership: (...args: unknown[]) => removeOrganizationMembershipMock(...args),
 }));
@@ -71,6 +74,12 @@ const createOrganizationDetail = (overrides: Record<string, unknown> = {}) => ({
   memberships: [],
   children: [],
   metadata: {},
+  mainserverApplicationSecretSet: false,
+  mainserverProvisioning: {
+    status: 'not_provisioned',
+    attemptCount: 0,
+    operationInProgress: false,
+  },
   ...overrides,
 });
 
@@ -161,6 +170,34 @@ describe('useOrganizations', () => {
       id: 'org-1',
       displayName: 'Alpha',
     });
+  });
+
+  it('retries organization Mainserver provisioning and reloads the detail', async () => {
+    const detail = createOrganizationDetail({
+      mainserverProvisioning: {
+        status: 'ready',
+        attemptCount: 1,
+        operationInProgress: false,
+      },
+    });
+    listOrganizationsMock.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 25, total: 0 },
+    });
+    provisionOrganizationMainserverMock.mockResolvedValue({ data: detail });
+    getOrganizationMock.mockResolvedValue({ data: detail });
+
+    const { result } = renderHook(() => useOrganizations());
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await expect(result.current.provisionMainserver('org-1')).resolves.toMatchObject({
+        id: 'org-1',
+      });
+    });
+
+    expect(provisionOrganizationMainserverMock).toHaveBeenCalledWith('org-1');
+    expect(getOrganizationMock).toHaveBeenCalledWith('org-1');
   });
 
   it('keeps the newest list response when older requests resolve later', async () => {

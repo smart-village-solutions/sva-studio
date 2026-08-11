@@ -31,6 +31,7 @@ export {
   getMyOrganizationContextHandler,
   getOrganizationHandler,
   listOrganizationsHandler,
+  provisionOrganizationMainserverHandler,
   removeOrganizationMembershipHandler,
   updateOrganizationMembershipHandler,
   updateMyOrganizationContextHandler,

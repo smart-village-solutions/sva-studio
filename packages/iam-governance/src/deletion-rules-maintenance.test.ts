@@ -127,6 +127,7 @@ describe('deletion-rules/maintenance', () => {
     expect(client.query.mock.calls[0]?.[0]).toContain('MAX(log.created_at)::text AS last_login_at');
     expect(client.query.mock.calls[0]?.[0]).toContain("log.event_type = 'login'");
     expect(client.query.mock.calls[0]?.[0]).toContain("log.result = 'success'");
+    expect(client.query.mock.calls[0]?.[0]).toContain('account.is_technical_account = FALSE');
   });
 
   it('revokes user sessions for persisted lifecycle transitions outside dry runs', async () => {
@@ -210,8 +211,12 @@ describe('deletion-rules/maintenance', () => {
       deletedAccounts: 0,
       tombstonedContents: 2,
     });
-    expect(client.query.mock.calls.some(([, params]) => params?.includes('pseudonymized'))).toBe(false);
-    expect(client.query.mock.calls.some(([, params]) => params?.includes('deactivated'))).toBe(true);
+    expect(client.query.mock.calls.some(([, params]) => params?.includes('pseudonymized'))).toBe(
+      false
+    );
+    expect(client.query.mock.calls.some(([, params]) => params?.includes('deactivated'))).toBe(
+      true
+    );
   });
 
   it('propagates later lifecycle stages into iam.contents with stable author tokens and timestamps', async () => {
@@ -258,7 +263,9 @@ describe('deletion-rules/maintenance', () => {
       tombstonedContents: 4,
     });
 
-    const contentUpdateCalls = client.query.mock.calls.filter(([sql]) => sql.includes('UPDATE iam.contents'));
+    const contentUpdateCalls = client.query.mock.calls.filter(([sql]) =>
+      sql.includes('UPDATE iam.contents')
+    );
     expect(contentUpdateCalls).toHaveLength(2);
     expect(contentUpdateCalls[0]?.[0]).toContain('updated_at = NOW()');
     expect(contentUpdateCalls[0]?.[1]).toEqual([
@@ -275,7 +282,10 @@ describe('deletion-rules/maintenance', () => {
       IAM_PSEUDONYMIZED_CONTENT_AUTHOR_TOKEN,
       IAM_DELETED_CONTENT_AUTHOR_TOKEN,
     ]);
-    expect(contentUpdateCalls.map(([, params]) => params?.[2])).toEqual(['pseudonymized', 'deleted']);
+    expect(contentUpdateCalls.map(([, params]) => params?.[2])).toEqual([
+      'pseudonymized',
+      'deleted',
+    ]);
   });
 
   it('removes account pii when a lifecycle transition pseudonymizes the account', async () => {
@@ -302,12 +312,14 @@ describe('deletion-rules/maintenance', () => {
       now: new Date('2026-05-20T00:00:00.000Z'),
     });
 
-    const accountUpdateCall = client.query.mock.calls.find(([sql, params]) =>
-      sql.includes('UPDATE iam.accounts') && params?.[2] === 'pseudonymized'
+    const accountUpdateCall = client.query.mock.calls.find(
+      ([sql, params]) => sql.includes('UPDATE iam.accounts') && params?.[2] === 'pseudonymized'
     );
     expect(accountUpdateCall?.[0]).toContain('email_ciphertext = CASE');
     expect(accountUpdateCall?.[0]).toContain("WHEN $3 IN ('pseudonymized', 'deleted') THEN NULL");
-    expect(accountUpdateCall?.[0]).toContain("status = CASE WHEN $3 IN ('pseudonymized', 'deleted') THEN 'inactive'");
+    expect(accountUpdateCall?.[0]).toContain(
+      "status = CASE WHEN $3 IN ('pseudonymized', 'deleted') THEN 'inactive'"
+    );
   });
 
   it('does not touch iam.contents when tenant and account both keep content', async () => {
@@ -335,6 +347,8 @@ describe('deletion-rules/maintenance', () => {
     });
 
     expect(summary.tombstonedContents).toBe(0);
-    expect(client.query.mock.calls.some(([sql]) => sql.includes('UPDATE iam.contents'))).toBe(false);
+    expect(client.query.mock.calls.some(([sql]) => sql.includes('UPDATE iam.contents'))).toBe(
+      false
+    );
   });
 });

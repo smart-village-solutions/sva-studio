@@ -5,7 +5,8 @@ import { pickInitials } from '../../../lib/display-name';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { UpdateUserPayload } from '../../../lib/iam-api';
 
-export type UserEditTabKey = 'personal' | 'management' | 'organizations' | 'permissions' | 'history';
+export type UserEditTabKey =
+  'personal' | 'management' | 'organizations' | 'permissions' | 'history';
 
 export type UserFormValues = {
   firstName: string;
@@ -24,6 +25,7 @@ export type UserFormValues = {
   mainserverUserApplicationId: string;
   mainserverUserApplicationSecret: string;
   mainserverUserApplicationSecretSet: boolean;
+  isTechnicalAccount: boolean;
 };
 
 export const USER_EDIT_TABS: ReadonlyArray<{
@@ -91,7 +93,8 @@ const permissionTraceRuntimeScopeTranslationKeyByValue = {
 
 type UserGroupMembership = NonNullable<NonNullable<IamUserDetail['groups']>[number]>;
 
-const readRoleIds = (user: IamUserDetail | null | undefined) => user?.roles.map((entry) => entry.roleId) ?? [];
+const readRoleIds = (user: IamUserDetail | null | undefined) =>
+  user?.roles.map((entry) => entry.roleId) ?? [];
 
 const readGroupIds = (user: IamUserDetail | null | undefined) =>
   user?.groups?.map((entry) => entry.groupId) ?? [];
@@ -111,6 +114,7 @@ export const toUserFormValues = (user: IamUserDetail | null | undefined): UserFo
     notes = '',
     mainserverUserApplicationId = '',
     mainserverUserApplicationSecretSet = false,
+    isTechnicalAccount = false,
   } = user ?? {};
 
   return {
@@ -130,6 +134,7 @@ export const toUserFormValues = (user: IamUserDetail | null | undefined): UserFo
     mainserverUserApplicationId,
     mainserverUserApplicationSecret: '',
     mainserverUserApplicationSecretSet,
+    isTechnicalAccount,
   };
 };
 
@@ -149,6 +154,7 @@ export const toUserUpdatePayload = (formValues: UserFormValues): UpdateUserPaylo
   groupIds: formValues.groupIds,
   mainserverUserApplicationId: formValues.mainserverUserApplicationId.trim(),
   mainserverUserApplicationSecret: formValues.mainserverUserApplicationSecret.trim() || undefined,
+  isTechnicalAccount: formValues.isTechnicalAccount,
 });
 
 export const formatDateTime = (value?: string) => {
@@ -214,9 +220,13 @@ export const describePermissionTraceSource = (entry: IamUserPermissionTraceItem)
 };
 
 export const describePermissionTraceRuntimeScope = (entry: IamUserPermissionTraceItem) =>
-  entry.runtimeScope ? t(permissionTraceRuntimeScopeTranslationKeyByValue[entry.runtimeScope]) : null;
+  entry.runtimeScope
+    ? t(permissionTraceRuntimeScopeTranslationKeyByValue[entry.runtimeScope])
+    : null;
 
-export const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'validFrom' | 'validTo'>) => {
+export const formatTraceValidity = (
+  entry: Pick<IamUserPermissionTraceItem, 'validFrom' | 'validTo'>
+) => {
   if (entry.validFrom && entry.validTo) {
     return t('admin.users.edit.permissionTrace.validityRange', {
       from: formatDateTime(entry.validFrom),
@@ -224,7 +234,9 @@ export const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'val
     });
   }
   if (entry.validFrom) {
-    return t('admin.users.edit.permissionTrace.validityFrom', { from: formatDateTime(entry.validFrom) });
+    return t('admin.users.edit.permissionTrace.validityFrom', {
+      from: formatDateTime(entry.validFrom),
+    });
   }
   if (entry.validTo) {
     return t('admin.users.edit.permissionTrace.validityTo', { to: formatDateTime(entry.validTo) });
@@ -232,7 +244,9 @@ export const formatTraceValidity = (entry: Pick<IamUserPermissionTraceItem, 'val
   return null;
 };
 
-export const buildPermissionTraceDetails = (entry: IamUserPermissionTraceItem): readonly string[] => {
+export const buildPermissionTraceDetails = (
+  entry: IamUserPermissionTraceItem
+): readonly string[] => {
   const details: string[] = [];
 
   if (entry.inheritedFromOrganizationId) {
@@ -280,7 +294,8 @@ const areStringArraysEqual = (left: readonly string[], right: readonly string[])
 
 export const buildGroupMembershipById = (
   groups: IamUserDetail['groups'] | undefined
-): ReadonlyMap<string, UserGroupMembership> => new Map((groups ?? []).map((entry) => [entry.groupId, entry] as const));
+): ReadonlyMap<string, UserGroupMembership> =>
+  new Map((groups ?? []).map((entry) => [entry.groupId, entry] as const));
 
 export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormValues): boolean =>
   baseline.firstName !== current.firstName ||
@@ -300,7 +315,9 @@ export const hasUserFormChanges = (baseline: UserFormValues, current: UserFormVa
   baseline.mainserverUserApplicationSecret !== current.mainserverUserApplicationSecret ||
   baseline.mainserverUserApplicationSecretSet !== current.mainserverUserApplicationSecretSet;
 
-export const splitPermissionTrace = (permissionTrace: readonly IamUserPermissionTraceItem[] | undefined) => ({
+export const splitPermissionTrace = (
+  permissionTrace: readonly IamUserPermissionTraceItem[] | undefined
+) => ({
   effective: (permissionTrace ?? []).filter((entry) => entry.isEffective),
   inactive: (permissionTrace ?? []).filter((entry) => !entry.isEffective),
 });

@@ -22,6 +22,7 @@ export type CreateUserPersistencePayload = {
   readonly timezone?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
+  readonly isTechnicalAccount?: boolean;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };
@@ -64,14 +65,20 @@ export type CreateUserPersistenceDeps = {
       readonly assignedBy?: string;
     }
   ) => Promise<void>;
-  readonly emitActivityLog: (client: QueryClient, input: CreateUserActivityLogInput) => Promise<void>;
+  readonly emitActivityLog: (
+    client: QueryClient,
+    input: CreateUserActivityLogInput
+  ) => Promise<void>;
   readonly ensureRoleAssignmentWithinActorLevel: (input: {
     readonly client: QueryClient;
     readonly instanceId: string;
     readonly actorSubject: string;
     readonly actorRoles?: readonly string[];
     readonly roleIds: readonly string[];
-  }) => Promise<{ readonly ok: true; readonly roles: readonly IamRoleRow[] } | { readonly ok: false; readonly code: string; readonly message: string }>;
+  }) => Promise<
+    | { readonly ok: true; readonly roles: readonly IamRoleRow[] }
+    | { readonly ok: false; readonly code: string; readonly message: string }
+  >;
   readonly notifyPermissionInvalidation: (
     client: QueryClient,
     input: {
@@ -110,7 +117,8 @@ INSERT INTO iam.accounts (
   preferred_language,
   timezone,
   status,
-  notes
+  notes,
+  is_technical_account
 )
 VALUES (
   $1,
@@ -126,7 +134,8 @@ VALUES (
   $11,
   $12,
   $13,
-  $14
+  $14,
+  $15
 )
 RETURNING id;
 `;
@@ -137,7 +146,8 @@ VALUES ($1, $2::uuid, 'member')
 ON CONFLICT (instance_id, account_id) DO NOTHING;
 `;
 
-const toUniqueSortedIds = (values: readonly string[]): readonly string[] => [...new Set(values)].sort((left, right) => left.localeCompare(right));
+const toUniqueSortedIds = (values: readonly string[]): readonly string[] =>
+  [...new Set(values)].sort((left, right) => left.localeCompare(right));
 
 export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => {
   const persistCreatedUser = async (
@@ -212,6 +222,7 @@ export const createUserCreatePersistence = (deps: CreateUserPersistenceDeps) => 
         assigned_role_ids: toUniqueSortedIds(payload.roleIds),
         assigned_group_ids: toUniqueSortedIds(payload.groupIds ?? []),
         effective_role_ids: toUniqueSortedIds(assignedRoleIds),
+        is_technical_account: payload.isTechnicalAccount ?? false,
       },
       requestId: actor.requestId,
       traceId: actor.traceId,

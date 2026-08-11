@@ -221,6 +221,7 @@ export type IamUserListItem = {
   readonly displayName: string;
   readonly email?: string;
   readonly status: 'active' | 'inactive' | 'pending';
+  readonly isTechnicalAccount: boolean;
   readonly mappingStatus?: IamKeycloakMappingStatus;
   readonly editability?: IamKeycloakObjectEditability;
   readonly diagnostics?: readonly IamKeycloakObjectDiagnostic[];
@@ -729,6 +730,28 @@ export type IamOrganizationDetail = IamOrganizationListItem & {
   readonly children: readonly IamOrganizationChildItem[];
   readonly mainserverApplicationId?: string;
   readonly mainserverApplicationSecretSet: boolean;
+  readonly mainserverProvisioning: IamOrganizationMainserverProvisioningState;
+};
+
+export type IamOrganizationMainserverProvisioningStatus =
+  | 'not_provisioned'
+  | 'account_ready'
+  | 'provisioning'
+  | 'verification_required'
+  | 'ready'
+  | 'failed'
+  | 'reconciliation_required';
+
+export type IamOrganizationMainserverProvisioningState = {
+  readonly status: IamOrganizationMainserverProvisioningStatus;
+  readonly technicalAccountId?: IamUuid;
+  readonly phase?: string;
+  readonly attemptCount: number;
+  readonly lastErrorCode?: string;
+  readonly lastAttemptAt?: string;
+  readonly completedAt?: string;
+  readonly lastVerifiedAt?: string;
+  readonly operationInProgress: boolean;
 };
 
 export type IamOrganizationContextOption = {

@@ -102,22 +102,23 @@ const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
       ? mainserverCredentialWarningTranslationKey[status]
       : undefined;
 
-  if (!warningTranslationKey) {
-    return user.displayName;
-  }
-
-  const warningLabel = t(warningTranslationKey);
+  const warningLabel = warningTranslationKey ? t(warningTranslationKey) : undefined;
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <span>{user.displayName}</span>
-      <span
-        role="img"
-        aria-label={warningLabel}
-        title={warningLabel}
-        className="inline-flex text-amber-600"
-      >
-        <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
-      </span>
+      {user.isTechnicalAccount ? (
+        <Badge variant="outline">{t('admin.users.messages.technicalAccountBadge')}</Badge>
+      ) : null}
+      {warningLabel ? (
+        <span
+          role="img"
+          aria-label={warningLabel}
+          title={warningLabel}
+          className="inline-flex text-amber-600"
+        >
+          <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
+        </span>
+      ) : null}
     </span>
   );
 };
@@ -260,6 +261,17 @@ const UserListToolbarStart = ({ usersApi }: { usersApi: UsersApiState }) => (
         <option value="inactive">{t('admin.users.filters.statusInactive')}</option>
         <option value="pending">{t('admin.users.filters.statusPending')}</option>
       </Select>
+    </div>
+    <div className="flex items-center gap-2 self-end py-2 text-sm text-foreground">
+      <Switch
+        id="users-include-technical-accounts"
+        checked={usersApi.filters.includeTechnicalAccounts}
+        onCheckedChange={usersApi.setIncludeTechnicalAccounts}
+        aria-label={t('admin.users.filters.includeTechnicalAccounts')}
+      />
+      <Label htmlFor="users-include-technical-accounts">
+        {t('admin.users.filters.includeTechnicalAccounts')}
+      </Label>
     </div>
   </>
 );

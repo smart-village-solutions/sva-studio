@@ -29,6 +29,7 @@ describe('tenant-keycloak-user-projection', () => {
       mainserverUserApplicationSecretSet: true,
       mainserverCredentialStatus: 'complete',
       status: 'active',
+      isTechnicalAccount: false,
       mappingStatus: 'unmapped',
       editability: 'blocked',
       diagnostics: [{ code: 'mapping_missing', objectId: 'kc-1', objectType: 'user' }],

@@ -64,6 +64,7 @@ import {
   listPluginOperationJobs,
   startAuthorizePerformanceRun,
   planInstanceKeycloakProvisioning,
+  provisionOrganizationMainserver,
   probeTenantIamAccess,
   reconcileRoles,
   reconcileInstanceKeycloak,
@@ -150,6 +151,27 @@ describe('iam-api organization helpers', () => {
       '/api/v1/iam/organizations?page=2&pageSize=10&search=alpha&organizationType=municipality&status=active',
       expect.objectContaining({
         credentials: 'include',
+      })
+    );
+  });
+
+  it('starts organization Mainserver provisioning with an idempotency key', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        createJsonResponse({ data: { id: 'org-1', mainserverProvisioning: { status: 'ready' } } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'provision-org-1' });
+
+    await provisionOrganizationMainserver('org-1');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/organizations/org-1/provision-mainserver',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: expect.objectContaining({ 'Idempotency-Key': 'provision-org-1' }),
       })
     );
   });
@@ -251,8 +273,12 @@ describe('iam-api organization helpers', () => {
       })
     );
 
-    await expect(firstRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
-    await expect(secondRequest).resolves.toMatchObject({ data: [expect.objectContaining({ legalTextId: 'lt-1' })] });
+    await expect(firstRequest).resolves.toMatchObject({
+      data: [expect.objectContaining({ legalTextId: 'lt-1' })],
+    });
+    await expect(secondRequest).resolves.toMatchObject({
+      data: [expect.objectContaining({ legalTextId: 'lt-1' })],
+    });
   });
 
   it('calls the deletion-rules admin and self-service endpoints with the expected payloads', async () => {
@@ -357,7 +383,10 @@ describe('iam-api organization helpers', () => {
     });
     await updateOrganization('org-1', { displayName: 'Alpha 2' });
     await assignOrganizationMembership('org-1', { accountId: 'account-1', visibility: 'external' });
-    await updateOrganizationMembership('org-1', 'account-1', { visibility: 'internal', isDefaultContext: true });
+    await updateOrganizationMembership('org-1', 'account-1', {
+      visibility: 'internal',
+      isDefaultContext: true,
+    });
     await removeOrganizationMembership('org-1', 'account-1');
     await updateMyOrganizationContext('org-1');
     await getMyOrganizationContext();
@@ -487,7 +516,9 @@ describe('iam-api organization helpers', () => {
       requestId: 'req-legal',
     });
     expect(dispatchEvent).toHaveBeenCalledWith(expect.any(CustomEvent));
-    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(LEGAL_ACCEPTANCE_REQUIRED_EVENT);
+    expect((dispatchEvent.mock.calls[0]?.[0] as CustomEvent).type).toBe(
+      LEGAL_ACCEPTANCE_REQUIRED_EVENT
+    );
     expect(dispatchEvent).toHaveBeenCalledTimes(1);
   });
 
@@ -752,7 +783,9 @@ describe('iam-api organization helpers', () => {
   it('wraps network failures in asIamError', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 
-    const error = asIamError(await updateOrganization('org-1', { displayName: 'Alpha 2' }).catch((error_) => error_));
+    const error = asIamError(
+      await updateOrganization('org-1', { displayName: 'Alpha 2' }).catch((error_) => error_)
+    );
 
     expect(error).toMatchObject({
       status: 500,
@@ -778,7 +811,9 @@ describe('iam-api organization helpers', () => {
       })
     );
 
-    const request = fetchWithRequestTimeout('/api/v1/iam/organizations', undefined, { timeoutMs: 50 });
+    const request = fetchWithRequestTimeout('/api/v1/iam/organizations', undefined, {
+      timeoutMs: 50,
+    });
     const expectation = expect(request).rejects.toMatchObject({
       status: 0,
       code: 'timeout',
@@ -1038,16 +1073,17 @@ describe('iam-api group helpers', () => {
   });
 
   it('uses the canonical groups endpoints and mutation headers', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          data: {
-            id: 'group-1',
-          },
-          pagination: { page: 1, pageSize: 1, total: 1 },
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              id: 'group-1',
+            },
+            pagination: { page: 1, pageSize: 1, total: 1 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
     );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-group-1' });
@@ -1093,11 +1129,12 @@ describe('iam-api group helpers', () => {
   });
 
   it('covers group membership, role assignment and reconciliation endpoints', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: { ok: true } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: { ok: true } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-group-op' });
@@ -1169,11 +1206,12 @@ describe('iam-api instance helpers', () => {
   });
 
   it('uses the canonical instance endpoints with reauth and idempotency headers', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: { instanceId: 'demo', status: 'active' } }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: { instanceId: 'demo', status: 'active' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-instance-1' });
@@ -1349,11 +1387,12 @@ describe('iam-api instance helpers', () => {
   });
 
   it('builds audit helper URLs for collection and detail reads', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: null }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: null }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
 
@@ -1387,11 +1426,12 @@ describe('iam-api profile helpers', () => {
   });
 
   it('uses the profile, legal text and bulk user endpoints with the expected contracts', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ data: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
     );
     vi.stubGlobal('fetch', fetchMock);
     vi.stubGlobal('crypto', { randomUUID: () => 'uuid-user-op' });
@@ -1605,24 +1645,31 @@ describe('iam-api transparency helpers', () => {
   });
 
   it('forwards abort signals for governance and DSR list requests', async () => {
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(
-        JSON.stringify({
-          data: [],
-          pagination: { page: 1, pageSize: 12, total: 0 },
-        }),
-        { status: 200, headers: { 'content-type': 'application/json' } }
-      )
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: [],
+            pagination: { page: 1, pageSize: 12, total: 0 },
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        )
     );
     const controller = new AbortController();
     vi.stubGlobal('fetch', fetchMock);
 
-    await listGovernanceCases({ page: 1, pageSize: 12, type: 'delegation', status: 'open', search: 'alice' }, {
-      signal: controller.signal,
-    });
-    await listAdminDsrCases({ page: 2, pageSize: 20, type: 'request', status: 'queued', search: 'bob' }, {
-      signal: controller.signal,
-    });
+    await listGovernanceCases(
+      { page: 1, pageSize: 12, type: 'delegation', status: 'open', search: 'alice' },
+      {
+        signal: controller.signal,
+      }
+    );
+    await listAdminDsrCases(
+      { page: 2, pageSize: 20, type: 'request', status: 'queued', search: 'bob' },
+      {
+        signal: controller.signal,
+      }
+    );
     await getMyDataSubjectRights();
     await getMyDataSubjectRightsCase('case-1');
     await getDataExportStatus('job-1');
@@ -1645,9 +1692,21 @@ describe('iam-api transparency helpers', () => {
         headers: expect.objectContaining({ Accept: 'application/json' }),
       })
     );
-    expect(fetchMock).toHaveBeenNthCalledWith(3, '/iam/me/data-subject-rights/requests', expect.any(Object));
-    expect(fetchMock).toHaveBeenNthCalledWith(4, '/iam/me/data-subject-rights/cases/case-1', expect.any(Object));
-    expect(fetchMock).toHaveBeenNthCalledWith(5, '/iam/me/data-export/status?jobId=job-1', expect.any(Object));
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/iam/me/data-subject-rights/requests',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/iam/me/data-subject-rights/cases/case-1',
+      expect.any(Object)
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/iam/me/data-export/status?jobId=job-1',
+      expect.any(Object)
+    );
     expect(buildMyDataExportDownloadUrl('job-1', 'csv')).toBe(
       '/iam/me/data-export/status?jobId=job-1&download=csv'
     );

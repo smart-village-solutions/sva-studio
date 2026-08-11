@@ -9,7 +9,7 @@ Der Mainserver-Endpunkt `/data_provider.json` liefert inzwischen für authentifi
 ## What Changes
 
 - Der Mainserver-`dataProvider` wird für Mainserver-basierte Inhalte als unveränderlicher ursprünglicher Inhaber und sichtbarer Autor behandelt; freie `author`-Strings, lokale Owner-Projektionen und der aktuelle Mutationsprincipal dürfen ihn nicht überschreiben.
-- Studio erzeugt Principal-zu-DataProvider-Bindungen ausschließlich automatisch aus der stabilen authentifizierten ID von `/data_provider.json`. Create-Response und Same-Credential-Re-Read bestätigen anschließend die Konsistenz des Content-Inhabers, begründen aber nicht mehr die Identität einer neuen Credential-Version.
+- Studio erzeugt Principal-zu-DataProvider-Bindungen ausschließlich aus automatischer, vertraglich bestätigter Evidenz. Regulär begründet die stabile authentifizierte ID von `/data_provider.json` eine Credential-Version. Als eng begrenzte Ausnahme darf die garantierte `data_provider_id` der Mainserver-Benutzer-Provisioning-Antwort die Erstbindung neu erzeugter Organisations-Credentials begründen; normale Content-Create-Responses und Same-Credential-Re-Reads bestätigen nur die Konsistenz des Content-Inhabers.
 - Namen, Listenresultate, Updates, Statusänderungen, Deletes, Client-Payloads und administrative Eingaben dürfen kein Principal-Mapping begründen.
 - Automatische Beobachtungen werden instanzgebunden, credential-versioniert und konfliktfähig geführt. Abweichende Provider-IDs oder konkurrierende Principal-Claims überschreiben kein bestehendes Mapping und werden im automatischen Resolver fail-closed abgewiesen.
 - Während des beobachtenden Rollouts kann Studio explizit `credential_visible_compatibility` erzwingen:

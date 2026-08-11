@@ -40,6 +40,7 @@ export const createUserSchema = z.object({
   roleIds: uniqueUuidArray(20).default([]),
   groupIds: uniqueUuidArray(50).default([]),
   sendPasswordSetupEmail: z.boolean().optional(),
+  isTechnicalAccount: z.boolean().optional(),
 });
 
 export const updateUserSchema = z
@@ -60,6 +61,7 @@ export const updateUserSchema = z
     groupIds: uniqueUuidArray(50).optional(),
     mainserverUserApplicationId: z.string().trim().max(255).optional(),
     mainserverUserApplicationSecret: optionalTrimmedSecretString(255),
+    isTechnicalAccount: z.boolean().optional(),
   })
   .refine(hasDefinedEntries, 'Mindestens ein Feld muss gesetzt werden.');
 
@@ -124,6 +126,8 @@ export const updateRoleSchema = z
     retrySync: z.boolean().optional(),
   })
   .refine(
-    (value) => Object.keys(value).length > 0 && (Object.keys(value).some((key) => key !== 'retrySync') || value.retrySync),
+    (value) =>
+      Object.keys(value).length > 0 &&
+      (Object.keys(value).some((key) => key !== 'retrySync') || value.retrySync),
     'Mindestens ein Feld muss gesetzt werden.'
   );

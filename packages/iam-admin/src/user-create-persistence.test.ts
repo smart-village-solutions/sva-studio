@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createUserCreatePersistence } from './user-create-persistence.js';
-import type { CreateUserPersistenceActor, CreateUserPersistencePayload } from './user-create-persistence.js';
+import type {
+  CreateUserPersistenceActor,
+  CreateUserPersistencePayload,
+} from './user-create-persistence.js';
 import type { QueryClient } from './query-client.js';
 
 const roleRow = {
@@ -27,9 +30,14 @@ const createDeps = () => ({
   assignGroups: vi.fn(async () => undefined),
   assignRoles: vi.fn(async () => undefined),
   emitActivityLog: vi.fn(async () => undefined),
-  ensureRoleAssignmentWithinActorLevel: vi.fn(async () => ({ ok: true as const, roles: [roleRow] })),
+  ensureRoleAssignmentWithinActorLevel: vi.fn(async () => ({
+    ok: true as const,
+    roles: [roleRow],
+  })),
   notifyPermissionInvalidation: vi.fn(async () => undefined),
-  protectField: vi.fn((value: string | undefined, context: string) => (value ? `${context}:${value}` : null)),
+  protectField: vi.fn((value: string | undefined, context: string) =>
+    value ? `${context}:${value}` : null
+  ),
   resolveGroupsByIds: vi.fn(async () => [
     {
       id: 'group-1',
@@ -122,6 +130,7 @@ describe('user-create-persistence', () => {
         displayName: 'Ada Lovelace',
         email: 'user@example.test',
         status: 'pending',
+        isTechnicalAccount: false,
         roles: [expect.objectContaining({ roleKey: 'editor' })],
       }),
       roleNames: ['Editor'],
@@ -153,11 +162,12 @@ describe('user-create-persistence', () => {
       null,
       'pending',
       null,
+      false,
     ]);
-    expect(client.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO iam.instance_memberships'), [
-      'inst-1',
-      'account-1',
-    ]);
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO iam.instance_memberships'),
+      ['inst-1', 'account-1']
+    );
     expect(deps.assignRoles).toHaveBeenCalledWith(client, {
       instanceId: 'inst-1',
       accountId: 'account-1',
@@ -179,6 +189,7 @@ describe('user-create-persistence', () => {
           assigned_role_ids: ['role-1'],
           assigned_group_ids: ['group-1'],
           effective_role_ids: ['role-1'],
+          is_technical_account: false,
         }),
       })
     );
@@ -236,12 +247,16 @@ describe('user-create-persistence', () => {
       ...createDeps(),
       resolveGroupsByIds: vi.fn(async () => []),
     };
-    await expectCreateToRejectBeforeWrite(deps, 'invalid_request:Mindestens eine aktive Gruppe existiert nicht.', {
-      payload: {
-        roleIds: [],
-        groupIds: ['missing-group'],
-      },
-    });
+    await expectCreateToRejectBeforeWrite(
+      deps,
+      'invalid_request:Mindestens eine aktive Gruppe existiert nicht.',
+      {
+        payload: {
+          roleIds: [],
+          groupIds: ['missing-group'],
+        },
+      }
+    );
   });
 
   it('skips bundled group role validation when the selected groups do not add direct roles', async () => {

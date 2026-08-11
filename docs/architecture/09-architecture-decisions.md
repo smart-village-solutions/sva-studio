@@ -51,6 +51,9 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-045 organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation](../adr/ADR-045-organisationsgebundene-mainserver-credentials-und-policy-gesteuerte-delegation.md)
 - [ADR-046 Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen](../adr/ADR-046-plattform-vs-tenant-rollenmodell-und-legacy-standardrollen.md)
 - [ADR-048 zentraler Backup-Agent mit gehärtetem HTTPS-Trigger](../adr/ADR-048-zentraler-backup-agent-mit-gehaertetem-https-trigger.md)
+- [ADR-049 kanonischer Permission-Katalog und additiver Reconcile](../adr/ADR-049-kanonischer-permission-katalog-und-additiver-reconcile.md)
+- [ADR-050 zentraler scopegebundener UI-Zugriff](../adr/ADR-050-zentraler-scopegebundener-ui-zugriff.md)
+- [ADR-051 technische Accounts und Organisations-Mainserver-Provisioning](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -63,6 +66,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-018
 - Abschnitt 04/06/08/09/10/11 (Strategie/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-023
 - Abschnitt 04/05/06/08/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Qualität/Risiken): ADR-022, ADR-024, ADR-025, ADR-026, ADR-027, ADR-028
+- Abschnitt 03/05/06/08/09/10/11 (Kontext/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-051
 - Abschnitt 04/07/08/09/10/11 (Strategie/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-029
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-030
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-033

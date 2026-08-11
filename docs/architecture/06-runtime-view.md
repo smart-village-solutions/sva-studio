@@ -747,6 +747,21 @@ Fehlerpfad:
 - Parent aus fremder Instanz oder Zyklusversuch führt zu einer deterministischen Konflikt- oder Validierungsantwort.
 - Löschung mit aktiven Children wird fail-closed abgewiesen; Memberships blockieren den Löschpfad nicht.
 
+### Szenario 12a: Organisation erhält einen Mainserver-Zugang
+
+1. Nach dem lokalen Organisations-Commit reserviert die Runtime atomar eine zeitlich begrenzte Lease pro Instanz und Organisation. Ein paralleler oder wiederholter Request beobachtet den laufenden beziehungsweise fertigen Zustand.
+2. Fehlende Mainserver-Konfiguration oder persönliche Mainserver-Credentials des handelnden Administrators führen beim automatischen Versuch zu einem sicheren Skip; die Organisationserstellung bleibt HTTP `201`.
+3. Erst nach erfolgreichem Preflight wird ein deterministischer, zweckgebundener Keycloak-Account ohne Rollen, Gruppen oder Einladung erzeugt oder anhand von E-Mail, Username und den Attributen `instanceId`, `organizationId` und `accountPurpose` eindeutig wiederverwendet.
+4. Der OAuth-Bootstrap verwendet ausschließlich persönliche Credentials des Actors. Der unveränderte Mainserver-Benutzer-Endpunkt erhält das reale Keycloak-Subject und liefert Application-ID, Secret und die vertraglich garantierte `data_provider_id`.
+5. Studio persistiert die Organisations-Credentials verschlüsselt, bindet den DataProvider mit `create_response`-Evidenz und setzt den Zustand auf `ready`. Spätere Verifikation verwendet mit denselben Organisations-Credentials `/data_provider.json`.
+6. Lost Response, lokale Teilpersistenz oder Binding-Konflikt führen ohne Überschreiben und ohne nachträgliche Accountkompensation zu `reconciliation_required`. Ein sicherer Fehler vor dem Upstream-Aufruf führt zu `failed` oder beim automatischen Fehlen von Voraussetzungen zu `not_provisioned`.
+7. Der explizite Endpoint `POST /api/v1/iam/organizations/:organizationId/provision-mainserver` verlangt nur `iam.org.write` sowie einen Idempotency-Key und akzeptiert keine frei wählbaren technischen Accountattribute.
+
+Fehlerpfad:
+
+- Hard Delete des zugeordneten Accounts ist während einer aktiven Lease blockiert. Außerhalb der Lease wird nur die Referenz gelöst; gültige Organisations-Credentials und DataProvider-Bindungen bleiben erhalten.
+- Audit- und Logfehler verändern keinen bereits bestätigten fachlichen Provisioning-Zustand. Secrets, Tokens und rohe Upstream-Antworten werden nie protokolliert.
+
 ### Szenario 13: Benutzer wechselt aktiven Organisationskontext
 
 1. Die Shell lädt `GET /api/v1/iam/me/context` und erhält aktiven Kontext plus zulässige Organisationsoptionen.

@@ -13,7 +13,10 @@ import type { QueryClient } from '../db.js';
 
 import { resolveIdentityProviderForInstance } from './shared-runtime.js';
 import { logger, trackKeycloakCall } from './shared-observability.js';
-import { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
+import {
+  loadMappedUsersBySubject,
+  loadTechnicalAccountSubjects,
+} from './tenant-keycloak-user-query.js';
 import {
   mapUnmappedKeycloakUser,
   mergeMappedUserWithKeycloak,
@@ -133,7 +136,12 @@ const loadVisibleKeycloakPage = async (input: {
     };
   }
 
-  const allMatchingUsers: IdentityListedUser[] = [];
+  const technicalAccountSubjects = await loadTechnicalAccountSubjects(input.request.client, {
+    instanceId: input.request.instanceId,
+  });
+  const listedUsers: IdentityListedUser[] = [];
+  let visibleTotal = 0;
+  const requestedEnd = requestedFirst + input.request.pageSize;
   const keycloakTotal = await input.provider.countUsers?.(input.query);
   for (
     let first = 0;
@@ -143,20 +151,23 @@ const loadVisibleKeycloakPage = async (input: {
     const window = await trackKeycloakCall('list_tenant_users', () =>
       input.provider.listUsers({ ...input.query, first, max: TENANT_USER_FILTER_WINDOW_SIZE })
     );
-    allMatchingUsers.push(...window);
+    for (const user of window) {
+      if (technicalAccountSubjects.has(user.externalId)) continue;
+      if (visibleTotal >= requestedFirst && visibleTotal < requestedEnd) {
+        listedUsers.push(user);
+      }
+      visibleTotal += 1;
+    }
     if (window.length < TENANT_USER_FILTER_WINDOW_SIZE) break;
   }
   const mappedUsersBySubject = await loadMappedUsersBySubject(input.request.client, {
     instanceId: input.request.instanceId,
-    subjects: allMatchingUsers.map((user) => user.externalId),
+    subjects: listedUsers.map((user) => user.externalId),
   });
-  const visible = allMatchingUsers.filter(
-    (user) => mappedUsersBySubject.get(user.externalId)?.isTechnicalAccount !== true
-  );
   return {
-    listedUsers: visible.slice(requestedFirst, requestedFirst + input.request.pageSize),
+    listedUsers,
     mappedUsersBySubject,
-    total: visible.length,
+    total: visibleTotal,
   };
 };
 

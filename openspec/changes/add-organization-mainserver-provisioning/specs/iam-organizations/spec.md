@@ -49,6 +49,9 @@ Das System SHALL bei der Erstellung einer Organisation nach erfolgreichem lokale
 - **THEN** reserviert genau eine Operation den Zustand unter `(instanceId, organizationId)` mit einer zeitlich begrenzten Lease
 - **AND** erzeugen parallele Requests keinen zweiten dauerhaft zugeordneten Account
 - **AND** kann eine abgelaufene Lease übernommen werden, ohne eine vorhandene Zuordnung zu ersetzen
+- **AND** bleiben laufende Zwischenstände bis zum terminalen Übergang im Zustand `provisioning`
+- **AND** darf eine Operation Credentials und Zustandsübergänge nur bei passender Operationsreferenz und aktiver Lease persistieren
+- **AND** darf ein früherer Lauf nach einer Lease-Übernahme weder Credentials überschreiben noch Erfolg melden
 
 #### Scenario: Prozessabbruch nach Keycloak-Erstellung wird sicher wiederaufgenommen
 

@@ -237,6 +237,8 @@ SET
 WHERE instance_id = $1
   AND organization_id = $2::uuid
   AND operation_reference = $3
+  AND provisioning_status = 'provisioning'
+  AND lease_expires_at > NOW()
 RETURNING
   mainserver_application_id,
   mainserver_application_secret_ciphertext,

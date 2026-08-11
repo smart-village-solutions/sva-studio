@@ -69,7 +69,7 @@ const verifyReservedCredentials = async (
   const phase = conflict ? 'binding_conflict' : 'verified_existing_credentials';
   const outcome = conflict ? 'reconciliation_required' : 'ready';
   const errorCode = conflict ? 'data_provider_binding_conflict' : undefined;
-  await withInstanceScopedDb(input.instanceId, (client) =>
+  const state = await withInstanceScopedDb(input.instanceId, (client) =>
     updateOrganizationMainserverProvisioningState(client, {
       instanceId: input.instanceId,
       organizationId: input.organizationId,
@@ -82,6 +82,9 @@ const verifyReservedCredentials = async (
       verified: !conflict,
     })
   );
+  if (!state) {
+    throw new Error('organization_provisioning_lease_lost');
+  }
   await auditOrganizationProvisioning({ ...input, operationReference, phase, outcome, errorCode });
   return {
     outcome,

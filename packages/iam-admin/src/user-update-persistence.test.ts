@@ -200,6 +200,59 @@ describe('user-update-persistence', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('treats an unchanged technical-account flag as a no-op without audit or invalidation', async () => {
+    const { client, deps, persistence } = createPersistenceTestContext();
+
+    await expect(
+      persistence.persistUpdatedUserDetail({
+        instanceId: 'inst-1',
+        actorAccountId: 'actor-1',
+        userId: 'user-1',
+        keycloakSubject: 'kc-1',
+        existingIsTechnicalAccount: false,
+        payload: { isTechnicalAccount: false },
+      })
+    ).resolves.toEqual(detail);
+
+    expect(client.query).not.toHaveBeenCalled();
+    expect(deps.assignRoles).not.toHaveBeenCalled();
+    expect(deps.assignGroups).not.toHaveBeenCalled();
+    expect(deps.emitActivityLog).not.toHaveBeenCalled();
+    expect(deps.notifyPermissionInvalidation).not.toHaveBeenCalled();
+  });
+
+  it('removes an unchanged technical-account flag from mixed update side effects', async () => {
+    const { client, deps, persistence } = createPersistenceTestContext();
+
+    await persistence.persistUpdatedUserDetail({
+      instanceId: 'inst-1',
+      actorAccountId: 'actor-1',
+      userId: 'user-1',
+      keycloakSubject: 'kc-1',
+      existingIsTechnicalAccount: false,
+      payload: { email: 'new@example.test', isTechnicalAccount: false },
+    });
+
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.accounts'),
+      expect.arrayContaining(['enc:new@example.test'])
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE iam.accounts'),
+      expect.arrayContaining([null])
+    );
+    expect(deps.emitActivityLog).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          changed_fields: ['email'],
+          previous_is_technical_account: undefined,
+          next_is_technical_account: undefined,
+        }),
+      })
+    );
+  });
+
   it('preserves existing mainserver credential state when identity state was not reloaded', async () => {
     const { persistence } = createPersistenceTestContext();
 

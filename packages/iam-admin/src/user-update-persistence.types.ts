@@ -20,3 +20,14 @@ export type UserMainserverCredentialState = {
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecretSet: boolean;
 };
+
+export type UserUpdateActivityLogInput = {
+  readonly instanceId: string;
+  readonly accountId?: string;
+  readonly subjectId?: string;
+  readonly eventType: 'user.updated';
+  readonly result: 'success';
+  readonly payload: Readonly<Record<string, unknown>>;
+  readonly requestId?: string;
+  readonly traceId?: string;
+};

@@ -24,6 +24,24 @@ const UPDATED_USER_ACTIVITY_FIELD_NAMES = {
   isTechnicalAccount: 'is_technical_account',
 } satisfies Record<keyof UpdateUserPersistencePayload, string>;
 
+export const normalizeUserUpdatePayload = (
+  payload: UpdateUserPersistencePayload,
+  existingIsTechnicalAccount: boolean | undefined
+): UpdateUserPersistencePayload => {
+  if (
+    payload.isTechnicalAccount === undefined ||
+    payload.isTechnicalAccount !== existingIsTechnicalAccount
+  ) {
+    return payload;
+  }
+  const normalized = { ...payload };
+  delete normalized.isTechnicalAccount;
+  return normalized;
+};
+
+export const hasUserUpdateFields = (payload: UpdateUserPersistencePayload): boolean =>
+  Object.values(payload).some((value) => value !== undefined);
+
 const toSortedUniqueIds = (values: readonly string[] | undefined): readonly string[] | undefined =>
   values ? [...new Set(values)].sort((left, right) => left.localeCompare(right)) : undefined;
 
@@ -117,6 +135,25 @@ export const buildPersistedUserDetail = (
       }
     : detail;
 };
+
+export const loadUnchangedPersistedUserDetail = async (
+  deps: Pick<UserUpdatePersistenceDeps, 'resolveUserDetail' | 'withInstanceScopedDb'>,
+  input: {
+    readonly instanceId: string;
+    readonly userId: string;
+    readonly existingMainserverCredentialState?: UserMainserverCredentialState;
+    readonly nextMainserverCredentialState?: UserMainserverCredentialState;
+  }
+) =>
+  deps.withInstanceScopedDb(input.instanceId, async (client) =>
+    buildPersistedUserDetail(
+      await deps.resolveUserDetail(client, {
+        instanceId: input.instanceId,
+        userId: input.userId,
+      }),
+      input
+    )
+  );
 
 export const applyUpdatedUserSessionAction = async (
   deps: Pick<UserUpdatePersistenceDeps, 'clearUserSessionLoginBlock' | 'revokeUserSessions'>,

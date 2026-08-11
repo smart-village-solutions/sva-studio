@@ -2,7 +2,7 @@ import type { IamOrganizationDetail } from '@sva/core';
 import { loadInstanceById } from '@sva/data-repositories/server';
 import {
   updateOrganizationMainserverProvisioningState,
-  upsertOrganizationMainserverCredentials,
+  writeActiveOrganizationProvisioningCredentials,
 } from '@sva/iam-admin';
 
 import { recordMainserverDataProviderObservation } from '../iam-contents/mainserver-data-provider-bindings.js';
@@ -39,9 +39,12 @@ const updateState = async (
   input: NewProvisioningInput,
   state: Parameters<typeof updateOrganizationMainserverProvisioningState>[1]
 ): Promise<void> => {
-  await withInstanceScopedDb(input.instanceId, (client) =>
+  const updatedState = await withInstanceScopedDb(input.instanceId, (client) =>
     updateOrganizationMainserverProvisioningState(client, state)
   );
+  if (!updatedState) {
+    throw new Error('organization_provisioning_lease_lost');
+  }
 };
 
 const skipProvisioning = async (
@@ -99,26 +102,23 @@ const persistCredentials = async (
   credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>
 ): Promise<void> => {
   input.setPhase('credential_persistence');
+  const persisted = await withInstanceScopedDb(input.instanceId, (client) =>
+    writeActiveOrganizationProvisioningCredentials(client, {
+      instanceId: input.instanceId,
+      organizationId: input.organizationId,
+      operationReference: input.operationReference,
+      actorAccountId: input.actorAccountId,
+      mainserverApplicationId: credentials.mainserverUserApplicationId,
+      mainserverApplicationSecret: credentials.mainserverUserApplicationSecret,
+    })
+  );
+  if (!persisted) {
+    throw new Error('organization_provisioning_lease_lost');
+  }
   await persistProvisionedMainserverCredentials({
     identityProvider,
     keycloakSubject: resolved.account.keycloakSubject,
     credentials,
-  });
-  await withInstanceScopedDb(input.instanceId, async (client) => {
-    await upsertOrganizationMainserverCredentials(client, {
-      instanceId: input.instanceId,
-      organizationId: input.organizationId,
-      actorAccountId: input.actorAccountId,
-      mainserverApplicationId: credentials.mainserverUserApplicationId,
-      mainserverApplicationSecret: credentials.mainserverUserApplicationSecret,
-    });
-    await updateOrganizationMainserverProvisioningState(client, {
-      instanceId: input.instanceId,
-      organizationId: input.organizationId,
-      operationReference: input.operationReference,
-      provisioningStatus: 'verification_required',
-      provisioningPhase: 'credentials_persisted',
-    });
   });
 };
 

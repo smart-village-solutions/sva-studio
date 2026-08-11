@@ -197,7 +197,7 @@ const attachTechnicalAccount = async (input: {
         instanceId: input.instanceId,
         organizationId: input.organizationId,
         operationReference: input.operationReference,
-        provisioningStatus: 'account_ready',
+        provisioningStatus: 'provisioning',
         provisioningPhase: 'account_persisted',
         technicalAccountId: account.id,
       });

@@ -13,6 +13,7 @@ import {
   updateOrganizationMainserverProvisioningState,
   upsertOrganizationMainserverCredentials,
 } from './organization-mainserver-credentials.js';
+import { writeActiveOrganizationProvisioningCredentials } from './organization-mainserver-credential-write.js';
 import type { QueryClient } from './query-client.js';
 
 describe('organization mainserver credentials', () => {
@@ -237,5 +238,66 @@ describe('organization mainserver credentials', () => {
         true,
       ])
     );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("AND provisioning_status = 'provisioning'"),
+      expect.any(Array)
+    );
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('AND lease_expires_at > NOW()'),
+      expect.any(Array)
+    );
+  });
+
+  it('writes generated credentials only while the matching provisioning lease is active', async () => {
+    const query = vi.fn<QueryClient['query']>().mockResolvedValue({
+      rowCount: 1,
+      rows: [{ persisted: true }],
+    } as never);
+
+    await expect(
+      writeActiveOrganizationProvisioningCredentials(
+        { query } as unknown as QueryClient,
+        {
+          instanceId: 'de-musterhausen',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+          operationReference: 'operation-2',
+          actorAccountId: '22222222-2222-4222-8222-222222222222',
+          mainserverApplicationId: 'org-app',
+          mainserverApplicationSecret: 'org-secret',
+        }
+      )
+    ).resolves.toBe(true);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("AND provisioning_status = 'provisioning'"),
+      [
+        'de-musterhausen',
+        '11111111-1111-1111-8111-111111111111',
+        'operation-2',
+        'org-app',
+        'enc:iam.organization_mainserver_credentials.mainserver_application_secret:11111111-1111-1111-8111-111111111111:org-secret',
+        '22222222-2222-4222-8222-222222222222',
+      ]
+    );
+  });
+
+  it('rejects a credential write after lease takeover without exposing the secret', async () => {
+    const query = vi.fn<QueryClient['query']>().mockResolvedValue({
+      rowCount: 0,
+      rows: [],
+    } as never);
+
+    await expect(
+      writeActiveOrganizationProvisioningCredentials(
+        { query } as unknown as QueryClient,
+        {
+          instanceId: 'de-musterhausen',
+          organizationId: '11111111-1111-1111-8111-111111111111',
+          operationReference: 'expired-operation',
+          actorAccountId: '22222222-2222-4222-8222-222222222222',
+          mainserverApplicationId: 'org-app',
+          mainserverApplicationSecret: 'org-secret',
+        }
+      )
+    ).resolves.toBe(false);
   });
 });

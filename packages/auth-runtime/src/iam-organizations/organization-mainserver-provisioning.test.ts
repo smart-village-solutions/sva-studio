@@ -8,7 +8,7 @@ const state = vi.hoisted(() => ({
   loadOrganizationDetail: vi.fn(),
   reserveOrganizationMainserverProvisioning: vi.fn(),
   updateOrganizationMainserverProvisioningState: vi.fn(),
-  upsertOrganizationMainserverCredentials: vi.fn(),
+  writeActiveOrganizationProvisioningCredentials: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   readEffectiveSvaMainserverCredentialsWithStatus: vi.fn(),
   provisionMainserverUserCredentials: vi.fn(),
@@ -32,7 +32,8 @@ vi.mock('@sva/iam-admin', () => ({
   reserveOrganizationMainserverProvisioning: state.reserveOrganizationMainserverProvisioning,
   updateOrganizationMainserverProvisioningState:
     state.updateOrganizationMainserverProvisioningState,
-  upsertOrganizationMainserverCredentials: state.upsertOrganizationMainserverCredentials,
+  writeActiveOrganizationProvisioningCredentials:
+    state.writeActiveOrganizationProvisioningCredentials,
 }));
 vi.mock('@sva/server-runtime', () => ({ createSdkLogger: () => state.logger }));
 vi.mock('../iam-contents/mainserver-data-provider-bindings.js', () => ({
@@ -141,7 +142,7 @@ describe('organization Mainserver provisioning', () => {
     state.loadOrganizationDetail.mockResolvedValue(organization);
     state.loadInstanceById.mockResolvedValue({ displayName: 'Stadt Köln' });
     state.updateOrganizationMainserverProvisioningState.mockResolvedValue({});
-    state.upsertOrganizationMainserverCredentials.mockResolvedValue({});
+    state.writeActiveOrganizationProvisioningCredentials.mockResolvedValue(true);
     state.recordMainserverDataProviderObservation.mockResolvedValue({ outcome: 'created' });
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,
@@ -404,9 +405,10 @@ describe('organization Mainserver provisioning', () => {
         keycloakSubject: 'kc-technical-1',
       })
     );
-    expect(state.upsertOrganizationMainserverCredentials).toHaveBeenCalledWith(
+    expect(state.writeActiveOrganizationProvisioningCredentials).toHaveBeenCalledWith(
       state.client,
       expect.objectContaining({
+        operationReference: 'operation-1',
         mainserverApplicationId: 'org-app',
         mainserverApplicationSecret: 'org-secret',
       })
@@ -419,6 +421,24 @@ describe('organization Mainserver provisioning', () => {
       dataProviderId: '4711',
       evidenceKind: 'create_response',
     });
+  });
+
+  it('does not mutate Keycloak credentials after the provisioning lease was lost', async () => {
+    prepareNewProvisioningAccount();
+    state.provisionMainserverUserCredentials.mockResolvedValue({
+      dataProviderId: '4711',
+      mainserverUserApplicationId: 'org-app',
+      mainserverUserApplicationSecret: 'org-secret',
+    });
+    state.writeActiveOrganizationProvisioningCredentials.mockResolvedValue(false);
+
+    const { provisionOrganizationMainserver } =
+      await import('./organization-mainserver-provisioning.js');
+    await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
+      outcome: 'reconciliation_required',
+      errorCode: 'organization_provisioning_lease_lost',
+    });
+    expect(state.persistProvisionedMainserverCredentials).not.toHaveBeenCalled();
   });
 
   it('verifies existing credentials before attempting a new upstream provisioning', async () => {

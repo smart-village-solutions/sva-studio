@@ -60,3 +60,6 @@
 - [x] 6.7 Konkurrenz-, Lease-Übernahme-, Crash-Recovery-, Lost-Response-, DataProvider-Konflikt- und Hard-Delete-Tests für alle relevanten Zustände ergänzen.
 - [x] 6.8 `pnpm check:file-placement`, OpenSpec-Strict-Validierung und den gemessenen relevanten PR-Gate-Pfad ausführen.
 - [x] 6.9 Den Implementierungs-PR explizit mit GitHub-Issue `#749` „Trennung von technischen und normalen Accounts“ verknüpfen und bei vollständiger Umsetzung mit `Closes #749` schließen.
+- [x] 6.10 Review-Fix: Credential-Persistenz und alle laufenden Zustandsübergänge atomar an Operationsreferenz und aktive Lease binden; eine verlorene Lease darf weder Credentials überschreiben noch Erfolg melden.
+- [x] 6.11 Review-Fix: Unveränderte `isTechnicalAccount`-Werte vor Update, Audit und Permission-Invalidierung aus dem Payload entfernen und reine No-op-Updates ohne Schreibnebenwirkungen behandeln.
+- [x] 6.12 Review-Fix: Für die Standardausblendung nur technische Keycloak-Subjects leichtgewichtig laden und vollständige lokale Accountprojektionen erst für die tatsächlich paginierte Seite aufbauen.

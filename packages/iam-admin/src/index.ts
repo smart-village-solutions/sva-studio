@@ -220,7 +220,10 @@ export {
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';
 
-export { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
+export {
+  loadMappedUsersBySubject,
+  loadTechnicalAccountSubjects,
+} from './tenant-keycloak-user-query.js';
 
 export {
   createLegacyGroupReadHandlers,
@@ -344,6 +347,12 @@ export {
   type OrganizationMainserverCredentialState,
   type OrganizationMainserverProvisioningReservation,
 } from './organization-mainserver-credentials.js';
+
+export {
+  writeActiveOrganizationProvisioningCredentials,
+  type ActiveOrganizationProvisioningCredentialWriteInput,
+  type OrganizationMainserverCredentialWriteInput,
+} from './organization-mainserver-credential-write.js';
 
 export {
   buildDirectPermissionRowsSql,

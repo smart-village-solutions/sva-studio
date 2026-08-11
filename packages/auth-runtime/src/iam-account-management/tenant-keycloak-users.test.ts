@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   countUsers: vi.fn(),
   listUserRoleNames: vi.fn(),
   loadMappedUsersBySubject: vi.fn(),
+  loadTechnicalAccountSubjects: vi.fn(),
   mapUnmappedKeycloakUser: vi.fn(),
   mergeMappedUserWithKeycloak: vi.fn(),
   resolveMainserverCredentialStatus: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock('@sva/iam-admin', () => ({
 
 vi.mock('./tenant-keycloak-user-query.js', () => ({
   loadMappedUsersBySubject: mocks.loadMappedUsersBySubject,
+  loadTechnicalAccountSubjects: mocks.loadTechnicalAccountSubjects,
 }));
 
 vi.mock('./tenant-keycloak-user-projection.js', () => ({
@@ -47,6 +49,7 @@ describe('tenant keycloak users', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.resolveMainserverCredentialStatus.mockReturnValue('unknown');
+    mocks.loadTechnicalAccountSubjects.mockResolvedValue(new Set());
   });
 
   it('maps unmapped keycloak users without leaking the tenant instance id into the projection', async () => {
@@ -141,10 +144,10 @@ describe('tenant keycloak users', () => {
     ];
     mocks.countUsers.mockResolvedValueOnce(3);
     mocks.listUsers.mockResolvedValueOnce(users);
+    mocks.loadTechnicalAccountSubjects.mockResolvedValueOnce(new Set(['technical-1']));
     mocks.loadMappedUsersBySubject.mockResolvedValueOnce(
       new Map([
         ['human-1', { isTechnicalAccount: false }],
-        ['technical-1', { isTechnicalAccount: true }],
         ['human-2', { isTechnicalAccount: false }],
       ])
     );
@@ -161,7 +164,49 @@ describe('tenant keycloak users', () => {
     expect(result.total).toBe(2);
     expect(result.users).toEqual([{ isTechnicalAccount: false }, { isTechnicalAccount: false }]);
     expect(mocks.listUsers).toHaveBeenCalledWith({ first: 0, max: 100 });
+    expect(mocks.loadMappedUsersBySubject).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      subjects: ['human-1', 'human-2'],
+    });
     expect(mocks.listUserRoleNames).toHaveBeenCalledTimes(2);
+  });
+
+  it('scans Keycloak windows for an exact total but projects only the requested visible page', async () => {
+    const { resolveTenantKeycloakUsersWithPagination } = await import('./tenant-keycloak-users.js');
+    const firstWindow = Array.from({ length: 100 }, (_, index) => ({
+      externalId: `user-${index}`,
+    }));
+    mocks.countUsers.mockResolvedValueOnce(101);
+    mocks.listUsers
+      .mockResolvedValueOnce(firstWindow)
+      .mockResolvedValueOnce([{ externalId: 'user-100' }]);
+    mocks.loadTechnicalAccountSubjects.mockResolvedValueOnce(
+      new Set(['user-0', 'user-50', 'user-100'])
+    );
+    mocks.loadMappedUsersBySubject.mockResolvedValueOnce(
+      new Map([
+        ['user-3', { id: 'mapped-3' }],
+        ['user-4', { id: 'mapped-4' }],
+      ])
+    );
+    mocks.listUserRoleNames.mockResolvedValue([]);
+    mocks.mergeMappedUserWithKeycloak.mockImplementation((mapped) => mapped);
+
+    const result = await resolveTenantKeycloakUsersWithPagination({
+      client: {} as never,
+      instanceId: 'instance-1',
+      page: 2,
+      pageSize: 2,
+    });
+
+    expect(result.total).toBe(98);
+    expect(result.users).toEqual([{ id: 'mapped-3' }, { id: 'mapped-4' }]);
+    expect(mocks.listUsers).toHaveBeenNthCalledWith(1, { first: 0, max: 100 });
+    expect(mocks.listUsers).toHaveBeenNthCalledWith(2, { first: 100, max: 100 });
+    expect(mocks.loadMappedUsersBySubject).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      subjects: ['user-3', 'user-4'],
+    });
   });
 
   it('keeps native Keycloak pagination when technical accounts are explicitly included', async () => {

@@ -6,28 +6,21 @@ import {
   applyUpdatedUserSessionAction,
   buildPersistedUserDetail,
   buildUpdatedUserActivityPayload,
+  hasUserUpdateFields,
+  loadUnchangedPersistedUserDetail,
+  normalizeUserUpdatePayload,
   resolveUpdatedUserSessionAction,
 } from './user-update-persistence-support.js';
 import type {
   UpdateUserPersistencePayload,
   UserMainserverCredentialState,
+  UserUpdateActivityLogInput,
 } from './user-update-persistence.types.js';
 
 export type {
   UpdateUserPersistencePayload,
   UserMainserverCredentialState,
 } from './user-update-persistence.types.js';
-
-type UserActivityLogInput = {
-  readonly instanceId: string;
-  readonly accountId?: string;
-  readonly subjectId?: string;
-  readonly eventType: 'user.updated';
-  readonly result: 'success';
-  readonly payload: Readonly<Record<string, unknown>>;
-  readonly requestId?: string;
-  readonly traceId?: string;
-};
 
 export type UserUpdatePersistenceDeps = {
   readonly assignGroups: (
@@ -51,7 +44,10 @@ export type UserUpdatePersistenceDeps = {
     }
   ) => Promise<void>;
   readonly clearUserSessionLoginBlock: (keycloakSubject: string) => Promise<void>;
-  readonly emitActivityLog: (client: QueryClient, input: UserActivityLogInput) => Promise<void>;
+  readonly emitActivityLog: (
+    client: QueryClient,
+    input: UserUpdateActivityLogInput
+  ) => Promise<void>;
   readonly notifyPermissionInvalidation: (
     client: QueryClient,
     input: {
@@ -299,7 +295,15 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly existingMainserverCredentialState?: UserMainserverCredentialState;
     readonly nextMainserverCredentialState?: UserMainserverCredentialState;
   }) => {
-    const persisted = await persistUpdatedUserInDatabase(deps, input);
+    const normalizedInput = {
+      ...input,
+      payload: normalizeUserUpdatePayload(input.payload, input.existingIsTechnicalAccount),
+    };
+    if (!hasUserUpdateFields(normalizedInput.payload)) {
+      return loadUnchangedPersistedUserDetail(deps, input);
+    }
+
+    const persisted = await persistUpdatedUserInDatabase(deps, normalizedInput);
     await applyUpdatedUserSessionAction(deps, {
       keycloakSubject: input.keycloakSubject,
       sessionAction: persisted.sessionAction,

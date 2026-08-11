@@ -59,5 +59,5 @@
 - [x] 7.3 Die parallel veränderten Inhaltsprojektions- und Organisationspfade vor dem Staging auf Konflikte mit `use-mainserver-data-provider-as-content-author` und `add-organization-mainserver-provisioning` prüfen.
 - [x] 7.4 Affected-Scope für Unit- und Type-Targets gegen `origin/main` messen und gemäß Repository-Regeln zielgerichtet validieren.
 - [x] 7.5 `pnpm check:server-runtime`, `pnpm check:file-placement` und die kleinsten relevanten Lint-Gates ausführen.
-- [ ] 7.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.
+- [x] 7.6 Vor PR-Freigabe nach Möglichkeit `pnpm test:pr` ausführen; ausgelassene breite Gates transparent dokumentieren.
 - [x] 7.7 `pnpm exec openspec validate enforce-global-table-sorting --strict` erfolgreich ausführen.

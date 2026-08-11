@@ -1,0 +1,4 @@
+{
+  "prNumber": 953,
+  "body": "Tabellen: Sortierung gilt konsistent für die gesamte Ergebnismenge\n\n- Inhalte, Organisationen, Governance- und Datenschutzlisten werden vor der Seiteneinteilung serverseitig sortiert. Zuletzt bearbeitete Inhalte stehen standardmäßig oben.\n- Abfallfraktionen werden über die vollständige gefilterte Liste sortiert; stabile Reihenfolgen und fehlende Werte sind einheitlich geregelt.\n- Tabellen ohne verlässliche globale Sortierung bieten keine irreführenden Sortieraktionen mehr an. Die Organisationsliste verzichtet zusätzlich auf hierarchische Einrückungen."
+}

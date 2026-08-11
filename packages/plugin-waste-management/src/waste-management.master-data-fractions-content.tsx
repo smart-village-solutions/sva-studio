@@ -16,6 +16,45 @@ import {
   WasteMasterDataFractionsTableSection,
 } from './waste-management.master-data-fractions-content.view.js';
 
+const getFractionSortValue = (
+  fraction: WasteFractionRecord,
+  field: Parameters<typeof createFractionSorting>[0]
+): string | null => {
+  switch (field) {
+    case 'name':
+      return fraction.name;
+    case 'containerSize':
+      return fraction.containerSize ?? null;
+    case 'color':
+      return fraction.color;
+    case 'description':
+      return fraction.description ?? null;
+    case 'status':
+      return fraction.active ? 'active' : 'inactive';
+  }
+};
+
+const sortFractions = (
+  fractions: readonly WasteFractionRecord[],
+  sortField: Parameters<typeof createFractionSorting>[0],
+  sortDirection: Parameters<typeof createFractionSorting>[1]
+) =>
+  [...fractions].sort((left, right) => {
+    const leftValue = getFractionSortValue(left, sortField);
+    const rightValue = getFractionSortValue(right, sortField);
+    if (leftValue === null && rightValue !== null) return 1;
+    if (leftValue !== null && rightValue === null) return -1;
+
+    const comparison = (leftValue ?? '').localeCompare(rightValue ?? '', 'de', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+    if (comparison !== 0) {
+      return sortDirection === 'asc' ? comparison : comparison * -1;
+    }
+    return left.id.localeCompare(right.id);
+  });
+
 export const WasteMasterDataFractionsContent = ({
   fractions,
   fractionsSortBy,
@@ -53,40 +92,10 @@ export const WasteMasterDataFractionsContent = ({
       setDraftFractionsStatus(fractionsStatus);
     }
   }, [filterDialogOpen, fractionsStatus]);
-  const sortedFractions = useMemo(() => {
-    const getSortValue = (fraction: WasteFractionRecord, field: typeof sortField): string | null => {
-      switch (field) {
-        case 'name':
-          return fraction.name;
-        case 'containerSize':
-          return fraction.containerSize ?? null;
-        case 'color':
-          return fraction.color;
-        case 'description':
-          return fraction.description ?? null;
-        case 'status':
-          return fraction.active ? 'active' : 'inactive';
-        default:
-          return null;
-      }
-    };
-
-    return [...fractions].sort((left, right) => {
-      const leftValue = getSortValue(left, sortField);
-      const rightValue = getSortValue(right, sortField);
-      if (leftValue === null && rightValue !== null) return 1;
-      if (leftValue !== null && rightValue === null) return -1;
-
-      const comparison = (leftValue ?? '').localeCompare(rightValue ?? '', 'de', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      if (comparison !== 0) {
-        return sortDirection === 'asc' ? comparison : comparison * -1;
-      }
-      return left.id.localeCompare(right.id);
-    });
-  }, [fractions, sortDirection, sortField]);
+  const sortedFractions = useMemo(
+    () => sortFractions(fractions, sortField, sortDirection),
+    [fractions, sortDirection, sortField]
+  );
   const pagedFractions = useMemo(
     () =>
       createPagedItems({

@@ -228,6 +228,8 @@ describe('content list projection', () => {
         .sort((left, right) => compareProjectionRows(left, right, 'title', 'desc'))
         .map(({ id }) => id)
     ).toEqual(['a', 'b']);
+    expect(compareProjectionRows(row('a'), row('b'), 'publishedAt', 'desc')).toBeLessThan(0);
+    expect(compareProjectionRows(row('b'), row('a'), 'publishedAt', 'desc')).toBeGreaterThan(0);
   });
 
   const buildScopeKey = (

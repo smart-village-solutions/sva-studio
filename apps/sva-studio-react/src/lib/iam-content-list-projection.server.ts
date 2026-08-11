@@ -333,6 +333,7 @@ const compareOptionalProjectionValues = (
   right: string | null,
   direction: 1 | -1
 ): number => {
+  if (left === null && right === null) return 0;
   if (left === null) return 1;
   if (right === null) return -1;
   return compareNormalizedProjectionText(left, right) * direction;

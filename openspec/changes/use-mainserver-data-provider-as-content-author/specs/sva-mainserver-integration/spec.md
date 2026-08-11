@@ -44,30 +44,37 @@ Der daraus erzeugte `MutationPrincipalContext` MUST für Pre-Read, Read-Merge-Wr
 
 ### Requirement: DataProvider-Bindungen entstehen ausschließlich automatisch
 
-Das System MUST Principal-zu-DataProvider-Bindungen instanzgebunden und credential-versioniert führen. Eine neue Bindung MUST ausschließlich aus einem erfolgreichen Create mit exakt gebundenen Credentials und der anschließend aus Create-Response oder Same-Credential-Re-Read gelesenen DataProvider-ID oder zukünftig aus einer stabilen authentifizierten Identity-ID entstehen.
+Das System MUST Principal-zu-DataProvider-Bindungen instanzgebunden und credential-versioniert führen. Eine neue aktuelle Bindung MUST regulär vor dem ersten Content-Provider-Write aus der stabilen authentifizierten ID von `/data_provider.json` entstehen. Als eng begrenzte Ausnahme darf die laut Mainserver-API-Vertrag identische `data_provider_id` einer erfolgreichen Benutzer-Provisioning-Antwort die Erstbindung neu erzeugter Organisations-Credentials begründen. Normale Content-Create-Responses oder Same-Credential-Re-Reads MUST anschließend nur die Konsistenz des Content-DataProviders bestätigen und dürfen keine neue Credential-Identität begründen.
 
 Namen, Listen, Details, Updates, Statusänderungen, Deletes, Client-Payloads und administrative Eingaben MUST als Mapping-Beweis ausgeschlossen sein. Abweichende Provider-IDs oder konkurrierende Principal-Claims MUST einen Konflikt erzeugen und dürfen keine bestehende Bindung überschreiben.
 
-#### Scenario: Persönlicher Create erzeugt automatische Bindung
+#### Scenario: Persönlicher Create verwendet vorab verifizierte Bindung
 
 - **GIVEN** persönliches Handeln ist autorisiert und persönliche Credentials sind verfügbar
-- **WHEN** Studio mit diesen Credentials erfolgreich einen Inhalt erstellt
-- **AND** Response oder Same-Credential-Re-Read liefert DataProvider `dp-user-1`
-- **THEN** bindet Studio die aktuelle persönliche Credential-Version automatisch an `dp-user-1`
-- **AND** speichert es den Credential-Fingerprint und die Nachweisquelle `create_observation`
+- **WHEN** Studio die persönliche Credential-Version über `/data_provider.json` als `dp-user-1` verifiziert
+- **THEN** bindet es die aktuelle Credential-Version vor dem Create automatisch an `dp-user-1`
+- **AND** Create-Response oder Same-Credential-Re-Read müssen anschließend `dp-user-1` bestätigen
 
-#### Scenario: Organisations-Create erzeugt automatische Bindung
+#### Scenario: Organisations-Create verwendet vorab verifizierte Bindung
 
 - **GIVEN** die aktive Organisation ist als Principal autorisiert
-- **WHEN** Studio mit deren Credentials erfolgreich einen Inhalt erstellt
-- **AND** der Mainserver bestätigt DataProvider `dp-org-1`
-- **THEN** bindet Studio die aktuelle organisatorische Credential-Version automatisch an `dp-org-1`
+- **WHEN** Studio deren Credential-Version über `/data_provider.json` als `dp-org-1` verifiziert
+- **THEN** bindet es die aktuelle organisatorische Credential-Version vor dem Create an `dp-org-1`
+- **AND** der Mainserver muss beim Create denselben DataProvider bestätigen
 - **AND** verwendet keine andere Membership als Principal
 
-#### Scenario: Wiederholter Create bestätigt bestehende Bindung
+#### Scenario: Organisations-Benutzer-Provisioning begründet eine Erstbindung
+
+- **GIVEN** der Mainserver-Benutzer-Provisioning-Vertrag garantiert dieselbe DataProvider-ID in Provisioning-Antwort und `/data_provider.json`
+- **WHEN** Studio neue Organisations-Credentials zusammen mit einer gültigen `data_provider_id` erhält
+- **THEN** darf es diese ID als `create_response`-Evidenz für die neue credential-versionierte Organisationsbindung verwenden
+- **AND** muss eine spätere Identity-Verifikation dieselbe ID bestätigen
+- **AND** erhält eine normale Content-Create-Antwort dadurch keine bindungsbegründende Wirkung
+
+#### Scenario: Wiederholte Identity-Abfrage bestätigt bestehende Bindung
 
 - **GIVEN** die aktuelle Credential-Version ist bereits an DataProvider `dp-1` gebunden
-- **WHEN** ein weiterer erfolgreicher Create denselben DataProvider bestätigt
+- **WHEN** eine neue Credential-Version oder erneute Identity-Verifikation denselben DataProvider bestätigt
 - **THEN** aktualisiert Studio den Nachweis idempotent
 - **AND** erzeugt keine zweite konkurrierende Bindung
 
@@ -99,13 +106,20 @@ Namen, Listen, Details, Updates, Statusänderungen, Deletes, Client-Payloads und
 - **GIVEN** ein Principal besitzt eine Bindung für eine frühere Credential-Version
 - **WHEN** Key oder Secret rotiert wird
 - **THEN** bleibt die historische Bindung für bestehende Inhalte erhalten
-- **AND** gilt die neue Credential-Version bis zu Create- oder Identity-Bestätigung als noch nicht exakt gebunden
+- **AND** darf die neue Credential-Version erst nach erfolgreicher Identity-Bestätigung mutieren
+
+#### Scenario: Identity-Verifikation widerspricht garantierter Provisioning-Evidenz
+
+- **GIVEN** eine Organisations-Erstbindung entstand aus einer garantierten Benutzer-Provisioning-Antwort
+- **WHEN** `/data_provider.json` für exakt dieselben Credentials eine andere ID zurückgibt
+- **THEN** überschreibt Studio keine bestehende Bindung
+- **AND** markiert den Claim als Konflikt und die Folgearbeit als `reconciliation_required`
 
 ### Requirement: DataProvider-Identity-Response wird strikt und PII-minimiert verarbeitet
 
 Das System MUST `/data_provider.json` mit demselben Bearer Token wie die GraphQL-Integration aufrufen und den tatsächlichen HTTP-Body als JSON-Objekt mit `data_provider` validieren. Es MUST ausschließlich eine normalisierte DataProvider-ID und optional den Namen übernehmen. Kontakt-, Adress-, Beschreibungs-, Notice-, Logo-, Header- und Rohresponse-Daten MUST aus Mapping, Logs, Metriken und Audit-Payloads ausgeschlossen bleiben.
 
-Eine erfolgreiche Antwort ohne ID MUST als erwarteter Vertragszustand behandelt werden. Sie MUST weder eine Bindung noch eine Berechtigungsänderung erzeugen.
+Eine erfolgreiche Antwort ohne nicht leere ID MUST als ungültige Vertragsantwort behandelt werden. Ohne bereits verifizierte Bindung für exakt denselben Credential-Fingerprint MUST sie jede Mutation vor dem Provider-Write blockieren.
 
 #### Scenario: Identity-Response enthält eine ID
 
@@ -116,14 +130,14 @@ Eine erfolgreiche Antwort ohne ID MUST als erwarteter Vertragszustand behandelt 
 - **AND** bestätigt es eine gleiche aktuelle Bindung
 - **AND** erzeugt es bei einer abweichenden ID einen Konflikt statt einer stillen Überschreibung
 
-#### Scenario: Gültige Identity-Response enthält noch keine ID
+#### Scenario: Identity-Response enthält keine verwendbare ID
 
 - **GIVEN** `/data_provider.json` antwortet erfolgreich mit gültigem `data_provider`
 - **AND** `data_provider.id` fehlt, ist `null` oder leer
 - **WHEN** Studio die Response verarbeitet
 - **THEN** erzeugt oder verändert es kein Mapping
-- **AND** bestimmt die Mapping-Readiness weiterhin aus automatischen Create-Beobachtungen
-- **AND** verwechselt es die fehlende ID nicht mit einem technischen Fehler
+- **AND** behandelt es die Antwort als `invalid_response`
+- **AND** beginnt ohne aktuelle verifizierte Bindung keinen Provider-Write
 
 #### Scenario: Identity-Response ist technisch oder strukturell ungültig
 
@@ -131,7 +145,7 @@ Eine erfolgreiche Antwort ohne ID MUST als erwarteter Vertragszustand behandelt 
 - **WHEN** Studio die Identity-Response verarbeitet
 - **THEN** erzeugt oder verändert es kein Mapping
 - **AND** erweitert es keine Berechtigung aufgrund dieses Fehlers
-- **AND** darf eine durch OAuth und Same-Credential-Read separat bestätigte Content-Aktion weiter nach deren eigenem Vertrag bewerten
+- **AND** darf es nur eine bereits verifizierte Bindung für exakt denselben Credential-Fingerprint weiterverwenden
 
 #### Scenario: Identity-Response enthält personenbezogene Kontaktdaten
 
@@ -147,7 +161,7 @@ Das System MUST vor Aktivierung einer Mainserver-Content-Aktion einen bestätigt
 #### Scenario: Typ liefert DataProvider nicht sicher
 
 - **GIVEN** ein Detail- oder Mutation-Adapter selektiert `dataProvider.id` nicht typisiert
-- **WHEN** Studio die Aktion für exakte Autorisierung, Create-Bindung oder Integritätsprüfung benötigt
+- **WHEN** Studio die Aktion für exakte Autorisierung, Identity-Bindung oder Integritätsprüfung benötigt
 - **THEN** bleibt diese Typ-/Aktionskombination deaktiviert
 - **AND** synthetische Projektionswerte ersetzen den fehlenden Vertrag nicht
 

@@ -1,13 +1,18 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button } from '@sva/studio-ui-react';
 
-import { WasteToursToolbarActions, WasteToursToolbarFilters } from './waste-management.tours.toolbar.parts.js';
+import {
+  WasteToursToolbarActions,
+  WasteToursToolbarFilters,
+} from './waste-management.tours.toolbar.parts.js';
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
 
 type WasteToursToolbarProps = {
   readonly filterDialogOpen: boolean;
   readonly selectedCount: number;
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
+  readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
@@ -16,6 +21,7 @@ type WasteToursToolbarProps = {
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
   readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -26,8 +32,10 @@ type WasteToursToolbarProps = {
   readonly onOpenFilterDialog: () => void;
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onOpenBulkDelete: () => void;
+  readonly onOpenBulkValidity: () => void;
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -42,6 +50,7 @@ const toWasteToursToolbarActionsProps = ({
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
+  onOpenBulkValidity,
   onOpenFilterDialog,
   onResetFilters,
 }: WasteToursToolbarProps) => ({
@@ -49,6 +58,7 @@ const toWasteToursToolbarActionsProps = ({
   filterDialogOpen,
   hasActiveFilters,
   onOpenBulkDelete,
+  onOpenBulkValidity,
   onOpenFilterDialog,
   onResetFilters,
 });
@@ -57,6 +67,7 @@ const toWasteToursToolbarFiltersProps = ({
   filterDialogOpen,
   query,
   status,
+  tourValidityPeriod,
   fractions,
   tourWasteFractionId,
   firstDateFrom,
@@ -65,6 +76,7 @@ const toWasteToursToolbarFiltersProps = ({
   endDateTo,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -73,6 +85,7 @@ const toWasteToursToolbarFiltersProps = ({
   onFilterDialogOpenChange,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
   onDraftFirstDateFromChange,
   onDraftFirstDateToChange,
@@ -83,6 +96,7 @@ const toWasteToursToolbarFiltersProps = ({
   filterDialogOpen,
   query,
   status,
+  tourValidityPeriod,
   fractions,
   tourWasteFractionId,
   firstDateFrom,
@@ -91,6 +105,7 @@ const toWasteToursToolbarFiltersProps = ({
   endDateTo,
   draftQuery,
   draftStatus,
+  draftTourValidityPeriod,
   draftTourWasteFractionId,
   draftFirstDateFrom,
   draftFirstDateTo,
@@ -99,6 +114,7 @@ const toWasteToursToolbarFiltersProps = ({
   onFilterDialogOpenChange,
   onDraftQueryChange,
   onDraftStatusChange,
+  onDraftTourValidityPeriodChange,
   onDraftTourWasteFractionIdChange,
   onDraftFirstDateFromChange,
   onDraftFirstDateToChange,
@@ -108,9 +124,7 @@ const toWasteToursToolbarFiltersProps = ({
 });
 
 export const WasteToursToolbar = (props: WasteToursToolbarProps) => {
-  const {
-    onOpenCreateDialog,
-  } = props;
+  const { onOpenCreateDialog } = props;
   const actionsProps = toWasteToursToolbarActionsProps(props);
   const filtersProps = toWasteToursToolbarFiltersProps(props);
   const pt = usePluginTranslation('wasteManagement');

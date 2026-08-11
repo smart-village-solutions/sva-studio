@@ -83,7 +83,12 @@ const WasteMasterDataFractionsListView = ({
     onFractionsSortChange={(sortBy, sortDirection) => {
       void navigate({
         to: '/plugins/waste-management',
-        search: { ...search, fractionsSortBy: sortBy, fractionsSortDirection: sortDirection },
+        search: {
+          ...search,
+          fractionsSortBy: sortBy,
+          fractionsSortDirection: sortDirection,
+          page: 1,
+        },
       });
     }}
     onFractionsStatusChange={(fractionsStatus) => {

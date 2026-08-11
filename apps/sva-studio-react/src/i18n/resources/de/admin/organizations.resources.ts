@@ -3,6 +3,26 @@ export const organizationsAdminDEResources = {
     title: 'Organisationsverwaltung',
     subtitle: 'Organisationen hierarchisch pflegen, filtern und Mitgliedschaften verwalten',
   },
+  mainserverProvisioning: {
+    title: 'Mainserver-Provisionierung',
+    description:
+      'Zeigt den technischen Zugang der Organisation. Geheimnisse werden hier nicht ausgegeben.',
+    account: 'Technischer Account',
+    attempts: 'Versuche',
+    notAvailable: 'Noch nicht zugeordnet',
+    retry: 'Mainserver-Zugang provisionieren',
+    running: 'Provisionierung läuft …',
+    error: 'Letzter sicherer Fehlercode: {{code}}',
+    status: {
+      not_provisioned: 'Nicht provisioniert',
+      account_ready: 'Account vorbereitet',
+      provisioning: 'Provisionierung läuft',
+      verification_required: 'Prüfung erforderlich',
+      ready: 'Bereit',
+      failed: 'Fehlgeschlagen',
+      reconciliation_required: 'Abgleich erforderlich',
+    },
+  },
   table: {
     caption: 'Tabelle aller Organisationen in der aktiven Instanz',
     ariaLabel: 'Organisationstabelle',

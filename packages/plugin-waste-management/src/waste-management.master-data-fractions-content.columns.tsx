@@ -7,6 +7,7 @@ const createFractionIdentityColumn = (pt: ReturnType<typeof usePluginTranslation
   header: pt('masterData.fractions.table.nameWithContainerSize'),
   mobileLabel: pt('masterData.fractions.table.nameWithContainerSize'),
   sortable: true,
+  sortLabel: pt('masterData.fractions.table.nameWithContainerSize'),
   sortValue: (fraction) => `${fraction.name.toLocaleLowerCase()}|${fraction.containerSize?.toLocaleLowerCase() ?? ''}`,
   cell: (fraction) => <p className="font-medium">{fraction.containerSize ? `${fraction.name} (${fraction.containerSize})` : fraction.name}</p>,
 });
@@ -24,6 +25,7 @@ const createFractionColorColumn = (pt: ReturnType<typeof usePluginTranslation>):
   header: pt('masterData.fractions.table.color'),
   mobileLabel: pt('masterData.fractions.table.color'),
   sortable: true,
+  sortLabel: pt('masterData.fractions.table.color'),
   sortValue: (fraction) => fraction.color.toLocaleLowerCase(),
   cell: (fraction) => (
     <div className="flex items-center gap-2">
@@ -42,6 +44,7 @@ const createFractionDescriptionColumn = (pt: ReturnType<typeof usePluginTranslat
   header: pt('masterData.fractions.fields.description'),
   mobileLabel: pt('masterData.fractions.fields.description'),
   sortable: true,
+  sortLabel: pt('masterData.fractions.fields.description'),
   sortValue: (fraction) => fraction.description?.toLocaleLowerCase() ?? '',
   cell: (fraction) => (
     <span className={fraction.description ? 'text-sm' : 'text-sm text-muted-foreground'}>
@@ -63,6 +66,7 @@ const createFractionStatusColumn = ({
   header: pt('masterData.fractions.table.status'),
   mobileLabel: pt('masterData.fractions.table.status'),
   sortable: true,
+  sortLabel: pt('masterData.fractions.table.status'),
   sortValue: (fraction) => (fraction.active ? 'active' : 'inactive'),
   cell: (fraction) => (
     <div className="flex items-center justify-center">

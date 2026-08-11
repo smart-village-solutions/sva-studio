@@ -17,7 +17,8 @@ export const WasteToursListView = ({
   const navigation = useWasteToursListNavigation(controller, search);
   const hasAnyTours = (controller.overview?.tours?.length ?? 0) > 0;
   const effectiveTourWasteFractionId =
-    search.tourWasteFractionId && controller.availableFractions.some((fraction) => fraction.id === search.tourWasteFractionId)
+    search.tourWasteFractionId &&
+    controller.availableFractions.some((fraction) => fraction.id === search.tourWasteFractionId)
       ? search.tourWasteFractionId
       : undefined;
 
@@ -42,12 +43,14 @@ export const WasteToursListView = ({
       onToggleTourStatus={controller.onToggleTourStatus}
       onDeleteTour={controller.onDeleteTour}
       onDeleteTours={controller.onDeleteTours}
+      onUpdateTourValidityBulk={controller.onUpdateTourValidityBulk}
       canDuplicateTour={canDuplicateTour}
       saving={controller.saving}
       page={search.page}
       pageSize={search.pageSize}
       query={search.q}
       status={search.status}
+      tourValidityPeriod={search.tourValidityPeriod}
       tourWasteFractionId={effectiveTourWasteFractionId}
       firstDateFrom={search.firstDateFrom}
       firstDateTo={search.firstDateTo}

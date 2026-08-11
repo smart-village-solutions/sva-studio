@@ -19,16 +19,16 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
   }) as unknown as WasteTourRecord;
 
 describe('waste-management-mainserver-sync.materialization', () => {
-  it('keeps calculated pickup dates within their location-specific validity window', () => {
+  it('uses the central tour validity window for every linked location', () => {
     const result = buildMaterializedLocationTourPickupDates({
-      tours: [buildTour({ recurrence: 'weekly', firstDate: '2026-01-01' })],
+      tours: [
+        buildTour({ recurrence: 'weekly', firstDate: '2026-01-01', endDate: '2026-01-15' }),
+      ],
       links: [
         {
           id: 'link-1',
           locationId: 'location-1',
           tourId: 'tour-1',
-          startDate: '2026-01-08',
-          endDate: '2026-01-15',
           createdAt: '',
           updatedAt: '',
         },
@@ -42,7 +42,11 @@ describe('waste-management-mainserver-sync.materialization', () => {
       nextYear: 2027,
     });
 
-    expect(result.map((entry) => entry.pickupDate)).toEqual(['2026-01-08', '2026-01-15']);
+    expect(result.map((entry) => entry.pickupDate)).toEqual([
+      '2026-01-01',
+      '2026-01-08',
+      '2026-01-15',
+    ]);
   });
 
   it('materializes explicit assignments without a general location-tour link', () => {

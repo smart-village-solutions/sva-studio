@@ -215,6 +215,7 @@ describe('standard content plugin helpers', () => {
         pluginId: 'poi',
         displayName: 'POI',
         contentType: 'poi.point-of-interest',
+        mainserverGenericType: 'POI_GENERIC',
         titleKey: 'poi.navigation.title',
         listBindingKey: 'poiList',
         detailBindingKey: 'poiDetail',
@@ -252,6 +253,7 @@ describe('standard content plugin helpers', () => {
         {
           contentType: 'poi.point-of-interest',
           displayName: 'POI',
+          mainserverGenericType: 'POI_GENERIC',
           titleKey: 'poi.navigation.title',
           studioContentType: {
             requiredReadAction: 'poi.read',
@@ -263,5 +265,20 @@ describe('standard content plugin helpers', () => {
       ],
       adminResources: [{ resourceId: 'poi.content', basePath: 'poi' }],
     });
+  });
+
+  it('rejects an explicitly empty Mainserver generic type', () => {
+    expect(() =>
+      createStandardContentPluginContribution({
+        pluginId: 'poi',
+        displayName: 'POI',
+        contentType: 'poi.point-of-interest',
+        mainserverGenericType: '',
+        titleKey: 'poi.navigation.title',
+        listBindingKey: 'poiList',
+        detailBindingKey: 'poiDetail',
+        editorBindingKey: 'poiEditor',
+      })
+    ).toThrow('invalid_mainserver_generic_type:poi.point-of-interest');
   });
 });

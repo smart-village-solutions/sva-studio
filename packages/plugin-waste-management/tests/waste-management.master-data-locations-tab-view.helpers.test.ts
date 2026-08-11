@@ -24,6 +24,7 @@ const createSearch = (): WasteManagementSearchParams => ({
   page: 3,
   pageSize: 25,
   status: 'active',
+  tourValidityPeriod: 'all',
   shiftContext: 'all',
   fractionsSortBy: 'name',
   fractionsSortDirection: 'asc',

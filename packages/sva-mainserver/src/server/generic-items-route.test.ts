@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   validateCsrf: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
   finalizeMainserverMutationJournal: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   validateCsrf: state.validateCsrf,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -103,6 +105,10 @@ const mockAuthorizedMutation = () => {
 
 describe('dispatchSvaMainserverGenericItemsRequest', () => {
   beforeEach(() => {
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      status: 'verified',
+      dataProviderId: 'dp-org-1',
+    });
     state.resolveActorInfo.mockResolvedValue({
       actor: {
         instanceId: 'de-musterhausen',
@@ -337,7 +343,7 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       })
     );
     expect(state.loggerInfo).toHaveBeenCalledWith(
-      'Cockpit Cards list upstream pagination completed',
+      'Kachel list upstream pagination completed',
       expect.objectContaining({ matching_item_count: 1 })
     );
   });
@@ -347,8 +353,9 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
     const body = {
       title: 'Karte',
       genericType: 'INFO',
+      externalId: 'client-controlled-id',
       contentBlocks: [{ body: 'Text' }],
-      payload: { languageCode: 'de', sortWeight: 2 },
+      payload: { languageCode: 'de', sortWeight: 2, openInNewTab: true },
       categories: [{ name: 'Startseite' }],
       mediaContents: [
         { sourceUrl: { url: 'https://example.test/image.jpg' }, contentType: 'image' },
@@ -368,10 +375,14 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
         genericItem: expect.objectContaining({ genericType: 'COCKPIT_CARD' }),
       })
     );
+    expect(state.createSvaMainserverGenericItem.mock.calls[0]?.[0]?.genericItem).not.toHaveProperty(
+      'externalId'
+    );
 
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'card-1',
       genericType: 'COCKPIT_CARD',
+      externalId: 'source-card-1',
       payload: { legacy: 'keep', languageCode: 'de', sortWeight: 1 },
     });
     state.updateSvaMainserverGenericItem.mockResolvedValue({ id: 'card-1' });
@@ -386,7 +397,13 @@ describe('dispatchSvaMainserverGenericItemsRequest', () => {
       expect.objectContaining({
         genericItem: expect.objectContaining({
           genericType: 'COCKPIT_CARD',
-          payload: { legacy: 'keep', languageCode: 'de', sortWeight: 2 },
+          externalId: 'source-card-1',
+          payload: {
+            legacy: 'keep',
+            languageCode: 'de',
+            sortWeight: 2,
+            openInNewTab: true,
+          },
         }),
       })
     );

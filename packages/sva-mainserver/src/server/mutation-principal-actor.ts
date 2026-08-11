@@ -1,4 +1,5 @@
 import {
+  loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation,
   resolveActorInfo,
   resolveMutationPrincipalContext,
@@ -16,6 +17,7 @@ import {
   readMainserverOperationId,
 } from './content-route-context.js';
 import { errorJson, isResponse } from './content-route-core.js';
+import { SvaMainserverError } from './errors.js';
 import type {
   MainserverMutationActor,
   MainserverMutationFollowUpContext,
@@ -71,29 +73,52 @@ const hasCurrentContextBinding = (
   );
 };
 
-const observeStableDataProviderIdentity = async (actor: MainserverMutationActor): Promise<void> => {
+export const ensureStableDataProviderIdentity = async (
+  actor: MainserverMutationActor
+): Promise<Response | null> => {
   try {
-    const identity = await loadSvaMainserverDataProviderIdentity(actor);
-    const dataProviderId = identity.dataProvider.id?.trim();
-    if (!identity.hasStableId || !dataProviderId) return;
-    await recordMainserverDataProviderObservation({
+    const existingBinding = await loadCurrentMainserverDataProviderBinding({
       instanceId: actor.instanceId,
       principalType: actor.mutationPrincipalContext.actingPrincipalType,
       principalId: actor.mutationPrincipalContext.actingPrincipalId,
       credentialFingerprint: actor.mutationPrincipalContext.credentialFingerprint,
-      dataProviderId,
+    });
+    if (existingBinding) return null;
+
+    const identity = await loadSvaMainserverDataProviderIdentity(actor);
+    const observation = await recordMainserverDataProviderObservation({
+      instanceId: actor.instanceId,
+      principalType: actor.mutationPrincipalContext.actingPrincipalType,
+      principalId: actor.mutationPrincipalContext.actingPrincipalId,
+      credentialFingerprint: actor.mutationPrincipalContext.credentialFingerprint,
+      dataProviderId: identity.dataProvider.id,
       dataProviderName: identity.dataProvider.name,
       evidenceKind: 'identity_endpoint',
     });
+    if (observation.outcome === 'conflict') {
+      return errorJson(
+        409,
+        'mainserver_data_provider_identity_conflict',
+        'Die Mainserver-Credentials sind keinem eindeutigen DataProvider zugeordnet.'
+      );
+    }
+    return null;
   } catch (error) {
     const workspaceContext = getWorkspaceContext();
-    logger.warn('Mainserver DataProvider identity observation failed', {
-      operation: 'mainserver_data_provider_identity_observation',
+    logger.warn('Mainserver DataProvider identity verification failed', {
+      operation: 'mainserver_data_provider_identity_verification',
       request_id: workspaceContext.requestId,
       trace_id: workspaceContext.traceId,
       instance_id: actor.instanceId,
-      error_code: error instanceof Error ? error.name : 'unknown_error',
+      error_code: error instanceof SvaMainserverError ? error.code : 'database_unavailable',
     });
+    return error instanceof SvaMainserverError
+      ? errorJson(error.statusCode, error.code, error.message)
+      : errorJson(
+          503,
+          'database_unavailable',
+          'Die DataProvider-Identität konnte nicht verifiziert werden.'
+        );
   }
 };
 
@@ -142,6 +167,9 @@ export const resolveMainserverMutationActor = async (input: {
     operationExternalId: readMainserverOperationId(input.request),
     mutationPrincipalContext: resolved.context,
   };
+  const identityError = await ensureStableDataProviderIdentity(actor);
+  if (identityError) return identityError;
+
   mutationFollowUpContexts.set(input.request, {
     instanceId: actor.instanceId,
     keycloakSubject: actor.keycloakSubject,
@@ -153,6 +181,5 @@ export const resolveMainserverMutationActor = async (input: {
     credentialFingerprint: actor.mutationPrincipalContext.credentialFingerprint,
     operationExternalId: actor.operationExternalId,
   });
-  await observeStableDataProviderIdentity(actor);
   return actor;
 };

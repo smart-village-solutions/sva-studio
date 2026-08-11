@@ -226,7 +226,7 @@ describe('iam content repository', () => {
       total: 2,
     });
 
-    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('ORDER BY content.updated_at DESC'), [
+    expect(state.queryMock).toHaveBeenCalledWith(expect.stringContaining('ORDER BY (content.updated_at IS NULL) ASC, content.updated_at DESC, content.id ASC'), [
       'instance-1',
       25,
       0,
@@ -272,7 +272,7 @@ describe('iam content repository', () => {
     expect(state.queryMock.mock.calls[0]?.[0]).not.toContain('content.organization_id IS NULL');
     expect(state.queryMock).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('ORDER BY content.title ASC'),
+      expect.stringContaining('ORDER BY (LOWER(content.title) COLLATE "C" IS NULL) ASC, LOWER(content.title) COLLATE "C" ASC, content.id ASC'),
       [
         'instance-1',
         ['news.article', 'events.event-record'],

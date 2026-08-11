@@ -13,6 +13,7 @@ import {
   getOrganization,
   IamHttpError,
   listOrganizations,
+  provisionOrganizationMainserver,
   removeOrganizationMembership,
   updateOrganizationMembership,
   updateOrganization,
@@ -20,6 +21,8 @@ import {
   type CreateOrganizationPayload,
   type UpdateOrganizationMembershipPayload,
   type UpdateOrganizationPayload,
+  type OrganizationSortDirection,
+  type OrganizationSortField,
 } from '../lib/iam-api';
 import {
   createOperationLogger,
@@ -38,6 +41,8 @@ type OrganizationFilters = {
   readonly search: string;
   readonly organizationType: IamOrganizationType | 'all';
   readonly status: OrganizationStatusFilter;
+  readonly sortBy: OrganizationSortField;
+  readonly sortDirection: OrganizationSortDirection;
 };
 
 type UseOrganizationsResult = {
@@ -54,6 +59,7 @@ type UseOrganizationsResult = {
   readonly setSearch: (value: string) => void;
   readonly setOrganizationType: (value: OrganizationFilters['organizationType']) => void;
   readonly setStatus: (value: OrganizationStatusFilter) => void;
+  readonly setSorting: (sortBy: OrganizationSortField, sortDirection: OrganizationSortDirection) => void;
   readonly setPage: (value: number) => void;
   readonly refetch: () => Promise<void>;
   readonly loadOrganization: (organizationId: string) => Promise<IamOrganizationDetail | null>;
@@ -67,6 +73,7 @@ type UseOrganizationsResult = {
     payload: UpdateOrganizationPayload
   ) => Promise<IamOrganizationDetail | null>;
   readonly deleteOrganization: (organizationId: string) => Promise<boolean>;
+  readonly provisionMainserver: (organizationId: string) => Promise<IamOrganizationDetail | null>;
   readonly assignMembership: (
     organizationId: string,
     payload: AssignOrganizationMembershipPayload
@@ -88,6 +95,8 @@ const DEFAULT_FILTERS: OrganizationFilters = {
   search: '',
   organizationType: 'all',
   status: 'all',
+  sortBy: 'displayName',
+  sortDirection: 'asc',
 };
 
 const organizationsLogger = createOperationLogger('organizations-hook', 'debug');
@@ -130,6 +139,8 @@ export const useOrganizations = (
       search: filters.search.trim(),
       organization_type: filters.organizationType,
       status: filters.status,
+      sort_by: filters.sortBy,
+      sort_direction: filters.sortDirection,
     });
     const timer = window.setTimeout(() => setDebouncedSearch(filters.search.trim()), 300);
     return () => {
@@ -160,6 +171,8 @@ export const useOrganizations = (
           organizationType:
             filters.organizationType === 'all' ? undefined : filters.organizationType,
           status: filters.status === 'all' ? undefined : filters.status,
+          sortBy: filters.sortBy,
+          sortDirection: filters.sortDirection,
         });
         if (requestId !== listRequestIdRef.current) {
           return true;
@@ -216,6 +229,8 @@ export const useOrganizations = (
       filters.page,
       filters.pageSize,
       filters.status,
+      filters.sortBy,
+      filters.sortDirection,
       refreshSession,
     ]
   );
@@ -349,6 +364,8 @@ export const useOrganizations = (
     setOrganizationType: (value) =>
       setFilters((current) => ({ ...current, page: 1, organizationType: value })),
     setStatus: (value) => setFilters((current) => ({ ...current, page: 1, status: value })),
+    setSorting: (sortBy, sortDirection) =>
+      setFilters((current) => ({ ...current, page: 1, sortBy, sortDirection })),
     setPage: (value) => setFilters((current) => ({ ...current, page: Math.max(1, value) })),
     refetch: async () => {
       await loadOrganizations();
@@ -364,6 +381,8 @@ export const useOrganizations = (
       setSelectedOrganization((current) => (current?.id === organizationId ? null : current));
       return Boolean(response);
     },
+    provisionMainserver: async (organizationId) =>
+      mutate(() => provisionOrganizationMainserver(organizationId), { organizationId }),
     assignMembership: async (organizationId, payload) =>
       mutate(() => assignOrganizationMembership(organizationId, payload), { organizationId }),
     updateMembership: async (organizationId, accountId, payload) =>

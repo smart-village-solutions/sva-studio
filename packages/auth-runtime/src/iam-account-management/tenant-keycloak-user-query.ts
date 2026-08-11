@@ -1,1 +1,1 @@
-export { loadMappedUsersBySubject } from '@sva/iam-admin';
+export { loadMappedUsersBySubject, loadTechnicalAccountSubjects } from '@sva/iam-admin';

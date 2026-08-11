@@ -19,6 +19,7 @@ type CreateUserPersistencePayload = {
   readonly timezone?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
   readonly notes?: string;
+  readonly isTechnicalAccount?: boolean;
   readonly roleIds: readonly string[];
   readonly groupIds?: readonly string[];
 };
@@ -48,25 +49,28 @@ type CreateUserPersistenceDeps = {
     readonly actorRoles?: readonly string[];
     readonly roleIds: readonly string[];
   }) => Promise<
-    { readonly ok: true; readonly roles: readonly IamRoleRow[] } | { readonly ok: false; readonly code: string; readonly message: string }
+    | { readonly ok: true; readonly roles: readonly IamRoleRow[] }
+    | { readonly ok: false; readonly code: string; readonly message: string }
   >;
 };
 
-const buildDisplayName = (
-  payload: CreateUserPersistencePayload,
-  externalId: string
-): string => payload.displayName ?? ([payload.firstName, payload.lastName].filter(Boolean).join(' ') || externalId);
+const buildDisplayName = (payload: CreateUserPersistencePayload, externalId: string): string =>
+  payload.displayName ??
+  ([payload.firstName, payload.lastName].filter(Boolean).join(' ') || externalId);
 
 export const buildCreateAccountParams = (
   deps: Pick<CreateUserPersistenceDeps, 'protectField'>,
   actor: CreateUserPersistenceActor,
   payload: CreateUserPersistencePayload,
   externalId: string
-): readonly (string | null)[] => [
+): readonly (string | boolean | null)[] => [
   actor.instanceId,
   externalId,
   deps.protectField(payload.email, `iam.accounts.email:${externalId}`),
-  deps.protectField(buildDisplayName(payload, externalId), `iam.accounts.display_name:${externalId}`),
+  deps.protectField(
+    buildDisplayName(payload, externalId),
+    `iam.accounts.display_name:${externalId}`
+  ),
   deps.protectField(payload.firstName, `iam.accounts.first_name:${externalId}`),
   deps.protectField(payload.lastName, `iam.accounts.last_name:${externalId}`),
   deps.protectField(payload.phone, `iam.accounts.phone:${externalId}`),
@@ -77,6 +81,7 @@ export const buildCreateAccountParams = (
   payload.timezone ?? null,
   payload.status ?? 'pending',
   payload.notes ?? null,
+  payload.isTechnicalAccount ?? false,
 ];
 
 export const validateRequestedGroups = async (
@@ -165,11 +170,14 @@ export const buildCreatedUserResult = (
     avatarUrl: payload.avatarUrl,
     notes: payload.notes,
     status: payload.status ?? 'pending',
+    isTechnicalAccount: payload.isTechnicalAccount ?? false,
     roles: mapRoles(assignedRoleRows),
     mainserverUserApplicationSecretSet: false,
   },
-  roleNames: [...new Set([
-    ...assignedRoleRows.map((entry) => getRoleExternalName(entry)),
-    ...resolveTenantTechnicalKeycloakRoleNames(assignedRoleRows),
-  ])],
+  roleNames: [
+    ...new Set([
+      ...assignedRoleRows.map((entry) => getRoleExternalName(entry)),
+      ...resolveTenantTechnicalKeycloakRoleNames(assignedRoleRows),
+    ]),
+  ],
 });

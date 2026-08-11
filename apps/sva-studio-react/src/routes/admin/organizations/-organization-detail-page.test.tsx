@@ -55,6 +55,13 @@ const organizationFixture = {
   contentAuthorPolicy: 'org_only',
   mainserverApplicationId: 'org-app-1',
   mainserverApplicationSecretSet: true,
+  mainserverProvisioning: {
+    status: 'failed' as const,
+    technicalAccountId: 'technical-account-1',
+    attemptCount: 1,
+    lastErrorCode: 'missing_credentials',
+    operationInProgress: false,
+  },
   isActive: true,
   depth: 0,
   hierarchyPath: ['Landkreis Alpha'],
@@ -109,6 +116,7 @@ const createState = (overrides: Record<string, unknown> = {}) => ({
   createOrganization: vi.fn().mockResolvedValue({ id: 'org-2' }),
   updateOrganization: vi.fn().mockResolvedValue(true),
   deleteOrganization: vi.fn().mockResolvedValue(true),
+  provisionMainserver: vi.fn().mockResolvedValue(organizationFixture),
   assignMembership: vi.fn().mockResolvedValue(true),
   updateMembership: vi.fn().mockResolvedValue(true),
   removeMembership: vi.fn().mockResolvedValue(true),
@@ -363,6 +371,7 @@ describe('OrganizationDetailPage', () => {
           displayName: 'Zoe Zebra',
           email: 'zoe@example.org',
           status: 'active',
+          isTechnicalAccount: false,
           mainserverUserApplicationSecretSet: false,
           roles: [],
         },
@@ -372,6 +381,7 @@ describe('OrganizationDetailPage', () => {
           displayName: 'Anna Admin',
           email: 'anna@example.org',
           status: 'active',
+          isTechnicalAccount: false,
           mainserverUserApplicationSecretSet: false,
           roles: [],
         },
@@ -416,6 +426,22 @@ describe('OrganizationDetailPage', () => {
     );
   });
 
+  it('shows the secret-free provisioning state and starts an explicit retry', async () => {
+    const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+
+    expect(screen.getByText('Fehlgeschlagen')).toBeTruthy();
+    expect(screen.getByText('technical-account-1')).toBeTruthy();
+    expect(screen.getByText('Letzter sicherer Fehlercode: missing_credentials')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
+  });
+
   it('loads parent options across multiple organization pages for reassignment', async () => {
     const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
     const updateOrganization = vi.fn().mockResolvedValue(true);
@@ -444,10 +470,14 @@ describe('OrganizationDetailPage', () => {
       expect(listOrganizationsMock).toHaveBeenNthCalledWith(1, {
         page: 1,
         pageSize: 100,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       });
       expect(listOrganizationsMock).toHaveBeenNthCalledWith(2, {
         page: 2,
         pageSize: 100,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       });
       expect(screen.getByRole('option', { name: 'Landkreis Beta' })).toBeTruthy();
     });

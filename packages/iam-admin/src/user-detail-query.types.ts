@@ -78,6 +78,7 @@ export type UserDetailRow = {
   avatar_url: string | null;
   notes: string | null;
   status: UserStatus;
+  is_technical_account: boolean;
   last_login_at: string | null;
   role_rows: UserDetailRoleRow[] | null;
   group_rows: UserDetailGroupRow[] | null;

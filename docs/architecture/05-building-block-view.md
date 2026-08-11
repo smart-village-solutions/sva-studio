@@ -105,9 +105,9 @@ Abhängigkeiten des aktuellen Systems.
 11b. Plugin Cockpit Cards (`packages/plugin-cockpit-cards`)
 
 - eigenständiges Standard-Content-Plugin mit `cockpit-cards.cockpit-card` und festem GenericItem-Discriminator `COCKPIT_CARD`
-- begrenzt die Bearbeitung auf Überschrift, Klartext, Sprache, genau eine bestehende Kategorie, Bilder, einen HTTPS-Link und Publikationsmetadaten
+- begrenzt die Bearbeitung auf die erforderliche Überschrift und genau eine bestehende Kategorie sowie optional Klartext, Sprache, Bilder, einen HTTPS-Link mit Linktext und Öffnungsverhalten und Publikationsmetadaten
 - nutzt die hostgeführte Fassade `/api/v1/mainserver/cockpit-cards`, die eigenen `cockpit-cards.*`-Rechte sowie vorhandene Kategorien- und Medienbausteine
-- heißt in der deutschen Redaktion „Kacheln“ und nutzt gemeinsame Detail-Tabs, semantische Kartenflächen, History-Darstellung, Löschbestätigung und URL-gesteuerte Pagination
+- heißt in der deutschen Redaktion „Kacheln“ und nutzt gemeinsame Detail-Tabs, semantische Kartenflächen, History-Darstellung, Löschbestätigung und URL-gesteuerte Pagination; die Kachel-Variante der Medienauswahl zeigt ausschließlich den Alternativtext, erhält aber den gemeinsamen Berechtigungs-, Referenz- und Delivery-Vertrag
   11c. Plugin Surveys (`packages/plugin-surveys`)
 
 - produktives Fachplugin für Mainserver-gestützte Umfragen mit pluginnahem Modell `surveys.survey`
@@ -125,7 +125,7 @@ Abhängigkeiten des aktuellen Systems.
 - auch das News-Plugin liest und schreibt Einleitung und Haupttext ausschließlich über `contentBlocks[].intro/body`; der News-Payload enthält keine Textkopie und erzeugt keinen Fallback-Block
 - autorisiert generische Lese- und Schreibpfade ausschließlich mit `generic-items.*`; zusätzliche Fachrechte sind nicht erforderlich
 - lässt die eigenständigen Fachplugins, ihre festen Diskriminatoren, Validierungen und Action-Namespaces unverändert
-- darf denselben Mainserver-Datensatz bei kombinierten Rechten zusätzlich zur fachlichen Repräsentation als `generic-items.generic-item` projizieren
+- bleibt als eigenständiges Modul technischer Vollzugriff auf alle GenericItems; in der gemeinsamen Inhaltsübersicht übernimmt dagegen genau ein registriertes Fachplugin den Datensatz oder der generische Content-Type greift als Fallback
 
 12. Plugin Waste Management (`packages/plugin-waste-management`)
 
@@ -185,9 +185,11 @@ Abhängigkeiten des aktuellen Systems.
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
   - der privilegierte Tenant-Account-Hard-Delete läuft ebenfalls über `packages/iam-admin`: Permission-Gate `iam.accounts.delete`, Schutz für `system_admin`-Zielaccounts, inhaltsbezogene Vorbereinigung, Session-Widerruf, Keycloak-Delete und finaler Studio-Hard-Delete bleiben in diesem Baustein gebündelt
+  - `isTechnicalAccount` klassifiziert technische Accounts unabhängig von Status, Rollen und Login. Listen schließen sie standardmäßig vor Pagination aus; der Inaktivitäts-Lifecycle überspringt sie, explizite Deaktivierung und privilegierter Hard Delete bleiben grundsätzlich möglich.
 - Mainserver-Credential-Auflösung für Downstream-Integrationen:
   - `packages/iam-admin` hält den organisationsgebundenen Credential-Speicher, die Write-only-Secret-Pflege und die read-safe Projektionslogik für Organisationen.
   - `packages/auth-runtime` liefert den aktiven Session- und Organisationskontext und stellt die Laufzeitgrenze für Mainserver-Aufrufe bereit.
+  - `packages/auth-runtime` orchestriert nach lokal erfolgreicher Organisationserstellung und über den expliziten Retry-Endpunkt die Lease-geschützte Provisionierung. Nur `iam.org.write` autorisiert diesen eng begrenzten Systempfad; Rollen, Gruppen und freie Accountattribute sind kein Requestbestandteil.
   - `packages/sva-mainserver` löst daraus die effektive Credential-Quelle policy-gesteuert auf; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal`.
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
   - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.
@@ -241,7 +243,7 @@ Abhängigkeiten des aktuellen Systems.
 - Redis hält lediglich Permission-Snapshots zur Beschleunigung des Authorize-Pfads.
 - `packages/auth-runtime` haelt zusaetzlich nur sehr kurzlebige In-Process-Caches fuer Session-Resolution und Account-Lifecycle-Pruefung, um wiederholte Authorize-Requests derselben Session ohne neuen Redis-/DB-Roundtrip abzufangen.
 - Der SVA-Mainserver bleibt fachliche Source of Truth für alle Mainserver-basierten Content Items; Studio-IAM autorisiert ausschließlich typspezifische Actions und ersetzt keine fachlichen Mainserver-Felder durch lokale Ownership-, Lifecycle- oder Autorenwerte.
-- Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Studio-Listenquelle; Mainserver-News, -Events, -POI, -GenericItems, -FAQ, -Cockpit-Cards, -FeaturedProjects und -Surveys werden serverseitig in das rekonstruierbare Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt. Ein lokaler Content-Core oder eine External-Content-Reference ist keine Projektionsvoraussetzung.
+- Für `/admin/content` ist `GET /api/v1/iam/contents` die einzige führende Studio-Listenquelle; Mainserver-News, -Events, -POI, -GenericItems, -FAQ, -Cockpit-Cards, -FeaturedProjects und -Surveys werden serverseitig in das rekonstruierbare Read-Model `iam.content_list_projection` projiziert und nicht mehr browserseitig vollgescannt. GenericItem-Fachplugins deklarieren ihre exakte Discriminator-Zuständigkeit im Build-time-Registry-Snapshot; die Projektion persistiert je Mainserver-GenericItem genau den fachlichen Content-Type oder den generischen Fallback. Ein lokaler Content-Core oder eine External-Content-Reference ist keine Projektionsvoraussetzung.
 - Surveys folgen denselben Boundary-Regeln wie News, Events und POI: pluginseitige Browser-UI, hostgeführte HTTP-Fassade, typed Adapter in `@sva/sva-mainserver` und kein direkter GraphQL- oder Secret-Zugriff aus dem Plugin.
 - Survey-spezifische Snapshot-Drift wird innerhalb von `@sva/sva-mainserver` abgefangen: `SurveyPoll`-Reads bleiben snapshot-nah, während das Plugin weiterhin das stabile Studio-Modell inklusive `startAt`, `resultVisibility`, `showResultsInApp`, `privacyNotice` und `transparencyNotice` konsumiert.
 - Fachmodule konsumieren zentrale IAM-Entscheidungen und duplizieren keine eigene Berechtigungsauflösung gegen IAM-Tabellen.
@@ -729,3 +731,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/sva-mainserver` bindet jede Schreiboperation an einen unveränderlichen `MutationPrincipalContext`; derselbe Kontext trägt Pre-Read, Provider-Write, Statusschritt, Audit und kausalen Projection-Refresh.
 - `@sva/plugin-sdk` versioniert Mutationsrequests mit Vertrag V2 und übermittelt ausschließlich den Principal-Typ, die Operations-ID und die nicht autorisierende Editor-Kontextbindung. Credentials, Principal-IDs und DataProvider-IDs kommen nie aus dem Browser.
 - `@sva/studio-ui-react` stellt das gemeinsame übersetzte Principal-Control und die schreibgeschützte DataProvider-Anzeige für alle Mainserver-Content-Plugins bereit.
+
+### Ergänzung 2026-08: Ownership global sortierter Tabellen
+
+- `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
+- Paginierte Inhalts-, Organisations-, Governance- und DSR-Listen lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
+- Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.

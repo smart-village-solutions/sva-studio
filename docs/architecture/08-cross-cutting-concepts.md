@@ -545,6 +545,7 @@ Referenzen:
 - Produktive Fachplugins deklarieren eigene Rechtefamilien über `PluginDefinition.permissions`; die Permission-ID folgt `<pluginId>.<actionName>`.
 - `content.*` bleibt ein Core-/Legacy-Content-Vertrag und darf nicht mehr als produktiver Guard für Fachplugins verwendet werden.
 - Build-time-Validierung verhindert reservierte Plugin-Namespaces, doppelte Permission-IDs, fremde Namespace-Referenzen und nicht registrierte Guards.
+- GenericItem-Fachplugins deklarieren zusätzlich ihren exakten Mainserver-`genericType`; die Registry weist leere oder doppelt beanspruchte Diskriminatoren fail-fast zurück. Ein separates, server-sicheres Ownership-Modul teilt dieselbe kanonische Deklaration mit dem Content-Type-Beitrag und verhindert, dass Serverpfade dafür Browser-Plugin-Entrypoints laden.
 - IAM speichert Plugin-Rechte als normale strukturierte Permissions mit `action` und `resourceType` aus dem Plugin-Namespace, zum Beispiel `news.update` und `news`.
 - Navigation, Routing und Server-Fassaden prüfen dieselbe plugin-spezifische Permission; UI-Gates sind Komfort- und Transparenzschicht, die serverseitige Autorisierung bleibt maßgeblich.
 - Die Rollenverwaltung gruppiert Plugin-Rechte fachlich, nutzt aber weiterhin den bestehenden Rollen-Permission-Vertrag.
@@ -593,9 +594,11 @@ Referenzen:
 ### Ergänzung 2026-08: Cockpit Cards als gefilterter GenericItem-Fachtyp
 
 - Cockpit-Cards-Fassaden verwenden ausschließlich die Actions `cockpit-cards.read`, `cockpit-cards.create`, `cockpit-cards.update` und `cockpit-cards.delete`.
-- Der Server erzwingt `genericType: "COCKPIT_CARD"`, genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
+- Der Server erzwingt `genericType: "COCKPIT_CARD"`, eine Überschrift, genau eine Kategorie, optionale Bilder und höchstens einen HTTPS-Link; fremde Typ-IDs werden als nicht gefunden behandelt.
 - Beobachtbarkeitsdaten des vollständigen Paging-Lesewegs enthalten nur technische Zähler und Laufzeiten, keine Überschriften, Texte, Kategorien oder URLs.
-- Sprachcode und Sortiergewicht sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel bleiben bei Updates erhalten. Die Antwort ist Klartext und wird vor dem Write gegen HTML geprüft.
+- Sprachcode, Sortiergewicht und Öffnungsverhalten sind kontrollierte `payload`-Schlüssel; unbekannte historische Schlüssel und die serverseitige `externalId` bleiben bei Updates erhalten. Kacheltext ist Klartext und wird vor dem Write gegen HTML geprüft.
+- Linktext liegt als Beschreibung der einen Web-URL vor. Ohne Link werden weder Linktext noch Öffnen-in-neuem-Tab gespeichert.
+- Die gemeinsame Medienauswahl zeigt für Kacheln nur den Alternativtext, behält jedoch die zentralen Read-only-Zustände sowie persistente Delivery-URLs und Media-References bei.
 
 ### Ergänzung 2026-08: GenericItems als technischer Vollzugriff
 
@@ -603,9 +606,10 @@ Referenzen:
 - Redaktionelle Einleitungen sind blocklokal und werden über `contentBlocks[].intro` transportiert. Featured Projects kontrollieren `intro` und `body` des ersten Blocks; weitere Blocks bleiben beim Read-Merge-Write erhalten.
 - News verwenden denselben blocklokalen Textvertrag. `payload.teaser` und `payload.body` gehören nicht zum Studio-Modell und werden nicht als Legacy-Fallback in Content-Blocks umgewandelt.
 
-- Generische Listen, Projektionen, Details und Mutationen filtern nicht nach `genericType` und verlangen ausschließlich die passende Action unter `generic-items.*`.
-- Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen.
-- Besitzt eine Person generische und fachliche Rechte, darf derselbe Mainserver-Datensatz in beiden Content-Type-Repräsentationen erscheinen.
+- Das eigenständige Generic-Items-Modul filtert Liste, Details und Mutationen nicht nach `genericType` und verlangt ausschließlich die passende Action unter `generic-items.*`.
+- Die gemeinsame Inhaltsübersicht löst den `genericType` dagegen vor der Autorisierung gegen den Build-time-Registry-Snapshot auf. Ein registriertes Fachplugin übernimmt die einzige Repräsentation; nur nicht übernommene Typen verwenden `generic-items.generic-item`.
+- Die Mainserver-Grenze akzeptiert als Registry-Ziele ausschließlich unterstützte GenericItem-Projektionstypen. Gefilterte Listen werden über Upstream-Seitengrenzen hinweg aufgefüllt, damit fremde Diskriminatoren auf einer Seite weder leere Ergebnisse noch einen vorzeitig abgeschlossenen Snapshot erzeugen.
+- Fachpfade bleiben getrennt, verlangen ihre eigenen Actions und erzwingen weiterhin ihre jeweiligen Diskriminatoren und Validierungen. Fehlende Fachrechte erzeugen in `/admin/content` keinen generischen Fallback.
 - `generic-items.*` kann fachliche Validierung umgehen und soll deshalb regulären Live-Rollen nicht zugewiesen werden; diese Betriebsgrenze wird durch Rollenvergabe und nicht durch umgebungsabhängige Codepfade umgesetzt.
 
 ### Ergänzung 2026-03: IAM-Transparenz-UI und Privacy-Self-Service
@@ -688,8 +692,23 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 
 ### DataProvider, Principal und Scope
 
-- Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Nur ein erfolgreicher Create oder künftig eine stabile Identity-ID darf eine Principal-Bindung beweisen.
+- Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Die stabile authentifizierte Identity-ID beweist die aktuelle credential-versionierte Principal-Bindung; Create und Same-Credential-Re-Read bestätigen anschließend nur deren Konsistenz zum Content-Inhaber.
 - Fingerprints sind nicht reversibel und werden in Diagnoseansichten nur gekürzt angezeigt; API-Key, Secret, Token und rohe `/data_provider.json`-Antworten gelangen weder in Projection, Audit, Metriken noch Logs.
-- `own` und `organization` verwenden ohne vollständige konfliktfreie Bindungen `credential_visible_compatibility`. Die tatsächlich ausgewählten Credentials und der verpflichtende frische Pre-Read begrenzen die sichtbare Menge weiterhin.
+- Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
 - Das Mutation-Journal ist technische Reconciliation- und Audit-Evidenz, keine zweite sichtbare History. Abgelehnte oder fehlgeschlagene Mutationen erzeugen keinen History-Erfolg.
+
+### Globale Tabellenordnung und mobile Bedienung
+
+- Paginierte Listen folgen verbindlich `Scope → Filter → deterministische Sortierung → Pagination`. Unbekannte externe Sortierfelder oder Richtungen werden mit `400 invalid_request` abgewiesen; SQL verwendet ausschließlich feste Feldzuordnungen.
+- Fehlende Werte bleiben fachlich fehlend, stehen in beiden Richtungen zuletzt und werden lokalisiert gekennzeichnet. Gleichstände enden immer mit einer eindeutigen Zeilenidentität aufsteigend.
+- Desktop-Sortierköpfe und die mobile Feldauswahl mit Richtungsschalter teilen genau einen kontrollierten Zustand. Externe Sortierung kennt keinen dritten unsortierten Zustand; die vorhandenen A–Z-/Z–A-Symbole bleiben rein visuelle Ergänzung der zugänglichen Labels.
+
+### Technische Accounts und Organisations-Provisioning
+
+- `isTechnicalAccount` ist eine auditierte Klassifikation und kein Identitäts-, Rollen- oder Statusautomatismus. Unmapped Keycloak-Benutzer gelten als nicht technisch; lokale Klassifikationen bleiben bei Projektion und Reconcile erhalten.
+- Accountlisten filtern technische Accounts serverseitig vor Gesamtzahl und Pagination. Die UI schließt sie standardmäßig aus, kann sie bewusst einblenden und kennzeichnet sie sichtbar.
+- Der Inaktivitäts-Lifecycle prüft die aktuelle Klassifikation vor jeder Zustandsentscheidung. Das Flag restauriert keinen früheren Zustand; nach Entfernen nimmt der Account wieder regulär teil.
+- Organisations-Provisioning ist über eine persistente Lease, Operationsreferenz und phasengenaue Zustände idempotent. Externe Side Effects beginnen erst nach Konfigurations- und persönlichem Credential-Preflight.
+- Die `data_provider_id` der Create-Antwort und die Identität aus `/data_provider.json` sind zwei Evidenzwege desselben garantierten Mainserver-Vertrags. Konflikte werden nicht überschrieben, sondern benötigen Reconciliation.
+- Geheimnisse bleiben write-only und verschlüsselt. Read-Models exponieren nur Vorhandensein, Status, Versuchszähler, sicheren Fehlercode und technische IDs.

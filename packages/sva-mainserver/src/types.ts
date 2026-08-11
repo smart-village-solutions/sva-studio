@@ -72,6 +72,7 @@ export type SvaMainserverListQuery = {
   readonly page: number;
   readonly pageSize: number;
   readonly includeInvisible?: boolean;
+  readonly genericItemScanOffset?: number;
 };
 
 export type SvaMainserverNewsListInput = SvaMainserverListQuery & {
@@ -85,6 +86,7 @@ export type SvaMainserverListPagination = {
   readonly pageSize: number;
   readonly hasNextPage: boolean;
   readonly total?: number;
+  readonly nextGenericItemScanOffset?: number;
 };
 
 export type SvaMainserverListResult<TItem> = {
@@ -102,6 +104,25 @@ export type SvaMainserverProjectionContentType =
   | 'cockpit-cards.cockpit-card'
   | 'projects.project'
   | 'surveys.survey';
+
+export type SvaMainserverGenericItemProjectionContentType =
+  'generic-items.generic-item' | 'faq.faq' | 'cockpit-cards.cockpit-card' | 'projects.project';
+
+const svaMainserverGenericItemProjectionContentTypes = new Set<string>([
+  'generic-items.generic-item',
+  'faq.faq',
+  'cockpit-cards.cockpit-card',
+  'projects.project',
+]);
+
+export const isSvaMainserverGenericItemProjectionContentType = (
+  value: string
+): value is SvaMainserverGenericItemProjectionContentType =>
+  svaMainserverGenericItemProjectionContentTypes.has(value);
+
+export type SvaMainserverGenericTypeOwnership = Readonly<
+  Record<string, SvaMainserverGenericItemProjectionContentType>
+>;
 
 export type SvaMainserverProjectionListItem = Readonly<{
   id: string;
@@ -226,10 +247,9 @@ export type SvaMainserverDataProvider = {
 
 export type SvaMainserverDataProviderIdentity = Readonly<{
   dataProvider: Readonly<{
-    id?: string;
+    id: string;
     name?: string;
   }>;
-  hasStableId: boolean;
 }>;
 
 export type SvaMainserverSetting = {
@@ -619,7 +639,6 @@ export type SvaMainserverProject = SvaMainserverProjectInput &
     id: string;
     published: boolean;
     publishedAt?: string;
-    deleted: boolean;
     createdAt: string;
     updatedAt: string;
     author: SvaMainserverProjectAuthor;

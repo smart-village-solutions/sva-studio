@@ -129,6 +129,21 @@ describe('content list api dispatch', () => {
     );
   });
 
+  it('rejects unsupported direct sort parameters with invalid_request', async () => {
+    const response = await dispatchAggregatedContentListRequest(
+      new Request(
+        'https://studio.test/api/v1/iam/contents?sortBy=status&sortDirection=sideways'
+      )
+    );
+
+    expect(response?.status).toBe(400);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
+    expect(state.listProjectedContents).not.toHaveBeenCalled();
+    expect(state.logger.error).not.toHaveBeenCalled();
+  });
+
   it('delegates POST /api/v1/iam/contents/refresh to the projected refresh handler', async () => {
     state.refreshProjectedContents.mockResolvedValue(
       new Response(

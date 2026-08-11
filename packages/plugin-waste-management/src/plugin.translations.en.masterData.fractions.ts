@@ -22,6 +22,11 @@ export const wasteManagementPluginTranslationsENMasterDataFractions = {
     selectAllRows: 'Select all entries in {{label}}',
     selectRow: 'Select entry {{rowId}}',
     selectMobileRow: 'Select entry {{rowId}} in card view',
+    sortingField: 'Sort field',
+    sortingDirection: 'Sort direction',
+    sortingNone: 'No sorting',
+    sortingAscending: 'Ascending',
+    sortingDescending: 'Descending',
   },
   actions: {
     openCreate: 'Create fraction',

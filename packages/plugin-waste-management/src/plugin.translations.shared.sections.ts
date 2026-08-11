@@ -45,6 +45,7 @@ type WasteManagementLocationsWorkspaceCopy = Readonly<{
   emptyHouseNumbers: string;
   actions: Readonly<Record<string, string>>;
   filters: Readonly<Record<string, string>>;
+  coverage: Readonly<Record<string, string>>;
   table: Readonly<Record<string, string>>;
 }>;
 
@@ -178,6 +179,7 @@ export const createWasteManagementLocationsWorkspaceTranslations = <
     emptyHouseNumbers: copy.emptyHouseNumbers,
     actions: copy.actions,
     filters: copy.filters,
+    coverage: copy.coverage,
     table: copy.table,
   }) as const;
 

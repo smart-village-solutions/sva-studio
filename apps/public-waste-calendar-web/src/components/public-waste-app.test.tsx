@@ -11,7 +11,10 @@ import {
   publicWasteSelectionSummaryFixture,
 } from './public-waste-test-fixtures.js';
 
-type CompletePublicWasteAppTestProps = Extract<ComponentProps<typeof PublicWasteApp>, { selectionState: 'complete' }>;
+type CompletePublicWasteAppTestProps = Extract<
+  ComponentProps<typeof PublicWasteApp>,
+  { selectionState: 'complete' }
+>;
 
 const renderCompletePublicWasteApp = (overrides: Partial<CompletePublicWasteAppTestProps> = {}) => {
   render(
@@ -56,48 +59,63 @@ describe('PublicWasteApp', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders address left, fractions right, and a horizontal action block', () => {
+  it('renders a flat location context and explicit disclosure actions', () => {
     renderCompletePublicWasteApp();
 
     expectPublicWasteSelectionHeader();
-    expect(screen.getByRole('button', { name: 'Adresse ändern' })).toBeTruthy();
+    const changeAddressAction = screen.getByRole('button', { name: 'Adresse ändern' });
+    expect(changeAddressAction.parentElement?.classList.contains('selection-summary-row')).toBe(
+      true
+    );
+    expect(changeAddressAction.classList.contains('selection-summary-action')).toBe(true);
     expect(screen.getByRole('group', { name: 'Abfallfraktionen' })).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'Bioabfall' })).toBeTruthy();
+    const bioFraction = screen.getByRole('checkbox', { name: 'Bioabfall' });
+    expect(bioFraction.parentElement?.getAttribute('style')).toBeNull();
+    expect(bioFraction.getAttribute('style')).toContain('accent-color');
+    expect(bioFraction.parentElement?.querySelector('.selection-fraction-swatch')).toBeNull();
+    const fractionInfoAction = screen.getByRole('button', {
+      name: 'Informationen zu Abfallfraktionen',
+    });
+    expect(fractionInfoAction.getAttribute('popovertarget')).toBe('public-waste-fraction-info');
+    const fractionInfoPopover = document.getElementById('public-waste-fraction-info');
+    expect(fractionInfoPopover?.getAttribute('popover')).toBe('auto');
+    expect(fractionInfoPopover?.textContent).toContain(
+      'Diese Auswahl steuert Liste, Kalenderexport, PDF/Druckversion und E-Mail-Erinnerung gemeinsam.'
+    );
     expect(screen.getByRole('checkbox', { name: 'Papier' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'PDF-Download' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'E-Mail-Abo' })).toBeTruthy();
+    const calendarAction = screen.getByRole('button', { name: 'Kalender exportieren' });
+    expect(calendarAction.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: 'PDF / Druckversion' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'E-Mail-Erinnerung' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Kalender exportieren' })).toBeNull();
   });
 
   it('uses a single open action panel at a time', () => {
     renderCompletePublicWasteApp();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Kalenderexport' }));
-    expect(screen.getByText('Kalender exportieren')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Kalender exportieren' }));
+    expect(screen.getByRole('link', { name: 'Kalender exportieren' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'PDF-Download' }));
-    expect(screen.queryByText('Kalender exportieren')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
+    expect(screen.queryByRole('link', { name: 'Kalender exportieren' })).toBeNull();
     expect(screen.getByRole('button', { name: 'PDF herunterladen' })).toBeTruthy();
   });
 
-  it('supports keyboard navigation across the action tabs and links the active panel accessibly', () => {
+  it('links an expanded action to its accessible region', () => {
     renderCompletePublicWasteApp();
 
-    const calendarTab = screen.getByRole('tab', { name: 'Kalenderexport' });
-    fireEvent.keyDown(calendarTab, { key: 'ArrowRight' });
+    const pdfAction = screen.getByRole('button', { name: 'PDF / Druckversion' });
+    fireEvent.click(pdfAction);
 
-    const pdfTab = screen.getByRole('tab', { name: 'PDF-Download' });
-    expect(pdfTab.getAttribute('aria-selected')).toBe('true');
-    expect(document.activeElement).toBe(pdfTab);
-
+    expect(pdfAction.getAttribute('aria-expanded')).toBe('true');
     const panel = screen
-      .getAllByRole('tabpanel')
-      .find((element) => element.getAttribute('id') === pdfTab.getAttribute('aria-controls'));
+      .getAllByRole('region')
+      .find((element) => element.getAttribute('id') === pdfAction.getAttribute('aria-controls'));
     expect(panel).toBeTruthy();
     if (!panel) {
       throw new Error('Expected the PDF action panel to exist');
     }
-    expect(panel.getAttribute('aria-labelledby')).toBe(pdfTab.getAttribute('id'));
+    expect(panel.getAttribute('aria-labelledby')).toBe(pdfAction.getAttribute('id'));
   });
 
   it('updates the visible calendar entries from the right-side fraction list', () => {
@@ -128,18 +146,22 @@ describe('PublicWasteApp', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Kalenderexport' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Kalender exportieren' }));
 
     const exportLink = screen.getByRole('link', { name: 'Kalender exportieren' });
     expect(exportLink.getAttribute('href')).toContain('fractionId=bio');
     expect(exportLink.getAttribute('href')).toContain('fractionId=paper');
     expect(exportLink.getAttribute('href')).toContain('reminderItem=bio%7Cbio%3Acalendar%3Afirst');
-    expect(exportLink.getAttribute('href')).toContain('reminderItem=paper%7Cpaper%3Acalendar%3Afirst');
+    expect(exportLink.getAttribute('href')).toContain(
+      'reminderItem=paper%7Cpaper%3Acalendar%3Afirst'
+    );
     expect(screen.queryByRole('checkbox', { name: 'Mit Erinnerungen exportieren' })).toBeNull();
   });
 
   it('downloads a pdf for the active fractions and selected year from the action panel', async () => {
-    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:public-waste-pdf');
+    const createObjectUrlSpy = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:public-waste-pdf');
     const revokeObjectUrlSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     fetchMock.mockResolvedValue(
       new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
@@ -152,7 +174,7 @@ describe('PublicWasteApp', () => {
 
     renderCompletePublicWasteApp();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'PDF-Download' }));
+    fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
     fireEvent.change(screen.getByLabelText('PDF-Jahr'), {
       target: { value: '2026' },
     });
@@ -216,8 +238,12 @@ describe('PublicWasteApp', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
-    const emailPanel = screen.getAllByRole('tabpanel')[0] as HTMLElement;
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Erinnerung' }));
+    const emailPanel = screen
+      .getAllByRole('region')
+      .find(
+        (element) => element.getAttribute('id') === 'public-waste-action-panel-email'
+      ) as HTMLElement;
     fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
       target: { value: 'person@example.invalid' },
     });
@@ -227,7 +253,9 @@ describe('PublicWasteApp', () => {
       })
     );
 
-    fireEvent.click(within(emailPanel).getByRole('button', { name: 'E-Mail-Abo anfordern' }));
+    fireEvent.click(
+      within(emailPanel).getByRole('button', { name: 'E-Mail-Erinnerung anfordern' })
+    );
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -252,6 +280,9 @@ describe('PublicWasteApp', () => {
 
     expect(screen.getByText('Bestätigungslink versendet')).toBeTruthy();
     expect(screen.getByText('Bitte prüfen Sie Ihr E-Mail-Postfach.')).toBeTruthy();
+    expect(within(emailPanel).getByRole('status').textContent).toContain(
+      'Bestätigungslink versendet'
+    );
     expect(within(emailPanel).queryByLabelText('Zeitfenster für Bioabfall')).toBeNull();
   });
 
@@ -294,10 +325,12 @@ describe('PublicWasteApp', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Erinnerung' }));
     const emailPanel = screen
-      .getAllByRole('tabpanel')
-      .find((element) => element.getAttribute('id') === 'public-waste-action-panel-email') as HTMLElement;
+      .getAllByRole('region')
+      .find(
+        (element) => element.getAttribute('id') === 'public-waste-action-panel-email'
+      ) as HTMLElement;
     fireEvent.change(within(emailPanel).getByLabelText('E-Mail-Adresse'), {
       target: { value: 'person@example.invalid' },
     });
@@ -306,7 +339,9 @@ describe('PublicWasteApp', () => {
         name: 'Ich stimme der Verarbeitung meiner Daten zu. Datenschutzerklärung',
       })
     );
-    fireEvent.click(within(emailPanel).getByRole('button', { name: 'E-Mail-Abo anfordern' }));
+    fireEvent.click(
+      within(emailPanel).getByRole('button', { name: 'E-Mail-Erinnerung anfordern' })
+    );
 
     await screen.findByText('Bestätigungslink versendet');
 
@@ -314,10 +349,12 @@ describe('PublicWasteApp', () => {
 
     expect(screen.queryByText('Bestätigungslink versendet')).toBeNull();
     const refreshedEmailPanel = screen
-      .getAllByRole('tabpanel')
+      .getAllByRole('region')
       .find((element) => element.getAttribute('id') === 'public-waste-action-panel-email');
     expect(refreshedEmailPanel).toBeTruthy();
-    expect(within(refreshedEmailPanel as HTMLElement).getByLabelText('E-Mail-Adresse')).toBeTruthy();
+    expect(
+      within(refreshedEmailPanel as HTMLElement).getByLabelText('E-Mail-Adresse')
+    ).toBeTruthy();
   });
 
   it('uses noopener noreferrer for the privacy policy link', () => {
@@ -343,8 +380,10 @@ describe('PublicWasteApp', () => {
       },
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'E-Mail-Abo' }));
-    expect(screen.getByRole('link', { name: 'Datenschutzerklärung' }).getAttribute('rel')).toBe('noopener noreferrer');
+    fireEvent.click(screen.getByRole('button', { name: 'E-Mail-Erinnerung' }));
+    expect(screen.getByRole('link', { name: 'Datenschutzerklärung' }).getAttribute('rel')).toBe(
+      'noopener noreferrer'
+    );
   });
 
   it('opens a pickup detail dialog and keeps the global actions outside the dialog', () => {
@@ -365,6 +404,6 @@ describe('PublicWasteApp', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeTruthy();
     expect(within(dialog).getByText('Biotour Nord')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Kalenderexport' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kalender exportieren' })).toBeTruthy();
   });
 });

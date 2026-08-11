@@ -85,6 +85,7 @@ export type UsersQuery = {
   readonly search?: string;
   readonly status?: Exclude<UserStatusFilter, 'all'>;
   readonly role?: string;
+  readonly includeTechnicalAccounts?: boolean;
 };
 
 export type CreateUserPayload = {
@@ -100,6 +101,7 @@ export type CreateUserPayload = {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
   readonly sendPasswordSetupEmail?: boolean;
+  readonly isTechnicalAccount?: boolean;
 };
 
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
@@ -447,7 +449,13 @@ export type OrganizationsQuery = {
   readonly search?: string;
   readonly organizationType?: IamOrganizationType;
   readonly status?: 'active' | 'inactive';
+  readonly sortBy: OrganizationSortField;
+  readonly sortDirection: OrganizationSortDirection;
 };
+
+export type OrganizationSortField =
+  'displayName' | 'parentDisplayName' | 'childCount' | 'membershipCount' | 'isActive';
+export type OrganizationSortDirection = 'asc' | 'desc';
 
 export type CreateOrganizationPayload = {
   readonly organizationKey: string;
@@ -482,6 +490,8 @@ export type GovernanceCasesQuery = {
   readonly type?: IamGovernanceCaseListItem['type'];
   readonly status?: string;
   readonly search?: string;
+  readonly sortBy: 'createdAt' | 'updatedAt';
+  readonly sortDirection: 'asc' | 'desc';
 };
 
 export type DsrAdminCasesQuery = {
@@ -490,6 +500,8 @@ export type DsrAdminCasesQuery = {
   readonly type?: IamDsrCaseListItem['type'];
   readonly status?: IamDsrCanonicalStatus;
   readonly search?: string;
+  readonly sortBy: 'createdAt' | 'completedAt';
+  readonly sortDirection: 'asc' | 'desc';
 };
 
 export type InstancesQuery = {
@@ -568,6 +580,9 @@ export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamU
   }
   if (query.role) {
     params.set('role', query.role);
+  }
+  if (query.includeTechnicalAccounts) {
+    params.set('includeTechnicalAccounts', 'true');
   }
 
   return requestJson<ApiListResponse<IamUserListItem>>(`/api/v1/iam/users?${params.toString()}`);
@@ -862,6 +877,8 @@ export const listOrganizations = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.search) {
@@ -1257,6 +1274,15 @@ export const updateOrganization = async (
     payload
   );
 
+export const provisionOrganizationMainserver = async (
+  organizationId: string
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  postJson<ApiItemResponse<IamOrganizationDetail>, Record<string, never>>(
+    `/api/v1/iam/organizations/${organizationId}/provision-mainserver`,
+    {},
+    true
+  );
+
 export const deleteOrganization = async (
   organizationId: string
 ): Promise<ApiItemResponse<{ id: string }>> =>
@@ -1443,6 +1469,8 @@ export const listGovernanceCases = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.type) {
@@ -1676,6 +1704,8 @@ export const listAdminDsrCases = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.type) {

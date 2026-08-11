@@ -8,6 +8,7 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   authorizeMainserverDataProviderAccess: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
@@ -41,6 +42,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -139,6 +141,10 @@ const createRequest = (url: string, init?: RequestInit): Request =>
 
 describe('dispatchSvaMainserverNewsRequest', () => {
   beforeEach(() => {
+    state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+      status: 'verified',
+      dataProviderId: 'dp-org-1',
+    });
     state.authorizeMainserverDataProviderAccess.mockResolvedValue({
       allowed: true,
       authorizationMode: 'exact',
@@ -916,6 +922,38 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
 
     expect(response?.status).toBe(403);
+    expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
+    expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
+  });
+
+  it('returns a retryable response when provider binding authorization is unavailable', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'database_unavailable',
+      resolverMode: 'automatic',
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1/visibility', {
+        method: 'PATCH',
+        body: JSON.stringify({ visible: true }),
+        headers: { 'content-type': 'application/json' },
+      })
+    );
+
+    expect(response?.status).toBe(503);
+    await expect(response?.json()).resolves.toEqual({
+      error: 'database_unavailable',
+      message: 'Die DataProvider-Bindung konnte nicht geprüft werden.',
+    });
     expect(state.changeSvaMainserverNewsVisibility).not.toHaveBeenCalled();
     expect(state.beginMainserverMutationJournal).not.toHaveBeenCalled();
   });

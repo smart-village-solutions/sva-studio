@@ -3,6 +3,14 @@ import type {
   ApiErrorResponse,
   IamContentListQuery,
 } from '@sva/core';
+import { iamContentListSortDirections, iamContentListSortFields } from '@sva/core';
+
+export class InvalidContentListQueryError extends Error {
+  constructor() {
+    super('invalid_content_list_query');
+    this.name = 'InvalidContentListQueryError';
+  }
+}
 
 export const DEFAULT_MAINSERVER_VISIBLE_TYPES = [
   'news.article',
@@ -79,6 +87,14 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
   const visibleTypes = requestedVisibleTypes.filter((value) => value !== EMPTY_VISIBLE_TYPE_SENTINEL);
   const hasEmptyVisibleTypeSentinel = requestedVisibleTypes.includes(EMPTY_VISIBLE_TYPE_SENTINEL);
 
+  if (
+    (sortByValue !== undefined && !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
+    (sortDirectionValue !== undefined &&
+      !(iamContentListSortDirections as readonly string[]).includes(sortDirectionValue))
+  ) {
+    throw new InvalidContentListQueryError();
+  }
+
   return {
     page,
     pageSize,
@@ -96,14 +112,9 @@ export const readContentListQuery = (request: Request): IamContentListQuery => {
       : hasEmptyVisibleTypeSentinel
         ? { visibleTypes: [EMPTY_VISIBLE_TYPE_SENTINEL] }
         : {}),
-    sortBy:
-      sortByValue === 'title' ||
-      sortByValue === 'contentType' ||
-      sortByValue === 'status' ||
-      sortByValue === 'updatedAt'
-        ? sortByValue
-        : 'updatedAt',
-    sortDirection: sortDirectionValue === 'asc' || sortDirectionValue === 'desc' ? sortDirectionValue : 'desc',
+    sortBy: (sortByValue as IamContentListQuery['sortBy'] | undefined) ?? 'updatedAt',
+    sortDirection:
+      (sortDirectionValue as IamContentListQuery['sortDirection'] | undefined) ?? 'desc',
   };
 };
 

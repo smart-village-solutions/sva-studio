@@ -27,5 +27,5 @@ Aktuelle exakte Scope-Readiness SHALL ausschließlich aus aktiven, konfliktfreie
 - **GIVEN** eine Bindung gilt für eine konkrete Credential-Version
 - **WHEN** Credentials entfernt oder rotiert werden
 - **THEN** bleibt die alte Bindung historisch erhalten
-- **AND** benötigt die neue Credential-Version eine neue automatische Create- oder Identity-Evidenz
-- **AND** verwendet Studio bis dahin für den betroffenen Scope `credential_visible_compatibility`
+- **AND** benötigt die neue Credential-Version eine neue automatische Identity-Evidenz
+- **AND** lehnt Studio Mutationen mit dieser Version bis dahin im automatischen Resolver fail-closed ab

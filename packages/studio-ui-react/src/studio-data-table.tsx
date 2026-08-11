@@ -13,6 +13,7 @@ import {
 
 import { Button, type ButtonProps } from './button.js';
 import { Checkbox } from './checkbox.js';
+import { Select } from './select.js';
 import { cn } from './utils.js';
 
 export type StudioDataTableLabels = Readonly<{
@@ -33,17 +34,52 @@ export type StudioBulkAction<TData> = Readonly<{
   render?: React.ReactNode;
 }>;
 
-export type StudioColumnDef<TData> = Readonly<{
+type StudioColumnDefBase<TData> = Readonly<{
   id: string;
   header: React.ReactNode;
   cell: (row: TData) => React.ReactNode;
-  sortable?: boolean;
-  sortValue?: (row: TData) => string | number;
   mobileLabel?: React.ReactNode;
   className?: string;
   headerClassName?: string;
   mobileClassName?: string;
 }>;
+
+export type StudioColumnDef<TData> = StudioColumnDefBase<TData> &
+  (
+    | Readonly<{
+        sortable: true;
+        sortLabel: string;
+        sortValue: (row: TData) => string | number | null | undefined;
+      }>
+    | Readonly<{
+        sortable?: false;
+        sortLabel?: never;
+        sortValue?: never;
+      }>
+  );
+
+export type StudioDataTableSortingLabels = Readonly<{
+  field: string;
+  direction: string;
+  none: string;
+  ascending: string;
+  descending: string;
+}>;
+
+export type StudioDataTableSorting =
+  | Readonly<{ mode: 'disabled' }>
+  | Readonly<{
+      mode: 'client';
+      labels: StudioDataTableSortingLabels;
+      state?: SortingState;
+      onChange?: (sorting: SortingState) => void;
+    }>
+  | Readonly<{
+      mode: 'external';
+      labels: StudioDataTableSortingLabels;
+      state: SortingState;
+      onChange: (sorting: SortingState) => void;
+    }>;
 
 export type StudioDataTableProps<TData> = Readonly<{
   ariaLabel: string;
@@ -63,8 +99,7 @@ export type StudioDataTableProps<TData> = Readonly<{
   getRowId: (row: TData) => string;
   selectionMode?: 'none' | 'multiple';
   canSelectRow?: (row: TData) => boolean;
-  sorting?: SortingState;
-  onSortingChange?: (sorting: SortingState) => void;
+  sorting: StudioDataTableSorting;
 }>;
 
 const getAriaSort = (sorting: false | 'asc' | 'desc') => {
@@ -108,7 +143,11 @@ const renderSelectionHeader = <TData,>(
   <Checkbox
     aria-label={labels.selectAllRows(ariaLabel)}
     checked={table.getIsAllRowsSelected()}
-    aria-checked={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() ? 'mixed' : table.getIsAllRowsSelected()}
+    aria-checked={
+      table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+        ? 'mixed'
+        : table.getIsAllRowsSelected()
+    }
     indeterminate={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()}
     onChange={(event) => table.toggleAllRowsSelected(event.target.checked)}
   />
@@ -128,11 +167,16 @@ const renderSelectionCell = <TData,>(
   />
 );
 
-const renderActionsCell = <TData,>(row: CellContext<TData, unknown>['row'], rowActions: (row: TData) => React.ReactNode) => (
-  <div className="flex justify-end gap-2">{rowActions(row.original)}</div>
-);
+const renderActionsCell = <TData,>(
+  row: CellContext<TData, unknown>['row'],
+  rowActions: (row: TData) => React.ReactNode
+) => <div className="flex justify-end gap-2">{rowActions(row.original)}</div>;
 
-const renderHeaderCellContent = <TData,>(header: ReturnType<ReturnType<typeof useReactTable<TData>>['getHeaderGroups']>[number]['headers'][number]) => {
+const renderHeaderCellContent = <TData,>(
+  header: ReturnType<
+    ReturnType<typeof useReactTable<TData>>['getHeaderGroups']
+  >[number]['headers'][number]
+) => {
   if (header.isPlaceholder) {
     return null;
   }
@@ -141,7 +185,11 @@ const renderHeaderCellContent = <TData,>(header: ReturnType<ReturnType<typeof us
   const sortingState = header.column.getIsSorted();
 
   if (!canSort) {
-    return <span className="font-semibold text-foreground">{flexRender(header.column.columnDef.header, header.getContext())}</span>;
+    return (
+      <span className="font-semibold text-foreground">
+        {flexRender(header.column.columnDef.header, header.getContext())}
+      </span>
+    );
   }
 
   return (
@@ -175,18 +223,43 @@ export function StudioDataTable<TData>({
   getRowId,
   selectionMode = 'multiple',
   canSelectRow,
-  sorting: controlledSorting,
-  onSortingChange,
+  sorting: sortingConfig,
 }: StudioDataTableProps<TData>) {
   const [uncontrolledSorting, setUncontrolledSorting] = React.useState<SortingState>([]);
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const selectedRowCount = Object.keys(rowSelection).length;
-  const sorting = controlledSorting ?? uncontrolledSorting;
+  const controlledSorting = sortingConfig.mode === 'disabled' ? undefined : sortingConfig.state;
+  const sorting =
+    sortingConfig.mode === 'disabled' ? [] : (controlledSorting ?? uncontrolledSorting);
+  const sortableColumns = React.useMemo(
+    () =>
+      columns.filter(
+        (column): column is StudioColumnDef<TData> & { sortable: true } => column.sortable === true
+      ),
+    [columns]
+  );
+
+  if (sortingConfig.mode === 'disabled' && sortableColumns.length > 0) {
+    throw new Error('studio_data_table_disabled_sorting_has_sortable_columns');
+  }
+  if (sortingConfig.mode !== 'disabled' && sortableColumns.length === 0) {
+    throw new Error('studio_data_table_enabled_sorting_has_no_sortable_columns');
+  }
+  if (
+    sortingConfig.mode === 'external' &&
+    (sorting.length !== 1 || !sortableColumns.some((column) => column.id === sorting[0]?.id))
+  ) {
+    throw new Error('studio_data_table_external_sorting_requires_one_supported_field');
+  }
 
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [isCompact, setIsCompact] = React.useState(false);
   const selectionScopeKey = React.useMemo(
-    () => [...data].map((row) => getRowId(row)).sort(compareAlphabetically).join('\u0000'),
+    () =>
+      [...data]
+        .map((row) => getRowId(row))
+        .sort(compareAlphabetically)
+        .join('\u0000'),
     [data, getRowId]
   );
   const selectableScopeKey = React.useMemo(
@@ -241,13 +314,20 @@ export function StudioDataTable<TData>({
 
   const handleSortingChange = React.useCallback(
     (updater: SortingState | ((current: SortingState) => SortingState)) => {
+      if (sortingConfig.mode === 'disabled') {
+        return;
+      }
       const nextSorting = typeof updater === 'function' ? updater(sorting) : updater;
-      onSortingChange?.(nextSorting);
-      if (controlledSorting === undefined) {
-        setUncontrolledSorting(nextSorting);
+      const normalizedSorting =
+        sortingConfig.mode === 'external' && nextSorting.length > 1
+          ? nextSorting.slice(-1)
+          : nextSorting;
+      sortingConfig.onChange?.(normalizedSorting);
+      if (sortingConfig.mode === 'client' && controlledSorting === undefined) {
+        setUncontrolledSorting(normalizedSorting);
       }
     },
-    [controlledSorting, onSortingChange, sorting]
+    [controlledSorting, sorting, sortingConfig]
   );
 
   const tableData = React.useMemo(() => [...data], [data]);
@@ -255,7 +335,7 @@ export function StudioDataTable<TData>({
   const coreColumns = React.useMemo<ColumnDef<TData>[]>(() => {
     const tableColumns = columns.map<ColumnDef<TData>>((column) => ({
       id: column.id,
-      accessorFn: column.sortable ? (row) => column.sortValue?.(row) ?? '' : undefined,
+      accessorFn: column.sortable ? (row) => column.sortValue(row) : undefined,
       enableSorting: column.sortable ?? false,
       header: () => column.header,
       cell: (context: CellContext<TData, unknown>) => column.cell(context.row.original),
@@ -308,7 +388,10 @@ export function StudioDataTable<TData>({
     data: tableData,
     columns: coreColumns,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    ...(sortingConfig.mode === 'client' ? { getSortedRowModel: getSortedRowModel() } : {}),
+    manualSorting: sortingConfig.mode === 'external',
+    enableSortingRemoval: sortingConfig.mode !== 'external',
+    enableMultiSort: false,
     getRowId,
     enableRowSelection:
       selectionMode === 'multiple'
@@ -321,6 +404,57 @@ export function StudioDataTable<TData>({
       rowSelection,
     },
   });
+
+  const activeSorting = sorting[0];
+  const mobileSortingControls =
+    sortingConfig.mode !== 'disabled' ? (
+      <div className="grid gap-3 rounded-lg border border-border bg-muted/30 p-3 sm:hidden">
+        <label className="grid gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {sortingConfig.labels.field}
+          <Select
+            value={activeSorting?.id ?? ''}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              if (!nextId) {
+                handleSortingChange([]);
+                return;
+              }
+              handleSortingChange([{ id: nextId, desc: false }]);
+            }}
+          >
+            {sortingConfig.mode === 'client' ? (
+              <option value="">{sortingConfig.labels.none}</option>
+            ) : null}
+            {sortableColumns.map((column) => (
+              <option key={column.id} value={column.id}>
+                {column.sortLabel}
+              </option>
+            ))}
+          </Select>
+        </label>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {sortingConfig.labels.direction}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!activeSorting}
+            aria-label={`${sortingConfig.labels.direction}: ${
+              activeSorting?.desc ? sortingConfig.labels.descending : sortingConfig.labels.ascending
+            }`}
+            onClick={() => {
+              if (activeSorting) {
+                handleSortingChange([{ ...activeSorting, desc: !activeSorting.desc }]);
+              }
+            }}
+          >
+            <SortIcon direction={activeSorting ? (activeSorting.desc ? 'desc' : 'asc') : false} />
+          </Button>
+        </div>
+      </div>
+    ) : null;
 
   const selectedRows = table.getSelectedRowModel().rows.map((row) => row.original);
   const hasToolbar = bulkActions.length > 0 || toolbarStart || toolbarCenter || toolbarEnd;
@@ -344,9 +478,18 @@ export function StudioDataTable<TData>({
     <div className="flex flex-col gap-3 border-b border-border px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
       {toolbarCenter ? (
         <>
-          <div className="flex flex-wrap items-center gap-2">{bulkActionsContent}{toolbarStart}</div>
-          <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-center">{toolbarCenter}</div>
-          {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : <div className="hidden lg:block" />}
+          <div className="flex flex-wrap items-center gap-2">
+            {bulkActionsContent}
+            {toolbarStart}
+          </div>
+          <div className="flex flex-1 flex-wrap items-center gap-2 lg:justify-center">
+            {toolbarCenter}
+          </div>
+          {toolbarEnd ? (
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div>
+          ) : (
+            <div className="hidden lg:block" />
+          )}
         </>
       ) : (
         <>
@@ -354,12 +497,16 @@ export function StudioDataTable<TData>({
             {bulkActionsContent}
             {toolbarStart}
           </div>
-          {toolbarEnd ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div> : null}
+          {toolbarEnd ? (
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">{toolbarEnd}</div>
+          ) : null}
         </>
       )}
     </div>
   ) : null;
-  const footerContent = footer ? <div className="border-t border-border px-4 py-4">{footer}</div> : null;
+  const footerContent = footer ? (
+    <div className="border-t border-border px-4 py-4">{footer}</div>
+  ) : null;
 
   if (isLoading) {
     return (
@@ -384,7 +531,13 @@ export function StudioDataTable<TData>({
   }
 
   return (
-    <div ref={containerRef} className="overflow-hidden rounded-xl border border-border bg-card shadow-shell" aria-busy="false" data-selected-rows={selectedRowCount} data-layout={isCompact ? 'compact' : 'wide'}>
+    <div
+      ref={containerRef}
+      className="overflow-hidden rounded-xl border border-border bg-card shadow-shell"
+      aria-busy="false"
+      data-selected-rows={selectedRowCount}
+      data-layout={isCompact ? 'compact' : 'wide'}
+    >
       {toolbarContent}
 
       <div className={isCompact ? 'hidden' : 'overflow-x-auto'}>
@@ -394,14 +547,19 @@ export function StudioDataTable<TData>({
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
-                  const meta = header.column.columnDef.meta as { headerClassName?: string } | undefined;
+                  const meta = header.column.columnDef.meta as
+                    { headerClassName?: string } | undefined;
 
                   return (
                     <th
                       key={header.id}
                       scope="col"
                       className={cn('px-3 py-3', meta?.headerClassName)}
-                      aria-sort={header.column.getCanSort() ? getAriaSort(header.column.getIsSorted()) : undefined}
+                      aria-sort={
+                        header.column.getCanSort()
+                          ? getAriaSort(header.column.getIsSorted())
+                          : undefined
+                      }
                     >
                       {renderHeaderCellContent(header)}
                     </th>
@@ -431,12 +589,19 @@ export function StudioDataTable<TData>({
       </div>
 
       <div className={isCompact ? 'space-y-3 p-3' : 'hidden'}>
+        {mobileSortingControls}
         {table.getRowModel().rows.map((row) => (
-          <article key={row.id} className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell">
+          <article
+            key={row.id}
+            className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
+          >
             {selectionMode === 'multiple' ? (
               <div className="mb-3 flex justify-end">
                 <Checkbox
-                  aria-label={(labels.selectMobileRow ?? labels.selectRow)({ label: ariaLabel, rowId: row.id })}
+                  aria-label={(labels.selectMobileRow ?? labels.selectRow)({
+                    label: ariaLabel,
+                    rowId: row.id,
+                  })}
                   checked={row.getIsSelected()}
                   disabled={!row.getCanSelect()}
                   ref={undefined}
@@ -450,11 +615,14 @@ export function StudioDataTable<TData>({
                   return null;
                 }
 
-                const meta = cell.column.columnDef.meta as { mobileClassName?: string; mobileLabel?: React.ReactNode } | undefined;
+                const meta = cell.column.columnDef.meta as
+                  { mobileClassName?: string; mobileLabel?: React.ReactNode } | undefined;
 
                 return (
                   <div key={cell.id} className={cn('grid gap-1', meta?.mobileClassName)}>
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">{meta?.mobileLabel}</span>
+                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                      {meta?.mobileLabel}
+                    </span>
                     <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                   </div>
                 );

@@ -26,6 +26,7 @@ export type AuthRoutePath =
   | '/api/v1/iam/users/me/profile'
   | '/api/v1/iam/organizations'
   | '/api/v1/iam/organizations/$organizationId'
+  | '/api/v1/iam/organizations/$organizationId/provision-mainserver'
   | '/api/v1/iam/organizations/$organizationId/memberships'
   | '/api/v1/iam/organizations/$organizationId/memberships/$accountId'
   | '/api/v1/iam/me/context'
@@ -122,6 +123,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/tour-date-shifts'
   | '/api/v1/waste-management/tour-date-shifts/$shiftId'
   | '/api/v1/waste-management/tours'
+  | '/api/v1/waste-management/tours/bulk-validity'
   | '/api/v1/waste-management/tours/$tourId'
   | '/api/v1/waste-management/settings'
   | '/api/v1/waste-management/settings/holiday-sync'
@@ -165,6 +167,7 @@ export const authRoutePaths = [
   '/api/v1/iam/users/me/profile',
   '/api/v1/iam/organizations',
   '/api/v1/iam/organizations/$organizationId',
+  '/api/v1/iam/organizations/$organizationId/provision-mainserver',
   '/api/v1/iam/organizations/$organizationId/memberships',
   '/api/v1/iam/organizations/$organizationId/memberships/$accountId',
   '/api/v1/iam/me/context',
@@ -261,6 +264,7 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tour-date-shifts',
   '/api/v1/waste-management/tour-date-shifts/$shiftId',
   '/api/v1/waste-management/tours',
+  '/api/v1/waste-management/tours/bulk-validity',
   '/api/v1/waste-management/tours/$tourId',
   '/api/v1/waste-management/settings',
   '/api/v1/waste-management/settings/holiday-sync',

@@ -102,22 +102,23 @@ const UserDisplayNameCell = ({ user }: { user: UserListUser }) => {
       ? mainserverCredentialWarningTranslationKey[status]
       : undefined;
 
-  if (!warningTranslationKey) {
-    return user.displayName;
-  }
-
-  const warningLabel = t(warningTranslationKey);
+  const warningLabel = warningTranslationKey ? t(warningTranslationKey) : undefined;
   return (
-    <span className="inline-flex items-center gap-2">
+    <span className="inline-flex flex-wrap items-center gap-2">
       <span>{user.displayName}</span>
-      <span
-        role="img"
-        aria-label={warningLabel}
-        title={warningLabel}
-        className="inline-flex text-amber-600"
-      >
-        <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
-      </span>
+      {user.isTechnicalAccount ? (
+        <Badge variant="outline">{t('admin.users.messages.technicalAccountBadge')}</Badge>
+      ) : null}
+      {warningLabel ? (
+        <span
+          role="img"
+          aria-label={warningLabel}
+          title={warningLabel}
+          className="inline-flex text-amber-600"
+        >
+          <IconAlertTriangle aria-hidden="true" className="h-4 w-4 stroke-current" />
+        </span>
+      ) : null}
     </span>
   );
 };
@@ -187,22 +188,16 @@ const buildUserColumns = (
     id: 'displayName',
     header: t('admin.users.table.headerName'),
     cell: (user) => <UserDisplayNameCell user={user} />,
-    sortable: true,
-    sortValue: (user) => user.displayName.toLowerCase(),
   },
   {
     id: 'email',
     header: t('admin.users.table.headerEmail'),
     cell: (user) => user.email ?? '-',
-    sortable: true,
-    sortValue: (user) => (user.email ?? '').toLowerCase(),
   },
   {
     id: 'role',
     header: t('admin.users.table.headerRole'),
     cell: (user) => user.roles[0]?.roleName ?? '-',
-    sortable: true,
-    sortValue: (user) => (user.roles[0]?.roleName ?? '').toLowerCase(),
   },
   {
     id: 'status',
@@ -216,22 +211,16 @@ const buildUserColumns = (
         onStatusAction={onStatusAction}
       />
     ),
-    sortable: true,
-    sortValue: (user) => user.status,
   },
   {
     id: 'keycloak',
     header: t('admin.users.table.headerKeycloak'),
     cell: (user) => <UserKeycloakCell user={user} />,
-    sortable: true,
-    sortValue: (user) => `${user.mappingStatus ?? 'mapped'}:${user.editability ?? 'editable'}`,
   },
   {
     id: 'lastLoginAt',
     header: t('admin.users.table.headerLastLogin'),
     cell: (user) => user.lastLoginAt ?? '-',
-    sortable: true,
-    sortValue: (user) => user.lastLoginAt ?? '',
   },
 ];
 
@@ -260,6 +249,17 @@ const UserListToolbarStart = ({ usersApi }: { usersApi: UsersApiState }) => (
         <option value="inactive">{t('admin.users.filters.statusInactive')}</option>
         <option value="pending">{t('admin.users.filters.statusPending')}</option>
       </Select>
+    </div>
+    <div className="flex items-center gap-2 self-end py-2 text-sm text-foreground">
+      <Switch
+        id="users-include-technical-accounts"
+        checked={usersApi.filters.includeTechnicalAccounts}
+        onCheckedChange={usersApi.setIncludeTechnicalAccounts}
+        aria-label={t('admin.users.filters.includeTechnicalAccounts')}
+      />
+      <Label htmlFor="users-include-technical-accounts">
+        {t('admin.users.filters.includeTechnicalAccounts')}
+      </Label>
     </div>
   </>
 );
@@ -630,6 +630,7 @@ export const UserListPage = () => {
             isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel'
           )}
           labels={studioDataTableLabels}
+          sorting={{ mode: 'disabled' }}
           caption={t(
             isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption'
           )}

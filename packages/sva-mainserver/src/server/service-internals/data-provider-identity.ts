@@ -20,7 +20,7 @@ const identityResponseSchema = z
   .object({
     data_provider: z
       .object({
-        id: z.union([z.string(), z.number().int()]).nullish(),
+        id: z.union([z.string(), z.number().int()]),
         name: z.string().nullish(),
       })
       .passthrough(),
@@ -110,12 +110,24 @@ export const createDataProviderIdentityOperation =
 
         const id = normalizeIdentifier(parsed.data.data_provider.id);
         const name = normalizeIdentifier(parsed.data.data_provider.name);
+        if (!id) {
+          logger.warn('SVA Mainserver DataProvider identity response has no stable id', {
+            ...buildLogContext(connection, {
+              operation: 'load_data_provider_identity',
+              error_code: 'invalid_response',
+            }),
+          });
+          throw toSvaMainserverError({
+            code: 'invalid_response',
+            message: 'Ungültige DataProvider-Identity-Antwort des SVA-Mainservers.',
+            statusCode: 502,
+          });
+        }
         return {
           dataProvider: {
-            ...(id ? { id } : {}),
+            id,
             ...(name ? { name } : {}),
           },
-          hasStableId: Boolean(id),
         };
       }
     );

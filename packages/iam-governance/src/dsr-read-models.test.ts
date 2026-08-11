@@ -7,6 +7,7 @@ import {
   loadDsrSelfServiceOverview,
   toCanonicalDsrStatus,
 } from './dsr-read-models';
+import { filterAdminDsrItems, paginateDsrItems } from './dsr-read-models.mappers';
 
 type QueryResult = {
   rowCount: number;
@@ -29,6 +30,45 @@ describe('iam-data-subject-rights/read-models', () => {
     expect(toCanonicalDsrStatus('sent')).toBe('completed');
     expect(toCanonicalDsrStatus('blocked_legal_hold')).toBe('blocked');
     expect(toCanonicalDsrStatus('failed_export')).toBe('failed');
+  });
+
+  it('sorts DSR pages in both directions with missing values last and stable ids', () => {
+    const createItem = (id: string, completedAt?: string) => ({
+      id,
+      type: 'request' as const,
+      canonicalStatus: 'completed' as const,
+      rawStatus: 'completed',
+      title: id,
+      summary: id,
+      createdAt: `2026-01-0${id === 'c' ? '1' : '2'}T00:00:00.000Z`,
+      completedAt,
+      metadata: {},
+    });
+    const items = [
+      createItem('b', '2026-02-02T00:00:00.000Z'),
+      createItem('missing'),
+      createItem('a', '2026-02-02T00:00:00.000Z'),
+      createItem('c', '2026-02-01T00:00:00.000Z'),
+    ];
+
+    const ascending = filterAdminDsrItems(items, {
+      instanceId: 'de-test',
+      page: 1,
+      pageSize: 2,
+      sortBy: 'completedAt',
+      sortDirection: 'asc',
+    });
+    const descending = filterAdminDsrItems(items, {
+      instanceId: 'de-test',
+      page: 1,
+      pageSize: 2,
+      sortBy: 'completedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(paginateDsrItems(ascending, 1, 2).map(({ id }) => id)).toEqual(['c', 'a']);
+    expect(paginateDsrItems(ascending, 2, 2).map(({ id }) => id)).toEqual(['b', 'missing']);
+    expect(descending.map(({ id }) => id)).toEqual(['a', 'b', 'c', 'missing']);
   });
 
   it('loads the self-service overview with requests, exports and legal holds', async () => {

@@ -2,6 +2,7 @@ import {
   readEffectiveSvaMainserverCredentialsWithStatus,
   type EffectiveSvaMainserverCredentialsResult,
 } from './mainserver-effective-credentials.js';
+import type { IamContentAuthorPolicy } from '@sva/core';
 
 export type MainserverActingPrincipalType = 'organization' | 'user';
 
@@ -15,6 +16,7 @@ export type MutationPrincipalContext = Readonly<{
   actingPrincipalId: string;
   credentialSource: MainserverActingPrincipalType;
   credentialFingerprint: string;
+  contentAuthorPolicy?: IamContentAuthorPolicy;
 }>;
 
 export type ResolveMutationPrincipalContextResult =
@@ -64,6 +66,9 @@ export const resolveMutationPrincipalContext = async (input: {
       actingPrincipalId,
       credentialSource: resolved.source,
       credentialFingerprint: resolved.credentialFingerprint,
+      ...(resolved.contentAuthorPolicy
+        ? { contentAuthorPolicy: resolved.contentAuthorPolicy }
+        : {}),
     }),
   };
 };

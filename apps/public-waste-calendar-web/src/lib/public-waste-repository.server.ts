@@ -42,8 +42,6 @@ type SelectionRow = {
 type CalendarEntryRow = {
   readonly link_id: string;
   readonly location_id: string;
-  readonly link_start_date?: string | null;
-  readonly link_end_date?: string | null;
   readonly tour_id: string;
   readonly tour_name: string;
   readonly tour_description: string | null;
@@ -398,8 +396,6 @@ export const createPublicWasteRepository = (input: {
           SELECT
             ltl.id AS link_id,
             ltl.location_id::text,
-            ltl.start_date::text AS link_start_date,
-            ltl.end_date::text AS link_end_date,
             t.id::text AS tour_id,
             t.name AS tour_name,
             t.description AS tour_description,
@@ -590,8 +586,6 @@ export const createPublicWasteRepository = (input: {
           groups.set(row.link_id, {
             linkId: row.link_id,
             locationId: row.location_id,
-            ...(row.link_start_date ? { startDate: row.link_start_date } : {}),
-            ...(row.link_end_date ? { endDate: row.link_end_date } : {}),
             tour: {
               id: row.tour_id,
               name: row.tour_name,
@@ -754,6 +748,7 @@ export const createPublicWasteRepository = (input: {
           ...(row.fraction_color ? { fractionColor: row.fraction_color } : {}),
           ...(row.tour_name.trim() ? { tourName: row.tour_name.trim() } : {}),
           ...(row.tour_description?.trim() ? { tourDescription: row.tour_description.trim() } : {}),
+          ...(shiftedDate !== pickupDate ? { isShifted: true } : {}),
           note,
         });
       }

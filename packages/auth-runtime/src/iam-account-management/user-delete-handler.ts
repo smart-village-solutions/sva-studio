@@ -12,18 +12,28 @@ import type { AuthenticatedRequestContext } from '../middleware.js';
 import { revokeUserSessions } from '../session-revocation.js';
 
 import { createApiError } from './api-helpers.js';
-import { ensureActorCanManageTarget, isSystemAdminAccount, resolveActorMaxRoleLevel } from './shared-actor-authorization.js';
+import {
+  ensureActorCanManageTarget,
+  isSystemAdminAccount,
+  resolveActorMaxRoleLevel,
+} from './shared-actor-authorization.js';
 import { emitActivityLog } from './shared-activity.js';
 import { iamUserOperationsCounter, logger, trackKeycloakCall } from './shared-observability.js';
 import { withInstanceScopedDb } from './shared-runtime.js';
 import { resolveUserDetail } from './user-detail-query.js';
-import { createUnexpectedMutationErrorResponse, createUserMutationErrorResponse } from './user-mutation-errors.js';
+import {
+  createUnexpectedMutationErrorResponse,
+  createUserMutationErrorResponse,
+} from './user-mutation-errors.js';
 import {
   requireUserMutationIdentityProvider,
   resolveUserMutationTargetActorContext,
 } from './user-mutation-request-context.shared.js';
 
-export const resolveDeleteRequestContext = async (request: Request, ctx: AuthenticatedRequestContext) => {
+export const resolveDeleteRequestContext = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+) => {
   const requestContext = getWorkspaceContext();
   return resolveUserMutationTargetActorContext(request, ctx, {
     feature: 'iam_admin',
@@ -42,7 +52,12 @@ const createDeleteMutationErrorResponse = (input: {
   const [code] = message.split(':', 1);
 
   if (code === 'self_protection') {
-    return createApiError(409, 'self_protection', 'Eigener Nutzer kann nicht gelöscht werden.', input.requestId);
+    return createApiError(
+      409,
+      'self_protection',
+      'Eigener Nutzer kann nicht gelöscht werden.',
+      input.requestId
+    );
   }
   if (code === 'system_admin_delete_protection') {
     return createApiError(
@@ -57,6 +72,14 @@ const createDeleteMutationErrorResponse = (input: {
       409,
       'conflict',
       'Aktiver Legal Hold blockiert die Löschung.',
+      input.requestId
+    );
+  }
+  if (code === 'organization_provisioning_delete_protection') {
+    return createApiError(
+      409,
+      'conflict',
+      'Aktive Organisations-Provisionierung blockiert die Löschung.',
       input.requestId
     );
   }
@@ -78,7 +101,8 @@ const createRequestScopedDeleteUserHandler = (
     iamUserOperationsCounter,
     isSystemAdminAccount,
     logger,
-    notFoundResponse: (requestId) => createApiError(404, 'not_found', 'Nutzer nicht gefunden.', requestId),
+    notFoundResponse: (requestId) =>
+      createApiError(404, 'not_found', 'Nutzer nicht gefunden.', requestId),
     assertAccountHardDeletePreconditions,
     purgeAccountHardDeleteBlockers,
     reconcileOwnedContentForAccountDelete,

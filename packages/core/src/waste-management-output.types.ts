@@ -1,13 +1,21 @@
 export type WasteOutputFraction = Readonly<{
   id: string;
   label: string;
+  description?: string;
   shortLabel?: string;
   color: string;
+  isShifted?: boolean;
 }>;
 
 export type WasteOutputPickupEntry = Readonly<{
   date: string;
   fractions: readonly WasteOutputFraction[];
+}>;
+
+export type WasteOutputLegendHint = Readonly<{
+  id: string;
+  label: string;
+  description: string;
 }>;
 
 export type WasteCalendarPdfBrandingImage = Readonly<{
@@ -19,6 +27,7 @@ export type WasteCalendarPdfBrandingImage = Readonly<{
 type WasteCalendarPdfEntry = Readonly<{
   code: string;
   fillColor: readonly [red: number, green: number, blue: number];
+  isShifted: boolean;
 }>;
 
 type WasteCalendarPdfDay = Readonly<{
@@ -36,21 +45,38 @@ type WasteCalendarPdfMonth = Readonly<{
   days: readonly WasteCalendarPdfDay[];
 }>;
 
-type WasteCalendarPdfLegendEntry = Readonly<{
+type WasteCalendarPdfFractionLegendEntry = Readonly<{
+  kind: 'fraction';
   code: string;
   label: string;
+  description?: string;
   fillColor: readonly [red: number, green: number, blue: number];
 }>;
+
+type WasteCalendarPdfHintLegendEntry = Readonly<{
+  kind: 'hint';
+  label: string;
+  description: string;
+}>;
+
+type WasteCalendarPdfShiftLegendEntry = Readonly<{
+  kind: 'shift';
+  label: string;
+}>;
+
+type WasteCalendarPdfLegendEntry =
+  | WasteCalendarPdfFractionLegendEntry
+  | WasteCalendarPdfHintLegendEntry
+  | WasteCalendarPdfShiftLegendEntry;
 
 type WasteCalendarPdfPage = Readonly<{
   title: string;
   locationLabel: string;
+  contactBlock?: string;
   brandingPlaceholderLabel: string;
   brandingImage?: WasteCalendarPdfBrandingImage;
   months: readonly WasteCalendarPdfMonth[];
   legend: readonly WasteCalendarPdfLegendEntry[];
-  notes: readonly string[];
-  footerLine: string;
 }>;
 
 export type WasteCalendarPdfDocument = Readonly<{

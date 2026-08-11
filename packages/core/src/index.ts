@@ -280,6 +280,15 @@ export type {
   WasteTourListFilter,
   WasteTourRecurrence,
   WasteTourRecord,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityBulkUpdateResult,
+  WasteTourValidityDateOperation,
+  WasteTourValidityDates,
+  WasteTourValidityRecord,
+} from './waste-management-master-data.js';
+export {
+  isWasteTourValidityApplicable,
+  resolveWasteTourValidityDates,
 } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export {
@@ -289,6 +298,7 @@ export {
 export type {
   WasteCalendarPdfBrandingImage,
   WasteCalendarPdfDocument,
+  WasteOutputLegendHint,
   WasteOutputPickupEntry,
   WasteOutputFraction,
 } from './waste-management-output.types.js';

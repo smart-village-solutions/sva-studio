@@ -21,5 +21,7 @@ Das System MUST Cockpit Cards über den vorhandenen Mainserver-GenericItem-Trans
 #### Scenario: Schreibvertrag wird serverseitig erzwungen
 
 - **WHEN** eine Cockpit Card angelegt oder aktualisiert wird
-- **THEN** erzwingt der Host `genericType` gleich `COCKPIT_CARD`, genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link
+- **THEN** erzwingt der Host `genericType` gleich `COCKPIT_CARD`, genau eine Kategorie, ausschließlich gültige optionale HTTPS-Bilder und höchstens einen HTTPS-Link
+- **AND** normalisiert er das Öffnungsverhalten ohne Link auf `false`
+- **AND** erhält er bei Updates `externalId`, unbekannte Payload-Schlüssel und unterstützte Medienmetadaten
 - **AND** weist er fachfremde GenericItem-Felder ab

@@ -6,7 +6,9 @@ import {
 
 import { toSvaMainserverError, type GraphqlExecutor } from './shared.js';
 
-export const createGenericItemVisibilityOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
+export const createGenericItemVisibilityOperations = (
+  executeGraphqlWithConfig: GraphqlExecutor
+) => ({
   changeGenericItemVisibilityWithConfig: async (
     input: SvaMainserverConnectionInput & {
       readonly genericItemId: string;
@@ -18,7 +20,7 @@ export const createGenericItemVisibilityOperations = (executeGraphqlWithConfig: 
       {
         ...input,
         document: svaMainserverChangeNewsVisibilityDocument,
-        operationName: 'SvaMainserverChangeGenericItemVisibility',
+        operationName: 'SvaMainserverChangeNewsVisibility',
         variables: {
           id: input.genericItemId,
           recordType: 'GenericItem',

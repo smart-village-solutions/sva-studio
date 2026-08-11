@@ -15,6 +15,14 @@ const hasGovernanceComplianceExportRoleMock = vi.fn();
 const hasIamCockpitAccessRoleMock = vi.fn();
 const isIamCockpitEnabledMock = vi.fn();
 
+const withListPagination = <T extends { readonly data: readonly unknown[] }>(response: T) => ({
+  ...response,
+  pagination:
+    'pagination' in response
+      ? response.pagination
+      : { page: 1, pageSize: 25, total: response.data.length },
+});
+
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => useNavigateMock,
 }));
@@ -32,8 +40,10 @@ vi.mock('../../providers/effective-access-provider', () => ({
 
 vi.mock('../../lib/iam-api', () => ({
   fetchWithRequestTimeout: (...args: Parameters<typeof fetch>) => fetch(...args),
-  listGovernanceCases: (...args: unknown[]) => listGovernanceCasesMock(...args),
-  listAdminDsrCases: (...args: unknown[]) => listAdminDsrCasesMock(...args),
+  listGovernanceCases: async (...args: unknown[]) =>
+    withListPagination(await listGovernanceCasesMock(...args)),
+  listAdminDsrCases: async (...args: unknown[]) =>
+    withListPagination(await listAdminDsrCasesMock(...args)),
   getAdminDeletionRules: (...args: unknown[]) => getAdminDeletionRulesMock(...args),
   saveAdminDeletionRules: (...args: unknown[]) => saveAdminDeletionRulesMock(...args),
 }));
@@ -420,6 +430,75 @@ describe('IamViewerPage', () => {
       expect(screen.getAllByText('Delegation freigeben')).toHaveLength(2);
     });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('controls governance sorting and pagination through the server query', async () => {
+    listGovernanceCasesMock.mockResolvedValue({
+      data: [
+        {
+          id: 'gov-page-1',
+          type: 'delegation',
+          status: 'open',
+          title: 'Seitentest',
+          summary: 'Seitentest',
+          createdAt: '2026-03-15T10:00:00.000Z',
+          updatedAt: '2026-03-16T10:00:00.000Z',
+          metadata: {},
+        },
+      ],
+      pagination: { page: 1, pageSize: 25, total: 75 },
+    });
+    useAuthMock.mockReturnValue({
+      user: { ...adminUser, roles: ['security_admin'] },
+      isLoading: false,
+      error: null,
+      refreshSession: vi.fn(),
+    });
+    isIamCockpitEnabledMock.mockReturnValue(true);
+    hasGovernanceComplianceExportRoleMock.mockReturnValue(true);
+    hasIamCockpitAccessRoleMock.mockReturnValue(true);
+    getAllowedIamCockpitTabsMock.mockReturnValue(['governance']);
+
+    render(<IamViewerPage activeTab="governance" />);
+
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          page: 1,
+          pageSize: 25,
+          sortBy: 'createdAt',
+          sortDirection: 'desc',
+        }),
+        expect.anything()
+      );
+    });
+    expect(screen.getByText('75 Einträge')).toBeTruthy();
+    const pageSize = screen.getByLabelText('Einträge pro Seite') as HTMLSelectElement;
+    expect(Array.from(pageSize.options).map(({ value }) => value)).toEqual(['25', '50', '100']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+        expect.anything()
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Aktualisiert' }));
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, sortBy: 'updatedAt' }),
+        expect.anything()
+      );
+    });
+
+    fireEvent.change(pageSize, { target: { value: '50' } });
+    await waitFor(() => {
+      expect(listGovernanceCasesMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, pageSize: 50, sortBy: 'updatedAt' }),
+        expect.anything()
+      );
+    });
   });
 
   it('renders a governance CSV export link without list filters', async () => {

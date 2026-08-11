@@ -577,7 +577,10 @@ describe('waste management helper modules', () => {
       setLocationDialogOpen: vi.fn(),
       setBulkAssignmentsForm: vi.fn(),
       setBulkAssignmentsDialogOpen: vi.fn(),
-      setSelectedLocationIds: vi.fn((updater: (current: readonly string[]) => readonly string[]) => updater(['location-2'])),
+      setSelectedLocationIds: vi.fn(
+        (next: readonly string[] | ((current: readonly string[]) => readonly string[])) =>
+          typeof next === 'function' ? next(['location-2']) : next
+      ),
     } as const;
 
     const entityActions = createWasteMasterDataEntityActions(state as never, { cityId: 'city-99' });
@@ -653,12 +656,14 @@ describe('waste management helper modules', () => {
     locationActions.openBulkAssignmentsDialog();
     locationActions.toggleLocationSelection('location-1', true);
     locationActions.toggleLocationSelection('location-2', false);
+    locationActions.replaceLocationSelection(['location-2', 'location-2', 'location-3']);
     locationActions.toggleSelectAllFilteredLocations(true);
     locationActions.toggleSelectAllFilteredLocations(false);
 
     expect(state.setLocationForm).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'region-7', cityId: 'city-7' }));
     expect(state.setBulkAssignmentsForm).toHaveBeenCalledWith(expect.objectContaining({ tourId: 'tour-1' }));
-    expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(4);
+    expect(state.setSelectedLocationIds).toHaveBeenCalledWith(['location-2', 'location-3']);
+    expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(5);
   });
 
   it('covers waste tours dialog and selection actions', async () => {

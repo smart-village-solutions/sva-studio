@@ -1,8 +1,31 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
+import {
+  loadMappedUsersBySubject,
+  loadTechnicalAccountSubjects,
+} from './tenant-keycloak-user-query.js';
 
 describe('tenant-keycloak-user-query', () => {
+  it('loads only the technical-account subjects needed for Keycloak filtering', async () => {
+    const client = {
+      query: vi.fn(async () => ({
+        rows: [{ keycloak_subject: 'technical-1' }, { keycloak_subject: 'technical-2' }],
+      })),
+    };
+
+    await expect(
+      loadTechnicalAccountSubjects(client, { instanceId: 'de-musterhausen' })
+    ).resolves.toEqual(new Set(['technical-1', 'technical-2']));
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE a.is_technical_account = TRUE'),
+      ['de-musterhausen']
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('json_agg'),
+      expect.anything()
+    );
+  });
+
   it('skips the database when no subjects are requested', async () => {
     const client = {
       query: vi.fn(),

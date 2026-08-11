@@ -7,6 +7,7 @@ import {
   type WasteToursFilterDate,
   type WasteToursFilterFraction,
   type WasteToursFilterStatus,
+  type WasteToursFilterValidityPeriod,
   useWasteToursDraftFiltersState,
 } from './waste-management.tours.filter-state.js';
 
@@ -18,6 +19,7 @@ type UseWasteToursSelectionStateArgs = {
   readonly pageSize: number;
   readonly query: string;
   readonly status: WasteToursFilterStatus;
+  readonly tourValidityPeriod: WasteToursFilterValidityPeriod;
   readonly tourWasteFractionId: WasteToursFilterFraction;
   readonly firstDateFrom: WasteToursFilterDate;
   readonly firstDateTo: WasteToursFilterDate;
@@ -74,6 +76,7 @@ export const useWasteToursSelectionState = ({
   pageSize,
   query,
   status,
+  tourValidityPeriod,
   tourWasteFractionId,
   firstDateFrom,
   firstDateTo,
@@ -83,12 +86,15 @@ export const useWasteToursSelectionState = ({
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [tourPendingDelete, setTourPendingDelete] = useState<WasteTourRecord | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkValidityOpen, setBulkValidityOpen] = useState(false);
   const visibleSelectionState = useWasteToursVisibleSelectionState({ tours, page, pageSize });
   const {
     draftQuery,
     setDraftQuery,
     draftStatus,
     setDraftStatus,
+    draftTourValidityPeriod,
+    setDraftTourValidityPeriod,
     draftTourWasteFractionId,
     setDraftTourWasteFractionId,
     draftFirstDateFrom,
@@ -105,6 +111,7 @@ export const useWasteToursSelectionState = ({
     filterDialogOpen,
     query,
     status,
+    tourValidityPeriod,
     tourWasteFractionId,
     firstDateFrom,
     firstDateTo,
@@ -120,6 +127,8 @@ export const useWasteToursSelectionState = ({
     setDraftQuery,
     draftStatus,
     setDraftStatus,
+    draftTourValidityPeriod,
+    setDraftTourValidityPeriod,
     draftTourWasteFractionId,
     setDraftTourWasteFractionId,
     draftFirstDateFrom,
@@ -136,6 +145,8 @@ export const useWasteToursSelectionState = ({
     setTourPendingDelete,
     bulkDeleteOpen,
     setBulkDeleteOpen,
+    bulkValidityOpen,
+    setBulkValidityOpen,
   };
 };
 

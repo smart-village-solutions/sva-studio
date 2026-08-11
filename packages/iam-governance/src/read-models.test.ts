@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getGovernanceCase, listGovernanceCases } from './read-models.js';
+import { filterGovernanceItems, paginateGovernanceItems } from './read-models.mappers.js';
 
 type QueryResult = {
   rowCount: number;
@@ -267,6 +268,72 @@ describe('iam-governance/read-models', () => {
         requestOrigin: 'self_service',
       },
     });
+  });
+
+  it('sorts governance pages in both directions with missing values last and stable ids', () => {
+    const items = [
+      {
+        id: 'b',
+        type: 'delegation' as const,
+        status: 'open',
+        title: 'B',
+        summary: 'B',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-02-02T00:00:00.000Z',
+        metadata: {},
+      },
+      {
+        id: 'missing',
+        type: 'delegation' as const,
+        status: 'open',
+        title: 'Missing',
+        summary: 'Missing',
+        createdAt: '2026-01-04T00:00:00.000Z',
+        metadata: {},
+      },
+      {
+        id: 'a',
+        type: 'delegation' as const,
+        status: 'open',
+        title: 'A',
+        summary: 'A',
+        createdAt: '2026-01-03T00:00:00.000Z',
+        updatedAt: '2026-02-02T00:00:00.000Z',
+        metadata: {},
+      },
+      {
+        id: 'c',
+        type: 'delegation' as const,
+        status: 'open',
+        title: 'C',
+        summary: 'C',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-02-01T00:00:00.000Z',
+        metadata: {},
+      },
+    ];
+
+    const ascending = filterGovernanceItems(items, {
+      instanceId: 'de-test',
+      page: 1,
+      pageSize: 2,
+      sortBy: 'updatedAt',
+      sortDirection: 'asc',
+    });
+    const descending = filterGovernanceItems(items, {
+      instanceId: 'de-test',
+      page: 1,
+      pageSize: 2,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+
+    expect(paginateGovernanceItems(ascending, 1, 2).map(({ id }) => id)).toEqual(['c', 'a']);
+    expect(paginateGovernanceItems(ascending, 2, 2).map(({ id }) => id)).toEqual([
+      'b',
+      'missing',
+    ]);
+    expect(descending.map(({ id }) => id)).toEqual(['a', 'b', 'c', 'missing']);
   });
 
   it('returns a governance case by id and short-circuits missing ids', async () => {

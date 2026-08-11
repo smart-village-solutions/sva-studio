@@ -23,25 +23,26 @@ Der tatsächlich handelnde Account SHALL bei Erstellen, Aktualisieren, Veröffen
 #### Scenario: Autorisierung verwendet credential-sichtbare Kompatibilität
 
 - **GIVEN** die für `own` oder `organization` erforderlichen aktuellen Bindungen fehlen oder sind konfliktbehaftet
+- **AND** der Resolver läuft explizit in `shadow` oder `compatibility`
 - **WHEN** Studio einen credential-sichtbaren Inhalt autorisiert
 - **THEN** enthält der Audit-Nachweis `authorizationMode = credential_visible_compatibility`
 - **AND** dokumentiert er Principal, Credential-Fingerprint, Action, Pre-Read-Ergebnis, Provider-Outcome und Operationsreferenz
 - **AND** legt eine Metrik die fortbestehende Nutzung des Modus offen
 
-#### Scenario: Create erzeugt automatische Bindung
+#### Scenario: Identity-Nachweis erzeugt automatische Bindung
 
-- **GIVEN** ein Studio-Create liefert mit gebundenem Credential einen DataProvider
+- **GIVEN** der authentifizierte Identity-Endpunkt liefert für das gebundene Credential einen DataProvider
 - **WHEN** Studio die Principal-Bindung erzeugt oder bestätigt
 - **THEN** auditiert es Principal-Typ, Credential-Fingerprint, DataProvider, Evidenzquelle, Ergebnis und Operationsreferenz
 - **AND** speichert keine Credential-Geheimnisse oder DataProvider-Kontaktdaten
 
 #### Scenario: Automatische Beobachtung erzeugt Konflikt
 
-- **GIVEN** Create- oder Identity-Evidenz widerspricht einer bestehenden Bindung
+- **GIVEN** Identity- oder nachgelagerte Create-Evidenz widerspricht einer bestehenden Bindung
 - **WHEN** Studio den Konflikt persistiert
 - **THEN** auditiert es beide technischen Provider-Referenzen, Principal, Credential-Fingerprint und Korrelationsreferenz
 - **AND** überschreibt es keine Bindung
-- **AND** bleibt der betroffene Scope im Kompatibilitätsmodus
+- **AND** bleibt der automatische Resolver für den betroffenen Scope fail-closed
 
 #### Scenario: Scope wechselt automatisch zur exakten Auswertung
 

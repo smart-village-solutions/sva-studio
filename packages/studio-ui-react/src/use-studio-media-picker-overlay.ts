@@ -7,6 +7,7 @@ import { useStudioMediaPickerOverlayState } from './use-studio-media-picker-over
 
 export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPickerAssetDetail>({
   canAcceptAsset,
+  editableMetadataFields,
   isSupportedUploadFile,
   loadAsset,
   onAccept,
@@ -16,6 +17,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
   const state = useStudioMediaPickerOverlayState();
   const actions = useStudioMediaPickerOverlayActions<TAssetDetail>(state, {
     canAcceptAsset,
+    editableMetadataFields,
     isSupportedUploadFile,
     loadAsset,
     onAccept,

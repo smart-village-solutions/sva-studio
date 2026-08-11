@@ -7,7 +7,10 @@ import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../components/studio-data-table-labels';
 import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { instanceInterfaceTypeMeta, type InstanceInterface } from '../../lib/instance-interfaces';
@@ -101,6 +104,7 @@ export const InterfacesPage = () => {
     onSaveDraft,
   } = useInterfacesPageController();
   const labels = createStudioDataTableLabels();
+  const sortingLabels = createStudioDataTableSortingLabels();
 
   const columns = React.useMemo<readonly StudioColumnDef<InstanceInterface>[]>(
     () => [
@@ -109,6 +113,7 @@ export const InterfacesPage = () => {
         header: t('interfaces.table.headerName'),
         cell: (row) => row.name,
         sortable: true,
+        sortLabel: t('interfaces.table.headerName'),
         sortValue: (row) => row.name.toLowerCase(),
       },
       {
@@ -116,6 +121,7 @@ export const InterfacesPage = () => {
         header: t('interfaces.table.headerType'),
         cell: (row) => t(instanceInterfaceTypeMeta[row.type].titleKey),
         sortable: true,
+        sortLabel: t('interfaces.table.headerType'),
         sortValue: (row) => row.type,
       },
       {
@@ -146,6 +152,7 @@ export const InterfacesPage = () => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('interfaces.table.headerStatus'),
         sortValue: (row) => row.status,
       },
       {
@@ -154,6 +161,7 @@ export const InterfacesPage = () => {
         cell: (row) =>
           row.lastCheckedAt ? (formatEditorDateTime(row.lastCheckedAt) ?? row.lastCheckedAt) : '-',
         sortable: true,
+        sortLabel: t('interfaces.table.headerLastChecked'),
         sortValue: (row) => row.lastCheckedAt ?? '',
       },
     ],
@@ -205,6 +213,7 @@ export const InterfacesPage = () => {
           caption={t('interfaces.table.caption')}
           data={interfaces}
           columns={columns}
+          sorting={{ mode: 'client', labels: sortingLabels }}
           getRowId={(row) => row.id}
           selectionMode="none"
           isLoading={isLoading}

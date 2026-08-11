@@ -8,7 +8,10 @@ import React from 'react';
 import { Link } from '@tanstack/react-router';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -53,6 +56,7 @@ const editabilityLabelKey = {
 
 export const RolesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
+  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const rolesApi = useRoles();
   const access = useIamResourceAccess('role');
   const canCreateRoles = isIamAccessAllowed(access.create);
@@ -103,6 +107,7 @@ export const RolesPage = () => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('admin.roles.table.headerName'),
         sortValue: (role) => role.roleName.toLowerCase(),
       },
       {
@@ -160,6 +165,7 @@ export const RolesPage = () => {
         header: t('admin.roles.table.headerPermissions'),
         cell: (role) => String(role.permissions.length),
         sortable: true,
+        sortLabel: t('admin.roles.table.headerPermissions'),
         sortValue: (role) => role.permissions.length,
       },
       {
@@ -167,6 +173,7 @@ export const RolesPage = () => {
         header: t('admin.roles.table.headerUserCount'),
         cell: (role) => String(role.memberCount),
         sortable: true,
+        sortLabel: t('admin.roles.table.headerUserCount'),
         sortValue: (role) => role.memberCount,
       },
     ],
@@ -224,6 +231,7 @@ export const RolesPage = () => {
           )}
           data={filteredRoles}
           columns={roleColumns}
+          sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
           getRowId={(role) => role.id}
           selectionMode="none"
           isLoading={rolesApi.isLoading}

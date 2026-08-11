@@ -36,6 +36,8 @@ const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 const isContentStatus = (value: string): value is IamContentStatus =>
   (iamContentStatuses as readonly string[]).includes(value);
 
+class InvalidContentListQueryError extends Error {}
+
 const readContentListQuery = (request: Request): IamContentListQuery => {
   const url = new URL(request.url);
   const { page, pageSize } = readPage(request);
@@ -48,6 +50,14 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
     .getAll('visibleType')
     .map((value) => value.trim())
     .filter((value) => value.length > 0);
+
+  if (
+    (sortByValue !== undefined && !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
+    (sortDirectionValue !== undefined &&
+      !(iamContentListSortDirections as readonly string[]).includes(sortDirectionValue))
+  ) {
+    throw new InvalidContentListQueryError();
+  }
 
   return {
     page,
@@ -115,6 +125,14 @@ export const listContentsInternal = async (
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
+    if (error instanceof InvalidContentListQueryError) {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Ungültige Sortierparameter.',
+        actorResolution.actor.requestId
+      );
+    }
     logger.error('Content list query failed', {
       operation: 'content_list',
       instance_id: actorResolution.actor.instanceId,

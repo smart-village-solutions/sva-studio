@@ -65,6 +65,7 @@ export const mapUnmappedKeycloakUser = (
     displayName: resolveDisplayName(user),
     email: user.email,
     status: mapKeycloakUserStatus(user),
+    isTechnicalAccount: false,
     mappingStatus: 'unmapped',
     editability: 'blocked',
     diagnostics,

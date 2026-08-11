@@ -37,6 +37,8 @@ export const createWasteMasterDataLocationActions = (
     state.setSelectedLocationIds((current) =>
       checked ? (current.includes(locationId) ? current : [...current, locationId]) : current.filter((id) => id !== locationId)
     ),
+  replaceLocationSelection: (locationIds: readonly string[]) =>
+    state.setSelectedLocationIds(Array.from(new Set(locationIds))),
   toggleSelectAllFilteredLocations: (checked: boolean) =>
     state.setSelectedLocationIds((current) => {
       if (!checked) {

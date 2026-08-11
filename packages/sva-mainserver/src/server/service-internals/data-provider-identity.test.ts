@@ -37,7 +37,6 @@ describe('DataProvider identity operation', () => {
 
     await expect(operation(connection, config)).resolves.toEqual({
       dataProvider: { id: '42', name: 'Redaktion' },
-      hasStableId: true,
     });
     expect(fetchWithRetry).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -51,18 +50,20 @@ describe('DataProvider identity operation', () => {
     );
   });
 
-  it('treats a valid response without id as the expected compatibility state', async () => {
+  it.each([
+    { data_provider: { name: 'Redaktion', description: 'Nicht übernehmen' } },
+    { data_provider: { id: null, name: 'Redaktion' } },
+    { data_provider: { id: '   ', name: 'Redaktion' } },
+  ])('rejects an identity response without a stable id', async (body) => {
     const operation = createDataProviderIdentityOperation({
-      fetchWithRetry: vi.fn(async () =>
-        Response.json({ data_provider: { name: 'Redaktion', description: 'Nicht übernehmen' } })
-      ),
+      fetchWithRetry: vi.fn(async () => Response.json(body)),
       loadAccessToken: vi.fn(async () => 'token'),
     });
 
-    await expect(operation(connection, config)).resolves.toEqual({
-      dataProvider: { name: 'Redaktion' },
-      hasStableId: false,
-    });
+    await expect(operation(connection, config)).rejects.toMatchObject({
+      code: 'invalid_response',
+      statusCode: 502,
+    } satisfies Partial<SvaMainserverError>);
   });
 
   it('rejects a structurally invalid body without exposing it', async () => {

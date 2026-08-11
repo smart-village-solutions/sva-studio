@@ -679,7 +679,7 @@ Das System SHALL im Tourenbereich eine Duplizierungsaktion bereitstellen, die de
 - **GIVEN** eine vorhandene Tour in der Tourentabelle
 - **WHEN** ein berechtigter Benutzer die Aktion `Duplizieren` ausführt
 - **THEN** öffnet das System den bestehenden Tour-Create-View
-- **AND** das Formular ist mit den Stammdaten der Quell-Tour vorbelegt
+- **AND** das Formular ist mit allen Stammdaten einschließlich Turnus, individuellen Terminen und Gültigkeitsdaten der Quell-Tour vorbelegt
 - **AND** der Name erhält initial das Suffix ` (Kopie)`
 
 ### Requirement: Waste-Management kopiert abhängige Tour-Beziehungen erst nach dem Speichern
@@ -691,7 +691,8 @@ Das System SHALL Abholort-Zuordnungen und tourbezogene Datumsverschiebungen erst
 
 #### Scenario: Server dupliziert Beziehungen vollständig
 - **WHEN** die neue Tour erfolgreich gespeichert wird
-- **THEN** kopiert das System die Abholort-Zuordnungen und tourbezogenen Datumsverschiebungen der Quell-Tour auf die neue Tour
+- **THEN** kopiert das System die Abholort-Zuordnungen, datumsspezifische Abholort-Zuordnungen und tourbezogene Datumsverschiebungen der Quell-Tour auf die neue Tour
+- **AND** für alle kopierten Abholort-Zuordnungen gilt ausschließlich der Zeitraum der neuen Tour
 - **AND** die Original-Tour bleibt unverändert
 - **AND** Teilerfolge sind nicht zulässig
 
@@ -788,11 +789,30 @@ Das System SHALL bestehende ortsbezogene Tourtermine idempotent in das Einsatzmo
 - **THEN** erzeugt das System pro importiertem Einzeltermin einen Einsatz mit genau einem Abholort
 - **AND** es schreibt keinen neuen Termin ausschließlich in das Legacy-Modell
 
-### Requirement: Standortbezogene Tour-Gültigkeitsfenster bleiben wirksam
+### Requirement: Abholort-Zuordnungen verwenden ausschließlich die Tour-Gültigkeit
 
-Das System SHALL optionale Gültigkeitsfenster einer Standort–Tour-Zuordnung dauerhaft speichern und bei der Terminmaterialisierung anwenden.
+Das System SHALL für alle einer Tour zugeordneten Abholorte ausschließlich den an der Tour gepflegten Gültigkeitszeitraum verwenden und SHALL keine abweichenden Start- oder Enddaten an der Zuordnung speichern oder auswerten.
 
-#### Scenario: Termin außerhalb des Standortfensters wird nicht materialisiert
+#### Scenario: Wiederkehrende Tour wird für einen Abholort materialisiert
 
-- **WHEN** die Zuordnung einer Tour zu einem Abholort ein `start_date` oder `end_date` enthält
-- **THEN** erzeugt das System für diesen Ort außerhalb dieses Zeitfensters keine berechneten Abholtermine
+- **WHEN** das System Termine einer Tour für einen zugeordneten Abholort materialisiert
+- **THEN** begrenzen ausschließlich `first_date` und `end_date` der Tour die wiederkehrenden Termine
+- **AND** die Orts–Tour-Zuordnung besitzt kein eigenes Gültigkeitsfenster
+
+#### Scenario: Bestehende Zuordnungszeiträume werden migriert
+
+- **WHEN** das Runtime-Schema auf das zentrale Tour-Gültigkeitsmodell aktualisiert wird
+- **THEN** entfernt das System vorhandene `start_date`- und `end_date`-Spalten der Orts–Tour-Zuordnung idempotent
+- **AND** Touren und ihre Abholort-Zuordnungen bleiben bestehen
+- **AND** vorhandene Tourzeiträume werden nicht aus den entfernten Zuordnungswerten verändert
+
+### Requirement: Tour-Zuordnungen sind fachlich sortiert
+
+Das System SHALL im Dialog zur Tour-Zuordnung ausgewählte Abholorte vor nicht ausgewählten Abholorten anzeigen und beide Gruppen deterministisch nach Region, Ort und Straße sortieren.
+
+#### Scenario: Dialog enthält ausgewählte und nicht ausgewählte Abholorte
+
+- **WHEN** ein Benutzer den Dialog zur Tour-Zuordnung öffnet oder seine Auswahl ändert
+- **THEN** stehen alle aktuell ausgewählten Abholorte vor den nicht ausgewählten Abholorten
+- **AND** innerhalb beider Gruppen wird aufsteigend nach vorhandener Region, Ort und Straße sortiert
+- **AND** Bezeichnung und ID stellen bei gleichen Fachwerten eine stabile Reihenfolge sicher

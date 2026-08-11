@@ -114,8 +114,14 @@ export const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationLi
 });
 
 export const mapMembershipRow = (row: MembershipRow): IamOrganizationMembership => {
-  const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
-  const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
+  const firstName = revealField(
+    row.first_name_ciphertext,
+    `iam.accounts.first_name:${row.keycloak_subject}`
+  );
+  const lastName = revealField(
+    row.last_name_ciphertext,
+    `iam.accounts.last_name:${row.keycloak_subject}`
+  );
   const decryptedDisplayName = revealField(
     row.display_name_ciphertext,
     `iam.accounts.display_name:${row.keycloak_subject}`
@@ -146,7 +152,9 @@ export const mapContextOption = (row: ContextOptionRow): IamOrganizationContextO
   isDefaultContext: row.is_default_context,
 });
 
-export const isHierarchyError = (value: unknown): value is Extract<HierarchyResolution, { readonly ok: false }> =>
+export const isHierarchyError = (
+  value: unknown
+): value is Extract<HierarchyResolution, { readonly ok: false }> =>
   typeof value === 'object' && value !== null && 'ok' in value && value.ok === false;
 
 export const readStatusFilter = (request: Request): boolean | undefined => {
@@ -163,7 +171,9 @@ export const readStatusFilter = (request: Request): boolean | undefined => {
   return undefined;
 };
 
-export const readOrganizationTypeFilter = (request: Request): IamOrganizationType | undefined | 'invalid' => {
+export const readOrganizationTypeFilter = (
+  request: Request
+): IamOrganizationType | undefined | 'invalid' => {
   const organizationType = readString(new URL(request.url).searchParams.get('organizationType'));
   if (!organizationType) {
     return undefined;
@@ -171,6 +181,36 @@ export const readOrganizationTypeFilter = (request: Request): IamOrganizationTyp
   return (ORGANIZATION_TYPE_VALUES as readonly string[]).includes(organizationType)
     ? (organizationType as IamOrganizationType)
     : 'invalid';
+};
+
+export const ORGANIZATION_LIST_SORT_FIELDS = [
+  'displayName',
+  'parentDisplayName',
+  'childCount',
+  'membershipCount',
+  'isActive',
+] as const;
+export type OrganizationListSortField = (typeof ORGANIZATION_LIST_SORT_FIELDS)[number];
+export type OrganizationListSortDirection = 'asc' | 'desc';
+
+export const readOrganizationListSort = (
+  request: Request
+):
+  | { readonly sortBy: OrganizationListSortField; readonly sortDirection: OrganizationListSortDirection }
+  | 'invalid' => {
+  const url = new URL(request.url);
+  const sortBy = readString(url.searchParams.get('sortBy')) ?? 'displayName';
+  const sortDirection = readString(url.searchParams.get('sortDirection')) ?? 'asc';
+  if (
+    !(ORGANIZATION_LIST_SORT_FIELDS as readonly string[]).includes(sortBy) ||
+    (sortDirection !== 'asc' && sortDirection !== 'desc')
+  ) {
+    return 'invalid';
+  }
+  return {
+    sortBy: sortBy as OrganizationListSortField,
+    sortDirection,
+  };
 };
 
 export const escapeIlikePattern = (value: string): string =>
@@ -181,7 +221,9 @@ export const chooseActiveOrganizationId = (input: {
   readonly organizations: readonly IamOrganizationContextOption[];
 }): string | undefined => {
   const activeIds = new Set(
-    input.organizations.filter((organization) => organization.isActive).map((organization) => organization.organizationId)
+    input.organizations
+      .filter((organization) => organization.isActive)
+      .map((organization) => organization.organizationId)
   );
   if (input.storedActiveOrganizationId && activeIds.has(input.storedActiveOrganizationId)) {
     return input.storedActiveOrganizationId;
@@ -250,11 +292,27 @@ export const loadOrganizationList = async (
     readonly search?: string;
     readonly organizationType?: IamOrganizationType;
     readonly isActive?: boolean;
+    readonly sortBy: OrganizationListSortField;
+    readonly sortDirection: OrganizationListSortDirection;
   }
 ): Promise<{ readonly items: readonly IamOrganizationListItem[]; readonly total: number }> => {
   const offset = (input.page - 1) * input.pageSize;
   const searchPattern = input.search ? `%${escapeIlikePattern(input.search)}%` : null;
-  const filterParams = [input.instanceId, searchPattern, input.organizationType ?? null, input.isActive ?? null] as const;
+  const filterParams = [
+    input.instanceId,
+    searchPattern,
+    input.organizationType ?? null,
+    input.isActive ?? null,
+  ] as const;
+  const sortExpressionByField = {
+    displayName: 'LOWER(organization.display_name) COLLATE "C"',
+    parentDisplayName: 'LOWER(parent.display_name) COLLATE "C"',
+    childCount: 'COALESCE(child_counts.child_count, 0)',
+    membershipCount: 'COALESCE(membership_counts.membership_count, 0)',
+    isActive: 'organization.is_active',
+  } as const satisfies Record<OrganizationListSortField, string>;
+  const sortExpression = sortExpressionByField[input.sortBy];
+  const sortDirection = input.sortDirection === 'asc' ? 'ASC' : 'DESC';
   const totalResult = await client.query<{ readonly total: number }>(
     `
 SELECT COUNT(*)::int AS total
@@ -298,7 +356,7 @@ LEFT JOIN child_counts
 LEFT JOIN membership_counts
   ON membership_counts.organization_id = organization.id
 ${ORGANIZATION_LIST_FILTER_SQL}
-ORDER BY organization.depth ASC, organization.display_name ASC
+ORDER BY (${sortExpression} IS NULL) ASC, ${sortExpression} ${sortDirection}, organization.id ASC
 LIMIT $5::int OFFSET $6::int;
 `,
     [...filterParams, input.pageSize, offset]
@@ -365,6 +423,19 @@ ORDER BY display_name ASC;
     })),
     mainserverApplicationId: credentials.mainserverApplicationId,
     mainserverApplicationSecretSet: credentials.mainserverApplicationSecretSet,
+    mainserverProvisioning: {
+      status: credentials.provisioningStatus,
+      technicalAccountId: credentials.technicalAccountId,
+      phase: credentials.provisioningPhase,
+      attemptCount: credentials.attemptCount,
+      lastErrorCode: credentials.lastErrorCode,
+      lastAttemptAt: credentials.lastAttemptAt,
+      completedAt: credentials.completedAt,
+      lastVerifiedAt: credentials.lastVerifiedAt,
+      operationInProgress:
+        credentials.provisioningStatus === 'provisioning' &&
+        Boolean(credentials.leaseExpiresAt && Date.parse(credentials.leaseExpiresAt) > Date.now()),
+    },
   };
 };
 
@@ -397,14 +468,23 @@ ORDER BY membership.is_default_context DESC, organization.depth ASC, organizatio
 
 export const resolveHierarchyFields = async (
   client: QueryClient,
-  input: { readonly instanceId: string; readonly organizationId?: string; readonly parentOrganizationId?: string | null }
+  input: {
+    readonly instanceId: string;
+    readonly organizationId?: string;
+    readonly parentOrganizationId?: string | null;
+  }
 ): Promise<HierarchyResolution> => {
   if (!input.parentOrganizationId) {
     return { ok: true, hierarchyPath: [], depth: 0 };
   }
 
   if (input.organizationId && input.parentOrganizationId === input.organizationId) {
-    return { ok: false, status: 409, code: 'conflict', message: 'Organisation kann nicht sich selbst als Parent setzen.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'conflict',
+      message: 'Organisation kann nicht sich selbst als Parent setzen.',
+    };
   }
 
   const parent = await loadOrganizationById(client, {
@@ -413,15 +493,30 @@ export const resolveHierarchyFields = async (
   });
 
   if (!parent) {
-    return { ok: false, status: 400, code: 'invalid_organization_id', message: 'Ungültige Parent-Organisation.' };
+    return {
+      ok: false,
+      status: 400,
+      code: 'invalid_organization_id',
+      message: 'Ungültige Parent-Organisation.',
+    };
   }
 
   if (!parent.is_active) {
-    return { ok: false, status: 409, code: 'organization_inactive', message: 'Inaktive Parent-Organisation ist unzulässig.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'organization_inactive',
+      message: 'Inaktive Parent-Organisation ist unzulässig.',
+    };
   }
 
   if (input.organizationId && (parent.hierarchy_path ?? []).includes(input.organizationId)) {
-    return { ok: false, status: 409, code: 'conflict', message: 'Zyklische Organisationshierarchie ist unzulässig.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'conflict',
+      message: 'Zyklische Organisationshierarchie ist unzulässig.',
+    };
   }
 
   return {

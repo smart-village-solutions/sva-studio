@@ -37,7 +37,12 @@ vi.mock('@sva/server-runtime', () => ({
     const match = /^00-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}$/i.exec(traceparent ?? '');
     return match?.[1];
   },
-  toJsonErrorResponse: (status: number, code: string, publicMessage?: string, options?: { requestId?: string }) =>
+  toJsonErrorResponse: (
+    status: number,
+    code: string,
+    publicMessage?: string,
+    options?: { requestId?: string }
+  ) =>
     new Response(
       JSON.stringify({
         error: code,
@@ -93,12 +98,18 @@ const authServerMocks = vi.hoisted(() => {
     healthLiveHandler: vi.fn(async () => response('healthLiveHandler')),
     mePermissionsHandler: vi.fn(async () => response('mePermissionsHandler')),
     authorizeHandler: vi.fn(async () => response('authorizeHandler')),
-    getLatestAuthorizePerformanceRunHandler: vi.fn(async () => response('getLatestAuthorizePerformanceRunHandler')),
-    startAuthorizePerformanceRunHandler: vi.fn(async () => response('startAuthorizePerformanceRunHandler')),
+    getLatestAuthorizePerformanceRunHandler: vi.fn(async () =>
+      response('getLatestAuthorizePerformanceRunHandler')
+    ),
+    startAuthorizePerformanceRunHandler: vi.fn(async () =>
+      response('startAuthorizePerformanceRunHandler')
+    ),
     listUsersHandler: vi.fn(async () => response('listUsersHandler')),
     createUserHandler: vi.fn(async () => response('createUserHandler')),
     getUserHandler: vi.fn(async () => response('getUserHandler')),
-    reprovisionMainserverUserHandler: vi.fn(async () => response('reprovisionMainserverUserHandler')),
+    reprovisionMainserverUserHandler: vi.fn(async () =>
+      response('reprovisionMainserverUserHandler')
+    ),
     sendPasswordSetupEmailHandler: vi.fn(async () => response('sendPasswordSetupEmailHandler')),
     getUserTimelineHandler: vi.fn(async () => response('getUserTimelineHandler')),
     updateUserHandler: vi.fn(async () => response('updateUserHandler')),
@@ -129,17 +140,29 @@ const authServerMocks = vi.hoisted(() => {
       createInstance: vi.fn(async () => response('createInstanceHandler')),
       updateInstance: vi.fn(async () => response('updateInstanceHandler')),
       getInstanceKeycloakStatus: vi.fn(async () => response('getInstanceKeycloakStatusHandler')),
-      getInstanceKeycloakPreflight: vi.fn(async () => response('getInstanceKeycloakPreflightHandler')),
-      planInstanceKeycloakProvisioning: vi.fn(async () => response('planInstanceKeycloakProvisioningHandler')),
-      executeInstanceKeycloakProvisioning: vi.fn(async () => response('executeInstanceKeycloakProvisioningHandler')),
+      getInstanceKeycloakPreflight: vi.fn(async () =>
+        response('getInstanceKeycloakPreflightHandler')
+      ),
+      planInstanceKeycloakProvisioning: vi.fn(async () =>
+        response('planInstanceKeycloakProvisioningHandler')
+      ),
+      executeInstanceKeycloakProvisioning: vi.fn(async () =>
+        response('executeInstanceKeycloakProvisioningHandler')
+      ),
       rotateInstanceSecret: vi.fn(async () => response('rotateInstanceSecretHandler')),
-      prepareInstanceConfirmation: vi.fn(async () => response('prepareInstanceConfirmationHandler')),
-      getInstanceKeycloakProvisioningRun: vi.fn(async () => response('getInstanceKeycloakProvisioningRunHandler')),
+      prepareInstanceConfirmation: vi.fn(async () =>
+        response('prepareInstanceConfirmationHandler')
+      ),
+      getInstanceKeycloakProvisioningRun: vi.fn(async () =>
+        response('getInstanceKeycloakProvisioningRunHandler')
+      ),
       reconcileInstanceKeycloak: vi.fn(async () => response('reconcileInstanceKeycloakHandler')),
       reconcileInstanceIamRoles: vi.fn(async () => response('reconcileInstanceIamRolesHandler')),
       probeTenantIamAccess: vi.fn(async () => response('probeTenantIamAccessHandler')),
       assignInstanceModule: vi.fn(async () => response('assignInstanceModuleHandler')),
-      bootstrapInstanceAdminStructure: vi.fn(async () => response('bootstrapInstanceAdminStructureHandler')),
+      bootstrapInstanceAdminStructure: vi.fn(async () =>
+        response('bootstrapInstanceAdminStructureHandler')
+      ),
       revokeInstanceModule: vi.fn(async () => response('revokeInstanceModuleHandler')),
       seedInstanceIamBaseline: vi.fn(async () => response('seedInstanceIamBaselineHandler')),
       activateInstance: vi.fn(async () => response('activateInstanceHandler')),
@@ -149,28 +172,54 @@ const authServerMocks = vi.hoisted(() => {
     wasteManagementHandlers: {
       getHistory: vi.fn(async () => response('getWasteManagementHistoryHandler')),
       createCity: vi.fn(async () => response('createWasteManagementCityHandler')),
-      createCollectionLocation: vi.fn(async () => response('createWasteManagementCollectionLocationHandler')),
+      createCollectionLocation: vi.fn(async () =>
+        response('createWasteManagementCollectionLocationHandler')
+      ),
       createFraction: vi.fn(async () => response('createWasteManagementFractionHandler')),
-      deleteCollectionLocation: vi.fn(async () => response('deleteWasteManagementCollectionLocationHandler')),
+      deleteCollectionLocation: vi.fn(async () =>
+        response('deleteWasteManagementCollectionLocationHandler')
+      ),
       deleteFraction: vi.fn(async () => response('deleteWasteManagementFractionHandler')),
       createHouseNumber: vi.fn(async () => response('createWasteManagementHouseNumberHandler')),
-      createGlobalDateShift: vi.fn(async () => response('createWasteManagementGlobalDateShiftHandler')),
-      createLocationTourPickupDate: vi.fn(async () => response('createWasteManagementLocationTourPickupDateHandler')),
-      createLocationTourLinksBulk: vi.fn(async () => response('createWasteManagementLocationTourLinksBulkHandler')),
-      createLocationTourLink: vi.fn(async () => response('createWasteManagementLocationTourLinkHandler')),
+      createGlobalDateShift: vi.fn(async () =>
+        response('createWasteManagementGlobalDateShiftHandler')
+      ),
+      createLocationTourPickupDate: vi.fn(async () =>
+        response('createWasteManagementLocationTourPickupDateHandler')
+      ),
+      createLocationTourLinksBulk: vi.fn(async () =>
+        response('createWasteManagementLocationTourLinksBulkHandler')
+      ),
+      createLocationTourLink: vi.fn(async () =>
+        response('createWasteManagementLocationTourLinkHandler')
+      ),
       createRegion: vi.fn(async () => response('createWasteManagementRegionHandler')),
       createStreet: vi.fn(async () => response('createWasteManagementStreetHandler')),
       createTour: vi.fn(async () => response('createWasteManagementTourHandler')),
-      createTourAssignment: vi.fn(async () => response('createWasteManagementTourAssignmentHandler')),
+      createTourAssignment: vi.fn(async () =>
+        response('createWasteManagementTourAssignmentHandler')
+      ),
       createTourDateShift: vi.fn(async () => response('createWasteManagementTourDateShiftHandler')),
-      deleteGlobalDateShift: vi.fn(async () => response('deleteWasteManagementGlobalDateShiftHandler')),
+      deleteGlobalDateShift: vi.fn(async () =>
+        response('deleteWasteManagementGlobalDateShiftHandler')
+      ),
       deleteHolidayRule: vi.fn(async () => response('deleteWasteManagementHolidayRuleHandler')),
-      deleteLocationTourLink: vi.fn(async () => response('deleteWasteManagementLocationTourLinkHandler')),
-      deleteLocationTourPickupDate: vi.fn(async () => response('deleteWasteManagementLocationTourPickupDateHandler')),
+      deleteLocationTourLink: vi.fn(async () =>
+        response('deleteWasteManagementLocationTourLinkHandler')
+      ),
+      deleteLocationTourPickupDate: vi.fn(async () =>
+        response('deleteWasteManagementLocationTourPickupDateHandler')
+      ),
       deleteTourDateShift: vi.fn(async () => response('deleteWasteManagementTourDateShiftHandler')),
-      deleteTourAssignment: vi.fn(async () => response('deleteWasteManagementTourAssignmentHandler')),
-      getMasterDataOverview: vi.fn(async () => response('getWasteManagementMasterDataOverviewHandler')),
-      getSchedulingOverview: vi.fn(async () => response('getWasteManagementSchedulingOverviewHandler')),
+      deleteTourAssignment: vi.fn(async () =>
+        response('deleteWasteManagementTourAssignmentHandler')
+      ),
+      getMasterDataOverview: vi.fn(async () =>
+        response('getWasteManagementMasterDataOverviewHandler')
+      ),
+      getSchedulingOverview: vi.fn(async () =>
+        response('getWasteManagementSchedulingOverviewHandler')
+      ),
       getToursOverview: vi.fn(async () => response('getWasteManagementToursOverviewHandler')),
       getSettings: vi.fn(async () => response('getWasteManagementSettingsHandler')),
       runHolidaySync: vi.fn(async () => response('runWasteManagementHolidaySyncHandler')),
@@ -180,20 +229,35 @@ const authServerMocks = vi.hoisted(() => {
       updateHolidayRule: vi.fn(async () => response('updateWasteManagementHolidayRuleHandler')),
       deleteTour: vi.fn(async () => response('deleteWasteManagementTourHandler')),
       updateCity: vi.fn(async () => response('updateWasteManagementCityHandler')),
-      updateCollectionLocation: vi.fn(async () => response('updateWasteManagementCollectionLocationHandler')),
+      updateCollectionLocation: vi.fn(async () =>
+        response('updateWasteManagementCollectionLocationHandler')
+      ),
       updateFraction: vi.fn(async () => response('updateWasteManagementFractionHandler')),
-      updateGlobalDateShift: vi.fn(async () => response('updateWasteManagementGlobalDateShiftHandler')),
+      updateGlobalDateShift: vi.fn(async () =>
+        response('updateWasteManagementGlobalDateShiftHandler')
+      ),
       updateHouseNumber: vi.fn(async () => response('updateWasteManagementHouseNumberHandler')),
-      updateLocationTourLink: vi.fn(async () => response('updateWasteManagementLocationTourLinkHandler')),
-      updateLocationTourPickupDate: vi.fn(async () => response('updateWasteManagementLocationTourPickupDateHandler')),
+      updateLocationTourLink: vi.fn(async () =>
+        response('updateWasteManagementLocationTourLinkHandler')
+      ),
+      updateLocationTourPickupDate: vi.fn(async () =>
+        response('updateWasteManagementLocationTourPickupDateHandler')
+      ),
       updateRegion: vi.fn(async () => response('updateWasteManagementRegionHandler')),
       updateStreet: vi.fn(async () => response('updateWasteManagementStreetHandler')),
       updateTour: vi.fn(async () => response('updateWasteManagementTourHandler')),
-      updateTourAssignment: vi.fn(async () => response('updateWasteManagementTourAssignmentHandler')),
+      updateTourValidityBulk: vi.fn(async () =>
+        response('updateWasteManagementTourValidityBulkHandler')
+      ),
+      updateTourAssignment: vi.fn(async () =>
+        response('updateWasteManagementTourAssignmentHandler')
+      ),
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
-      previewLocationTourPickupDateImport: vi.fn(async () => response('previewLocationTourPickupDateImportHandler')),
+      previewLocationTourPickupDateImport: vi.fn(async () =>
+        response('previewLocationTourPickupDateImportHandler')
+      ),
       startSeed: vi.fn(async () => response('startWasteManagementSeedHandler')),
       startMainserverSync: vi.fn(async () => response('startWasteManagementMainserverSyncHandler')),
       startSyncWasteTypes: vi.fn(async () => response('startWasteManagementSyncWasteTypesHandler')),
@@ -219,13 +283,24 @@ const authServerMocks = vi.hoisted(() => {
     listOrganizationsHandler: vi.fn(async () => response('listOrganizationsHandler')),
     createOrganizationHandler: vi.fn(async () => response('createOrganizationHandler')),
     getOrganizationHandler: vi.fn(async () => response('getOrganizationHandler')),
+    provisionOrganizationMainserverHandler: vi.fn(async () =>
+      response('provisionOrganizationMainserverHandler')
+    ),
     updateOrganizationHandler: vi.fn(async () => response('updateOrganizationHandler')),
     deleteOrganizationHandler: vi.fn(async () => response('deleteOrganizationHandler')),
-    assignOrganizationMembershipHandler: vi.fn(async () => response('assignOrganizationMembershipHandler')),
-    updateOrganizationMembershipHandler: vi.fn(async () => response('updateOrganizationMembershipHandler')),
-    removeOrganizationMembershipHandler: vi.fn(async () => response('removeOrganizationMembershipHandler')),
+    assignOrganizationMembershipHandler: vi.fn(async () =>
+      response('assignOrganizationMembershipHandler')
+    ),
+    updateOrganizationMembershipHandler: vi.fn(async () =>
+      response('updateOrganizationMembershipHandler')
+    ),
+    removeOrganizationMembershipHandler: vi.fn(async () =>
+      response('removeOrganizationMembershipHandler')
+    ),
     getMyOrganizationContextHandler: vi.fn(async () => response('getMyOrganizationContextHandler')),
-    updateMyOrganizationContextHandler: vi.fn(async () => response('updateMyOrganizationContextHandler')),
+    updateMyOrganizationContextHandler: vi.fn(async () =>
+      response('updateMyOrganizationContextHandler')
+    ),
     listPermissionsHandler: vi.fn(async () => response('listPermissionsHandler')),
     listRolesHandler: vi.fn(async () => response('listRolesHandler')),
     createRoleHandler: vi.fn(async () => response('createRoleHandler')),
@@ -239,27 +314,41 @@ const authServerMocks = vi.hoisted(() => {
     listGovernanceCasesHandler: vi.fn(async () => response('listGovernanceCasesHandler')),
     getGovernanceCaseHandler: vi.fn(async () => response('getGovernanceCaseHandler')),
     governanceWorkflowHandler: vi.fn(async () => response('governanceWorkflowHandler')),
-    governanceComplianceExportHandler: vi.fn(async () => response('governanceComplianceExportHandler')),
+    governanceComplianceExportHandler: vi.fn(async () =>
+      response('governanceComplianceExportHandler')
+    ),
     legalConsentExportHandler: vi.fn(async () => response('legalConsentExportHandler')),
-    permissionChangeSelfServiceRequestHandler: vi.fn(async () => response('permissionChangeSelfServiceRequestHandler')),
+    permissionChangeSelfServiceRequestHandler: vi.fn(async () =>
+      response('permissionChangeSelfServiceRequestHandler')
+    ),
     dataExportHandler: vi.fn(async () => response('dataExportHandler')),
     dataExportStatusHandler: vi.fn(async () => response('dataExportStatusHandler')),
     getMyDataSubjectRightsHandler: vi.fn(async () => response('getMyDataSubjectRightsHandler')),
-    getMyDataSubjectRightsCaseHandler: vi.fn(async () => response('getMyDataSubjectRightsCaseHandler')),
+    getMyDataSubjectRightsCaseHandler: vi.fn(async () =>
+      response('getMyDataSubjectRightsCaseHandler')
+    ),
     listPendingLegalTextsHandler: vi.fn(async () => response('listPendingLegalTextsHandler')),
     dataSubjectRequestHandler: vi.fn(async () => response('dataSubjectRequestHandler')),
     profileCorrectionHandler: vi.fn(async () => response('profileCorrectionHandler')),
-    optionalProcessingExecuteHandler: vi.fn(async () => response('optionalProcessingExecuteHandler')),
+    optionalProcessingExecuteHandler: vi.fn(async () =>
+      response('optionalProcessingExecuteHandler')
+    ),
     adminDataExportHandler: vi.fn(async () => response('adminDataExportHandler')),
     adminDataExportStatusHandler: vi.fn(async () => response('adminDataExportStatusHandler')),
-    listAdminDataSubjectRightsCasesHandler: vi.fn(async () => response('listAdminDataSubjectRightsCasesHandler')),
-    getAdminDataSubjectRightsCaseHandler: vi.fn(async () => response('getAdminDataSubjectRightsCaseHandler')),
+    listAdminDataSubjectRightsCasesHandler: vi.fn(async () =>
+      response('listAdminDataSubjectRightsCasesHandler')
+    ),
+    getAdminDataSubjectRightsCaseHandler: vi.fn(async () =>
+      response('getAdminDataSubjectRightsCaseHandler')
+    ),
     legalHoldApplyHandler: vi.fn(async () => response('legalHoldApplyHandler')),
     legalHoldReleaseHandler: vi.fn(async () => response('legalHoldReleaseHandler')),
     dataSubjectMaintenanceHandler: vi.fn(async () => response('dataSubjectMaintenanceHandler')),
     deletionRulesAdminHandler: vi.fn(async () => response('deletionRulesAdminHandler')),
     myDeletionRulesOverviewHandler: vi.fn(async () => response('myDeletionRulesOverviewHandler')),
-    myDeletionRulesPreferenceHandler: vi.fn(async () => response('myDeletionRulesPreferenceHandler')),
+    myDeletionRulesPreferenceHandler: vi.fn(async () =>
+      response('myDeletionRulesPreferenceHandler')
+    ),
     listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
     startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
     getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
@@ -334,7 +423,9 @@ describe('auth.routes.server', () => {
   });
 
   it('dispatches media upload completion routes to the auth runtime', async () => {
-    const handlers = resolveAuthHandlers('/api/v1/iam/media/upload-sessions/$uploadSessionId/complete');
+    const handlers = resolveAuthHandlers(
+      '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete'
+    );
     expect(handlers?.POST).toBeDefined();
 
     const post = handlers?.POST;
@@ -343,7 +434,9 @@ describe('auth.routes.server', () => {
     }
 
     await post({
-      request: new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete', {
+        method: 'POST',
+      }),
     });
 
     expect(authServerMocks.completeMediaUploadHandler).toHaveBeenCalled();
@@ -359,9 +452,12 @@ describe('auth.routes.server', () => {
     }
 
     const result = await get({
-      request: new Request('http://localhost/iam/governance/legal-consents/export?instanceId=instance-1', {
-        method: 'GET',
-      }),
+      request: new Request(
+        'http://localhost/iam/governance/legal-consents/export?instanceId=instance-1',
+        {
+          method: 'GET',
+        }
+      ),
     });
 
     expect(result.status).toBe(200);
@@ -390,7 +486,15 @@ describe('auth.routes.server', () => {
     const authorizePerformanceGet = authorizePerformanceHandlers?.GET;
     const authorizePerformancePost = authorizePerformanceHandlers?.POST;
 
-    if (!list || !post || !get || !remove || !cancel || !authorizePerformanceGet || !authorizePerformancePost) {
+    if (
+      !list ||
+      !post ||
+      !get ||
+      !remove ||
+      !cancel ||
+      !authorizePerformanceGet ||
+      !authorizePerformancePost
+    ) {
       throw new Error('Expected plugin operation and authorize-performance handlers to be defined');
     }
 
@@ -401,13 +505,19 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/api/v1/plugin-operations/jobs', { method: 'POST' }),
     });
     await get({
-      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'GET' }),
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', {
+        method: 'GET',
+      }),
     });
     await remove({
-      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', { method: 'DELETE' }),
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1', {
+        method: 'DELETE',
+      }),
     });
     await cancel({
-      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/plugin-operations/jobs/job-1/cancel', {
+        method: 'POST',
+      }),
     });
     await authorizePerformanceGet({
       request: new Request('http://localhost/api/v1/iam/authorize-performance', { method: 'GET' }),
@@ -436,7 +546,9 @@ describe('auth.routes.server', () => {
     expect(preferenceHandlers?.POST).toBeDefined();
 
     await adminHandlers.GET?.({
-      request: new Request('http://localhost/iam/admin/deletion-rules?instanceId=de-test', { method: 'GET' }),
+      request: new Request('http://localhost/iam/admin/deletion-rules?instanceId=de-test', {
+        method: 'GET',
+      }),
     });
     await adminHandlers.POST?.({
       request: new Request('http://localhost/iam/admin/deletion-rules', { method: 'POST' }),
@@ -445,7 +557,9 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/iam/me/deletion-rules', { method: 'GET' }),
     });
     await preferenceHandlers.POST?.({
-      request: new Request('http://localhost/iam/me/deletion-rules/content-preference', { method: 'POST' }),
+      request: new Request('http://localhost/iam/me/deletion-rules/content-preference', {
+        method: 'POST',
+      }),
     });
 
     expect(authServerMocks.deletionRulesAdminHandler).toHaveBeenCalledTimes(2);
@@ -471,17 +585,27 @@ describe('auth.routes.server', () => {
   it('dispatches waste management routes to the auth runtime', async () => {
     const masterDataHandlers = resolveAuthHandlers('/api/v1/waste-management/master-data');
     const fractionHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions');
-    const fractionDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/fractions/$fractionId');
-    const collectionLocationHandlers = resolveAuthHandlers('/api/v1/waste-management/collection-locations');
+    const fractionDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/fractions/$fractionId'
+    );
+    const collectionLocationHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/collection-locations'
+    );
     const collectionLocationDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/collection-locations/$locationId'
     );
     const streetHandlers = resolveAuthHandlers('/api/v1/waste-management/streets');
     const streetDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/streets/$streetId');
     const houseNumberHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers');
-    const houseNumberDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/house-numbers/$houseNumberId');
-    const locationTourLinkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links');
-    const locationTourLinkBulkHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-links/bulk');
+    const houseNumberDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/house-numbers/$houseNumberId'
+    );
+    const locationTourLinkHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/location-tour-links'
+    );
+    const locationTourLinkBulkHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/location-tour-links/bulk'
+    );
     const locationTourLinkDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/location-tour-links/$linkId'
     );
@@ -490,29 +614,50 @@ describe('auth.routes.server', () => {
     const tourAssignmentDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tour-assignments/$assignmentId'
     );
-    const locationTourPickupDateHandlers = resolveAuthHandlers('/api/v1/waste-management/location-tour-pickup-dates');
+    const locationTourPickupDateHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/location-tour-pickup-dates'
+    );
     const locationTourPickupDateDetailHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/location-tour-pickup-dates/$pickupDateId'
     );
-    const globalDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts');
-    const globalDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/global-date-shifts/$shiftId');
+    const globalDateShiftHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/global-date-shifts'
+    );
+    const globalDateShiftDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/global-date-shifts/$shiftId'
+    );
     const tourDateShiftHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts');
-    const tourDateShiftDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tour-date-shifts/$shiftId');
-    const holidayRuleDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/holiday-rules/$holidayRuleId');
+    const tourDateShiftDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tour-date-shifts/$shiftId'
+    );
+    const holidayRuleDetailHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/holiday-rules/$holidayRuleId'
+    );
     const toursHandlers = resolveAuthHandlers('/api/v1/waste-management/tours');
+    const tourValidityBulkHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tours/bulk-validity'
+    );
     const tourDetailHandlers = resolveAuthHandlers('/api/v1/waste-management/tours/$tourId');
     const settingsHandlers = resolveAuthHandlers('/api/v1/waste-management/settings');
-    const holidaySyncHandlers = resolveAuthHandlers('/api/v1/waste-management/settings/holiday-sync');
+    const holidaySyncHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/settings/holiday-sync'
+    );
     const provisioningRetryHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/settings/provisioning/retry'
     );
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
-    const importPreviewHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports/preview');
+    const importPreviewHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/imports/preview'
+    );
     const seedHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/seed');
-    const mainserverSyncHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/mainserver-sync');
-    const syncWasteTypesHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/sync-waste-types');
+    const mainserverSyncHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/mainserver-sync'
+    );
+    const syncWasteTypesHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/sync-waste-types'
+    );
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
     expect(masterDataHandlers?.GET).toBeDefined();
@@ -543,6 +688,7 @@ describe('auth.routes.server', () => {
     expect(holidayRuleDetailHandlers?.PUT).toBeDefined();
     expect(toursHandlers?.GET).toBeDefined();
     expect(toursHandlers?.POST).toBeDefined();
+    expect(tourValidityBulkHandlers?.PUT).toBeDefined();
     expect(tourDetailHandlers?.PUT).toBeDefined();
     expect(settingsHandlers?.GET).toBeDefined();
     expect(settingsHandlers?.PUT).toBeDefined();
@@ -555,49 +701,76 @@ describe('auth.routes.server', () => {
     expect(resetHandlers?.POST).toBeDefined();
 
     await masterDataHandlers.GET?.({
-      request: new Request('http://localhost/api/v1/waste-management/master-data', { method: 'GET' }),
+      request: new Request('http://localhost/api/v1/waste-management/master-data', {
+        method: 'GET',
+      }),
     });
     await fractionHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/fractions', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/fractions', {
+        method: 'POST',
+      }),
     });
     await fractionDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/fractions/fraction-1', { method: 'DELETE' }),
-    });
-    await collectionLocationHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/collection-locations', { method: 'POST' }),
-    });
-    await collectionLocationDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
-        method: 'PUT',
-      }),
-    });
-    await collectionLocationDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/collection-locations/location-1', {
+      request: new Request('http://localhost/api/v1/waste-management/fractions/fraction-1', {
         method: 'DELETE',
       }),
+    });
+    await collectionLocationHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/collection-locations', {
+        method: 'POST',
+      }),
+    });
+    await collectionLocationDetailHandlers.PUT?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/collection-locations/location-1',
+        {
+          method: 'PUT',
+        }
+      ),
+    });
+    await collectionLocationDetailHandlers.DELETE?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/collection-locations/location-1',
+        {
+          method: 'DELETE',
+        }
+      ),
     });
     await streetHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/streets', { method: 'POST' }),
     });
     await streetDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/streets/street-1', { method: 'PUT' }),
+      request: new Request('http://localhost/api/v1/waste-management/streets/street-1', {
+        method: 'PUT',
+      }),
     });
     await houseNumberHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/house-numbers', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers', {
+        method: 'POST',
+      }),
     });
     await houseNumberDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/house-numbers/house-1', { method: 'PUT' }),
+      request: new Request('http://localhost/api/v1/waste-management/house-numbers/house-1', {
+        method: 'PUT',
+      }),
     });
     await locationTourLinkHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/location-tour-links', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links', {
+        method: 'POST',
+      }),
     });
     await locationTourLinkBulkHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/location-tour-links/bulk', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-links/bulk', {
+        method: 'POST',
+      }),
     });
     await holidayRuleDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'DELETE',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1',
+        {
+          method: 'DELETE',
+        }
+      ),
     });
     await locationTourLinkDetailHandlers.PUT?.({
       request: new Request('http://localhost/api/v1/waste-management/location-tour-links/link-1', {
@@ -610,7 +783,9 @@ describe('auth.routes.server', () => {
       }),
     });
     await schedulingHandlers.GET?.({
-      request: new Request('http://localhost/api/v1/waste-management/scheduling', { method: 'GET' }),
+      request: new Request('http://localhost/api/v1/waste-management/scheduling', {
+        method: 'GET',
+      }),
     });
     await tourAssignmentHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tour-assignments', {
@@ -618,33 +793,51 @@ describe('auth.routes.server', () => {
       }),
     });
     await tourAssignmentDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/tour-assignments/assignment-1', {
-        method: 'PUT',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/tour-assignments/assignment-1',
+        {
+          method: 'PUT',
+        }
+      ),
     });
     await tourAssignmentDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/tour-assignments/assignment-1', {
-        method: 'DELETE',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/tour-assignments/assignment-1',
+        {
+          method: 'DELETE',
+        }
+      ),
     });
     await locationTourPickupDateHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates', {
+        method: 'POST',
+      }),
     });
     await locationTourPickupDateDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
-        method: 'PUT',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1',
+        {
+          method: 'PUT',
+        }
+      ),
     });
     await locationTourPickupDateDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1', {
-        method: 'DELETE',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/location-tour-pickup-dates/pickup-date-1',
+        {
+          method: 'DELETE',
+        }
+      ),
     });
     await globalDateShiftHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts', {
+        method: 'POST',
+      }),
     });
     await globalDateShiftDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', { method: 'PUT' }),
+      request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', {
+        method: 'PUT',
+      }),
     });
     await globalDateShiftDetailHandlers.DELETE?.({
       request: new Request('http://localhost/api/v1/waste-management/global-date-shifts/shift-1', {
@@ -652,10 +845,14 @@ describe('auth.routes.server', () => {
       }),
     });
     await tourDateShiftHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts', {
+        method: 'POST',
+      }),
     });
     await tourDateShiftDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', { method: 'PUT' }),
+      request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', {
+        method: 'PUT',
+      }),
     });
     await tourDateShiftDetailHandlers.DELETE?.({
       request: new Request('http://localhost/api/v1/waste-management/tour-date-shifts/shift-1', {
@@ -663,9 +860,12 @@ describe('auth.routes.server', () => {
       }),
     });
     await holidayRuleDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1', {
-        method: 'PUT',
-      }),
+      request: new Request(
+        'http://localhost/api/v1/waste-management/holiday-rules/holiday-rule-1',
+        {
+          method: 'PUT',
+        }
+      ),
     });
     await toursHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'GET' }),
@@ -673,11 +873,20 @@ describe('auth.routes.server', () => {
     await toursHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tours', { method: 'POST' }),
     });
+    await tourValidityBulkHandlers.PUT?.({
+      request: new Request('http://localhost/api/v1/waste-management/tours/bulk-validity', {
+        method: 'PUT',
+      }),
+    });
     await tourDetailHandlers.PUT?.({
-      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', { method: 'PUT' }),
+      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', {
+        method: 'PUT',
+      }),
     });
     await tourDetailHandlers.DELETE?.({
-      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', { method: 'DELETE' }),
+      request: new Request('http://localhost/api/v1/waste-management/tours/tour-1', {
+        method: 'DELETE',
+      }),
     });
     await settingsHandlers.GET?.({
       request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'GET' }),
@@ -686,37 +895,54 @@ describe('auth.routes.server', () => {
       request: new Request('http://localhost/api/v1/waste-management/settings', { method: 'PUT' }),
     });
     await holidaySyncHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/settings/holiday-sync', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/settings/holiday-sync', {
+        method: 'POST',
+      }),
     });
     await provisioningRetryHandlers.POST?.({
-      request: new Request(
-        'http://localhost/api/v1/waste-management/settings/provisioning/retry',
-        { method: 'POST' }
-      ),
+      request: new Request('http://localhost/api/v1/waste-management/settings/provisioning/retry', {
+        method: 'POST',
+      }),
     });
     await initializeHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/initialize', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/initialize', {
+        method: 'POST',
+      }),
     });
     await migrationsHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/migrations', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/migrations', {
+        method: 'POST',
+      }),
     });
     await importHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/imports', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports', {
+        method: 'POST',
+      }),
     });
     await importPreviewHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/imports/preview', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports/preview', {
+        method: 'POST',
+      }),
     });
     await seedHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/seed', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/seed', {
+        method: 'POST',
+      }),
     });
     await mainserverSyncHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/mainserver-sync', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/mainserver-sync', {
+        method: 'POST',
+      }),
     });
     await syncWasteTypesHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/sync-waste-types', {
+        method: 'POST',
+      }),
     });
     await resetHandlers.POST?.({
-      request: new Request('http://localhost/api/v1/waste-management/tools/reset', { method: 'POST' }),
+      request: new Request('http://localhost/api/v1/waste-management/tools/reset', {
+        method: 'POST',
+      }),
     });
 
     expect(authServerMocks.wasteManagementHandlers.getMasterDataOverview).toHaveBeenCalled();
@@ -751,6 +977,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.getToursOverview).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.createTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateTour).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.updateTourValidityBulk).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.deleteTour).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.getSettings).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.updateSettings).toHaveBeenCalled();
@@ -759,7 +986,9 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
-    expect(authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport).toHaveBeenCalled();
+    expect(
+      authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport
+    ).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMainserverSync).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSyncWasteTypes).toHaveBeenCalled();
@@ -841,17 +1070,27 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.instanceRegistryHandlers.getInstanceAuditRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getSingleInstanceAuditRun).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakStatus).toHaveBeenCalled();
-    expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight).toHaveBeenCalled();
-    expect(authServerMocks.instanceRegistryHandlers.planInstanceKeycloakProvisioning).toHaveBeenCalled();
-    expect(authServerMocks.instanceRegistryHandlers.executeInstanceKeycloakProvisioning).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.getInstanceKeycloakPreflight
+    ).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.planInstanceKeycloakProvisioning
+    ).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.executeInstanceKeycloakProvisioning
+    ).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.rotateInstanceSecret).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.prepareInstanceConfirmation).toHaveBeenCalled();
-    expect(authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun
+    ).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceKeycloak).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.reconcileInstanceIamRoles).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.probeTenantIamAccess).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.assignInstanceModule).toHaveBeenCalled();
-    expect(authServerMocks.instanceRegistryHandlers.bootstrapInstanceAdminStructure).toHaveBeenCalled();
+    expect(
+      authServerMocks.instanceRegistryHandlers.bootstrapInstanceAdminStructure
+    ).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.revokeInstanceModule).toHaveBeenCalled();
     expect(authServerMocks.instanceRegistryHandlers.seedInstanceIamBaseline).toHaveBeenCalled();
     expect(authServerMocks.listLegalTextsHandler).toHaveBeenCalled();
@@ -882,10 +1121,13 @@ describe('auth.routes.server', () => {
 
   it('passes the incoming request to the account-action handler', async () => {
     const handlers = resolveAuthHandlers('/auth/account-action');
-    const request = new Request('https://bb-guben.studio.example.org/auth/account-action?action=update-password', {
-      method: 'GET',
-      headers: { host: 'bb-guben.studio.example.org' },
-    });
+    const request = new Request(
+      'https://bb-guben.studio.example.org/auth/account-action?action=update-password',
+      {
+        method: 'GET',
+        headers: { host: 'bb-guben.studio.example.org' },
+      }
+    );
 
     const response = await handlers.GET?.({ request });
 
@@ -900,9 +1142,9 @@ describe('auth.routes.server', () => {
   it('throws for declared auth paths when the handler map is incomplete', async () => {
     vi.resetModules();
     vi.doMock('./auth.route-handlers.account.server.js', async () => {
-      const actual = await vi.importActual<typeof import('./auth.route-handlers.account.server.js')>(
-        './auth.route-handlers.account.server.js'
-      );
+      const actual = await vi.importActual<
+        typeof import('./auth.route-handlers.account.server.js')
+      >('./auth.route-handlers.account.server.js');
       return {
         ...actual,
         accountAuthHandlerMap: {
@@ -934,7 +1176,9 @@ describe('auth.routes.server', () => {
 
   it('matches static and parameterized runtime auth paths', () => {
     expect(resolveAuthRoutePathForRequestPath('/health/live')).toBe('/health/live');
-    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123')).toBe('/api/v1/iam/users/$userId');
+    expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/users/abc-123')).toBe(
+      '/api/v1/iam/users/$userId'
+    );
     expect(resolveAuthRoutePathForRequestPath('/api/v1/iam/groups/group-1/roles/role-1')).toBe(
       '/api/v1/iam/groups/$groupId/roles/$roleId'
     );
@@ -983,7 +1227,9 @@ describe('auth.routes.server', () => {
       throw new Error('logger down');
     });
 
-    const response = await dispatchAuthRouteRequest(new Request('http://localhost/iam/me/data-export', { method: 'GET' }));
+    const response = await dispatchAuthRouteRequest(
+      new Request('http://localhost/iam/me/data-export', { method: 'GET' })
+    );
 
     expect(response?.status).toBe(405);
     await expect(response?.json()).resolves.toMatchObject({
@@ -1266,7 +1512,9 @@ describe('auth.routes.server', () => {
 
     expect(response?.status).toBe(500);
     expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"workspace_id":"de-fallback"'));
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('"event":"routing.logger.fallback_activated"'));
+    expect(stderrSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"event":"routing.logger.fallback_activated"')
+    );
     stderrSpy.mockRestore();
   });
 
@@ -1339,7 +1587,11 @@ describe('auth.routes.server', () => {
   });
 
   it('warns when auth route mappings diverge from declared paths', () => {
-    verifyAuthRouteHandlerCoverage(['/auth/login', '/auth/me'], { '/auth/login': {} }, routingLogger as never);
+    verifyAuthRouteHandlerCoverage(
+      ['/auth/login', '/auth/me'],
+      { '/auth/login': {} },
+      routingLogger as never
+    );
 
     expect(routingLogger.warn).toHaveBeenCalledWith(
       'Auth route mapping differs from declared auth route paths',
@@ -1351,7 +1603,11 @@ describe('auth.routes.server', () => {
   });
 
   it('stays silent when auth route mappings match declared paths', () => {
-    verifyAuthRouteHandlerCoverage(['/auth/login', '/auth/me'], { '/auth/login': {}, '/auth/me': {} }, routingLogger as never);
+    verifyAuthRouteHandlerCoverage(
+      ['/auth/login', '/auth/me'],
+      { '/auth/login': {}, '/auth/me': {} },
+      routingLogger as never
+    );
 
     expect(routingLogger.warn).not.toHaveBeenCalled();
   });

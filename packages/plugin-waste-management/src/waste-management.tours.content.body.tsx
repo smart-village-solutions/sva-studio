@@ -5,6 +5,7 @@ import type {
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
 } from './waste-management.api.js';
+import type { WasteManagementTourValidityPeriod } from './search-params.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 import type {
   WasteToursSortDirection,
@@ -17,6 +18,7 @@ export type WasteToursFilterViewModel = {
   readonly filterDialogOpen: boolean;
   readonly query: string;
   readonly status: 'all' | 'active' | 'inactive';
+  readonly tourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly tourWasteFractionId: string | undefined;
   readonly firstDateFrom: string | undefined;
   readonly firstDateTo: string | undefined;
@@ -24,6 +26,7 @@ export type WasteToursFilterViewModel = {
   readonly endDateTo: string | undefined;
   readonly draftQuery: string;
   readonly draftStatus: 'all' | 'active' | 'inactive';
+  readonly draftTourValidityPeriod: WasteManagementTourValidityPeriod;
   readonly draftTourWasteFractionId: string | undefined;
   readonly draftFirstDateFrom: string | undefined;
   readonly draftFirstDateTo: string | undefined;
@@ -34,6 +37,7 @@ export type WasteToursFilterViewModel = {
   readonly onFilterDialogOpenChange: (open: boolean) => void;
   readonly onDraftQueryChange: (value: string) => void;
   readonly onDraftStatusChange: (value: 'all' | 'active' | 'inactive') => void;
+  readonly onDraftTourValidityPeriodChange: (value: WasteManagementTourValidityPeriod) => void;
   readonly onDraftTourWasteFractionIdChange: (value: string | undefined) => void;
   readonly onDraftFirstDateFromChange: (value: string | undefined) => void;
   readonly onDraftFirstDateToChange: (value: string | undefined) => void;
@@ -76,6 +80,7 @@ type WasteToursContentBodyProps = {
   readonly fractions: readonly { readonly id: string; readonly name: string }[];
   readonly onOpenCreateDialog: () => void;
   readonly setBulkDeleteOpen: Dispatch<SetStateAction<boolean>>;
+  readonly setBulkValidityOpen: Dispatch<SetStateAction<boolean>>;
   readonly filters: WasteToursFilterViewModel;
   readonly table: WasteToursTableViewModel;
 };
@@ -84,6 +89,7 @@ export const WasteToursContentBody = ({
   fractions,
   onOpenCreateDialog,
   setBulkDeleteOpen,
+  setBulkValidityOpen,
   filters,
   table,
 }: WasteToursContentBodyProps) => (
@@ -94,6 +100,7 @@ export const WasteToursContentBody = ({
         selectedCount={table.selectedTourIds.length}
         query={filters.query}
         status={filters.status}
+        tourValidityPeriod={filters.tourValidityPeriod}
         fractions={fractions}
         tourWasteFractionId={filters.tourWasteFractionId}
         firstDateFrom={filters.firstDateFrom}
@@ -102,6 +109,7 @@ export const WasteToursContentBody = ({
         endDateTo={filters.endDateTo}
         draftQuery={filters.draftQuery}
         draftStatus={filters.draftStatus}
+        draftTourValidityPeriod={filters.draftTourValidityPeriod}
         draftTourWasteFractionId={filters.draftTourWasteFractionId}
         draftFirstDateFrom={filters.draftFirstDateFrom}
         draftFirstDateTo={filters.draftFirstDateTo}
@@ -112,8 +120,10 @@ export const WasteToursContentBody = ({
         onOpenFilterDialog={filters.onOpenFilterDialog}
         onFilterDialogOpenChange={filters.onFilterDialogOpenChange}
         onOpenBulkDelete={() => setBulkDeleteOpen(true)}
+        onOpenBulkValidity={() => setBulkValidityOpen(true)}
         onDraftQueryChange={filters.onDraftQueryChange}
         onDraftStatusChange={filters.onDraftStatusChange}
+        onDraftTourValidityPeriodChange={filters.onDraftTourValidityPeriodChange}
         onDraftTourWasteFractionIdChange={filters.onDraftTourWasteFractionIdChange}
         onDraftFirstDateFromChange={filters.onDraftFirstDateFromChange}
         onDraftFirstDateToChange={filters.onDraftFirstDateToChange}

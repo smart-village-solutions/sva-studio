@@ -51,7 +51,7 @@ overrides:
   "@opentelemetry/core": "2.8.0"
   "@actions/github>undici": "6.27.0"
   "@actions/http-client>undici": "6.27.0"
-  "jsdom>undici": "7.28.0"
+  "jsdom>undici": "7.29.0"
 
 packages:
   - apps/*

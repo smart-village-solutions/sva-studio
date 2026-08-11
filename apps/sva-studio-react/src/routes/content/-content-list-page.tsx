@@ -24,7 +24,10 @@ import {
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
-import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
@@ -98,6 +101,7 @@ const contentStatusOptions = [
   'published',
   'archived',
 ] as const satisfies readonly StatusFilter[];
+const contentSortFields = ['title', 'createdAt', 'updatedAt', 'publishedAt'] as const;
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
   if (!error) {
@@ -219,15 +223,22 @@ const normalizeSortState = (value: unknown): ContentListSortState | undefined =>
   if (objectValue) {
     const field = typeof objectValue.field === 'string' ? objectValue.field : undefined;
     const direction = objectValue.direction;
-    if (field && (direction === 'asc' || direction === 'desc')) {
+    if (
+      field &&
+      contentSortFields.some((sortField) => sortField === field) &&
+      (direction === 'asc' || direction === 'desc')
+    ) {
       return { field, direction };
     }
   }
 
   if (typeof value === 'string' && value.trim().length > 0) {
-    return value.startsWith('-')
-      ? { field: value.slice(1), direction: 'desc' }
-      : { field: value, direction: 'asc' };
+    const normalized = value.startsWith('-')
+      ? ({ field: value.slice(1), direction: 'desc' } as const)
+      : ({ field: value, direction: 'asc' } as const);
+    return contentSortFields.some((sortField) => sortField === normalized.field)
+      ? normalized
+      : undefined;
   }
 
   return undefined;
@@ -364,10 +375,10 @@ const resolveContentSortField = (
   routeSortField: string | undefined
 ): IamContentListQuery['sortBy'] => {
   switch (routeSortField) {
-    case 'contentType':
     case 'title':
-    case 'status':
+    case 'createdAt':
     case 'updatedAt':
+    case 'publishedAt':
       return routeSortField;
     default:
       return 'updatedAt';
@@ -542,6 +553,7 @@ export const ContentListPage = ({
   principalControl,
 }: ContentListPageProps) => {
   const studioDataTableLabels = createStudioDataTableLabels();
+  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const navigate = useNavigate();
   const search = useSearch({ strict: false }) as RouteSearchState;
   const auth = useAuth();
@@ -755,20 +767,20 @@ export const ContentListPage = ({
           </span>
         ),
         sortable: true,
+        sortLabel: t('content.table.headerTitle'),
         sortValue: (item) => item.title.toLowerCase(),
       },
       {
         id: 'contentType',
         header: t('content.table.headerType'),
         cell: (item) => item.typeLabel,
-        sortable: true,
-        sortValue: (item) => item.typeLabel.toLowerCase(),
       },
       {
         id: 'createdAt',
         header: t('content.table.headerCreated'),
         cell: (item) => formatDateTime(item.createdAt),
         sortable: true,
+        sortLabel: t('content.table.headerCreated'),
         sortValue: (item) => item.createdAt,
       },
       {
@@ -777,6 +789,7 @@ export const ContentListPage = ({
         cell: (item) =>
           item.updatedAt ? formatDateTime(item.updatedAt) : t('content.table.notAvailable'),
         sortable: true,
+        sortLabel: t('content.table.headerUpdated'),
         sortValue: (item) => item.updatedAt ?? '',
       },
       {
@@ -785,6 +798,7 @@ export const ContentListPage = ({
         cell: (item) =>
           item.publishedAt ? formatDateTime(item.publishedAt) : t('content.table.notPublished'),
         sortable: true,
+        sortLabel: t('content.table.headerPublished'),
         sortValue: (item) => item.publishedAt ?? '',
       },
       {
@@ -801,8 +815,6 @@ export const ContentListPage = ({
             onUpdated={contentsApi.refetch}
           />
         ),
-        sortable: true,
-        sortValue: (item) => item.status,
       },
     ],
     [
@@ -841,13 +853,27 @@ export const ContentListPage = ({
         </Alert>
       ) : null}
 
-      <MainserverAuthoringDiagnosticsPanel
-        enabled={effectivePermissionActions.includes('iam.monitoring.read')}
-      />
-
       <section>
         <StudioDataTable
           ariaLabel={t('content.table.ariaLabel')}
+          sorting={{
+            mode: 'external',
+            labels: studioDataTableSortingLabels,
+            state: [
+              {
+                id: resolveContentSortField(routeSortField),
+                desc: (routeSortDirection ?? 'desc') === 'desc',
+              },
+            ],
+            onChange: ([nextSort]) => {
+              if (nextSort) {
+                navigateSearch({
+                  sort: { field: nextSort.id, direction: nextSort.desc ? 'desc' : 'asc' },
+                  page: 1,
+                });
+              }
+            },
+          }}
           labels={studioDataTableLabels}
           caption={t('content.table.caption')}
           data={registeredContents}
@@ -977,6 +1003,10 @@ export const ContentListPage = ({
           )}
         />
       </section>
+
+      <MainserverAuthoringDiagnosticsPanel
+        enabled={effectivePermissionActions.includes('iam.monitoring.read')}
+      />
     </section>
   );
 };

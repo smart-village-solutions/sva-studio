@@ -41,7 +41,7 @@ export const listCockpitCardItems = async (
     if (page > MAX_UPSTREAM_PAGES)
       throw new SvaMainserverError({
         code: 'invalid_response',
-        message: 'Cockpit-Cards-Auflistung überschreitet das erlaubte Upstream-Seitenlimit.',
+        message: 'Die Kachelauflistung überschreitet das erlaubte Upstream-Seitenlimit.',
         statusCode: 502,
       });
     const result = await listItems({ ...input, page, pageSize: 100 });

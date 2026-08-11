@@ -96,9 +96,10 @@ Fehlerpfad:
 
 1. Ein Benutzer öffnet eine Cockpit Card aus der gemeinsamen Inhaltsübersicht oder legt eine neue an.
 2. Das Plugin lädt die bestehende Kategorienliste und öffentliche Bildmedien hostgeführt; Text und Bilder werden gemeinsam im Tab `Inhalt` bearbeitet.
-3. Die Fassade autorisiert mit `cockpit-cards.*`, validiert genau eine Kategorie, mindestens ein Bild und höchstens einen HTTPS-Link und erzwingt `genericType: "COCKPIT_CARD"`.
+3. Die Fassade autorisiert mit `cockpit-cards.*`, validiert Überschrift, genau eine Kategorie, optionale Bilder und höchstens einen HTTPS-Link und erzwingt `genericType: "COCKPIT_CARD"`. Linktext und Öffnen-in-neuem-Tab werden nur gemeinsam mit dem Link gespeichert.
 4. Der Leseweg sammelt alle GenericItem-Upstream-Seiten, filtert und sortiert die Cockpit Cards und paginiert anschließend lokal.
-5. Die Inhaltsprojektion führt den Datensatz als `cockpit-cards.cockpit-card`; bei vorhandenen `generic-items.read`-Rechten darf derselbe Datensatz zusätzlich als `generic-items.generic-item` erscheinen.
+5. Beim Update bleiben die serverseitige `externalId`, unbekannte Payload-Schlüssel und schema-kompatible Medienmetadaten erhalten; Response-only- und unbekannte Rohfelder werden nicht in GraphQL-Inputs übernommen. Beim Create wird keine clientseitige `externalId` akzeptiert.
+6. Die Inhaltsprojektion führt den Datensatz als `cockpit-cards.cockpit-card`; in der gemeinsamen Inhaltsübersicht erscheint kein generischer Ersatz. Der getrennte technische GenericItem-Vollzugriff bleibt davon unberührt.
 
 ### Waste-Management: Settings, CRUD, PDF-Stamminhalte und technische Tools
 
@@ -109,13 +110,14 @@ Fehlerpfad:
 5. Für Settings, Ausgabe-Stamminhalte, Seed, Reset, Migrations- und Importpfade löst `@sva/server-runtime` die aktive Waste-Datenquelle der Instanz auf und verwendet dabei serverseitig geschützte Secrets.
 6. Zentrale Governance-Daten wie Waste-Datenquelle, letzter Connection-Check und Auditspur liegen im Studio-Postgres; die fachlichen Waste-Daten liegen in der instanzbezogenen Waste-Fachdatenbank.
 7. Mutationen gegen Fraktionen, Orte, Abholorte, Touren, Ausweichtermine und Bulk-Zuordnungen laufen immer über dieselbe Host-Fassade und erzeugen zentrale Audit-Events.
-8. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
-9. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
-10. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
-11. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
-12. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
-13. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
-14. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
+8. Die Mehrfachbearbeitung tourweiter Gültigkeitszeiträume sperrt die vollständige Auswahl in einer Fachdatenbank-Transaktion, validiert die resultierenden Zeiträume und schreibt ausschließlich `first_date` und `end_date`; bei einer ungültigen oder nicht anwendbaren Tour wird die gesamte Änderung zurückgerollt.
+9. Erfolgreiche Fraktionsmutationen starten zusätzlich asynchron den dedizierten Job `waste-management.sync-waste-types`.
+10. Die Studio-Runtime lädt dafür die aktiven Fraktionen, baut in `@sva/core` das `wasteTypes`-JSON mit stabilen PDF-Kürzel-Keys und schreibt es über `@sva/sva-mainserver` per `createOrUpdateStaticContent` auf den Mainserver.
+11. Der Tab `Ausgabe` pflegt nur statische PDF-Inhalte wie Branding und Kontaktblock; operative PDF-Erzeugung gehört nicht mehr zum Studio-Laufzeitpfad.
+12. Technische Operationen wie Import, Migration, Seed, Reset und `sync-waste-types` starten als generische Plugin-Jobs über den gemeinsamen Host-Jobpfad; das Plugin zeigt nur die fachnahe Bedienhülle und Statusprojektion.
+13. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
+14. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
+15. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
 
 Fehlerpfad:
 
@@ -251,10 +253,10 @@ Fehlerpfad:
 2. Der Router materialisiert host-owned Admin-Ressourcen für News, Events, POI und Generic Items unter `/admin/news`, `/admin/events`, `/admin/poi` und `/admin/generic-items`.
 3. Beim Aufruf der Route wendet der Host den registrierten Plugin-Guard an, zum Beispiel `news.read`, `events.read`, `poi.read` oder `generic-items.read`, und rendert optional die spezialisierte Plugin-Fläche innerhalb der Host-Shell.
 4. Die gemeinsame Übersicht `/admin/content` ruft ausschließlich `GET /api/v1/iam/contents` auf.
-5. Die App-Fassade liest hinter dieser Route ausschließlich aus der persistierten Listenprojektion `iam.content_list_projection`; lokale IAM-Inhalte landen dort triggerbasiert, Mainserver-News, -Events, -POI, -Generic-Items und Surveys über einen deduplizierten Hintergrund-Sync.
+5. Die App-Fassade liest hinter dieser Route ausschließlich aus der persistierten Listenprojektion `iam.content_list_projection`; lokale IAM-Inhalte landen dort triggerbasiert, Mainserver-News, -Events, -POI, -Generic-Items und Surveys über einen deduplizierten Hintergrund-Sync. Bei GenericItems löst der Host den exakten `genericType` vor der Autorisierung gegen die Build-time-Plugin-Registry auf und persistiert nur den zuständigen Fach-Content-Type oder `generic-items.generic-item` als Fallback. Der Server materialisiert diese Zuordnung aus den kleinen Ownership-Modulen der aktivierten Plugins, ohne den Browser-Plugin-Snapshot oder React-Entrypoints zu laden.
 6. Mainserver-Snapshots und Sync-State sind dabei strikt scope-isoliert: `instanceId`, `actorAccountId`, aktiver Organisationskontext und `contentType` bilden gemeinsam den Projektionsschlüssel, damit kein Nutzer fremde Snapshot- oder Fehlerzustände übernimmt.
 7. Nach erfolgreichem Login beziehungsweise Session-Aufbau stößt der Host asynchron einen Warm-up-Refresh über `POST /api/v1/iam/contents/refresh` an, damit die Inhaltsübersicht direkt mit aktuellen Mainserver-Daten anlaufen kann.
-8. Der Mainserver-Refresh lädt zuerst für alle sichtbaren Typen die jeweils erste Seite mit `pageSize = 25`; erst wenn dieser erste Block für alle Typen persistiert ist, folgen Seite 2, Seite 3 und so weiter im Round-Robin-Verfahren.
+8. Der Mainserver-Refresh lädt zuerst für alle sichtbaren Typen die jeweils erste Seite mit `pageSize = 25`; erst wenn dieser erste Block für alle Typen persistiert ist, folgen Seite 2, Seite 3 und so weiter im Round-Robin-Verfahren. Gefilterte GenericItem-Projektionen scannen dabei so viele Upstream-Seiten, bis die fachliche Seite gefüllt oder das Upstream-Ende erreicht ist; eine leere gefilterte Zwischenmenge beendet den Refresh nicht.
 9. Ist ein Mainserver-Snapshot älter als das Freshness-Fenster, markiert der Host die Liste als veraltet und startet den Sync im Hintergrund, blockiert die Listenanzeige aber nicht, solange bereits ein letzter erfolgreicher Snapshot existiert.
 10. Fehlt für einen angefragten Mainserver-Typ noch jeder erfolgreiche Snapshot, antwortet die Listenroute mit einem regulären Fehlervertrag statt mit einem stillen Fallback oder einem endlosen Ladeschirm.
 11. Ein manueller Refresh aus der UI ruft ebenfalls `POST /api/v1/iam/contents/refresh` auf; der Host startet oder dedupliziert den serverseitigen Sync und die UI refetcht anschließend die Liste.
@@ -264,7 +266,7 @@ Fehlerpfad:
 15. `@sva/sva-mainserver/server` lädt über getrennte interne Provider Endpunktkonfiguration, organisationsgebundene oder persönliche Credentials, OAuth2-Token und den GraphQL-Transport.
 16. Ressourcenspezifische Operations-Module für News, Events, POI und Generic Items rufen denselben Transport-Port auf; das News-Plugin übersetzt dabei den vereinfachten Redaktionseditor in ein Save-Plan-Modell mit `contentBlocks[0]`, Veröffentlichungsmodus und optionaler Push-Auslösung, während Events, POI und Generic Items ihre tab-basierten Detailseiten mit festen Bereichen `Basis`, `Inhalt`, `Einstellungen` und `Historie` über eigene Mapping-Adapter für Termine, Adressen, Kontakte, URLs, Medien, Kategorien, Geodaten, Preise, Barrierefreiheit und freie Zusatzfelder anbinden.
 17. Der GenericItem-Pfad selektiert oder schreibt kein Root-Feld `teaser`. Einleitungen laufen ausschließlich über `ContentBlock.intro`; Featured Projects verwenden dafür den ersten Block gemeinsam mit dem Volltext in `body`, während FAQ und Kacheln ihre vorhandenen reinen Body-Verträge behalten. News lesen und schreiben Einleitung und Haupttext ebenfalls ausschließlich als `contentBlocks[].intro/body`; historische Textwerte im Payload werden nicht übernommen.
-18. Nach erfolgreichen Mainserver-Mutationen für News, Events und POI lädt der Host gezielt genau den betroffenen Datensatz per typed Detailadapter nach und aktualisiert nur dessen Projektionszeile; Delete-Pfade entfernen die Zeile identitätsbasiert ohne typweiten Vollrefresh.
+18. Nach erfolgreichen Mainserver-Mutationen lädt der Host gezielt genau den betroffenen Datensatz per typed Detailadapter nach und aktualisiert nur dessen Projektionszeile; bei einem geänderten GenericItem-Discriminator entfernt er zuvor passende fachliche oder generische Geschwisterzeilen. Delete-Pfade entfernen die Zeile identitätsbasiert ohne typweiten Vollrefresh.
 19. Derselbe erfolgreiche Follow-up-Pfad kann die Mainserver-Identität an einen lokalen IAM-Content-Core binden und genau einen History-Eintrag mit Request-/Idempotenz-Korrelation finalisieren. Diese Folgearbeit ist optional: Ihr Fehlschlag ändert einen bestätigten Mainserver-Erfolg nicht. Providerfehler und Autorisierungsablehnungen erzeugen keinen sichtbaren Erfolgseintrag.
 20. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
 21. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
@@ -745,6 +747,21 @@ Fehlerpfad:
 - Parent aus fremder Instanz oder Zyklusversuch führt zu einer deterministischen Konflikt- oder Validierungsantwort.
 - Löschung mit aktiven Children wird fail-closed abgewiesen; Memberships blockieren den Löschpfad nicht.
 
+### Szenario 12a: Organisation erhält einen Mainserver-Zugang
+
+1. Nach dem lokalen Organisations-Commit reserviert die Runtime atomar eine zeitlich begrenzte Lease pro Instanz und Organisation. Ein paralleler oder wiederholter Request beobachtet den laufenden beziehungsweise fertigen Zustand.
+2. Fehlende Mainserver-Konfiguration oder persönliche Mainserver-Credentials des handelnden Administrators führen beim automatischen Versuch zu einem sicheren Skip; die Organisationserstellung bleibt HTTP `201`.
+3. Erst nach erfolgreichem Preflight wird ein deterministischer, zweckgebundener Keycloak-Account ohne Rollen, Gruppen oder Einladung erzeugt oder anhand von E-Mail, Username und den Attributen `instanceId`, `organizationId` und `accountPurpose` eindeutig wiederverwendet.
+4. Der OAuth-Bootstrap verwendet ausschließlich persönliche Credentials des Actors. Der unveränderte Mainserver-Benutzer-Endpunkt erhält das reale Keycloak-Subject und liefert Application-ID, Secret und die vertraglich garantierte `data_provider_id`.
+5. Studio persistiert die Organisations-Credentials verschlüsselt, bindet den DataProvider mit `create_response`-Evidenz und setzt den Zustand auf `ready`. Spätere Verifikation verwendet mit denselben Organisations-Credentials `/data_provider.json`.
+6. Lost Response, lokale Teilpersistenz oder Binding-Konflikt führen ohne Überschreiben und ohne nachträgliche Accountkompensation zu `reconciliation_required`. Ein sicherer Fehler vor dem Upstream-Aufruf führt zu `failed` oder beim automatischen Fehlen von Voraussetzungen zu `not_provisioned`.
+7. Der explizite Endpoint `POST /api/v1/iam/organizations/:organizationId/provision-mainserver` verlangt nur `iam.org.write` sowie einen Idempotency-Key und akzeptiert keine frei wählbaren technischen Accountattribute.
+
+Fehlerpfad:
+
+- Hard Delete des zugeordneten Accounts ist während einer aktiven Lease blockiert. Außerhalb der Lease wird nur die Referenz gelöst; gültige Organisations-Credentials und DataProvider-Bindungen bleiben erhalten.
+- Audit- und Logfehler verändern keinen bereits bestätigten fachlichen Provisioning-Zustand. Secrets, Tokens und rohe Upstream-Antworten werden nie protokolliert.
+
 ### Szenario 13: Benutzer wechselt aktiven Organisationskontext
 
 1. Die Shell lädt `GET /api/v1/iam/me/context` und erhält aktiven Kontext plus zulässige Organisationsoptionen.
@@ -1005,3 +1022,10 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 4. Read-Merge-Write, Provider-Mutation sowie ein Status- oder Visibility-Zweitschritt verwenden denselben Kontext. Hard Delete besitzt bewusst keinen Post-Read.
 5. Im Standardmodus `shadow` wird die exakte Scope-Entscheidung nur als Kandidat persistiert und der credential-sichtbare Vertrag erzwungen. `automatic` erzwingt konfliktfreie Bindungen; `compatibility` stellt den rollbackfähigen Übergangsvertrag wieder her.
 6. Ein Provider-Erfolg wird im Journal finalisiert und danach in Projection, Audit und genau einen host-owned History-Eintrag mit `coverage = studio_mutations` überführt. Lokale Folgefehler führen zu Reconciliation und ändern den Provider-Erfolg nicht.
+
+### Szenario 17: Global sortierte Tabellenabfrage
+
+1. Die Runtime bestimmt zuerst Tenant-, Berechtigungs- und Sichtbarkeitsumfang und validiert Sortierfeld sowie Richtung gegen eine feste Allowlist.
+2. Such- und Fachfilter werden auf die vollständige erlaubte Menge angewandt; danach folgen fehlende Werte zuletzt, fachlicher Sortierwert und eindeutige ID aufsteigend als letzter Gleichstandsauflöser.
+3. Erst die so bestimmte Reihenfolge wird per Offset oder Seitenschnitt paginiert und zusammen mit der Gesamtzahl an die UI geliefert.
+4. Sortier-, Filter- und Seitengrößenwechsel setzen die kontrollierte Seite atomar auf eins. Die Tabelle rendert die empfangene Seite unverändert und führt kein zweites lokales Sortiermodell aus.

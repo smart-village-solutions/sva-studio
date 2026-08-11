@@ -1,6 +1,7 @@
 export type StudioMediaPickerMode = 'library' | 'upload' | 'review';
 export type StudioMediaPickerReviewSource = 'library' | 'upload';
-export type StudioMediaPickerUploadPhase = 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
+export type StudioMediaPickerUploadPhase =
+  'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
 export type StudioMediaPickerErrorCode =
   | 'unsupported_upload_type'
   | 'upload_failed'
@@ -15,6 +16,7 @@ export type StudioMediaPickerMetadataDraft = Readonly<{
   copyright: string;
   license: string;
 }>;
+export type StudioMediaPickerMetadataField = keyof StudioMediaPickerMetadataDraft;
 
 export type StudioMediaPickerAssetSummary = Readonly<{
   id: string;
@@ -25,10 +27,11 @@ export type StudioMediaPickerAssetSummary = Readonly<{
   visibility?: string;
 }>;
 
-export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary & Readonly<{
-  metadata: StudioMediaPickerMetadataDraft;
-  persistentUrl?: string | null;
-}>;
+export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary &
+  Readonly<{
+    metadata: StudioMediaPickerMetadataDraft;
+    persistentUrl?: string | null;
+  }>;
 
 export type StudioMediaPickerOverlayLabels = Readonly<{
   title: string;
@@ -80,7 +83,8 @@ export const createMetadataDraft = (
   license: asset.metadata.license || '',
 });
 
-export const normalizeStudioMediaPickerSearchValue = (value: string) => value.trim().toLocaleLowerCase('de-DE');
+export const normalizeStudioMediaPickerSearchValue = (value: string) =>
+  value.trim().toLocaleLowerCase('de-DE');
 
 export const studioMediaPickerPreviewClassName =
   'flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-muted/20';

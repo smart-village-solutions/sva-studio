@@ -155,7 +155,6 @@ export const mergeProjectIntoGenericItem = (input: {
   readonly existing?: SvaMainserverGenericItem;
   readonly externalId?: string;
   readonly publishedAt?: string;
-  readonly deleted?: boolean;
 }): SvaMainserverGenericItemInput => {
   const existing = input.existing;
   const existingPayload = payloadRecord(existing?.payload);
@@ -189,7 +188,6 @@ export const mergeProjectIntoGenericItem = (input: {
       ...existingPayload,
       language: input.project.language.trim(),
       status: input.project.status,
-      deleted: input.deleted ?? existingPayload.deleted === true,
     },
     contentBlocks:
       input.project.description.trim() || fullText || firstBlock || remainingBlocks.length > 0
@@ -262,7 +260,6 @@ export const mapGenericItemToProject = (item: SvaMainserverGenericItem): SvaMain
     ...(item.publishedAt ? { publishedAt: item.publishedAt } : {}),
     author: projectAuthor(item, payload),
     ...(item.dataProvider ? { dataProvider: item.dataProvider } : {}),
-    deleted: payload.deleted === true,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };

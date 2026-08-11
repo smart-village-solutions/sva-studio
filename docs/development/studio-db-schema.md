@@ -38,7 +38,7 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0077_mainserver_data_provider_identity.sql`
+- Repo-Migrationen vorhanden bis: `0079_iam_organization_mainserver_provisioning.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
@@ -57,6 +57,8 @@ Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038`
 - der tenantgebundene Waste-Provisionierungsstatus und der Eindeutigkeitsindex für pluginverwaltete Waste-Interfaces aus `0074_iam_waste_tenant_provisioning.sql`
 - die allgemeinen External-Content-Referenzen und die explizite Studio-only-History-Abdeckung aus `0075` und `0076`
 - die credential-versionierten Mainserver-DataProvider-Bindungen, das persistente Mutation-Journal sowie Credential-Fingerprint und Autorisierungsmodus der Content-Projektion aus `0077_mainserver_data_provider_identity.sql`
+- die Permission-Cache-Revisionen aus `0078_iam_permission_cache_revisions.sql`
+- die technische Accountklassifikation sowie der lease-geschützte Organisations-Mainserver-Provisioning-Zustand aus `0079_iam_organization_mainserver_provisioning.sql`
 
 Für Entwicklungsentscheidungen gilt deshalb:
 
@@ -69,7 +71,7 @@ Zusätzlich zum Live-Dump liegt ein reproduzierter Soll-Snapshot auf Basis der R
 
 - Datei: `docs/development/studio-db-schema-final.sql`
 - Quelle: lokaler Postgres-Reset + vollständige Anwendung von `packages/data/migrations/*.sql`
-- Enthält strukturell den Repo-Sollstand bis `0078_iam_permission_cache_revisions.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung, `0078` die monotonen instanz- und benutzerbezogenen Permission-Cache-Revisionen
+- Enthält strukturell den Repo-Sollstand bis `0079_iam_organization_mainserver_provisioning.sql`; `0077` ergänzt automatische DataProvider-Bindungen, Mutation-Journal und die readiness-gesteuerte Projektionsautorisierung, `0078` die monotonen instanz- und benutzerbezogenen Permission-Cache-Revisionen und `0079` technische Accounts sowie das Organisations-Provisioning
 - Aktueller Soll-Stand umfasst die IAM-Tabellen, `public.goose_db_version` sowie die runtime-nah dokumentierten `waste_*`-Tabellen im finalen Snapshot
 
 Der Snapshot bildet damit den erwarteten Zielschema-Stand des Repositories ab, auch wenn das Livesystem noch hinterherhängt.
@@ -96,9 +98,9 @@ Zentrale Identitäts- und Berechtigungsstruktur:
 Kernidee:
 
 - `instances` ist der Mandantenanker.
-- `accounts` hält Nutzerstammdaten.
+- `accounts` hält Nutzerstammdaten und mit `is_technical_account` eine unabhängige administrative Klassifikation. Sie ändert weder Status noch Rollen, Gruppen oder Loginfähigkeit.
 - `organizations` modelliert fachliche Organisationsstrukturen pro Instanz.
-- `organization_mainserver_credentials` hält organisationsgebundene Mainserver-Application-IDs und verschlüsselte Secrets getrennt vom normalen Organisations-Read-Modell.
+- `organization_mainserver_credentials` hält organisationsgebundene Mainserver-Application-IDs, verschlüsselte Secrets, die nullable technische Accountreferenz und den persistenten Provisioning-Zustand getrennt vom normalen Organisations-Read-Modell.
 - Rollen und Rechte werden über `account_roles` und `role_permissions` zugewiesen.
 - `role_permissions.access_scope` ergänzt für datensatzbezogene Rechte den Zugriffsmodus einer Rollen-Rechte-Zuordnung (`all`, `own`, `organization`).
 - `permission_cache_instance_revisions` und `permission_cache_user_revisions` liefern den PostgreSQL-autoritativen Revisionsvektor für Permission-Snapshots. Fehlende Zeilen entsprechen logisch Revision `1`; jeder erfolgreiche Bump ist monoton und wird gemeinsam mit der fachlichen Mutation transaktional committed.
@@ -115,6 +117,9 @@ Speichert organisationsgebundene Mainserver-Zugangsdaten pro `instance_id` und `
 
 - `mainserver_application_id` ist im Read-Modell sichtbar.
 - `mainserver_application_secret_ciphertext` enthält ausschließlich verschlüsselte Werte.
+- `technical_account_id` referenziert innerhalb derselben Instanz den zugeordneten Account und wird beim Hard Delete per `ON DELETE SET NULL` gelöst.
+- `provisioning_status`, `operation_reference`, `provisioning_phase`, `attempt_count`, `lease_expires_at`, sichere Fehlercodes und Zeitpunkte bilden den idempotenten Zustands- und Recovery-Vertrag ab.
+- Vollständige manuelle Bestands-Credentials starten in `verification_required`; unvollständige Bestände in `not_provisioned`.
 - API- und UI-Modelle geben nie das Secret zurück, sondern nur `mainserverApplicationSecretSet: boolean`.
 
 ### 2. Gruppen und Rollenrechte
@@ -268,7 +273,7 @@ Kernidee:
 
 - Fachliche Tabellen der externen Waste-Schemata dürfen nicht stillschweigend in den Soll-Snapshot der zentralen Studio-Datenbank aufgenommen werden.
 - Die zentral gespeicherten Tabellen `waste_email_reminder_subscriptions`, `waste_email_reminder_subscription_items` und `waste_email_reminder_outbox` sind über `packages/data/migrations/*.sql` reproduzierbar und deshalb Teil des kanonischen Studio-Snapshots.
-- `waste_location_tour_links`, `waste_location_tour_pickup_dates`, `waste_tour_assignments` und `waste_tour_assignment_locations` gehören dagegen zum externen, instanzbezogenen Waste-Schema und werden über den runtime-nahen Schema-Pfad reproduzierbar erzeugt. Die Zuordnungstabelle `waste_location_tour_links` enthält Ort, Tour und optionale standortbezogene Gültigkeitsfenster `start_date` und `end_date`; diese begrenzen die Terminmaterialisierung zusätzlich zu den Tourdaten.
+- `waste_location_tour_links`, `waste_location_tour_pickup_dates`, `waste_tour_assignments` und `waste_tour_assignment_locations` gehören dagegen zum externen, instanzbezogenen Waste-Schema und werden über den runtime-nahen Schema-Pfad reproduzierbar erzeugt. Die Zuordnungstabelle `waste_location_tour_links` verbindet ausschließlich Ort und Tour; für alle zugeordneten Abholorte gilt der zentrale Tourzeitraum aus `waste_tours.first_date` und `waste_tours.end_date`.
 
 Für den aktuellen Waste-PDF-Export-Shift ist wichtig:
 

@@ -34,6 +34,7 @@ export type {
   ContentTypeEditorFieldDefinition,
   ContentTypeEditorFieldKind,
   ContentTypeListColumnDefinition,
+  MainserverGenericItemOwnershipDefinition,
   ContentMediaReferenceAlignment,
   ContentMediaReferenceSyncResult,
   RegisteredStudioContentType,
@@ -182,12 +183,16 @@ export type {
   WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityBulkUpdateResult,
+  WasteTourValidityDateOperation,
 } from './public-api.js';
 
 export {
   resolveContentMediaCapabilities,
   type ContentMediaCapabilities,
 } from './content-media-permissions.js';
+export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,
@@ -195,6 +200,8 @@ export {
   assertPluginRoutePathAllowed,
   collectRegisteredStudioContentTypes,
   createContentTypeRegistry,
+  createMainserverGenericTypeRegistry,
+  defineMainserverGenericItemOwnership,
   createPluginContributionGuardrailError,
   createPluginGuardrailError,
   createPluginActionRegistry,
@@ -218,6 +225,7 @@ export {
   createStandardContentPluginPermissions,
   createStandardContentPluginSystemRoles,
   createStandardContentTypeDefinition,
+  resolveMainserverGenericItemContentType,
   resolveStandardContentAccessCapabilities,
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,

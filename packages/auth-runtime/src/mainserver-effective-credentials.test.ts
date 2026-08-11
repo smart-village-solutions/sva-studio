@@ -60,6 +60,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
       },
       credentialFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
       organizationId: '11111111-1111-1111-8111-111111111111',
+      contentAuthorPolicy: 'org_only',
     });
     expect(state.readSvaMainserverCredentialsWithStatus).not.toHaveBeenCalled();
   });
@@ -85,6 +86,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
         apiSecret: 'user-secret-1',
       },
       credentialFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      contentAuthorPolicy: 'org_or_personal',
     });
 
     await expect(
@@ -101,6 +103,7 @@ describe('readEffectiveSvaMainserverCredentialsWithStatus', () => {
         apiSecret: 'user-secret-1',
       },
       credentialFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      contentAuthorPolicy: 'org_or_personal',
     });
   });
 

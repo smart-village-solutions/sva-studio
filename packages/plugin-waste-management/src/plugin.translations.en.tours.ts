@@ -24,8 +24,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     description: 'Description',
     recurrence: 'Recurrence',
     customRecurrenceGroup: 'Custom intervals',
-    firstDate: 'First date',
-    endDate: 'End date',
+    firstDate: 'Valid from',
+    endDate: 'Valid until',
     customDates: 'Custom dates',
     wasteFractions: 'Waste fractions',
     noFractionsAvailable: 'No waste fractions are available yet.',
@@ -39,12 +39,13 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     nameLabel: 'Name',
     namePlaceholder: 'Search by name',
     statusLabel: 'Status',
+    validityPeriodLabel: 'Validity period',
     fractionLabel: 'Waste fraction',
     fractionAll: 'All',
-    firstDateFromLabel: 'First date from',
-    firstDateToLabel: 'First date to',
-    endDateFromLabel: 'Last date from',
-    endDateToLabel: 'Last date to',
+    firstDateFromLabel: 'Valid from – from',
+    firstDateToLabel: 'Valid from – to',
+    endDateFromLabel: 'Valid until – from',
+    endDateToLabel: 'Valid until – to',
     cancel: 'Cancel',
     apply: 'Apply',
     status: {
@@ -52,20 +53,29 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       active: 'Active tours',
       inactive: 'Inactive tours',
     },
+    validityPeriod: {
+      all: 'All tours',
+      previous: 'Previous year ({{year}})',
+      current: 'Current year ({{year}})',
+      next: 'Next year ({{year}})',
+    },
   },
   sections: {
     basics: 'Basics',
     basicsHint: 'Define the tour itself and assign the affected waste fractions.',
     scheduling: 'Scheduling logic',
-    schedulingHint: 'Decide whether the tour follows a fixed cadence or is maintained through individual dates.',
+    schedulingHint:
+      'Decide whether the tour follows a fixed cadence or is maintained through individual dates.',
     visibility: 'Visibility',
     visibilityHint: 'Control whether the tour is immediately active in the studio.',
   },
   fieldHints: {
     name: 'Use a clear label so the tour can be found quickly in lists and assignments.',
     description: 'Optional: short internal note for special cases or operational context.',
-    recurrence: 'The default is individual dates. Fixed date fields only appear for actual recurring tour variants.',
-    customDates: 'Maintain individual pickup days in the annual calendar and assign the matching collection locations with free-text notes directly in the tour.',
+    recurrence:
+      'The default is individual dates. Fixed date fields only appear for actual recurring tour variants.',
+    customDates:
+      'Maintain individual pickup days in the annual calendar and assign the matching collection locations with free-text notes directly in the tour.',
     wasteFractions: 'Select all fractions collected by this tour.',
     active: 'Active tours are immediately available for assignments and further maintenance.',
   },
@@ -105,7 +115,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     recurrence: 'Cadence',
     fractions: 'Waste fractions',
     locations: 'Collection locations',
-    dateRange: 'Dates',
+    dateRange: 'Validity',
     shifts: 'Shifts',
     actions: 'Actions',
     loadingAssignments: 'Loading assignments',
@@ -114,7 +124,12 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     noAssignments: 'No assignments',
     noCustomDates: 'No custom dates',
   },
-  deleteDialog: { title: 'Delete tour', description: 'The tour {{value}} will be deleted permanently.', confirm: 'Delete', cancel: 'Cancel' },
+  deleteDialog: {
+    title: 'Delete tour',
+    description: 'The tour {{value}} will be deleted permanently.',
+    confirm: 'Delete',
+    cancel: 'Cancel',
+  },
   statusDialog: {
     activateTitle: 'Activate tour',
     activateDescription: 'The tour {{value}} will be activated.',
@@ -123,11 +138,46 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     confirm: 'Confirm',
     cancel: 'Cancel',
   },
-  bulkDeleteDialog: { title: 'Delete tours', description: '{{value}} selected tours will be deleted permanently.', confirm: 'Delete', cancel: 'Cancel' },
-  recurrence: { weekly: 'Weekly', biweekly: 'Biweekly', fourweekly: 'Every four weeks', yearly: 'Yearly', onDemand: 'On demand', custom: 'Custom' },
+  bulkDeleteDialog: {
+    title: 'Delete tours',
+    description: '{{value}} selected tours will be deleted permanently.',
+    confirm: 'Delete',
+    cancel: 'Cancel',
+  },
+  bulkValidityDialog: {
+    title: 'Change validity period',
+    description: 'Change the tour-wide validity period for {{value}} selected tours.',
+    selectedCount: '{{value}} tours selected',
+    inapplicableTitle: 'Inapplicable tours',
+    inapplicableDescription:
+      'Custom or on-demand tours do not have a recurrence validity period. Remove these tours from the selection: {{value}}',
+    invalidRange: 'The resulting period would be invalid for at least one tour.',
+    fields: {
+      firstMode: 'Valid from',
+      firstDate: 'New validity start',
+      endMode: 'Valid until',
+      endDate: 'New validity end',
+    },
+    modes: {
+      unchanged: 'Leave unchanged',
+      set: 'Set date',
+      clear: 'Remove date',
+    },
+    apply: 'Change validity',
+    cancel: 'Cancel',
+  },
+  recurrence: {
+    weekly: 'Weekly',
+    biweekly: 'Biweekly',
+    fourweekly: 'Every four weeks',
+    yearly: 'Yearly',
+    onDemand: 'On demand',
+    custom: 'Custom',
+  },
   customDates: {
     title: 'Custom dates',
-    description: 'Select dates in the annual calendar. Comments, collection locations, and notes are maintained directly per date in the list below.',
+    description:
+      'Select dates in the annual calendar. Comments, collection locations, and notes are maintained directly per date in the list below.',
     empty: 'No custom dates have been selected yet.',
     commentHint: 'Optional comment for this single date',
     actions: {
@@ -154,7 +204,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     },
     assignmentSection: {
       title: 'Collection locations for this date',
-      description: 'Assign one or more existing collection locations with a note to this single date.',
+      description:
+        'Assign one or more existing collection locations with a note to this single date.',
       empty: 'No collection locations have been added for this date yet.',
       summaryEmpty: 'No collection locations yet',
       summaryCount: '{{value}} collection locations assigned',
@@ -166,7 +217,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     },
     dialog: {
       title: 'Select single dates',
-      description: 'Click individual days in the annual calendar to add or remove custom dates for this tour.',
+      description:
+        'Click individual days in the annual calendar to add or remove custom dates for this tour.',
       removeTitle: 'Remove single date',
       removeDescription: 'The date {{value}} will be removed from the custom dates.',
       removeConfirm: 'Remove',
@@ -193,19 +245,15 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       tourUnset: 'Select tour',
       locationId: 'Collection location',
       locationUnset: 'Select collection location',
-      startDate: 'Start date',
-      endDate: 'End date',
     },
     dialog: {
       createTitle: 'Create tour assignment',
       editTitle: 'Edit tour assignments',
-      description: 'Maintain collection locations and optional validity dates for {{value}}.',
-      descriptionFallback: 'Maintain collection locations and optional validity dates.',
+      description:
+        'Maintain the collection locations for {{value}}. Every assignment uses the tour validity period.',
+      descriptionFallback: 'Maintain the collection locations for this tour.',
     },
-    meta: {
-      startDate: 'Start: {{value}}',
-      endDate: 'End: {{value}}',
-    },
+    meta: {},
     workspace: {
       availableTitle: 'Collection locations for this tour',
       selectedCount: '{{value}} selected',
@@ -241,8 +289,12 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     emptyBody: 'Adjust the filters or provide tours in the waste data source.',
     createSuccess: 'The waste tour was created.',
     updateSuccess: 'The waste tour was updated.',
-    duplicateHint: 'Assignments and tour-specific date shifts are copied only after saving the duplicated tour.',
-    assignmentIncomplete: 'Please provide both a collection location and a note for every date-location assignment.',
+    validityUpdateSuccess: 'The validity period of {{value}} tours was updated.',
+    validityUpdateError: 'The validity periods could not be updated.',
+    duplicateHint:
+      'All collection-location assignments, individual pickup dates, and tour-specific date shifts are copied after saving. Assignments use the validity period of the new tour.',
+    assignmentIncomplete:
+      'Please provide both a collection location and a note for every date-location assignment.',
     deleteSuccess: 'The waste tour was deleted.',
     deletePartialSuccess: '{{count}} of {{total}} waste tours were deleted.',
     saveError: 'The waste tour could not be saved.',

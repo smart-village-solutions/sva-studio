@@ -358,6 +358,14 @@ Referenzen:
 - FAQ-Sprachfilter müssen URL-stabil sein und vor Sortierung, Gesamtzahl und Pagination auf der vollständigen FAQ-Menge wirken.
 - Löschaktionen benötigen einen zugänglichen Bestätigungsdialog, eine Pending-Sperre und sichtbare Fehler; eine erfolgreiche Aktion darf genau eine Mutation auslösen.
 - Die deutschen sichtbaren Texte des Cockpit-Card-Plugins verwenden durchgängig „Kachel“ beziehungsweise „Kacheln“.
+- Kacheln lassen sich mit Überschrift und Kategorie ohne Sprache, Text oder Bild anlegen; Linktext und Öffnungsverhalten sind nur bei vorhandenem HTTPS-Link aktiv.
+- Updates erhalten die serverseitige `externalId`, unbekannte Payload-Schlüssel und schema-kompatible Medienmetadaten; Response-only- und unbekannte Rohfelder gelangen nicht in GraphQL-Inputs. Browser-CRUD-Tests sichern Create, Read, Update und Delete gemeinsam ab.
 - Schlanke und Legacy-GenericItem-Projektionen müssen bekannte wie unbekannte `genericType`-Werte vollständig und mit identischer Typmenge abbilden.
 - Tests müssen die getrennte Autorisierung fachlicher und generischer Pfade sowie die mögliche Mehrfachdarstellung bei kombinierten Rechten absichern.
 - Reguläre Live-Rollen sollen keine `generic-items.*`-Actions erhalten, weil der technische Vollzugriff fachliche Validierungen bewusst umgehen kann.
+
+### Ergänzung 2026-08: Qualitätsziele globaler Tabellensortierung
+
+- Komponenten- und Accessibility-Tests sichern explizite Sortiermodi, unveränderte externe Seitenreihenfolge, Desktop- und Mobilbedienung sowie den externen Zweierzyklus ab.
+- Repository-, Read-Model- und Handler-Tests müssen beide Richtungen, fehlende Werte zuletzt, ID-Gleichstandsauflösung, mindestens zwei Seiten und ungültige direkte API-Parameter abdecken.
+- UI-Tests belegen sichtbare Defaults, Seitenreset, Gesamtzahl und Seitengrößen. Type-Gates verhindern Tabellenaufrufer ohne explizite Ownership; Server-Runtime- und OpenSpec-Gates sichern die Paket- beziehungsweise Vertragsgrenzen.

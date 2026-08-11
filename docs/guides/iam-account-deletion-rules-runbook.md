@@ -14,6 +14,7 @@ Dieses Runbook beschreibt den operativen Lauf für tenantbezogene Konten-Löschr
 - Die drei Fristen sind absolute Schwellwerte seit demselben letzten erfolgreichen Login und keine aufeinander aufbauenden Zusatzfristen.
 - Ohne explizite Tenant-Konfiguration gelten `365 / 730 / 1.095` Tage für Deaktivierung, Pseudonymisierung und finalen Tombstone-Soft-Delete.
 - Accounts ohne erfolgreiches Login-Event werden von diesem V1-Mechanismus nicht verarbeitet.
+- Accounts mit der aktuellen Klassifikation `is_technical_account = true` werden vor jeder Zustandsentscheidung vollständig übersprungen. Das Flag stellt keinen bereits eingetretenen Zustand wieder her; nach dem Entfernen nimmt der Account ab dem nächsten Lauf wieder regulär teil.
 - Ein einzelner Lauf bewegt einen Account höchstens um eine Stufe weiter.
 - Inhalte werden nur mitbehandelt, wenn die effektive Inhaltsstrategie `with_owner_lifecycle` ist.
 

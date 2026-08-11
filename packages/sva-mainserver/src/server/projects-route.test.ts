@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   reserveIdempotency: vi.fn(),
   resolveActorInfo: vi.fn(),
   resolveMutationPrincipalContext: vi.fn(),
+  loadCurrentMainserverDataProviderBinding: vi.fn(),
   recordMainserverDataProviderObservation: vi.fn(),
   beginMainserverMutationJournal: vi.fn(),
   finalizeMainserverMutationJournal: vi.fn(),
@@ -22,6 +23,7 @@ const state = vi.hoisted(() => ({
   withLock: vi.fn(),
   changeVisibility: vi.fn(),
   createGenericItem: vi.fn(),
+  deleteGenericItem: vi.fn(),
   getGenericItem: vi.fn(),
   listGenericItems: vi.fn(),
   updateGenericItem: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
   reserveIdempotency: state.reserveIdempotency,
   resolveActorInfo: state.resolveActorInfo,
   resolveMutationPrincipalContext: state.resolveMutationPrincipalContext,
+  loadCurrentMainserverDataProviderBinding: state.loadCurrentMainserverDataProviderBinding,
   recordMainserverDataProviderObservation: state.recordMainserverDataProviderObservation,
   beginMainserverMutationJournal: state.beginMainserverMutationJournal,
   finalizeMainserverMutationJournal: state.finalizeMainserverMutationJournal,
@@ -74,6 +77,7 @@ vi.mock('@sva/server-runtime', async () => {
 vi.mock('./service.js', () => ({
   changeSvaMainserverGenericItemVisibility: state.changeVisibility,
   createSvaMainserverGenericItem: state.createGenericItem,
+  deleteSvaMainserverGenericItem: state.deleteGenericItem,
   getSvaMainserverGenericItem: state.getGenericItem,
   listSvaMainserverGenericItems: state.listGenericItems,
   updateSvaMainserverGenericItem: state.updateGenericItem,
@@ -180,6 +184,10 @@ const request = (path: string, init?: RequestInit) =>
   });
 
 const prepareDefaults = () => {
+  state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
+    status: 'verified',
+    dataProviderId: 'dp-org-1',
+  });
   state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
   state.validateCsrf.mockReturnValue(null);
   state.authorize.mockResolvedValue({
@@ -225,7 +233,7 @@ describe('projects route', () => {
     vi.resetAllMocks();
   });
 
-  it('reads every upstream page before filtering and paginating Mainserver projects', async () => {
+  it('reads every upstream page and lists every existing FeaturedProject regardless of payload markers', async () => {
     prepareDefaults();
     state.listReferences.mockResolvedValue([reference]);
     state.loadCore.mockResolvedValue(core);
@@ -245,8 +253,11 @@ describe('projects route', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toEqual({
-      data: [expect.objectContaining({ id: contentId, title: 'Projekt' })],
-      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 1 },
+      data: [
+        expect.objectContaining({ id: contentId, title: 'Projekt' }),
+        expect.objectContaining({ id: 'deleted', title: 'Projekt' }),
+      ],
+      pagination: { page: 1, pageSize: 25, hasNextPage: false, total: 2 },
     });
     expect(state.listGenericItems).toHaveBeenCalledTimes(2);
   });
@@ -580,7 +591,7 @@ describe('projects route', () => {
     expect(state.completeIdempotency).not.toHaveBeenCalled();
   });
 
-  it('read-merges hidden fields on serialized updates and soft deletes via payload marker', async () => {
+  it('read-merges hidden fields on serialized updates and physically deletes the GenericItem', async () => {
     prepareDefaults();
     state.loadReferenceByContentId.mockResolvedValue(reference);
     state.getGenericItem.mockResolvedValue(genericItem);
@@ -599,24 +610,19 @@ describe('projects route', () => {
     expect(state.updateCore).toHaveBeenCalledWith(
       expect.objectContaining({ contentId, status: 'published' })
     );
+    const visibilityCallsAfterUpdate = state.changeVisibility.mock.calls.length;
 
     const deleteResponse = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`, { method: 'DELETE' })
     );
     expect(deleteResponse?.status).toBe(200);
-    expect(state.updateGenericItem).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        genericItem: expect.objectContaining({
-          payload: expect.objectContaining({ deleted: true }),
-        }),
-      })
+    expect(state.deleteGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'external-1' })
     );
-    expect(state.changeVisibility).toHaveBeenLastCalledWith(
-      expect.objectContaining({ visible: false })
-    );
+    expect(state.changeVisibility).toHaveBeenCalledTimes(visibilityCallsAfterUpdate);
   });
 
-  it('updates and soft-deletes externally created Mainserver projects without a local core', async () => {
+  it('updates and physically deletes externally created Mainserver projects without a local core', async () => {
     prepareDefaults();
     state.loadReferenceByContentId.mockResolvedValue(undefined);
     state.getGenericItem.mockResolvedValue(genericItem);
@@ -646,13 +652,8 @@ describe('projects route', () => {
 
     expect(deleteResponse?.status).toBe(200);
     await expect(deleteResponse?.json()).resolves.toEqual({ data: { id: 'external-1' } });
-    expect(state.updateGenericItem).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        genericItemId: 'external-1',
-        genericItem: expect.objectContaining({
-          payload: expect.objectContaining({ deleted: true }),
-        }),
-      })
+    expect(state.deleteGenericItem).toHaveBeenCalledWith(
+      expect.objectContaining({ genericItemId: 'external-1' })
     );
   });
 
@@ -669,7 +670,7 @@ describe('projects route', () => {
     expect(response?.status).toBe(405);
   });
 
-  it('loads a project detail and enforces missing, deleted and unauthorized contexts', async () => {
+  it('loads a project detail regardless of payload markers and enforces missing and unauthorized contexts', async () => {
     prepareDefaults();
     state.loadCore.mockResolvedValue(core);
     state.loadReferenceByContentId.mockResolvedValue(reference);
@@ -712,10 +713,10 @@ describe('projects route', () => {
       ...genericItem,
       payload: { ...genericItem.payload, deleted: true },
     });
-    const deleted = await dispatchSvaMainserverProjectsRequest(
+    const legacyPayloadMarker = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`)
     );
-    expect(deleted?.status).toBe(404);
+    expect(legacyPayloadMarker?.status).toBe(200);
 
     state.authorize.mockResolvedValueOnce({
       ok: false,
@@ -829,6 +830,68 @@ describe('projects route', () => {
     );
   });
 
+  it('replays the completed create without recreating a physically deleted project', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(reference);
+    state.getGenericItem.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'not_found',
+        message: 'GenericItem wurde nicht gefunden.',
+        statusCode: 404,
+      })
+    );
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'replay',
+      responseBody: { data: { id: contentId } },
+      responseStatus: 201,
+    });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    await expect(response?.json()).resolves.toEqual({ data: { id: contentId } });
+    expect(state.reserveIdempotency).toHaveBeenCalledTimes(1);
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+    expect(state.bindReference).not.toHaveBeenCalled();
+  });
+
+  it('completes a new reservation when a deleted project idempotency record expired', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(reference);
+    state.getGenericItem.mockRejectedValue(
+      new SvaMainserverError({
+        code: 'not_found',
+        message: 'GenericItem wurde nicht gefunden.',
+        statusCode: 404,
+      })
+    );
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(409);
+    expect(state.completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({
+        idempotencyKey: 'operation-1',
+        responseStatus: 409,
+        status: 'FAILED',
+      })
+    );
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+  });
+
   it('preserves provider create success when local create follow-up is unavailable', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
@@ -892,7 +955,7 @@ describe('projects route', () => {
     );
 
     state.updateCore.mockResolvedValue(undefined);
-    state.updateGenericItem.mockRejectedValueOnce(new Error('provider_lost'));
+    state.deleteGenericItem.mockRejectedValueOnce(new Error('provider_lost'));
     const deletion = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`, { method: 'DELETE' })
     );
@@ -900,7 +963,7 @@ describe('projects route', () => {
     expect(state.updateReconciliation).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'reconciliation_required',
-        errorCode: 'soft_delete_finalize_failed',
+        errorCode: 'provider_delete_failed',
       })
     );
   });

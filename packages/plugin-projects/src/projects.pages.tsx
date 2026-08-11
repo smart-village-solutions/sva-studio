@@ -67,6 +67,7 @@ import {
   deleteProject,
   getProject,
   listProjects,
+  ProjectsApiError,
   updateProject,
 } from './projects.api.js';
 import type { ProjectContentItem } from './projects.api-types.js';
@@ -541,8 +542,18 @@ function ProjectEditor({
           setItem(updated);
           form.reset(projectToFormValues(updated));
         }
-      } catch {
-        setMutationError(pt('messages.saveError'));
+      } catch (error) {
+        if (
+          globalThis.location.hostname === 'localhost' ||
+          globalThis.location.hostname.endsWith('.localhost')
+        ) {
+          console.error('Project save failed', error);
+        }
+        setMutationError(
+          error instanceof ProjectsApiError && error.message.trim()
+            ? pt('messages.saveErrorWithReason', { reason: error.message })
+            : pt('messages.saveError')
+        );
         saveFeedback.markFailed(operationId);
       }
     },
@@ -940,6 +951,7 @@ export function ProjectsListPage() {
       {state === 'ready' && items.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
+            sorting={{ mode: 'disabled' }}
             ariaLabel={pt('list.title')}
             data={items}
             columns={[

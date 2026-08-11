@@ -20,13 +20,19 @@ Das System MUST Cockpit Cards als eigenständigen Content-Type `cockpit-cards.co
 
 ### Requirement: Cockpit Cards besitzen ein begrenztes Fachmodell
 
-Das System MUST Überschrift, optionalen Nur-Text, optionalen Sprachcode, genau eine bestehende Kategorie, null oder mehr Bilder, höchstens einen HTTPS-Link, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Ausschließlich Überschrift und Kategorie MUST fachliche Pflichtfelder sein. Andere GenericItem-Bereiche MUST verborgen bleiben.
+Das System MUST Überschrift, optionalen Nur-Text, optionalen Sprachcode, genau eine bestehende Kategorie, null oder mehr Bilder, höchstens einen HTTPS-Link mit optionalem Linktext und Öffnungsverhalten, Sortiergewicht, Sichtbarkeit und Veröffentlichungszeitpunkt bearbeiten. Ausschließlich Überschrift und Kategorie MUST fachliche Pflichtfelder sein. Andere GenericItem-Bereiche und technische Herkunftsfelder MUST verborgen bleiben.
 
 #### Scenario: Cockpit Card mit optionalen Inhalten wird gespeichert
 
 - **WHEN** ein Benutzer Überschrift und Kategorie sowie optional Text, Sprache, gültige Bilder und einen HTTPS-Link speichert
-- **THEN** persistiert das System Überschrift in `title`, Kategorie in `categories`, vorhandenen Text als alleinigen Content-Block, Bilder in `mediaContents` und den Link in `webUrls`
-- **AND** erhält es unbekannte bestehende Payload-Schlüssel
+- **THEN** persistiert das System Überschrift in `title`, Kategorie in `categories`, vorhandenen Text als alleinigen Content-Block, Bilder in `mediaContents`, den Link in `webUrls[0].url`, den Linktext in `webUrls[0].description` und das Öffnungsverhalten in `payload.openInNewTab`
+- **AND** erhält es `externalId`, unbekannte bestehende Payload-Schlüssel und unterstützte Medienmetadaten
+
+#### Scenario: Öffnungsverhalten ohne Link wird normalisiert
+
+- **WHEN** ein Benutzer keinen Link speichert
+- **THEN** speichert das System keine `webUrls`
+- **AND** normalisiert `payload.openInNewTab` auf `false`
 
 #### Scenario: Ungültige Kardinalität wird abgewiesen
 
@@ -48,13 +54,14 @@ Das System MUST Überschrift, optionalen Nur-Text, optionalen Sprachcode, genau 
 
 ### Requirement: Text und Bilder teilen den Inhalts-Tab
 
-Das System MUST für gespeicherte Cockpit Cards die Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` anbieten. `Basis` MUST Überschrift, Sprachcode und Kategorie enthalten. `Inhalt` MUST Text und Bilder gemeinsam enthalten. `Einstellungen` MUST Link und Publikationsmetadaten enthalten.
+Das System MUST für gespeicherte Kacheln die Tabs `Basis`, `Inhalt`, `Einstellungen` und `Historie` anbieten. `Basis` MUST Überschrift, Sprachcode und Kategorie enthalten. `Inhalt` MUST Text und Bilder gemeinsam enthalten. `Einstellungen` MUST Link, Linktext, Öffnungsverhalten und Publikationsmetadaten enthalten.
 
 #### Scenario: Inhalt wird gemeinsam bearbeitet
 
 - **WHEN** ein Benutzer den Tab `Inhalt` öffnet
 - **THEN** kann er dort den Text bearbeiten
 - **AND** Bilder auswählen, hochladen, sortieren und entfernen
+- **AND** den Alternativtext in Vorschaukarten und als einziges Medienmetadatum im gemeinsamen Medienauswahldialog bearbeiten
 - **AND** gibt es keinen separaten Medien-Tab
 
 #### Scenario: Neue Cockpit Card besitzt noch keine Historie

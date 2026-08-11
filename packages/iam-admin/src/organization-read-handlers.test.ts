@@ -84,6 +84,7 @@ const buildDeps = (): OrganizationReadHandlerDeps => ({
   loadOrganizationDetail: vi.fn(async () => state.detail),
   loadOrganizationList: vi.fn(async () => state.organizations),
   readOrganizationTypeFilter: vi.fn(() => undefined),
+  readOrganizationListSort: vi.fn(() => ({ sortBy: 'displayName', sortDirection: 'asc' })),
   readPage: vi.fn(() => ({ page: 1, pageSize: 20 })),
   readPathSegment: vi.fn(
     (request: Request, index: number) =>
@@ -163,6 +164,25 @@ describe('organization read handlers', () => {
       expect.objectContaining({ search: 'Alpha', page: 1, pageSize: 20 })
     );
     await expect(json(response)).resolves.toMatchObject({ pagination: { total: 1 }, requestId: 'req-org' });
+  });
+
+  it('rejects invalid organization sorting before loading the read model', async () => {
+    const deps = {
+      ...buildDeps(),
+      readOrganizationListSort: vi.fn(() => 'invalid' as const),
+    };
+    const handlers = createOrganizationReadHandlers(deps);
+
+    const response = await handlers.listOrganizationsInternal(
+      new Request('http://localhost/api/v1/iam/organizations?sortBy=type'),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    await expect(json(response)).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
+    expect(deps.loadOrganizationList).not.toHaveBeenCalled();
   });
 
   it('returns no active organization context for system_admin users and clears stale session context', async () => {

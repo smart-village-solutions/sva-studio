@@ -2,6 +2,8 @@ export type { RouteFactory } from '@sva/core';
 export * from './content-media-contracts-public-api.js';
 export * from './host-media-public-api.js';
 export {
+  isWasteTourValidityApplicable,
+  resolveWasteTourValidityDates,
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
@@ -62,6 +64,9 @@ export type {
   WasteTourAssignmentRecord,
   WasteTourRecord,
   WasteTourRecurrence,
+  WasteTourValidityBulkUpdateInput,
+  WasteTourValidityBulkUpdateResult,
+  WasteTourValidityDateOperation,
 } from '@sva/core';
 export type { BuildTimeRegistry, BuildTimeRegistryInput } from './build-time-registry.js';
 export { createBuildTimeRegistry } from './build-time-registry.js';
@@ -159,6 +164,12 @@ export {
   getContentTypeDefinition,
   resolveStudioContentDetailPath,
 } from './content-types.js';
+export {
+  createMainserverGenericTypeRegistry,
+  defineMainserverGenericItemOwnership,
+  resolveMainserverGenericItemContentType,
+} from './mainserver-generic-type-registry.js';
+export type { MainserverGenericItemOwnershipDefinition } from './mainserver-generic-type-registry.js';
 export type {
   PluginActionDefinition,
   PluginActionRegistryEntry,

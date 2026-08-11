@@ -13,6 +13,8 @@ export const FractionRowActions = ({
   readonly onRequestDeleteFraction: (fraction: WasteFractionRecord) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+  const editLabel = pt('masterData.fractions.actions.edit');
+  const deleteLabel = pt('masterData.fractions.actions.delete');
   return (
     <>
       <Button
@@ -20,7 +22,8 @@ export const FractionRowActions = ({
         variant="ghost"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-        aria-label={pt('masterData.fractions.actions.edit')}
+        aria-label={editLabel}
+        tooltip={editLabel}
         onClick={() => onOpenEditFraction(fraction)}
       >
         <IconEdit aria-hidden="true" className="h-4 w-4" />
@@ -30,7 +33,8 @@ export const FractionRowActions = ({
         variant="ghost"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-        aria-label={pt('masterData.fractions.actions.delete')}
+        aria-label={deleteLabel}
+        tooltip={deleteLabel}
         onClick={() => onRequestDeleteFraction(fraction)}
       >
         <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />

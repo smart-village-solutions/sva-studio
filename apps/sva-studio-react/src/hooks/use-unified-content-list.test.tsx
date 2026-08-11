@@ -251,12 +251,44 @@ describe('useUnifiedContentList', () => {
 
     await waitForLoaded(result);
 
-    expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'generic-1']);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['generic-1', 'news-2']);
     expect(listNewsMock).toHaveBeenCalledTimes(1);
     expect(listEventsMock).toHaveBeenCalledTimes(1);
     expect(listGenericItemsMock).toHaveBeenCalledTimes(1);
     expect(listPoiMock).toHaveBeenCalledTimes(1);
     expect(listSurveysMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps content without a publication date last in descending order', async () => {
+    const visibleTypes = ['news.article', 'events.event-record'] as const;
+
+    setMainserverSources({
+      news: createListResult([
+        createNewsItem({
+          id: 'news-published',
+          publishedAt: '2026-05-03T10:00:00.000Z',
+        }),
+      ]),
+      events: createListResult([createEventItem({ id: 'event-unpublished' })]),
+    });
+
+    const { result } = renderUnifiedContentList(
+      {
+        page: 1,
+        pageSize: 25,
+        sortBy: 'publishedAt',
+        sortDirection: 'desc',
+        visibleTypes,
+      },
+      visibleTypes
+    );
+
+    await waitForLoaded(result);
+
+    expect(result.current.contents.map((item) => item.id)).toEqual([
+      'news-published',
+      'event-unpublished',
+    ]);
   });
 
   it('falls back to the first news content block headline when the news title is missing', async () => {
@@ -556,12 +588,12 @@ describe('useUnifiedContentList', () => {
     expect(listPoiMock).toHaveBeenCalledTimes(2);
   });
 
-  it('sorts by content type and exposes normalized fetch errors', async () => {
+  it('sorts by creation time and exposes normalized fetch errors', async () => {
     const visibleTypes = ['news.article', 'events.event-record'] as const;
     const query = {
       page: 1,
       pageSize: 25,
-      sortBy: 'contentType',
+      sortBy: 'createdAt',
       sortDirection: 'asc',
       visibleTypes,
     } as const;

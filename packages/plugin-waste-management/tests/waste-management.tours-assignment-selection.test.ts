@@ -32,22 +32,46 @@ describe('createTourAssignmentSelectionSummary', () => {
 });
 
 describe('orderTourAssignmentLocations', () => {
-  it('places selected locations first while preserving each group order', () => {
+  it('places selected locations first and sorts both groups by region, city, and street', () => {
     expect(
       orderTourAssignmentLocations(
         [
-          { id: 'one', label: 'One' },
-          { id: 'two', label: 'Two' },
-          { id: 'three', label: 'Three' },
-          { id: 'four', label: 'Four' },
+          {
+            id: 'four',
+            label: 'West / Zehdenick / B-Straße',
+            regionName: 'West',
+            cityName: 'Zehdenick',
+            streetName: 'B-Straße',
+          },
+          {
+            id: 'two',
+            label: 'Ost / Angermünde / Straße 10',
+            regionName: 'Ost',
+            cityName: 'Angermünde',
+            streetName: 'Straße 10',
+          },
+          {
+            id: 'three',
+            label: 'Ost / Angermünde / Straße 2',
+            regionName: 'Ost',
+            cityName: 'Angermünde',
+            streetName: 'Straße 2',
+          },
+          {
+            id: 'one',
+            label: 'Ost / Berlin / A-Straße',
+            regionName: 'Ost',
+            cityName: 'Berlin',
+            streetName: 'A-Straße',
+          },
         ],
         ['three', 'one']
       )
     ).toEqual([
-      { id: 'one', label: 'One' },
-      { id: 'three', label: 'Three' },
-      { id: 'two', label: 'Two' },
-      { id: 'four', label: 'Four' },
+      expect.objectContaining({ id: 'three' }),
+      expect.objectContaining({ id: 'one' }),
+      expect.objectContaining({ id: 'two' }),
+      expect.objectContaining({ id: 'four' }),
     ]);
   });
 });

@@ -132,6 +132,7 @@ vi.mock('@sva/server-runtime', () => ({
 }));
 
 import {
+  compareProjectionRows,
   listProjectedContents,
   refreshProjectedContents,
   refreshProjectedContentsForMainserverMutation as refreshProjectedContentsForMainserverMutationBase,
@@ -199,6 +200,37 @@ describe('content list projection', () => {
   let simulateLegacySyncStateSchemaMismatchOnce: boolean;
   let syncScopeKeyColumnAvailable: boolean;
   let projectionScopeKeyColumnAvailable: boolean;
+
+  it('sorts supported projection fields with nulls last and an ascending id tie-breaker', () => {
+    const row = (
+      id: string,
+      overrides: Partial<Pick<ProjectionRow, 'title' | 'created_at' | 'updated_at' | 'published_at'>> = {}
+    ) => ({
+      id,
+      title: 'Gleich',
+      created_at: '2026-01-01T00:00:00.000Z',
+      updated_at: '2026-01-01T00:00:00.000Z',
+      published_at: null,
+      ...overrides,
+    });
+
+    expect(
+      [
+        row('b', { published_at: null }),
+        row('c', { published_at: '2026-02-01T00:00:00.000Z' }),
+        row('a', { published_at: '2026-02-01T00:00:00.000Z' }),
+      ]
+        .sort((left, right) => compareProjectionRows(left, right, 'publishedAt', 'desc'))
+        .map(({ id }) => id)
+    ).toEqual(['a', 'c', 'b']);
+    expect(
+      [row('b'), row('a')]
+        .sort((left, right) => compareProjectionRows(left, right, 'title', 'desc'))
+        .map(({ id }) => id)
+    ).toEqual(['a', 'b']);
+    expect(compareProjectionRows(row('a'), row('b'), 'publishedAt', 'desc')).toBeLessThan(0);
+    expect(compareProjectionRows(row('b'), row('a'), 'publishedAt', 'desc')).toBeGreaterThan(0);
+  });
 
   const buildScopeKey = (
     row: Pick<
@@ -2699,7 +2731,7 @@ describe('content list projection', () => {
     );
   });
 
-  it('includes every known and unknown discriminator in the legacy generic-item projection', async () => {
+  it('keeps only unclaimed discriminators in the legacy generic-item projection', async () => {
     state.listSvaMainserverGenericItems.mockResolvedValue({
       data: [
         ['featured-project-1', 'Featured Project', 'FeaturedProject'],
@@ -2738,18 +2770,13 @@ describe('content list projection', () => {
       force: true,
     });
 
-    expect(projectionRows.map((row) => row.source_entity_id)).toEqual([
-      'featured-project-1',
-      'faq-1',
-      'card-1',
-      'future-1',
-    ]);
+    expect(projectionRows.map((row) => row.source_entity_id)).toEqual(['future-1']);
     expect(projectionRows.every((row) => row.content_type === 'generic-items.generic-item')).toBe(
       true
     );
   });
 
-  it('keeps generic and specialized projection rows for the same mainserver item distinct', async () => {
+  it('persists only the registered specialized projection for the same mainserver item', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [
@@ -2796,7 +2823,7 @@ describe('content list projection', () => {
         .filter((row) => row.source_entity_id === 'faq-shared-1')
         .map((row) => row.content_type)
         .sort()
-    ).toEqual(['faq.faq', 'generic-items.generic-item']);
+    ).toEqual(['faq.faq']);
   });
 
   it('upserts only the latest loaded page during progressive batch refreshes', async () => {
@@ -3213,7 +3240,7 @@ describe('content list projection', () => {
     ]);
   });
 
-  it('refreshes the generic sibling projection after FAQ mutations', async () => {
+  it('refreshes only the registered FAQ projection after FAQ mutations', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'faq-mutation-1',
       title: 'Mutation FAQ',
@@ -3247,22 +3274,15 @@ describe('content list projection', () => {
     });
 
     expect(state.getSvaMainserverGenericItem).toHaveBeenCalledTimes(1);
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          content_type: 'generic-items.generic-item',
-          source_entity_id: 'faq-mutation-1',
-        }),
-        expect.objectContaining({
-          content_type: 'faq.faq',
-          source_entity_id: 'faq-mutation-1',
-        }),
-      ])
-    );
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'faq.faq',
+        source_entity_id: 'faq-mutation-1',
+      }),
+    ]);
   });
 
-  it('refreshes the generic sibling projection for externally created FeaturedProject items', async () => {
+  it('refreshes only the registered project projection for externally created FeaturedProject items', async () => {
     state.getSvaMainserverGenericItem.mockResolvedValue({
       id: 'project-mutation-1',
       title: 'Externes Projekt',
@@ -3295,22 +3315,48 @@ describe('content list projection', () => {
       entityId: 'project-mutation-1',
     });
 
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          content_type: 'generic-items.generic-item',
-          source_entity_id: 'project-mutation-1',
-        }),
-        expect.objectContaining({
-          content_type: 'projects.project',
-          source_entity_id: 'project-mutation-1',
-        }),
-      ])
-    );
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-mutation-1',
+      }),
+    ]);
   });
 
-  it('continues project refresh after filtered pages and excludes soft-deleted projects', async () => {
+  it('archives the bound GenericItem reference after deleting a project', async () => {
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'projects.project',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      organizationId: 'org-1',
+      operation: 'delete',
+      entityId: 'project-delete-1',
+    });
+
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'GenericItem',
+      sourceEntityId: 'project-delete-1',
+    });
+    expect(state.recordSuccessfulExternalContentDeletion).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorAccountId: 'account-1',
+      actorDisplayName: 'Redaktion',
+      mutationRef: 'project-delete-operation-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'projects.project',
+      sourceEntityId: 'project-delete-1',
+    });
+  });
+
+  it('continues project refresh after filtered pages and projects every payload variant', async () => {
     state.resolveEffectivePermissions.mockResolvedValue({
       ok: true,
       permissions: [{ action: 'projects.read', resourceType: 'projects' }],
@@ -3361,6 +3407,28 @@ describe('content list projection', () => {
         content_type: 'projects.project',
         source_entity_id: 'project-active',
       }),
+      expect.objectContaining({
+        content_type: 'projects.project',
+        source_entity_id: 'project-deleted',
+      }),
+    ]);
+
+    const listResponse = await listProjectedContents(ctx, {
+      page: 1,
+      pageSize: 25,
+      type: 'projects.project',
+      visibleTypes: ['projects.project'],
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+    const listPayload = (await listResponse.json()) as {
+      data: Array<{ id: string }>;
+      pagination: { total: number };
+    };
+    expect(listPayload.pagination.total).toBe(2);
+    expect(listPayload.data.map((item) => item.id).sort()).toEqual([
+      'project-active',
+      'project-deleted',
     ]);
   });
 
@@ -3427,15 +3495,83 @@ describe('content list projection', () => {
       entityId: 'generic-type-change-1',
     });
 
-    expect(projectionRows).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ content_type: 'generic-items.generic-item' }),
-        expect.objectContaining({ content_type: 'cockpit-cards.cockpit-card' }),
-      ])
-    );
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ content_type: 'cockpit-cards.cockpit-card' }),
+    ]);
     expect(projectionRows.some((row) => row.content_type === 'faq.faq')).toBe(false);
-    expect(projectionRows).toHaveLength(2);
+    expect(projectionRows).toHaveLength(1);
     expect([...syncStates.keys()].some((key) => key.startsWith('faq.faq::'))).toBe(false);
+  });
+
+  it('falls back to the generic projection when a specialized item gets an unclaimed type', async () => {
+    projectionRows = [
+      {
+        id: 'generic-type-fallback-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::organization::faq.faq',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: null,
+        content_type: 'faq.faq',
+        title: 'Ehemalige FAQ',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'history-generic-type-fallback-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_system: 'mainserver',
+        source_entity_type: 'faq.faq',
+        source_entity_id: 'generic-type-fallback-1',
+      },
+    ];
+    state.getSvaMainserverGenericItem.mockResolvedValue({
+      id: 'generic-type-fallback-1',
+      title: 'Jetzt technisch',
+      contentType: 'generic-items.generic-item',
+      genericType: 'FUTURE_TYPE',
+      payload: {},
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      visible: true,
+      createdAt: '2026-06-20T10:00:00.000Z',
+      updatedAt: '2026-06-21T10:00:00.000Z',
+    });
+
+    await refreshProjectedContentsForMainserverMutation({
+      contentType: 'faq.faq',
+      instanceId: 'de-musterhausen',
+      keycloakSubject: 'kc-user-1',
+      actorAccountId: 'account-1',
+      organizationId: 'org-1',
+      operation: 'update',
+      entityId: 'generic-type-fallback-1',
+    });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({
+        content_type: 'generic-items.generic-item',
+        source_entity_id: 'generic-type-fallback-1',
+      }),
+    ]);
   });
 
   it('removes only the targeted generic item projection row after delete mutations', async () => {
@@ -3592,8 +3728,7 @@ describe('content list projection', () => {
     syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
-        sync_scope_key:
-          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        sync_scope_key: 'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         last_started_at: null,
         last_succeeded_at: new Date().toISOString(),
         last_failed_at: null,
@@ -3747,8 +3882,7 @@ describe('content list projection', () => {
     syncStates.set(
       'poi.point-of-interest::de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
       {
-        sync_scope_key:
-          'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
+        sync_scope_key: 'de-musterhausen::account-1::org-1::organization::poi.point-of-interest',
         last_started_at: null,
         last_succeeded_at: staleSucceededAt,
         last_failed_at: null,
@@ -4400,9 +4534,68 @@ describe('content list projection', () => {
 
     await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
 
+    expect(state.listSvaMainserverProjection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        genericTypeOwnership: {
+          FAQ: 'faq.faq',
+          COCKPIT_CARD: 'cockpit-cards.cockpit-card',
+          FeaturedProject: 'projects.project',
+        },
+      })
+    );
     expect(projectionRows).toEqual([
       expect.objectContaining({ source_entity_id: 'news-slim-1', payload_json: {} }),
     ]);
+  });
+
+  it('continues slim GenericItem projection pages from the returned upstream scan offset', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    state.listSvaMainserverProjection
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'generic-slim-1',
+            contentType: 'generic-items.generic-item',
+            title: 'Allgemein 1',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        skippedInvalidCount: 0,
+        pagination: {
+          page: 1,
+          pageSize: 100,
+          hasNextPage: true,
+          nextGenericItemScanOffset: 237,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'generic-slim-2',
+            contentType: 'generic-items.generic-item',
+            title: 'Allgemein 2',
+            createdAt: '2026-06-20T10:00:00.000Z',
+            updatedAt: '2026-06-21T10:00:00.000Z',
+          },
+        ],
+        skippedInvalidCount: 0,
+        pagination: { page: 2, pageSize: 100, hasNextPage: false },
+      });
+
+    await refreshProjectedContents(ctx, {
+      visibleTypes: ['generic-items.generic-item'],
+      force: true,
+    });
+
+    expect(state.listSvaMainserverProjection).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        page: 2,
+        pageSize: 100,
+        genericItemScanOffset: 237,
+      })
+    );
   });
 
   it('stops slim projection pagination at the local scan cap', async () => {

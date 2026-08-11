@@ -1,6 +1,7 @@
 import type {
   WasteCityRecord,
   WasteCollectionLocationRecord,
+  WasteFractionRecord,
   WasteHouseNumberRecord,
   WasteLocationTourLinkRecord,
   WasteRegionRecord,
@@ -9,6 +10,8 @@ import type {
 } from '@sva/plugin-sdk';
 
 export type WasteMasterDataLocationsWorkspaceProps = {
+  readonly fractions?: readonly WasteFractionRecord[];
+  readonly auditCollectionLocations?: readonly WasteCollectionLocationRecord[];
   readonly regions: readonly WasteRegionRecord[];
   readonly cities: readonly WasteCityRecord[];
   readonly streets: readonly WasteStreetRecord[];
@@ -28,6 +31,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly onTourFilterChange: (tourId: string) => void;
   readonly onToggleSelectAll: (checked: boolean) => void;
   readonly onToggleLocation: (locationId: string, checked: boolean) => void;
+  readonly onReplaceLocationSelection: (locationIds: readonly string[]) => void;
   readonly onOpenCreateRegion: () => void;
   readonly onOpenCreateCity: () => void;
   readonly onOpenCreateStreet: () => void;

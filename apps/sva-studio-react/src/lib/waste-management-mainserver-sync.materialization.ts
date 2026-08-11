@@ -6,7 +6,6 @@ import {
   getEffectiveYearWindow,
   isAllowedByRuleYear,
   isDateAffectedByRule,
-  isDateInRange,
   parseIsoDateUtc,
   setIsoDateYear,
   shiftDirection,
@@ -252,7 +251,7 @@ const materializeLinkedPickupDates = (input: {
       note: null,
     })),
     ...(input.importedByLocationTourKey.get(locationTourKey) ?? []),
-  ].filter((entry) => isDateInRange(entry.pickupDate, link.startDate, link.endDate));
+  ];
   dates = [
     ...dates
       .reduce((deduplicated, entry) => {
@@ -267,9 +266,7 @@ const materializeLinkedPickupDates = (input: {
 
   for (const rule of input.rules) {
     if (!isRuleApplicableToTour(rule, link.tourId)) continue;
-    dates = applySingleRule(dates, rule).filter((entry) =>
-      isDateInRange(entry.pickupDate, link.startDate, link.endDate)
-    );
+    dates = applySingleRule(dates, rule);
     if (dates.length === 0) break;
   }
 

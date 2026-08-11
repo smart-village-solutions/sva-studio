@@ -601,15 +601,13 @@ describe('createSvaMainserverService', () => {
       id: 'news-1',
     });
 
-    const requestBodies = fetchImpl.mock.calls
-      .slice(1)
-      .map(
-        ([, init]) =>
-          JSON.parse(init?.body as string) as {
-            operationName: string;
-            variables?: Record<string, unknown>;
-          }
-      );
+    const requestBodies = fetchImpl.mock.calls.slice(1).map(
+      ([, init]) =>
+        JSON.parse(init?.body as string) as {
+          operationName: string;
+          variables?: Record<string, unknown>;
+        }
+    );
     expect(requestBodies[0]).toMatchObject({
       operationName: 'SvaMainserverNewsList',
       variables: { limit: 26, skip: 0, order: 'publishedAt_DESC' },
@@ -1028,15 +1026,13 @@ describe('createSvaMainserverService', () => {
       errors: [],
     });
 
-    const requestBodies = fetchImpl.mock.calls
-      .slice(1)
-      .map(
-        ([, init]) =>
-          JSON.parse(init?.body as string) as {
-            operationName: string;
-            variables?: Record<string, unknown>;
-          }
-      );
+    const requestBodies = fetchImpl.mock.calls.slice(1).map(
+      ([, init]) =>
+        JSON.parse(init?.body as string) as {
+          operationName: string;
+          variables?: Record<string, unknown>;
+        }
+    );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverSurveysList',
       'SvaMainserverSurveyDetail',
@@ -1952,15 +1948,13 @@ describe('createSvaMainserverService', () => {
       id: 'poi-1',
     });
 
-    const requestBodies = fetchImpl.mock.calls
-      .slice(1)
-      .map(
-        ([, init]) =>
-          JSON.parse(init?.body as string) as {
-            operationName: string;
-            variables?: Record<string, unknown>;
-          }
-      );
+    const requestBodies = fetchImpl.mock.calls.slice(1).map(
+      ([, init]) =>
+        JSON.parse(init?.body as string) as {
+          operationName: string;
+          variables?: Record<string, unknown>;
+        }
+    );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverEventList',
       'SvaMainserverEventDetail',
@@ -2195,15 +2189,13 @@ describe('createSvaMainserverService', () => {
       id: 'generic-1',
     });
 
-    const requestBodies = fetchImpl.mock.calls
-      .slice(1)
-      .map(
-        ([, init]) =>
-          JSON.parse(init?.body as string) as {
-            operationName: string;
-            variables?: Record<string, unknown>;
-          }
-      );
+    const requestBodies = fetchImpl.mock.calls.slice(1).map(
+      ([, init]) =>
+        JSON.parse(init?.body as string) as {
+          operationName: string;
+          variables?: Record<string, unknown>;
+        }
+    );
     expect(requestBodies.map((body) => body.operationName)).toEqual([
       'SvaMainserverGenericItemList',
       'SvaMainserverGenericItemDetail',
@@ -3738,7 +3730,6 @@ describe('createSvaMainserverService', () => {
           case 'SvaMainserverNewsProjectionList':
             return { newsItems: [] };
           case 'SvaMainserverChangeNewsVisibility':
-          case 'SvaMainserverChangeGenericItemVisibility':
             return { changeVisibility: { id: 1, status: 'ok', statusCode: 200 } };
           case 'SvaMainserverEventDetail':
             return {
@@ -3794,6 +3785,7 @@ describe('createSvaMainserverService', () => {
       listSvaMainserverProjection({
         ...connection,
         contentType: 'news.article',
+        genericTypeOwnership: {},
         page: 1,
         pageSize: 25,
       })
@@ -3836,7 +3828,6 @@ describe('createSvaMainserverService', () => {
         'SvaMainserverCategoriesList',
         'SvaMainserverNewsProjectionList',
         'SvaMainserverChangeNewsVisibility',
-        'SvaMainserverChangeGenericItemVisibility',
         'SvaMainserverEventDetail',
         'SvaMainserverPoiDetail',
         'SvaMainserverWasteTours',
@@ -3844,5 +3835,11 @@ describe('createSvaMainserverService', () => {
         'SvaMainserverDestroyWastePickUpTimeByIds',
       ])
     );
+    expect(
+      operationNames.filter(
+        (operationName) => operationName === 'SvaMainserverChangeNewsVisibility'
+      )
+    ).toHaveLength(3);
+    expect(operationNames).not.toContain('SvaMainserverChangeGenericItemVisibility');
   });
 });

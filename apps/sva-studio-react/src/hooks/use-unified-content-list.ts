@@ -42,14 +42,14 @@ const compareItemsBySortField = (
   collator: Intl.Collator
 ): number => {
   switch (sortBy) {
-    case 'contentType':
-      return collator.compare(left.contentType, right.contentType);
     case 'title':
       return collator.compare(left.title, right.title);
-    case 'status':
-      return collator.compare(left.status, right.status);
+    case 'createdAt':
+      return left.createdAt.localeCompare(right.createdAt);
+    case 'publishedAt':
+      return (left.publishedAt ?? '').localeCompare(right.publishedAt ?? '');
     default:
-      return collator.compare(left.updatedAt, right.updatedAt);
+      return left.updatedAt.localeCompare(right.updatedAt);
   }
 };
 
@@ -62,13 +62,17 @@ const sortItems = (
   const collator = new Intl.Collator('de', { sensitivity: 'base', numeric: true });
 
   return [...items].sort((left, right) => {
+    if (sortBy === 'publishedAt' && Boolean(left.publishedAt) !== Boolean(right.publishedAt)) {
+      return left.publishedAt ? -1 : 1;
+    }
+
     const result = compareItemsBySortField(left, right, sortBy, collator);
 
     if (result !== 0) {
       return result * direction;
     }
 
-    return collator.compare(left.id, right.id) * direction;
+    return left.id.localeCompare(right.id);
   });
 };
 

@@ -35,6 +35,7 @@ import {
   listSvaMainserverSurveys,
 } from '@sva/sva-mainserver/server';
 import type { SvaMainserverProjectionListItem } from '@sva/sva-mainserver';
+import { resolveMainserverGenericItemContentType } from '@sva/plugin-sdk';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import {
@@ -58,6 +59,10 @@ import {
 } from './iam-content-list-mainserver.js';
 import { runMainserverProjectionRoundRobin } from './mainserver-projection-refresh-coordinator.server.js';
 import { buildMainserverProjectionScopeKey } from './mainserver-projection-scope.server.js';
+import {
+  studioMainserverGenericTypeOwnership,
+  studioMainserverGenericTypeRegistry,
+} from './mainserver-generic-type-registry.server.js';
 
 const MAIN_SERVER_SYNC_STALE_MS = 5 * 60 * 1000;
 const MAIN_SERVER_SYNC_POLL_INTERVAL_MS = 60 * 1000;
@@ -166,8 +171,6 @@ type TriggerProjectionRefreshResult = Readonly<{
 }>;
 
 type MainserverProjectionMutationOperation = 'create' | 'update' | 'delete';
-type GenericItemProjectionContentType =
-  'generic-items.generic-item' | 'faq.faq' | 'cockpit-cards.cockpit-card' | 'projects.project';
 type TargetedMutationContentType =
   | 'news.article'
   | 'events.event-record'
@@ -178,6 +181,17 @@ type TargetedMutationContentType =
   | 'projects.project'
   | 'surveys.survey';
 type ProjectionRefreshTrigger = 'manual' | 'mutation_follow_up' | 'reconciliation' | 'scheduler';
+
+const GENERIC_ITEMS_CONTENT_TYPE = 'generic-items.generic-item' as const;
+const registeredGenericItemContentTypes = new Set<string>(
+  studioMainserverGenericTypeRegistry.values()
+);
+const resolveGenericItemProjectionContentType = (genericType: string): string =>
+  resolveMainserverGenericItemContentType(
+    studioMainserverGenericTypeRegistry,
+    genericType,
+    GENERIC_ITEMS_CONTENT_TYPE
+  );
 
 type MainserverProjectionRowInput = Pick<
   IamContentListItem,
@@ -308,10 +322,22 @@ const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   historyRef: row.history_ref,
 });
 
-const projectionListCollator = new Intl.Collator('de', {
-  sensitivity: 'base',
-  numeric: true,
-});
+const compareNormalizedProjectionText = (left: string, right: string): number => {
+  const normalizedLeft = left.toLocaleLowerCase('en-US');
+  const normalizedRight = right.toLocaleLowerCase('en-US');
+  return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
+};
+
+const compareOptionalProjectionValues = (
+  left: string | null,
+  right: string | null,
+  direction: 1 | -1
+): number => {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return compareNormalizedProjectionText(left, right) * direction;
+};
 
 const resolveProjectionScopePriority = (row: ProjectionRow): number => {
   if (row.organization_id || row.owner_organization_id) {
@@ -345,27 +371,27 @@ const comparePreferredProjectionRows = (left: ProjectionRow, right: ProjectionRo
   return right.id.localeCompare(left.id);
 };
 
-const compareProjectionRows = (
-  left: ProjectionRow,
-  right: ProjectionRow,
+export const compareProjectionRows = (
+  left: Pick<ProjectionRow, 'id' | 'title' | 'created_at' | 'updated_at' | 'published_at'>,
+  right: Pick<ProjectionRow, 'id' | 'title' | 'created_at' | 'updated_at' | 'published_at'>,
   sortBy: IamContentListQuery['sortBy'],
   sortDirection: IamContentListQuery['sortDirection']
 ): number => {
   const direction = sortDirection === 'asc' ? 1 : -1;
 
   const primaryResult =
-    sortBy === 'contentType'
-      ? projectionListCollator.compare(left.content_type, right.content_type)
-      : sortBy === 'title'
-        ? projectionListCollator.compare(left.title, right.title)
-        : sortBy === 'status'
-          ? projectionListCollator.compare(left.status, right.status)
-          : projectionListCollator.compare(left.updated_at, right.updated_at);
+    sortBy === 'title'
+      ? compareNormalizedProjectionText(left.title, right.title) * direction
+      : sortBy === 'createdAt'
+        ? compareNormalizedProjectionText(left.created_at, right.created_at) * direction
+        : sortBy === 'publishedAt'
+          ? compareOptionalProjectionValues(left.published_at, right.published_at, direction)
+          : compareNormalizedProjectionText(left.updated_at, right.updated_at) * direction;
   if (primaryResult !== 0) {
-    return primaryResult * direction;
+    return primaryResult;
   }
 
-  return comparePreferredProjectionRows(left, right);
+  return left.id.localeCompare(right.id);
 };
 
 const buildReadAction = (contentType: string): string =>
@@ -1604,6 +1630,7 @@ type MainserverProjectionLoadedPage = Readonly<{
   readonly rows: readonly MainserverProjectionRowInput[];
   readonly hasNextPage: boolean;
   readonly nextPage: number;
+  readonly nextGenericItemScanOffset?: number;
   readonly skippedInvalidCount: number;
 }>;
 
@@ -1613,6 +1640,7 @@ type MainserverProjectionPageResult<TItem> = {
   readonly pagination: {
     readonly hasNextPage: boolean;
     readonly page?: number;
+    readonly nextGenericItemScanOffset?: number;
   };
 };
 
@@ -1708,26 +1736,35 @@ const mainserverProjectionPageLoaders: Record<
       ...toProjectionPrincipalContext(target),
     }),
   'generic-items.generic-item': async ({ target, pageQuery }) =>
-    buildLoadedProjectionPage({
-      result: await listSvaMainserverGenericItems({
-        instanceId: target.instanceId,
-        keycloakSubject: target.keycloakSubject,
-        activeOrganizationId: target.organizationId,
-        ...toProjectionPrincipalContext(target),
-        includeInvisible: true,
-        ...pageQuery,
-      }),
-      pageQuery,
-      mapRow: (item, credentialSource) => ({
-        ...mapGenericItem(item, target.instanceId, []),
-        ...(target.organizationId ? { organizationId: target.organizationId } : {}),
-        credentialSource,
-        sourceEntityType: 'generic-items.generic-item',
-        sourceEntityId: item.id,
-      }),
-      projectedOrganizationId: target.organizationId,
+    listSvaMainserverGenericItems({
+      instanceId: target.instanceId,
+      keycloakSubject: target.keycloakSubject,
+      activeOrganizationId: target.organizationId,
       ...toProjectionPrincipalContext(target),
-    }),
+      includeInvisible: true,
+      ...pageQuery,
+    }).then((result) =>
+      buildLoadedProjectionPage({
+        result: {
+          ...result,
+          data: result.data.filter(
+            (item) =>
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
+          ),
+        },
+        pagingResult: result,
+        pageQuery,
+        mapRow: (item, credentialSource) => ({
+          ...mapGenericItem(item, target.instanceId, []),
+          ...(target.organizationId ? { organizationId: target.organizationId } : {}),
+          credentialSource,
+          sourceEntityType: target.contentType,
+          sourceEntityId: item.id,
+        }),
+        projectedOrganizationId: target.organizationId,
+        ...toProjectionPrincipalContext(target),
+      })
+    ),
   'faq.faq': async ({ target, pageQuery }) =>
     listSvaMainserverGenericItems({
       instanceId: target.instanceId,
@@ -1738,15 +1775,21 @@ const mainserverProjectionPageLoaders: Record<
       ...pageQuery,
     }).then((result) =>
       buildLoadedProjectionPage({
-        result: { ...result, data: result.data.filter((item) => item.genericType === 'FAQ') },
+        result: {
+          ...result,
+          data: result.data.filter(
+            (item) =>
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
+          ),
+        },
         pagingResult: result,
         pageQuery,
         mapRow: (item, credentialSource) => ({
           ...mapGenericItem(item, target.instanceId, []),
-          contentType: 'faq.faq',
+          contentType: target.contentType,
           ...(target.organizationId ? { organizationId: target.organizationId } : {}),
           credentialSource,
-          sourceEntityType: 'faq.faq',
+          sourceEntityType: target.contentType,
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
@@ -1765,16 +1808,19 @@ const mainserverProjectionPageLoaders: Record<
       buildLoadedProjectionPage({
         result: {
           ...result,
-          data: result.data.filter((item) => item.genericType === 'COCKPIT_CARD'),
+          data: result.data.filter(
+            (item) =>
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
+          ),
         },
         pagingResult: result,
         pageQuery,
         mapRow: (item, credentialSource) => ({
           ...mapGenericItem(item, target.instanceId, []),
-          contentType: 'cockpit-cards.cockpit-card',
+          contentType: target.contentType,
           ...(target.organizationId ? { organizationId: target.organizationId } : {}),
           credentialSource,
-          sourceEntityType: 'cockpit-cards.cockpit-card',
+          sourceEntityType: target.contentType,
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
@@ -1795,23 +1841,17 @@ const mainserverProjectionPageLoaders: Record<
           ...result,
           data: result.data.filter(
             (item) =>
-              item.genericType === 'FeaturedProject' &&
-              !(
-                item.payload &&
-                typeof item.payload === 'object' &&
-                !Array.isArray(item.payload) &&
-                (item.payload as Record<string, unknown>).deleted === true
-              )
+              resolveGenericItemProjectionContentType(item.genericType) === target.contentType
           ),
         },
         pagingResult: result,
         pageQuery,
         mapRow: (item, credentialSource) => ({
           ...mapGenericItem(item, target.instanceId, []),
-          contentType: 'projects.project',
+          contentType: target.contentType,
           ...(target.organizationId ? { organizationId: target.organizationId } : {}),
           credentialSource,
-          sourceEntityType: 'projects.project',
+          sourceEntityType: target.contentType,
           sourceEntityId: item.id,
         }),
         projectedOrganizationId: target.organizationId,
@@ -1996,6 +2036,7 @@ const loadMainserverProjectionPage = async (
   pageQuery: {
     readonly page: number;
     readonly pageSize: number;
+    readonly genericItemScanOffset?: number;
   }
 ): Promise<MainserverProjectionLoadedPage> => {
   if (!target.instanceId) {
@@ -2012,6 +2053,7 @@ const loadMainserverProjectionPage = async (
       activeOrganizationId: target.organizationId,
       ...toProjectionPrincipalContext(target),
       contentType: target.contentType,
+      genericTypeOwnership: studioMainserverGenericTypeOwnership,
       includeInvisible: true,
       ...pageQuery,
     });
@@ -2048,11 +2090,13 @@ const loadMainserverProjectionPage = async (
       hasNextPage: hasNextProjectionPage(
         result,
         pageQuery,
-        target.contentType === 'faq.faq' ||
-          target.contentType === 'cockpit-cards.cockpit-card' ||
-          target.contentType === 'projects.project'
+        target.contentType === GENERIC_ITEMS_CONTENT_TYPE ||
+          registeredGenericItemContentTypes.has(target.contentType)
       ),
       nextPage: (result.pagination.page ?? pageQuery.page) + 1,
+      ...(result.pagination.nextGenericItemScanOffset !== undefined
+        ? { nextGenericItemScanOffset: result.pagination.nextGenericItemScanOffset }
+        : {}),
       skippedInvalidCount: result.skippedInvalidCount,
     });
   }
@@ -2076,6 +2120,7 @@ const refreshMainserverProjectionBatch = (
   const accumulatedRows = new Map<string, MainserverProjectionRowInput[]>();
   const refreshRunIds = new Map<string, string>();
   const skippedInvalidCounts = new Map<string, number>();
+  const genericItemScanOffsets = new Map<string, number>();
   let resolveHotCompletion: ((responses: Map<string, Response | null>) => void) | undefined;
   const hotCompletion = new Promise<Map<string, Response | null>>((resolve) => {
     resolveHotCompletion = resolve;
@@ -2095,8 +2140,17 @@ const refreshMainserverProjectionBatch = (
       targets,
       MAINSERVER_PROGRESSIVE_FETCH_PAGE_SIZE,
       async (target, pageQuery) => {
-        const result = await loadMainserverProjectionPage(target, pageQuery);
         const targetKey = buildProjectionTargetKey(target);
+        const genericItemScanOffset = genericItemScanOffsets.get(targetKey);
+        const result = await loadMainserverProjectionPage(target, {
+          ...pageQuery,
+          ...(genericItemScanOffset !== undefined ? { genericItemScanOffset } : {}),
+        });
+        if (result.nextGenericItemScanOffset !== undefined) {
+          genericItemScanOffsets.set(targetKey, result.nextGenericItemScanOffset);
+        } else {
+          genericItemScanOffsets.delete(targetKey);
+        }
         skippedInvalidCounts.set(
           targetKey,
           (skippedInvalidCounts.get(targetKey) ?? 0) + result.skippedInvalidCount
@@ -2601,26 +2655,9 @@ const refreshMainserverProjectionForMutation = async (input: {
 };
 
 const genericItemProjectionContentTypes = [
-  'generic-items.generic-item',
-  'faq.faq',
-  'cockpit-cards.cockpit-card',
-  'projects.project',
-] as const satisfies readonly GenericItemProjectionContentType[];
-
-const resolveSpecializedGenericItemProjectionContentType = (
-  genericType: string
-): Exclude<GenericItemProjectionContentType, 'generic-items.generic-item'> | undefined => {
-  if (genericType === 'FAQ') {
-    return 'faq.faq';
-  }
-  if (genericType === 'COCKPIT_CARD') {
-    return 'cockpit-cards.cockpit-card';
-  }
-  if (genericType === 'FeaturedProject') {
-    return 'projects.project';
-  }
-  return undefined;
-};
+  GENERIC_ITEMS_CONTENT_TYPE,
+  ...new Set(studioMainserverGenericTypeRegistry.values()),
+].filter(isMainserverContentType);
 
 const deleteStaleGenericItemSiblingProjection = async (
   target: ContentProjectionSyncTarget,
@@ -2670,15 +2707,21 @@ const refreshGenericItemSiblingProjections = async (input: {
     input.target.actorDisplayName &&
     input.target.mutationRef
   ) {
-    await recordSuccessfulExternalContentDeletion({
-      instanceId: input.target.instanceId,
-      actorAccountId: input.target.actorAccountId,
-      actorDisplayName: input.target.actorDisplayName,
-      mutationRef: input.target.mutationRef,
-      sourceSystem: 'mainserver',
-      sourceEntityType: input.target.contentType,
-      sourceEntityId: input.entityId,
-    });
+    const sourceEntityTypes =
+      input.target.contentType === 'projects.project'
+        ? ['GenericItem', 'projects.project']
+        : [input.target.contentType];
+    for (const sourceEntityType of sourceEntityTypes) {
+      await recordSuccessfulExternalContentDeletion({
+        instanceId: input.target.instanceId,
+        actorAccountId: input.target.actorAccountId,
+        actorDisplayName: input.target.actorDisplayName,
+        mutationRef: input.target.mutationRef,
+        sourceSystem: 'mainserver',
+        sourceEntityType,
+        sourceEntityId: input.entityId,
+      });
+    }
   }
   let item: Awaited<ReturnType<typeof getSvaMainserverGenericItem>> | undefined;
   try {
@@ -2696,14 +2739,13 @@ const refreshGenericItemSiblingProjections = async (input: {
     await refreshGenericItemProjectionSnapshots(input.target);
     return;
   }
-  const specializedContentType = item
-    ? resolveSpecializedGenericItemProjectionContentType(item.genericType)
+  const resolvedContentType = item
+    ? resolveGenericItemProjectionContentType(item.genericType)
     : undefined;
 
   for (const contentType of genericItemProjectionContentTypes) {
     const target = { ...input.target, contentType } satisfies ContentProjectionSyncTarget;
-    const shouldProject =
-      contentType === 'generic-items.generic-item' || contentType === specializedContentType;
+    const shouldProject = contentType === resolvedContentType;
     const row =
       item && shouldProject
         ? {
@@ -3147,11 +3189,7 @@ LEFT JOIN LATERAL (
     AND reference.reconciliation_status = 'bound'
   LIMIT 1
 ) AS project_reference ON TRUE
-${whereClause}
-  AND NOT (
-    projection.content_type = 'projects.project'
-    AND projection.payload_json->>'deleted' = 'true'
-  );
+${whereClause};
       `,
         params
       );
@@ -3661,9 +3699,8 @@ export const refreshProjectedContentsForMainserverMutation = async (input: {
 
   if (supportsTargetedMutationRefresh) {
     if (
-      genericItemProjectionContentTypes.includes(
-        input.contentType as GenericItemProjectionContentType
-      )
+      input.contentType === GENERIC_ITEMS_CONTENT_TYPE ||
+      registeredGenericItemContentTypes.has(input.contentType)
     ) {
       await refreshGenericItemSiblingProjections({
         target,

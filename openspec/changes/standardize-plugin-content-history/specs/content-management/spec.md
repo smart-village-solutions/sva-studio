@@ -39,6 +39,13 @@ Das System MUST für Mainserver-basierte Inhalte eine Studio-Mutationshistorie f
 - **DANN** erzeugt das Studio keinen synthetischen Historieneintrag
 - **UND** die Historienansicht behauptet keine vollständige Erfassung externer Änderungen
 
+#### Scenario: Featured Project erhält die nachgelagerte Historie
+
+- **WENN** ein Featured Project bereits die allgemeine External-Content-Referenz aus `add-featured-projects-plugin` besitzt
+- **UND** der History-Change das Projekte-Plugin anbindet
+- **DANN** verwendet der Host dieselbe lokale Content-ID und externe Referenz für die Historie
+- **UND** ergänzt das Plugin den gemeinsamen Historien-Tab ohne zweite Identitäts- oder Mutation-Persistenz
+
 ### Requirement: Plugin-Historien verwenden ein gemeinsames Darstellungsmodell
 
 Das System SHALL Plugin-Historien mit einem gemeinsamen, lokalisierten und barrierefreien Darstellungsmodell ausgeben. Die Historienansicht MUST schreibgeschützt sein und MUST Herkunft sowie Abdeckungsgrenze erkennbar machen, wenn die führende Datenquelle außerhalb des Studios liegt.

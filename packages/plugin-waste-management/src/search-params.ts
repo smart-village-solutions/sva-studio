@@ -1,13 +1,28 @@
-const wasteManagementTabs = ['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings'] as const;
+const wasteManagementTabs = [
+  'fractions',
+  'tours',
+  'locations',
+  'scheduling',
+  'output',
+  'tools',
+  'settings',
+] as const;
 const wasteManagementMasterDataTabs = ['fractions', 'locations'] as const;
 const wasteManagementFractionsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementToursViews = ['list', 'create', 'edit'] as const;
 const wasteManagementLocationsViews = ['list', 'create', 'edit'] as const;
 const wasteManagementSchedulingViews = ['list', 'create', 'edit'] as const;
 const wasteManagementStatusFilters = ['all', 'active', 'inactive'] as const;
+const wasteManagementTourValidityPeriods = ['all', 'previous', 'current', 'next'] as const;
 const wasteManagementShiftContexts = ['all', 'holiday', 'global', 'tour'] as const;
 const wasteManagementSchedulingEntryTypes = ['holiday-rule', 'global-shift', 'tour-shift'] as const;
-const wasteManagementFractionSortFields = ['name', 'containerSize', 'color', 'description', 'status'] as const;
+const wasteManagementFractionSortFields = [
+  'name',
+  'containerSize',
+  'color',
+  'description',
+  'status',
+] as const;
 const wasteManagementFractionSortDirections = ['asc', 'desc'] as const;
 const allowedPageSizes = new Set([10, 25, 50, 100]);
 
@@ -18,10 +33,13 @@ type WasteManagementToursView = (typeof wasteManagementToursViews)[number];
 type WasteManagementLocationsView = (typeof wasteManagementLocationsViews)[number];
 export type WasteManagementSchedulingView = (typeof wasteManagementSchedulingViews)[number];
 export type WasteManagementStatusFilter = (typeof wasteManagementStatusFilters)[number];
+export type WasteManagementTourValidityPeriod = (typeof wasteManagementTourValidityPeriods)[number];
 export type WasteManagementShiftContext = (typeof wasteManagementShiftContexts)[number];
-export type WasteManagementSchedulingEntryType = (typeof wasteManagementSchedulingEntryTypes)[number];
+export type WasteManagementSchedulingEntryType =
+  (typeof wasteManagementSchedulingEntryTypes)[number];
 export type WasteManagementFractionSortField = (typeof wasteManagementFractionSortFields)[number];
-export type WasteManagementFractionSortDirection = (typeof wasteManagementFractionSortDirections)[number];
+export type WasteManagementFractionSortDirection =
+  (typeof wasteManagementFractionSortDirections)[number];
 
 export type WasteManagementSearchParams = Readonly<{
   tab: WasteManagementTabId;
@@ -35,6 +53,7 @@ export type WasteManagementSearchParams = Readonly<{
   pageSize: number;
   fractionsStatus?: WasteManagementStatusFilter;
   status: WasteManagementStatusFilter;
+  tourValidityPeriod: WasteManagementTourValidityPeriod;
   shiftContext: WasteManagementShiftContext;
   fractionsSortBy: WasteManagementFractionSortField;
   fractionsSortDirection: WasteManagementFractionSortDirection;
@@ -69,7 +88,9 @@ const normalizeOptionalIsoDate = (value: unknown): string | undefined => {
     return undefined;
   }
   const date = new Date(`${normalized}T00:00:00Z`);
-  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized ? undefined : normalized;
+  return Number.isNaN(date.valueOf()) || date.toISOString().slice(0, 10) !== normalized
+    ? undefined
+    : normalized;
 };
 
 const normalizeTab = (value: unknown): WasteManagementTabId =>
@@ -78,12 +99,14 @@ const normalizeTab = (value: unknown): WasteManagementTabId =>
     : 'fractions';
 
 const normalizeMasterDataTab = (value: unknown): WasteManagementMasterDataTabId =>
-  typeof value === 'string' && wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
+  typeof value === 'string' &&
+  wasteManagementMasterDataTabs.includes(value as WasteManagementMasterDataTabId)
     ? (value as WasteManagementMasterDataTabId)
     : 'locations';
 
 const normalizeFractionsView = (value: unknown): WasteManagementFractionsView =>
-  typeof value === 'string' && wasteManagementFractionsViews.includes(value as WasteManagementFractionsView)
+  typeof value === 'string' &&
+  wasteManagementFractionsViews.includes(value as WasteManagementFractionsView)
     ? (value as WasteManagementFractionsView)
     : 'list';
 
@@ -93,42 +116,58 @@ const normalizeToursView = (value: unknown): WasteManagementToursView =>
     : 'list';
 
 const normalizeLocationsView = (value: unknown): WasteManagementLocationsView =>
-  typeof value === 'string' && wasteManagementLocationsViews.includes(value as WasteManagementLocationsView)
+  typeof value === 'string' &&
+  wasteManagementLocationsViews.includes(value as WasteManagementLocationsView)
     ? (value as WasteManagementLocationsView)
     : 'list';
 
 const normalizeSchedulingView = (value: unknown): WasteManagementSchedulingView =>
-  typeof value === 'string' && wasteManagementSchedulingViews.includes(value as WasteManagementSchedulingView)
+  typeof value === 'string' &&
+  wasteManagementSchedulingViews.includes(value as WasteManagementSchedulingView)
     ? (value as WasteManagementSchedulingView)
     : 'list';
 
 const normalizeStatus = (value: unknown): WasteManagementStatusFilter =>
-  typeof value === 'string' && wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
+  typeof value === 'string' &&
+  wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
     ? (value as WasteManagementStatusFilter)
     : 'all';
 
+const normalizeTourValidityPeriod = (value: unknown): WasteManagementTourValidityPeriod =>
+  typeof value === 'string' &&
+  wasteManagementTourValidityPeriods.includes(value as WasteManagementTourValidityPeriod)
+    ? (value as WasteManagementTourValidityPeriod)
+    : 'all';
+
 const normalizeFractionsStatus = (value: unknown): WasteManagementStatusFilter =>
-  typeof value === 'string' && wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
+  typeof value === 'string' &&
+  wasteManagementStatusFilters.includes(value as WasteManagementStatusFilter)
     ? (value as WasteManagementStatusFilter)
     : 'all';
 
 const normalizeShiftContext = (value: unknown): WasteManagementShiftContext =>
-  typeof value === 'string' && wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
+  typeof value === 'string' &&
+  wasteManagementShiftContexts.includes(value as WasteManagementShiftContext)
     ? (value as WasteManagementShiftContext)
     : 'all';
 
-const normalizeSchedulingEntryType = (value: unknown): WasteManagementSchedulingEntryType | undefined =>
-  typeof value === 'string' && wasteManagementSchedulingEntryTypes.includes(value as WasteManagementSchedulingEntryType)
+const normalizeSchedulingEntryType = (
+  value: unknown
+): WasteManagementSchedulingEntryType | undefined =>
+  typeof value === 'string' &&
+  wasteManagementSchedulingEntryTypes.includes(value as WasteManagementSchedulingEntryType)
     ? (value as WasteManagementSchedulingEntryType)
     : undefined;
 
 const normalizeFractionsSortBy = (value: unknown): WasteManagementFractionSortField =>
-  typeof value === 'string' && wasteManagementFractionSortFields.includes(value as WasteManagementFractionSortField)
+  typeof value === 'string' &&
+  wasteManagementFractionSortFields.includes(value as WasteManagementFractionSortField)
     ? (value as WasteManagementFractionSortField)
     : 'name';
 
 const normalizeFractionsSortDirection = (value: unknown): WasteManagementFractionSortDirection =>
-  typeof value === 'string' && wasteManagementFractionSortDirections.includes(value as WasteManagementFractionSortDirection)
+  typeof value === 'string' &&
+  wasteManagementFractionSortDirections.includes(value as WasteManagementFractionSortDirection)
     ? (value as WasteManagementFractionSortDirection)
     : 'asc';
 
@@ -179,6 +218,7 @@ export const normalizeWasteManagementSearchParams = (
     pageSize,
     fractionsStatus: normalizeFractionsStatus(search.fractionsStatus),
     status: normalizeStatus(search.status),
+    tourValidityPeriod: normalizeTourValidityPeriod(search.tourValidityPeriod),
     shiftContext: normalizeShiftContext(search.shiftContext),
     fractionsSortBy: normalizeFractionsSortBy(search.fractionsSortBy),
     fractionsSortDirection: normalizeFractionsSortDirection(search.fractionsSortDirection),

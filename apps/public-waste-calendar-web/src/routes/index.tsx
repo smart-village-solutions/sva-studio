@@ -311,9 +311,13 @@ export function PublicWasteIndexPage() {
     <PublicWasteRootDocument>
       <main className="panel">
         {pageState.status === 'loading' ? (
-          <p className="body-copy">Abfallkalender wird geladen.</p>
+          <p className="body-copy" role="status" aria-live="polite">
+            Abfallkalender wird geladen.
+          </p>
         ) : pageState.status === 'error' ? (
-          <p className="body-copy">{pageState.message}</p>
+          <p className="body-copy" role="alert">
+            {pageState.message}
+          </p>
         ) : pageState.status === 'incomplete' ? (
           <PublicWasteApp
             selectionState="incomplete"

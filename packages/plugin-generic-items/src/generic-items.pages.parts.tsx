@@ -23,6 +23,7 @@ export const GenericItemsDataTable = ({
   pt: ReturnType<typeof usePluginTranslation>;
 }>) => (
   <StudioDataTable
+    sorting={{ mode: 'disabled' }}
     ariaLabel={pt('list.title')}
     labels={createGenericItemsDataTableLabels(pt)}
     data={data}

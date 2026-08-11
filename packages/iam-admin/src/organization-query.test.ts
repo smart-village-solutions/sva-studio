@@ -15,6 +15,7 @@ import {
   mapMembershipRow,
   mapOrganizationListItem,
   readOrganizationTypeFilter,
+  readOrganizationListSort,
   readStatusFilter,
   resolveHierarchyFields,
   type OrganizationRow,
@@ -88,8 +89,12 @@ describe('organization query helpers', () => {
 
   it('reads filters and escapes ilike patterns', () => {
     expect(readStatusFilter(new Request('http://localhost/api?status=inactive'))).toBe(false);
-    expect(readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=agency'))).toBe('agency');
-    expect(readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=invalid'))).toBe('invalid');
+    expect(
+      readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=agency'))
+    ).toBe('agency');
+    expect(
+      readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=invalid'))
+    ).toBe('invalid');
     expect(escapeIlikePattern('100%_ok\\test')).toBe('100\\%\\_ok\\\\test');
   });
 
@@ -149,6 +154,8 @@ describe('organization query helpers', () => {
         search: 'Alpha_%',
         organizationType: 'municipality',
         isActive: true,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       })
     ).resolves.toEqual({
       items: [expect.objectContaining({ id: 'org-1', organizationKey: 'alpha' })],
@@ -156,7 +163,34 @@ describe('organization query helpers', () => {
     });
 
     expect(queries[0]?.values).toEqual(['de-musterhausen', '%Alpha\\_\\%%', 'municipality', true]);
-    expect(queries[1]?.values).toEqual(['de-musterhausen', '%Alpha\\_\\%%', 'municipality', true, 25, 25]);
+    expect(queries[1]?.values).toEqual([
+      'de-musterhausen',
+      '%Alpha\\_\\%%',
+      'municipality',
+      true,
+      25,
+      25,
+    ]);
+    expect(queries[1]?.text).toContain(
+      'ORDER BY (LOWER(organization.display_name) COLLATE "C" IS NULL) ASC, LOWER(organization.display_name) COLLATE "C" ASC, organization.id ASC'
+    );
+  });
+
+  it('parses supported organization sorting and rejects unknown values', () => {
+    expect(readOrganizationListSort(new Request('http://localhost/api'))).toEqual({
+      sortBy: 'displayName',
+      sortDirection: 'asc',
+    });
+    expect(
+      readOrganizationListSort(
+        new Request(
+          'http://localhost/api?sortBy=parentDisplayName&sortDirection=desc'
+        )
+      )
+    ).toEqual({ sortBy: 'parentDisplayName', sortDirection: 'desc' });
+    expect(
+      readOrganizationListSort(new Request('http://localhost/api?sortBy=type'))
+    ).toBe('invalid');
   });
 
   it('loads organization details and context options', async () => {
@@ -165,7 +199,10 @@ describe('organization query helpers', () => {
         if (text.includes('FROM iam.organizations organization')) {
           return { rowCount: 1, rows: [organizationRow] };
         }
-        if (text.includes('FROM iam.account_organizations membership') && text.includes('JOIN iam.accounts account')) {
+        if (
+          text.includes('FROM iam.account_organizations membership') &&
+          text.includes('JOIN iam.accounts account')
+        ) {
           return {
             rowCount: 1,
             rows: [
@@ -186,7 +223,14 @@ describe('organization query helpers', () => {
         if (text.includes('parent_organization_id = $2::uuid')) {
           return {
             rowCount: 1,
-            rows: [{ id: 'org-child', organization_key: 'child', display_name: 'Child', is_active: true }],
+            rows: [
+              {
+                id: 'org-child',
+                organization_key: 'child',
+                display_name: 'Child',
+                is_active: true,
+              },
+            ],
           };
         }
         if (text.includes('FROM iam.organization_mainserver_credentials')) {
@@ -196,6 +240,16 @@ describe('organization query helpers', () => {
               {
                 mainserver_application_id: 'org-app-1',
                 mainserver_application_secret_ciphertext: 'enc:v1:payload',
+                technical_account_id: null,
+                provisioning_status: 'verification_required',
+                operation_reference: null,
+                provisioning_phase: null,
+                attempt_count: 0,
+                lease_expires_at: null,
+                last_error_code: null,
+                last_attempt_at: null,
+                completed_at: null,
+                last_verified_at: null,
               },
             ],
           };
@@ -216,7 +270,9 @@ describe('organization query helpers', () => {
       }),
     };
 
-    await expect(loadOrganizationDetail(client, { instanceId: 'de-musterhausen', organizationId: 'org-1' })).resolves.toEqual(
+    await expect(
+      loadOrganizationDetail(client, { instanceId: 'de-musterhausen', organizationId: 'org-1' })
+    ).resolves.toEqual(
       expect.objectContaining({
         id: 'org-1',
         metadata: { source: 'test' },
@@ -224,11 +280,16 @@ describe('organization query helpers', () => {
         children: [expect.objectContaining({ organizationKey: 'child' })],
         mainserverApplicationId: 'org-app-1',
         mainserverApplicationSecretSet: true,
+        mainserverProvisioning: expect.objectContaining({
+          status: 'verification_required',
+          attemptCount: 0,
+          operationInProgress: false,
+        }),
       })
     );
-    await expect(loadContextOptions(client, { instanceId: 'de-musterhausen', accountId: 'acc-1' })).resolves.toEqual([
-      expect.objectContaining({ organizationId: 'org-1' }),
-    ]);
+    await expect(
+      loadContextOptions(client, { instanceId: 'de-musterhausen', accountId: 'acc-1' })
+    ).resolves.toEqual([expect.objectContaining({ organizationId: 'org-1' })]);
   });
 
   it('resolves hierarchy fields and rejects invalid parents', async () => {
@@ -247,7 +308,10 @@ describe('organization query helpers', () => {
     };
 
     await expect(
-      resolveHierarchyFields(client, { instanceId: 'de-musterhausen', parentOrganizationId: 'parent-1' })
+      resolveHierarchyFields(client, {
+        instanceId: 'de-musterhausen',
+        parentOrganizationId: 'parent-1',
+      })
     ).resolves.toEqual({ ok: true, hierarchyPath: ['root-1', 'parent-1'], depth: 2 });
     await expect(
       resolveHierarchyFields(client, {

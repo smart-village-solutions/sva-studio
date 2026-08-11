@@ -3,7 +3,10 @@ import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 import { encryptFieldValue, parseFieldEncryptionConfigFromEnv } from '@sva/core/security';
 import { createDsrExportFlows } from '@sva/iam-governance/dsr-export-flows';
 import { createDsrExportStatusHandlers } from '@sva/iam-governance/dsr-export-status';
-import type { DsrExportAccountSnapshot as AccountSnapshot, DsrExportFormat as ExportFormat } from '@sva/iam-governance/dsr-export-payload';
+import type {
+  DsrExportAccountSnapshot as AccountSnapshot,
+  DsrExportFormat as ExportFormat,
+} from '@sva/iam-governance/dsr-export-payload';
 import { runDsrMaintenance } from '@sva/iam-governance/dsr-maintenance';
 import { createAndQueueDsrExportStudioJob } from './export-worker.js';
 
@@ -16,10 +19,23 @@ import {
   type QueryClient,
   withResolvedInstanceDb as withScopedDbTransaction,
 } from '../db.js';
-import { isUuid, readBoolean, readNumber, readObject, readString } from '../shared/input-readers.js';
+import {
+  isUuid,
+  readBoolean,
+  readNumber,
+  readObject,
+  readString,
+} from '../shared/input-readers.js';
 import { buildLogContext } from '../log-context.js';
 import { dataSubjectRightsRequestSchema } from '../shared/schemas.js';
-import { asApiItem, asApiList, createApiError, readPage, requireIdempotencyKey, toPayloadHash } from '../iam-account-management/api-helpers.js';
+import {
+  asApiItem,
+  asApiList,
+  createApiError,
+  readPage,
+  requireIdempotencyKey,
+  toPayloadHash,
+} from '../iam-account-management/api-helpers.js';
 import { completeIdempotency, reserveIdempotency } from '../iam-account-management/shared.js';
 import { validateCsrf } from '../iam-account-management/csrf.js';
 import {
@@ -57,7 +73,11 @@ const dsrExportStatusHandlers = createDsrExportStatusHandlers({
 const DSR_READ_ACTION = 'iam.dsr.read';
 const DSR_WRITE_ACTION = 'iam.dsr.write';
 const DSR_EXPORT_ACTION = 'iam.dsr.export';
-const ART19_RECIPIENT_CLASSES = ['internal_processor', 'downstream_export', 'analytics_sink'] as const;
+const ART19_RECIPIENT_CLASSES = [
+  'internal_processor',
+  'downstream_export',
+  'analytics_sink',
+] as const;
 const DELETE_SLA_HOURS = 48;
 const DEFAULT_DELETE_RETENTION_HOURS = 24;
 
@@ -226,13 +246,19 @@ const parseAdminExportRequestBody = async (
   };
 };
 
-const resolveInstanceId = (input: { bodyInstanceId?: string; request: Request; fallback?: string }): string | undefined => {
+const resolveInstanceId = (input: {
+  bodyInstanceId?: string;
+  request: Request;
+  fallback?: string;
+}): string | undefined => {
   const fromQuery = readString(new URL(input.request.url).searchParams.get('instanceId'));
   return input.bodyInstanceId ?? fromQuery ?? input.fallback;
 };
 
 const resolveRetentionHours = () => {
-  const parsed = Number(process.env.IAM_DSR_DELETE_RETENTION_HOURS ?? DEFAULT_DELETE_RETENTION_HOURS);
+  const parsed = Number(
+    process.env.IAM_DSR_DELETE_RETENTION_HOURS ?? DEFAULT_DELETE_RETENTION_HOURS
+  );
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_DELETE_RETENTION_HOURS;
   }
@@ -403,7 +429,13 @@ const parseDsrRequestType = (raw: unknown): DsrRequestType | null => {
   if (!type) {
     return null;
   }
-  if (type === 'access' || type === 'deletion' || type === 'rectification' || type === 'restriction' || type === 'objection') {
+  if (
+    type === 'access' ||
+    type === 'deletion' ||
+    type === 'rectification' ||
+    type === 'restriction' ||
+    type === 'objection'
+  ) {
     return type;
   }
   return null;
@@ -428,7 +460,7 @@ const resolveJsonScopedInstance = (input: {
           request: input.request,
           fallback: input.fallback,
         })
-      : input.bodyInstanceId ?? input.fallback;
+      : (input.bodyInstanceId ?? input.fallback);
 
   if (!instanceId) {
     return { ok: false, response: jsonError(400, 'invalid_instance_id') };
@@ -455,7 +487,7 @@ const resolveApiScopedInstance = (input: {
           request: input.request,
           fallback: input.fallback,
         })
-      : input.bodyInstanceId ?? input.fallback;
+      : (input.bodyInstanceId ?? input.fallback);
 
   if (!instanceId) {
     return {
@@ -483,7 +515,12 @@ const requireJsonBody = async (
   return { ok: true, body };
 };
 
-const logDsrDatabaseError = (message: string, operation: string, instanceId: string, error: unknown): void => {
+const logDsrDatabaseError = (
+  message: string,
+  operation: string,
+  instanceId: string,
+  error: unknown
+): void => {
   logger.error(message, {
     operation,
     error: error instanceof Error ? error.message : String(error),
@@ -589,7 +626,12 @@ export const dataExportStatusHandler = async (request: Request): Promise<Respons
           });
         });
       } catch (error) {
-        return handleJsonDatabaseError('DSR export status lookup failed', 'data_export_status', instanceId, error);
+        return handleJsonDatabaseError(
+          'DSR export status lookup failed',
+          'data_export_status',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -642,7 +684,12 @@ export const adminDataExportHandler = async (request: Request): Promise<Response
           });
         });
       } catch (error) {
-        return handleJsonDatabaseError('DSR admin export failed', 'admin_data_export', instanceId, error);
+        return handleJsonDatabaseError(
+          'DSR admin export failed',
+          'admin_data_export',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -691,7 +738,11 @@ export const profileCorrectionHandler = async (request: Request): Promise<Respon
           const emailCiphertext = nextEmail
             ? (() => {
                 try {
-                  return encryptFieldValue(nextEmail, encryptionConfig, `iam.accounts.email:${user.id}`);
+                  return encryptFieldValue(
+                    nextEmail,
+                    encryptionConfig,
+                    `iam.accounts.email:${user.id}`
+                  );
                 } catch {
                   return null;
                 }
@@ -701,7 +752,11 @@ export const profileCorrectionHandler = async (request: Request): Promise<Respon
           const displayNameCiphertext = nextDisplayName
             ? (() => {
                 try {
-                  return encryptFieldValue(nextDisplayName, encryptionConfig, `iam.accounts.display_name:${user.id}`);
+                  return encryptFieldValue(
+                    nextDisplayName,
+                    encryptionConfig,
+                    `iam.accounts.display_name:${user.id}`
+                  );
                 } catch {
                   return null;
                 }
@@ -792,7 +847,12 @@ VALUES ($1, $2::uuid, $2::uuid, $3, $4, $5, $6, $7);
           });
         });
       } catch (error) {
-        return handleJsonDatabaseError('DSR profile correction failed', 'profile_correction', instanceId, error);
+        return handleJsonDatabaseError(
+          'DSR profile correction failed',
+          'profile_correction',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1079,7 +1139,12 @@ export const dataSubjectRequestHandler = async (request: Request): Promise<Respo
 
         return committedResult.response;
       } catch (error) {
-        return handleJsonDatabaseError('DSR self request failed', 'self_request', instanceId, error);
+        return handleJsonDatabaseError(
+          'DSR self request failed',
+          'self_request',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1148,7 +1213,12 @@ export const getMyDataSubjectRightsCaseHandler = async (request: Request): Promi
         return instanceScope.response;
       }
       if (!caseId || !isUuid(caseId)) {
-        return createApiError(400, 'invalid_request', 'Ungültige Datenschutzfall-ID.', getRequestId());
+        return createApiError(
+          400,
+          'invalid_request',
+          'Ungültige Datenschutzfall-ID.',
+          getRequestId()
+        );
       }
 
       const { instanceId } = instanceScope;
@@ -1169,7 +1239,12 @@ export const getMyDataSubjectRightsCaseHandler = async (request: Request): Promi
             caseId,
           });
           if (!item) {
-            return createApiError(404, 'not_found', 'Datenschutzfall wurde nicht gefunden.', getRequestId());
+            return createApiError(
+              404,
+              'not_found',
+              'Datenschutzfall wurde nicht gefunden.',
+              getRequestId()
+            );
           }
 
           return jsonResponse(200, asApiItem(item, getRequestId()));
@@ -1321,7 +1396,12 @@ RETURNING id;
           });
         });
       } catch (error) {
-        return handleJsonDatabaseError('Legal hold apply failed', 'legal_hold_apply', instanceId, error);
+        return handleJsonDatabaseError(
+          'Legal hold apply failed',
+          'legal_hold_apply',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1405,7 +1485,12 @@ RETURNING id;
           });
         });
       } catch (error) {
-        return handleJsonDatabaseError('Legal hold release failed', 'legal_hold_release', instanceId, error);
+        return handleJsonDatabaseError(
+          'Legal hold release failed',
+          'legal_hold_release',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1446,7 +1531,12 @@ export const dataSubjectMaintenanceHandler = async (request: Request): Promise<R
           return jsonResponse(200, result);
         });
       } catch (error) {
-        return handleJsonDatabaseError('DSR maintenance run failed', 'maintenance', instanceId, error);
+        return handleJsonDatabaseError(
+          'DSR maintenance run failed',
+          'maintenance',
+          instanceId,
+          error
+        );
       }
     });
   });
@@ -1498,7 +1588,9 @@ export const adminDataExportStatusHandler = async (request: Request): Promise<Re
   });
 };
 
-export const listAdminDataSubjectRightsCasesHandler = async (request: Request): Promise<Response> => {
+export const listAdminDataSubjectRightsCasesHandler = async (
+  request: Request
+): Promise<Response> => {
   return withRequestContext({ request, fallbackWorkspaceId: 'default' }, async () => {
     return withAuthenticatedUser(request, async (ctx) => {
       const authorizationError = await authorizeDsrApiAction(
@@ -1519,13 +1611,28 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
         missingMessage: 'Instanzkontext fehlt.',
         mismatchMessage: 'Instanzkontext unzulässig.',
       });
-      const type = readString(url.searchParams.get('type')) as IamDsrCaseListItem['type'] | undefined;
-      const status = readString(url.searchParams.get('status')) as IamDsrCanonicalStatus | undefined;
+      const type = readString(url.searchParams.get('type')) as
+        IamDsrCaseListItem['type'] | undefined;
+      const status = readString(url.searchParams.get('status')) as
+        IamDsrCanonicalStatus | undefined;
       const search = readString(url.searchParams.get('search'));
       const { page, pageSize } = readPage(request);
+      const sortBy = readString(url.searchParams.get('sortBy')) ?? 'createdAt';
+      const sortDirection = readString(url.searchParams.get('sortDirection')) ?? 'desc';
 
       if (!instanceScope.ok) {
         return instanceScope.response;
+      }
+      if (
+        (sortBy !== 'createdAt' && sortBy !== 'completedAt') ||
+        (sortDirection !== 'asc' && sortDirection !== 'desc')
+      ) {
+        return createApiError(
+          400,
+          'invalid_request',
+          'Ungültige Sortierparameter.',
+          getRequestId()
+        );
       }
       const { instanceId } = instanceScope;
 
@@ -1538,9 +1645,14 @@ export const listAdminDataSubjectRightsCasesHandler = async (request: Request): 
             search: search ?? undefined,
             type,
             status,
+            sortBy,
+            sortDirection,
           })
         );
-        return jsonResponse(200, asApiList(result.items, { page, pageSize, total: result.total }, getRequestId()));
+        return jsonResponse(
+          200,
+          asApiList(result.items, { page, pageSize, total: result.total }, getRequestId())
+        );
       } catch (error) {
         return handleApiDatabaseError(
           'DSR admin case list failed',
@@ -1580,7 +1692,12 @@ export const getAdminDataSubjectRightsCaseHandler = async (request: Request): Pr
         return instanceScope.response;
       }
       if (!caseId || !isUuid(caseId)) {
-        return createApiError(400, 'invalid_request', 'Ungültige Datenschutzfall-ID.', getWorkspaceContext().requestId);
+        return createApiError(
+          400,
+          'invalid_request',
+          'Ungültige Datenschutzfall-ID.',
+          getWorkspaceContext().requestId
+        );
       }
 
       const { instanceId } = instanceScope;
@@ -1594,7 +1711,12 @@ export const getAdminDataSubjectRightsCaseHandler = async (request: Request): Pr
         );
 
         if (!item) {
-          return createApiError(404, 'not_found', 'Datenschutzfall wurde nicht gefunden.', getRequestId());
+          return createApiError(
+            404,
+            'not_found',
+            'Datenschutzfall wurde nicht gefunden.',
+            getRequestId()
+          );
         }
 
         return jsonResponse(200, asApiItem(item, getRequestId()));

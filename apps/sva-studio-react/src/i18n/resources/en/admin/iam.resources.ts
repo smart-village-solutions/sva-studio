@@ -63,6 +63,15 @@ export const iamAdminENResources = {
   },
   shared: {
     all: 'All',
+    notAvailable: 'Not available',
+    pagination: {
+      ariaLabel: 'Pagination',
+      results: '{{count}} entries',
+      pageSize: 'Entries per page',
+      page: 'Page {{page}} of {{totalPages}}',
+      previous: 'Previous',
+      next: 'Next',
+    },
     createdAt: 'Created: {{value}}',
     type: 'Type: {{value}}',
     ticket: 'Ticket: {{value}}',

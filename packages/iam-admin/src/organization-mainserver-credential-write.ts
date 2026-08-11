@@ -46,24 +46,61 @@ const resolveCredentialValues = (
   return { applicationId, secretCiphertext };
 };
 
+const resolveProjectedProvisioningStatus = (
+  currentRow: OrganizationMainserverCredentialRow | null,
+  applicationId: string | null,
+  secretCiphertext: string | null,
+  credentialsChanged: boolean
+): OrganizationMainserverCredentialState['provisioningStatus'] => {
+  if (!credentialsChanged && currentRow) {
+    return currentRow.provisioning_status;
+  }
+  return applicationId && secretCiphertext ? 'verification_required' : 'not_provisioned';
+};
+
+const preserveUnlessCredentialsChanged = <T>(
+  credentialsChanged: boolean,
+  value: T | null | undefined
+): T | undefined => (credentialsChanged ? undefined : (value ?? undefined));
+
 const projectWrittenState = (
   currentRow: OrganizationMainserverCredentialRow | null,
   applicationId: string | null,
-  secretCiphertext: string | null
+  secretCiphertext: string | null,
+  credentialsChanged: boolean
 ): OrganizationMainserverCredentialState => ({
   mainserverApplicationId: applicationId ?? undefined,
   mainserverApplicationSecretSet: Boolean(secretCiphertext),
   technicalAccountId: currentRow?.technical_account_id ?? undefined,
-  provisioningStatus:
-    applicationId && secretCiphertext ? 'verification_required' : 'not_provisioned',
-  operationReference: currentRow?.operation_reference ?? undefined,
-  provisioningPhase: currentRow?.provisioning_phase ?? undefined,
+  provisioningStatus: resolveProjectedProvisioningStatus(
+    currentRow,
+    applicationId,
+    secretCiphertext,
+    credentialsChanged
+  ),
+  operationReference: preserveUnlessCredentialsChanged(
+    credentialsChanged,
+    currentRow?.operation_reference
+  ),
+  provisioningPhase: preserveUnlessCredentialsChanged(
+    credentialsChanged,
+    currentRow?.provisioning_phase
+  ),
   attemptCount: currentRow?.attempt_count ?? 0,
-  leaseExpiresAt: currentRow?.lease_expires_at ?? undefined,
-  lastErrorCode: currentRow?.last_error_code ?? undefined,
+  leaseExpiresAt: preserveUnlessCredentialsChanged(
+    credentialsChanged,
+    currentRow?.lease_expires_at
+  ),
+  lastErrorCode: preserveUnlessCredentialsChanged(
+    credentialsChanged,
+    currentRow?.last_error_code
+  ),
   lastAttemptAt: currentRow?.last_attempt_at ?? undefined,
-  completedAt: currentRow?.completed_at ?? undefined,
-  lastVerifiedAt: currentRow?.last_verified_at ?? undefined,
+  completedAt: preserveUnlessCredentialsChanged(credentialsChanged, currentRow?.completed_at),
+  lastVerifiedAt: preserveUnlessCredentialsChanged(
+    credentialsChanged,
+    currentRow?.last_verified_at
+  ),
 });
 
 export const writeOrganizationMainserverCredentials = async (
@@ -72,10 +109,16 @@ export const writeOrganizationMainserverCredentials = async (
   currentRow: OrganizationMainserverCredentialRow | null
 ): Promise<OrganizationMainserverCredentialState> => {
   const { applicationId, secretCiphertext } = resolveCredentialValues(input, currentRow);
-  if (!applicationId && !secretCiphertext) {
-    return projectWrittenState(currentRow, null, null);
+  const hasNewSecret = normalizeOptionalText(input.mainserverApplicationSecret) !== null;
+  const credentialsChanged =
+    applicationId !== (currentRow?.mainserver_application_id ?? null) || hasNewSecret;
+  if (currentRow && !credentialsChanged) {
+    return projectWrittenState(currentRow, applicationId, secretCiphertext, false);
   }
-  await client.query(
+  if (!applicationId && !secretCiphertext) {
+    return projectWrittenState(currentRow, null, null, credentialsChanged);
+  }
+  const result = await client.query(
     `
 INSERT INTO iam.organization_mainserver_credentials (
   instance_id,
@@ -96,8 +139,18 @@ SET
       THEN 'verification_required'
     ELSE 'not_provisioned'
   END,
+  operation_reference = NULL,
+  provisioning_phase = NULL,
+  lease_expires_at = NULL,
+  last_error_code = NULL,
+  completed_at = NULL,
+  last_verified_at = NULL,
   updated_by_account_id = COALESCE(EXCLUDED.updated_by_account_id, iam.organization_mainserver_credentials.updated_by_account_id),
-  updated_at = NOW();
+  updated_at = NOW()
+WHERE NOT (
+  iam.organization_mainserver_credentials.provisioning_status = 'provisioning'
+  AND iam.organization_mainserver_credentials.lease_expires_at > NOW()
+);
 `,
     [
       input.instanceId,
@@ -108,7 +161,10 @@ SET
       applicationId && secretCiphertext ? 'verification_required' : 'not_provisioned',
     ]
   );
-  return projectWrittenState(currentRow, applicationId, secretCiphertext);
+  if (result.rowCount === 0) {
+    throw new Error('organization_mainserver_provisioning_in_progress');
+  }
+  return projectWrittenState(currentRow, applicationId, secretCiphertext, credentialsChanged);
 };
 
 export const writeActiveOrganizationProvisioningCredentials = async (

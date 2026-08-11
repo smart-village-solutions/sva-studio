@@ -63,3 +63,5 @@
 - [x] 6.10 Review-Fix: Credential-Persistenz und alle laufenden Zustandsübergänge atomar an Operationsreferenz und aktive Lease binden; eine verlorene Lease darf weder Credentials überschreiben noch Erfolg melden.
 - [x] 6.11 Review-Fix: Unveränderte `isTechnicalAccount`-Werte vor Update, Audit und Permission-Invalidierung aus dem Payload entfernen und reine No-op-Updates ohne Schreibnebenwirkungen behandeln.
 - [x] 6.12 Review-Fix: Für die Standardausblendung nur technische Keycloak-Subjects leichtgewichtig laden und vollständige lokale Accountprojektionen erst für die tatsächlich paginierte Seite aufbauen.
+- [x] 6.13 Review-Fix: Manuelle Credential-Änderungen während einer aktiven Provisioning-Lease atomar abweisen, ohne Lease, Operationsreferenz oder laufenden Zustand zu verändern.
+- [x] 6.14 Review-Fix: Gewöhnliche Organisations-Updates mit unveränderter Application-ID und ohne neues Secret als Credential-No-op behandeln und den Zustand `ready` samt Verifikationsevidenz erhalten.

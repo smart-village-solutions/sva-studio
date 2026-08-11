@@ -140,6 +140,74 @@ describe('organization mainserver credentials', () => {
     );
   });
 
+  it('keeps ready credentials unchanged when an ordinary save repeats only the application id', async () => {
+    const row = {
+      mainserver_application_id: 'org-app-1',
+      mainserver_application_secret_ciphertext: 'enc:old-secret',
+      technical_account_id: 'account-1',
+      provisioning_status: 'ready' as const,
+      operation_reference: 'operation-completed',
+      provisioning_phase: 'completed',
+      attempt_count: 1,
+      lease_expires_at: null,
+      last_error_code: null,
+      last_attempt_at: '2026-08-11T09:00:00.000Z',
+      completed_at: '2026-08-11T09:01:00.000Z',
+      last_verified_at: '2026-08-11T09:01:00.000Z',
+    };
+    const query = vi.fn<QueryClient['query']>().mockResolvedValueOnce({ rows: [row] } as never);
+
+    await expect(
+      upsertOrganizationMainserverCredentials({ query } as unknown as QueryClient, {
+        instanceId: 'de-musterhausen',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+        mainserverApplicationId: 'org-app-1',
+      })
+    ).resolves.toMatchObject({
+      mainserverApplicationId: 'org-app-1',
+      provisioningStatus: 'ready',
+      lastVerifiedAt: '2026-08-11T09:01:00.000Z',
+    });
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects manual credential changes while a provisioning lease is active', async () => {
+    const query = vi
+      .fn<QueryClient['query']>()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            mainserver_application_id: 'org-app-1',
+            mainserver_application_secret_ciphertext: 'enc:old-secret',
+            technical_account_id: 'account-1',
+            provisioning_status: 'provisioning',
+            operation_reference: 'operation-active',
+            provisioning_phase: 'mainserver_request',
+            attempt_count: 2,
+            lease_expires_at: '2026-08-11T10:05:00.000Z',
+            last_error_code: null,
+            last_attempt_at: '2026-08-11T10:00:00.000Z',
+            completed_at: null,
+            last_verified_at: null,
+          },
+        ],
+      } as never)
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] } as never);
+
+    await expect(
+      upsertOrganizationMainserverCredentials({ query } as unknown as QueryClient, {
+        instanceId: 'de-musterhausen',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+        mainserverApplicationId: 'org-app-2',
+      })
+    ).rejects.toThrow('organization_mainserver_provisioning_in_progress');
+    expect(query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("provisioning_status = 'provisioning'"),
+      expect.any(Array)
+    );
+  });
+
   it('returns the observed active state when a parallel lease cannot be acquired', async () => {
     const row = {
       mainserver_application_id: null,

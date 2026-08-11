@@ -93,6 +93,20 @@ Das System SHALL den aktuellen organisationsbezogenen Mainserver-Zustand kanonis
 - **THEN** erhält die Organisation `verification_required`
 - **AND** rotiert oder ersetzt Studio die Credentials nicht automatisch
 
+#### Scenario: Gewöhnliches Organisations-Update lässt gültige Credentials unverändert
+
+- **GIVEN** eine Organisation besitzt vollständige, verifizierte Credentials im Zustand `ready`
+- **WHEN** ein Update lediglich dieselbe Application-ID wiederholt und kein neues Secret liefert
+- **THEN** führt Studio keinen Credential-Schreibzugriff aus
+- **AND** bleiben Zustand, Verifikationszeitpunkt und DataProvider-Bindung unverändert
+
+#### Scenario: Manuelle Credential-Änderung konkurriert mit aktiver Lease
+
+- **GIVEN** für die Organisation läuft eine nicht abgelaufene Provisioning-Lease
+- **WHEN** parallel eine tatsächliche manuelle Credential-Änderung gespeichert werden soll
+- **THEN** weist Studio die Änderung mit einem Konflikt ab
+- **AND** bleiben Lease, Operationsreferenz, Phase und Credentials des laufenden Provisionings unverändert
+
 #### Scenario: Retry vervollständigt vorhandenen Zustand vor Neuprovisionierung
 
 - **GIVEN** eine Organisation befindet sich in `verification_required` oder `reconciliation_required`

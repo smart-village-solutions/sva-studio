@@ -544,6 +544,38 @@ describe('organization mutation handlers', () => {
     expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
   });
 
+  it('returns a conflict when credential changes race with active provisioning', async () => {
+    const deps = buildDeps();
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { mainserverApplicationId: 'org-app-2' },
+      rawBody: '{}',
+    }));
+    deps.upsertOrganizationMainserverCredentials = vi.fn(async () => {
+      throw new Error('organization_mainserver_provisioning_in_progress');
+    });
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) =>
+      work({ query: vi.fn(async () => ({ rowCount: 1, rows: [] })) } as never)
+    );
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(json(response)).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: 'Mainserver-Zugang wird gerade provisioniert.',
+      },
+    });
+  });
+
   it('returns conflict when updating an organization reuses an existing key', async () => {
     const deps = buildDeps();
     deps.parseRequestBody = vi.fn(async () => ({

@@ -823,6 +823,14 @@ WHERE instance_id = $1
             actor.requestId
           );
         }
+        if (message === 'organization_mainserver_provisioning_in_progress') {
+          return deps.createApiError(
+            409,
+            'conflict',
+            'Mainserver-Zugang wird gerade provisioniert.',
+            actor.requestId
+          );
+        }
         return deps.createApiError(
           503,
           'database_unavailable',

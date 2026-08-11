@@ -13,6 +13,7 @@ import {
   getOrganization,
   IamHttpError,
   listOrganizations,
+  provisionOrganizationMainserver,
   removeOrganizationMembership,
   updateOrganizationMembership,
   updateOrganization,
@@ -72,6 +73,7 @@ type UseOrganizationsResult = {
     payload: UpdateOrganizationPayload
   ) => Promise<IamOrganizationDetail | null>;
   readonly deleteOrganization: (organizationId: string) => Promise<boolean>;
+  readonly provisionMainserver: (organizationId: string) => Promise<IamOrganizationDetail | null>;
   readonly assignMembership: (
     organizationId: string,
     payload: AssignOrganizationMembershipPayload
@@ -379,6 +381,8 @@ export const useOrganizations = (
       setSelectedOrganization((current) => (current?.id === organizationId ? null : current));
       return Boolean(response);
     },
+    provisionMainserver: async (organizationId) =>
+      mutate(() => provisionOrganizationMainserver(organizationId), { organizationId }),
     assignMembership: async (organizationId, payload) =>
       mutate(() => assignOrganizationMembership(organizationId, payload), { organizationId }),
     updateMembership: async (organizationId, accountId, payload) =>

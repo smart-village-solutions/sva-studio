@@ -37,6 +37,7 @@ type UserFilters = {
   readonly search: string;
   readonly status: UserStatusFilter;
   readonly role: string;
+  readonly includeTechnicalAccounts: boolean;
 };
 
 type UseUsersResult = {
@@ -51,6 +52,7 @@ type UseUsersResult = {
   readonly setSearch: (value: string) => void;
   readonly setStatus: (value: UserStatusFilter) => void;
   readonly setRole: (value: string) => void;
+  readonly setIncludeTechnicalAccounts: (value: boolean) => void;
   readonly setPage: (value: number) => void;
   readonly refetch: () => Promise<void>;
   readonly createUser: (payload: CreateUserPayload) => Promise<IamCreateUserResult | null>;
@@ -76,6 +78,7 @@ const DEFAULT_FILTERS: UserFilters = {
   search: '',
   status: 'all',
   role: '',
+  includeTechnicalAccounts: false,
 };
 
 const usersLogger = createOperationLogger('users-hook', 'debug');
@@ -111,6 +114,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
       search: filters.search.trim(),
       status: filters.status,
       role: filters.role || undefined,
+      include_technical_accounts: filters.includeTechnicalAccounts,
     });
     const timer = globalThis.setTimeout(() => {
       setDebouncedSearch(filters.search.trim());
@@ -142,6 +146,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
         search: debouncedSearch || undefined,
         status: filters.status === 'all' ? undefined : filters.status,
         role: filters.role || undefined,
+        includeTechnicalAccounts: filters.includeTechnicalAccounts,
       });
 
       if (isMountedRef.current) {
@@ -187,6 +192,7 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     filters.pageSize,
     filters.role,
     filters.status,
+    filters.includeTechnicalAccounts,
     refreshSession,
   ]);
 
@@ -270,6 +276,8 @@ export const useUsers = (initial?: Partial<UserFilters>): UseUsersResult => {
     setSearch: (value) => setFilters((current) => ({ ...current, page: 1, search: value })),
     setStatus: (value) => setFilters((current) => ({ ...current, page: 1, status: value })),
     setRole: (value) => setFilters((current) => ({ ...current, page: 1, role: value })),
+    setIncludeTechnicalAccounts: (value) =>
+      setFilters((current) => ({ ...current, page: 1, includeTechnicalAccounts: value })),
     setPage: (value) => setFilters((current) => ({ ...current, page: Math.max(1, value) })),
     refetch: loadUsers,
     createUser: async (payload) => {

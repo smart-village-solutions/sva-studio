@@ -406,6 +406,7 @@ describe('UserEditPage', () => {
       mainserverUserApplicationId: 'app-id-1',
       mainserverUserApplicationSecret: '',
       mainserverUserApplicationSecretSet: true,
+      isTechnicalAccount: false,
     };
 
     expect(hasUserFormChanges(baseline, { ...baseline })).toBe(false);
@@ -455,6 +456,7 @@ describe('UserEditPage', () => {
         mainserverUserApplicationId: '  app-id-1  ',
         mainserverUserApplicationSecret: '  secret  ',
         mainserverUserApplicationSecretSet: true,
+        isTechnicalAccount: true,
       })
     ).toEqual({
       firstName: 'Alice',
@@ -472,6 +474,7 @@ describe('UserEditPage', () => {
       groupIds: ['group-1'],
       mainserverUserApplicationId: 'app-id-1',
       mainserverUserApplicationSecret: 'secret',
+      isTechnicalAccount: true,
     });
   });
 
@@ -1107,6 +1110,7 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1', 'role-2'],
         groupIds: ['group-1'],
+        isTechnicalAccount: false,
         mainserverUserApplicationId: 'app-id-1',
         mainserverUserApplicationSecret: undefined,
       });
@@ -1253,6 +1257,7 @@ describe('UserEditPage', () => {
         notes: undefined,
         roleIds: ['role-1'],
         groupIds: ['group-1'],
+        isTechnicalAccount: false,
         mainserverUserApplicationId: 'updated-app-id',
         mainserverUserApplicationSecret: 'new-secret',
       });

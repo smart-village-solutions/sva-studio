@@ -2,7 +2,10 @@ import { getWorkspaceContext } from '@sva/server-runtime';
 import type { ApiErrorCode, IamUserDetail, IamUserRoleAssignment } from '@sva/core';
 
 import type { UpdateIdentityUserInput } from '../identity-provider-port.js';
-import { KeycloakAdminRequestError, KeycloakAdminUnavailableError } from '../keycloak-admin-client.js';
+import {
+  KeycloakAdminRequestError,
+  KeycloakAdminUnavailableError,
+} from '../keycloak-admin-client.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { jsonResponse } from '../db.js';
 
@@ -48,10 +51,7 @@ type ProfileActorContext = {
 };
 
 type ProfileDiagnosticsStage =
-  | 'feature_gate'
-  | 'actor_resolution'
-  | 'rate_limit'
-  | 'load_profile_detail';
+  'feature_gate' | 'actor_resolution' | 'rate_limit' | 'load_profile_detail';
 
 type ProfileUpdateFailureStage =
   | 'load_existing_profile'
@@ -119,6 +119,7 @@ const buildPlatformProfileFromSession = (ctx: AuthenticatedRequestContext): IamU
   lastName: ctx.user.lastName,
   displayName: deriveSessionDisplayName(ctx),
   status: 'active',
+  isTechnicalAccount: false,
   roles: buildPlatformRoleAssignments(ctx.user.roles),
   mainserverUserApplicationSecretSet: false,
 });
@@ -166,16 +167,10 @@ const enrichProfileDiagnosticResponse = async (
       return response;
     }
 
-    return createApiError(
-      response.status,
-      code,
-      message,
-      payload.requestId,
-      {
-        ...errorPayload.details,
-        ...buildProfileDiagnosticDetails(ctx, stage, actor, extraDetails),
-      }
-    );
+    return createApiError(response.status, code, message, payload.requestId, {
+      ...errorPayload.details,
+      ...buildProfileDiagnosticDetails(ctx, stage, actor, extraDetails),
+    });
   } catch {
     return response;
   }
@@ -200,9 +195,7 @@ const resolvePlatformProfileRead = async (
   };
 };
 
-const resolvePlatformProfileWrite = (
-  ctx: AuthenticatedRequestContext
-): Response | null => {
+const resolvePlatformProfileWrite = (ctx: AuthenticatedRequestContext): Response | null => {
   if (!canUsePlatformSelfServiceProfile(ctx)) {
     return null;
   }
@@ -289,12 +282,7 @@ const resolveProfileActorContext = async (
   });
   if (rateLimit) {
     return scope === 'read'
-      ? await enrichProfileDiagnosticResponse(
-          rateLimit,
-          ctx,
-          'rate_limit',
-          actorResolution.actor
-        )
+      ? await enrichProfileDiagnosticResponse(rateLimit, ctx, 'rate_limit', actorResolution.actor)
       : rateLimit;
   }
 
@@ -409,10 +397,7 @@ const buildIdentityAttributes = (displayName: string | undefined) =>
       }
     : undefined;
 
-type UpdateIdentityUserFn = (
-  externalId: string,
-  input: UpdateIdentityUserInput
-) => Promise<void>;
+type UpdateIdentityUserFn = (externalId: string, input: UpdateIdentityUserInput) => Promise<void>;
 
 const createProfileUpdateAttemptState = (): ProfileUpdateAttemptState => ({
   existing_profile_loaded: false,
@@ -499,7 +484,8 @@ const restoreIdentityProfile = async (
       request_id: actor.requestId,
       trace_id: actor.traceId,
       keycloak_subject: existingDetail.keycloakSubject,
-      error: compensationError instanceof Error ? compensationError.message : String(compensationError),
+      error:
+        compensationError instanceof Error ? compensationError.message : String(compensationError),
     });
     return false;
   }
@@ -633,9 +619,19 @@ const handleProfileUpdateError = (
       actor.requestId
     );
   }
-  const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht aktualisiert werden.', actor.requestId);
+  const classified = classifyIamDiagnosticError(
+    error,
+    'Profil konnte nicht aktualisiert werden.',
+    actor.requestId
+  );
   if (classified.details.reason_code === 'pii_encryption_missing') {
-    return createApiError(classified.status, classified.code, 'PII-Verschlüsselung ist nicht konfiguriert.', actor.requestId, classified.details);
+    return createApiError(
+      classified.status,
+      classified.code,
+      'PII-Verschlüsselung ist nicht konfiguriert.',
+      actor.requestId,
+      classified.details
+    );
   }
 
   iamUserOperationsCounter.add(1, { action: 'update_my_profile', result: 'failure' });
@@ -650,11 +646,11 @@ const handleProfileUpdateError = (
 
 const buildSchemaDriftFallbackResponse = async (
   actor: ActorInfo,
-  fallbackMessage: string,
+  fallbackMessage: string
 ): Promise<Response | undefined> => {
   try {
     const schemaGuard = await withInstanceScopedDb(actor.instanceId, (client) =>
-      runCriticalIamSchemaGuard(client),
+      runCriticalIamSchemaGuard(client)
     );
     const failed = schemaGuard.checks.find((check) => !check.ok);
     if (!failed) {
@@ -678,14 +674,19 @@ const handleProfileFetchError = async (
   ctx: AuthenticatedRequestContext,
   error: unknown
 ): Promise<Response> => {
-  const classified = classifyIamDiagnosticError(error, 'Profil konnte nicht geladen werden.', actor.requestId);
-  const errorCause = error && typeof error === 'object' && 'cause' in error
-    ? (error as { cause?: unknown }).cause
-    : undefined;
+  const classified = classifyIamDiagnosticError(
+    error,
+    'Profil konnte nicht geladen werden.',
+    actor.requestId
+  );
+  const errorCause =
+    error && typeof error === 'object' && 'cause' in error
+      ? (error as { cause?: unknown }).cause
+      : undefined;
   if (classified.details.reason_code === 'unexpected_internal_error') {
     const schemaDriftResponse = await buildSchemaDriftFallbackResponse(
       actor,
-      'Profil konnte nicht geladen werden.',
+      'Profil konnte nicht geladen werden.'
     );
     if (schemaDriftResponse) {
       return schemaDriftResponse;
@@ -739,7 +740,9 @@ export const updateMyProfileInternal = async (
   request: Request,
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
-  const actorContext = await resolveProfileActorContext(request, ctx, 'write', { validateWriteCsrf: true });
+  const actorContext = await resolveProfileActorContext(request, ctx, 'write', {
+    validateWriteCsrf: true,
+  });
   if (actorContext instanceof Response) {
     return actorContext;
   }
@@ -779,7 +782,9 @@ export const updateMyProfileInternal = async (
       existingDetail,
       payload: payload.data,
       attemptState,
-      updateUser: identityProviderResolution.provider.updateUser.bind(identityProviderResolution.provider),
+      updateUser: identityProviderResolution.provider.updateUser.bind(
+        identityProviderResolution.provider
+      ),
     });
   } catch (error) {
     return handleProfileUpdateError(actorContext.actor, error, attemptState);

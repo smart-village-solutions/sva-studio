@@ -14,7 +14,14 @@ const state = {
       traceId: 'trace-org',
     },
   } as
-    | { actor: { instanceId: string; actorAccountId?: string; requestId?: string; traceId?: string } }
+    | {
+        actor: {
+          instanceId: string;
+          actorAccountId?: string;
+          requestId?: string;
+          traceId?: string;
+        };
+      }
     | { error: Response },
   reserve: { status: 'reserved' as const } as
     | { status: 'reserved' }
@@ -60,10 +67,16 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
   consumeRateLimit: vi.fn(() => null),
   createActorResolutionDetails: vi.fn((input) => input),
   createApiError: (status, code, message, requestId, details) =>
-    new Response(JSON.stringify({ error: { code, message, ...(details ? { details } : {}) }, ...(requestId ? { requestId } : {}) }), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
+    new Response(
+      JSON.stringify({
+        error: { code, message, ...(details ? { details } : {}) },
+        ...(requestId ? { requestId } : {}),
+      }),
+      {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }
+    ),
   emitActivityLog,
   ensureFeature: vi.fn(() => null),
   getFeatureFlags: vi.fn(() => ({})),
@@ -72,7 +85,10 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
     Boolean(value && typeof value === 'object' && 'ok' in value && value.ok === false),
   isUuid: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
   jsonResponse: (status, payload) =>
-    new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } }),
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    }),
   authorizeOrganizationMutationAccess: vi.fn(async () => null),
   loadContextOptions: vi.fn(async () => state.contextOptions),
   loadOrganizationById: vi.fn(async () => ({
@@ -102,10 +118,13 @@ const buildDeps = (): OrganizationMutationHandlerDeps => ({
   requireRoles: vi.fn((requestContext, roles, requestId) =>
     requestContext.user.roles.some((role) => roles.has(role))
       ? null
-      : new Response(JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }), {
-          status: 403,
-          headers: { 'content-type': 'application/json' },
-        })
+      : new Response(
+          JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }),
+          {
+            status: 403,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
   ),
   reserveIdempotency: vi.fn(async () => state.reserve),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
@@ -185,17 +204,67 @@ describe('organization mutation handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(deps.resolveActorInfo).toHaveBeenCalledWith(
-      expect.any(Request),
-      ctx,
-      {
-        requireActorMembership: true,
-        provisionMissingActorMembership: true,
-      }
+    expect(deps.resolveActorInfo).toHaveBeenCalledWith(expect.any(Request), ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: true,
+    });
+    await expect(json(response)).resolves.toMatchObject({
+      data: { organizationKey: 'alpha' },
+      requestId: 'req-org',
+    });
+    expect(completeIdempotency).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 })
     );
-    await expect(json(response)).resolves.toMatchObject({ data: { organizationKey: 'alpha' }, requestId: 'req-org' });
-    expect(completeIdempotency).toHaveBeenCalledWith(expect.objectContaining({ status: 'COMPLETED', responseStatus: 201 }));
-    expect(emitActivityLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ eventType: 'organization.created' }));
+    expect(emitActivityLog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ eventType: 'organization.created' })
+    );
+  });
+
+  it('runs best-effort post-create processing after the local commit and returns its refreshed detail', async () => {
+    const afterOrganizationCreated = vi.fn(async () => ({
+      ...(state.detail as Record<string, unknown>),
+      mainserverProvisioning: { status: 'ready' },
+    }));
+    const deps = { ...buildDeps(), afterOrganizationCreated };
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    expect(afterOrganizationCreated).toHaveBeenCalledWith({
+      actor: expect.objectContaining({ instanceId: 'de-musterhausen' }),
+      actorSubject: 'kc-1',
+      organization: state.detail,
+    });
+    await expect(json(response)).resolves.toMatchObject({
+      data: { mainserverProvisioning: { status: 'ready' } },
+    });
+  });
+
+  it('keeps the successful local create response when post-create provisioning fails', async () => {
+    const afterOrganizationCreated = vi.fn(async () => {
+      throw new Error('mainserver unavailable');
+    });
+    const deps = { ...buildDeps(), afterOrganizationCreated };
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.createOrganizationInternal(
+      new Request('http://localhost/api/v1/iam/organizations', { method: 'POST' }),
+      ctx
+    );
+
+    expect(response.status).toBe(201);
+    await expect(json(response)).resolves.toMatchObject({
+      data: { organizationKey: 'alpha' },
+    });
+    expect(loggerError).toHaveBeenCalledWith(
+      'IAM organization post-create processing failed',
+      expect.objectContaining({ workspace_id: 'de-musterhausen' })
+    );
   });
 
   it('supports a custom access authorizer for permission-based tenant organization mutations', async () => {
@@ -273,7 +342,9 @@ describe('organization mutation handlers', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(observedQueries.find((query) => query.includes('INSERT INTO iam.organizations'))).not.toContain('$2::uuid');
+    expect(
+      observedQueries.find((query) => query.includes('INSERT INTO iam.organizations'))
+    ).not.toContain('$2::uuid');
   });
 
   it('logs the underlying database error before returning database_unavailable', async () => {
@@ -393,30 +464,30 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.updateOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'PATCH',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'PATCH',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.organizations'),
-      [
-        'de-musterhausen',
-        '11111111-1111-1111-8111-111111111111',
-        'alpha-2',
-        'Alpha 2',
-        null,
-        'district',
-        'org_or_personal',
-        null,
-        JSON.stringify({ stage: 'beta' }),
-        [],
-        0,
-      ]
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.organizations'), [
+      'de-musterhausen',
+      '11111111-1111-1111-8111-111111111111',
+      'alpha-2',
+      'Alpha 2',
+      null,
+      'district',
+      'org_or_personal',
+      null,
+      JSON.stringify({ stage: 'beta' }),
+      [],
+      0,
+    ]);
     expect(upsertOrganizationMainserverCredentials).toHaveBeenCalledWith(expect.anything(), {
       actorAccountId: 'account-1',
       instanceId: 'de-musterhausen',
@@ -459,15 +530,50 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.updateOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'PATCH',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'PATCH',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
     expect(upsertOrganizationMainserverCredentials).not.toHaveBeenCalled();
+  });
+
+  it('returns a conflict when credential changes race with active provisioning', async () => {
+    const deps = buildDeps();
+    deps.parseRequestBody = vi.fn(async () => ({
+      ok: true as const,
+      data: { mainserverApplicationId: 'org-app-2' },
+      rawBody: '{}',
+    }));
+    deps.upsertOrganizationMainserverCredentials = vi.fn(async () => {
+      throw new Error('organization_mainserver_provisioning_in_progress');
+    });
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) =>
+      work({ query: vi.fn(async () => ({ rowCount: 1, rows: [] })) } as never)
+    );
+    const handlers = createOrganizationMutationHandlers(deps);
+
+    const response = await handlers.updateOrganizationInternal(
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        { method: 'PATCH', body: '{}' }
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(409);
+    await expect(json(response)).resolves.toMatchObject({
+      error: {
+        code: 'conflict',
+        message: 'Mainserver-Zugang wird gerade provisioniert.',
+      },
+    });
   });
 
   it('returns conflict when updating an organization reuses an existing key', async () => {
@@ -478,15 +584,20 @@ describe('organization mutation handlers', () => {
       rawBody: '{}',
     }));
     deps.withInstanceScopedDb = vi.fn(async () => {
-      throw new Error('duplicate key value violates unique constraint "organizations_instance_key_uniq"');
+      throw new Error(
+        'duplicate key value violates unique constraint "organizations_instance_key_uniq"'
+      );
     });
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.updateOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'PATCH',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'PATCH',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
@@ -503,23 +614,26 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE iam.contents'),
-      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('UPDATE iam.contents'), [
+      'de-musterhausen',
+      '11111111-1111-1111-8111-111111111111',
+    ]);
     expect(query.mock.calls[0]?.[0]).toContain('owner_organization_id = CASE');
-    expect(query.mock.calls[0]?.[0]).toContain("author_display_mode = CASE");
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM iam.organizations'),
-      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
-    );
+    expect(query.mock.calls[0]?.[0]).toContain('author_display_mode = CASE');
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.organizations'), [
+      'de-musterhausen',
+      '11111111-1111-1111-8111-111111111111',
+    ]);
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -546,21 +660,24 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('WITH deleted_memberships AS'),
-      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
-    );
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM iam.organizations'),
-      ['de-musterhausen', '11111111-1111-1111-8111-111111111111']
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('WITH deleted_memberships AS'), [
+      'de-musterhausen',
+      '11111111-1111-1111-8111-111111111111',
+    ]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.organizations'), [
+      'de-musterhausen',
+      '11111111-1111-1111-8111-111111111111',
+    ]);
     expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_membership_removed' })
@@ -587,17 +704,20 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/22444444-4444-4444-4444-444444444444', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/22444444-4444-4444-4444-444444444444',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM iam.organizations'),
-      ['de-musterhausen', '22444444-4444-4444-4444-444444444444']
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM iam.organizations'), [
+      'de-musterhausen',
+      '22444444-4444-4444-4444-444444444444',
+    ]);
   });
 
   it('rejects deletion when the organization still has child organizations', async () => {
@@ -615,15 +735,21 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
+      error: {
+        code: 'conflict',
+        message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
+      },
     });
   });
 
@@ -639,9 +765,12 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
@@ -659,15 +788,21 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.deleteOrganizationInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111', {
-        method: 'DELETE',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111',
+        {
+          method: 'DELETE',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'conflict', message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.' },
+      error: {
+        code: 'conflict',
+        message: 'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
+      },
     });
   });
 
@@ -694,17 +829,23 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.assignOrganizationMembershipInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships', {
-        method: 'POST',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships',
+        {
+          method: 'POST',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
     expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ instanceId: 'de-musterhausen', trigger: 'organization_membership_assigned' })
+      expect.objectContaining({
+        instanceId: 'de-musterhausen',
+        trigger: 'organization_membership_assigned',
+      })
     );
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
@@ -718,7 +859,10 @@ describe('organization mutation handlers', () => {
       })
     );
     expect(completeIdempotency).toHaveBeenCalledWith(
-      expect.objectContaining({ endpoint: 'POST:/api/v1/iam/organizations/$organizationId/memberships', status: 'COMPLETED' })
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/iam/organizations/$organizationId/memberships',
+        status: 'COMPLETED',
+      })
     );
   });
 
@@ -751,17 +895,20 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.assignOrganizationMembershipInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships', {
-        method: 'POST',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships',
+        {
+          method: 'POST',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
-    expect(observedQueries.find((query) => query.includes('INSERT INTO iam.account_organizations'))).not.toContain(
-      'VALUES ($1::uuid'
-    );
+    expect(
+      observedQueries.find((query) => query.includes('INSERT INTO iam.account_organizations'))
+    ).not.toContain('VALUES ($1::uuid');
   });
 
   it('returns invalid_request when assigning membership to an account outside the instance', async () => {
@@ -776,10 +923,13 @@ describe('organization mutation handlers', () => {
     const handlers = createOrganizationMutationHandlers(deps);
 
     const response = await handlers.assignOrganizationMembershipInternal(
-      new Request('http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships', {
-        method: 'POST',
-        body: '{}',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/organizations/11111111-1111-1111-8111-111111111111/memberships',
+        {
+          method: 'POST',
+          body: '{}',
+        }
+      ),
       ctx
     );
 
@@ -809,10 +959,10 @@ describe('organization mutation handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('WITH fallback_membership AS'),
-      ['de-musterhausen', '22222222-2222-2222-8222-222222222222']
-    );
+    expect(query).toHaveBeenCalledWith(expect.stringContaining('WITH fallback_membership AS'), [
+      'de-musterhausen',
+      '22222222-2222-2222-8222-222222222222',
+    ]);
     expect(notifyPermissionInvalidation).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ trigger: 'organization_membership_removed' })
@@ -931,7 +1081,10 @@ describe('organization mutation handlers', () => {
         true,
       ]
     );
-    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('WITH fallback_membership AS'), expect.any(Array));
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringContaining('WITH fallback_membership AS'),
+      expect.any(Array)
+    );
     expect(emitActivityLog).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
@@ -977,7 +1130,9 @@ describe('organization mutation handlers', () => {
     });
     await expect(json(response)).resolves.toMatchObject({
       data: {
-        organizations: [expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' })],
+        organizations: [
+          expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' }),
+        ],
       },
     });
   });
@@ -1000,7 +1155,10 @@ describe('organization mutation handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(json(response)).resolves.toMatchObject({
-      error: { code: 'organization_inactive', message: 'Inaktive Organisation kann kein aktiver Kontext sein.' },
+      error: {
+        code: 'organization_inactive',
+        message: 'Inaktive Organisation kann kein aktiver Kontext sein.',
+      },
     });
   });
 

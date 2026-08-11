@@ -42,6 +42,12 @@ import {
 const MEMBERSHIP_USER_PAGE_SIZE = 100;
 const MEMBERSHIP_SEARCH_DEBOUNCE_MS = 300;
 
+const getMainserverProvisioningStatusKey = (
+  status: NonNullable<
+    ReturnType<typeof useOrganizations>['selectedOrganization']
+  >['mainserverProvisioning']['status']
+) => `admin.organizations.mainserverProvisioning.status.${status}`;
+
 const formatMembershipUserLabel = (user: IamUserListItem) =>
   user.email
     ? `${user.displayName} <${user.email}>`
@@ -123,6 +129,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     Record<string, OrganizationMembershipDraft>
   >({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [provisioningPending, setProvisioningPending] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
   const saveFeedback = useStudioSaveFeedback();
   const initialSaveFeedbackShownRef = React.useRef(false);
@@ -367,6 +374,18 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     }
   };
 
+  const onProvisionMainserver = async () => {
+    if (!canUpdateOrganization || provisioningPending) {
+      return;
+    }
+    setProvisioningPending(true);
+    try {
+      await organizationsApi.provisionMainserver(organizationId);
+    } finally {
+      setProvisioningPending(false);
+    }
+  };
+
   const updateMembershipDraft = React.useCallback(
     (accountId: string, patch: Partial<OrganizationMembershipDraft>) => {
       setMembershipDrafts((current) => ({
@@ -519,6 +538,70 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   </p>
                 </div>
               </div>
+            </Card>
+
+            <Card className="space-y-4 p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    {t('admin.organizations.mainserverProvisioning.title')}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {t('admin.organizations.mainserverProvisioning.description')}
+                  </p>
+                </div>
+                <Badge className="w-fit rounded-full" variant="outline">
+                  {t(
+                    getMainserverProvisioningStatusKey(
+                      selectedOrganization.mainserverProvisioning.status
+                    )
+                  )}
+                </Badge>
+              </div>
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t('admin.organizations.mainserverProvisioning.account')}
+                  </p>
+                  <p className="text-foreground">
+                    {selectedOrganization.mainserverProvisioning.technicalAccountId ??
+                      t('admin.organizations.mainserverProvisioning.notAvailable')}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {t('admin.organizations.mainserverProvisioning.attempts')}
+                  </p>
+                  <p className="text-foreground">
+                    {selectedOrganization.mainserverProvisioning.attemptCount}
+                  </p>
+                </div>
+              </div>
+              {selectedOrganization.mainserverProvisioning.lastErrorCode ? (
+                <Alert className="border-warning/40 bg-warning/10">
+                  <AlertDescription>
+                    {t('admin.organizations.mainserverProvisioning.error', {
+                      code: selectedOrganization.mainserverProvisioning.lastErrorCode,
+                    })}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {canUpdateOrganization &&
+              selectedOrganization.mainserverProvisioning.status !== 'ready' ? (
+                <Button
+                  type="button"
+                  onClick={() => void onProvisionMainserver()}
+                  disabled={
+                    provisioningPending ||
+                    selectedOrganization.mainserverProvisioning.operationInProgress
+                  }
+                >
+                  {provisioningPending ||
+                  selectedOrganization.mainserverProvisioning.operationInProgress
+                    ? t('admin.organizations.mainserverProvisioning.running')
+                    : t('admin.organizations.mainserverProvisioning.retry')}
+                </Button>
+              ) : null}
             </Card>
 
             <Card className="space-y-4 p-5">

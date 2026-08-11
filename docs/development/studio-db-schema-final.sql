@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Vz93Qza3mVEhAoAJnMkD97olJzNtaKDczfYAfvGcSYheXGs9olggcW3zNPWoc56
+\restrict vrUsirKanUawtuGJ7woAFFsbqVNkKvWIan5RnScya9euCdT5KUPa8oJHuoEkNMW
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -477,6 +477,7 @@ CREATE TABLE iam.accounts (
     deactivated_at timestamp with time zone,
     pseudonymized_at timestamp with time zone,
     deletion_marked_at timestamp with time zone,
+    is_technical_account boolean DEFAULT false NOT NULL,
     CONSTRAINT accounts_deletion_lifecycle_state_chk CHECK ((deletion_lifecycle_state = ANY (ARRAY['active'::text, 'deactivated'::text, 'pseudonymized'::text, 'deleted'::text]))),
     CONSTRAINT accounts_notes_length_chk CHECK ((char_length(notes) <= 2000)),
     CONSTRAINT accounts_status_chk CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text])))
@@ -1539,7 +1540,19 @@ CREATE TABLE iam.organization_mainserver_credentials (
     mainserver_application_secret_ciphertext text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_by_account_id uuid
+    updated_by_account_id uuid,
+    technical_account_id uuid,
+    provisioning_status text DEFAULT 'not_provisioned'::text NOT NULL,
+    operation_reference text,
+    provisioning_phase text,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    lease_expires_at timestamp with time zone,
+    last_error_code text,
+    last_attempt_at timestamp with time zone,
+    completed_at timestamp with time zone,
+    last_verified_at timestamp with time zone,
+    CONSTRAINT organization_mainserver_credentials_attempt_count_chk CHECK ((attempt_count >= 0)),
+    CONSTRAINT organization_mainserver_credentials_status_chk CHECK ((provisioning_status = ANY (ARRAY['not_provisioned'::text, 'account_ready'::text, 'provisioning'::text, 'verification_required'::text, 'ready'::text, 'failed'::text, 'reconciliation_required'::text])))
 );
 
 ALTER TABLE ONLY iam.organization_mainserver_credentials FORCE ROW LEVEL SECURITY;
@@ -3176,6 +3189,27 @@ CREATE INDEX mainserver_mutation_journal_reconciliation_idx ON iam.mainserver_mu
 
 
 --
+-- Name: organization_mainserver_credentials_active_lease_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX organization_mainserver_credentials_active_lease_idx ON iam.organization_mainserver_credentials USING btree (instance_id, lease_expires_at) WHERE (provisioning_status = 'provisioning'::text);
+
+
+--
+-- Name: organization_mainserver_credentials_technical_account_idx; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX organization_mainserver_credentials_technical_account_idx ON iam.organization_mainserver_credentials USING btree (instance_id, technical_account_id) WHERE (technical_account_id IS NOT NULL);
+
+
+--
+-- Name: uq_accounts_instance_id_id; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX uq_accounts_instance_id_id ON iam.accounts USING btree (instance_id, id);
+
+
+--
 -- Name: uq_geo_units_instance_id_id; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -4099,6 +4133,14 @@ ALTER TABLE ONLY iam.organization_mainserver_credentials
 
 
 --
+-- Name: organization_mainserver_credentials organization_mainserver_credentials_technical_account_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.organization_mainserver_credentials
+    ADD CONSTRAINT organization_mainserver_credentials_technical_account_fk FOREIGN KEY (instance_id, technical_account_id) REFERENCES iam.accounts(instance_id, id) ON DELETE SET NULL (technical_account_id);
+
+
+--
 -- Name: organization_mainserver_credentials organization_mainserver_credentials_updated_by_fk; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4631,4 +4673,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Vz93Qza3mVEhAoAJnMkD97olJzNtaKDczfYAfvGcSYheXGs9olggcW3zNPWoc56
+\unrestrict vrUsirKanUawtuGJ7woAFFsbqVNkKvWIan5RnScya9euCdT5KUPa8oJHuoEkNMW

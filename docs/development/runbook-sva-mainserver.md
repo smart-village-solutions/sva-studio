@@ -339,7 +339,7 @@ Für DataProvider-gebundene Schreiboperationen gelten zusätzlich:
 
 Aktivierungsreihenfolge, Diagnosekriterien und Rollback sind im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md) beschrieben.
 
-Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. Development ist als erster Cutover auf `automatic` vorbereitet; Staging und Production bleiben bis zur erfolgreichen Dev-Abnahme auf `shadow`. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
+Der Wert wird in den getrackten Remote-Profilen für Dev, Staging und Production explizit geführt. Development und Staging sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt; Production bleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`. `automatic` darf erst nach erfolgreicher Identity-Verifikation der aktiven persönlichen und organisatorischen Credential-Versionen sowie ausgewerteten Shadow-Differenzen aktiviert werden. Im automatischen Modus erweitern fehlende Bindungen den Scope nicht.
 
 Ein nicht finaler Listenstand meldet `availableCount` und `isTotalFinal=false`; `totalCount` fehlt dann bewusst. Pro Typ liefern die Refresh-Metadaten Snapshot-Zustand, Phase, abgeschlossene Page, verfügbare Anzahl, Invalid-Zähler und den letzten Fehler.
 
@@ -350,3 +350,29 @@ Rollback-Reihenfolge:
 3. Erst danach bei Bedarf `SVA_CONTENT_PROJECTION_PARTIAL_READS_ENABLED=false` setzen.
 
 Die Migration und ihre additiven Sync-State-Spalten werden bei einem Runtime-Rollback nicht zurückgenommen. Bereits laufende alte Generationen dürfen nach einer Mutation keine Pages, Finalisierung oder Löschung mehr schreiben.
+
+## Organisationszugang provisionieren
+
+Die lokale Organisationserstellung ist führend. Nach ihrem Commit versucht Studio best-effort, einen zweckgebundenen technischen Keycloak-Account und den zugehörigen Mainserver-Zugang zu erzeugen. Fehlende Mainserver-Konfiguration oder persönliche Mainserver-Credentials des handelnden Administrators lassen die Organisation bestehen und setzen den sichtbaren Zustand auf `not_provisioned`.
+
+Ein berechtigter Administrator kann den Vorgang aus der Organisationsdetailseite erneut starten. Der Serververtrag lautet:
+
+```http
+POST /api/v1/iam/organizations/:organizationId/provision-mainserver
+Idempotency-Key: <eindeutiger Wert>
+```
+
+Es genügt `iam.org.write`; zusätzliche Accountrechte sind nicht erforderlich. Der Request enthält keine Rollen, Gruppen, Einladungsoptionen oder technischen Accountattribute. Der Bootstrap verwendet ausschließlich die persönlichen Mainserver-Credentials des Actors und nie den aktiven Organisationskontext.
+
+Operativ relevante Zustände:
+
+- `not_provisioned`: Voraussetzung fehlt oder es existiert noch kein vollständiger Zugang;
+- `provisioning`: eine Lease-geschützte Operation läuft;
+- `verification_required`: Credentials sind vorhanden, die DataProvider-Bindung ist aber noch nicht bestätigt;
+- `ready`: Credentials und Binding sind konfliktfrei bestätigt;
+- `failed`: der Upstream-Aufruf ist sicher fehlgeschlagen und kann wiederholt werden;
+- `reconciliation_required`: Lost Response, lokale Teilpersistenz oder Binding-Konflikt müssen zuerst vervollständigt beziehungsweise geprüft werden.
+
+Bei `verification_required` oder `reconciliation_required` verifiziert ein Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
+
+Logs und Audit enthalten nur Instanz, Organisation, technische IDs, Trigger, Operationsreferenz, Phase, Ergebnis und sicheren Fehlercode. Application-Secret, Token und rohe Mainserver-Antworten dürfen dort nicht erscheinen.

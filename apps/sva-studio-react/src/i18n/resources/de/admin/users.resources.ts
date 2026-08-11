@@ -54,6 +54,7 @@ export const usersAdminDEResources = {
     statusActive: 'Aktiv',
     statusInactive: 'Inaktiv',
     statusPending: 'Ausstehend',
+    includeTechnicalAccounts: 'Auch technische Accounts anzeigen',
   },
   pagination: {
     pageLabel: 'Seite {{page}} von {{totalPages}}',
@@ -72,6 +73,9 @@ export const usersAdminDEResources = {
       'Direkte Rollen sind additive Sonderfälle und sollten nur zusätzlich zu Gruppen verwendet werden.',
     rolePlaceholder: 'Es sind keine direkten Rollen verfügbar.',
     sendPasswordSetupEmail: 'Einladungs-E-Mail zum Passwort setzen senden',
+    isTechnicalAccount: 'Ist ein technischer Account',
+    isTechnicalAccountHint:
+      'Technische Accounts werden von den konfigurierten Kontolöschungsregeln ausgenommen. Andere Accountfunktionen bleiben unverändert.',
   },
   confirm: {
     activateTitle: 'Nutzer aktivieren',
@@ -104,6 +108,11 @@ export const usersAdminDEResources = {
     mainserverApplicationSecretConfigured: 'Ein Secret ist bereits hinterlegt.',
     mainserverApplicationSecretMissing: 'Es ist noch kein Secret hinterlegt.',
     mainserverApplicationSecretHint: 'Leer lassen, um das bestehende Secret unverändert zu lassen.',
+    isTechnicalAccount: 'Ist ein technischer Account',
+    isTechnicalAccountHint:
+      'Die Klassifikation nimmt den Account von Kontolöschungsregeln aus und ändert weder Login noch Rollen oder Gruppen.',
+    removeTechnicalAccountWarning:
+      'Nach dem Speichern unterliegt dieser Account ab dem nächsten Lauf wieder den bestehenden Kontolöschungsregeln. Bereits erreichte Lifecycle-Zustände werden nicht zurückgesetzt.',
     rolesLabel: 'Rollen-Zuweisung',
     groupsLabel: 'Gruppen-Zuweisung',
     notesLabel: 'Notizen',
@@ -225,6 +234,7 @@ export const usersAdminDEResources = {
     bulkReprovisionFailureItem: '{{id}}: {{code}} - {{message}}',
     resultCount: '{{count}} Nutzer gefunden.',
     statusSwitchLabel: 'Aktivstatus für {{name}}',
+    technicalAccountBadge: 'Technischer Account',
     mainserverCredentialsMissing: 'Mainserver-Daten fehlen',
     mainserverApplicationIdMissing: 'Mainserver Application-ID fehlt',
     mainserverApplicationSecretMissing: 'Mainserver Application-Secret fehlt',

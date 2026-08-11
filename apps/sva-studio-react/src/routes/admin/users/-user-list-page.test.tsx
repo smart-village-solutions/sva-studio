@@ -82,10 +82,12 @@ const createUsersApiState = (overrides: Record<string, unknown> = {}) => ({
     search: '',
     status: 'all',
     role: '',
+    includeTechnicalAccounts: false,
   },
   setSearch: vi.fn(),
   setStatus: vi.fn(),
   setRole: vi.fn(),
+  setIncludeTechnicalAccounts: vi.fn(),
   setPage: vi.fn(),
   refetch: vi.fn(),
   createUser: vi.fn().mockResolvedValue(true),
@@ -150,6 +152,39 @@ describe('UserListPage', () => {
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Name' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'E-Mail' })).toBeNull();
+  });
+
+  it('offers the technical-account filter and marks included technical accounts', () => {
+    const setIncludeTechnicalAccounts = vi.fn();
+    useUsersMock.mockReturnValue(
+      createUsersApiState({
+        users: [
+          {
+            id: 'technical-1',
+            keycloakSubject: 'technical-subject-1',
+            displayName: 'Technischer Dienst',
+            status: 'active',
+            isTechnicalAccount: true,
+            roles: [],
+          },
+        ],
+        filters: {
+          page: 1,
+          pageSize: 25,
+          search: '',
+          status: 'all',
+          role: '',
+          includeTechnicalAccounts: true,
+        },
+        setIncludeTechnicalAccounts,
+      })
+    );
+
+    render(<UserListPage />);
+
+    expect(screen.getAllByText('Technischer Account').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('switch', { name: 'Auch technische Accounts anzeigen' }));
+    expect(setIncludeTechnicalAccounts).toHaveBeenCalledWith(false);
   });
 
   it('shows Keycloak mapping diagnostics and disables blocked row actions', () => {

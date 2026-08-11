@@ -114,8 +114,14 @@ export const mapOrganizationListItem = (row: OrganizationRow): IamOrganizationLi
 });
 
 export const mapMembershipRow = (row: MembershipRow): IamOrganizationMembership => {
-  const firstName = revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`);
-  const lastName = revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`);
+  const firstName = revealField(
+    row.first_name_ciphertext,
+    `iam.accounts.first_name:${row.keycloak_subject}`
+  );
+  const lastName = revealField(
+    row.last_name_ciphertext,
+    `iam.accounts.last_name:${row.keycloak_subject}`
+  );
   const decryptedDisplayName = revealField(
     row.display_name_ciphertext,
     `iam.accounts.display_name:${row.keycloak_subject}`
@@ -146,7 +152,9 @@ export const mapContextOption = (row: ContextOptionRow): IamOrganizationContextO
   isDefaultContext: row.is_default_context,
 });
 
-export const isHierarchyError = (value: unknown): value is Extract<HierarchyResolution, { readonly ok: false }> =>
+export const isHierarchyError = (
+  value: unknown
+): value is Extract<HierarchyResolution, { readonly ok: false }> =>
   typeof value === 'object' && value !== null && 'ok' in value && value.ok === false;
 
 export const readStatusFilter = (request: Request): boolean | undefined => {
@@ -163,7 +171,9 @@ export const readStatusFilter = (request: Request): boolean | undefined => {
   return undefined;
 };
 
-export const readOrganizationTypeFilter = (request: Request): IamOrganizationType | undefined | 'invalid' => {
+export const readOrganizationTypeFilter = (
+  request: Request
+): IamOrganizationType | undefined | 'invalid' => {
   const organizationType = readString(new URL(request.url).searchParams.get('organizationType'));
   if (!organizationType) {
     return undefined;
@@ -211,7 +221,9 @@ export const chooseActiveOrganizationId = (input: {
   readonly organizations: readonly IamOrganizationContextOption[];
 }): string | undefined => {
   const activeIds = new Set(
-    input.organizations.filter((organization) => organization.isActive).map((organization) => organization.organizationId)
+    input.organizations
+      .filter((organization) => organization.isActive)
+      .map((organization) => organization.organizationId)
   );
   if (input.storedActiveOrganizationId && activeIds.has(input.storedActiveOrganizationId)) {
     return input.storedActiveOrganizationId;
@@ -286,7 +298,12 @@ export const loadOrganizationList = async (
 ): Promise<{ readonly items: readonly IamOrganizationListItem[]; readonly total: number }> => {
   const offset = (input.page - 1) * input.pageSize;
   const searchPattern = input.search ? `%${escapeIlikePattern(input.search)}%` : null;
-  const filterParams = [input.instanceId, searchPattern, input.organizationType ?? null, input.isActive ?? null] as const;
+  const filterParams = [
+    input.instanceId,
+    searchPattern,
+    input.organizationType ?? null,
+    input.isActive ?? null,
+  ] as const;
   const sortExpressionByField = {
     displayName: 'LOWER(organization.display_name) COLLATE "C"',
     parentDisplayName: 'LOWER(parent.display_name) COLLATE "C"',
@@ -406,6 +423,19 @@ ORDER BY display_name ASC;
     })),
     mainserverApplicationId: credentials.mainserverApplicationId,
     mainserverApplicationSecretSet: credentials.mainserverApplicationSecretSet,
+    mainserverProvisioning: {
+      status: credentials.provisioningStatus,
+      technicalAccountId: credentials.technicalAccountId,
+      phase: credentials.provisioningPhase,
+      attemptCount: credentials.attemptCount,
+      lastErrorCode: credentials.lastErrorCode,
+      lastAttemptAt: credentials.lastAttemptAt,
+      completedAt: credentials.completedAt,
+      lastVerifiedAt: credentials.lastVerifiedAt,
+      operationInProgress:
+        credentials.provisioningStatus === 'provisioning' &&
+        Boolean(credentials.leaseExpiresAt && Date.parse(credentials.leaseExpiresAt) > Date.now()),
+    },
   };
 };
 
@@ -438,14 +468,23 @@ ORDER BY membership.is_default_context DESC, organization.depth ASC, organizatio
 
 export const resolveHierarchyFields = async (
   client: QueryClient,
-  input: { readonly instanceId: string; readonly organizationId?: string; readonly parentOrganizationId?: string | null }
+  input: {
+    readonly instanceId: string;
+    readonly organizationId?: string;
+    readonly parentOrganizationId?: string | null;
+  }
 ): Promise<HierarchyResolution> => {
   if (!input.parentOrganizationId) {
     return { ok: true, hierarchyPath: [], depth: 0 };
   }
 
   if (input.organizationId && input.parentOrganizationId === input.organizationId) {
-    return { ok: false, status: 409, code: 'conflict', message: 'Organisation kann nicht sich selbst als Parent setzen.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'conflict',
+      message: 'Organisation kann nicht sich selbst als Parent setzen.',
+    };
   }
 
   const parent = await loadOrganizationById(client, {
@@ -454,15 +493,30 @@ export const resolveHierarchyFields = async (
   });
 
   if (!parent) {
-    return { ok: false, status: 400, code: 'invalid_organization_id', message: 'Ungültige Parent-Organisation.' };
+    return {
+      ok: false,
+      status: 400,
+      code: 'invalid_organization_id',
+      message: 'Ungültige Parent-Organisation.',
+    };
   }
 
   if (!parent.is_active) {
-    return { ok: false, status: 409, code: 'organization_inactive', message: 'Inaktive Parent-Organisation ist unzulässig.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'organization_inactive',
+      message: 'Inaktive Parent-Organisation ist unzulässig.',
+    };
   }
 
   if (input.organizationId && (parent.hierarchy_path ?? []).includes(input.organizationId)) {
-    return { ok: false, status: 409, code: 'conflict', message: 'Zyklische Organisationshierarchie ist unzulässig.' };
+    return {
+      ok: false,
+      status: 409,
+      code: 'conflict',
+      message: 'Zyklische Organisationshierarchie ist unzulässig.',
+    };
   }
 
   return {

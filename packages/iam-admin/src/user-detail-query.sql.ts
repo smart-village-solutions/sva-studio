@@ -11,7 +11,10 @@ import {
   buildPermissionRowsSql,
   buildPermissionTraceRowsSql,
 } from './user-detail-permission-sql.js';
-import type { UserDetailSchemaSupport, UserDetailSchemaSupportRow } from './user-detail-query.types.js';
+import type {
+  UserDetailSchemaSupport,
+  UserDetailSchemaSupportRow,
+} from './user-detail-query.types.js';
 
 const USER_DETAIL_SELECT_SQL = `
 SELECT
@@ -30,6 +33,7 @@ SELECT
   a.avatar_url,
   a.notes,
   a.status,
+  a.is_technical_account,
   MAX(al.created_at)::text AS last_login_at,
   COALESCE(
     json_agg(
@@ -118,7 +122,10 @@ WHERE a.id = $2::uuid
 GROUP BY a.id;
 `;
 
-const buildUserDetailQuery = (includeDirectPermissions: boolean, includeStructuredPermissions: boolean): string =>
+const buildUserDetailQuery = (
+  includeDirectPermissions: boolean,
+  includeStructuredPermissions: boolean
+): string =>
   [
     USER_DETAIL_SELECT_SQL,
     buildPermissionRowsSql(includeDirectPermissions),

@@ -24,7 +24,8 @@ vi.mock('@sva/server-runtime', () => ({
 }));
 
 vi.mock('../mainserver-effective-credentials.js', () => ({
-  readEffectiveSvaMainserverCredentialsWithStatus: state.readEffectiveSvaMainserverCredentialsWithStatus,
+  readEffectiveSvaMainserverCredentialsWithStatus:
+    state.readEffectiveSvaMainserverCredentialsWithStatus,
 }));
 
 const createActor = () => ({
@@ -72,7 +73,8 @@ describe('provisionMainserverUserCredentials', () => {
       },
     });
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -89,7 +91,8 @@ describe('provisionMainserverUserCredentials', () => {
   });
 
   it('returns null and logs an info event when the integration record is missing or disabled', async () => {
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
 
     state.loadDefaultExternalInterfaceRecord.mockResolvedValueOnce(null);
     await expect(
@@ -140,7 +143,8 @@ describe('provisionMainserverUserCredentials', () => {
       },
     });
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -160,11 +164,14 @@ describe('provisionMainserverUserCredentials', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), { status: 200 })
+        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), {
+          status: 200,
+        })
       )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            data_provider_id: 4711,
             keycloak: {
               attributes: {
                 mainserverUserApplicationId: 'user-app',
@@ -176,7 +183,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     const result = await provisionMainserverUserCredentials({
       actor: createActor(),
       actorSubject: 'kc-admin-1',
@@ -186,13 +194,13 @@ describe('provisionMainserverUserCredentials', () => {
     });
 
     expect(result).toEqual({
+      dataProviderId: '4711',
       mainserverUserApplicationId: 'user-app',
       mainserverUserApplicationSecret: 'user-secret',
     });
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
       instanceId: 'bb-demo',
       keycloakSubject: 'kc-admin-1',
-      activeOrganizationId: undefined,
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
@@ -224,13 +232,16 @@ describe('provisionMainserverUserCredentials', () => {
     );
   });
 
-  it('passes the active organization id to the Mainserver credential lookup', async () => {
+  it('always uses personal actor credentials regardless of the active organization', async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 })
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            data_provider_id: 'provider-1',
             keycloak: {
               attributes: {
                 mainserverUserApplicationId: 'user-app',
@@ -242,7 +253,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await provisionMainserverUserCredentials({
       actor: {
         ...createActor(),
@@ -257,7 +269,6 @@ describe('provisionMainserverUserCredentials', () => {
     expect(state.readEffectiveSvaMainserverCredentialsWithStatus).toHaveBeenCalledWith({
       instanceId: 'bb-demo',
       keycloakSubject: 'kc-admin-1',
-      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
     });
   });
 
@@ -266,7 +277,8 @@ describe('provisionMainserverUserCredentials', () => {
       status: 'missing_credentials',
     });
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -283,7 +295,8 @@ describe('provisionMainserverUserCredentials', () => {
   });
 
   it('maps non-200 token responses to unauthorized and retryable token failures', async () => {
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
 
     await expect(
       provisionMainserverUserCredentials({
@@ -317,7 +330,8 @@ describe('provisionMainserverUserCredentials', () => {
   });
 
   it('rejects invalid token and provisioning response bodies', async () => {
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
 
     await expect(
       provisionMainserverUserCredentials({
@@ -325,7 +339,11 @@ describe('provisionMainserverUserCredentials', () => {
         actorSubject: 'kc-admin-1',
         keycloakSubject: 'kc-user-1',
         payload: createPayload(),
-        fetchImpl: vi.fn().mockResolvedValueOnce(new Response(JSON.stringify({ token: 'missing-access-token' }), { status: 200 })),
+        fetchImpl: vi
+          .fn()
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ token: 'missing-access-token' }), { status: 200 })
+          ),
       })
     ).rejects.toMatchObject({
       name: 'MainserverUserProvisioningError',
@@ -341,8 +359,12 @@ describe('provisionMainserverUserCredentials', () => {
         payload: createPayload(),
         fetchImpl: vi
           .fn()
-          .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
-          .mockResolvedValueOnce(new Response(JSON.stringify({ keycloak: { attributes: {} } }), { status: 200 })),
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 })
+          )
+          .mockResolvedValueOnce(
+            new Response(JSON.stringify({ keycloak: { attributes: {} } }), { status: 200 })
+          ),
       })
     ).rejects.toMatchObject({
       name: 'MainserverUserProvisioningError',
@@ -355,11 +377,14 @@ describe('provisionMainserverUserCredentials', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), { status: 200 })
+        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), {
+          status: 200,
+        })
       )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            data_provider_id: 'provider-1',
             keycloak: {
               attributes: {
                 mainserverUserApplicationId: 'user-app',
@@ -371,7 +396,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await provisionMainserverUserCredentials({
       actor: createActor(),
       actorSubject: 'kc-admin-1',
@@ -389,10 +415,13 @@ describe('provisionMainserverUserCredentials', () => {
   it('disables automatic redirects for token and provisioning requests', async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 })
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            data_provider_id: 'provider-1',
             keycloak: {
               attributes: {
                 mainserverUserApplicationId: 'user-app',
@@ -404,7 +433,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await provisionMainserverUserCredentials({
       actor: createActor(),
       actorSubject: 'kc-admin-1',
@@ -429,7 +459,8 @@ describe('provisionMainserverUserCredentials', () => {
       });
       const fetchImpl = vi.fn();
 
-      const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+      const { provisionMainserverUserCredentials } =
+        await import('./mainserver-user-provisioning.js');
       await expect(
         provisionMainserverUserCredentials({
           actor: createActor(),
@@ -457,7 +488,8 @@ describe('provisionMainserverUserCredentials', () => {
     });
     const fetchImpl = vi.fn();
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -485,11 +517,14 @@ describe('provisionMainserverUserCredentials', () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), { status: 200 })
+        new Response(JSON.stringify({ access_token: 'admin-token', expires_in: 3600 }), {
+          status: 200,
+        })
       )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
+            data_provider_id: 'provider-1',
             keycloak: {
               attributes: {
                 mainserverUserApplicationId: 'user-app',
@@ -501,7 +536,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     const result = await provisionMainserverUserCredentials({
       actor: createActor(),
       actorSubject: 'kc-admin-1',
@@ -511,6 +547,7 @@ describe('provisionMainserverUserCredentials', () => {
     });
 
     expect(result).toEqual({
+      dataProviderId: 'provider-1',
       mainserverUserApplicationId: 'user-app',
       mainserverUserApplicationSecret: 'user-secret',
     });
@@ -531,7 +568,9 @@ describe('provisionMainserverUserCredentials', () => {
   it('maps Mainserver provisioning error payloads without exposing secrets', async () => {
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 })
+      )
       .mockResolvedValueOnce(
         new Response(
           JSON.stringify({
@@ -543,7 +582,8 @@ describe('provisionMainserverUserCredentials', () => {
         )
       );
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -566,7 +606,8 @@ describe('provisionMainserverUserCredentials', () => {
     timeoutError.name = 'TimeoutError';
     const fetchImpl = vi.fn().mockRejectedValueOnce(timeoutError);
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),
@@ -588,10 +629,13 @@ describe('provisionMainserverUserCredentials', () => {
     timeoutError.name = 'AbortError';
     const fetchImpl = vi
       .fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'admin-token' }), { status: 200 })
+      )
       .mockRejectedValueOnce(timeoutError);
 
-    const { provisionMainserverUserCredentials } = await import('./mainserver-user-provisioning.js');
+    const { provisionMainserverUserCredentials } =
+      await import('./mainserver-user-provisioning.js');
     await expect(
       provisionMainserverUserCredentials({
         actor: createActor(),

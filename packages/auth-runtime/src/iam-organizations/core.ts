@@ -10,6 +10,7 @@ import {
   getMyOrganizationContextInternal,
   getOrganizationInternal,
   listOrganizationsInternal,
+  provisionOrganizationMainserverInternal,
   removeOrganizationMembershipInternal,
   updateOrganizationMembershipInternal,
   updateMyOrganizationContextInternal,
@@ -23,7 +24,9 @@ const withAuthenticatedOrganizationsHandler = (
   request: Request,
   handler: (request: Request, ctx: AuthenticatedRequestContext) => Promise<Response>
 ): Promise<Response> =>
-  withOrganizationsRequestContext(request, () => withAuthenticatedUser(request, (ctx) => handler(request, ctx)));
+  withOrganizationsRequestContext(request, () =>
+    withAuthenticatedUser(request, (ctx) => handler(request, ctx))
+  );
 
 export const listOrganizationsHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, listOrganizationsInternal);
@@ -33,6 +36,9 @@ export const getOrganizationHandler = async (request: Request): Promise<Response
 
 export const createOrganizationHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, createOrganizationInternal);
+
+export const provisionOrganizationMainserverHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedOrganizationsHandler(request, provisionOrganizationMainserverInternal);
 
 export const updateOrganizationHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedOrganizationsHandler(request, updateOrganizationInternal);

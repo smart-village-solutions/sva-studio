@@ -54,6 +54,7 @@ export const usersAdminENResources = {
     statusActive: 'Active',
     statusInactive: 'Inactive',
     statusPending: 'Pending',
+    includeTechnicalAccounts: 'Also show technical accounts',
   },
   pagination: {
     pageLabel: 'Page {{page}} of {{totalPages}}',
@@ -70,6 +71,9 @@ export const usersAdminENResources = {
     advancedRolesHint: 'Direct roles are additive exceptions and should only complement groups.',
     rolePlaceholder: 'No direct roles are available.',
     sendPasswordSetupEmail: 'Send invitation email to set password',
+    isTechnicalAccount: 'Is a technical account',
+    isTechnicalAccountHint:
+      'Technical accounts are excluded from configured account deletion rules. Other account behavior remains unchanged.',
   },
   confirm: {
     activateTitle: 'Activate user',
@@ -102,6 +106,11 @@ export const usersAdminENResources = {
     mainserverApplicationSecretConfigured: 'A secret is already configured.',
     mainserverApplicationSecretMissing: 'No secret is configured yet.',
     mainserverApplicationSecretHint: 'Leave empty to keep the existing secret unchanged.',
+    isTechnicalAccount: 'Is a technical account',
+    isTechnicalAccountHint:
+      'This classification excludes the account from deletion rules and does not change login, roles, or groups.',
+    removeTechnicalAccountWarning:
+      'After saving, this account is evaluated by the existing deletion rules again from the next run. Existing lifecycle states are not reset.',
     rolesLabel: 'Role assignment',
     groupsLabel: 'Group assignment',
     notesLabel: 'Notes',
@@ -222,6 +231,7 @@ export const usersAdminENResources = {
     bulkReprovisionFailureItem: '{{id}}: {{code}} - {{message}}',
     resultCount: '{{count}} users found.',
     statusSwitchLabel: 'Active status for {{name}}',
+    technicalAccountBadge: 'Technical account',
     mainserverCredentialsMissing: 'Mainserver data missing',
     mainserverApplicationIdMissing: 'Mainserver application ID is missing',
     mainserverApplicationSecretMissing: 'Mainserver application secret is missing',

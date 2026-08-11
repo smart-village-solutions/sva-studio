@@ -26,55 +26,59 @@ Architecture Decision Records dokumentieren **wichtige technische Entscheidungen
 
 ### Status-Legende
 
-| Symbol | Bedeutung |
-|---|---|
-| ✅ | Accepted – Aktuelle, gültige Entscheidung |
-| 📋 | Proposed – Unter Diskussion, Abstimmung ausstehend |
-| 🔄 | Superseded – Durch neuere ADR ersetzt |
-| ❌ | Deprecated – Nicht mehr relevant |
+| Symbol | Bedeutung                                          |
+| ------ | -------------------------------------------------- |
+| ✅     | Accepted – Aktuelle, gültige Entscheidung          |
+| 📋     | Proposed – Unter Diskussion, Abstimmung ausstehend |
+| 🔄     | Superseded – Durch neuere ADR ersetzt              |
+| ❌     | Deprecated – Nicht mehr relevant                   |
 
 ---
 
 ### ADR-Liste (kanonischer Bestand unter `docs/adr/`)
 
-| # | Titel | Status | Entscheidungsdatum | Thema |
-|---|---|---|---|---|
-| 000 | ADR Template | 📋 | - | Dokumentation |
-| 009 | Keycloak als zentraler Identity Provider | ✅ | 2026-02-27 | IAM / Auth |
-| 010 | Verschlüsselung IAM Core Data Layer | ✅ | 2026-02-27 | Security / Data |
-| 011 | `instanceId` als kanonischer Mandanten-Scope | ✅ | 2026-02-27 | IAM / Architektur |
-| 012 | Permission-Kompositionsmodell RBAC v1 | ✅ | 2026-02-27 | IAM / Authorization |
-| 013 | RBAC-ABAC-Hybridmodell | ✅ | 2026-02-28 | IAM / Authorization |
-| 014 | Postgres `NOTIFY` für Cache-Invalidierung | ✅ | 2026-02-28 | Data / Runtime |
-| 015 | CSRF-Schutz-Strategie | ✅ | 2026-03-08 | Security |
-| 016 | IdP-Abstraktionsschicht | ✅ | 2026-03-08 | IAM / Integration |
-| 017 | Modulare IAM-Server-Bausteine | ✅ | 2026-03-08 | IAM / Qualität |
-| 018 | Auth-Routing-Error-Contract und Korrelation | ✅ | 2026-03-09 | Auth / Observability |
-| 019 | Swarm-/Traefik-Referenz-Betriebsprofil | ✅ | 2026-03-12 | Deployment / Betrieb |
-| 020 | Kanonischer Auth-Host und Multi-Host-Grenze | ✅ | 2026-03-12 | Auth / Deployment |
-| 021 | Per-User-SVA-Mainserver-Delegation | ✅ | 2026-03-14 | Integration / IAM |
-| 022 | IAM-Gruppen, Geo-Hierarchie und Permission-Caching | ✅ | 2026-03-17 | IAM / Authorization / Runtime |
-| 023 | Führender Session-Lifecycle, Forced Reauth und Silent SSO | ✅ | 2026-03-26 | Auth / Session |
-| 024 | IAM-Gruppen als eigenständige, instanzgebundene Entität | ✅ | 2026-03-31 | IAM / Authorization |
-| 025 | Prioritätsregel für Multi-Scope-IAM-Entscheidungen | ✅ | 2026-03-31 | IAM / Authorization |
-| 026 | Redis als primärer Shared Permission Cache | ✅ | 2026-03-31 | Runtime / IAM |
-| 027 | Rechtstext-Fail-Closed und blockierter Session-Zustand | ✅ | 2026-03-31 | Auth / Legal / IAM |
-| 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit | ✅ | 2026-03-31 | IAM / Technical Debt |
-| 029 | `goose` als OSS-Standard für SQL-Migrationen | ✅ | 2026-04-01 | Data / Betrieb / Tooling |
-| 034 | Plugin-SDK-Vertrag v1 | ✅ | 2026-04-13 | Studio / Plugins / SDK |
-| 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag | ✅ | 2026-04-19 | Routing / Observability |
-| 036 | Kanonischer IAM-Projektions- und Reconcile-Vertrag | ✅ | 2026-04-19 | IAM / Runtime / UI |
-| 037 | Plugin-spezifische IAM-Rechte | ✅ | 2026-04-27 | Plugins / IAM / Authorization |
-| 038 | Instanz-Modul-Zuordnung und fail-closed Modulaktivierung | ✅ | 2026-04-29 | Runtime / Plugins / IAM |
-| 039 | Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag | ✅ | 2026-04-29 | Media / Storage / Runtime |
-| 040 | graphile-worker als Standard für Hintergrundprozesse | ✅ | 2026-05-09 | Runtime / Workflow / Betrieb |
-| 041 | Plugin-Plattform v2 für externe Distribution und host-owned Runtime | ✅ | 2026-05-10 | Plugins / Distribution / Runtime |
-| 042 | Externe Schnittstellen als host-owned Registry | ✅ | 2026-05-12 | Integration / Secrets / Runtime |
-| 043 | Formular-Foundation mit react-hook-form und zodResolver | ✅ | 2026-05-22 | Frontend / Formulare / Governance |
-| 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check | ✅ | 2026-05-22 | Frontend / Testing / Governance |
-| 046 | Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen | ✅ | 2026-07-12 | IAM / Authorization |
-| 047 | Keycloak-Service-Accounts für die lokale MCP-Control-Plane | ✅ | 2026-07-13 | MCP / IAM / Security / Betrieb |
-| 049 | Kanonischer Permission-Katalog und additiver Reconcile | ✅ | 2026-08-02 | IAM / Authorization / Betrieb |
+| #   | Titel                                                                          | Status | Entscheidungsdatum | Thema                             |
+| --- | ------------------------------------------------------------------------------ | ------ | ------------------ | --------------------------------- |
+| 000 | ADR Template                                                                   | 📋     | -                  | Dokumentation                     |
+| 009 | Keycloak als zentraler Identity Provider                                       | ✅     | 2026-02-27         | IAM / Auth                        |
+| 010 | Verschlüsselung IAM Core Data Layer                                            | ✅     | 2026-02-27         | Security / Data                   |
+| 011 | `instanceId` als kanonischer Mandanten-Scope                                   | ✅     | 2026-02-27         | IAM / Architektur                 |
+| 012 | Permission-Kompositionsmodell RBAC v1                                          | ✅     | 2026-02-27         | IAM / Authorization               |
+| 013 | RBAC-ABAC-Hybridmodell                                                         | ✅     | 2026-02-28         | IAM / Authorization               |
+| 014 | Postgres `NOTIFY` für Cache-Invalidierung                                      | ✅     | 2026-02-28         | Data / Runtime                    |
+| 015 | CSRF-Schutz-Strategie                                                          | ✅     | 2026-03-08         | Security                          |
+| 016 | IdP-Abstraktionsschicht                                                        | ✅     | 2026-03-08         | IAM / Integration                 |
+| 017 | Modulare IAM-Server-Bausteine                                                  | ✅     | 2026-03-08         | IAM / Qualität                    |
+| 018 | Auth-Routing-Error-Contract und Korrelation                                    | ✅     | 2026-03-09         | Auth / Observability              |
+| 019 | Swarm-/Traefik-Referenz-Betriebsprofil                                         | ✅     | 2026-03-12         | Deployment / Betrieb              |
+| 020 | Kanonischer Auth-Host und Multi-Host-Grenze                                    | ✅     | 2026-03-12         | Auth / Deployment                 |
+| 021 | Per-User-SVA-Mainserver-Delegation                                             | ✅     | 2026-03-14         | Integration / IAM                 |
+| 022 | IAM-Gruppen, Geo-Hierarchie und Permission-Caching                             | ✅     | 2026-03-17         | IAM / Authorization / Runtime     |
+| 023 | Führender Session-Lifecycle, Forced Reauth und Silent SSO                      | ✅     | 2026-03-26         | Auth / Session                    |
+| 024 | IAM-Gruppen als eigenständige, instanzgebundene Entität                        | ✅     | 2026-03-31         | IAM / Authorization               |
+| 025 | Prioritätsregel für Multi-Scope-IAM-Entscheidungen                             | ✅     | 2026-03-31         | IAM / Authorization               |
+| 026 | Redis als primärer Shared Permission Cache                                     | ✅     | 2026-03-31         | Runtime / IAM                     |
+| 027 | Rechtstext-Fail-Closed und blockierter Session-Zustand                         | ✅     | 2026-03-31         | Auth / Legal / IAM                |
+| 028 | IAM-Konfigurations-Export als dokumentierte Folgearbeit                        | ✅     | 2026-03-31         | IAM / Technical Debt              |
+| 029 | `goose` als OSS-Standard für SQL-Migrationen                                   | ✅     | 2026-04-01         | Data / Betrieb / Tooling          |
+| 034 | Plugin-SDK-Vertrag v1                                                          | ✅     | 2026-04-13         | Studio / Plugins / SDK            |
+| 035 | Routing-Observability über Diagnostics-Hook und Safe-Event-Vertrag             | ✅     | 2026-04-19         | Routing / Observability           |
+| 036 | Kanonischer IAM-Projektions- und Reconcile-Vertrag                             | ✅     | 2026-04-19         | IAM / Runtime / UI                |
+| 037 | Plugin-spezifische IAM-Rechte                                                  | ✅     | 2026-04-27         | Plugins / IAM / Authorization     |
+| 038 | Instanz-Modul-Zuordnung und fail-closed Modulaktivierung                       | ✅     | 2026-04-29         | Runtime / Plugins / IAM           |
+| 039 | Medienmanagement als Host-Capability mit Storage- und Processing-Vertrag       | ✅     | 2026-04-29         | Media / Storage / Runtime         |
+| 040 | graphile-worker als Standard für Hintergrundprozesse                           | ✅     | 2026-05-09         | Runtime / Workflow / Betrieb      |
+| 041 | Plugin-Plattform v2 für externe Distribution und host-owned Runtime            | ✅     | 2026-05-10         | Plugins / Distribution / Runtime  |
+| 042 | Externe Schnittstellen als host-owned Registry                                 | ✅     | 2026-05-12         | Integration / Secrets / Runtime   |
+| 043 | Formular-Foundation mit react-hook-form und zodResolver                        | ✅     | 2026-05-22         | Frontend / Formulare / Governance |
+| 044 | Frontend-Test-Foundation mit MSW und selektivem fast-check                     | ✅     | 2026-05-22         | Frontend / Testing / Governance   |
+| 045 | Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation | ✅     | 2026-06-01         | Integration / IAM / Security      |
+| 046 | Plattform- vs. Tenant-Rollenmodell und Legacy-Standardrollen                   | ✅     | 2026-07-12         | IAM / Authorization               |
+| 047 | Keycloak-Service-Accounts für die lokale MCP-Control-Plane                     | ✅     | 2026-07-13         | MCP / IAM / Security / Betrieb    |
+| 048 | Zentraler Backup-Agent mit gehärtetem HTTPS-Trigger                            | ✅     | 2026-07-19         | Backup / Security / Betrieb       |
+| 049 | Kanonischer Permission-Katalog und additiver Reconcile                         | ✅     | 2026-08-02         | IAM / Authorization / Betrieb     |
+| 050 | Zentraler scopegebundener UI-Zugriff                                           | ✅     | 2026-08-08         | UI / IAM / Authorization          |
+| 051 | Technische Accounts und Organisations-Mainserver-Provisioning                  | ✅     | 2026-08-11         | IAM / Integration / Recovery      |
 
 ### Kanonischer Ablageort
 
@@ -99,23 +103,27 @@ Issue                PR              Merged              Review
 ### Phasen erklärt
 
 #### 1. **Proposed Phase** (Issue)
+
 - **Dauer:** ~7 Tage
 - **Wo:** GitHub Issue (Label: `adr`, `decision-required`)
 - **Ziel:** Team & Community einbinden
 - **Beispiel-Frage:** "Sollen wir React oder Vue verwenden?"
 
 #### 2. **Review Phase** (PR)
+
 - **Dauer:** 3-5 Tage
 - **Wo:** GitHub PR mit ADR-Datei (Label: `adr`)
 - **Review:** Min. 2 Approvals von Senior-Entwicklern
 - **Format:** Nutze ADR-000-template.md
 
 #### 3. **Accepted Phase**
+
 - **Dauer:** Unbegrenzt (bis superseded)
 - **Wo:** docs/adr/ADR-XXX.md im main-Branch
 - **Status:** Aktive Entscheidung, die Entwicklung leitet
 
 #### 4. **Evaluation Phase** (Optional)
+
 - **Dauer:** Nach 6-12 Monaten (regelmäßige Reviews)
 - **Frage:** "War diese Entscheidung richtig? Sollten wir sie ändern?"
 - **Outcome:** Accept (weiterhin gültig) oder Supersede (neue ADR erstellen)
@@ -160,6 +168,7 @@ cp docs/adr/ADR-000-template.md docs/adr/ADR-001-frontend-framework.md
 ```
 
 Editiere die Datei und fülle folgende Sektionen aus:
+
 - ✅ Kontext
 - ✅ Entscheidung
 - ✅ Begründung
@@ -183,6 +192,7 @@ gh pr create \
 ```
 
 **PR-Checkliste:**
+
 - [ ] Issue-Nummer verlinkt
 - [ ] Diskussions-Ergebnisse dokumentiert
 - [ ] Alternativen fair dargestellt
@@ -250,6 +260,7 @@ Beispiele:
 ```
 
 Beispiele:
+
 - `[ADR] Frontend Framework – React vs. Vue vs. Svelte`
 - `[ADR] State Management Library auswählen`
 
@@ -259,16 +270,17 @@ Beispiele:
 
 ### Issue-Labels
 
-| Label | Bedeutung |
-|---|---|
-| `adr` | Architecture Decision Record |
-| `decision-required` | Entscheidung ausstehend |
-| `discussion` | Offene Diskussion |
-| `blocked` | Andere ADR blockiert diese |
+| Label               | Bedeutung                    |
+| ------------------- | ---------------------------- |
+| `adr`               | Architecture Decision Record |
+| `decision-required` | Entscheidung ausstehend      |
+| `discussion`        | Offene Diskussion            |
+| `blocked`           | Andere ADR blockiert diese   |
 
 ### Linking
 
 **In Issue-Body:**
+
 ```markdown
 Abhängig von: #XYZ (ADR für Basis-Framework)
 Blockt: #ABC (ADR für State Management)
@@ -287,12 +299,14 @@ Siehe [ADR-001-frontend-framework.md](./ADR-001-frontend-framework.md) (wird sp�
 ### F: Wann sollte ich eine ADR erstellen?
 
 **A:** Wenn die Entscheidung:
+
 - Die Architektur prägt (> 6 Monate Gültigkeit)
 - Mehrere Team-Mitglieder betrifft
 - Schwer rückgängig zu machen ist
 - Langfristige Kosten/Nutzen hat
 
 **Nicht für:**
+
 - Kleine Bug-Fixes
 - Unbedeutende Library-Wahl
 - Tägliche Entwicklungs-Entscheidungen
@@ -300,10 +314,12 @@ Siehe [ADR-001-frontend-framework.md](./ADR-001-frontend-framework.md) (wird sp�
 ### F: Kann ich eine ADR ändern?
 
 **A:** Ja, aber:
+
 1. Wenn nur Klarstellung: Update direkt
 2. Wenn fundamentale Änderung: Neue ADR erstellen, alte als "Superseded" markieren
 
 Beispiel: Wenn React-Decision später zu Vue wechselt:
+
 ```markdown
 **Status:** Superseded by ADR-006
 ```
@@ -311,6 +327,7 @@ Beispiel: Wenn React-Decision später zu Vue wechselt:
 ### F: Wie lange sollte ich diskutieren?
 
 **A:** Standard: ~7 Tage
+
 - Einfache Entscheidung: 3-5 Tage
 - Komplexe Entscheidung: 2 Wochen
 - Kritische Entscheidung: 3 Wochen
@@ -318,6 +335,7 @@ Beispiel: Wenn React-Decision später zu Vue wechselt:
 ### F: Wer kann eine ADR schreiben?
 
 **A:** Jeder im Team! Aber:
+
 - Idealerweise jemand mit Kontext
 - Review von mindestens 1 Senior-Dev
 - Genehmigung durch BDFL oder Tech Lead
@@ -325,6 +343,7 @@ Beispiel: Wenn React-Decision später zu Vue wechselt:
 ### F: Sind ADRs bindend?
 
 **A:** **Ja, solange sie "Accepted" sind.** Sie können nicht einfach ignoriert werden. Wenn jemand ein Problem mit einer ADR hat:
+
 1. Diskutiert im Team
 2. Neue ADR schreiben, die alte superseded
 3. Implementierung anpassen
@@ -352,6 +371,7 @@ cp docs/adr/ADR-000-template.md docs/adr/ADR-XXX-your-decision.md
 ## Kontakt & Fragen
 
 Hast du Fragen zu ADRs?
+
 - **Discord:** #architecture-decisions
 - **GitHub:** Öffne Issue mit Label `adr`
 - **Docs:** Siehe [ARCHITECTURE.md](../ARCHITECTURE.md)

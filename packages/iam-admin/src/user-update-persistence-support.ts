@@ -21,7 +21,26 @@ const UPDATED_USER_ACTIVITY_FIELD_NAMES = {
   notes: 'notes',
   roleIds: 'roles',
   groupIds: 'groups',
+  isTechnicalAccount: 'is_technical_account',
 } satisfies Record<keyof UpdateUserPersistencePayload, string>;
+
+export const normalizeUserUpdatePayload = (
+  payload: UpdateUserPersistencePayload,
+  existingIsTechnicalAccount: boolean | undefined
+): UpdateUserPersistencePayload => {
+  if (
+    payload.isTechnicalAccount === undefined ||
+    payload.isTechnicalAccount !== existingIsTechnicalAccount
+  ) {
+    return payload;
+  }
+  const normalized = { ...payload };
+  delete normalized.isTechnicalAccount;
+  return normalized;
+};
+
+export const hasUserUpdateFields = (payload: UpdateUserPersistencePayload): boolean =>
+  Object.values(payload).some((value) => value !== undefined);
 
 const toSortedUniqueIds = (values: readonly string[] | undefined): readonly string[] | undefined =>
   values ? [...new Set(values)].sort((left, right) => left.localeCompare(right)) : undefined;
@@ -62,6 +81,7 @@ export const buildUpdatedUserActivityPayload = (input: {
   readonly payload: UpdateUserPersistencePayload;
   readonly existingRoleIds?: readonly string[];
   readonly existingGroupIds?: readonly string[];
+  readonly existingIsTechnicalAccount?: boolean;
 }) => {
   const roleIds = resolveChangedIds(input.payload.roleIds, input.existingRoleIds);
   const groupIds = resolveChangedIds(input.payload.groupIds, input.existingGroupIds);
@@ -79,11 +99,18 @@ export const buildUpdatedUserActivityPayload = (input: {
     next_group_ids: groupIds.next,
     added_group_ids: groupIds.added,
     removed_group_ids: groupIds.removed,
+    previous_is_technical_account:
+      input.payload.isTechnicalAccount === undefined ? undefined : input.existingIsTechnicalAccount,
+    next_is_technical_account: input.payload.isTechnicalAccount,
   };
 };
 
 export const resolveUpdatedUserSessionAction = (status: UpdateUserPersistencePayload['status']) =>
-  status === 'inactive' ? ('revoke' as const) : status === 'active' ? ('clear' as const) : undefined;
+  status === 'inactive'
+    ? ('revoke' as const)
+    : status === 'active'
+      ? ('clear' as const)
+      : undefined;
 
 export const buildPersistedUserDetail = (
   detail: IamUserDetail | undefined,
@@ -103,10 +130,30 @@ export const buildPersistedUserDetail = (
     ? {
         ...detail,
         mainserverUserApplicationId: mainserverCredentialState.mainserverUserApplicationId,
-        mainserverUserApplicationSecretSet: mainserverCredentialState.mainserverUserApplicationSecretSet,
+        mainserverUserApplicationSecretSet:
+          mainserverCredentialState.mainserverUserApplicationSecretSet,
       }
     : detail;
 };
+
+export const loadUnchangedPersistedUserDetail = async (
+  deps: Pick<UserUpdatePersistenceDeps, 'resolveUserDetail' | 'withInstanceScopedDb'>,
+  input: {
+    readonly instanceId: string;
+    readonly userId: string;
+    readonly existingMainserverCredentialState?: UserMainserverCredentialState;
+    readonly nextMainserverCredentialState?: UserMainserverCredentialState;
+  }
+) =>
+  deps.withInstanceScopedDb(input.instanceId, async (client) =>
+    buildPersistedUserDetail(
+      await deps.resolveUserDetail(client, {
+        instanceId: input.instanceId,
+        userId: input.userId,
+      }),
+      input
+    )
+  );
 
 export const applyUpdatedUserSessionAction = async (
   deps: Pick<UserUpdatePersistenceDeps, 'clearUserSessionLoginBlock' | 'revokeUserSessions'>,

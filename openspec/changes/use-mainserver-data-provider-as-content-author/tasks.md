@@ -2,17 +2,17 @@
 
 - [x] 0.1 Die Changes `make-mainserver-content-authoritative`, `update-mainserver-editor-resilience` und `standardize-plugin-content-history` mit dem DataProvider-, Credential- und History-Vertrag komponieren.
 - [x] 0.2 Pro Content-Typ und fachlicher Aktion eine verbindliche Matrix aus Action-ID, Mainserver-Operation, Pre-Read, DataProvider-Response, Lifecycle, Cross-Principal-Verhalten, Idempotenz und Reconciliation dokumentieren.
-- [ ] 0.3 Reale Contract-Tests für persönliche und organisatorische Credentials, Create-Zuordnung, Same-Credential-Read, Cross-Principal-Update, Visibility/Status und Hard Delete ausführen.
+- [ ] 0.3 Reale Contract-Tests für persönliche und organisatorische Credentials, Gleichheit der DataProvider-ID aus Organisations-Benutzer-Provisioning und `/data_provider.json`, Content-Create-Zuordnung, Same-Credential-Read, Cross-Principal-Update, Visibility/Status und Hard Delete ausführen.
 - [x] 0.4 Nicht bestätigte Typ-/Aktionskombinationen capability-gaten; insbesondere Survey-Provider-Immutabilität nicht ohne Upstream-Nachweis voraussetzen.
 - [x] 0.5 `/data_provider.json` mit demselben Bearer Token wie GraphQL integrieren, die stabile ID verpflichtend validieren und PII-haltige Rohdaten ausschließen.
 
 ## 1. Automatische DataProvider-Bindungen
 
 - [x] 1.1 Instanzgebundene, credential-versionierte Principal-Bindungen mit `pending`, `verified`, `conflict`, `historical` und `revoked` modellieren.
-- [x] 1.2 Bindungen ausschließlich aus erfolgreichem Create plus DataProvider aus Response oder Same-Credential-Re-Read erzeugen; Listen, Details, Updates, Deletes, Namen und administrative Eingaben als Beweis ausschließen.
+- [x] 1.2 Bindungen ausschließlich aus automatischer bestätigter Evidenz erzeugen: regulär `/data_provider.json`, zusätzlich die garantierte Benutzer-Provisioning-Antwort für neue Organisations-Credentials; Listen, normale Details, Updates, Deletes, Namen und administrative Eingaben als Beweis ausschließen.
 - [x] 1.3 Gleiche Create-Beobachtungen idempotent bestätigen; abweichende Provider-IDs und konkurrierende Principal-Claims als Konflikt persistieren, ohne bestehende Bindungen zu überschreiben.
 - [x] 1.4 Credential-Rotation über Fingerprint beziehungsweise Version isolieren und historische Bindungen für bestehende Inhalte erhalten.
-- [x] 1.5 Stabile Identity-IDs als primäre automatische Evidenz implementieren; Gleichheit bestätigt, Abweichung erzeugt Konflikt.
+- [x] 1.5 Stabile Identity-IDs als reguläre automatische Evidenz implementieren; Gleichheit bestätigt auch eine garantierte Organisations-Erstbindung, Abweichung erzeugt Konflikt.
 - [x] 1.6 Datenbankmigration, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` gemeinsam aktualisieren.
 - [x] 1.7 Mapping-, Konflikt-, Rotation-, Shared-Provider-, Isolation- und Idempotenztests ergänzen.
 
@@ -88,3 +88,4 @@
 - [x] 8.5 Resolvermodus in allen getrackten Remote-Profilen explizit als validierten Rolloutwert materialisieren.
 - [x] 8.6 Parser-, Identity-, Rotation-/Cache-, Konflikt-, Policy- und Remote-Config-Tests ergänzen.
 - [x] 8.7 Development als ersten Cutover auf `automatic` vorbereiten; Staging und Production bis zur erfolgreichen Dev-Abnahme auf `shadow` belassen.
+- [x] 8.8 Staging nach erfolgreichem Dev-Cutover auf `automatic` vorbereiten; Production bis zur erfolgreichen Staging-Abnahme auf `shadow` belassen.

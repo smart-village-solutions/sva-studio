@@ -64,6 +64,7 @@ import {
   listPluginOperationJobs,
   startAuthorizePerformanceRun,
   planInstanceKeycloakProvisioning,
+  provisionOrganizationMainserver,
   probeTenantIamAccess,
   reconcileRoles,
   reconcileInstanceKeycloak,
@@ -152,6 +153,27 @@ describe('iam-api organization helpers', () => {
       '/api/v1/iam/organizations?page=2&pageSize=10&sortBy=parentDisplayName&sortDirection=desc&search=alpha&organizationType=municipality&status=active',
       expect.objectContaining({
         credentials: 'include',
+      })
+    );
+  });
+
+  it('starts organization Mainserver provisioning with an idempotency key', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        createJsonResponse({ data: { id: 'org-1', mainserverProvisioning: { status: 'ready' } } })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('crypto', { randomUUID: () => 'provision-org-1' });
+
+    await provisionOrganizationMainserver('org-1');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/iam/organizations/org-1/provision-mainserver',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+        headers: expect.objectContaining({ 'Idempotency-Key': 'provision-org-1' }),
       })
     );
   });

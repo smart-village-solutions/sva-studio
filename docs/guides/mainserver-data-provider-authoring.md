@@ -29,7 +29,7 @@ Implizite Reads und Hintergrundabgleiche verwenden bei `org_or_personal` persön
 - `automatic` aktiviert exakte `own`- beziehungsweise `organization`-Entscheidungen. Fehlende oder konfliktbehaftete erforderliche Bindungen werden fail-closed abgelehnt und nicht automatisch durch Credential-Sichtbarkeit verbreitert. Vorübergehende Datenbank- oder Identity-Provider-Fehler bei der Bindungsauflösung bleiben als wiederholbare `503`-Antwort erhalten und werden nicht als `403` fehlklassifiziert.
 - `compatibility` ist der Rollback. Scope-gebundene Mutationen verwenden wieder ausschließlich den credential-sichtbaren Kompatibilitätsvertrag; Action, Instanz, Principal-Policy, Pre-Read und Mainserver-Autorisierung bleiben verbindlich.
 
-Das getrackte Development-Profil ist für den automatischen Rollout nach dem Merge auf `automatic` gesetzt. Staging und Production verbleiben bis zur erfolgreichen Dev-Abnahme auf `shadow`.
+Die getrackten Development- und Staging-Profile sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt. Production verbleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`.
 
 `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE` steuert den Transport-Cutover:
 
@@ -50,7 +50,7 @@ fail-closed Zustand.
 2. In der Mainserver-Autorendiagnose Konflikte, Credential-Rotationen, Shadow-Auswertungen, Shadow-Abweichungen und Reconciliation je Instanz prüfen.
 3. Reale Contract-Tests mit persönlichen und organisatorischen Credentials für Create, Same-Credential-Read, Cross-Principal-Update, Status/Visibility und Hard Delete ausführen.
 4. Zusätzlich belegen, ob eine DataProvider-ID genau einem Studio-Principal zugeordnet ist. Geteilte IDs sind ein Stop-Gate für das bestehende Konfliktmodell.
-5. Erst bei erklärten beziehungsweise behobenen Shadow-Abweichungen `automatic` aktivieren. Development ist der erste Cutover; Staging und Production folgen nach erfolgreicher Abnahme über den regulären Build- und Same-Digest-Rolloutprozess.
+5. Erst bei erklärten beziehungsweise behobenen Shadow-Abweichungen `automatic` aktivieren. Development und anschließend Staging sind aktiviert; Production folgt erst nach erfolgreicher Staging-Abnahme über den regulären Same-Digest-Rolloutprozess.
 6. Nach Ablauf offener Browser-Sessions den Principal-Vertrag auf `required` stellen.
 
 Bei unerwarteten Scope-Ablehnungen wird ausschließlich `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility` zurückgeschaltet. Datenbankmigration, automatische Bindungen, Journal und Diagnose bleiben dabei erhalten und werden nicht zurückgerollt.

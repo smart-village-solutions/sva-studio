@@ -130,6 +130,9 @@ describe('createDeleteUserHandlerInternal', () => {
       hardDeleteUserRecord: vi.fn(async () => {
         events.push('hard-delete-user');
       }),
+      assertAccountHardDeletePreconditions: vi.fn(async () => {
+        events.push('lock-delete-preconditions');
+      }),
       purgeAccountHardDeleteBlockers: vi.fn(async () => {
         events.push('purge-delete-blockers');
       }),
@@ -152,6 +155,7 @@ describe('createDeleteUserHandlerInternal', () => {
 
     expect(response.status).toBe(204);
     expect(events).toEqual([
+      'lock-delete-preconditions',
       'revoke-sessions',
       'keycloak:start',
       'delete-identity',
@@ -161,6 +165,7 @@ describe('createDeleteUserHandlerInternal', () => {
       'activity-log',
       'hard-delete-user',
     ]);
+    expect(deps.withInstanceScopedDb).toHaveBeenCalledTimes(1);
     expect(deps.revokeUserSessions).toHaveBeenCalledWith({
       keycloakSubject: userDetail.keycloakSubject,
       reason: 'user_deleted',

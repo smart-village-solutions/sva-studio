@@ -58,5 +58,5 @@
 - [x] 6.5 Nach jedem Implementierungsblock die kleinsten betroffenen Unit-, Typ- und Server-Runtime-Gates ausführen; für DB- und Runtime-Änderungen insbesondere `pnpm check:server-runtime` früh prüfen.
 - [x] 6.6 Integrations- und E2E-Flows für lokale Erstellung ohne Integration oder persönliche Credentials, erfolgreiche Provisionierung, `org_only`-Bootstrap, Retry, Filter und Lifecycle-Ausschluss ausführen.
 - [x] 6.7 Konkurrenz-, Lease-Übernahme-, Crash-Recovery-, Lost-Response-, DataProvider-Konflikt- und Hard-Delete-Tests für alle relevanten Zustände ergänzen.
-- [ ] 6.8 `pnpm check:file-placement`, OpenSpec-Strict-Validierung und den gemessenen relevanten PR-Gate-Pfad ausführen.
-- [ ] 6.9 Den Implementierungs-PR explizit mit GitHub-Issue `#749` „Trennung von technischen und normalen Accounts“ verknüpfen und bei vollständiger Umsetzung mit `Closes #749` schließen.
+- [x] 6.8 `pnpm check:file-placement`, OpenSpec-Strict-Validierung und den gemessenen relevanten PR-Gate-Pfad ausführen.
+- [x] 6.9 Den Implementierungs-PR explizit mit GitHub-Issue `#749` „Trennung von technischen und normalen Accounts“ verknüpfen und bei vollständiger Umsetzung mit `Closes #749` schließen.

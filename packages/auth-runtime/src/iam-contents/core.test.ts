@@ -370,6 +370,20 @@ describe('content core authorization', () => {
     });
   });
 
+  it('rejects unsupported list sorting before querying content', async () => {
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents?sortBy=status&sortDirection=sideways'),
+      ctx
+    );
+
+    expect(response.status).toBe(400);
+    await expect(readJson(response)).resolves.toMatchObject({
+      error: expect.objectContaining({ code: 'invalid_request' }),
+    });
+    expect(loadContentListScopesMock).not.toHaveBeenCalled();
+    expect(loadContentListItemsMock).not.toHaveBeenCalled();
+  });
+
   it('loads content metadata before authorizing detail reads', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
     loadContentByIdMock.mockResolvedValue(content);

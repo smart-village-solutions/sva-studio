@@ -58,7 +58,7 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.onSortingChange as (sorting: Array<{ id: string; desc: boolean }>) => void)([{ id: 'color', desc: true }])
+            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([{ id: 'color', desc: true }])
           }
         >
           sort-color
@@ -66,7 +66,7 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.onSortingChange as (sorting: Array<{ id: string; desc: boolean }>) => void)([
+            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([
               { id: 'description', desc: false },
             ])
           }
@@ -76,7 +76,7 @@ vi.mock('@sva/studio-ui-react', () => ({
         <button
           type="button"
           onClick={() =>
-            (props.onSortingChange as (sorting: Array<{ id: string; desc: boolean }>) => void)([{ id: 'status', desc: true }])
+            (props.sorting as { onChange: (sorting: Array<{ id: string; desc: boolean }>) => void }).onChange([{ id: 'status', desc: true }])
           }
         >
           sort-status
@@ -142,7 +142,10 @@ describe('WasteMasterDataFractionsContent', () => {
     expect(tableProps.selectionMode).toBe('multiple');
     expect(tableProps.toolbarStart).toBeTruthy();
     expect(tableProps.toolbarEnd).toBeTruthy();
-    expect(tableProps.sorting).toEqual([{ id: 'nameWithContainerSize', desc: false }]);
+    expect(tableProps.sorting).toMatchObject({
+      mode: 'external',
+      state: [{ id: 'nameWithContainerSize', desc: false }],
+    });
     expect((tableProps.columns as Array<{ id: string; sortable?: boolean }>).map((column) => column.id)).toEqual([
       'nameWithContainerSize',
       'pdfShortLabel',
@@ -160,7 +163,10 @@ describe('WasteMasterDataFractionsContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-color' }));
     const updatedTableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(updatedTableProps.sorting).toEqual([{ id: 'color', desc: true }]);
+    expect(updatedTableProps.sorting).toMatchObject({
+      mode: 'external',
+      state: [{ id: 'color', desc: true }],
+    });
     expect(onFractionsSortChange).toHaveBeenCalledWith('color', 'desc');
 
     const [nameColumn, pdfShortLabelColumn, colorColumn, descriptionColumn, statusColumn] = tableProps.columns as Array<{
@@ -258,11 +264,11 @@ describe('WasteMasterDataFractionsContent', () => {
     );
 
     let tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-1', 'fraction-2']);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-description' }));
     tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-2', 'fraction-1']);
+    expect((tableProps.data as Array<{ id: string }>).map((fraction) => fraction.id)).toEqual(['fraction-1', 'fraction-2']);
 
     fireEvent.click(screen.getByRole('button', { name: 'sort-status' }));
     tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
@@ -296,5 +302,46 @@ describe('WasteMasterDataFractionsContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.statusDialog.cancel' }));
     expect(screen.queryByText('masterData.fractions.statusDialog.activateTitle')).toBeNull();
     expect(onToggleFractionStatus).not.toHaveBeenCalled();
+  });
+
+  it('sorts the complete fraction set before paging with stable ties and missing values last', () => {
+    const fractions = [
+      { id: 'missing-2', name: 'M2', color: '#000002', active: true },
+      { id: 'b', name: 'B', description: 'Mitte', color: '#000003', active: true },
+      { id: 'c', name: 'C', description: 'Ziel', color: '#000004', active: true },
+      { id: 'missing-1', name: 'M1', color: '#000001', active: true },
+      { id: 'a', name: 'A', description: 'Mitte', color: '#000005', active: true },
+    ];
+    const createProps = (sortDirection: 'asc' | 'desc') => ({
+      fractions: fractions as never,
+      fractionsSortBy: 'description' as const,
+      fractionsSortDirection: sortDirection,
+      fractionsStatus: 'all' as const,
+      onOpenCreateFraction: vi.fn(),
+      onOpenEditFraction: vi.fn(),
+      onOpenDeleteFraction: vi.fn(),
+      onDeleteFractions: vi.fn(),
+      onToggleFractionStatus: vi.fn(),
+      onFractionsSortChange: vi.fn(),
+      onFractionsStatusChange: vi.fn(),
+      page: 2,
+      pageSize: 2,
+      onPageChange: vi.fn(),
+      onPageSizeChange: vi.fn(),
+    });
+
+    const { rerender } = render(<WasteMasterDataFractionsContent {...createProps('desc')} />);
+    let tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect((tableProps.data as Array<{ id: string }>).map(({ id }) => id)).toEqual([
+      'b',
+      'missing-1',
+    ]);
+
+    rerender(<WasteMasterDataFractionsContent {...createProps('asc')} />);
+    tableProps = dataTableMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect((tableProps.data as Array<{ id: string }>).map(({ id }) => id)).toEqual([
+      'c',
+      'missing-1',
+    ]);
   });
 });

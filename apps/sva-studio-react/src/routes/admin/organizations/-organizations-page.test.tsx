@@ -65,10 +65,13 @@ const createOrganizationsApiState = (overrides: Record<string, unknown> = {}) =>
     search: '',
     organizationType: 'all',
     status: 'all',
+    sortBy: 'displayName',
+    sortDirection: 'asc',
   },
   setSearch: vi.fn(),
   setOrganizationType: vi.fn(),
   setStatus: vi.fn(),
+  setSorting: vi.fn(),
   setPage: vi.fn(),
   refetch: vi.fn(),
   loadOrganization: vi.fn(),
@@ -109,6 +112,20 @@ describe('OrganizationsPage', () => {
       screen.getAllByRole('link', { name: 'Mitglieder verwalten' })[0]!.getAttribute('href')
     ).toBe('/admin/organizations/$organizationId');
     expect(screen.getByText('1 Organisationen gefunden.')).toBeTruthy();
+  });
+
+  it('uses external sorting without hierarchy indentation or a localized type sort action', () => {
+    const state = createOrganizationsApiState();
+    useOrganizationsMock.mockReturnValue(state);
+
+    render(<OrganizationsPage />);
+
+    expect(screen.queryByRole('button', { name: 'Typ' })).toBeNull();
+    expect(
+      screen.getAllByText('Landkreis Alpha').every((element) => !element.parentElement?.hasAttribute('style'))
+    ).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
+    expect(state.setSorting).toHaveBeenCalledWith('displayName', 'desc');
   });
 
   it('toggles the organization status inline', async () => {

@@ -150,6 +150,8 @@ describe('UserListPage', () => {
       '/admin/users/$userId'
     );
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: 'Name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'E-Mail' })).toBeNull();
   });
 
   it('offers the technical-account filter and marks included technical accounts', () => {
@@ -619,6 +621,8 @@ describe('UserListPage', () => {
     expect(screen.queryByRole('link', { name: 'Bearbeiten' })).toBeNull();
     expect(screen.queryByRole('switch', { name: 'Aktivstatus für Alice' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Aus Keycloak synchronisieren' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Name' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Status' })).toBeNull();
   });
 
   it('does not switch into platform scope for rootless sessions without the platform role', () => {

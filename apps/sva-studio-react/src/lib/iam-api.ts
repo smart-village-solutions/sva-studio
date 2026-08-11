@@ -449,7 +449,13 @@ export type OrganizationsQuery = {
   readonly search?: string;
   readonly organizationType?: IamOrganizationType;
   readonly status?: 'active' | 'inactive';
+  readonly sortBy: OrganizationSortField;
+  readonly sortDirection: OrganizationSortDirection;
 };
+
+export type OrganizationSortField =
+  'displayName' | 'parentDisplayName' | 'childCount' | 'membershipCount' | 'isActive';
+export type OrganizationSortDirection = 'asc' | 'desc';
 
 export type CreateOrganizationPayload = {
   readonly organizationKey: string;
@@ -484,6 +490,8 @@ export type GovernanceCasesQuery = {
   readonly type?: IamGovernanceCaseListItem['type'];
   readonly status?: string;
   readonly search?: string;
+  readonly sortBy: 'createdAt' | 'updatedAt';
+  readonly sortDirection: 'asc' | 'desc';
 };
 
 export type DsrAdminCasesQuery = {
@@ -492,6 +500,8 @@ export type DsrAdminCasesQuery = {
   readonly type?: IamDsrCaseListItem['type'];
   readonly status?: IamDsrCanonicalStatus;
   readonly search?: string;
+  readonly sortBy: 'createdAt' | 'completedAt';
+  readonly sortDirection: 'asc' | 'desc';
 };
 
 export type InstancesQuery = {
@@ -867,6 +877,8 @@ export const listOrganizations = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.search) {
@@ -1457,6 +1469,8 @@ export const listGovernanceCases = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.type) {
@@ -1690,6 +1704,8 @@ export const listAdminDsrCases = async (
   const params = new URLSearchParams({
     page: String(query.page),
     pageSize: String(query.pageSize),
+    sortBy: query.sortBy,
+    sortDirection: query.sortDirection,
   });
 
   if (query.type) {

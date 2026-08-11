@@ -7,6 +7,7 @@ import {
   type WasteFractionsContentProps,
   useFractionBulkActions,
   useFractionTableLabels,
+  useFractionSortingLabels,
 } from './waste-management.master-data-fractions-content.parts.js';
 import { useFractionColumns } from './waste-management.master-data-fractions-content.columns.js';
 import {
@@ -14,6 +15,45 @@ import {
   WasteMasterDataFractionStatusDialog,
   WasteMasterDataFractionsTableSection,
 } from './waste-management.master-data-fractions-content.view.js';
+
+const getFractionSortValue = (
+  fraction: WasteFractionRecord,
+  field: Parameters<typeof createFractionSorting>[0]
+): string | null => {
+  switch (field) {
+    case 'name':
+      return fraction.name;
+    case 'containerSize':
+      return fraction.containerSize ?? null;
+    case 'color':
+      return fraction.color;
+    case 'description':
+      return fraction.description ?? null;
+    case 'status':
+      return fraction.active ? 'active' : 'inactive';
+  }
+};
+
+const sortFractions = (
+  fractions: readonly WasteFractionRecord[],
+  sortField: Parameters<typeof createFractionSorting>[0],
+  sortDirection: Parameters<typeof createFractionSorting>[1]
+) =>
+  [...fractions].sort((left, right) => {
+    const leftValue = getFractionSortValue(left, sortField);
+    const rightValue = getFractionSortValue(right, sortField);
+    if (leftValue === null && rightValue !== null) return 1;
+    if (leftValue !== null && rightValue === null) return -1;
+
+    const comparison = (leftValue ?? '').localeCompare(rightValue ?? '', 'de', {
+      numeric: true,
+      sensitivity: 'base',
+    });
+    if (comparison !== 0) {
+      return sortDirection === 'asc' ? comparison : comparison * -1;
+    }
+    return left.id.localeCompare(right.id);
+  });
 
 export const WasteMasterDataFractionsContent = ({
   fractions,
@@ -52,33 +92,10 @@ export const WasteMasterDataFractionsContent = ({
       setDraftFractionsStatus(fractionsStatus);
     }
   }, [filterDialogOpen, fractionsStatus]);
-  const sortedFractions = useMemo(() => {
-    const getSortValue = (fraction: WasteFractionRecord, field: typeof sortField): string => {
-      switch (field) {
-        case 'name':
-          return fraction.name;
-        case 'containerSize':
-          return fraction.containerSize ?? '';
-        case 'color':
-          return fraction.color;
-        case 'description':
-          return fraction.description ?? '';
-        case 'status':
-          return fraction.active ? 'active' : 'inactive';
-        default:
-          return '';
-      }
-    };
-
-    return [...fractions].sort((left, right) => {
-      const comparison = getSortValue(left, sortField).localeCompare(getSortValue(right, sortField), 'de', {
-        numeric: true,
-        sensitivity: 'base',
-      });
-
-      return sortDirection === 'asc' ? comparison : comparison * -1;
-    });
-  }, [fractions, sortDirection, sortField]);
+  const sortedFractions = useMemo(
+    () => sortFractions(fractions, sortField, sortDirection),
+    [fractions, sortDirection, sortField]
+  );
   const pagedFractions = useMemo(
     () =>
       createPagedItems({
@@ -90,6 +107,7 @@ export const WasteMasterDataFractionsContent = ({
   );
   const sorting = useMemo(() => createFractionSorting(sortField, sortDirection), [sortDirection, sortField]);
   const tableLabels = useFractionTableLabels();
+  const sortingLabels = useFractionSortingLabels();
   const bulkActions = useFractionBulkActions({ saving, onDeleteFractions });
   const columns = useFractionColumns({
     saving,
@@ -110,6 +128,7 @@ export const WasteMasterDataFractionsContent = ({
         pageCount={pagedFractions.pageCount}
         totalItems={pagedFractions.totalItems}
         sorting={sorting}
+        sortingLabels={sortingLabels}
         labels={tableLabels}
         bulkActions={bulkActions}
         columns={columns}

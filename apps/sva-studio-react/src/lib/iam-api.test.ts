@@ -145,10 +145,12 @@ describe('iam-api organization helpers', () => {
       search: 'alpha',
       organizationType: 'municipality',
       status: 'active',
+      sortBy: 'parentDisplayName',
+      sortDirection: 'desc',
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/v1/iam/organizations?page=2&pageSize=10&search=alpha&organizationType=municipality&status=active',
+      '/api/v1/iam/organizations?page=2&pageSize=10&sortBy=parentDisplayName&sortDirection=desc&search=alpha&organizationType=municipality&status=active',
       expect.objectContaining({
         credentials: 'include',
       })
@@ -1659,16 +1661,28 @@ describe('iam-api transparency helpers', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await listGovernanceCases(
-      { page: 1, pageSize: 12, type: 'delegation', status: 'open', search: 'alice' },
       {
-        signal: controller.signal,
-      }
+        page: 1,
+        pageSize: 12,
+        type: 'delegation',
+        status: 'open',
+        search: 'alice',
+        sortBy: 'updatedAt',
+        sortDirection: 'asc',
+      },
+      { signal: controller.signal }
     );
     await listAdminDsrCases(
-      { page: 2, pageSize: 20, type: 'request', status: 'queued', search: 'bob' },
       {
-        signal: controller.signal,
-      }
+        page: 2,
+        pageSize: 20,
+        type: 'request',
+        status: 'queued',
+        search: 'bob',
+        sortBy: 'completedAt',
+        sortDirection: 'desc',
+      },
+      { signal: controller.signal }
     );
     await getMyDataSubjectRights();
     await getMyDataSubjectRightsCase('case-1');
@@ -1676,7 +1690,7 @@ describe('iam-api transparency helpers', () => {
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/iam/governance/workflows?page=1&pageSize=12&type=delegation&status=open&search=alice',
+      '/iam/governance/workflows?page=1&pageSize=12&sortBy=updatedAt&sortDirection=asc&type=delegation&status=open&search=alice',
       expect.objectContaining({
         signal: expect.any(AbortSignal),
         credentials: 'include',
@@ -1685,7 +1699,7 @@ describe('iam-api transparency helpers', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/iam/admin/data-subject-rights/cases?page=2&pageSize=20&type=request&status=queued&search=bob',
+      '/iam/admin/data-subject-rights/cases?page=2&pageSize=20&sortBy=completedAt&sortDirection=desc&type=request&status=queued&search=bob',
       expect.objectContaining({
         signal: expect.any(AbortSignal),
         credentials: 'include',

@@ -188,22 +188,16 @@ const buildUserColumns = (
     id: 'displayName',
     header: t('admin.users.table.headerName'),
     cell: (user) => <UserDisplayNameCell user={user} />,
-    sortable: true,
-    sortValue: (user) => user.displayName.toLowerCase(),
   },
   {
     id: 'email',
     header: t('admin.users.table.headerEmail'),
     cell: (user) => user.email ?? '-',
-    sortable: true,
-    sortValue: (user) => (user.email ?? '').toLowerCase(),
   },
   {
     id: 'role',
     header: t('admin.users.table.headerRole'),
     cell: (user) => user.roles[0]?.roleName ?? '-',
-    sortable: true,
-    sortValue: (user) => (user.roles[0]?.roleName ?? '').toLowerCase(),
   },
   {
     id: 'status',
@@ -217,22 +211,16 @@ const buildUserColumns = (
         onStatusAction={onStatusAction}
       />
     ),
-    sortable: true,
-    sortValue: (user) => user.status,
   },
   {
     id: 'keycloak',
     header: t('admin.users.table.headerKeycloak'),
     cell: (user) => <UserKeycloakCell user={user} />,
-    sortable: true,
-    sortValue: (user) => `${user.mappingStatus ?? 'mapped'}:${user.editability ?? 'editable'}`,
   },
   {
     id: 'lastLoginAt',
     header: t('admin.users.table.headerLastLogin'),
     cell: (user) => user.lastLoginAt ?? '-',
-    sortable: true,
-    sortValue: (user) => user.lastLoginAt ?? '',
   },
 ];
 
@@ -642,6 +630,7 @@ export const UserListPage = () => {
             isPlatformScope ? 'admin.users.table.platformAriaLabel' : 'admin.users.table.ariaLabel'
           )}
           labels={studioDataTableLabels}
+          sorting={{ mode: 'disabled' }}
           caption={t(
             isPlatformScope ? 'admin.users.table.platformCaption' : 'admin.users.table.caption'
           )}

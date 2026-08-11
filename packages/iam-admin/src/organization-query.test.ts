@@ -15,6 +15,7 @@ import {
   mapMembershipRow,
   mapOrganizationListItem,
   readOrganizationTypeFilter,
+  readOrganizationListSort,
   readStatusFilter,
   resolveHierarchyFields,
   type OrganizationRow,
@@ -153,6 +154,8 @@ describe('organization query helpers', () => {
         search: 'Alpha_%',
         organizationType: 'municipality',
         isActive: true,
+        sortBy: 'displayName',
+        sortDirection: 'asc',
       })
     ).resolves.toEqual({
       items: [expect.objectContaining({ id: 'org-1', organizationKey: 'alpha' })],
@@ -168,6 +171,26 @@ describe('organization query helpers', () => {
       25,
       25,
     ]);
+    expect(queries[1]?.text).toContain(
+      'ORDER BY (LOWER(organization.display_name) COLLATE "C" IS NULL) ASC, LOWER(organization.display_name) COLLATE "C" ASC, organization.id ASC'
+    );
+  });
+
+  it('parses supported organization sorting and rejects unknown values', () => {
+    expect(readOrganizationListSort(new Request('http://localhost/api'))).toEqual({
+      sortBy: 'displayName',
+      sortDirection: 'asc',
+    });
+    expect(
+      readOrganizationListSort(
+        new Request(
+          'http://localhost/api?sortBy=parentDisplayName&sortDirection=desc'
+        )
+      )
+    ).toEqual({ sortBy: 'parentDisplayName', sortDirection: 'desc' });
+    expect(
+      readOrganizationListSort(new Request('http://localhost/api?sortBy=type'))
+    ).toBe('invalid');
   });
 
   it('loads organization details and context options', async () => {

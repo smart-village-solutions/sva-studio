@@ -158,7 +158,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     const loadParentOrganizations = async () => {
       try {
         const organizations = await loadAllOrganizationParentOptions((query) =>
-          listOrganizations(query)
+          listOrganizations({ ...query, sortBy: 'displayName', sortDirection: 'asc' })
         );
         if (!active) {
           return;

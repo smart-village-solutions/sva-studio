@@ -147,6 +147,7 @@ export function PoiListPage() {
       {!loading && !error && result.data.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
+            sorting={{ mode: 'disabled' }}
             ariaLabel={pt('list.title')}
             labels={{
               selectionColumn: pt('fields.actions'),

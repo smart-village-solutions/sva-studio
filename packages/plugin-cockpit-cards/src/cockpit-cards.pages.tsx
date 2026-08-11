@@ -1011,6 +1011,7 @@ export function CockpitCardsListPage() {
       {state === 'ready' && items.length ? (
         <div className="space-y-4">
           <StudioDataTable
+            sorting={{ mode: 'disabled' }}
             ariaLabel={pt('list.title')}
             data={items}
             columns={[

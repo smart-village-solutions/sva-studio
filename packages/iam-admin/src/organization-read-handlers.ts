@@ -9,6 +9,10 @@ import type {
   IamOrganizationListItem,
   IamOrganizationType,
 } from '@sva/core';
+import type {
+  OrganizationListSortDirection,
+  OrganizationListSortField,
+} from './organization-query.js';
 
 import type { QueryClient } from './query-client.js';
 
@@ -83,9 +87,16 @@ export type OrganizationReadHandlerDeps<TFeatureFlags = unknown> = {
       readonly search?: string;
       readonly organizationType?: IamOrganizationType;
       readonly isActive?: boolean;
+      readonly sortBy: OrganizationListSortField;
+      readonly sortDirection: OrganizationListSortDirection;
     }
   ) => Promise<{ readonly items: readonly IamOrganizationListItem[]; readonly total: number }>;
   readonly readOrganizationTypeFilter: (request: Request) => IamOrganizationType | undefined | 'invalid';
+  readonly readOrganizationListSort: (
+    request: Request
+  ) =>
+    | { readonly sortBy: OrganizationListSortField; readonly sortDirection: OrganizationListSortDirection }
+    | 'invalid';
   readonly readPage: (request: Request) => { readonly page: number; readonly pageSize: number };
   readonly readPathSegment: (request: Request, index: number) => string | null | undefined;
   readonly readStatusFilter: (request: Request) => boolean | undefined;
@@ -182,6 +193,10 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
       return deps.createApiError(400, 'invalid_request', 'Ungültiger organizationType-Filter.', actorResolution.actor.requestId);
     }
     const isActive = deps.readStatusFilter(request);
+    const sorting = deps.readOrganizationListSort(request);
+    if (sorting === 'invalid') {
+      return deps.createApiError(400, 'invalid_request', 'Ungültige Sortierparameter.', actorResolution.actor.requestId);
+    }
 
     try {
       const organizations = await deps.withInstanceScopedDb(actorResolution.actor.instanceId, (client) =>
@@ -192,6 +207,7 @@ export const createOrganizationReadHandlers = <TFeatureFlags>(
           search,
           organizationType,
           isActive,
+          ...sorting,
         })
       );
 

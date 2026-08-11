@@ -3,7 +3,10 @@ import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
-import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../../components/studio-data-table-labels';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
@@ -37,6 +40,7 @@ const InstanceStatusCell = ({ instance }: { instance: InstanceRow }) => (
 
 export const InstancesPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
+  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const instancesApi = useInstances();
 
   const instanceColumns = React.useMemo<readonly StudioColumnDef<InstanceRow>[]>(
@@ -51,6 +55,7 @@ export const InstancesPage = () => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('admin.instances.table.headerName'),
         sortValue: (instance) => instance.displayName.toLowerCase(),
       },
       {
@@ -58,6 +63,7 @@ export const InstancesPage = () => {
         header: t('admin.instances.table.headerHost'),
         cell: (instance) => <PrimaryHostnameCell instance={instance} />,
         sortable: true,
+        sortLabel: t('admin.instances.table.headerHost'),
         sortValue: (instance) => instance.primaryHostname.toLowerCase(),
       },
       {
@@ -65,6 +71,7 @@ export const InstancesPage = () => {
         header: t('admin.instances.table.headerParentDomain'),
         cell: (instance) => instance.parentDomain,
         sortable: true,
+        sortLabel: t('admin.instances.table.headerParentDomain'),
         sortValue: (instance) => instance.parentDomain.toLowerCase(),
       },
       {
@@ -72,6 +79,7 @@ export const InstancesPage = () => {
         header: t('admin.instances.table.headerStatus'),
         cell: (instance) => <InstanceStatusCell instance={instance} />,
         sortable: true,
+        sortLabel: t('admin.instances.table.headerStatus'),
         sortValue: (instance) => instance.status,
       },
     ],
@@ -107,6 +115,7 @@ export const InstancesPage = () => {
           labels={studioDataTableLabels}
           data={instancesApi.instances}
           columns={instanceColumns}
+          sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
           getRowId={(instance) => instance.instanceId}
           isLoading={instancesApi.isLoading}
           loadingState={t('content.messages.loading')}

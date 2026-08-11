@@ -1514,6 +1514,14 @@ describe('iam data subject rights handlers', () => {
   it('lists admin DSR cases with normalized paging and filters', async () => {
     const { listAdminDataSubjectRightsCasesHandler } = await import('./core.js');
 
+    const invalidSortResponse = await listAdminDataSubjectRightsCasesHandler(
+      new Request(
+        'http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test&sortBy=updatedAt'
+      )
+    );
+    expect(invalidSortResponse.status).toBe(400);
+    expect(mocks.listAdminDsrCases).not.toHaveBeenCalled();
+
     mocks.withAuthenticatedUser.mockImplementationOnce(async (_request, handler) =>
       handler({ user: { ...baseUser, roles: ['support_admin'] } })
     );
@@ -1525,7 +1533,7 @@ describe('iam data subject rights handlers', () => {
 
     const response = await listAdminDataSubjectRightsCasesHandler(
       new Request(
-        'http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test&type=deletion&status=accepted&search=alice'
+        'http://localhost/iam/admin/data-subject-rights/cases?instanceId=de-test&type=deletion&status=accepted&search=alice&sortBy=completedAt&sortDirection=asc'
       )
     );
 
@@ -1534,6 +1542,8 @@ describe('iam data subject rights handlers', () => {
       page: 2,
       pageSize: 10,
       search: 'alice',
+      sortBy: 'completedAt',
+      sortDirection: 'asc',
       type: 'deletion',
       status: 'accepted',
     });

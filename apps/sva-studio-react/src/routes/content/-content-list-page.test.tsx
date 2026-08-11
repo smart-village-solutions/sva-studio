@@ -1288,4 +1288,50 @@ describe('ContentListPage', () => {
       { enabled: true }
     );
   });
+
+  it('exposes only server-supported sort actions and resets the page on sort changes', () => {
+    searchState = { page: 3, pageSize: 25 };
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'content-1',
+            contentType: 'news.article',
+            title: 'Startseite',
+            publishedAt: undefined,
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Editor',
+            payload: {},
+            status: 'published',
+            access: {
+              state: 'read_only',
+              canRead: true,
+              canCreate: false,
+              canUpdate: false,
+              organizationIds: [],
+              sourceKinds: [],
+            },
+          },
+        ],
+        pagination: { page: 3, pageSize: 25, total: 51 },
+      })
+    );
+
+    render(<ContentListPage />);
+
+    expect(screen.queryByRole('button', { name: 'Typ' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Status' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Überschrift' }));
+
+    const navigation = navigateMock.mock.calls.at(-1)?.[0] as {
+      search: (current: Record<string, unknown>) => Record<string, unknown>;
+    };
+    expect(navigation.search({ page: 3, pageSize: 25 })).toMatchObject({
+      page: 1,
+      pageSize: 25,
+      sortBy: 'title',
+      sortDirection: 'asc',
+    });
+  });
 });

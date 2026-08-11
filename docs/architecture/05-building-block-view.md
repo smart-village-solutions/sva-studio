@@ -731,3 +731,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/sva-mainserver` bindet jede Schreiboperation an einen unveränderlichen `MutationPrincipalContext`; derselbe Kontext trägt Pre-Read, Provider-Write, Statusschritt, Audit und kausalen Projection-Refresh.
 - `@sva/plugin-sdk` versioniert Mutationsrequests mit Vertrag V2 und übermittelt ausschließlich den Principal-Typ, die Operations-ID und die nicht autorisierende Editor-Kontextbindung. Credentials, Principal-IDs und DataProvider-IDs kommen nie aus dem Browser.
 - `@sva/studio-ui-react` stellt das gemeinsame übersetzte Principal-Control und die schreibgeschützte DataProvider-Anzeige für alle Mainserver-Content-Plugins bereit.
+
+### Ergänzung 2026-08: Ownership global sortierter Tabellen
+
+- `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
+- Paginierte Inhalts-, Organisations-, Governance- und DSR-Listen lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
+- Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.

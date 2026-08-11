@@ -28,7 +28,10 @@ const readPersonName = (person: PersonColumns): string =>
       person.first_name_ciphertext,
       `iam.accounts.first_name:${person.keycloak_subject}`
     ),
-    lastName: revealGovernanceField(person.last_name_ciphertext, `iam.accounts.last_name:${person.keycloak_subject}`),
+    lastName: revealGovernanceField(
+      person.last_name_ciphertext,
+      `iam.accounts.last_name:${person.keycloak_subject}`
+    ),
     keycloakSubject: person.keycloak_subject,
   });
 
@@ -219,9 +222,23 @@ export const filterGovernanceItems = (
     .filter((item) => (input.type ? item.type === input.type : true))
     .filter((item) => (input.status ? item.status === input.status : true))
     .filter((item) => matchesSearch(item, readString(input.search) ?? undefined))
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    .sort((left, right) => {
+      const sortBy = input.sortBy ?? 'createdAt';
+      const direction = (input.sortDirection ?? 'desc') === 'asc' ? 1 : -1;
+      const leftValue = sortBy === 'updatedAt' ? left.updatedAt : left.createdAt;
+      const rightValue = sortBy === 'updatedAt' ? right.updatedAt : right.createdAt;
+      if (!leftValue && rightValue) return 1;
+      if (leftValue && !rightValue) return -1;
+      const result = (leftValue ?? '').localeCompare(rightValue ?? '');
+      if (result !== 0) return result * direction;
+      return `${left.type}:${left.id}`.localeCompare(`${right.type}:${right.id}`);
+    });
 
-export const paginateGovernanceItems = (items: readonly IamGovernanceCaseListItem[], page: number, pageSize: number) => {
+export const paginateGovernanceItems = (
+  items: readonly IamGovernanceCaseListItem[],
+  page: number,
+  pageSize: number
+) => {
   const startIndex = (page - 1) * pageSize;
   return items.slice(startIndex, startIndex + pageSize);
 };

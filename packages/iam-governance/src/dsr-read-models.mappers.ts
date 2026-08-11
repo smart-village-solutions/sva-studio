@@ -30,7 +30,10 @@ const readPersonName = (person: PersonColumns): string =>
       person.first_name_ciphertext,
       `iam.accounts.first_name:${person.keycloak_subject}`
     ),
-    lastName: revealGovernanceField(person.last_name_ciphertext, `iam.accounts.last_name:${person.keycloak_subject}`),
+    lastName: revealGovernanceField(
+      person.last_name_ciphertext,
+      `iam.accounts.last_name:${person.keycloak_subject}`
+    ),
     keycloakSubject: person.keycloak_subject,
   });
 
@@ -236,7 +239,9 @@ const mapRecipientNotificationRow = (row: RecipientNotificationRow): IamDsrCaseL
   };
 };
 
-const mapSelfServiceActivityItemFromDsrCase = (item: IamDsrCaseListItem): IamSelfServiceActivityItem => ({
+const mapSelfServiceActivityItemFromDsrCase = (
+  item: IamDsrCaseListItem
+): IamSelfServiceActivityItem => ({
   id: item.id,
   source: 'dsr',
   type: item.type,
@@ -337,14 +342,31 @@ export const buildAdminDsrItems = (rows: AdminDsrSourceRows): IamDsrCaseListItem
   ...rows.recipientNotifications.map(mapRecipientNotificationRow),
 ];
 
-export const filterAdminDsrItems = (items: readonly IamDsrCaseListItem[], input: DsrFilters): IamDsrCaseListItem[] =>
+export const filterAdminDsrItems = (
+  items: readonly IamDsrCaseListItem[],
+  input: DsrFilters
+): IamDsrCaseListItem[] =>
   items
     .filter((item) => (input.type ? item.type === input.type : true))
     .filter((item) => (input.status ? item.canonicalStatus === input.status : true))
     .filter((item) => matchesSearch(item, readString(input.search) ?? undefined))
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+    .sort((left, right) => {
+      const sortBy = input.sortBy ?? 'createdAt';
+      const direction = (input.sortDirection ?? 'desc') === 'asc' ? 1 : -1;
+      const leftValue = sortBy === 'completedAt' ? left.completedAt : left.createdAt;
+      const rightValue = sortBy === 'completedAt' ? right.completedAt : right.createdAt;
+      if (!leftValue && rightValue) return 1;
+      if (leftValue && !rightValue) return -1;
+      const result = (leftValue ?? '').localeCompare(rightValue ?? '');
+      if (result !== 0) return result * direction;
+      return `${left.type}:${left.id}`.localeCompare(`${right.type}:${right.id}`);
+    });
 
-export const paginateDsrItems = (items: readonly IamDsrCaseListItem[], page: number, pageSize: number) => {
+export const paginateDsrItems = (
+  items: readonly IamDsrCaseListItem[],
+  page: number,
+  pageSize: number
+) => {
   const startIndex = (page - 1) * pageSize;
   return items.slice(startIndex, startIndex + pageSize);
 };

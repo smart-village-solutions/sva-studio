@@ -367,14 +367,33 @@ describe('iam governance runtime handlers', () => {
     );
     expect(invalidType.status).toBe(400);
 
+    const invalidSort = await listGovernanceCasesHandler(
+      new Request(
+        'https://example.test/api/v1/iam/governance/cases?instanceId=instance-1&sortBy=resolvedAt'
+      )
+    );
+    expect(invalidSort.status).toBe(400);
+
     const success = await listGovernanceCasesHandler(
-      new Request('https://example.test/api/v1/iam/governance/cases?instanceId=instance-1&type=dsr&status=open&search=test')
+      new Request(
+        'https://example.test/api/v1/iam/governance/cases?instanceId=instance-1&type=dsr&status=open&search=test&sortBy=updatedAt&sortDirection=asc'
+      )
     );
     expect(success.status).toBe(200);
     await expect(success.json()).resolves.toMatchObject({
       items: [{ id: 'case-1' }],
       meta: { page: 2, pageSize: 25, total: 1 },
       requestId: 'req-1',
+    });
+    expect(state.listGovernanceCases).toHaveBeenCalledWith(expect.anything(), {
+      instanceId: 'instance-1',
+      type: 'dsr',
+      status: 'open',
+      search: 'test',
+      page: 2,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'asc',
     });
 
     state.withResolvedInstanceDb.mockImplementationOnce(async () => {

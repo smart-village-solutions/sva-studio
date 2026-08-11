@@ -113,6 +113,8 @@ export {
   type StudioColumnDef,
   type StudioDataTableLabels,
   type StudioDataTableProps,
+  type StudioDataTableSorting,
+  type StudioDataTableSortingLabels,
 } from './studio-data-table.js';
 export {
   StudioListPageTemplate,

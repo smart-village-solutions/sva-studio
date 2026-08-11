@@ -951,6 +951,7 @@ export function ProjectsListPage() {
       {state === 'ready' && items.length > 0 ? (
         <div className="space-y-4">
           <StudioDataTable
+            sorting={{ mode: 'disabled' }}
             ariaLabel={pt('list.title')}
             data={items}
             columns={[

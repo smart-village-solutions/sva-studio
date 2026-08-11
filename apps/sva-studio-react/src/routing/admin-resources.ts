@@ -73,12 +73,9 @@ export const appAdminResources = [
           defaultDirection: 'desc',
           fields: [
             { id: 'title', labelKey: 'content.table.headerTitle', bindingKey: 'content.title' },
-            { id: 'contentType', labelKey: 'content.table.headerType', bindingKey: 'content.contentType' },
             { id: 'publishedAt', labelKey: 'content.table.headerPublished', bindingKey: 'content.publishedAt' },
             { id: 'createdAt', labelKey: 'content.table.headerCreated', bindingKey: 'content.createdAt' },
             { id: 'updatedAt', labelKey: 'content.table.headerUpdated', bindingKey: 'content.updatedAt' },
-            { id: 'author', labelKey: 'content.table.headerAuthor', bindingKey: 'content.author' },
-            { id: 'status', labelKey: 'content.table.headerStatus', bindingKey: 'content.status' },
           ],
         },
         pagination: {

@@ -26,6 +26,7 @@ import { useUsers } from '../../../hooks/use-users';
 import { t } from '../../../i18n';
 import { userErrorMessage } from './-user-error-message';
 import { selectAssignableGroups, selectAssignableRoles } from './user-assignment-options';
+import { UserCreateAccountOptions } from './user-create-account-options';
 
 const appendUnique = (values: readonly string[], nextValue: string): string[] =>
   values.includes(nextValue) ? [...values] : [...values, nextValue];
@@ -37,6 +38,7 @@ type UserCreateFormValues = {
   roleIds: string[];
   groupIds: string[];
   sendPasswordSetupEmail: boolean;
+  isTechnicalAccount: boolean;
 };
 
 type UserCreateAssignmentsProps = {
@@ -56,6 +58,7 @@ const createUserCreateSchema = () =>
     roleIds: z.array(z.string()),
     groupIds: z.array(z.string()),
     sendPasswordSetupEmail: z.boolean(),
+    isTechnicalAccount: z.boolean(),
   });
 
 const collectSummaryErrors = (
@@ -161,6 +164,7 @@ const useCreateUserSave = (
         roleIds: values.roleIds,
         groupIds: values.groupIds,
         sendPasswordSetupEmail: values.sendPasswordSetupEmail,
+        isTechnicalAccount: values.isTechnicalAccount,
       });
 
       if (!created) {
@@ -216,6 +220,7 @@ export const UserCreatePage = () => {
       roleIds: [],
       groupIds: [],
       sendPasswordSetupEmail: true,
+      isTechnicalAccount: false,
     },
     reValidateMode: 'onChange',
   });
@@ -243,6 +248,7 @@ export const UserCreatePage = () => {
   const selectedGroupIds = watch('groupIds');
   const selectedRoleIds = watch('roleIds');
   const sendPasswordSetupEmail = watch('sendPasswordSetupEmail');
+  const isTechnicalAccount = watch('isTechnicalAccount');
   const saveUser = useCreateUserSave(usersApi, navigate, saveFeedback);
 
   React.useEffect(() => {
@@ -316,23 +322,16 @@ export const UserCreatePage = () => {
             roles={selectableRoles}
             onToggleRole={toggleRole}
           />
-          <div className="flex items-center gap-3 rounded-md border border-border/60 px-3 py-3 text-sm text-foreground">
-            <Checkbox
-              id="create-user-send-password-setup-email"
-              checked={sendPasswordSetupEmail}
-              onChange={(event) =>
-                setValue('sendPasswordSetupEmail', event.target.checked, {
-                  shouldDirty: true,
-                })
-              }
-            />
-            <label
-              htmlFor="create-user-send-password-setup-email"
-              className="cursor-pointer text-sm font-medium"
-            >
-              {t('admin.users.createDialog.sendPasswordSetupEmail')}
-            </label>
-          </div>
+          <UserCreateAccountOptions
+            sendPasswordSetupEmail={sendPasswordSetupEmail}
+            isTechnicalAccount={isTechnicalAccount}
+            onSendPasswordSetupEmailChange={(checked) =>
+              setValue('sendPasswordSetupEmail', checked, { shouldDirty: true })
+            }
+            onTechnicalAccountChange={(checked) =>
+              setValue('isTechnicalAccount', checked, { shouldDirty: true })
+            }
+          />
 
           <div className="mt-2 flex justify-end gap-3">
             <Button asChild type="button" variant="outline">

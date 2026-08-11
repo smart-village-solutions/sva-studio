@@ -465,6 +465,33 @@ export const UserEditPage = ({
                 <option value="pending">{t('account.status.pending')}</option>
               </Select>
             </div>
+            <div className="flex items-start gap-3 rounded-md border border-border bg-background px-3 py-3 text-sm text-foreground">
+              <Checkbox
+                id="user-is-technical-account"
+                checked={formValues.isTechnicalAccount}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    isTechnicalAccount: event.target.checked,
+                  }))
+                }
+              />
+              <Label htmlFor="user-is-technical-account" className="cursor-pointer">
+                <span className="block font-medium">
+                  {t('admin.users.edit.isTechnicalAccount')}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {t('admin.users.edit.isTechnicalAccountHint')}
+                </span>
+              </Label>
+            </div>
+            {userApi.user.isTechnicalAccount && !formValues.isTechnicalAccount ? (
+              <Alert className="border-amber-500/40 bg-amber-500/10 md:col-span-2" role="status">
+                <AlertDescription>
+                  {t('admin.users.edit.removeTechnicalAccountWarning')}
+                </AlertDescription>
+              </Alert>
+            ) : null}
             <div className="grid gap-2 text-sm text-foreground">
               <Label htmlFor="user-language">{t('account.fields.language')}</Label>
               <Input

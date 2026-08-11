@@ -6,8 +6,12 @@ const state = vi.hoisted(() => ({
   resolveIdentityProviderForInstance: vi.fn(),
   resolveAuthConfigForInstance: vi.fn(),
   provisionMainserverUserCredentials: vi.fn(),
-  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) => execute()),
-  withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})),
+  trackKeycloakCall: vi.fn(async (_operation: string, execute: () => Promise<unknown>) =>
+    execute()
+  ),
+  withInstanceScopedDb: vi.fn(
+    async (_instanceId: string, work: (client: object) => Promise<unknown>) => work({})
+  ),
   logger: {
     error: vi.fn(),
   },
@@ -92,7 +96,7 @@ describe('executeCreateUser', () => {
     expect(result.invitation.status).toBe('not_requested');
   }, 15_000);
 
-  it('provisions Mainserver credentials for the created Keycloak user after local persistence and role sync', async () => {
+  it('keeps personal Mainserver provisioning active for a normally created technical account', async () => {
     state.provisionMainserverUserCredentials.mockResolvedValue({
       mainserverUserApplicationId: 'mainserver-app-1',
       mainserverUserApplicationSecret: 'mainserver-secret-1',
@@ -138,6 +142,7 @@ describe('executeCreateUser', () => {
         email: 'alice@example.com',
         firstName: 'Alice',
         lastName: 'Example',
+        isTechnicalAccount: true,
         roleIds: [],
         sendPasswordSetupEmail: false,
       },
@@ -158,6 +163,7 @@ describe('executeCreateUser', () => {
         email: 'alice@example.com',
         firstName: 'Alice',
         lastName: 'Example',
+        isTechnicalAccount: true,
         roleIds: [],
         sendPasswordSetupEmail: false,
       },

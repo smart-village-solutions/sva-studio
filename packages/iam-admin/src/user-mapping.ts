@@ -55,6 +55,7 @@ export const mapUserRowToListItem = (row: {
   position: string | null;
   department: string | null;
   status: UserStatus;
+  is_technical_account: boolean;
   last_login_at: string | null;
   roles: readonly IamRoleRow[];
 }): IamUserListItem => {
@@ -83,6 +84,7 @@ export const mapUserRowToListItem = (row: {
     displayName,
     email,
     status: row.status,
+    isTechnicalAccount: row.is_technical_account,
     mappingStatus: 'mapped',
     editability: 'editable',
     position: row.position ?? undefined,

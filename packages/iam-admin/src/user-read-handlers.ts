@@ -117,6 +117,7 @@ export type UserReadHandlerDeps = {
     status?: UserStatus;
     role?: string;
     search?: string;
+    includeTechnicalAccounts?: boolean;
     requestId?: string;
     traceId?: string;
   }) => Promise<TenantKeycloakUsersResult>;
@@ -164,6 +165,7 @@ const listTenantUsersWithCanonicalProjection = async (
     readonly status?: UserStatus;
     readonly role?: string;
     readonly search?: string;
+    readonly includeTechnicalAccounts?: boolean;
     readonly requestId?: string;
     readonly traceId?: string;
   }
@@ -197,6 +199,7 @@ export const createUserReadHandlers = (deps: UserReadHandlerDeps) => {
     const status = deps.readString(url.searchParams.get('status')) as UserStatus | undefined;
     const role = deps.readString(url.searchParams.get('role'));
     const search = deps.readString(url.searchParams.get('search'));
+    const includeTechnicalAccounts = url.searchParams.get('includeTechnicalAccounts') === 'true';
 
     const access = await deps.resolveUserReadAccess(request, ctx);
     if ('response' in access) {
@@ -213,7 +216,12 @@ export const createUserReadHandlers = (deps: UserReadHandlerDeps) => {
     }
 
     if (status && !USER_STATUS.includes(status)) {
-      return deps.createApiError(400, 'invalid_request', 'Ungültiger Status-Filter.', access.actor.requestId);
+      return deps.createApiError(
+        400,
+        'invalid_request',
+        'Ungültiger Status-Filter.',
+        access.actor.requestId
+      );
     }
 
     try {
@@ -224,13 +232,18 @@ export const createUserReadHandlers = (deps: UserReadHandlerDeps) => {
         status,
         role: role ?? undefined,
         search: search ?? undefined,
+        includeTechnicalAccounts,
         requestId: access.actor.requestId,
         traceId: access.actor.traceId,
       });
 
       return deps.jsonResponse(
         200,
-        deps.asApiList(resolved.users, { page, pageSize, total: resolved.total }, access.actor.requestId)
+        deps.asApiList(
+          resolved.users,
+          { page, pageSize, total: resolved.total },
+          access.actor.requestId
+        )
       );
     } catch (error) {
       deps.logger.error('IAM user list failed', {
@@ -279,12 +292,20 @@ export const createUserReadHandlers = (deps: UserReadHandlerDeps) => {
         })
       );
       if (!user) {
-        return deps.createApiError(404, 'not_found', 'Nutzer nicht gefunden.', access.actor.requestId);
+        return deps.createApiError(
+          404,
+          'not_found',
+          'Nutzer nicht gefunden.',
+          access.actor.requestId
+        );
       }
 
       const [keycloakRoleNamesResult, mainserverCredentialStateResult] = await Promise.allSettled([
         deps.resolveKeycloakRoleNames(access.actor.instanceId, user.keycloakSubject),
-        deps.resolveProjectedMainserverCredentialState(user.keycloakSubject, access.actor.instanceId),
+        deps.resolveProjectedMainserverCredentialState(
+          user.keycloakSubject,
+          access.actor.instanceId
+        ),
       ]);
 
       deps.logUserProjectionDegraded({
@@ -305,7 +326,10 @@ export const createUserReadHandlers = (deps: UserReadHandlerDeps) => {
           mainserverCredentialState:
             mainserverCredentialStateResult.status === 'fulfilled'
               ? mainserverCredentialStateResult.value
-              : { mainserverUserApplicationId: undefined, mainserverUserApplicationSecretSet: false },
+              : {
+                  mainserverUserApplicationId: undefined,
+                  mainserverUserApplicationSecretSet: false,
+                },
         })
       );
 

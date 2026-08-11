@@ -18,6 +18,7 @@ type AccountProjectionRow = {
   position: string | null;
   department: string | null;
   status: UserStatus;
+  is_technical_account: boolean;
   last_login_at: string | null;
   role_rows: Array<{
     id: string;
@@ -61,6 +62,7 @@ SELECT
   a.position,
   a.department,
   a.status,
+  a.is_technical_account,
   MAX(al.created_at)::text AS last_login_at,
   COALESCE(
     json_agg(

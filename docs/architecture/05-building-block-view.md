@@ -185,9 +185,11 @@ Abhängigkeiten des aktuellen Systems.
   - `user-projection.ts` ist der gemeinsame Projektionskern für Self-Service-Profile und Admin-Reads; spezialisierte UI-Pfade dürfen darauf nur noch darstellerisch aufsetzen
   - `reconcile-core.ts` und `user-import-sync-handler.ts` liefern deterministische Abschlusszustände (`success`, `partial_failure`, `blocked`, `failed`) mit Zählwerten für `checked`, `corrected`, `failed` und `manualReview`
   - der privilegierte Tenant-Account-Hard-Delete läuft ebenfalls über `packages/iam-admin`: Permission-Gate `iam.accounts.delete`, Schutz für `system_admin`-Zielaccounts, inhaltsbezogene Vorbereinigung, Session-Widerruf, Keycloak-Delete und finaler Studio-Hard-Delete bleiben in diesem Baustein gebündelt
+  - `isTechnicalAccount` klassifiziert technische Accounts unabhängig von Status, Rollen und Login. Listen schließen sie standardmäßig vor Pagination aus; der Inaktivitäts-Lifecycle überspringt sie, explizite Deaktivierung und privilegierter Hard Delete bleiben grundsätzlich möglich.
 - Mainserver-Credential-Auflösung für Downstream-Integrationen:
   - `packages/iam-admin` hält den organisationsgebundenen Credential-Speicher, die Write-only-Secret-Pflege und die read-safe Projektionslogik für Organisationen.
   - `packages/auth-runtime` liefert den aktiven Session- und Organisationskontext und stellt die Laufzeitgrenze für Mainserver-Aufrufe bereit.
+  - `packages/auth-runtime` orchestriert nach lokal erfolgreicher Organisationserstellung und über den expliziten Retry-Endpunkt die Lease-geschützte Provisionierung. Nur `iam.org.write` autorisiert diesen eng begrenzten Systempfad; Rollen, Gruppen und freie Accountattribute sind kein Requestbestandteil.
   - `packages/sva-mainserver` löst daraus die effektive Credential-Quelle policy-gesteuert auf; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal`.
 - Autorisierung (RBAC/ABAC) und Laufzeitentscheidungen:
   - `packages/iam-core` für zentrale Autorisierungsverträge und Entscheidungen; Runtime-Adapter liegen in `packages/auth-runtime`.

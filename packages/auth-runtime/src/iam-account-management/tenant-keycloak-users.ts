@@ -22,6 +22,7 @@ import type { UserStatus } from './types.js';
 import { resolveMainserverCredentialStatus } from '../mainserver-credentials.js';
 
 const TENANT_USER_ROLE_PROJECTION_CONCURRENCY = 5;
+const TENANT_USER_FILTER_WINDOW_SIZE = 100;
 
 type TenantKeycloakUsersResult = {
   readonly users: readonly IamUserListItem[];
@@ -37,6 +38,7 @@ type TenantKeycloakUsersInput = {
   readonly status?: UserStatus;
   readonly role?: string;
   readonly search?: string;
+  readonly includeTechnicalAccounts?: boolean;
   readonly requestId?: string;
   readonly traceId?: string;
 };
@@ -103,6 +105,61 @@ const resolveRoleNamesForUsers = async (input: {
   return roleNamesBySubject;
 };
 
+const loadVisibleKeycloakPage = async (input: {
+  readonly request: TenantKeycloakUsersInput;
+  readonly provider: IdentityProviderPort;
+  readonly query: Omit<IdentityUserListQuery, 'first' | 'max'>;
+}): Promise<{
+  readonly listedUsers: readonly IdentityListedUser[];
+  readonly mappedUsersBySubject: ReadonlyMap<string, IamUserListItem>;
+  readonly total: number;
+}> => {
+  const requestedFirst = Math.max(0, (input.request.page - 1) * input.request.pageSize);
+  if (input.request.includeTechnicalAccounts) {
+    const listedUsers = await trackKeycloakCall('list_tenant_users', () =>
+      input.provider.listUsers({
+        ...input.query,
+        first: requestedFirst,
+        max: input.request.pageSize,
+      })
+    );
+    return {
+      listedUsers,
+      mappedUsersBySubject: await loadMappedUsersBySubject(input.request.client, {
+        instanceId: input.request.instanceId,
+        subjects: listedUsers.map((user) => user.externalId),
+      }),
+      total: (await input.provider.countUsers?.(input.query)) ?? listedUsers.length,
+    };
+  }
+
+  const allMatchingUsers: IdentityListedUser[] = [];
+  const keycloakTotal = await input.provider.countUsers?.(input.query);
+  for (
+    let first = 0;
+    keycloakTotal === undefined || first < keycloakTotal;
+    first += TENANT_USER_FILTER_WINDOW_SIZE
+  ) {
+    const window = await trackKeycloakCall('list_tenant_users', () =>
+      input.provider.listUsers({ ...input.query, first, max: TENANT_USER_FILTER_WINDOW_SIZE })
+    );
+    allMatchingUsers.push(...window);
+    if (window.length < TENANT_USER_FILTER_WINDOW_SIZE) break;
+  }
+  const mappedUsersBySubject = await loadMappedUsersBySubject(input.request.client, {
+    instanceId: input.request.instanceId,
+    subjects: allMatchingUsers.map((user) => user.externalId),
+  });
+  const visible = allMatchingUsers.filter(
+    (user) => mappedUsersBySubject.get(user.externalId)?.isTechnicalAccount !== true
+  );
+  return {
+    listedUsers: visible.slice(requestedFirst, requestedFirst + input.request.pageSize),
+    mappedUsersBySubject,
+    total: visible.length,
+  };
+};
+
 export const resolveTenantKeycloakUsersWithPagination = async (
   input: TenantKeycloakUsersInput
 ): Promise<TenantKeycloakUsersResult> => {
@@ -119,6 +176,7 @@ export const resolveTenantKeycloakUsersWithPagination = async (
       status: input.status,
       role: input.role,
       search: input.search,
+      includeTechnicalAccounts: input.includeTechnicalAccounts,
     });
 
     return {
@@ -137,11 +195,11 @@ export const resolveTenantKeycloakUsersWithPagination = async (
     throw new Error('tenant_admin_client_not_configured');
   }
 
-  const query = toKeycloakQuery(input);
-  const first = Math.max(0, (input.page - 1) * input.pageSize);
-  const listedUsers = await trackKeycloakCall('list_tenant_users', () =>
-    identityProvider.provider.listUsers({ ...query, first, max: input.pageSize })
-  );
+  const { listedUsers, mappedUsersBySubject, total } = await loadVisibleKeycloakPage({
+    request: input,
+    provider: identityProvider.provider,
+    query: toKeycloakQuery(input),
+  });
   const roleNamesBySubject = await resolveRoleNamesForUsers({
     provider: identityProvider.provider,
     users: listedUsers,
@@ -151,11 +209,6 @@ export const resolveTenantKeycloakUsersWithPagination = async (
   });
   const roleFilteredUsers = listedUsers;
   const visibleUsers = roleFilteredUsers;
-  const mappedUsersBySubject = await loadMappedUsersBySubject(input.client, {
-    instanceId: input.instanceId,
-    subjects: visibleUsers.map((user) => user.externalId),
-  });
-
   const users = visibleUsers.map((user) => {
     const roleNames = roleNamesBySubject.get(user.externalId) ?? null;
     const mapped = mappedUsersBySubject.get(user.externalId);
@@ -164,8 +217,6 @@ export const resolveTenantKeycloakUsersWithPagination = async (
       ? mergeMappedUserWithKeycloak(mapped, user, roleNames, mainserverCredentialStatus)
       : mapUnmappedKeycloakUser(user, roleNames, mainserverCredentialStatus);
   });
-
-  const total = (await identityProvider.provider.countUsers?.(query)) ?? users.length;
 
   const visibleRoleNamesBySubject = new Map(
     users.map(

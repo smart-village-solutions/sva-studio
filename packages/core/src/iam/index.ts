@@ -57,6 +57,8 @@ export type {
   IamOrganizationContext,
   IamOrganizationContextOption,
   IamOrganizationDetail,
+  IamOrganizationMainserverProvisioningState,
+  IamOrganizationMainserverProvisioningStatus,
   IamOrganizationListItem,
   IamOrganizationMembership,
   IamOrganizationMembershipVisibility,

@@ -131,4 +131,59 @@ describe('tenant keycloak users', () => {
     expect(mocks.listUserRoleNames).not.toHaveBeenCalled();
     expect(result.keycloakRoleNamesBySubject.get('keycloak-subject-1')).toBeNull();
   });
+
+  it('filters mapped technical accounts before pagination and total calculation', async () => {
+    const { resolveTenantKeycloakUsersWithPagination } = await import('./tenant-keycloak-users.js');
+    const users = [
+      { externalId: 'human-1' },
+      { externalId: 'technical-1' },
+      { externalId: 'human-2' },
+    ];
+    mocks.countUsers.mockResolvedValueOnce(3);
+    mocks.listUsers.mockResolvedValueOnce(users);
+    mocks.loadMappedUsersBySubject.mockResolvedValueOnce(
+      new Map([
+        ['human-1', { isTechnicalAccount: false }],
+        ['technical-1', { isTechnicalAccount: true }],
+        ['human-2', { isTechnicalAccount: false }],
+      ])
+    );
+    mocks.listUserRoleNames.mockResolvedValue([]);
+    mocks.mergeMappedUserWithKeycloak.mockImplementation((mapped) => mapped);
+
+    const result = await resolveTenantKeycloakUsersWithPagination({
+      client: {} as never,
+      instanceId: 'instance-1',
+      page: 1,
+      pageSize: 2,
+    });
+
+    expect(result.total).toBe(2);
+    expect(result.users).toEqual([{ isTechnicalAccount: false }, { isTechnicalAccount: false }]);
+    expect(mocks.listUsers).toHaveBeenCalledWith({ first: 0, max: 100 });
+    expect(mocks.listUserRoleNames).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps native Keycloak pagination when technical accounts are explicitly included', async () => {
+    const { resolveTenantKeycloakUsersWithPagination } = await import('./tenant-keycloak-users.js');
+    mocks.countUsers.mockResolvedValueOnce(11);
+    mocks.listUsers.mockResolvedValueOnce([{ externalId: 'technical-1' }]);
+    mocks.loadMappedUsersBySubject.mockResolvedValueOnce(
+      new Map([['technical-1', { isTechnicalAccount: true }]])
+    );
+    mocks.listUserRoleNames.mockResolvedValueOnce([]);
+    mocks.mergeMappedUserWithKeycloak.mockImplementation((mapped) => mapped);
+
+    const result = await resolveTenantKeycloakUsersWithPagination({
+      client: {} as never,
+      instanceId: 'instance-1',
+      page: 3,
+      pageSize: 5,
+      includeTechnicalAccounts: true,
+    });
+
+    expect(result.total).toBe(11);
+    expect(result.users).toEqual([{ isTechnicalAccount: true }]);
+    expect(mocks.listUsers).toHaveBeenCalledWith({ first: 10, max: 5 });
+  });
 });

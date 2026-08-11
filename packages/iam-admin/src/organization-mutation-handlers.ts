@@ -34,8 +34,7 @@ type PreparedOrganizationMutationActor = OrganizationMutationActor & {
 };
 
 type ParseRequestBodyResult<TData> =
-  | { readonly ok: true; readonly data: TData; readonly rawBody: string }
-  | { readonly ok: false };
+  { readonly ok: true; readonly data: TData; readonly rawBody: string } | { readonly ok: false };
 
 type HierarchyResolution =
   | { readonly ok: true; readonly hierarchyPath: readonly string[]; readonly depth: number }
@@ -58,6 +57,11 @@ type OrganizationRow = {
 };
 
 export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
+  readonly afterOrganizationCreated?: (input: {
+    readonly actor: PreparedOrganizationMutationActor;
+    readonly actorSubject: string;
+    readonly organization: unknown;
+  }) => Promise<unknown | undefined>;
   readonly asApiItem: (data: unknown, requestId?: string) => unknown;
   readonly completeIdempotency: (input: {
     readonly instanceId: string;
@@ -112,7 +116,9 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Response | null;
   readonly getFeatureFlags: () => TFeatureFlags;
   readonly getWorkspaceContext: () => { readonly requestId?: string };
-  readonly isHierarchyError: (value: unknown) => value is Extract<HierarchyResolution, { readonly ok: false }>;
+  readonly isHierarchyError: (
+    value: unknown
+  ) => value is Extract<HierarchyResolution, { readonly ok: false }>;
   readonly isUuid: (value: string) => boolean;
   readonly jsonResponse: (status: number, payload: unknown) => Response;
   readonly authorizeOrganizationMutationAccess?: (
@@ -123,7 +129,13 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   readonly loadContextOptions: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly accountId: string }
-  ) => Promise<readonly { readonly organizationId: string; readonly organizationKey: string; readonly isActive: boolean }[]>;
+  ) => Promise<
+    readonly {
+      readonly organizationId: string;
+      readonly organizationKey: string;
+      readonly isActive: boolean;
+    }[]
+  >;
   readonly loadOrganizationById: (
     client: QueryClient,
     input: { readonly instanceId: string; readonly organizationId: string }
@@ -184,7 +196,11 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
   ) => Promise<{ readonly actor: OrganizationMutationActor } | { readonly error: Response }>;
   readonly resolveHierarchyFields: (
     client: QueryClient,
-    input: { readonly instanceId: string; readonly organizationId?: string; readonly parentOrganizationId?: string | null }
+    input: {
+      readonly instanceId: string;
+      readonly organizationId?: string;
+      readonly parentOrganizationId?: string | null;
+    }
   ) => Promise<HierarchyResolution>;
   readonly toPayloadHash: (rawBody: string) => string;
   readonly upsertOrganizationMainserverCredentials: (
@@ -197,7 +213,10 @@ export type OrganizationMutationHandlerDeps<TFeatureFlags = unknown> = {
       readonly mainserverApplicationSecret?: string;
     }
   ) => Promise<OrganizationMainserverCredentialState>;
-  readonly updateSession: (sessionId: string, patch: { readonly activeOrganizationId?: string }) => Promise<void>;
+  readonly updateSession: (
+    sessionId: string,
+    patch: { readonly activeOrganizationId?: string }
+  ) => Promise<void>;
   readonly validateCsrf: (request: Request, requestId?: string) => Response | null;
   readonly withInstanceScopedDb: <T>(
     instanceId: string,
@@ -226,9 +245,15 @@ const prepareAdminMutation = async <TFeatureFlags>(
   deps: OrganizationMutationHandlerDeps<TFeatureFlags>,
   request: Request,
   ctx: OrganizationMutationAuthenticatedRequestContext
-): Promise<{ readonly actor: PreparedOrganizationMutationActor } | { readonly error: Response }> => {
+): Promise<
+  { readonly actor: PreparedOrganizationMutationActor } | { readonly error: Response }
+> => {
   const requestContext = deps.getWorkspaceContext();
-  const featureCheck = deps.ensureFeature(deps.getFeatureFlags(), 'iam_admin', requestContext.requestId);
+  const featureCheck = deps.ensureFeature(
+    deps.getFeatureFlags(),
+    'iam_admin',
+    requestContext.requestId
+  );
   if (featureCheck) {
     return { error: featureCheck };
   }
@@ -261,7 +286,9 @@ const prepareAdminMutation = async <TFeatureFlags>(
     };
   }
 
-  return { actor: { ...actorResolution.actor, actorAccountId: actorResolution.actor.actorAccountId } };
+  return {
+    actor: { ...actorResolution.actor, actorAccountId: actorResolution.actor.actorAccountId },
+  };
 };
 
 const consumeWriteRateLimit = <TFeatureFlags>(
@@ -283,7 +310,12 @@ const readOrganizationId = <TFeatureFlags>(
 ): string | Response => {
   const organizationId = deps.readPathSegment(request, 4);
   if (!organizationId || !deps.isUuid(organizationId)) {
-    return deps.createApiError(400, 'invalid_organization_id', 'Ungültige organizationId.', requestId);
+    return deps.createApiError(
+      400,
+      'invalid_organization_id',
+      'Ungültige organizationId.',
+      requestId
+    );
   }
   return organizationId;
 };
@@ -295,7 +327,10 @@ const hasMainserverCredentialPatch = (value: z.infer<typeof updateOrganizationSc
   hasOwn(value, 'mainserverApplicationId') || hasOwn(value, 'mainserverApplicationSecret');
 
 const completeFailedIdempotency = async <TFeatureFlags>(
-  deps: Pick<OrganizationMutationHandlerDeps<TFeatureFlags>, 'completeIdempotency' | 'jsonResponse'>,
+  deps: Pick<
+    OrganizationMutationHandlerDeps<TFeatureFlags>,
+    'completeIdempotency' | 'jsonResponse'
+  >,
   input: {
     readonly actor: PreparedOrganizationMutationActor;
     readonly endpoint: string;
@@ -320,7 +355,11 @@ type OrganizationAdminMutationState = {
   readonly actor: PreparedOrganizationMutationActor;
 };
 
-type OrganizationAdminMutationInput<TPrepared extends object, TIdempotency extends object, TInput> = {
+type OrganizationAdminMutationInput<
+  TPrepared extends object,
+  TIdempotency extends object,
+  TInput,
+> = {
   readonly prepare?: (
     state: Readonly<{
       request: Request;
@@ -330,34 +369,44 @@ type OrganizationAdminMutationInput<TPrepared extends object, TIdempotency exten
   ) => Promise<TPrepared | Response> | TPrepared | Response;
   readonly requireRateLimit?: boolean;
   readonly idempotency?: (
-    state: Readonly<{
-      request: Request;
-      context: OrganizationMutationAuthenticatedRequestContext;
-      actor: PreparedOrganizationMutationActor;
-    } & TPrepared>
+    state: Readonly<
+      {
+        request: Request;
+        context: OrganizationMutationAuthenticatedRequestContext;
+        actor: PreparedOrganizationMutationActor;
+      } & TPrepared
+    >
   ) => Promise<TIdempotency | Response> | TIdempotency | Response;
   readonly parse: (
-    state: Readonly<{
-      request: Request;
-      context: OrganizationMutationAuthenticatedRequestContext;
-      actor: PreparedOrganizationMutationActor;
-    } & TPrepared & TIdempotency>
+    state: Readonly<
+      {
+        request: Request;
+        context: OrganizationMutationAuthenticatedRequestContext;
+        actor: PreparedOrganizationMutationActor;
+      } & TPrepared &
+        TIdempotency
+    >
   ) => Promise<TInput | Response>;
   readonly execute: (
-    state: Readonly<{
-      request: Request;
-      context: OrganizationMutationAuthenticatedRequestContext;
-      actor: PreparedOrganizationMutationActor;
-      input: TInput;
-    } & TPrepared & TIdempotency>
+    state: Readonly<
+      {
+        request: Request;
+        context: OrganizationMutationAuthenticatedRequestContext;
+        actor: PreparedOrganizationMutationActor;
+        input: TInput;
+      } & TPrepared &
+        TIdempotency
+    >
   ) => Promise<Response>;
   readonly mapError?: (
     error: unknown,
-    state: Readonly<{
-      request: Request;
-      context: OrganizationMutationAuthenticatedRequestContext;
-      actor?: PreparedOrganizationMutationActor;
-    } & Partial<TPrepared & TIdempotency>>
+    state: Readonly<
+      {
+        request: Request;
+        context: OrganizationMutationAuthenticatedRequestContext;
+        actor?: PreparedOrganizationMutationActor;
+      } & Partial<TPrepared & TIdempotency>
+    >
   ) => Response;
 };
 
@@ -420,11 +469,13 @@ const createAdminMutationHandler = <
     idempotency: runIdempotency
       ? async (state) => {
           return runIdempotency(
-            state as Readonly<{
-              request: Request;
-              context: OrganizationMutationAuthenticatedRequestContext;
-              actor: PreparedOrganizationMutationActor;
-            } & TPrepared>
+            state as Readonly<
+              {
+                request: Request;
+                context: OrganizationMutationAuthenticatedRequestContext;
+                actor: PreparedOrganizationMutationActor;
+              } & TPrepared
+            >
           );
         }
       : undefined,
@@ -442,8 +493,10 @@ const createAdminMutationHandler = <
     respond: (response) => response,
   });
 
-  return (request: Request, context: OrganizationMutationAuthenticatedRequestContext): Promise<Response> =>
-    workflow(request, context);
+  return (
+    request: Request,
+    context: OrganizationMutationAuthenticatedRequestContext
+  ): Promise<Response> => workflow(request, context);
 };
 
 export const createOrganizationMutationHandlers = <TFeatureFlags>(
@@ -466,7 +519,7 @@ export const createOrganizationMutationHandlers = <TFeatureFlags>(
         ? parsed
         : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
     },
-    execute: async ({ actor, input, endpoint, idempotencyKey }) => {
+    execute: async ({ actor, context, input, endpoint, idempotencyKey }) => {
       const reserve = await deps.reserveIdempotency({
         instanceId: actor.instanceId,
         actorAccountId: actor.actorAccountId,
@@ -493,7 +546,7 @@ export const createOrganizationMutationHandlers = <TFeatureFlags>(
 
           const organizationId = deps.randomUUID();
           const inserted = await client.query<{ id: string }>(
-          `
+            `
 INSERT INTO iam.organizations (
   id,
   instance_id,
@@ -567,7 +620,30 @@ RETURNING id;
           },
         });
 
-        const responseBody = deps.asApiItem(created, actor.requestId);
+        let responseData = created;
+        if (deps.afterOrganizationCreated) {
+          try {
+            responseData =
+              (await deps.afterOrganizationCreated({
+                actor,
+                actorSubject: context.user.id,
+                organization: created,
+              })) ?? created;
+          } catch (error) {
+            deps.logger.error('IAM organization post-create processing failed', {
+              workspace_id: actor.instanceId,
+              context: {
+                operation: 'organization_post_create',
+                organization_id: (created as { readonly id?: string }).id,
+                request_id: actor.requestId,
+                trace_id: actor.traceId,
+                error_type: error instanceof Error ? error.constructor.name : typeof error,
+              },
+            });
+          }
+        }
+
+        const responseBody = deps.asApiItem(responseData, actor.requestId);
         await deps.completeIdempotency({
           instanceId: actor.instanceId,
           actorAccountId: actor.actorAccountId,
@@ -643,24 +719,29 @@ RETURNING id;
     execute: async ({ actor, organizationId, input }) => {
       try {
         const updated = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const existing = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
-        if (!existing) {
-          return undefined;
-        }
+          const existing = await deps.loadOrganizationById(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
+          if (!existing) {
+            return undefined;
+          }
 
-        const nextParentOrganizationId =
-          input.data.parentOrganizationId === undefined ? existing.parent_organization_id : input.data.parentOrganizationId;
-        const hierarchy = await deps.resolveHierarchyFields(client, {
-          instanceId: actor.instanceId,
-          organizationId,
-          parentOrganizationId: nextParentOrganizationId,
-        });
-        if (!hierarchy.ok) {
-          throw hierarchy;
-        }
+          const nextParentOrganizationId =
+            input.data.parentOrganizationId === undefined
+              ? existing.parent_organization_id
+              : input.data.parentOrganizationId;
+          const hierarchy = await deps.resolveHierarchyFields(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+            parentOrganizationId: nextParentOrganizationId,
+          });
+          if (!hierarchy.ok) {
+            throw hierarchy;
+          }
 
-        await client.query(
-          `
+          await client.query(
+            `
 UPDATE iam.organizations
 SET
   organization_key = COALESCE($3, organization_key),
@@ -676,57 +757,78 @@ SET
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
-          [
-            actor.instanceId,
-            organizationId,
-            input.data.organizationKey ?? null,
-            input.data.displayName ?? null,
-            nextParentOrganizationId ?? null,
-            input.data.organizationType ?? null,
-            input.data.contentAuthorPolicy ?? null,
-            input.data.isActive ?? null,
-            input.data.metadata ? JSON.stringify(input.data.metadata) : null,
-            hierarchy.hierarchyPath,
-            hierarchy.depth,
-          ]
-        );
-        if (hasMainserverCredentialPatch(input.data)) {
-          await deps.upsertOrganizationMainserverCredentials(client, {
+            [
+              actor.instanceId,
+              organizationId,
+              input.data.organizationKey ?? null,
+              input.data.displayName ?? null,
+              nextParentOrganizationId ?? null,
+              input.data.organizationType ?? null,
+              input.data.contentAuthorPolicy ?? null,
+              input.data.isActive ?? null,
+              input.data.metadata ? JSON.stringify(input.data.metadata) : null,
+              hierarchy.hierarchyPath,
+              hierarchy.depth,
+            ]
+          );
+          if (hasMainserverCredentialPatch(input.data)) {
+            await deps.upsertOrganizationMainserverCredentials(client, {
+              instanceId: actor.instanceId,
+              organizationId,
+              actorAccountId: actor.actorAccountId,
+              mainserverApplicationId: input.data.mainserverApplicationId,
+              mainserverApplicationSecret: input.data.mainserverApplicationSecret,
+            });
+          }
+
+          await deps.rebuildOrganizationSubtree(client, {
             instanceId: actor.instanceId,
             organizationId,
-            actorAccountId: actor.actorAccountId,
-            mainserverApplicationId: input.data.mainserverApplicationId,
-            mainserverApplicationSecret: input.data.mainserverApplicationSecret,
           });
-        }
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            eventType: 'organization.updated',
+            result: 'success',
+            payload: { organizationId, parentOrganizationId: nextParentOrganizationId },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
 
-        await deps.rebuildOrganizationSubtree(client, { instanceId: actor.instanceId, organizationId });
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'organization.updated',
-          result: 'success',
-          payload: { organizationId, parentOrganizationId: nextParentOrganizationId },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
+          return deps.loadOrganizationDetail(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
         });
 
-        return deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
-      });
-
-      if (!updated) {
-        return deps.createApiError(404, 'not_found', 'Organisation nicht gefunden.', actor.requestId);
-      }
-      return deps.jsonResponse(200, deps.asApiItem(updated, actor.requestId));
+        if (!updated) {
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Organisation nicht gefunden.',
+            actor.requestId
+          );
+        }
+        return deps.jsonResponse(200, deps.asApiItem(updated, actor.requestId));
       } catch (error) {
         if (deps.isHierarchyError(error)) {
           return deps.createApiError(error.status, error.code, error.message, actor.requestId);
         }
         const message = error instanceof Error ? error.message : String(error);
         if (message.includes('organizations_instance_key_uniq')) {
-          return deps.createApiError(409, 'conflict', 'Organisation mit diesem Schlüssel existiert bereits.', actor.requestId);
+          return deps.createApiError(
+            409,
+            'conflict',
+            'Organisation mit diesem Schlüssel existiert bereits.',
+            actor.requestId
+          );
         }
-        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'IAM-Datenbank ist nicht erreichbar.',
+          actor.requestId
+        );
       }
     },
   });
@@ -741,17 +843,20 @@ WHERE instance_id = $1
     execute: async ({ actor, organizationId }) => {
       try {
         const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const organization = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
-        if (!organization) {
-          return { status: 'not_found' as const };
-        }
-        if (organization.child_count > 0) {
-          return { status: 'conflict' as const };
-        }
+          const organization = await deps.loadOrganizationById(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
+          if (!organization) {
+            return { status: 'not_found' as const };
+          }
+          if (organization.child_count > 0) {
+            return { status: 'conflict' as const };
+          }
 
-        if (organization.membership_count > 0) {
-          await client.query(
-            `
+          if (organization.membership_count > 0) {
+            await client.query(
+              `
 WITH deleted_memberships AS (
   DELETE FROM iam.account_organizations
   WHERE instance_id = $1
@@ -776,12 +881,12 @@ WHERE membership.instance_id = $1
   AND membership.account_id = fallback_memberships.account_id
   AND membership.organization_id = fallback_memberships.organization_id;
 `,
-            [actor.instanceId, organizationId]
-          );
-        }
+              [actor.instanceId, organizationId]
+            );
+          }
 
-        await client.query(
-          `
+          await client.query(
+            `
 UPDATE iam.contents
 SET organization_id = CASE WHEN organization_id = $2::uuid THEN NULL ELSE organization_id END,
     owner_organization_id = CASE WHEN owner_organization_id = $2::uuid THEN NULL ELSE owner_organization_id END,
@@ -793,49 +898,54 @@ SET organization_id = CASE WHEN organization_id = $2::uuid THEN NULL ELSE organi
 WHERE instance_id = $1
   AND (organization_id = $2::uuid OR owner_organization_id = $2::uuid);
 `,
-          [actor.instanceId, organizationId]
-        );
-        const deleteResult = await client.query(
-          `
+            [actor.instanceId, organizationId]
+          );
+          const deleteResult = await client.query(
+            `
 DELETE FROM iam.organizations
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
-          [actor.instanceId, organizationId]
-        );
-        if (deleteResult.rowCount === 0) {
-          return { status: 'not_found' as const };
-        }
-        if (organization.membership_count > 0) {
-          await deps.notifyPermissionInvalidation(client, {
+            [actor.instanceId, organizationId]
+          );
+          if (deleteResult.rowCount === 0) {
+            return { status: 'not_found' as const };
+          }
+          if (organization.membership_count > 0) {
+            await deps.notifyPermissionInvalidation(client, {
+              instanceId: actor.instanceId,
+              trigger: 'organization_membership_removed',
+            });
+          }
+          await deps.emitActivityLog(client, {
             instanceId: actor.instanceId,
-            trigger: 'organization_membership_removed',
+            accountId: actor.actorAccountId,
+            eventType: 'organization.deleted',
+            result: 'success',
+            payload: { organizationId },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
           });
-        }
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          eventType: 'organization.deleted',
-          result: 'success',
-          payload: { organizationId },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
+          return { status: 'ok' as const };
         });
-        return { status: 'ok' as const };
-      });
 
-      if (result.status === 'not_found') {
-        return deps.createApiError(404, 'not_found', 'Organisation nicht gefunden.', actor.requestId);
-      }
-      if (result.status === 'conflict') {
-        return deps.createApiError(
-          409,
-          'conflict',
-          'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
-          actor.requestId
-        );
-      }
-      return deps.jsonResponse(200, deps.asApiItem({ id: organizationId }, actor.requestId));
+        if (result.status === 'not_found') {
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Organisation nicht gefunden.',
+            actor.requestId
+          );
+        }
+        if (result.status === 'conflict') {
+          return deps.createApiError(
+            409,
+            'conflict',
+            'Organisation mit Kind-Organisationen kann nicht gelöscht werden.',
+            actor.requestId
+          );
+        }
+        return deps.jsonResponse(200, deps.asApiItem({ id: organizationId }, actor.requestId));
       } catch (error) {
         if ((error as { code?: string } | null)?.code === '23503') {
           return deps.createApiError(
@@ -845,7 +955,12 @@ WHERE instance_id = $1
             actor.requestId
           );
         }
-        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'IAM-Datenbank ist nicht erreichbar.',
+          actor.requestId
+        );
       }
     },
   });
@@ -887,42 +1002,45 @@ WHERE instance_id = $1
 
       try {
         const organization = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const org = await deps.loadOrganizationById(client, { instanceId: actor.instanceId, organizationId });
-        if (!org) {
-          return { status: 'not_found' as const };
-        }
-        if (!org.is_active) {
-          return { status: 'inactive' as const };
-        }
+          const org = await deps.loadOrganizationById(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
+          if (!org) {
+            return { status: 'not_found' as const };
+          }
+          if (!org.is_active) {
+            return { status: 'inactive' as const };
+          }
 
-        const membershipAccount = await client.query<{ id: string }>(
-          `
+          const membershipAccount = await client.query<{ id: string }>(
+            `
 SELECT id
 FROM iam.accounts
 WHERE id = $1::uuid
   AND instance_id = $2
 LIMIT 1;
 `,
-          [input.data.accountId, actor.instanceId]
-        );
-        if (membershipAccount.rowCount === 0) {
-          return { status: 'invalid_account' as const };
-        }
+            [input.data.accountId, actor.instanceId]
+          );
+          if (membershipAccount.rowCount === 0) {
+            return { status: 'invalid_account' as const };
+          }
 
-        if (input.data.isDefaultContext) {
-          await client.query(
-            `
+          if (input.data.isDefaultContext) {
+            await client.query(
+              `
 UPDATE iam.account_organizations
 SET is_default_context = false
 WHERE instance_id = $1
   AND account_id = $2::uuid;
 `,
-            [actor.instanceId, input.data.accountId]
-          );
-        }
+              [actor.instanceId, input.data.accountId]
+            );
+          }
 
-        const existingDefault = await client.query<{ organization_id: string }>(
-          `
+          const existingDefault = await client.query<{ organization_id: string }>(
+            `
 SELECT organization_id
 FROM iam.account_organizations
 WHERE instance_id = $1
@@ -930,12 +1048,12 @@ WHERE instance_id = $1
   AND is_default_context = true
 LIMIT 1;
 `,
-          [actor.instanceId, input.data.accountId]
-        );
-        const shouldUseDefault = input.data.isDefaultContext ?? existingDefault.rowCount === 0;
+            [actor.instanceId, input.data.accountId]
+          );
+          const shouldUseDefault = input.data.isDefaultContext ?? existingDefault.rowCount === 0;
 
-        await client.query(
-          `
+          await client.query(
+            `
 INSERT INTO iam.account_organizations (
   instance_id,
   account_id,
@@ -949,61 +1067,92 @@ SET
   is_default_context = EXCLUDED.is_default_context,
   membership_visibility = EXCLUDED.membership_visibility;
 `,
-          [actor.instanceId, input.data.accountId, organizationId, shouldUseDefault, input.data.visibility ?? 'internal']
-        );
+            [
+              actor.instanceId,
+              input.data.accountId,
+              organizationId,
+              shouldUseDefault,
+              input.data.visibility ?? 'internal',
+            ]
+          );
 
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          trigger: 'organization_membership_assigned',
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'organization_membership_assigned',
+          });
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            subjectId: input.data.accountId,
+            eventType: 'organization.membership_assigned',
+            result: 'success',
+            payload: {
+              organizationId,
+              accountId: input.data.accountId,
+              isDefaultContext: shouldUseDefault,
+            },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          const detail = await deps.loadOrganizationDetail(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
+          return { status: 'ok' as const, detail };
         });
-        await deps.emitActivityLog(client, {
+
+        if (organization.status === 'not_found') {
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Organisation nicht gefunden.',
+            actor.requestId
+          );
+        }
+        if (organization.status === 'inactive') {
+          return deps.createApiError(
+            409,
+            'organization_inactive',
+            'Inaktive Organisation erlaubt keine neue Membership.',
+            actor.requestId
+          );
+        }
+        if (organization.status === 'invalid_account') {
+          return deps.createApiError(
+            400,
+            'invalid_request',
+            'Account gehört nicht zur aktiven Instanz.',
+            actor.requestId
+          );
+        }
+
+        const responseBody = deps.asApiItem(organization.detail, actor.requestId);
+        await deps.completeIdempotency({
           instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          subjectId: input.data.accountId,
-          eventType: 'organization.membership_assigned',
-          result: 'success',
-          payload: { organizationId, accountId: input.data.accountId, isDefaultContext: shouldUseDefault },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
+          actorAccountId: actor.actorAccountId,
+          endpoint,
+          idempotencyKey,
+          status: 'COMPLETED',
+          responseStatus: 200,
+          responseBody,
         });
-
-        const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
-        return { status: 'ok' as const, detail };
-      });
-
-      if (organization.status === 'not_found') {
-        return deps.createApiError(404, 'not_found', 'Organisation nicht gefunden.', actor.requestId);
-      }
-      if (organization.status === 'inactive') {
-        return deps.createApiError(409, 'organization_inactive', 'Inaktive Organisation erlaubt keine neue Membership.', actor.requestId);
-      }
-      if (organization.status === 'invalid_account') {
-        return deps.createApiError(400, 'invalid_request', 'Account gehört nicht zur aktiven Instanz.', actor.requestId);
-      }
-
-      const responseBody = deps.asApiItem(organization.detail, actor.requestId);
-      await deps.completeIdempotency({
-        instanceId: actor.instanceId,
-        actorAccountId: actor.actorAccountId,
-        endpoint,
-        idempotencyKey,
-        status: 'COMPLETED',
-        responseStatus: 200,
-        responseBody,
-      });
-      return deps.jsonResponse(200, responseBody);
-    } catch {
-      const responseBody = {
-        error: { code: 'database_unavailable' as const, message: 'IAM-Datenbank ist nicht erreichbar.' },
-        ...(actor.requestId ? { requestId: actor.requestId } : {}),
-      };
-      return completeFailedIdempotency(deps, {
-        actor,
-        endpoint,
-        idempotencyKey,
-        responseStatus: 503,
-        responseBody,
-      });
+        return deps.jsonResponse(200, responseBody);
+      } catch {
+        const responseBody = {
+          error: {
+            code: 'database_unavailable' as const,
+            message: 'IAM-Datenbank ist nicht erreichbar.',
+          },
+          ...(actor.requestId ? { requestId: actor.requestId } : {}),
+        };
+        return completeFailedIdempotency(deps, {
+          actor,
+          endpoint,
+          idempotencyKey,
+          responseStatus: 503,
+          responseBody,
+        });
       }
     },
   });
@@ -1025,8 +1174,8 @@ SET
     execute: async ({ actor, organizationId, accountId }) => {
       try {
         const result = await deps.withInstanceScopedDb(actor.instanceId, async (client) => {
-        const current = await client.query<{ is_default_context: boolean }>(
-          `
+          const current = await client.query<{ is_default_context: boolean }>(
+            `
 SELECT is_default_context
 FROM iam.account_organizations
 WHERE instance_id = $1
@@ -1034,25 +1183,25 @@ WHERE instance_id = $1
   AND organization_id = $3::uuid
 LIMIT 1;
 `,
-          [actor.instanceId, accountId, organizationId]
-        );
-        if (current.rowCount === 0) {
-          return { status: 'not_found' as const };
-        }
+            [actor.instanceId, accountId, organizationId]
+          );
+          if (current.rowCount === 0) {
+            return { status: 'not_found' as const };
+          }
 
-        await client.query(
-          `
+          await client.query(
+            `
 DELETE FROM iam.account_organizations
 WHERE instance_id = $1
   AND account_id = $2::uuid
   AND organization_id = $3::uuid;
 `,
-          [actor.instanceId, accountId, organizationId]
-        );
+            [actor.instanceId, accountId, organizationId]
+          );
 
-        if (current.rows[0]?.is_default_context) {
-          await client.query(
-            `
+          if (current.rows[0]?.is_default_context) {
+            await client.query(
+              `
 WITH fallback_membership AS (
   SELECT organization_id
   FROM iam.account_organizations
@@ -1068,35 +1217,48 @@ WHERE membership.instance_id = $1
   AND membership.account_id = $2::uuid
   AND membership.organization_id = fallback_membership.organization_id;
 `,
-            [actor.instanceId, accountId]
+              [actor.instanceId, accountId]
+            );
+          }
+
+          await deps.notifyPermissionInvalidation(client, {
+            instanceId: actor.instanceId,
+            trigger: 'organization_membership_removed',
+          });
+          await deps.emitActivityLog(client, {
+            instanceId: actor.instanceId,
+            accountId: actor.actorAccountId,
+            subjectId: accountId,
+            eventType: 'organization.membership_removed',
+            result: 'success',
+            payload: { organizationId, accountId },
+            requestId: actor.requestId,
+            traceId: actor.traceId,
+          });
+
+          const detail = await deps.loadOrganizationDetail(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
+          return { status: 'ok' as const, detail };
+        });
+
+        if (result.status === 'not_found') {
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Membership nicht gefunden.',
+            actor.requestId
           );
         }
-
-        await deps.notifyPermissionInvalidation(client, {
-          instanceId: actor.instanceId,
-          trigger: 'organization_membership_removed',
-        });
-        await deps.emitActivityLog(client, {
-          instanceId: actor.instanceId,
-          accountId: actor.actorAccountId,
-          subjectId: accountId,
-          eventType: 'organization.membership_removed',
-          result: 'success',
-          payload: { organizationId, accountId },
-          requestId: actor.requestId,
-          traceId: actor.traceId,
-        });
-
-        const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
-        return { status: 'ok' as const, detail };
-      });
-
-      if (result.status === 'not_found') {
-        return deps.createApiError(404, 'not_found', 'Membership nicht gefunden.', actor.requestId);
-      }
-      return deps.jsonResponse(200, deps.asApiItem(result.detail, actor.requestId));
+        return deps.jsonResponse(200, deps.asApiItem(result.detail, actor.requestId));
       } catch {
-        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'IAM-Datenbank ist nicht erreichbar.',
+          actor.requestId
+        );
       }
     },
   });
@@ -1141,9 +1303,12 @@ LIMIT 1;
             return { status: 'not_found' as const };
           }
 
-          const nextVisibility = input.data.visibility ?? current.rows[0]?.membership_visibility ?? 'internal';
-          const requestedDefaultContext = input.data.isDefaultContext ?? current.rows[0]?.is_default_context ?? false;
-          const requiresFallbackPromotion = input.data.isDefaultContext === false && current.rows[0]?.is_default_context;
+          const nextVisibility =
+            input.data.visibility ?? current.rows[0]?.membership_visibility ?? 'internal';
+          const requestedDefaultContext =
+            input.data.isDefaultContext ?? current.rows[0]?.is_default_context ?? false;
+          const requiresFallbackPromotion =
+            input.data.isDefaultContext === false && current.rows[0]?.is_default_context;
           let nextDefaultContext = requestedDefaultContext;
 
           if (requiresFallbackPromotion) {
@@ -1230,16 +1395,29 @@ WHERE membership.instance_id = $1
             traceId: actor.traceId,
           });
 
-          const detail = await deps.loadOrganizationDetail(client, { instanceId: actor.instanceId, organizationId });
+          const detail = await deps.loadOrganizationDetail(client, {
+            instanceId: actor.instanceId,
+            organizationId,
+          });
           return { status: 'ok' as const, detail };
         });
 
         if (result.status === 'not_found') {
-          return deps.createApiError(404, 'not_found', 'Membership nicht gefunden.', actor.requestId);
+          return deps.createApiError(
+            404,
+            'not_found',
+            'Membership nicht gefunden.',
+            actor.requestId
+          );
         }
         return deps.jsonResponse(200, deps.asApiItem(result.detail, actor.requestId));
       } catch {
-        return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+        return deps.createApiError(
+          503,
+          'database_unavailable',
+          'IAM-Datenbank ist nicht erreichbar.',
+          actor.requestId
+        );
       }
     },
   });
@@ -1249,7 +1427,11 @@ WHERE membership.instance_id = $1
     ctx: OrganizationMutationAuthenticatedRequestContext
   ): Promise<Response> => {
     const requestContext = deps.getWorkspaceContext();
-    const featureCheck = deps.ensureFeature(deps.getFeatureFlags(), 'iam_ui', requestContext.requestId);
+    const featureCheck = deps.ensureFeature(
+      deps.getFeatureFlags(),
+      'iam_ui',
+      requestContext.requestId
+    );
     if (featureCheck) {
       return featureCheck;
     }
@@ -1262,9 +1444,17 @@ WHERE membership.instance_id = $1
       return actorResolution.error;
     }
     if (!actorResolution.actor.actorAccountId) {
-      return deps.createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId);
+      return deps.createApiError(
+        403,
+        'forbidden',
+        'Akteur-Account nicht gefunden.',
+        actorResolution.actor.requestId
+      );
     }
-    const actor = { ...actorResolution.actor, actorAccountId: actorResolution.actor.actorAccountId };
+    const actor = {
+      ...actorResolution.actor,
+      actorAccountId: actorResolution.actor.actorAccountId,
+    };
 
     const csrfError = deps.validateCsrf(request, actor.requestId);
     if (csrfError) {
@@ -1278,7 +1468,10 @@ WHERE membership.instance_id = $1
 
     try {
       const organizations = await deps.withInstanceScopedDb(actor.instanceId, (client) =>
-        deps.loadContextOptions(client, { instanceId: actor.instanceId, accountId: actor.actorAccountId })
+        deps.loadContextOptions(client, {
+          instanceId: actor.instanceId,
+          accountId: actor.actorAccountId,
+        })
       );
       if (hasSystemAdminRole(ctx.user.roles)) {
         await deps.updateSession(ctx.sessionId, { activeOrganizationId: undefined });
@@ -1294,12 +1487,24 @@ WHERE membership.instance_id = $1
           )
         );
       }
-      const target = organizations.find((organization) => organization.organizationId === parsed.data.organizationId);
+      const target = organizations.find(
+        (organization) => organization.organizationId === parsed.data.organizationId
+      );
       if (!target) {
-        return deps.createApiError(400, 'invalid_organization_id', 'Organisation gehört nicht zum Benutzerkontext.', actor.requestId);
+        return deps.createApiError(
+          400,
+          'invalid_organization_id',
+          'Organisation gehört nicht zum Benutzerkontext.',
+          actor.requestId
+        );
       }
       if (!target.isActive) {
-        return deps.createApiError(409, 'organization_inactive', 'Inaktive Organisation kann kein aktiver Kontext sein.', actor.requestId);
+        return deps.createApiError(
+          409,
+          'organization_inactive',
+          'Inaktive Organisation kann kein aktiver Kontext sein.',
+          actor.requestId
+        );
       }
 
       await deps.updateSession(ctx.sessionId, { activeOrganizationId: target.organizationId });
@@ -1341,7 +1546,12 @@ WHERE membership.instance_id = $1
 
       return deps.jsonResponse(200, deps.asApiItem(response, actor.requestId));
     } catch {
-      return deps.createApiError(503, 'database_unavailable', 'IAM-Datenbank ist nicht erreichbar.', actor.requestId);
+      return deps.createApiError(
+        503,
+        'database_unavailable',
+        'IAM-Datenbank ist nicht erreichbar.',
+        actor.requestId
+      );
     }
   };
 

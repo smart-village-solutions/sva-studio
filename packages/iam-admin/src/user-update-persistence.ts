@@ -8,28 +8,15 @@ import {
   buildUpdatedUserActivityPayload,
   resolveUpdatedUserSessionAction,
 } from './user-update-persistence-support.js';
+import type {
+  UpdateUserPersistencePayload,
+  UserMainserverCredentialState,
+} from './user-update-persistence.types.js';
 
-export type UpdateUserPersistencePayload = {
-  readonly email?: string;
-  readonly displayName?: string;
-  readonly firstName?: string;
-  readonly lastName?: string;
-  readonly phone?: string;
-  readonly position?: string;
-  readonly department?: string;
-  readonly avatarUrl?: string;
-  readonly preferredLanguage?: string;
-  readonly timezone?: string;
-  readonly status?: 'active' | 'inactive' | 'pending';
-  readonly notes?: string;
-  readonly roleIds?: readonly string[];
-  readonly groupIds?: readonly string[];
-};
-
-export type UserMainserverCredentialState = {
-  readonly mainserverUserApplicationId?: string;
-  readonly mainserverUserApplicationSecretSet: boolean;
-};
+export type {
+  UpdateUserPersistencePayload,
+  UserMainserverCredentialState,
+} from './user-update-persistence.types.js';
 
 type UserActivityLogInput = {
   readonly instanceId: string;
@@ -104,14 +91,21 @@ export const buildUpdatedUserParams = (
     readonly timezone?: string;
     readonly status?: 'active' | 'inactive' | 'pending';
     readonly notes?: string;
+    readonly isTechnicalAccount?: boolean;
   }
-): readonly (string | null)[] => [
+): readonly (string | boolean | null)[] => [
   userId,
   instanceId,
   payload.email ? protectField(payload.email, `iam.accounts.email:${keycloakSubject}`) : null,
-  payload.displayName ? protectField(payload.displayName, `iam.accounts.display_name:${keycloakSubject}`) : null,
-  payload.firstName ? protectField(payload.firstName, `iam.accounts.first_name:${keycloakSubject}`) : null,
-  payload.lastName ? protectField(payload.lastName, `iam.accounts.last_name:${keycloakSubject}`) : null,
+  payload.displayName
+    ? protectField(payload.displayName, `iam.accounts.display_name:${keycloakSubject}`)
+    : null,
+  payload.firstName
+    ? protectField(payload.firstName, `iam.accounts.first_name:${keycloakSubject}`)
+    : null,
+  payload.lastName
+    ? protectField(payload.lastName, `iam.accounts.last_name:${keycloakSubject}`)
+    : null,
   payload.phone ? protectField(payload.phone, `iam.accounts.phone:${keycloakSubject}`) : null,
   payload.position ?? null,
   payload.department ?? null,
@@ -120,6 +114,7 @@ export const buildUpdatedUserParams = (
   payload.timezone ?? null,
   payload.status ?? null,
   payload.notes ?? null,
+  payload.isTechnicalAccount ?? null,
 ];
 
 const updateUserAccountRecord = async (input: {
@@ -145,6 +140,7 @@ SET
   timezone = COALESCE($12, timezone),
   status = COALESCE($13, status),
   notes = COALESCE($14, notes),
+  is_technical_account = COALESCE($15::boolean, is_technical_account),
   updated_at = NOW()
 WHERE id = $1::uuid
   AND instance_id = $2;
@@ -165,6 +161,7 @@ const emitUpdatedUserActivity = async (
     readonly payload: UpdateUserPersistencePayload;
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
+    readonly existingIsTechnicalAccount?: boolean;
   }
 ) => {
   await deps.emitActivityLog(input.client, {
@@ -222,6 +219,7 @@ const persistUpdatedUserInDatabase = async (
     readonly keycloakSubject: string;
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
+    readonly existingIsTechnicalAccount?: boolean;
     readonly payload: UpdateUserPersistencePayload;
     readonly existingMainserverCredentialState?: UserMainserverCredentialState;
     readonly nextMainserverCredentialState?: UserMainserverCredentialState;
@@ -265,6 +263,7 @@ const persistUpdatedUserInDatabase = async (
       payload: input.payload,
       existingRoleIds: input.existingRoleIds,
       existingGroupIds: input.existingGroupIds,
+      existingIsTechnicalAccount: input.existingIsTechnicalAccount,
     });
     await invalidateUpdatedUserPermissions(deps, {
       client,
@@ -295,6 +294,7 @@ export const createUserUpdatePersistence = (deps: UserUpdatePersistenceDeps) => 
     readonly keycloakSubject: string;
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
+    readonly existingIsTechnicalAccount?: boolean;
     readonly payload: UpdateUserPersistencePayload;
     readonly existingMainserverCredentialState?: UserMainserverCredentialState;
     readonly nextMainserverCredentialState?: UserMainserverCredentialState;

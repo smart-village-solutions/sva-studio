@@ -269,6 +269,7 @@ describe('UserCreatePage', () => {
         displayName: 'Alice Example',
         roleIds: [],
         groupIds: ['group-1'],
+        isTechnicalAccount: false,
         sendPasswordSetupEmail: true,
       });
     });
@@ -345,8 +346,7 @@ describe('UserCreatePage', () => {
     );
 
     const navigation = navigateMock.mock.calls.at(-1)?.[0] as
-      | { state?: (previous: Record<string, unknown>) => Record<string, unknown> }
-      | undefined;
+      { state?: (previous: Record<string, unknown>) => Record<string, unknown> } | undefined;
     expect(navigation?.state?.({ preserved: true })).toEqual({
       preserved: true,
       studioSaveFeedback: {

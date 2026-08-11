@@ -1,6 +1,7 @@
 export const iamAdminVersion = '0.0.1';
 
-export type IamAdminPackageRole = 'users' | 'roles' | 'groups' | 'organizations' | 'tenant-admin-client';
+export type IamAdminPackageRole =
+  'users' | 'roles' | 'groups' | 'organizations' | 'tenant-admin-client';
 
 export const iamAdminPackageRoles = [
   'users',
@@ -123,10 +124,7 @@ export {
   type ReconcileHandlerDeps,
 } from './reconcile-handler.js';
 
-export {
-  resolveUsersForBulkDeactivation,
-  type BulkUserAccess,
-} from './user-bulk-query.js';
+export { resolveUsersForBulkDeactivation, type BulkUserAccess } from './user-bulk-query.js';
 
 export {
   createBulkDeactivateHandlerInternal,
@@ -222,9 +220,7 @@ export {
   mergeMappedUserWithKeycloak,
 } from './tenant-keycloak-user-projection.js';
 
-export {
-  loadMappedUsersBySubject,
-} from './tenant-keycloak-user-query.js';
+export { loadMappedUsersBySubject } from './tenant-keycloak-user-query.js';
 
 export {
   createLegacyGroupReadHandlers,
@@ -239,10 +235,7 @@ export {
   type LegacyGroupMutationHandlerDeps,
 } from './legacy-group-mutation-handlers.js';
 
-export {
-  loadLegacyGroupById,
-  loadLegacyGroups,
-} from './legacy-group-query.js';
+export { loadLegacyGroupById, loadLegacyGroups } from './legacy-group-query.js';
 
 export {
   createLegacyGroupSchema,
@@ -344,9 +337,12 @@ export {
   buildOrganizationMainserverSecretAad,
   loadOrganizationMainserverCredentialState,
   projectOrganizationMainserverCredentialState,
+  reserveOrganizationMainserverProvisioning,
+  updateOrganizationMainserverProvisioningState,
   upsertOrganizationMainserverCredentials,
   type OrganizationMainserverCredentialRow,
   type OrganizationMainserverCredentialState,
+  type OrganizationMainserverProvisioningReservation,
 } from './organization-mainserver-credentials.js';
 
 export {
@@ -357,11 +353,7 @@ export {
 
 export { IamSchemaDriftError } from './runtime-errors.js';
 
-export {
-  getEncryptionConfig,
-  protectField,
-  revealField,
-} from './encryption.js';
+export { getEncryptionConfig, protectField, revealField } from './encryption.js';
 
 export {
   USER_STATUS,
@@ -387,13 +379,9 @@ export {
   resolveUserDisplayName,
 } from './user-mapping.js';
 
-export {
-  resolveUsersWithPagination,
-} from './user-list-query.js';
+export { resolveUsersWithPagination } from './user-list-query.js';
 
-export {
-  resolveUserDetail,
-} from './user-detail-query.js';
+export { resolveUserDetail } from './user-detail-query.js';
 
 export {
   createUserReadHandlers,
@@ -401,14 +389,9 @@ export {
   type UserReadHandlerDeps,
 } from './user-read-handlers.js';
 
-export {
-  mapUserDetailRow,
-} from './user-detail-query.mapping.js';
+export { mapUserDetailRow } from './user-detail-query.mapping.js';
 
-export {
-  readUserDetailSchemaSupport,
-  selectUserDetailQuery,
-} from './user-detail-query.sql.js';
+export { readUserDetailSchemaSupport, selectUserDetailQuery } from './user-detail-query.sql.js';
 
 export type {
   UserDetailGroupRow,

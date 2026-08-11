@@ -4,10 +4,7 @@ vi.mock('./encryption.js', () => ({
   protectField: (value: string) => `enc:${value}`,
 }));
 
-import {
-  buildUpdatedUserParams,
-  createUserUpdatePersistence,
-} from './user-update-persistence.js';
+import { buildUpdatedUserParams, createUserUpdatePersistence } from './user-update-persistence.js';
 import type { QueryClient } from './query-client.js';
 
 const detail = {
@@ -16,6 +13,7 @@ const detail = {
   displayName: 'User Name',
   email: 'user@example.test',
   status: 'active',
+  isTechnicalAccount: false,
   roles: [],
   mainserverUserApplicationSecretSet: false,
 } as const;
@@ -28,8 +26,9 @@ const createDeps = (client: QueryClient) => ({
   notifyPermissionInvalidation: vi.fn(async () => undefined),
   revokeUserSessions: vi.fn(async () => undefined),
   resolveUserDetail: vi.fn(async () => detail),
-  withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) =>
-    work(client)
+  withInstanceScopedDb: vi.fn(
+    async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) =>
+      work(client)
   ),
 });
 
@@ -71,6 +70,7 @@ describe('user-update-persistence', () => {
       null,
       'active',
       null,
+      null,
     ]);
   });
 
@@ -85,12 +85,14 @@ describe('user-update-persistence', () => {
         keycloakSubject: 'kc-1',
         existingRoleIds: ['role-0'],
         existingGroupIds: ['group-0'],
+        existingIsTechnicalAccount: false,
         requestId: 'req-1',
         traceId: 'trace-1',
         payload: {
           email: 'new@example.test',
           roleIds: ['role-1'],
           groupIds: ['group-1'],
+          isTechnicalAccount: true,
         },
         nextMainserverCredentialState: {
           mainserverUserApplicationId: 'app-1',
@@ -133,6 +135,7 @@ describe('user-update-persistence', () => {
       null,
       null,
       null,
+      true,
     ]);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,
@@ -140,7 +143,7 @@ describe('user-update-persistence', () => {
         eventType: 'user.updated',
         subjectId: 'user-1',
         payload: expect.objectContaining({
-          changed_fields: ['email', 'roles', 'groups'],
+          changed_fields: ['email', 'roles', 'groups', 'is_technical_account'],
           previous_role_ids: ['role-0'],
           next_role_ids: ['role-1'],
           added_role_ids: ['role-1'],
@@ -149,6 +152,8 @@ describe('user-update-persistence', () => {
           next_group_ids: ['group-1'],
           added_group_ids: ['group-1'],
           removed_group_ids: ['group-0'],
+          previous_is_technical_account: false,
+          next_is_technical_account: true,
         }),
       })
     );
@@ -230,12 +235,14 @@ describe('user-update-persistence', () => {
       revokeUserSessions: vi.fn(async () => {
         events.push('revoke');
       }),
-      withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
-        events.push('tx:start');
-        const result = await work(client);
-        events.push('tx:end');
-        return result;
-      }),
+      withInstanceScopedDb: vi.fn(
+        async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
+          events.push('tx:start');
+          const result = await work(client);
+          events.push('tx:end');
+          return result;
+        }
+      ),
     };
     const persistence = createUserUpdatePersistence(deps);
 
@@ -271,12 +278,14 @@ describe('user-update-persistence', () => {
       clearUserSessionLoginBlock: vi.fn(async () => {
         events.push('clear');
       }),
-      withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
-        events.push('tx:start');
-        const result = await work(client);
-        events.push('tx:end');
-        return result;
-      }),
+      withInstanceScopedDb: vi.fn(
+        async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) => {
+          events.push('tx:start');
+          const result = await work(client);
+          events.push('tx:end');
+          return result;
+        }
+      ),
     };
     const persistence = createUserUpdatePersistence(deps);
 

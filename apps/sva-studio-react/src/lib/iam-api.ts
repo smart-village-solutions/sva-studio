@@ -85,6 +85,7 @@ export type UsersQuery = {
   readonly search?: string;
   readonly status?: Exclude<UserStatusFilter, 'all'>;
   readonly role?: string;
+  readonly includeTechnicalAccounts?: boolean;
 };
 
 export type CreateUserPayload = {
@@ -100,6 +101,7 @@ export type CreateUserPayload = {
   readonly roleIds?: readonly string[];
   readonly groupIds?: readonly string[];
   readonly sendPasswordSetupEmail?: boolean;
+  readonly isTechnicalAccount?: boolean;
 };
 
 export type UpdateUserPayload = Partial<Omit<CreateUserPayload, 'roleIds'>> & {
@@ -568,6 +570,9 @@ export const listUsers = async (query: UsersQuery): Promise<ApiListResponse<IamU
   }
   if (query.role) {
     params.set('role', query.role);
+  }
+  if (query.includeTechnicalAccounts) {
+    params.set('includeTechnicalAccounts', 'true');
   }
 
   return requestJson<ApiListResponse<IamUserListItem>>(`/api/v1/iam/users?${params.toString()}`);
@@ -1255,6 +1260,15 @@ export const updateOrganization = async (
   patchJson<ApiItemResponse<IamOrganizationDetail>, UpdateOrganizationPayload>(
     `/api/v1/iam/organizations/${organizationId}`,
     payload
+  );
+
+export const provisionOrganizationMainserver = async (
+  organizationId: string
+): Promise<ApiItemResponse<IamOrganizationDetail>> =>
+  postJson<ApiItemResponse<IamOrganizationDetail>, Record<string, never>>(
+    `/api/v1/iam/organizations/${organizationId}/provision-mainserver`,
+    {},
+    true
   );
 
 export const deleteOrganization = async (

@@ -81,6 +81,7 @@ LEFT JOIN iam.account_deletion_content_preferences preference
 LEFT JOIN last_login_events login_events
   ON login_events.account_id = account.id
 WHERE account.instance_id = $1
+  AND account.is_technical_account = FALSE
   AND account.deletion_lifecycle_state IN ('active', 'deactivated', 'pseudonymized')
 ORDER BY login_events.last_login_at ASC NULLS LAST, account.id ASC;
 `,
@@ -114,7 +115,9 @@ const resolveNextLifecycleState = (
       : undefined;
   }
   if (candidate.deletion_lifecycle_state === 'pseudonymized') {
-    return hasReachedThreshold(candidate.last_login_at, thresholds.deleteAfterDays, now) ? 'deleted' : undefined;
+    return hasReachedThreshold(candidate.last_login_at, thresholds.deleteAfterDays, now)
+      ? 'deleted'
+      : undefined;
   }
 
   return undefined;
@@ -124,7 +127,9 @@ const shouldApplyContentTransition = (
   strategy: IamDeletionContentStrategy,
   nextState: IamDeletionLifecycleState
 ): boolean => {
-  return strategy === 'with_owner_lifecycle' && lifecycleOrder[nextState] >= lifecycleOrder.deactivated;
+  return (
+    strategy === 'with_owner_lifecycle' && lifecycleOrder[nextState] >= lifecycleOrder.deactivated
+  );
 };
 
 const updateAccountLifecycleState = async (
@@ -289,7 +294,9 @@ export const runDeletionRulesMaintenance = async (
 
     const contentStrategy = resolveEffectiveDeletionContentStrategy(
       resolveDefaultDeletionContentStrategy(candidate.row.default_content_strategy),
-      candidate.row.allow_content_preference_override ? candidate.row.override_content_strategy : null
+      candidate.row.allow_content_preference_override
+        ? candidate.row.override_content_strategy
+        : null
     );
 
     if (!shouldApplyContentTransition(contentStrategy, candidate.nextState)) {

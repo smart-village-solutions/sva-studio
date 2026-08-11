@@ -28,6 +28,7 @@ type UserListRow = {
   position: string | null;
   department: string | null;
   status: UserStatus;
+  is_technical_account: boolean;
   last_login_at: string | null;
   role_rows: UserListRoleRow[] | null;
 };
@@ -39,6 +40,7 @@ type UserListInput = {
   status?: UserStatus;
   role?: string;
   search?: string;
+  includeTechnicalAccounts?: boolean;
 };
 
 const COUNT_USERS_QUERY = `
@@ -56,6 +58,7 @@ LEFT JOIN iam.roles r
   ON r.instance_id = ar.instance_id
  AND r.id = ar.role_id
 WHERE ($2::text IS NULL OR a.status = $2)
+  AND ($5::boolean = TRUE OR a.is_technical_account = FALSE)
   AND (
     $3::text IS NULL OR
     EXISTS (
@@ -90,6 +93,7 @@ SELECT
   a.position,
   a.department,
   a.status,
+  a.is_technical_account,
   MAX(al.created_at)::text AS last_login_at,
   COALESCE(
     json_agg(
@@ -121,6 +125,7 @@ LEFT JOIN iam.activity_logs al
  AND al.account_id = a.id
  AND al.event_type = 'login'
 WHERE ($2::text IS NULL OR a.status = $2)
+  AND ($5::boolean = TRUE OR a.is_technical_account = FALSE)
   AND (
     $3::text IS NULL OR
     EXISTS (
@@ -144,7 +149,7 @@ WHERE ($2::text IS NULL OR a.status = $2)
   )
 GROUP BY a.id
 ORDER BY a.created_at DESC
-LIMIT $5 OFFSET $6;
+LIMIT $6 OFFSET $7;
 `;
 
 const toUserListParams = (input: UserListInput, offset: number) => [
@@ -152,6 +157,7 @@ const toUserListParams = (input: UserListInput, offset: number) => [
   input.status ?? null,
   input.role ?? null,
   input.search ?? null,
+  input.includeTechnicalAccounts ?? false,
   input.pageSize,
   offset,
 ];
@@ -182,6 +188,7 @@ export const resolveUsersWithPagination = async (
     input.status ?? null,
     input.role ?? null,
     input.search ?? null,
+    input.includeTechnicalAccounts ?? false,
   ];
   const totalResult = await client.query<{ total: number }>(COUNT_USERS_QUERY, baseParams);
   const rows = await client.query<UserListRow>(LIST_USERS_QUERY, toUserListParams(input, offset));

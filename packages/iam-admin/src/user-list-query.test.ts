@@ -26,6 +26,7 @@ describe('resolveUsersWithPagination', () => {
               position: null,
               department: null,
               status: 'active',
+              is_technical_account: false,
               last_login_at: null,
               role_rows: [],
             },
@@ -46,5 +47,14 @@ describe('resolveUsersWithPagination', () => {
     expect(executedQueries[1]).toContain('EXISTS (');
     expect(executedQueries[1]).not.toContain('iam.role_permissions');
     expect(executedQueries[1]).not.toContain('iam.permissions');
+    expect(executedQueries[0]).toContain('a.is_technical_account = FALSE');
+    expect(executedQueries[1]).toContain('a.is_technical_account = FALSE');
+    expect(client.query).toHaveBeenNthCalledWith(1, expect.any(String), [
+      'de-musterhausen',
+      null,
+      'editor',
+      null,
+      false,
+    ]);
   });
 });

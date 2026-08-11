@@ -20,6 +20,23 @@ LIMIT 1;
     params
   );
 
+const readActiveOrganizationProvisioningLease = async (
+  client: QueryClient,
+  params: readonly [string, string]
+): Promise<{ rowCount: number }> =>
+  client.query<{ organization_id: string }>(
+    `
+SELECT organization_id
+FROM iam.organization_mainserver_credentials
+WHERE instance_id = $1
+  AND technical_account_id = $2::uuid
+  AND provisioning_status = 'provisioning'
+  AND lease_expires_at > NOW()
+LIMIT 1;
+`,
+    params
+  );
+
 const accountDeleteBlockerStatements = [
   `
 DELETE FROM iam.permission_change_requests
@@ -154,7 +171,12 @@ WHERE instance_id = $1
     OR owner_user_id = $2::uuid
   );
 `,
-    [input.instanceId, input.accountId, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN, input.keycloakSubject]
+    [
+      input.instanceId,
+      input.accountId,
+      input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN,
+      input.keycloakSubject,
+    ]
   );
 };
 
@@ -188,7 +210,12 @@ WHERE instance_id = $1
     OR owner_user_id = $2::uuid
   );
 `,
-    [input.instanceId, input.accountId, input.keycloakSubject, input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN]
+    [
+      input.instanceId,
+      input.accountId,
+      input.keycloakSubject,
+      input.deletedLabel ?? IAM_DELETED_CONTENT_AUTHOR_TOKEN,
+    ]
   );
 };
 
@@ -223,6 +250,15 @@ export const assertAccountHardDeletePreconditions = async (
   if (activeLegalHoldResult.rowCount > 0) {
     throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
   }
+  const activeProvisioningLeaseResult = await readActiveOrganizationProvisioningLease(
+    client,
+    params
+  );
+  if (activeProvisioningLeaseResult.rowCount > 0) {
+    throw new Error(
+      'organization_provisioning_delete_protection:Aktive Organisations-Provisionierung blockiert die Löschung.'
+    );
+  }
 };
 
 export const hardDeleteAccount = async (
@@ -231,10 +267,42 @@ export const hardDeleteAccount = async (
 ): Promise<void> => {
   const result = await client.query<{ id: string }>(
     `
-DELETE FROM iam.accounts
-WHERE id = $1::uuid
-  AND instance_id = $2
-RETURNING id;
+WITH prepared_organization_credentials AS (
+  UPDATE iam.organization_mainserver_credentials
+  SET
+    provisioning_status = CASE
+      WHEN mainserver_application_id IS NOT NULL
+        AND mainserver_application_secret_ciphertext IS NOT NULL
+        AND provisioning_status = 'ready'
+        THEN 'ready'
+      ELSE 'reconciliation_required'
+    END,
+    provisioning_phase = CASE
+      WHEN mainserver_application_id IS NOT NULL
+        AND mainserver_application_secret_ciphertext IS NOT NULL
+        AND provisioning_status = 'ready'
+        THEN provisioning_phase
+      ELSE 'technical_account_deleted'
+    END,
+    last_error_code = CASE
+      WHEN mainserver_application_id IS NOT NULL
+        AND mainserver_application_secret_ciphertext IS NOT NULL
+        AND provisioning_status = 'ready'
+        THEN last_error_code
+      ELSE 'technical_account_deleted'
+    END,
+    lease_expires_at = NULL,
+    updated_at = NOW()
+  WHERE instance_id = $2
+    AND technical_account_id = $1::uuid
+),
+deleted_account AS (
+  DELETE FROM iam.accounts
+  WHERE id = $1::uuid
+    AND instance_id = $2
+  RETURNING id
+)
+SELECT id FROM deleted_account;
 `,
     [input.accountId, input.instanceId]
   );

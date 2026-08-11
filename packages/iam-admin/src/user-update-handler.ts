@@ -31,8 +31,14 @@ export type UpdateIdentityProvider = {
         readonly attributes?: UpdateIdentityAttributes;
       }
     ) => Promise<void>;
-    readonly assignRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
-    readonly removeRealmRoles?: (keycloakSubject: string, roleNames: readonly string[]) => Promise<void>;
+    readonly assignRealmRoles?: (
+      keycloakSubject: string,
+      roleNames: readonly string[]
+    ) => Promise<void>;
+    readonly removeRealmRoles?: (
+      keycloakSubject: string,
+      roleNames: readonly string[]
+    ) => Promise<void>;
     readonly syncRoles: (keycloakSubject: string, roleNames: string[]) => Promise<void>;
   };
 };
@@ -52,6 +58,7 @@ export type UpdateUserPayloadShape = {
   readonly mainserverUserApplicationId?: string;
   readonly mainserverUserApplicationSecret?: string;
   readonly status?: 'active' | 'inactive' | 'pending';
+  readonly isTechnicalAccount?: boolean;
 };
 
 export type UserUpdatePlanShape = {
@@ -59,6 +66,7 @@ export type UserUpdatePlanShape = {
     readonly keycloakSubject: string;
     readonly mainserverUserApplicationId?: string;
     readonly mainserverUserApplicationSecretSet?: boolean;
+    readonly isTechnicalAccount: boolean;
     readonly roles?: readonly { readonly roleId: string }[];
     readonly groups?: readonly { readonly groupId: string }[];
   };
@@ -135,6 +143,7 @@ export type UpdateUserHandlerDeps<
     readonly keycloakSubject: string;
     readonly existingRoleIds?: readonly string[];
     readonly existingGroupIds?: readonly string[];
+    readonly existingIsTechnicalAccount?: boolean;
     readonly payload: TPayload;
     readonly existingMainserverCredentialState?: UserMainserverCredentialStateShape;
     readonly nextMainserverCredentialState: TIdentityState['nextMainserverCredentialState'];
@@ -186,7 +195,9 @@ const resolveTechnicalRoleDelta = (input: {
   readonly addedRoleNames: readonly string[];
   readonly removedRoleNames: readonly string[];
 } => {
-  const previousRoleNames = new Set(filterTenantTechnicalKeycloakRoleNames(input.previousRoleNames));
+  const previousRoleNames = new Set(
+    filterTenantTechnicalKeycloakRoleNames(input.previousRoleNames)
+  );
   const nextRoleNames = new Set(filterTenantTechnicalKeycloakRoleNames(input.nextRoleNames));
 
   return {
@@ -483,6 +494,7 @@ const executeUserUpdate = async <
       keycloakSubject: plan.existing.keycloakSubject,
       existingRoleIds: plan.existing.roles?.map((role) => role.roleId),
       existingGroupIds: plan.existing.groups?.map((group) => group.groupId),
+      existingIsTechnicalAccount: plan.existing.isTechnicalAccount,
       payload: input.payload,
       existingMainserverCredentialState: resolveExistingMainserverCredentialState(plan.existing),
       nextMainserverCredentialState: resolvedIdentityState.nextMainserverCredentialState,

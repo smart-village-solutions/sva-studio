@@ -21,6 +21,7 @@ const UPDATED_USER_ACTIVITY_FIELD_NAMES = {
   notes: 'notes',
   roleIds: 'roles',
   groupIds: 'groups',
+  isTechnicalAccount: 'is_technical_account',
 } satisfies Record<keyof UpdateUserPersistencePayload, string>;
 
 const toSortedUniqueIds = (values: readonly string[] | undefined): readonly string[] | undefined =>
@@ -62,6 +63,7 @@ export const buildUpdatedUserActivityPayload = (input: {
   readonly payload: UpdateUserPersistencePayload;
   readonly existingRoleIds?: readonly string[];
   readonly existingGroupIds?: readonly string[];
+  readonly existingIsTechnicalAccount?: boolean;
 }) => {
   const roleIds = resolveChangedIds(input.payload.roleIds, input.existingRoleIds);
   const groupIds = resolveChangedIds(input.payload.groupIds, input.existingGroupIds);
@@ -79,11 +81,18 @@ export const buildUpdatedUserActivityPayload = (input: {
     next_group_ids: groupIds.next,
     added_group_ids: groupIds.added,
     removed_group_ids: groupIds.removed,
+    previous_is_technical_account:
+      input.payload.isTechnicalAccount === undefined ? undefined : input.existingIsTechnicalAccount,
+    next_is_technical_account: input.payload.isTechnicalAccount,
   };
 };
 
 export const resolveUpdatedUserSessionAction = (status: UpdateUserPersistencePayload['status']) =>
-  status === 'inactive' ? ('revoke' as const) : status === 'active' ? ('clear' as const) : undefined;
+  status === 'inactive'
+    ? ('revoke' as const)
+    : status === 'active'
+      ? ('clear' as const)
+      : undefined;
 
 export const buildPersistedUserDetail = (
   detail: IamUserDetail | undefined,
@@ -103,7 +112,8 @@ export const buildPersistedUserDetail = (
     ? {
         ...detail,
         mainserverUserApplicationId: mainserverCredentialState.mainserverUserApplicationId,
-        mainserverUserApplicationSecretSet: mainserverCredentialState.mainserverUserApplicationSecretSet,
+        mainserverUserApplicationSecretSet:
+          mainserverCredentialState.mainserverUserApplicationSecretSet,
       }
     : detail;
 };

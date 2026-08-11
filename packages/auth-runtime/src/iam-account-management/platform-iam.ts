@@ -35,7 +35,10 @@ const matchesUserFilters = (
   if (filters.status && user.status !== filters.status) {
     return false;
   }
-  if (filters.role && !user.roles.some((role) => role.roleKey === filters.role || role.roleName === filters.role)) {
+  if (
+    filters.role &&
+    !user.roles.some((role) => role.roleKey === filters.role || role.roleName === filters.role)
+  ) {
     return false;
   }
   if (!filters.search) {
@@ -92,7 +95,10 @@ const countPlatformUsers = async (
     return null;
   }
 
-  return trackKeycloakCall('count_platform_users', () => provider.countUsers?.(query) ?? Promise.resolve(null));
+  return trackKeycloakCall(
+    'count_platform_users',
+    () => provider.countUsers?.(query) ?? Promise.resolve(null)
+  );
 };
 
 const mapPlatformUser = (
@@ -104,30 +110,35 @@ const mapPlatformUser = (
   displayName: resolveDisplayName(user),
   email: user.email,
   status: mapUserStatus(user),
+  isTechnicalAccount: false,
   mainserverUserApplicationSecretSet: false,
-  roles: [...new Set(roleNames.filter((roleName) => PLATFORM_PROFILE_ROLES.has(roleName)))].map((roleName) => ({
-    roleId: `platform:${roleName}`,
-    roleKey: roleName,
-    roleName,
-    roleLevel: PLATFORM_ROLE_LEVEL_BY_NAME[roleName] ?? 0,
-  })),
+  roles: [...new Set(roleNames.filter((roleName) => PLATFORM_PROFILE_ROLES.has(roleName)))].map(
+    (roleName) => ({
+      roleId: `platform:${roleName}`,
+      roleKey: roleName,
+      roleName,
+      roleLevel: PLATFORM_ROLE_LEVEL_BY_NAME[roleName] ?? 0,
+    })
+  ),
 });
 
-const resolvePlatformUserRoleNames = async (
-  input: {
-    readonly users: readonly IdentityListedUser[];
-    readonly provider: {
-      readonly listUserRoleNames: (externalId: string) => Promise<readonly string[]>;
-    };
-    readonly requestId?: string;
-    readonly traceId?: string;
-  }
-): Promise<ReadonlyMap<string, readonly string[]>> => {
+const resolvePlatformUserRoleNames = async (input: {
+  readonly users: readonly IdentityListedUser[];
+  readonly provider: {
+    readonly listUserRoleNames: (externalId: string) => Promise<readonly string[]>;
+  };
+  readonly requestId?: string;
+  readonly traceId?: string;
+}): Promise<ReadonlyMap<string, readonly string[]>> => {
   const roleNamesBySubject = new Map<string, readonly string[]>();
   const workers = Array.from(
     { length: Math.min(PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY, input.users.length) },
     async (_, workerIndex) => {
-      for (let index = workerIndex; index < input.users.length; index += PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY) {
+      for (
+        let index = workerIndex;
+        index < input.users.length;
+        index += PLATFORM_USER_ROLE_PROJECTION_CONCURRENCY
+      ) {
         const user = input.users[index];
         if (!user) {
           continue;
@@ -235,7 +246,9 @@ export const listPlatformUsers = async (input: {
     .sort((left, right) => left.displayName.localeCompare(right.displayName, 'de'));
 
   const searchedSubjects = new Set(projectedUsersWithoutRoles.map((user) => user.keycloakSubject));
-  const roleProjectionCandidates = listedUsers.filter((user) => searchedSubjects.has(user.externalId));
+  const roleProjectionCandidates = listedUsers.filter((user) =>
+    searchedSubjects.has(user.externalId)
+  );
   const roleNamesBySubject = await resolvePlatformUserRoleNames({
     users: roleProjectionCandidates,
     provider: identityProvider.provider,

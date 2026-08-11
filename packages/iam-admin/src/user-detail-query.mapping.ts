@@ -1,7 +1,4 @@
-import type {
-  IamUserDetail,
-  IamUserPermissionTraceItem,
-} from '@sva/core';
+import type { IamUserDetail, IamUserPermissionTraceItem } from '@sva/core';
 
 import { revealField } from './encryption.js';
 import { mapUserRowToListItem } from './user-mapping.js';
@@ -40,7 +37,9 @@ const mapGroupRows = (groupRows: UserDetailGroupRow[] | null) =>
     validTo: entry.valid_to ?? undefined,
   })) ?? [];
 
-const mapOrganizationMembershipRows = (organizationMembershipRows: UserDetailOrganizationMembershipRow[] | null) =>
+const mapOrganizationMembershipRows = (
+  organizationMembershipRows: UserDetailOrganizationMembershipRow[] | null
+) =>
   organizationMembershipRows?.map((entry) => ({
     organizationId: entry.organization_id,
     organizationKey: entry.organization_key,
@@ -118,6 +117,7 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
     position: row.position,
     department: row.department,
     status: row.status,
+    is_technical_account: row.is_technical_account,
     last_login_at: row.last_login_at,
     roles: mapRoleRows(row.role_rows),
   });
@@ -125,8 +125,14 @@ export const mapUserDetailRow = (row: UserDetailRow): IamUserDetail => {
   return {
     ...base,
     username: revealField(row.username_ciphertext, `iam.accounts.username:${row.keycloak_subject}`),
-    firstName: revealField(row.first_name_ciphertext, `iam.accounts.first_name:${row.keycloak_subject}`),
-    lastName: revealField(row.last_name_ciphertext, `iam.accounts.last_name:${row.keycloak_subject}`),
+    firstName: revealField(
+      row.first_name_ciphertext,
+      `iam.accounts.first_name:${row.keycloak_subject}`
+    ),
+    lastName: revealField(
+      row.last_name_ciphertext,
+      `iam.accounts.last_name:${row.keycloak_subject}`
+    ),
     phone: revealField(row.phone_ciphertext, `iam.accounts.phone:${row.keycloak_subject}`),
     preferredLanguage: row.preferred_language ?? undefined,
     timezone: row.timezone ?? undefined,

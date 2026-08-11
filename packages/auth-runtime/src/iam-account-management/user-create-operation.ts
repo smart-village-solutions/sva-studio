@@ -90,7 +90,7 @@ const syncUserRolesIfNeeded = async (input: {
   );
 };
 
-const persistProvisionedMainserverCredentials = async (input: {
+export const persistProvisionedMainserverCredentials = async (input: {
   identityProvider: IdentityProviderResolution;
   keycloakSubject: string;
   credentials: NonNullable<Awaited<ReturnType<typeof provisionMainserverUserCredentials>>>;
@@ -206,9 +206,12 @@ const deactivateCreatedExternalUser = async (input: {
   actor: CreateUserActorInfo;
   createdExternalId: string;
 }) => {
-  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(input.actor.instanceId, {
-    executionMode: 'tenant_admin',
-  });
+  const fallbackIdentityProvider = await resolveIdentityProviderForInstance(
+    input.actor.instanceId,
+    {
+      executionMode: 'tenant_admin',
+    }
+  );
   if (!fallbackIdentityProvider) {
     return;
   }

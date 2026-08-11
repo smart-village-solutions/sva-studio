@@ -9,6 +9,7 @@ import {
   sortFieldByColumnId,
   type useFractionBulkActions,
   type useFractionTableLabels,
+  type useFractionSortingLabels,
   WasteFractionsFilterAction,
   type WasteFractionsContentProps,
 } from './waste-management.master-data-fractions-content.parts.js';
@@ -21,10 +22,8 @@ type WasteMasterDataFractionsTableSectionProps = {
   readonly pageSize: number;
   readonly pageCount: number;
   readonly totalItems: number;
-  readonly sorting: {
-    readonly id: string;
-    readonly desc: boolean;
-  }[];
+  readonly sorting: { id: string; desc: boolean }[];
+  readonly sortingLabels: ReturnType<typeof useFractionSortingLabels>;
   readonly labels: ReturnType<typeof useFractionTableLabels>;
   readonly bulkActions: ReturnType<typeof useFractionBulkActions>;
   readonly columns: ReturnType<typeof useFractionColumns>;
@@ -80,6 +79,7 @@ export const WasteMasterDataFractionsTableSection = ({
   pageCount,
   totalItems,
   sorting,
+  sortingLabels,
   labels,
   bulkActions,
   columns,
@@ -125,10 +125,14 @@ export const WasteMasterDataFractionsTableSection = ({
         toolbarEnd={<FractionPrimaryAction onOpenCreateFraction={onOpenCreateFraction} />}
         selectionMode="multiple"
         emptyState={<p className="text-sm text-muted-foreground">{pt('masterData.messages.emptyBody')}</p>}
-        sorting={sorting}
-        onSortingChange={(nextSorting) => {
-          const [sortBy, sortDirection] = resolveNextFractionSorting(nextSorting);
-          onFractionsSortChange(sortBy, sortDirection);
+        sorting={{
+          mode: 'external',
+          labels: sortingLabels,
+          state: sorting,
+          onChange: (nextSorting) => {
+            const [sortBy, sortDirection] = resolveNextFractionSorting(nextSorting);
+            onFractionsSortChange(sortBy, sortDirection);
+          },
         }}
         rowActions={(fraction) => renderFractionRowActions(fraction, onOpenEditFraction, onRequestDeleteFraction)}
       />

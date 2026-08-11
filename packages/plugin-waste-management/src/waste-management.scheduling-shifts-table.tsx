@@ -81,6 +81,7 @@ export const WasteSchedulingShiftsTable = ({
   return (
     <div className="[&>div]:rounded-none [&>div]:border-x-0">
       <StudioDataTable
+        sorting={{ mode: 'disabled' }}
         ariaLabel={pt('scheduling.table.ariaLabel')}
         caption={pt('scheduling.table.caption')}
         labels={labels}

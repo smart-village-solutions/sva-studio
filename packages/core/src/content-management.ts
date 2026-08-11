@@ -9,7 +9,7 @@ export const iamContentStatuses = [
   'published',
   'archived',
 ] as const;
-export const iamContentListSortFields = ['title', 'contentType', 'status', 'updatedAt'] as const;
+export const iamContentListSortFields = ['title', 'createdAt', 'updatedAt', 'publishedAt'] as const;
 export const iamContentListSortDirections = ['asc', 'desc'] as const;
 export const iamContentValidationStates = ['valid', 'invalid', 'pending'] as const;
 export const iamContentPrimitiveActions = [

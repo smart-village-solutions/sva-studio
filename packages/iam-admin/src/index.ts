@@ -331,6 +331,7 @@ export {
   mapMembershipRow,
   mapOrganizationListItem,
   readOrganizationTypeFilter,
+  readOrganizationListSort,
   readStatusFilter,
   rebuildOrganizationSubtree,
   resolveHierarchyFields,
@@ -338,6 +339,8 @@ export {
   type HierarchyResolution,
   type MembershipRow,
   type OrganizationRow,
+  type OrganizationListSortDirection,
+  type OrganizationListSortField,
 } from './organization-query.js';
 
 export {

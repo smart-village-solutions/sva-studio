@@ -125,12 +125,16 @@ describe('useOrganizations', () => {
       result.current.setSearch('alpha');
       result.current.setOrganizationType('municipality');
       result.current.setStatus('inactive');
+      result.current.setSorting('membershipCount', 'desc');
       result.current.setPage(0);
     });
 
     expect(result.current.filters.search).toBe('alpha');
     expect(result.current.filters.organizationType).toBe('municipality');
     expect(result.current.filters.status).toBe('inactive');
+    expect(result.current.filters.sortBy).toBe('membershipCount');
+    expect(result.current.filters.sortDirection).toBe('desc');
+    expect(result.current.filters.page).toBe(1);
     expect(result.current.page).toBe(1);
 
     unmount();

@@ -12,7 +12,7 @@ import {
   Select,
   type StudioBulkAction,
   type StudioDataTableLabels,
-  type StudioDataTableProps,
+  type StudioDataTableSorting,
 } from '@sva/studio-ui-react';
 import type {
   WasteManagementFractionSortDirection,
@@ -21,7 +21,7 @@ import type {
 } from './search-params.js';
 export { FractionRowActions } from './waste-management.master-data-fraction-row-actions.js';
 
-type StudioTableSortingState = NonNullable<StudioDataTableProps<WasteFractionRecord>['sorting']>;
+type StudioTableSortingState = Extract<StudioDataTableSorting, { mode: 'external' }>['state'];
 
 export type WasteFractionsContentProps = {
   readonly fractions: readonly WasteFractionRecord[];
@@ -82,6 +82,17 @@ export const useFractionTableLabels = () => {
     selectMobileRow: ({ rowId }) => pt('masterData.fractions.table.selectMobileRow', { rowId }),
   };
   return labels;
+};
+
+export const useFractionSortingLabels = () => {
+  const pt = usePluginTranslation('wasteManagement');
+  return {
+    field: pt('masterData.fractions.table.sortingField'),
+    direction: pt('masterData.fractions.table.sortingDirection'),
+    none: pt('masterData.fractions.table.sortingNone'),
+    ascending: pt('masterData.fractions.table.sortingAscending'),
+    descending: pt('masterData.fractions.table.sortingDescending'),
+  };
 };
 
 export const useFractionBulkActions = ({

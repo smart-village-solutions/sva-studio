@@ -1,7 +1,4 @@
-import type {
-  IamDsrCanonicalStatus,
-  IamDsrCaseListItem,
-} from '@sva/core';
+import type { IamDsrCanonicalStatus, IamDsrCaseListItem } from '@sva/core';
 
 export type PersonColumns = {
   display_name_ciphertext: string | null;
@@ -19,6 +16,8 @@ export type DsrFilters = {
   readonly type?: IamDsrCaseListItem['type'];
   readonly status?: IamDsrCanonicalStatus;
   readonly relatedAccountId?: string;
+  readonly sortBy?: 'createdAt' | 'completedAt';
+  readonly sortDirection?: 'asc' | 'desc';
 };
 
 export type AccountSnapshotRow = {

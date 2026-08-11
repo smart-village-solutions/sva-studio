@@ -363,3 +363,9 @@ Referenzen:
 - Schlanke und Legacy-GenericItem-Projektionen müssen bekannte wie unbekannte `genericType`-Werte vollständig und mit identischer Typmenge abbilden.
 - Tests müssen die getrennte Autorisierung fachlicher und generischer Pfade sowie die mögliche Mehrfachdarstellung bei kombinierten Rechten absichern.
 - Reguläre Live-Rollen sollen keine `generic-items.*`-Actions erhalten, weil der technische Vollzugriff fachliche Validierungen bewusst umgehen kann.
+
+### Ergänzung 2026-08: Qualitätsziele globaler Tabellensortierung
+
+- Komponenten- und Accessibility-Tests sichern explizite Sortiermodi, unveränderte externe Seitenreihenfolge, Desktop- und Mobilbedienung sowie den externen Zweierzyklus ab.
+- Repository-, Read-Model- und Handler-Tests müssen beide Richtungen, fehlende Werte zuletzt, ID-Gleichstandsauflösung, mindestens zwei Seiten und ungültige direkte API-Parameter abdecken.
+- UI-Tests belegen sichtbare Defaults, Seitenreset, Gesamtzahl und Seitengrößen. Type-Gates verhindern Tabellenaufrufer ohne explizite Ownership; Server-Runtime- und OpenSpec-Gates sichern die Paket- beziehungsweise Vertragsgrenzen.

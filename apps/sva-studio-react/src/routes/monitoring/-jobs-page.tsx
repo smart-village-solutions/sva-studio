@@ -287,6 +287,7 @@ export const MonitoringJobsPage = () => {
         </div>
 
         <StudioDataTable
+          sorting={{ mode: 'disabled' }}
           ariaLabel={t('monitoring.jobs.table.ariaLabel')}
           labels={studioDataTableLabels}
           caption={t('monitoring.jobs.table.caption')}

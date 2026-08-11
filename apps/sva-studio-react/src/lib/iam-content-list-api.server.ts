@@ -7,7 +7,11 @@ import {
 } from '@sva/auth-runtime/server';
 import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import { createListErrorResponse, readContentListQuery } from './iam-content-list-api.shared.js';
+import {
+  createListErrorResponse,
+  InvalidContentListQueryError,
+  readContentListQuery,
+} from './iam-content-list-api.shared.js';
 import {
   listProjectedContents,
   refreshProjectedContents,
@@ -78,6 +82,14 @@ const handleProjectedContentList = async (request: Request): Promise<Response> =
     try {
       return await listProjectedContents(ctx, readContentListQuery(request));
     } catch (error) {
+      if (error instanceof InvalidContentListQueryError) {
+        return createListErrorResponse(
+          400,
+          'invalid_request',
+          'Ungültige Sortierparameter.',
+          getWorkspaceContext().requestId
+        );
+      }
       logger.error('Failed to load aggregated content list', {
         request_id: getWorkspaceContext().requestId ?? null,
         instance_id: ctx.user.instanceId ?? null,

@@ -10,6 +10,7 @@ import {
   StudioPersistentFormError,
   StudioSaveButton,
   type StudioColumnDef,
+  type StudioDataTableSortingLabels,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -17,7 +18,10 @@ import React from 'react';
 
 import { StudioFilterSurface } from '../../components/StudioFilterSurface';
 import { StudioSummaryCard } from '../../components/StudioSummaryCard';
-import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -356,14 +360,17 @@ const buildGovernanceColumns = (): readonly StudioColumnDef<IamGovernanceCaseLis
     header: t('admin.iam.governance.columns.createdAt'),
     cell: (item) => formatDateTime(item.createdAt),
     sortable: true,
+    sortLabel: t('admin.iam.governance.columns.createdAt'),
     sortValue: (item) => item.createdAt,
   },
   {
     id: 'updatedAt',
     header: t('admin.iam.governance.columns.updatedAt'),
-    cell: (item) => formatDateTime(item.updatedAt ?? item.resolvedAt),
+    cell: (item) =>
+      item.updatedAt ? formatDateTime(item.updatedAt) : t('admin.iam.shared.notAvailable'),
     sortable: true,
-    sortValue: (item) => item.updatedAt ?? item.resolvedAt ?? item.createdAt,
+    sortLabel: t('admin.iam.governance.columns.updatedAt'),
+    sortValue: (item) => item.updatedAt,
   },
 ];
 
@@ -405,14 +412,17 @@ const buildDsrColumns = (): readonly StudioColumnDef<IamDsrCaseListItem>[] => [
     header: t('admin.iam.dsr.columns.createdAt'),
     cell: (item) => formatDateTime(item.createdAt),
     sortable: true,
+    sortLabel: t('admin.iam.dsr.columns.createdAt'),
     sortValue: (item) => item.createdAt,
   },
   {
     id: 'completedAt',
     header: t('admin.iam.dsr.columns.completedAt'),
-    cell: (item) => formatDateTime(item.completedAt),
+    cell: (item) =>
+      item.completedAt ? formatDateTime(item.completedAt) : t('admin.iam.shared.notAvailable'),
     sortable: true,
-    sortValue: (item) => item.completedAt ?? item.createdAt,
+    sortLabel: t('admin.iam.dsr.columns.completedAt'),
+    sortValue: (item) => item.completedAt,
   },
 ];
 
@@ -792,11 +802,14 @@ const useGovernanceTabState = ({
   cockpitEnabled: boolean;
 }>) => {
   const [items, setItems] = React.useState<readonly IamGovernanceCaseListItem[]>([]);
+  const [total, setTotal] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState<GovernanceCasesQuery>({
     page: 1,
-    pageSize: 12,
+    pageSize: 25,
     search: '',
+    sortBy: 'createdAt',
+    sortDirection: 'desc',
   });
   const [isLoading, setIsLoading] = React.useState(false);
   const requestQuery = React.useMemo(
@@ -828,6 +841,7 @@ const useGovernanceTabState = ({
             return;
           }
           setItems(response.data);
+          setTotal(response.pagination.total);
           logBrowserOperationSuccess(
             iamViewerLogger,
             'iam_governance_load_succeeded',
@@ -846,6 +860,7 @@ const useGovernanceTabState = ({
             return;
           }
           setItems([]);
+          setTotal(0);
           setError(nextError instanceof Error ? nextError.message : String(nextError));
           logBrowserOperationFailure(iamViewerLogger, 'iam_governance_load_failed', nextError, {
             operation: 'list_governance_cases',
@@ -876,6 +891,7 @@ const useGovernanceTabState = ({
     query,
     setQuery,
     statusOptions,
+    total,
   };
 };
 
@@ -891,11 +907,14 @@ const useDsrTabState = ({
   cockpitEnabled: boolean;
 }>) => {
   const [items, setItems] = React.useState<readonly IamDsrCaseListItem[]>([]);
+  const [total, setTotal] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState<DsrAdminCasesQuery>({
     page: 1,
-    pageSize: 12,
+    pageSize: 25,
     search: '',
+    sortBy: 'createdAt',
+    sortDirection: 'desc',
   });
   const [isLoading, setIsLoading] = React.useState(false);
   const requestQuery = React.useMemo(
@@ -927,6 +946,7 @@ const useDsrTabState = ({
             return;
           }
           setItems(response.data);
+          setTotal(response.pagination.total);
           logBrowserOperationSuccess(
             iamViewerLogger,
             'iam_dsr_load_succeeded',
@@ -945,6 +965,7 @@ const useDsrTabState = ({
             return;
           }
           setItems([]);
+          setTotal(0);
           setError(nextError instanceof Error ? nextError.message : String(nextError));
           logBrowserOperationFailure(iamViewerLogger, 'iam_dsr_load_failed', nextError, {
             operation: 'list_admin_dsr_cases',
@@ -969,6 +990,7 @@ const useDsrTabState = ({
     items,
     query,
     setQuery,
+    total,
   };
 };
 
@@ -1340,6 +1362,66 @@ const RightsTabPanel = ({
   </div>
 );
 
+const IamCasePaginationFooter = ({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+  onPageSizeChange,
+}: Readonly<{
+  page: number;
+  pageSize: number;
+  total: number;
+  onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}>) => {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return (
+    <nav
+      aria-label={t('admin.iam.shared.pagination.ariaLabel')}
+      className="flex flex-col gap-3 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <span role="status" aria-live="polite">
+          {t('admin.iam.shared.pagination.results', { count: total })}
+        </span>
+        <Label htmlFor="iam-case-page-size">{t('admin.iam.shared.pagination.pageSize')}</Label>
+        <Select
+          id="iam-case-page-size"
+          value={String(pageSize)}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        >
+          {[25, 50, 100].map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </Select>
+      </div>
+      <div className="flex items-center gap-2">
+        <span>{t('admin.iam.shared.pagination.page', { page, totalPages })}</span>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          {t('admin.iam.shared.pagination.previous')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+        >
+          {t('admin.iam.shared.pagination.next')}
+        </Button>
+      </div>
+    </nav>
+  );
+};
+
 const GovernanceTabPanel = ({
   canExportGovernanceCompliance,
   instanceId,
@@ -1348,6 +1430,7 @@ const GovernanceTabPanel = ({
   state,
   columns,
   labels,
+  sortingLabels,
 }: Readonly<{
   canExportGovernanceCompliance: boolean;
   instanceId: string;
@@ -1356,6 +1439,7 @@ const GovernanceTabPanel = ({
   state: ReturnType<typeof useGovernanceTabState>;
   columns: readonly StudioColumnDef<IamGovernanceCaseListItem>[];
   labels: ReturnType<typeof createStudioDataTableLabels>;
+  sortingLabels: StudioDataTableSortingLabels;
 }>) => (
   <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="space-y-4">
     <StudioFilterSurface className="grid gap-3">
@@ -1434,6 +1518,21 @@ const GovernanceTabPanel = ({
     <StudioDataTable
       ariaLabel={t('admin.iam.governance.tableAriaLabel')}
       labels={labels}
+      sorting={{
+        mode: 'external',
+        labels: sortingLabels,
+        state: [{ id: state.query.sortBy, desc: state.query.sortDirection === 'desc' }],
+        onChange: ([nextSort]) => {
+          if (nextSort) {
+            state.setQuery((current) => ({
+              ...current,
+              page: 1,
+              sortBy: nextSort.id as GovernanceCasesQuery['sortBy'],
+              sortDirection: nextSort.desc ? 'desc' : 'asc',
+            }));
+          }
+        },
+      }}
       caption={t('admin.iam.governance.tableCaption')}
       data={state.items}
       columns={columns}
@@ -1443,6 +1542,17 @@ const GovernanceTabPanel = ({
       loadingState={t('admin.iam.governance.messages.loading')}
       emptyState={
         <p className="text-sm text-muted-foreground">{t('admin.iam.governance.messages.empty')}</p>
+      }
+      footer={
+        <IamCasePaginationFooter
+          page={state.query.page}
+          pageSize={state.query.pageSize}
+          total={state.total}
+          onPageChange={(page) => state.setQuery((current) => ({ ...current, page }))}
+          onPageSizeChange={(pageSize) =>
+            state.setQuery((current) => ({ ...current, page: 1, pageSize }))
+          }
+        />
       }
     />
   </div>
@@ -1454,12 +1564,14 @@ const DsrTabPanel = ({
   state,
   columns,
   labels,
+  sortingLabels,
 }: Readonly<{
   panelId: string;
   labelledBy: string;
   state: ReturnType<typeof useDsrTabState>;
   columns: readonly StudioColumnDef<IamDsrCaseListItem>[];
   labels: ReturnType<typeof createStudioDataTableLabels>;
+  sortingLabels: StudioDataTableSortingLabels;
 }>) => (
   <div id={panelId} role="tabpanel" aria-labelledby={labelledBy} className="space-y-4">
     <StudioFilterSurface className="grid gap-3 md:grid-cols-3">
@@ -1524,6 +1636,21 @@ const DsrTabPanel = ({
     <StudioDataTable
       ariaLabel={t('admin.iam.dsr.tableAriaLabel')}
       labels={labels}
+      sorting={{
+        mode: 'external',
+        labels: sortingLabels,
+        state: [{ id: state.query.sortBy, desc: state.query.sortDirection === 'desc' }],
+        onChange: ([nextSort]) => {
+          if (nextSort) {
+            state.setQuery((current) => ({
+              ...current,
+              page: 1,
+              sortBy: nextSort.id as DsrAdminCasesQuery['sortBy'],
+              sortDirection: nextSort.desc ? 'desc' : 'asc',
+            }));
+          }
+        },
+      }}
       caption={t('admin.iam.dsr.tableCaption')}
       data={state.items}
       columns={columns}
@@ -1533,6 +1660,17 @@ const DsrTabPanel = ({
       loadingState={t('admin.iam.dsr.messages.loading')}
       emptyState={
         <p className="text-sm text-muted-foreground">{t('admin.iam.dsr.messages.empty')}</p>
+      }
+      footer={
+        <IamCasePaginationFooter
+          page={state.query.page}
+          pageSize={state.query.pageSize}
+          total={state.total}
+          onPageChange={(page) => state.setQuery((current) => ({ ...current, page }))}
+          onPageSizeChange={(pageSize) =>
+            state.setQuery((current) => ({ ...current, page: 1, pageSize }))
+          }
+        />
       }
     />
   </div>
@@ -1704,6 +1842,10 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
   const canExportGovernanceCompliance = hasGovernanceComplianceExportRole(user);
   const allowedTabs = React.useMemo(() => getAllowedIamCockpitTabs(user), [user]);
   const studioDataTableLabels = React.useMemo(() => createStudioDataTableLabels(), []);
+  const studioDataTableSortingLabels = React.useMemo(
+    () => createStudioDataTableSortingLabels(),
+    []
+  );
   const { handleTabKeyDown, navigateToTab, tabButtonRefs } = useIamTabNavigation(
     activeTab,
     allowedTabs
@@ -1822,6 +1964,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           state={governanceTabState}
           columns={governanceColumns}
           labels={studioDataTableLabels}
+          sortingLabels={studioDataTableSortingLabels}
         />
       ) : null}
 
@@ -1832,6 +1975,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
           state={dsrTabState}
           columns={dsrColumns}
           labels={studioDataTableLabels}
+          sortingLabels={studioDataTableSortingLabels}
         />
       ) : null}
 

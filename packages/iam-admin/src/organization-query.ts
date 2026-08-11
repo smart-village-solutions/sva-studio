@@ -173,6 +173,36 @@ export const readOrganizationTypeFilter = (request: Request): IamOrganizationTyp
     : 'invalid';
 };
 
+export const ORGANIZATION_LIST_SORT_FIELDS = [
+  'displayName',
+  'parentDisplayName',
+  'childCount',
+  'membershipCount',
+  'isActive',
+] as const;
+export type OrganizationListSortField = (typeof ORGANIZATION_LIST_SORT_FIELDS)[number];
+export type OrganizationListSortDirection = 'asc' | 'desc';
+
+export const readOrganizationListSort = (
+  request: Request
+):
+  | { readonly sortBy: OrganizationListSortField; readonly sortDirection: OrganizationListSortDirection }
+  | 'invalid' => {
+  const url = new URL(request.url);
+  const sortBy = readString(url.searchParams.get('sortBy')) ?? 'displayName';
+  const sortDirection = readString(url.searchParams.get('sortDirection')) ?? 'asc';
+  if (
+    !(ORGANIZATION_LIST_SORT_FIELDS as readonly string[]).includes(sortBy) ||
+    (sortDirection !== 'asc' && sortDirection !== 'desc')
+  ) {
+    return 'invalid';
+  }
+  return {
+    sortBy: sortBy as OrganizationListSortField,
+    sortDirection,
+  };
+};
+
 export const escapeIlikePattern = (value: string): string =>
   value.replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_');
 
@@ -250,11 +280,22 @@ export const loadOrganizationList = async (
     readonly search?: string;
     readonly organizationType?: IamOrganizationType;
     readonly isActive?: boolean;
+    readonly sortBy: OrganizationListSortField;
+    readonly sortDirection: OrganizationListSortDirection;
   }
 ): Promise<{ readonly items: readonly IamOrganizationListItem[]; readonly total: number }> => {
   const offset = (input.page - 1) * input.pageSize;
   const searchPattern = input.search ? `%${escapeIlikePattern(input.search)}%` : null;
   const filterParams = [input.instanceId, searchPattern, input.organizationType ?? null, input.isActive ?? null] as const;
+  const sortExpressionByField = {
+    displayName: 'LOWER(organization.display_name) COLLATE "C"',
+    parentDisplayName: 'LOWER(parent.display_name) COLLATE "C"',
+    childCount: 'COALESCE(child_counts.child_count, 0)',
+    membershipCount: 'COALESCE(membership_counts.membership_count, 0)',
+    isActive: 'organization.is_active',
+  } as const satisfies Record<OrganizationListSortField, string>;
+  const sortExpression = sortExpressionByField[input.sortBy];
+  const sortDirection = input.sortDirection === 'asc' ? 'ASC' : 'DESC';
   const totalResult = await client.query<{ readonly total: number }>(
     `
 SELECT COUNT(*)::int AS total
@@ -298,7 +339,7 @@ LEFT JOIN child_counts
 LEFT JOIN membership_counts
   ON membership_counts.organization_id = organization.id
 ${ORGANIZATION_LIST_FILTER_SQL}
-ORDER BY organization.depth ASC, organization.display_name ASC
+ORDER BY (${sortExpression} IS NULL) ASC, ${sortExpression} ${sortDirection}, organization.id ASC
 LIMIT $5::int OFFSET $6::int;
 `,
     [...filterParams, input.pageSize, offset]

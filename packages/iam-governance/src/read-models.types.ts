@@ -9,6 +9,8 @@ export type GovernanceFilters = {
   readonly relatedAccountId?: string;
   readonly page: number;
   readonly pageSize: number;
+  readonly sortBy?: 'createdAt' | 'updatedAt';
+  readonly sortDirection?: 'asc' | 'desc';
 };
 
 export type PermissionChangeRow = {

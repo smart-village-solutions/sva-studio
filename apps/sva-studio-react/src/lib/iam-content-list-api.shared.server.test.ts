@@ -41,7 +41,7 @@ describe('iam content list api shared helpers', () => {
     });
   });
 
-  it('falls back for invalid query, error, and content type values', async () => {
+  it('accepts every supported sort field and handles error and content type values', async () => {
     expect(
       readContentListQuery(
         new Request('https://studio.test/api/content?page=abc&pageSize=-5&type=plugin.custom&status=deleted&sortBy=createdAt')
@@ -50,13 +50,19 @@ describe('iam content list api shared helpers', () => {
       page: 1,
       pageSize: 1,
       type: 'plugin.custom',
-      sortBy: 'updatedAt',
+      sortBy: 'createdAt',
       sortDirection: 'desc',
     });
     expect(normalizeApiErrorCode('forbidden')).toBe('forbidden');
     expect(normalizeApiErrorCode('unknown')).toBe('internal_error');
     expect(isMainserverContentType('events.event-record')).toBe(true);
     expect(isMainserverContentType('plugin.custom')).toBe(false);
+    expect(() =>
+      readContentListQuery(new Request('https://studio.test/api/content?sortBy=status'))
+    ).toThrow('invalid_content_list_query');
+    expect(() =>
+      readContentListQuery(new Request('https://studio.test/api/content?sortDirection=sideways'))
+    ).toThrow('invalid_content_list_query');
 
     const response = createListErrorResponse(429, 'rate_limited', 'Zu viele Anfragen', 'req-1');
     await expect(response.json()).resolves.toEqual({

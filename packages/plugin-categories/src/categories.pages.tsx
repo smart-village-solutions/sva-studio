@@ -209,6 +209,7 @@ const CategoriesPageContent = ({
     <div className="space-y-4">
       <p className="text-xs text-muted-foreground">{pt('messages.actionsHint')}</p>
       <StudioDataTable
+        sorting={{ mode: 'disabled' }}
         ariaLabel={pt('table.ariaLabel')}
         caption={pt('table.caption')}
         labels={tableLabels}

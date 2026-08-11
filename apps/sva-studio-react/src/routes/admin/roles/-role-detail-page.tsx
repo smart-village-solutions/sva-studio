@@ -22,7 +22,10 @@ import {
   CardHeader,
   CardTitle,
 } from '../../../components/ui/card';
-import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../../components/studio-data-table-labels';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -262,6 +265,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const usersApi = useUsers({ page: 1, pageSize: 100 });
   const navigate = useNavigate();
   const studioDataTableLabels = createStudioDataTableLabels();
+  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const visibleRoles = React.useMemo(
     () => rolesApi.roles.filter((entry) => isTenantRoleVisible(entry)),
     [rolesApi.roles]
@@ -403,6 +407,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           </Label>
         ),
         sortable: true,
+        sortLabel: t('admin.roles.detail.permissions.table.columns.assignment'),
         sortValue: (permission) => (permission.isAssigned ? '0' : '1'),
         className: 'align-middle',
       },
@@ -416,6 +421,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('admin.roles.detail.permissions.table.columns.permission'),
         sortValue: (permission) => permission.detailLabel.toLowerCase(),
       },
       {
@@ -423,6 +429,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         header: t('admin.roles.detail.permissions.table.columns.resource'),
         cell: (permission) => permission.resourceLabel,
         sortable: true,
+        sortLabel: t('admin.roles.detail.permissions.table.columns.resource'),
         sortValue: (permission) => permission.resourceLabel.toLowerCase(),
       },
       {
@@ -430,6 +437,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         header: t('admin.roles.detail.permissions.table.columns.action'),
         cell: (permission) => permission.actionLabel,
         sortable: true,
+        sortLabel: t('admin.roles.detail.permissions.table.columns.action'),
         sortValue: (permission) => permission.actionLabel.toLowerCase(),
       },
       {
@@ -460,6 +468,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             </span>
           ),
         sortable: true,
+        sortLabel: t('admin.iam.rights.columns.scope'),
         sortValue: (permission) => permission.accessScope,
       },
       ...(showTechnicalDetails
@@ -473,6 +482,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 </code>
               ),
               sortable: true,
+              sortLabel: t('admin.roles.detail.permissions.table.columns.technicalKey'),
               sortValue: (permission) => permission.permissionKey.toLowerCase(),
               className: 'align-middle',
             },
@@ -1054,6 +1064,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               caption={t('admin.roles.detail.permissions.table.caption')}
               data={filteredPermissionTableRows}
               columns={permissionTableColumns}
+              sorting={{ mode: 'client', labels: studioDataTableSortingLabels }}
               getRowId={(permission) => permission.id}
               selectionMode="none"
               emptyState={

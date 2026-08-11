@@ -42,6 +42,7 @@ const FaqLanguageFilter = ({
 
 const FaqTable = ({ pt, result }: Readonly<{ pt: Translator; result: FaqListResult }>) => (
   <StudioDataTable
+    sorting={{ mode: 'disabled' }}
     ariaLabel={pt('list.title')}
     data={result.data}
     columns={[

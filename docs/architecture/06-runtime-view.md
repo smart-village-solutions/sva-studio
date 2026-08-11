@@ -1007,3 +1007,10 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 4. Read-Merge-Write, Provider-Mutation sowie ein Status- oder Visibility-Zweitschritt verwenden denselben Kontext. Hard Delete besitzt bewusst keinen Post-Read.
 5. Im Standardmodus `shadow` wird die exakte Scope-Entscheidung nur als Kandidat persistiert und der credential-sichtbare Vertrag erzwungen. `automatic` erzwingt konfliktfreie Bindungen; `compatibility` stellt den rollbackfähigen Übergangsvertrag wieder her.
 6. Ein Provider-Erfolg wird im Journal finalisiert und danach in Projection, Audit und genau einen host-owned History-Eintrag mit `coverage = studio_mutations` überführt. Lokale Folgefehler führen zu Reconciliation und ändern den Provider-Erfolg nicht.
+
+### Szenario 17: Global sortierte Tabellenabfrage
+
+1. Die Runtime bestimmt zuerst Tenant-, Berechtigungs- und Sichtbarkeitsumfang und validiert Sortierfeld sowie Richtung gegen eine feste Allowlist.
+2. Such- und Fachfilter werden auf die vollständige erlaubte Menge angewandt; danach folgen fehlende Werte zuletzt, fachlicher Sortierwert und eindeutige ID aufsteigend als letzter Gleichstandsauflöser.
+3. Erst die so bestimmte Reihenfolge wird per Offset oder Seitenschnitt paginiert und zusammen mit der Gesamtzahl an die UI geliefert.
+4. Sortier-, Filter- und Seitengrößenwechsel setzen die kontrollierte Seite atomar auf eins. Die Tabelle rendert die empfangene Seite unverändert und führt kein zweites lokales Sortiermodell aus.

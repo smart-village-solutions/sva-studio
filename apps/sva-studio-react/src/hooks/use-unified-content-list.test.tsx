@@ -251,7 +251,7 @@ describe('useUnifiedContentList', () => {
 
     await waitForLoaded(result);
 
-    expect(result.current.contents.map((item) => item.id)).toEqual(['news-2', 'generic-1']);
+    expect(result.current.contents.map((item) => item.id)).toEqual(['generic-1', 'news-2']);
     expect(listNewsMock).toHaveBeenCalledTimes(1);
     expect(listEventsMock).toHaveBeenCalledTimes(1);
     expect(listGenericItemsMock).toHaveBeenCalledTimes(1);
@@ -556,12 +556,12 @@ describe('useUnifiedContentList', () => {
     expect(listPoiMock).toHaveBeenCalledTimes(2);
   });
 
-  it('sorts by content type and exposes normalized fetch errors', async () => {
+  it('sorts by creation time and exposes normalized fetch errors', async () => {
     const visibleTypes = ['news.article', 'events.event-record'] as const;
     const query = {
       page: 1,
       pageSize: 25,
-      sortBy: 'contentType',
+      sortBy: 'createdAt',
       sortDirection: 'asc',
       visibleTypes,
     } as const;

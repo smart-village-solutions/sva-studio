@@ -71,6 +71,15 @@ export const iamAdminDEResources = {
   },
   shared: {
     all: 'Alle',
+    notAvailable: 'Nicht verfügbar',
+    pagination: {
+      ariaLabel: 'Seitennavigation',
+      results: '{{count}} Einträge',
+      pageSize: 'Einträge pro Seite',
+      page: 'Seite {{page}} von {{totalPages}}',
+      previous: 'Zurück',
+      next: 'Weiter',
+    },
     createdAt: 'Erstellt: {{value}}',
     type: 'Typ: {{value}}',
     ticket: 'Ticket: {{value}}',

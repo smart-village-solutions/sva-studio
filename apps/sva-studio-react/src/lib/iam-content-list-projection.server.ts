@@ -322,10 +322,21 @@ const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   historyRef: row.history_ref,
 });
 
-const projectionListCollator = new Intl.Collator('de', {
-  sensitivity: 'base',
-  numeric: true,
-});
+const compareNormalizedProjectionText = (left: string, right: string): number => {
+  const normalizedLeft = left.toLocaleLowerCase('en-US');
+  const normalizedRight = right.toLocaleLowerCase('en-US');
+  return normalizedLeft < normalizedRight ? -1 : normalizedLeft > normalizedRight ? 1 : 0;
+};
+
+const compareOptionalProjectionValues = (
+  left: string | null,
+  right: string | null,
+  direction: 1 | -1
+): number => {
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return compareNormalizedProjectionText(left, right) * direction;
+};
 
 const resolveProjectionScopePriority = (row: ProjectionRow): number => {
   if (row.organization_id || row.owner_organization_id) {
@@ -359,27 +370,27 @@ const comparePreferredProjectionRows = (left: ProjectionRow, right: ProjectionRo
   return right.id.localeCompare(left.id);
 };
 
-const compareProjectionRows = (
-  left: ProjectionRow,
-  right: ProjectionRow,
+export const compareProjectionRows = (
+  left: Pick<ProjectionRow, 'id' | 'title' | 'created_at' | 'updated_at' | 'published_at'>,
+  right: Pick<ProjectionRow, 'id' | 'title' | 'created_at' | 'updated_at' | 'published_at'>,
   sortBy: IamContentListQuery['sortBy'],
   sortDirection: IamContentListQuery['sortDirection']
 ): number => {
   const direction = sortDirection === 'asc' ? 1 : -1;
 
   const primaryResult =
-    sortBy === 'contentType'
-      ? projectionListCollator.compare(left.content_type, right.content_type)
-      : sortBy === 'title'
-        ? projectionListCollator.compare(left.title, right.title)
-        : sortBy === 'status'
-          ? projectionListCollator.compare(left.status, right.status)
-          : projectionListCollator.compare(left.updated_at, right.updated_at);
+    sortBy === 'title'
+      ? compareNormalizedProjectionText(left.title, right.title) * direction
+      : sortBy === 'createdAt'
+        ? compareNormalizedProjectionText(left.created_at, right.created_at) * direction
+        : sortBy === 'publishedAt'
+          ? compareOptionalProjectionValues(left.published_at, right.published_at, direction)
+          : compareNormalizedProjectionText(left.updated_at, right.updated_at) * direction;
   if (primaryResult !== 0) {
-    return primaryResult * direction;
+    return primaryResult;
   }
 
-  return comparePreferredProjectionRows(left, right);
+  return left.id.localeCompare(right.id);
 };
 
 const buildReadAction = (contentType: string): string =>

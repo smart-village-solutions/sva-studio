@@ -8,7 +8,10 @@ import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
-import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
+import {
+  createStudioDataTableLabels,
+  createStudioDataTableSortingLabels,
+} from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -28,6 +31,7 @@ import {
 
 export const OrganizationsPage = () => {
   const studioDataTableLabels = createStudioDataTableLabels();
+  const studioDataTableSortingLabels = createStudioDataTableSortingLabels();
   const organizationsApi = useOrganizations();
   const access = useIamResourceAccess('organization');
   const canCreateOrganizations = isIamAccessAllowed(access.create);
@@ -73,10 +77,10 @@ export const OrganizationsPage = () => {
   >(
     () => [
       {
-        id: 'organization',
+        id: 'displayName',
         header: t('admin.organizations.table.headerName'),
         cell: (organization) => (
-          <div className="space-y-1" style={{ paddingLeft: `${organization.depth * 12}px` }}>
+          <div className="space-y-1">
             <span className="block font-semibold">{organization.displayName}</span>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span>{organization.organizationKey}</span>
@@ -90,40 +94,41 @@ export const OrganizationsPage = () => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('admin.organizations.table.headerName'),
         sortValue: (organization) => organization.displayName.toLocaleLowerCase(),
       },
       {
         id: 'type',
         header: t('admin.organizations.table.headerType'),
         cell: (organization) => t(getOrganizationTypeTranslationKey(organization.organizationType)),
-        sortable: true,
-        sortValue: (organization) =>
-          t(getOrganizationTypeTranslationKey(organization.organizationType)).toLocaleLowerCase(),
       },
       {
-        id: 'parent',
+        id: 'parentDisplayName',
         header: t('admin.organizations.table.headerParent'),
         cell: (organization) =>
           organization.parentDisplayName ?? t('admin.organizations.messages.root'),
         sortable: true,
+        sortLabel: t('admin.organizations.table.headerParent'),
         sortValue: (organization) => (organization.parentDisplayName ?? '').toLocaleLowerCase(),
       },
       {
-        id: 'children',
+        id: 'childCount',
         header: t('admin.organizations.table.headerChildren'),
         cell: (organization) => String(organization.childCount),
         sortable: true,
+        sortLabel: t('admin.organizations.table.headerChildren'),
         sortValue: (organization) => organization.childCount,
       },
       {
-        id: 'members',
+        id: 'membershipCount',
         header: t('admin.organizations.table.headerMembers'),
         cell: (organization) => String(organization.membershipCount),
         sortable: true,
+        sortLabel: t('admin.organizations.table.headerMembers'),
         sortValue: (organization) => organization.membershipCount,
       },
       {
-        id: 'status',
+        id: 'isActive',
         header: t('admin.organizations.table.headerStatus'),
         cell: (organization) => (
           <div className="flex items-center gap-3">
@@ -147,6 +152,7 @@ export const OrganizationsPage = () => {
           </div>
         ),
         sortable: true,
+        sortLabel: t('admin.organizations.table.headerStatus'),
         sortValue: (organization) => (organization.isActive ? 'active' : 'inactive'),
       },
     ],
@@ -206,6 +212,24 @@ export const OrganizationsPage = () => {
 
         <StudioDataTable
           ariaLabel={t('admin.organizations.table.ariaLabel')}
+          sorting={{
+            mode: 'external',
+            labels: studioDataTableSortingLabels,
+            state: [
+              {
+                id: organizationsApi.filters.sortBy,
+                desc: organizationsApi.filters.sortDirection === 'desc',
+              },
+            ],
+            onChange: ([nextSort]) => {
+              if (nextSort) {
+                organizationsApi.setSorting(
+                  nextSort.id as typeof organizationsApi.filters.sortBy,
+                  nextSort.desc ? 'desc' : 'asc'
+                );
+              }
+            },
+          }}
           labels={studioDataTableLabels}
           caption={t('admin.organizations.table.caption')}
           data={organizationsApi.organizations}

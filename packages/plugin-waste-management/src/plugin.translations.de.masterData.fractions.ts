@@ -22,6 +22,11 @@ export const wasteManagementPluginTranslationsDEMasterDataFractions = {
     selectAllRows: 'Alle Einträge in {{label}} auswählen',
     selectRow: 'Eintrag {{rowId}} auswählen',
     selectMobileRow: 'Eintrag {{rowId}} in Kartenansicht auswählen',
+    sortingField: 'Sortierfeld',
+    sortingDirection: 'Sortierrichtung',
+    sortingNone: 'Keine Sortierung',
+    sortingAscending: 'Aufsteigend',
+    sortingDescending: 'Absteigend',
   },
   actions: {
     openCreate: 'Fraktion anlegen',

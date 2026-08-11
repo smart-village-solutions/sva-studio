@@ -697,3 +697,9 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.
 - Das Mutation-Journal ist technische Reconciliation- und Audit-Evidenz, keine zweite sichtbare History. Abgelehnte oder fehlgeschlagene Mutationen erzeugen keinen History-Erfolg.
+
+### Globale Tabellenordnung und mobile Bedienung
+
+- Paginierte Listen folgen verbindlich `Scope → Filter → deterministische Sortierung → Pagination`. Unbekannte externe Sortierfelder oder Richtungen werden mit `400 invalid_request` abgewiesen; SQL verwendet ausschließlich feste Feldzuordnungen.
+- Fehlende Werte bleiben fachlich fehlend, stehen in beiden Richtungen zuletzt und werden lokalisiert gekennzeichnet. Gleichstände enden immer mit einer eindeutigen Zeilenidentität aufsteigend.
+- Desktop-Sortierköpfe und die mobile Feldauswahl mit Richtungsschalter teilen genau einen kontrollierten Zustand. Externe Sortierung kennt keinen dritten unsortierten Zustand; die vorhandenen A–Z-/Z–A-Symbole bleiben rein visuelle Ergänzung der zugänglichen Labels.

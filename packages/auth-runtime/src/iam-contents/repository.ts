@@ -59,10 +59,10 @@ const hasAuthorDisplayAffectingChange = (
   (input.organizationId !== undefined && input.organizationId !== current.organization_id);
 
 const listSortColumnByField = {
-  title: 'content.title',
-  contentType: 'content.content_type',
-  status: 'content.status',
+  title: 'LOWER(content.title) COLLATE "C"',
+  createdAt: 'content.created_at',
   updatedAt: 'content.updated_at',
+  publishedAt: 'content.published_at',
 } as const satisfies Record<LoadContentListItemsInput['sortBy'], string>;
 
 const buildBaseListQuery = (
@@ -100,7 +100,7 @@ const buildBaseListQuery = (
 
   return {
     whereClause: `WHERE ${conditions.join('\n  AND ')}`,
-    orderByClause: `ORDER BY ${sortColumn} ${sortDirection}, content.updated_at DESC, content.created_at DESC`,
+    orderByClause: `ORDER BY (${sortColumn} IS NULL) ASC, ${sortColumn} ${sortDirection}, content.id ASC`,
     params,
   };
 };

@@ -59,6 +59,17 @@ const tableLabels: StudioDataTableLabels = {
   selectMobileRow: ({ label, rowId }) => `${label} ${rowId} in Kartenansicht auswählen`,
 };
 
+const sortingLabels = {
+  field: 'Sortierfeld',
+  direction: 'Sortierrichtung',
+  none: 'Keine Sortierung',
+  ascending: 'Aufsteigend',
+  descending: 'Absteigend',
+} as const;
+
+const disabledSorting = { mode: 'disabled' } as const;
+const clientSorting = { mode: 'client', labels: sortingLabels } as const;
+
 describe('studio-ui-react primitives', () => {
   afterEach(() => {
     cleanup();
@@ -451,6 +462,7 @@ describe('studio-ui-react primitives', () => {
     render(
       <StudioDataTable
         ariaLabel="News"
+        sorting={clientSorting}
         labels={tableLabels}
         data={data}
         getRowId={(row) => row.id}
@@ -460,6 +472,7 @@ describe('studio-ui-react primitives', () => {
             header: 'Titel',
             cell: (row) => row.title,
             sortable: true,
+            sortLabel: 'Titel',
             sortValue: (row) => row.title,
           },
         ]}
@@ -495,6 +508,7 @@ describe('studio-ui-react primitives', () => {
     render(
       <StudioDataTable
         ariaLabel="Ausweichtermine"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={data}
         getRowId={(row) => row.id}
@@ -544,6 +558,7 @@ describe('studio-ui-react primitives', () => {
     const { rerender } = render(
       <StudioDataTable
         ariaLabel="Ausweichtermine"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={data}
         getRowId={(row) => row.id}
@@ -561,6 +576,7 @@ describe('studio-ui-react primitives', () => {
     rerender(
       <StudioDataTable
         ariaLabel="Ausweichtermine"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[...data]}
         getRowId={(row) => row.id}
@@ -583,6 +599,7 @@ describe('studio-ui-react primitives', () => {
     const { rerender } = render(
       <StudioDataTable
         ariaLabel="Ausweichtermine"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={data}
         getRowId={(row) => row.id}
@@ -601,6 +618,7 @@ describe('studio-ui-react primitives', () => {
     rerender(
       <StudioDataTable
         ariaLabel="Ausweichtermine"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[
           { id: 'global-1', title: 'Global', selectable: false },
@@ -630,6 +648,7 @@ describe('studio-ui-react primitives', () => {
     render(
       <StudioDataTable
         ariaLabel="News"
+        sorting={clientSorting}
         labels={tableLabels}
         caption="News-Tabelle"
         data={data}
@@ -644,6 +663,7 @@ describe('studio-ui-react primitives', () => {
             headerClassName: 'title-header',
             cell: (row) => row.title,
             sortable: true,
+            sortLabel: 'Titel',
             sortValue: (row) => row.priority,
           },
           { id: 'priority', header: 'Priorität', cell: (row) => row.priority },
@@ -699,10 +719,152 @@ describe('studio-ui-react primitives', () => {
     );
   });
 
+  it('keeps externally sorted rows in server order and emits one non-empty sort field', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <StudioDataTable
+        ariaLabel="News"
+        sorting={{
+          mode: 'external',
+          labels: sortingLabels,
+          state: [{ id: 'title', desc: false }],
+          onChange,
+        }}
+        labels={tableLabels}
+        data={[
+          { id: 'b', title: 'Beta' },
+          { id: 'a', title: 'Alpha' },
+        ]}
+        getRowId={(row) => row.id}
+        columns={[
+          {
+            id: 'title',
+            header: 'Titel',
+            cell: (row) => row.title,
+            sortable: true,
+            sortLabel: 'Titel',
+            sortValue: (row) => row.title,
+          },
+        ]}
+        emptyState={<p>Keine Daten</p>}
+      />
+    );
+
+    expect([...container.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Beta'),
+      expect.stringContaining('Alpha'),
+    ]);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Titel' }));
+    expect(onChange).toHaveBeenCalledWith([{ id: 'title', desc: true }]);
+  });
+
+  it('renders external sorting controls in compact mode and forwards their changes', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    const onChange = vi.fn();
+
+    globalThis.ResizeObserver = class {
+      constructor(private readonly callback: ResizeObserverCallback) {}
+
+      observe() {
+        this.callback(
+          [{ contentRect: { width: 320 } as DOMRectReadOnly }] as ResizeObserverEntry[],
+          this as ResizeObserver
+        );
+      }
+
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    } as typeof ResizeObserver;
+
+    try {
+      render(
+        <StudioDataTable
+          ariaLabel="News"
+          sorting={{
+            mode: 'external',
+            labels: sortingLabels,
+            state: [{ id: 'title', desc: false }],
+            onChange,
+          }}
+          labels={tableLabels}
+          data={[{ id: 'a', title: 'Alpha', priority: 1 }]}
+          getRowId={(row) => row.id}
+          columns={[
+            {
+              id: 'title',
+              header: 'Titel',
+              cell: (row) => row.title,
+              sortable: true,
+              sortLabel: 'Titel',
+              sortValue: (row) => row.title,
+            },
+            {
+              id: 'priority',
+              header: 'Priorität',
+              cell: (row) => row.priority,
+              sortable: true,
+              sortLabel: 'Priorität',
+              sortValue: (row) => row.priority,
+            },
+          ]}
+          emptyState={<p>Keine Daten</p>}
+        />
+      );
+
+      fireEvent.change(screen.getByLabelText('Sortierfeld'), { target: { value: 'priority' } });
+      expect(onChange).toHaveBeenCalledWith([{ id: 'priority', desc: false }]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Sortierrichtung: Aufsteigend' }));
+      expect(onChange).toHaveBeenCalledWith([{ id: 'title', desc: true }]);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  it('rejects contradictory and invalid sorting configurations', () => {
+    const baseProps = {
+      ariaLabel: 'News',
+      labels: tableLabels,
+      data: [{ id: 'a', title: 'Alpha' }],
+      getRowId: (row: { id: string; title: string }) => row.id,
+      emptyState: <p>Keine Daten</p>,
+    };
+    const sortableColumns = [
+      {
+        id: 'title',
+        header: 'Titel',
+        cell: (row: { title: string }) => row.title,
+        sortable: true as const,
+        sortLabel: 'Titel',
+        sortValue: (row: { title: string }) => row.title,
+      },
+    ];
+
+    expect(() =>
+      render(<StudioDataTable {...baseProps} columns={sortableColumns} sorting={disabledSorting} />)
+    ).toThrow('studio_data_table_disabled_sorting_has_sortable_columns');
+    expect(() =>
+      render(
+        <StudioDataTable
+          {...baseProps}
+          columns={sortableColumns}
+          sorting={{
+            mode: 'external',
+            labels: sortingLabels,
+            state: [],
+            onChange: vi.fn(),
+          }}
+        />
+      )
+    ).toThrow('studio_data_table_external_sorting_requires_one_supported_field');
+  });
+
   it('keeps desktop table rows height-stable on hover', () => {
     render(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[{ id: 'a', title: 'Alpha' }]}
         getRowId={(row) => row.id}
@@ -722,6 +884,7 @@ describe('studio-ui-react primitives', () => {
     const { rerender } = render(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[]}
         getRowId={(row: { id: string }) => row.id}
@@ -737,6 +900,7 @@ describe('studio-ui-react primitives', () => {
     rerender(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[]}
         getRowId={(row: { id: string }) => row.id}
@@ -750,6 +914,7 @@ describe('studio-ui-react primitives', () => {
     rerender(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[]}
         getRowId={(row: { id: string }) => row.id}
@@ -764,6 +929,7 @@ describe('studio-ui-react primitives', () => {
     rerender(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[{ id: 'a' }]}
         getRowId={(row) => row.id}
@@ -803,6 +969,7 @@ describe('studio-ui-react primitives', () => {
     render(
       <StudioDataTable
         ariaLabel="News"
+        sorting={disabledSorting}
         labels={tableLabels}
         data={[{ id: 'a', title: 'Alpha' }]}
         getRowId={(row) => row.id}
@@ -849,6 +1016,7 @@ describe('studio-ui-react primitives', () => {
       const { unmount } = render(
         <StudioDataTable
           ariaLabel="News"
+          sorting={disabledSorting}
           labels={tableLabels}
           data={[{ id: 'a', title: 'Alpha' }]}
           getRowId={(row) => row.id}
@@ -892,6 +1060,7 @@ describe('studio-ui-react primitives', () => {
       const { unmount } = render(
         <StudioDataTable
           ariaLabel="Ausweichtermine"
+          sorting={disabledSorting}
           labels={tableLabels}
           data={[
             { id: 'holiday-1', title: 'Feiertag', selectable: false },

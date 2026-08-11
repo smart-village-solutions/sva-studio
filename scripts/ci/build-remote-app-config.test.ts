@@ -25,7 +25,7 @@ const overrides = Object.entries(remoteConfigContract)
 describe('remote app config builder', () => {
   it.each([
     ['dev', 'automatic'],
-    ['staging', 'shadow'],
+    ['staging', 'automatic'],
     ['prod', 'shadow'],
   ] as const)('materializes the %s resolver rollout mode as %s', (environment, resolverMode) => {
     const remoteProfile = readFileSync(

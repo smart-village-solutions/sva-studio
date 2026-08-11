@@ -88,3 +88,4 @@
 - [x] 8.5 Resolvermodus in allen getrackten Remote-Profilen explizit als validierten Rolloutwert materialisieren.
 - [x] 8.6 Parser-, Identity-, Rotation-/Cache-, Konflikt-, Policy- und Remote-Config-Tests ergänzen.
 - [x] 8.7 Development als ersten Cutover auf `automatic` vorbereiten; Staging und Production bis zur erfolgreichen Dev-Abnahme auf `shadow` belassen.
+- [x] 8.8 Staging nach erfolgreichem Dev-Cutover auf `automatic` vorbereiten; Production bis zur erfolgreichen Staging-Abnahme auf `shadow` belassen.

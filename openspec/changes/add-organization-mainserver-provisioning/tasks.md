@@ -65,3 +65,5 @@
 - [x] 6.12 Review-Fix: Für die Standardausblendung nur technische Keycloak-Subjects leichtgewichtig laden und vollständige lokale Accountprojektionen erst für die tatsächlich paginierte Seite aufbauen.
 - [x] 6.13 Review-Fix: Manuelle Credential-Änderungen während einer aktiven Provisioning-Lease atomar abweisen, ohne Lease, Operationsreferenz oder laufenden Zustand zu verändern.
 - [x] 6.14 Review-Fix: Gewöhnliche Organisations-Updates mit unveränderter Application-ID und ohne neues Secret als Credential-No-op behandeln und den Zustand `ready` samt Verifikationsevidenz erhalten.
+- [x] 6.15 Review-Fix: Bei Reconciliation verifizierte Organisations-Credentials vor dem Übergang zu `ready` auf den zugeordneten technischen Keycloak-Account synchronisieren.
+- [x] 6.16 Review-Fix: Technische Account-Löschung vom letzten Lease-Check über den externen und lokalen Delete durch eine zeilensperrende DB-Transaktion gegen neu erworbene Provisioning-Leases schützen.

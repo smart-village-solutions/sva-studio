@@ -20,19 +20,19 @@ LIMIT 1;
     params
   );
 
-const readActiveOrganizationProvisioningLease = async (
+const lockOrganizationProvisioningAssociations = async (
   client: QueryClient,
   params: readonly [string, string]
-): Promise<{ rowCount: number }> =>
-  client.query<{ organization_id: string }>(
+): Promise<{ rows: readonly { active_lease: boolean }[] }> =>
+  client.query<{ active_lease: boolean }>(
     `
-SELECT organization_id
+SELECT
+  provisioning_status = 'provisioning'
+    AND lease_expires_at > NOW() AS active_lease
 FROM iam.organization_mainserver_credentials
 WHERE instance_id = $1
   AND technical_account_id = $2::uuid
-  AND provisioning_status = 'provisioning'
-  AND lease_expires_at > NOW()
-LIMIT 1;
+FOR UPDATE;
 `,
     params
   );
@@ -250,11 +250,11 @@ export const assertAccountHardDeletePreconditions = async (
   if (activeLegalHoldResult.rowCount > 0) {
     throw new Error('legal_hold_delete_protection:Aktiver Legal Hold blockiert die Löschung.');
   }
-  const activeProvisioningLeaseResult = await readActiveOrganizationProvisioningLease(
+  const organizationAssociations = await lockOrganizationProvisioningAssociations(
     client,
     params
   );
-  if (activeProvisioningLeaseResult.rowCount > 0) {
+  if (organizationAssociations.rows.some((row) => row.active_lease)) {
     throw new Error(
       'organization_provisioning_delete_protection:Aktive Organisations-Provisionierung blockiert die Löschung.'
     );

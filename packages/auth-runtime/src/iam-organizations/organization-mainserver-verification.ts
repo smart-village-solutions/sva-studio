@@ -158,6 +158,10 @@ export const verifyExistingOrganizationCredentials = async (input: {
   readonly dataProviderId: string;
   readonly dataProviderName?: string;
   readonly credentialFingerprint: string;
+  readonly credentials: {
+    readonly apiKey: string;
+    readonly apiSecret: string;
+  };
 }> => {
   const effective = await readEffectiveSvaMainserverCredentialsWithStatus({
     instanceId: input.instanceId,
@@ -189,5 +193,6 @@ export const verifyExistingOrganizationCredentials = async (input: {
     dataProviderId: dataProvider.id,
     ...(dataProvider.name ? { dataProviderName: dataProvider.name } : {}),
     credentialFingerprint: effective.credentialFingerprint,
+    credentials: effective.credentials,
   };
 };

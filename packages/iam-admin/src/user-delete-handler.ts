@@ -139,8 +139,51 @@ export type DeleteUserHandlerDeps = DeleteUserDeps & {
   ) => Promise<DeleteRequestContext>;
 };
 
-export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): Promise<DeleteUserResult> => {
-  const prepared = await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
+const deletePreparedUser = async (
+  deps: DeleteUserDeps,
+  input: DeleteUserInput,
+  client: QueryClient,
+  keycloakSubject: string
+): Promise<void> => {
+  await deps.revokeUserSessions({
+    keycloakSubject,
+    reason: 'user_deleted',
+    persistLoginBlock: false,
+  });
+  await deps.trackKeycloakCall('delete_user', () => deps.deleteIdentityUser(keycloakSubject));
+  await deps.reconcileOwnedContentForAccountDelete(client, {
+    instanceId: input.actor.instanceId,
+    accountId: input.userId,
+    keycloakSubject,
+  });
+  await deps.purgeAccountHardDeleteBlockers(client, {
+    instanceId: input.actor.instanceId,
+    accountId: input.userId,
+  });
+  await deps.emitActivityLog(client, {
+    instanceId: input.actor.instanceId,
+    accountId: input.actor.actorAccountId,
+    subjectId: input.userId,
+    eventType: 'user.deleted',
+    result: 'success',
+    payload: {
+      deleted_account_id: input.userId,
+      deleted_keycloak_subject: keycloakSubject,
+    },
+    requestId: input.actor.requestId,
+    traceId: input.actor.traceId,
+  });
+  await deps.hardDeleteUserRecord(client, {
+    instanceId: input.actor.instanceId,
+    accountId: input.userId,
+  });
+};
+
+export const deleteUser = async (
+  deps: DeleteUserDeps,
+  input: DeleteUserInput
+): Promise<DeleteUserResult> => {
+  const deleted = await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
     const actorMaxRoleLevel = await deps.resolveActorMaxRoleLevel(client, {
       instanceId: input.actor.instanceId,
       keycloakSubject: input.actorKeycloakSubject,
@@ -184,53 +227,13 @@ export const deleteUser = async (deps: DeleteUserDeps, input: DeleteUserInput): 
       instanceId: input.actor.instanceId,
       accountId: input.userId,
     });
-
-    return {
-      keycloakSubject: existing.keycloakSubject,
-    };
+    await deletePreparedUser(deps, input, client, existing.keycloakSubject);
+    return true;
   });
 
-  if (!prepared) {
+  if (!deleted) {
     return { status: 'not_found' };
   }
-
-  await deps.revokeUserSessions({
-    keycloakSubject: prepared.keycloakSubject,
-    reason: 'user_deleted',
-    persistLoginBlock: false,
-  });
-
-  await deps.trackKeycloakCall('delete_user', () => deps.deleteIdentityUser(prepared.keycloakSubject));
-
-  await deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
-    await deps.reconcileOwnedContentForAccountDelete(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.userId,
-      keycloakSubject: prepared.keycloakSubject,
-    });
-    await deps.purgeAccountHardDeleteBlockers(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.userId,
-    });
-    await deps.emitActivityLog(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.actor.actorAccountId,
-      subjectId: input.userId,
-      eventType: 'user.deleted',
-      result: 'success',
-      payload: {
-        deleted_account_id: input.userId,
-        deleted_keycloak_subject: prepared.keycloakSubject,
-      },
-      requestId: input.actor.requestId,
-      traceId: input.actor.traceId,
-    });
-
-    await deps.hardDeleteUserRecord(client, {
-      instanceId: input.actor.instanceId,
-      accountId: input.userId,
-    });
-  });
 
   deps.iamUserOperationsCounter.add(1, { action: 'delete_user', result: 'success' });
   return { status: 'deleted' };

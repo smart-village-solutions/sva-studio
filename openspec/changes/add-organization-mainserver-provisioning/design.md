@@ -142,9 +142,13 @@ Der aktuelle Zustand speichert mindestens zugeordneten Account, Operationsrefere
 
 Ein Retry versucht in `verification_required` und `reconciliation_required` zuerst, vorhandene Credentials, Accountzuordnung und Binding zu vervollständigen. Er provisioniert oder rotiert nicht blind neu. Bestehende manuell gepflegte vollständige Credentials starten als `verification_required` und werden ohne explizite Provisioning-Aktion nicht ersetzt. Audit dokumentiert Übergänge, ist aber nicht die Quelle des aktuellen Zustands.
 
+Sind vorhandene Organisations-Credentials erfolgreich verifiziert und ist ein technischer Account zugeordnet oder eindeutig wiederherstellbar, synchronisiert der Retry diese Credentials vor dem Übergang zu `ready` erneut in dessen Keycloak-Attribute. So vervollständigt Reconciliation auch einen früher zwischen Organisationspersistenz und Keycloak-Persistenz abgebrochenen Lauf. Ein Fehler dieser Synchronisation bleibt `reconciliation_required` und darf keinen falschen `ready`-Zustand erzeugen.
+
 ### Hard Delete löst die technische Accountzuordnung
 
 Die instanzsichere Accountreferenz verwendet `ON DELETE SET NULL`. Der privilegierte Admin-Hard-Delete bleibt zulässig, wird während einer aktiven Provisioning-Lease aber mit einem sicheren Konflikt abgewiesen. Vollständige Organisations-Credentials und die organisationsbezogene DataProvider-Bindung bleiben erhalten, weil sie fachlich der Organisation gehören.
+
+Der finale Hard-Delete sperrt alle organisationsbezogenen Credential-Zeilen des technischen Accounts beim Lease-Check und hält diese Sperre in derselben Transaktion über Session-Revoke, externen Identity-Delete und lokalen Delete. Dadurch kann zwischen Vorprüfung und Löschung keine neue Lease für diesen Account erworben werden.
 
 Eine Organisation mit vollständigen Credentials und konfliktfreier Bindung bleibt auch ohne aktuell zugeordneten Provisioning-Account `ready`. Ein späterer expliziter Provisioning- oder Rotationsversuch darf bei Bedarf einen neuen technischen Account erzeugen. Eine abweichende DataProvider-ID überschreibt die bestehende Bindung nicht. Bei unvollständigen Zuständen löst der Hard Delete die Referenz, erhält vorhandene Credentials und markiert notwendige Folgearbeit nachvollziehbar.
 

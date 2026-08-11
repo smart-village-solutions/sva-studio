@@ -112,4 +112,5 @@ Das System SHALL den aktuellen organisationsbezogenen Mainserver-Zustand kanonis
 - **GIVEN** eine Organisation befindet sich in `verification_required` oder `reconciliation_required`
 - **WHEN** ein Administrator die explizite Provisionierung erneut auslöst
 - **THEN** versucht Studio zuerst vorhandene Accountzuordnung, Credentials und Binding zu vervollständigen
+- **AND** synchronisiert verifizierte Organisations-Credentials vor `ready` erneut auf den zugeordneten technischen Keycloak-Account
 - **AND** provisioniert oder rotiert es nicht blind neu

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { loadInstanceById } from '@sva/data-repositories/server';
 import {
   reserveOrganizationMainserverProvisioning,
   updateOrganizationMainserverProvisioningState,
@@ -8,7 +9,11 @@ import {
 
 import { recordMainserverDataProviderObservation } from '../iam-contents/mainserver-data-provider-bindings.js';
 import { MainserverUserProvisioningError } from '../iam-account-management/mainserver-user-provisioning-error.js';
-import { withInstanceScopedDb } from '../iam-account-management/shared.js';
+import {
+  resolveIdentityProviderForInstance,
+  withInstanceScopedDb,
+} from '../iam-account-management/shared.js';
+import { persistProvisionedMainserverCredentials } from '../iam-account-management/user-create-operation.js';
 import { provisionNewOrganizationMainserver } from './organization-mainserver-new-provisioning.js';
 import {
   ORGANIZATION_PROVISIONING_LEASE_SECONDS,
@@ -22,6 +27,7 @@ import {
 } from './organization-mainserver-provisioning.shared.js';
 import {
   deriveOrganizationTechnicalIdentity,
+  resolveOrganizationTechnicalAccount,
   type DerivedOrganizationTechnicalIdentity,
 } from './organization-mainserver-technical-account.js';
 import { verifyExistingOrganizationCredentials } from './organization-mainserver-verification.js';
@@ -53,9 +59,49 @@ const returnReservedOutcome = async (
 
 const verifyReservedCredentials = async (
   input: OrganizationMainserverProvisioningInput,
-  operationReference: string
+  operationReference: string,
+  organization: OrganizationMainserverProvisioningResult['organization'],
+  technicalAccountId: string | undefined,
+  setPhase: (phase: string) => void
 ): Promise<OrganizationMainserverProvisioningResult> => {
   const verified = await verifyExistingOrganizationCredentials(input);
+  setPhase('account_resolution');
+  const tenant = await loadInstanceById(input.instanceId);
+  const identityProvider = await resolveIdentityProviderForInstance(input.instanceId, {
+    executionMode: 'tenant_admin',
+  });
+  if (!identityProvider || !tenant) throw new Error('keycloak_unavailable');
+  const resolved = await resolveOrganizationTechnicalAccount({
+    ...input,
+    organizationDisplayName: organization.displayName,
+    tenantDisplayName: tenant.displayName,
+    technicalAccountId,
+    operationReference,
+    identityProvider,
+  });
+  setPhase('credential_persistence');
+  const stateBeforeAccountWrite = await withInstanceScopedDb(input.instanceId, (client) =>
+    updateOrganizationMainserverProvisioningState(client, {
+      instanceId: input.instanceId,
+      organizationId: input.organizationId,
+      operationReference,
+      provisioningStatus: 'provisioning',
+      provisioningPhase: 'account_credentials_persistence',
+    })
+  );
+  if (!stateBeforeAccountWrite) {
+    throw new Error('organization_provisioning_lease_lost');
+  }
+  await persistProvisionedMainserverCredentials({
+    identityProvider,
+    keycloakSubject: resolved.account.keycloakSubject,
+    credentials: {
+      dataProviderId: verified.dataProviderId,
+      mainserverUserApplicationId: verified.credentials.apiKey,
+      mainserverUserApplicationSecret: verified.credentials.apiSecret,
+    },
+  });
+  setPhase('data_provider_binding');
   const observation = await recordMainserverDataProviderObservation({
     instanceId: input.instanceId,
     principalType: 'organization',
@@ -85,7 +131,14 @@ const verifyReservedCredentials = async (
   if (!state) {
     throw new Error('organization_provisioning_lease_lost');
   }
-  await auditOrganizationProvisioning({ ...input, operationReference, phase, outcome, errorCode });
+  await auditOrganizationProvisioning({
+    ...input,
+    operationReference,
+    phase,
+    outcome,
+    errorCode,
+    technicalAccountId: resolved.account.id,
+  });
   return {
     outcome,
     organization: await loadProvisioningOrganization(input.instanceId, input.organizationId),
@@ -177,7 +230,15 @@ export const provisionOrganizationMainserver = async (
       reservation.state.mainserverApplicationSecretSet
     ) {
       phase = 'data_provider_verification';
-      return await verifyReservedCredentials(input, operationReference);
+      return await verifyReservedCredentials(
+        input,
+        operationReference,
+        organization,
+        reservation.state.technicalAccountId,
+        (nextPhase) => {
+          phase = nextPhase;
+        }
+      );
     }
     return await provisionNewOrganizationMainserver({
       ...input,

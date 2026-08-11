@@ -182,7 +182,7 @@ describe('hardDeleteAccount', () => {
     const query = vi
       .fn()
       .mockResolvedValueOnce({ rowCount: 0, rows: [] })
-      .mockResolvedValueOnce({ rowCount: 1, rows: [{ organization_id: 'org-1' }] });
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ active_lease: true }] });
 
     await expect(
       assertAccountHardDeletePreconditions(
@@ -199,6 +199,7 @@ describe('hardDeleteAccount', () => {
       expect.stringContaining("provisioning_status = 'provisioning'"),
       ['de-musterhausen', '33333333-3333-4333-8333-333333333333']
     );
+    expect(String(query.mock.calls[1]?.[0])).toContain('FOR UPDATE');
   });
 
   it('deletes the scoped account row after content preparation succeeded', async () => {

@@ -449,6 +449,7 @@ describe('organization Mainserver provisioning', () => {
         attemptCount: 2,
         mainserverApplicationId: 'existing-app',
         mainserverApplicationSecretSet: true,
+        technicalAccountId: '33333333-3333-4333-8333-333333333333',
       },
     });
     state.readEffectiveSvaMainserverCredentialsWithStatus.mockResolvedValue({
@@ -457,6 +458,28 @@ describe('organization Mainserver provisioning', () => {
       credentials: { apiKey: 'existing-app', apiSecret: 'existing-secret' },
       credentialFingerprint: 'b'.repeat(64),
     });
+    const provider = {
+      getUserAttributes: vi.fn().mockResolvedValue({ accountPurpose: ['organization_mainserver'] }),
+      updateUser: vi.fn().mockResolvedValue(undefined),
+    };
+    state.resolveIdentityProviderForInstance.mockResolvedValue({ provider });
+    state.client.query.mockResolvedValue({ rows: [{ keycloak_subject: 'kc-technical-1' }] });
+    state.loadMappedUsersBySubject.mockResolvedValue(
+      new Map([
+        [
+          'kc-technical-1',
+          {
+            id: '33333333-3333-4333-8333-333333333333',
+            keycloakSubject: 'kc-technical-1',
+            displayName: organization.displayName,
+            status: 'active',
+            isTechnicalAccount: true,
+            roles: [],
+            mainserverUserApplicationSecretSet: false,
+          },
+        ],
+      ])
+    );
     state.loadDefaultExternalInterfaceRecord.mockResolvedValue({
       enabled: true,
       publicConfig: {
@@ -477,6 +500,18 @@ describe('organization Mainserver provisioning', () => {
       outcome: 'ready',
     });
     expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
+    expect(state.persistProvisionedMainserverCredentials).toHaveBeenCalledWith({
+      identityProvider: { provider },
+      keycloakSubject: 'kc-technical-1',
+      credentials: {
+        dataProviderId: '4711',
+        mainserverUserApplicationId: 'existing-app',
+        mainserverUserApplicationSecret: 'existing-secret',
+      },
+    });
+    expect(
+      state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0]
+    ).toBeLessThan(state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0] ?? 0);
     expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledWith(
       expect.objectContaining({
         dataProviderId: '4711',

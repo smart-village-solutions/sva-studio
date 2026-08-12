@@ -31,6 +31,8 @@ Implizite Reads und Hintergrundabgleiche verwenden bei `org_or_personal` persön
 
 Die getrackten Development- und Staging-Profile sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt. Production verbleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`.
 
+Der kanonische Remote-Promote reicht den Wert aus dem getrackten Umgebungsprofil über `compose.yaml` an den App-Service durch. Fehlt der Wert, bleibt der sichere Runtime-Standard `shadow` aktiv.
+
 `SVA_MAINSERVER_ACTING_PRINCIPAL_CONTRACT_MODE` steuert den Transport-Cutover:
 
 - `legacy_compatible` ist der Übergangsstandard. V2-Requests benötigen immer den expliziten Principal. Nur headerlose alte Clients dürfen den Principal deterministisch über den bestehenden policy-gesteuerten Credential-Resolver ableiten.

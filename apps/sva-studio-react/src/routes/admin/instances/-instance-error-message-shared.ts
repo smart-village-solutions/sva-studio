@@ -1,7 +1,10 @@
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 export const getInstanceErrorMessage = (error: IamHttpError | null) => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('admin.instances.messages.error');
   }

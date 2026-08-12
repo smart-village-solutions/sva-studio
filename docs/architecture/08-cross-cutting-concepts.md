@@ -574,6 +574,7 @@ Referenzen:
 - Fachadapter wie News stellen getypte, eng zugeschnittene Fassaden bereit; Browser-Plugins sprechen nur hosteigene HTTP-Endpunkte und importieren keine Mainserver-Servermodule.
 - Events und POI folgen demselben Host-Fassadenmuster. Der Event-Editor bezieht POI-Auswahldaten über `/api/v1/mainserver/poi`, nicht über einen direkten Import von `@sva/plugin-poi`.
 - Die Übersicht `/admin/content` nutzt `GET /api/v1/iam/contents` als host-geführten Read-Model-Vertrag. Browser-seitige Vollscans über mehrere Mainserver-Listen sind für diesen Pfad nicht zulässig; lokale IAM-Inhalte werden triggerbasiert in `iam.content_list_projection` gespiegelt und Mainserver-Typen serverseitig in dieselbe Projektion refresht.
+- Die Sidebar-Unterpunkte der Inhaltsgruppe sowie die Schnellfilter für `Alle`, Nachrichten und Veranstaltungen setzen ausschließlich den kanonischen `type`-Search-Parameter dieser Übersicht. Weitere lesbare Typen bleiben im gemeinsamen Dropdown; Filterung und Sortierung erfolgen weiterhin vor der serverseitigen Pagination.
 - Mainserver-Projektionen und ihre Sync-States sind scope-isoliert. Maßgeblich sind `instanceId`, `actorAccountId`, aktive Organisation und `contentType`; ein erfolgreicher oder fehlgeschlagener Snapshot eines Nutzers darf weder für einen anderen Nutzer noch für einen anderen Organisationskontext wiederverwendet werden.
 - Der primäre Frischepfad für `/admin/content` ist ein progressiver Hintergrund-Refresh: nach Login oder Session-Aufbau werden für alle sichtbaren Mainserver-Typen zuerst die jeweils neuesten 25 Datensätze geladen und persistiert, danach folgen ältere Seiten im Round-Robin-Verfahren.
 - Mutations-Nachsynchronisation für News, Events und POI arbeitet gezielt statt typweit. Create- und Update-Pfade lesen den betroffenen Datensatz über typed Detailadapter nach; Delete-Pfade entfernen die Projektionszeile anhand der bekannten Quellidentität.
@@ -703,6 +704,12 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Paginierte Listen folgen verbindlich `Scope → Filter → deterministische Sortierung → Pagination`. Unbekannte externe Sortierfelder oder Richtungen werden mit `400 invalid_request` abgewiesen; SQL verwendet ausschließlich feste Feldzuordnungen.
 - Fehlende Werte bleiben fachlich fehlend, stehen in beiden Richtungen zuletzt und werden lokalisiert gekennzeichnet. Gleichstände enden immer mit einer eindeutigen Zeilenidentität aufsteigend.
 - Desktop-Sortierköpfe und die mobile Feldauswahl mit Richtungsschalter teilen genau einen kontrollierten Zustand. Externe Sortierung kennt keinen dritten unsortierten Zustand; die vorhandenen A–Z-/Z–A-Symbole bleiben rein visuelle Ergänzung der zugänglichen Labels.
+
+### Sichere Permission-Denials
+
+- Öffentliche Denial-Details bestehen nur aus validierten fully-qualified Action-IDs, `allOf`/`anyOf` und einer festen Allowlist fachlicher Gründe.
+- Rollen, Gruppen, konkrete Grants, Policy-Ausdrücke und interne Entscheidungsdaten bleiben Server- und OTEL-intern.
+- Der Client vertraut weder URL- noch API-Daten blind. Er begrenzt, dedupliziert und validiert sie vor der Anzeige; ohne gültigen Kontext gilt der generische Fehlerpfad.
 
 ### Technische Accounts und Organisations-Provisioning
 

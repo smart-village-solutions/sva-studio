@@ -17,6 +17,8 @@ Dieses Runbook beschreibt den operativen Umgang mit der kanonischen Instanz-Modu
 - Rolle `instance_registry_admin`
 - frische Re-Authentisierung für mutierende Aktionen
 
+Tenant-Nutzer sehen den Menüpunkt `Module` und dürfen `/modules` direkt öffnen, wenn ihre effektiven Berechtigungen `modules.read` enthalten. Ohne diese Permission bleiben Navigation und Route fail-closed gesperrt. Technische Plattform-Admins mit `instance_registry_admin` behalten unabhängig davon Zugriff auf die Root-Verwaltung.
+
 ## Module zuweisen
 
 1. `Module` im Studio-Root öffnen.

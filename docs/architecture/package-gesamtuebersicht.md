@@ -146,6 +146,18 @@ Architektonisch folgt es demselben Host-Fassadenmuster wie News, Events und POI:
 
 Architektonisch ist es bewusst ein Brownfield-Fall: Die UI lebt im Plugin, alle fachlichen Datenzugriffe und technischen Operationen laufen jedoch hostgeführt über `/api/v1/waste-management/*` und den generischen Plugin-Jobpfad. Das Package ist damit produktiv relevant, aber kein uneingeschränktes Referenzmuster für schlanke Standard-Content-Plugins.
 
+### `@sva/waste-management-contracts`
+
+`@sva/waste-management-contracts` besitzt gemeinsam verwendete Waste-Verträge außerhalb von Apps, Browser-Plugin und Jobausführung. Dazu gehören der kanonische signierte `v1`-Abmeldetokenvertrag für den öffentlichen E-Mail-Erinnerungsdienst sowie die deklarativen Job- und Importprofildefinitionen.
+
+Studio und Public-Waste-App konsumieren den Tokenvertrag ausschließlich über den leichten Export `@sva/waste-management-contracts/unsubscribe-token`. Dadurch bleiben Node-Kryptografie und Token-Ownership im Fachvertragspaket, während keine Anwendung Quellcode aus der jeweils anderen Anwendung importiert oder für Tokenoperationen die Job-Runtime installiert.
+
+Browser-Plugin und `@sva/waste-management-runtime` konsumieren die Job- und Importprofildefinitionen aus `/job-definitions`; das Plugin re-exportiert sie über seinen bisherigen Unterpfad. Dadurch bleiben Plugin und Runtime voneinander unabhängig, und ein Public-Waste-Produktions-Deploy zieht weder die Job-Runtime noch `@sva/plugin-waste-management` und dessen UI-Dependencies ein.
+
+### `@sva/waste-management-runtime`
+
+`@sva/waste-management-runtime` kapselt ausschließlich die hostseitige Waste-Jobausführung. Sie konsumiert die deklarativen Definitionen aus `@sva/waste-management-contracts`, enthält aber weder Browser-UI noch den von Public Waste verwendeten Tokenexport.
+
 ### `packages/plugin-example`
 
 `packages/plugin-example` ist aktuell kein ausgebautes Workspace-Package, sondern ein Platzhalterverzeichnis. Nach aktuellem Stand besitzt es keine reguläre Package-Struktur mit `package.json`, `project.json` oder `src/`.
@@ -168,9 +180,9 @@ Es ist also kein modernes Zielpackage mehr, sondern ein kontrollierter Übergang
 
 ### `apps/public-waste-calendar-web`
 
-`public-waste-calendar-web` ist eine eigenständige öffentliche React-/Node-App für den Bürgerfluss des Abfallkalenders. Sie besitzt eine eigene UI, eine eigene Node-Runtime unter `src/server/**` und einen separaten Releasepfad, nutzt für ihren Serverteil aber bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`.
+`public-waste-calendar-web` ist eine eigenständige öffentliche React-/Node-App für den Bürgerfluss des Abfallkalenders. Sie besitzt eine eigene UI, eine eigene Node-Runtime unter `src/server/**` und einen separaten Releasepfad, nutzt für ihren Serverteil aber bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`.
 
-Die App ist fachlich eng mit Waste-Management verbunden, aber technisch von der Studio-Admin-Shell getrennt.
+Die App ist fachlich eng mit Waste-Management verbunden, aber technisch von der Studio-Admin-Shell getrennt. Insbesondere liest und verifiziert sie Abmeldetoken über das Contracts-Package statt über App-lokale oder Studio-interne Module.
 
 ### `apps/project-report`
 

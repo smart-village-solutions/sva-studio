@@ -9,7 +9,6 @@ import {
   StudioField,
   StudioFieldGroup,
   contentMediaUsagesToMainserver,
-  createManualContentMediaUsage,
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
@@ -48,6 +47,7 @@ export function EventsDetailContentTab({
   dateEndInput,
   dateInputsInvalid,
   dateStartInput,
+  onAddManualMedia,
   onOpenMediaPicker,
   mediaUsages,
   onChangeMediaUsages = () => undefined,
@@ -62,6 +62,7 @@ export function EventsDetailContentTab({
   dateEndInput: string;
   dateInputsInvalid: Readonly<{ dateStart: boolean; dateEnd: boolean }>;
   dateStartInput: string;
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
@@ -192,15 +193,7 @@ export function EventsDetailContentTab({
           <ContentMediaUsageBlock
             usages={resolvedMediaUsages}
             onChange={changeMediaUsages}
-            onAddManual={() =>
-              changeMediaUsages([
-                ...resolvedMediaUsages,
-                {
-                  ...createManualContentMediaUsage({ sortOrder: resolvedMediaUsages.length }),
-                  additionalData: { contentType: 'image', width: '', height: '' },
-                },
-              ])
-            }
+            onAddManual={onAddManualMedia}
             onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
             onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
             onLoadAssetSnapshot={onLoadAssetSnapshot}
@@ -211,9 +204,7 @@ export function EventsDetailContentTab({
               description: pt('cards.content.media.description'),
               empty: pt('cards.content.media.empty'),
               actions: {
-                library: pt('actions.addImage'),
-                upload: pt('actions.uploadMedia'),
-                manual: pt('actions.addMediaManual'),
+                add: pt('messages.mediaPickerTitle'),
                 remove: pt('actions.removeImage'),
                 moveUp: pt('media.moveUp'),
                 moveDown: pt('media.moveDown'),

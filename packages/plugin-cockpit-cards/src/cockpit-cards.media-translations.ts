@@ -1,5 +1,9 @@
 export const cockpitCardsMediaTranslations = {
   de: {
+    add: 'Medium hinzufügen',
+    upload: 'Medium hochladen',
+    addFromLibrary: 'Medium aus der Bibliothek hinzufügen',
+    addByLink: 'Medium per Link hinzufügen',
     description: 'Verwalte Bilder, Metadaten und ihre Reihenfolge.',
     empty: 'Noch keine Bilder vorhanden.',
     refresh: 'Metadaten aktualisieren',
@@ -23,7 +27,7 @@ export const cockpitCardsMediaTranslations = {
     refreshDescription: 'Wähle aus, welche aktuellen Mediathek-Werte übernommen werden.',
     assetValue: 'Mediathek',
     contentValue: 'Inhalt',
-    pickerTitle: 'Bild auswählen',
+    pickerTitle: 'Medium hinzufügen',
     pickerDescription: 'Wähle ein vorhandenes Bild oder lade ein neues hoch.',
     review: 'Bild prüfen',
     search: 'Bilder durchsuchen',
@@ -38,6 +42,10 @@ export const cockpitCardsMediaTranslations = {
     use: 'Bild verwenden',
   },
   en: {
+    add: 'Add media',
+    upload: 'Upload media',
+    addFromLibrary: 'Add media from the library',
+    addByLink: 'Add media by link',
     description: 'Manage images, metadata, and their order.',
     empty: 'No images yet.',
     refresh: 'Refresh metadata',
@@ -61,7 +69,7 @@ export const cockpitCardsMediaTranslations = {
     refreshDescription: 'Select which current media-library values to apply.',
     assetValue: 'Media library',
     contentValue: 'Content',
-    pickerTitle: 'Select image',
+    pickerTitle: 'Add media',
     pickerDescription: 'Select an existing image or upload a new one.',
     review: 'Review image',
     search: 'Search images',

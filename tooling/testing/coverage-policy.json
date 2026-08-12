@@ -163,6 +163,12 @@
       "functions": 68,
       "branches": 52
     },
+    "waste-management-contracts": {
+      "lines": 100,
+      "statements": 100,
+      "functions": 100,
+      "branches": 100
+    },
     "waste-management-runtime": {
       "lines": 63,
       "statements": 64,

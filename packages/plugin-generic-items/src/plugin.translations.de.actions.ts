@@ -23,7 +23,7 @@ export const genericItemsTranslationsDeActions = {
     addLocation: 'Ort hinzufügen',
     addAccessibilityInformation: 'Barrierefreiheit hinzufügen',
     addPriceInformation: 'Preis hinzufügen',
-    uploadMedia: 'Bild hochladen',
+    uploadMedia: 'Medium hochladen',
     uploadingMedia: 'Bild wird hochgeladen',
     addMediaManual: 'Medium manuell ergänzen',
     selectImage: 'Bild auswählen',

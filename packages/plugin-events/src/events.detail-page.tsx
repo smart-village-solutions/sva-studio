@@ -27,6 +27,7 @@ import {
   addStudioCreatedSaveFeedback,
   contentMediaUsageToReference,
   contentMediaUsagesToMainserver,
+  createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
   mainserverContentMediaToUsages,
@@ -227,8 +228,9 @@ const createEventsMediaPickerLabels = (
   title: pt('messages.mediaPickerTitle'),
   description: pt('messages.mediaPickerDescription'),
   modes: {
-    library: pt('actions.addImage'),
+    library: pt('messages.mediaPickerLibraryAction'),
     upload: pt('actions.uploadMedia'),
+    manual: pt('messages.mediaPickerLinkAction'),
     review: pt('messages.mediaPickerReviewMode'),
   },
   library: {
@@ -583,6 +585,25 @@ export function EventsDetailPage({
       );
     },
   });
+  const addManualMedia = React.useCallback(() => {
+    const usage = {
+      ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
+      additionalData: { contentType: 'image', width: '', height: '' },
+    };
+    const nextUsages = [...mediaUsages, usage];
+    methods.setValue(
+      'content.mediaContents',
+      contentMediaUsagesToMainserver(
+        nextUsages
+      ) as EventsDetailFormValues['content']['mediaContents'],
+      { shouldDirty: true }
+    );
+    setMediaUsages(nextUsages);
+    setRequiresReferenceSync(
+      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+    );
+    return usage.uiId;
+  }, [mediaUsages, methods]);
   const mediaPickerFeedback = React.useMemo(
     () => resolveEventsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
@@ -938,6 +959,7 @@ export function EventsDetailPage({
       >
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toEventsMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>
@@ -957,6 +979,7 @@ export function EventsDetailPage({
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}
+          onAddManual={addManualMedia}
           onBackFromReview={mediaPicker.goBackFromReview}
           onChangeMode={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
@@ -1104,6 +1127,7 @@ export function EventsDetailPage({
                     {tab.id === 'content' ? (
                       <EventsDetailContentTab
                         mediaUsages={mediaUsages}
+                        onAddManualMedia={addManualMedia}
                         onChangeMediaUsages={(usages) => {
                           setMediaUsages(usages);
                           setRequiresReferenceSync(

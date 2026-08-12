@@ -3,6 +3,7 @@ import {
   type AuthorizeRequest,
   type EffectivePermission,
 } from '@sva/iam-core';
+import { createPermissionDenialDetailsForAction, type PermissionDenialDetails } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { logger as accountLogger } from './iam-account-management/shared.js';
@@ -10,10 +11,7 @@ import { resolveEffectivePermissions } from './iam-authorization/permission-stor
 import type { AuthenticatedRequestContext } from './middleware.js';
 
 type InstancePermissionAuthorizationErrorCode =
-  | 'missing_instance'
-  | 'invalid_action'
-  | 'database_unavailable'
-  | 'forbidden';
+  'missing_instance' | 'invalid_action' | 'database_unavailable' | 'forbidden';
 
 export type InstancePermissionAuthorizationResult =
   | Readonly<{
@@ -29,6 +27,7 @@ export type InstancePermissionAuthorizationResult =
       status: number;
       error: InstancePermissionAuthorizationErrorCode;
       message: string;
+      permissionDenial?: PermissionDenialDetails;
     }>;
 
 export const toInstancePermissionApiErrorCode = (
@@ -80,14 +79,20 @@ const buildAuthorizeRequest = (input: {
   },
 });
 
-const buildDatabaseUnavailableResult = (): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
+const buildDatabaseUnavailableResult = (): Extract<
+  InstancePermissionAuthorizationResult,
+  { ok: false }
+> => ({
   ok: false,
   status: 503,
   error: 'database_unavailable',
   message: 'Berechtigungen konnten nicht geprüft werden.',
 });
 
-const buildMissingInstanceResult = (): Extract<InstancePermissionAuthorizationResult, { ok: false }> => ({
+const buildMissingInstanceResult = (): Extract<
+  InstancePermissionAuthorizationResult,
+  { ok: false }
+> => ({
   ok: false,
   status: 400,
   error: 'missing_instance',
@@ -203,11 +208,13 @@ export const authorizeInstancePermissionForUser = async (input: {
       reason: decision.reason,
     });
 
+    const permissionDenial = createPermissionDenialDetailsForAction(action, decision.reason);
     return {
       ok: false,
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung für diese Instanzoperation.',
+      ...(permissionDenial ? { permissionDenial } : {}),
     };
   }
 

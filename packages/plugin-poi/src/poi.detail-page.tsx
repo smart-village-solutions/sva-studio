@@ -25,6 +25,7 @@ import {
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
   Select,
@@ -170,8 +171,9 @@ const createPoiMediaPickerLabels = (
   title: pt('messages.mediaPickerTitle'),
   description: pt('messages.mediaPickerDescription'),
   modes: {
-    library: pt('actions.addImage'),
+    library: pt('messages.mediaPickerLibraryAction'),
     upload: pt('actions.uploadMedia'),
+    manual: pt('messages.mediaPickerLinkAction'),
     review: pt('messages.mediaPickerReviewMode'),
   },
   library: {
@@ -449,6 +451,18 @@ export function PoiDetailPage({
       );
     },
   });
+  const addManualMedia = React.useCallback(() => {
+    const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
+    const nextUsages = [...mediaUsages, usage];
+    setMediaUsages(nextUsages);
+    methods.setValue('content.mediaContents', poiMediaUsagesToContents(nextUsages), {
+      shouldDirty: true,
+    });
+    setRequiresReferenceSync(
+      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+    );
+    return usage.uiId;
+  }, [mediaUsages, methods]);
   const mediaPickerFeedback = React.useMemo(
     () => resolvePoiMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
     [mediaPicker.errorCode, mediaPicker.uploadPhase, pt]
@@ -844,6 +858,7 @@ export function PoiDetailPage({
         canUploadMedia={canUploadMedia}
         mediaEditingDisabled={!mediaReferencesReady}
         mediaUsages={mediaUsages}
+        onAddManualMedia={addManualMedia}
         onChangeMediaUsages={(usages) => {
           setMediaUsages(usages);
           setRequiresReferenceSync(
@@ -920,6 +935,7 @@ export function PoiDetailPage({
       >
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toPoiMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>
@@ -940,6 +956,7 @@ export function PoiDetailPage({
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}
+          onAddManual={addManualMedia}
           onBackFromReview={mediaPicker.goBackFromReview}
           onChangeMode={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()

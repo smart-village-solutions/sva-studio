@@ -118,6 +118,7 @@ export const shellENResources = {
     },
     overview: 'Overview',
     content: 'Content',
+    contentAll: 'All',
     media: 'Media',
     categories: 'Categories',
     app: 'App',

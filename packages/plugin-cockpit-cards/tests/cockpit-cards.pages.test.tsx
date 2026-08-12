@@ -158,7 +158,8 @@ const fillRequiredFields = () => {
   fireEvent.change(screen.getByLabelText('fields.category'), { target: { value: 'Startseite' } });
   fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
   fireEvent.change(screen.getByLabelText('fields.text'), { target: { value: 'Neuer Text' } });
-  fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+  fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+  fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
   fireEvent.change(screen.getByLabelText('fields.imageUrl'), {
     target: { value: 'https://example.test/new.jpg' },
   });
@@ -216,13 +217,14 @@ describe('cockpit cards pages', () => {
     const basisTab = screen.getByRole('tab', { name: 'tabs.basis.label' });
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     const contentPanel = screen.getByLabelText('fields.text').closest('[role="tabpanel"]');
-    const addImage = screen.getByRole('button', { name: 'actions.addImage' });
+    const addImage = screen.getByRole('button', { name: 'media.add' });
     expect(tablist.className).toContain('ml-[10px]');
     expect(basisTab.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
     expect(contentPanel?.className).toContain('mt-0');
     expect(contentPanel?.contains(addImage)).toBe(true);
     expect(await screen.findByRole('option', { name: 'Startseite' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
+    fireEvent.click(addImage);
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     await waitFor(() => expect(state.listAssets).toHaveBeenCalled());
     expect(screen.queryByText('info.pdf')).toBeNull();
   });
@@ -262,7 +264,8 @@ describe('cockpit cards pages', () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     await screen.findAllByRole('button', { name: 'actions.selectImage' });
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.selectImage' }).at(-1)!);
     const altText = await screen.findByLabelText('media.altText');
@@ -306,7 +309,7 @@ describe('cockpit cards pages', () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.uploadImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
     });
@@ -422,7 +425,9 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1));
   });
 
   it('saves linked references with the canonical target after the content save', async () => {
@@ -493,7 +498,7 @@ describe('cockpit cards pages', () => {
     const failedDependencies = render(<CockpitCardsCreatePage />);
     await screen.findByText('messages.categoriesError');
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'media.add' })).toBeTruthy();
     failedDependencies.unmount();
 
     state.listCategories.mockResolvedValue([{ id: 'category-1', name: 'Startseite' }]);
@@ -552,8 +557,10 @@ describe('cockpit cards pages', () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
     const urls = screen.getAllByLabelText('fields.imageUrl');
     fireEvent.change(urls[0]!, { target: { value: 'https://example.test/one.jpg' } });
     fireEvent.change(urls[1]!, { target: { value: 'https://example.test/two.jpg' } });

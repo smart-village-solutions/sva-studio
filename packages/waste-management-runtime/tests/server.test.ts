@@ -2,9 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { PluginJobHandlerContext } from '@sva/plugin-sdk';
 import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
-
-import { createWasteManagementPluginJobTypes } from '@sva/plugin-waste-management/waste-management.job-definitions';
-
+import { createWasteManagementPluginJobTypes } from '@sva/waste-management-contracts/job-definitions';
 import {
   createPluginJobExecutionHandlers,
   createWasteManagementPluginOperationExecutionHandlers,
@@ -68,7 +66,9 @@ describe('waste management runtime handlers', () => {
   it('exposes handlers for all declared waste job types', () => {
     const handlers = createWasteManagementPluginOperationExecutionHandlers(createRuntime());
 
-    expect(Object.keys(handlers).sort()).toEqual(Object.values(wasteManagementOperationsContract.jobTypeIds).sort());
+    expect(Object.keys(handlers).sort()).toEqual(
+      Object.values(wasteManagementOperationsContract.jobTypeIds).sort()
+    );
   });
 
   it('emits declared progress keys and result details for migration jobs', async () => {
@@ -82,7 +82,9 @@ describe('waste management runtime handlers', () => {
         undeclaredKey: 'ignored',
       },
     }));
-    const handlers = createWasteManagementPluginOperationExecutionHandlers(createRuntime({ applyMigrations }));
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ applyMigrations })
+    );
     const context = createContext({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.applyMigrations,
       inputPayload: {
@@ -139,7 +141,9 @@ describe('waste management runtime handlers', () => {
     const exportedHandlers = createWasteManagementPluginOperationExecutionHandlers(runtime);
 
     expect(Object.keys(directHandlers).sort()).toEqual(Object.keys(exportedHandlers).sort());
-    expect(createPluginJobExecutionHandlers).toBe(createWasteManagementPluginOperationExecutionHandlers);
+    expect(createPluginJobExecutionHandlers).toBe(
+      createWasteManagementPluginOperationExecutionHandlers
+    );
   });
 
   it('delegates every non-import operation to its matching runtime method', async () => {
@@ -179,8 +183,8 @@ describe('waste management runtime handlers', () => {
     );
 
     for (const [methodName, operation] of methodNames) {
-      const jobTypeId = Object.values(wasteManagementOperationsContract.jobTypeIds).find((candidate) =>
-        candidate.endsWith(operation)
+      const jobTypeId = Object.values(wasteManagementOperationsContract.jobTypeIds).find(
+        (candidate) => candidate.endsWith(operation)
       );
       expect(jobTypeId).toBeDefined();
       await handlers[jobTypeId as keyof typeof handlers]?.(
@@ -208,7 +212,9 @@ describe('waste management runtime handlers', () => {
   });
 
   it('uses safe progress fallbacks and filters undeclared result details', () => {
-    expect(getProgressDefinition({ jobTypeId: 'test', queueName: 'test' } as never, 'fallback.phase')).toEqual({
+    expect(
+      getProgressDefinition({ jobTypeId: 'test', queueName: 'test' } as never, 'fallback.phase')
+    ).toEqual({
       initialPhaseKey: 'fallback.phase',
       initialStepKey: 'resolve-operation',
       completedPhaseKey: 'waste-management.completed',
@@ -216,7 +222,11 @@ describe('waste management runtime handlers', () => {
     });
     expect(
       createOperationResult({
-        jobTypeDefinition: { jobTypeId: 'test', queueName: 'test', result: { detailKeys: ['kept'] } } as never,
+        jobTypeDefinition: {
+          jobTypeId: 'test',
+          queueName: 'test',
+          result: { detailKeys: ['kept'] },
+        } as never,
         payload: { operation: 'seed-data' } as never,
         operationResult: { durationMs: 0, details: { kept: 1, ignored: 2 } },
         startedAt: Date.now(),
@@ -240,7 +250,11 @@ const createRuntime = (
 ): WasteManagementOperationRuntime => ({
   provisionTenantDatabase: async () => ({
     durationMs: 1,
-    details: { databaseName: 'sva_waste_test', interfaceId: 'waste-management:instance-1', desiredGeneration: 1 },
+    details: {
+      databaseName: 'sva_waste_test',
+      interfaceId: 'waste-management:instance-1',
+      desiredGeneration: 1,
+    },
   }),
   initializeDataSource: async () => ({
     durationMs: 1,
@@ -248,7 +262,11 @@ const createRuntime = (
   }),
   applyMigrations: async () => ({
     durationMs: 1,
-    details: { requestedByVersion: '1.0.0', schemaInspection: { schemaVersion: 1 }, appliedStatementCount: 0 },
+    details: {
+      requestedByVersion: '1.0.0',
+      schemaInspection: { schemaVersion: 1 },
+      appliedStatementCount: 0,
+    },
   }),
   importData: async () => ({
     durationMs: 1,
@@ -278,7 +296,13 @@ const createRuntime = (
   }),
   syncMainserver: async () => ({
     durationMs: 1,
-    details: { studioItemCount: 0, mainserverItemCount: 0, createCount: 0, deleteCount: 0, errorCount: 0 },
+    details: {
+      studioItemCount: 0,
+      mainserverItemCount: 0,
+      createCount: 0,
+      deleteCount: 0,
+      errorCount: 0,
+    },
   }),
   syncWasteTypes: async () => ({
     durationMs: 1,
@@ -286,7 +310,12 @@ const createRuntime = (
   }),
   materializeEmailReminders: async () => ({
     durationMs: 1,
-    details: { activeSubscriptionCount: 0, createdOutboxCount: 0, duplicateOutboxCount: 0, skippedPickupCount: 0 },
+    details: {
+      activeSubscriptionCount: 0,
+      createdOutboxCount: 0,
+      duplicateOutboxCount: 0,
+      skippedPickupCount: 0,
+    },
   }),
   processEmailReminderOutbox: async () => ({
     durationMs: 1,

@@ -6,6 +6,7 @@ import { Button } from '../../../components/ui/button';
 import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 import { MediaAssetGrid } from './-media-asset-grid.js';
@@ -13,6 +14,8 @@ import { MediaIntakeShelf } from './-media-intake-shelf.js';
 import { MediaLibraryToolbar } from './-media-library-toolbar.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('media.messages.loadError');
   }

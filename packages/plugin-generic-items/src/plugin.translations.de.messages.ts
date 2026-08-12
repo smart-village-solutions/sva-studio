@@ -71,6 +71,8 @@ export const genericItemsTranslationsDeMessages = {
     mediaUploadUnsupportedType: 'Dieser Dateityp wird nicht unterstützt.',
     mediaUploadUnavailableUrl: 'Dieses Medium hat keine öffentliche URL.',
     mediaPickerTitle: 'Medium hinzufügen',
+    mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
+    mediaPickerLinkAction: 'Medium per Link hinzufügen',
     mediaPickerDescription:
       'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
     mediaPickerReviewMode: 'Prüfen',
@@ -92,7 +94,8 @@ export const genericItemsTranslationsDeMessages = {
     mediaPickerAssetLoadError: 'Das Medium konnte nicht geladen werden.',
     mediaPickerMetadataSaveError: 'Die Metadaten konnten nicht gespeichert werden.',
     mediaUsageEmpty: 'Noch keine Medien hinzugefügt.',
-    mediaReferencePartialFailure: 'Der Inhalt wurde gespeichert, aber seine Medienreferenzen nicht. Sie können die Referenzen erneut speichern.',
+    mediaReferencePartialFailure:
+      'Der Inhalt wurde gespeichert, aber seine Medienreferenzen nicht. Sie können die Referenzen erneut speichern.',
     mediaReferenceRetrySuccess: 'Die Medienreferenzen wurden gespeichert.',
     categoryOptionsLoading: 'Kategorien werden geladen.',
     categoryOptionsLoadError: 'Kategorien konnten nicht geladen werden.',

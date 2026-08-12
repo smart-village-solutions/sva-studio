@@ -116,6 +116,7 @@ function ProjectImages({
   onChange,
   canSelectMedia,
   canUploadMedia,
+  onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,
 }: Readonly<{
@@ -125,6 +126,7 @@ function ProjectImages({
   onChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) {
@@ -142,9 +144,7 @@ function ProjectImages({
         usages={usages}
         onChange={change}
         showHeader={false}
-        onAddManual={() =>
-          change([...usages, createManualContentMediaUsage({ sortOrder: usages.length })])
-        }
+        onAddManual={onAddManualMedia}
         onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
         onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
@@ -154,9 +154,7 @@ function ProjectImages({
           description: pt('media.description'),
           empty: pt('messages.imagePreviewEmpty'),
           actions: {
-            library: pt('actions.selectImage'),
-            upload: pt('actions.uploadImage'),
-            manual: pt('actions.addImage'),
+            add: pt('media.add'),
             remove: pt('actions.removeImage'),
             moveUp: pt('actions.moveImageUp'),
             moveDown: pt('actions.moveImageDown'),
@@ -238,8 +236,9 @@ const pickerLabels = (pt: Translate): StudioMediaPickerOverlayLabels => ({
   title: pt('media.pickerTitle'),
   description: pt('media.pickerDescription'),
   modes: {
-    library: pt('actions.selectImage'),
-    upload: pt('actions.uploadImage'),
+    library: pt('media.addFromLibrary'),
+    upload: pt('media.upload'),
+    manual: pt('media.addByLink'),
     review: pt('media.review'),
   },
   library: {
@@ -454,6 +453,20 @@ function ProjectEditor({
       );
     },
   });
+
+  const addManualMedia = React.useCallback(() => {
+    const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
+    const nextUsages = [...mediaUsages, usage];
+    setMediaUsages(nextUsages);
+    form.setValue('images', [...projectMediaUsagesToImages(nextUsages)], {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    setRequiresReferenceSync(
+      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+    );
+    return usage.uiId;
+  }, [form, mediaUsages]);
 
   React.useEffect(() => {
     void refreshMediaAssets();
@@ -679,6 +692,7 @@ function ProjectEditor({
             }}
             canSelectMedia={canSelectMedia}
             canUploadMedia={canUploadMedia}
+            onAddManualMedia={addManualMedia}
             onOpenMediaPicker={(pickerMode) =>
               pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
             }
@@ -833,6 +847,7 @@ function ProjectEditor({
     >
       <StudioMediaPickerOverlay
         assets={mediaAssets.map(toPickerSummary)}
+        canUpload={canUploadMedia}
         open={mediaPicker.open}
         mode={mediaPicker.mode}
         labels={pickerLabels(pt)}
@@ -845,6 +860,7 @@ function ProjectEditor({
         isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
         isMetadataEditable={canUpdateMedia}
         isAssetSelectable={(asset) => mediaUsages.every((usage) => usage.assetId !== asset.id)}
+        onAddManual={addManualMedia}
         onClose={mediaPicker.close}
         onChangeMode={(pickerMode) =>
           pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()

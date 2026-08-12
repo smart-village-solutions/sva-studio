@@ -1,6 +1,6 @@
 import type { PluginJobExecutionHandler } from '@sva/plugin-sdk';
 import type { PluginJobTypeDefinition, WasteManagementJobInput } from '@sva/plugin-sdk';
-import { createWasteManagementPluginJobTypes } from '@sva/plugin-waste-management/waste-management.job-definitions';
+import { createWasteManagementPluginJobTypes } from '@sva/waste-management-contracts/job-definitions';
 
 import {
   createCompletedJobProgress,
@@ -8,7 +8,10 @@ import {
   createRuntimeProgressReporter,
   reportJobProgress,
 } from './runtime-job-progress.js';
-import type { WasteManagementJobProgress, WasteManagementOperationRuntime } from './runtime-types.js';
+import type {
+  WasteManagementJobProgress,
+  WasteManagementOperationRuntime,
+} from './runtime-types.js';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -51,8 +54,14 @@ export const getProgressDefinition = (
   jobTypeDefinition: PluginJobTypeDefinition,
   fallbackPhaseKey: string
 ) => {
-  const phaseKeys = jobTypeDefinition.progress?.phaseKeys ?? [fallbackPhaseKey, 'waste-management.completed'];
-  const stepKeys = jobTypeDefinition.progress?.stepKeys ?? ['resolve-operation', 'complete-operation'];
+  const phaseKeys = jobTypeDefinition.progress?.phaseKeys ?? [
+    fallbackPhaseKey,
+    'waste-management.completed',
+  ];
+  const stepKeys = jobTypeDefinition.progress?.stepKeys ?? [
+    'resolve-operation',
+    'complete-operation',
+  ];
 
   return {
     initialPhaseKey: phaseKeys[0] ?? fallbackPhaseKey,
@@ -75,42 +84,51 @@ export const createOperationResult = <TJobInput extends WasteManagementJobInput>
   progress: input.progress,
   resultPayload: {
     summary: {
-      durationMs: Math.max(input.operationResult.durationMs, Math.max(1, Date.now() - input.startedAt)),
+      durationMs: Math.max(
+        input.operationResult.durationMs,
+        Math.max(1, Date.now() - input.startedAt)
+      ),
     },
     plugin: {
       operation: input.payload.operation,
       mode: 'executed',
-      ...pickDeclaredDetailKeys(input.operationResult.details, input.jobTypeDefinition.result?.detailKeys ?? []),
+      ...pickDeclaredDetailKeys(
+        input.operationResult.details,
+        input.jobTypeDefinition.result?.detailKeys ?? []
+      ),
     },
   },
 });
 
-export const createOperationHandler = <TJobInput extends WasteManagementJobInput>(input: {
-  readonly jobTypeId: string;
-  readonly expectedOperation: TJobInput['operation'];
-  readonly phaseKey: string;
-  readonly useRuntimeManagedProgress?: (payload: TJobInput) => boolean;
-  readonly execute: (
-    runtime: WasteManagementOperationRuntime,
-    instanceId: string,
-    payload: TJobInput,
-    progressReporter?: {
-      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
-    },
-    context?: { readonly jobId: string }
-  ) => Promise<{
-    readonly durationMs: number;
-    readonly details: Record<string, unknown>;
-  }>;
-}) =>
+export const createOperationHandler =
+  <TJobInput extends WasteManagementJobInput>(input: {
+    readonly jobTypeId: string;
+    readonly expectedOperation: TJobInput['operation'];
+    readonly phaseKey: string;
+    readonly useRuntimeManagedProgress?: (payload: TJobInput) => boolean;
+    readonly execute: (
+      runtime: WasteManagementOperationRuntime,
+      instanceId: string,
+      payload: TJobInput,
+      progressReporter?: {
+        readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+      },
+      context?: { readonly jobId: string }
+    ) => Promise<{
+      readonly durationMs: number;
+      readonly details: Record<string, unknown>;
+    }>;
+  }) =>
   (runtime: WasteManagementOperationRuntime): PluginJobExecutionHandler =>
   async (context) => {
     const jobTypeDefinition = getJobTypeDefinition(input.jobTypeId);
-    const { initialPhaseKey, initialStepKey, completedPhaseKey, completedStepKey } = getProgressDefinition(
-      jobTypeDefinition,
-      input.phaseKey
+    const { initialPhaseKey, initialStepKey, completedPhaseKey, completedStepKey } =
+      getProgressDefinition(jobTypeDefinition, input.phaseKey);
+    const payload = assertWasteJobInput<TJobInput>(
+      input.jobTypeId,
+      context.job.inputPayload,
+      input.expectedOperation
     );
-    const payload = assertWasteJobInput<TJobInput>(input.jobTypeId, context.job.inputPayload, input.expectedOperation);
     const startedAt = Date.now();
     const useRuntimeManagedProgress = input.useRuntimeManagedProgress?.(payload) ?? false;
     let latestRuntimeProgress: WasteManagementJobProgress | undefined;

@@ -38,6 +38,12 @@ import {
 } from '../lib/browser-operation-logging';
 import { isDevelopmentBrowserEnv } from '../lib/browser-env';
 import {
+  resolveContentNavigationActiveId,
+  resolveContentRoutePrefix,
+  updateContentTypeSearch,
+  type SidebarContentLocation,
+} from '../lib/sidebar-content-navigation';
+import {
   hasExperimentalAccess,
   hasIamGovernanceAccess,
   hasInterfacesAccess,
@@ -53,8 +59,10 @@ import {
 import {
   getStudioPluginAction,
   getStudioPluginNavigationModuleId,
+  studioContentTypes,
   studioPluginNavigation,
 } from '../lib/plugins';
+import { resolveStudioContentTypeLabel } from '../lib/studio-content-types';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
 import { Button } from './ui/button';
@@ -77,6 +85,9 @@ type SidebarLeafItem = {
   readonly exact?: boolean;
   readonly section?: 'dataManagement' | 'applications' | 'system';
   readonly moduleId?: string | null;
+  readonly search?: (current: Readonly<Record<string, unknown>>) => Record<string, unknown>;
+  readonly contentType?: string | null;
+  readonly activePathPrefixes?: readonly string[];
 };
 
 type SidebarGroupItem = {
@@ -85,6 +96,8 @@ type SidebarGroupItem = {
   readonly label: string;
   readonly icon: Icon;
   readonly children: readonly SidebarLeafItem[];
+  readonly activeChildStrategy?: 'contentType';
+  readonly knownContentTypes?: readonly string[];
 };
 
 type SidebarItem = SidebarLeafItem | SidebarGroupItem;
@@ -122,6 +135,7 @@ const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/
 const COCKPIT_URL = 'https://cockpit.guben.de';
 const APP_LINK_PERMISSION = 'app.read';
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
+const MODULES_READ_PERMISSION = 'modules.read';
 const CATEGORIES_READ_PERMISSION = 'categories.read';
 const sidebarLogger = createOperationLogger('sidebar', 'debug');
 
@@ -212,6 +226,19 @@ const isLeafActive = (pathname: string, item: SidebarLeafItem) => {
   return pathname === item.to || pathname.startsWith(`${item.to}/`);
 };
 
+type SidebarLocation = SidebarContentLocation;
+
+const resolveGroupActiveChildId = (
+  location: SidebarLocation,
+  item: SidebarGroupItem
+): string | null => {
+  if (item.activeChildStrategy === 'contentType') {
+    return resolveContentNavigationActiveId(location, item.children, item.knownContentTypes ?? []);
+  }
+
+  return item.children.find((child) => isLeafActive(location.pathname, child))?.id ?? null;
+};
+
 const isModuleAssignedToUser = (
   moduleId: string | null | undefined,
   user: { assignedModules?: readonly string[] } | null | undefined
@@ -223,8 +250,10 @@ const isModuleAssignedToUser = (
   return user?.assignedModules?.includes(moduleId) === true;
 };
 
-const isGroupActive = (pathname: string, item: SidebarGroupItem) =>
-  item.children.some((child) => isLeafActive(pathname, child));
+const isGroupActive = (location: SidebarLocation, item: SidebarGroupItem) =>
+  resolveGroupActiveChildId(location, item) !== null ||
+  (item.activeChildStrategy === 'contentType' &&
+    (location.pathname === '/admin/content' || location.pathname.startsWith('/admin/content/')));
 
 const getLinkClasses = (isActive: boolean, isCollapsed: boolean, isChild = false) =>
   [
@@ -266,7 +295,9 @@ const SidebarLeafLink = ({
       <Link
         activeOptions={item.exact ? { exact: true } : undefined}
         to={item.to}
+        search={item.search}
         className={getLinkClasses(isActive, isCollapsed, isChild)}
+        aria-current={isActive ? 'page' : undefined}
         aria-label={isCollapsed ? item.label : undefined}
         title={isCollapsed ? item.label : undefined}
         onClick={onClick}
@@ -293,14 +324,16 @@ const SidebarLeafLink = ({
 
 type SidebarGroupFlyoutProps = Readonly<{
   item: SidebarGroupItem;
-  pathname: string;
+  location: SidebarLocation;
+  activeChildId: string | null;
   onNavigate?: () => void;
   closeFlyout: () => void;
 }>;
 
 const SidebarGroupFlyout = ({
   item,
-  pathname,
+  location: _location,
+  activeChildId,
   onNavigate,
   closeFlyout,
 }: SidebarGroupFlyoutProps) => {
@@ -322,7 +355,7 @@ const SidebarGroupFlyout = ({
           <SidebarLeafLink
             key={child.id}
             item={child}
-            isActive={isLeafActive(pathname, child)}
+            isActive={activeChildId === child.id}
             isCollapsed={false}
             isChild
             onClick={handleItemClick}
@@ -335,11 +368,11 @@ const SidebarGroupFlyout = ({
 
 type SidebarGroupContentProps = Readonly<{
   item: SidebarGroupItem;
-  pathname: string;
+  activeChildId: string | null;
   onNavigate?: () => void;
 }>;
 
-const SidebarGroupContent = ({ item, pathname, onNavigate }: SidebarGroupContentProps) => (
+const SidebarGroupContent = ({ item, activeChildId, onNavigate }: SidebarGroupContentProps) => (
   <CollapsibleContent
     id={`sidebar-group-${item.id}`}
     className="mt-1 ml-5 space-y-1 border-l border-sidebar-border/70 pb-1 pl-4"
@@ -348,7 +381,7 @@ const SidebarGroupContent = ({ item, pathname, onNavigate }: SidebarGroupContent
       <SidebarLeafLink
         key={child.id}
         item={child}
-        isActive={isLeafActive(pathname, child)}
+        isActive={activeChildId === child.id}
         isCollapsed={false}
         isChild
         onClick={onNavigate}
@@ -359,7 +392,7 @@ const SidebarGroupContent = ({ item, pathname, onNavigate }: SidebarGroupContent
 
 type SidebarNavItemProps = Readonly<{
   item: SidebarItem;
-  pathname: string;
+  location: SidebarLocation;
   isCollapsed: boolean;
   groupOpenState: Readonly<Record<string, boolean>>;
   flyoutGroupId: string | null;
@@ -372,7 +405,7 @@ type SidebarNavItemProps = Readonly<{
 
 const SidebarNavItem = ({
   item,
-  pathname,
+  location,
   isCollapsed,
   groupOpenState,
   flyoutGroupId,
@@ -387,7 +420,7 @@ const SidebarNavItem = ({
       <li key={item.id}>
         <SidebarLeafLink
           item={item}
-          isActive={isLeafActive(pathname, item)}
+          isActive={isLeafActive(location.pathname, item)}
           isCollapsed={isCollapsed}
           onClick={onNavigate}
         />
@@ -395,7 +428,8 @@ const SidebarNavItem = ({
     );
   }
 
-  const isActive = isGroupActive(pathname, item);
+  const activeChildId = resolveGroupActiveChildId(location, item);
+  const isActive = isGroupActive(location, item);
   const persistedOpen = groupOpenState[item.id];
   const isExpanded = isCollapsed ? flyoutGroupId === item.id : (persistedOpen ?? isActive);
   const IconComponent = item.icon;
@@ -480,7 +514,8 @@ const SidebarNavItem = ({
           {isExpanded ? (
             <SidebarGroupFlyout
               item={item}
-              pathname={pathname}
+              location={location}
+              activeChildId={activeChildId}
               onNavigate={onNavigate}
               closeFlyout={onCloseFlyout}
             />
@@ -541,7 +576,7 @@ const SidebarNavItem = ({
               )}
             </span>
           </CollapsibleTrigger>
-          <SidebarGroupContent item={item} pathname={pathname} onNavigate={onNavigate} />
+          <SidebarGroupContent item={item} activeChildId={activeChildId} onNavigate={onNavigate} />
         </Collapsible>
       )}
     </li>
@@ -560,9 +595,13 @@ const SidebarPanel = ({
   showMobileHeader = false,
   onCloseMobileNavigation,
 }: SidebarPanelProps) => {
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
+  const location = useRouterState({
+    select: (state) => ({
+      pathname: state.location.pathname,
+      search: state.location.search as Readonly<Record<string, unknown>>,
+    }),
   });
+  const pathname = location.pathname;
   const [groupOpenState, setGroupOpenState] = React.useState<Record<string, boolean>>({});
   const [flyoutGroupId, setFlyoutGroupId] = React.useState<string | null>(null);
 
@@ -638,7 +677,10 @@ const SidebarPanel = ({
             <div className="min-w-0">
               <p className="text-3xl font-semibold text-foreground">{t('shell.appName')}</p>
               {tenantName ? (
-                <p className="truncate text-xs font-medium text-muted-foreground" title={tenantName}>
+                <p
+                  className="truncate text-xs font-medium text-muted-foreground"
+                  title={tenantName}
+                >
                   {tenantName}
                 </p>
               ) : null}
@@ -710,7 +752,7 @@ const SidebarPanel = ({
                     <SidebarNavItem
                       key={item.id}
                       item={item}
-                      pathname={pathname}
+                      location={location}
                       isCollapsed={isCollapsed}
                       groupOpenState={groupOpenState}
                       flyoutGroupId={flyoutGroupId}
@@ -764,27 +806,27 @@ export default function Sidebar({
     ? { ...user, permissionActions: contentAccessApi.permissionActions }
     : user;
   const canAccessWorkspace = isAuthenticated && isIamUiEnabled();
-  const canAccessContent =
-    canAccessWorkspace &&
-    contentAccessApi.access?.canRead === true;
+  const canAccessContent = canAccessWorkspace && contentAccessApi.access?.canRead === true;
   const canAccessMedia =
     canAccessWorkspace &&
-    (isModuleAssignedToUser('media', user) &&
-        hasPermissionAction(
-          'media.read',
-          contentAccessApi.permissionActions,
-          contentAccessApi.isLoading
-        ));
+    isModuleAssignedToUser('media', user) &&
+    hasPermissionAction(
+      'media.read',
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessCategories =
     canAccessWorkspace &&
-    (isModuleAssignedToUser('categories', user) &&
-        hasPermissionAction(
-          CATEGORIES_READ_PERMISSION,
-          contentAccessApi.permissionActions,
-          contentAccessApi.isLoading
-        ));
+    isModuleAssignedToUser('categories', user) &&
+    hasPermissionAction(
+      CATEGORIES_READ_PERMISSION,
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessAdminUsers =
-    isAuthenticated && isIamAdminEnabled() && (hasUserAdminAccess(accessUser) || hasPlatformInstanceAdminAccess(accessUser));
+    isAuthenticated &&
+    isIamAdminEnabled() &&
+    (hasUserAdminAccess(accessUser) || hasPlatformInstanceAdminAccess(accessUser));
   const canAccessAdminOrganizations =
     isAuthenticated && isIamAdminEnabled() && hasOrganizationAdminAccess(accessUser);
   const canAccessAdminInstances =
@@ -796,20 +838,43 @@ export default function Sidebar({
   const canAccessAdminGroups = canAccessAdminRoles && Boolean(user?.instanceId);
   const canAccessAdminLegalTexts =
     isAuthenticated && isIamAdminEnabled() && hasLegalTextAdminAccess(accessUser);
-  const canAccessAdminPrivacy = isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(accessUser);
-  const canAccessInterfaces = isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(accessUser);
-  const canAccessExperimentalFeatures = isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(accessUser);
+  const canAccessAdminPrivacy =
+    isAuthenticated && isIamAdminEnabled() && hasIamGovernanceAccess(accessUser);
+  const canAccessInterfaces =
+    isAuthenticated && isIamUiEnabled() && hasInterfacesAccess(accessUser);
+  const canAccessExperimentalFeatures =
+    isAuthenticated && isIamUiEnabled() && hasExperimentalAccess(accessUser);
   const canAccessSystemTools =
-    canAccessExperimentalFeatures && isAuthenticated && isIamUiEnabled() && hasMonitoringAccess(accessUser);
-  const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
+    canAccessExperimentalFeatures &&
+    isAuthenticated &&
+    isIamUiEnabled() &&
+    hasMonitoringAccess(accessUser);
+  const canAccessModules =
+    isAuthenticated &&
+    isIamUiEnabled() &&
+    (hasPlatformInstanceAdminAccess(accessUser) ||
+      (Boolean(user?.instanceId) &&
+        hasPermissionAction(
+          MODULES_READ_PERMISSION,
+          contentAccessApi.permissionActions,
+           contentAccessApi.isLoading
+         )));
   const canAccessApplicationLink =
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
-    hasPermissionAction(APP_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
+    hasPermissionAction(
+      APP_LINK_PERMISSION,
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
   const canAccessCockpitLink =
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
-    hasPermissionAction(COCKPIT_LINK_PERMISSION, contentAccessApi.permissionActions, contentAccessApi.isLoading);
+    hasPermissionAction(
+      COCKPIT_LINK_PERMISSION,
+      contentAccessApi.permissionActions,
+      contentAccessApi.isLoading
+    );
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [hasLoadedCollapsePreference, setHasLoadedCollapsePreference] = React.useState(false);
@@ -871,6 +936,49 @@ export default function Sidebar({
       (item) => item.section === 'applications'
     );
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
+    const readableContentTypes = studioContentTypes.filter(
+      (definition) => {
+        const moduleId = definition.requiredReadAction.startsWith('content.')
+          ? null
+          : definition.requiredReadAction.split('.')[0];
+        return (
+          contentAccessApi.permissionActions.includes(definition.requiredReadAction) &&
+          isModuleAssignedToUser(moduleId, user)
+        );
+      }
+    );
+    const contentChildren: SidebarLeafItem[] = [
+      ...(canAccessContent || readableContentTypes.length > 0
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'content-all',
+              to: '/admin/content',
+              label: t('shell.sidebar.contentAll'),
+              icon: IconArticle,
+              exact: true,
+              contentType: null,
+              search: (current: Readonly<Record<string, unknown>>) =>
+                updateContentTypeSearch(current, null),
+            },
+          ]
+        : []),
+      ...readableContentTypes.map((definition) => ({
+        kind: 'link' as const,
+        id: `content-type-${definition.contentType}`,
+        to: '/admin/content',
+        label: resolveStudioContentTypeLabel(definition),
+        icon: IconArticle,
+        exact: true,
+        contentType: definition.contentType,
+        activePathPrefixes: [
+          resolveContentRoutePrefix(definition.createPath),
+          resolveContentRoutePrefix(definition.detailPath),
+        ],
+        search: (current: Readonly<Record<string, unknown>>) =>
+          updateContentTypeSearch(current, definition.contentType),
+      })),
+    ];
 
     const dataManagementItems: SidebarItem[] = [
       {
@@ -881,14 +989,16 @@ export default function Sidebar({
         icon: IconLayoutDashboard,
         exact: true,
       },
-      ...(canAccessContent
+      ...(canAccessWorkspace && contentChildren.length > 0
         ? [
             {
-              kind: 'link' as const,
+              kind: 'group' as const,
               id: 'content',
-              to: '/admin/content',
               label: t('shell.sidebar.content'),
               icon: IconArticle,
+              children: contentChildren,
+              activeChildStrategy: 'contentType' as const,
+              knownContentTypes: studioContentTypes.map((definition) => definition.contentType),
             },
           ]
         : []),
@@ -1046,7 +1156,7 @@ export default function Sidebar({
             },
           ]
         : []),
-      ...((canAccessSystemTools || canAccessTenantModules)
+      ...(canAccessModules
         ? [
             {
               kind: 'link' as const,
@@ -1107,7 +1217,9 @@ export default function Sidebar({
     canAccessCockpitLink,
     canAccessInterfaces,
     canAccessMedia,
+    canAccessModules,
     canAccessSystemTools,
+    canAccessWorkspace,
     canAccessContent,
     contentAccessApi.access,
     contentAccessApi.isLoading,

@@ -78,7 +78,7 @@ const resolveAuthorizationDecisionResult = (input: {
       organizationId: input.organizationId,
       reason: input.decision.reason,
     });
-    return forbiddenAuthorizationResult();
+    return forbiddenAuthorizationResult(input.action, input.decision.reason);
   }
 
   return allowedAuthorizationResult({

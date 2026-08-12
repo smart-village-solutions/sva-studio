@@ -135,7 +135,14 @@ const createListRouteDefinition = (
   path: basePath,
   routeKind: 'list',
   validateSearch: resource.capabilities?.list
-    ? (search: Record<string, unknown>) => normalizeAdminResourceListSearch(resource, search)
+    ? (search: Record<string, unknown>) => {
+        const normalized = normalizeAdminResourceListSearch(resource, search);
+        const contentType =
+          resource.resourceId === 'content' && typeof search.type === 'string'
+            ? search.type.trim()
+            : '';
+        return contentType === '' ? normalized : { ...normalized, type: contentType };
+      }
     : undefined,
 });
 

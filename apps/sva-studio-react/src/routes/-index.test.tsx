@@ -178,6 +178,33 @@ describe('HomePage', () => {
     ).toBeTruthy();
   });
 
+  it('names the missing permission after a route denial and removes transport details', () => {
+    useAuthMock.mockReturnValue({
+      user: { id: 'user-1', roles: ['editor'], instanceId: 'instance-1' },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    });
+
+    globalThis.history.replaceState(
+      {},
+      '',
+      '/?error=auth.insufficientRole&requiredPermission=iam.user.write&permissionMode=allOf&permissionReason=permission_missing'
+    );
+
+    render(<HomePage />);
+
+    expect(screen.getByRole('alert').textContent).toContain(
+      'Fehlende Berechtigung: Benutzer bearbeiten (iam.user.write).'
+    );
+    expect(globalThis.location.search).toBe('');
+  });
+
   it('shows auth query error message for failed login', () => {
     useAuthMock.mockReturnValue({
       user: null,

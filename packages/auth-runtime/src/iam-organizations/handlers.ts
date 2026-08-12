@@ -76,7 +76,8 @@ const organizationReadHandlers = createOrganizationReadHandlers({
             result.status,
             toInstancePermissionApiErrorCode(result.error),
             result.message,
-            requestId
+            requestId,
+            result.permissionDenial
           )
     ),
   loadContextOptions,
@@ -131,7 +132,8 @@ const organizationMutationHandlers = createOrganizationMutationHandlers({
             result.status,
             toInstancePermissionApiErrorCode(result.error),
             result.message,
-            requestId
+            requestId,
+            result.permissionDenial
           )
     ),
   loadContextOptions,

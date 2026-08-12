@@ -38,6 +38,7 @@ import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
 import type { IamHttpError } from '../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import type { IamContentListMetadata } from '../../lib/iam-api';
 import { EMPTY_VISIBLE_TYPE_SENTINEL } from '../../lib/iam-content-list-api.shared';
 import { studioContentTypes } from '../../lib/plugins';
@@ -49,6 +50,7 @@ import {
 } from '../../lib/studio-content-types';
 import { appAdminResources } from '../../routing/admin-resources';
 import { ContentStatusDialog } from './-content-status-dialog';
+import { ContentTypeFilters } from './-content-type-filters';
 import { MainserverAuthoringDiagnosticsPanel } from './-mainserver-authoring-diagnostics';
 
 type StatusFilter = 'all' | 'draft' | 'in_review' | 'approved' | 'published' | 'archived';
@@ -102,8 +104,9 @@ const contentStatusOptions = [
   'archived',
 ] as const satisfies readonly StatusFilter[];
 const contentSortFields = ['title', 'createdAt', 'updatedAt', 'publishedAt'] as const;
-
 const contentErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('content.messages.loadError');
   }
@@ -897,23 +900,13 @@ export const ContentListPage = ({
           }
           toolbarCenter={
             <>
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="content-type-filter">{t('content.filters.typeLabel')}</Label>
-                <Select
-                  id="content-type-filter"
-                  value={routeState.type}
-                  onChange={(event) =>
-                    navigateSearch({ type: normalizeTypeFilter(event.target.value), page: 1 })
-                  }
-                >
-                  <option value="all">{t('content.filters.typeAll')}</option>
-                  {readableContentTypes.map((definition) => (
-                    <option key={definition.contentType} value={definition.contentType}>
-                      {resolveStudioContentTypeLabel(definition)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              <ContentTypeFilters
+                contentTypes={readableContentTypes}
+                selectedType={routeState.type}
+                onTypeChange={(type) =>
+                  navigateSearch({ type: normalizeTypeFilter(type), page: 1 })
+                }
+              />
               <div className="flex flex-col gap-1">
                 <Label htmlFor="content-status-filter">{t('content.filters.statusLabel')}</Label>
                 <Select

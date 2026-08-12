@@ -30,7 +30,11 @@ type NamedInputValue = string | { env: string };
 interface NxProjectJson {
   targets?: Record<
     string,
-    { cache?: boolean; dependsOn?: string[]; options?: { command?: string; lintFilePatterns?: string[] } }
+    {
+      cache?: boolean;
+      dependsOn?: string[];
+      options?: { command?: string; lintFilePatterns?: string[] };
+    }
   >;
 }
 
@@ -276,7 +280,7 @@ describe('workspace package scripts', () => {
     const packageJson = loadRootPackageJson();
 
     expect(packageJson.scripts?.['test:eslint:affected']).toBe(
-      'pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && pnpm check:boundaries:fallow && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
+      'pnpm check:app-boundaries && pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && pnpm check:boundaries:fallow && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
     expect(packageJson.scripts?.['test:unit:affected']).toBe(
       'tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}'
@@ -488,9 +492,7 @@ describe('workspace package scripts', () => {
     );
     expect(affectedUnitPlan).toContain('return `pnpm nx run ${APP_PROJECT}:${target}`;');
     expect(affectedUnitGate).toContain("from './affected-unit-plan.ts'");
-    expect(affectedCoverageGate).toContain(
-      '`pnpm nx run ${APP_PROJECT}:test:coverage`'
-    );
+    expect(affectedCoverageGate).toContain('`pnpm nx run ${APP_PROJECT}:test:coverage`');
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');
   });

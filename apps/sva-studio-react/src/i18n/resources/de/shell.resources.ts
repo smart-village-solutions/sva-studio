@@ -121,6 +121,7 @@ export const shellDEResources = {
     },
     overview: 'Übersicht',
     content: 'Inhalte',
+    contentAll: 'Alle',
     media: 'Medien',
     categories: 'Kategorien',
     app: 'App',

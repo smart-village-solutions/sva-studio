@@ -1,0 +1,30 @@
+{
+  "name": "@sva/waste-management-contracts",
+  "license": "EUPL-1.2",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./job-definitions": {
+      "types": "./dist/job-definitions.d.ts",
+      "default": "./dist/job-definitions.js"
+    },
+    "./unsubscribe-token": {
+      "types": "./dist/unsubscribe-token.server.d.ts",
+      "default": "./dist/unsubscribe-token.server.js"
+    }
+  },
+  "dependencies": {
+    "@sva/plugin-sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "vitest": "^4.1.10"
+  }
+}

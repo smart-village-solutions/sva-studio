@@ -118,6 +118,7 @@ const authorizeDsrJsonAction = async (ctx: AuthenticatedRequestContext, action: 
 
   return jsonResponse(authorization.status, {
     error: toInstancePermissionApiErrorCode(authorization.error),
+    ...(authorization.permissionDenial ? { details: authorization.permissionDenial } : {}),
   });
 };
 
@@ -135,7 +136,8 @@ const authorizeDsrApiAction = async (
     authorization.status,
     toInstancePermissionApiErrorCode(authorization.error),
     message,
-    getWorkspaceContext().requestId
+    getWorkspaceContext().requestId,
+    authorization.permissionDenial
   );
 };
 

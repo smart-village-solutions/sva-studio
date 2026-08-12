@@ -25,9 +25,7 @@ const recordDuration = (durations: DurationEntry[], label: string, durationMs: n
   durations.push({ label, durationMs });
 };
 
-export const buildCoverageGateCommand = (
-  mode: GateMode
-): string => {
+export const buildCoverageGateCommand = (mode: GateMode): string => {
   if (mode !== 'full') {
     return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=0 pnpm coverage-gate';
   }
@@ -35,7 +33,12 @@ export const buildCoverageGateCommand = (
   return 'env COVERAGE_GATE_REQUIRE_SUMMARIES=1 pnpm coverage-gate';
 };
 
-const runQualityGates = (base: string, head: string, mode: GateMode, durations: DurationEntry[]): void => {
+const runQualityGates = (
+  base: string,
+  head: string,
+  mode: GateMode,
+  durations: DurationEntry[]
+): void => {
   if (mode === 'full') {
     recordDuration(durations, 'lint', runCommand('pnpm test:eslint'));
     recordDuration(durations, 'unit', runCommand('pnpm test:unit'));
@@ -44,30 +47,46 @@ const runQualityGates = (base: string, head: string, mode: GateMode, durations: 
   }
 
   if (mode === 'affected') {
-    recordDuration(durations, 'lint:affected', runAffectedCommand(base, 'pnpm test:eslint:affected'));
+    recordDuration(
+      durations,
+      'lint:affected',
+      runAffectedCommand(base, 'pnpm test:eslint:affected')
+    );
     for (const entry of runAffectedUnitGate({ base, head })) {
       recordDuration(durations, entry.label, entry.durationMs);
     }
-    recordDuration(durations, 'types:affected', runAffectedCommand(base, 'pnpm test:types:affected'));
+    recordDuration(
+      durations,
+      'types:affected',
+      runAffectedCommand(base, 'pnpm test:types:affected')
+    );
   }
 };
 
-const runCoverageGate = (
-  base: string,
-  mode: GateMode,
-  durations: DurationEntry[]
-): void => {
+const runCoverageGate = (base: string, mode: GateMode, durations: DurationEntry[]): void => {
   if (mode === 'full') {
     recordDuration(durations, 'coverage', runCommand('pnpm test:coverage'));
-    recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
+    recordDuration(
+      durations,
+      'sonar-new-code',
+      runCommand(`pnpm sonar-new-code-gate --base=${base}`)
+    );
     recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
   }
 
   if (mode === 'affected') {
-    recordDuration(durations, 'coverage:affected', runAffectedCommand(base, 'pnpm test:coverage:affected'));
-    recordDuration(durations, 'sonar-new-code', runCommand(`pnpm sonar-new-code-gate --base=${base}`));
+    recordDuration(
+      durations,
+      'coverage:affected',
+      runAffectedCommand(base, 'pnpm test:coverage:affected')
+    );
+    recordDuration(
+      durations,
+      'sonar-new-code',
+      runCommand(`pnpm sonar-new-code-gate --base=${base}`)
+    );
     recordDuration(durations, 'coverage-gate', runCommand(buildCoverageGateCommand(mode)));
     recordDuration(durations, 'complexity', runCommand('pnpm complexity-gate'));
     return;
@@ -137,16 +156,30 @@ export const runPrGate = (args: readonly string[]): number => {
   recordDuration(durations, 'file-placement', runCommand('pnpm check:file-placement'));
 
   if (!decision.codeRelevant) {
-    console.log('Keine code-relevanten Änderungen im PR-Scope. Weitere PR-Gates werden als No-op übersprungen.');
+    console.log(
+      'Keine code-relevanten Änderungen im PR-Scope. Weitere PR-Gates werden als No-op übersprungen.'
+    );
     console.log('\nPR gate summary:');
     console.log(formatDurationSummary(durations));
     return 0;
   }
 
-  recordDuration(durations, 'toolchain-consistency', runCommand('pnpm check:toolchain-consistency'));
-  recordDuration(durations, 'clean-generated-source-artifacts', runCommand('pnpm clean:generated-source-artifacts'));
+  recordDuration(
+    durations,
+    'toolchain-consistency',
+    runCommand('pnpm check:toolchain-consistency')
+  );
+  recordDuration(
+    durations,
+    'clean-generated-source-artifacts',
+    runCommand('pnpm clean:generated-source-artifacts')
+  );
   recordDuration(durations, 'plugin-ui-boundary', runCommand('pnpm check:plugin-ui-boundary'));
-  recordDuration(durations, 'plugin-architecture-boundary', runCommand('pnpm check:plugin-architecture-boundary'));
+  recordDuration(
+    durations,
+    'plugin-architecture-boundary',
+    runCommand('pnpm check:plugin-architecture-boundary')
+  );
 
   runCoverageGate(options.base, decision.coverageMode, durations);
   runQualityGates(options.base, options.head, decision.qualityGateMode, durations);

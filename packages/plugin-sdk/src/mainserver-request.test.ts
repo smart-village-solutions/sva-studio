@@ -128,6 +128,44 @@ describe('mainserver-request', () => {
     }
   });
 
+  it('preserves validated permission denial details on custom errors', async () => {
+    class CustomMainserverError extends Error {
+      public constructor(public readonly code: string) {
+        super(code);
+      }
+    }
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: 'forbidden',
+            message: 'Keine Berechtigung.',
+            details: {
+              required_permissions: ['news.publish'],
+              requirement_mode: 'allOf',
+              denial_reason: 'permission_missing',
+            },
+          }),
+          { status: 403 }
+        )
+    );
+
+    await expect(
+      requestMainserverJson({
+        url: '/permission-denied',
+        fetch: fetchMock as typeof fetch,
+        errorFactory: (code) => new CustomMainserverError(code),
+      })
+    ).rejects.toMatchObject({
+      code: 'forbidden',
+      permissionDenial: {
+        required_permissions: ['news.publish'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
+    });
+  });
+
   it('maps timeouts during fetch and response parsing into stable mainserver timeout errors', async () => {
     vi.useFakeTimers();
     try {

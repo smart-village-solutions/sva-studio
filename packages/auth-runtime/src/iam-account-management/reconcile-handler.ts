@@ -22,12 +22,15 @@ const requireRoleReconcilePermission = async (
     return null;
   }
 
-  return createApiError(
+  const args = [
     authorization.status,
     toInstancePermissionApiErrorCode(authorization.error),
     authorization.message,
-    requestId
-  );
+    requestId,
+  ] as const;
+  return authorization.permissionDenial
+    ? createApiError(...args, authorization.permissionDenial)
+    : createApiError(...args);
 };
 
 export const reconcilePlaceholderInternal = createReconcileHandlerInternal({

@@ -43,7 +43,8 @@ const requireMonitoringAccess = async (
         authorization.status,
         toInstancePermissionApiErrorCode(authorization.error),
         'Keine Berechtigung für Authorize-Performance-Monitoring.',
-        getRequestId()
+        getRequestId(),
+        authorization.permissionDenial
       );
 };
 

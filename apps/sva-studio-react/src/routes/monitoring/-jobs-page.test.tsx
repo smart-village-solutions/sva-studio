@@ -40,7 +40,8 @@ vi.mock('../../components/ui/tabs', () => {
   };
 });
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   StudioDataTable: ({
     columns,
     data,

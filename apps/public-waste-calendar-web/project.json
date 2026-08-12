@@ -7,6 +7,7 @@
   "targets": {
     "serve": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "options": {
         "cwd": "apps/public-waste-calendar-web",
         "command": "pnpm run dev"
@@ -44,12 +45,19 @@
     },
     "test:unit": {
       "executor": "nx:run-commands",
+      "dependsOn": ["^build"],
       "cache": true,
-      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "frontendTooling",
+        "{workspaceRoot}/scripts/ci/sync-injected-workspace-packages.ts"
+      ],
       "outputs": [],
       "options": {
         "cwd": "apps/public-waste-calendar-web",
-        "command": "node -e \"console.log('public-waste-calendar-web unit tests disabled in CI gate')\""
+        "command": "pnpm exec tsx ../../scripts/ci/sync-injected-workspace-packages.ts . && pnpm run test"
       }
     },
     "test:coverage": {

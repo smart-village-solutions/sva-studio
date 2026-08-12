@@ -4,6 +4,7 @@ import { useStudioSaveFeedback } from '@sva/studio-ui-react';
 
 import { t } from '../../i18n';
 import { readErrorMessage } from '../../lib/error-message-utils';
+import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import {
   deleteInstanceInterfaceServerFn,
   listInstanceInterfacesServerFn,
@@ -104,6 +105,8 @@ export const draftFromEntry = (entry: InstanceInterface): InstanceInterfaceDraft
 };
 
 export const translateInterfacesErrorMessage = (error: unknown, fallback: string): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   const message = readErrorMessage(error, fallback);
 
   switch (message) {

@@ -126,7 +126,7 @@ test.describe('news plugin', () => {
     await page.locator('#news-source-url').fill('https://example.com/news/source');
     await page.locator('#news-source-description').fill('Quellseite');
     await page
-      .getByRole('button', { name: /Manuell hinzufügen|news\.actions\.addMediaManual/ })
+      .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
     await page
       .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)

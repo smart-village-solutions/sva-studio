@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { genericItemMediaContentsToUsages, genericItemMediaUsagesToContents } from '../src/generic-items.content-media-adapter.js';
+import {
+  genericItemMediaContentsToUsages,
+  genericItemMediaUsagesToContents,
+  genericItemMediaUsagesToFormValues,
+} from '../src/generic-items.content-media-adapter.js';
 import { resolveGenericItemsPersistentDeliveryUrl } from '../src/generic-items.detail-page.js';
 
 describe('generic item content media adapter', () => {
@@ -20,6 +24,25 @@ describe('generic item content media adapter', () => {
       [{ assetId: 'asset-1', status: 'synced' }]
     );
     expect(usage).toMatchObject({ assetId: 'asset-1', role: 'gallery_item', sortOrder: 0, referenceStatus: 'synced' });
+  });
+
+  it('normalizes missing dimensions for form validation', () => {
+    expect(
+      genericItemMediaUsagesToFormValues(
+        genericItemMediaContentsToUsages([
+          { sourceUrl: { url: 'https://cdn.example.test/image.jpg' } },
+        ])
+      )
+    ).toEqual([
+      {
+        captionText: '',
+        contentType: '',
+        copyright: '',
+        height: '',
+        sourceUrl: { description: '', url: 'https://cdn.example.test/image.jpg' },
+        width: '',
+      },
+    ]);
   });
 
   it('accepts only explicitly public, non-signed delivery URLs', () => {

@@ -6,6 +6,10 @@ export const contentENResources = {
   filters: {
     typeLabel: 'Type',
     typeAll: 'All types',
+    quickTypeLabel: 'Quick filter by type',
+    quickAll: 'All',
+    otherTypeLabel: 'More types',
+    otherTypePlaceholder: 'Select type',
     statusLabel: 'Status',
     statusAll: 'All statuses',
   },

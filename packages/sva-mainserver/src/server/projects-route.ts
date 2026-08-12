@@ -94,7 +94,8 @@ const authorizeOrResponse = async (
     resource: { contentType: PROJECTS_CONTENT_TYPE, ...resource },
     credentialVisibleCompatibility: action !== 'projects.read',
   });
-  if (!result.ok) return errorJson(result.status, result.error, result.message);
+  if (!result.ok)
+    return errorJson(result.status, result.error, result.message, result.permissionDenial);
   return {
     instanceId: result.actor.instanceId,
     keycloakSubject: result.actor.keycloakSubject,

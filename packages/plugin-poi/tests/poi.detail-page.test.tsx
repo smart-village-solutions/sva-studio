@@ -299,6 +299,8 @@ describe('PoiDetailPage', () => {
         'poi.messages.mediaUploadUnavailableUrl':
           'Für dieses Medium ist keine öffentliche URL verfügbar.',
         'poi.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'poi.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'poi.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'poi.messages.mediaPickerUseMedia': 'Medium übernehmen',
         'poi.messages.mediaPickerAssetLoadError': 'Das Medium konnte nicht geladen werden.',
         'poi.actions.deleteConfirm': 'Wirklich löschen?',
@@ -372,15 +374,16 @@ describe('PoiDetailPage', () => {
     });
     const mediaSection = screen.getByText('Medieninhalte').closest('section');
     expect(mediaSection).toBeTruthy();
-    const libraryAction = within(mediaSection as HTMLElement).getByText('Aus Mediathek auswählen');
-    const uploadAction = within(mediaSection as HTMLElement).getByText('Medium hochladen');
-    const manualAction = within(mediaSection as HTMLElement).getByText('Manuell hinzufügen');
+    const addAction = within(mediaSection as HTMLElement).getByRole('button', {
+      name: 'Medium hinzufügen',
+    });
+    expect(within(mediaSection as HTMLElement).getAllByRole('button')).toEqual([addAction]);
+    fireEvent.click(addAction);
+    expect(screen.getByRole('button', { name: 'Medium hochladen' })).toBeTruthy();
     expect(
-      libraryAction.compareDocumentPosition(uploadAction) & Node.DOCUMENT_POSITION_FOLLOWING
+      screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' })
     ).toBeTruthy();
-    expect(
-      uploadAction.compareDocumentPosition(manualAction) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Medium per Link hinzufügen' })).toBeTruthy();
   });
 
   it('manages poi mediaContents in the content tab through the media library overlay', async () => {
@@ -446,7 +449,8 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/rathaus-aussen.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -481,7 +485,8 @@ describe('PoiDetailPage', () => {
       expect(screen.getByDisplayValue('https://cdn.example.test/stadtpark.jpg')).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
@@ -698,7 +703,8 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     const mediaUrl = screen.getAllByLabelText('URL').at(-1)!;
     fireEvent.change(mediaUrl, {
       target: { value: 'http://invalid.example/media.jpg' },
@@ -1006,7 +1012,8 @@ describe('PoiDetailPage', () => {
     });
 
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });
@@ -1128,7 +1135,8 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
@@ -1203,7 +1211,7 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [uploadedFile] },
     });
@@ -1256,7 +1264,7 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [failedFile] } });
 
     await waitFor(() => {
@@ -1279,7 +1287,7 @@ describe('PoiDetailPage', () => {
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [uploadedFile] },
     });

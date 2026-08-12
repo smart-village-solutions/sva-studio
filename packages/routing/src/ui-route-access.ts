@@ -1,12 +1,11 @@
 import { redirect } from '@tanstack/react-router';
-import type { PluginDefinition } from '@sva/plugin-sdk';
-
+import { createPermissionDenialDetails } from '@sva/core';
 import type { RouteGuardContext } from './protected.routes.js';
-import { buildLoginHref } from './protected-route-redirects.js';
-
-type PluginRouteAccessRequirement = NonNullable<
-  PluginDefinition['routes'][number]['accessRequirement']
->;
+import { buildInsufficientRoleHref, buildLoginHref } from './protected-route-redirects.js';
+import {
+  evaluateRouteAccessRequirement,
+  type PluginRouteAccessRequirement,
+} from './ui-route-access-decision.js';
 
 export type UiRouteAccessRequirements = {
   readonly requiredModuleId?: string;
@@ -27,25 +26,32 @@ export const enforceUiRouteAccessRequirements = async (
     throw redirect({ href: '/?error=auth.insufficientRole' });
   }
 
-  if (requirements.requiredModuleId && !user?.assignedModules?.includes(requirements.requiredModuleId)) {
+  if (
+    requirements.requiredModuleId &&
+    !user?.assignedModules?.includes(requirements.requiredModuleId)
+  ) {
     throw redirect({ href: '/?error=auth.insufficientRole' });
   }
 
   if (requirements.requiredPermissions?.length) {
-    const grantedPermissions = new Set(user?.permissionActions ?? []);
-    if (requirements.requiredPermissions.some((permission) => !grantedPermissions.has(permission))) {
+    if (!user?.permissionActions) {
       throw redirect({ href: '/?error=auth.insufficientRole' });
+    }
+    const grantedPermissions = new Set(user?.permissionActions ?? []);
+    const missingPermissions = requirements.requiredPermissions.filter(
+      (permission) => !grantedPermissions.has(permission)
+    );
+    if (missingPermissions.length > 0) {
+      throw redirect({
+        href: buildInsufficientRoleHref(
+          '/',
+          'auth.insufficientRole',
+          createPermissionDenialDetails({ requiredPermissions: missingPermissions })
+        ),
+      });
     }
   }
 };
-
-const satisfiesRequiredValues = (
-  required: Readonly<{ mode: 'allOf' | 'anyOf'; values: readonly string[] }>,
-  available: ReadonlySet<string>
-): boolean =>
-  required.values.length > 0 && required.mode === 'allOf'
-    ? required.values.every((value) => available.has(value))
-    : required.values.length > 0 && required.values.some((value) => available.has(value));
 
 export const enforceRouteAccessRequirement = async (
   requirement: PluginRouteAccessRequirement | undefined,
@@ -62,22 +68,10 @@ export const enforceRouteAccessRequirement = async (
   if (!user) {
     throw redirect({ href: buildLoginHref('/auth/login', beforeLoadOptions.location.href) });
   }
-  if (requirement.kind === 'authenticated') {
-    return;
-  }
-
-  const allowed =
-    requirement.kind === 'platform'
-      ? !user.instanceId && satisfiesRequiredValues(requirement.roles, new Set(user.roles ?? []))
-      : Boolean(user.instanceId) &&
-        user.permissionStatus !== 'degraded' &&
-        (!requirement.moduleId || user.assignedModules?.includes(requirement.moduleId)) &&
-        // Route guards do not receive the resource-scoped authorization evidence needed to
-        // verify a capability. Keep access closed until the capability is evaluated server-side.
-        !requirement.resourceCapability &&
-        satisfiesRequiredValues(requirement.actions, new Set(user.permissionActions ?? []));
-
-  if (!allowed) {
-    throw redirect({ href: '/?error=auth.insufficientRole' });
+  const decision = evaluateRouteAccessRequirement(requirement, user);
+  if (!decision.allowed) {
+    throw redirect({
+      href: buildInsufficientRoleHref('/', 'auth.insufficientRole', decision.permissionDenial),
+    });
   }
 };

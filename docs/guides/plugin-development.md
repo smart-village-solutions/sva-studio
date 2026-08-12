@@ -335,6 +335,8 @@ Erlaubt:
 - UI-Bindings über `ContentMediaUsageBlock` und `StudioMediaPickerOverlay` aus `@sva/studio-ui-react`
 - hostseitige Referenzverwaltung über die Media-HTTP-Fassade
 
+Alle Content-Medienblöcke verwenden genau einen primären Einstieg mit der Beschriftung „Medium hinzufügen“. Dieser öffnet den gemeinsamen Picker im aktiven Upload-Modus. Im Picker ist „Medium hochladen“ die primäre Aktion, „Medium aus der Bibliothek hinzufügen“ die sekundäre Aktion und „Medium per Link hinzufügen“ ein tertiärer Textlink. Plugins dürfen daneben keine parallelen Direktaktionen für Upload, Bibliothek oder Linkeingabe rendern.
+
 Nicht erlaubt:
 
 - direkte MinIO-/S3-Clients im Plugin

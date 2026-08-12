@@ -14,6 +14,7 @@ const invoke = async (
   user: {
     roles: readonly string[];
     permissionActions?: readonly string[];
+    permissionStatus?: 'ok' | 'degraded';
   } | null,
   href: string
 ) => {
@@ -81,6 +82,16 @@ describe('accountUiRouteGuards', () => {
   it('allows modules route for technical platform admins', async () => {
     await expect(
       invoke(accountUiRouteGuards.modules, { roles: ['instance_registry_admin'] }, '/modules')
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows modules route for technical platform admins with degraded tenant permissions', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.modules,
+        { roles: ['instance_registry_admin'], permissionStatus: 'degraded' },
+        '/modules'
+      )
     ).resolves.toBeUndefined();
   });
 

@@ -398,6 +398,7 @@ describe('Sidebar', () => {
         name: 'Platform Admin',
         roles: ['instance_registry_admin'],
         permissionActions: [],
+        permissionStatus: 'degraded',
       }),
       contentAccess: createContentAccessState({
         access: null,

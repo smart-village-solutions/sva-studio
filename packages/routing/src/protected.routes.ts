@@ -200,9 +200,11 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
       throw redirect({ href: buildLoginHref(loginPath, location.href) });
     }
 
+    const hasRequiredAlternativeRole = hasAnyRole(user, requiredAnyRoles);
     if (
       user.permissionStatus === 'degraded' &&
-      (requiredPermissions.length > 0 || requiredAnyPermissions.length > 0)
+      (requiredPermissions.length > 0 ||
+        (requiredAnyPermissions.length > 0 && !hasRequiredAlternativeRole))
     ) {
       emitAccessDeniedDiagnostic({
         diagnostics,

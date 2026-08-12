@@ -244,6 +244,26 @@ describe('protected routes', () => {
     );
   });
 
+  it('allows an alternative role when the permission snapshot is degraded', async () => {
+    const guard = createProtectedRoute({
+      route: '/admin/roles',
+      requiredAnyPermissions: ['iam.role.read'],
+      requiredAnyRoles: ['instance_registry_admin'],
+    });
+
+    await expect(
+      invokeGuard(
+        guard,
+        {
+          roles: ['instance_registry_admin'],
+          permissionActions: [],
+          permissionStatus: 'degraded',
+        },
+        '/admin/roles'
+      )
+    ).resolves.toBeUndefined();
+  });
+
   it('reports insufficient-role when only alternative roles are accepted', async () => {
     const diagnostics = vi.fn();
     const guard = createProtectedRoute({

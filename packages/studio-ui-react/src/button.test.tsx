@@ -10,7 +10,7 @@ describe('Button', () => {
 
   it('shows a hover tooltip for icon buttons using the aria-label', () => {
     render(
-      <Button type="button" size="icon" aria-label="Suche" tooltip="Suche">
+      <Button type="button" size="icon" aria-label="Suche">
         <span aria-hidden="true">S</span>
       </Button>
     );

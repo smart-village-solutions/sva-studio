@@ -55,19 +55,25 @@ const getSlottedButtonChild = (children: React.ReactNode) =>
 const resolveButtonTooltip = ({
   asChild,
   child,
+  label,
   size,
+  title,
   tooltip,
 }: {
   readonly asChild: boolean;
   readonly child: React.ReactElement<SlottedButtonChildProps> | null;
+  readonly label: string | undefined;
   readonly size: ButtonProps['size'];
+  readonly title: string | undefined;
   readonly tooltip: string | undefined;
 }) => {
-  if (tooltip || !asChild || size !== 'icon') {
+  if (tooltip || size !== 'icon') {
     return tooltip;
   }
 
-  return child?.props.title ?? child?.props['aria-label'];
+  return asChild
+    ? (child?.props.title ?? child?.props['aria-label'])
+    : (title ?? label);
 };
 
 const enhanceSlottedButtonChild = ({
@@ -159,7 +165,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const isDisabled = disabled || loading;
     const disabledAsChild = asChild && isDisabled;
     const slottedChild = getSlottedButtonChild(children);
-    const resolvedTooltip = resolveButtonTooltip({ asChild, child: slottedChild, size, tooltip });
+    const resolvedTooltip = resolveButtonTooltip({
+      asChild,
+      child: slottedChild,
+      label: props['aria-label'],
+      size,
+      title,
+      tooltip,
+    });
     const renderedChildren = enhanceSlottedButtonChild({
       asChild,
       child: slottedChild,

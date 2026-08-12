@@ -486,6 +486,9 @@ describe('News editor pages', () => {
         'news.actions.addMediaManual': 'Link manuell eintragen',
         'news.actions.remove': 'Entfernen',
         'news.actions.removeImage': 'Bild entfernen',
+        'news.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'news.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'news.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'news.validation.contentBlocks':
           'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.',
         'news.validation.contentBody': 'Der Inhalt ist erforderlich.',
@@ -691,7 +694,7 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Quell-URL'), {
       target: { value: 'https://example.com/news' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Link manuell eintragen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/image.jpg' },
     });
@@ -748,7 +751,7 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Quellbeschreibung'), { target: { value: 'Quelle' } });
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Inhalt</p>' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Link manuell eintragen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/image.jpg' },
     });

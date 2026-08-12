@@ -1,4 +1,9 @@
-import { ContentMediaUsageBlock, StudioDetailTabs, type ContentMediaUsage, type StudioDetailTabDefinition } from '@sva/studio-ui-react';
+import {
+  ContentMediaUsageBlock,
+  StudioDetailTabs,
+  type ContentMediaUsage,
+  type StudioDetailTabDefinition,
+} from '@sva/studio-ui-react';
 import type React from 'react';
 
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
@@ -15,6 +20,7 @@ type GenericItemsDetailTabsProps = Readonly<{
   categoryOptionsLoading: boolean;
   contentId?: string;
   labels: Record<string, string>;
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onTabChange: (tabId: GenericItemsDetailTabId) => void;
   pt: (key: string) => string;
@@ -26,27 +32,68 @@ type GenericItemsDetailTabsProps = Readonly<{
 }>;
 
 const createGenericItemsDetailTabs = ({
-  categoryOptions, categoryOptionsError, categoryOptionsLoading, contentId, labels, onOpenMediaPicker, pt,
-  mediaUsages, onChangeMediaUsages, canSelectMedia, canUploadMedia, onLoadAssetSnapshot,
+  categoryOptions,
+  categoryOptionsError,
+  categoryOptionsLoading,
+  contentId,
+  labels,
+  onAddManualMedia,
+  onOpenMediaPicker,
+  pt,
+  mediaUsages,
+  onChangeMediaUsages,
+  canSelectMedia,
+  canUploadMedia,
+  onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps): readonly StudioDetailTabDefinition<GenericItemsDetailTabId>[] => [
   {
-    id: 'basis', label: pt('tabs.basis.label'), title: pt('tabs.basis.title'),
-    description: pt('tabs.basis.description'), icon: 'basis',
-    panel: <GenericItemsDetailBasisTab availableCategories={categoryOptions} categoryOptionsError={categoryOptionsError} categoryOptionsLoading={categoryOptionsLoading} labels={labels} />,
+    id: 'basis',
+    label: pt('tabs.basis.label'),
+    title: pt('tabs.basis.title'),
+    description: pt('tabs.basis.description'),
+    icon: 'basis',
+    panel: (
+      <GenericItemsDetailBasisTab
+        availableCategories={categoryOptions}
+        categoryOptionsError={categoryOptionsError}
+        categoryOptionsLoading={categoryOptionsLoading}
+        labels={labels}
+      />
+    ),
   },
   {
-    id: 'content', label: pt('tabs.content.label'), title: pt('tabs.content.title'),
-    description: pt('tabs.content.description'), icon: 'content',
-    panel: <GenericItemsDetailContentTab labels={labels} onOpenMediaPicker={onOpenMediaPicker} mediaUsages={mediaUsages} onChangeMediaUsages={onChangeMediaUsages} canSelectMedia={canSelectMedia} canUploadMedia={canUploadMedia} onLoadAssetSnapshot={onLoadAssetSnapshot} />,
+    id: 'content',
+    label: pt('tabs.content.label'),
+    title: pt('tabs.content.title'),
+    description: pt('tabs.content.description'),
+    icon: 'content',
+    panel: (
+      <GenericItemsDetailContentTab
+        labels={labels}
+        onAddManualMedia={onAddManualMedia}
+        onOpenMediaPicker={onOpenMediaPicker}
+        mediaUsages={mediaUsages}
+        onChangeMediaUsages={onChangeMediaUsages}
+        canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
+        onLoadAssetSnapshot={onLoadAssetSnapshot}
+      />
+    ),
   },
   {
-    id: 'settings', label: pt('tabs.settings.label'), title: pt('tabs.settings.title'),
-    description: pt('tabs.settings.description'), icon: 'settings',
+    id: 'settings',
+    label: pt('tabs.settings.label'),
+    title: pt('tabs.settings.title'),
+    description: pt('tabs.settings.description'),
+    icon: 'settings',
     panel: <GenericItemsDetailSettingsTab labels={labels} />,
   },
   {
-    id: 'history', label: pt('tabs.history.label'), title: pt('tabs.history.title'),
-    description: pt('tabs.history.description'), icon: 'history',
+    id: 'history',
+    label: pt('tabs.history.label'),
+    title: pt('tabs.history.title'),
+    description: pt('tabs.history.description'),
+    icon: 'history',
     panel: <GenericItemsDetailHistoryTab contentId={contentId} pt={pt} />,
   },
 ];
@@ -58,6 +105,7 @@ export const GenericItemsDetailTabs = ({
   categoryOptionsLoading,
   contentId,
   labels,
+  onAddManualMedia,
   onOpenMediaPicker,
   onTabChange,
   pt,
@@ -67,7 +115,23 @@ export const GenericItemsDetailTabs = ({
   canUploadMedia,
   onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps) => {
-  const tabs = createGenericItemsDetailTabs({ activeTab, categoryOptions, categoryOptionsError, categoryOptionsLoading, contentId, labels, onOpenMediaPicker, onTabChange, pt, mediaUsages, onChangeMediaUsages, canSelectMedia, canUploadMedia, onLoadAssetSnapshot });
+  const tabs = createGenericItemsDetailTabs({
+    activeTab,
+    categoryOptions,
+    categoryOptionsError,
+    categoryOptionsLoading,
+    contentId,
+    labels,
+    onAddManualMedia,
+    onOpenMediaPicker,
+    onTabChange,
+    pt,
+    mediaUsages,
+    onChangeMediaUsages,
+    canSelectMedia,
+    canUploadMedia,
+    onLoadAssetSnapshot,
+  });
 
   return (
     <StudioDetailTabs

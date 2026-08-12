@@ -30,6 +30,8 @@ export const poiMessagesEn = {
   mediaUploadUnsupportedType: 'Only JPG, PNG, and WebP can be uploaded.',
   mediaUploadUnavailableUrl: 'This media asset has no public URL.',
   mediaPickerTitle: 'Add media',
+  mediaPickerLibraryAction: 'Add media from the library',
+  mediaPickerLinkAction: 'Add media by link',
   mediaPickerDescription: 'Select an existing asset or upload a new image.',
   mediaPickerReviewMode: 'Review',
   mediaPickerUploadRegionLabel: 'Upload image file',

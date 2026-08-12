@@ -13,9 +13,7 @@ const labels: ContentMediaUsageBlockLabels = {
   description: 'Bilder verwalten',
   empty: 'Keine Bilder',
   actions: {
-    library: 'Mediathek',
-    upload: 'Upload',
-    manual: 'Manuell',
+    add: 'Medium hinzufügen',
     remove: 'Entfernen',
     moveUp: 'Hoch',
     moveDown: 'Runter',
@@ -106,22 +104,22 @@ const Harness = ({
 afterEach(cleanup);
 
 describe('ContentMediaUsageBlock', () => {
-  it('exposes library, upload and manual entry points and edits the controlled usage', () => {
-    render(<Harness />);
-    expect(screen.getByText('Keine Bilder')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Mediathek' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Upload' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Manuell' }));
-    fireEvent.change(screen.getByLabelText('URL'), {
-      target: { value: 'https://cdn.example.test/manual.jpg' },
-    });
-    fireEvent.change(screen.getByLabelText('Alternativtext'), { target: { value: 'Alt' } });
-    fireEvent.change(screen.getByLabelText('Bildunterschrift'), { target: { value: 'Text' } });
-    fireEvent.change(screen.getByLabelText('Urheber'), { target: { value: 'Stadt' } });
-    fireEvent.change(screen.getByLabelText('Lizenz'), { target: { value: 'CC0' } });
-    expect((screen.getByLabelText('URL') as HTMLInputElement).value).toBe(
-      'https://cdn.example.test/manual.jpg'
+  it('exposes one primary add action that opens the upload flow', () => {
+    const onOpenUpload = vi.fn();
+    render(
+      <ContentMediaUsageBlock
+        usages={[]}
+        onChange={vi.fn()}
+        onAddManual={vi.fn()}
+        onOpenLibrary={vi.fn()}
+        onOpenUpload={onOpenUpload}
+        labels={labels}
+      />
     );
+    expect(screen.getByText('Keine Bilder')).toBeTruthy();
+    const action = screen.getByRole('button', { name: 'Medium hinzufügen' });
+    fireEvent.click(action);
+    expect(onOpenUpload).toHaveBeenCalledOnce();
   });
 
   it('reorders and removes by stable UI identity while announcing and restoring focus', async () => {
@@ -184,7 +182,7 @@ describe('ContentMediaUsageBlock', () => {
   it('shows reference mismatches for usages without an asset id', () => {
     render(<Harness initial={[linked({ assetId: undefined, referenceStatus: 'missing' })]} />);
 
-    expect(screen.getAllByText('Manuell')).toHaveLength(2);
+    expect(screen.getByText('Manuell')).toBeTruthy();
     expect(screen.getByText('Fehlt')).toBeTruthy();
   });
 
@@ -216,7 +214,7 @@ describe('ContentMediaUsageBlock', () => {
       />
     );
     expect(screen.getByLabelText('Bilder')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Mediathek' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Medium hinzufügen' })).toBeTruthy();
     expect(screen.getByText('Ungültig')).toBeTruthy();
     expect(screen.getByText('Zusatz one')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: 'Runter' })[0]!);
@@ -231,7 +229,7 @@ describe('ContentMediaUsageBlock', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
     await waitFor(() =>
-      expect(document.activeElement).toBe(document.getElementById('content-media-add-manual'))
+      expect(document.activeElement).toBe(document.getElementById('content-media-add'))
     );
   });
 });

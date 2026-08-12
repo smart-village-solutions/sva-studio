@@ -189,7 +189,8 @@ describe('projects pages', () => {
       'tabs.history',
     ]);
     fillRequiredFields();
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
     fireEvent.change(screen.getByLabelText('fields.imageUrl'), {
       target: { value: 'https://example.test/project.jpg' },
     });
@@ -293,7 +294,7 @@ describe('projects pages', () => {
     await screen.findByText('messages.loadError');
   });
 
-  it('exposes the three media entry points and keeps manual images editable', async () => {
+  it('opens the three media choices from one add action and keeps manual images editable', async () => {
     state.listAssets.mockResolvedValue([
       {
         id: 'image-1',
@@ -312,9 +313,13 @@ describe('projects pages', () => {
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
 
-    expect(await screen.findByRole('button', { name: 'actions.selectImage' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'actions.uploadImage' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'actions.addImage' }));
+    const addMedia = await screen.findByRole('button', { name: 'media.add' });
+    expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
+    fireEvent.click(addMedia);
+    expect(screen.getByRole('button', { name: 'media.upload' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'media.addFromLibrary' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'media.addByLink' }));
     expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
     fireEvent.click(
       screen.getAllByRole('button', { name: 'actions.removeImage' })[0] as HTMLElement
@@ -368,7 +373,8 @@ describe('projects pages', () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
     await screen.findByDisplayValue('Vorschau');
     fireEvent.change(screen.getByDisplayValue('Vorschau'), { target: { value: 'Neue Vorschau' } });
@@ -415,7 +421,7 @@ describe('projects pages', () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
-    fireEvent.click(screen.getByRole('button', { name: 'actions.uploadImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [new File(['image'], 'upload.jpg', { type: 'image/jpeg' })] },
     });
@@ -448,7 +454,9 @@ describe('projects pages', () => {
 
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'actions.addImage' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1));
   });
 
   it('loads project content when optional reference access fails', async () => {
@@ -488,7 +496,8 @@ describe('projects pages', () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fillRequiredFields();
-    fireEvent.click(screen.getByRole('button', { name: 'actions.selectImage' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'media.addFromLibrary' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.select' }));
     fireEvent.click(await screen.findByRole('button', { name: 'media.useMedia' }));
     fireEvent.click(screen.getAllByRole('button', { name: 'actions.create' }).at(-1)!);

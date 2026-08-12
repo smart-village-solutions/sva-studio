@@ -1,7 +1,7 @@
-import { Button } from './button.js';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './dialog.js';
 import { MediaIntakePanel } from './media-intake-panel.js';
 import { StudioMediaPickerLibraryPanel } from './studio-media-picker-library-panel.js';
+import { StudioMediaPickerModeActions } from './studio-media-picker-mode-actions.js';
 import { StudioMediaPickerReviewPanel } from './studio-media-picker-review-panel.js';
 import type {
   StudioMediaPickerAssetDetail,
@@ -35,6 +35,7 @@ type StudioMediaPickerOverlayProps = Readonly<{
   onSearchValueChange: (value: string) => void;
   onClose: () => void;
   onChangeMode: (mode: 'library' | 'upload') => void;
+  onAddManual: () => string | void;
   onSelectAsset: (asset: StudioMediaPickerAssetSummary) => void | Promise<void>;
   uploadPhase: StudioMediaPickerUploadPhase;
   onUploadFile: (file: File) => void | Promise<void>;
@@ -55,43 +56,8 @@ type StudioMediaPickerOverlayProps = Readonly<{
   feedbackMessage?: string | null;
   feedbackTone?: 'default' | 'success' | 'error';
   labels: StudioMediaPickerOverlayLabels;
+  canUpload?: boolean;
 }>;
-
-const StudioMediaPickerModeTabs = ({
-  labels,
-  mode,
-  onChangeMode,
-  disabled,
-}: Readonly<{
-  labels: StudioMediaPickerOverlayLabels['modes'];
-  mode: StudioMediaPickerMode;
-  onChangeMode: (mode: 'library' | 'upload') => void;
-  disabled: boolean;
-}>) => (
-  <div className="flex flex-wrap gap-2 border-b border-border/60 pb-4">
-    <Button
-      type="button"
-      disabled={disabled}
-      variant={mode === 'library' ? 'default' : 'outline'}
-      onClick={() => onChangeMode('library')}
-    >
-      {labels.library}
-    </Button>
-    <Button
-      type="button"
-      disabled={disabled}
-      variant={mode === 'upload' ? 'default' : 'outline'}
-      onClick={() => onChangeMode('upload')}
-    >
-      {labels.upload}
-    </Button>
-    {mode === 'review' ? (
-      <Button type="button" variant="secondary" disabled>
-        {labels.review}
-      </Button>
-    ) : null}
-  </div>
-);
 
 const StudioMediaPickerOverlayBody = ({
   assets,
@@ -117,7 +83,7 @@ const StudioMediaPickerOverlayBody = ({
   searchValue,
   uploadPhase,
   visibleMetadataFields,
-}: Omit<StudioMediaPickerOverlayProps, 'open' | 'onChangeMode'>) => (
+}: Omit<StudioMediaPickerOverlayProps, 'open' | 'onChangeMode' | 'onAddManual'>) => (
   <div className="max-h-[72vh] overflow-y-auto pr-1">
     {mode === 'library' ? (
       <StudioMediaPickerLibraryPanel
@@ -171,6 +137,7 @@ const StudioMediaPickerOverlayBody = ({
 
 export const StudioMediaPickerOverlay = ({
   assets,
+  canUpload = true,
   feedbackMessage,
   feedbackTone = 'default',
   isAssetSelectable,
@@ -180,6 +147,7 @@ export const StudioMediaPickerOverlay = ({
   labels,
   metadataDraft,
   mode,
+  onAddManual,
   onBackFromReview,
   onChangeMode,
   onClose,
@@ -196,7 +164,10 @@ export const StudioMediaPickerOverlay = ({
   uploadPhase,
   visibleMetadataFields,
 }: StudioMediaPickerOverlayProps) => {
-  const isBusy = isLoadingReviewAsset || isSavingReviewAsset;
+  const isUploadBusy =
+    uploadPhase === 'initializing' || uploadPhase === 'uploading' || uploadPhase === 'finalizing';
+  const isBusy = isLoadingReviewAsset || isSavingReviewAsset || isUploadBusy;
+  const visibleMode = !canUpload && mode === 'upload' ? 'library' : mode;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? onClose() : undefined)}>
@@ -206,11 +177,14 @@ export const StudioMediaPickerOverlay = ({
           <DialogDescription>{labels.description}</DialogDescription>
         </DialogHeader>
 
-        <StudioMediaPickerModeTabs
+        <StudioMediaPickerModeActions
+          canUpload={canUpload}
           disabled={isBusy}
           labels={labels.modes}
-          mode={mode}
+          mode={visibleMode}
+          onAddManual={onAddManual}
           onChangeMode={onChangeMode}
+          onClose={onClose}
         />
         <StudioMediaPickerOverlayBody
           assets={assets}
@@ -222,7 +196,7 @@ export const StudioMediaPickerOverlay = ({
           isMetadataEditable={isMetadataEditable}
           labels={labels}
           metadataDraft={metadataDraft}
-          mode={mode}
+          mode={visibleMode}
           onBackFromReview={onBackFromReview}
           onClose={onClose}
           onConfirmSelection={onConfirmSelection}

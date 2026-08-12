@@ -200,6 +200,8 @@ describe('EventsDetailPage', () => {
         'events.messages.poiOptionsEmpty': 'Keine passenden POI gefunden.',
         'events.messages.imagePickerEmpty': 'Keine passenden Medien gefunden.',
         'events.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'events.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'events.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'events.messages.mediaPickerDescription':
           'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
         'events.messages.mediaPickerReviewMode': 'Prüfen',
@@ -581,7 +583,7 @@ describe('EventsDetailPage', () => {
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hochladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],

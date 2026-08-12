@@ -1,4 +1,5 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import * as React from 'react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -36,7 +37,12 @@ describe('useStudioMediaPickerOverlay', () => {
         labels={{
           title: 'Media',
           description: 'Select media',
-          modes: { library: 'Library', upload: 'Upload', review: 'Review' },
+          modes: {
+            library: 'Add from library',
+            upload: 'Upload media',
+            manual: 'Add by link',
+            review: 'Review',
+          },
           library: { searchLabel: 'Search', empty: 'Empty', select: 'Select' },
           upload: {
             regionLabel: 'Upload region',
@@ -64,6 +70,7 @@ describe('useStudioMediaPickerOverlay', () => {
         metadataDraft={asset.metadata}
         mode="review"
         onBackFromReview={vi.fn()}
+        onAddManual={vi.fn()}
         onChangeMode={vi.fn()}
         onClose={vi.fn()}
         onConfirmSelection={vi.fn()}
@@ -85,6 +92,122 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(screen.queryByLabelText('Description field')).toBeNull();
     expect(screen.queryByLabelText('Copyright')).toBeNull();
     expect(screen.queryByLabelText('License')).toBeNull();
+  });
+
+  it('presents upload, library and link actions in the requested hierarchy', async () => {
+    const onAddManual = vi.fn(() => 'manual-1');
+    const onChangeMode = vi.fn();
+    const onClose = vi.fn();
+    const asset = createAsset();
+    const Harness = ({
+      canUpload = true,
+      uploadPhase = 'idle',
+    }: Readonly<{
+      canUpload?: boolean;
+      uploadPhase?: 'idle' | 'uploading';
+    }>) => {
+      const [open, setOpen] = React.useState(true);
+      const [mode, setMode] = React.useState<'library' | 'upload'>('upload');
+      return (
+        <>
+          <StudioMediaPickerOverlay
+            assets={[]}
+            canUpload={canUpload}
+            labels={{
+              title: 'Medium hinzufügen',
+              description: 'Medium auswählen',
+              modes: {
+                upload: 'Medium hochladen',
+                library: 'Medium aus der Bibliothek hinzufügen',
+                manual: 'Medium per Link hinzufügen',
+                review: 'Prüfen',
+              },
+              library: { searchLabel: 'Suchen', empty: 'Leer', select: 'Auswählen' },
+              upload: {
+                regionLabel: 'Upload',
+                title: 'Upload',
+                description: 'Upload',
+                browseAction: 'Datei auswählen',
+                supportLabel: 'Nur Bilder',
+              },
+              review: { title: 'Prüfen', description: 'Prüfen' },
+              fields: {
+                title: 'Titel',
+                altText: 'Alternativtext',
+                description: 'Beschreibung',
+                copyright: 'Copyright',
+                license: 'Lizenz',
+              },
+              actions: {
+                cancel: 'Abbrechen',
+                backToLibrary: 'Zurück',
+                backToUpload: 'Zurück',
+                openMediaManagement: 'Öffnen',
+                useMedia: 'Übernehmen',
+              },
+            }}
+            metadataDraft={asset.metadata}
+            mode={mode}
+            onAddManual={onAddManual}
+            onBackFromReview={vi.fn()}
+            onChangeMode={(nextMode) => {
+              onChangeMode(nextMode);
+              setMode(nextMode);
+            }}
+            onClose={() => {
+              onClose();
+              setOpen(false);
+            }}
+            onConfirmSelection={vi.fn()}
+            onMetadataChange={vi.fn()}
+            onSearchValueChange={vi.fn()}
+            onSelectAsset={vi.fn()}
+            onUploadFile={vi.fn()}
+            open={open}
+            reviewAsset={null}
+            reviewSource="upload"
+            searchValue=""
+            uploadPhase={uploadPhase}
+          />
+          <input id="content-media-manual-1-url" aria-label="Manuelle URL" />
+        </>
+      );
+    };
+    render(<Harness />);
+
+    const uploadAction = screen.getByRole('button', { name: 'Medium hochladen' });
+    const libraryAction = screen.getByRole('button', {
+      name: 'Medium aus der Bibliothek hinzufügen',
+    });
+    expect(uploadAction.getAttribute('aria-pressed')).toBe('true');
+    expect(uploadAction.className).toContain('bg-primary');
+    expect(libraryAction.className).toContain('bg-secondary/10');
+    fireEvent.click(libraryAction);
+    expect(onChangeMode).toHaveBeenCalledWith('library');
+    expect(uploadAction.className).toContain('bg-secondary/10');
+    expect(libraryAction.className).toContain('bg-primary');
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
+    expect(onAddManual).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.getElementById('content-media-manual-1-url'))
+    );
+
+    render(<Harness canUpload={false} />);
+    expect(
+      (screen.getByRole('button', { name: 'Medium hochladen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.queryByLabelText('Upload')).toBeNull();
+    expect(screen.getByLabelText('Suchen')).toBeTruthy();
+
+    render(<Harness uploadPhase="uploading" />);
+    const manualAction = screen.getByRole('button', {
+      name: 'Medium per Link hinzufügen',
+    });
+    expect((manualAction as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(manualAction);
+    expect(onAddManual).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {

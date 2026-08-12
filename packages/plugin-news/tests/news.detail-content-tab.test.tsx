@@ -100,9 +100,12 @@ const pt = (key: string, variables?: Readonly<Record<string, string | number>>) 
     } as const
   )[key] ?? key;
 
-function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
+function renderTab(
+  defaultValues?: Partial<NewsDetailFormValues>,
+  options?: Readonly<{ canSelectMedia?: boolean; canUploadMedia?: boolean }>
+) {
   const valuesRef: { current?: NewsDetailFormValues } = {};
-  const onUploadFile = vi.fn(async () => ({ id: 'asset-1', metadata: { title: 'Testbild' } }));
+  const onOpenMediaPicker = vi.fn();
 
   const Wrapper = () => {
     const methods = useForm<NewsDetailFormValues>({
@@ -126,7 +129,13 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
 
     return (
       <FormProvider {...methods}>
-        <NewsDetailContentTab mediaAssets={[]} onUploadFile={onUploadFile} pt={pt} />
+        <NewsDetailContentTab
+          canSelectMedia={options?.canSelectMedia}
+          canUploadMedia={options?.canUploadMedia}
+          onAddManualMedia={() => 'manual-media'}
+          onOpenMediaPicker={onOpenMediaPicker}
+          pt={pt}
+        />
         <button type="button" onClick={() => (valuesRef.current = methods.getValues())}>
           Werte lesen
         </button>
@@ -136,12 +145,12 @@ function renderTab(defaultValues?: Partial<NewsDetailFormValues>) {
 
   render(<Wrapper />);
 
-  return valuesRef;
+  return { valuesRef, onOpenMediaPicker };
 }
 
 describe('NewsDetailContentTab', () => {
   it('renders intro and content with RichTextHtmlEditor bindings', () => {
-    const valuesRef = renderTab();
+    const { valuesRef } = renderTab();
 
     expect(screen.getAllByTestId('rich-text-editor')).toHaveLength(2);
 
@@ -158,5 +167,20 @@ describe('NewsDetailContentTab', () => {
 
     expect((screen.getAllByLabelText('Einleitung').at(-1) as HTMLTextAreaElement).value).toBe('');
     expect(screen.getAllByText('0 Zeichen')).not.toHaveLength(0);
+  });
+
+  it('does not open the upload picker without media.create capability', () => {
+    const { onOpenMediaPicker } = renderTab(undefined, {
+      canSelectMedia: false,
+      canUploadMedia: false,
+    });
+
+    const addMediaButton = screen
+      .getAllByRole('button', { name: 'messages.mediaPickerTitle' })
+      .at(-1);
+    if (!addMediaButton) throw new Error('missing_add_media_button');
+    fireEvent.click(addMediaButton);
+
+    expect(onOpenMediaPicker).not.toHaveBeenCalled();
   });
 });

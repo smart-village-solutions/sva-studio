@@ -39,6 +39,7 @@ export type StudioMediaPickerOverlayLabels = Readonly<{
   modes: Readonly<{
     library: string;
     upload: string;
+    manual: string;
     review: string;
   }>;
   library: Readonly<{

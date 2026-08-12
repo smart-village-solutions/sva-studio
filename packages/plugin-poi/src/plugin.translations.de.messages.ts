@@ -37,6 +37,8 @@ export const poiMessagesDe = {
   mediaUploadUnsupportedType: 'Nur JPG, PNG und WebP können hochgeladen werden.',
   mediaUploadUnavailableUrl: 'Für dieses Medium ist keine öffentliche URL verfügbar.',
   mediaPickerTitle: 'Medium hinzufügen',
+  mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
+  mediaPickerLinkAction: 'Medium per Link hinzufügen',
   mediaPickerDescription:
     'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
   mediaPickerReviewMode: 'Prüfen',

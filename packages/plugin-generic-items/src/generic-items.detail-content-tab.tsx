@@ -1,6 +1,4 @@
-import {
-  GENERIC_ITEMS_OPENING_HOUR_WEEKDAYS,
-} from './generic-items.constants.js';
+import { GENERIC_ITEMS_OPENING_HOUR_WEEKDAYS } from './generic-items.constants.js';
 import {
   Button,
   Checkbox,
@@ -11,8 +9,6 @@ import {
   StudioFieldGroup,
   Textarea,
   ContentMediaUsageBlock,
-  contentMediaUsagesToMainserver,
-  createManualContentMediaUsage,
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
@@ -20,6 +16,7 @@ import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import * as React from 'react';
 
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
+import { genericItemMediaUsagesToFormValues } from './generic-items.content-media-adapter.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import { GenericItemsGeoAddressFields } from './generic-items.geo-address-fields.js';
 import { getMapGeocodingConfig } from './generic-items.map-geocoding-client.js';
@@ -27,6 +24,7 @@ import { GenericItemsGeoLocationFields } from './generic-items.geo-location-fiel
 
 export const GenericItemsDetailContentTab = ({
   labels,
+  onAddManualMedia,
   onOpenMediaPicker,
   mediaUsages,
   onChangeMediaUsages = () => undefined,
@@ -35,6 +33,7 @@ export const GenericItemsDetailContentTab = ({
   onLoadAssetSnapshot,
 }: Readonly<{
   labels: Record<string, string>;
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
@@ -42,10 +41,7 @@ export const GenericItemsDetailContentTab = ({
   canUploadMedia?: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) => {
-  const {
-    control,
-    setValue,
-  } = useFormContext<GenericItemsDetailFormValues>();
+  const { control, setValue } = useFormContext<GenericItemsDetailFormValues>();
   const webUrlsArray = useFieldArray({ control, name: 'webUrls' });
   const contactsArray = useFieldArray({ control, name: 'contacts' });
   const addressesArray = useFieldArray({ control, name: 'addresses' });
@@ -53,7 +49,10 @@ export const GenericItemsDetailContentTab = ({
   const contentBlocksArray = useFieldArray({ control, name: 'contentBlocks' });
   const openingHoursArray = useFieldArray({ control, name: 'openingHours' });
   const locationsArray = useFieldArray({ control, name: 'locations' });
-  const accessibilityInformationsArray = useFieldArray({ control, name: 'accessibilityInformations' });
+  const accessibilityInformationsArray = useFieldArray({
+    control,
+    name: 'accessibilityInformations',
+  });
   const priceInformationsArray = useFieldArray({ control, name: 'priceInformations' });
   const webUrls = useWatch({ control, name: 'webUrls' }) ?? [];
   const contacts = useWatch({ control, name: 'contacts' }) ?? [];
@@ -65,17 +64,11 @@ export const GenericItemsDetailContentTab = ({
   const resolvedMediaUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
   const changeMediaUsages = (usages: readonly ContentMediaUsage[]) => {
     onChangeMediaUsages(usages);
-    setValue('mediaContents', contentMediaUsagesToMainserver(usages).map((media) => ({
-      captionText: typeof media.captionText === 'string' ? media.captionText : '',
-      copyright: typeof media.copyright === 'string' ? media.copyright : '',
-      contentType: typeof media.contentType === 'string' ? media.contentType : '',
-      height: media.height === undefined ? '' : String(media.height),
-      width: media.width === undefined ? '' : String(media.width),
-      sourceUrl: {
-        url: typeof media.sourceUrl?.url === 'string' ? media.sourceUrl.url : '',
-        description: typeof media.sourceUrl?.description === 'string' ? media.sourceUrl.description : '',
-      },
-    })), { shouldDirty: true });
+    setValue(
+      'mediaContents',
+      genericItemMediaUsagesToFormValues(usages),
+      { shouldDirty: true }
+    );
   };
   const locations = useWatch({ control, name: 'locations' }) ?? [];
   const accessibilityInformations = useWatch({ control, name: 'accessibilityInformations' }) ?? [];
@@ -151,7 +144,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-content-block-title-${index}`}
                     value={contentBlock.title}
                     onChange={(event) =>
-                      setValue(`contentBlocks.${index}.title`, event.target.value, { shouldDirty: true })
+                      setValue(`contentBlocks.${index}.title`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -160,7 +155,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-content-block-intro-${index}`}
                     value={contentBlock.intro}
                     onChange={(event) =>
-                      setValue(`contentBlocks.${index}.intro`, event.target.value, { shouldDirty: true })
+                      setValue(`contentBlocks.${index}.intro`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -265,8 +262,12 @@ export const GenericItemsDetailContentTab = ({
                 onAdditionChange={(value) => setValue(`addresses.${index}.addition`, value, { shouldDirty: true })}
                 onCityChange={(value) => setValue(`addresses.${index}.city`, value, { shouldDirty: true })}
                 onCoordinatesChange={(coordinates) => {
-                  setValue(`addresses.${index}.latitude`, coordinates.latitude, { shouldDirty: true });
-                  setValue(`addresses.${index}.longitude`, coordinates.longitude, { shouldDirty: true });
+                  setValue(`addresses.${index}.latitude`, coordinates.latitude, {
+                    shouldDirty: true,
+                  });
+                  setValue(`addresses.${index}.longitude`, coordinates.longitude, {
+                    shouldDirty: true,
+                  });
                 }}
                 onLatitudeChange={(value) => setValue(`addresses.${index}.latitude`, value, { shouldDirty: true })}
                 onLongitudeChange={(value) => setValue(`addresses.${index}.longitude`, value, { shouldDirty: true })}
@@ -286,7 +287,16 @@ export const GenericItemsDetailContentTab = ({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => contactsArray.append({ firstName: '', lastName: '', email: '', phone: '', fax: '', webUrls: [] })}
+              onClick={() =>
+                contactsArray.append({
+                  firstName: '',
+                  lastName: '',
+                  email: '',
+                  phone: '',
+                  fax: '',
+                  webUrls: [],
+                })
+              }
             >
               {labels.addContact}
             </Button>
@@ -309,14 +319,22 @@ export const GenericItemsDetailContentTab = ({
                   <Input
                     id={`generic-item-contact-first-name-${index}`}
                     value={contact.firstName}
-                    onChange={(event) => setValue(`contacts.${index}.firstName`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`contacts.${index}.firstName`, event.target.value, {
+                        shouldDirty: true,
+                      })
+                    }
                   />
                 </StudioField>
                 <StudioField id={`generic-item-contact-last-name-${index}`} label={labels.lastName}>
                   <Input
                     id={`generic-item-contact-last-name-${index}`}
                     value={contact.lastName}
-                    onChange={(event) => setValue(`contacts.${index}.lastName`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`contacts.${index}.lastName`, event.target.value, {
+                        shouldDirty: true,
+                      })
+                    }
                   />
                 </StudioField>
               </StudioFieldGroup>
@@ -403,8 +421,12 @@ export const GenericItemsDetailContentTab = ({
                 onRegionNameChange={(value) => setValue(`locations.${index}.regionName`, value, { shouldDirty: true })}
                 onStateChange={(value) => setValue(`locations.${index}.state`, value, { shouldDirty: true })}
                 onCoordinatesChange={(coordinates) => {
-                  setValue(`locations.${index}.latitude`, coordinates.latitude, { shouldDirty: true });
-                  setValue(`locations.${index}.longitude`, coordinates.longitude, { shouldDirty: true });
+                  setValue(`locations.${index}.latitude`, coordinates.latitude, {
+                    shouldDirty: true,
+                  });
+                  setValue(`locations.${index}.longitude`, coordinates.longitude, {
+                    shouldDirty: true,
+                  });
                 }}
                 onLatitudeChange={(value) => setValue(`locations.${index}.latitude`, value, { shouldDirty: true })}
                 onLongitudeChange={(value) => setValue(`locations.${index}.longitude`, value, { shouldDirty: true })}
@@ -419,10 +441,7 @@ export const GenericItemsDetailContentTab = ({
           <ContentMediaUsageBlock
             usages={resolvedMediaUsages}
             onChange={changeMediaUsages}
-            onAddManual={() => changeMediaUsages([...resolvedMediaUsages, {
-              ...createManualContentMediaUsage({ sortOrder: resolvedMediaUsages.length }),
-              additionalData: { contentType: '', width: '', height: '' },
-            }])}
+            onAddManual={onAddManualMedia}
             onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
             onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
             onLoadAssetSnapshot={onLoadAssetSnapshot}
@@ -430,7 +449,18 @@ export const GenericItemsDetailContentTab = ({
             showHeader={false}
             renderAdditionalFields={({ usage, update }) => (
               <StudioField id={`generic-item-media-${usage.uiId}-content-type`} label={labels.mediaContentType}>
-                <Select id={`generic-item-media-${usage.uiId}-content-type`} value={String(usage.additionalData?.contentType ?? '')} onChange={(event) => update({ additionalData: { ...usage.additionalData, contentType: event.currentTarget.value } })}>
+                <Select
+                  id={`generic-item-media-${usage.uiId}-content-type`}
+                  value={String(usage.additionalData?.contentType ?? '')}
+                  onChange={(event) =>
+                    update({
+                      additionalData: {
+                        ...usage.additionalData,
+                        contentType: event.currentTarget.value,
+                      },
+                    })
+                  }
+                >
                   <option value="">{labels.mediaTypeUnspecified}</option>
                   <option value="image">{labels.mediaTypeimage}</option>
                   <option value="audio">{labels.mediaTypeaudio}</option>
@@ -441,12 +471,43 @@ export const GenericItemsDetailContentTab = ({
               </StudioField>
             )}
             labels={{
-              title: labels.linksMediaTitle, description: labels.linksMediaDescription, empty: labels.mediaUsageEmpty,
-              actions: { library: labels.addImage, upload: labels.uploadMedia, manual: labels.addMediaManual, remove: labels.removeImage, moveUp: labels.mediaMoveUp, moveDown: labels.mediaMoveDown, refreshMetadata: labels.mediaRefresh, cancel: labels.mediaCancel, apply: labels.mediaApply },
-              fields: { url: labels.url, altText: labels.urlDescription, caption: labels.mediaCaption, credit: labels.mediaCopyright, license: labels.mediaLicense },
-              states: { linked: labels.mediaLinked, manual: labels.mediaManual, synced: labels.mediaSynced, pending: labels.mediaPending, missing: labels.mediaMissing, additional: labels.mediaAdditional, unresolved: labels.mediaUnresolved, failed: labels.mediaFailed, previewUnavailable: labels.mediaPreviewUnavailable },
+              title: labels.linksMediaTitle,
+              description: labels.linksMediaDescription,
+              empty: labels.mediaUsageEmpty,
+              actions: {
+                add: labels.mediaPickerTitle,
+                remove: labels.removeImage,
+                moveUp: labels.mediaMoveUp,
+                moveDown: labels.mediaMoveDown,
+                refreshMetadata: labels.mediaRefresh,
+                cancel: labels.mediaCancel,
+                apply: labels.mediaApply,
+              },
+              fields: {
+                url: labels.url,
+                altText: labels.urlDescription,
+                caption: labels.mediaCaption,
+                credit: labels.mediaCopyright,
+                license: labels.mediaLicense,
+              },
+              states: {
+                linked: labels.mediaLinked,
+                manual: labels.mediaManual,
+                synced: labels.mediaSynced,
+                pending: labels.mediaPending,
+                missing: labels.mediaMissing,
+                additional: labels.mediaAdditional,
+                unresolved: labels.mediaUnresolved,
+                failed: labels.mediaFailed,
+                previewUnavailable: labels.mediaPreviewUnavailable,
+              },
               announcements: { moved: labels.mediaMoved, removed: labels.mediaRemoved },
-              refresh: { title: labels.mediaRefreshTitle, description: labels.mediaRefreshDescription, assetValue: labels.mediaAssetValue, contentValue: labels.mediaContentValue },
+              refresh: {
+                title: labels.mediaRefreshTitle,
+                description: labels.mediaRefreshDescription,
+                assetValue: labels.mediaAssetValue,
+                contentValue: labels.mediaContentValue,
+              },
             }}
           />
         </div>
@@ -456,12 +517,7 @@ export const GenericItemsDetailContentTab = ({
               <p className="text-sm font-medium text-foreground">{labels.webUrls}</p>
               <p className="text-sm text-muted-foreground">{labels.webUrlsHelp}</p>
             </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => webUrlsArray.append({ url: '', description: '' })}
-            >
+            <Button type="button" size="sm" variant="outline" onClick={() => webUrlsArray.append({ url: '', description: '' })}>
               {labels.addLink}
             </Button>
           </div>
@@ -491,7 +547,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-web-url-description-${index}`}
                     value={webUrl.description}
                     onChange={(event) =>
-                      setValue(`webUrls.${index}.description`, event.target.value, { shouldDirty: true })
+                      setValue(`webUrls.${index}.description`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -531,12 +589,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.accessibilityInformationItem}</p>
                 {accessibilityInformations.length > 1 ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => accessibilityInformationsArray.remove(index)}
-                  >
+                  <Button type="button" size="sm" variant="outline" onClick={() => accessibilityInformationsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -546,7 +599,9 @@ export const GenericItemsDetailContentTab = ({
                   id={`generic-item-accessibility-description-${index}`}
                   value={accessibilityInformation.description}
                   onChange={(event) =>
-                    setValue(`accessibilityInformations.${index}.description`, event.target.value, { shouldDirty: true })
+                    setValue(`accessibilityInformations.${index}.description`, event.target.value, {
+                      shouldDirty: true,
+                    })
                   }
                 />
               </StudioField>
@@ -555,7 +610,9 @@ export const GenericItemsDetailContentTab = ({
                   id={`generic-item-accessibility-types-${index}`}
                   value={accessibilityInformation.types}
                   onChange={(event) =>
-                    setValue(`accessibilityInformations.${index}.types`, event.target.value, { shouldDirty: true })
+                    setValue(`accessibilityInformations.${index}.types`, event.target.value, {
+                      shouldDirty: true,
+                    })
                   }
                 />
               </StudioField>
@@ -570,7 +627,9 @@ export const GenericItemsDetailContentTab = ({
                       setValue(
                         `accessibilityInformations.${index}.urls`,
                         [...(accessibilityInformation.urls ?? []), { url: '', description: '' }],
-                        { shouldDirty: true }
+                        {
+                          shouldDirty: true,
+                        }
                       )
                     }
                   >
@@ -607,27 +666,20 @@ export const GenericItemsDetailContentTab = ({
                           id={`generic-item-accessibility-url-${index}-${urlIndex}`}
                           value={webUrl.url}
                           onChange={(event) =>
-                            setValue(
-                              `accessibilityInformations.${index}.urls.${urlIndex}.url`,
-                              event.target.value,
-                              { shouldDirty: true }
-                            )
+                            setValue(`accessibilityInformations.${index}.urls.${urlIndex}.url`, event.target.value, {
+                              shouldDirty: true,
+                            })
                           }
                         />
                       </StudioField>
-                      <StudioField
-                        id={`generic-item-accessibility-url-description-${index}-${urlIndex}`}
-                        label={labels.urlDescription}
-                      >
+                      <StudioField id={`generic-item-accessibility-url-description-${index}-${urlIndex}`} label={labels.urlDescription}>
                         <Input
                           id={`generic-item-accessibility-url-description-${index}-${urlIndex}`}
                           value={webUrl.description}
                           onChange={(event) =>
-                            setValue(
-                              `accessibilityInformations.${index}.urls.${urlIndex}.description`,
-                              event.target.value,
-                              { shouldDirty: true }
-                            )
+                            setValue(`accessibilityInformations.${index}.urls.${urlIndex}.description`, event.target.value, {
+                              shouldDirty: true,
+                            })
                           }
                         />
                       </StudioField>
@@ -686,7 +738,11 @@ export const GenericItemsDetailContentTab = ({
                   <Input
                     id={`generic-item-price-name-${index}`}
                     value={priceInformation.name}
-                    onChange={(event) => setValue(`priceInformations.${index}.name`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`priceInformations.${index}.name`, event.target.value, {
+                        shouldDirty: true,
+                      })
+                    }
                   />
                 </StudioField>
                 <StudioField id={`generic-item-price-category-${index}`} label={labels.priceCategory}>
@@ -694,7 +750,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-price-category-${index}`}
                     value={priceInformation.category}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.category`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.category`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -706,7 +764,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.amount}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.amount`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.amount`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -715,7 +775,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-price-group-${index}`}
                     checked={priceInformation.groupPrice}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.groupPrice`, event.currentTarget.checked, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.groupPrice`, event.currentTarget.checked, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -727,7 +789,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.ageFrom}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.ageFrom`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.ageFrom`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -737,7 +801,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.ageTo}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.ageTo`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.ageTo`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -749,7 +815,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.minAdultCount}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.minAdultCount`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.minAdultCount`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -759,7 +827,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.maxAdultCount}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.maxAdultCount`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.maxAdultCount`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -771,7 +841,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.minChildrenCount}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.minChildrenCount`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.minChildrenCount`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -781,7 +853,9 @@ export const GenericItemsDetailContentTab = ({
                     type="number"
                     value={priceInformation.maxChildrenCount}
                     onChange={(event) =>
-                      setValue(`priceInformations.${index}.maxChildrenCount`, event.target.value, { shouldDirty: true })
+                      setValue(`priceInformations.${index}.maxChildrenCount`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -791,7 +865,9 @@ export const GenericItemsDetailContentTab = ({
                   id={`generic-item-price-description-${index}`}
                   value={priceInformation.description}
                   onChange={(event) =>
-                    setValue(`priceInformations.${index}.description`, event.target.value, { shouldDirty: true })
+                    setValue(`priceInformations.${index}.description`, event.target.value, {
+                      shouldDirty: true,
+                    })
                   }
                 />
               </StudioField>
@@ -849,7 +925,9 @@ export const GenericItemsDetailContentTab = ({
                       type="date"
                       value={openingHour.dateFrom}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.dateFrom`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.dateFrom`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -859,7 +937,9 @@ export const GenericItemsDetailContentTab = ({
                       type="date"
                       value={openingHour.dateTo}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.dateTo`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.dateTo`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -871,7 +951,9 @@ export const GenericItemsDetailContentTab = ({
                       type="time"
                       value={openingHour.timeFrom}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.timeFrom`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.timeFrom`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -881,7 +963,9 @@ export const GenericItemsDetailContentTab = ({
                       type="time"
                       value={openingHour.timeTo}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.timeTo`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.timeTo`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -892,7 +976,9 @@ export const GenericItemsDetailContentTab = ({
                       id={`generic-item-opening-description-${index}`}
                       value={openingHour.description}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.description`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.description`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -901,7 +987,9 @@ export const GenericItemsDetailContentTab = ({
                       id={`generic-item-opening-weekday-${index}`}
                       value={openingHour.weekday}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.weekday`, event.target.value, { shouldDirty: true })
+                        setValue(`openingHours.${index}.weekday`, event.target.value, {
+                          shouldDirty: true,
+                        })
                       }
                     >
                       <option value="">{labels.notAvailable}</option>
@@ -919,7 +1007,9 @@ export const GenericItemsDetailContentTab = ({
                       id={`generic-item-opening-open-${index}`}
                       checked={openingHour.open}
                       onChange={(event) =>
-                        setValue(`openingHours.${index}.open`, event.currentTarget.checked, { shouldDirty: true })
+                        setValue(`openingHours.${index}.open`, event.currentTarget.checked, {
+                          shouldDirty: true,
+                        })
                       }
                     />
                   </StudioField>
@@ -972,7 +1062,11 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-date-start-${index}`}
                     type="datetime-local"
                     value={date.dateStart}
-                    onChange={(event) => setValue(`dates.${index}.dateStart`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`dates.${index}.dateStart`, event.target.value, {
+                        shouldDirty: true,
+                      })
+                    }
                   />
                 </StudioField>
                 <StudioField id={`generic-item-date-end-${index}`} label={labels.dateEnd}>
@@ -990,7 +1084,11 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-time-start-${index}`}
                     type="time"
                     value={date.timeStart}
-                    onChange={(event) => setValue(`dates.${index}.timeStart`, event.target.value, { shouldDirty: true })}
+                    onChange={(event) =>
+                      setValue(`dates.${index}.timeStart`, event.target.value, {
+                        shouldDirty: true,
+                      })
+                    }
                   />
                 </StudioField>
                 <StudioField id={`generic-item-time-end-${index}`} label={labels.timeEnd}>
@@ -1015,7 +1113,9 @@ export const GenericItemsDetailContentTab = ({
                     id={`generic-item-time-description-${index}`}
                     value={date.timeDescription}
                     onChange={(event) =>
-                      setValue(`dates.${index}.timeDescription`, event.target.value, { shouldDirty: true })
+                      setValue(`dates.${index}.timeDescription`, event.target.value, {
+                        shouldDirty: true,
+                      })
                     }
                   />
                 </StudioField>
@@ -1025,7 +1125,9 @@ export const GenericItemsDetailContentTab = ({
                   id={`generic-item-use-only-time-description-${index}`}
                   checked={date.useOnlyTimeDescription}
                   onChange={(event) =>
-                    setValue(`dates.${index}.useOnlyTimeDescription`, event.currentTarget.checked, { shouldDirty: true })
+                    setValue(`dates.${index}.useOnlyTimeDescription`, event.currentTarget.checked, {
+                      shouldDirty: true,
+                    })
                   }
                 />
               </StudioField>

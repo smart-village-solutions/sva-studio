@@ -134,6 +134,7 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['removeCategory', 'actions.removeCategory'],
   ['mediaLibraryDescription', 'cards.content.linksMedia.description'],
   ['mediaUsageEmpty', 'messages.mediaUsageEmpty'],
+  ['mediaPickerTitle', 'messages.mediaPickerTitle'],
   ['mediaMoveUp', 'media.moveUp'],
   ['mediaMoveDown', 'media.moveDown'],
   ['mediaRefresh', 'media.refresh'],

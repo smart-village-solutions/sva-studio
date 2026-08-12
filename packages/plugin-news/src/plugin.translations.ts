@@ -313,6 +313,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
     mediaReferenceRetrySuccess: 'Die Medienverknüpfungen wurden synchronisiert.',
     mediaPickerTitle: 'Medium hinzufügen',
+    mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
+    mediaPickerLinkAction: 'Medium per Link hinzufügen',
     mediaPickerDescription:
       'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
     mediaPickerReviewMode: 'Prüfen',
@@ -694,6 +696,8 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     mediaUploadUnavailableUrl: 'The selected media has no public URL and cannot be used.',
     mediaReferenceRetrySuccess: 'The media references were synchronized.',
     mediaPickerTitle: 'Add media',
+    mediaPickerLibraryAction: 'Add media from the library',
+    mediaPickerLinkAction: 'Add media by link',
     mediaPickerDescription: 'Select an existing asset or upload a new image.',
     mediaPickerReviewMode: 'Review',
     mediaPickerUploadRegionLabel: 'Upload image file',

@@ -193,6 +193,8 @@ const eventsTranslationsDe = createEventsLocaleTranslations({
     mediaUploadUnavailableUrl:
       'Das gewählte Medium hat keine öffentliche URL und kann nicht verwendet werden.',
     mediaPickerTitle: 'Medium hinzufügen',
+    mediaPickerLibraryAction: 'Medium aus der Bibliothek hinzufügen',
+    mediaPickerLinkAction: 'Medium per Link hinzufügen',
     mediaPickerDescription:
       'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
     mediaPickerReviewMode: 'Prüfen',
@@ -559,6 +561,8 @@ const eventsTranslationsEn = createEventsLocaleTranslations({
     mediaUploadUnsupportedType: 'Only JPG, PNG, and WebP images are supported.',
     mediaUploadUnavailableUrl: 'The selected media has no public URL and cannot be used.',
     mediaPickerTitle: 'Add media',
+    mediaPickerLibraryAction: 'Add media from the library',
+    mediaPickerLinkAction: 'Add media by link',
     mediaPickerDescription: 'Select an existing asset or upload a new image.',
     mediaPickerReviewMode: 'Review',
     mediaPickerUploadRegionLabel: 'Upload image file',

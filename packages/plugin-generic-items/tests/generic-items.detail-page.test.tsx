@@ -6,6 +6,7 @@ import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from 
 import {
   createGenericItem,
   deleteGenericItem,
+  getGenericItem,
   updateGenericItem,
 } from '../src/generic-items.api.js';
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
@@ -104,6 +105,7 @@ describe('GenericItemsDetailPage', () => {
         'genericItems.editor.editDescription': 'Bearbeiten',
         'genericItems.messages.loading': 'Lädt',
         'genericItems.messages.missingContent': 'Fehlt',
+        'genericItems.messages.mediaPickerTitle': 'Medium hinzufügen',
         'genericItems.messages.saveError': 'Fehler',
         'genericItems.messages.deleteError': 'Löschen fehlgeschlagen',
         'genericItems.messages.createSuccess': 'Erstellt',
@@ -394,6 +396,54 @@ describe('GenericItemsDetailPage', () => {
       expect(updateGenericItem).toHaveBeenCalledWith(
         'generic-1',
         expect.objectContaining({ title: 'Aktualisiert', genericType: 'faq' }),
+        'user'
+      );
+    });
+  });
+
+  it('adds manual media without invalidating existing media dimensions', async () => {
+    vi.mocked(getGenericItem).mockResolvedValueOnce({
+      id: 'generic-1',
+      title: 'Bestehender Eintrag',
+      genericType: 'faq',
+      payload: { answer: '42' },
+      visible: true,
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [{ sourceUrl: { url: 'https://cdn.example.test/existing.jpg' } }],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      contentType: 'generic-items.generic-item',
+      status: 'published',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    });
+
+    render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
+
+    await screen.findByDisplayValue('Bestehender Eintrag');
+    fireEvent.click(screen.getByRole('tab', { name: 'Inhalt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getAllByText('Änderungen speichern')[1]!);
+
+    await waitFor(() => {
+      expect(updateGenericItem).toHaveBeenCalledWith(
+        'generic-1',
+        expect.objectContaining({
+          mediaContents: expect.arrayContaining([
+            expect.objectContaining({
+              sourceUrl: expect.objectContaining({
+                url: 'https://cdn.example.test/existing.jpg',
+              }),
+            }),
+          ]),
+        }),
         'user'
       );
     });

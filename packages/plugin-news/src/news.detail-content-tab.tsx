@@ -139,6 +139,7 @@ type NewsContentMediaSectionProps = Readonly<{
   mediaUsages: readonly ContentMediaUsage[];
   onChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
+  canUploadMedia: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onAddManualMedia: () => string;
@@ -150,6 +151,7 @@ function NewsContentMediaSection({
   mediaUsages,
   onChange,
   canSelectMedia,
+  canUploadMedia,
   onLoadAssetSnapshot,
   onAddManualMedia,
   onOpenMediaPicker,
@@ -165,7 +167,7 @@ function NewsContentMediaSection({
           onChange={onChange}
           onAddManual={onAddManualMedia}
           onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-          onOpenUpload={() => onOpenMediaPicker('upload')}
+          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
           onLoadAssetSnapshot={onLoadAssetSnapshot}
           supportedFields={{ altText: true, caption: true, credit: true, license: false }}
           showHeader={false}
@@ -235,6 +237,7 @@ export function NewsDetailContentTab({
   mediaUsages,
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
+  canUploadMedia = true,
   onLoadAssetSnapshot,
 }: NewsDetailContentTabProps) {
   const {
@@ -303,6 +306,7 @@ export function NewsDetailContentTab({
         mediaUsages={resolvedUsages}
         onChange={changeMedia}
         canSelectMedia={canSelectMedia}
+        canUploadMedia={canUploadMedia}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
         onAddManualMedia={onAddManualMedia}
         onOpenMediaPicker={onOpenMediaPicker}

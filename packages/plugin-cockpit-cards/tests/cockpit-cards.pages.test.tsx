@@ -409,7 +409,9 @@ describe('cockpit cards pages', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'media.add' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1));
   });
 
   it('saves linked references with the canonical target after the content save', async () => {

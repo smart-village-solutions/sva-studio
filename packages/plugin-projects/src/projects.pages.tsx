@@ -144,7 +144,7 @@ function ProjectImages({
         showHeader={false}
         onAddManual={onAddManualMedia}
         onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-        onOpenUpload={() => onOpenMediaPicker('upload')}
+        onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
         supportedFields={{ altText: true, caption: true, credit: true, license: false }}
         labels={{

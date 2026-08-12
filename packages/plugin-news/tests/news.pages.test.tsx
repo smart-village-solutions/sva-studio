@@ -695,7 +695,6 @@ describe('News editor pages', () => {
       target: { value: 'https://example.com/news' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/image.jpg' },
     });
@@ -753,7 +752,6 @@ describe('News editor pages', () => {
     fireEvent.change(screen.getByLabelText('Einleitung'), { target: { value: 'Kurztext' } });
     fireEvent.change(screen.getByLabelText('Inhalt'), { target: { value: '<p>Inhalt</p>' } });
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     fireEvent.change(screen.getByLabelText('Medien-URL'), {
       target: { value: 'https://example.com/image.jpg' },
     });

@@ -453,7 +453,7 @@ export const GenericItemsDetailContentTab = ({
             onChange={changeMediaUsages}
             onAddManual={onAddManualMedia}
             onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-            onOpenUpload={() => onOpenMediaPicker('upload')}
+            onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
             onLoadAssetSnapshot={onLoadAssetSnapshot}
             supportedFields={{ altText: true, caption: true, credit: true, license: false }}
             showHeader={false}

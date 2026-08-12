@@ -286,7 +286,6 @@ describe('EventsListPage', () => {
       target: { value: 'https://example.com/events' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     fireEvent.change(await screen.findByLabelText('Bildunterschrift'), {
       target: { value: 'Bühne' },
     });

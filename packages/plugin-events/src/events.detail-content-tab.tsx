@@ -52,6 +52,7 @@ export function EventsDetailContentTab({
   mediaUsages,
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
+  canUploadMedia = true,
   mediaEditingDisabled = false,
   onLoadAssetSnapshot,
   onDateEndInputChange,
@@ -194,7 +195,7 @@ export function EventsDetailContentTab({
             onChange={changeMediaUsages}
             onAddManual={onAddManualMedia}
             onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-            onOpenUpload={() => onOpenMediaPicker('upload')}
+            onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
             onLoadAssetSnapshot={onLoadAssetSnapshot}
             showHeader={false}
             supportedFields={{ altText: true, caption: true, credit: true, license: false }}

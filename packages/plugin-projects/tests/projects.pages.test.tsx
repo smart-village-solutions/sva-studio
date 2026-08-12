@@ -454,7 +454,9 @@ describe('projects pages', () => {
 
     expect(screen.queryByRole('button', { name: 'actions.selectImage' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'actions.uploadImage' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'media.add' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'media.add' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1));
   });
 
   it('loads project content when optional reference access fails', async () => {

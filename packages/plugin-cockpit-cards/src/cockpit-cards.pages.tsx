@@ -129,6 +129,7 @@ function ContentFields({
   mediaUsages,
   onMediaUsagesChange,
   canSelectMedia,
+  canUploadMedia,
   onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,
@@ -165,7 +166,7 @@ function ContentFields({
           onChange={changeUsages}
           onAddManual={onAddManualMedia}
           onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-          onOpenUpload={() => onOpenMediaPicker('upload')}
+          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
           onLoadAssetSnapshot={onLoadAssetSnapshot}
           showHeader={false}
           supportedFields={{ altText: true, caption: false, credit: false, license: false }}

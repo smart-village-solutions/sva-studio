@@ -92,6 +92,7 @@ const PoiMediaContentTypeField = ({
 export function PoiDetailMediaTab({
   mediaUsages,
   canSelectMedia = false,
+  canUploadMedia = false,
   onChangeMediaUsages = () => undefined,
   onAddManualMedia,
   onLoadAssetSnapshot = async () => {
@@ -138,7 +139,7 @@ export function PoiDetailMediaTab({
         onChange={change}
         onAddManual={onAddManualMedia}
         onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-        onOpenUpload={() => onOpenMediaPicker('upload')}
+        onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
         supportedFields={{ altText: true, caption: true, credit: true, license: false }}
         showHeader={false}

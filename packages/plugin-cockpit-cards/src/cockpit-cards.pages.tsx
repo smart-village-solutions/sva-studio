@@ -67,6 +67,7 @@ import {
   createCockpitCard,
   deleteCockpitCard,
   getCockpitCard,
+  getCockpitCardDetail,
   listCockpitCardCategories,
   listCockpitCards,
   updateCockpitCard,
@@ -285,6 +286,8 @@ function Editor({
   const [loadedItem, setLoadedItem] = React.useState<Awaited<
     ReturnType<typeof getCockpitCard>
   > | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
+  const loadedContentIdRef = React.useRef<string | undefined>(undefined);
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
@@ -304,8 +307,8 @@ function Editor({
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('cockpit-cards', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('cockpit-cards', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
   const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
@@ -472,8 +475,20 @@ function Editor({
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) return;
     let active = true;
+    if (loadedContentIdRef.current === contentId) {
+      void getCockpitCardDetail(contentId, actingPrincipalType)
+        .then((detail) => {
+          if (active) setResourceAccess(detail.access);
+        })
+        .catch(() => {
+          if (active) setResourceAccess({});
+        });
+      return () => {
+        active = false;
+      };
+    }
     void Promise.all([
-      getCockpitCard(contentId),
+      getCockpitCardDetail(contentId, actingPrincipalType),
       listHostMediaReferencesByTarget({
         fetch: globalThis.fetch.bind(globalThis),
         targetType: COCKPIT_CARD_CONTENT_TYPE,
@@ -481,8 +496,10 @@ function Editor({
       }),
     ])
       .then(
-        ([item, references]) => {
+        ([detail, references]) => {
           if (active) {
+            const item = detail.data;
+            setResourceAccess(detail.access);
             const values = mapGenericItemToCockpitCardFormValues(item);
             form.reset(values);
             setMediaUsages(
@@ -497,6 +514,7 @@ function Editor({
             );
             setRequiresReferenceSync(references.length > 0);
             setLoadedItem(item);
+            loadedContentIdRef.current = contentId;
           }
         },
         () => active && setError(true)
@@ -505,7 +523,7 @@ function Editor({
     return () => {
       active = false;
     };
-  }, [contentId, form, mode]);
+  }, [actingPrincipalType, contentId, form, mode]);
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (error) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;
   const save = form.handleSubmit(

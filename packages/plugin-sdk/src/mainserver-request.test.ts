@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createMainserverJsonRequestHeaders,
   createMainserverMutationHeaders,
-  MainserverApiError,
+  createMainserverReadHeaders,
   requestMainserverJson,
 } from './mainserver-request.js';
 
@@ -29,6 +29,16 @@ describe('mainserver-request', () => {
       'x-sva-mainserver-contract-version': '2',
       'x-sva-operation-id': 'operation-123',
     });
+  });
+
+  it('binds detail reads to a principal without creating a mutation operation', () => {
+    expect(readHeaders(createMainserverReadHeaders('user'))).toMatchObject({
+      'x-sva-acting-principal-type': 'user',
+      'x-sva-mainserver-contract-version': '2',
+    });
+    expect(readHeaders(createMainserverReadHeaders('user'))).not.toHaveProperty(
+      'x-sva-operation-id'
+    );
   });
 
   it('covers fetch resolution, structured errors, fallback errors and default timeout wrapping', async () => {

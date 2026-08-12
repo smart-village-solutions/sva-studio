@@ -266,6 +266,49 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       pagination: { page: 1, pageSize: 25, hasNextPage: false },
     });
   });
+
+  it('returns resource-scoped mutation access with a principal-bound detail read', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: {
+        instanceId: 'de-musterhausen',
+        keycloakSubject: 'subject-1',
+        organizationId: '11111111-1111-1111-8111-111111111111',
+      },
+      permissions: [],
+    });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        headers: {
+          'X-SVA-Acting-Principal-Type': 'organization',
+          'X-SVA-Mainserver-Contract-Version': '2',
+        },
+      })
+    );
+
+    expect(state.getSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keycloakSubject: 'subject-1',
+        newsId: 'news-1',
+      })
+    );
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(2);
+    await expect(response?.json()).resolves.toEqual({
+      data: {
+        id: 'news-1',
+        visible: true,
+        dataProvider: { id: 'dp-org-1', name: 'Redaktion' },
+      },
+      meta: {
+        access: {
+          'news.delete': true,
+          'news.update': true,
+        },
+      },
+    });
+  });
   it('normalizes invalid pagination query parameters for news lists', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.authorizeContentPrimitiveForUser.mockResolvedValue({

@@ -39,6 +39,10 @@ export const listProjects = (query: ProjectListQuery): Promise<ProjectListResult
 
 export const getProject = (contentId: string): Promise<ProjectContentItem> =>
   projectsClient.get(contentId);
+export const getProjectDetail = (
+  contentId: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => projectsClient.getDetail(contentId, actingPrincipalType);
 
 export const createProject = (
   input: ProjectFormInput,

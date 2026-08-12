@@ -2,7 +2,7 @@ import React from 'react';
 import { type UseFormReturn } from 'react-hook-form';
 import { useStudioSaveFeedback, type MainserverPrincipalType } from '@sva/studio-ui-react';
 
-import { createSurvey, getSurvey, updateSurvey } from './surveys.api.js';
+import { createSurvey, getSurveyDetail, updateSurvey } from './surveys.api.js';
 import {
   createDefaultSurveyDetailFormValues,
   type SurveyDetailFormValues,
@@ -28,6 +28,8 @@ const useSurveyEditorLoader = ({
   setStatus,
   setIsLoading,
   setLoadedItem,
+  setResourceAccess,
+  actingPrincipalType,
 }: Readonly<{
   mode: SurveyEditorMode;
   contentId?: string;
@@ -36,9 +38,13 @@ const useSurveyEditorLoader = ({
   setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
+  setResourceAccess: React.Dispatch<React.SetStateAction<Readonly<Record<string, boolean>>>>;
+  actingPrincipalType: MainserverPrincipalType;
 }>) => {
+  const loadedContentIdRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
     if (mode !== 'edit') {
+      loadedContentIdRef.current = undefined;
       setStatus(null);
       setIsLoading(false);
       setLoadedItem(null);
@@ -55,29 +61,39 @@ const useSurveyEditorLoader = ({
     }
 
     let cancelled = false;
-    setIsLoading(true);
-    setStatus(null);
+    const refreshesAccessOnly = loadedContentIdRef.current === contentId;
+    if (!refreshesAccessOnly) {
+      setIsLoading(true);
+      setStatus(null);
+    }
 
-    void getSurvey(contentId)
-      .then((item) => {
+    void getSurveyDetail(contentId, actingPrincipalType)
+      .then((detail) => {
         if (cancelled) {
           return;
         }
+        setResourceAccess(detail.access);
+        if (refreshesAccessOnly) return;
+        const item = detail.data;
         setLoadedItem(item);
         methods.reset(mapSurveyItemToFormValues(item));
+        loadedContentIdRef.current = contentId;
       })
       .catch((error) => {
         if (!cancelled) {
-          setLoadedItem(null);
-          methods.reset(createDefaultSurveyDetailFormValues());
-          setStatus({
-            kind: 'error',
-            text: getSurveyEditorErrorMessage(error, pt('messages.loadError')),
-          });
+          if (refreshesAccessOnly) setResourceAccess({});
+          else {
+            setLoadedItem(null);
+            methods.reset(createDefaultSurveyDetailFormValues());
+            setStatus({
+              kind: 'error',
+              text: getSurveyEditorErrorMessage(error, pt('messages.loadError')),
+            });
+          }
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (!cancelled && !refreshesAccessOnly) {
           setIsLoading(false);
         }
       });
@@ -85,7 +101,17 @@ const useSurveyEditorLoader = ({
     return () => {
       cancelled = true;
     };
-  }, [contentId, methods, mode, pt, setIsLoading, setLoadedItem, setStatus]);
+  }, [
+    actingPrincipalType,
+    contentId,
+    methods,
+    mode,
+    pt,
+    setIsLoading,
+    setLoadedItem,
+    setResourceAccess,
+    setStatus,
+  ]);
 };
 
 const createSurveyEditorSubmit = (input: {
@@ -178,6 +204,7 @@ export const useSurveyEditorController = ({
   const [status, setStatus] = React.useState<SurveyEditorStatus>(null);
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
   const [loadedItem, setLoadedItem] = React.useState<SurveyContentItem | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const saveFeedback = useStudioSaveFeedback();
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {
@@ -185,7 +212,17 @@ export const useSurveyEditorController = ({
       saveFeedback.markDirty();
     }
   }, [methods.formState.isDirty, saveFeedback.markDirty]);
-  useSurveyEditorLoader({ mode, contentId, methods, pt, setStatus, setIsLoading, setLoadedItem });
+  useSurveyEditorLoader({
+    mode,
+    contentId,
+    methods,
+    pt,
+    setStatus,
+    setIsLoading,
+    setLoadedItem,
+    setResourceAccess,
+    actingPrincipalType,
+  });
   React.useEffect(() => {
     if (isLoading || !initiallySaved || initialSaveFeedbackShownRef.current) {
       return;
@@ -208,5 +245,5 @@ export const useSurveyEditorController = ({
     saveFeedback,
   });
 
-  return { isLoading, loadedItem, saveStatus: saveFeedback.status, status, submit };
+  return { isLoading, loadedItem, resourceAccess, saveStatus: saveFeedback.status, status, submit };
 };

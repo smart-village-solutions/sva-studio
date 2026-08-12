@@ -56,6 +56,8 @@ vi.mock('../src/projects.api.js', () => ({
   createProject: state.create,
   deleteProject: state.delete,
   getProject: state.get,
+  getProjectDetail: (...args: unknown[]) =>
+    state.get(...args).then((data) => ({ data, deviations: [], access: {} })),
   listProjects: state.list,
   updateProject: state.update,
 }));

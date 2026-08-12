@@ -12,6 +12,8 @@ const updateSurveyMock = vi.fn();
 vi.mock('../src/surveys.api.js', () => ({
   createSurvey: (...args: unknown[]) => createSurveyMock(...args),
   getSurvey: (...args: unknown[]) => getSurveyMock(...args),
+  getSurveyDetail: (...args: unknown[]) =>
+    getSurveyMock(...args).then((data) => ({ data, deviations: [], access: {} })),
   updateSurvey: (...args: unknown[]) => updateSurveyMock(...args),
 }));
 

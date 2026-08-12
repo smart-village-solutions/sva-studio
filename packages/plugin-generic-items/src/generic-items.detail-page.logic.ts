@@ -11,7 +11,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import {
   deleteGenericItem,
   GenericItemsApiError,
-  getGenericItem,
+  getGenericItemDetail,
   listGenericItemCategories,
 } from './generic-items.api.js';
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
@@ -110,38 +110,51 @@ export const useGenericItemsDetailLoader = ({
   pt,
   setStatus,
   onLoaded,
+  onAccessLoaded,
+  actingPrincipalType,
 }: Readonly<{
   contentId?: string;
   methods: UseFormReturn<GenericItemsDetailFormValues>;
   mode: 'create' | 'edit';
   pt: ReturnType<typeof usePluginTranslation>;
   setStatus: React.Dispatch<React.SetStateAction<StatusMessage | null>>;
-  onLoaded?: (item: Awaited<ReturnType<typeof getGenericItem>>) => void;
+  onLoaded?: (item: Awaited<ReturnType<typeof getGenericItemDetail>>['data']) => void;
+  onAccessLoaded?: (access: Readonly<Record<string, boolean>>) => void;
+  actingPrincipalType: MainserverPrincipalType;
 }>) => {
   const [loading, setLoading] = React.useState(mode === 'edit');
+  const loadedContentIdRef = React.useRef<string | undefined>(undefined);
 
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) {
+      loadedContentIdRef.current = undefined;
       return;
     }
 
     let active = true;
-    setLoading(true);
+    const refreshesAccessOnly = loadedContentIdRef.current === contentId;
+    if (!refreshesAccessOnly) setLoading(true);
 
-    void getGenericItem(contentId)
-      .then((item) => {
+    void getGenericItemDetail(contentId, actingPrincipalType)
+      .then((detail) => {
         if (active) {
+          onAccessLoaded?.(detail.access);
+          if (refreshesAccessOnly) return;
+          const item = detail.data;
           methods.reset(mapGenericItemToDetailFormValues(item));
           onLoaded?.(item);
+          loadedContentIdRef.current = contentId;
         }
       })
       .catch((error) => {
         if (active) {
-          setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.missingContent') });
+          if (refreshesAccessOnly) onAccessLoaded?.({});
+          else
+            setStatus({ kind: 'error', text: errorMessage(pt, error, 'messages.missingContent') });
         }
       })
       .finally(() => {
-        if (active) {
+        if (active && !refreshesAccessOnly) {
           setLoading(false);
         }
       });
@@ -149,7 +162,7 @@ export const useGenericItemsDetailLoader = ({
     return () => {
       active = false;
     };
-  }, [contentId, methods, mode, onLoaded, pt, setStatus]);
+  }, [actingPrincipalType, contentId, methods, mode, onAccessLoaded, onLoaded, pt, setStatus]);
 
   return loading;
 };

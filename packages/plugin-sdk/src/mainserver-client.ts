@@ -1,5 +1,6 @@
 import {
   createMainserverMutationHeaders,
+  createMainserverReadHeaders,
   MAINSERVER_CONTEXT_BINDING_HEADER,
   MainserverApiError,
   requestMainserverJson,
@@ -15,6 +16,7 @@ export type MainserverListQuery = Readonly<{
 export {
   createMainserverJsonRequestHeaders,
   createMainserverMutationHeaders,
+  createMainserverReadHeaders,
   MainserverApiError,
   requestMainserverJson,
   type MainserverErrorFactory,
@@ -42,7 +44,10 @@ export type MainserverCrudClientOptions<
 
 type ApiItemResponse<T> = Readonly<{
   data: T;
-  meta?: Readonly<{ deviations?: readonly MainserverDataDeviation[] }>;
+  meta?: Readonly<{
+    access?: Readonly<Record<string, boolean>>;
+    deviations?: readonly MainserverDataDeviation[];
+  }>;
 }>;
 
 export const buildMainserverListUrl = (basePath: string, query: MainserverListQuery): string =>
@@ -86,22 +91,32 @@ const createMainserverItemLoader = <TItem, TError extends Error>(input: {
   readonly mapItem: (item: TItem) => TItem;
   readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
 }) => {
-  const loadDetail = async (contentId: string): Promise<MainserverDetailResult<TItem>> => {
+  const loadDetail = async (
+    contentId: string,
+    actingPrincipalType?: MainserverActingPrincipalType
+  ): Promise<MainserverDetailResult<TItem>> => {
     const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
       url: `${input.basePath}/${encodeURIComponent(contentId)}`,
       fetch: input.fetch,
       errorFactory: input.errorFactory,
+      ...(actingPrincipalType
+        ? { init: { headers: createMainserverReadHeaders(actingPrincipalType) } }
+        : {}),
       onResponse: input.contextBindingStore.capture(contentId),
     });
     return {
       data: input.mapItem(response.data),
       deviations: response.meta?.deviations ?? [],
+      access: response.meta?.access ?? {},
     };
   };
 
   return {
     loadDetail,
-    loadItem: async (contentId: string): Promise<TItem> => (await loadDetail(contentId)).data,
+    loadItem: async (
+      contentId: string,
+      actingPrincipalType?: MainserverActingPrincipalType
+    ): Promise<TItem> => (await loadDetail(contentId, actingPrincipalType)).data,
   };
 };
 
@@ -123,9 +138,12 @@ export const createMainserverCrudClient = <
     mapItem,
     contextBindingStore,
   });
-  const ensureContextBinding = async (contentId: string): Promise<void> => {
+  const ensureContextBinding = async (
+    contentId: string,
+    actingPrincipalType: MainserverActingPrincipalType
+  ): Promise<void> => {
     if (!contextBindingStore.has(contentId)) {
-      await loadItem(contentId);
+      await loadItem(contentId, actingPrincipalType);
     }
     if (!contextBindingStore.has(contentId)) {
       throw options.errorFactory(
@@ -167,7 +185,7 @@ export const createMainserverCrudClient = <
       input: TMutationInput,
       actingPrincipalType: MainserverActingPrincipalType
     ): Promise<TItem> => {
-      await ensureContextBinding(contentId);
+      await ensureContextBinding(contentId, actingPrincipalType);
       const response = await requestMainserverJson<ApiItemResponse<TItem>, TError>({
         url: `${options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: options.fetch,
@@ -188,7 +206,7 @@ export const createMainserverCrudClient = <
       contentId: string,
       actingPrincipalType: MainserverActingPrincipalType
     ): Promise<void> => {
-      await ensureContextBinding(contentId);
+      await ensureContextBinding(contentId, actingPrincipalType);
       await requestMainserverJson<ApiItemResponse<{ readonly id: string }>, TError>({
         url: `${options.basePath}/${encodeURIComponent(contentId)}`,
         fetch: options.fetch,

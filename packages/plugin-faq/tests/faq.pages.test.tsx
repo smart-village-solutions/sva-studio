@@ -21,6 +21,8 @@ vi.mock('../src/faq.api.js', () => ({
   createFaq: state.createFaqMock,
   deleteFaq: state.deleteFaqMock,
   getFaq: state.getFaqMock,
+  getFaqDetail: (...args: unknown[]) =>
+    state.getFaqMock(...args).then((data) => ({ data, deviations: [], access: {} })),
   updateFaq: state.updateFaqMock,
   FaqApiError: class FaqApiError extends Error {
     public constructor(

@@ -64,6 +64,31 @@ describe('standard content plugin helpers', () => {
     });
   });
 
+  it('uses server-authoritative resource access for scoped detail mutations', () => {
+    expect(
+      resolveStandardContentAccessCapabilities(
+        'news',
+        {
+          isResolved: true,
+          assignedModules: ['news'],
+          permissionActions: ['news.read', 'news.update', 'news.delete'],
+          unscopedPermissionActions: ['news.read'],
+          roles: [],
+        },
+        {
+          'news.update': true,
+          'news.delete': false,
+        }
+      )
+    ).toEqual({
+      isResolved: true,
+      canRead: true,
+      canCreate: false,
+      canUpdate: true,
+      canDelete: false,
+    });
+  });
+
   it('builds canonical action ids, actions, permissions and module iam contracts', () => {
     const actionIds = createStandardContentPluginActionIds('news');
     const actions = createStandardContentPluginActions('news', {

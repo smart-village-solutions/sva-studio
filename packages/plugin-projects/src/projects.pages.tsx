@@ -65,7 +65,7 @@ import { Controller, useForm } from 'react-hook-form';
 import {
   createProject,
   deleteProject,
-  getProject,
+  getProjectDetail,
   listProjects,
   ProjectsApiError,
   updateProject,
@@ -331,14 +331,16 @@ function ProjectEditor({
     null
   );
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
+  const loadedContentIdRef = React.useRef<string | undefined>(undefined);
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('projects', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('projects', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
   const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
@@ -449,9 +451,23 @@ function ProjectEditor({
   React.useEffect(() => {
     if (mode !== 'edit' || !contentId) return;
     let active = true;
-    void getProject(contentId)
-      .then(async (project) => {
+    if (loadedContentIdRef.current === contentId) {
+      void getProjectDetail(contentId, actingPrincipalType)
+        .then((detail) => {
+          if (active) setResourceAccess(detail.access);
+        })
+        .catch(() => {
+          if (active) setResourceAccess({});
+        });
+      return () => {
+        active = false;
+      };
+    }
+    void getProjectDetail(contentId, actingPrincipalType)
+      .then(async (detail) => {
         if (!active) return;
+        const project = detail.data;
+        setResourceAccess(detail.access);
         const references = await listHostMediaReferencesByTarget({
           fetch: globalThis.fetch.bind(globalThis),
           targetType: 'projects.project',
@@ -459,6 +475,7 @@ function ProjectEditor({
         }).catch(() => []);
         if (!active) return;
         setItem(project);
+        loadedContentIdRef.current = contentId;
         form.reset(projectToFormValues(project));
         const alignments = alignHostMediaReferencesByOrder({
           itemCount: project.images.length,
@@ -473,7 +490,7 @@ function ProjectEditor({
     return () => {
       active = false;
     };
-  }, [contentId, form, mode]);
+  }, [actingPrincipalType, contentId, form, mode]);
 
   if (loading) return <StudioLoadingState>{pt('messages.loading')}</StudioLoadingState>;
   if (loadError) return <StudioErrorState>{pt('messages.loadError')}</StudioErrorState>;

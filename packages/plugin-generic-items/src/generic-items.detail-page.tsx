@@ -297,6 +297,7 @@ export function GenericItemsDetailPage({
   const [loadedItem, setLoadedItem] = React.useState<
     import('./generic-items.api-types.js').GenericItemContentItem | null
   >(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
@@ -315,8 +316,8 @@ export function GenericItemsDetailPage({
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('generic-items', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('generic-items', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
   const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
@@ -371,6 +372,8 @@ export function GenericItemsDetailPage({
     pt,
     setStatus,
     onLoaded: handleLoadedItem,
+    onAccessLoaded: setResourceAccess,
+    actingPrincipalType,
   });
   const initialSaveFeedbackShownRef = React.useRef(false);
   React.useEffect(() => {

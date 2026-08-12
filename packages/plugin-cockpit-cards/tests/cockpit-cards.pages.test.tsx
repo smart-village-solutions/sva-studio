@@ -42,6 +42,8 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   createCockpitCard: state.create,
   deleteCockpitCard: state.delete,
   getCockpitCard: state.get,
+  getCockpitCardDetail: (...args: unknown[]) =>
+    state.get(...args).then((data) => ({ data, deviations: [], access: {} })),
   listCockpitCards: state.list,
   listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,

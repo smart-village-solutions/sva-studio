@@ -39,6 +39,8 @@ import {
   recordCreatedMainserverDataProvider,
   resolveMainserverLifecycleAction,
   resolveMainserverMutationActor,
+  resolveMainserverResourceAccess,
+  resolveMainserverResourceActor,
   toMainserverAdditionalActions,
 } from './mutation-principal.js';
 import {
@@ -320,8 +322,22 @@ const detailProject = async (
     localContext
   );
   if (!context) return errorJson(404, 'not_found', 'Projekt wurde nicht gefunden.');
+  const resourceActor = await resolveMainserverResourceActor({
+    request,
+    ctx,
+    authorizedActor: actor,
+  });
+  const access = resourceActor
+    ? await resolveMainserverResourceAccess({
+        actor: resourceActor,
+        actions: ['projects.update', 'projects.delete'],
+        contentType: PROJECTS_CONTENT_TYPE,
+        item: context.item,
+      })
+    : {};
   const project = mapAndValidate(context.item);
-  return json({ data: { ...project, id: context.reference?.contentId ?? project.id } });
+  const data = { ...project, id: context.reference?.contentId ?? project.id };
+  return json(resourceActor ? { data, meta: { access } } : { data });
 };
 
 const completeCreate = (input: {

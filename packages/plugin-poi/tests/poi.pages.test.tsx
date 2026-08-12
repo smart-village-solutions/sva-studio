@@ -436,7 +436,7 @@ describe('PoiListPage', () => {
     render(<PoiEditPage />);
 
     await waitFor(() => {
-      expect(getPoiDetail).toHaveBeenCalledWith('poi-1');
+      expect(getPoiDetail).toHaveBeenCalledWith('poi-1', 'user');
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 

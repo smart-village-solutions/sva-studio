@@ -261,6 +261,8 @@ export function PoiDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<PoiContentItem | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
+  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | undefined>(undefined);
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
@@ -303,8 +305,8 @@ export function PoiDetailPage({
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('poi', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('poi', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
   const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const mediaCapabilities = React.useMemo(
@@ -489,13 +491,16 @@ export function PoiDetailPage({
     }
 
     let active = true;
-    void getPoiDetail(contentId)
+    const initialPrincipalType = principalControl?.value ?? 'user';
+    void getPoiDetail(contentId, initialPrincipalType)
       .then((detail) => {
         if (!active) {
           return;
         }
         const item = detail.data;
         setDeviations(detail.deviations);
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = initialPrincipalType;
         reset(mapPoiItemToDetailFormValues(item));
         const mediaContents = item.mediaContents ?? [];
         setMediaUsages(poiMediaContentsToUsages(mediaContents));
@@ -549,7 +554,31 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, instanceId, mode, pt, reset]);
+  }, [contentId, instanceId, mode, principalControl?.value, pt, reset]);
+
+  React.useEffect(() => {
+    if (
+      mode !== 'edit' ||
+      !contentId ||
+      !loadedItem ||
+      loadedPrincipalTypeRef.current === actingPrincipalType
+    ) {
+      return;
+    }
+    let active = true;
+    void getPoiDetail(contentId, actingPrincipalType)
+      .then((detail) => {
+        if (!active) return;
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = actingPrincipalType;
+      })
+      .catch(() => {
+        if (active) setResourceAccess({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [actingPrincipalType, contentId, loadedItem, mode]);
 
   const tabs = createPoiDetailTabDefinitions(pt);
 

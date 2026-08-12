@@ -15,7 +15,7 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
-import { listNewsCategories } from '../src/news.api.js';
+import { getNewsDetail, listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -85,7 +85,7 @@ vi.mock('../src/news.api.js', async () => {
     listNewsCategories: vi.fn(async () => []),
     createNews: vi.fn(),
     deleteNews: vi.fn(),
-    getNews: vi.fn(),
+    getNewsDetail: vi.fn(),
     saveNewsEditorItem: vi.fn(),
     updateNewsPartial: vi.fn(),
   };
@@ -107,12 +107,7 @@ describe('NewsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
-      unscopedPermissionActions: [
-        'news.read',
-        'news.create',
-        'news.update',
-        'news.delete',
-      ],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
       assignedModules: ['news'],
       roles: [],
     });
@@ -259,6 +254,44 @@ describe('NewsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
+  });
+
+  it('renders save for a scoped update when the detail read grants resource access', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['news.read', 'news.update'],
+      unscopedPermissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: [],
+    });
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: {
+        id: '9082',
+        title: 'Resolver-Personal-2026-08-11',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Persönlicher Redakteur',
+        createdAt: '2026-08-11T10:00:00.000Z',
+        updatedAt: '2026-08-11T10:00:00.000Z',
+        publishedAt: '2026-08-11T10:00:00.000Z',
+      },
+      deviations: [],
+      access: { 'news.update': true, 'news.delete': false },
+    });
+
+    render(
+      <NewsDetailPage
+        mode="edit"
+        contentId="9082"
+        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(screen.queryByRole('button', { name: 'news.actions.delete' })).toBeNull();
   });
 
   it('uses the upload response url when the refreshed news asset still has no preview url', async () => {

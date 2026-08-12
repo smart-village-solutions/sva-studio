@@ -35,6 +35,8 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('../src/surveys.api.js', () => ({
   getSurvey: (...args: unknown[]) => getSurveyMock(...args),
+  getSurveyDetail: (...args: unknown[]) =>
+    getSurveyMock(...args).then((data) => ({ data, deviations: [], access: {} })),
   createSurvey: (...args: unknown[]) => createSurveyMock(...args),
   updateSurvey: (...args: unknown[]) => updateSurveyMock(...args),
 }));
@@ -330,6 +332,6 @@ describe('survey editor pages', () => {
     const scoped = within(view.container);
 
     expect(scoped.getByText('Umfrage wird geladen.')).toBeTruthy();
-    expect(getSurveyMock).toHaveBeenCalledWith('survey-legacy-123');
+    expect(getSurveyMock).toHaveBeenCalledWith('survey-legacy-123', 'user');
   });
 });

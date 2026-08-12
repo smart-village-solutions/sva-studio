@@ -7,6 +7,7 @@ const submitMock = vi.fn();
 const controllerState = vi.hoisted(() => ({
   isLoading: false,
   loadedItem: null,
+  resourceAccess: {} as Readonly<Record<string, boolean>>,
   status: null as null | { kind: 'success' | 'error'; text: string },
   onInitialSavedConsumed: undefined as undefined | (() => void),
 }));
@@ -35,12 +36,20 @@ vi.mock('@sva/plugin-sdk', () => ({
   readSessionAccessSnapshot: () => accessState.snapshot,
   resolveStandardContentAccessCapabilities: (
     pluginId: string,
-    snapshot: typeof accessState.snapshot
+    snapshot: typeof accessState.snapshot,
+    resourceAccess: Readonly<Record<string, boolean>> = {}
   ) => {
-    const permits = (action: string) =>
-      snapshot.isResolved &&
-      snapshot.assignedModules.includes(pluginId) &&
-      snapshot.permissionActions.includes(`${pluginId}.${action}`);
+    const permits = (action: string) => {
+      const actionId = `${pluginId}.${action}`;
+      const scopedResourceGrant =
+        (action === 'update' || action === 'delete') && resourceAccess[actionId] === true;
+      return (
+        snapshot.isResolved &&
+        snapshot.assignedModules.includes(pluginId) &&
+        snapshot.permissionActions.includes(actionId) &&
+        (snapshot.unscopedPermissionActions.includes(actionId) || scopedResourceGrant)
+      );
+    };
     return {
       canRead: permits('read'),
       canCreate: permits('create'),
@@ -91,6 +100,7 @@ vi.mock('../src/surveys.editor-logic.js', () => ({
     return {
       isLoading: controllerState.isLoading,
       loadedItem: controllerState.loadedItem,
+      resourceAccess: controllerState.resourceAccess,
       status: controllerState.status,
       submit: submitMock,
     };
@@ -104,6 +114,7 @@ describe('SurveyEditorPage', () => {
     cleanup();
     controllerState.isLoading = false;
     controllerState.loadedItem = null;
+    controllerState.resourceAccess = {};
     controllerState.status = null;
     controllerState.onInitialSavedConsumed = undefined;
     submitMock.mockReset();
@@ -176,7 +187,13 @@ describe('SurveyEditorPage', () => {
     ).toEqual({ preserved: true });
   });
 
-  it('fails closed for edits until the Mainserver update capability is enabled', () => {
+  it('fails closed for scoped edits until the Mainserver grants resource access', () => {
+    accessState.snapshot = {
+      ...accessState.snapshot,
+      unscopedPermissionActions: accessState.snapshot.unscopedPermissionActions.filter(
+        (action) => action !== 'surveys.update'
+      ),
+    };
     const view = render(<SurveyEditorPage mode="edit" contentId="survey-1" />);
 
     expect(screen.getByText('Bearbeiten nicht verfügbar.')).toBeTruthy();
@@ -188,7 +205,8 @@ describe('SurveyEditorPage', () => {
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
     expect(submitMock).not.toHaveBeenCalled();
 
-    view.rerender(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate />);
+    controllerState.resourceAccess = { 'surveys.update': true };
+    view.rerender(<SurveyEditorPage mode="edit" contentId="survey-1" />);
     expect(
       [
         ...view.container.querySelectorAll<HTMLButtonElement>('button[form="survey-detail-form"]'),

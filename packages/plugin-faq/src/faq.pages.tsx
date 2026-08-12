@@ -39,15 +39,15 @@ type FaqEditorPageProps = Readonly<{
   principalControl?: MainserverPrincipalControlModel;
 }>;
 
-const useFaqAccessCapabilities = () => {
+const useFaqAccessCapabilities = (resourceAccess: Readonly<Record<string, boolean>>) => {
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
   return React.useMemo(
-    () => resolveStandardContentAccessCapabilities('faq', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('faq', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
 };
 
@@ -123,8 +123,6 @@ const useFaqSave = ({
 
 const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps) => {
   const pt = usePluginTranslation('faq');
-  const accessCapabilities = useFaqAccessCapabilities();
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const navigate = useNavigate();
   const location = useLocation();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
@@ -139,11 +137,14 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
       saveFeedback.markDirty();
     }
   }, [form.formState.isDirty, saveFeedback.markDirty]);
-  const { existingPayload, loadedItem, loadError, loading } = useFaqEditorLoader({
+  const { existingPayload, loadedItem, loadError, loading, resourceAccess } = useFaqEditorLoader({
     contentId,
     form,
     mode,
+    actingPrincipalType,
   });
+  const accessCapabilities = useFaqAccessCapabilities(resourceAccess);
+  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   useFaqInitialSaveFeedback({
     contentId,
     loading,

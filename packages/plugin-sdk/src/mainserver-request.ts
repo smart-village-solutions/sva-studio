@@ -88,6 +88,16 @@ export const createMainserverMutationHeaders = (
   return result;
 };
 
+export const createMainserverReadHeaders = (
+  actingPrincipalType: MainserverActingPrincipalType,
+  headers?: HeadersInit
+): Headers => {
+  const result = createMainserverJsonRequestHeaders(headers);
+  result.set(MAINSERVER_ACTING_PRINCIPAL_HEADER, actingPrincipalType);
+  result.set(MAINSERVER_CONTRACT_VERSION_HEADER, MAINSERVER_CONTRACT_VERSION);
+  return result;
+};
+
 const resolveMainserverErrorFactory = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
 ): MainserverErrorFactory<TError | MainserverApiError> =>

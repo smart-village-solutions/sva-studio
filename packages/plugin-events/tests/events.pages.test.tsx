@@ -371,7 +371,7 @@ describe('EventsListPage', () => {
     render(<EventsEditPage />);
 
     await waitFor(() => {
-      expect(getEventDetail).toHaveBeenCalledWith('event-1');
+      expect(getEventDetail).toHaveBeenCalledWith('event-1', 'user');
       expect(screen.getByDisplayValue('Bestehendes Event')).toBeTruthy();
     });
 

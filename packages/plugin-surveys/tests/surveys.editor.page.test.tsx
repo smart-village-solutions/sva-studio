@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const navigateMock = vi.fn();
 const submitMock = vi.fn();
 const controllerState = vi.hoisted(() => ({
+  actingPrincipalType: 'user' as 'user' | 'organization',
   isLoading: false,
   loadedItem: null as null | { status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' },
   resourceAccess: {} as Readonly<Record<string, boolean>>,
@@ -100,12 +101,15 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 vi.mock('../src/surveys.editor-logic.js', () => ({
   useSurveyEditorController: ({
+    actingPrincipalType,
     navigateToCreatedDetail,
     onInitialSavedConsumed,
   }: {
+    actingPrincipalType: 'user' | 'organization';
     navigateToCreatedDetail: (contentId: string) => void;
     onInitialSavedConsumed: () => void;
   }) => {
+    controllerState.actingPrincipalType = actingPrincipalType;
     controllerState.onInitialSavedConsumed = onInitialSavedConsumed;
     submitMock.mockImplementation(() => {
       navigateToCreatedDetail('survey-created');
@@ -125,6 +129,7 @@ import { SurveyEditorPage } from '../src/surveys.editor.js';
 describe('SurveyEditorPage', () => {
   afterEach(() => {
     cleanup();
+    controllerState.actingPrincipalType = 'user';
     controllerState.isLoading = false;
     controllerState.loadedItem = null;
     controllerState.resourceAccess = {};
@@ -243,6 +248,38 @@ describe('SurveyEditorPage', () => {
     ).toBe(true);
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
     expect(submitMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps the principal picker enabled when the selected principal cannot edit', () => {
+    controllerState.loadedItem = { status: 'DRAFT' };
+    accessState.snapshot = {
+      ...accessState.snapshot,
+      unscopedPermissionActions: accessState.snapshot.unscopedPermissionActions.filter(
+        (action) => action !== 'surveys.update'
+      ),
+    };
+    const view = render(
+      <SurveyEditorPage
+        mode="edit"
+        contentId="survey-1"
+        canUpdate
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Organisation' },
+          ],
+        }}
+      />
+    );
+
+    const principalSelect = screen.getByLabelText('principal.actAs') as HTMLSelectElement;
+    expect(principalSelect.matches(':disabled')).toBe(false);
+    expect(view.container.querySelector('fieldset')?.matches(':disabled')).toBe(true);
+
+    fireEvent.change(principalSelect, { target: { value: 'user' } });
+    expect(controllerState.actingPrincipalType).toBe('user');
   });
 
   it('keeps fields editable so a denied lifecycle transition can be reverted', () => {

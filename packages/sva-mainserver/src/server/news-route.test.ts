@@ -391,7 +391,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       createRequest('https://studio.test/api/v1/mainserver/news', {
         method: 'POST',
         headers: { 'Idempotency-Key': 'idem-1' },
-        body: JSON.stringify(newsInput),
+        body: JSON.stringify({ ...newsInput, payload: { injected: true } }),
       })
     );
     await expect(ok?.json()).resolves.toEqual({ data: { id: 'news-1' } });
@@ -574,7 +574,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
   });
 
-  it('removes only waste location targets when an explicit payload omits them', async () => {
+  it('removes only waste location targets when an explicit empty target list is submitted', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
@@ -595,13 +595,56 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
-        body: JSON.stringify({ ...updateNewsInput, payload: {} }),
+        body: JSON.stringify({
+          ...updateNewsInput,
+          payload: { wasteLocationKeys: [] },
+        }),
       })
     );
 
     expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
       expect.objectContaining({
         news: expect.objectContaining({ payload: { retained: 'existing' } }),
+      })
+    );
+  });
+
+  it('ignores unrelated submitted payload keys and preserves stored metadata', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      payload: {
+        retained: 'existing',
+        wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...updateNewsInput,
+          payload: { retained: 'submitted', injected: true },
+        }),
+      })
+    );
+
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          payload: {
+            retained: 'existing',
+            wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
       })
     );
   });

@@ -154,7 +154,7 @@ const parseNewsPayload = (
     return errorJson(400, 'invalid_request', 'Das Feld "payload" muss als Objekt gesendet werden.');
   }
 
-  if (!('wasteLocationKeys' in value)) return value;
+  if (!('wasteLocationKeys' in value)) return undefined;
   if (!Array.isArray(value.wasteLocationKeys)) {
     return errorJson(
       400,
@@ -203,12 +203,7 @@ const parseNewsPayload = (
     uniqueKeys.set(JSON.stringify([street, zip, city]), key);
   }
 
-  const { wasteLocationKeys: _wasteLocationKeys, ...unrelatedPayload } = value;
-  void _wasteLocationKeys;
-  return {
-    ...unrelatedPayload,
-    ...(uniqueKeys.size > 0 ? { wasteLocationKeys: [...uniqueKeys.values()] } : {}),
-  };
+  return uniqueKeys.size > 0 ? { wasteLocationKeys: [...uniqueKeys.values()] } : {};
 };
 
 const getVisibleTextLength = (value: string): number => {

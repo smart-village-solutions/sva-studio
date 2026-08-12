@@ -27,6 +27,7 @@ const HOST_PERMISSION_TITLE_KEYS = {
   'experimental.read': 'permissionDenial.titles.experimentalRead',
   'app.read': 'permissionDenial.titles.appRead',
   'cockpit.read': 'permissionDenial.titles.cockpitRead',
+  'modules.read': 'permissionDenial.titles.modulesRead',
   'content.read': 'permissionDenial.titles.contentRead',
   'content.create': 'permissionDenial.titles.contentCreate',
   'content.updateMetadata': 'permissionDenial.titles.contentUpdateMetadata',

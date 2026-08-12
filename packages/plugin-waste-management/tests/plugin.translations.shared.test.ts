@@ -322,6 +322,18 @@ describe('waste-management translation builders', () => {
     });
   });
 
+  it('keeps master-data entity validation messages at their public translation paths', () => {
+    expect(wasteManagementPluginTranslationsDEMasterData).toMatchObject({
+      masterData: {
+        cities: {
+          validation: {
+            postalCodeMaxLength: 'Die PLZ darf höchstens 16 Zeichen enthalten.',
+          },
+        },
+      },
+    });
+  });
+
   it('keeps fraction filter labels at their public translation paths', () => {
     expect(
       createWasteManagementPluginTranslationLocale([wasteManagementPluginTranslationsDEMasterData])

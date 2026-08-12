@@ -125,8 +125,22 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
   await page.locator('#project-description').fill('Projektbeschreibung');
   await page.getByRole('tab', { name: /Inhalt|projects\.tabs\.content/ }).click();
   await page.locator('#project-fullText').fill('Ausführlicher Projekttext');
-  await page.getByRole('button', { name: /Bild hinzufügen|projects\.actions\.addImage/ }).click();
-  await page.getByRole('button', { name: /Bild hinzufügen|projects\.actions\.addImage/ }).click();
+  await page
+    .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
+    .click();
+  await page
+    .getByRole('button', {
+      name: /Medium per Link hinzufügen|projects\.media\.addByLink/,
+    })
+    .click();
+  await page
+    .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
+    .click();
+  await page
+    .getByRole('button', {
+      name: /Medium per Link hinzufügen|projects\.media\.addByLink/,
+    })
+    .click();
   await page
     .getByLabel(/Bild-URL|projects\.fields\.imageUrl/)
     .nth(0)

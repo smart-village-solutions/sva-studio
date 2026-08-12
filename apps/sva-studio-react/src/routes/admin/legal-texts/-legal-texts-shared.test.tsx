@@ -1,10 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { IamHttpError } from '../../../lib/iam-api';
 
-vi.mock('../../../i18n', () => ({
-  getActiveLocale: () => 'de',
-  t: (key: string) =>
-    ({
+vi.mock('../../../i18n', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../i18n')>();
+  return {
+    ...actual,
+    getActiveLocale: () => 'de',
+    t: (key: string) =>
+      ({
       'admin.legalTexts.messages.error': 'Allgemeiner Fehler',
       'admin.legalTexts.errors.forbidden': 'Keine Berechtigung',
       'admin.legalTexts.errors.csrfValidationFailed':
@@ -15,8 +18,9 @@ vi.mock('../../../i18n', () => ({
       'admin.legalTexts.errors.databaseUnavailable': 'Datenbank nicht verfügbar',
       'admin.legalTexts.errors.invalidRequest': 'Ungültige Anfrage',
       'admin.legalTexts.table.publishedUnset': 'Nicht veröffentlicht',
-    })[key] ?? key,
-}));
+      })[key] ?? key,
+  };
+});
 
 import { formatLegalTextDateTime, getLegalTextErrorMessage } from './-legal-texts-shared';
 

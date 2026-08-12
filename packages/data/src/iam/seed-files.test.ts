@@ -102,6 +102,18 @@ describe('iam seed sql contracts', () => {
     expect(bbGubenSeedSql).toMatch(/\('system_admin', 'iam\.accounts\.delete'\)/);
   });
 
+  it('seeds modules.read for fresh tenant bootstraps and grants it only to system_admin', () => {
+    const defaultSeedSql = readSeed('0001_iam_personas.sql');
+    const bbGubenSeedSql = readSeed('0002_bb_guben_permissions.sql');
+
+    expect(defaultSeedSql).toMatch(/'modules\.read', 'modules\.read', 'modules'/);
+    expect(defaultSeedSql).toMatch(/\('system_admin', 'modules\.read'\)/);
+    expect(defaultSeedSql).not.toMatch(/\('(?!system_admin)[^']+', 'modules\.read'\)/);
+    expect(bbGubenSeedSql).toMatch(/'modules\.read', 'modules\.read', 'modules'/);
+    expect(bbGubenSeedSql).toMatch(/\('system_admin', 'modules\.read'\)/);
+    expect(bbGubenSeedSql).not.toMatch(/\('(?!system_admin)[^']+', 'modules\.read'\)/);
+  });
+
   it('keeps deletion-rule seeds scoped to the existing retain lifecycle defaults', () => {
     const seedSql = readSeed('0003_iam_deletion_rules_defaults.sql');
 

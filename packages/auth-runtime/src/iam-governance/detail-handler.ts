@@ -36,7 +36,8 @@ export const getGovernanceCaseHandler = async (request: Request): Promise<Respon
           authorization.status,
           toInstancePermissionApiErrorCode(authorization.error),
           'Keine Berechtigung für Governance-Transparenz.',
-          getWorkspaceContext().requestId
+          getWorkspaceContext().requestId,
+          authorization.permissionDenial
         );
       }
       const { user } = ctx;

@@ -1,0 +1,4 @@
+{
+  "prNumber": 959,
+  "body": "Stabilere Qualitätsprüfungen für Abfall-Erinnerungen\n\n- Studio und öffentlicher Abfallkalender verwenden nun denselben geprüften Vertrag für Abmelde-Links.\n- Qualitätsprüfungen des Studios starten dadurch keine fachlich unabhängigen Builds des öffentlichen Abfallkalenders mehr.\n- Eine neue Architekturprüfung verhindert vergleichbare direkte Abhängigkeiten zwischen Anwendungen künftig automatisch."
+}

@@ -27,6 +27,9 @@ describe('iam seed plan', () => {
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe(
       'cockpit'
     );
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'modules.read')?.resourceType).toBe(
+      'modules'
+    );
   });
 
   it('exposes seeded personas by stable keys and rejects unknown keys', () => {
@@ -38,6 +41,7 @@ describe('iam seed plan', () => {
         'iam.accounts.delete',
         'app.read',
         'cockpit.read',
+        'modules.read',
         'content.create',
         'content.updateMetadata',
         'content.updatePayload',

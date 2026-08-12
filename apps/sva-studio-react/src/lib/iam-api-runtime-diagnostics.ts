@@ -18,6 +18,7 @@ export type IamErrorPayload =
       readonly error?: string;
       readonly message?: string;
       readonly requestId?: string;
+      readonly details?: unknown;
     };
 
 const KNOWN_RUNTIME_DIAGNOSTIC_CLASSIFICATIONS = new Set<IamRuntimeDiagnosticClassification>(

@@ -9,8 +9,8 @@
     "types": ["node"],
     "paths": {
       "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
-      "@sva/plugin-waste-management/waste-management.job-definitions": [
-        "packages/plugin-waste-management/dist/waste-management.job-definitions.d.ts"
+      "@sva/waste-management-contracts/job-definitions": [
+        "packages/waste-management-contracts/dist/job-definitions.d.ts"
       ]
     }
   },

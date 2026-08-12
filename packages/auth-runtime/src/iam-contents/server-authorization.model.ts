@@ -1,4 +1,4 @@
-import { resolveSessionActiveOrganizationId } from '@sva/core';
+import { resolveSessionActiveOrganizationId, type PermissionDenialDetails } from '@sva/core';
 import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
@@ -9,6 +9,18 @@ import { resolveEffectivePermissions } from '../iam-authorization/permission-sto
 import { resolveActorAccountIdWithProvision } from '../iam-account-management/shared-actor-resolution-helpers.js';
 import { logger as accountLogger } from '../iam-account-management/shared.js';
 import { getSession } from '../redis-session.js';
+import {
+  databaseUnavailableAuthorizationResult,
+  forbiddenAuthorizationResult,
+} from './server-authorization.results.js';
+
+export {
+  allowedAuthorizationResult,
+  databaseUnavailableAuthorizationResult,
+  forbiddenAuthorizationResult,
+  invalidActionAuthorizationResult,
+  missingInstanceAuthorizationResult,
+} from './server-authorization.results.js';
 
 export type ContentPrimitiveAuthorizationResource = {
   readonly contentId?: string;
@@ -33,6 +45,7 @@ export type ContentPrimitiveAuthorizationResult =
       readonly status: number;
       readonly error: string;
       readonly message: string;
+      readonly permissionDenial?: PermissionDenialDetails;
     };
 
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
@@ -122,49 +135,6 @@ export const resolveCredentialVisibleCompatibilityDecision = (
     request,
     projectPermissionsForCredentialVisibleCompatibility(permissions)
   ).allowed;
-
-export const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
-  ok: false,
-  status: 503,
-  error: 'database_unavailable',
-  message: 'Berechtigungen konnten nicht geprüft werden.',
-});
-
-export const forbiddenAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
-  ok: false,
-  status: 403,
-  error: 'forbidden',
-  message: 'Keine Berechtigung für diese Inhaltsoperation.',
-});
-
-export const missingInstanceAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
-  ok: false,
-  status: 400,
-  error: 'missing_instance',
-  message: 'Kein Instanzkontext für diese Inhaltsoperation vorhanden.',
-});
-
-export const invalidActionAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
-  ok: false,
-  status: 400,
-  error: 'invalid_action',
-  message: 'Ungültige Action für diese Inhaltsoperation.',
-});
-
-export const allowedAuthorizationResult = (input: {
-  readonly instanceId: string;
-  readonly keycloakSubject: string;
-  readonly permissions: readonly EffectivePermission[];
-  readonly organizationId?: string;
-}): ContentPrimitiveAuthorizationResult => ({
-  ok: true,
-  actor: {
-    instanceId: input.instanceId,
-    keycloakSubject: input.keycloakSubject,
-    ...(input.organizationId ? { organizationId: input.organizationId } : {}),
-  },
-  permissions: input.permissions,
-});
 
 const shouldRetryWithoutOrganizationScope = (
   organizationId: string | undefined,

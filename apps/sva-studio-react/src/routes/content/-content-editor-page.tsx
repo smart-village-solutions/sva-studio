@@ -47,6 +47,7 @@ import {
   toDatetimeLocalValue,
 } from '../../lib/editor-date-time';
 import type { CreateContentPayload, IamHttpError, UpdateContentPayload } from '../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 
 type ContentEditorPageProps = {
   readonly mode: 'create' | 'edit';
@@ -93,6 +94,8 @@ const formatDateTime = (value?: string): string => {
 };
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('content.messages.saveError');
   }

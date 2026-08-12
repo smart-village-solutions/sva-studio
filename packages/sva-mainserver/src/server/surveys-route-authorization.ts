@@ -58,7 +58,7 @@ export const authorizeSurveyOrResponse = async (
       action,
       error_code: result.error,
     });
-    return errorJson(result.status, result.error, result.message);
+    return errorJson(result.status, result.error, result.message, result.permissionDenial);
   }
   return {
     instanceId: result.actor.instanceId,
@@ -74,7 +74,7 @@ export const isSurveyAuthorizationDenial = (result: SurveyAuthorizationFailure):
 
 export const toSurveyAuthorizationFailureResponse = (
   result: SurveyAuthorizationFailure
-): Response => errorJson(result.status, result.error, result.message);
+): Response => errorJson(result.status, result.error, result.message, result.permissionDenial);
 
 const authorizeSurveyMutation = async (
   request: Request,

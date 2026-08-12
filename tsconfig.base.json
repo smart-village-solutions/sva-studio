@@ -22,41 +22,89 @@
       "@sva/iam-admin": ["packages/iam-admin/src/index.ts"],
       "@sva/iam-admin/encryption": ["packages/iam-admin/src/encryption.ts"],
       "@sva/iam-core": ["packages/iam-core/src/index.ts"],
-      "@sva/iam-governance/read-models-internal": ["packages/iam-governance/src/read-models-internal.ts"],
+      "@sva/iam-governance/read-models-internal": [
+        "packages/iam-governance/src/read-models-internal.ts"
+      ],
       "@sva/iam-governance/dsr-export-flows": ["packages/iam-governance/src/dsr-export-flows.ts"],
-      "@sva/iam-governance/dsr-export-payload": ["packages/iam-governance/src/dsr-export-payload.ts"],
+      "@sva/iam-governance/dsr-export-payload": [
+        "packages/iam-governance/src/dsr-export-payload.ts"
+      ],
       "@sva/iam-governance/dsr-export-status": ["packages/iam-governance/src/dsr-export-status.ts"],
       "@sva/iam-governance/dsr-maintenance": ["packages/iam-governance/src/dsr-maintenance.ts"],
-      "@sva/iam-governance/dsr-read-models-internal": ["packages/iam-governance/src/dsr-read-models-internal.ts"],
-      "@sva/iam-governance/governance-workflow-executor": ["packages/iam-governance/src/governance-workflow-executor.ts"],
-      "@sva/iam-governance/governance-workflow-policy": ["packages/iam-governance/src/governance-workflow-policy.ts"],
-      "@sva/iam-governance/governance-compliance-export": ["packages/iam-governance/src/governance-compliance-export.ts"],
+      "@sva/iam-governance/dsr-read-models-internal": [
+        "packages/iam-governance/src/dsr-read-models-internal.ts"
+      ],
+      "@sva/iam-governance/governance-workflow-executor": [
+        "packages/iam-governance/src/governance-workflow-executor.ts"
+      ],
+      "@sva/iam-governance/governance-workflow-policy": [
+        "packages/iam-governance/src/governance-workflow-policy.ts"
+      ],
+      "@sva/iam-governance/governance-compliance-export": [
+        "packages/iam-governance/src/governance-compliance-export.ts"
+      ],
       "@sva/iam-governance/legal-text-html": ["packages/iam-governance/src/legal-text-html.ts"],
-      "@sva/iam-governance/legal-text-http-handlers": ["packages/iam-governance/src/legal-text-http-handlers.ts"],
-      "@sva/iam-governance/legal-text-mutation-handlers": ["packages/iam-governance/src/legal-text-mutation-handlers.ts"],
-      "@sva/iam-governance/legal-text-repository": ["packages/iam-governance/src/legal-text-repository.ts"],
-      "@sva/iam-governance/legal-text-sanitize-html": ["packages/iam-governance/src/legal-text-sanitize-html.ts"],
-      "@sva/iam-governance/legal-text-repository-shared": ["packages/iam-governance/src/legal-text-repository-shared.ts"],
-      "@sva/iam-governance/legal-text-request-context": ["packages/iam-governance/src/legal-text-request-context.ts"],
+      "@sva/iam-governance/legal-text-http-handlers": [
+        "packages/iam-governance/src/legal-text-http-handlers.ts"
+      ],
+      "@sva/iam-governance/legal-text-mutation-handlers": [
+        "packages/iam-governance/src/legal-text-mutation-handlers.ts"
+      ],
+      "@sva/iam-governance/legal-text-repository": [
+        "packages/iam-governance/src/legal-text-repository.ts"
+      ],
+      "@sva/iam-governance/legal-text-sanitize-html": [
+        "packages/iam-governance/src/legal-text-sanitize-html.ts"
+      ],
+      "@sva/iam-governance/legal-text-repository-shared": [
+        "packages/iam-governance/src/legal-text-repository-shared.ts"
+      ],
+      "@sva/iam-governance/legal-text-request-context": [
+        "packages/iam-governance/src/legal-text-request-context.ts"
+      ],
       "@sva/iam-governance": ["packages/iam-governance/src/index.ts"],
       "@sva/instance-registry/http-contracts": ["packages/instance-registry/src/http-contracts.ts"],
       "@sva/instance-registry/http-guards": ["packages/instance-registry/src/http-guards.ts"],
-      "@sva/instance-registry/http-instance-handlers": ["packages/instance-registry/src/http-instance-handlers.ts"],
-      "@sva/instance-registry/http-keycloak-handlers": ["packages/instance-registry/src/http-keycloak-handlers.ts"],
-      "@sva/instance-registry/http-mutation-handlers": ["packages/instance-registry/src/http-mutation-handlers.ts"],
+      "@sva/instance-registry/http-instance-handlers": [
+        "packages/instance-registry/src/http-instance-handlers.ts"
+      ],
+      "@sva/instance-registry/http-keycloak-handlers": [
+        "packages/instance-registry/src/http-keycloak-handlers.ts"
+      ],
+      "@sva/instance-registry/http-mutation-handlers": [
+        "packages/instance-registry/src/http-mutation-handlers.ts"
+      ],
       "@sva/instance-registry/keycloak-types": ["packages/instance-registry/src/keycloak-types.ts"],
-      "@sva/instance-registry/mutation-errors": ["packages/instance-registry/src/mutation-errors.ts"],
-      "@sva/instance-registry/mutation-input-builders": ["packages/instance-registry/src/mutation-input-builders.ts"],
-      "@sva/instance-registry/provisioning-auth": ["packages/instance-registry/src/provisioning-auth.ts"],
-      "@sva/instance-registry/provisioning-auth-state": ["packages/instance-registry/src/provisioning-auth-state.ts"],
-      "@sva/instance-registry/provisioning-worker": ["packages/instance-registry/src/provisioning-worker.ts"],
-      "@sva/instance-registry/runtime-resolution": ["packages/instance-registry/src/runtime-resolution.ts"],
+      "@sva/instance-registry/mutation-errors": [
+        "packages/instance-registry/src/mutation-errors.ts"
+      ],
+      "@sva/instance-registry/mutation-input-builders": [
+        "packages/instance-registry/src/mutation-input-builders.ts"
+      ],
+      "@sva/instance-registry/provisioning-auth": [
+        "packages/instance-registry/src/provisioning-auth.ts"
+      ],
+      "@sva/instance-registry/provisioning-auth-state": [
+        "packages/instance-registry/src/provisioning-auth-state.ts"
+      ],
+      "@sva/instance-registry/provisioning-worker": [
+        "packages/instance-registry/src/provisioning-worker.ts"
+      ],
+      "@sva/instance-registry/runtime-resolution": [
+        "packages/instance-registry/src/runtime-resolution.ts"
+      ],
       "@sva/instance-registry/runtime-wiring": ["packages/instance-registry/src/runtime-wiring.ts"],
       "@sva/instance-registry/service": ["packages/instance-registry/src/service.ts"],
       "@sva/instance-registry/service-detail": ["packages/instance-registry/src/service-detail.ts"],
-      "@sva/instance-registry/service-keycloak": ["packages/instance-registry/src/service-keycloak.ts"],
-      "@sva/instance-registry/service-keycloak-execution": ["packages/instance-registry/src/service-keycloak-execution.ts"],
-      "@sva/instance-registry/service-keycloak-execution-shared": ["packages/instance-registry/src/service-keycloak-execution-shared.ts"],
+      "@sva/instance-registry/service-keycloak": [
+        "packages/instance-registry/src/service-keycloak.ts"
+      ],
+      "@sva/instance-registry/service-keycloak-execution": [
+        "packages/instance-registry/src/service-keycloak-execution.ts"
+      ],
+      "@sva/instance-registry/service-keycloak-execution-shared": [
+        "packages/instance-registry/src/service-keycloak-execution-shared.ts"
+      ],
       "@sva/instance-registry/service-types": ["packages/instance-registry/src/service-types.ts"],
       "@sva/instance-registry": ["packages/instance-registry/src/index.ts"],
       "@sva/plugin-sdk": ["packages/plugin-sdk/src/index.ts"],
@@ -77,10 +125,19 @@
       "@sva/plugin-poi": ["packages/plugin-poi/src/index.ts"],
       "@sva/waste-management-runtime": ["packages/waste-management-runtime/src/index.ts"],
       "@sva/waste-management-runtime/server": ["packages/waste-management-runtime/src/server.ts"],
+      "@sva/waste-management-contracts": ["packages/waste-management-contracts/src/index.ts"],
+      "@sva/waste-management-contracts/job-definitions": [
+        "packages/waste-management-contracts/src/job-definitions.ts"
+      ],
+      "@sva/waste-management-contracts/unsubscribe-token": [
+        "packages/waste-management-contracts/src/unsubscribe-token.server.ts"
+      ],
       "@sva/monitoring-client": ["packages/monitoring-client/src/index.ts"],
       "@sva/monitoring-client/logging": ["packages/monitoring-client/src/logging.ts"],
       "@sva/monitoring-client/server": ["packages/monitoring-client/src/server.ts"],
-      "@sva/monitoring-client/logger-provider.server": ["packages/monitoring-client/src/logger-provider.server.ts"],
+      "@sva/monitoring-client/logger-provider.server": [
+        "packages/monitoring-client/src/logger-provider.server.ts"
+      ],
       "@sva/media": ["packages/media/src/index.ts"],
       "@sva/mail-runtime": ["packages/mail-runtime/src/index.ts"]
     }

@@ -7,9 +7,9 @@ import type {
   WasteEmailReminderUnsubscribeResult,
 } from '@sva/data-repositories';
 import {
-  readPublicWasteUnsubscribeTokenSubscriptionId,
-  verifyPublicWasteUnsubscribeToken,
-} from './public-waste-unsubscribe-token.server.js';
+  readWasteManagementUnsubscribeTokenSubscriptionId,
+  verifyWasteManagementUnsubscribeToken,
+} from '@sva/waste-management-contracts/unsubscribe-token';
 import type { PublicWasteRepository } from '../lib/public-waste-repository.server.js';
 import type {
   PublicWasteReminderSignupRequest,
@@ -45,7 +45,10 @@ type ReminderSignupDependencies = Readonly<{
 }>;
 
 type ReminderTokenActionDependencies = Readonly<{
-  activateByDoiTokenHash: (input: { readonly tokenHash: string; readonly now: string }) => Promise<WasteEmailReminderActivationResult>;
+  activateByDoiTokenHash: (input: {
+    readonly tokenHash: string;
+    readonly now: string;
+  }) => Promise<WasteEmailReminderActivationResult>;
   loadUnsubscribeSubscriptionById: (input: {
     readonly subscriptionId: string;
   }) => Promise<WasteEmailReminderUnsubscribeSubscription | null>;
@@ -61,7 +64,8 @@ const DEFAULT_PENDING_HEADLINE = 'Bestätigungslink versendet';
 const DEFAULT_PENDING_MESSAGE =
   'Bitte prüfen Sie Ihr E-Mail-Postfach und bestätigen Sie die Anmeldung über den enthaltenen Link.';
 const SIGNUP_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-const TOO_MANY_REQUESTS_MESSAGE = 'Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut.';
+const TOO_MANY_REQUESTS_MESSAGE =
+  'Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut.';
 const SUBSCRIPTION_LIMIT_REACHED_MESSAGE =
   'Für diese E-Mail-Adresse und diesen Standort wurde die maximale Anzahl an Erinnerungen bereits eingerichtet.';
 
@@ -86,13 +90,19 @@ export class PublicWasteReminderSignupError extends Error {
   }
 }
 
-const createSha256Hash = (value: string): string => `sha256:${createHash('sha256').update(value).digest('hex')}`;
+const createSha256Hash = (value: string): string =>
+  `sha256:${createHash('sha256').update(value).digest('hex')}`;
 const sha256HashPattern = /^sha256:[0-9a-f]{64}$/i;
 const createOpaqueToken = (): string => randomBytes(32).toString('base64url');
-const addHours = (value: Date, hours: number): Date => new Date(value.getTime() + hours * 60 * 60 * 1000);
+const addHours = (value: Date, hours: number): Date =>
+  new Date(value.getTime() + hours * 60 * 60 * 1000);
 const toIsoString = (value: Date): string => value.toISOString();
 
-const buildPublicUrl = (baseUrl: string, path: string, params: Readonly<Record<string, string>> = {}): string => {
+const buildPublicUrl = (
+  baseUrl: string,
+  path: string,
+  params: Readonly<Record<string, string>> = {}
+): string => {
   const url = new URL(path, baseUrl);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
@@ -157,7 +167,11 @@ const escapeHtml = (value: string): string =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
-const buildStatusPageResponse = (input: { readonly title: string; readonly headline: string; readonly body: string }): Response =>
+const buildStatusPageResponse = (input: {
+  readonly title: string;
+  readonly headline: string;
+  readonly body: string;
+}): Response =>
   new Response(
     `<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(input.title)}</title></head><body><main><h1>${escapeHtml(input.headline)}</h1><p>${escapeHtml(input.body)}</p></main></body></html>`,
     {
@@ -168,7 +182,11 @@ const buildStatusPageResponse = (input: { readonly title: string; readonly headl
     }
   );
 
-const createRedirectResponse = (request: Request, path: string, params: Readonly<Record<string, string>> = {}): Response => {
+const createRedirectResponse = (
+  request: Request,
+  path: string,
+  params: Readonly<Record<string, string>> = {}
+): Response => {
   const url = new URL(path, request.url);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
@@ -203,12 +221,16 @@ const buildDoiDispatchPayload = (input: {
       : []),
   ],
   templatePayload: {
-    confirmUrl: buildPublicUrl(input.config.publicBaseUrl, input.config.doiConfirmPath, { token: input.confirmToken }),
+    confirmUrl: buildPublicUrl(input.config.publicBaseUrl, input.config.doiConfirmPath, {
+      token: input.confirmToken,
+    }),
     locationLabel: input.locationLabel,
     privacyPolicyUrl: input.config.privacyPolicyUrl,
     imprintUrl: input.config.imprintUrl,
     ...(input.config.serviceLabel ? { serviceLabel: input.config.serviceLabel } : {}),
-    ...(input.config.dataControllerLabel ? { dataControllerLabel: input.config.dataControllerLabel } : {}),
+    ...(input.config.dataControllerLabel
+      ? { dataControllerLabel: input.config.dataControllerLabel }
+      : {}),
   },
   tags: ['waste-management', 'email-reminder', 'double-opt-in'],
   metadata: {
@@ -309,7 +331,8 @@ export const createPublicWasteReminderSignupSubmitter =
     if (deps.persistPendingSignupWithLimitCheck) {
       const result = await deps.persistPendingSignupWithLimitCheck({
         signup: pendingSignup,
-        maxSubscriptionsPerEmailAndLocation: input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
+        maxSubscriptionsPerEmailAndLocation:
+          input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
       });
       if (result === 'subscription_limit_reached') {
         throw new PublicWasteReminderSignupError({
@@ -351,7 +374,10 @@ const renderDoiSuccessPage = (config: WasteManagementEmailReminderConfig): Respo
     body: config.doiSuccessBody ?? 'Ihre E-Mail-Erinnerung ist jetzt aktiv.',
   });
 
-const renderDoiErrorPage = (config: WasteManagementEmailReminderConfig, result: 'expired' | 'invalid'): Response =>
+const renderDoiErrorPage = (
+  config: WasteManagementEmailReminderConfig,
+  result: 'expired' | 'invalid'
+): Response =>
   buildStatusPageResponse({
     title: config.doiErrorHeadline ?? 'Link ungültig',
     headline: config.doiErrorHeadline ?? 'Link ungültig',
@@ -399,11 +425,16 @@ const renderConfiguredReminderStatusPage = (input: {
     return renderDoiSuccessPage(config);
   }
   if (config.unsubscribeSuccessPath && pathname === config.unsubscribeSuccessPath) {
-    const state = url.searchParams.get('state') === 'already_unsubscribed' ? 'already_unsubscribed' : 'unsubscribed';
+    const state =
+      url.searchParams.get('state') === 'already_unsubscribed'
+        ? 'already_unsubscribed'
+        : 'unsubscribed';
     return renderUnsubscribeSuccessPage(config, state);
   }
   if (config.invalidTokenPath && pathname === config.invalidTokenPath) {
-    return url.searchParams.get('source') === 'unsubscribe' ? renderUnsubscribeErrorPage(config) : renderDoiErrorPage(config, 'invalid');
+    return url.searchParams.get('source') === 'unsubscribe'
+      ? renderUnsubscribeErrorPage(config)
+      : renderDoiErrorPage(config, 'invalid');
   }
   return null;
 };
@@ -429,7 +460,10 @@ export const createPublicWasteReminderPageHandler =
     if (input.pathname === input.reminderConfig.doiConfirmPath) {
       if (!token) {
         return input.reminderConfig.invalidTokenPath
-          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, { source: 'doi', reason: 'invalid' })
+          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+              source: 'doi',
+              reason: 'invalid',
+            })
           : renderDoiErrorPage(input.reminderConfig, 'invalid');
       }
       const result = await deps.activateByDoiTokenHash({
@@ -438,11 +472,16 @@ export const createPublicWasteReminderPageHandler =
       });
       if (result.status === 'activated' || result.status === 'already_active') {
         return input.reminderConfig.activationSuccessPath
-          ? createRedirectResponse(input.request, input.reminderConfig.activationSuccessPath, { state: result.status })
+          ? createRedirectResponse(input.request, input.reminderConfig.activationSuccessPath, {
+              state: result.status,
+            })
           : renderDoiSuccessPage(input.reminderConfig);
       }
       return input.reminderConfig.invalidTokenPath
-        ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, { source: 'doi', reason: result.status })
+        ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+            source: 'doi',
+            reason: result.status,
+          })
         : renderDoiErrorPage(input.reminderConfig, result.status);
     }
 
@@ -455,7 +494,7 @@ export const createPublicWasteReminderPageHandler =
             })
           : renderUnsubscribeErrorPage(input.reminderConfig);
       }
-      const subscriptionId = readPublicWasteUnsubscribeTokenSubscriptionId(token);
+      const subscriptionId = readWasteManagementUnsubscribeTokenSubscriptionId(token);
       if (!subscriptionId) {
         return input.reminderConfig.invalidTokenPath
           ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
@@ -467,7 +506,7 @@ export const createPublicWasteReminderPageHandler =
       const subscription = await deps.loadUnsubscribeSubscriptionById({ subscriptionId });
       if (
         !subscription ||
-        !verifyPublicWasteUnsubscribeToken({
+        !verifyWasteManagementUnsubscribeToken({
           token,
           subscriptionId,
           unsubscribeTokenHash: subscription.unsubscribeTokenHash,
@@ -487,7 +526,9 @@ export const createPublicWasteReminderPageHandler =
       });
       if (result.status === 'unsubscribed' || result.status === 'already_unsubscribed') {
         return input.reminderConfig.unsubscribeSuccessPath
-          ? createRedirectResponse(input.request, input.reminderConfig.unsubscribeSuccessPath, { state: result.status })
+          ? createRedirectResponse(input.request, input.reminderConfig.unsubscribeSuccessPath, {
+              state: result.status,
+            })
           : renderUnsubscribeSuccessPage(input.reminderConfig, result.status);
       }
       return input.reminderConfig.invalidTokenPath

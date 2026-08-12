@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { useMediaDetail } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 import { MediaDetailImageControlsSection } from './-media-detail-image-controls-section.js';
@@ -14,6 +15,8 @@ import { MediaDetailWorkspaceHeader } from './-media-detail-workspace-header.js'
 import type { MediaDetailPageProps } from './-media-ui.shared.js';
 
 const mediaErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('media.detail.loadError');
   }

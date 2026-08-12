@@ -31,6 +31,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx show project sva-studio-react` zeigt explizite Targets mit definierten `inputs` und `outputs`
 - Package-Boundary-Qualität:
   - alte Sammelimporte in neuen Consumer-Pfaden werden durch ESLint und Nx-Boundaries blockiert
+  - `pnpm check:app-boundaries` blockiert statische Imports, dynamische Imports, `require` und Re-Exports zwischen unterschiedlichen Anwendungen unter `apps/`
   - serverseitige Zielpackages bestehen `check:runtime` und verwenden Node-ESM-konforme Runtime-Imports mit expliziter `.js`-Endung
   - `pnpm openspec validate refactor-package-target-architecture-hard-cut --strict` muss für Package-Grenzänderungen grün sein
   - `@sva/studio-module-iam` bleibt React-frei und besteht `test:types`, `test:unit` sowie `check:runtime` als serverseitig konsumierbarer Vertrags-Edge
@@ -188,13 +189,18 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm check:plugin-architecture-boundary` laeuft im ersten Rollout warn-only fuer `packages/plugin-*`
   - Stand 2026-06-14: Trotz bereinigtem `@sva/plugin-waste-management` bleibt der Guard bewusst global warn-only; ein blockierender oder no-new-violations-Schnitt braucht einen separaten Governance-Change
   - der Check bewertet direkte, relative, Runtime-, Type- und Re-Export-Kanten sowie Workspace-Dependencies ausserhalb des dokumentierten Plugin-Vertrags
-  - `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die einzigen erlaubten internen Plugin-Einstiegspunkte
+  - `@sva/plugin-sdk` und `@sva/studio-ui-react` sind die generischen erlaubten internen Plugin-Einstiegspunkte; `@sva/plugin-waste-management` darf zusätzlich den rein deklarativen Fachvertrag aus `@sva/waste-management-contracts` konsumieren
   - importkantenbezogene Brownfield-Abweichungen sind nur mit maschinenlesbarer Allowlist unter `config/plugin-architecture-allowlist.json` tolerierbar
   - der aktuelle JSON-Vertrag der Allowlist umfasst `plugin`, `sourceFile`, `importSpecifier`, `resolvedTarget`, `kind`, `reason` und optional `ticket`
   - `@sva/plugin-waste-management` gilt nach der Runtime-Extraktion als browserseitiges Plugin-Package; host-owned Waste-Job-Runtime liegt in `@sva/waste-management-runtime`
   - fuer `packages/plugin-waste-management` wird aktuell kein aktiver Allowlist-Eintrag mehr erwartet; neue Guard-Warnungen dort sind als Regression zu behandeln oder bewusst zu dokumentieren
   - die Allowlist ersetzt historische Baseline-Klassen wie Workspace-Dependencies oder Path-Signal-Historie nicht vollstaendig eins zu eins
   - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
+- Waste-Abmeldetoken-Boundary:
+  - `@sva/waste-management-contracts/unsubscribe-token` ist die einzige kanonische Implementierung für Erzeugung, Lesen und Verifikation signierter Waste-Abmeldetoken und installiert weder Job-Runtime noch Browser-Plugin
+  - ein Golden-Test hält Tokenaufbau, HMAC-SHA-256-Inhalt und Base64url-Signatur für bestehende `v1`-Links bytekompatibel
+  - der Nx-Graph enthält keine direkte Kante `sva-studio-react -> public-waste-calendar-web`; beide Apps konsumieren stattdessen `waste-management-contracts`
+  - `sva-studio-react:test:types` darf `public-waste-calendar-web:build` nicht als vorgelagerten Task einplanen
 - Medienmanagement:
   - `openspec validate add-media-management --strict` muss grün sein
   - `@sva/media` bleibt typstabil über `test:types`
@@ -369,3 +375,9 @@ Referenzen:
 - Komponenten- und Accessibility-Tests sichern explizite Sortiermodi, unveränderte externe Seitenreihenfolge, Desktop- und Mobilbedienung sowie den externen Zweierzyklus ab.
 - Repository-, Read-Model- und Handler-Tests müssen beide Richtungen, fehlende Werte zuletzt, ID-Gleichstandsauflösung, mindestens zwei Seiten und ungültige direkte API-Parameter abdecken.
 - UI-Tests belegen sichtbare Defaults, Seitenreset, Gesamtzahl und Seitengrößen. Type-Gates verhindern Tabellenaufrufer ohne explizite Ownership; Server-Runtime- und OpenSpec-Gates sichern die Paket- beziehungsweise Vertragsgrenzen.
+
+### Ergänzung 2026-08: Qualitätsziele für Berechtigungsfehler
+
+- Route- und API-Vertragstests belegen einzelne, `allOf`-, `anyOf`- und kontextuelle Denials sowie generische Fallbacks für uneindeutige und technische Fehler.
+- Katalogtests sichern die deutschen und englischen Titel aller Core-/Host-Permissions; registrierte Plugin-Permissions und unbekannte Actions besitzen einen deterministischen Fallback.
+- Öffentliche Details dürfen keine Rollen-, Gruppen-, Grant- oder Policy-Daten enthalten. Unvertrauenswürdige Details sind auf Anzahl und Länge begrenzt und werden fail-closed geparst.

@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@sva/plugin-sdk": "workspace:*",
-    "@sva/plugin-waste-management": "workspace:*"
+    "@sva/waste-management-contracts": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",

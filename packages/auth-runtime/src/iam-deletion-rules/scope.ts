@@ -67,7 +67,8 @@ export const validateTenantAdminScope = async (
         authorization.status,
         toInstancePermissionApiErrorCode(authorization.error),
         'Keine Berechtigung für Tenant-Löschregeln.',
-        getWorkspaceContext().requestId
+        getWorkspaceContext().requestId,
+        authorization.permissionDenial
       ),
     };
   }

@@ -6,14 +6,13 @@ import type {
   WasteManagementEmailReminderConfig,
 } from '@sva/core';
 import type { MailDispatchMessage, MailDispatchMessageAddress } from '@sva/mail-runtime';
-
-import { createWasteManagementUnsubscribeToken } from './waste-management-unsubscribe-token.server.js';
+import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
 const templatePlaceholderPattern = /\{\{\s*([a-zA-Z0-9]+)\s*\}\}/g;
 
 export const createUtcIsoAtHour = (date: Date, hourUtc: number): string =>
   new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hourUtc, 0, 0, 0),
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), hourUtc, 0, 0, 0)
   ).toISOString();
 
 export const parseIsoDateUtc = (value: string): Date => {
@@ -47,7 +46,7 @@ const buildUnsubscribeUrl = (
     readonly subscriptionId: string;
     readonly unsubscribeTokenHash: string;
     readonly secret: string;
-  },
+  }
 ): string => {
   const url = new URL(config.unsubscribePath, config.publicBaseUrl);
   url.searchParams.set(
@@ -56,7 +55,7 @@ const buildUnsubscribeUrl = (
       subscriptionId: input.subscriptionId,
       unsubscribeTokenHash: input.unsubscribeTokenHash,
       secret: input.secret,
-    }),
+    })
   );
   return url.toString();
 };
@@ -68,7 +67,7 @@ export const matchSelectionLocations = (
     readonly cityId: string;
     readonly streetId: string;
     readonly houseNumberId?: string;
-  },
+  }
 ): readonly WasteCollectionLocationRecord[] =>
   locations.filter((location) => {
     if (!location.active || location.cityId !== subscription.cityId) {
@@ -87,7 +86,11 @@ export const matchSelectionLocations = (
     if (location.streetId !== undefined && location.streetId !== subscription.streetId) {
       return false;
     }
-    if (subscription.houseNumberId && location.houseNumberId !== undefined && location.houseNumberId !== subscription.houseNumberId) {
+    if (
+      subscription.houseNumberId &&
+      location.houseNumberId !== undefined &&
+      location.houseNumberId !== subscription.houseNumberId
+    ) {
       return false;
     }
     if (!subscription.houseNumberId && location.houseNumberId !== undefined) {
@@ -127,7 +130,9 @@ export const buildReminderDispatchPayload = (input: {
     locale: 'de-DE',
     addresses: [
       { kind: 'to', email: input.email },
-      ...(input.config.replyToEmail ? [{ kind: 'reply_to' as const, email: input.config.replyToEmail }] : []),
+      ...(input.config.replyToEmail
+        ? [{ kind: 'reply_to' as const, email: input.config.replyToEmail }]
+        : []),
     ],
     templatePayload: {
       subject: renderTemplate(input.config.reminderSubjectTemplate, values),
@@ -167,7 +172,7 @@ const joinMailTextSections = (sections: readonly (string | undefined)[]): string
     .join('\n\n');
 
 const mapPayloadAddresses = (
-  payload: MailDispatchPayload,
+  payload: MailDispatchPayload
 ): Readonly<Record<'to' | 'cc' | 'bcc' | 'replyTo', readonly MailDispatchMessageAddress[]>> => {
   const to: MailDispatchMessageAddress[] = [];
   const cc: MailDispatchMessageAddress[] = [];
@@ -201,7 +206,7 @@ const mapPayloadAddresses = (
 
 const resolveReminderFromAddress = (
   config: WasteManagementEmailReminderConfig,
-  transport: MailTransportConfig,
+  transport: MailTransportConfig
 ): MailDispatchMessageAddress => ({
   email: config.fromEmail || transport.defaultFromEmail || '',
   displayName: config.fromName || transport.defaultFromName || undefined,
@@ -210,7 +215,7 @@ const resolveReminderFromAddress = (
 const resolveReminderReplyToAddresses = (
   config: WasteManagementEmailReminderConfig,
   transport: MailTransportConfig,
-  payload: MailDispatchPayload,
+  payload: MailDispatchPayload
 ): readonly MailDispatchMessageAddress[] | undefined => {
   const payloadAddresses = mapPayloadAddresses(payload).replyTo;
   if (payloadAddresses.length > 0) {
@@ -229,8 +234,12 @@ const buildDoiDispatchMessage = (input: {
   readonly payload: MailDispatchPayload;
 }): MailDispatchMessage => {
   const { templatePayload } = input.payload;
-  const serviceLabel = normalizeMailTextLine(templatePayload.serviceLabel ?? input.config.serviceLabel);
-  const dataControllerLabel = normalizeMailTextLine(templatePayload.dataControllerLabel ?? input.config.dataControllerLabel);
+  const serviceLabel = normalizeMailTextLine(
+    templatePayload.serviceLabel ?? input.config.serviceLabel
+  );
+  const dataControllerLabel = normalizeMailTextLine(
+    templatePayload.dataControllerLabel ?? input.config.dataControllerLabel
+  );
   const templateValues = {
     confirmUrl: templatePayload.confirmUrl ?? '',
     locationLabel: templatePayload.locationLabel ?? '',
@@ -240,12 +249,22 @@ const buildDoiDispatchMessage = (input: {
     dataControllerLabel: dataControllerLabel ?? '',
   } as const;
   const text = joinMailTextSections([
-    normalizeMailTextLine(input.config.doiPreheader) ? renderTemplate(input.config.doiPreheader!, templateValues) : undefined,
+    normalizeMailTextLine(input.config.doiPreheader)
+      ? renderTemplate(input.config.doiPreheader!, templateValues)
+      : undefined,
     renderTemplate(input.config.doiIntroText, templateValues),
-    normalizeMailTextLine(templatePayload.locationLabel) ? `Ort: ${templatePayload.locationLabel}` : undefined,
-    input.config.doiButtonLabel ? `${input.config.doiButtonLabel}: ${templatePayload.confirmUrl}` : templatePayload.confirmUrl,
-    normalizeMailTextLine(input.config.doiFallbackText) ? renderTemplate(input.config.doiFallbackText!, templateValues) : undefined,
-    normalizeMailTextLine(input.config.doiExpiryNoticeText) ? renderTemplate(input.config.doiExpiryNoticeText!, templateValues) : undefined,
+    normalizeMailTextLine(templatePayload.locationLabel)
+      ? `Ort: ${templatePayload.locationLabel}`
+      : undefined,
+    input.config.doiButtonLabel
+      ? `${input.config.doiButtonLabel}: ${templatePayload.confirmUrl}`
+      : templatePayload.confirmUrl,
+    normalizeMailTextLine(input.config.doiFallbackText)
+      ? renderTemplate(input.config.doiFallbackText!, templateValues)
+      : undefined,
+    normalizeMailTextLine(input.config.doiExpiryNoticeText)
+      ? renderTemplate(input.config.doiExpiryNoticeText!, templateValues)
+      : undefined,
     serviceLabel ? `Service: ${serviceLabel}` : undefined,
     dataControllerLabel ? `Verantwortlich: ${dataControllerLabel}` : undefined,
     `Datenschutz: ${templatePayload.privacyPolicyUrl}`,
@@ -274,7 +293,9 @@ const buildReminderDispatchMessage = (input: {
   const bulletLine = normalizeMailTextLine(templatePayload.fractionName)
     ? `- ${templatePayload.fractionName}${normalizeMailTextLine(templatePayload.pickupDate) ? ` (${templatePayload.pickupDate})` : ''}`
     : undefined;
-  const serviceLabel = normalizeMailTextLine(templatePayload.serviceLabel ?? input.config.serviceLabel);
+  const serviceLabel = normalizeMailTextLine(
+    templatePayload.serviceLabel ?? input.config.serviceLabel
+  );
   const text = joinMailTextSections([
     templatePayload.introText,
     templatePayload.listIntroText,

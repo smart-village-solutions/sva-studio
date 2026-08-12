@@ -12,8 +12,12 @@ export const json = (body: unknown, status = 200): Response =>
     },
   });
 
-export const errorJson = (status: number, error: string, message: string): Response =>
-  json({ error, message }, status);
+export const errorJson = (
+  status: number,
+  error: string,
+  message: string,
+  details?: unknown
+): Response => json({ error, message, ...(details === undefined ? {} : { details }) }, status);
 
 const decodePathSegment = (value: string): string | null => {
   try {

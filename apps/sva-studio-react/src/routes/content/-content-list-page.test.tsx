@@ -157,7 +157,8 @@ vi.mock('@sva/plugin-projects', () => ({
   deleteProject: (...args: unknown[]) => deleteProjectMock(...args),
 }));
 
-vi.mock('../../lib/plugins', () => ({
+vi.mock('../../lib/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/plugins')>()),
   studioContentTypes: mockedStudioContentTypes,
 }));
 

@@ -1,33 +1,47 @@
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as ts from 'typescript';
 
-import { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline } from './plugin-architecture-boundary-baseline.ts';
 import {
-  ALLOWED_WORKSPACE_DEPENDENCIES,
+  diffViolationsAgainstBaseline,
+  parsePluginArchitectureBaseline,
+} from './plugin-architecture-boundary-baseline.ts';
+import {
+  collectSourceFiles,
+  isWorkspaceDependency,
+  normalizeWorkspaceModuleSpecifier,
+  pathExists,
+  readPluginPackages,
+  toPosixRelativePath,
+} from './plugin-architecture-boundary-filesystem.ts';
+import { collectTypeScriptImportEdges } from './typescript-import-edges.ts';
+import {
   FORBIDDEN_HOST_WORKSPACE_PACKAGES,
   FORBIDDEN_PATH_SIGNALS,
   getWorkspaceImportSubject,
+  isAllowedWorkspaceDependency,
   isAllowedWorkspaceModuleSpecifier,
   isForbiddenHostWorkspaceModuleSpecifier,
   matchesReviewRequiredPathSignal,
-  type PackageJson,
   type PluginArchitectureImportKind,
   type PluginPackage,
   REVIEW_REQUIRED_PATH_SIGNALS,
-  type WorkspaceImportEdge,
   WORKSPACE_DEPENDENCY_FIELDS,
 } from './plugin-architecture-boundary-workspace.ts';
 export type { PluginArchitectureImportKind } from './plugin-architecture-boundary-workspace.ts';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = path.resolve(SCRIPT_DIR, '../..');
-export const DEFAULT_BASELINE_PATH = path.join(PROJECT_ROOT, 'docs/reports/plugin-architecture-boundary-baseline.md');
+export const DEFAULT_BASELINE_PATH = path.join(
+  PROJECT_ROOT,
+  'docs/reports/plugin-architecture-boundary-baseline.md'
+);
 
-const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx']);
-
-export type PluginArchitectureViolationRule = 'workspace-dependency' | 'workspace-import' | 'forbidden-path-signal' | 'review-required-path-signal';
+export type PluginArchitectureViolationRule =
+  | 'workspace-dependency'
+  | 'workspace-import'
+  | 'forbidden-path-signal'
+  | 'review-required-path-signal';
 export type PluginArchitectureViolation = {
   packageName: string;
   relativePath: string;
@@ -38,170 +52,32 @@ export type PluginArchitectureViolation = {
   resolvedTarget?: string;
   kind?: PluginArchitectureImportKind;
 };
-export type PluginArchitectureBaselineEntry = { packageName: string; relativePath: string; rule: PluginArchitectureViolationRule; subject: string; owner: string; justification: string; removalChange: string };
-const toPosixRelativePath = (projectRoot: string, targetPath: string): string =>
-  path.relative(projectRoot, targetPath).split(path.sep).join(path.posix.sep);
-
-const pathExists = async (filePath: string): Promise<boolean> => {
-  try {
-    await stat(filePath);
-    return true;
-  } catch {
-    return false;
-  }
+export type PluginArchitectureBaselineEntry = {
+  packageName: string;
+  relativePath: string;
+  rule: PluginArchitectureViolationRule;
+  subject: string;
+  owner: string;
+  justification: string;
+  removalChange: string;
 };
-
-const collectSourceFiles = async (directory: string): Promise<string[]> => {
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files: string[] = [];
-  for (const entry of entries) {
-    const entryPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      files.push(...(await collectSourceFiles(entryPath)));
-      continue;
-    }
-    if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
-      files.push(entryPath);
-    }
-  }
-  return files;
-};
-
-const isPluginPackageName = (packageName: string): boolean =>
-  packageName.startsWith('@sva/plugin-') && packageName !== '@sva/plugin-sdk';
-
-const readPluginPackages = async (projectRoot: string): Promise<readonly PluginPackage[]> => {
-  const packagesDir = path.join(projectRoot, 'packages');
-  if (!(await pathExists(packagesDir))) {
-    return [];
-  }
-
-  const entries = await readdir(packagesDir, { withFileTypes: true });
-  const pluginPackages: PluginPackage[] = [];
-  for (const entry of entries) {
-    if (!entry.isDirectory()) {
-      continue;
-    }
-
-    const packageDir = path.join(packagesDir, entry.name);
-    const packageJsonPath = path.join(packageDir, 'package.json');
-    if (!(await pathExists(packageJsonPath))) {
-      continue;
-    }
-
-    const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as PackageJson;
-    const packageName = packageJson.name ?? '';
-    if (isPluginPackageName(packageName)) {
-      pluginPackages.push({ packageName, packageDir, packageJson });
-    }
-  }
-  return pluginPackages;
-};
-
-const isWorkspaceDependency = (packageName: string, version: string): boolean =>
-  packageName.startsWith('@sva/') && version.startsWith('workspace:');
-
-const normalizeWorkspaceResolvedTarget = (packageName: string, resolvedRelativePath: string): string => {
-  if (!resolvedRelativePath.startsWith('packages/')) return resolvedRelativePath;
-
-  const sourceMatch = resolvedRelativePath.match(/^packages\/([^/]+)\/src\/(.+)$/);
-  if (!sourceMatch) return packageName;
-
-  const [, , sourceSubpath] = sourceMatch;
-  const withoutExtension = sourceSubpath.replace(/\.[^.]+$/, '');
-  const cleaned = withoutExtension.replace(/\/index$/, '');
-  const segments = cleaned.split('/');
-  if (segments.length > 1 && !withoutExtension.endsWith('/index')) {
-    segments.pop();
-  }
-  return segments.length > 0 ? `${packageName}/${segments.join('/')}` : packageName;
-};
-
-const normalizeWorkspaceModuleSpecifier = async (
-  moduleSpecifier: string,
-  importerPath: string,
-  packageDir: string,
-  projectRoot: string
-): Promise<string | null> => {
-  if (moduleSpecifier.startsWith('@sva/')) return moduleSpecifier;
-  const normalized = path.posix.normalize(moduleSpecifier.replaceAll('\\', '/'));
-  const withoutRelativePrefix = normalized.replace(/^(?:(?:\.\.\/)|(?:\.\/))+/, '');
-  if (withoutRelativePrefix.startsWith('apps/')) return withoutRelativePrefix;
-  if (!normalized.startsWith('.')) return null;
-  const resolvedPath = path.resolve(path.dirname(importerPath), moduleSpecifier);
-  const pluginPackagePrefix = `${packageDir}${path.sep}`;
-  if (resolvedPath === packageDir || resolvedPath.startsWith(pluginPackagePrefix)) return null;
-  const projectRootPrefix = `${projectRoot}${path.sep}`;
-  if (!resolvedPath.startsWith(projectRootPrefix)) return null;
-  const resolvedRelativePath = toPosixRelativePath(projectRoot, resolvedPath);
-  if (resolvedRelativePath.startsWith('apps/')) return resolvedRelativePath;
-  if (!resolvedRelativePath.startsWith('packages/')) return null;
-  let currentDirectory = path.dirname(resolvedPath);
-  while (currentDirectory === projectRoot || currentDirectory.startsWith(projectRootPrefix)) {
-    const packageJsonPath = path.join(currentDirectory, 'package.json');
-    if (await pathExists(packageJsonPath)) {
-      const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8')) as PackageJson;
-      return packageJson.name ? normalizeWorkspaceResolvedTarget(packageJson.name, resolvedRelativePath) : resolvedRelativePath;
-    }
-    if (currentDirectory === projectRoot) break;
-    currentDirectory = path.dirname(currentDirectory);
-  }
-  return resolvedRelativePath;
-};
-
-const getWorkspaceImportEdges = (sourceFile: ts.SourceFile): readonly WorkspaceImportEdge[] => {
-  const edges: WorkspaceImportEdge[] = [];
-
-  const visit = (node: ts.Node): void => {
-    if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-      edges.push({
-        importSpecifier: node.moduleSpecifier.text,
-        kind: node.importClause?.isTypeOnly ? 'type' : 'runtime',
-      });
-      ts.forEachChild(node, visit);
-      return;
-    }
-
-    if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      edges.push({
-        importSpecifier: node.moduleSpecifier.text,
-        kind: node.isTypeOnly ? 'type' : 'reexport',
-      });
-      ts.forEachChild(node, visit);
-      return;
-    }
-
-    if (
-      ts.isCallExpression(node) &&
-      (
-        node.expression.kind === ts.SyntaxKind.ImportKeyword ||
-        (ts.isIdentifier(node.expression) && node.expression.text === 'require')
-      ) &&
-      node.arguments.length > 0 &&
-      ts.isStringLiteral(node.arguments[0])
-    ) {
-      edges.push({
-        importSpecifier: node.arguments[0].text,
-        kind: 'runtime',
-      });
-    }
-
-    ts.forEachChild(node, visit);
-  };
-
-  visit(sourceFile);
-
-  return edges;
-};
-
 const createViolation = (
   packageName: string,
   relativePath: string,
   rule: PluginArchitectureViolationRule,
   subject: string,
   message: string,
-  details: Partial<Pick<PluginArchitectureViolation, 'importSpecifier' | 'resolvedTarget' | 'kind'>> = {}
-): PluginArchitectureViolation => ({ packageName, relativePath, rule, subject, message, ...details });
+  details: Partial<
+    Pick<PluginArchitectureViolation, 'importSpecifier' | 'resolvedTarget' | 'kind'>
+  > = {}
+): PluginArchitectureViolation => ({
+  packageName,
+  relativePath,
+  rule,
+  subject,
+  message,
+  ...details,
+});
 
 const collectPackageViolations = async (
   pluginPackage: PluginPackage,
@@ -217,13 +93,24 @@ const collectPackageViolations = async (
       continue;
     }
     for (const [dependencyName, version] of Object.entries(dependencies)) {
-      if (!isWorkspaceDependency(dependencyName, version) || ALLOWED_WORKSPACE_DEPENDENCIES.has(dependencyName)) {
+      if (
+        !isWorkspaceDependency(dependencyName, version) ||
+        isAllowedWorkspaceDependency(pluginPackage.packageName, dependencyName)
+      ) {
         continue;
       }
       const message = FORBIDDEN_HOST_WORKSPACE_PACKAGES.has(dependencyName)
         ? `${pluginPackage.packageName} darf ${dependencyName} nicht direkt als Host-Package konsumieren`
-        : `${pluginPackage.packageName} fuehrt mit ${dependencyName} eine nicht freigegebene Workspace-Abhaengigkeit ein`;
-      violations.push(createViolation(pluginPackage.packageName, packageRelativePath, 'workspace-dependency', dependencyName, message));
+        : `${pluginPackage.packageName} führt mit ${dependencyName} eine nicht freigegebene Workspace-Abhängigkeit ein`;
+      violations.push(
+        createViolation(
+          pluginPackage.packageName,
+          packageRelativePath,
+          'workspace-dependency',
+          dependencyName,
+          message
+        )
+      );
     }
   }
 
@@ -234,30 +121,39 @@ const collectPackageViolations = async (
 
   for (const filePath of await collectSourceFiles(sourceDir)) {
     const relativePath = toPosixRelativePath(projectRoot, filePath);
-    const sourceFile = ts.createSourceFile(filePath, await readFile(filePath, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 
-    for (const edge of getWorkspaceImportEdges(sourceFile)) {
+    for (const edge of collectTypeScriptImportEdges(filePath, await readFile(filePath, 'utf8'))) {
       const resolvedTarget = await normalizeWorkspaceModuleSpecifier(
         edge.importSpecifier,
         filePath,
         pluginPackage.packageDir,
         projectRoot
       );
-      if (!resolvedTarget || isAllowedWorkspaceModuleSpecifier(resolvedTarget)) {
+      if (
+        !resolvedTarget ||
+        isAllowedWorkspaceModuleSpecifier(pluginPackage.packageName, resolvedTarget)
+      ) {
         continue;
       }
       const subject = getWorkspaceImportSubject(resolvedTarget);
       const message = resolvedTarget.startsWith('apps/')
-        ? `${pluginPackage.packageName} importiert App-Code statt eines oeffentlichen Plugin-Vertrags`
+        ? `${pluginPackage.packageName} importiert App-Code statt eines öffentlichen Plugin-Vertrags`
         : isForbiddenHostWorkspaceModuleSpecifier(resolvedTarget)
           ? `${pluginPackage.packageName} importiert das interne Host-Package ${subject}`
           : `${pluginPackage.packageName} importiert mit ${subject} einen nicht freigegebenen Workspace-Vertrag`;
       violations.push(
-        createViolation(pluginPackage.packageName, relativePath, 'workspace-import', subject, message, {
-          importSpecifier: edge.importSpecifier,
-          resolvedTarget,
-          kind: edge.kind,
-        })
+        createViolation(
+          pluginPackage.packageName,
+          relativePath,
+          'workspace-import',
+          subject,
+          message,
+          {
+            importSpecifier: edge.importSpecifier,
+            resolvedTarget,
+            kind: edge.kind,
+          }
+        )
       );
     }
 
@@ -298,12 +194,16 @@ export const collectPluginArchitectureViolations = async (
   projectRoot = PROJECT_ROOT
 ): Promise<readonly PluginArchitectureViolation[]> => {
   const pluginPackages = await readPluginPackages(projectRoot);
-  const nestedViolations = await Promise.all(pluginPackages.map((pluginPackage) => collectPackageViolations(pluginPackage, projectRoot)));
-  return nestedViolations.flat().sort((left, right) =>
-    `${left.packageName}:${left.rule}:${left.subject}:${left.relativePath}`.localeCompare(
-      `${right.packageName}:${right.rule}:${right.subject}:${right.relativePath}`
-    )
+  const nestedViolations = await Promise.all(
+    pluginPackages.map((pluginPackage) => collectPackageViolations(pluginPackage, projectRoot))
   );
+  return nestedViolations
+    .flat()
+    .sort((left, right) =>
+      `${left.packageName}:${left.rule}:${left.subject}:${left.relativePath}`.localeCompare(
+        `${right.packageName}:${right.rule}:${right.subject}:${right.relativePath}`
+      )
+    );
 };
 export { diffViolationsAgainstBaseline, parsePluginArchitectureBaseline };
 export const runPluginArchitectureBoundaryCheck = async (
@@ -314,5 +214,8 @@ export const runPluginArchitectureBoundaryCheck = async (
     readFile(baselinePath, 'utf8'),
     collectPluginArchitectureViolations(projectRoot),
   ]);
-  return diffViolationsAgainstBaseline(violations, parsePluginArchitectureBaseline(baselineMarkdown));
+  return diffViolationsAgainstBaseline(
+    violations,
+    parsePluginArchitectureBaseline(baselineMarkdown)
+  );
 };

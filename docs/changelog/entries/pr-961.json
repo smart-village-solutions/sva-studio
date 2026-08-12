@@ -1,0 +1,4 @@
+{
+  "prNumber": 961,
+  "body": "Fehlende Berechtigungen werden verständlich angezeigt\n\n- Wenn eine Aktion wegen fehlender Berechtigungen nicht möglich ist, nennt das Studio jetzt die konkret benötigten Berechtigungen.\n- Die Hinweise erscheinen einheitlich in den zentralen Studio-Bereichen und bei angebundenen Plugins.\n- Unbekannte Berechtigungen bleiben über ihre technische Kennung nachvollziehbar.\n- Andere Zugriffsfehler werden weiterhin ohne irreführende Berechtigungsangabe dargestellt."
+}

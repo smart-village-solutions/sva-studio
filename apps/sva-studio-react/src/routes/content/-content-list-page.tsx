@@ -38,6 +38,7 @@ import { t } from '../../i18n';
 import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { resolveStandaloneMainserverPrincipal } from '../../lib/content-status-mutation';
 import type { IamHttpError } from '../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import type { IamContentListMetadata } from '../../lib/iam-api';
 import { EMPTY_VISIBLE_TYPE_SENTINEL } from '../../lib/iam-content-list-api.shared';
 import { studioContentTypes } from '../../lib/plugins';
@@ -104,6 +105,8 @@ const contentStatusOptions = [
 const contentSortFields = ['title', 'createdAt', 'updatedAt', 'publishedAt'] as const;
 
 const contentErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('content.messages.loadError');
   }

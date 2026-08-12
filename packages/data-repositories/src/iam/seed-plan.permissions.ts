@@ -44,6 +44,7 @@ const permissionIds = {
   'iam.monitoring.write': '40111111-1111-1111-1111-111111111162',
   'experimental.read': '40111111-1111-1111-1111-111111111163',
   'iam.accounts.delete': '40111111-1111-1111-1111-111111111168',
+  'modules.read': '40111111-1111-1111-1111-111111111169',
 } as const satisfies Readonly<Record<CorePermissionKey, string>>;
 
 export const iamSeedPermissions = corePermissionCatalog.map((definition) => [

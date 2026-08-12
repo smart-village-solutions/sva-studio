@@ -6,6 +6,7 @@ import {
   createAccountUiRouteGuard,
   createAccountUiRouteGuards,
 } from './account-ui.routes';
+import { buildInsufficientRoleHref } from './protected-route-redirects';
 
 type Guard = (typeof accountUiRouteGuards)[keyof typeof accountUiRouteGuards];
 
@@ -14,6 +15,7 @@ const invoke = async (
   user: {
     roles: readonly string[];
     permissionActions?: readonly string[];
+    permissionStatus?: 'ok' | 'degraded';
   } | null,
   href: string
 ) => {
@@ -62,9 +64,35 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('allows modules route for authenticated users without admin roles', async () => {
+  it('allows modules route with modules.read without admin roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.modules, { roles: ['viewer'] }, '/modules')
+      invoke(
+        accountUiRouteGuards.modules,
+        { roles: ['viewer'], permissionActions: ['modules.read'] },
+        '/modules'
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('denies modules route without modules.read', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.modules, { roles: ['viewer'], permissionActions: [] }, '/modules')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+  });
+
+  it('allows modules route for technical platform admins', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.modules, { roles: ['instance_registry_admin'] }, '/modules')
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows modules route for technical platform admins with degraded tenant permissions', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.modules,
+        { roles: ['instance_registry_admin'], permissionStatus: 'degraded' },
+        '/modules'
+      )
     ).resolves.toBeUndefined();
   });
 
@@ -133,19 +161,64 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
     await expect(
       invoke(accountUiRouteGuards.adminUserCreate, rootOnlyUser, '/admin/users/new')
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.user.write'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
     await expect(
       invoke(accountUiRouteGuards.adminUserDetail, rootOnlyUser, '/admin/users/user-1')
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.user.read'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
     await expect(
       invoke(accountUiRouteGuards.adminOrganizations, rootOnlyUser, '/admin/organizations')
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.org.read'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
     await expect(
       invoke(accountUiRouteGuards.adminGroups, rootOnlyUser, '/admin/groups')
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.role.read'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
     await expect(
       invoke(accountUiRouteGuards.adminIam, rootOnlyUser, '/admin/iam')
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: [
+            'iam.user.read',
+            'iam.governance.read',
+            'iam.dsr.read',
+            'iam.deletionRules.read',
+          ],
+          requirement_mode: 'anyOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
   });
 
   it('redirects admin users route when IAM user permissions are missing', async () => {
@@ -185,7 +258,15 @@ describe('accountUiRouteGuards', () => {
         { roles: ['custom_role'], permissionActions: ['iam.role.read'] },
         '/admin/roles/new'
       )
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.role.write'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
 
     await expect(
       invoke(
@@ -216,7 +297,15 @@ describe('accountUiRouteGuards', () => {
         { roles: ['custom_role'], permissionActions: ['iam.role.write'] },
         '/admin/groups/group-1'
       )
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['iam.role.read'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
 
     await expect(
       invoke(
@@ -288,7 +377,15 @@ describe('accountUiRouteGuards', () => {
         { roles: ['custom_role'], permissionActions: [] },
         '/interfaces'
       )
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: buildInsufficientRoleHref('/', 'auth.insufficientRole', {
+          required_permissions: ['integration.manage'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        }),
+      })
+    );
   });
 
   it('creates a fresh guard set when diagnostics are injected', () => {

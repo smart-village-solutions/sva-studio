@@ -34,7 +34,8 @@ export const resolveUserReadAccess = async (request: Request, ctx: Authenticated
         authorization.status,
         toInstancePermissionApiErrorCode(authorization.error),
         authorization.message,
-        requestContext.requestId
+        requestContext.requestId,
+        authorization.permissionDenial
       ),
     } as const;
   }

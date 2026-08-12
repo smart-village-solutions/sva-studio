@@ -325,7 +325,7 @@ Abhängigkeiten des aktuellen Systems.
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
 - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
-- kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core` und `@sva/data-repositories`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
+- kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
 - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
 - erweitert diese Runtime um den öffentlichen Reminder-Flow mit CTA im finalen Standortkontext, Formularabsendung, Double-Opt-In-Bestätigung und Abmeldeseiten unter derselben App-URL
 - persistiert Pending- und aktive Reminder-Abos sowie DOI-Aufträge über gemeinsame Waste-Repositories, ohne selbst technische Mail-Credentials zu kennen
@@ -338,6 +338,7 @@ Abhängigkeiten des aktuellen Systems.
 - erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs: Materialisierung fraktions- und slotbezogener Reminder-Outbox-Einträge sowie inkrementelle Batch-Verarbeitung fälliger Outbox-Elemente
 - nutzt dafür die führende Waste-Fachkonfiguration aus dem `output`-Tab, die fraktionsbezogenen Reminder-Slots aus den Abfallarten und die zentrale Schnittstelle `mail_transport`
 - hält den Mailversand selbst adapterbasiert; Studio erzeugt und leased nur transportagnostische `MailDispatchPayload`s und kann damit an eine separate Mail-App oder einen äquivalenten Runtime-Adapter angeschlossen werden
+- stellt den signierten `v1`-Abmeldetokenvertrag zentral über `@sva/waste-management-contracts/unsubscribe-token` bereit; Studio erzeugt und Public-Waste liest sowie verifiziert denselben Vertrag ohne direkte App-zu-App-Abhängigkeit oder Installation der Job-Runtime
 
 ### Foundation-Governance über Bausteingrenzen
 
@@ -372,12 +373,14 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/studio-module-iam` -> keine React-, Host- oder Plugin-UI-Abhängigkeiten; nur Vertragsdaten und kleine Helper
 - `@sva/server-runtime` -> `@sva/core`, `@sva/monitoring-client`
 - `@sva/plugin-*` -> `@sva/plugin-sdk`, optional `@sva/studio-ui-react` für Custom-Views (kein Direktimport aus `@sva/core` oder App-internen Komponenten)
-- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
+- `@sva/plugin-waste-management` -> `@sva/plugin-sdk`, `@sva/studio-ui-react`, `@sva/waste-management-contracts/job-definitions`; Host-Datenzugriffe ausschließlich über `/api/v1/waste-management/*`
 - `@sva/plugin-categories`, `@sva/plugin-news`, `@sva/plugin-events` und `@sva/plugin-poi` bleiben absichtlich auf SDK, Studio-UI und Peer Dependencies beschränkt; API-Aufrufe laufen über öffentliche Host-Fassaden statt über App-Module
 - `@sva/monitoring-client` -> OTEL Libraries, `@sva/server-runtime` Context API
 - `@sva/core` -> `@sva/iam-core` fuer verbliebene gemeinsame IAM-Vertragstypen waehrend der Hard-Cut-Migration
 - `apps/sva-studio-react` -> Zielpackages über Server-Funktionen für Inhaltsliste, Detail, Historie und Statuswechsel
-- `apps/public-waste-calendar-web` -> `@sva/core`, `@sva/data-repositories`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad trotzdem lokal und getrennt von der Studio-Admin-Shell
+- `apps/sva-studio-react` -> `@sva/waste-management-runtime/server` für Waste-Jobs sowie `@sva/waste-management-contracts/unsubscribe-token` für signierte Abmeldetoken
+- `apps/public-waste-calendar-web` -> `@sva/core`, `@sva/data-repositories`, `@sva/waste-management-contracts/unsubscribe-token`; die App hält ihren öffentlichen UI- und Node-Laufzeitpfad lokal und lädt für Tokenoperationen weder die hostseitige Waste-Job-Runtime noch den browserseitigen Waste-Plugin-/UI-Abhängigkeitsbaum
+- `apps/*` -> keine direkten Quellimporte aus anderen Anwendungen; gemeinsame Verträge werden über owning Workspace-Packages konsumiert
 
 ### Schichtregel für Plugins
 
@@ -737,3 +740,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
 - Paginierte Inhalts-, Organisations-, Governance- und DSR-Listen lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
 - Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.
+
+### Ergänzung 2026-08: Permission-Denial-Vertrag
+
+- `@sva/core` besitzt den framework-agnostischen, begrenzten Vertrag für erforderliche Actions, `allOf`-/`anyOf`-Semantik und öffentliche Denial-Gründe.
+- `@sva/routing` transportiert diesen Kontext bei Guard-Redirects; `@sva/auth-runtime` erzeugt ihn ausschließlich aus eindeutigen serverseitigen Autorisierungsentscheidungen.
+- Die Studio-App löst Titel aus Core-Katalog und Build-time-Plugin-Registry auf. Unbekannte Actions verwenden die validierte Action-ID als Fallback.

@@ -565,9 +565,50 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         news: expect.objectContaining({
           payload: {
             retained: 'existing',
-            wasteLocationKeys: [
-              { street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' },
-            ],
+            wasteLocationKeys: [{ street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
+      })
+    );
+  });
+
+  it('preserves stored waste targets after push delivery when an API client submits changes', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      pushNotificationsSentAt: '2026-08-12T10:00:00.000Z',
+      payload: {
+        retained: 'existing',
+        wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...updateNewsInput,
+          payload: {
+            wasteLocationKeys: [{ street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
+      })
+    );
+
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          payload: {
+            retained: 'existing',
+            wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
           },
         }),
       })

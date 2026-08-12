@@ -53,7 +53,7 @@ function Subject({
   initialTargets = [],
   readOnly = false,
 }: Readonly<{
-  masterData?: WasteManagementMasterDataOverview;
+  masterData?: WasteManagementMasterDataOverview | null;
   initialTargets?: NewsDetailFormValues['wasteLocationKeys'];
   readOnly?: boolean;
 }>) {
@@ -181,6 +181,14 @@ describe('NewsDetailTargetingTab', () => {
     expect(screen.queryByRole('button', { name: 'targeting.actions.edit' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'targeting.actions.removeTarget' })).toBeNull();
     expect(screen.getByTestId('dirty-state').textContent).toBe('clean');
+  });
+
+  it('does not mark read-only targets stale before master data has loaded', () => {
+    const target = { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' };
+    render(<Subject masterData={null} initialTargets={[target]} readOnly />);
+
+    expect(screen.getByText('Hauptstraße 1, 12345 Musterstadt')).toBeTruthy();
+    expect(screen.queryByText('targeting.stale')).toBeNull();
   });
 
   it('removes a stale target directly from the summary and only marks the form as dirty', () => {

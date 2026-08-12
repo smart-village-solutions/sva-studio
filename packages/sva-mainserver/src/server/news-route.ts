@@ -146,9 +146,7 @@ const maxWasteLocationStreetLength = 255;
 const maxWasteLocationZipLength = 16;
 const maxWasteLocationCityLength = 255;
 
-const parseNewsPayload = (
-  value: unknown
-): SvaMainserverNewsPayload | undefined | Response => {
+const parseNewsPayload = (value: unknown): SvaMainserverNewsPayload | undefined | Response => {
   if (value === undefined) return undefined;
   if (!isRecord(value)) {
     return errorJson(400, 'invalid_request', 'Das Feld "payload" muss als Objekt gesendet werden.');
@@ -309,7 +307,7 @@ const preserveEditorialAuthor = (
 
 const mergeNewsPayload = (
   news: SvaMainserverNewsInput,
-  existing: { readonly payload?: unknown }
+  existing: { readonly payload?: SvaMainserverNewsPayload }
 ): SvaMainserverNewsInput => {
   const existingPayload = isRecord(existing.payload) ? existing.payload : {};
   if (news.payload === undefined) {
@@ -330,8 +328,30 @@ const mergeNewsPayload = (
 
 const preserveExistingNewsMetadata = (
   news: SvaMainserverNewsInput,
-  existing: { readonly author?: string; readonly payload?: unknown }
-): SvaMainserverNewsInput => mergeNewsPayload(preserveEditorialAuthor(news, existing), existing);
+  existing: {
+    readonly author?: string;
+    readonly payload?: SvaMainserverNewsPayload;
+    readonly pushNotificationsSentAt?: string;
+  }
+): SvaMainserverNewsInput => {
+  const merged = mergeNewsPayload(preserveEditorialAuthor(news, existing), existing);
+  if (!existing.pushNotificationsSentAt) return merged;
+
+  const existingPayload = isRecord(existing.payload) ? existing.payload : {};
+  const mergedPayload = isRecord(merged.payload) ? merged.payload : {};
+  const { wasteLocationKeys: _submittedWasteLocationKeys, ...payloadWithoutWasteTargets } =
+    mergedPayload;
+  void _submittedWasteLocationKeys;
+  return {
+    ...merged,
+    payload: {
+      ...payloadWithoutWasteTargets,
+      ...('wasteLocationKeys' in existingPayload
+        ? { wasteLocationKeys: existingPayload.wasteLocationKeys }
+        : {}),
+    },
+  };
+};
 
 const buildNewsInput = (input: {
   body: Record<string, unknown>;

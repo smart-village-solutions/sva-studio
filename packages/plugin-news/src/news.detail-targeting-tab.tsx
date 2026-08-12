@@ -96,8 +96,11 @@ export function NewsDetailTargetingSection({
     [resolvedOverview]
   );
   const staleIds = React.useMemo(
-    () => new Set(findStaleWasteLocationKeys(selected, options).map(wasteLocationKeyId)),
-    [options, selected]
+    () =>
+      overview === null
+        ? new Set<string>()
+        : new Set(findStaleWasteLocationKeys(selected, options).map(wasteLocationKeyId)),
+    [options, overview, selected]
   );
 
   const applySelection = (nextSelection: readonly WasteLocationKey[]) => {

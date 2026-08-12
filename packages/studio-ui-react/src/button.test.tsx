@@ -1,9 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Button } from './button.js';
+import { Button, buttonVariants } from './button.js';
 
-describe('Button tooltip behavior', () => {
+describe('Button', () => {
   afterEach(() => {
     cleanup();
   });
@@ -24,7 +24,7 @@ describe('Button tooltip behavior', () => {
 
   it('shows a hover tooltip for icon links rendered via asChild using the child title', () => {
     render(
-      <Button asChild size="icon" type="button" variant="outline" tooltip="Datensatz bearbeiten">
+      <Button asChild size="icon" type="button" variant="secondary" tooltip="Datensatz bearbeiten">
         <a href="/foo" aria-label="Bearbeiten" title="Datensatz bearbeiten">
           <span aria-hidden="true">B</span>
         </a>
@@ -43,7 +43,7 @@ describe('Button tooltip behavior', () => {
       <Button
         type="button"
         size="sm"
-        variant="ghost"
+        variant="tertiary"
         aria-label="Bearbeiten"
         tooltip="Bearbeiten"
         className="h-8 w-8 px-0"
@@ -55,5 +55,94 @@ describe('Button tooltip behavior', () => {
     fireEvent.mouseEnter(screen.getByRole('button', { name: 'Bearbeiten' }));
 
     expect(screen.getByRole('tooltip').textContent).toContain('Bearbeiten');
+  });
+
+  it('shows an associated tooltip when an icon button receives keyboard focus', () => {
+    render(
+      <Button type="button" size="icon" aria-label="Suche" tooltip="Suche">
+        <span aria-hidden="true">S</span>
+      </Button>
+    );
+
+    const button = screen.getByRole('button', { name: 'Suche' });
+    fireEvent.focus(button);
+
+    const tooltip = screen.getByRole('tooltip');
+    expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+
+    fireEvent.blur(button);
+    expect(screen.queryByRole('tooltip')).toBeNull();
+  });
+
+  it('preserves an existing description while the tooltip is visible', () => {
+    render(
+      <>
+        <p id="existing-description">Bestehende Beschreibung</p>
+        <Button
+          type="button"
+          size="icon"
+          aria-label="Suche"
+          aria-describedby="existing-description"
+          tooltip="Suche"
+        >
+          <span aria-hidden="true">S</span>
+        </Button>
+      </>
+    );
+
+    const button = screen.getByRole('button', { name: 'Suche' });
+    fireEvent.focus(button);
+
+    expect(button.getAttribute('aria-describedby')?.split(' ')).toEqual([
+      'existing-description',
+      screen.getByRole('tooltip').id,
+    ]);
+  });
+
+  it('uses primary as the default and exposes explicit semantic variants', () => {
+    expect(buttonVariants()).toContain('bg-action-primary');
+    expect(buttonVariants({ variant: 'secondary' })).toContain('bg-action-secondary');
+    expect(buttonVariants({ variant: 'tertiary' })).toContain('bg-transparent');
+    expect(buttonVariants({ variant: 'destructive' })).toContain('bg-action-destructive');
+  });
+
+  it('keeps icon and compact buttons at the 44 pixel minimum target size', () => {
+    expect(buttonVariants({ size: 'icon' })).toContain('min-h-11');
+    expect(buttonVariants({ size: 'icon' })).toContain('min-w-11');
+    expect(buttonVariants({ size: 'sm' })).toContain('min-h-11');
+    expect(buttonVariants({ size: 'sm' })).toContain('min-w-11');
+  });
+
+  it('marks loading buttons busy and prevents activation', () => {
+    const onClick = vi.fn();
+    render(
+      <Button type="button" loading onClick={onClick}>
+        Wird gespeichert…
+      </Button>
+    );
+
+    const button = screen.getByRole('button', { name: 'Wird gespeichert…' });
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.hasAttribute('disabled')).toBe(true);
+
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('removes disabled asChild links from activation and keyboard order', () => {
+    const onClick = vi.fn();
+    render(
+      <Button asChild disabled onClick={onClick}>
+        <a href="/geschuetzt">Geschützte Aktion</a>
+      </Button>
+    );
+
+    const link = screen.getByRole('link', { name: 'Geschützte Aktion' });
+    const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true });
+
+    expect(link.getAttribute('aria-disabled')).toBe('true');
+    expect(link.tabIndex).toBe(-1);
+    expect(link.dispatchEvent(clickEvent)).toBe(false);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

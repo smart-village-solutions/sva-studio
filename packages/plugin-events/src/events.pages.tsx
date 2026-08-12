@@ -137,7 +137,7 @@ export function EventsListPage() {
               },
             ]}
             rowActions={(item) => (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="secondary" size="sm">
                 <Link to="/admin/events/$id" params={{ id: item.id }}>
                   {pt('actions.edit')}
                 </Link>
@@ -162,7 +162,7 @@ export function EventsListPage() {
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 disabled={result.pagination.page <= 1}
                 onClick={() =>
                   void navigate({
@@ -180,7 +180,7 @@ export function EventsListPage() {
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 disabled={!result.pagination.hasNextPage}
                 onClick={() =>
                   void navigate({

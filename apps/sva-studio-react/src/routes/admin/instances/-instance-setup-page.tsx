@@ -3,7 +3,7 @@ import React from 'react';
 
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -165,7 +165,7 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
             {t('admin.instances.setup.subtitle', { instanceId })}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/instances">{t('admin.instances.setup.actions.backToOverview')}</Link>
         </Button>
       </header>
@@ -242,7 +242,7 @@ export const InstanceSetupPage = ({ instanceId }: InstanceSetupPageProps) => {
                       <div className="mt-3">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="secondary"
                           size="sm"
                           onClick={() => void triggerWorkflowAction(action)}
                           disabled={instancesApi.statusLoading}

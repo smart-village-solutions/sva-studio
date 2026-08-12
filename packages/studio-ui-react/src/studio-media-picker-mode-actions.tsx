@@ -25,7 +25,7 @@ export const StudioMediaPickerModeActions = ({
     <Button
       type="button"
       disabled={disabled || !canUpload}
-      variant={mode === 'upload' ? 'default' : 'secondary'}
+      variant={mode === 'upload' ? 'primary' : 'secondary'}
       aria-pressed={mode === 'upload'}
       onClick={() => onChangeMode('upload')}
     >
@@ -34,7 +34,7 @@ export const StudioMediaPickerModeActions = ({
     <Button
       type="button"
       disabled={disabled}
-      variant={mode === 'library' ? 'default' : 'secondary'}
+      variant={mode === 'library' ? 'primary' : 'secondary'}
       aria-pressed={mode === 'library'}
       onClick={() => onChangeMode('library')}
     >

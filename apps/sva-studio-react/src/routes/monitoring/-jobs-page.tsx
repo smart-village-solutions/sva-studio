@@ -1,8 +1,9 @@
 import type { StudioJobListItem } from '@sva/core';
 import {
+  Button,
+  type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
-  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -10,7 +11,6 @@ import React from 'react';
 import { createStudioDataTableLabels } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
@@ -73,7 +73,7 @@ const JobsPaginationNav = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
@@ -82,7 +82,7 @@ const JobsPaginationNav = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={page >= pageCount}
         onClick={() => onPageChange(page + 1)}
       >
@@ -209,7 +209,7 @@ export const MonitoringJobsPage = () => {
         id: 'actions',
         header: t('monitoring.jobs.table.actions'),
         cell: (job) => (
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="secondary">
             <Link to="/monitoring/jobs/$jobId" params={{ jobId: job.id }}>
               {t('monitoring.jobs.actions.open')}
             </Link>
@@ -227,7 +227,7 @@ export const MonitoringJobsPage = () => {
       primaryAction={{
         label: t('monitoring.jobs.actions.refresh'),
         render: (
-          <Button type="button" variant="outline" onClick={() => void jobsApi.refetch()}>
+          <Button type="button" variant="secondary" onClick={() => void jobsApi.refetch()}>
             {t('monitoring.jobs.actions.refresh')}
           </Button>
         ),

@@ -819,7 +819,7 @@ function Editor({
       description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
       actions={
         <div className="flex gap-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' && contentId && accessCapabilities.canDelete ? (
@@ -902,7 +902,7 @@ function Editor({
         {retryReferenceSync ? (
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() =>
               void retryReferenceSync().then(
                 () => {
@@ -1061,7 +1061,7 @@ export function CockpitCardsListPage() {
               },
             ]}
             rowActions={(item) => (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="secondary" size="sm">
                 <Link to="/admin/cockpit-cards/$id" params={{ id: item.id }}>
                   {pt('actions.edit')}
                 </Link>

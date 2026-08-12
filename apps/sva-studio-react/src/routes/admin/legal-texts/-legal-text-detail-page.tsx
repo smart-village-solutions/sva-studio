@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { toDatetimeLocalValue } from '@sva/plugin-sdk';
 import {
+  Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioDetailPageTemplate,
@@ -12,7 +13,6 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam-resource-access';
@@ -204,7 +204,7 @@ export const LegalTextDetailPage = ({ legalTextVersionId }: LegalTextDetailPageP
         title={selectedLegalText?.name ?? t('admin.legalTexts.dialogs.editTitle')}
         description={getDetailDescription(selectedLegalText)}
         actions={
-          <Button asChild type="button" variant="outline">
+          <Button asChild type="button" variant="secondary">
             <Link to="/admin/legal-texts">{t('admin.legalTexts.detail.backToList')}</Link>
           </Button>
         }

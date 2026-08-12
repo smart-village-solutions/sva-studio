@@ -72,7 +72,7 @@ export function StudioPagination({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={disabled || page <= 1}
           onClick={() => onPageChange(Math.max(1, page - 1))}
         >
@@ -81,7 +81,7 @@ export function StudioPagination({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={disabled || !hasNextPage}
           onClick={() => onPageChange(page + 1)}
         >

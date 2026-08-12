@@ -180,12 +180,12 @@ describe('useStudioMediaPickerOverlay', () => {
       name: 'Medium aus der Bibliothek hinzufügen',
     });
     expect(uploadAction.getAttribute('aria-pressed')).toBe('true');
-    expect(uploadAction.className).toContain('bg-primary');
-    expect(libraryAction.className).toContain('bg-secondary/10');
+    expect(uploadAction.className).toContain('bg-action-primary');
+    expect(libraryAction.className).toContain('bg-action-secondary');
     fireEvent.click(libraryAction);
     expect(onChangeMode).toHaveBeenCalledWith('library');
-    expect(uploadAction.className).toContain('bg-secondary/10');
-    expect(libraryAction.className).toContain('bg-primary');
+    expect(uploadAction.className).toContain('bg-action-secondary');
+    expect(libraryAction.className).toContain('bg-action-primary');
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     expect(onAddManual).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();

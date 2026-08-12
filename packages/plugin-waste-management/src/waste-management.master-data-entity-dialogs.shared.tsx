@@ -107,7 +107,7 @@ export const MasterDataDialogActions = ({
 
   return (
     <DialogFooter>
-      <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+      <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
         {cancelLabel}
       </Button>
       <WastePendingSaveButton type="submit" saving={saving} label={submitLabel} />

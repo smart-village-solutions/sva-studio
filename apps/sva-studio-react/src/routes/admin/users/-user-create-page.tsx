@@ -2,20 +2,20 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   addStudioCreatedSaveFeedback,
+  Button,
+  getStudioFormFieldProps,
   StudioField,
   StudioFieldGroup,
+  type StudioFormFieldError,
   StudioFormSummaryErrors,
   StudioPersistentFormError,
   StudioSaveButton,
-  getStudioFormFieldProps,
-  type StudioFormFieldError,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Checkbox } from '../../../components/ui/checkbox';
@@ -290,7 +290,7 @@ export const UserCreatePage = () => {
             {t('admin.users.createDialog.description')}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/users">{t('admin.users.detail.backToList')}</Link>
         </Button>
       </header>
@@ -334,7 +334,7 @@ export const UserCreatePage = () => {
           />
 
           <div className="mt-2 flex justify-end gap-3">
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <Link to="/admin/users">{t('account.actions.cancel')}</Link>
             </Button>
             <StudioSaveButton

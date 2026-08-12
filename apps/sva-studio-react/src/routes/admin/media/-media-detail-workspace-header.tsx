@@ -4,7 +4,7 @@ import * as QRCode from 'qrcode';
 
 import { ModalDialog } from '../../../components/ModalDialog';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamMediaDelivery, IamRegisteredMediaAsset } from '../../../lib/iam-api';
@@ -155,7 +155,7 @@ const PublicDeliveryQrDialog = ({
 
         <div className="flex flex-wrap gap-3">
           {qrPngDownloadUrl ? (
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <a download={`${downloadName}.png`} href={qrPngDownloadUrl}>
                 <Download aria-hidden="true" className="mr-2 h-4 w-4" />
                 {t('media.actions.downloadQrPng')}
@@ -163,7 +163,7 @@ const PublicDeliveryQrDialog = ({
             </Button>
           ) : null}
           {qrSvgDownloadUrl ? (
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <a download={`${downloadName}.svg`} href={qrSvgDownloadUrl}>
                 <Download aria-hidden="true" className="mr-2 h-4 w-4" />
                 {t('media.actions.downloadQrSvg')}
@@ -203,7 +203,7 @@ const PublicDeliveryLinkTools = ({
         {deliveryUrl}
       </a>
       <div className="flex items-center gap-2">
-        <Button asChild size="icon" type="button" variant="outline">
+        <Button asChild size="icon" type="button" variant="secondary">
           <a
             aria-label={t('media.actions.open')}
             href={deliveryUrl}
@@ -217,7 +217,7 @@ const PublicDeliveryLinkTools = ({
           aria-label={t('media.actions.copyPublicUrl')}
           size="icon"
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={onCopy}
         >
           <Copy aria-hidden="true" className="h-4 w-4" />
@@ -226,7 +226,7 @@ const PublicDeliveryLinkTools = ({
           aria-label={t('media.actions.showQrCode')}
           size="icon"
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={onOpenQrDialog}
         >
           <QrCode aria-hidden="true" className="h-4 w-4" />

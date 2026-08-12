@@ -40,6 +40,19 @@ Nicht im Geltungsbereich:
 - Aktionen werden nur angezeigt, wenn die Nutzerin oder der Nutzer sie im aktuellen Kontext ausführen darf.
 - Lade-, Leer-, Fehler- und Berechtigungszustände sind Bestandteil des Seitenvertrags, nicht nachträgliche Sonderfälle.
 
+### Button-Hierarchie und Zustände
+
+Alle Host- und Plugin-Oberflächen importieren `Button` aus `@sva/studio-ui-react`. Die Varianten beschreiben die fachliche Gewichtung und nicht nur die Darstellung:
+
+- `primary`: genau die wichtigste Abschluss- oder Fortschrittsaktion eines Bereichs, zum Beispiel Speichern oder Erstellen; ohne explizite Variante ist dies der Standard.
+- `secondary`: unterstützende, dauerhaft sichtbare Aktion, zum Beispiel Exportieren, Synchronisieren oder Abbrechen.
+- `tertiary`: nachrangige, kompakte oder wiederholt auftretende Aktion, insbesondere in Tabellen, Toolbars und Aktionsgruppen.
+- `destructive`: risikobehaftete Aktion wie Löschen, Deaktivieren oder Entziehen; erforderliche Bestätigung und Berechtigungsprüfung bleiben zusätzlich bestehen.
+
+Standard-, kompakte und reine Icon-Buttons behalten eine wirksame Zielgröße von mindestens 44 × 44 Pixeln. Lokale Klassen wie `h-8 w-8` dürfen diese Mindestfläche nicht verkleinern. Reine Icon-Buttons benötigen einen zugänglichen Namen und einen Tooltip, der sowohl bei Hover als auch bei Tastaturfokus erscheint.
+
+Loading wird über die `loading`-Property des Shared-Buttons modelliert. Sie setzt `aria-busy`, verhindert eine Doppelauslösung und verwendet denselben lesbaren Zustandsvertrag wie Disabled. Disabled wird nicht durch pauschale Transparenz erzeugt. Fokus bleibt mit einem mindestens zwei Pixel starken, kontrastreichen Ring sichtbar; der frühere Scale-/Shadow-Lift ist nicht Teil des Button-Standards. Reduzierte Bewegung wird respektiert.
+
 ## UI-Vertragsmodell für Host und Plugins
 
 Das Studio erhält ein gemeinsames UI-Package `@sva/studio-ui-react` als öffentliche React/UI-Basis für Host-Seiten und Plugin-Custom-Views. Der Name macht die React/shadcn-Bindung bewusst sichtbar und hält einen neutralen Namen wie `@sva/studio-ui` für spätere framework-unabhängige UI-Verträge frei. Das Package ist der einzige erlaubte Importpfad für wiederverwendbare Studio-UI-Komponenten außerhalb der App.
@@ -68,8 +81,8 @@ Der Ausnahmefall ist eine Plugin-Custom-View. Sie ist zulässig, wenn die Fachob
 - Plugins definieren keine eigenen `Button`, `Input`, `Select`, `Table`, `Tabs`, `Dialog` oder vergleichbaren Basiscontrols.
 - Neue wiederverwendbare UI-Muster entstehen zuerst in `@sva/studio-ui-react` oder werden dort nachgezogen.
 - shadcn/ui-Primitives werden in `@sva/studio-ui-react` gekapselt oder gezielt re-exportiert, damit Plugins nicht an App-Pfade gebunden sind.
-- Nx-Boundaries und ESLint-Regeln müssen verbotene App-Imports und lokale Basis-Control-Duplikate in Plugins verhindern.
-- Der statische Check `pnpm check:plugin-ui-boundary` blockiert App-interne UI-Imports und lokale Basis-Control-Dateien oder -Exports in `packages/plugin-*`.
+- Nx-Boundaries und ESLint-Regeln müssen verbotene App-Imports und lokale Basis-Control-Duplikate verhindern.
+- Der statische Check `pnpm check:plugin-ui-boundary` blockiert den lokalen App-Button, App-interne UI-Imports aus Plugins und lokale Basis-Control-Dateien oder -Exports in `packages/plugin-*`.
 - Abweichungen von `@sva/studio-ui-react` brauchen eine dokumentierte Architekturentscheidung.
 
 ### Mindestumfang von `@sva/studio-ui-react`

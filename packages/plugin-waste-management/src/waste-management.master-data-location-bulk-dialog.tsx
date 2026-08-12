@@ -94,7 +94,7 @@ export const BulkLocationAssignmentsDialog = ({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('masterData.collectionLocations.bulk.actions.cancel')}
             </Button>
             <WastePendingSaveButton

@@ -1,5 +1,5 @@
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import { studioModuleIamContracts } from '../../../lib/plugins';
@@ -68,7 +68,7 @@ const ModuleIamStatusCard = ({
         </div>
         <div className="flex items-center gap-2">
           <TenantIamStatusBadge status={selectedInstance.moduleIamStatus.overall.status} />
-          <Button type="button" variant="outline" size="sm" onClick={() => void onSeedIamBaseline()} disabled={statusLoading}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void onSeedIamBaseline()} disabled={statusLoading}>
             {t('admin.instances.instanceModules.actions.seedIamBaseline')}
           </Button>
         </div>

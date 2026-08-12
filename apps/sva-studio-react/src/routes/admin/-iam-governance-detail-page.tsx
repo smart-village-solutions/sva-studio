@@ -1,4 +1,7 @@
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioDetailPageTemplate,
+} from '@sva/studio-ui-react';
 import type { IamGovernanceCaseListItem } from '@sva/core';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
@@ -18,7 +21,6 @@ import {
 } from './-iam.models';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 
 const formatDateTime = (value?: string) => (value ? formatEditorDateTime(value) ?? value : '—');
@@ -109,7 +111,7 @@ export function IamGovernanceDetailPage({ caseId }: Readonly<{ caseId: string }>
       title={item ? formatGovernanceTitle(item) : t('admin.iam.governance.detail.title')}
       description={t('admin.iam.governance.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={handleBackClick}>
+        <Button type="button" variant="secondary" onClick={handleBackClick}>
           {t('admin.iam.governance.detail.back')}
         </Button>
       }

@@ -1,6 +1,6 @@
 import type { RuntimeDependencyKey, RuntimeDependencyStatus } from '@sva/iam-core';
 
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Badge } from './ui/badge';
 import { useRuntimeHealth } from '../hooks/use-runtime-health';
 import { getActiveLocale, t } from '../i18n';
@@ -98,7 +98,7 @@ export function RuntimeHealthIndicator() {
           <p className="text-xs text-muted-foreground">{t('shell.runtimeHealth.description')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void refetch()} disabled={isLoading}>
+          <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()} disabled={isLoading}>
             {t('shell.runtimeHealth.refresh')}
           </Button>
           <Badge className={cn(statusBadgeClassNames[overallStatus])}>

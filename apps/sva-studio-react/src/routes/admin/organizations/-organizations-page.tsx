@@ -1,8 +1,9 @@
 import { IconEdit, IconTrash, IconUsersGroup } from '@tabler/icons-react';
 import {
+  Button,
+  type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
-  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -14,7 +15,6 @@ import {
 } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -184,7 +184,7 @@ export const OrganizationsPage = () => {
             <AlertDescription className="flex flex-col gap-3">
               <span>{organizationErrorMessage(organizationsApi.error)}</span>
               <div>
-                <Button type="button" size="sm" variant="outline" onClick={handleRefetch}>
+                <Button type="button" size="sm" variant="secondary" onClick={handleRefetch}>
                   {t('admin.organizations.actions.retry')}
                 </Button>
               </div>
@@ -200,7 +200,7 @@ export const OrganizationsPage = () => {
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={organizationsApi.clearMutationError}
                 >
                   {t('shell.permissionsDegraded.dismiss')}
@@ -304,7 +304,7 @@ export const OrganizationsPage = () => {
           }
           rowActions={(organization) => (
             <>
-              <Button asChild type="button" size="icon" variant="outline">
+              <Button asChild type="button" size="icon" variant="secondary">
                 <Link
                   to="/admin/organizations/$organizationId"
                   params={{ organizationId: organization.id }}
@@ -361,7 +361,7 @@ export const OrganizationsPage = () => {
               <div className="flex gap-2">
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   disabled={organizationsApi.page <= 1}
                   onClick={() => organizationsApi.setPage(organizationsApi.page - 1)}
                 >
@@ -369,7 +369,7 @@ export const OrganizationsPage = () => {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   disabled={organizationsApi.page >= pageCount}
                   onClick={() => organizationsApi.setPage(organizationsApi.page + 1)}
                 >

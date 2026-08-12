@@ -197,7 +197,7 @@ const renderHeaderCellContent = <TData extends RowData>(header: LegacyHeader<TDa
     <Button
       type="button"
       className="h-auto px-0 py-0 font-semibold hover:bg-transparent hover:animate-none"
-      variant="ghost"
+      variant="tertiary"
       onClick={header.column.getToggleSortingHandler()}
     >
       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -439,7 +439,7 @@ export function StudioDataTable<TData extends RowData>({
           </span>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
             disabled={!activeSorting}
             aria-label={`${sortingConfig.labels.direction}: ${
@@ -466,7 +466,7 @@ export function StudioDataTable<TData extends RowData>({
       <Button
         key={action.id}
         type="button"
-        variant={action.variant ?? 'outline'}
+        variant={action.variant ?? 'secondary'}
         className="disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground"
         disabled={action.disabled ?? selectedRows.length === 0}
         onClick={() => void action.onClick({ selectedRows, clearSelection })}

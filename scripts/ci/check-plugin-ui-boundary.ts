@@ -41,6 +41,7 @@ const DUPLICATE_BASIS_CONTROL_EXPORT_NAMES = new Set([
 ]);
 
 const APP_INTERNAL_IMPORT_PREFIX = 'apps/sva-studio-react/src/';
+const APP_LOCAL_BUTTON_PATH = 'apps/sva-studio-react/src/components/ui/button.tsx';
 
 type PackageInfo = {
   readonly packageDir: string;
@@ -256,6 +257,12 @@ export const checkPluginUiBoundary = async (projectRoot = PROJECT_ROOT): Promise
   const pluginPackages = await readPluginPackages(projectRoot);
   const violations: string[] = [];
 
+  if (await pathExists(path.join(projectRoot, APP_LOCAL_BUTTON_PATH))) {
+    violations.push(
+      `${APP_LOCAL_BUTTON_PATH}: dupliziert den kanonischen Button aus @sva/studio-ui-react`
+    );
+  }
+
   for (const pluginPackage of pluginPackages) {
     const sourceDir = path.join(pluginPackage.packageDir, 'src');
     if (!(await pathExists(sourceDir))) {
@@ -290,7 +297,7 @@ const run = async (): Promise<void> => {
     process.exit(1);
   }
 
-  console.info('Plugin-UI-Boundary-Check erfolgreich (keine App-UI-Imports oder Basiscontrol-Duplikate erkannt).');
+  console.info('Plugin-UI-Boundary-Check erfolgreich (kein lokaler App-Button, keine App-UI-Imports oder Plugin-Basiscontrol-Duplikate erkannt).');
 };
 
 if (isCliEntrypoint(import.meta.url, process.argv[1])) {

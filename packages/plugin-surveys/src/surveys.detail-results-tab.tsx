@@ -190,7 +190,7 @@ function SurveyResultsExportCard({
                 <Button
                   key={`${section.kind}-${format}`}
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => onExport?.({ kind: section.kind, format })}
                 >
                   {pt(`labels.exportFormats.${format}`)}

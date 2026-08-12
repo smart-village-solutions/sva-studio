@@ -24,7 +24,10 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props} />;
+  },
   Dialog: ({
     open,
     children,

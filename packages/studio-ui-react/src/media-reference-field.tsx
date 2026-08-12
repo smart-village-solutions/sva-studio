@@ -42,7 +42,7 @@ export const MediaReferenceField = ({
           ))}
         </Select>
         {clearLabel ? (
-          <Button type="button" variant="outline" onClick={() => onChange(null)}>
+          <Button type="button" variant="secondary" onClick={() => onChange(null)}>
             {clearLabel}
           </Button>
         ) : null}

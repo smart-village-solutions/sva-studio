@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
+  Button,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -8,7 +9,6 @@ import {
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -94,7 +94,7 @@ export const RoleCreatePage = () => {
             {t('admin.roles.createDialog.description')}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/roles">{t('admin.roles.detail.backToList')}</Link>
         </Button>
       </header>
@@ -157,7 +157,7 @@ export const RoleCreatePage = () => {
           </div>
 
           <div className="mt-2 flex justify-end gap-3">
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <Link to="/admin/roles">{t('account.actions.cancel')}</Link>
             </Button>
             <StudioSaveButton

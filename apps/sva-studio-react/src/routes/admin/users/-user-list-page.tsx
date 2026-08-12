@@ -6,9 +6,10 @@ import type {
 } from '@sva/core';
 import { IconAlertTriangle, IconEdit, IconTrash } from '@tabler/icons-react';
 import {
+  Button,
+  type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
-  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
@@ -17,7 +18,6 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { createStudioDataTableLabels } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -282,7 +282,7 @@ const UserListToolbarEnd = ({
     {canUpdateUsers ? (
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         disabled={syncStatus === 'pending'}
         onClick={() => void onSyncUsers()}
       >
@@ -387,7 +387,7 @@ const UserListSyncFeedback = ({
           <span>{userErrorMessage(syncError)}</span>
           <IamRuntimeDiagnosticDetails error={syncError} />
           <div>
-            <Button type="button" size="sm" variant="outline" onClick={() => void onRetry()}>
+            <Button type="button" size="sm" variant="secondary" onClick={() => void onRetry()}>
               {t('admin.users.actions.retry')}
             </Button>
           </div>
@@ -412,7 +412,7 @@ const UserListErrorAlert = ({
         <span>{userErrorMessage(error)}</span>
         <IamRuntimeDiagnosticDetails error={error} />
         <div>
-          <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+          <Button type="button" size="sm" variant="secondary" onClick={onRetry}>
             {t('admin.users.actions.retry')}
           </Button>
         </div>
@@ -493,7 +493,7 @@ const UserListPaginationFooter = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={page <= 1}
         onClick={() => setPage(page - 1)}
       >
@@ -502,7 +502,7 @@ const UserListPaginationFooter = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={page >= pageCount}
         onClick={() => setPage(page + 1)}
       >
@@ -537,7 +537,7 @@ const UserListRowActions = ({
         <Button
           type="button"
           size="icon"
-          variant="outline"
+          variant="secondary"
           disabled
           aria-label={t('admin.users.actions.edit')}
           title={t('admin.users.actions.edit')}
@@ -545,7 +545,7 @@ const UserListRowActions = ({
           <IconEdit aria-hidden="true" className="h-4 w-4" />
         </Button>
       ) : (
-        <Button asChild type="button" size="icon" variant="outline">
+        <Button asChild type="button" size="icon" variant="secondary">
           <Link
             to="/admin/users/$userId"
             params={{ userId: user.id }}
@@ -560,7 +560,7 @@ const UserListRowActions = ({
         <Button
           type="button"
           size="icon"
-          variant="outline"
+          variant="secondary"
           disabled={deleteBlocked}
           aria-label={t('admin.users.actions.delete')}
           title={deleteBlocked ? deleteDisabledReason : t('admin.users.actions.delete')}

@@ -1,11 +1,14 @@
 import React from 'react';
 
-import { StudioDataTable, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  Button,
+  type StudioColumnDef,
+  StudioDataTable,
+} from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import {
   createStudioDataTableLabels,
@@ -64,7 +67,7 @@ const renderInterfaceRowActions = (
     <Button
       type="button"
       size="sm"
-      variant="outline"
+      variant="secondary"
       onClick={() => setEditState({ mode: 'edit', entry: row, draft: draftFromEntry(row) })}
     >
       {t('admin.users.actions.edit')}
@@ -199,7 +202,7 @@ export const InterfacesPage = () => {
             <div className="space-y-3">
               {blockingLoadErrorDescription ? <p>{blockingLoadErrorDescription}</p> : null}
               <div className="flex flex-wrap gap-3">
-                <Button type="button" variant="outline" onClick={() => void refresh()}>
+                <Button type="button" variant="secondary" onClick={() => void refresh()}>
                   {t('interfaces.actions.reload')}
                 </Button>
               </div>

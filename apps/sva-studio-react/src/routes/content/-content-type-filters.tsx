@@ -1,6 +1,6 @@
 import type { RegisteredStudioContentType } from '@sva/plugin-sdk';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
@@ -51,7 +51,7 @@ export const ContentTypeFilters = ({
           <Button
             type="button"
             size="sm"
-            variant={selectedType === 'all' ? 'default' : 'outline'}
+            variant={selectedType === 'all' ? 'primary' : 'secondary'}
             aria-pressed={selectedType === 'all'}
             onClick={() => onTypeChange('all')}
           >
@@ -64,7 +64,7 @@ export const ContentTypeFilters = ({
                 key={definition.contentType}
                 type="button"
                 size="sm"
-                variant={isSelected ? 'default' : 'outline'}
+                variant={isSelected ? 'primary' : 'secondary'}
                 aria-pressed={isSelected}
                 onClick={() => onTypeChange(definition.contentType)}
               >

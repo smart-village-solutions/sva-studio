@@ -220,7 +220,7 @@ export const CollectionLocationDialog = ({
             </div>
           </StudioFieldGroup>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('masterData.collectionLocations.actions.cancel')}
             </Button>
             <WastePendingSaveButton type="submit" saving={saving} label={submitLabel} />

@@ -77,14 +77,14 @@ const ReviewPanelActions = ({
   return (
     <div className="flex flex-wrap justify-between gap-3 border-t border-border/60 pt-4">
       <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={isBusy} variant="outline" onClick={onBackFromReview}>
+        <Button type="button" disabled={isBusy} variant="secondary" onClick={onBackFromReview}>
           {reviewSource === 'library' ? labels.actions.backToLibrary : labels.actions.backToUpload}
         </Button>
         {reviewAsset && onOpenMediaManagement ? (
           <Button
             type="button"
             disabled={isBusy}
-            variant="outline"
+            variant="secondary"
             onClick={() => void onOpenMediaManagement(reviewAsset.id)}
           >
             {labels.actions.openMediaManagement}
@@ -92,7 +92,7 @@ const ReviewPanelActions = ({
         ) : null}
       </div>
       <div className="flex flex-wrap gap-3">
-        <Button type="button" disabled={isBusy} variant="outline" onClick={onClose}>
+        <Button type="button" disabled={isBusy} variant="secondary" onClick={onClose}>
           {labels.actions.cancel}
         </Button>
         <Button

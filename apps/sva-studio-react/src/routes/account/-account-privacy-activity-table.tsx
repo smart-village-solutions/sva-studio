@@ -2,7 +2,7 @@ import type { IamDsrCanonicalStatus, IamSelfServiceActivityType } from '@sva/cor
 import { Link } from '@tanstack/react-router';
 
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -140,7 +140,7 @@ export const PrivacyActivityTable = ({
                 <td className="px-3 py-3 font-mono text-sm text-muted-foreground">{row.id}</td>
                 <td className="px-3 py-3">
                   <div className="flex justify-end gap-2">
-                    <Button asChild type="button" variant="outline" size="sm">
+                    <Button asChild type="button" variant="secondary" size="sm">
                       <Link to="/account/privacy/$caseId" params={{ caseId: row.id }}>
                         {t('account.privacy.table.actions.details')}
                       </Link>
@@ -148,7 +148,7 @@ export const PrivacyActivityTable = ({
                     {row.type === 'export_job' && row.canonicalStatus === 'completed' && row.format ? (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="tertiary"
                         size="sm"
                         onClick={() => onDownload(row.id, row.format as 'json' | 'csv' | 'xml')}
                       >

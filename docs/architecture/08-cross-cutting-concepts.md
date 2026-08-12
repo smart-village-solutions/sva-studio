@@ -13,6 +13,15 @@ gleichzeitig beeinflussen.
 
 ## Aktueller Stand
 
+### Accessibility und interaktive Aktionen
+
+- Studio-Buttons folgen WCAG 2.1 AA und dem gemeinsamen Vertrag aus `@sva/studio-ui-react`; Default- und Forest-Theme werden jeweils in Light und Dark geprüft.
+- Semantische Action-Tokens halten Textkontrast bei mindestens 4,5:1 sowie Fokus- und relevante UI-Kontraste bei mindestens 3:1. Zustände verwenden explizite Farben statt untergrundabhängiger Alpha-Mischungen.
+- Primary, Secondary und Tertiary bilden die fachliche Aktionshierarchie ab; Destructive kennzeichnet das Risiko zusätzlich zu Bestätigung und Autorisierung.
+- Standard-, kompakte und Icon-Aktionsflächen sind mindestens 44 × 44 Pixel groß. Icon-only-Aktionen besitzen zugängliche Namen und bei Hover sowie Tastaturfokus erreichbare Tooltips.
+- Loading setzt `aria-busy` und verhindert Doppelauslösung. Disabled bleibt über dedizierte Tokens lesbar. Fokus wird nicht entfernt, und Zustandswechsel respektieren `prefers-reduced-motion`.
+- Unit-, Foundation-, Boundary- und Playwright-/Axe-Tests sichern Komponenten-API, Ownership, Kontrastmatrix, Zielgrößen und visuelle Darstellung dauerhaft ab.
+
 ### Formular- und Frontend-Test-Foundations
 
 - Neue oder grundlegend überarbeitete Formular-Flows folgen repo-weit dem Standard `react-hook-form` plus `zodResolver`.

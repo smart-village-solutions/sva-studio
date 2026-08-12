@@ -1,10 +1,12 @@
 import type { IamContentListItem, IamContentStatus } from '@sva/core';
-import type { MainserverPrincipalType } from '@sva/studio-ui-react';
+import {
+  Button,
+  type MainserverPrincipalType,
+} from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -123,7 +125,7 @@ export const ContentStatusDialog = ({
             <Button
               key={status}
               type="button"
-              variant="outline"
+              variant="secondary"
               className="h-auto justify-start py-3"
               disabled={pendingStatus !== null}
               aria-pressed={status === item.status}
@@ -142,7 +144,7 @@ export const ContentStatusDialog = ({
         <DialogFooter className="mt-5">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={pendingStatus !== null}
             onClick={() => setOpen(false)}
           >

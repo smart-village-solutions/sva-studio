@@ -28,7 +28,7 @@ export const LocationFormActions = ({
 }) => (
   <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
     <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
-    <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+    <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
       {cancelLabel}
     </Button>
   </div>

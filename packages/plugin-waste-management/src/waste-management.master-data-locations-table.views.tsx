@@ -203,7 +203,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="h-10 rounded-lg border-border/70 px-3"
             disabled={selectedCollectionLocationsCount === 0}
             onClick={onOpenBulkAssignments}
@@ -215,7 +215,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
           </Button>
           <Button
             type="button"
-            variant="ghost"
+            variant="tertiary"
             className={cn(
               'h-10 rounded-lg border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
               selectedCollectionLocationsCount === 0 && 'text-destructive/50'
@@ -228,7 +228,7 @@ export const WasteMasterDataLocationsTableToolbar = ({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="h-10 rounded-lg border-border/70 px-3"
             aria-expanded={filtersOpen}
             aria-controls="waste-locations-filters"
@@ -295,7 +295,7 @@ export const WasteMasterDataActiveTourBanner = ({
     <div className="flex flex-wrap items-center gap-2 border-b border-border/70 bg-muted/30 px-4 py-3">
       <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.filters.activeTour')}</span>
       <span className="text-sm font-medium">{selectedTour.name}</span>
-      <Button type="button" size="sm" variant="ghost" className="ml-auto" onClick={() => onTourFilterChange('')}>
+      <Button type="button" size="sm" variant="tertiary" className="ml-auto" onClick={() => onTourFilterChange('')}>
         {pt('masterData.locationsWorkspace.filters.clearTour')}
       </Button>
     </div>
@@ -331,7 +331,7 @@ export const WasteMasterDataLocationsHeader = ({
   const renderSortableHeader = (field: WasteMasterDataLocationsSortField, label: string) => (
     <Button
       type="button"
-      variant="ghost"
+      variant="tertiary"
       className="h-auto px-0 py-0 font-semibold text-foreground hover:bg-transparent hover:animate-none"
       onClick={() => onSortChange(field)}
     >
@@ -434,7 +434,7 @@ export const WasteMasterDataLocationsRow = ({
         <div className="flex justify-end gap-1.5">
           <Button
             type="button"
-            variant="ghost"
+            variant="tertiary"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
             aria-label={editLabel}
@@ -445,7 +445,7 @@ export const WasteMasterDataLocationsRow = ({
           </Button>
           <Button
             type="button"
-            variant="ghost"
+            variant="tertiary"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
             aria-label={copyLabel}
@@ -456,7 +456,7 @@ export const WasteMasterDataLocationsRow = ({
           </Button>
           <Button
             type="button"
-            variant="ghost"
+            variant="tertiary"
             size="sm"
             className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
             aria-label={deleteLabel}

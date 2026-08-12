@@ -106,7 +106,7 @@ export const WasteToursToolbarActions = ({
     <div className="flex flex-wrap items-center gap-2">
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         className="h-10 rounded-lg px-3"
         disabled={selectedCount === 0}
         onClick={onOpenBulkValidity}
@@ -116,7 +116,7 @@ export const WasteToursToolbarActions = ({
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="tertiary"
         className={cn(
           'h-10 rounded-lg border border-destructive/15 px-3 text-destructive hover:bg-destructive/5',
           selectedCount === 0 && 'text-destructive/50'
@@ -130,7 +130,7 @@ export const WasteToursToolbarActions = ({
       {hasActiveFilters ? (
         <Button
           type="button"
-          variant="ghost"
+          variant="tertiary"
           className="h-10 rounded-lg px-3"
           onClick={onResetFilters}
         >
@@ -139,7 +139,7 @@ export const WasteToursToolbarActions = ({
       ) : null}
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         className="h-10 rounded-lg border-border/70 px-3"
         aria-expanded={filterDialogOpen}
         onClick={onOpenFilterDialog}
@@ -211,7 +211,7 @@ export const WasteToursToolbarFilters = (props: WasteToursToolbarFiltersProps) =
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => props.onFilterDialogOpenChange(false)}
           >
             {pt('tours.filters.cancel')}

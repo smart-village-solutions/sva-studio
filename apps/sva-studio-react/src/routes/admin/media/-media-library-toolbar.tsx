@@ -1,4 +1,4 @@
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { StudioFilterSurface } from '../../../components/StudioFilterSurface';
@@ -50,13 +50,13 @@ export const MediaLibraryToolbar = ({
           </Select>
         </div>
         <nav aria-label={t('media.library.toolbar.paginationAriaLabel')} className="flex items-center gap-2">
-          <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+          <Button type="button" size="sm" variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             {t('media.library.toolbar.previous')}
           </Button>
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             disabled={page >= pageCount}
             onClick={() => onPageChange(page + 1)}
           >

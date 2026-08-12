@@ -14,12 +14,13 @@ import { deleteProject } from '@sva/plugin-projects';
 import { deleteSurvey } from '@sva/plugin-surveys';
 import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
 import {
-  StudioDataTable,
-  StudioListPageTemplate,
+  Button,
   type MainserverPrincipalControlModel,
   type MainserverPrincipalType,
   type StudioBulkAction,
   type StudioColumnDef,
+  StudioDataTable,
+  StudioListPageTemplate,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -29,7 +30,6 @@ import {
   createStudioDataTableSortingLabels,
 } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { useContents } from '../../hooks/use-contents';
@@ -447,7 +447,7 @@ const ContentRowActions = ({
         <Button
           asChild
           type="button"
-          variant="ghost"
+          variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
         >
@@ -458,7 +458,7 @@ const ContentRowActions = ({
       ) : (
         <Button
           type="button"
-          variant="ghost"
+          variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
           aria-label={actionLabel}
@@ -469,7 +469,7 @@ const ContentRowActions = ({
       )}
       <Button
         type="button"
-        variant="ghost"
+        variant="tertiary"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
         aria-label={t('content.actions.delete')}
@@ -526,7 +526,7 @@ const ContentPaginationNav = ({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={page <= 1}
           onClick={() => onPageChange(Math.max(1, page - 1))}
         >
@@ -535,7 +535,7 @@ const ContentPaginationNav = ({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={page >= pageCount}
           onClick={() => onPageChange(Math.min(pageCount, page + 1))}
         >
@@ -930,7 +930,7 @@ export const ContentListPage = ({
             <div className="flex items-center gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 disabled={contentsApi.refreshProjectionPending}
                 onClick={() => void contentsApi.refreshProjection({ force: true })}
               >

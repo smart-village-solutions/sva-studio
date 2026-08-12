@@ -149,12 +149,12 @@ export function EventsGeoAddressFields({
 
       {hasGeocodingInput || hasReverseGeocodingInput ? (
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={() => void handleGeocode()} disabled={isGeocoding}>
+          <Button type="button" variant="secondary" onClick={() => void handleGeocode()} disabled={isGeocoding}>
             {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => void handleReverseGeocode()}
             disabled={isReverseGeocoding || !hasReverseGeocodingInput}
           >

@@ -9,7 +9,10 @@ import { InstanceDetailHistorySection } from './-instance-detail-history-section
 import { InstanceDetailOperationsSection } from './-instance-detail-operations-section';
 import { InstanceDetailWorkspaceSections } from './-instance-detail-sections';
 
-import type { ConfigurationSectionProps, OperationsSectionProps } from './-instance-detail-view-shared';
+import type {
+  ConfigurationSectionProps,
+  OperationsSectionProps,
+} from './-instance-detail-view-shared';
 
 const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
   mockStudioModuleIamContracts: [
@@ -254,10 +257,15 @@ describe('instance detail split sections', () => {
             },
           ],
         }}
-        mutationError={{ name: 'IamHttpError', status: 502, code: 'keycloak_unavailable', message: 'kaputt' }}
+        mutationError={{
+          name: 'IamHttpError',
+          status: 502,
+          code: 'keycloak_unavailable',
+          message: 'kaputt',
+        }}
         onRunDetailAction={onRunDetailAction}
         statusLoading={false}
-      />,
+      />
     );
 
     expect(screen.getAllByText('Weitere Schritte sind erforderlich.').length).toBeGreaterThan(0);
@@ -272,9 +280,11 @@ describe('instance detail split sections', () => {
   });
 
   it('renders the configuration split section, updates controlled fields, and submits the form', () => {
-    const onUpdateSubmit = vi.fn().mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-    });
+    const onUpdateSubmit = vi
+      .fn()
+      .mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+      });
     let latestValues = createDetailFormValues();
 
     const Harness = () => {
@@ -296,7 +306,9 @@ describe('instance detail split sections', () => {
             warningIssues: [{ key: 'issuer', label: 'Issuer prüfen', severity: 'warning' }],
           }}
           tenantSecretUserInputRequired={true}
-          setDetailFormValues={setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']}
+          setDetailFormValues={
+            setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']
+          }
           onUpdateSubmit={onUpdateSubmit}
           statusLoading={false}
         />
@@ -309,16 +321,26 @@ describe('instance detail split sections', () => {
     fireEvent.change(screen.getByLabelText('Anzeigename', { selector: '#detail-display-name' }), {
       target: { value: 'Demo Updated' },
     });
-    fireEvent.change(screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }), {
-      target: { value: 'secret-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Tenant-Admin-Client-ID', { selector: '#detail-tenant-admin-client-id' }), {
-      target: { value: 'tenant-admin-2' },
-    });
+    fireEvent.change(
+      screen.getByLabelText('Tenant-Client-Secret', { selector: '#detail-auth-client-secret' }),
+      {
+        target: { value: 'secret-1' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText('Tenant-Admin-Client-ID', {
+        selector: '#detail-tenant-admin-client-id',
+      }),
+      {
+        target: { value: 'tenant-admin-2' },
+      }
+    );
     fireEvent.change(screen.getByLabelText('Admin-E-Mail', { selector: '#detail-admin-email' }), {
       target: { value: 'updated@example.org' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: 'Instanz speichern' }).closest('form') as HTMLFormElement);
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Instanz speichern' }).closest('form') as HTMLFormElement
+    );
 
     expect(screen.getByText(/Realm fehlt/)).toBeTruthy();
     expect(screen.getByText(/Issuer prüfen/)).toBeTruthy();
@@ -364,16 +386,32 @@ describe('instance detail split sections', () => {
     render(<Harness />);
 
     fireEvent.click(screen.getByRole('button', { name: 'IAM-Basis neu aufbauen' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Vorbedingungen prüfen' })[0] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Keycloak-Status prüfen' })[0] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning-Vorschau laden' })[0] as HTMLButtonElement);
+    screen
+      .getAllByRole('button', { name: 'Vorbedingungen prüfen' })
+      .forEach((button) => fireEvent.click(button));
+    screen
+      .getAllByRole('button', { name: 'Keycloak-Status prüfen' })
+      .forEach((button) => fireEvent.click(button));
+    screen
+      .getAllByRole('button', { name: 'Provisioning-Vorschau laden' })
+      .forEach((button) => fireEvent.click(button));
     fireEvent.change(document.getElementById('tenant-admin-password') as HTMLInputElement, {
       target: { value: 'TempPasswort123!' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Provisioning ausführen' })[1] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin-Client bereitstellen' })[1] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' })[1] as HTMLButtonElement);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Client-Secret rotieren' })[1] as HTMLButtonElement);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Provisioning ausführen' })[1] as HTMLButtonElement
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'Tenant-Admin-Client bereitstellen',
+      })[1] as HTMLButtonElement
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Tenant-Admin neu setzen' })[1] as HTMLButtonElement
+    );
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'Client-Secret rotieren' })[1] as HTMLButtonElement
+    );
 
     expect(screen.getByText('Probe ausstehend')).toBeTruthy();
     expect(screen.getByText('news')).toBeTruthy();
@@ -412,7 +450,9 @@ describe('instance detail split sections', () => {
     expect(screen.getByText('poi')).toBeTruthy();
     expect(screen.getAllByText('Aktiv')).toHaveLength(1);
     expect(screen.getAllByText('Deaktiviert')).toHaveLength(2);
-    expect(screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')).toBeTruthy();
+    expect(
+      screen.getByText('Veröffentlicht Nachrichten und redaktionelle Meldungen für den Mandanten.')
+    ).toBeTruthy();
     expect(screen.getAllByText('Keine Modulbeschreibung hinterlegt.')).toHaveLength(2);
     expect(screen.queryByRole('button', { name: 'IAM-Basis neu aufbauen' })).toBeNull();
   });
@@ -426,7 +466,7 @@ describe('instance detail split sections', () => {
           provisioningRuns: [{ id: 'local-run-1', operation: 'create_instance', status: 'active' }],
         })}
         onLoadProvisioningRun={onLoadProvisioningRun}
-      />,
+      />
     );
 
     expect(screen.getByText('Historischer Fehler')).toBeTruthy();
@@ -517,13 +557,16 @@ describe('instance detail split sections', () => {
     const onSeedIamBaseline = vi.fn().mockResolvedValue(undefined);
     const onBootstrapAdminStructure = vi.fn().mockResolvedValue(undefined);
     const onLoadProvisioningRun = vi.fn().mockResolvedValue(undefined);
-    const onUpdateSubmit = vi.fn().mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-    });
+    const onUpdateSubmit = vi
+      .fn()
+      .mockImplementation(async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+      });
 
     const Harness = () => {
-      const [activeWorkspaceTab, setActiveWorkspaceTab] =
-        React.useState<'betrieb' | 'doctor' | 'einstellungen'>('einstellungen');
+      const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState<
+        'betrieb' | 'doctor' | 'einstellungen'
+      >('einstellungen');
       const [detailFormValues, setDetailFormValues] = React.useState(createDetailFormValues());
 
       return (
@@ -546,7 +589,9 @@ describe('instance detail split sections', () => {
           mutationError={null}
           statusLoading={false}
           setActiveWorkspaceTab={setActiveWorkspaceTab}
-          setDetailFormValues={setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']}
+          setDetailFormValues={
+            setDetailFormValues as ConfigurationSectionProps['setDetailFormValues']
+          }
           onUpdateSubmit={onUpdateSubmit}
           onTriggerWorkflowAction={onTriggerWorkflowAction}
           onExecuteProvisioning={onExecuteProvisioning}
@@ -561,12 +606,16 @@ describe('instance detail split sections', () => {
 
     render(<Harness />);
 
-    expect(screen.getByRole('tab', { name: 'Einstellungen' }).getAttribute('data-state')).toBe('active');
+    expect(screen.getByRole('tab', { name: 'Einstellungen' }).getAttribute('data-state')).toBe(
+      'active'
+    );
     expect(screen.getByRole('button', { name: 'Instanz speichern' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Betrieb' }));
     expect(screen.getByRole('tab', { name: 'Betrieb' }).getAttribute('data-state')).toBe('active');
-    expect(screen.getAllByRole('button', { name: 'IAM-Basis neu aufbauen' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('button', { name: 'IAM-Basis neu aufbauen' }).length
+    ).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Doctor' }));
     expect(screen.getByRole('tab', { name: 'Doctor' }).getAttribute('data-state')).toBe('active');

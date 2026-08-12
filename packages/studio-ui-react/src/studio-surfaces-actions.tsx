@@ -28,7 +28,7 @@ export function StudioActionMenu({ items, className }: StudioActionMenuProps) {
           <Button
             key={item.id}
             type="button"
-            variant={item.variant ?? 'outline'}
+            variant={item.variant ?? 'secondary'}
             disabled={item.disabled}
             onClick={item.onSelect}
           >

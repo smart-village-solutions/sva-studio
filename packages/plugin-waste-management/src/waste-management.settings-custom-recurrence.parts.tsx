@@ -16,7 +16,7 @@ export const WasteSettingsCustomRecurrenceDraftRow = ({
 
   return (
     <div>
-      <Button type="button" variant="outline" disabled={saving} onClick={onAdd}>
+      <Button type="button" variant="secondary" disabled={saving} onClick={onAdd}>
         {pt('settings.actions.addCustomRecurrence')}
       </Button>
     </div>
@@ -61,10 +61,10 @@ export const WasteSettingsCustomRecurrenceTable = ({
               </td>
               <td className="px-3 py-2">
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" disabled={saving} onClick={() => onEdit(item)}>
+                  <Button type="button" variant="secondary" disabled={saving} onClick={() => onEdit(item)}>
                     {pt('settings.actions.editCustomRecurrence')}
                   </Button>
-                  <Button type="button" variant="outline" disabled={saving} onClick={() => onDelete(item)}>
+                  <Button type="button" variant="secondary" disabled={saving} onClick={() => onDelete(item)}>
                     {pt('settings.actions.deleteCustomRecurrence')}
                   </Button>
                 </div>

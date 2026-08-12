@@ -227,7 +227,7 @@ export const WasteSchedulingRowActions = ({
     <div className="flex items-center justify-end gap-1">
       <Button
         type="button"
-        variant="ghost"
+        variant="tertiary"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
         aria-label={editLabel}
@@ -241,7 +241,7 @@ export const WasteSchedulingRowActions = ({
       {row.canDelete ? (
         <Button
           type="button"
-          variant="ghost"
+          variant="tertiary"
           size="sm"
           className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
           aria-label={deleteLabel}

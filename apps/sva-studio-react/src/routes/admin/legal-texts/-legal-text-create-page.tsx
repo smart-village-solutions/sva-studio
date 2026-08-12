@@ -1,6 +1,7 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
+  Button,
   StudioDetailPageTemplate,
   StudioPersistentFormError,
   StudioSaveButton,
@@ -9,7 +10,6 @@ import {
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -166,7 +166,7 @@ export const LegalTextCreatePage = () => {
       title={t('admin.legalTexts.dialogs.createTitle')}
       description={t('admin.legalTexts.dialogs.createDescription')}
       actions={
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/legal-texts">{t('admin.legalTexts.detail.backToList')}</Link>
         </Button>
       }
@@ -303,7 +303,7 @@ export const LegalTextCreatePage = () => {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <Link to="/admin/legal-texts">{t('account.actions.cancel')}</Link>
             </Button>
           </div>

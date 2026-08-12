@@ -249,7 +249,7 @@ export function EventsDetailContentTab({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => datesArray.append(createDefaultDate())}
           >
             {pt('actions.addDate')}
@@ -269,7 +269,7 @@ export function EventsDetailContentTab({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => datesArray.remove(index)}
                 >
                   {pt('actions.remove')}
@@ -402,7 +402,7 @@ export function EventsDetailContentTab({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => addressesArray.append(createDefaultAddress())}
           >
             {pt('actions.addAddress')}
@@ -422,7 +422,7 @@ export function EventsDetailContentTab({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => addressesArray.remove(index)}
                 >
                   {pt('actions.remove')}
@@ -601,7 +601,7 @@ export function EventsDetailContentTab({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => contactsArray.append(createDefaultContact())}
           >
             {pt('actions.addContact')}
@@ -621,7 +621,7 @@ export function EventsDetailContentTab({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => contactsArray.remove(index)}
                 >
                   {pt('actions.remove')}
@@ -701,7 +701,7 @@ export function EventsDetailContentTab({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => urlsArray.append(createDefaultUrl())}
           >
             {pt('actions.addLink')}
@@ -721,7 +721,7 @@ export function EventsDetailContentTab({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => urlsArray.remove(index)}
                 >
                   {pt('actions.remove')}
@@ -767,7 +767,7 @@ export function EventsDetailContentTab({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onClick={() => pricesArray.append(createDefaultPriceInformation())}
           >
             {pt('actions.addPrice')}
@@ -787,7 +787,7 @@ export function EventsDetailContentTab({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   onClick={() => pricesArray.remove(index)}
                 >
                   {pt('actions.remove')}

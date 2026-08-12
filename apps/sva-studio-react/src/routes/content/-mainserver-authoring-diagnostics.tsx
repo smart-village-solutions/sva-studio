@@ -2,7 +2,7 @@ import React from 'react';
 import { ChevronDown } from 'lucide-react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import {
   Card,
   CardContent,
@@ -124,7 +124,7 @@ export const MainserverAuthoringDiagnosticsPanel = ({
                     <span>{t('content.diagnostics.loadError')}</span>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => setReloadToken((value) => value + 1)}
                     >
                       {t('content.diagnostics.retry')}

@@ -200,7 +200,7 @@ export const WasteToursValidityDialog = ({
           <DialogFooter>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={saving}
               onClick={() => onOpenChange(false)}
             >

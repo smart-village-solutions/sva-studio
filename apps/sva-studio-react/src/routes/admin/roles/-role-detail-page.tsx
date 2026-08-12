@@ -1,20 +1,20 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
+  type StudioColumnDef,
   StudioDataTable,
   StudioDetailPageTemplate,
   StudioFormActionBar,
   StudioPersistentFormError,
   StudioSaveButton,
-  type StudioColumnDef,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import {
   Card,
   CardContent,
@@ -697,7 +697,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             <IamRuntimeDiagnosticDetails error={rolesApi.error} />
           </AlertDescription>
         </Alert>
-        <Button type="button" variant="outline" onClick={() => void rolesApi.refetch()}>
+        <Button type="button" variant="secondary" onClick={() => void rolesApi.refetch()}>
           {t('admin.roles.actions.retry')}
         </Button>
       </section>
@@ -715,7 +715,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   if (!role) {
     return (
       <section className="space-y-4">
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/roles">{t('admin.roles.detail.backToList')}</Link>
         </Button>
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
@@ -750,10 +750,10 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       description={t('admin.roles.detail.subtitle')}
       actions={
         <div className="flex flex-wrap gap-2">
-          <Button asChild type="button" variant="outline" size="sm">
+          <Button asChild type="button" variant="secondary" size="sm">
             <Link to="/admin/roles">{t('admin.roles.detail.backToList')}</Link>
           </Button>
-          <Button asChild type="button" variant="outline">
+          <Button asChild type="button" variant="secondary">
             <Link to="/admin/iam" search={{ tab: 'rights' }}>
               {t('admin.roles.workspace.openIamCta')}
             </Link>
@@ -868,7 +868,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   const nextTab = TABS[nextIndex] ?? 'general';
                   onTabIntent(nextTab);
                 }}
-                variant={selected ? 'default' : 'ghost'}
+                variant={selected ? 'primary' : 'tertiary'}
               >
                 {t(ROLE_TAB_LABELS[tab])}
               </Button>
@@ -952,7 +952,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <div className="flex justify-end gap-3 md:col-span-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     disabled={isReadOnly}
                     onClick={() => {
                       metaSaveFeedback.markDirty();
@@ -1029,7 +1029,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     aria-pressed={showTechnicalDetails}
                     onClick={() => setShowTechnicalDetails((current) => !current)}
                   >
@@ -1037,7 +1037,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                       ? t('admin.roles.detail.permissions.hideTechnicalDetails')
                       : t('admin.roles.detail.permissions.showTechnicalDetails')}
                   </Button>
-                  <Button asChild type="button" variant="outline">
+                  <Button asChild type="button" variant="secondary">
                     <Link to="/admin/iam" search={{ tab: 'rights' }}>
                       {t('admin.roles.workspace.openIamCta')}
                     </Link>
@@ -1106,7 +1106,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     disabled={isReadOnly}
                     onClick={assignVisiblePermissions}
                   >
@@ -1114,7 +1114,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     disabled={isReadOnly}
                     onClick={removeVisiblePermissions}
                   >
@@ -1122,7 +1122,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     disabled={isReadOnly}
                     onClick={assignAllPermissions}
                   >
@@ -1130,7 +1130,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   </Button>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     disabled={isReadOnly}
                     onClick={removeAllPermissions}
                   >
@@ -1145,7 +1145,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             {savePermissionsAction}
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={isReadOnly}
               onClick={resetPermissionDraft}
             >
@@ -1201,7 +1201,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     {t('admin.roles.detail.assignments.managementBody')}
                   </CardDescription>
                 </div>
-                <Button asChild type="button" variant="outline">
+                <Button asChild type="button" variant="secondary">
                   <Link to="/admin/users">{t('admin.roles.detail.assignments.openUsers')}</Link>
                 </Button>
               </div>
@@ -1247,7 +1247,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant="secondary"
                               disabled={isReadOnly || isBusy}
                               onClick={() => void removeRoleFromUser(user.id, roleIds)}
                             >
@@ -1381,7 +1381,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 >
                   {t('admin.roles.actions.retrySync')}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => void rolesApi.refetch()}>
+                <Button type="button" variant="secondary" onClick={() => void rolesApi.refetch()}>
                   {t('admin.roles.actions.retry')}
                 </Button>
               </div>

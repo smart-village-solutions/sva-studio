@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import { Ban, Download, FileSearch, Lock, ShieldPlus, Trash2 } from 'lucide-react';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { t } from '../../i18n';
 

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Card } from '../../../components/ui/card';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import { InstanceDetailHistorySection } from './-instance-detail-history-section';
 import { TenantIamStatusBadge, formatDateTime } from './-instance-detail-view-shared';
@@ -92,7 +92,7 @@ export const InstanceDetailDoctorSection = ({
           <Button
             key={action.action}
             type="button"
-            variant={index === 0 ? 'default' : 'outline'}
+            variant={index === 0 ? 'primary' : 'secondary'}
             onClick={() => void onRunDetailAction(action.action)}
             disabled={statusLoading}
           >
@@ -113,7 +113,7 @@ export const InstanceDetailDoctorSection = ({
             <Button
               key={action.action}
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => void onRunDetailAction(action.action)}
               disabled={statusLoading}
             >

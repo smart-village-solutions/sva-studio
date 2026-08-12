@@ -23,7 +23,7 @@ import { clearClientLogoutState } from '../lib/auth-session-state';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from './ui/alert';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from './ui/card';
 import { ModalDialog } from './ModalDialog';
 
@@ -296,7 +296,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
         <div className="flex flex-wrap justify-end gap-3">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => void loadPendingTexts()}
             disabled={isSubmitting}
           >
@@ -304,7 +304,7 @@ export const LegalTextAcceptanceDialog = ({ pathname }: LegalTextAcceptanceDialo
           </Button>
           <form action="/auth/logout" method="post" onSubmit={() => clearClientLogoutState()}>
             <input type="hidden" name="logoutIntent" value="user" />
-            <Button type="submit" variant="outline" disabled={isSubmitting}>
+            <Button type="submit" variant="secondary" disabled={isSubmitting}>
               {t('admin.legalAcceptance.logout')}
             </Button>
           </form>

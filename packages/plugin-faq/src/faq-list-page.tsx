@@ -59,7 +59,7 @@ const FaqTable = ({ pt, result }: Readonly<{ pt: Translator; result: FaqListResu
       },
     ]}
     rowActions={(item) => (
-      <Button asChild size="sm" variant="outline">
+      <Button asChild size="sm" variant="secondary">
         <Link to="/admin/faq/$id" params={{ id: item.id }}>
           {pt('actions.edit')}
         </Link>

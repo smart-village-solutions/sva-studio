@@ -24,7 +24,7 @@ const RowActionButton = ({
 }) => (
   <Button
     type="button"
-    variant="ghost"
+    variant="tertiary"
     size="sm"
     className={cn(
       'h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground',

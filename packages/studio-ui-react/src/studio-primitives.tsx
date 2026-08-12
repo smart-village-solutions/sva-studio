@@ -112,7 +112,7 @@ const renderStudioListPageAction = (action: StudioListPageAction) => {
       type="button"
       onClick={action.onClick}
       disabled={action.disabled}
-      variant={action.variant ?? 'default'}
+      variant={action.variant ?? 'primary'}
     >
       {action.icon}
       {action.label}

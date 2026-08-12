@@ -19,7 +19,13 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Button: ({
+    loading,
+    ...props
+  }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props} />;
+  },
   Checkbox: (props: React.ComponentProps<'input'>) => <input type="checkbox" {...props} />,
   Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
     open ? <div>{children}</div> : null,

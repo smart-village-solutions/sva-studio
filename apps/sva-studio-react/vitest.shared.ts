@@ -140,6 +140,15 @@ export const sharedVitestConfig = defineConfig({
       '@sva/waste-management-runtime/server': fileURLToPath(
         new URL('../../packages/waste-management-runtime/src/server.ts', import.meta.url)
       ),
+      '@sva/waste-management-contracts/job-definitions': fileURLToPath(
+        new URL('../../packages/waste-management-contracts/src/job-definitions.ts', import.meta.url)
+      ),
+      '@sva/waste-management-contracts/unsubscribe-token': fileURLToPath(
+        new URL(
+          '../../packages/waste-management-contracts/src/unsubscribe-token.server.ts',
+          import.meta.url
+        )
+      ),
       '@sva/core/security': fileURLToPath(
         new URL('../../packages/core/src/security/index.ts', import.meta.url)
       ),

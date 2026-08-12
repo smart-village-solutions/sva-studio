@@ -135,6 +135,7 @@ const LICENSE_URL = 'https://github.com/smart-village-solutions/sva-studio/blob/
 const COCKPIT_URL = 'https://cockpit.guben.de';
 const APP_LINK_PERMISSION = 'app.read';
 const COCKPIT_LINK_PERMISSION = 'cockpit.read';
+const MODULES_READ_PERMISSION = 'modules.read';
 const CATEGORIES_READ_PERMISSION = 'categories.read';
 const sidebarLogger = createOperationLogger('sidebar', 'debug');
 
@@ -848,7 +849,16 @@ export default function Sidebar({
     isAuthenticated &&
     isIamUiEnabled() &&
     hasMonitoringAccess(accessUser);
-  const canAccessTenantModules = isAuthenticated && isIamUiEnabled() && Boolean(user?.instanceId);
+  const canAccessModules =
+    isAuthenticated &&
+    isIamUiEnabled() &&
+    (hasPlatformInstanceAdminAccess(accessUser) ||
+      (Boolean(user?.instanceId) &&
+        hasPermissionAction(
+          MODULES_READ_PERMISSION,
+          contentAccessApi.permissionActions,
+           contentAccessApi.isLoading
+         )));
   const canAccessApplicationLink =
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
@@ -1135,7 +1145,7 @@ export default function Sidebar({
             },
           ]
         : []),
-      ...(canAccessSystemTools || canAccessTenantModules
+      ...(canAccessModules
         ? [
             {
               kind: 'link' as const,
@@ -1196,6 +1206,7 @@ export default function Sidebar({
     canAccessCockpitLink,
     canAccessInterfaces,
     canAccessMedia,
+    canAccessModules,
     canAccessSystemTools,
     canAccessContent,
     contentAccessApi.access,

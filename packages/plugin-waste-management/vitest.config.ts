@@ -13,6 +13,10 @@ export default mergeConfig(
       alias: {
         '@sva/core': resolve(currentDir, '../core/src/index.ts'),
         '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
+        '@sva/waste-management-contracts/job-definitions': resolve(
+          currentDir,
+          '../waste-management-contracts/src/job-definitions.ts'
+        ),
         '@sva/studio-module-iam': resolve(currentDir, '../studio-module-iam/src/index.ts'),
         '@sva/studio-ui-react': resolve(currentDir, '../studio-ui-react/src/index.ts'),
       },

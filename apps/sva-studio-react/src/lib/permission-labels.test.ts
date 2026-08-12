@@ -29,9 +29,11 @@ describe('permission labels', () => {
   it('resolves localized host and plugin permission titles with an unknown fallback', () => {
     setActiveLocale('de');
     expect(resolvePermissionTitle('iam.user.write')).toBe('Benutzer bearbeiten');
+    expect(resolvePermissionTitle('modules.read')).toBe('Module anzeigen');
     expect(resolvePermissionTitle('categories.read')).toBe('Kategorien lesen');
     expect(resolvePermissionTitle('waste-management.read')).toBe('Abfallkalender lesen');
     setActiveLocale('en');
+    expect(resolvePermissionTitle('modules.read')).toBe('View modules');
     expect(resolvePermissionTitle('categories.read')).toBe('Read categories');
     expect(resolvePermissionTitle('waste-management.read')).toBe('Read waste calendar');
     expect(resolvePermissionTitle('unknown.read')).toBeUndefined();

@@ -55,7 +55,12 @@ const accountUiRouteGuardDefinitions: Record<
   accountPrivacy: { kind: 'protected', route: uiRoutePaths.accountPrivacy },
   accountPrivacyDetail: { kind: 'protected', route: uiRoutePaths.accountPrivacyDetail },
   accountRules: { kind: 'protected', route: uiRoutePaths.accountRules },
-  modules: { kind: 'protected', route: uiRoutePaths.modules },
+  modules: {
+    kind: 'protected',
+    route: uiRoutePaths.modules,
+    requiredAnyPermissions: ['modules.read'],
+    requiredAnyRoles: ['instance_registry_admin'],
+  },
   content: { kind: 'protected', route: uiRoutePaths.content },
   contentCreate: { kind: 'protected', route: uiRoutePaths.contentCreate },
   contentDetail: { kind: 'protected', route: uiRoutePaths.contentDetail },

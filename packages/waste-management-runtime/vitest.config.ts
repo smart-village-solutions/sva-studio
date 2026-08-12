@@ -10,9 +10,9 @@ export default defineConfig({
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
       '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
-      '@sva/plugin-waste-management/waste-management.job-definitions': resolve(
+      '@sva/waste-management-contracts/job-definitions': resolve(
         currentDir,
-        '../plugin-waste-management/src/waste-management.job-definitions.ts'
+        '../waste-management-contracts/src/job-definitions.ts'
       ),
     },
   },

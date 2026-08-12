@@ -167,6 +167,12 @@
       "statements": 85.42,
       "functions": 72.97,
       "branches": 70.73
+    },
+    "waste-management-contracts": {
+      "lines": 100,
+      "statements": 100,
+      "functions": 100,
+      "branches": 100
     }
   }
 }

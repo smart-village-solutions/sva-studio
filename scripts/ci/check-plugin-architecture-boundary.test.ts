@@ -79,7 +79,9 @@ const createWorkspacePackage = (
   }
 };
 
-const sortViolations = (violations: readonly PluginArchitectureViolation[]): readonly PluginArchitectureViolation[] =>
+const sortViolations = (
+  violations: readonly PluginArchitectureViolation[]
+): readonly PluginArchitectureViolation[] =>
   [...violations].sort((left, right) =>
     `${left.packageName}:${left.rule}:${left.subject}:${left.relativePath}`.localeCompare(
       `${right.packageName}:${right.rule}:${right.subject}:${right.relativePath}`
@@ -125,6 +127,50 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
     await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
   });
 
+  it('accepts the scoped Waste contracts dependency only for its owning plugin', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-waste-management', {
+      packageName: '@sva/plugin-waste-management',
+      dependencies: {
+        '@sva/plugin-sdk': 'workspace:*',
+        '@sva/waste-management-contracts': 'workspace:*',
+      },
+      sourceFiles: {
+        'src/job-definitions.ts': `export { createWasteManagementPluginJobTypes } from '@sva/waste-management-contracts/job-definitions';\n`,
+      },
+    });
+
+    await expect(collectPluginArchitectureViolations(workspaceRoot)).resolves.toEqual([]);
+  });
+
+  it('rejects the Waste contracts dependency for unrelated plugins', async () => {
+    const workspaceRoot = createTempWorkspace();
+    createPluginPackage(workspaceRoot, 'plugin-clean', {
+      packageName: '@sva/plugin-clean',
+      dependencies: {
+        '@sva/plugin-sdk': 'workspace:*',
+        '@sva/waste-management-contracts': 'workspace:*',
+      },
+      sourceFiles: {
+        'src/index.ts': `import { createWasteManagementPluginJobTypes } from '@sva/waste-management-contracts/job-definitions';\nexport const jobTypes = createWasteManagementPluginJobTypes();\n`,
+      },
+    });
+
+    const violations = await collectPluginArchitectureViolations(workspaceRoot);
+    expect(violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule: 'workspace-dependency',
+          subject: '@sva/waste-management-contracts',
+        }),
+        expect.objectContaining({
+          rule: 'workspace-import',
+          subject: '@sva/waste-management-contracts',
+        }),
+      ])
+    );
+  });
+
   it('detects relative imports into other workspace packages and apps', async () => {
     const workspaceRoot = createTempWorkspace();
     createWorkspacePackage(workspaceRoot, 'core', {
@@ -133,7 +179,10 @@ export const adminResources: readonly AdminResourceDefinition[] = [];
         'src/public-api.ts': 'export const authorize = () => true;\n',
       },
     });
-    writeText(path.join(workspaceRoot, 'apps', 'sva-studio-react', 'src', 'app-shell.ts'), 'export const appShell = true;\n');
+    writeText(
+      path.join(workspaceRoot, 'apps', 'sva-studio-react', 'src', 'app-shell.ts'),
+      'export const appShell = true;\n'
+    );
     createPluginPackage(workspaceRoot, 'plugin-relative-drift', {
       packageName: '@sva/plugin-relative-drift',
       sourceFiles: {
@@ -169,7 +218,8 @@ export { appShell } from '../../../apps/sva-studio-react/src/app-shell.js';
     createWorkspacePackage(workspaceRoot, 'core', {
       packageName: '@sva/core',
       sourceFiles: {
-        'src/public-api.ts': 'export type CoreType = { value: string }; export const runtimeValue = true;\n',
+        'src/public-api.ts':
+          'export type CoreType = { value: string }; export const runtimeValue = true;\n',
       },
     });
     createPluginPackage(workspaceRoot, 'plugin-edge-kinds', {
@@ -186,9 +236,15 @@ export const pluginValue: CoreType | boolean = runtimeValue;
     });
 
     const violations = await collectPluginArchitectureViolations(workspaceRoot);
-    const typeViolations = violations.filter((violation) => violation.kind === 'type' && violation.resolvedTarget === '@sva/core');
-    const runtimeViolations = violations.filter((violation) => violation.kind === 'runtime' && violation.resolvedTarget === '@sva/core');
-    const reexportViolations = violations.filter((violation) => violation.kind === 'reexport' && violation.resolvedTarget === '@sva/core');
+    const typeViolations = violations.filter(
+      (violation) => violation.kind === 'type' && violation.resolvedTarget === '@sva/core'
+    );
+    const runtimeViolations = violations.filter(
+      (violation) => violation.kind === 'runtime' && violation.resolvedTarget === '@sva/core'
+    );
+    const reexportViolations = violations.filter(
+      (violation) => violation.kind === 'reexport' && violation.resolvedTarget === '@sva/core'
+    );
 
     expect(violations).toEqual(
       expect.arrayContaining([
@@ -585,13 +641,17 @@ export const pluginDrift = authorize;
   });
 
   it('parses the file-based JSON allowlist smoke test', () => {
-    const allowlistFile = readFileSync(path.join(process.cwd(), 'config', 'plugin-architecture-allowlist.json'), 'utf8');
+    const allowlistFile = readFileSync(
+      path.join(process.cwd(), 'config', 'plugin-architecture-allowlist.json'),
+      'utf8'
+    );
     const parsed = JSON.parse(allowlistFile) as unknown;
     const allowlist = parsePluginArchitectureAllowlist(parsed);
 
-    expect(allowlist.length).toBeGreaterThan(0);
-    expect(allowlist).toEqual(
-      expect.arrayContaining([
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(allowlist).toHaveLength((parsed as readonly unknown[]).length);
+    for (const entry of allowlist) {
+      expect(entry).toEqual(
         expect.objectContaining({
           plugin: expect.any(String),
           sourceFile: expect.any(String),
@@ -599,8 +659,8 @@ export const pluginDrift = authorize;
           resolvedTarget: expect.any(String),
           kind: expect.stringMatching(/^(runtime|type|reexport)$/),
           reason: expect.any(String),
-        }),
-      ])
-    );
+        })
+      );
+    }
   });
 });

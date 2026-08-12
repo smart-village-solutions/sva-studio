@@ -39,6 +39,7 @@ export const permissionDenialENResources = {
     experimentalRead: 'Use experimental features',
     appRead: 'View app link',
     cockpitRead: 'View cockpit link',
+    modulesRead: 'View modules',
     contentRead: 'View content',
     contentCreate: 'Create content',
     contentUpdateMetadata: 'Edit content metadata',

@@ -39,6 +39,7 @@ export const permissionDenialDEResources = {
     experimentalRead: 'Experimentelle Funktionen verwenden',
     appRead: 'App-Verknüpfung anzeigen',
     cockpitRead: 'Cockpit-Verknüpfung anzeigen',
+    modulesRead: 'Module anzeigen',
     contentRead: 'Inhalte anzeigen',
     contentCreate: 'Inhalte erstellen',
     contentUpdateMetadata: 'Inhaltsmetadaten bearbeiten',

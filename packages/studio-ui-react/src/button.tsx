@@ -103,14 +103,30 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : 'button';
     const isDisabled = disabled || loading;
     const disabledAsChild = asChild && isDisabled;
-    const disabledChild =
-      disabledAsChild &&
-      React.isValidElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>(children)
-        ? React.cloneElement(children, {
-            onClick: (event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            },
+    const slottedChild = React.isValidElement<{
+      onClick?: React.MouseEventHandler<HTMLElement>;
+      title?: string;
+      'aria-label'?: string;
+    }>(children)
+      ? children
+      : null;
+    const resolvedTooltip =
+      tooltip ??
+      (asChild && size === 'icon'
+        ? (slottedChild?.props.title ?? slottedChild?.props['aria-label'])
+        : undefined);
+    const renderedChildren =
+      asChild && slottedChild && (disabledAsChild || resolvedTooltip)
+        ? React.cloneElement(slottedChild, {
+            ...(disabledAsChild
+              ? {
+                  onClick: (event: React.MouseEvent<HTMLElement>) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  },
+                }
+              : {}),
+            ...(resolvedTooltip ? { title: undefined } : {}),
           })
         : children;
     const handleClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
@@ -133,14 +149,14 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={asChild ? undefined : isDisabled}
         onClick={handleClick}
         tabIndex={disabledAsChild ? -1 : tabIndex}
-        title={tooltip ? undefined : title}
+        title={resolvedTooltip ? undefined : title}
       >
-        {disabledChild}
+        {renderedChildren}
       </Comp>
     );
 
-    return tooltip ? (
-      <IconButtonTooltip label={tooltip}>{buttonNode}</IconButtonTooltip>
+    return resolvedTooltip ? (
+      <IconButtonTooltip label={resolvedTooltip}>{buttonNode}</IconButtonTooltip>
     ) : (
       buttonNode
     );

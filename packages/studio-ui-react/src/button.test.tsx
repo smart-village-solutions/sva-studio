@@ -24,7 +24,7 @@ describe('Button', () => {
 
   it('shows a hover tooltip for icon links rendered via asChild using the child title', () => {
     render(
-      <Button asChild size="icon" type="button" variant="secondary" tooltip="Datensatz bearbeiten">
+      <Button asChild size="icon" type="button" variant="secondary">
         <a href="/foo" aria-label="Bearbeiten" title="Datensatz bearbeiten">
           <span aria-hidden="true">B</span>
         </a>
@@ -33,9 +33,10 @@ describe('Button', () => {
 
     const link = screen.getByRole('link', { name: 'Bearbeiten' });
 
-    fireEvent.mouseEnter(link);
+    fireEvent.focus(link);
 
     expect(screen.getByRole('tooltip').textContent).toContain('Datensatz bearbeiten');
+    expect(link.getAttribute('title')).toBeNull();
   });
 
   it('shows a hover tooltip for icon-only table action buttons that use size sm', () => {

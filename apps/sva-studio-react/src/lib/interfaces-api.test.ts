@@ -470,11 +470,23 @@ describe('interfaces app adapter', () => {
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung zur Schnittstellenverwaltung.',
+      permissionDenial: {
+        required_permissions: ['integration.manage'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
 
     const { listInstanceInterfacesServerFn } = await import('./interfaces-api');
 
-    await expect(listInstanceInterfacesServerFn()).rejects.toThrow('forbidden');
+    await expect(listInstanceInterfacesServerFn()).rejects.toMatchObject({
+      message: 'forbidden',
+      permissionDenial: {
+        required_permissions: ['integration.manage'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
+    });
     expect(state.listStoredInterfaces).not.toHaveBeenCalled();
   });
 

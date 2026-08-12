@@ -6,8 +6,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { usePluginOperationJobDetail } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
-import type { IamHttpError } from '../../lib/iam-api';
-import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
+import { formatMonitoringJobDetailError } from './-job-error-presentation';
 import {
   formatMonitoringJobEventMessage,
   formatMonitoringJobEventTitle,
@@ -38,25 +37,6 @@ type MonitoringJobEvent = MonitoringJob['history'][number];
 const formatStructuredValue = (value: unknown): string => {
   const json = JSON.stringify(value, null, 2);
   return json && json.length > 0 ? json : '{}';
-};
-
-const jobsErrorMessage = (error: IamHttpError | null): string => {
-  const permissionMessage = getStudioPermissionDenialMessage(error);
-  if (permissionMessage) return permissionMessage;
-  if (!error) {
-    return t('monitoring.jobs.messages.detailLoadError');
-  }
-
-  switch (error.code) {
-    case 'not_found':
-      return t('monitoring.jobs.errors.notFound');
-    case 'forbidden':
-      return t('monitoring.jobs.errors.forbidden');
-    case 'database_unavailable':
-      return t('monitoring.jobs.errors.databaseUnavailable');
-    default:
-      return t('monitoring.jobs.messages.detailLoadError');
-  }
 };
 
 const MonitoringJobSummaryCards = ({ job }: Readonly<{ job: MonitoringJob }>) => (
@@ -383,7 +363,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
 
       {jobApi.error ? (
         <Alert className="border-destructive/40 text-destructive">
-          <AlertDescription>{jobsErrorMessage(jobApi.error)}</AlertDescription>
+          <AlertDescription>{formatMonitoringJobDetailError(jobApi.error)}</AlertDescription>
         </Alert>
       ) : null}
 

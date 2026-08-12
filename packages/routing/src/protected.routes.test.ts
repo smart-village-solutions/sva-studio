@@ -238,6 +238,18 @@ describe('protected routes', () => {
     ).resolves.toBeUndefined();
 
     await expect(
+      invokeGuard(guard, { roles: ['instance_registry_admin'] }, '/admin/roles')
+    ).resolves.toBeUndefined();
+
+    await expect(
+      invokeGuard(
+        guard,
+        { roles: ['instance_registry_admin'], permissionStatus: 'degraded' },
+        '/admin/roles'
+      )
+    ).resolves.toBeUndefined();
+
+    await expect(
       invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['iam.role.read'] }, '/admin/roles')
     ).resolves.toBeUndefined();
 

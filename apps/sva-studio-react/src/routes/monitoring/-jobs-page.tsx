@@ -17,8 +17,7 @@ import { Select } from '../../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { usePluginOperationJobs } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
-import type { IamHttpError } from '../../lib/iam-api';
-import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
+import { formatMonitoringJobsListError } from './-job-error-presentation';
 import {
   formatMonitoringJobEventMessage,
   formatMonitoringJobEventTitle,
@@ -53,23 +52,6 @@ const staleVariantByValue = {
   stale: 'destructive',
   terminal: 'default',
 } as const;
-
-const jobsErrorMessage = (error: IamHttpError | null): string => {
-  const permissionMessage = getStudioPermissionDenialMessage(error);
-  if (permissionMessage) return permissionMessage;
-  if (!error) {
-    return t('monitoring.jobs.messages.loadError');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('monitoring.jobs.errors.forbidden');
-    case 'database_unavailable':
-      return t('monitoring.jobs.errors.databaseUnavailable');
-    default:
-      return t('monitoring.jobs.messages.loadError');
-  }
-};
 
 const JobsPaginationNav = ({
   page,
@@ -254,7 +236,7 @@ export const MonitoringJobsPage = () => {
       <div className="space-y-4">
         {jobsApi.error ? (
           <Alert className="border-destructive/40 text-destructive">
-            <AlertDescription>{jobsErrorMessage(jobsApi.error)}</AlertDescription>
+            <AlertDescription>{formatMonitoringJobsListError(jobsApi.error)}</AlertDescription>
           </Alert>
         ) : null}
 

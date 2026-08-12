@@ -2,15 +2,9 @@ import {
   resolveSessionActiveOrganizationId,
   summarizeContentAccess,
   type IamContentAccessSummary,
-  type IamContentDomainCapability,
-  type IamContentPrimitiveAction,
 } from '@sva/core';
 import { createPermissionDenialDetailsForAction } from '@sva/core';
-import {
-  evaluateAuthorizeDecision,
-  type AuthorizeRequest,
-  type EffectivePermission,
-} from '@sva/iam-core';
+import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
@@ -19,6 +13,12 @@ import { logger as accountLogger, resolveActorInfo } from '../iam-account-manage
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { getSession } from '../redis-session.js';
+import {
+  buildContentAuthorizeRequest,
+  type ContentAuthorizationAction,
+  type ContentAuthorizationResource,
+  type ContentReadAction,
+} from './request-authorization.js';
 
 export type ResolvedContentActor = {
   actor: {
@@ -32,17 +32,7 @@ export type ResolvedContentActor = {
   };
 };
 
-export type ContentReadAction = 'content.read' | 'news.read' | 'events.read' | 'poi.read';
-type ContentAuthorizationAction = IamContentPrimitiveAction | ContentReadAction;
-
-type ContentAuthorizationResource = {
-  readonly contentId?: string;
-  readonly contentType?: string;
-  readonly domainCapability?: IamContentDomainCapability;
-  readonly organizationId?: string;
-  readonly ownerUserId?: string;
-  readonly ownerOrganizationId?: string;
-};
+export type { ContentReadAction } from './request-authorization.js';
 
 type ContentAuthorizationOptions = {
   readonly permissions?: readonly EffectivePermission[];
@@ -55,62 +45,6 @@ const contentPermissionUnavailable = (requestId?: string): Response =>
     'Berechtigungen konnten nicht geprüft werden.',
     requestId
   );
-
-const deriveAuthorizeResourceType = (
-  action: ContentAuthorizationAction
-): AuthorizeRequest['resource']['type'] => {
-  if (action.startsWith('news.')) {
-    return 'news';
-  }
-  if (action.startsWith('events.')) {
-    return 'events';
-  }
-  if (action.startsWith('poi.')) {
-    return 'poi';
-  }
-  return 'content';
-};
-
-const buildContentAuthorizeRequest = (
-  actor: ResolvedContentActor['actor'],
-  action: ContentAuthorizationAction,
-  resource: ContentAuthorizationResource
-): AuthorizeRequest => {
-  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
-  return {
-    instanceId: actor.instanceId,
-    action,
-    resource: {
-      type: deriveAuthorizeResourceType(action),
-      ...(resource.contentId ? { id: resource.contentId } : {}),
-      ...(organizationId ? { organizationId } : {}),
-      ...(resource.contentType ||
-      resource.ownerUserId ||
-      resource.ownerOrganizationId ||
-      organizationId
-        ? {
-            attributes: {
-              ...(resource.contentType ? { contentType: resource.contentType } : {}),
-              ...(resource.ownerUserId ? { ownerUserId: resource.ownerUserId } : {}),
-              ...(resource.ownerOrganizationId
-                ? { ownerOrganizationId: resource.ownerOrganizationId }
-                : {}),
-              ...(organizationId ? { organizationId } : {}),
-            },
-          }
-        : {}),
-    },
-    context: {
-      ...(organizationId ? { organizationId } : {}),
-      ...(actor.requestId ? { requestId: actor.requestId } : {}),
-      ...(actor.traceId ? { traceId: actor.traceId } : {}),
-      attributes: {
-        ...(resource.contentType ? { contentType: resource.contentType } : {}),
-        ...(actor.actorAccountId ? { actorAccountId: actor.actorAccountId } : {}),
-      },
-    },
-  };
-};
 
 const logContentAuthorizationDenied = (
   actor: ResolvedContentActor['actor'],

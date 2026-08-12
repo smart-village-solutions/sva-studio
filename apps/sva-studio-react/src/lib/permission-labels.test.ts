@@ -29,7 +29,9 @@ describe('permission labels', () => {
   it('resolves localized host and plugin permission titles with an unknown fallback', () => {
     setActiveLocale('de');
     expect(resolvePermissionTitle('iam.user.write')).toBe('Benutzer bearbeiten');
-    expect(resolvePermissionTitle('categories.read')).toBeTruthy();
+    expect(resolvePermissionTitle('categories.read')).toBe('Kategorien lesen');
+    setActiveLocale('en');
+    expect(resolvePermissionTitle('categories.read')).toBe('Read categories');
     expect(resolvePermissionTitle('unknown.read')).toBeUndefined();
   });
 

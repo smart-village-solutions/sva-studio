@@ -1,4 +1,9 @@
-import type { WasteCityListFilter, WasteCityRecord, WasteRegionListFilter, WasteRegionRecord } from '@sva/core';
+import type {
+  WasteCityListFilter,
+  WasteCityRecord,
+  WasteRegionListFilter,
+  WasteRegionRecord,
+} from '@sva/core';
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
@@ -14,6 +19,7 @@ type WasteRegionRow = {
 type WasteCityRow = {
   readonly id: string;
   readonly name: string;
+  readonly postal_code: string | null;
   readonly region_id: string | null;
   readonly created_at: string;
   readonly updated_at: string;
@@ -29,6 +35,7 @@ const mapWasteRegionRow = (row: WasteRegionRow): WasteRegionRecord => ({
 const mapWasteCityRow = (row: WasteCityRow): WasteCityRecord => ({
   id: row.id,
   name: row.name,
+  postalCode: row.postal_code ?? undefined,
   regionId: row.region_id ?? undefined,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
@@ -72,7 +79,9 @@ LIMIT 1;
   values: [id],
 });
 
-const buildRegionUpsertStatement = (input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>): SqlStatement => ({
+const buildRegionUpsertStatement = (
+  input: Omit<WasteRegionRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => ({
   text: `
 INSERT INTO waste_regions (
   id,
@@ -105,6 +114,7 @@ const buildCityListStatement = (filter: WasteCityListFilter = {}): SqlStatement 
 SELECT
   id::text,
   name,
+  postal_code,
   region_id::text,
   created_at::text,
   updated_at::text
@@ -121,6 +131,7 @@ const buildCitySelectStatement = (id: string): SqlStatement => ({
 SELECT
   id::text,
   name,
+  postal_code,
   region_id::text,
   created_at::text,
   updated_at::text
@@ -131,27 +142,36 @@ LIMIT 1;
   values: [id],
 });
 
-const buildCityUpsertStatement = (input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>): SqlStatement => ({
+const buildCityUpsertStatement = (
+  input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => ({
   text: `
 INSERT INTO waste_cities (
   id,
   name,
+  postal_code,
   region_id
 )
-VALUES ($1::uuid, $2, $3::uuid)
+VALUES ($1::uuid, $2, $3, $4::uuid)
 ON CONFLICT (id) DO UPDATE
 SET name = EXCLUDED.name,
+    postal_code = EXCLUDED.postal_code,
     region_id = EXCLUDED.region_id,
     updated_at = NOW();
 `,
-  values: [input.id, input.name, input.regionId ?? null],
+  values: [input.id, input.name, input.postalCode ?? null, input.regionId ?? null],
 });
 
 export const createWasteRegionCityRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
   WasteMasterDataRepository,
-  'listWasteRegions' | 'getWasteRegionById' | 'upsertWasteRegion' | 'listWasteCities' | 'getWasteCityById' | 'upsertWasteCity'
+  | 'listWasteRegions'
+  | 'getWasteRegionById'
+  | 'upsertWasteRegion'
+  | 'listWasteCities'
+  | 'getWasteCityById'
+  | 'upsertWasteCity'
 > => ({
   async listWasteRegions(filter) {
     const result = await executor.execute<WasteRegionRow>(buildRegionListStatement(filter));

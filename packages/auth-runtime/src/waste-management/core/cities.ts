@@ -46,9 +46,11 @@ export const wasteManagementCityHandlers = {
         requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
           id: parsed.data.id,
           name: parsed.data.name.trim(),
+          postalCode: normalizeOptionalString(parsed.data.postalCode),
           regionId: normalizeOptionalString(parsed.data.regionId),
         }),
-      loadSaved: () => requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, parsed.data.id),
+      loadSaved: () =>
+        requireDeps(deps.loadWasteCityById, 'loadWasteCityById')(instanceId, parsed.data.id),
     });
   },
   updateWasteManagementCityInternal: async (
@@ -91,6 +93,7 @@ export const wasteManagementCityHandlers = {
         requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
           id: cityId,
           name: parsed.data.name.trim(),
+          postalCode: normalizeOptionalString(parsed.data.postalCode),
           regionId: normalizeOptionalString(parsed.data.regionId),
         }),
       loadSaved: () => loadWasteCity(instanceId, cityId),

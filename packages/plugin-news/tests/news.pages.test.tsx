@@ -20,6 +20,17 @@ import {
   updateNews,
 } from '../src/news.api.js';
 import { NEWS_CONTENT_TYPE } from '../src/plugin.js';
+import { loadNewsWasteMasterData } from '../src/news.waste-targeting.js';
+
+vi.mock('../src/news.waste-targeting.js', async () => {
+  const actual = await vi.importActual<typeof import('../src/news.waste-targeting.js')>(
+    '../src/news.waste-targeting.js'
+  );
+  return {
+    ...actual,
+    loadNewsWasteMasterData: vi.fn(async () => Promise.reject(new Error('unavailable'))),
+  };
+});
 
 vi.mock('@sva/studio-ui-react', async () => {
   const actual =
@@ -261,6 +272,12 @@ describe('News editor pages', () => {
     vi.restoreAllMocks();
     vi.clearAllMocks();
     vi.mocked(listHostMediaReferencesByTarget).mockResolvedValue([]);
+    vi.mocked(listNewsCategories).mockReset();
+    vi.mocked(listNewsCategories).mockResolvedValue([
+      { id: 'cat-1', name: 'Allgemein' },
+      { id: 'cat-2', name: 'Rathaus' },
+      { id: 'cat-3', name: 'Kultur' },
+    ]);
     publishSessionAccessSnapshot({
       isResolved: true,
       assignedModules: ['news'],
@@ -379,6 +396,12 @@ describe('News editor pages', () => {
         'news.fields.publicationDate': 'Publikationsdatum',
         'news.fields.showPublishDate': 'Publikationsdatum anzeigen',
         'news.fields.pushNotification': 'Push-Benachrichtigung senden',
+        'news.targeting.globalConfirm.noTargets':
+          'Es sind keine Abholorte ausgewählt. Push-Benachrichtigung wirklich an alle Geräte senden?',
+        'news.targeting.globalConfirm.forbidden':
+          'Push-Benachrichtigung wirklich an alle Geräte senden?',
+        'news.targeting.globalConfirm.loadError':
+          'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?',
         'news.fields.categories': 'Kategorien',
         'news.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
         'news.fields.categoriesSearch': 'Kategorien suchen',
@@ -797,6 +820,97 @@ describe('News editor pages', () => {
       expect(createPayload).not.toHaveProperty('address');
       expect(createPayload).not.toHaveProperty('pointOfInterestId');
     });
+  });
+
+  it('confirms a global Push neutrally when Waste targeting is forbidden', async () => {
+    const confirmSpy = stubConfirm(false);
+    render(<NewsCreatePage />);
+
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
+    await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Push-Benachrichtigung wirklich an alle Geräte senden?'
+      )
+    );
+    expect(createNews).not.toHaveBeenCalled();
+  });
+
+  it('names unavailable collection locations when Waste targeting loading fails', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['news', 'waste-management'],
+      permissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'waste-management.read',
+      ],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      roles: [],
+    });
+    const confirmSpy = stubConfirm(false);
+    render(<NewsCreatePage />);
+
+    await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
+    await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?'
+      )
+    );
+    expect(createNews).not.toHaveBeenCalled();
+  });
+
+  it('names the empty selection when Waste targeting is available', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['news', 'waste-management'],
+      permissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'waste-management.read',
+      ],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      roles: [],
+    });
+    vi.mocked(loadNewsWasteMasterData).mockResolvedValueOnce({
+      fractions: [],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    });
+    const confirmSpy = stubConfirm(false);
+    render(<NewsCreatePage />);
+
+    await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
+    await openSettingsTab();
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
+    clickPrimaryAction('News anlegen');
+
+    await waitFor(() =>
+      expect(confirmSpy).toHaveBeenCalledWith(
+        'Es sind keine Abholorte ausgewählt. Push-Benachrichtigung wirklich an alle Geräte senden?'
+      )
+    );
+    expect(createNews).not.toHaveBeenCalled();
   });
 
   it('shows a save error when creating news fails', async () => {

@@ -527,6 +527,122 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.authorizeContentPrimitiveForUser).toHaveBeenCalledTimes(1);
   });
 
+  it('merges news payload updates without losing unrelated existing properties', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      payload: {
+        retained: 'existing',
+        wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...updateNewsInput,
+          payload: {
+            wasteLocationKeys: [
+              { street: ' Hauptstraße 2 ', zip: ' 12345 ', city: ' Musterstadt ' },
+              { street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' },
+            ],
+          },
+        }),
+      })
+    );
+
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          payload: {
+            retained: 'existing',
+            wasteLocationKeys: [
+              { street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' },
+            ],
+          },
+        }),
+      })
+    );
+  });
+
+  it('removes only waste location targets when an explicit payload omits them', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      payload: {
+        retained: 'existing',
+        wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...updateNewsInput, payload: {} }),
+      })
+    );
+
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({ payload: { retained: 'existing' } }),
+      })
+    );
+  });
+
+  it('preserves the complete existing payload when an update omits payload', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+    state.getSvaMainserverNews.mockResolvedValue({
+      id: 'news-1',
+      visible: true,
+      payload: {
+        retained: 'existing',
+        wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    });
+
+    await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(updateNewsInput),
+      })
+    );
+
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledWith(
+      expect.objectContaining({
+        news: expect.objectContaining({
+          payload: {
+            retained: 'existing',
+            wasteLocationKeys: [{ street: 'Altweg 1', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
+      })
+    );
+  });
+
   it('logs workflow-mapped update failures with request context', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
@@ -720,7 +836,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
-  it('rejects legacy payload, invalid visibility and read-only fields before GraphQL', async () => {
+  it('rejects invalid payload, invalid visibility and read-only fields before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
     state.authorizeContentPrimitiveForUser.mockResolvedValue({
@@ -729,13 +845,32 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       permissions: [],
     });
 
-    const legacyPayload = await dispatchSvaMainserverNewsRequest(
+    const invalidPayload = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
         method: 'PATCH',
-        body: JSON.stringify({ ...updateNewsInput, payload: { teaser: 'Alt', body: 'Alt' } }),
+        body: JSON.stringify({ ...updateNewsInput, payload: 'Alt' }),
       })
     );
-    expect(legacyPayload?.status).toBe(400);
+    expect(invalidPayload?.status).toBe(400);
+
+    for (const wasteLocationKeys of [
+      'Hauptstraße 1',
+      [null],
+      [{ street: '', zip: '12345', city: 'Musterstadt' }],
+      [{ street: 'Hauptstraße 1', zip: 12345, city: 'Musterstadt' }],
+      [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt', unexpected: true }],
+    ]) {
+      const response = await dispatchSvaMainserverNewsRequest(
+        createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+          method: 'PATCH',
+          body: JSON.stringify({ ...updateNewsInput, payload: { wasteLocationKeys } }),
+        })
+      );
+      expect(response?.status).toBe(400);
+      await expect(response?.json()).resolves.toEqual(
+        expect.objectContaining({ error: 'invalid_request' })
+      );
+    }
 
     const readOnly = await dispatchSvaMainserverNewsRequest(
       createRequest('https://studio.test/api/v1/mainserver/news/news-1', {

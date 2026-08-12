@@ -74,22 +74,29 @@ const buildNewsMutationVariables = (input: {
   ...(input.newsId ? { id: input.newsId } : {}),
   ...(input.forceCreate === undefined ? {} : { forceCreate: input.forceCreate }),
   title: input.news.title,
-  ...(input.news.pushNotification === undefined ? {} : { pushNotification: input.news.pushNotification }),
+  ...(input.news.pushNotification === undefined
+    ? {}
+    : { pushNotification: input.news.pushNotification }),
   ...(input.news.author ? { author: input.news.author } : {}),
   ...(input.news.keywords ? { keywords: input.news.keywords } : {}),
   ...(input.news.externalId ? { externalId: input.news.externalId } : {}),
   ...(input.news.fullVersion === undefined ? {} : { fullVersion: input.news.fullVersion }),
-  ...(input.news.charactersToBeShown === undefined ? {} : { charactersToBeShown: input.news.charactersToBeShown }),
+  ...(input.news.charactersToBeShown === undefined
+    ? {}
+    : { charactersToBeShown: input.news.charactersToBeShown }),
   ...(input.news.newsType ? { newsType: input.news.newsType } : {}),
   publishedAt: input.news.publishedAt,
   publicationDate: input.news.publicationDate ?? input.news.publishedAt,
-  ...(input.news.showPublishDate === undefined ? {} : { showPublishDate: input.news.showPublishDate }),
+  ...(input.news.showPublishDate === undefined
+    ? {}
+    : { showPublishDate: input.news.showPublishDate }),
   ...(input.news.categoryName ? { categoryName: input.news.categoryName } : {}),
   ...(input.news.categories ? { categories: input.news.categories } : {}),
   ...(input.news.sourceUrl ? { sourceUrl: input.news.sourceUrl } : {}),
   ...(input.news.address ? { address: input.news.address } : {}),
   ...(input.news.contentBlocks ? { contentBlocks: input.news.contentBlocks } : {}),
   ...(input.news.pointOfInterestId ? { pointOfInterestId: input.news.pointOfInterestId } : {}),
+  ...(input.news.payload ? { payload: input.news.payload } : {}),
 });
 
 export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) => ({
@@ -103,19 +110,14 @@ export const createNewsOperations = (executeGraphqlWithConfig: GraphqlExecutor) 
       SvaMainserverNewsListResponse,
       SvaMainserverNewsItemFragment,
       SvaMainserverNewsItem
-    >(
-      input,
-      config,
-      executeGraphqlWithConfig,
-      {
-        document: svaMainserverNewsListDocument,
-        operationName: 'SvaMainserverNewsList',
-        order: input.orderBy ?? 'publishedAt_DESC',
-        readItems: (response) => response.newsItems ?? [],
-        isVisible: (item) => matchesNewsListFilters(item, input, nowIso),
-        mapItem: mapNewsItem,
-      }
-    );
+    >(input, config, executeGraphqlWithConfig, {
+      document: svaMainserverNewsListDocument,
+      operationName: 'SvaMainserverNewsList',
+      order: input.orderBy ?? 'publishedAt_DESC',
+      readItems: (response) => response.newsItems ?? [],
+      isVisible: (item) => matchesNewsListFilters(item, input, nowIso),
+      mapItem: mapNewsItem,
+    });
   },
 
   getNewsWithConfig: async (

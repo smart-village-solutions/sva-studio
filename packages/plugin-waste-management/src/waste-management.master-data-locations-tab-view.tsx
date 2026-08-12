@@ -31,7 +31,13 @@ export const WasteMasterDataLocationsTabView = ({
         saving={controller.saving}
         onChange={(patch) => controller.setLocationForm((current) => ({ ...current, ...patch }))}
         onCancel={navigation.toList}
-        onSubmit={(values) => controller.onSubmitLocation(values, search.locationsView === 'edit' ? 'edit' : 'create')}
+        onSubmit={(values, cityPostalCodeUpdate) =>
+          controller.onSubmitLocation(
+            values,
+            search.locationsView === 'edit' ? 'edit' : 'create',
+            cityPostalCodeUpdate
+          )
+        }
         onReloadAssignments={() => controller.reloadOverview()}
       />
     );

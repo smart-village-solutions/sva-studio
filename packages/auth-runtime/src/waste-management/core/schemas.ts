@@ -125,6 +125,7 @@ const updateWasteRegionSchema = createWasteRegionSchema.omit({ id: true });
 const createWasteCitySchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1),
+  postalCode: z.string().trim().max(16).optional(),
   regionId: z.string().trim().min(1).optional(),
 });
 

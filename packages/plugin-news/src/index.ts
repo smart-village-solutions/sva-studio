@@ -19,4 +19,6 @@ export type {
   NewsFormInput,
   NewsListQuery,
   NewsListResult,
+  NewsPayload,
+  WasteLocationKey,
 } from './news.types.js';

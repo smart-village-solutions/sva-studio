@@ -27,7 +27,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
   },
   cities: {
     title: 'Orte',
-    description: 'Pflegen Sie Orte mit optionaler Regionszuordnung als ersten relationalen Stammdatenpfad.',
+    description:
+      'Pflegen Sie Orte mit optionaler Regionszuordnung als ersten relationalen Stammdatenpfad.',
     actions: {
       openCreate: 'Ort anlegen',
       edit: 'Bearbeiten',
@@ -36,7 +37,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       save: 'Änderungen speichern',
       saving: 'Speichert…',
     },
-    fields: { name: 'Name', regionId: 'Region', regionUnset: 'Keine Region' },
+    fields: { name: 'Name', postalCode: 'PLZ', regionId: 'Region', regionUnset: 'Keine Region' },
     dialog: {
       createTitle: 'Ort anlegen',
       createDescription: 'Erstellen Sie einen Ort und ordnen Sie ihn bei Bedarf einer Region zu.',
@@ -105,7 +106,8 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
   },
   collectionLocations: {
     title: 'Abholorte',
-    description: 'Pflegen Sie konkrete Abholorte mit geografischer Auswahl bis auf Hausnummernebene.',
+    description:
+      'Pflegen Sie konkrete Abholorte mit geografischer Auswahl bis auf Hausnummernebene.',
     actions: {
       openCreate: 'Abholort anlegen',
       edit: 'Bearbeiten',
@@ -125,11 +127,13 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       streetUnset: 'Alle Straßen',
       houseNumberId: 'Hausnummer',
       houseNumberUnset: 'Alle Hausnummern',
+      postalCodeHint: 'Die PLZ gehört zum ausgewählten Ort und gilt für alle seine Abholorte.',
       active: 'Status',
     },
     dialog: {
       createTitle: 'Abholort anlegen',
-      createDescription: 'Erstellen Sie einen neuen Abholort aus Region, Ort, Straße und Hausnummer.',
+      createDescription:
+        'Erstellen Sie einen neuen Abholort aus Region, Ort, Straße und Hausnummer.',
       editTitle: 'Abholort bearbeiten',
       editDescription: 'Ändern Sie geografische Zuordnung und Sichtbarkeit des Abholorts.',
     },
@@ -144,10 +148,13 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       deleteSuccess: 'Der Waste-Abholort wurde gelöscht.',
       saveError: 'Der Waste-Abholort konnte nicht gespeichert werden.',
       saveErrorWithReason: 'Der Waste-Abholort konnte nicht gespeichert werden: {{reason}}',
+      postalCodeSaveWarning:
+        'Der Abholort wurde gespeichert, aber die PLZ des Orts konnte nicht gespeichert werden.',
       saveForbidden: 'Für das Speichern von Waste-Abholorten fehlt die Berechtigung.',
       deleteError: 'Der Waste-Abholort konnte nicht gelöscht werden.',
       deleteForbidden: 'Für das Löschen von Waste-Abholorten fehlt die Berechtigung.',
-      deleteConflict: 'Der Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+      deleteConflict:
+        'Der Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
     },
     assignmentEditor: {
       title: 'Tour-Zuordnungen',
@@ -192,11 +199,13 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       messages: {
         assignSuccess: 'Die Waste-Tour-Zuordnungen wurden gesammelt angelegt.',
         assignError: 'Die Waste-Tour-Zuordnungen konnten nicht gesammelt gespeichert werden.',
-        assignForbidden: 'Für das Sammelspeichern von Waste-Tour-Zuordnungen fehlt die Berechtigung.',
+        assignForbidden:
+          'Für das Sammelspeichern von Waste-Tour-Zuordnungen fehlt die Berechtigung.',
         deleteSuccess: 'Die markierten Waste-Abholorte wurden gelöscht.',
         deleteError: 'Die markierten Waste-Abholorte konnten nicht gelöscht werden.',
         deleteForbidden: 'Für das Löschen markierter Waste-Abholorte fehlt die Berechtigung.',
-        deleteConflict: 'Mindestens ein markierter Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
+        deleteConflict:
+          'Mindestens ein markierter Waste-Abholort kann wegen bestehender Zuordnungen nicht gelöscht werden.',
       },
     },
   },

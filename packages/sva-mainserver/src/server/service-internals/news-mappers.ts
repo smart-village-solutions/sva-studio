@@ -26,12 +26,6 @@ import {
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
 import { parseResilientDetail } from './resilient-detail-mapper.js';
 
-const newsPayloadSchema = z.object({
-  imageUrl: z.string().optional(),
-  externalUrl: z.string().optional(),
-  category: z.string().optional(),
-});
-
 const announcementSchema = z.object({
   id: z.string().nullish(),
   title: z.string().nullish(),
@@ -151,11 +145,10 @@ export const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => 
           }
         })()
       : payload;
-  const parsed = newsPayloadSchema.safeParse(rawPayload);
-  if (!parsed.success) {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
     return {};
   }
-  return parsed.data;
+  return rawPayload as SvaMainserverNewsPayload;
 };
 
 export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | undefined) => {

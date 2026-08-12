@@ -142,10 +142,17 @@ export type SvaMainserverProjectionListResult =
   SvaMainserverListResult<SvaMainserverProjectionListItem> &
     Readonly<{ skippedInvalidCount: number }>;
 
-export type SvaMainserverNewsPayload = {
+export type SvaMainserverWasteLocationKey = {
+  readonly street: string;
+  readonly zip: string;
+  readonly city: string;
+};
+
+export type SvaMainserverNewsPayload = Readonly<Record<string, unknown>> & {
   readonly imageUrl?: string;
   readonly externalUrl?: string;
   readonly category?: string;
+  readonly wasteLocationKeys?: readonly SvaMainserverWasteLocationKey[];
 };
 
 export type SvaMainserverWebUrl = {
@@ -319,6 +326,7 @@ export type SvaMainserverNewsInput = {
   readonly contentBlocks?: readonly SvaMainserverContentBlockInput[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+  readonly payload?: SvaMainserverNewsPayload;
 };
 
 export type SvaMainserverDateInput = {

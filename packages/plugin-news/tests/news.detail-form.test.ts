@@ -495,6 +495,7 @@ describe('news.detail-form', () => {
       settings: true,
       history: false,
     });
+    expect(deriveDirtyNewsDetailTabs({ wasteLocationKeys: true }).settings).toBe(true);
 
     expect(
       buildNewsDetailCharacterCounts({

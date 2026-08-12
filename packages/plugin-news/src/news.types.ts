@@ -1,7 +1,14 @@
-type NewsPayload = {
+export type WasteLocationKey = {
+  readonly street: string;
+  readonly zip: string;
+  readonly city: string;
+};
+
+export type NewsPayload = Readonly<Record<string, unknown>> & {
   readonly imageUrl?: string;
   readonly externalUrl?: string;
   readonly category?: string;
+  readonly wasteLocationKeys?: readonly WasteLocationKey[];
 };
 
 type NewsStatus = 'published';
@@ -117,6 +124,7 @@ export type NewsFormInput = {
   readonly contentBlocks?: readonly NewsContentBlock[];
   readonly pointOfInterestId?: string;
   readonly pushNotification?: boolean;
+  readonly payload?: NewsPayload;
   readonly visible?: boolean;
 };
 
@@ -145,6 +153,7 @@ type NewsLegacyCompatibilitySnapshot = {
   };
   readonly pointOfInterestId?: string;
   readonly pushNotificationsSentAt?: string;
+  readonly payload?: NewsPayload;
   readonly legacyContentBlocks?: NewsContentBlockFormValue[];
 };
 
@@ -174,6 +183,7 @@ type NewsDetailEditorialFormFields = {
   sourceUrl: NewsWebUrl;
   sourceUrlDescription: string;
   pushNotificationEnabled: boolean;
+  wasteLocationKeys: WasteLocationKey[];
   publicationMode: NewsPublicationMode;
   scheduledPublicationAt: string;
 };

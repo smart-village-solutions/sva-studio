@@ -4,6 +4,8 @@ import {
   buildNewsSavePayload,
   createNewsEditorFormValues,
   deriveNewsEditorialStatus,
+  requiresGlobalPushConfirmation,
+  resolveGlobalPushConfirmationKey,
 } from '../src/news.editor-model.js';
 import type { NewsContentItem, NewsDetailFormValues } from '../src/news.types.js';
 
@@ -57,6 +59,37 @@ const editorValuesFixture: NewsDetailFormValues = {
 };
 
 describe('news.editor-model', () => {
+  it('requires global Push confirmation independently of Waste targeting availability', () => {
+    expect(
+      requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 0 })
+    ).toBe(true);
+    expect(
+      requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 1 })
+    ).toBe(false);
+    expect(
+      requiresGlobalPushConfirmation({
+        pushNotificationEnabled: true,
+        targetCount: 0,
+        pushNotificationsSentAt: '2026-08-12T12:00:00.000Z',
+      })
+    ).toBe(false);
+  });
+
+  it('selects a confirmation text that matches the Waste targeting state', () => {
+    expect(resolveGlobalPushConfirmationKey('available')).toBe(
+      'targeting.globalConfirm.noTargets'
+    );
+    expect(resolveGlobalPushConfirmationKey('forbidden')).toBe(
+      'targeting.globalConfirm.forbidden'
+    );
+    expect(resolveGlobalPushConfirmationKey('load-error')).toBe(
+      'targeting.globalConfirm.loadError'
+    );
+    expect(resolveGlobalPushConfirmationKey('loading')).toBe(
+      'targeting.globalConfirm.loadError'
+    );
+  });
+
   it('stores legacy update fields in a hidden snapshot for compatibility-driven updates', () => {
     const values = createNewsEditorFormValues(newsItemFixture);
 
@@ -147,6 +180,21 @@ describe('news.editor-model', () => {
       pointOfInterestId: 'poi-7',
       keywords: 'Rathaus, Termin',
     });
+  });
+
+  it('sends an explicit empty payload when the final Waste target is removed', () => {
+    const plan = buildNewsSavePayload(
+      { ...editorValuesFixture, wasteLocationKeys: [] },
+      {
+        ...editorValuesFixture.__legacySnapshot,
+        payload: {
+          wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+        },
+      },
+      '2026-06-09T10:00:00.000Z'
+    );
+
+    expect(plan.mutation).toHaveProperty('payload', {});
   });
 
   it('omits blank legacy character limits from update payloads', () => {

@@ -639,14 +639,14 @@ describe('waste master data repository', () => {
     });
 
     expect(write.statements[0]?.values).toEqual(['region-2', 'West']);
-    expect(write.statements[1]?.values).toEqual(['city-3', 'Hafenstadt', null]);
+    expect(write.statements[1]?.values).toEqual(['city-3', 'Hafenstadt', null, null]);
     expect(
       wasteMasterDataStatements.upsertWasteCity({
         id: 'city-4',
         name: 'Oststadt',
         regionId: 'region-9',
       }).values
-    ).toEqual(['city-4', 'Oststadt', 'region-9']);
+    ).toEqual(['city-4', 'Oststadt', null, 'region-9']);
   });
 
   it('lists streets and house numbers with parent filters and search', async () => {
@@ -1067,13 +1067,7 @@ describe('waste master data repository', () => {
         firstDate: { mode: 'set', value: '2027-01-01' },
         endDate: { mode: 'set', value: '2027-12-31' },
       }).values
-    ).toEqual([
-      ['tour-1', 'tour-2'],
-      'set',
-      '2027-01-01',
-      'set',
-      '2027-12-31',
-    ]);
+    ).toEqual([['tour-1', 'tour-2'], 'set', '2027-01-01', 'set', '2027-12-31']);
   });
 
   it('lists, reads and upserts custom recurrence presets', async () => {

@@ -11,7 +11,7 @@ import type {
   WasteTourRecord,
 } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button, StudioPageHeader } from '@sva/studio-ui-react';
+import { Button, Input, StudioField, StudioPageHeader } from '@sva/studio-ui-react';
 
 import type { CollectionLocationFormState } from './waste-management.master-data.forms.js';
 import { useResetOnFormContextChange } from './waste-management.master-data-entity-dialogs.shared.js';
@@ -36,7 +36,10 @@ type WasteMasterDataLocationFormContentProps = {
   readonly saving: boolean;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
   readonly onCancel: () => void;
-  readonly onSubmit: (values: CollectionLocationFormState) => void | Promise<void>;
+  readonly onSubmit: (
+    values: CollectionLocationFormState,
+    cityPostalCodeUpdate?: Readonly<{ cityId: string; postalCode: string }>
+  ) => void | Promise<void>;
   readonly onReloadAssignments: () => Promise<void>;
 };
 
@@ -92,6 +95,13 @@ export const WasteMasterDataLocationFormContent = ({
   }, [register]);
 
   const formValues = watch();
+  const selectedCity = cities.find((city) => city.id === formValues.cityId);
+  const [cityPostalCode, setCityPostalCode] = React.useState(selectedCity?.postalCode ?? '');
+  const selectedCityId = selectedCity?.id;
+  const selectedCityStoredPostalCode = selectedCity?.postalCode ?? '';
+  React.useEffect(() => {
+    setCityPostalCode(selectedCityStoredPostalCode);
+  }, [form.id, selectedCityId, selectedCityStoredPostalCode]);
   const filteredCities = formValues.regionId
     ? cities.filter((city) => city.regionId === formValues.regionId)
     : cities;
@@ -121,7 +131,16 @@ export const WasteMasterDataLocationFormContent = ({
     onChange(patch);
   };
   const submitForm = handleSubmit(async (values) => {
-    await onSubmit(values);
+    const normalizedPostalCode = cityPostalCode.trim();
+    const cityPostalCodeUpdate =
+      selectedCity && normalizedPostalCode !== selectedCityStoredPostalCode.trim()
+        ? { cityId: selectedCity.id, postalCode: normalizedPostalCode }
+        : undefined;
+    if (cityPostalCodeUpdate) {
+      await onSubmit(values, cityPostalCodeUpdate);
+    } else {
+      await onSubmit(values);
+    }
   });
 
   const saveLabel = saving
@@ -170,6 +189,26 @@ export const WasteMasterDataLocationFormContent = ({
           filteredHouseNumbers={filteredHouseNumbers}
           cityError={
             formState.errors.cityId?.message ? pt(formState.errors.cityId.message) : undefined
+          }
+          cityPostalCodeField={
+            mode === 'edit' ? (
+              <StudioField
+                id="waste-location-city-postal-code"
+                label={pt('masterData.cities.fields.postalCode')}
+                description={pt('masterData.collectionLocations.fields.postalCodeHint')}
+              >
+                <Input
+                  id="waste-location-city-postal-code"
+                  aria-label={pt('masterData.cities.fields.postalCode')}
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  maxLength={16}
+                  disabled={!selectedCity}
+                  value={cityPostalCode}
+                  onChange={(event) => setCityPostalCode(event.target.value)}
+                />
+              </StudioField>
+            ) : undefined
           }
           onChange={handleFormChange}
         />

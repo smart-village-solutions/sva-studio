@@ -19,3 +19,22 @@ Das System MUST aus aktiven Abholorten und ihrer Adresshierarchie stabile Zielsc
 
 - **WHEN** mehrere Abholortdatensätze dieselbe Straße, PLZ und denselben Ort ergeben
 - **THEN** gibt die Nachrichtenzielauswahl diesen externen Schlüssel nur einmal aus
+
+### Requirement: Städte unterstützen feldselektive Updates
+
+Das System MUST bei Stadt-Updates ausschließlich explizit übermittelte Felder verändern.
+
+#### Scenario: Postleitzahl wird ergänzt
+
+- **WHEN** ein Client nur `postalCode` aktualisiert
+- **THEN** bleiben der aktuelle Name und die aktuelle Region der Stadt unverändert
+
+#### Scenario: Optionales Feld wird ausgelassen
+
+- **WHEN** ein älterer Client `postalCode` nicht übermittelt
+- **THEN** bleibt eine bestehende Postleitzahl unverändert
+
+#### Scenario: Postleitzahl wird ausdrücklich entfernt
+
+- **WHEN** ein Client `postalCode: null` übermittelt
+- **THEN** wird die Postleitzahl entfernt

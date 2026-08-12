@@ -94,7 +94,7 @@ Abhängigkeiten des aktuellen Systems.
 - nutzt `@sva/plugin-sdk` für Host-Metadaten und `@sva/studio-ui-react` für gemeinsame UI-Primitives statt App-interner Komponenten
 - führt erfolgreiche Creates auf die kanonische News-Detailroute und konsumiert dort den transienten, datensatzgebundenen Save-Erfolg einmalig; partielle Medienreferenzfehler wiederholen nur den fehlgeschlagenen Referenzschritt
 - persistiert nicht direkt in lokale IAM-Contents, sondern spricht die hostgeführte Mainserver-News-Fassade per HTTP an; die Studio-Liste lädt Entwürfe ausdrücklich mit `includeInvisible=true`
-- ergänzt bei verfügbarer Waste-Leseberechtigung den Push-Bereich unter „Einstellungen“ um eine Zielgruppenauswahl: aktive Abholorte werden über die hostseitige Waste-Stammdaten-API geladen, im Browser ausgewählt und als stabile `{ street, zip, city }`-Schlüssel im News-Payload gespeichert; unbekannte Payload-Felder und nicht mehr auflösbare Zielschlüssel bleiben erhalten
+- ergänzt bei verfügbarer Waste-Leseberechtigung den Push-Bereich unter „Einstellungen“ um eine Zielgruppenauswahl: aktive Abholorte werden erst beim Öffnen über ein schlankes hostseitiges Waste-Read-Modell geladen, im Browser ausgewählt und als stabile `{ street, zip, city }`-Schlüssel im News-Payload gespeichert; unbekannte Payload-Felder und nicht mehr auflösbare Zielschlüssel bleiben erhalten, nach bestätigter Zustellung ist die Empfängerauswahl schreibgeschützt
   11a. Plugin FAQ (`packages/plugin-faq`)
 
 - Standard-Content-Plugin mit dem Content-Type `faq.faq`; die fachlichen Datensätze bleiben Mainserver-`GenericItem`s mit dem festen Discriminator `genericType: "FAQ"`

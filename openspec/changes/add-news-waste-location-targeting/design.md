@@ -10,17 +10,20 @@ Der Mainserver kann Nachrichten-Payloads mit `wasteLocationKeys` an bereits vorb
 ## Decisions
 
 - Der News-Editor liest die vorhandene hostseitige Waste-Master-Data-API; `plugin-news` erhält keine direkte Abhängigkeit auf `plugin-waste-management`.
+- Die umfangreichen Waste-Stammdaten werden erst beim Öffnen der Zielauswahl geladen. Die Host-Fassade lädt die benötigten Hierarchien parallel und lässt Tour-Zuordnungen aus diesem Read-Modell aus.
 - Ausgewählt werden konkrete aktive Abholort-Datensätze. Hierarchiestufen dienen ausschließlich als Filter.
 - Der externe Schlüssel lautet `{ street, zip, city }`; bei vorhandener Hausnummer enthält `street` den zusammengesetzten Wert. Ohne Hausnummer bezeichnet der Schlüssel die gesamte Straße.
 - Städte erhalten dafür im mandantenspezifischen Waste-Schema die optionale Spalte `postal_code`. Neu auswählbar sind nur aktive Abholorte mit vollständigem Stadt-, PLZ- und Straßenbezug; eine Hausnummer ist optional.
 - Formzustand und Mutation führen das vollständige bestehende Payload mit. Nur `wasteLocationKeys` wird ersetzt oder bei globalem Versand entfernt.
 - Nicht auflösbare gespeicherte Schlüssel bleiben als veraltete Ziele sichtbar und erhalten.
 - Der Dialog bearbeitet eine temporäre Auswahl. Erst „Auswahl übernehmen“ verändert das Formular.
+- Nach einer bestätigten Push-Zustellung ist die Zielauswahl schreibgeschützt, damit das gespeicherte Payload die historische Empfängergruppe weiterhin beschreibt.
+- Stadt-Updates verwenden feldselektive PATCH-Semantik bis zur SQL-Anweisung. Ausgelassene Felder bleiben unverändert; nur ein explizites `null` entfernt PLZ oder Region.
 
 ## Risks / Trade-offs
 
 - Mehrere Abholorte können denselben externen Schlüssel ergeben. Die Mutation dedupliziert deshalb anhand aller drei Felder.
-- Waste-Daten können fehlen oder nicht lesbar sein. Dann bleibt der Zielgruppenbereich in den Push-Einstellungen verborgen und das bestehende Payload unangetastet.
+- Waste-Daten können fehlen oder nicht lesbar sein. Ohne Berechtigung bleibt der Zielgruppenbereich verborgen; bei einem Ladefehler bleibt er sichtbar, erhält einen Fehlerzustand und kann erneut geladen werden. Das bestehende Payload bleibt unangetastet.
 - Der globale Leerzustand ist rückwärtskompatibel, aber riskant. Vor einem tatsächlich auslösenden Push wird er explizit bestätigt.
 
 ## Migration Plan

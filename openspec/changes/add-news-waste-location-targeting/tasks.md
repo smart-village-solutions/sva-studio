@@ -15,3 +15,6 @@
 - [x] 3.1 Mapping-, Formular-, Komponenten- und API-Tests ergänzen
 - [x] 3.2 Relevante Unit-, Typ-, Lint- und Runtime-Gates ausführen
 - [x] 3.3 Betroffene arc42-Abschnitte und Mainserver-Runbook aktualisieren
+- [x] 3.4 City-Updates atomar auf feldselektive PATCH-Semantik härten
+- [x] 3.5 Zielauswahl lazy laden, dynamische Ergebnisse barrierefrei ankündigen und versendete Ziele sperren
+- [x] 3.6 Neue Tests modulnah platzieren und Review-Regressionen abdecken

@@ -1,4 +1,4 @@
 {
   "prNumber": 975,
-  "body": "Push-Benachrichtigungen für Abfallstandorte gezielt versenden\n\n- Nachrichten lassen sich jetzt an ausgewählte Abfallstandorte adressieren.\n- Die Zielauswahl greift auf die gepflegten Städte, Straßen und Hausnummern der Abfallwirtschaft zurück.\n- Vor einem ungezielten Versand warnt das Studio ausdrücklich, damit globale Push-Benachrichtigungen bewusst ausgelöst werden."
+  "body": "Push-Benachrichtigungen für Abfallstandorte gezielt versenden\n\n- Nachrichten lassen sich jetzt an ausgewählte Abfallstandorte adressieren.\n- Die Zielauswahl lädt die benötigten Städte, Straßen und Hausnummern erst beim Öffnen und kündigt geänderte Treffer barrierefrei an.\n- Nach erfolgter Push-Zustellung bleibt die historische Empfängergruppe schreibgeschützt.\n- Stadt-Updates ändern nur ausdrücklich übermittelte Felder und bewahren bestehende Postleitzahlen sowie parallele Stammdatenänderungen.\n- Vor einem ungezielten Versand warnt das Studio ausdrücklich, damit globale Push-Benachrichtigungen bewusst ausgelöst werden."
 }

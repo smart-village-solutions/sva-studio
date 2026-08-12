@@ -17,9 +17,27 @@ Der News-Editor MUST berechtigten Redakteuren erlauben, Ziel-Abholorte unabhäng
 
 #### Scenario: Waste-Daten sind nicht verfügbar
 
-- **WHEN** Waste-Stammdaten nicht gelesen werden können oder der Redaktion der Zugriff fehlt
+- **WHEN** der Redaktion der Zugriff auf Waste-Stammdaten fehlt
 - **THEN** wird der Zielgruppenbereich ausgeblendet
 - **AND** bleiben vorhandene Zielschlüssel beim Speichern anderer Nachrichtenfelder erhalten
+
+#### Scenario: Waste-Daten können nicht geladen werden
+
+- **WHEN** eine berechtigte Redaktion die Zielauswahl öffnet und die Waste-Stammdaten nicht geladen werden können
+- **THEN** bleibt der Zielgruppenbereich sichtbar und zeigt einen verständlichen Fehlerzustand
+- **AND** kann die Redaktion den Ladevorgang erneut auslösen
+- **AND** bleiben vorhandene Zielschlüssel unverändert
+
+#### Scenario: Push wurde bereits zugestellt
+
+- **WHEN** eine Nachricht einen bestätigten Zustellzeitpunkt besitzt
+- **THEN** zeigt der Zielgruppenbereich die gespeicherten Empfänger schreibgeschützt
+- **AND** kann die Redaktion Ziele weder hinzufügen noch entfernen
+
+#### Scenario: Filterergebnis ändert sich
+
+- **WHEN** Suche, Hierarchiefilter oder Seite im Zielauswahldialog geändert werden
+- **THEN** kündigt der Editor die aktualisierte Treffer- und Seiteninformation über eine Live-Region an
 
 ### Requirement: Globaler Nachrichten-Push erfordert ausdrückliche Bestätigung
 

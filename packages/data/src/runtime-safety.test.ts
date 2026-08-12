@@ -363,6 +363,11 @@ test('modules read permission migration backfills all tenants and grants only sy
   assert.match(sql, /WHERE roles\.role_key = 'system_admin'/);
   assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
   assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
+  assert.match(sql, /INSERT INTO iam\.permission_cache_instance_revisions \(instance_id, revision, updated_at\)/);
+  assert.match(sql, /revision = iam\.permission_cache_instance_revisions\.revision \+ 1/);
+  assert.match(sql, /'event', 'PermissionRevisionChanged'/);
+  assert.match(sql, /'revisionScope', 'instance'/);
+  assert.match(sql, /'newRevision', revision/);
   assert.match(sql, /iam_permission_snapshot_invalidation/);
   assert.match(sql, /modules_read_permission_migrated/);
   assert.match(sql, /non-destructive rollback intentionally omitted/i);

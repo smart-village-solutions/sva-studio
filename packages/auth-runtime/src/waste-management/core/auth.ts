@@ -1,4 +1,5 @@
 import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
+import { createPermissionDenialDetailsForAction } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { emitAuthAuditEvent } from '../../audit-events.js';
@@ -64,11 +65,21 @@ export const authorizeWasteManagementAction = async (
       keycloakSubject: ctx.user.id,
     });
     if (!resolved.ok) {
-      return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Berechtigungen konnten nicht geprüft werden.',
+        requestId
+      );
     }
     permissions = resolved.permissions;
   } catch {
-    return createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Berechtigungen konnten nicht geprüft werden.',
+      requestId
+    );
   }
 
   const decision = evaluateAuthorizeDecision(
@@ -86,10 +97,18 @@ export const authorizeWasteManagementAction = async (
   );
 
   if (!decision.allowed) {
-    return createApiError(403, 'forbidden', 'Keine Berechtigung für diese Waste-Management-Operation.', requestId, {
-      action,
-      reason_code: decision.reason,
-    });
+    const permissionDenial = createPermissionDenialDetailsForAction(action, decision.reason);
+    return createApiError(
+      403,
+      'forbidden',
+      'Keine Berechtigung für diese Waste-Management-Operation.',
+      requestId,
+      {
+        ...permissionDenial,
+        action,
+        reason_code: decision.reason,
+      }
+    );
   }
 
   return null;

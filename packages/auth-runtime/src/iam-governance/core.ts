@@ -117,7 +117,8 @@ const authorizeGovernanceAction = async (
     authorization.status,
     toInstancePermissionApiErrorCode(authorization.error),
     message,
-    getWorkspaceContext().requestId
+    getWorkspaceContext().requestId,
+    authorization.permissionDenial
   );
 };
 
@@ -164,7 +165,8 @@ const deriveGovernanceActorCapabilities = async (
       governanceExportAuthorization.status,
       toInstancePermissionApiErrorCode(governanceExportAuthorization.error),
       'Governance-Capabilities konnten nicht ermittelt werden.',
-      getWorkspaceContext().requestId
+      getWorkspaceContext().requestId,
+      governanceExportAuthorization.permissionDenial
     ),
   };
 };
@@ -252,7 +254,8 @@ export const governanceWorkflowHandler = async (request: Request): Promise<Respo
             governanceAuthorization.status,
             toInstancePermissionApiErrorCode(governanceAuthorization.error),
             'Keine Berechtigung für Governance-Workflows.',
-            getWorkspaceContext().requestId
+            getWorkspaceContext().requestId,
+            governanceAuthorization.permissionDenial
           );
         }
 

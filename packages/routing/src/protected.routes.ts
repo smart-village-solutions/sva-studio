@@ -1,11 +1,14 @@
 import { redirect } from '@tanstack/react-router';
-
-import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
+import type { RoutingDiagnosticsHook } from './diagnostics.js';
 import {
-  buildInsufficientRoleHref,
-  buildLoginHref,
-  sanitizePathForDiagnostics,
-} from './protected-route-redirects.js';
+  assertAllRequiredPermissions,
+  assertAnyRequiredAccess,
+  assertRequiredRoles,
+  emitAccessDeniedDiagnostic,
+  requiresPermissionSnapshot,
+  throwPermissionSnapshotUnavailable,
+} from './protected-route-access.js';
+import { buildLoginHref } from './protected-route-redirects.js';
 
 export type RouteGuardUser = {
   readonly instanceId?: string;
@@ -45,132 +48,6 @@ const DEFAULT_LOGIN_PATH = '/auth/login';
 const DEFAULT_FALLBACK_PATH = '/';
 const DEFAULT_INSUFFICIENT_ROLE_KEY = 'auth.insufficientRole';
 
-const sanitizeRequiredRoles = (requiredRoles: readonly string[]): readonly string[] =>
-  requiredRoles
-    .map((requiredRole) => {
-      const segments = requiredRole.split(':').filter(Boolean);
-      return segments[segments.length - 1];
-    })
-    .filter(
-      (requiredRole): requiredRole is string =>
-        typeof requiredRole === 'string' && requiredRole.length > 0
-    );
-
-const hasAnyRole = (user: RouteGuardUser, requiredRoles: readonly string[]) =>
-  requiredRoles.some((requiredRole) => user.roles.includes(requiredRole));
-
-const emitAccessDeniedDiagnostic = (input: {
-  readonly diagnostics: RoutingDiagnosticsHook | undefined;
-  readonly route: string | null;
-  readonly reason: 'unauthenticated' | 'insufficient-permission' | 'insufficient-role';
-  readonly fallbackPath: string;
-  readonly requiredPermissions?: readonly string[];
-  readonly requiredRoles?: readonly string[];
-}) => {
-  if (!input.route) {
-    return;
-  }
-  emitRoutingDiagnostic(input.diagnostics, {
-    level: 'info',
-    event: 'routing.guard.access_denied',
-    route: input.route,
-    reason: input.reason,
-    redirect_target: sanitizePathForDiagnostics(input.fallbackPath, DEFAULT_FALLBACK_PATH),
-    ...(input.requiredPermissions ? { required_permissions: input.requiredPermissions } : {}),
-    ...(input.requiredRoles ? { required_roles: sanitizeRequiredRoles(input.requiredRoles) } : {}),
-  });
-};
-
-const throwInsufficientAccessRedirect = (
-  fallbackPath: string,
-  insufficientRoleKey: string
-): never => {
-  throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
-};
-
-const assertAllRequiredPermissions = (input: {
-  readonly user: RouteGuardUser;
-  readonly requiredPermissions: readonly string[];
-  readonly diagnostics: RoutingDiagnosticsHook | undefined;
-  readonly route: string | null;
-  readonly fallbackPath: string;
-  readonly insufficientRoleKey: string;
-}) => {
-  if (input.requiredPermissions.length === 0) {
-    return;
-  }
-  const grantedPermissions = new Set(input.user.permissionActions ?? []);
-  const missingPermissions = input.requiredPermissions.filter(
-    (permission) => !grantedPermissions.has(permission)
-  );
-  if (missingPermissions.length === 0) {
-    return;
-  }
-
-  emitAccessDeniedDiagnostic({
-    diagnostics: input.diagnostics,
-    route: input.route,
-    reason: 'insufficient-permission',
-    fallbackPath: input.fallbackPath,
-    requiredPermissions: input.requiredPermissions,
-  });
-  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
-};
-
-const assertAnyRequiredAccess = (input: {
-  readonly user: RouteGuardUser;
-  readonly requiredPermissions: readonly string[];
-  readonly requiredRoles: readonly string[];
-  readonly diagnostics: RoutingDiagnosticsHook | undefined;
-  readonly route: string | null;
-  readonly fallbackPath: string;
-  readonly insufficientRoleKey: string;
-}) => {
-  if (input.requiredPermissions.length === 0 && input.requiredRoles.length === 0) {
-    return;
-  }
-  const grantedPermissions = new Set(input.user.permissionActions ?? []);
-  if (
-    input.requiredPermissions.some((permission) => grantedPermissions.has(permission)) ||
-    hasAnyRole(input.user, input.requiredRoles)
-  ) {
-    return;
-  }
-
-  emitAccessDeniedDiagnostic({
-    diagnostics: input.diagnostics,
-    route: input.route,
-    reason: input.requiredPermissions.length > 0 ? 'insufficient-permission' : 'insufficient-role',
-    fallbackPath: input.fallbackPath,
-    requiredPermissions:
-      input.requiredPermissions.length > 0 ? input.requiredPermissions : undefined,
-    requiredRoles: input.requiredRoles.length > 0 ? input.requiredRoles : undefined,
-  });
-  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
-};
-
-const assertRequiredRoles = (input: {
-  readonly user: RouteGuardUser;
-  readonly requiredRoles: readonly string[];
-  readonly diagnostics: RoutingDiagnosticsHook | undefined;
-  readonly route: string | null;
-  readonly fallbackPath: string;
-  readonly insufficientRoleKey: string;
-}) => {
-  if (input.requiredRoles.length === 0 || hasAnyRole(input.user, input.requiredRoles)) {
-    return;
-  }
-
-  emitAccessDeniedDiagnostic({
-    diagnostics: input.diagnostics,
-    route: input.route,
-    reason: 'insufficient-role',
-    fallbackPath: input.fallbackPath,
-    requiredRoles: input.requiredRoles,
-  });
-  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
-};
-
 export const createProtectedRoute = <TContext extends RouteGuardContext = RouteGuardContext>(
   options: ProtectedRouteOptions = {}
 ) => {
@@ -202,16 +79,20 @@ export const createProtectedRoute = <TContext extends RouteGuardContext = RouteG
 
     if (
       user.permissionStatus === 'degraded' &&
-      (requiredPermissions.length > 0 || requiredAnyPermissions.length > 0)
+      requiresPermissionSnapshot({
+        user,
+        requiredPermissions,
+        requiredAnyPermissions,
+        requiredAnyRoles,
+      })
     ) {
-      emitAccessDeniedDiagnostic({
+      throwPermissionSnapshotUnavailable({
         diagnostics,
         route: diagnosticsRoute,
-        reason: 'insufficient-permission',
         fallbackPath,
+        insufficientRoleKey,
         requiredPermissions: [...requiredPermissions, ...requiredAnyPermissions],
       });
-      throwInsufficientAccessRedirect(fallbackPath, insufficientRoleKey);
     }
 
     assertAllRequiredPermissions({

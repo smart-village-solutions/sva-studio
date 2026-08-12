@@ -26,7 +26,8 @@ vi.mock('../../../hooks/use-instances', () => ({
   useInstances: () => useInstancesMock(),
 }));
 
-vi.mock('../../../lib/plugins', () => ({
+vi.mock('../../../lib/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/plugins')>()),
   studioModuleIamContracts: [
     {
       moduleId: 'categories',

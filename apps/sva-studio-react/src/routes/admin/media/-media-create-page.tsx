@@ -20,6 +20,7 @@ import type {
   InitializeMediaUploadPayload,
   InitializeMediaUploadResponse,
 } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 import { useAccessDecision } from '../../../providers/effective-access-provider';
 
 type MediaCreateFormState = Readonly<{
@@ -45,6 +46,8 @@ const mediaCreatePlanningItems = ['mimeType', 'byteSize', 'visibility'] as const
 type MediaCreatePlanningItem = (typeof mediaCreatePlanningItems)[number];
 
 const createErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('media.create.errors.default');
   }

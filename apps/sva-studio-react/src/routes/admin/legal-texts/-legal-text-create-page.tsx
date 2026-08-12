@@ -19,6 +19,7 @@ import { useLegalTexts } from '../../../hooks/use-legal-texts';
 import { t } from '../../../i18n';
 import { parseOptionalEditorDateTime } from '../../../lib/editor-date-time';
 import type { CreateLegalTextPayload, IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 type LegalTextStatus = 'draft' | 'valid' | 'archived';
 
@@ -43,6 +44,8 @@ const splitTargetIds = (value: string): string[] =>
   );
 
 const legalTextErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('admin.legalTexts.messages.error');
   }

@@ -10,6 +10,7 @@ import { Label } from '../../../components/ui/label';
 import { Select } from '../../../components/ui/select';
 import { t, type TranslationKey } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 export type OrganizationContentAuthorPolicy = 'org_only' | 'org_or_personal';
 
@@ -183,6 +184,8 @@ export const loadAllOrganizationParentOptions = async (
 };
 
 export const organizationErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('admin.organizations.messages.error');
   }

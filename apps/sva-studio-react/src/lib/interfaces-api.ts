@@ -1,6 +1,10 @@
 import { createServerFn } from '@tanstack/react-start';
 
 import {
+  parsePermissionDenialDetails,
+  type PermissionDenialDetails,
+} from '@sva/core';
+import {
   type SaveSvaMainserverInterfaceSettingsInput,
   type SvaMainserverInterfacesOverview,
 } from '@sva/sva-mainserver/server';
@@ -41,6 +45,7 @@ type ErrorPayload = {
   readonly message?: string;
   readonly error?: string;
   readonly field?: InterfacesErrorField;
+  readonly details?: PermissionDenialDetails;
 };
 
 const SAFE_CLIENT_ERROR_CODE_PATTERN = /^[a-z0-9]+(?:[_-][a-z0-9]+)*$/;
@@ -214,10 +219,14 @@ const getErrorPayload = (error: unknown, fallbackCode?: string): ErrorPayload =>
   const errorCode = readClientErrorCode(error);
   const message = error instanceof Error ? error.message : readErrorMessage(error, '');
   const field = parseInterfacesErrorField(message || null);
+  const permissionDenial = parsePermissionDenialDetails(
+    isRecord(error) ? error.permissionDenial ?? error.details : undefined
+  );
 
   return {
     ...(errorCode || fallbackCode ? { error: errorCode ?? fallbackCode } : {}),
     ...(field ? { field } : {}),
+    ...(permissionDenial ? { details: permissionDenial } : {}),
   };
 };
 
@@ -227,9 +236,10 @@ const createClientError = (payload: ErrorPayload | null, fallbackMessage: string
       ? payload.error
       : fallbackMessage;
 
-  return new Error(message, {
+  const error = new Error(message, {
     cause: payload ?? undefined,
   });
+  return payload?.details ? Object.assign(error, { permissionDenial: payload.details }) : error;
 };
 
 type ServerRuntimeLogger =
@@ -401,8 +411,15 @@ const logInterfacesInstanceMismatch = (
   });
 };
 
-const createStatusError = (message: string, statusCode: number): Error & { statusCode: number } =>
-  Object.assign(new Error(message), { statusCode });
+const createStatusError = (
+  message: string,
+  statusCode: number,
+  permissionDenial?: PermissionDenialDetails
+): Error & { statusCode: number; permissionDenial?: PermissionDenialDetails } =>
+  Object.assign(new Error(message), {
+    statusCode,
+    ...(permissionDenial ? { permissionDenial } : {}),
+  });
 
 const resolveAuthorizedInterfacesInstanceId = async (
   logger: ServerRuntimeLogger,
@@ -423,7 +440,11 @@ const resolveAuthorizedInterfacesInstanceId = async (
   });
   if (!authorization.ok) {
     logDeniedInterfacesAccess(logger, user, user.instanceId, operation, authorization.error);
-    throw createStatusError(authorization.error, authorization.status);
+    throw createStatusError(
+      authorization.error,
+      authorization.status,
+      authorization.permissionDenial
+    );
   }
 
   if (requestedInstanceId && requestedInstanceId !== user.instanceId) {

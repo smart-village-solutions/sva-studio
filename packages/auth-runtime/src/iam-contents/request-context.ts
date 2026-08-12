@@ -1,9 +1,10 @@
 import {
   resolveSessionActiveOrganizationId,
   summarizeContentAccess,
-  type IamContentAccessSummary, type IamContentDomainCapability, type IamContentPrimitiveAction,
+  type IamContentAccessSummary,
 } from '@sva/core';
-import { evaluateAuthorizeDecision, type AuthorizeRequest, type EffectivePermission } from '@sva/iam-core';
+import { createPermissionDenialDetailsForAction } from '@sva/core';
+import { evaluateAuthorizeDecision, type EffectivePermission } from '@sva/iam-core';
 import { getWorkspaceContext, toJsonErrorResponse, withRequestContext } from '@sva/server-runtime';
 import { createApiError } from '../iam-account-management/api-helpers.js';
 import { ensureFeature, getFeatureFlags } from '../iam-account-management/feature-flags.js';
@@ -12,6 +13,11 @@ import { logger as accountLogger, resolveActorInfo } from '../iam-account-manage
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import { getSession } from '../redis-session.js';
+import {
+  buildContentAuthorizeRequest,
+  type ContentAuthorizationAction,
+  type ContentAuthorizationResource,
+} from './request-authorization.js';
 
 export type ResolvedContentActor = {
   actor: {
@@ -25,73 +31,19 @@ export type ResolvedContentActor = {
   };
 };
 
-export type ContentReadAction = 'content.read' | 'news.read' | 'events.read' | 'poi.read';
-type ContentAuthorizationAction = IamContentPrimitiveAction | ContentReadAction;
-
-type ContentAuthorizationResource = {
-  readonly contentId?: string;
-  readonly contentType?: string;
-  readonly domainCapability?: IamContentDomainCapability;
-  readonly organizationId?: string;
-  readonly ownerUserId?: string;
-  readonly ownerOrganizationId?: string;
-};
+export type { ContentReadAction } from './request-authorization.js';
 
 type ContentAuthorizationOptions = {
   readonly permissions?: readonly EffectivePermission[];
 };
 
 const contentPermissionUnavailable = (requestId?: string): Response =>
-  createApiError(503, 'database_unavailable', 'Berechtigungen konnten nicht geprüft werden.', requestId);
-
-const deriveAuthorizeResourceType = (action: ContentAuthorizationAction): AuthorizeRequest['resource']['type'] => {
-  if (action.startsWith('news.')) {
-    return 'news';
-  }
-  if (action.startsWith('events.')) {
-    return 'events';
-  }
-  if (action.startsWith('poi.')) {
-    return 'poi';
-  }
-  return 'content';
-};
-
-const buildContentAuthorizeRequest = (
-  actor: ResolvedContentActor['actor'],
-  action: ContentAuthorizationAction,
-  resource: ContentAuthorizationResource
-): AuthorizeRequest => {
-  const organizationId = resource.organizationId ?? actor.activeOrganizationId;
-  return {
-    instanceId: actor.instanceId,
-    action,
-    resource: {
-      type: deriveAuthorizeResourceType(action),
-      ...(resource.contentId ? { id: resource.contentId } : {}),
-      ...(organizationId ? { organizationId } : {}),
-      ...((resource.contentType || resource.ownerUserId || resource.ownerOrganizationId || organizationId)
-        ? {
-            attributes: {
-              ...(resource.contentType ? { contentType: resource.contentType } : {}),
-              ...(resource.ownerUserId ? { ownerUserId: resource.ownerUserId } : {}),
-              ...(resource.ownerOrganizationId ? { ownerOrganizationId: resource.ownerOrganizationId } : {}),
-              ...(organizationId ? { organizationId } : {}),
-            },
-          }
-        : {}),
-    },
-    context: {
-      ...(organizationId ? { organizationId } : {}),
-      ...(actor.requestId ? { requestId: actor.requestId } : {}),
-      ...(actor.traceId ? { traceId: actor.traceId } : {}),
-      attributes: {
-        ...(resource.contentType ? { contentType: resource.contentType } : {}),
-        ...(actor.actorAccountId ? { actorAccountId: actor.actorAccountId } : {}),
-      },
-    },
-  };
-};
+  createApiError(
+    503,
+    'database_unavailable',
+    'Berechtigungen konnten nicht geprüft werden.',
+    requestId
+  );
 
 const logContentAuthorizationDenied = (
   actor: ResolvedContentActor['actor'],
@@ -176,13 +128,21 @@ export const authorizeContentAction = async (
     }
 
     logContentAuthorizationDenied(actor, action, resource, decision.reason);
-    return createApiError(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.', actor.requestId, {
-      reason_code: 'capability_authorization_denied',
-      ...(resource.domainCapability ? { domain_capability: resource.domainCapability } : {}),
-      primitive_action: action,
-      resource_type: 'content',
-      ...(resource.contentId ? { resource_id: resource.contentId } : {}),
-    });
+    const permissionDenial = createPermissionDenialDetailsForAction(action, decision.reason);
+    return createApiError(
+      403,
+      'forbidden',
+      'Keine Berechtigung für diese Inhaltsoperation.',
+      actor.requestId,
+      {
+        ...permissionDenial,
+        reason_code: 'capability_authorization_denied',
+        ...(resource.domainCapability ? { domain_capability: resource.domainCapability } : {}),
+        primitive_action: action,
+        resource_type: 'content',
+        ...(resource.contentId ? { resource_id: resource.contentId } : {}),
+      }
+    );
   } catch (error) {
     accountLogger.error('Content authorization failed', {
       operation: 'content_authorize',
@@ -251,8 +211,10 @@ export const resolveContentAccess = async (
   }
 };
 
-export const withContentRequestContext = <T>(request: Request, work: () => Promise<T>): Promise<T> =>
-  withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
+export const withContentRequestContext = <T>(
+  request: Request,
+  work: () => Promise<T>
+): Promise<T> => withRequestContext({ request, fallbackWorkspaceId: 'default' }, work);
 
 export const withAuthenticatedContentHandler = (
   request: Request,
@@ -296,7 +258,12 @@ export const resolveContentActor = async (
 
   if (options.requireActorAccountId && !actorResolution.actor.actorAccountId) {
     return {
-      error: createApiError(403, 'forbidden', 'Akteur-Account nicht gefunden.', actorResolution.actor.requestId),
+      error: createApiError(
+        403,
+        'forbidden',
+        'Akteur-Account nicht gefunden.',
+        actorResolution.actor.requestId
+      ),
     };
   }
 

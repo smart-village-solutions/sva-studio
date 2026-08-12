@@ -7,6 +7,7 @@ import { interfacesENResources } from './en/interfaces.resources.js';
 import { mediaENResources } from './en/media.resources.js';
 import { monitoringENResources } from './en/monitoring.resources.js';
 import { placeholderENResources } from './en/placeholder.resources.js';
+import { permissionDenialENResources } from './en/permissionDenial.resources.js';
 import { pluginsENResources } from './en/plugins.resources.js';
 import { sharedENResources } from './en/shared.resources.js';
 import { shellENResources } from './en/shell.resources.js';
@@ -22,6 +23,7 @@ export const enResources = {
   media: mediaENResources,
   monitoring: monitoringENResources,
   placeholder: placeholderENResources,
+  permissionDenial: permissionDenialENResources,
   plugins: pluginsENResources,
   shared: sharedENResources,
   shell: shellENResources,

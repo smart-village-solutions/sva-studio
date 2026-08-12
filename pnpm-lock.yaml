@@ -1244,6 +1244,9 @@ importers:
       '@sva/auth-runtime':
         specifier: workspace:*
         version: file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/core':
+        specifier: workspace:*
+        version: link:../core
       '@sva/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
@@ -13881,6 +13884,7 @@ snapshots:
   '@sva/routing@file:packages/routing(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3)':
     dependencies:
       '@sva/auth-runtime': file:packages/auth-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))(typescript@6.0.3)
+      '@sva/core': file:packages/core
       '@sva/plugin-sdk': file:packages/plugin-sdk
       '@sva/server-runtime': file:packages/server-runtime(@opentelemetry/core@2.8.0(@opentelemetry/api@1.9.1))
       '@tanstack/react-router': 1.170.24(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

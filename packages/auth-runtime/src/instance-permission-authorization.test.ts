@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-  evaluateAuthorizeDecisionMock,
-  resolveEffectivePermissionsMock,
-} = vi.hoisted(() => ({
+const { evaluateAuthorizeDecisionMock, resolveEffectivePermissionsMock } = vi.hoisted(() => ({
   evaluateAuthorizeDecisionMock: vi.fn(),
   resolveEffectivePermissionsMock: vi.fn(),
 }));
@@ -30,9 +27,8 @@ vi.mock('./iam-authorization/permission-store.js', () => ({
   resolveEffectivePermissions: resolveEffectivePermissionsMock,
 }));
 
-const { authorizeInstancePermissionForUser, toInstancePermissionApiErrorCode } = await import(
-  './instance-permission-authorization.js'
-);
+const { authorizeInstancePermissionForUser, toInstancePermissionApiErrorCode } =
+  await import('./instance-permission-authorization.js');
 
 describe('instance permission authorization', () => {
   beforeEach(() => {
@@ -276,7 +272,10 @@ describe('instance permission authorization', () => {
   });
 
   it('fails closed for denied, missing-instance and unavailable permission resolution states', async () => {
-    evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'permission_missing' });
+    evaluateAuthorizeDecisionMock.mockReturnValueOnce({
+      allowed: false,
+      reason: 'permission_missing',
+    });
     await expect(
       authorizeInstancePermissionForUser({
         ctx: {
@@ -293,6 +292,11 @@ describe('instance permission authorization', () => {
       ok: false,
       status: 403,
       error: 'forbidden',
+      permissionDenial: {
+        required_permissions: ['integration.manage'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
 
     await expect(

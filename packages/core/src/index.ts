@@ -15,6 +15,21 @@ export type {
   PermissionDefinition,
   PermissionLifecycle,
 } from './iam/permission-catalog.js';
+export {
+  createPermissionDenialDetails,
+  createPermissionDenialDetailsForAction,
+  isMissingPermissionDenial,
+  isPermissionActionId,
+  isPermissionDenialReason,
+  parsePermissionDenialDetails,
+  permissionDenialReasons,
+  permissionRequirementModes,
+} from './iam/permission-denial.js';
+export type {
+  PermissionDenialDetails,
+  PermissionDenialReason,
+  PermissionRequirementMode,
+} from './iam/permission-denial.js';
 export { isPlausibleEmailAddress } from './email-address.js';
 export {
   iamContentAccessReasonCodes,

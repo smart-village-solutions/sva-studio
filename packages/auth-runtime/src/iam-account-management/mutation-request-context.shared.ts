@@ -87,7 +87,8 @@ const resolveRequiredPermissionActor = async (
         authorization.status,
         toInstancePermissionApiErrorCode(authorization.error),
         authorization.message,
-        input.requestId
+        input.requestId,
+        authorization.permissionDenial
       ),
     };
   }

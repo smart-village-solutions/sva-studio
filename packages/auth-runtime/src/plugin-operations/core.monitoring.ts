@@ -43,7 +43,8 @@ export const requireMonitoringAccess = async (
         authorization.status,
         toInstancePermissionApiErrorCode(authorization.error),
         'Keine Berechtigung für Plugin-Operations-Monitoring.',
-        getRequestId()
+        getRequestId(),
+        authorization.permissionDenial
       );
 };
 

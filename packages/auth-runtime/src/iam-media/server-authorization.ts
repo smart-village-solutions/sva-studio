@@ -3,6 +3,7 @@ import {
   type AuthorizeRequest,
   type EffectivePermission,
 } from '@sva/iam-core';
+import { createPermissionDenialDetailsForAction, type PermissionDenialDetails } from '@sva/core';
 import { getWorkspaceContext } from '@sva/server-runtime';
 
 import { logger as accountLogger } from '../iam-account-management/shared.js';
@@ -33,6 +34,7 @@ export type MediaPrimitiveAuthorizationResult =
       status: number;
       error: MediaPrimitiveAuthorizationErrorCode;
       message: string;
+      permissionDenial?: PermissionDenialDetails;
     }>;
 
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}(?:\.[A-Za-z][A-Za-z0-9-]*)+$/;
@@ -174,11 +176,13 @@ export const authorizeMediaPrimitiveForUser = async (input: {
       reason: decision.reason,
     });
 
+    const permissionDenial = createPermissionDenialDetailsForAction(action, decision.reason);
     return {
       ok: false,
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung für diese Medienoperation.',
+      ...(permissionDenial ? { permissionDenial } : {}),
     };
   }
 

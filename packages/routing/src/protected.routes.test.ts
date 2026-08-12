@@ -111,7 +111,9 @@ describe('protected routes', () => {
     } catch (error) {
       expect(isRedirect(error)).toBe(true);
       if (isRedirect(error)) {
-        expect(error.options.href).toBe('/?error=auth.insufficientRole');
+        expect(error.options.href).toBe(
+          '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=allOf&permissionReason=permission_missing'
+        );
       }
     }
 
@@ -183,7 +185,9 @@ describe('protected routes', () => {
       invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['news.read'] }, '/admin/users')
     ).rejects.toMatchObject(
       expect.objectContaining({
-        options: expect.objectContaining({ href: '/?error=auth.insufficientRole' }),
+        options: expect.objectContaining({
+          href: '/?error=auth.insufficientRole&requiredPermission=iam.user.read&permissionMode=allOf&permissionReason=permission_missing',
+        }),
       })
     );
   });
@@ -202,7 +206,9 @@ describe('protected routes', () => {
       invokeGuard(guard, { roles: ['custom_role'], permissionActions: ['news.read'] }, '/admin/iam')
     ).rejects.toMatchObject(
       expect.objectContaining({
-        options: expect.objectContaining({ href: '/?error=auth.insufficientRole' }),
+        options: expect.objectContaining({
+          href: '/?error=auth.insufficientRole&requiredPermission=iam.governance.read&requiredPermission=iam.dsr.read&permissionMode=anyOf&permissionReason=permission_missing',
+        }),
       })
     );
   });
@@ -229,6 +235,18 @@ describe('protected routes', () => {
 
     await expect(
       invokeGuard(guard, { roles: ['instance_registry_admin'], permissionActions: [] }, '/admin/roles')
+    ).resolves.toBeUndefined();
+
+    await expect(
+      invokeGuard(guard, { roles: ['instance_registry_admin'] }, '/admin/roles')
+    ).resolves.toBeUndefined();
+
+    await expect(
+      invokeGuard(
+        guard,
+        { roles: ['instance_registry_admin'], permissionStatus: 'degraded' },
+        '/admin/roles'
+      )
     ).resolves.toBeUndefined();
 
     await expect(

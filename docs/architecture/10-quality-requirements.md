@@ -369,3 +369,9 @@ Referenzen:
 - Komponenten- und Accessibility-Tests sichern explizite Sortiermodi, unveränderte externe Seitenreihenfolge, Desktop- und Mobilbedienung sowie den externen Zweierzyklus ab.
 - Repository-, Read-Model- und Handler-Tests müssen beide Richtungen, fehlende Werte zuletzt, ID-Gleichstandsauflösung, mindestens zwei Seiten und ungültige direkte API-Parameter abdecken.
 - UI-Tests belegen sichtbare Defaults, Seitenreset, Gesamtzahl und Seitengrößen. Type-Gates verhindern Tabellenaufrufer ohne explizite Ownership; Server-Runtime- und OpenSpec-Gates sichern die Paket- beziehungsweise Vertragsgrenzen.
+
+### Ergänzung 2026-08: Qualitätsziele für Berechtigungsfehler
+
+- Route- und API-Vertragstests belegen einzelne, `allOf`-, `anyOf`- und kontextuelle Denials sowie generische Fallbacks für uneindeutige und technische Fehler.
+- Katalogtests sichern die deutschen und englischen Titel aller Core-/Host-Permissions; registrierte Plugin-Permissions und unbekannte Actions besitzen einen deterministischen Fallback.
+- Öffentliche Details dürfen keine Rollen-, Gruppen-, Grant- oder Policy-Daten enthalten. Unvertrauenswürdige Details sind auf Anzahl und Länge begrenzt und werden fail-closed geparst.

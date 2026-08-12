@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  createWasteManagementPluginImportProfiles,
-  createWasteManagementPluginJobTypes,
-} from '../src/job-definitions.js';
+import { createWasteManagementPluginImportProfiles } from '../src/import-profile-definitions.js';
+import { createWasteManagementPluginJobTypes } from '../src/job-definitions.js';
 
 describe('waste management contracts job definitions', () => {
   it('exposes every job type declared by the Waste operations contract', () => {
@@ -22,9 +20,7 @@ describe('waste management contracts job definitions', () => {
   });
 
   it('exposes every supported Waste import profile', () => {
-    expect(
-      createWasteManagementPluginImportProfiles().map(({ profileId }) => profileId)
-    ).toEqual([
+    expect(createWasteManagementPluginImportProfiles().map(({ profileId }) => profileId)).toEqual([
       'waste-management.geografie-abholorte',
       'waste-management.touren',
       'waste-management.ausweichtermine',

@@ -60,6 +60,16 @@ const locationFormResolver: Resolver<CollectionLocationFormState> = async (value
   };
 };
 
+const getCityPostalCodeUpdate = (
+  selectedCity: WasteCityRecord | undefined,
+  cityPostalCode: string
+): Readonly<{ cityId: string; postalCode: string }> | undefined => {
+  const normalizedPostalCode = cityPostalCode.trim();
+  return selectedCity && normalizedPostalCode !== selectedCity.postalCode.trim()
+    ? { cityId: selectedCity.id, postalCode: normalizedPostalCode }
+    : undefined;
+};
+
 export const WasteMasterDataLocationFormContent = ({
   mode,
   form,
@@ -131,11 +141,7 @@ export const WasteMasterDataLocationFormContent = ({
     onChange(patch);
   };
   const submitForm = handleSubmit(async (values) => {
-    const normalizedPostalCode = cityPostalCode.trim();
-    const cityPostalCodeUpdate =
-      selectedCity && normalizedPostalCode !== selectedCityStoredPostalCode.trim()
-        ? { cityId: selectedCity.id, postalCode: normalizedPostalCode }
-        : undefined;
+    const cityPostalCodeUpdate = getCityPostalCodeUpdate(selectedCity, cityPostalCode);
     if (cityPostalCodeUpdate) {
       await onSubmit(values, cityPostalCodeUpdate);
     } else {

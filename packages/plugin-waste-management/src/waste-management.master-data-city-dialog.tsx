@@ -61,6 +61,20 @@ export const CityDialog = ({
   );
 };
 
+type CityDialogFormProps = {
+  readonly formApi: ReturnType<typeof useForm<CityFormState>>;
+  readonly message: BaseProps<CityFormState>['message'];
+  readonly mode: BaseProps<CityFormState>['mode'];
+  readonly onChange: BaseProps<CityFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<CityFormState>['onBeforeSubmit'];
+  readonly onOpenChange: BaseProps<CityFormState>['onOpenChange'];
+  readonly onSubmit: BaseProps<CityFormState>['onSubmit'];
+  readonly open: boolean;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+  readonly regions: readonly WasteRegionRecord[];
+  readonly saving: boolean;
+};
+
 const CityDialogForm = ({
   open,
   formApi,
@@ -73,19 +87,7 @@ const CityDialogForm = ({
   pt,
   regions,
   saving,
-}: {
-  readonly formApi: ReturnType<typeof useForm<CityFormState>>;
-  readonly message: BaseProps<CityFormState>['message'];
-  readonly mode: BaseProps<CityFormState>['mode'];
-  readonly onChange: BaseProps<CityFormState>['onChange'];
-  readonly onBeforeSubmit?: BaseProps<CityFormState>['onBeforeSubmit'];
-  readonly onOpenChange: BaseProps<CityFormState>['onOpenChange'];
-  readonly onSubmit: BaseProps<CityFormState>['onSubmit'];
-  readonly open: boolean;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly regions: readonly WasteRegionRecord[];
-  readonly saving: boolean;
-}) => {
+}: CityDialogFormProps) => {
   const {
     clearErrors,
     control,

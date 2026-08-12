@@ -79,6 +79,7 @@ describe('NewsDetailTargetingTab', () => {
     fireEvent.click(screen.getByLabelText('targeting.actions.selectAll'));
     fireEvent.click(screen.getByRole('button', { name: 'actions.cancel' }));
     expect(screen.getByText('targeting.mode.global')).toBeTruthy();
+    expect(screen.getByTestId('dirty-state').textContent).toBe('clean');
 
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
     fireEvent.click(screen.getByLabelText('targeting.actions.selectAll'));
@@ -89,6 +90,7 @@ describe('NewsDetailTargetingTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.apply' }));
 
     expect(screen.getByText('targeting.mode.targeted:26')).toBeTruthy();
+    expect(screen.getByTestId('dirty-state').textContent).toBe('dirty');
   });
 
   it('cascades region filters into streets and house numbers and labels their parent context', () => {

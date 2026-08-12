@@ -7,6 +7,10 @@ export const contentDEResources = {
   filters: {
     typeLabel: 'Typ',
     typeAll: 'Alle Typen',
+    quickTypeLabel: 'Schnellfilter nach Typ',
+    quickAll: 'Alle',
+    otherTypeLabel: 'Weitere Typen',
+    otherTypePlaceholder: 'Typ auswählen',
     statusLabel: 'Status',
     statusAll: 'Alle Status',
   },

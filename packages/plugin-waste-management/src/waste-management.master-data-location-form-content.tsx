@@ -62,10 +62,11 @@ const locationFormResolver: Resolver<CollectionLocationFormState> = async (value
 
 const getCityPostalCodeUpdate = (
   selectedCity: WasteCityRecord | undefined,
-  cityPostalCode: string
+  cityPostalCode: string,
+  storedPostalCode: string
 ): Readonly<{ cityId: string; postalCode: string }> | undefined => {
   const normalizedPostalCode = cityPostalCode.trim();
-  return selectedCity && normalizedPostalCode !== selectedCity.postalCode.trim()
+  return selectedCity && normalizedPostalCode !== storedPostalCode.trim()
     ? { cityId: selectedCity.id, postalCode: normalizedPostalCode }
     : undefined;
 };
@@ -141,7 +142,11 @@ export const WasteMasterDataLocationFormContent = ({
     onChange(patch);
   };
   const submitForm = handleSubmit(async (values) => {
-    const cityPostalCodeUpdate = getCityPostalCodeUpdate(selectedCity, cityPostalCode);
+    const cityPostalCodeUpdate = getCityPostalCodeUpdate(
+      selectedCity,
+      cityPostalCode,
+      selectedCityStoredPostalCode
+    );
     if (cityPostalCodeUpdate) {
       await onSubmit(values, cityPostalCodeUpdate);
     } else {

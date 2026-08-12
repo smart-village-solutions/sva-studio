@@ -197,6 +197,8 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(
       (screen.getByRole('button', { name: 'Medium hochladen' }) as HTMLButtonElement).disabled
     ).toBe(true);
+    expect(screen.queryByLabelText('Upload')).toBeNull();
+    expect(screen.getByLabelText('Suchen')).toBeTruthy();
 
     render(<Harness uploadPhase="uploading" />);
     const manualAction = screen.getByRole('button', {

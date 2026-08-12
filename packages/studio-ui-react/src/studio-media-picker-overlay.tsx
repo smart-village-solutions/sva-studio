@@ -167,6 +167,7 @@ export const StudioMediaPickerOverlay = ({
   const isUploadBusy =
     uploadPhase === 'initializing' || uploadPhase === 'uploading' || uploadPhase === 'finalizing';
   const isBusy = isLoadingReviewAsset || isSavingReviewAsset || isUploadBusy;
+  const visibleMode = !canUpload && mode === 'upload' ? 'library' : mode;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? onClose() : undefined)}>
@@ -180,7 +181,7 @@ export const StudioMediaPickerOverlay = ({
           canUpload={canUpload}
           disabled={isBusy}
           labels={labels.modes}
-          mode={mode}
+          mode={visibleMode}
           onAddManual={onAddManual}
           onChangeMode={onChangeMode}
           onClose={onClose}
@@ -195,7 +196,7 @@ export const StudioMediaPickerOverlay = ({
           isMetadataEditable={isMetadataEditable}
           labels={labels}
           metadataDraft={metadataDraft}
-          mode={mode}
+          mode={visibleMode}
           onBackFromReview={onBackFromReview}
           onClose={onClose}
           onConfirmSelection={onConfirmSelection}

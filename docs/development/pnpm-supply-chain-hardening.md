@@ -51,8 +51,8 @@ Aktueller dokumentierter Sonderfall:
 
 - `trustPolicyExclude: semver@6.3.1`
   Diese Ausnahme ist auf genau eine transitive Legacy-Version begrenzt, die derzeit noch über den Nx-/Babel-/TanStack-Plugin-Graph aufgelöst wird. Sie dient nicht als generelle Freigabe für `semver`, sondern nur als enges Workaround für diesen konkreten Knoten. Rückbauziel: Eintrag entfernen, sobald die betroffenen Upstream-Abhängigkeiten keinen `semver`-6.x-Pfad mehr erzwingen.
-- `allowBuilds: nx@22.7.1 || 22.7.4 || 23.0.1`
-  `nx@23.0.1` wurde vor Freigabe gezielt auditiert. Ergebnis: identischer `postinstall`-Pfad zu `22.7.4`, keine aktive Nx-Cloud-Nutzung im Repository und kein bekannter Advisory-Treffer für diese Version.
+- `allowBuilds: nx@22.7.1 || 22.7.4 || 23.0.1 || 23.0.2 || 23.1.1`
+  Die freigegebenen Nx-Versionen wurden vor Aufnahme gezielt auditiert. Für `nx@23.1.1` bleibt der `postinstall`-Einstieg gegenüber `23.0.2` unverändert auf `node -e "try{require('./dist/bin/post-install')}catch(e){}"`; Nx Cloud ist im Repository weiterhin deaktiviert (`neverConnectToCloud: true`). Die Freigabe ist exakt auf die tatsächlich verwendeten Versionen begrenzt.
 
 ## Buildskripte
 

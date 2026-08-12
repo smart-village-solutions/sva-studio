@@ -24,7 +24,7 @@ import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
-import { useSurveyMutationAccess } from './surveys.lifecycle-access.js';
+import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
 
@@ -192,13 +192,7 @@ export const SurveyEditorPage = ({
         }),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
-  const mutationAccess = useSurveyMutationAccess(
-    mode,
-    canUpdate,
-    loadedItem?.status,
-    resourceAccess,
-    methods
-  );
+  const access = useMutationAccess(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;
@@ -211,7 +205,7 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!mutationAccess.canSave}
+          disabled={!access.canSave}
           mode={mode}
           formId={formId}
           pt={pt}
@@ -222,8 +216,8 @@ export const SurveyEditorPage = ({
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
-        canEdit={mutationAccess.canEdit}
-        canSave={mutationAccess.canSave}
+        canEdit={access.canEdit}
+        canSave={access.canSave}
         loadedItem={loadedItem}
         methods={methods}
         mode={mode}

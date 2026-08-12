@@ -271,6 +271,55 @@ describe('useSurveyEditorController', () => {
     expect(navigateToContentList).not.toHaveBeenCalled();
   });
 
+  it('refreshes resource access without resetting local edits when the acting principal changes', async () => {
+    getSurveyMock.mockResolvedValue({
+      id: 'survey-1',
+      title: { de: 'Bestandsumfrage' },
+      status: 'DRAFT',
+      isAnonymous: false,
+      resultVisibility: 'NONE',
+      showResultsInApp: false,
+      targetAreaIds: [],
+      questions: [],
+      questionCount: 0,
+      participationCount: 0,
+      submissionCount: 0,
+      createdAt: '2026-07-01T08:00:00.000Z',
+      updatedAt: '2026-07-01T08:00:00.000Z',
+    });
+
+    let methodsRef: ReturnType<typeof useForm<SurveyDetailFormValues>> | undefined;
+    const { result, rerender } = renderHook(
+      ({ actingPrincipalType }: { actingPrincipalType: 'user' | 'organization' }) => {
+        const methods = useForm<SurveyDetailFormValues>({
+          defaultValues: createEmptyFormValues(),
+        });
+        methodsRef = methods;
+
+        return useSurveyEditorController({
+          mode: 'edit',
+          contentId: 'survey-1',
+          methods,
+          pt,
+          navigateToCreatedDetail: vi.fn(async () => undefined),
+          actingPrincipalType,
+        });
+      },
+      { initialProps: { actingPrincipalType: 'user' as const } }
+    );
+
+    await waitFor(() => expect(result.current.loadedItem?.id).toBe('survey-1'));
+    act(() => {
+      methodsRef?.setValue('title', 'Lokale Änderung', { shouldDirty: true });
+    });
+
+    rerender({ actingPrincipalType: 'organization' });
+
+    await waitFor(() => expect(getSurveyMock).toHaveBeenCalledTimes(2));
+    expect(methodsRef?.getValues('title')).toBe('Lokale Änderung');
+    expect(result.current.loadedItem?.id).toBe('survey-1');
+  });
+
   it('creates surveys, reports success, and navigates back to the content list', async () => {
     const navigateToContentList = vi.fn(async () => undefined);
     createSurveyMock.mockResolvedValue({

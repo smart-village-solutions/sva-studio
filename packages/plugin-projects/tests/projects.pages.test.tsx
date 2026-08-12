@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
   create: vi.fn(),
   delete: vi.fn(),
   get: vi.fn(),
+  getDetail: vi.fn(),
   list: vi.fn(),
   update: vi.fn(),
   listAssets: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock('../src/projects.api.js', () => ({
   createProject: state.create,
   deleteProject: state.delete,
   getProject: state.get,
+  getProjectDetail: state.getDetail,
   listProjects: state.list,
   updateProject: state.update,
 }));
@@ -146,6 +148,11 @@ describe('projects pages', () => {
     vi.clearAllMocks();
     state.params = {};
     state.create.mockResolvedValue(project);
+    state.getDetail.mockImplementation(async (...args: unknown[]) => ({
+      data: await state.get(...args),
+      deviations: [],
+      access: {},
+    }));
     state.listAssets.mockResolvedValue([]);
     state.listReferences.mockResolvedValue([]);
     state.replaceReferences.mockResolvedValue([]);
@@ -467,6 +474,54 @@ describe('projects pages', () => {
     render(<ProjectsEditPage />);
     expect(await screen.findByDisplayValue('Brückenbau')).toBeTruthy();
     expect(screen.queryByText('messages.loadError')).toBeNull();
+  });
+
+  it('reloads scoped resource access when the acting principal changes and fails closed', async () => {
+    state.params = { id: 'project-1' };
+    state.get.mockResolvedValue(project);
+    state.accessSnapshot = {
+      isResolved: true,
+      assignedModules: ['projects'],
+      permissionActions: ['projects.read', 'projects.update'],
+      unscopedPermissionActions: ['projects.read'],
+      roles: [],
+    };
+    const { ProjectsEditPage } = await import('../src/projects.pages.js');
+    const { rerender } = render(
+      <ProjectsEditPage
+        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
+      />
+    );
+
+    expect(await screen.findByDisplayValue('Brückenbau')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'actions.update' })).toBeNull();
+
+    state.getDetail.mockResolvedValueOnce({
+      data: project,
+      deviations: [],
+      access: { 'projects.update': true },
+    });
+    rerender(
+      <ProjectsEditPage
+        principalControl={{ kind: 'fixed', value: 'organization', label: 'Stadt' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'actions.update' })).toHaveLength(2);
+    });
+
+    state.getDetail.mockRejectedValueOnce(new Error('forbidden'));
+    rerender(
+      <ProjectsEditPage
+        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'actions.update' })).toBeNull();
+    });
+    expect(state.getDetail).toHaveBeenNthCalledWith(1, 'project-1', 'user');
+    expect(state.getDetail).toHaveBeenNthCalledWith(2, 'project-1', 'organization');
+    expect(state.getDetail).toHaveBeenNthCalledWith(3, 'project-1', 'user');
   });
 
   it('binds a created project after retrying a partial reference failure', async () => {

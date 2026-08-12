@@ -35,7 +35,10 @@ export const listPoi = async (query: PoiListQuery): Promise<PoiListResult> => po
 
 export const getPoi = async (contentId: string): Promise<PoiContentItem> =>
   poiClient.get(contentId);
-export const getPoiDetail = async (contentId: string) => poiClient.getDetail(contentId);
+export const getPoiDetail = async (
+  contentId: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => poiClient.getDetail(contentId, actingPrincipalType);
 
 export const createPoi = async (
   input: PoiFormInput,

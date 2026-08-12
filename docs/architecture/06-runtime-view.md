@@ -1016,12 +1016,13 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 
 ### Szenario 4c: DataProvider-gebundene Mainserver-Mutation
 
-1. Der V2-Client übermittelt `actingPrincipalType`, Operations-ID und gegebenenfalls die beim Detail-Read geladene Kontextbindung.
-2. Der Host validiert Session, Actor, aktive Organisation, Policy, Credential-Verfügbarkeit und die fachliche fully-qualified Action und erzeugt einen unveränderlichen Principal-Kontext mit Credential-Fingerprint.
-3. Bestehender Inhalt wird mit genau diesem Kontext frisch gelesen; sein DataProvider ist die Autorisierungs- und Preimage-Quelle. Projection oder Cache werden dafür nicht verwendet.
-4. Read-Merge-Write, Provider-Mutation sowie ein Status- oder Visibility-Zweitschritt verwenden denselben Kontext. Hard Delete besitzt bewusst keinen Post-Read.
-5. Im Standardmodus `shadow` wird die exakte Scope-Entscheidung nur als Kandidat persistiert und der credential-sichtbare Vertrag erzwungen. `automatic` erzwingt konfliktfreie Bindungen; `compatibility` stellt den rollbackfähigen Übergangsvertrag wieder her.
-6. Ein Provider-Erfolg wird im Journal finalisiert und danach in Projection, Audit und genau einen host-owned History-Eintrag mit `coverage = studio_mutations` überführt. Lokale Folgefehler führen zu Reconciliation und ändern den Provider-Erfolg nicht.
+1. Der V2-Client lädt den Detaildatensatz mit `actingPrincipalType`. Der Host löst die credential-versionierte DataProvider-Identität auf und liefert für `update` und `delete` eine ressourcengebundene `meta.access`-Action-Map. Kann er den Nachweis nicht belastbar führen, bleibt die Aktion im Editor ausgeblendet, während ein bereits autorisierter Read weiterhin funktioniert.
+2. Für die eigentliche Mutation übermittelt der Client `actingPrincipalType`, Operations-ID und gegebenenfalls die beim Detail-Read geladene Kontextbindung.
+3. Der Host validiert Session, Actor, aktive Organisation, Policy, Credential-Verfügbarkeit und die fachliche fully-qualified Action und erzeugt einen unveränderlichen Principal-Kontext mit Credential-Fingerprint.
+4. Bestehender Inhalt wird mit genau diesem Kontext frisch gelesen; sein DataProvider ist die Autorisierungs- und Preimage-Quelle. Projection oder Cache werden dafür nicht verwendet.
+5. Read-Merge-Write, Provider-Mutation sowie ein Status- oder Visibility-Zweitschritt verwenden denselben Kontext. Hard Delete besitzt bewusst keinen Post-Read.
+6. Im Standardmodus `shadow` wird die exakte Scope-Entscheidung nur als Kandidat persistiert und der credential-sichtbare Vertrag erzwungen. `automatic` erzwingt konfliktfreie Bindungen; `compatibility` stellt den rollbackfähigen Übergangsvertrag wieder her.
+7. Ein Provider-Erfolg wird im Journal finalisiert und danach in Projection, Audit und genau einen host-owned History-Eintrag mit `coverage = studio_mutations` überführt. Lokale Folgefehler führen zu Reconciliation und ändern den Provider-Erfolg nicht.
 
 ### Szenario 17: Global sortierte Tabellenabfrage
 

@@ -1,6 +1,7 @@
 export {
   readMainserverMutationFollowUpContext,
   resolveMainserverMutationActor,
+  resolveMainserverResourceActor,
 } from './mutation-principal-actor.js';
 export { recordCreatedMainserverDataProvider } from './mutation-principal-binding.js';
 export {
@@ -17,6 +18,7 @@ export {
   authorizeMainserverCreateForPrincipal,
   authorizeMainserverExistingContent,
 } from './mutation-principal-authorization.js';
+export { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 export type {
   MainserverCreateBindingOutcome,
   MainserverLifecycleStatus,
@@ -24,3 +26,4 @@ export type {
   MainserverMutationAuthorization,
   MainserverMutationFollowUpContext,
 } from './mutation-principal-types.js';
+export type { MainserverResourceAccess } from './mutation-principal-resource-access.js';

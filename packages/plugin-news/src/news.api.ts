@@ -95,6 +95,11 @@ export const listNewsCategories = async (): Promise<readonly NewsCategoryOption[
 export const getNews = async (contentId: string): Promise<NewsContentItem> =>
   newsClient.get(contentId);
 
+export const getNewsDetail = async (
+  contentId: string,
+  actingPrincipalType: MainserverActingPrincipalType
+) => newsClient.getDetail(contentId, actingPrincipalType);
+
 export const createNews = async (
   input: NewsFormInput,
   actingPrincipalType: MainserverActingPrincipalType
@@ -116,7 +121,7 @@ export const setNewsVisibility = async (
   visible: boolean,
   actingPrincipalType: MainserverActingPrincipalType
 ): Promise<void> => {
-  await newsClient.ensureMutationContext(contentId);
+  await newsClient.ensureMutationContext(contentId, actingPrincipalType);
   await requestMainserverJson<{ readonly status: string }, NewsApiError>({
     url: `/api/v1/mainserver/news/${encodeURIComponent(contentId)}/visibility`,
     errorFactory: (code, message) => new NewsApiError(code, message),

@@ -6,12 +6,15 @@ import { publishSessionAccessSnapshot, registerPluginTranslationResolver } from 
 import {
   createGenericItem,
   deleteGenericItem,
-  getGenericItem,
+  getGenericItemDetail,
   updateGenericItem,
 } from '../src/generic-items.api.js';
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 const navigateMock = vi.fn();
+const detailAccessState = vi.hoisted(() => ({
+  access: {} as Readonly<Record<string, boolean>>,
+}));
 
 vi.mock('../src/generic-items.api.js', () => ({
   listGenericItems: vi.fn(),
@@ -37,6 +40,32 @@ vi.mock('../src/generic-items.api.js', () => ({
     status: 'published',
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-02T00:00:00.000Z',
+  })),
+  getGenericItemDetail: vi.fn(async () => ({
+    data: {
+      id: 'generic-1',
+      title: 'Bestehender Eintrag',
+      genericType: 'faq',
+      payload: { answer: '42' },
+      visible: true,
+      categories: [],
+      contacts: [],
+      webUrls: [],
+      addresses: [],
+      contentBlocks: [],
+      openingHours: [],
+      mediaContents: [],
+      locations: [],
+      dates: [],
+      accessibilityInformations: [],
+      priceInformations: [],
+      contentType: 'generic-items.generic-item',
+      status: 'published',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+    },
+    deviations: [],
+    access: detailAccessState.access,
   })),
   createGenericItem: vi.fn(async () => ({ id: 'created' })),
   updateGenericItem: vi.fn(async () => ({ id: 'generic-1' })),
@@ -75,6 +104,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    detailAccessState.access = {};
     publishSessionAccessSnapshot({
       isResolved: true,
       assignedModules: ['generic-items'],
@@ -401,28 +431,56 @@ describe('GenericItemsDetailPage', () => {
     });
   });
 
+  it('keeps visibility-changing saves disabled without the required lifecycle grant', async () => {
+    detailAccessState.access = { 'generic-items.update': true };
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['generic-items'],
+      permissionActions: ['generic-items.read', 'generic-items.update'],
+      unscopedPermissionActions: ['generic-items.read'],
+      roles: [],
+    });
+
+    render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
+
+    await screen.findByDisplayValue('Bestehender Eintrag');
+    const saveButton = screen.getAllByRole('button', { name: 'Änderungen speichern' }).at(-1)!;
+    expect(saveButton.disabled).toBe(false);
+
+    fireEvent.click(screen.getByLabelText('Sichtbar'));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Änderungen speichern' })).toBeNull()
+    );
+    expect(updateGenericItem).not.toHaveBeenCalled();
+  });
+
   it('adds manual media without invalidating existing media dimensions', async () => {
-    vi.mocked(getGenericItem).mockResolvedValueOnce({
-      id: 'generic-1',
-      title: 'Bestehender Eintrag',
-      genericType: 'faq',
-      payload: { answer: '42' },
-      visible: true,
-      categories: [],
-      contacts: [],
-      webUrls: [],
-      addresses: [],
-      contentBlocks: [],
-      openingHours: [],
-      mediaContents: [{ sourceUrl: { url: 'https://cdn.example.test/existing.jpg' } }],
-      locations: [],
-      dates: [],
-      accessibilityInformations: [],
-      priceInformations: [],
-      contentType: 'generic-items.generic-item',
-      status: 'published',
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-02T00:00:00.000Z',
+    vi.mocked(getGenericItemDetail).mockResolvedValueOnce({
+      data: {
+        id: 'generic-1',
+        title: 'Bestehender Eintrag',
+        genericType: 'faq',
+        payload: { answer: '42' },
+        visible: true,
+        categories: [],
+        contacts: [],
+        webUrls: [],
+        addresses: [],
+        contentBlocks: [],
+        openingHours: [],
+        mediaContents: [{ sourceUrl: { url: 'https://cdn.example.test/existing.jpg' } }],
+        locations: [],
+        dates: [],
+        accessibilityInformations: [],
+        priceInformations: [],
+        contentType: 'generic-items.generic-item',
+        status: 'published',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+      deviations: [],
+      access: {},
     });
 
     render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);

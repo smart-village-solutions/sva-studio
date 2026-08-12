@@ -38,6 +38,10 @@ const client = createMainserverCrudClient<
 export const listCockpitCards = (query: Readonly<{ page: number; pageSize: number }>) =>
   client.list(query);
 export const getCockpitCard = (id: string) => client.get(id);
+export const getCockpitCardDetail = (
+  id: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => client.getDetail(id, actingPrincipalType);
 export const createCockpitCard = (
   input: GenericItemCockpitCardInput,
   actingPrincipalType: MainserverActingPrincipalType

@@ -8,10 +8,12 @@ import {
   getHostMediaAssetFileName,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  hasContentLifecycleAccess,
   omitDeviatedMainserverFields,
   saveContentWithHostMediaReferences,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
@@ -318,6 +320,8 @@ export function EventsDetailPage({
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
   const [deviations, setDeviations] = React.useState<readonly { fieldGroup: string }[]>([]);
   const [loadedItem, setLoadedItem] = React.useState<EventContentItem | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
+  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | undefined>(undefined);
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
@@ -360,10 +364,19 @@ export function EventsDetailPage({
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('events', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('events', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextVisible = methods.watch('settings.visible');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible ?? true, nextVisible),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
@@ -618,13 +631,16 @@ export function EventsDetailPage({
     }
 
     let active = true;
-    void getEventDetail(contentId)
+    const initialPrincipalType = principalControl?.value ?? 'user';
+    void getEventDetail(contentId, initialPrincipalType)
       .then((detail) => {
         if (!active) {
           return;
         }
         const item = detail.data;
         setDeviations(detail.deviations);
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = initialPrincipalType;
         const nextValues = mapEventItemToDetailFormValues(item);
         reset(nextValues);
         setMediaUsages(mainserverContentMediaToUsages(nextValues.content.mediaContents));
@@ -681,6 +697,30 @@ export function EventsDetailPage({
       active = false;
     };
   }, [contentId, mode, reset]);
+
+  React.useEffect(() => {
+    if (
+      mode !== 'edit' ||
+      !contentId ||
+      !loadedItem ||
+      loadedPrincipalTypeRef.current === actingPrincipalType
+    ) {
+      return;
+    }
+    let active = true;
+    void getEventDetail(contentId, actingPrincipalType)
+      .then((detail) => {
+        if (!active) return;
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = actingPrincipalType;
+      })
+      .catch(() => {
+        if (active) setResourceAccess({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [actingPrincipalType, contentId, loadedItem, mode]);
 
   const tabs = createEventsDetailTabDefinitions(pt);
 

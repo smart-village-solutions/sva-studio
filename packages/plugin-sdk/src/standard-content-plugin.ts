@@ -1,6 +1,5 @@
 import { definePluginAdminResources, type AdminResourceDefinition } from './admin-resources.js';
 import { definePluginContentTypes, type ContentTypeDefinition } from './content-types.js';
-import type { SessionAccessSnapshot } from './session-access.js';
 import {
   definePluginActions,
   definePluginAuditEvents,
@@ -26,31 +25,11 @@ export type StandardContentPluginActionIds<TPluginId extends string = string> = 
 export type StandardContentPluginActionOptions = Readonly<{
   legacyAliases?: Partial<Readonly<Record<StandardContentPluginActionName, readonly string[]>>>;
 }>;
-export type StandardContentAccessCapabilities = Readonly<{
-  isResolved: boolean;
-  canRead: boolean;
-  canCreate: boolean;
-  canUpdate: boolean;
-  canDelete: boolean;
-}>;
-
-export const resolveStandardContentAccessCapabilities = (
-  pluginId: string,
-  snapshot: SessionAccessSnapshot
-): StandardContentAccessCapabilities => {
-  const hasAssignedModule = snapshot.assignedModules.includes(pluginId);
-  const actions = new Set(snapshot.permissionActions);
-  const unscopedActions = new Set(snapshot.unscopedPermissionActions ?? []);
-  const allows = (action: string): boolean =>
-    snapshot.isResolved && hasAssignedModule && actions.has(`${pluginId}.${action}`);
-  return {
-    isResolved: snapshot.isResolved,
-    canRead: allows('read'),
-    canCreate: allows('create'),
-    canUpdate: allows('update') && unscopedActions.has(`${pluginId}.update`),
-    canDelete: allows('delete') && unscopedActions.has(`${pluginId}.delete`),
-  };
-};
+export { resolveStandardContentAccessCapabilities } from './standard-content-access.js';
+export type {
+  StandardContentAccessCapabilities,
+  StandardContentResourceAccess,
+} from './standard-content-access.js';
 
 export type StandardContentAdminResourceOptions = Readonly<{
   pluginId: string;

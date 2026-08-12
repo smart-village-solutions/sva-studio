@@ -33,6 +33,8 @@ import {
   finalizeMainserverMutationFailure,
   resolveMainserverVisibilityAction,
   resolveMainserverMutationActor,
+  resolveMainserverResourceAccess,
+  resolveMainserverResourceActor,
   toMainserverAdditionalActions,
   recordCreatedMainserverDataProvider,
   type MainserverMutationActor,
@@ -616,6 +618,7 @@ const handleCollectionRead = async (
 };
 
 const handleItemRead = async (
+  request: Request,
   route: Extract<RouteMatch, { readonly kind: 'item' }>,
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, newsId?: string) => void
@@ -625,9 +628,22 @@ const handleItemRead = async (
     return actor;
   }
 
+  const resourceActor = await resolveMainserverResourceActor({
+    request,
+    ctx,
+    authorizedActor: actor,
+  });
   const data = await getNewsForRoute(route, actor);
+  const access = resourceActor
+    ? await resolveMainserverResourceAccess({
+        actor: resourceActor,
+        actions: ['news.update', 'news.delete', 'content.publish', 'content.changeStatus'],
+        contentType: NEWS_CONTENT_TYPE,
+        item: data,
+      })
+    : {};
   logSuccess('mainserver_news_detail', route.newsId);
-  return json({ data });
+  return json(resourceActor ? { data, meta: { access } } : { data });
 };
 
 const handleCollectionCreate = async (
@@ -1170,7 +1186,10 @@ const dispatchAuthenticated = async (
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      return withMainserverContextBinding(await handleItemRead(route, ctx, logSuccess), ctx);
+      return withMainserverContextBinding(
+        await handleItemRead(request, route, ctx, logSuccess),
+        ctx
+      );
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {

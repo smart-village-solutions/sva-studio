@@ -1,7 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate, useParams } from '@tanstack/react-router';
 import {
+  hasContentLifecycleAccess,
   readSessionAccessSnapshot,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   subscribeSessionAccessSnapshot,
   usePluginTranslation,
@@ -39,16 +41,35 @@ type FaqEditorPageProps = Readonly<{
   principalControl?: MainserverPrincipalControlModel;
 }>;
 
-const useFaqAccessCapabilities = () => {
+const useFaqAccessCapabilities = (resourceAccess: Readonly<Record<string, boolean>>) => {
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
   return React.useMemo(
-    () => resolveStandardContentAccessCapabilities('faq', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('faq', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
+};
+
+const useFaqMutationAccess = (
+  mode: FaqEditorPageProps['mode'],
+  form: ReturnType<typeof useForm<FaqFormValues>>,
+  loadedItem: ReturnType<typeof useFaqEditorLoader>['loadedItem'],
+  resourceAccess: Readonly<Record<string, boolean>>
+) => {
+  const accessCapabilities = useFaqAccessCapabilities(resourceAccess);
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible, form.watch('visible')),
+          resourceAccess
+        );
+  return { canDelete: accessCapabilities.canDelete, canSave };
 };
 
 const useFaqInitialSaveFeedback = ({
@@ -123,8 +144,6 @@ const useFaqSave = ({
 
 const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps) => {
   const pt = usePluginTranslation('faq');
-  const accessCapabilities = useFaqAccessCapabilities();
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
   const navigate = useNavigate();
   const location = useLocation();
   const form = useForm<FaqFormValues>({ defaultValues, resolver: zodResolver(faqFormSchema) });
@@ -135,15 +154,15 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [actingPrincipalType, setActingPrincipalType] = useFaqActingPrincipal(principalControl);
   React.useEffect(() => {
-    if (form.formState.isDirty) {
-      saveFeedback.markDirty();
-    }
+    if (form.formState.isDirty) saveFeedback.markDirty();
   }, [form.formState.isDirty, saveFeedback.markDirty]);
-  const { existingPayload, loadedItem, loadError, loading } = useFaqEditorLoader({
+  const { existingPayload, loadedItem, loadError, loading, resourceAccess } = useFaqEditorLoader({
     contentId,
     form,
     mode,
+    actingPrincipalType,
   });
+  const { canDelete, canSave } = useFaqMutationAccess(mode, form, loadedItem, resourceAccess);
   useFaqInitialSaveFeedback({
     contentId,
     loading,
@@ -168,7 +187,7 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
   return (
     <FaqEditorView
       activeTab={activeTab}
-      canDelete={accessCapabilities.canDelete}
+      canDelete={canDelete}
       canSave={canSave}
       actingPrincipalType={actingPrincipalType}
       contentId={contentId}
@@ -180,7 +199,7 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
       loadedItem={loadedItem}
       mode={mode}
       onDelete={async () => {
-        if (!accessCapabilities.canDelete) return;
+        if (!canDelete) return;
         if (await onDelete()) setDeleteDialogOpen(false);
       }}
       onSubmit={(event) => {

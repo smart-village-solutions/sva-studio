@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   authorize: vi.fn(),
+  authorizeMainserverDataProviderAccess: vi.fn(),
   bindReference: vi.fn(),
   completeIdempotency: vi.fn(),
   listReferences: vi.fn(),
@@ -37,11 +38,7 @@ vi.mock('@sva/auth-runtime/server', () => ({
     authorizationMode: 'exact',
     reason: 'allowed',
   })),
-  authorizeMainserverDataProviderAccess: vi.fn(async () => ({
-    allowed: true,
-    authorizationMode: 'exact',
-    reason: 'allowed',
-  })),
+  authorizeMainserverDataProviderAccess: state.authorizeMainserverDataProviderAccess,
   resolveEffectivePermissions: vi.fn(async () => ({ ok: true, permissions: [] })),
   authorizeContentPrimitiveForUser: state.authorize,
   bindExternalContentReference: state.bindReference,
@@ -184,6 +181,11 @@ const request = (path: string, init?: RequestInit) =>
   });
 
 const prepareDefaults = () => {
+  state.authorizeMainserverDataProviderAccess.mockResolvedValue({
+    allowed: true,
+    authorizationMode: 'exact',
+    reason: 'allowed',
+  });
   state.loadCurrentMainserverDataProviderBinding.mockResolvedValue({
     status: 'verified',
     dataProviderId: 'dp-org-1',
@@ -329,6 +331,40 @@ describe('projects route', () => {
           type: 'organization',
           id: 'mainserver:external-1',
           displayName: 'Gemeinde',
+        },
+      },
+    });
+  });
+
+  it('resolves resource access against the local project id for external references', async () => {
+    prepareDefaults();
+    state.loadReferenceByContentId.mockResolvedValue(reference);
+    state.loadCore.mockResolvedValue(core);
+    state.getGenericItem.mockResolvedValue(genericItem);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request(`/api/v1/mainserver/projects/${contentId}`, {
+        headers: { 'X-SVA-Acting-Principal-Type': 'organization' },
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(6);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
+      expect.objectContaining({ contentId })
+    );
+    expect(state.authorizeMainserverDataProviderAccess).not.toHaveBeenCalledWith(
+      expect.objectContaining({ contentId: genericItem.id })
+    );
+    await expect(response?.json()).resolves.toMatchObject({
+      meta: {
+        access: {
+          'projects.update': true,
+          'projects.delete': true,
+          'content.publish': true,
+          'content.changeStatus': true,
+          'content.archive': true,
+          'content.restore': true,
         },
       },
     });

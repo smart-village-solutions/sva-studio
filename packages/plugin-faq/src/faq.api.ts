@@ -43,6 +43,8 @@ export const listFaqs = (
   }>
 ) => client.list(query);
 export const getFaq = (id: string) => client.get(id);
+export const getFaqDetail = (id: string, actingPrincipalType?: MainserverActingPrincipalType) =>
+  client.getDetail(id, actingPrincipalType);
 export const createFaq = (
   input: GenericItemFaqInput,
   actingPrincipalType: MainserverActingPrincipalType

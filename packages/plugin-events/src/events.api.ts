@@ -43,7 +43,10 @@ export const listEvents = async (query: EventListQuery): Promise<EventListResult
 
 export const getEvent = async (contentId: string): Promise<EventContentItem> =>
   eventsClient.get(contentId);
-export const getEventDetail = async (contentId: string) => eventsClient.getDetail(contentId);
+export const getEventDetail = async (
+  contentId: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => eventsClient.getDetail(contentId, actingPrincipalType);
 
 export const createEvent = async (
   input: EventFormInput,

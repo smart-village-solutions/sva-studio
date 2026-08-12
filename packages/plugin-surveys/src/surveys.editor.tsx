@@ -1,12 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
-import {
-  readSessionAccessSnapshot,
-  resolveStandardContentAccessCapabilities,
-  subscribeSessionAccessSnapshot,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   addStudioCreatedSaveFeedback,
   hasStudioCreatedSaveFeedback,
@@ -29,6 +24,7 @@ import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
+import { useSurveyMutationAccess as useMutationAccess } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
 
@@ -66,7 +62,8 @@ const SurveyPrincipalControl = ({
 const SurveyEditorForm = ({
   actingPrincipalType,
   activeTab,
-  canMutate,
+  canEdit,
+  canSave,
   loadedItem,
   methods,
   mode,
@@ -80,7 +77,8 @@ const SurveyEditorForm = ({
 }: Readonly<{
   actingPrincipalType: MainserverPrincipalType;
   activeTab: SurveyEditorTabId;
-  canMutate: boolean;
+  canEdit: boolean;
+  canSave: boolean;
   loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   methods: UseFormReturn<SurveyDetailFormValues>;
   mode: SurveyEditorMode;
@@ -97,15 +95,15 @@ const SurveyEditorForm = ({
       id={formId}
       onSubmit={(event) => {
         event.preventDefault();
-        if (canMutate) void submit();
+        if (canSave) void submit();
       }}
       className="space-y-5"
     >
       {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-      {!canMutate ? (
+      {!canSave ? (
         <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
       ) : null}
-      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canMutate}>
+      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
         <SurveyPrincipalControl
           actingPrincipalType={actingPrincipalType}
           loadedItem={loadedItem}
@@ -140,18 +138,6 @@ const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlM
   return [value, setValue] as const;
 };
 
-const useSurveyAccessCapabilities = () => {
-  const sessionAccess = React.useSyncExternalStore(
-    subscribeSessionAccessSnapshot,
-    readSessionAccessSnapshot,
-    readSessionAccessSnapshot
-  );
-  return React.useMemo(
-    () => resolveStandardContentAccessCapabilities('surveys', sessionAccess),
-    [sessionAccess]
-  );
-};
-
 const useSurveyForm = () =>
   useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
 
@@ -183,31 +169,30 @@ export const SurveyEditorPage = ({
   const [activeTab, setActiveTab] = React.useState<SurveyEditorTabId>('basis');
   const [actingPrincipalType, setActingPrincipalType] = useSurveyActingPrincipal(principalControl);
   const methods = useSurveyForm();
-  const { isLoading, loadedItem, saveStatus, status, submit } = useSurveyEditorController({
-    mode,
-    contentId,
-    methods,
-    pt,
-    actingPrincipalType,
-    initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
-    onInitialSavedConsumed: () =>
-      navigate({
-        to: '/admin/surveys/$id',
-        params: { id: contentId ?? '' },
-        replace: true,
-        state: (previous) => removeStudioSaveFeedback(previous),
-      }),
-    navigateToCreatedDetail: (id) =>
-      navigate({
-        to: '/admin/surveys/$id',
-        params: { id },
-        state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
-      }),
-  });
+  const { isLoading, loadedItem, resourceAccess, saveStatus, status, submit } =
+    useSurveyEditorController({
+      mode,
+      contentId,
+      methods,
+      pt,
+      actingPrincipalType,
+      initiallySaved: hasStudioCreatedSaveFeedback(location.state, 'surveys', contentId),
+      onInitialSavedConsumed: () =>
+        navigate({
+          to: '/admin/surveys/$id',
+          params: { id: contentId ?? '' },
+          replace: true,
+          state: (previous) => removeStudioSaveFeedback(previous),
+        }),
+      navigateToCreatedDetail: (id) =>
+        navigate({
+          to: '/admin/surveys/$id',
+          params: { id },
+          state: (previous) => addStudioCreatedSaveFeedback(previous, 'surveys', id),
+        }),
+    });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
-  const accessCapabilities = useSurveyAccessCapabilities();
-  const canMutate =
-    mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate;
+  const access = useMutationAccess(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;
@@ -220,7 +205,7 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!canMutate}
+          disabled={!access.canSave}
           mode={mode}
           formId={formId}
           pt={pt}
@@ -231,7 +216,8 @@ export const SurveyEditorPage = ({
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
-        canMutate={canMutate}
+        canEdit={access.canEdit}
+        canSave={access.canSave}
         loadedItem={loadedItem}
         methods={methods}
         mode={mode}

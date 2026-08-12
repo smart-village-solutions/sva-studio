@@ -37,6 +37,10 @@ export const listGenericItems = async (
 
 export const getGenericItem = async (contentId: string): Promise<GenericItemContentItem> =>
   genericItemsClient.get(contentId);
+export const getGenericItemDetail = async (
+  contentId: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => genericItemsClient.getDetail(contentId, actingPrincipalType);
 
 export const createGenericItem = async (
   input: GenericItemFormInput,

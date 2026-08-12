@@ -70,6 +70,16 @@ vi.mock('../src/news.api.js', async () => {
     updatedAt: '2026-01-02T00:00:00.000Z',
     publishedAt: '2026-01-02T00:00:00.000Z',
   }));
+  const getNewsDetailMock = vi.fn(async (contentId: string) => ({
+    data: await getNewsMock(contentId),
+    deviations: [],
+    access: {
+      'news.update': true,
+      'news.delete': true,
+      'content.publish': true,
+      'content.changeStatus': true,
+    },
+  }));
   const createNewsMock = vi.fn(async () => ({
     id: 'news-created',
   }));
@@ -124,6 +134,7 @@ vi.mock('../src/news.api.js', async () => {
       }
     },
     getNews: getNewsMock,
+    getNewsDetail: getNewsDetailMock,
     createNews: createNewsMock,
     listNewsCategories: listNewsCategoriesMock,
     saveNewsEditorItem: saveNewsEditorItemMock,

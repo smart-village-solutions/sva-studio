@@ -15,7 +15,7 @@ import {
   uploadHostMediaFile,
 } from '@sva/plugin-sdk';
 
-import { listNewsCategories } from '../src/news.api.js';
+import { getNewsDetail, listNewsCategories } from '../src/news.api.js';
 import { NewsDetailPage } from '../src/news.detail-page.js';
 
 vi.mock('@sva/studio-ui-react', async () => {
@@ -85,7 +85,7 @@ vi.mock('../src/news.api.js', async () => {
     listNewsCategories: vi.fn(async () => []),
     createNews: vi.fn(),
     deleteNews: vi.fn(),
-    getNews: vi.fn(),
+    getNewsDetail: vi.fn(),
     saveNewsEditorItem: vi.fn(),
     updateNewsPartial: vi.fn(),
   };
@@ -256,6 +256,131 @@ describe('NewsDetailPage', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
+  });
+
+  it('renders save for a scoped update when the detail read grants resource access', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: ['news.read', 'news.update'],
+      unscopedPermissionActions: ['news.read'],
+      assignedModules: ['news'],
+      roles: [],
+    });
+    const detailData = {
+      id: '9082',
+      title: 'Resolver-Personal-2026-08-11',
+      contentType: 'news.article',
+      payload: {},
+      status: 'draft' as const,
+      author: 'Persönlicher Redakteur',
+      createdAt: '2026-08-11T10:00:00.000Z',
+      updatedAt: '2026-08-11T10:00:00.000Z',
+      publishedAt: '2026-08-11T10:00:00.000Z',
+    };
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: {
+        'news.update': true,
+        'news.delete': false,
+        'content.publish': true,
+        'content.changeStatus': true,
+      },
+    });
+
+    const view = render(
+      <NewsDetailPage
+        mode="edit"
+        contentId="9082"
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    expect(screen.queryByRole('button', { name: 'news.actions.delete' })).toBeNull();
+    const titleInput = screen.getByDisplayValue('Resolver-Personal-2026-08-11');
+    fireEvent.change(titleInput, { target: { value: 'Ungespeicherte Meldung' } });
+
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: {
+        'news.update': false,
+        'news.delete': false,
+        'content.publish': false,
+        'content.changeStatus': false,
+      },
+    });
+    view.rerender(
+      <NewsDetailPage
+        mode="edit"
+        contentId="9082"
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    });
+    expect(screen.getByDisplayValue('Ungespeicherte Meldung')).toBeTruthy();
+    expect(getNewsDetail).toHaveBeenNthCalledWith(2, '9082', 'organization');
+
+    const principalSelect = screen.getByRole('combobox', { name: 'Handeln als' });
+    vi.mocked(getNewsDetail).mockRejectedValueOnce(new Error('forbidden'));
+    fireEvent.change(principalSelect, { target: { value: 'user' } });
+    await waitFor(() => {
+      expect(getNewsDetail).toHaveBeenNthCalledWith(3, '9082', 'user');
+    });
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+  });
+
+  it('blocks a visibility-changing save without the required lifecycle grant', async () => {
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: {
+        id: '9082',
+        title: 'Entwurf',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Persönlicher Redakteur',
+        createdAt: '2026-08-11T10:00:00.000Z',
+        updatedAt: '2026-08-11T10:00:00.000Z',
+        visible: false,
+      },
+      deviations: [],
+      access: {
+        'news.update': true,
+        'news.delete': false,
+        'content.publish': false,
+        'content.changeStatus': true,
+      },
+    });
+
+    render(<NewsDetailPage mode="edit" contentId="9082" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), {
+      target: { value: 'settings' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
   it('uses the upload response url when the refreshed news asset still has no preview url', async () => {

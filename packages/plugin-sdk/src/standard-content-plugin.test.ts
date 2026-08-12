@@ -8,6 +8,9 @@ import {
   createStandardContentPluginPermissions,
   createStandardContentPluginSystemRoles,
   createStandardContentPluginActionIds,
+  hasContentLifecycleAccess,
+  resolveContentLifecycleAction,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
 } from './index.js';
 
@@ -62,6 +65,41 @@ describe('standard content plugin helpers', () => {
       canUpdate: false,
       canDelete: false,
     });
+  });
+
+  it('uses server-authoritative resource access for scoped detail mutations', () => {
+    expect(
+      resolveStandardContentAccessCapabilities(
+        'news',
+        {
+          isResolved: true,
+          assignedModules: ['news'],
+          permissionActions: ['news.read', 'news.update', 'news.delete'],
+          unscopedPermissionActions: ['news.read'],
+          roles: [],
+        },
+        {
+          'news.update': true,
+          'news.delete': false,
+        }
+      )
+    ).toEqual({
+      isResolved: true,
+      canRead: true,
+      canCreate: false,
+      canUpdate: true,
+      canDelete: false,
+    });
+  });
+
+  it('requires the matching lifecycle grant only when lifecycle state changes', () => {
+    expect(resolveContentLifecycleAction('draft', 'published')).toBe('content.publish');
+    expect(resolveContentLifecycleAction('published', 'archived')).toBe('content.archive');
+    expect(resolveContentLifecycleAction('archived', 'draft')).toBe('content.restore');
+    expect(resolveContentVisibilityAction(true, false)).toBe('content.changeStatus');
+    expect(hasContentLifecycleAccess(undefined, {})).toBe(true);
+    expect(hasContentLifecycleAccess('content.publish', { 'content.publish': true })).toBe(true);
+    expect(hasContentLifecycleAccess('content.publish', { 'content.publish': false })).toBe(false);
   });
 
   it('builds canonical action ids, actions, permissions and module iam contracts', () => {

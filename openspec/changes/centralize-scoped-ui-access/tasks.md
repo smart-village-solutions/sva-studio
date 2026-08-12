@@ -60,7 +60,8 @@
 - [x] 7.1 Alle von den migrierten UI-Flächen aufgerufenen Mutationsendpunkte gegen Action, Instanz, Organisation und gegebenenfalls Ressourcen-/Ownership-Scope inventarisieren und den jeweils fachlich führenden Read-/Authorize-Vertrag dokumentieren.
 - [x] 7.2 Fehlende serverseitige Authorize- oder Ressourcen-Capability-Verträge als Migrationsblocker dem verantwortlichen Fach-Change zuordnen; Mainserver-Fälle mit `use-mainserver-data-provider-as-content-author` sequenzieren und nicht durch eine generische Parallel-API ersetzen.
 - [x] 7.3 Bereits serverautoritativ gelieferte `own`-, `organization`-, Geo- oder ressourcenbezogene Capabilities über den gemeinsamen UI-Decision-Vertrag konsumieren; bei fehlender Capability die konkrete Mutation fail-closed ausblenden.
-- [x] 7.4 Sicherstellen, dass globale Action-Mitgliedschaft, Listenprojektion oder Cache-Treffer keine datensatzbezogene Mutation freigibt und ein erwartbarer Ressourcen-`403` ohne Stale-Signal keine globale Refetch-Schleife auslöst.
+- [x] 7.4 Mainserver-Detailreads für alle Standard-Content-Plugins um principal- und DataProvider-gebundene `meta.access`-Capabilities ergänzen und zentral mit dem Effective-Access-Snapshot zusammenführen.
+- [x] 7.5 Sicherstellen, dass globale Action-Mitgliedschaft, Listenprojektion oder Cache-Treffer keine datensatzbezogene Mutation freigibt und ein erwartbarer Ressourcen-`403` ohne Stale-Signal keine globale Refetch-Schleife auslöst.
 
 ## 8. Verifikation, Dokumentation und Abschluss
 

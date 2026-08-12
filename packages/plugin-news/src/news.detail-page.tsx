@@ -10,7 +10,9 @@ import {
   listHostMediaReferencesByTarget,
   alignHostMediaReferencesByOrder,
   readSessionAccessSnapshot,
+  hasContentLifecycleAccess,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
@@ -52,7 +54,7 @@ import {
 import {
   createNews,
   deleteNews,
-  getNews,
+  getNewsDetail,
   listNewsCategories,
   NewsApiError,
   saveNewsEditorItem,
@@ -392,6 +394,7 @@ export const NewsDetailPage = ({
   const [statusMessage, setStatusMessage] = React.useState<StatusMessage | null>(null);
   const [deletePending, setDeletePending] = React.useState(false);
   const [loadedItem, setLoadedItem] = React.useState<NewsContentItem | null>(null);
+  const [resourceAccess, setResourceAccess] = React.useState<Readonly<Record<string, boolean>>>({});
   const [scheduledPublicationInput, setScheduledPublicationInput] = React.useState('');
   const [invalidScheduledPublicationInput, setInvalidScheduledPublicationInput] =
     React.useState(false);
@@ -405,16 +408,29 @@ export const NewsDetailPage = ({
     null
   );
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const methods = useForm<NewsDetailFormValues>({
+    defaultValues: createDefaultNewsDetailFormValues(),
+    resolver: newsDetailFormResolver,
+  });
+  const publicationMode = methods.watch('publicationMode');
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
     readSessionAccessSnapshot
   );
   const accessCapabilities = React.useMemo(
-    () => resolveStandardContentAccessCapabilities('news', sessionAccess),
-    [sessionAccess]
+    () => resolveStandardContentAccessCapabilities('news', sessionAccess, resourceAccess),
+    [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible ?? true, publicationMode !== 'draft'),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
@@ -433,11 +449,8 @@ export const NewsDetailPage = ({
   const [actingPrincipalType, setActingPrincipalType] = React.useState<MainserverPrincipalType>(
     principalControl?.value ?? 'user'
   );
+  const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
 
-  const methods = useForm<NewsDetailFormValues>({
-    defaultValues: createDefaultNewsDetailFormValues(),
-    resolver: newsDetailFormResolver,
-  });
   const { formState, reset } = methods;
 
   React.useEffect(() => {
@@ -692,11 +705,13 @@ export const NewsDetailPage = ({
     const requestId = ++editLoadRequestIdRef.current;
     let active = true;
 
-    void getNews(contentId)
-      .then(async (item) => {
+    const loadPrincipalType = principalControl?.value ?? 'user';
+    void getNewsDetail(contentId, loadPrincipalType)
+      .then(async (detail) => {
         if (!active || requestId !== editLoadRequestIdRef.current) {
           return;
         }
+        const item = detail.data;
 
         const references = await listHostMediaReferencesByTarget({
           fetch: globalThis.fetch.bind(globalThis),
@@ -722,6 +737,8 @@ export const NewsDetailPage = ({
         setScheduledPublicationInput(toDatetimeLocalValue(nextValues.scheduledPublicationAt));
         setInvalidScheduledPublicationInput(false);
         setLoadedItem(item);
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = loadPrincipalType;
       })
       .catch((error: unknown) => {
         if (active && requestId === editLoadRequestIdRef.current) {
@@ -741,6 +758,30 @@ export const NewsDetailPage = ({
       active = false;
     };
   }, [contentId, mode, pt, reset]);
+
+  React.useEffect(() => {
+    if (
+      mode !== 'edit' ||
+      !contentId ||
+      !loadedItem ||
+      loadedPrincipalTypeRef.current === actingPrincipalType
+    ) {
+      return;
+    }
+    let active = true;
+    void getNewsDetail(contentId, actingPrincipalType)
+      .then((detail) => {
+        if (!active) return;
+        setResourceAccess(detail.access);
+        loadedPrincipalTypeRef.current = actingPrincipalType;
+      })
+      .catch(() => {
+        if (active) setResourceAccess({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [actingPrincipalType, contentId, loadedItem, mode]);
 
   const navigateToCreatedDetail = React.useCallback(
     (createdContentId: string) =>

@@ -440,7 +440,7 @@ describe('PoiListPage', () => {
     render(<PoiEditPage />);
 
     await waitFor(() => {
-      expect(getPoiDetail).toHaveBeenCalledWith('poi-1');
+      expect(getPoiDetail).toHaveBeenCalledWith('poi-1', 'user');
       expect(screen.getByDisplayValue('Stadtbibliothek')).toBeTruthy();
     });
 
@@ -474,6 +474,82 @@ describe('PoiListPage', () => {
       );
       expect(screen.getAllByRole('button', { name: 'poi.actions.saved' })).toHaveLength(2);
     });
+  });
+
+  it('reloads scoped poi access for the selected acting principal and fails closed', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['poi'],
+      permissionActions: ['poi.read', 'poi.update'],
+      unscopedPermissionActions: ['poi.read'],
+      roles: [],
+    });
+    const detailData = {
+      id: 'poi-1',
+      name: 'Stadtbibliothek',
+      description: 'Öffentliche Bibliothek',
+      mobileDescription: 'Bücher und mehr',
+      active: true,
+      categoryName: 'Bildung',
+      addresses: [{ street: 'Markt 2', city: 'Musterhausen' }],
+      webUrls: [{ url: 'https://example.com/poi' }],
+      openingHours: [{ weekday: 'Montag', timeFrom: '09:00' }],
+      mediaContents: [],
+      payload: { source: 'legacy' },
+    };
+    vi.mocked(getPoiDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: { 'poi.update': true },
+    } as never);
+    const view = render(
+      <PoiEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    const nameInput = screen.getByDisplayValue('Stadtbibliothek');
+    fireEvent.change(nameInput, { target: { value: 'Ungespeicherter Ort' } });
+    vi.mocked(getPoiDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: { 'poi.update': false },
+    } as never);
+    view.rerender(
+      <PoiEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    });
+    expect(screen.getByDisplayValue('Ungespeicherter Ort')).toBeTruthy();
+    expect(getPoiDetail).toHaveBeenNthCalledWith(2, 'poi-1', 'organization');
+
+    const principalSelect = screen.getByLabelText('poi.principal.actAs');
+    vi.mocked(getPoiDetail).mockRejectedValueOnce(new Error('forbidden'));
+    fireEvent.change(principalSelect, { target: { value: 'user' } });
+    await waitFor(() => {
+      expect(getPoiDetail).toHaveBeenNthCalledWith(3, 'poi-1', 'user');
+    });
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
   it('clears a previous success status before a validation-blocked submit', async () => {

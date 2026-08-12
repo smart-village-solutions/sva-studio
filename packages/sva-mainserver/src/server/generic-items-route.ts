@@ -34,6 +34,8 @@ import {
   runMainserverMutationWithFailureFinalization,
   resolveMainserverVisibilityAction,
   resolveMainserverMutationActor,
+  resolveMainserverResourceAccess,
+  resolveMainserverResourceActor,
   toMainserverAdditionalActions,
   type MainserverMutationActor,
 } from './mutation-principal.js';
@@ -251,6 +253,7 @@ const handleListRequest = async (
 };
 
 const handleDetailRequest = async (
+  request: Request,
   ctx: AuthenticatedRequestContext,
   contentKind: ContentKind,
   itemId: string,
@@ -266,14 +269,32 @@ const handleDetailRequest = async (
     return actor;
   }
 
+  const resourceActor = await resolveMainserverResourceActor({
+    request,
+    ctx,
+    authorizedActor: actor,
+  });
   const data = await getSvaMainserverGenericItem({ ...actor, genericItemId: itemId });
   if (contentKind === 'faq' && data.genericType !== 'FAQ') {
     return errorJson(404, 'not_found', 'FAQ wurde nicht gefunden.');
   }
   if (contentKind === 'cockpit-cards' && data.genericType !== 'COCKPIT_CARD')
     return errorJson(404, 'not_found', 'Kachel wurde nicht gefunden.');
+  const access = resourceActor
+    ? await resolveMainserverResourceAccess({
+        actor: resourceActor,
+        actions: [
+          pluginActionFor(contentKind, 'update'),
+          pluginActionFor(contentKind, 'delete'),
+          'content.publish',
+          'content.changeStatus',
+        ],
+        contentType: contentTypeFor(contentKind),
+        item: data,
+      })
+    : {};
   logSuccess('mainserver_generic-items_detail', itemId);
-  return json({ data });
+  return json(resourceActor ? { data, meta: { access } } : { data });
 };
 
 const handleCreateRequest = async (
@@ -504,7 +525,7 @@ const dispatchAuthenticated = async (
 
     if (route.kind === 'item' && request.method === 'GET') {
       return withMainserverContextBinding(
-        await handleDetailRequest(ctx, route.contentKind, route.itemId, logSuccess),
+        await handleDetailRequest(request, ctx, route.contentKind, route.itemId, logSuccess),
         ctx
       );
     }

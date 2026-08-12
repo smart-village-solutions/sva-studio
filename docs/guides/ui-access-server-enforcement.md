@@ -30,11 +30,13 @@ Ein `EffectivePermission` mit `own`, `organization`, Geo-, `resourceId`- oder so
 
 Listenprojektionen und globale Action-Mitgliedschaft sind ebenfalls keine Ressourcen-Capability. Bereits serverseitig gelieferte Zeilen- und Detailzugriffe wie `access.canUpdate` werden für die konkrete Zeile konsumiert. Der Server autorisiert die spätere Mutation trotzdem erneut.
 
-## Mainserver-Sequenzierung
+## Mainserver-Ressourcen-Capabilities
 
-Für News, Events, POI und Generic Items bleibt `use-mainserver-data-provider-as-content-author` fachlich führend. DataProvider-Bindung, `MutationPrincipalContext`, Same-Credential-Pre-Read und Mainserver-Autorisierung dürfen nicht durch eine generische Studio-Capability ersetzt werden.
+Für News, Events, POI, Generic Items, FAQ, Cockpit-Karten, Projekte und Umfragen bleibt `use-mainserver-data-provider-as-content-author` fachlich führend. DataProvider-Bindung, `MutationPrincipalContext`, Same-Credential-Pre-Read und Mainserver-Autorisierung werden nicht durch eine generische Studio-Capability ersetzt.
 
-Der Endpoint `GET /api/v1/mainserver/mutation-capabilities` liefert nur die derzeit technisch verfügbaren Mutationstypen. Er beweist keine Ownership einer konkreten Ressource. Wo der Mainserver-Detailvertrag noch keine belastbare ressourcengebundene Capability liefert, ist die scope-beschränkte Mutation ein Blocker des genannten Fach-Changes und bleibt im Studio fail-closed.
+Der jeweilige Detail-GET erhält den ausgewählten Mutationsprincipal über den versionierten Mainserver-Headervertrag. Der Server ermittelt dessen DataProvider-Identität, wertet die effektiven `*.update`- und `*.delete`-Permissions gegen den DataProvider des geladenen Datensatzes aus und liefert das Ergebnis unter `meta.access` als Action-Map zurück. Der Editor führt diese Ressourcenaussage mit dem zentralen Effective-Access-Snapshot zusammen. Bei fehlendem Header, nicht auflösbarer Identität oder nicht belastbarer DataProvider-Bindung bleibt die Action fail-closed ausgeblendet; der normale Lesezugriff auf den Datensatz bleibt davon unberührt.
+
+`GET /api/v1/mainserver/mutation-capabilities` liefert weiterhin nur die technisch verfügbaren Mutationstypen und beweist keine Ownership einer konkreten Ressource. Eine sichtbare Aktion ist ebenfalls keine Autorisierung der Mutation: PATCH, DELETE und fachliche Unteraktionen laden den Datensatz erneut und prüfen Permission, Principal und DataProvider serverseitig.
 
 ## Fehler- und Invalidierungsverhalten
 

@@ -228,6 +228,10 @@ export const listSurveys = async (query: SurveyListQuery): Promise<SurveyListRes
 
 export const getSurvey = async (contentId: string): Promise<SurveyContentItem> =>
   surveysClient.get(contentId);
+export const getSurveyDetail = async (
+  contentId: string,
+  actingPrincipalType?: MainserverActingPrincipalType
+) => surveysClient.getDetail(contentId, actingPrincipalType);
 
 export const createSurvey = async (
   input: SurveyMutationInput,

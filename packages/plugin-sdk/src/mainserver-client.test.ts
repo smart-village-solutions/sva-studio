@@ -90,6 +90,7 @@ describe('mainserver-client', () => {
           JSON.stringify({
             data: { id: 'news-1', title: 'Erste' },
             meta: {
+              access: { 'news.update': true },
               deviations: [
                 {
                   fieldPath: 'contentBlocks[]',
@@ -149,11 +150,21 @@ describe('mainserver-client', () => {
       { id: 'news-1', title: 'Erste' },
     ]);
     await expect(client.get('news-1')).resolves.toEqual({ id: 'news-1', title: 'Erste' });
-    await expect(client.getDetail('news-1')).resolves.toEqual({
+    await expect(client.getDetail('news-1', 'organization')).resolves.toEqual({
       data: { id: 'news-1', title: 'Erste' },
+      access: { 'news.update': true },
       deviations: [
         expect.objectContaining({ fieldPath: 'contentBlocks[]', fieldGroup: 'contentBlocks' }),
       ],
+    });
+    const detailRequest = fetchMock.mock.calls.find(
+      ([input, init]) =>
+        String(input).endsWith('/list/news-1') &&
+        readHeaders(init?.headers)['x-sva-acting-principal-type'] === 'organization'
+    );
+    expect(readHeaders(detailRequest?.[1]?.headers)).toMatchObject({
+      'x-sva-acting-principal-type': 'organization',
+      'x-sva-mainserver-contract-version': '2',
     });
     await expect(client.create({ title: 'Zweite' }, 'user')).resolves.toEqual({
       id: 'news-2',
@@ -291,7 +302,7 @@ describe('mainserver-client', () => {
       mapListResponse: (response) => response.data,
     });
 
-    await client.ensureMutationContext('news/1');
+    await client.ensureMutationContext('news/1', 'user');
 
     expect(fetchMock).toHaveBeenCalledWith('/items/news%2F1', expect.any(Object));
     expect(readHeaders(client.mutationHeaders('news/1', 'user'))).toMatchObject({

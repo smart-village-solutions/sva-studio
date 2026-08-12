@@ -11,6 +11,7 @@ export type MainserverDataDeviation = Readonly<{
 export type MainserverDetailResult<TItem> = Readonly<{
   data: TItem;
   deviations: readonly MainserverDataDeviation[];
+  access: Readonly<Record<string, boolean>>;
 }>;
 
 export const omitDeviatedMainserverFields = <TInput extends Readonly<Record<string, unknown>>>(

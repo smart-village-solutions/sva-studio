@@ -50,6 +50,8 @@ import {
   runMainserverMutationWithFailureFinalization,
   resolveMainserverVisibilityAction,
   resolveMainserverMutationActor,
+  resolveMainserverResourceAccess,
+  resolveMainserverResourceActor,
   toMainserverAdditionalActions,
   type MainserverMutationActor,
 } from './mutation-principal.js';
@@ -270,6 +272,7 @@ const handleCollectionRead = async (
 };
 
 const handleItemRead = async (
+  request: Request,
   route: Extract<RouteMatch, { readonly kind: 'item' }>,
   ctx: AuthenticatedRequestContext,
   logSuccess: (operation: string, contentId?: string) => void
@@ -284,7 +287,25 @@ const handleItemRead = async (
     return actor;
   }
 
+  const resourceActor = await resolveMainserverResourceActor({
+    request,
+    ctx,
+    authorizedActor: actor,
+  });
   const detail = await getSvaMainserverPoiDetail({ ...actor, poiId: route.itemId });
+  const access = resourceActor
+    ? await resolveMainserverResourceAccess({
+        actor: resourceActor,
+        actions: [
+          `${route.contentKind}.update`,
+          `${route.contentKind}.delete`,
+          'content.publish',
+          'content.changeStatus',
+        ],
+        contentType: POI_CONTENT_TYPE,
+        item: detail.data,
+      })
+    : {};
   for (const deviation of detail.deviations) {
     logger.warn('Mainserver detail response degraded', {
       operation: 'mainserver_poi_detail',
@@ -298,7 +319,10 @@ const handleItemRead = async (
     });
   }
   logSuccess(`mainserver_${route.contentKind}_detail`, route.itemId);
-  return json({ data: detail.data, meta: { deviations: detail.deviations } });
+  return json({
+    data: detail.data,
+    meta: { deviations: detail.deviations, ...(resourceActor ? { access } : {}) },
+  });
 };
 
 const authorizeMutation = async (
@@ -522,7 +546,10 @@ const dispatchAuthenticated = async (
     }
 
     if (route.kind === 'item' && request.method === 'GET') {
-      return withMainserverContextBinding(await handleItemRead(route, ctx, logSuccess), ctx);
+      return withMainserverContextBinding(
+        await handleItemRead(request, route, ctx, logSuccess),
+        ctx
+      );
     }
 
     if (route.kind === 'collection' && request.method === 'POST') {

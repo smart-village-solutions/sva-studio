@@ -9,6 +9,7 @@ import { createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
 import type { SvaMainserverConnectionInput } from '../types.js';
 import {
+  MAINSERVER_ACTING_PRINCIPAL_HEADER,
   createMainserverContextBinding,
   MAINSERVER_CONTRACT_VERSION,
   MAINSERVER_CONTRACT_VERSION_HEADER,
@@ -130,43 +131,12 @@ export const resolveMainserverMutationActor = async (input: {
   const actingPrincipalType = readActingPrincipalType(input.request);
   if (isResponse(actingPrincipalType)) return actingPrincipalType;
 
-  const actorInfo = await resolveActorInfo(input.request, input.ctx, {
-    requireActorMembership: true,
-  });
-  if ('error' in actorInfo) return actorInfo.error;
-  const actorAccountId = actorInfo.actor.actorAccountId;
-  if (!actorAccountId) {
-    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
-  }
-  if (!hasCurrentContextBinding(input.request, input.authorizedActor)) {
-    return errorJson(
-      409,
-      'stale_mainserver_context',
-      'Der Organisationskontext des Editors ist nicht mehr aktuell.'
-    );
-  }
-
-  const resolved = await resolveMutationPrincipalContext({
-    instanceId: input.authorizedActor.instanceId,
-    actorAccountId,
-    keycloakSubject: input.authorizedActor.keycloakSubject,
-    activeOrganizationId: input.authorizedActor.activeOrganizationId,
+  const actor = await resolveMainserverActor({
+    ...input,
     actingPrincipalType,
+    requireCurrentContextBinding: true,
   });
-  if (!resolved.ok) return principalResolutionError(resolved.status);
-
-  const actor: MainserverMutationActor = {
-    instanceId: resolved.context.instanceId,
-    keycloakSubject: resolved.context.keycloakSubject,
-    ...(resolved.context.activeOrganizationId
-      ? { activeOrganizationId: resolved.context.activeOrganizationId }
-      : {}),
-    actingPrincipalType: resolved.context.actingPrincipalType,
-    credentialFingerprint: resolved.context.credentialFingerprint,
-    actorAccountId,
-    operationExternalId: readMainserverOperationId(input.request),
-    mutationPrincipalContext: resolved.context,
-  };
+  if (isResponse(actor)) return actor;
   const identityError = await ensureStableDataProviderIdentity(actor);
   if (identityError) return identityError;
 
@@ -182,4 +152,66 @@ export const resolveMainserverMutationActor = async (input: {
     operationExternalId: actor.operationExternalId,
   });
   return actor;
+};
+
+const resolveMainserverActor = async (input: {
+  readonly request: Request;
+  readonly ctx: AuthenticatedRequestContext;
+  readonly authorizedActor: SvaMainserverConnectionInput;
+  readonly actingPrincipalType?: 'organization' | 'user';
+  readonly requireCurrentContextBinding?: boolean;
+}): Promise<MainserverMutationActor | Response> => {
+  const actorInfo = await resolveActorInfo(input.request, input.ctx, {
+    requireActorMembership: true,
+  });
+  if ('error' in actorInfo) return actorInfo.error;
+  const actorAccountId = actorInfo.actor.actorAccountId;
+  if (!actorAccountId) {
+    return errorJson(403, 'forbidden', 'Keine Berechtigung für diese Inhaltsoperation.');
+  }
+  if (
+    input.requireCurrentContextBinding === true &&
+    !hasCurrentContextBinding(input.request, input.authorizedActor)
+  ) {
+    return errorJson(
+      409,
+      'stale_mainserver_context',
+      'Der Organisationskontext des Editors ist nicht mehr aktuell.'
+    );
+  }
+  const resolved = await resolveMutationPrincipalContext({
+    instanceId: input.authorizedActor.instanceId,
+    actorAccountId,
+    keycloakSubject: input.authorizedActor.keycloakSubject,
+    activeOrganizationId: input.authorizedActor.activeOrganizationId,
+    actingPrincipalType: input.actingPrincipalType,
+  });
+  if (!resolved.ok) return principalResolutionError(resolved.status);
+
+  const actor: MainserverMutationActor = {
+    instanceId: resolved.context.instanceId,
+    keycloakSubject: resolved.context.keycloakSubject,
+    ...(resolved.context.activeOrganizationId
+      ? { activeOrganizationId: resolved.context.activeOrganizationId }
+      : {}),
+    actingPrincipalType: resolved.context.actingPrincipalType,
+    credentialFingerprint: resolved.context.credentialFingerprint,
+    actorAccountId,
+    operationExternalId: readMainserverOperationId(input.request),
+    mutationPrincipalContext: resolved.context,
+  };
+  return actor;
+};
+
+export const resolveMainserverResourceActor = async (input: {
+  readonly request: Request;
+  readonly ctx: AuthenticatedRequestContext;
+  readonly authorizedActor: SvaMainserverConnectionInput;
+}): Promise<MainserverMutationActor | undefined> => {
+  if (!input.request.headers.has(MAINSERVER_ACTING_PRINCIPAL_HEADER)) return undefined;
+  const actingPrincipalType = readActingPrincipalType(input.request);
+  if (isResponse(actingPrincipalType)) return undefined;
+  const actor = await resolveMainserverActor({ ...input, actingPrincipalType });
+  if (isResponse(actor)) return undefined;
+  return (await ensureStableDataProviderIdentity(actor)) ? undefined : actor;
 };

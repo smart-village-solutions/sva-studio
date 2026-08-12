@@ -8,6 +8,10 @@ import { withMainserverContextBinding } from './content-route-context.js';
 import { errorJson, json } from './content-route-core.js';
 import { parseMainserverListQuery } from './list-pagination.js';
 import {
+  resolveMainserverResourceAccess,
+  resolveMainserverResourceActor,
+} from './mutation-principal.js';
+import {
   getSvaMainserverSurvey,
   getSvaMainserverSurveyResults,
   listSvaMainserverSurveys,
@@ -45,12 +49,33 @@ const handleList = async (
 };
 
 const handleGetItem = async (
+  request: Request,
   ctx: AuthenticatedRequestContext,
   surveyId: string
 ): Promise<Response> => {
   const actor = await authorizeSurveyOrResponse(ctx, 'read', surveyId);
   if (actor instanceof Response) return actor;
   const survey = await getSvaMainserverSurvey({ ...actor, surveyId });
+  const resourceActor = await resolveMainserverResourceActor({
+    request,
+    ctx,
+    authorizedActor: actor,
+  });
+  const access = resourceActor
+    ? await resolveMainserverResourceAccess({
+        actor: resourceActor,
+        actions: [
+          'surveys.update',
+          'surveys.delete',
+          'content.publish',
+          'content.changeStatus',
+          'content.archive',
+          'content.restore',
+        ],
+        contentType: SURVEYS_CONTENT_TYPE,
+        item: survey,
+      })
+    : {};
   const [moderationAccess, exportAccess] = await Promise.all([
     authorizeContentPrimitiveForUser({
       ctx,
@@ -68,9 +93,12 @@ const handleGetItem = async (
       !result.ok && !isSurveyAuthorizationDenial(result)
   );
   if (operationalFailure) return toSurveyAuthorizationFailureResponse(operationalFailure);
-  if (!moderationAccess.ok && !exportAccess.ok) return json({ data: survey });
+  if (!moderationAccess.ok && !exportAccess.ok) {
+    return json(resourceActor ? { data: survey, meta: { access } } : { data: survey });
+  }
   const results = await getSvaMainserverSurveyResults({ ...actor, surveyId });
-  return json({ data: { ...survey, results } });
+  const data = { ...survey, results };
+  return json(resourceActor ? { data, meta: { access } } : { data });
 };
 
 const unsupportedMethodResponse = () =>
@@ -94,7 +122,10 @@ const handleItemRequest = async (
   withAuthenticatedUser(request, async (ctx) => {
     try {
       if (request.method === 'GET') {
-        return withMainserverContextBinding(await handleGetItem(ctx, routeMatch.itemId), ctx);
+        return withMainserverContextBinding(
+          await handleGetItem(request, ctx, routeMatch.itemId),
+          ctx
+        );
       }
       if (request.method === 'PATCH') return handleUpdateSurvey(request, ctx, routeMatch.itemId);
       if (request.method === 'DELETE') return handleDeleteSurvey(request, ctx, routeMatch.itemId);

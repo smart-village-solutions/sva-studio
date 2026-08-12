@@ -374,7 +374,7 @@ describe('EventsListPage', () => {
     render(<EventsEditPage />);
 
     await waitFor(() => {
-      expect(getEventDetail).toHaveBeenCalledWith('event-1');
+      expect(getEventDetail).toHaveBeenCalledWith('event-1', 'user');
       expect(screen.getByDisplayValue('Bestehendes Event')).toBeTruthy();
     });
 
@@ -397,5 +397,77 @@ describe('EventsListPage', () => {
       );
       expect(screen.getAllByRole('button', { name: 'events.actions.saved' })).toHaveLength(2);
     });
+  });
+
+  it('reloads scoped event access for the selected acting principal and fails closed', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['events'],
+      permissionActions: ['events.read', 'events.update'],
+      unscopedPermissionActions: ['events.read'],
+      roles: [],
+    });
+    const detailData = {
+      id: 'event-1',
+      title: 'Bestehendes Event',
+      description: 'Beschreibung',
+      categoryName: 'Kultur',
+      dates: [{ dateStart: '2026-04-14T09:30:00.000Z' }],
+      addresses: [{ street: 'Markt 1', city: 'Musterhausen' }],
+      urls: [{ url: 'https://example.com/events' }],
+    };
+    vi.mocked(getEventDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: { 'events.update': true },
+    } as never);
+    const view = render(
+      <EventsEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    const titleInput = screen.getByDisplayValue('Bestehendes Event');
+    fireEvent.change(titleInput, { target: { value: 'Ungespeichertes Event' } });
+    vi.mocked(getEventDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: { 'events.update': false },
+    } as never);
+    view.rerender(
+      <EventsEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    });
+    expect(screen.getByDisplayValue('Ungespeichertes Event')).toBeTruthy();
+    expect(getEventDetail).toHaveBeenNthCalledWith(2, 'event-1', 'organization');
+
+    const principalSelect = screen.getByLabelText('events.principal.actAs');
+    vi.mocked(getEventDetail).mockRejectedValueOnce(new Error('forbidden'));
+    fireEvent.change(principalSelect, { target: { value: 'user' } });
+    await waitFor(() => {
+      expect(getEventDetail).toHaveBeenNthCalledWith(3, 'event-1', 'user');
+    });
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 });

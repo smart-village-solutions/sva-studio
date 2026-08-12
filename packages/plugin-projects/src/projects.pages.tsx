@@ -819,6 +819,7 @@ function ProjectEditor({
     >
       <StudioMediaPickerOverlay
         assets={mediaAssets.map(toPickerSummary)}
+        canUpload={canUploadMedia}
         open={mediaPicker.open}
         mode={mediaPicker.mode}
         labels={pickerLabels(pt)}

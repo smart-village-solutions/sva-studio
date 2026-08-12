@@ -661,6 +661,7 @@ export function GenericItemsDetailPage({
       >
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toGenericItemsMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>

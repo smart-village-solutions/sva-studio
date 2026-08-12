@@ -822,6 +822,7 @@ function Editor({
       }
     >
       <StudioMediaPickerOverlay
+        canUpload={canUploadMedia}
         assets={mediaAssets.map((asset) => ({
           id: asset.id,
           title:

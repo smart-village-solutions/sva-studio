@@ -10,6 +10,7 @@ export const StudioMediaPickerModeActions = ({
   onChangeMode,
   onAddManual,
   onClose,
+  canUpload,
   disabled,
 }: Readonly<{
   labels: StudioMediaPickerOverlayLabels['modes'];
@@ -17,12 +18,13 @@ export const StudioMediaPickerModeActions = ({
   onChangeMode: (mode: 'library' | 'upload') => void;
   onAddManual: () => string | void;
   onClose: () => void;
+  canUpload: boolean;
   disabled: boolean;
 }>) => (
   <div className="flex flex-wrap gap-2 border-b border-border/60 pb-4">
     <Button
       type="button"
-      disabled={disabled}
+      disabled={disabled || !canUpload}
       variant={mode === 'upload' ? 'default' : 'secondary'}
       aria-pressed={mode === 'upload'}
       onClick={() => onChangeMode('upload')}

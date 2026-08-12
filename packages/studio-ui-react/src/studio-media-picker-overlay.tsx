@@ -56,6 +56,7 @@ type StudioMediaPickerOverlayProps = Readonly<{
   feedbackMessage?: string | null;
   feedbackTone?: 'default' | 'success' | 'error';
   labels: StudioMediaPickerOverlayLabels;
+  canUpload?: boolean;
 }>;
 
 const StudioMediaPickerOverlayBody = ({
@@ -136,6 +137,7 @@ const StudioMediaPickerOverlayBody = ({
 
 export const StudioMediaPickerOverlay = ({
   assets,
+  canUpload = true,
   feedbackMessage,
   feedbackTone = 'default',
   isAssetSelectable,
@@ -162,7 +164,9 @@ export const StudioMediaPickerOverlay = ({
   uploadPhase,
   visibleMetadataFields,
 }: StudioMediaPickerOverlayProps) => {
-  const isBusy = isLoadingReviewAsset || isSavingReviewAsset;
+  const isUploadBusy =
+    uploadPhase === 'initializing' || uploadPhase === 'uploading' || uploadPhase === 'finalizing';
+  const isBusy = isLoadingReviewAsset || isSavingReviewAsset || isUploadBusy;
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => (!nextOpen && !isBusy ? onClose() : undefined)}>
@@ -173,6 +177,7 @@ export const StudioMediaPickerOverlay = ({
         </DialogHeader>
 
         <StudioMediaPickerModeActions
+          canUpload={canUpload}
           disabled={isBusy}
           labels={labels.modes}
           mode={mode}

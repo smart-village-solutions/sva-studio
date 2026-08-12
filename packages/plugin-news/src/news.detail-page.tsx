@@ -1048,6 +1048,7 @@ export const NewsDetailPage = ({
       <FormProvider {...methods}>
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toNewsMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>

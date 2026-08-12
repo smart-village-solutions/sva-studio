@@ -895,6 +895,7 @@ export function PoiDetailPage({
       >
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toPoiMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>

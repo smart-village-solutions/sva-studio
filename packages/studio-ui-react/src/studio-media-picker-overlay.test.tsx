@@ -99,13 +99,20 @@ describe('useStudioMediaPickerOverlay', () => {
     const onChangeMode = vi.fn();
     const onClose = vi.fn();
     const asset = createAsset();
-    const Harness = () => {
+    const Harness = ({
+      canUpload = true,
+      uploadPhase = 'idle',
+    }: Readonly<{
+      canUpload?: boolean;
+      uploadPhase?: 'idle' | 'uploading';
+    }>) => {
       const [open, setOpen] = React.useState(true);
       const [mode, setMode] = React.useState<'library' | 'upload'>('upload');
       return (
         <>
           <StudioMediaPickerOverlay
             assets={[]}
+            canUpload={canUpload}
             labels={{
               title: 'Medium hinzufügen',
               description: 'Medium auswählen',
@@ -160,7 +167,7 @@ describe('useStudioMediaPickerOverlay', () => {
             reviewAsset={null}
             reviewSource="upload"
             searchValue=""
-            uploadPhase="idle"
+            uploadPhase={uploadPhase}
           />
           <input id="content-media-manual-1-url" aria-label="Manuelle URL" />
         </>
@@ -185,6 +192,20 @@ describe('useStudioMediaPickerOverlay', () => {
     await waitFor(() =>
       expect(document.activeElement).toBe(document.getElementById('content-media-manual-1-url'))
     );
+
+    render(<Harness canUpload={false} />);
+    expect(
+      (screen.getByRole('button', { name: 'Medium hochladen' }) as HTMLButtonElement).disabled
+    ).toBe(true);
+
+    render(<Harness uploadPhase="uploading" />);
+    const manualAction = screen.getByRole('button', {
+      name: 'Medium per Link hinzufügen',
+    });
+    expect((manualAction as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(manualAction);
+    expect(onAddManual).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {

@@ -919,6 +919,7 @@ export function EventsDetailPage({
       >
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toEventsMediaPickerSummary)}
+          canUpload={canUploadMedia}
           feedbackMessage={mediaPickerFeedback.message}
           feedbackTone={mediaPickerFeedback.tone}
           isAssetSelectable={(asset) =>

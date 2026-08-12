@@ -511,7 +511,9 @@ describe('Sidebar', () => {
       'true'
     );
     expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Alle' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('href')).toBe(
+      '/admin/content?page=1'
+    );
   });
 
   it('markiert den Typfilter eindeutig und erhält kanonische Listenparameter beim Wechsel', () => {

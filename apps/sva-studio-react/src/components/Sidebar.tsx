@@ -948,7 +948,7 @@ export default function Sidebar({
       }
     );
     const contentChildren: SidebarLeafItem[] = [
-      ...(canAccessContent
+      ...(canAccessContent || readableContentTypes.length > 0
         ? [
             {
               kind: 'link' as const,

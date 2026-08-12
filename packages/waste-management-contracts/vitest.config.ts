@@ -1,6 +1,8 @@
-import { defineConfig } from 'vitest/config';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { defineConfig } from 'vitest/config';
+
 import { sharedCoverageConfig } from '../../vitest.config';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -10,10 +12,6 @@ export default defineConfig({
     alias: {
       '@sva/core': resolve(currentDir, '../core/src/index.ts'),
       '@sva/plugin-sdk': resolve(currentDir, '../plugin-sdk/src/index.ts'),
-      '@sva/waste-management-contracts/job-definitions': resolve(
-        currentDir,
-        '../waste-management-contracts/src/job-definitions.ts'
-      ),
     },
   },
   test: {

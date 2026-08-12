@@ -8,10 +8,7 @@
     "rootDir": "src",
     "types": ["node"],
     "paths": {
-      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"],
-      "@sva/waste-management-contracts/job-definitions": [
-        "packages/waste-management-contracts/dist/job-definitions.d.ts"
-      ]
+      "@sva/plugin-sdk": ["packages/plugin-sdk/dist/index.d.ts"]
     }
   },
   "include": ["src/**/*.ts"],

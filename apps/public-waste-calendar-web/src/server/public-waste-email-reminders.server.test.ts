@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
 import type { WasteEmailReminderPendingSignupInput } from '@sva/data-repositories';
 import {
@@ -6,7 +7,6 @@ import {
   createPublicWasteReminderSignupRateLimitConsumer as createReminderSignupRateLimitConsumer,
   createPublicWasteReminderSignupSubmitter as createReminderSignupSubmitter,
 } from './public-waste-email-reminders.server.js';
-import { createPublicWasteUnsubscribeToken } from './public-waste-unsubscribe-token.server.js';
 
 describe('public waste email reminders server helper', () => {
   it('builds and persists a pending DOI signup with normalized payload data and DOI expiry', async () => {
@@ -23,12 +23,17 @@ describe('public waste email reminders server helper', () => {
         .mockReturnValueOnce('item-1')
         .mockReturnValueOnce('item-2')
         .mockReturnValueOnce('outbox-1'),
-      createToken: vi.fn().mockReturnValueOnce('confirm-token').mockReturnValueOnce('unsubscribe-token'),
+      createToken: vi
+        .fn()
+        .mockReturnValueOnce('confirm-token')
+        .mockReturnValueOnce('unsubscribe-token'),
       hashValue: (value) => `sha256:${value}`,
     });
 
     const response = await submitter({
-      request: new Request('https://example.invalid/api/public-waste/reminder-signups', { method: 'POST' }),
+      request: new Request('https://example.invalid/api/public-waste/reminder-signups', {
+        method: 'POST',
+      }),
       payload: {
         selection: {
           cityId: '22222222-2222-4222-8222-222222222222',
@@ -80,7 +85,8 @@ describe('public waste email reminders server helper', () => {
     expect(response).toEqual({
       status: 'pending',
       headline: 'Bestätigungslink versendet',
-      message: 'Bitte prüfen Sie Ihr E-Mail-Postfach und bestätigen Sie die Anmeldung über den enthaltenen Link.',
+      message:
+        'Bitte prüfen Sie Ihr E-Mail-Postfach und bestätigen Sie die Anmeldung über den enthaltenen Link.',
     });
     expect(persisted).toEqual([
       {
@@ -212,7 +218,9 @@ describe('public waste email reminders server helper', () => {
 
     await expect(
       submitter({
-        request: new Request('https://example.invalid/api/public-waste/reminder-signups', { method: 'POST' }),
+        request: new Request('https://example.invalid/api/public-waste/reminder-signups', {
+          method: 'POST',
+        }),
         payload: {
           selection: {
             cityId: '22222222-2222-4222-8222-222222222222',
@@ -382,7 +390,7 @@ describe('public waste email reminders server helper', () => {
       now: () => new Date('2026-06-14T20:00:00.000Z'),
       hashValue: (value) => `sha256:${value}`,
     });
-    const token = createPublicWasteUnsubscribeToken({
+    const token = createWasteManagementUnsubscribeToken({
       subscriptionId: 'subscription-1',
       unsubscribeTokenHash: 'sha256:unsubscribe-token',
       secret: 'postgres://waste:test@localhost:5432/waste',

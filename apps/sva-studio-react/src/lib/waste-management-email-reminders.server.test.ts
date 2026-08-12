@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExternalInterfaceRecord } from '@sva/core';
 import { protectField } from '@sva/auth-runtime/server';
 import { buildExternalInterfaceSecretConfigAad } from '@sva/server-runtime';
-import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 import {
-  readPublicWasteUnsubscribeTokenSubscriptionId,
-  verifyPublicWasteUnsubscribeToken,
-} from '../../../public-waste-calendar-web/src/server/public-waste-unsubscribe-token.server.js';
+  readWasteManagementUnsubscribeTokenSubscriptionId,
+  verifyWasteManagementUnsubscribeToken,
+} from '@sva/waste-management-contracts/unsubscribe-token';
+import type { SqlClient, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 const createOrUpdateSvaMainserverStaticContentMock = vi.hoisted(() => vi.fn());
 const runWasteManagementMainserverSyncForInstanceMock = vi.hoisted(() => vi.fn());
@@ -92,9 +92,11 @@ describe('waste management operations runtime', () => {
             introText: 'Nicht vergessen: Di. 16.06.',
             listIntroText: 'Folgende Fraktion wird abgeholt:',
             outroText: 'Mit freundlichen Grüßen\nIhr Mülli',
-            reasonText: 'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
+            reasonText:
+              'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
             unsubscribeLabel: 'E-Mail-Erinnerung abbestellen',
-            unsubscribeUrl: 'https://demo.abfallkalender.example/erinnerungen/abmelden?token=sha256:abc',
+            unsubscribeUrl:
+              'https://demo.abfallkalender.example/erinnerungen/abmelden?token=sha256:abc',
             locationLabel: 'Perleberg (Ackerstraße)',
             pickupDate: 'Di., 16.06.',
             fractionName: 'Papier, Pappe, Kartonagen',
@@ -132,7 +134,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         createInterfaceRecordWithEmailReminderConfig(),
@@ -202,7 +205,8 @@ describe('waste management operations runtime', () => {
   });
 
   it('skips outbox processing when email reminders are disabled for the selected interface', async () => {
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         {
@@ -234,7 +238,8 @@ describe('waste management operations runtime', () => {
   });
 
   it('rejects invalid outbox reference times and unavailable transports before leasing entries', async () => {
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       dispatchMail: vi.fn(),
@@ -257,7 +262,11 @@ describe('waste management operations runtime', () => {
 
   it('marks failed outbox entries with retry or terminal failure depending on attempt count', async () => {
     const markOutboxEntryFailed = vi.fn(
-      async (_input: { readonly outboxId: string; readonly errorMessage: string; readonly retryAt?: string }) => undefined
+      async (_input: {
+        readonly outboxId: string;
+        readonly errorMessage: string;
+        readonly retryAt?: string;
+      }) => undefined
     );
     const reminderRepository = {
       leaseDueOutboxEntries: vi.fn(async () => [
@@ -330,7 +339,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         createInterfaceRecordWithEmailReminderConfig(),
@@ -399,7 +409,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         createInterfaceRecordWithEmailReminderConfig(),
@@ -505,7 +516,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         {
@@ -654,7 +666,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         {
@@ -757,7 +770,12 @@ describe('waste management operations runtime', () => {
         },
       ]),
       listWasteLocationTourPickupDates: vi.fn(async () => [
-        { id: 'pickup-1', locationId: 'location-legacy', tourId: 'tour-1', pickupDate: '2026-06-16' },
+        {
+          id: 'pickup-1',
+          locationId: 'location-legacy',
+          tourId: 'tour-1',
+          pickupDate: '2026-06-16',
+        },
       ]),
       listWasteTourDateShifts: vi.fn(async () => []),
       listWasteGlobalDateShifts: vi.fn(async () => []),
@@ -773,7 +791,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -850,7 +869,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -861,7 +882,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-10' }]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [
+        { id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-10' },
+      ]),
       listWasteTourDateShifts: vi.fn(async () => []),
       listWasteGlobalDateShifts: vi.fn(async () => []),
       listWasteHolidayRules: vi.fn(async () => []),
@@ -876,7 +899,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -906,7 +930,8 @@ describe('waste management operations runtime', () => {
   });
 
   it('skips reminder materialization entirely when email reminders are disabled', async () => {
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [
         {
@@ -937,7 +962,8 @@ describe('waste management operations runtime', () => {
   });
 
   it('rejects invalid reference times before materializing reminder outbox entries', async () => {
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
     });
@@ -1009,7 +1035,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -1039,7 +1066,10 @@ describe('waste management operations runtime', () => {
 
   it('ignores materialized pickup dates whose tour cannot be resolved back to an active fraction mapping', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      const actual =
+        await importOriginal<
+          typeof import('./waste-management-mainserver-sync.materialization.js')
+        >();
       return {
         ...actual,
         buildMaterializedLocationTourPickupDates: vi.fn(() => [
@@ -1105,7 +1135,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -1131,7 +1163,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -1221,7 +1254,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -1232,7 +1267,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourPickupDates: vi.fn(async () => [{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-25' }]),
+      listWasteLocationTourPickupDates: vi.fn(async () => [
+        { id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-06-25' },
+      ]),
       listWasteTourDateShifts: vi.fn(async () => []),
       listWasteGlobalDateShifts: vi.fn(async () => []),
       listWasteHolidayRules: vi.fn(async () => []),
@@ -1247,7 +1284,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -1279,7 +1317,10 @@ describe('waste management operations runtime', () => {
 
   it('leaves future reminder dates outside the lookahead window untouched without enqueuing them', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      const actual =
+        await importOriginal<
+          typeof import('./waste-management-mainserver-sync.materialization.js')
+        >();
       return {
         ...actual,
         buildMaterializedLocationTourPickupDates: vi.fn(() => [
@@ -1345,7 +1386,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -1371,7 +1414,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -1403,7 +1447,10 @@ describe('waste management operations runtime', () => {
 
   it('signs unsubscribe links with the persisted reminder signing secret instead of the database url', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      const actual =
+        await importOriginal<
+          typeof import('./waste-management-mainserver-sync.materialization.js')
+        >();
       return {
         ...actual,
         buildMaterializedLocationTourPickupDates: vi.fn(() => [
@@ -1499,7 +1546,9 @@ describe('waste management operations runtime', () => {
     });
 
     const secret = 'persisted-reminder-signing-secret';
-    const runtime = (await import('./waste-management-operations.server.js')).createWasteManagementOperationRuntime({
+    const runtime = (
+      await import('./waste-management-operations.server.js')
+    ).createWasteManagementOperationRuntime({
       listInterfaceRecords: vi.fn(async () => [
         {
           ...createInterfaceRecordWithEmailReminderConfig(),
@@ -1528,7 +1577,7 @@ describe('waste management operations runtime', () => {
 
     const firstEnqueueCall = (
       enqueueOutboxEntry.mock.calls as unknown as Array<
-        [ { readonly payload: { readonly templatePayload: { readonly unsubscribeUrl: string } } } ]
+        [{ readonly payload: { readonly templatePayload: { readonly unsubscribeUrl: string } } }]
       >
     ).at(0);
     const enqueuedEntry = firstEnqueueCall?.[0];
@@ -1537,9 +1586,9 @@ describe('waste management operations runtime', () => {
     const unsubscribeUrl = new URL(templatePayload.unsubscribeUrl);
     const token = unsubscribeUrl.searchParams.get('token');
     expect(token).toBeTruthy();
-    expect(readPublicWasteUnsubscribeTokenSubscriptionId(token!)).toBe('subscription-secret');
+    expect(readWasteManagementUnsubscribeTokenSubscriptionId(token!)).toBe('subscription-secret');
     expect(
-      verifyPublicWasteUnsubscribeToken({
+      verifyWasteManagementUnsubscribeToken({
         token: token!,
         subscriptionId: 'subscription-secret',
         unsubscribeTokenHash,
@@ -1547,7 +1596,7 @@ describe('waste management operations runtime', () => {
       })
     ).toBe(true);
     expect(
-      verifyPublicWasteUnsubscribeToken({
+      verifyWasteManagementUnsubscribeToken({
         token: token!,
         subscriptionId: 'subscription-secret',
         unsubscribeTokenHash,
@@ -1558,7 +1607,10 @@ describe('waste management operations runtime', () => {
 
   it('counts duplicate reminder outbox entries separately from inserted ones', async () => {
     vi.doMock('./waste-management-mainserver-sync.materialization.js', async (importOriginal) => {
-      const actual = await importOriginal<typeof import('./waste-management-mainserver-sync.materialization.js')>();
+      const actual =
+        await importOriginal<
+          typeof import('./waste-management-mainserver-sync.materialization.js')
+        >();
       return {
         ...actual,
         buildMaterializedLocationTourPickupDates: vi.fn(() => [
@@ -1624,7 +1676,9 @@ describe('waste management operations runtime', () => {
           active: true,
         },
       ]),
-      listWasteLocationTourLinks: vi.fn(async () => [{ id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true }]),
+      listWasteLocationTourLinks: vi.fn(async () => [
+        { id: 'link-1', locationId: 'location-1', tourId: 'tour-1', active: true },
+      ]),
       listWasteCollectionLocations: vi.fn(async () => [
         {
           id: 'location-1',
@@ -1650,7 +1704,8 @@ describe('waste management operations runtime', () => {
       };
     });
 
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
       revealSecret: vi.fn(revealPostgresqlSecretConfig),
@@ -1680,7 +1735,8 @@ describe('waste management operations runtime', () => {
   });
 
   it('fails closed when email outbox processing is requested without a mail dispatcher', async () => {
-    const { createWasteManagementOperationRuntime: createRuntime } = await import('./waste-management-operations.server.js');
+    const { createWasteManagementOperationRuntime: createRuntime } =
+      await import('./waste-management-operations.server.js');
     const runtime = createRuntime({
       listInterfaceRecords: vi.fn(async () => [createInterfaceRecordWithEmailReminderConfig()]),
     });
@@ -1693,53 +1749,55 @@ describe('waste management operations runtime', () => {
   });
 });
 
-const createWasteEmailReminderConfig = () => ({
-  enabled: true,
-  publicSignupEnabled: true,
-  transportId: 'transport-smtp',
-  publicBaseUrl: 'https://demo.abfallkalender.example',
-  doiConfirmPath: '/erinnerungen/bestaetigen',
-  unsubscribePath: '/erinnerungen/abmelden',
-  signupSuccessPath: '/erinnerungen/pending',
-  activationSuccessPath: '/erinnerungen/aktiviert',
-  unsubscribeSuccessPath: '/erinnerungen/abgemeldet',
-  invalidTokenPath: '/erinnerungen/ungueltig',
-  fromName: 'Ihr Mülli',
-  fromEmail: 'noreply@abfallkalender.example',
-  replyToEmail: 'abfall@example.org',
-  serviceLabel: 'Landkreis Prignitz',
-  privacyPolicyUrl: 'https://demo.abfallkalender.example/datenschutz',
-  imprintUrl: 'https://demo.abfallkalender.example/impressum',
-  consentLabel: 'Ich stimme der Verarbeitung zu.',
-  consentVersion: '2026-06',
-  dataControllerLabel: 'Landkreis Prignitz',
-  dataProtectionContactEmail: 'datenschutz@example.org',
-  doiSubjectTemplate: 'Bitte E-Mail-Erinnerung bestätigen',
-  doiPreheader: 'Bestätigen Sie Ihre Anmeldung.',
-  doiIntroText: 'Bitte bestätigen Sie Ihre Anmeldung zur E-Mail-Erinnerung.',
-  doiButtonLabel: 'Jetzt bestätigen',
-  doiFallbackText: 'Falls der Button nicht funktioniert, nutzen Sie den Link.',
-  doiExpiryNoticeText: 'Der Link ist zeitlich begrenzt gültig.',
-  reminderSubjectTemplate: 'Abfalltermine für {{locationLabel}}',
-  reminderIntroTemplate: 'Nicht vergessen: {{pickupDate}}',
-  reminderListIntroTemplate: 'Folgende Fraktionen stehen an:',
-  reminderOutroText: 'Mit freundlichen Grüßen\nIhr Mülli',
-  unsubscribeLinkLabel: 'E-Mail-Erinnerung abbestellen',
-  reminderReasonText: 'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
-  unsubscribeSuccessHeadline: 'E-Mail-Erinnerung deaktiviert',
-  unsubscribeSuccessBody: 'Der Dienst wurde deaktiviert.',
-  unsubscribeAlreadyDoneHeadline: 'Bereits deaktiviert',
-  unsubscribeAlreadyDoneBody: 'Die Erinnerung war bereits deaktiviert.',
-  unsubscribeErrorHeadline: 'Abmeldung fehlgeschlagen',
-  unsubscribeErrorBody: 'Der Link ist ungültig.',
-  maxSubscriptionsPerEmailAndLocation: 5,
-  signupRateLimitPerIpPerHour: 10,
-  signupRateLimitPerEmailPerHour: 5,
-  doiTokenTtlHours: 48,
-  pendingSubscriptionTtlHours: 72,
-  materializationLookaheadDays: 7,
-  unsubscribeTokenTtlDays: 365,
-} as const);
+const createWasteEmailReminderConfig = () =>
+  ({
+    enabled: true,
+    publicSignupEnabled: true,
+    transportId: 'transport-smtp',
+    publicBaseUrl: 'https://demo.abfallkalender.example',
+    doiConfirmPath: '/erinnerungen/bestaetigen',
+    unsubscribePath: '/erinnerungen/abmelden',
+    signupSuccessPath: '/erinnerungen/pending',
+    activationSuccessPath: '/erinnerungen/aktiviert',
+    unsubscribeSuccessPath: '/erinnerungen/abgemeldet',
+    invalidTokenPath: '/erinnerungen/ungueltig',
+    fromName: 'Ihr Mülli',
+    fromEmail: 'noreply@abfallkalender.example',
+    replyToEmail: 'abfall@example.org',
+    serviceLabel: 'Landkreis Prignitz',
+    privacyPolicyUrl: 'https://demo.abfallkalender.example/datenschutz',
+    imprintUrl: 'https://demo.abfallkalender.example/impressum',
+    consentLabel: 'Ich stimme der Verarbeitung zu.',
+    consentVersion: '2026-06',
+    dataControllerLabel: 'Landkreis Prignitz',
+    dataProtectionContactEmail: 'datenschutz@example.org',
+    doiSubjectTemplate: 'Bitte E-Mail-Erinnerung bestätigen',
+    doiPreheader: 'Bestätigen Sie Ihre Anmeldung.',
+    doiIntroText: 'Bitte bestätigen Sie Ihre Anmeldung zur E-Mail-Erinnerung.',
+    doiButtonLabel: 'Jetzt bestätigen',
+    doiFallbackText: 'Falls der Button nicht funktioniert, nutzen Sie den Link.',
+    doiExpiryNoticeText: 'Der Link ist zeitlich begrenzt gültig.',
+    reminderSubjectTemplate: 'Abfalltermine für {{locationLabel}}',
+    reminderIntroTemplate: 'Nicht vergessen: {{pickupDate}}',
+    reminderListIntroTemplate: 'Folgende Fraktionen stehen an:',
+    reminderOutroText: 'Mit freundlichen Grüßen\nIhr Mülli',
+    unsubscribeLinkLabel: 'E-Mail-Erinnerung abbestellen',
+    reminderReasonText:
+      'Sie erhalten diese Nachricht, weil Sie eine Erinnerung eingerichtet haben.',
+    unsubscribeSuccessHeadline: 'E-Mail-Erinnerung deaktiviert',
+    unsubscribeSuccessBody: 'Der Dienst wurde deaktiviert.',
+    unsubscribeAlreadyDoneHeadline: 'Bereits deaktiviert',
+    unsubscribeAlreadyDoneBody: 'Die Erinnerung war bereits deaktiviert.',
+    unsubscribeErrorHeadline: 'Abmeldung fehlgeschlagen',
+    unsubscribeErrorBody: 'Der Link ist ungültig.',
+    maxSubscriptionsPerEmailAndLocation: 5,
+    signupRateLimitPerIpPerHour: 10,
+    signupRateLimitPerEmailPerHour: 5,
+    doiTokenTtlHours: 48,
+    pendingSubscriptionTtlHours: 72,
+    materializationLookaheadDays: 7,
+    unsubscribeTokenTtlDays: 365,
+  }) as const;
 
 const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord => ({
   ...createInterfaceRecord(),
@@ -1750,14 +1808,16 @@ const createInterfaceRecordWithEmailReminderConfig = (): ExternalInterfaceRecord
   },
 });
 
-const createMailTransportInterfaceRecord = (overrides: {
-  readonly id?: string;
-  readonly transportId?: string;
-  readonly alias?: string;
-  readonly host?: string;
-  readonly maxBatchSize?: number;
-  readonly rateLimitPerMinute?: number;
-} = {}): ExternalInterfaceRecord => ({
+const createMailTransportInterfaceRecord = (
+  overrides: {
+    readonly id?: string;
+    readonly transportId?: string;
+    readonly alias?: string;
+    readonly host?: string;
+    readonly maxBatchSize?: number;
+    readonly rateLimitPerMinute?: number;
+  } = {}
+): ExternalInterfaceRecord => ({
   id: overrides.id ?? 'mail-transport-1',
   instanceId: 'instance-1',
   typeKey: 'mail_transport',
@@ -1784,10 +1844,11 @@ const createMailTransportInterfaceRecord = (overrides: {
     maxBatchSize: overrides.maxBatchSize ?? 25,
     ...(overrides.rateLimitPerMinute ? { rateLimitPerMinute: overrides.rateLimitPerMinute } : {}),
   },
-  secretConfigCiphertext: protectField(
-    JSON.stringify({ password: 'smtp-password' }),
-    buildExternalInterfaceSecretConfigAad(overrides.id ?? 'mail-transport-1')
-  ) ?? undefined,
+  secretConfigCiphertext:
+    protectField(
+      JSON.stringify({ password: 'smtp-password' }),
+      buildExternalInterfaceSecretConfigAad(overrides.id ?? 'mail-transport-1')
+    ) ?? undefined,
   statusCheckKind: 'mail_transport',
   visibleStatus: 'ok',
   lastCheckStatus: 'succeeded',

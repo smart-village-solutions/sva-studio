@@ -6,7 +6,7 @@ import {
 } from '../src/waste-management.job-definitions.js';
 
 describe('waste management job definitions', () => {
-  it('keeps waste-specific job types inside the waste plugin package', () => {
+  it('keeps the contracts-owned waste job types available through the plugin compatibility export', () => {
     expect(createWasteManagementPluginJobTypes()).toEqual([
       {
         jobTypeId: 'waste-management.provision-tenant-database',
@@ -197,7 +197,12 @@ describe('waste management job definitions', () => {
         },
         result: {
           summaryKeys: ['durationMs'],
-          detailKeys: ['activeSubscriptionCount', 'createdOutboxCount', 'duplicateOutboxCount', 'skippedPickupCount'],
+          detailKeys: [
+            'activeSubscriptionCount',
+            'createdOutboxCount',
+            'duplicateOutboxCount',
+            'skippedPickupCount',
+          ],
         },
         errors: {
           detailKeys: ['failed-step'],
@@ -208,12 +213,21 @@ describe('waste management job definitions', () => {
         queue: 'plugin-operations',
         displayName: 'Abfall-E-Mail-Erinnerungs-Outbox verarbeiten',
         progress: {
-          phaseKeys: ['waste-management.process-email-reminder-outbox', 'waste-management.completed'],
+          phaseKeys: [
+            'waste-management.process-email-reminder-outbox',
+            'waste-management.completed',
+          ],
           stepKeys: ['lease-outbox', 'complete-operation'],
         },
         result: {
           summaryKeys: ['durationMs'],
-          detailKeys: ['leasedCount', 'sentCount', 'retryScheduledCount', 'failedCount', 'batchSize'],
+          detailKeys: [
+            'leasedCount',
+            'sentCount',
+            'retryScheduledCount',
+            'failedCount',
+            'batchSize',
+          ],
         },
         errors: {
           detailKeys: ['failed-step', 'outboxId'],
@@ -222,13 +236,16 @@ describe('waste management job definitions', () => {
     ]);
   });
 
-  it('keeps waste-specific import profiles inside the waste plugin package', () => {
+  it('keeps the contracts-owned import profiles available through the plugin compatibility export', () => {
     expect(createWasteManagementPluginImportProfiles()).toEqual([
       {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Geografie und Abholorte',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.geografie-abholorte.schema',
         mappingStrategy: 'waste-management.geografie-abholorte.mapping',
@@ -240,7 +257,10 @@ describe('waste management job definitions', () => {
         profileId: 'waste-management.touren',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Touren',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.touren.schema',
         mappingStrategy: 'waste-management.touren.mapping',
@@ -252,7 +272,10 @@ describe('waste management job definitions', () => {
         profileId: 'waste-management.ausweichtermine',
         jobTypeId: 'waste-management.import-data',
         displayName: 'Ausweichtermine',
-        sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+        sourceFormats: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ],
         schemaVersion: '1.0.0',
         schemaStrategy: 'waste-management.ausweichtermine.schema',
         mappingStrategy: 'waste-management.ausweichtermine.mapping',

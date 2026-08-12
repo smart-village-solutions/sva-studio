@@ -23,6 +23,7 @@ Architekturprinzipien auf IST-Basis.
 - Plugin-Plattform v2 erweitert dieses Zielbild um Manifest-, Katalog-, Loader- und Runtime-Verträge, damit lokale Entwicklung und externe Distribution denselben hostvalidierten Snapshot-Pfad nutzen
 - Plugin-Governance folgt einem einheitlichen Namespace-Modell: plugin-beigestellte registrierte Host-Identifier verwenden `<pluginId>.<name>`, während Core-Identifier bewusst hosteigen und unqualifiziert bleiben dürfen
 - Trennung von client-sicheren und serverseitigen Routen/Handlern
+- Gemeinsame serverseitige Fachverträge mehrerer Apps liegen im owning Workspace-Package; direkte Quellimporte zwischen unterschiedlichen Verzeichnissen unter `apps/` sind nicht zulässig
 - Observability über OTEL-Standards statt vendor-spezifischer App-Anbindung
 - IAM folgt einer klaren Verantwortungsgrenze: Keycloak für Identity, Postgres für IAM-Fachdaten, Redis nur als Laufzeit-Cache
 - Auth-Sessions folgen einer klaren Führungslogik: `expiresAt` ist fachlich maßgeblich; Cookie und Redis-TTL sind abgeleitete Technik

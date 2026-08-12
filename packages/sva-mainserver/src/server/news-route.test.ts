@@ -459,6 +459,44 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects waste targets on create without waste-management read permission', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Waste-Ziele.',
+      });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-waste-denied' },
+        body: JSON.stringify({
+          ...newsInput,
+          payload: {
+            wasteLocationKeys: [{ street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: 'waste-management.read' })
+    );
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
+  });
+
   it('requires the news update permission before updating news', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
@@ -570,6 +608,43 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         }),
       })
     );
+  });
+
+  it('rejects waste target updates without waste-management read permission', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Waste-Ziele.',
+      });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...updateNewsInput,
+          payload: {
+            wasteLocationKeys: [{ street: 'Hauptstraße 2', zip: '12345', city: 'Musterstadt' }],
+          },
+        }),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    expect(state.authorizeContentPrimitiveForUser).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ action: 'waste-management.read' })
+    );
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
   it('preserves stored waste targets after push delivery when an API client submits changes', async () => {

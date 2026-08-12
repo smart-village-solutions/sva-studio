@@ -546,6 +546,28 @@ const parseNewsInput = async (
   };
 };
 
+const parseAuthorizedNewsInput = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  options: ParseOptions
+): Promise<ParsedNewsInput | Response> => {
+  const parsed = await parseNewsInput(request, options);
+  if (isResponse(parsed) || parsed.news.payload === undefined) return parsed;
+
+  const authorization = await authorizeContentPrimitiveForUser({
+    ctx,
+    action: 'waste-management.read',
+  });
+  if (authorization.ok) return parsed;
+
+  return errorJson(
+    authorization.status,
+    authorization.error,
+    authorization.message,
+    authorization.permissionDenial
+  );
+};
+
 const parseVisibilityInput = async (
   request: Request
 ): Promise<ParsedVisibilityInput | Response> => {
@@ -795,7 +817,9 @@ const handleCollectionCreate = async (
         return idempotencyKey;
       }
 
-      const parsed = await parseNewsInput(request, { allowPushNotification: true });
+      const parsed = await parseAuthorizedNewsInput(request, context, {
+        allowPushNotification: true,
+      });
       if (isResponse(parsed)) {
         return parsed;
       }
@@ -957,7 +981,7 @@ const handleItemUpdate = async (
     action: 'news.update',
     requestId,
     parse: async (inputRequest) =>
-      await parseNewsInput(inputRequest, { allowPushNotification: true }),
+      await parseAuthorizedNewsInput(inputRequest, ctx, { allowPushNotification: true }),
     execute: async (actor, parsed) => {
       let response: Response;
       try {

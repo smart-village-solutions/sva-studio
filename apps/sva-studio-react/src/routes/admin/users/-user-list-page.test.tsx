@@ -520,7 +520,9 @@ describe('UserListPage', () => {
 
     render(<UserListPage />);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
+    expect(deleteButton.className).toContain('bg-action-destructive');
+    fireEvent.click(deleteButton);
     expect(screen.getByText(/physisch in Studio und Keycloak gelöscht/i)).toBeTruthy();
 
     fireEvent.click(

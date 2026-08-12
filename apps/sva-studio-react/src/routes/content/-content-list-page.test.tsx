@@ -564,7 +564,10 @@ describe('ContentListPage', () => {
       screen.getAllByRole('button', { name: /Status von Beteiligung ändern/ }).length
     ).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Löschen' })[0]!);
+    const deleteButton = screen.getAllByRole('button', { name: 'Löschen' })[0]!;
+    expect(deleteButton.className).toContain('bg-action-destructive');
+    expect(deleteButton.className).not.toContain('text-muted-foreground');
+    fireEvent.click(deleteButton);
 
     expect(confirmMock).toHaveBeenCalledWith('Soll dieser Inhalt wirklich gelöscht werden?');
     await waitFor(() => {

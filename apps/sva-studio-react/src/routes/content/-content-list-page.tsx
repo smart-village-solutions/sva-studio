@@ -469,14 +469,14 @@ const ContentRowActions = ({
       )}
       <Button
         type="button"
-        variant="tertiary"
+        variant="destructive"
         size="sm"
-        className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
+        className="h-8 w-8 rounded-md px-0"
         aria-label={t('content.actions.delete')}
         disabled={!canDelete}
         onClick={handleDelete}
       >
-        <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
+        <IconTrash aria-hidden="true" className="h-4 w-4" />
       </Button>
     </>
   );

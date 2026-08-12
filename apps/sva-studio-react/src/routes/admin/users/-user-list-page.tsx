@@ -560,7 +560,7 @@ const UserListRowActions = ({
         <Button
           type="button"
           size="icon"
-          variant="secondary"
+          variant="destructive"
           disabled={deleteBlocked}
           aria-label={t('admin.users.actions.delete')}
           title={deleteBlocked ? deleteDisabledReason : t('admin.users.actions.delete')}

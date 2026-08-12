@@ -51,27 +51,35 @@ const HOST_PERMISSION_TITLE_KEYS = {
 
 const corePermissionIds = new Set(corePermissionCatalog.map((permission) => permission.key));
 
+const resolvePluginTitleKey = (pluginId: string, titleKey: string): string | undefined => {
+  const directTitle = t(titleKey);
+  if (directTitle !== titleKey) {
+    return directTitle;
+  }
+
+  const prefix = `${pluginId}.`;
+  const localTitleKey = titleKey.startsWith(prefix) ? titleKey.slice(prefix.length) : titleKey;
+  const prefixedTitleKey = `${pluginId}.${localTitleKey}`;
+  const prefixedTitle = translatePluginKey(pluginId, localTitleKey);
+  return prefixedTitle === prefixedTitleKey ? undefined : prefixedTitle;
+};
+
 export const resolvePermissionTitle = (permissionId: string): string | undefined => {
   const pluginPermission = studioBuildTimeRegistry.pluginPermissionRegistry.get(permissionId);
   if (pluginPermission) {
-    const prefix = `${pluginPermission.ownerPluginId}.`;
-    const localTitleKey = pluginPermission.titleKey.startsWith(prefix)
-      ? pluginPermission.titleKey.slice(prefix.length)
-      : pluginPermission.titleKey;
-    const translated = translatePluginKey(pluginPermission.ownerPluginId, localTitleKey);
-    if (translated !== pluginPermission.titleKey) {
+    const translated = resolvePluginTitleKey(
+      pluginPermission.ownerPluginId,
+      pluginPermission.titleKey
+    );
+    if (translated) {
       return translated;
     }
     const action = [...studioBuildTimeRegistry.pluginActionRegistry.values()].find(
       (candidate) => candidate.requiredAction === permissionId
     );
     if (action) {
-      const actionPrefix = `${action.ownerPluginId}.`;
-      const localActionTitleKey = action.titleKey.startsWith(actionPrefix)
-        ? action.titleKey.slice(actionPrefix.length)
-        : action.titleKey;
-      const actionTitle = translatePluginKey(action.ownerPluginId, localActionTitleKey);
-      if (actionTitle !== action.titleKey) {
+      const actionTitle = resolvePluginTitleKey(action.ownerPluginId, action.titleKey);
+      if (actionTitle) {
         return actionTitle;
       }
     }

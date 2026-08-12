@@ -610,6 +610,31 @@ describe('iam-api organization helpers', () => {
     });
   });
 
+  it('preserves validated permission denial details from flat IAM errors', async () => {
+    await expect(
+      readIamErrorResponse(
+        new Response(
+          JSON.stringify({
+            error: 'forbidden',
+            details: {
+              required_permissions: ['iam.dsr.read'],
+              requirement_mode: 'allOf',
+              denial_reason: 'permission_missing',
+            },
+          }),
+          { status: 403, headers: { 'content-type': 'application/json' } }
+        ),
+        { emitEffectiveAccessInvalidation: false }
+      )
+    ).resolves.toMatchObject({
+      permissionDenial: {
+        required_permissions: ['iam.dsr.read'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
+    });
+  });
+
   it('supports the flat error response shape and request id header', async () => {
     vi.stubGlobal(
       'fetch',

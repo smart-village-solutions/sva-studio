@@ -183,7 +183,11 @@ export const readIamErrorResponse = async (
   const structuredError =
     payload && typeof payload.error === 'object' && payload.error ? payload.error : undefined;
   const permissionDenial = parsePermissionDenialDetails(
-    structuredError && 'details' in structuredError ? structuredError.details : undefined
+    structuredError && 'details' in structuredError
+      ? structuredError.details
+      : payload && 'details' in payload
+        ? payload.details
+        : undefined
   );
 
   logDevelopmentApiError({

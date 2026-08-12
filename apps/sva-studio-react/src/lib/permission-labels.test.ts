@@ -30,8 +30,10 @@ describe('permission labels', () => {
     setActiveLocale('de');
     expect(resolvePermissionTitle('iam.user.write')).toBe('Benutzer bearbeiten');
     expect(resolvePermissionTitle('categories.read')).toBe('Kategorien lesen');
+    expect(resolvePermissionTitle('waste-management.read')).toBe('Abfallkalender lesen');
     setActiveLocale('en');
     expect(resolvePermissionTitle('categories.read')).toBe('Read categories');
+    expect(resolvePermissionTitle('waste-management.read')).toBe('Read waste calendar');
     expect(resolvePermissionTitle('unknown.read')).toBeUndefined();
   });
 

@@ -103,15 +103,15 @@ const SurveyEditorForm = ({
       {!canSave ? (
         <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
       ) : null}
+      <SurveyPrincipalControl
+        actingPrincipalType={actingPrincipalType}
+        loadedItem={loadedItem}
+        mode={mode}
+        onChange={onPrincipalChange}
+        principalControl={principalControl}
+        pt={pt}
+      />
       <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
-        <SurveyPrincipalControl
-          actingPrincipalType={actingPrincipalType}
-          loadedItem={loadedItem}
-          mode={mode}
-          onChange={onPrincipalChange}
-          principalControl={principalControl}
-          pt={pt}
-        />
         <StudioDetailTabs
           ariaLabel={pt('tabs.ariaLabel')}
           tabs={tabs}

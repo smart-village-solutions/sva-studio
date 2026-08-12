@@ -27,7 +27,7 @@ export const WasteToolsInitializeSection = ({
       <div className="space-y-1">
         <h3 className="text-sm font-semibold">{pt('audit.dataSourceInitialized')}</h3>
       </div>
-      <Button type="button" variant="outline" disabled={running} onClick={onStart}>
+      <Button type="button" variant="secondary" disabled={running} onClick={onStart}>
         {running ? pt('tools.actions.starting') : pt('audit.dataSourceInitialized')}
       </Button>
     </div>

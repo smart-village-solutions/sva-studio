@@ -922,7 +922,7 @@ export function PoiDetailPage({
         }
         actions={
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link to="/admin/content">{pt('actions.back')}</Link>
             </Button>
             {mode === 'edit' && accessCapabilities.canDelete ? (
@@ -1002,7 +1002,7 @@ export function PoiDetailPage({
           {retryReferenceSync ? (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 void retryReferenceSync().then(
                   () => {

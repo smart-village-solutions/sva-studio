@@ -1,4 +1,4 @@
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -83,7 +83,7 @@ const WorkflowCard = ({
             <div className="mt-3">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => void onTriggerWorkflowAction(step.action as WorkflowAction)}
                 disabled={statusLoading}
@@ -126,13 +126,13 @@ const ExecuteProvisioningCard = ({
       <Button type="button" onClick={() => void onExecuteProvisioning('provision')}>
         {t('admin.instances.actions.executeProvisioning')}
       </Button>
-      <Button type="button" variant="outline" onClick={() => void onExecuteProvisioning('provision_admin_client')}>
+      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('provision_admin_client')}>
         {t('admin.instances.actions.provisionAdminClient')}
       </Button>
-      <Button type="button" variant="outline" onClick={() => void onExecuteProvisioning('reset_tenant_admin')}>
+      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('reset_tenant_admin')}>
         {t('admin.instances.actions.resetTenantAdmin')}
       </Button>
-      <Button type="button" variant="outline" onClick={() => void onExecuteProvisioning('rotate_client_secret')}>
+      <Button type="button" variant="secondary" onClick={() => void onExecuteProvisioning('rotate_client_secret')}>
         {t('admin.instances.actions.rotateClientSecret')}
       </Button>
     </div>
@@ -150,10 +150,10 @@ const PreflightCard = ({
       <p className="text-xs text-muted-foreground">{t('admin.instances.flow.preflightSubtitle')}</p>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" onClick={() => void onTriggerWorkflowAction('check_preflight')} disabled={statusLoading}>
+      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('check_preflight')} disabled={statusLoading}>
         {t('admin.instances.actions.checkPreflight')}
       </Button>
-      <Button type="button" variant="outline" onClick={() => void onTriggerWorkflowAction('check_keycloak_status')} disabled={statusLoading}>
+      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('check_keycloak_status')} disabled={statusLoading}>
         {t('admin.instances.actions.checkKeycloakStatus')}
       </Button>
     </div>
@@ -182,7 +182,7 @@ const PlanPreviewCard = ({
       <p className="text-xs text-muted-foreground">{t('admin.instances.flow.previewSubtitle')}</p>
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" onClick={() => void onTriggerWorkflowAction('plan_provisioning')} disabled={statusLoading}>
+      <Button type="button" variant="secondary" onClick={() => void onTriggerWorkflowAction('plan_provisioning')} disabled={statusLoading}>
         {t('admin.instances.actions.planProvisioning')}
       </Button>
     </div>

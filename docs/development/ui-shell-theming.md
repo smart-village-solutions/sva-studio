@@ -20,6 +20,22 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 - Light-/Dark-Mode bleibt ein separater Modus und darf nicht über Theme-Namen kodiert werden.
 - Ohne gespeicherte Studio-Auswahl fällt der Light-/Dark-Mode auf den Studio-Default `light` zurück, nicht auf Browser- oder Betriebssystem-Präferenzen.
 
+## Action-Tokens und Button-Kontrast
+
+Buttons beziehen ihre Farben ausschließlich aus den semantischen `action-*`-Tokens in `src/styles.css`. Der Vertrag wird für `sva-default` und `sva-forest` jeweils in Light und Dark gepflegt. Er trennt die Aktionsfarben bewusst von allgemeinen `primary`-, `secondary`- und `accent`-Flächen, damit Änderungen an Buttons nicht unbeabsichtigt Sidebar, Badges oder andere Shell-Flächen verändern.
+
+| Variante    | Ruhestand                                          | Zustände                                              |
+| ----------- | -------------------------------------------------- | ----------------------------------------------------- |
+| Primary     | gefüllte blaue beziehungsweise grüne Aktionsfläche | eigene Foreground-, Hover- und Active-Tokens          |
+| Secondary   | neutrale Fläche mit sichtbarer Kontur              | eigene Foreground-, Border-, Hover- und Active-Tokens |
+| Tertiary    | transparenter Hintergrund mit kontrastreichem Text | explizite Hover- und Active-Flächen samt Foreground   |
+| Destructive | zurückhaltende rote Fläche und Kontur              | eigene Foreground-, Border-, Hover- und Active-Tokens |
+| Disabled    | definierte neutrale Fläche, Kontur und Schrift     | keine pauschale Opacity-Mischung                      |
+
+Der aktive Text erreicht in Default, Hover und Active mindestens 4,5:1 gegen seine unmittelbare Fläche. Sekundärkontur und Fokusindikator erreichen mindestens 3:1 gegen Page-, Card- und Popover-Flächen. Forest-Dark verwendet deshalb einen dunklen Vordergrund auf dem hellen grünen Primary. Transparente Alpha-Mischungen sind für Action-Zustände nicht zulässig, weil ihr Ergebnis sonst vom unbekannten Untergrund abhängt.
+
+Foundation-Tests prüfen die vollständige Tokenmatrix numerisch. Der Playwright-Test `e2e/button-accessibility.spec.ts` ergänzt Axe, berechnete Browserfarben, Zielgrößen und visuelle Referenzen für alle vier Theme-/Modus-Kombinationen.
+
 ## KERN-2 Phase 1
 
 - Phase 1 ist eine visuelle Annäherung der Studio-Shell an KERN 2 im Light-Theme, keine technische Migration auf eine zweite UI-Laufzeit.
@@ -61,6 +77,7 @@ Die Layout-Shell von `apps/sva-studio-react` verwendet semantische Design-Tokens
 ## Erweiterungsregeln
 
 - Abweichungen von `shadcn/ui` für Standardmuster wie Button, Dialog, Input, Select oder Tabs sind nur mit dokumentierter Architekturentscheidung zulässig.
+- `@sva/studio-ui-react` ist alleiniger Owner der Button-Basis. Ein Boundary-Gate verhindert einen neuen lokalen App-Button sowie lokale Plugin-Basisbuttons.
 - Neue Theme-Varianten nur zentral in `src/lib/theme.ts` und den zugehörigen CSS-Token-Overrides ergänzen.
 - Neue Shell-Interaktionen bevorzugt über standardisierte Primitives modellieren, aktuell insbesondere Drawer-/`Sheet`-Muster.
 - Größere Route-Flächen sollen bei Anpassungen opportunistisch auf semantische Tokens migriert werden, ohne die Shell erneut zu fragmentieren.

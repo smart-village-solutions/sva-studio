@@ -4,7 +4,7 @@ import { createBrowserLogger } from '@sva/monitoring-client/logging';
 
 import { t } from '../i18n';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 const browserLogger = createBrowserLogger({
@@ -60,7 +60,7 @@ export default function ErrorFallback({ error, reset }: Readonly<ErrorComponentP
             <Button type="button" onClick={handleRetry}>
               {t('shared.errorFallback.retry')}
             </Button>
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link to="/">{t('shared.errorFallback.home')}</Link>
             </Button>
           </div>

@@ -75,7 +75,7 @@ const ToolbarButton = ({ active = false, children, label, disabled = false, onCl
   <Button
     type="button"
     size="icon"
-    variant="ghost"
+    variant="tertiary"
     aria-label={label}
     title={label}
     disabled={disabled}

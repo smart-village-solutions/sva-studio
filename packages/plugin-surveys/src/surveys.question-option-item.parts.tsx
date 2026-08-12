@@ -83,7 +83,7 @@ export function SurveyOptionActionButtons({
         type="button"
         className="shrink-0"
         size="icon"
-        variant="outline"
+        variant="secondary"
         disabled={optionIndex === optionCount - 1}
         aria-label={pt('actions.moveOptionDown', { index: optionIndex + 1 })}
         onClick={() => onMove(optionIndex + 1)}
@@ -94,7 +94,7 @@ export function SurveyOptionActionButtons({
         type="button"
         className="shrink-0"
         size="icon"
-        variant="outline"
+        variant="secondary"
         disabled={optionIndex === 0}
         aria-label={pt('actions.moveOptionUp', { index: optionIndex + 1 })}
         onClick={() => onMove(optionIndex - 1)}
@@ -105,7 +105,7 @@ export function SurveyOptionActionButtons({
         type="button"
         className="shrink-0"
         size="icon"
-        variant="outline"
+        variant="secondary"
         aria-label={pt('actions.deleteOption', { index: optionIndex + 1 })}
         onClick={() => onDelete(questionIndex, optionIndex)}
       >

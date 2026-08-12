@@ -47,7 +47,7 @@ export function SurveyQuestionOptionsEditor({
 
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         onClick={() =>
           updateQuestion(questionIndex, (currentQuestion) => ({
             ...currentQuestion,

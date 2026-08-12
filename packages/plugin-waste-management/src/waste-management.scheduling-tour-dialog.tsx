@@ -58,7 +58,7 @@ export const TourDateShiftDialog = ({
           <StatusNotice message={message} />
           <WasteSchedulingTourFields form={form} tours={tours} pt={pt} onChange={onChange} />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('scheduling.tour.actions.cancel')}
             </Button>
             <WastePendingSaveButton

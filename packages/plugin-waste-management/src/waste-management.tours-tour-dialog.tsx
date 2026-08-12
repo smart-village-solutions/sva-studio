@@ -68,7 +68,7 @@ export const TourDialog = ({
             onChange={onChange}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('tours.actions.cancel')}
             </Button>
             <WastePendingSaveButton

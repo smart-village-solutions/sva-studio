@@ -394,7 +394,7 @@ export const TourAssignmentsDialog = ({
                   </label>
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => {
                       setSearchQuery('');
                       setRegionFilter('');
@@ -420,7 +420,7 @@ export const TourAssignmentsDialog = ({
           </div>
 
           <DialogFooter className="border-t border-border/60 px-6 py-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('tours.assignments.actions.cancel')}
             </Button>
             <WastePendingSaveButton

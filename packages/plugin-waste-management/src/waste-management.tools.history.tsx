@@ -208,7 +208,7 @@ export const WasteToolsHistory = ({
                     <div className="flex flex-wrap gap-2">
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="tertiary"
                         onClick={() => setOpenEntryId(isOpen ? null : item.id)}
                       >
                         {pt('tools.meta.historyDetailsAction')}
@@ -216,7 +216,7 @@ export const WasteToolsHistory = ({
                       {jobId && canDeleteHistoryEntries ? (
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="tertiary"
                           onClick={() => onDeleteEntry?.(jobId)}
                         >
                           {pt('tools.meta.historyDeleteAction')}

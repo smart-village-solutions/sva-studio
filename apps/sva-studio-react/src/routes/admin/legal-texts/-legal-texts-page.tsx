@@ -7,7 +7,7 @@ import { StudioSummaryCard } from '../../../components/StudioSummaryCard';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -182,7 +182,7 @@ const LegalTextsTable = ({
               {formatLegalTextDateTime(item.lastAcceptedAt)}
             </td>
             <td className="px-3 py-3 text-right">
-              <Button asChild type="button" variant="outline" size="sm">
+              <Button asChild type="button" variant="secondary" size="sm">
                 <Link
                   to="/admin/legal-texts/$legalTextVersionId"
                   params={{ legalTextVersionId: item.id }}
@@ -296,7 +296,7 @@ export const LegalTextsPage = () => {
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void legalTextsApi.refetch()}
               >
                 {t('admin.legalTexts.actions.retry')}

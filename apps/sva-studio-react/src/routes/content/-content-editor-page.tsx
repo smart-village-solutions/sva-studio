@@ -9,11 +9,15 @@ import {
 import { FilePenLine, History } from 'lucide-react';
 import {
   addStudioCreatedSaveFeedback,
+  Button,
+  getStudioFormFieldProps,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
+  Select as StudioSelect,
   StudioDetailPageTemplate,
   StudioField,
   StudioFieldGroup,
+  type StudioFormFieldError,
   StudioFormSummaryErrors,
   StudioPersistentFormError,
   StudioResourceHeader,
@@ -22,9 +26,6 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  Select as StudioSelect,
-  getStudioFormFieldProps,
-  type StudioFormFieldError,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
@@ -33,7 +34,6 @@ import { z } from 'zod';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select as FieldSelect } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
@@ -621,7 +621,7 @@ export const ContentEditorPage = ({
   return (
     <section className="space-y-5" aria-busy={isLoading || saveFeedback.status === 'saving'}>
       <div>
-        <Button asChild variant="outline">
+        <Button asChild variant="secondary">
           <Link to="/admin/content">{t('content.actions.back')}</Link>
         </Button>
       </div>

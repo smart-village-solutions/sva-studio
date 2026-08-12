@@ -2,7 +2,7 @@ import React from 'react';
 
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
@@ -35,7 +35,7 @@ type StudioModuleContract = (typeof studioModuleIamContracts)[number];
 type ModuleCardProps = {
   readonly module: StudioModuleContract;
   readonly actionLabel: string;
-  readonly actionVariant?: 'default' | 'outline';
+  readonly actionVariant?: 'primary' | 'secondary';
   readonly statusLoading: boolean;
   readonly onAction: (moduleId: string) => void;
 };
@@ -120,7 +120,7 @@ const AssignedModulesCard = ({
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => void onSeedIamBaseline(instanceId)}
           disabled={statusLoading}
         >
@@ -129,7 +129,7 @@ const AssignedModulesCard = ({
         {showBootstrapAction ? (
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={onOpenBootstrapConfirm}
             disabled={statusLoading}
           >
@@ -146,7 +146,7 @@ const AssignedModulesCard = ({
             key={module.moduleId}
             module={module}
             actionLabel={t('admin.instances.instanceModules.actions.revoke')}
-            actionVariant="outline"
+            actionVariant="secondary"
             statusLoading={statusLoading}
             onAction={onOpenRevokeConfirm}
           />

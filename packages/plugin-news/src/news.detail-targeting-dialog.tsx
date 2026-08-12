@@ -63,7 +63,7 @@ export function NewsDetailTargetingDialog({
     <>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         disabled={availability === 'loading'}
         onClick={() => void openEditor()}
       >
@@ -109,7 +109,7 @@ export function NewsDetailTargetingDialog({
             setPage={editor.setPage}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => editor.setOpen(false)}>
+            <Button type="button" variant="secondary" onClick={() => editor.setOpen(false)}>
               {pt('actions.cancel')}
             </Button>
             <Button type="button" onClick={applySelection}>

@@ -59,19 +59,19 @@ export const WasteToolsImportProfileCard = ({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={() => void downloadImportTemplate(profile, sourceFormat)}>
+        <Button type="button" variant="secondary" onClick={() => void downloadImportTemplate(profile, sourceFormat)}>
           {pt('tools.actions.downloadTemplate')}
         </Button>
-        <Button type="button" variant="outline" onClick={() => document.getElementById(fileInputId)?.click()}>
+        <Button type="button" variant="secondary" onClick={() => document.getElementById(fileInputId)?.click()}>
           {pt('tools.imports.blobRefLabel')}
         </Button>
         {requiresPreview ? (
-          <Button type="button" variant="outline" disabled={running || !importBlobRef.startsWith('data:')} onClick={onRunPreview}>
+          <Button type="button" variant="secondary" disabled={running || !importBlobRef.startsWith('data:')} onClick={onRunPreview}>
             {pt('tools.actions.previewImport')}
           </Button>
         ) : null}
         {requiresPreview && previewResult && previewResult.errors.length > 0 ? (
-          <Button type="button" variant="outline" onClick={() => downloadImportPreviewErrors(previewResult)}>
+          <Button type="button" variant="secondary" onClick={() => downloadImportPreviewErrors(previewResult)}>
             {pt('tools.actions.downloadErrorFile')}
           </Button>
         ) : null}

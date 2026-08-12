@@ -1,13 +1,13 @@
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   addStudioCreatedSaveFeedback,
+  Button,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import React from 'react';
 
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -62,7 +62,7 @@ export const GroupCreatePage = () => {
             {t('admin.groups.dialogs.createDescription')}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/groups">{t('admin.groups.detail.backToList')}</Link>
         </Button>
       </header>
@@ -87,7 +87,7 @@ export const GroupCreatePage = () => {
             setFormValues={setDirtyFormValues}
           />
           <div className="mt-2 flex justify-end gap-3">
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <Link to="/admin/groups">{t('account.actions.cancel')}</Link>
             </Button>
             <StudioSaveButton

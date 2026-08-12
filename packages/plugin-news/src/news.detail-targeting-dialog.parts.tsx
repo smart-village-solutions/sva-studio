@@ -209,7 +209,7 @@ export function TargetingPagination({
       <div className="flex items-center gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={page <= 1}
           onClick={() => setPage((value) => value - 1)}
         >
@@ -220,7 +220,7 @@ export function TargetingPagination({
         </span>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={page >= pageCount}
           onClick={() => setPage((value) => value + 1)}
         >

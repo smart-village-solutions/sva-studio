@@ -1,12 +1,14 @@
 import type { AuthorizePerformanceRunResult } from '@sva/iam-core';
-import { StudioListPageTemplate } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioListPageTemplate,
+} from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
 import { StudioSummaryCard } from '../../components/StudioSummaryCard';
 import { StudioTableSurface } from '../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Button } from '../../components/ui/button';
 import {
   Card,
   CardContent,
@@ -275,7 +277,7 @@ export const MonitoringOverviewPage = () => {
       primaryAction={{
         label: t('monitoring.page.jobsAction'),
         render: (
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/monitoring/jobs">{t('monitoring.page.jobsAction')}</Link>
           </Button>
         ),
@@ -372,7 +374,7 @@ export const MonitoringOverviewPage = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">{t('monitoring.page.jobsCardBody')}</p>
-              <Button asChild variant="outline">
+              <Button asChild variant="secondary">
                 <Link to="/monitoring/jobs">{t('monitoring.page.jobsAction')}</Link>
               </Button>
             </CardContent>

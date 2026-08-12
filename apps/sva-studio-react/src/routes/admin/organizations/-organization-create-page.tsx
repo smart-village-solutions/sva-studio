@@ -1,5 +1,6 @@
 import {
   addStudioCreatedSaveFeedback,
+  Button,
   StudioDetailPageTemplate,
   StudioPersistentFormError,
   StudioSaveButton,
@@ -8,7 +9,6 @@ import {
 import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { useOrganizations } from '../../../hooks/use-organizations';
 import { t } from '../../../i18n';
@@ -151,7 +151,7 @@ export const OrganizationCreatePage = () => {
   return (
     <section className="space-y-5" aria-busy={organizationsApi.isLoading}>
       <div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/organizations">{t('admin.organizations.detail.backToList')}</Link>
         </Button>
       </div>
@@ -180,7 +180,7 @@ export const OrganizationCreatePage = () => {
             }
             formValues={formValues}
             actions={
-              <Button asChild type="button" variant="outline">
+              <Button asChild type="button" variant="secondary">
                 <Link to="/admin/organizations">{t('account.actions.cancel')}</Link>
               </Button>
             }

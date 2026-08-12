@@ -28,14 +28,14 @@ export function PoiDetailPricesTab({ pt }: Readonly<{ pt: (key: string) => strin
           </StudioFieldGroup>
           {fields.length > 1 ? (
             <div className="mt-4 flex justify-end">
-              <Button type="button" variant="outline" onClick={() => remove(index)}>
+              <Button type="button" variant="secondary" onClick={() => remove(index)}>
                 {pt('actions.remove')}
               </Button>
             </div>
           ) : null}
         </div>
       ))}
-      <Button type="button" variant="outline" onClick={() => append({ name: '', amount: '', description: '', category: '' })}>
+      <Button type="button" variant="secondary" onClick={() => append({ name: '', amount: '', description: '', category: '' })}>
         {pt('actions.add')}
       </Button>
     </PoiDetailSectionCard>

@@ -9,9 +9,14 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button {...props}>{children}</button>
-  ),
+  Button: ({
+    children,
+    loading,
+    ...props
+  }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props}>{children}</button>;
+  },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   StudioField: ({
     id,

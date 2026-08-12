@@ -27,7 +27,7 @@ export function SurveyQuestionHeader({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={questionIndex === 0}
           aria-label={pt('actions.moveQuestionUp', { index: questionIndex + 1 })}
           onClick={() => moveQuestion(questionIndex - 1)}
@@ -37,7 +37,7 @@ export function SurveyQuestionHeader({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={questionIndex === questionCount - 1}
           aria-label={pt('actions.moveQuestionDown', { index: questionIndex + 1 })}
           onClick={() => moveQuestion(questionIndex + 1)}
@@ -47,7 +47,7 @@ export function SurveyQuestionHeader({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           aria-label={pt('actions.deleteQuestion', { index: questionIndex + 1 })}
           onClick={() => requestDeleteQuestion(questionIndex)}
         >

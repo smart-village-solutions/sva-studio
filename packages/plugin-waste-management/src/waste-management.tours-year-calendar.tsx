@@ -136,13 +136,13 @@ export const TourYearCalendarDialog = ({
 
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button type="button" variant="outline" onClick={() => setYear((current) => current - 1)}>
+              <Button type="button" variant="secondary" onClick={() => setYear((current) => current - 1)}>
                 {pt('tours.yearCalendar.actions.previousYear')}
               </Button>
               <Badge className="w-fit self-center px-4 py-1 text-sm sm:self-auto">
                 {pt('tours.yearCalendar.meta.year', { value: year })}
               </Badge>
-              <Button type="button" variant="outline" onClick={() => setYear((current) => current + 1)}>
+              <Button type="button" variant="secondary" onClick={() => setYear((current) => current + 1)}>
                 {pt('tours.yearCalendar.actions.nextYear')}
               </Button>
             </div>

@@ -35,7 +35,8 @@ export function StudioSaveButton({
     <Button
       aria-label={accessibleLabel}
       className={cn('min-w-36', className)}
-      disabled={disabled || status === 'saving'}
+      disabled={disabled}
+      loading={status === 'saving'}
       {...props}
     >
       <span role="status" aria-live="polite" className="inline-flex items-center gap-2">
@@ -73,7 +74,7 @@ export function StudioPersistentFormError({
           <p>{message}</p>
           {details}
           {retryLabel && onRetry ? (
-            <Button type="button" variant="outline" disabled={retryDisabled} onClick={onRetry}>
+            <Button type="button" variant="secondary" disabled={retryDisabled} onClick={onRetry}>
               {retryLabel}
             </Button>
           ) : null}

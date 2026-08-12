@@ -20,7 +20,10 @@ vi.mock('../src/waste-management.page.support.js', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props} />;
+  },
   Checkbox: ({ checked, onChange, ...props }: React.ComponentProps<'input'>) => (
     <input
       {...props}

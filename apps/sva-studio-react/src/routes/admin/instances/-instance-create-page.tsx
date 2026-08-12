@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import {
+  Button,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -8,7 +9,6 @@ import React from 'react';
 
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -212,7 +212,7 @@ export const InstanceCreatePage = () => {
             {t('admin.instances.form.subtitle')}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/instances">{t('admin.instances.actions.back')}</Link>
         </Button>
       </header>
@@ -242,7 +242,7 @@ export const InstanceCreatePage = () => {
                 {t('admin.instances.setup.actions.completeSetup')}
               </Link>
             </Button>
-            <Button asChild type="button" variant="outline">
+            <Button asChild type="button" variant="secondary">
               <Link to="/admin/instances">
                 {t('admin.instances.success.actions.backToOverview')}
               </Link>
@@ -674,7 +674,7 @@ export const InstanceCreatePage = () => {
             <div className="flex gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={moveToPreviousStep}
                 disabled={currentStep === 'basics'}
               >

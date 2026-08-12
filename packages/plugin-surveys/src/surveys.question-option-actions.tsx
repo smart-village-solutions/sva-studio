@@ -26,7 +26,7 @@ export function SurveyQuestionOptionActions({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={optionIndex === 0}
           aria-label={pt('actions.moveOptionUp', { index: optionIndex + 1 })}
           onClick={onMoveUp}
@@ -36,7 +36,7 @@ export function SurveyQuestionOptionActions({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={optionIndex === optionCount - 1}
           aria-label={pt('actions.moveOptionDown', { index: optionIndex + 1 })}
           onClick={onMoveDown}
@@ -46,7 +46,7 @@ export function SurveyQuestionOptionActions({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           aria-label={pt('actions.deleteOption', { index: optionIndex + 1 })}
           onClick={onDelete}
         >

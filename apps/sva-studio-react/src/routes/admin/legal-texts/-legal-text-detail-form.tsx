@@ -2,7 +2,7 @@ import type { IamLegalTextListItem } from '@sva/core';
 import React from 'react';
 
 import { RichTextEditor } from '../../../components/RichTextEditor';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';

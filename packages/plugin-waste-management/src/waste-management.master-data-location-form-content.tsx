@@ -163,7 +163,7 @@ export const WasteMasterDataLocationFormContent = ({
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+      <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
         {cancelLabel}
       </Button>
       <WastePendingSaveButton

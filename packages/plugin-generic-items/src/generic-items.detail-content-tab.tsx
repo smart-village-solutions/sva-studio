@@ -117,7 +117,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() => contentBlocksArray.append({ title: '', intro: '', body: '', mediaContents: [] })}
             >
               {labels.addContentBlock}
@@ -134,7 +134,7 @@ export const GenericItemsDetailContentTab = ({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-sm font-medium text-foreground">{labels.contentBlockItem}</p>
                   {contentBlocks.length > 1 ? (
-                    <Button type="button" size="sm" variant="outline" onClick={() => contentBlocksArray.remove(index)}>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => contentBlocksArray.remove(index)}>
                       {labels.remove}
                     </Button>
                   ) : null}
@@ -205,7 +205,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 addressesArray.append({
                   addition: '',
@@ -229,7 +229,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.addressItem}</p>
                 {addresses.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => addressesArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => addressesArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -286,7 +286,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 contactsArray.append({
                   firstName: '',
@@ -309,7 +309,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.contactItem}</p>
                 {contacts.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => contactsArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => contactsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -366,7 +366,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 locationsArray.append({
                   name: '',
@@ -390,7 +390,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.locationItem}</p>
                 {locations.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => locationsArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => locationsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -517,7 +517,7 @@ export const GenericItemsDetailContentTab = ({
               <p className="text-sm font-medium text-foreground">{labels.webUrls}</p>
               <p className="text-sm text-muted-foreground">{labels.webUrlsHelp}</p>
             </div>
-            <Button type="button" size="sm" variant="outline" onClick={() => webUrlsArray.append({ url: '', description: '' })}>
+            <Button type="button" size="sm" variant="secondary" onClick={() => webUrlsArray.append({ url: '', description: '' })}>
               {labels.addLink}
             </Button>
           </div>
@@ -529,7 +529,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.linkItem}</p>
                 {webUrls.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => webUrlsArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => webUrlsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -569,7 +569,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 accessibilityInformationsArray.append({
                   description: '',
@@ -589,7 +589,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.accessibilityInformationItem}</p>
                 {accessibilityInformations.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => accessibilityInformationsArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => accessibilityInformationsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -622,7 +622,7 @@ export const GenericItemsDetailContentTab = ({
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     onClick={() =>
                       setValue(
                         `accessibilityInformations.${index}.urls`,
@@ -647,7 +647,7 @@ export const GenericItemsDetailContentTab = ({
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
+                          variant="secondary"
                           onClick={() =>
                             setValue(
                               `accessibilityInformations.${index}.urls`,
@@ -700,7 +700,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 priceInformationsArray.append({
                   name: '',
@@ -728,7 +728,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.priceInformationItem}</p>
                 {priceInformations.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => priceInformationsArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => priceInformationsArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}
@@ -886,7 +886,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 openingHoursArray.append({
                   weekday: '',
@@ -910,7 +910,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between bg-muted px-4 py-3 text-card-foreground">
                 <h4 className="text-base font-semibold">{labels.openingHourItem}</h4>
                 {openingHours.length > 1 ? (
-                  <Button type="button" variant="outline" size="sm" onClick={() => openingHoursArray.remove(index)}>
+                  <Button type="button" variant="secondary" size="sm" onClick={() => openingHoursArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : (
@@ -1027,7 +1027,7 @@ export const GenericItemsDetailContentTab = ({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="secondary"
               onClick={() =>
                 datesArray.append({
                   weekday: '',
@@ -1051,7 +1051,7 @@ export const GenericItemsDetailContentTab = ({
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-medium text-foreground">{labels.dateItem}</p>
                 {dates.length > 1 ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => datesArray.remove(index)}>
+                  <Button type="button" size="sm" variant="secondary" onClick={() => datesArray.remove(index)}>
                     {labels.remove}
                   </Button>
                 ) : null}

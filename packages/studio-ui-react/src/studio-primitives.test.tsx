@@ -218,7 +218,7 @@ describe('studio-ui-react primitives', () => {
     render(
       <StudioDetailPageTemplate
         title="Langer Editor"
-        actions={<Button variant="outline">Zurück</Button>}
+        actions={<Button variant="secondary">Zurück</Button>}
         primaryAction={<Button disabled>Speichern</Button>}
       >
         <p>Editorinhalt</p>

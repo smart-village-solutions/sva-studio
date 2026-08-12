@@ -1,4 +1,4 @@
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { StudioSummaryCard } from '../../../components/StudioSummaryCard';
 import { t } from '../../../i18n';
@@ -113,7 +113,7 @@ const PrimaryActionsCard = ({
             <Button
               key={action.action}
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               onClick={() => void onRunDetailAction(action.action)}
               disabled={statusLoading}

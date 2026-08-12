@@ -100,7 +100,7 @@ export const WasteSettingsCustomRecurrenceDeleteDialog = ({
         <DeleteFallbackField selection={selection} options={fallbackOptions} pt={pt} onSelectionChange={setSelection} />
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             {pt('tours.actions.cancel')}
           </Button>
           <Button

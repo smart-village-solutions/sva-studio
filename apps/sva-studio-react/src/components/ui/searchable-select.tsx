@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-import { Button } from './button';
+import { Button } from '@sva/studio-ui-react';
 import { Input } from './input';
 import {
   getSearchableSelectOptionId,
@@ -89,7 +89,7 @@ const SearchableSelectTrigger = ({
       ref={triggerRef}
       id={id}
       type="button"
-      variant="outline"
+      variant="secondary"
       className={cn('h-10 w-full justify-between px-3 text-sm font-normal', !selectedLabel ? 'text-muted-foreground' : undefined)}
       aria-label={label}
       aria-expanded={open}

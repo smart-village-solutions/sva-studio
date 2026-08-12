@@ -65,7 +65,7 @@ import {
 import { resolveStudioContentTypeLabel } from '../lib/studio-content-types';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Sheet, SheetContent } from './ui/sheet';
 
@@ -690,7 +690,7 @@ const SidebarPanel = ({
             <Button
               type="button"
               size="icon"
-              variant="outline"
+              variant="secondary"
               className="absolute right-0 top-1/2 z-[100] hidden h-9 w-9 -translate-y-1/2 translate-x-[calc(60%+12px)] rounded-full border-sidebar-border bg-card shadow-shell lg:inline-flex"
               aria-label={isCollapsed ? t('shell.sidebar.expand') : t('shell.sidebar.collapse')}
               onClick={onToggleCollapsed}
@@ -706,7 +706,7 @@ const SidebarPanel = ({
             <Button
               type="button"
               size="icon"
-              variant="outline"
+              variant="secondary"
               className="border-sidebar-border bg-card shadow-shell"
               aria-label={t('shell.header.closeNavigation')}
               onClick={onCloseMobileNavigation}

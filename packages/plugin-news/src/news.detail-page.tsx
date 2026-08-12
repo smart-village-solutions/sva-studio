@@ -1136,7 +1136,7 @@ export const NewsDetailPage = ({
       }
       actions={
         <div className="flex flex-wrap gap-3">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' && accessCapabilities.canDelete ? (

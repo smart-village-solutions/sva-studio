@@ -13,7 +13,7 @@ import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { Button } from '../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
@@ -93,7 +93,7 @@ const AuthenticatedHeroActions = () => (
     <Button asChild>
       <Link to="/admin/content">{t('home.hero.primaryAction')}</Link>
     </Button>
-    <Button asChild variant="outline">
+    <Button asChild variant="secondary">
       <Link to="/account">{t('home.hero.secondaryAction')}</Link>
     </Button>
   </div>
@@ -166,7 +166,7 @@ const HomeAuthErrorBanner = ({
         <span>{t('home.authError.authFlowId', { authFlowId: authDiagnosticSnapshot.authFlowId })}</span>
       ) : null}
       {authErrorLoginHref ? (
-        <Button asChild size="sm" variant="outline">
+        <Button asChild size="sm" variant="secondary">
           <a href={authErrorLoginHref}>{t('home.authError.loginAction')}</a>
         </Button>
       ) : null}
@@ -192,7 +192,7 @@ const AuthenticatedHomeOverview = ({
           <CardDescription>{t('home.cards.content.description')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/admin/content">{t('home.cards.content.action')}</Link>
           </Button>
         </CardContent>
@@ -204,7 +204,7 @@ const AuthenticatedHomeOverview = ({
           <CardDescription>{t('home.cards.account.description')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/account">{t('home.cards.account.action')}</Link>
           </Button>
         </CardContent>
@@ -216,7 +216,7 @@ const AuthenticatedHomeOverview = ({
           <CardDescription>{t('home.cards.interfaces.description')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/interfaces">{t('home.cards.interfaces.action')}</Link>
           </Button>
         </CardContent>

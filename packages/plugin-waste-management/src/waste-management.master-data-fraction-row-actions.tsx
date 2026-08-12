@@ -19,7 +19,7 @@ export const FractionRowActions = ({
     <>
       <Button
         type="button"
-        variant="ghost"
+        variant="tertiary"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
         aria-label={editLabel}
@@ -30,7 +30,7 @@ export const FractionRowActions = ({
       </Button>
       <Button
         type="button"
-        variant="ghost"
+        variant="tertiary"
         size="sm"
         className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
         aria-label={deleteLabel}

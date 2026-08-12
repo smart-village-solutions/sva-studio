@@ -1,8 +1,9 @@
 import { IconEdit, IconRefresh, IconTrash } from '@tabler/icons-react';
 import {
+  Button,
+  type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
-  type StudioColumnDef,
 } from '@sva/studio-ui-react';
 import React from 'react';
 import { Link } from '@tanstack/react-router';
@@ -14,7 +15,6 @@ import {
 } from '../../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -263,7 +263,7 @@ export const RolesPage = () => {
 
                   return (
                     <>
-                      <Button asChild type="button" size="icon" variant="outline">
+                      <Button asChild type="button" size="icon" variant="secondary">
                         <Link
                           to="/admin/roles/$roleId"
                           params={{ roleId: role.id }}
@@ -360,7 +360,7 @@ export const RolesPage = () => {
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void rolesApi.refetch()}
               >
                 {t('admin.roles.actions.retry')}

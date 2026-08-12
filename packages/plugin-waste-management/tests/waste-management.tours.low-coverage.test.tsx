@@ -29,7 +29,10 @@ vi.mock('@sva/plugin-sdk', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props} />;
+  },
   Checkbox: ({
     indeterminate,
     ...props

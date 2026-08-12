@@ -1,5 +1,5 @@
-@import "@kern-ux/native/dist/fonts/fira-sans.css";
-@import "tailwindcss";
+@import '@kern-ux/native/dist/fonts/fira-sans.css';
+@import 'tailwindcss';
 @source "../../../packages";
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -31,6 +31,29 @@
   --color-sidebar-accent-foreground: rgb(var(--sidebar-accent-foreground));
   --color-sidebar-border: rgb(var(--sidebar-border));
   --color-sidebar-ring: rgb(var(--sidebar-ring));
+  --color-action-primary: rgb(var(--action-primary));
+  --color-action-primary-foreground: rgb(var(--action-primary-foreground));
+  --color-action-primary-hover: rgb(var(--action-primary-hover));
+  --color-action-primary-active: rgb(var(--action-primary-active));
+  --color-action-secondary: rgb(var(--action-secondary));
+  --color-action-secondary-foreground: rgb(var(--action-secondary-foreground));
+  --color-action-secondary-border: rgb(var(--action-secondary-border));
+  --color-action-secondary-hover: rgb(var(--action-secondary-hover));
+  --color-action-secondary-active: rgb(var(--action-secondary-active));
+  --color-action-tertiary-foreground: rgb(var(--action-tertiary-foreground));
+  --color-action-tertiary-hover: rgb(var(--action-tertiary-hover));
+  --color-action-tertiary-hover-foreground: rgb(var(--action-tertiary-hover-foreground));
+  --color-action-tertiary-active: rgb(var(--action-tertiary-active));
+  --color-action-tertiary-active-foreground: rgb(var(--action-tertiary-active-foreground));
+  --color-action-destructive: rgb(var(--action-destructive));
+  --color-action-destructive-foreground: rgb(var(--action-destructive-foreground));
+  --color-action-destructive-border: rgb(var(--action-destructive-border));
+  --color-action-destructive-hover: rgb(var(--action-destructive-hover));
+  --color-action-destructive-active: rgb(var(--action-destructive-active));
+  --color-action-disabled: rgb(var(--action-disabled));
+  --color-action-disabled-foreground: rgb(var(--action-disabled-foreground));
+  --color-action-disabled-border: rgb(var(--action-disabled-border));
+  --color-action-focus: rgb(var(--action-focus));
   --font-weight-normal: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
@@ -78,6 +101,29 @@
     --sidebar-accent-foreground: 27 39 56;
     --sidebar-border: 210 220 232;
     --sidebar-ring: 0 90 158;
+    --action-primary: 0 90 158;
+    --action-primary-foreground: 255 255 255;
+    --action-primary-hover: 0 79 140;
+    --action-primary-active: 0 66 115;
+    --action-secondary: 233 240 249;
+    --action-secondary-foreground: 27 39 56;
+    --action-secondary-border: 125 141 160;
+    --action-secondary-hover: 220 232 245;
+    --action-secondary-active: 207 223 240;
+    --action-tertiary-foreground: 27 39 56;
+    --action-tertiary-hover: 233 240 249;
+    --action-tertiary-hover-foreground: 27 39 56;
+    --action-tertiary-active: 220 232 245;
+    --action-tertiary-active-foreground: 27 39 56;
+    --action-destructive: 247 229 232;
+    --action-destructive-foreground: 143 0 26;
+    --action-destructive-border: 176 0 32;
+    --action-destructive-hover: 241 210 216;
+    --action-destructive-active: 234 186 196;
+    --action-disabled: 225 230 237;
+    --action-disabled-foreground: 93 104 118;
+    --action-disabled-border: 149 160 173;
+    --action-focus: 0 90 158;
     --waste-panel-surface: 240 244 249;
     --waste-panel-overlay: 255 255 255;
     --font-weight-normal: 400;
@@ -104,6 +150,10 @@
     --sidebar-primary: 18 122 96;
     --sidebar-ring: 18 122 96;
     --sidebar-accent: 226 236 225;
+    --action-primary: 18 122 96;
+    --action-primary-hover: 15 107 84;
+    --action-primary-active: 12 89 70;
+    --action-focus: 18 122 96;
   }
 
   html.dark,
@@ -135,6 +185,29 @@
     --sidebar-accent-foreground: 191 191 191;
     --sidebar-border: 36 37 38;
     --sidebar-ring: 57 148 188;
+    --action-primary: 41 122 160;
+    --action-primary-foreground: 255 255 255;
+    --action-primary-hover: 38 116 148;
+    --action-primary-active: 35 107 137;
+    --action-secondary: 44 45 46;
+    --action-secondary-foreground: 191 191 191;
+    --action-secondary-border: 111 115 119;
+    --action-secondary-hover: 54 56 58;
+    --action-secondary-active: 64 66 68;
+    --action-tertiary-foreground: 191 191 191;
+    --action-tertiary-hover: 39 103 130;
+    --action-tertiary-hover-foreground: 237 237 237;
+    --action-tertiary-active: 35 107 137;
+    --action-tertiary-active-foreground: 237 237 237;
+    --action-destructive: 62 41 39;
+    --action-destructive-foreground: 244 161 143;
+    --action-destructive-border: 244 135 113;
+    --action-destructive-hover: 74 48 45;
+    --action-destructive-active: 87 55 49;
+    --action-disabled: 42 43 44;
+    --action-disabled-foreground: 155 155 155;
+    --action-disabled-border: 102 104 106;
+    --action-focus: 101 181 218;
     --waste-panel-surface: 25 26 27;
     --waste-panel-overlay: 25 26 27;
     --elevation-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.22);
@@ -148,6 +221,11 @@
     --sidebar-primary: 30 215 166;
     --sidebar-ring: 30 215 166;
     --sidebar-accent: 24 59 51;
+    --action-primary: 30 215 166;
+    --action-primary-foreground: 18 19 20;
+    --action-primary-hover: 54 223 178;
+    --action-primary-active: 24 199 152;
+    --action-focus: 68 232 184;
   }
 
   * {
@@ -164,8 +242,17 @@
     background-color: rgb(var(--background));
     color: rgb(var(--foreground));
     font-family:
-      'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
-      'Cantarell', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      'Fira Sans',
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      'Roboto',
+      'Oxygen',
+      'Ubuntu',
+      'Cantarell',
+      'Droid Sans',
+      'Helvetica Neue',
+      sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -183,18 +270,6 @@
 /* Microanimations – professionelle Interaktionsfeedbacks */
 @layer components {
   @media (prefers-reduced-motion: no-preference) {
-    /* 1. Button-Scale-Lift: Hover mit Scale + Shadow-Erhöhung */
-    @keyframes button-scale-lift {
-      from {
-        transform: scale(1);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-      }
-      to {
-        transform: scale(1.02);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-      }
-    }
-
     /* 2. Input-Glow: Subtiler ausfahrender Ring */
     @keyframes input-glow {
       from {
@@ -206,7 +281,8 @@
     }
 
     @keyframes validation-error-pulse {
-      0%, 100% {
+      0%,
+      100% {
         box-shadow: 0 0 0 3px rgb(var(--destructive) / 0.2);
       }
       50% {
@@ -308,14 +384,6 @@
 
   /* Utility-Klassen für Animationen */
   @media (prefers-reduced-motion: no-preference) {
-    .animate-button-hover {
-      @apply transition-all duration-150 ease-out;
-    }
-
-    .animate-button-hover:hover {
-      animation: button-scale-lift 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    }
-
     .animate-input-glow:focus-visible {
       animation: input-glow 200ms ease-out forwards;
     }
@@ -368,7 +436,8 @@
       animation: breadcrumb-slide 200ms ease-out forwards;
     }
 
-    .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible) .animate-label-float {
+    .field-group:has(input:focus-visible, textarea:focus-visible, [role='combobox']:focus-visible)
+      .animate-label-float {
       animation: label-float 150ms ease-out forwards;
     }
   }

@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router';
 
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import { INSTANCE_STATUS_LABELS } from './-instance-detail-view-shared';
 
@@ -35,7 +35,7 @@ export const InstanceDetailHeader = ({
         <Button type="button" onClick={onOpenDoctor}>
           {t('admin.instances.detail.actions.openDoctor')}
         </Button>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/instances">{t('admin.instances.actions.back')}</Link>
         </Button>
       </div>

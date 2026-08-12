@@ -1,5 +1,10 @@
 import type { IamInstanceListItem } from '@sva/core';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  Button,
+  type StudioColumnDef,
+  StudioDataTable,
+  StudioListPageTemplate,
+} from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -10,7 +15,6 @@ import {
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -97,7 +101,7 @@ export const InstancesPage = () => {
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void instancesApi.refreshInstancesAudit()}
                 disabled={instancesApi.auditLoading}
               >
@@ -155,15 +159,15 @@ export const InstancesPage = () => {
           }
           rowActions={(instance) => (
             <>
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" variant="secondary">
                 <Link to="/admin/instances/$instanceId" params={{ instanceId: instance.instanceId }}>
                   {t('admin.instances.actions.edit')}
                 </Link>
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => void instancesApi.activateInstance(instance.instanceId)}>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void instancesApi.activateInstance(instance.instanceId)}>
                 {t('admin.instances.actions.activate')}
               </Button>
-              <Button type="button" size="sm" variant="outline" onClick={() => void instancesApi.suspendInstance(instance.instanceId)}>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void instancesApi.suspendInstance(instance.instanceId)}>
                 {t('admin.instances.actions.suspend')}
               </Button>
               <Button type="button" size="sm" variant="destructive" onClick={() => void instancesApi.archiveInstance(instance.instanceId)}>

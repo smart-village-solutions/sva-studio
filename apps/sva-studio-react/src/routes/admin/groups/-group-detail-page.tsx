@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamGroupDetail as IamAdminGroupDetail } from '@sva/iam-core';
 import {
+  Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioPersistentFormError,
@@ -13,7 +14,6 @@ import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Input } from '../../../components/ui/input';
@@ -236,7 +236,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
               : t('admin.groups.messages.loading')}
           </p>
         </div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/groups">{t('admin.groups.detail.backToList')}</Link>
         </Button>
       </header>
@@ -468,7 +468,7 @@ export const GroupDetailPage = ({ groupId }: GroupDetailPageProps) => {
                               <Button
                                 type="button"
                                 size="sm"
-                                variant="outline"
+                                variant="secondary"
                                 disabled={!membership.keycloakSubject}
                                 onClick={() => void onRemoveMembership(membership.keycloakSubject)}
                               >

@@ -18,7 +18,7 @@ export const WastePendingSaveButton = ({
   disabled,
   ...props
 }: WastePendingSaveButtonProps) => (
-  <Button {...props} aria-busy={saving} disabled={saving || disabled}>
+  <Button {...props} disabled={disabled || saving} loading={saving}>
     {label}
   </Button>
 );

@@ -1,5 +1,6 @@
 import type { IamUserDetail } from '@sva/core';
 import {
+  Button,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
@@ -10,7 +11,6 @@ import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../l
 import { IamRuntimeDiagnosticDetails } from '../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -263,7 +263,7 @@ export const AccountProfilePage = () => {
       <Alert className="border-secondary/40 bg-secondary/10 text-sm text-secondary" role="status">
         <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
           <span>{t('account.messages.notAuthenticated')}</span>
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <a href={loginHref}>{t('shell.header.login')}</a>
           </Button>
         </AlertDescription>
@@ -288,11 +288,11 @@ export const AccountProfilePage = () => {
               <IamRuntimeDiagnosticDetails error={loadError} />
               <div className="flex flex-wrap gap-3">
                 {isUnauthorized ? (
-                  <Button asChild type="button" variant="outline">
+                  <Button asChild type="button" variant="secondary">
                     <a href={loginHref}>{t('shell.header.login')}</a>
                   </Button>
                 ) : (
-                  <Button type="button" variant="outline" onClick={handleRetryLoad}>
+                  <Button type="button" variant="secondary" onClick={handleRetryLoad}>
                     {t('account.actions.retry')}
                   </Button>
                 )}

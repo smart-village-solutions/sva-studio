@@ -378,7 +378,7 @@ export const InstanceDetailConfigurationSection = ({
           />
           <StudioSaveButton
             type="submit"
-            variant="outline"
+            variant="secondary"
             status={saveStatus}
             labels={{
               idle: t('admin.instances.actions.save'),

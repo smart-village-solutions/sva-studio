@@ -60,7 +60,7 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
             {onRemove ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="tertiary"
                 size="sm"
                 aria-label={pt('targeting.actions.removeTarget', { address: targetLabel })}
                 onClick={() => onRemove(key)}

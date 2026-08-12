@@ -1,6 +1,6 @@
 import type { InstanceAuditCheck, InstanceAuditRun } from '@sva/core';
 
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
@@ -135,7 +135,7 @@ export const InstanceAuditRunSection = ({
         <h3 className="text-base font-semibold">{title}</h3>
         <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={() => void onRefresh()} disabled={auditLoading}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => void onRefresh()} disabled={auditLoading}>
         {auditLoading ? loadingLabel : refreshLabel}
       </Button>
     </div>

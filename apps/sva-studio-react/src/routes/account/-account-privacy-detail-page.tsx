@@ -1,11 +1,13 @@
-import { StudioDetailPageTemplate } from '@sva/studio-ui-react';
+import {
+  Button,
+  StudioDetailPageTemplate,
+} from '@sva/studio-ui-react';
 import type { IamSelfServiceActivityItem } from '@sva/core';
 import { useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { t } from '../../i18n';
 import { buildMyDataExportDownloadUrl, getMyDataSubjectRightsCase } from '../../lib/iam-api';
@@ -60,7 +62,7 @@ const PrivacyDetailContent = ({ item }: Readonly<{ item: IamSelfServiceActivityI
           <div className="md:col-span-2">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               onClick={() => window.location.assign(buildMyDataExportDownloadUrl(item.id, item.format as 'json' | 'csv' | 'xml'))}
             >
               {t('account.privacy.table.actions.download')}
@@ -124,7 +126,7 @@ export const AccountPrivacyDetailPage = ({ caseId }: AccountPrivacyDetailPagePro
       title={item?.title ?? t('account.privacy.detail.title')}
       description={t('account.privacy.detail.subtitle')}
       actions={
-        <Button type="button" variant="outline" onClick={() => void navigate({ to: '/account/privacy' })}>
+        <Button type="button" variant="secondary" onClick={() => void navigate({ to: '/account/privacy' })}>
           {t('account.privacy.detail.back')}
         </Button>
       }

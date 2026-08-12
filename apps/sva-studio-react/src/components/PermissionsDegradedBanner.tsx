@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle, X, RefreshCw } from 'lucide-react';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { t } from '../i18n';
 import { useAuth } from '../providers/auth-provider';
 import { useEffectiveAccess } from '../providers/effective-access-provider';
@@ -51,7 +51,7 @@ export const PermissionsDegradedBanner = () => {
       <span className="flex-1">{t('shell.permissionsDegraded.message')}</span>
       <div className="flex shrink-0 items-center gap-2">
         <Button
-          variant="ghost"
+          variant="tertiary"
           size="sm"
           disabled={isRetrying}
           onClick={() => void handleRetry()}
@@ -64,7 +64,7 @@ export const PermissionsDegradedBanner = () => {
           {t('shell.permissionsDegraded.retry')}
         </Button>
         <Button
-          variant="ghost"
+          variant="tertiary"
           size="sm"
           aria-label={t('shell.permissionsDegraded.dismiss')}
           onClick={() => setDismissed(true)}

@@ -28,7 +28,7 @@ const SortLabel = ({
 }) => (
   <Button
     type="button"
-    variant="ghost"
+    variant="tertiary"
     className="h-auto px-0 py-0 font-semibold text-foreground hover:bg-transparent hover:animate-none"
     onClick={onClick}
   >

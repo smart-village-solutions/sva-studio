@@ -1,15 +1,20 @@
 import { ArrowDownAZ, ArrowUpDown, ArrowUpZA } from 'lucide-react';
 import * as React from 'react';
 import {
-  type CellContext,
-  type ColumnDef,
   flexRender,
-  getCoreRowModel,
-  getSortedRowModel,
+  type RowData,
   type RowSelectionState,
   type SortingState,
-  useReactTable,
 } from '@tanstack/react-table';
+import {
+  type LegacyColumnDef,
+  type LegacyHeader,
+  type LegacyRow,
+  type LegacyTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  useLegacyTable,
+} from '@tanstack/react-table/legacy';
 
 import { Button, type ButtonProps } from './button.js';
 import { Checkbox } from './checkbox.js';
@@ -135,8 +140,8 @@ const compareByCodeUnit = (left: string, right: string): number => {
 export const compareAlphabetically = (left: string, right: string) =>
   left.localeCompare(right, 'de') || compareByCodeUnit(left, right);
 
-const renderSelectionHeader = <TData,>(
-  table: ReturnType<typeof useReactTable<TData>>,
+const renderSelectionHeader = <TData extends RowData>(
+  table: LegacyTable<TData>,
   ariaLabel: string,
   labels: StudioDataTableLabels
 ) => (
@@ -153,8 +158,8 @@ const renderSelectionHeader = <TData,>(
   />
 );
 
-const renderSelectionCell = <TData,>(
-  row: CellContext<TData, unknown>['row'],
+const renderSelectionCell = <TData extends RowData>(
+  row: LegacyRow<TData>,
   ariaLabel: string,
   labels: StudioDataTableLabels
 ) => (
@@ -167,16 +172,12 @@ const renderSelectionCell = <TData,>(
   />
 );
 
-const renderActionsCell = <TData,>(
-  row: CellContext<TData, unknown>['row'],
+const renderActionsCell = <TData extends RowData>(
+  row: LegacyRow<TData>,
   rowActions: (row: TData) => React.ReactNode
 ) => <div className="flex justify-end gap-2">{rowActions(row.original)}</div>;
 
-const renderHeaderCellContent = <TData,>(
-  header: ReturnType<
-    ReturnType<typeof useReactTable<TData>>['getHeaderGroups']
-  >[number]['headers'][number]
-) => {
+const renderHeaderCellContent = <TData extends RowData>(header: LegacyHeader<TData>) => {
   if (header.isPlaceholder) {
     return null;
   }
@@ -205,7 +206,7 @@ const renderHeaderCellContent = <TData,>(
   );
 };
 
-export function StudioDataTable<TData>({
+export function StudioDataTable<TData extends RowData>({
   ariaLabel,
   labels,
   caption,
@@ -332,13 +333,13 @@ export function StudioDataTable<TData>({
 
   const tableData = React.useMemo(() => [...data], [data]);
 
-  const coreColumns = React.useMemo<ColumnDef<TData>[]>(() => {
-    const tableColumns = columns.map<ColumnDef<TData>>((column) => ({
+  const coreColumns = React.useMemo<LegacyColumnDef<TData>[]>(() => {
+    const tableColumns = columns.map<LegacyColumnDef<TData>>((column) => ({
       id: column.id,
-      accessorFn: column.sortable ? (row) => column.sortValue(row) : undefined,
+      ...(column.sortable ? { accessorFn: (row: TData) => column.sortValue(row) } : {}),
       enableSorting: column.sortable ?? false,
       header: () => column.header,
-      cell: (context: CellContext<TData, unknown>) => column.cell(context.row.original),
+      cell: (context) => column.cell(context.row.original),
       meta: {
         className: column.className,
         headerClassName: column.headerClassName,
@@ -347,7 +348,7 @@ export function StudioDataTable<TData>({
       },
     }));
 
-    const mappedColumns: ColumnDef<TData>[] = [];
+    const mappedColumns: LegacyColumnDef<TData>[] = [];
 
     if (selectionMode === 'multiple') {
       mappedColumns.push({
@@ -384,11 +385,11 @@ export function StudioDataTable<TData>({
     return mappedColumns;
   }, [ariaLabel, columns, labels, rowActions, selectionMode]);
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data: tableData,
     columns: coreColumns,
-    getCoreRowModel: getCoreRowModel(),
-    ...(sortingConfig.mode === 'client' ? { getSortedRowModel: getSortedRowModel() } : {}),
+    getCoreRowModel: getCoreRowModel<TData>(),
+    ...(sortingConfig.mode === 'client' ? { getSortedRowModel: getSortedRowModel<TData>() } : {}),
     manualSorting: sortingConfig.mode === 'external',
     enableSortingRemoval: sortingConfig.mode !== 'external',
     enableMultiSort: false,

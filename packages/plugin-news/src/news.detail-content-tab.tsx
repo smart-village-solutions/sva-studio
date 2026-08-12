@@ -15,6 +15,7 @@ import {
 import { NewsDetailCard } from './news.detail-card.js';
 import {
   collectSummaryErrors,
+  createNewsMediaUsageLabels,
   type ContentFieldBindings,
   readNestedFieldError,
   translateFieldError,
@@ -138,7 +139,6 @@ type NewsContentMediaSectionProps = Readonly<{
   mediaUsages: readonly ContentMediaUsage[];
   onChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
-  canUploadMedia: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onAddManualMedia: () => string;
@@ -150,7 +150,6 @@ function NewsContentMediaSection({
   mediaUsages,
   onChange,
   canSelectMedia,
-  canUploadMedia,
   onLoadAssetSnapshot,
   onAddManualMedia,
   onOpenMediaPicker,
@@ -229,46 +228,6 @@ function NewsContentSourceSection({
   );
 }
 
-const createNewsMediaUsageLabels = (pt: NewsDetailContentTabProps['pt']) => ({
-  title: pt('cards.content.media.title'),
-  description: pt('cards.content.media.description'),
-  empty: pt('cards.content.media.empty'),
-  actions: {
-    add: pt('messages.mediaPickerTitle'),
-    remove: pt('actions.removeImage'),
-    moveUp: pt('media.moveUp'),
-    moveDown: pt('media.moveDown'),
-    refreshMetadata: pt('media.refresh'),
-    cancel: pt('actions.cancel'),
-    apply: pt('media.apply'),
-  },
-  fields: {
-    url: pt('fields.mediaUrl'),
-    altText: pt('fields.mediaUrlDescription'),
-    caption: pt('fields.mediaCaption'),
-    credit: pt('fields.mediaCopyright'),
-    license: pt('messages.mediaPickerLicense'),
-  },
-  states: {
-    linked: pt('media.linked'),
-    manual: pt('media.manual'),
-    synced: pt('media.synced'),
-    pending: pt('media.pending'),
-    missing: pt('media.missing'),
-    additional: pt('media.additional'),
-    unresolved: pt('media.unresolved'),
-    failed: pt('media.failed'),
-    previewUnavailable: pt('media.previewUnavailable'),
-  },
-  announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
-  refresh: {
-    title: pt('media.refreshTitle'),
-    description: pt('media.refreshDescription'),
-    assetValue: pt('media.assetValue'),
-    contentValue: pt('media.contentValue'),
-  },
-});
-
 export function NewsDetailContentTab({
   onOpenMediaPicker,
   onAddManualMedia,
@@ -276,7 +235,6 @@ export function NewsDetailContentTab({
   mediaUsages,
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
-  canUploadMedia = true,
   onLoadAssetSnapshot,
 }: NewsDetailContentTabProps) {
   const {
@@ -345,7 +303,6 @@ export function NewsDetailContentTab({
         mediaUsages={resolvedUsages}
         onChange={changeMedia}
         canSelectMedia={canSelectMedia}
-        canUploadMedia={canUploadMedia}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
         onAddManualMedia={onAddManualMedia}
         onOpenMediaPicker={onOpenMediaPicker}

@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -98,63 +99,70 @@ describe('useStudioMediaPickerOverlay', () => {
     const onChangeMode = vi.fn();
     const onClose = vi.fn();
     const asset = createAsset();
-    render(
-      <>
-        <StudioMediaPickerOverlay
-          assets={[]}
-          labels={{
-            title: 'Medium hinzufügen',
-            description: 'Medium auswählen',
-            modes: {
-              upload: 'Medium hochladen',
-              library: 'Medium aus der Bibliothek hinzufügen',
-              manual: 'Medium per Link hinzufügen',
-              review: 'Prüfen',
-            },
-            library: { searchLabel: 'Suchen', empty: 'Leer', select: 'Auswählen' },
-            upload: {
-              regionLabel: 'Upload',
-              title: 'Upload',
-              description: 'Upload',
-              browseAction: 'Datei auswählen',
-              supportLabel: 'Nur Bilder',
-            },
-            review: { title: 'Prüfen', description: 'Prüfen' },
-            fields: {
-              title: 'Titel',
-              altText: 'Alternativtext',
-              description: 'Beschreibung',
-              copyright: 'Copyright',
-              license: 'Lizenz',
-            },
-            actions: {
-              cancel: 'Abbrechen',
-              backToLibrary: 'Zurück',
-              backToUpload: 'Zurück',
-              openMediaManagement: 'Öffnen',
-              useMedia: 'Übernehmen',
-            },
-          }}
-          metadataDraft={asset.metadata}
-          mode="upload"
-          onAddManual={onAddManual}
-          onBackFromReview={vi.fn()}
-          onChangeMode={onChangeMode}
-          onClose={onClose}
-          onConfirmSelection={vi.fn()}
-          onMetadataChange={vi.fn()}
-          onSearchValueChange={vi.fn()}
-          onSelectAsset={vi.fn()}
-          onUploadFile={vi.fn()}
-          open
-          reviewAsset={null}
-          reviewSource="upload"
-          searchValue=""
-          uploadPhase="idle"
-        />
-        <input id="content-media-manual-1-url" aria-label="Manuelle URL" />
-      </>
-    );
+    const Harness = () => {
+      const [open, setOpen] = React.useState(true);
+      return (
+        <>
+          <StudioMediaPickerOverlay
+            assets={[]}
+            labels={{
+              title: 'Medium hinzufügen',
+              description: 'Medium auswählen',
+              modes: {
+                upload: 'Medium hochladen',
+                library: 'Medium aus der Bibliothek hinzufügen',
+                manual: 'Medium per Link hinzufügen',
+                review: 'Prüfen',
+              },
+              library: { searchLabel: 'Suchen', empty: 'Leer', select: 'Auswählen' },
+              upload: {
+                regionLabel: 'Upload',
+                title: 'Upload',
+                description: 'Upload',
+                browseAction: 'Datei auswählen',
+                supportLabel: 'Nur Bilder',
+              },
+              review: { title: 'Prüfen', description: 'Prüfen' },
+              fields: {
+                title: 'Titel',
+                altText: 'Alternativtext',
+                description: 'Beschreibung',
+                copyright: 'Copyright',
+                license: 'Lizenz',
+              },
+              actions: {
+                cancel: 'Abbrechen',
+                backToLibrary: 'Zurück',
+                backToUpload: 'Zurück',
+                openMediaManagement: 'Öffnen',
+                useMedia: 'Übernehmen',
+              },
+            }}
+            metadataDraft={asset.metadata}
+            mode="upload"
+            onAddManual={onAddManual}
+            onBackFromReview={vi.fn()}
+            onChangeMode={onChangeMode}
+            onClose={() => {
+              onClose();
+              setOpen(false);
+            }}
+            onConfirmSelection={vi.fn()}
+            onMetadataChange={vi.fn()}
+            onSearchValueChange={vi.fn()}
+            onSelectAsset={vi.fn()}
+            onUploadFile={vi.fn()}
+            open={open}
+            reviewAsset={null}
+            reviewSource="upload"
+            searchValue=""
+            uploadPhase="idle"
+          />
+          <input id="content-media-manual-1-url" aria-label="Manuelle URL" />
+        </>
+      );
+    };
+    render(<Harness />);
 
     expect(
       screen.getByRole('button', { name: 'Medium hochladen' }).getAttribute('aria-pressed')

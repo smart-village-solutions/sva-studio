@@ -7,8 +7,11 @@ import type {
   ContentMediaUsage,
   ContentMediaUsagePatch,
 } from './content-media-usage.js';
-import { moveContentMediaUsage } from './content-media-usage.js';
 import { ContentMediaUsageItem } from './content-media-usage-item.js';
+import {
+  useContentMediaMetadataRefresh,
+  useContentMediaUsageListActions,
+} from './use-content-media-usage-block.js';
 
 export type ContentMediaUsageBlockLabels = Readonly<{
   title: string;
@@ -75,7 +78,74 @@ export type ContentMediaUsageBlockProps = Readonly<{
   showHeader?: boolean;
 }>;
 
-type DiffState = Readonly<{ usage: ContentMediaUsage; asset: ContentMediaAssetSnapshot }>;
+type ContentMediaUsageItemsProps = Readonly<{
+  usages: readonly ContentMediaUsage[];
+  labels: ContentMediaUsageBlockLabels;
+  supportedFields: ContentMediaUsageSupportedFields;
+  errors: Readonly<Record<string, string | undefined>>;
+  canRefresh: boolean;
+  refreshingUiId: string | null;
+  refreshErrorUiId: string | null;
+  renderAdditionalFields?: ContentMediaUsageBlockProps['renderAdditionalFields'];
+  update: (index: number, patch: ContentMediaUsagePatch) => void;
+  move: (usage: ContentMediaUsage, index: number, direction: -1 | 1) => void;
+  remove: (index: number) => void;
+  refresh: (usage: ContentMediaUsage) => void;
+}>;
+
+const ContentMediaUsageBlockHeader = ({
+  labels,
+  showHeader,
+}: Readonly<{ labels: ContentMediaUsageBlockLabels; showHeader: boolean }>) =>
+  showHeader ? (
+    <div className="space-y-1">
+      <h3 id="content-media-block-title" className="text-lg font-semibold text-foreground">
+        {labels.title}
+      </h3>
+      <p className="text-sm text-muted-foreground">{labels.description}</p>
+    </div>
+  ) : null;
+
+const ContentMediaUsageItems = ({
+  canRefresh,
+  errors,
+  labels,
+  move,
+  refresh,
+  refreshErrorUiId,
+  refreshingUiId,
+  remove,
+  renderAdditionalFields,
+  supportedFields,
+  update,
+  usages,
+}: ContentMediaUsageItemsProps) => (
+  <div className="space-y-4">
+    {usages.map((usage, index) => (
+      <ContentMediaUsageItem
+        key={usage.uiId}
+        usage={usage}
+        index={index}
+        total={usages.length}
+        labels={labels}
+        supportedFields={supportedFields}
+        errors={errors}
+        refreshing={refreshingUiId === usage.uiId}
+        refreshFailed={refreshErrorUiId === usage.uiId}
+        canRefresh={canRefresh}
+        onUpdate={(patch) => update(index, patch)}
+        onMove={(direction) => move(usage, index, direction)}
+        onRemove={() => remove(index)}
+        onRefresh={() => refresh(usage)}
+        additionalFields={renderAdditionalFields?.({
+          usage,
+          index,
+          update: (patch) => update(index, patch),
+        })}
+      />
+    ))}
+  </div>
+);
 
 export const ContentMediaUsageBlock = ({
   errors = {},
@@ -90,67 +160,16 @@ export const ContentMediaUsageBlock = ({
   showHeader = true,
   usages,
 }: ContentMediaUsageBlockProps) => {
-  const [announcement, setAnnouncement] = React.useState('');
-  const [refreshingUiId, setRefreshingUiId] = React.useState<string | null>(null);
-  const [refreshErrorUiId, setRefreshErrorUiId] = React.useState<string | null>(null);
-  const [diffState, setDiffState] = React.useState<DiffState | null>(null);
-  const update = (index: number, patch: ContentMediaUsagePatch) =>
-    onChange(
-      usages.map((usage, currentIndex) => (currentIndex === index ? { ...usage, ...patch } : usage))
-    );
-  const move = (usage: ContentMediaUsage, index: number, direction: -1 | 1) => {
-    onChange(moveContentMediaUsage(usages, index, index + direction));
-    const position = direction < 0 ? index : index + 2;
-    setAnnouncement(
-      labels.announcements.moved
-        .replace('{{position}}', String(position))
-        .replace('{{total}}', String(usages.length))
-    );
-    globalThis.setTimeout(
-      () => globalThis.document?.getElementById(`content-media-${usage.uiId}-remove`)?.focus(),
-      0
-    );
-  };
-  const remove = (index: number) => {
-    onChange(
-      usages
-        .filter((_, currentIndex) => currentIndex !== index)
-        .map((entry, sortOrder) => ({ ...entry, sortOrder }))
-    );
-    setAnnouncement(labels.announcements.removed);
-    globalThis.setTimeout(() => {
-      const next = usages[index + 1] ?? usages[index - 1];
-      globalThis.document
-        ?.getElementById(next ? `content-media-${next.uiId}-remove` : 'content-media-add')
-        ?.focus();
-    }, 0);
-  };
-  const add = () => {
-    if (onOpenUpload) {
-      onOpenUpload();
-      return;
-    }
-    if (onOpenLibrary) {
-      onOpenLibrary();
-      return;
-    }
-    const uiId = onAddManual();
-    if (uiId) {
-      globalThis.setTimeout(
-        () => globalThis.document?.getElementById(`content-media-${uiId}-url`)?.focus(),
-        0
-      );
-    }
-  };
-  const refresh = (usage: ContentMediaUsage) => {
-    if (!onLoadAssetSnapshot) return;
-    setRefreshingUiId(usage.uiId);
-    setRefreshErrorUiId(null);
-    void onLoadAssetSnapshot(usage)
-      .then((asset) => setDiffState({ usage, asset }))
-      .catch(() => setRefreshErrorUiId(usage.uiId))
-      .finally(() => setRefreshingUiId(null));
-  };
+  const { add, announcement, move, remove, update } = useContentMediaUsageListActions({
+    announcements: labels.announcements,
+    onAddManual,
+    onChange,
+    onOpenLibrary,
+    onOpenUpload,
+    usages,
+  });
+  const { diffState, refresh, refreshingUiId, refreshErrorUiId, setDiffState } =
+    useContentMediaMetadataRefresh({ onLoadAssetSnapshot });
 
   return (
     <section
@@ -158,14 +177,7 @@ export const ContentMediaUsageBlock = ({
       aria-labelledby={showHeader ? 'content-media-block-title' : undefined}
       aria-label={showHeader ? undefined : labels.title}
     >
-      {showHeader ? (
-        <div className="space-y-1">
-          <h3 id="content-media-block-title" className="text-lg font-semibold text-foreground">
-            {labels.title}
-          </h3>
-          <p className="text-sm text-muted-foreground">{labels.description}</p>
-        </div>
-      ) : null}
+      <ContentMediaUsageBlockHeader labels={labels} showHeader={showHeader} />
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
@@ -174,31 +186,20 @@ export const ContentMediaUsageBlock = ({
           {labels.empty}
         </p>
       ) : null}
-      <div className="space-y-4">
-        {usages.map((usage, index) => (
-          <ContentMediaUsageItem
-            key={usage.uiId}
-            usage={usage}
-            index={index}
-            total={usages.length}
-            labels={labels}
-            supportedFields={supportedFields}
-            errors={errors}
-            refreshing={refreshingUiId === usage.uiId}
-            refreshFailed={refreshErrorUiId === usage.uiId}
-            canRefresh={Boolean(onLoadAssetSnapshot)}
-            onUpdate={(patch) => update(index, patch)}
-            onMove={(direction) => move(usage, index, direction)}
-            onRemove={() => remove(index)}
-            onRefresh={() => refresh(usage)}
-            additionalFields={renderAdditionalFields?.({
-              usage,
-              index,
-              update: (patch) => update(index, patch),
-            })}
-          />
-        ))}
-      </div>
+      <ContentMediaUsageItems
+        usages={usages}
+        labels={labels}
+        supportedFields={supportedFields}
+        errors={errors}
+        canRefresh={Boolean(onLoadAssetSnapshot)}
+        refreshingUiId={refreshingUiId}
+        refreshErrorUiId={refreshErrorUiId}
+        renderAdditionalFields={renderAdditionalFields}
+        update={update}
+        move={move}
+        remove={remove}
+        refresh={refresh}
+      />
       <div>
         <Button id="content-media-add" type="button" onClick={add}>
           {labels.actions.add}

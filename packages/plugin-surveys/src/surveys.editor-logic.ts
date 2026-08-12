@@ -20,6 +20,18 @@ export type SurveyEditorStatus =
 
 type SurveyEditorTranslation = (key: string) => string;
 
+type SurveyEditorLoaderInput = Readonly<{
+  mode: SurveyEditorMode;
+  contentId?: string;
+  methods: UseFormReturn<SurveyDetailFormValues>;
+  pt: SurveyEditorTranslation;
+  setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
+  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
+  setResourceAccess: React.Dispatch<React.SetStateAction<Readonly<Record<string, boolean>>>>;
+  actingPrincipalType: MainserverPrincipalType;
+}>;
+
 const useSurveyEditorLoader = ({
   mode,
   contentId,
@@ -30,17 +42,7 @@ const useSurveyEditorLoader = ({
   setLoadedItem,
   setResourceAccess,
   actingPrincipalType,
-}: Readonly<{
-  mode: SurveyEditorMode;
-  contentId?: string;
-  methods: UseFormReturn<SurveyDetailFormValues>;
-  pt: SurveyEditorTranslation;
-  setStatus: React.Dispatch<React.SetStateAction<SurveyEditorStatus>>;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  setLoadedItem: React.Dispatch<React.SetStateAction<SurveyContentItem | null>>;
-  setResourceAccess: React.Dispatch<React.SetStateAction<Readonly<Record<string, boolean>>>>;
-  actingPrincipalType: MainserverPrincipalType;
-}>) => {
+}: SurveyEditorLoaderInput) => {
   const loadedContentIdRef = React.useRef<string | undefined>(undefined);
   React.useEffect(() => {
     if (mode !== 'edit') {
@@ -69,9 +71,7 @@ const useSurveyEditorLoader = ({
 
     void getSurveyDetail(contentId, actingPrincipalType)
       .then((detail) => {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
         setResourceAccess(detail.access);
         if (refreshesAccessOnly) return;
         const item = detail.data;
@@ -98,9 +98,7 @@ const useSurveyEditorLoader = ({
         }
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => void (cancelled = true);
   }, [
     actingPrincipalType,
     contentId,

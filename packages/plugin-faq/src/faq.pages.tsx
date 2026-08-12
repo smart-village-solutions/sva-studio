@@ -133,9 +133,7 @@ const FaqEditorPage = ({ mode, contentId, principalControl }: FaqEditorPageProps
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
   const [actingPrincipalType, setActingPrincipalType] = useFaqActingPrincipal(principalControl);
   React.useEffect(() => {
-    if (form.formState.isDirty) {
-      saveFeedback.markDirty();
-    }
+    if (form.formState.isDirty) saveFeedback.markDirty();
   }, [form.formState.isDirty, saveFeedback.markDirty]);
   const { existingPayload, loadedItem, loadError, loading, resourceAccess } = useFaqEditorLoader({
     contentId,

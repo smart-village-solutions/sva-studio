@@ -76,7 +76,6 @@ const createMainserverContextBindingStore = () => {
     }
     return result;
   };
-
   return {
     capture,
     has: (contentId: string): boolean => contextBindings.has(contentId),
@@ -120,6 +119,26 @@ const createMainserverItemLoader = <TItem, TError extends Error>(input: {
   };
 };
 
+const createEnsureMainserverContextBinding =
+  <TItem, TError extends Error>(input: {
+    readonly contextBindingStore: ReturnType<typeof createMainserverContextBindingStore>;
+    readonly loadItem: (
+      contentId: string,
+      actingPrincipalType?: MainserverActingPrincipalType
+    ) => Promise<TItem>;
+    readonly errorFactory: MainserverErrorFactory<TError>;
+  }) =>
+  async (contentId: string, actingPrincipalType: MainserverActingPrincipalType): Promise<void> => {
+    if (!input.contextBindingStore.has(contentId))
+      await input.loadItem(contentId, actingPrincipalType);
+    if (!input.contextBindingStore.has(contentId)) {
+      throw input.errorFactory(
+        'mainserver_context_binding_missing',
+        'mainserver_context_binding_missing'
+      );
+    }
+  };
+
 export const createMainserverCrudClient = <
   TItem,
   TMutationInput,
@@ -138,20 +157,11 @@ export const createMainserverCrudClient = <
     mapItem,
     contextBindingStore,
   });
-  const ensureContextBinding = async (
-    contentId: string,
-    actingPrincipalType: MainserverActingPrincipalType
-  ): Promise<void> => {
-    if (!contextBindingStore.has(contentId)) {
-      await loadItem(contentId, actingPrincipalType);
-    }
-    if (!contextBindingStore.has(contentId)) {
-      throw options.errorFactory(
-        'mainserver_context_binding_missing',
-        'mainserver_context_binding_missing'
-      );
-    }
-  };
+  const ensureContextBinding = createEnsureMainserverContextBinding({
+    contextBindingStore,
+    loadItem,
+    errorFactory: options.errorFactory,
+  });
 
   return {
     list: async (query: MainserverListQuery): Promise<TListResult> => {

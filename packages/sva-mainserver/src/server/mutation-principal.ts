@@ -17,8 +17,8 @@ export {
 export {
   authorizeMainserverCreateForPrincipal,
   authorizeMainserverExistingContent,
-  resolveMainserverResourceAccess,
 } from './mutation-principal-authorization.js';
+export { resolveMainserverResourceAccess } from './mutation-principal-resource-access.js';
 export type {
   MainserverCreateBindingOutcome,
   MainserverLifecycleStatus,
@@ -26,4 +26,4 @@ export type {
   MainserverMutationAuthorization,
   MainserverMutationFollowUpContext,
 } from './mutation-principal-types.js';
-export type { MainserverResourceAccess } from './mutation-principal-authorization.js';
+export type { MainserverResourceAccess } from './mutation-principal-resource-access.js';

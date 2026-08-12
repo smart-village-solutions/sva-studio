@@ -73,7 +73,12 @@ vi.mock('../src/news.api.js', async () => {
   const getNewsDetailMock = vi.fn(async (contentId: string) => ({
     data: await getNewsMock(contentId),
     deviations: [],
-    access: { 'news.update': true, 'news.delete': true },
+    access: {
+      'news.update': true,
+      'news.delete': true,
+      'content.publish': true,
+      'content.changeStatus': true,
+    },
   }));
   const createNewsMock = vi.fn(async () => ({
     id: 'news-created',

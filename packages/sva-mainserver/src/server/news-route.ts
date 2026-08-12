@@ -637,7 +637,7 @@ const handleItemRead = async (
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
-        actions: ['news.update', 'news.delete'],
+        actions: ['news.update', 'news.delete', 'content.publish', 'content.changeStatus'],
         contentType: NEWS_CONTENT_TYPE,
         item: data,
       })

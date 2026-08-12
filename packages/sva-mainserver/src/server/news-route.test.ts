@@ -294,7 +294,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         newsId: 'news-1',
       })
     );
-    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(2);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(4);
     await expect(response?.json()).resolves.toEqual({
       data: {
         id: 'news-1',
@@ -305,6 +305,8 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         access: {
           'news.delete': true,
           'news.update': true,
+          'content.changeStatus': true,
+          'content.publish': true,
         },
       },
     });

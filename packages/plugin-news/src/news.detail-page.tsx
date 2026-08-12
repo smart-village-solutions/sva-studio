@@ -92,6 +92,16 @@ type StatusMessage = Readonly<{
   text: string;
 }>;
 
+const hasNewsLifecycleAccess = (
+  loadedItem: NewsContentItem | null,
+  publicationMode: NewsDetailFormValues['publicationMode'],
+  resourceAccess: Readonly<Record<string, boolean>>
+) => {
+  const nextVisible = publicationMode !== 'draft';
+  if (loadedItem?.visible === nextVisible) return true;
+  return resourceAccess[nextVisible ? 'content.publish' : 'content.changeStatus'] === true;
+};
+
 type PluginTranslator = (
   key: string,
   variables?: Readonly<Record<string, string | number>>
@@ -404,6 +414,11 @@ export const NewsDetailPage = ({
     null
   );
   const [retryCreatedContentId, setRetryCreatedContentId] = React.useState<string | null>(null);
+  const methods = useForm<NewsDetailFormValues>({
+    defaultValues: createDefaultNewsDetailFormValues(),
+    resolver: newsDetailFormResolver,
+  });
+  const publicationMode = methods.watch('publicationMode');
   const sessionAccess = React.useSyncExternalStore(
     subscribeSessionAccessSnapshot,
     readSessionAccessSnapshot,
@@ -413,7 +428,11 @@ export const NewsDetailPage = ({
     () => resolveStandardContentAccessCapabilities('news', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        hasNewsLifecycleAccess(loadedItem, publicationMode, resourceAccess);
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
@@ -434,10 +453,6 @@ export const NewsDetailPage = ({
   );
   const loadedPrincipalTypeRef = React.useRef<MainserverPrincipalType | null>(null);
 
-  const methods = useForm<NewsDetailFormValues>({
-    defaultValues: createDefaultNewsDetailFormValues(),
-    resolver: newsDetailFormResolver,
-  });
   const { formState, reset } = methods;
 
   React.useEffect(() => {

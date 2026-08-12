@@ -278,7 +278,12 @@ describe('NewsDetailPage', () => {
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: detailData,
       deviations: [],
-      access: { 'news.update': true, 'news.delete': false },
+      access: {
+        'news.update': true,
+        'news.delete': false,
+        'content.publish': true,
+        'content.changeStatus': true,
+      },
     });
 
     const view = render(
@@ -306,7 +311,12 @@ describe('NewsDetailPage', () => {
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: detailData,
       deviations: [],
-      access: { 'news.update': false, 'news.delete': false },
+      access: {
+        'news.update': false,
+        'news.delete': false,
+        'content.publish': false,
+        'content.changeStatus': false,
+      },
     });
     view.rerender(
       <NewsDetailPage
@@ -334,6 +344,40 @@ describe('NewsDetailPage', () => {
     await waitFor(() => {
       expect(getNewsDetail).toHaveBeenNthCalledWith(3, '9082', 'user');
     });
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+  });
+
+  it('blocks a visibility-changing save without the required lifecycle grant', async () => {
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: {
+        id: '9082',
+        title: 'Entwurf',
+        contentType: 'news.article',
+        payload: {},
+        status: 'draft',
+        author: 'Persönlicher Redakteur',
+        createdAt: '2026-08-11T10:00:00.000Z',
+        updatedAt: '2026-08-11T10:00:00.000Z',
+        visible: false,
+      },
+      deviations: [],
+      access: {
+        'news.update': true,
+        'news.delete': false,
+        'content.publish': false,
+        'content.changeStatus': true,
+      },
+    });
+
+    render(<NewsDetailPage mode="edit" contentId="9082" />);
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
+    });
+    fireEvent.change(screen.getByLabelText('Bereich auswählen'), {
+      target: { value: 'settings' },
+    });
+    fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 

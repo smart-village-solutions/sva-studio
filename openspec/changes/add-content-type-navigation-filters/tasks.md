@@ -14,7 +14,7 @@
 
 - [x] 3.1 Deutsche und englische i18n-Ressourcen für Gruppennavigation und Schnellfilter ergänzen oder wiederverwenden.
 - [x] 3.2 Die betroffenen arc42-Abschnitte `05-building-block-view`, `06-runtime-view` und `08-cross-cutting-concepts` auf den neuen Navigations- und Filtervertrag aktualisieren.
-- [ ] 3.3 Bei PR-Erstellung einen Changelog-Eintrag unter der tatsächlichen PR-Nummer für die sichtbare Änderung ergänzen.
+- [x] 3.3 Bei PR-Erstellung einen Changelog-Eintrag unter der tatsächlichen PR-Nummer für die sichtbare Änderung ergänzen.
 
 ## 4. Validierung
 

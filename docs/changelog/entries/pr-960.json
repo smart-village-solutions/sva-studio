@@ -1,0 +1,4 @@
+{
+  "prNumber": 960,
+  "body": "Mainserver-Resolvermodus wird beim Remote-Rollout wirksam\n\n- Der kanonische Compose-Pfad reicht den konfigurierten Resolvermodus nun an den Studio-App-Service durch.\n- Development und Staging können dadurch das getrackte Profil `automatic` tatsächlich verwenden; ohne Konfiguration bleibt `shadow` der sichere Standard.\n- Ein Regressionstest schützt die Compose-Verdrahtung vor erneutem Verlust."
+}

@@ -26,7 +26,9 @@ describe('waste tenant database provisioning deployment', () => {
 
   it('injects the permission snapshot HMAC secret into both Studio app definitions', () => {
     expect(appSection).toContain("REDIS_SNAPSHOT_HMAC_SECRET: '${REDIS_SNAPSHOT_HMAC_SECRET}'");
-    expect(canonicalAppSection).toContain('"REDIS_SNAPSHOT_HMAC_SECRET=${REDIS_SNAPSHOT_HMAC_SECRET}"');
+    expect(canonicalAppSection).toContain(
+      '"REDIS_SNAPSHOT_HMAC_SECRET=${REDIS_SNAPSHOT_HMAC_SECRET}"'
+    );
   });
 
   it('defaults Mainserver authoring to shadow evaluation and a rollback-compatible client transition', () => {
@@ -38,6 +40,9 @@ describe('waste tenant database provisioning deployment', () => {
     );
     expect(appSection).toContain(
       "SVA_MAINSERVER_CONFIRMED_CAPABILITIES: '${SVA_MAINSERVER_CONFIRMED_CAPABILITIES:-}'"
+    );
+    expect(canonicalAppSection).toContain(
+      '"SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${SVA_MAINSERVER_SCOPE_RESOLVER_MODE:-shadow}"'
     );
   });
 

@@ -8,8 +8,10 @@ import {
   getHostMediaDelivery,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  hasContentLifecycleAccess,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveContentLifecycleAction,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
@@ -342,7 +344,16 @@ function ProjectEditor({
     () => resolveStandardContentAccessCapabilities('projects', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextStatus = form.watch('status');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        item !== undefined &&
+        hasContentLifecycleAccess(
+          resolveContentLifecycleAction(item.status, nextStatus),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

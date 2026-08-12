@@ -64,7 +64,14 @@ const handleGetItem = async (
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
-        actions: ['surveys.update', 'surveys.delete'],
+        actions: [
+          'surveys.update',
+          'surveys.delete',
+          'content.publish',
+          'content.changeStatus',
+          'content.archive',
+          'content.restore',
+        ],
         contentType: SURVEYS_CONTENT_TYPE,
         item: survey,
       })

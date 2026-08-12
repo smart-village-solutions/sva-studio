@@ -301,3 +301,9 @@ export {
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
 } from './public-api.js';
+
+export {
+  hasContentLifecycleAccess,
+  resolveContentLifecycleAction,
+  resolveContentVisibilityAction,
+} from './standard-content-access.js';

@@ -10,6 +10,40 @@ export type StandardContentAccessCapabilities = Readonly<{
 
 export type StandardContentResourceAccess = Readonly<Record<string, boolean>>;
 
+export type StandardContentLifecycleStatus = 'draft' | 'published' | 'archived';
+
+export const resolveContentLifecycleAction = (
+  currentStatus: StandardContentLifecycleStatus,
+  nextStatus: StandardContentLifecycleStatus
+):
+  | 'content.archive'
+  | 'content.changeStatus'
+  | 'content.publish'
+  | 'content.restore'
+  | undefined => {
+  if (currentStatus === nextStatus) return undefined;
+  if (nextStatus === 'published') return 'content.publish';
+  if (nextStatus === 'archived') return 'content.archive';
+  return currentStatus === 'archived' ? 'content.restore' : 'content.changeStatus';
+};
+
+export const resolveContentVisibilityAction = (
+  currentVisible: boolean,
+  nextVisible: boolean
+): 'content.changeStatus' | 'content.publish' | undefined =>
+  currentVisible === nextVisible
+    ? undefined
+    : nextVisible
+      ? 'content.publish'
+      : 'content.changeStatus';
+
+export const hasContentLifecycleAccess = (
+  action:
+    | ReturnType<typeof resolveContentLifecycleAction>
+    | ReturnType<typeof resolveContentVisibilityAction>,
+  resourceAccess: StandardContentResourceAccess
+): boolean => action === undefined || resourceAccess[action] === true;
+
 export const resolveStandardContentAccessCapabilities = (
   pluginId: string,
   snapshot: SessionAccessSnapshot,

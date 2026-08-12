@@ -10,7 +10,9 @@ import {
   listHostMediaReferencesByTarget,
   alignHostMediaReferencesByOrder,
   readSessionAccessSnapshot,
+  hasContentLifecycleAccess,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
@@ -91,16 +93,6 @@ type StatusMessage = Readonly<{
   source: 'load' | 'save' | 'delete' | 'reference' | 'navigation';
   text: string;
 }>;
-
-const hasNewsLifecycleAccess = (
-  loadedItem: NewsContentItem | null,
-  publicationMode: NewsDetailFormValues['publicationMode'],
-  resourceAccess: Readonly<Record<string, boolean>>
-) => {
-  const nextVisible = publicationMode !== 'draft';
-  if (loadedItem?.visible === nextVisible) return true;
-  return resourceAccess[nextVisible ? 'content.publish' : 'content.changeStatus'] === true;
-};
 
 type PluginTranslator = (
   key: string,
@@ -432,7 +424,11 @@ export const NewsDetailPage = ({
     mode === 'create'
       ? accessCapabilities.canCreate
       : accessCapabilities.canUpdate &&
-        hasNewsLifecycleAccess(loadedItem, publicationMode, resourceAccess);
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible ?? true, publicationMode !== 'draft'),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

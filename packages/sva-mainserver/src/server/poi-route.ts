@@ -296,7 +296,12 @@ const handleItemRead = async (
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
-        actions: [`${route.contentKind}.update`, `${route.contentKind}.delete`],
+        actions: [
+          `${route.contentKind}.update`,
+          `${route.contentKind}.delete`,
+          'content.publish',
+          'content.changeStatus',
+        ],
         contentType: POI_CONTENT_TYPE,
         item: detail.data,
       })

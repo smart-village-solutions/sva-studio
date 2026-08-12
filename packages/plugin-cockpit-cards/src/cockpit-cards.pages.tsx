@@ -8,8 +8,10 @@ import {
   getHostMediaDelivery,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  hasContentLifecycleAccess,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
@@ -310,7 +312,16 @@ function Editor({
     () => resolveStandardContentAccessCapabilities('cockpit-cards', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextVisible = form.watch('visible');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible, nextVisible),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

@@ -8,10 +8,12 @@ import {
   getHostMediaAssetFileName,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  hasContentLifecycleAccess,
   omitDeviatedMainserverFields,
   saveContentWithHostMediaReferences,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
@@ -363,7 +365,16 @@ export function EventsDetailPage({
     () => resolveStandardContentAccessCapabilities('events', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextVisible = methods.watch('settings.visible');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible ?? true, nextVisible),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

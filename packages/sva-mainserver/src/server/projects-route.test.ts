@@ -349,13 +349,25 @@ describe('projects route', () => {
     );
 
     expect(response?.status).toBe(200);
-    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(2);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(6);
     expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledWith(
       expect.objectContaining({ contentId })
     );
     expect(state.authorizeMainserverDataProviderAccess).not.toHaveBeenCalledWith(
       expect.objectContaining({ contentId: genericItem.id })
     );
+    await expect(response?.json()).resolves.toMatchObject({
+      meta: {
+        access: {
+          'projects.update': true,
+          'projects.delete': true,
+          'content.publish': true,
+          'content.changeStatus': true,
+          'content.archive': true,
+          'content.restore': true,
+        },
+      },
+    });
   });
 
   it('authorizes mutations before reading the provider item', async () => {

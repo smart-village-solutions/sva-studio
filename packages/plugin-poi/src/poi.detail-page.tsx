@@ -8,9 +8,11 @@ import {
   alignHostMediaReferencesByOrder,
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
+  hasContentLifecycleAccess,
   omitDeviatedMainserverFields,
   readSessionAccessSnapshot,
   resolveContentMediaCapabilities,
+  resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
@@ -308,7 +310,16 @@ export function PoiDetailPage({
     () => resolveStandardContentAccessCapabilities('poi', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextVisible = methods.watch('basis.active');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible ?? true, nextVisible),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

@@ -283,7 +283,12 @@ const handleDetailRequest = async (
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
-        actions: [pluginActionFor(contentKind, 'update'), pluginActionFor(contentKind, 'delete')],
+        actions: [
+          pluginActionFor(contentKind, 'update'),
+          pluginActionFor(contentKind, 'delete'),
+          'content.publish',
+          'content.changeStatus',
+        ],
         contentType: contentTypeFor(contentKind),
         item: data,
       })

@@ -1,12 +1,7 @@
 import React from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm, type UseFormReturn } from 'react-hook-form';
-import {
-  readSessionAccessSnapshot,
-  resolveStandardContentAccessCapabilities,
-  subscribeSessionAccessSnapshot,
-  usePluginTranslation,
-} from '@sva/plugin-sdk';
+import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   addStudioCreatedSaveFeedback,
   hasStudioCreatedSaveFeedback,
@@ -29,6 +24,7 @@ import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
+import { useSurveyMutationAccess as useCanMutate } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
 
@@ -140,18 +136,6 @@ const useSurveyActingPrincipal = (principalControl?: MainserverPrincipalControlM
   return [value, setValue] as const;
 };
 
-const useSurveyAccessCapabilities = (resourceAccess: Readonly<Record<string, boolean>>) => {
-  const sessionAccess = React.useSyncExternalStore(
-    subscribeSessionAccessSnapshot,
-    readSessionAccessSnapshot,
-    readSessionAccessSnapshot
-  );
-  return React.useMemo(
-    () => resolveStandardContentAccessCapabilities('surveys', sessionAccess, resourceAccess),
-    [resourceAccess, sessionAccess]
-  );
-};
-
 const useSurveyForm = () =>
   useForm<SurveyDetailFormValues>({ defaultValues: createDefaultSurveyDetailFormValues() });
 
@@ -165,12 +149,6 @@ const useSurveyTabs = (
     () => createSurveyEditorTabs(pt, mode, loadedItem, contentId),
     [contentId, loadedItem, mode, pt]
   );
-
-const canMutateSurvey = (
-  mode: SurveyEditorMode,
-  canUpdate: boolean,
-  accessCapabilities: ReturnType<typeof useSurveyAccessCapabilities>
-) => (mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate);
 
 export const SurveyEditorPage = ({
   mode,
@@ -212,8 +190,7 @@ export const SurveyEditorPage = ({
         }),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
-  const accessCapabilities = useSurveyAccessCapabilities(resourceAccess);
-  const canMutate = canMutateSurvey(mode, canUpdate, accessCapabilities);
+  const canMutate = useCanMutate(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;

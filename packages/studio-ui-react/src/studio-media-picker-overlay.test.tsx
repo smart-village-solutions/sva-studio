@@ -101,6 +101,7 @@ describe('useStudioMediaPickerOverlay', () => {
     const asset = createAsset();
     const Harness = () => {
       const [open, setOpen] = React.useState(true);
+      const [mode, setMode] = React.useState<'library' | 'upload'>('upload');
       return (
         <>
           <StudioMediaPickerOverlay
@@ -139,10 +140,13 @@ describe('useStudioMediaPickerOverlay', () => {
               },
             }}
             metadataDraft={asset.metadata}
-            mode="upload"
+            mode={mode}
             onAddManual={onAddManual}
             onBackFromReview={vi.fn()}
-            onChangeMode={onChangeMode}
+            onChangeMode={(nextMode) => {
+              onChangeMode(nextMode);
+              setMode(nextMode);
+            }}
             onClose={() => {
               onClose();
               setOpen(false);
@@ -164,11 +168,17 @@ describe('useStudioMediaPickerOverlay', () => {
     };
     render(<Harness />);
 
-    expect(
-      screen.getByRole('button', { name: 'Medium hochladen' }).getAttribute('aria-pressed')
-    ).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
+    const uploadAction = screen.getByRole('button', { name: 'Medium hochladen' });
+    const libraryAction = screen.getByRole('button', {
+      name: 'Medium aus der Bibliothek hinzufügen',
+    });
+    expect(uploadAction.getAttribute('aria-pressed')).toBe('true');
+    expect(uploadAction.className).toContain('bg-primary');
+    expect(libraryAction.className).toContain('bg-secondary/10');
+    fireEvent.click(libraryAction);
     expect(onChangeMode).toHaveBeenCalledWith('library');
+    expect(uploadAction.className).toContain('bg-secondary/10');
+    expect(libraryAction.className).toContain('bg-primary');
     fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     expect(onAddManual).toHaveBeenCalledOnce();
     expect(onClose).toHaveBeenCalledOnce();

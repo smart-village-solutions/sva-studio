@@ -1,0 +1,4 @@
+{
+  "prNumber": 963,
+  "body": "Inhalte mit persönlichen und Organisationsrechten wieder bearbeiten\n\n- Die Detailansicht fragt die konkreten Aktionsfreigaben für den aktuellen Nutzer und Inhalt zentral beim Mainserver ab.\n- Persönliche Redakteure und Organisationsredakteure sehen Speichern und Löschen nur bei tatsächlich berechtigten Inhalten.\n- News, Events, POI, Generic Items, FAQ, Cockpit Cards, Projekte und Umfragen verwenden dieselbe fail-closed Berechtigungsentscheidung.\n- Schreiboperationen werden weiterhin unabhängig serverseitig autorisiert."
+}

@@ -1,4 +1,8 @@
-import { resolveSessionActiveOrganizationId } from '@sva/core';
+import {
+  createPermissionDenialDetailsForAction,
+  resolveSessionActiveOrganizationId,
+  type PermissionDenialDetails,
+} from '@sva/core';
 import {
   evaluateAuthorizeDecision,
   type AuthorizeRequest,
@@ -33,6 +37,7 @@ export type ContentPrimitiveAuthorizationResult =
       readonly status: number;
       readonly error: string;
       readonly message: string;
+      readonly permissionDenial?: PermissionDenialDetails;
     };
 
 const ACTION_PATTERN = /^[a-z][a-z0-9-]{1,30}\.[A-Za-z][A-Za-z0-9-]*$/;
@@ -130,12 +135,21 @@ export const databaseUnavailableAuthorizationResult = (): ContentPrimitiveAuthor
   message: 'Berechtigungen konnten nicht geprüft werden.',
 });
 
-export const forbiddenAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
-  ok: false,
-  status: 403,
-  error: 'forbidden',
-  message: 'Keine Berechtigung für diese Inhaltsoperation.',
-});
+export const forbiddenAuthorizationResult = (
+  action?: string,
+  reason?: unknown
+): ContentPrimitiveAuthorizationResult => {
+  const permissionDenial = action
+    ? createPermissionDenialDetailsForAction(action, reason)
+    : undefined;
+  return {
+    ok: false,
+    status: 403,
+    error: 'forbidden',
+    message: 'Keine Berechtigung für diese Inhaltsoperation.',
+    ...(permissionDenial ? { permissionDenial } : {}),
+  };
+};
 
 export const missingInstanceAuthorizationResult = (): ContentPrimitiveAuthorizationResult => ({
   ok: false,

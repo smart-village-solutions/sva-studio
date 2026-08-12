@@ -1,4 +1,8 @@
 import { redirect } from '@tanstack/react-router';
+import {
+  createPermissionDenialDetails,
+  type PermissionDenialDetails,
+} from '@sva/core';
 
 import { emitRoutingDiagnostic, type RoutingDiagnosticsHook } from './diagnostics.js';
 import {
@@ -83,9 +87,12 @@ const emitAccessDeniedDiagnostic = (input: {
 
 const throwInsufficientAccessRedirect = (
   fallbackPath: string,
-  insufficientRoleKey: string
+  insufficientRoleKey: string,
+  permissionDenial?: PermissionDenialDetails
 ): never => {
-  throw redirect({ href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey) });
+  throw redirect({
+    href: buildInsufficientRoleHref(fallbackPath, insufficientRoleKey, permissionDenial),
+  });
 };
 
 const assertAllRequiredPermissions = (input: {
@@ -98,6 +105,16 @@ const assertAllRequiredPermissions = (input: {
 }) => {
   if (input.requiredPermissions.length === 0) {
     return;
+  }
+  if (!input.user.permissionActions) {
+    emitAccessDeniedDiagnostic({
+      diagnostics: input.diagnostics,
+      route: input.route,
+      reason: 'insufficient-permission',
+      fallbackPath: input.fallbackPath,
+      requiredPermissions: input.requiredPermissions,
+    });
+    throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
   }
   const grantedPermissions = new Set(input.user.permissionActions ?? []);
   const missingPermissions = input.requiredPermissions.filter(
@@ -114,7 +131,11 @@ const assertAllRequiredPermissions = (input: {
     fallbackPath: input.fallbackPath,
     requiredPermissions: input.requiredPermissions,
   });
-  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
+  throwInsufficientAccessRedirect(
+    input.fallbackPath,
+    input.insufficientRoleKey,
+    createPermissionDenialDetails({ requiredPermissions: missingPermissions })
+  );
 };
 
 const assertAnyRequiredAccess = (input: {
@@ -128,6 +149,17 @@ const assertAnyRequiredAccess = (input: {
 }) => {
   if (input.requiredPermissions.length === 0 && input.requiredRoles.length === 0) {
     return;
+  }
+  if (input.requiredPermissions.length > 0 && !input.user.permissionActions) {
+    emitAccessDeniedDiagnostic({
+      diagnostics: input.diagnostics,
+      route: input.route,
+      reason: 'insufficient-permission',
+      fallbackPath: input.fallbackPath,
+      requiredPermissions: input.requiredPermissions,
+      requiredRoles: input.requiredRoles.length > 0 ? input.requiredRoles : undefined,
+    });
+    throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
   }
   const grantedPermissions = new Set(input.user.permissionActions ?? []);
   if (
@@ -146,7 +178,16 @@ const assertAnyRequiredAccess = (input: {
       input.requiredPermissions.length > 0 ? input.requiredPermissions : undefined,
     requiredRoles: input.requiredRoles.length > 0 ? input.requiredRoles : undefined,
   });
-  throwInsufficientAccessRedirect(input.fallbackPath, input.insufficientRoleKey);
+  throwInsufficientAccessRedirect(
+    input.fallbackPath,
+    input.insufficientRoleKey,
+    input.requiredPermissions.length > 0 && input.requiredRoles.length === 0
+      ? createPermissionDenialDetails({
+          requiredPermissions: input.requiredPermissions,
+          requirementMode: 'anyOf',
+        })
+      : undefined
+  );
 };
 
 const assertRequiredRoles = (input: {

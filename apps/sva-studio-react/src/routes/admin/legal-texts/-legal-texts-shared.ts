@@ -1,10 +1,13 @@
 import { t } from '../../../i18n';
 import { formatEditorDateTime } from '../../../lib/editor-date-time';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 export type LegalTextStatus = 'draft' | 'valid' | 'archived';
 
 export const getLegalTextErrorMessage = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('admin.legalTexts.messages.error');
   }

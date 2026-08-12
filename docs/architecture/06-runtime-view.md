@@ -1029,3 +1029,10 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 2. Such- und Fachfilter werden auf die vollständige erlaubte Menge angewandt; danach folgen fehlende Werte zuletzt, fachlicher Sortierwert und eindeutige ID aufsteigend als letzter Gleichstandsauflöser.
 3. Erst die so bestimmte Reihenfolge wird per Offset oder Seitenschnitt paginiert und zusammen mit der Gesamtzahl an die UI geliefert.
 4. Sortier-, Filter- und Seitengrößenwechsel setzen die kontrollierte Seite atomar auf eins. Die Tabelle rendert die empfangene Seite unverändert und führt kein zweites lokales Sortiermodell aus.
+
+### Szenario 18: Fehlende Berechtigung anzeigen
+
+1. Ein Guard berechnet fehlende `allOf`-Actions oder dokumentiert die Alternativen eines reinen `anyOf`-Guards. Ein API-Handler verwendet ausschließlich die vom Autorisierungsmodell geprüfte Action.
+2. Routing beziehungsweise JSON-Fehler transportieren den begrenzten Denial-Kontext additiv. Der Client validiert ihn erneut und verwirft manipulierte oder unbekannte Werte.
+3. Der gemeinsame Formatter löst den lokalisierten Permission-Titel auf und zeigt Titel plus Action-ID in einem bestehenden zugänglichen Alert.
+4. Der Kontext wird nach einem Redirect einmalig aus der URL entfernt. Bei technischem Ausfall oder uneindeutigem fachlichem `403` bleibt die bisherige generische Meldung erhalten.

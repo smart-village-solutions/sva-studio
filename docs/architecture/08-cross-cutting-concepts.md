@@ -704,6 +704,12 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Fehlende Werte bleiben fachlich fehlend, stehen in beiden Richtungen zuletzt und werden lokalisiert gekennzeichnet. Gleichstände enden immer mit einer eindeutigen Zeilenidentität aufsteigend.
 - Desktop-Sortierköpfe und die mobile Feldauswahl mit Richtungsschalter teilen genau einen kontrollierten Zustand. Externe Sortierung kennt keinen dritten unsortierten Zustand; die vorhandenen A–Z-/Z–A-Symbole bleiben rein visuelle Ergänzung der zugänglichen Labels.
 
+### Sichere Permission-Denials
+
+- Öffentliche Denial-Details bestehen nur aus validierten fully-qualified Action-IDs, `allOf`/`anyOf` und einer festen Allowlist fachlicher Gründe.
+- Rollen, Gruppen, konkrete Grants, Policy-Ausdrücke und interne Entscheidungsdaten bleiben Server- und OTEL-intern.
+- Der Client vertraut weder URL- noch API-Daten blind. Er begrenzt, dedupliziert und validiert sie vor der Anzeige; ohne gültigen Kontext gilt der generische Fehlerpfad.
+
 ### Technische Accounts und Organisations-Provisioning
 
 - `isTechnicalAccount` ist eine auditierte Klassifikation und kein Identitäts-, Rollen- oder Statusautomatismus. Unmapped Keycloak-Benutzer gelten als nicht technisch; lokale Klassifikationen bleiben bei Projektion und Reconcile erhalten.

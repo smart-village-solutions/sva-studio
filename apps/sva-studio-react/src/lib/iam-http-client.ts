@@ -1,5 +1,7 @@
 import {
   deriveIamRuntimeDiagnostics,
+  parsePermissionDenialDetails,
+  type PermissionDenialDetails,
   type IamRuntimeDiagnosticClassification,
   type IamRuntimeDiagnosticStatus,
   type IamRuntimeRecommendedAction,
@@ -47,6 +49,7 @@ export class IamHttpError extends Error {
   readonly diagnosticStatus?: IamRuntimeDiagnosticStatus;
   readonly recommendedAction?: IamRuntimeRecommendedAction;
   readonly safeDetails?: IamRuntimeSafeDetails;
+  readonly permissionDenial?: PermissionDenialDetails;
 
   constructor(input: {
     status: number;
@@ -57,6 +60,7 @@ export class IamHttpError extends Error {
     diagnosticStatus?: IamRuntimeDiagnosticStatus;
     recommendedAction?: IamRuntimeRecommendedAction;
     safeDetails?: IamRuntimeSafeDetails;
+    permissionDenial?: PermissionDenialDetails;
   }) {
     super(input.message);
     this.name = 'IamHttpError';
@@ -67,6 +71,7 @@ export class IamHttpError extends Error {
     this.diagnosticStatus = input.diagnosticStatus;
     this.recommendedAction = input.recommendedAction;
     this.safeDetails = input.safeDetails;
+    this.permissionDenial = input.permissionDenial;
   }
 }
 
@@ -175,6 +180,11 @@ export const readIamErrorResponse = async (
   const requestId = readRequestIdFromResponse(response, payload ?? undefined);
   const safeDetails = readSafeDiagnosticDetails(payload);
   const diagnostics = readRuntimeDiagnostics(payload, response.status, code, safeDetails);
+  const structuredError =
+    payload && typeof payload.error === 'object' && payload.error ? payload.error : undefined;
+  const permissionDenial = parsePermissionDenialDetails(
+    structuredError && 'details' in structuredError ? structuredError.details : undefined
+  );
 
   logDevelopmentApiError({
     requestId,
@@ -209,6 +219,7 @@ export const readIamErrorResponse = async (
     diagnosticStatus: diagnostics.diagnosticStatus,
     recommendedAction: diagnostics.recommendedAction,
     safeDetails: diagnostics.safeDetails,
+    permissionDenial,
   });
 };
 
@@ -378,8 +389,4 @@ export const postJson = async <TResponse, TPayload>(
   path: string,
   payload: TPayload,
   idempotent = false
-) =>
-  requestJson<TResponse>(
-    path,
-    createJsonMutationRequestInit('POST', payload, { idempotent })
-  );
+) => requestJson<TResponse>(path, createJsonMutationRequestInit('POST', payload, { idempotent }));

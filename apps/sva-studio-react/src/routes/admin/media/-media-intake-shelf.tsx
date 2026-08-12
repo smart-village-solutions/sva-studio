@@ -1,6 +1,7 @@
 import { MediaIntakePanel } from '@sva/studio-ui-react';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 type MediaIntakeShelfProps = {
   readonly phase: 'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
@@ -13,6 +14,8 @@ const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const isSupportedUploadFile = (file: File) => acceptedMimeTypes.has(file.type);
 
 const uploadErrorMessage = (error: IamHttpError | Error | null) => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error || !('code' in error) || typeof error.code !== 'string') {
     return t('media.library.upload.error');
   }

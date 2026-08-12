@@ -1,0 +1,4 @@
+{
+  "prNumber": 976,
+  "body": "Principal bei Umfragen trotz fehlender Bearbeitungsfreigabe wechseln\n\n- Die Principal-Auswahl bleibt bedienbar, wenn der aktuell ausgewählte Principal die Umfrage nicht bearbeiten darf.\n- Nutzer können dadurch auf einen berechtigten persönlichen oder organisatorischen Principal wechseln.\n- Die übrigen Umfragefelder und das Speichern bleiben bis zur bestätigten Berechtigung weiterhin gesperrt."
+}

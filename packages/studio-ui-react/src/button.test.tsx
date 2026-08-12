@@ -145,4 +145,19 @@ describe('Button', () => {
     expect(link.dispatchEvent(clickEvent)).toBe(false);
     expect(onClick).not.toHaveBeenCalled();
   });
+
+  it('prevents a disabled asChild link handler before Radix Slot composes it', () => {
+    const childOnClick = vi.fn();
+    render(
+      <Button asChild disabled>
+        <a href="/geschuetzt" onClick={childOnClick}>
+          Geschützte Aktion
+        </a>
+      </Button>
+    );
+
+    fireEvent.click(screen.getByRole('link', { name: 'Geschützte Aktion' }));
+
+    expect(childOnClick).not.toHaveBeenCalled();
+  });
 });

@@ -102,8 +102,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const Comp = asChild ? Slot : 'button';
     const isDisabled = disabled || loading;
+    const disabledAsChild = asChild && isDisabled;
+    const disabledChild =
+      disabledAsChild &&
+      React.isValidElement<{ onClick?: React.MouseEventHandler<HTMLElement> }>(children)
+        ? React.cloneElement(children, {
+            onClick: (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            },
+          })
+        : children;
     const handleClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
-      if (asChild && isDisabled) {
+      if (disabledAsChild) {
         event.preventDefault();
         event.stopPropagation();
         return;
@@ -116,15 +127,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         {...props}
         aria-busy={loading || undefined}
-        aria-disabled={asChild && isDisabled ? true : undefined}
+        aria-disabled={disabledAsChild ? true : undefined}
         className={cn(buttonVariants({ variant, size, className }))}
         data-loading={loading || undefined}
         disabled={asChild ? undefined : isDisabled}
         onClick={handleClick}
-        tabIndex={asChild && isDisabled ? -1 : tabIndex}
+        tabIndex={disabledAsChild ? -1 : tabIndex}
         title={tooltip ? undefined : title}
       >
-        {children}
+        {disabledChild}
       </Comp>
     );
 

@@ -2,7 +2,7 @@ import React from 'react';
 
 import { sanitizeLegalTextHtml } from '../lib/legal-text-html-sanitizer';
 
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 
 type RichTextEditorProps = {
   readonly id: string;
@@ -86,7 +86,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('bold')}
           >
@@ -95,7 +95,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('italic')}
           >
@@ -104,7 +104,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('underline')}
           >
@@ -113,7 +113,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('formatBlock', '<p>')}
           >
@@ -122,7 +122,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('formatBlock', '<h2>')}
           >
@@ -131,7 +131,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('insertUnorderedList')}
           >
@@ -140,7 +140,7 @@ export const RichTextEditor = ({
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="secondary"
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => applyCommand('removeFormat')}
           >

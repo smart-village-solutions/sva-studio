@@ -89,12 +89,12 @@ export const WastePanelTableBottomBar = ({
         })}
       </p>
       <nav aria-label={pt('meta.pagination.ariaLabel')} className="flex items-center gap-2">
-        <Button type="button" variant="outline" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <Button type="button" variant="secondary" size="sm" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
           {pt('meta.pagination.previous')}
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           disabled={page >= pageCount}
           onClick={() => onPageChange(page + 1)}

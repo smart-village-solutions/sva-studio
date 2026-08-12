@@ -9,11 +9,18 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => (message ? <div>{message.text}</div> : null),
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('../src/waste-management.form-switch.js', () => ({
-  WasteManagementFormSwitch: ({ checked, onChange }: { readonly checked: boolean; readonly onChange: (checked: boolean) => void }) => (
+  WasteManagementFormSwitch: ({
+    checked,
+    onChange,
+  }: {
+    readonly checked: boolean;
+    readonly onChange: (checked: boolean) => void;
+  }) => (
     <button type="button" onClick={() => onChange(!checked)}>
       {checked ? 'active' : 'inactive'}
     </button>
@@ -22,16 +29,32 @@ vi.mock('../src/waste-management.form-switch.js', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
-  Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) => (open ? <div>{children}</div> : null),
+  Button: ({ loading, ...props }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props} />;
+  },
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
-  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => <input ref={ref} {...props} />),
-  Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => <select ref={ref} {...props} />),
-  StudioField: ({ children, label, error }: { readonly children: React.ReactNode; readonly label: string; readonly error?: string }) => (
+  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => (
+    <input ref={ref} {...props} />
+  )),
+  Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => (
+    <select ref={ref} {...props} />
+  )),
+  StudioField: ({
+    children,
+    label,
+    error,
+  }: {
+    readonly children: React.ReactNode;
+    readonly label: string;
+    readonly error?: string;
+  }) => (
     <label>
       <span>{label}</span>
       {children}
@@ -62,11 +85,18 @@ describe('CollectionLocationDialog', () => {
           houseNumberId: '',
           active: true,
         }}
-        regions={[{ id: 'region-1', name: 'Nord' }, { id: 'region-2', name: 'Süd' }] as never}
-        cities={[
-          { id: 'city-1', name: 'Altstadt', regionId: 'region-1' },
-          { id: 'city-2', name: 'Neustadt', regionId: 'region-2' },
-        ] as never}
+        regions={
+          [
+            { id: 'region-1', name: 'Nord' },
+            { id: 'region-2', name: 'Süd' },
+          ] as never
+        }
+        cities={
+          [
+            { id: 'city-1', name: 'Altstadt', regionId: 'region-1' },
+            { id: 'city-2', name: 'Neustadt', regionId: 'region-2' },
+          ] as never
+        }
         streets={[] as never}
         houseNumbers={[] as never}
         saving={false}
@@ -83,7 +113,9 @@ describe('CollectionLocationDialog', () => {
     fireEvent.change(screen.getByLabelText('masterData.collectionLocations.fields.cityId'), {
       target: { value: 'city-2' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' })
+    );
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({
@@ -131,7 +163,9 @@ describe('CollectionLocationDialog', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' })
+    );
 
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled();
@@ -164,7 +198,9 @@ describe('CollectionLocationDialog', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' })
+    );
 
     await waitFor(() => {
       expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(2);
@@ -206,7 +242,9 @@ describe('CollectionLocationDialog', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'masterData.collectionLocations.actions.create' })
+    );
 
     await waitFor(() => {
       expect(screen.getAllByText('masterData.collectionLocations.fields.cityId')).toHaveLength(2);

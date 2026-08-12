@@ -54,7 +54,7 @@ const HierarchySection = <TRecord,>({
         <h4 className="text-sm font-semibold">{title}</h4>
         <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={onOpenCreate}>
+      <Button type="button" variant="secondary" size="sm" onClick={onOpenCreate}>
         {createLabel}
       </Button>
     </div>
@@ -66,7 +66,7 @@ const HierarchySection = <TRecord,>({
               <p className="text-sm font-medium">{renderLabel(record)}</p>
               {renderMeta ? <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">{renderMeta(record)}</div> : null}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => onOpenEdit(record)}>
+            <Button type="button" variant="secondary" size="sm" onClick={() => onOpenEdit(record)}>
               {editLabel}
             </Button>
           </div>

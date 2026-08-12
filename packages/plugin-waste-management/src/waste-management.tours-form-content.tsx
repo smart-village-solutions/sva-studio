@@ -44,7 +44,7 @@ export const WasteToursFormContent = ({
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+      <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
         {pt('tours.actions.cancel')}
       </Button>
       <WastePendingSaveButton
@@ -86,7 +86,7 @@ export const WasteToursFormContent = ({
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
-          <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
             {pt('tours.actions.cancel')}
           </Button>
         </div>

@@ -121,7 +121,7 @@ const TourCustomDatesSelectionDialog = ({
             <DialogDescription>{pt('tours.customDates.dialog.description')}</DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between gap-4 px-6 py-5">
-            <Button type="button" variant="outline" disabled={disabled} onClick={() => onYearChange(year - 1)}>
+            <Button type="button" variant="secondary" disabled={disabled} onClick={() => onYearChange(year - 1)}>
               <IconChevronLeft aria-hidden="true" className="mr-2 h-4 w-4" />
               {year - 1}
             </Button>
@@ -129,7 +129,7 @@ const TourCustomDatesSelectionDialog = ({
               <span className="text-4xl font-semibold tracking-tight text-foreground">{year}</span>
               <Badge variant="outline">{pt('tours.customDates.meta.selectedCount', { value: selectedCount })}</Badge>
             </div>
-            <Button type="button" variant="outline" disabled={disabled} onClick={() => onYearChange(year + 1)}>
+            <Button type="button" variant="secondary" disabled={disabled} onClick={() => onYearChange(year + 1)}>
               {year + 1}
               <IconChevronRight aria-hidden="true" className="ml-2 h-4 w-4" />
             </Button>
@@ -148,7 +148,7 @@ const TourCustomDatesSelectionDialog = ({
             </div>
           </div>
           <DialogFooter className="border-t border-border/50 px-6 py-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('tours.actions.cancel')}
             </Button>
             <Button type="button" disabled={disabled} onClick={() => onOpenChange(false)}>
@@ -312,7 +312,7 @@ export const WasteToursCustomDatesField = ({
       <div className="space-y-3">
         <p className="text-sm text-muted-foreground">{pt('tours.customDates.description')}</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" disabled={disabled} onClick={() => setDialogOpen(true)}>
+          <Button type="button" variant="secondary" disabled={disabled} onClick={() => setDialogOpen(true)}>
             <IconCalendarPlus aria-hidden="true" className="mr-2 h-4 w-4" />
             {pt('tours.customDates.actions.openPicker')}
           </Button>
@@ -375,7 +375,7 @@ export const WasteToursCustomDatesField = ({
                         <div className="flex justify-end gap-2">
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="secondary"
                             disabled={disabled}
                             onClick={() => setActiveAssignmentDate((current) => (current === entry.date ? null : entry.date))}
                           >
@@ -385,7 +385,7 @@ export const WasteToursCustomDatesField = ({
                           </Button>
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="tertiary"
                             disabled={disabled}
                             className="text-destructive hover:text-destructive"
                             onClick={() => setPendingDeleteDate(entry.date)}
@@ -407,7 +407,7 @@ export const WasteToursCustomDatesField = ({
                                   {pt('tours.customDates.assignmentSection.description')}
                                 </p>
                               </div>
-                              <Button type="button" variant="outline" disabled={disabled} onClick={() => addAssignment(entry.date)}>
+                              <Button type="button" variant="secondary" disabled={disabled} onClick={() => addAssignment(entry.date)}>
                                 {pt('tours.customDates.actions.addAssignment')}
                               </Button>
                             </div>
@@ -556,7 +556,7 @@ export const WasteToursCustomDatesField = ({
                                       <div className="flex justify-end lg:pt-6">
                                         <Button
                                           type="button"
-                                          variant="ghost"
+                                          variant="tertiary"
                                           disabled={disabled}
                                           className="text-destructive hover:text-destructive"
                                           onClick={() => removeAssignment(assignment.id)}

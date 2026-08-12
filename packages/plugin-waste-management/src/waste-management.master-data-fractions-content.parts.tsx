@@ -107,7 +107,7 @@ export const useFractionBulkActions = ({
     {
       id: 'delete-selected-fractions',
       label: pt('masterData.fractions.actions.deleteSelected'),
-      variant: 'outline',
+      variant: 'secondary',
       ...(saving ? { disabled: true } : {}),
       onClick: async ({ selectedRows, clearSelection }) => {
         await onDeleteFractions(selectedRows.map((row) => row.id));
@@ -158,7 +158,7 @@ export const WasteFractionsFilterAction = ({
         {fractionsStatus !== 'all' ? (
           <Button
             type="button"
-            variant="ghost"
+            variant="tertiary"
             className="h-10 rounded-lg px-3"
             onClick={onResetFractionsStatus}
           >
@@ -167,7 +167,7 @@ export const WasteFractionsFilterAction = ({
         ) : null}
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           className="h-10 rounded-lg border-border/70 px-3"
           onClick={onOpenFilterDialog}
         >
@@ -228,7 +228,7 @@ const FractionsFilterDialog = ({
           </Select>
         </label>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             {pt('masterData.fractions.filters.cancel')}
           </Button>
           <Button type="button" onClick={onApply} disabled={draftStatus === status}>

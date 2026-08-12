@@ -215,7 +215,14 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
     expect(screen.getByLabelText('Copyright')).toBeTruthy();
     expect(screen.getByLabelText('Medientyp')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Öffnungszeit hinzufügen' }));
+
+    screen
+      .getAllByRole('button', { name: 'actions.add' })
+      .forEach((button) => fireEvent.click(button));
+    screen
+      .getAllByRole('button', { name: 'Entfernen' })
+      .forEach((button) => fireEvent.click(button));
   });
 
   it('renders media content type as a fixed Mainserver dropdown', () => {

@@ -40,7 +40,7 @@ export const WasteToolsAdvancedSection = ({
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           aria-expanded={open}
           aria-controls={contentId}
           onClick={() => setOpen((value) => !value)}
@@ -56,7 +56,7 @@ export const WasteToolsAdvancedSection = ({
             <div className="space-y-3 border-t border-border/70 pt-4">
               <Button
                 type="button"
-                variant="ghost"
+                variant="tertiary"
                 aria-expanded={technicalOpen}
                 aria-controls={technicalId}
                 onClick={() => setTechnicalOpen((value) => !value)}

@@ -118,7 +118,7 @@ const CoverageIssueItem = ({
           </ul>
         ) : null}
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={() => onEdit(location)}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => onEdit(location)}>
         <IconEdit aria-hidden="true" className="h-4 w-4" />
         {pt('masterData.locationsWorkspace.coverage.edit')}
       </Button>
@@ -201,7 +201,7 @@ export const CoverageResults = ({
             incomplete: incomplete.length,
           })}
         </p>
-        <Button type="button" variant="outline" onClick={onAssign}>
+        <Button type="button" variant="secondary" onClick={onAssign}>
           <IconRoute aria-hidden="true" className="h-4 w-4" />
           {pt('masterData.locationsWorkspace.coverage.selectAndAssign', {
             value: result.issues.length,

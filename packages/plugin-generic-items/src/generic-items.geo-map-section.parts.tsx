@@ -23,12 +23,12 @@ export const GenericItemsGeoActionButtons = ({
 }>) =>
   hasGeocodingInput || hasReverseGeocodingInput ? (
     <div className="flex flex-wrap gap-3">
-      <Button type="button" variant="outline" onClick={onGeocode} disabled={isGeocoding}>
+      <Button type="button" variant="secondary" onClick={onGeocode} disabled={isGeocoding}>
         {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         onClick={onReverseGeocode}
         disabled={isReverseGeocoding || !hasReverseGeocodingInput}
       >

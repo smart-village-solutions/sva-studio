@@ -6,11 +6,12 @@ import type {
 } from '@sva/core';
 import type { AuthorizeResponse, EffectivePermission } from '@sva/iam-core';
 import {
+  Button,
+  type StudioColumnDef,
   StudioDataTable,
+  type StudioDataTableSortingLabels,
   StudioPersistentFormError,
   StudioSaveButton,
-  type StudioColumnDef,
-  type StudioDataTableSortingLabels,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -24,7 +25,6 @@ import {
 } from '../../components/studio-data-table-labels';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
@@ -1210,7 +1210,7 @@ const RightsTabPanel = ({
             }`}
             onClick={() => state.handleOrganizationFilterToggle(organizationValue)}
             size="sm"
-            variant="outline"
+            variant="secondary"
           >
             {organizationValue || t('admin.iam.rights.noOrganization')}
           </Button>
@@ -1403,7 +1403,7 @@ const IamCasePaginationFooter = ({
         <span>{t('admin.iam.shared.pagination.page', { page, totalPages })}</span>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
         >
@@ -1411,7 +1411,7 @@ const IamCasePaginationFooter = ({
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
         >
@@ -1448,7 +1448,7 @@ const GovernanceTabPanel = ({
           {t('admin.iam.governance.messages.exportHint')}
         </p>
         {instanceId && canExportGovernanceCompliance ? (
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="sm" variant="secondary">
             <a href={buildGovernanceComplianceExportPath({ instanceId })}>
               {t('admin.iam.governance.actions.exportCsv')}
             </a>
@@ -1937,7 +1937,7 @@ export function IamViewerPage({ activeTab }: IamViewerPageProps) {
               className={selected ? 'font-semibold' : 'text-muted-foreground'}
               onClick={() => navigateToTab(tab)}
               onKeyDown={(event) => handleTabKeyDown(event, tabIndex)}
-              variant={selected ? 'default' : 'ghost'}
+              variant={selected ? 'primary' : 'tertiary'}
             >
               {t(mapIamTabToTranslationKey(tab))}
             </Button>

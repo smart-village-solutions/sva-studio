@@ -519,7 +519,7 @@ const WasteToolsResultSummary = ({
         </dl>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={onStartNewImport}>
+        <Button type="button" variant="secondary" onClick={onStartNewImport}>
           {pt('tools.imports.wizard.actions.startNew')}
         </Button>
       </div>
@@ -542,7 +542,7 @@ const WasteToolsWizardFooter = ({
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 pt-4">
       <div>
         {onBack ? (
-          <Button type="button" variant="ghost" disabled={backDisabled} onClick={onBack}>
+          <Button type="button" variant="tertiary" disabled={backDisabled} onClick={onBack}>
             {pt('tools.imports.wizard.actions.back')}
           </Button>
         ) : null}
@@ -630,7 +630,7 @@ export const WasteToolsUploadStep = ({
       />
       <WasteToolsImportColumns profile={profile} />
       <div className="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" onClick={onDownloadTemplate}>
+        <Button type="button" variant="secondary" onClick={onDownloadTemplate}>
           {pt('tools.actions.downloadTemplate')}
         </Button>
       </div>
@@ -665,7 +665,7 @@ export const WasteToolsValidationStep = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const action = previewRequired ? (
-    <Button type="button" variant="outline" disabled={running || !canContinue} onClick={onPreview}>
+    <Button type="button" variant="secondary" disabled={running || !canContinue} onClick={onPreview}>
       {pt('tools.actions.previewImport')}
     </Button>
   ) : (
@@ -723,7 +723,7 @@ export const WasteToolsPreviewStep = ({
         primaryAction={
           <>
             {previewRequired && previewResult && previewResult.errors.length > 0 ? (
-              <Button type="button" variant="outline" onClick={onDownloadErrors}>
+              <Button type="button" variant="secondary" onClick={onDownloadErrors}>
                 {pt('tools.actions.downloadErrorFile')}
               </Button>
             ) : null}

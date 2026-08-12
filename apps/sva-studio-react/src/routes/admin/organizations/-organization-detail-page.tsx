@@ -1,4 +1,5 @@
 import {
+  Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioDetailPageTemplate,
@@ -13,7 +14,6 @@ import React from 'react';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { Label } from '../../../components/ui/label';
@@ -420,7 +420,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
           <AlertDescription>{organizationErrorMessage(organizationsApi.error)}</AlertDescription>
         </Alert>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/organizations">{t('admin.organizations.detail.backToList')}</Link>
         </Button>
       </section>
@@ -430,7 +430,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   return (
     <section className="space-y-5" aria-busy={organizationsApi.detailLoading}>
       <div>
-        <Button asChild type="button" variant="outline">
+        <Button asChild type="button" variant="secondary">
           <Link to="/admin/organizations">{t('admin.organizations.detail.backToList')}</Link>
         </Button>
       </div>
@@ -841,7 +841,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                                 <Button
                                   type="button"
                                   size="sm"
-                                  variant="outline"
+                                  variant="secondary"
                                   aria-label={t(
                                     'admin.organizations.membershipsDialog.saveMembershipLabel',
                                     { name: membership.displayName }

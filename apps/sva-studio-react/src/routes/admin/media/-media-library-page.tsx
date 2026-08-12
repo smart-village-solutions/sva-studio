@@ -2,7 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../../components/ui/alert';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { useMediaLibrary, useSingleFileMediaUpload } from '../../../hooks/use-media';
 import { t } from '../../../i18n';
 import type { IamHttpError } from '../../../lib/iam-api';

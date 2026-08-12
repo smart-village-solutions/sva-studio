@@ -14,7 +14,14 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
+  Button: ({
+    children,
+    loading,
+    ...props
+  }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props}>{children}</button>;
+  },
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
   Select: (props: React.ComponentProps<'select'>) => <select {...props} />,
   StudioField: ({
@@ -88,7 +95,9 @@ describe('WasteMasterDataFractionCreateContent', () => {
     expect(screen.getByText('masterData.fractions.createView.sections.reminders')).toBeTruthy();
     expect(document.getElementById('waste-fraction-push-slot-1-max-lead-days')).toBeNull();
     expect(
-      screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' }).hasAttribute('disabled')
+      screen
+        .getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' })
+        .hasAttribute('disabled')
     ).toBe(true);
 
     const reminderCountSelect = document.getElementById('waste-fraction-reminder-count');
@@ -141,7 +150,9 @@ describe('WasteMasterDataFractionCreateContent', () => {
     expect(document.getElementById('waste-fraction-push-slot-1-max-lead-days')).toBeNull();
     expect(document.getElementById('waste-fraction-email-slot-1-max-lead-days')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'masterData.fractions.fields.reminderChannelPushEnabled' })
+    );
     expect(onChange).toHaveBeenCalledWith({
       reminderConfig: {
         reminderCount: 'twice',
@@ -197,7 +208,9 @@ describe('WasteMasterDataFractionCreateContent', () => {
       />
     );
 
-    const secondReminderSelect = document.getElementById('waste-fraction-push-slot-2-max-lead-days');
+    const secondReminderSelect = document.getElementById(
+      'waste-fraction-push-slot-2-max-lead-days'
+    );
     expect(secondReminderSelect).toBeTruthy();
     if (!(secondReminderSelect instanceof HTMLSelectElement)) {
       throw new Error('missing second reminder select');
@@ -225,7 +238,9 @@ describe('WasteMasterDataFractionCreateContent', () => {
       },
     });
 
-    const secondReminderDefaultSelect = document.getElementById('waste-fraction-push-slot-2-default-lead-days');
+    const secondReminderDefaultSelect = document.getElementById(
+      'waste-fraction-push-slot-2-default-lead-days'
+    );
     expect(secondReminderDefaultSelect).toBeTruthy();
     if (!(secondReminderDefaultSelect instanceof HTMLSelectElement)) {
       throw new Error('missing second reminder default select');

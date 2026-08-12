@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 
 import { t } from '../i18n';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 export default function NotFound() {

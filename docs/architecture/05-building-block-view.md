@@ -56,6 +56,8 @@ Abhängigkeiten des aktuellen Systems.
 
 - öffentliche React/UI-Basis `@sva/studio-ui-react` für Host-Seiten und Plugin-Custom-Views
 - kapselt shadcn-/Radix-Primitives, Studio-Templates, Formularfelder, Zustandsbausteine, Tabellen- und Aktionsmuster
+- ist alleiniger Owner des Studio-Buttons mit der fachlichen Varianten-API `primary`, `secondary`, `tertiary` und `destructive`; App und Plugins besitzen keine parallele Button-Basis
+- stellt für Buttons zentrale Theme-Zustände, 44 × 44 Pixel Mindestzielgröße, sichtbaren Fokus, Disabled-/Loading-Semantik und fokusfähige Icon-Tooltips bereit
 - ist der kanonische UI-Owner für die Formular-Foundation rund um `react-hook-form`-, Resolver- und Form-Bridge-Muster; Host und Plugins sollen keine parallelen Basis-Formularsysteme etablieren
 - besitzt mit `StudioSaveButton`, `useStudioSaveFeedback` und `StudioPersistentFormError` die gemeinsame Darstellung normaler Save-Lifecycles; die kleinen `*StudioCreatedSaveFeedback`-Hilfen transportieren einen Create-Erfolg transient und datensatzgebunden zur Detailroute; fachliche Mutationen und Fehlerübersetzungen bleiben außerhalb des UI-Pakets
 - ist kanonischer Owner für wiederverwendbare Host-Listen-UI wie `StudioDataTable` und `StudioListPageTemplate`; die App liefert nur noch explizite Labels, Routen und Seitendaten

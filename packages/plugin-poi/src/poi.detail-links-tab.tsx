@@ -22,14 +22,14 @@ export function PoiDetailLinksTab({ pt }: Readonly<{ pt: (key: string) => string
           </StudioFieldGroup>
           {fields.length > 1 ? (
             <div className="mt-4 flex justify-end">
-              <Button type="button" variant="outline" onClick={() => remove(index)}>
+              <Button type="button" variant="secondary" onClick={() => remove(index)}>
                 {pt('actions.remove')}
               </Button>
             </div>
           ) : null}
         </div>
       ))}
-      <Button type="button" variant="outline" onClick={() => append({ url: '', description: '' })}>
+      <Button type="button" variant="secondary" onClick={() => append({ url: '', description: '' })}>
         {pt('actions.add')}
       </Button>
     </PoiDetailSectionCard>

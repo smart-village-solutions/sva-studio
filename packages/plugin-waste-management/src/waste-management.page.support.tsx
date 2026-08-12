@@ -176,7 +176,7 @@ export const StatusNotice = ({
       <AlertDescription className="space-y-3">
         <p>{message.text}</p>
         {retryAction && onRetry ? (
-          <Button type="button" variant="outline" size="sm" onClick={() => onRetry(retryAction)}>
+          <Button type="button" variant="secondary" size="sm" onClick={() => onRetry(retryAction)}>
             {pt('masterData.fractions.actions.retrySync')}
           </Button>
         ) : null}

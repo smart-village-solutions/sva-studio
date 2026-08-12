@@ -10,7 +10,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { resolveOrganizationContextState, resolveUserDisplayName, resolveUserInitials } from '@sva/core';
 
 import { OrganizationContextSwitcher } from './OrganizationContextSwitcher';
-import { Button } from './ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Input } from './ui/input';
 import { t } from '../i18n';
 import { createAccountActionHref, createLoginHref, resolveCurrentReturnTo } from '../lib/auth-navigation';
@@ -528,7 +528,7 @@ export default function Header({
               aria-controls="mobile-sidebar"
               onClick={onOpenMobileNavigation}
               size="icon"
-              variant="outline"
+              variant="secondary"
             >
               <Menu className="h-5 w-5" />
             </Button>
@@ -551,7 +551,7 @@ export default function Header({
               trigger={({ open, toggle, menuId }) => (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="tertiary"
                   size="icon"
                   tooltip={t('shell.header.notificationsTooltip')}
                   aria-label={t('shell.header.notifications')}
@@ -573,7 +573,7 @@ export default function Header({
             trigger={({ open, toggle, menuId }) => (
               <Button
                 type="button"
-                variant="ghost"
+                variant="tertiary"
                 size="icon"
                 tooltip={t('shell.header.languageSwitcherTooltip')}
                 aria-label={t('shell.header.languageSwitcher')}
@@ -593,7 +593,7 @@ export default function Header({
             tooltip={resolvedMode === 'dark' ? t('shell.header.lightModeTooltip') : t('shell.header.darkModeTooltip')}
             aria-label={resolvedMode === 'dark' ? t('shell.header.switchToLightMode') : t('shell.header.switchToDarkMode')}
             onClick={toggleMode}
-            variant="ghost"
+            variant="tertiary"
             className={iconButtonClassName}
           >
             {resolvedMode === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

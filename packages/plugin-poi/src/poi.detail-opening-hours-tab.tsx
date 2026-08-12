@@ -100,7 +100,7 @@ export function PoiDetailOpeningHoursTab({ pt }: Readonly<{ pt: (key: string) =>
           />
         );
       })}
-      <Button type="button" variant="outline" onClick={() => append(createDefaultOpeningHour())}>
+      <Button type="button" variant="secondary" onClick={() => append(createDefaultOpeningHour())}>
         {pt('actions.addOpeningHour')}
       </Button>
     </PoiDetailSectionCard>

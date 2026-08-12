@@ -44,7 +44,7 @@ export const WasteSchedulingHolidayFormView = ({
         description={pt('scheduling.holidayRules.editDescription', { value: rule.holidayName })}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button type="button" variant="outline" onClick={handleCancel} disabled={controller.saving}>
+            <Button type="button" variant="secondary" onClick={handleCancel} disabled={controller.saving}>
               {pt('scheduling.holidayRules.cancelAction')}
             </Button>
           </div>

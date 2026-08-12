@@ -66,7 +66,7 @@ export const WasteTourExplicitAssignmentDialog = ({
             onChange={onChange}
           />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('scheduling.assignments.actions.cancel')}
             </Button>
             <WastePendingSaveButton

@@ -38,7 +38,7 @@ export const WasteSettingsStatusPanel = ({
       statusTone={provisioningTone(settings?.provisioningStatus)}
       actions={
         settings?.provisioningStatus === 'failed' && onRetry ? (
-          <Button type="button" variant="outline" disabled={retrying} onClick={onRetry}>
+          <Button type="button" variant="secondary" disabled={retrying} onClick={onRetry}>
             {retrying
               ? pt('settings.actions.retryingProvisioning')
               : pt('settings.actions.retryProvisioning')}

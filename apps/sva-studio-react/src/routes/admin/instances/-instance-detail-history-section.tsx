@@ -1,4 +1,4 @@
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { t } from '../../../i18n';
 import { ProvisioningStepBadge } from './-instance-status-badges';
@@ -26,7 +26,7 @@ export const InstanceDetailHistorySection = ({
                   {run.mode} • {run.overallStatus} • {run.requestId ?? t('shell.runtimeHealth.notAvailable')}
                 </div>
               </div>
-              <Button type="button" variant="outline" onClick={() => void onLoadProvisioningRun(run.id)}>
+              <Button type="button" variant="secondary" onClick={() => void onLoadProvisioningRun(run.id)}>
                 {t('admin.instances.actions.loadRun')}
               </Button>
             </div>

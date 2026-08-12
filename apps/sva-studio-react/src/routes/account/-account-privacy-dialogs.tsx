@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Label } from '../../components/ui/label';
 import { Select } from '../../components/ui/select';
 import { Textarea } from '../../components/ui/textarea';
@@ -57,7 +57,7 @@ const RequestDialog = ({
       <div className={footerStart ? 'flex flex-wrap items-center justify-between gap-3' : 'flex justify-end gap-3'}>
         {footerStart ? <div>{footerStart}</div> : null}
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={noteState.onClose}>
+          <Button type="button" variant="secondary" disabled={isSubmitting} onClick={noteState.onClose}>
             {t('account.privacy.dialogs.shared.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting}>
@@ -162,7 +162,7 @@ export const PrivacyDialogs = ({
           </p>
         </div>
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={permissionChangeDialog.onClose}>
+          <Button type="button" variant="secondary" disabled={isSubmitting} onClick={permissionChangeDialog.onClose}>
             {t('account.privacy.permissionChange.actions.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting}>
@@ -199,7 +199,7 @@ export const PrivacyDialogs = ({
           </Select>
         </div>
         <div className="flex justify-end gap-3">
-          <Button type="button" variant="outline" disabled={isSubmitting} onClick={exportDialog.onClose}>
+          <Button type="button" variant="secondary" disabled={isSubmitting} onClick={exportDialog.onClose}>
             {t('account.privacy.dialogs.shared.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting}>

@@ -62,7 +62,7 @@ export function EventsDetailMediaList({
                 </StudioField>
               </StudioFieldGroup>
               <div className="flex justify-end">
-                <Button type="button" variant="outline" onClick={() => onRemove(index)}>
+                <Button type="button" variant="secondary" onClick={() => onRemove(index)}>
                   {pt('actions.removeImage')}
                 </Button>
               </div>

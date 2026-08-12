@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  Button,
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioFormActionBar,
@@ -11,7 +12,6 @@ import {
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-diagnostic-details';
@@ -293,7 +293,7 @@ export const UserEditPage = ({
             <>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void onSendPasswordSetupEmail()}
                 disabled={isSendingPasswordSetupEmail}
               >
@@ -303,7 +303,7 @@ export const UserEditPage = ({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void onReprovisionMainserverData()}
                 disabled={isReprovisioningMainserverData}
               >
@@ -313,7 +313,7 @@ export const UserEditPage = ({
               </Button>
             </>
           ) : null}
-          <Button type="button" variant="outline" onClick={retryUserLoad}>
+          <Button type="button" variant="secondary" onClick={retryUserLoad}>
             {t('admin.users.actions.retry')}
           </Button>
         </div>
@@ -356,7 +356,7 @@ export const UserEditPage = ({
               }`}
               onClick={() => onTabIntent(tab.key)}
               onKeyDown={(event) => onTabKeyDown(event, index)}
-              variant={selected ? 'default' : 'ghost'}
+              variant={selected ? 'primary' : 'tertiary'}
             >
               {t(userEditTranslationKeys.tab[tab.labelKey])}
             </Button>
@@ -879,7 +879,7 @@ export const UserEditPage = ({
                       <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="secondary"
                           onClick={() => void saveOrganizationMembership(membership.organizationId)}
                         >
                           {t('admin.users.edit.organizations.updateAction', {
@@ -924,7 +924,7 @@ export const UserEditPage = ({
                     <Button
                       type="button"
                       size="sm"
-                      variant="outline"
+                      variant="secondary"
                       onClick={() => void reloadTimeline()}
                     >
                       {t('admin.users.edit.historyRetry')}
@@ -1007,7 +1007,7 @@ export const UserEditPage = ({
           ) : null}
 
           <StudioFormActionBar>
-            <Button type="button" variant="outline" onClick={resetFormValues}>
+            <Button type="button" variant="secondary" onClick={resetFormValues}>
               {t('account.actions.cancel')}
             </Button>
             <StudioSaveButton

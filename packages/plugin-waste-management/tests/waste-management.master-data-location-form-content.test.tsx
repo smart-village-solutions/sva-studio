@@ -9,8 +9,23 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Button: ({ children, ...props }: React.ComponentProps<'button'>) => <button {...props}>{children}</button>,
-  StudioPageHeader: ({ title, description, actions }: { readonly title: React.ReactNode; readonly description: React.ReactNode; readonly actions: React.ReactNode }) => (
+  Button: ({
+    children,
+    loading,
+    ...props
+  }: React.ComponentProps<'button'> & { loading?: boolean }) => {
+    void loading;
+    return <button {...props}>{children}</button>;
+  },
+  StudioPageHeader: ({
+    title,
+    description,
+    actions,
+  }: {
+    readonly title: React.ReactNode;
+    readonly description: React.ReactNode;
+    readonly actions: React.ReactNode;
+  }) => (
     <header>
       <h1>{title}</h1>
       <p>{description}</p>
@@ -24,7 +39,17 @@ vi.mock('../src/waste-management.master-data-location-assignments.js', () => ({
 }));
 
 vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
-  LocationFormActions: ({ cancelLabel, saveLabel, onCancel, saving }: { readonly cancelLabel: string; readonly saveLabel: string; readonly onCancel: () => void; readonly saving: boolean }) => (
+  LocationFormActions: ({
+    cancelLabel,
+    saveLabel,
+    onCancel,
+    saving,
+  }: {
+    readonly cancelLabel: string;
+    readonly saveLabel: string;
+    readonly onCancel: () => void;
+    readonly saving: boolean;
+  }) => (
     <div>
       <button type="submit" disabled={saving}>
         {saveLabel}
@@ -63,7 +88,9 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
           aria-label="region"
           name="regionId"
           value={form.regionId}
-          onChange={(event) => onChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })}
+          onChange={(event) =>
+            onChange({ regionId: event.target.value, cityId: '', streetId: '', houseNumberId: '' })
+          }
         >
           <option value="">unset</option>
           {regions.map((region) => (
@@ -79,7 +106,9 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
           aria-label="city"
           name="cityId"
           value={form.cityId}
-          onChange={(event) => onChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })}
+          onChange={(event) =>
+            onChange({ cityId: event.target.value, streetId: '', houseNumberId: '' })
+          }
         >
           <option value="">unset</option>
           {filteredCities.map((city) => (
@@ -124,7 +153,13 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
       </label>
     </div>
   ),
-  LocationStatusSection: ({ active, onChange }: { readonly active: boolean; readonly onChange: (patch: { active: boolean }) => void }) => (
+  LocationStatusSection: ({
+    active,
+    onChange,
+  }: {
+    readonly active: boolean;
+    readonly onChange: (patch: { active: boolean }) => void;
+  }) => (
     <button type="button" onClick={() => onChange({ active: !active })}>
       {active ? 'active' : 'inactive'}
     </button>
@@ -151,19 +186,30 @@ describe('WasteMasterDataLocationFormContent', () => {
           houseNumberId: 'house-1',
           active: true,
         }}
-        regions={[{ id: 'region-1', name: 'Nord' }, { id: 'region-2', name: 'Süd' }] as never}
-        cities={[
-          { id: 'city-1', name: 'Altstadt', regionId: 'region-1' },
-          { id: 'city-2', name: 'Neustadt', regionId: 'region-2' },
-        ] as never}
-        streets={[
-          { id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' },
-          { id: 'street-2', name: 'Ring', cityId: 'city-2' },
-        ] as never}
-        houseNumbers={[
-          { id: 'house-1', number: '12', streetId: 'street-1' },
-          { id: 'house-2', number: '4', streetId: 'street-2' },
-        ] as never}
+        regions={
+          [
+            { id: 'region-1', name: 'Nord' },
+            { id: 'region-2', name: 'Süd' },
+          ] as never
+        }
+        cities={
+          [
+            { id: 'city-1', name: 'Altstadt', regionId: 'region-1' },
+            { id: 'city-2', name: 'Neustadt', regionId: 'region-2' },
+          ] as never
+        }
+        streets={
+          [
+            { id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' },
+            { id: 'street-2', name: 'Ring', cityId: 'city-2' },
+          ] as never
+        }
+        houseNumbers={
+          [
+            { id: 'house-1', number: '12', streetId: 'street-1' },
+            { id: 'house-2', number: '4', streetId: 'street-2' },
+          ] as never
+        }
         fractions={[] as never}
         availableTours={[] as never}
         locationTourLinks={[] as never}
@@ -190,7 +236,11 @@ describe('WasteMasterDataLocationFormContent', () => {
       target: { value: 'city-2' },
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.save' })[0] as HTMLButtonElement);
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'masterData.collectionLocations.actions.save',
+      })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
@@ -238,7 +288,11 @@ describe('WasteMasterDataLocationFormContent', () => {
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'masterData.collectionLocations.actions.create',
+      })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(onSubmit).not.toHaveBeenCalled();
@@ -273,7 +327,11 @@ describe('WasteMasterDataLocationFormContent', () => {
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'masterData.collectionLocations.actions.create',
+      })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();
@@ -317,7 +375,11 @@ describe('WasteMasterDataLocationFormContent', () => {
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'masterData.collectionLocations.actions.create' })[0] as HTMLButtonElement);
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'masterData.collectionLocations.actions.create',
+      })[0] as HTMLButtonElement
+    );
 
     await waitFor(() => {
       expect(screen.getByText('masterData.collectionLocations.fields.cityId')).toBeTruthy();

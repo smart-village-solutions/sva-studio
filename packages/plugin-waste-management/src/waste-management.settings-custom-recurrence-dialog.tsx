@@ -114,7 +114,7 @@ export const WasteSettingsCustomRecurrenceDialog = ({
         <CustomRecurrenceDialogFields draft={draft} onChange={setDraft} pt={pt} />
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
             {pt('tours.actions.cancel')}
           </Button>
           <Button

@@ -18,17 +18,11 @@ vi.mock('@tabler/icons-react', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
-  Button: ({
-    children,
-    ...props
-  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => <button {...props}>{children}</button>,
-  Dialog: ({
-    open,
-    children,
-  }: {
-    readonly open: boolean;
-    readonly children: React.ReactNode;
-  }) => (open ? <div>{children}</div> : null),
+  Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button {...props}>{children}</button>
+  ),
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -87,21 +81,19 @@ describe('WasteToursCustomDatesField', () => {
     expect(screen.getByText('tours.customDates.empty')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.openPicker' }));
     expect(screen.getByText('2025')).toBeTruthy();
-    expect(
-      screen.getByText('tours.customDates.meta.selectedCount:{"value":0}')
-    ).toBeTruthy();
+    expect(screen.getByText('tours.customDates.meta.selectedCount:{"value":0}')).toBeTruthy();
 
+    fireEvent.click(screen.getByRole('button', { name: '2024' }));
+    fireEvent.click(screen.getByRole('button', { name: '2025' }));
     fireEvent.click(screen.getByRole('button', { name: '2026' }));
     fireEvent.click(screen.getByRole('button', { name: '2027' }));
     fireEvent.click(screen.getAllByRole('button', { name: '1' })[0]!);
     expect(onChange).toHaveBeenCalledWith([{ date: '2027-01-01' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.cancel' }));
 
     rerender(
       <WasteToursCustomDatesField
-        customDates={[
-          { date: '2027-01-01', description: 'Neujahr' },
-          { date: '2027-01-05' },
-        ]}
+        customDates={[{ date: '2027-01-01', description: 'Neujahr' }, { date: '2027-01-05' }]}
         dateLocationAssignments={[]}
         locations={[
           { id: 'location-1', label: 'Musterhausen / Markt' },
@@ -114,9 +106,7 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    expect(
-      screen.getByText('tours.customDates.meta.selectedSummary:{"value":2}')
-    ).toBeTruthy();
+    expect(screen.getByText('tours.customDates.meta.selectedSummary:{"value":2}')).toBeTruthy();
     fireEvent.change(screen.getByDisplayValue('Neujahr'), { target: { value: 'Feiertag' } });
     expect(onChange).toHaveBeenCalledWith([
       { date: '2027-01-01', description: 'Feiertag' },
@@ -125,7 +115,9 @@ describe('WasteToursCustomDatesField', () => {
 
     expect(screen.getAllByText('tours.customDates.assignmentSection.summaryEmpty')).toHaveLength(2);
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'tours.customDates.actions.removeDate' })[0]!);
+    fireEvent.click(
+      screen.getAllByRole('button', { name: 'tours.customDates.actions.removeDate' })[0]!
+    );
     expect(screen.getByText('2027-01-01')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.dialog.removeConfirm' }));
     expect(onChange).toHaveBeenCalledWith([{ date: '2027-01-05' }]);
@@ -147,12 +139,12 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'tours.customDates.actions.openPicker' }).hasAttribute('disabled')).toBe(
-      true
-    );
     expect(
-      screen.getByText('tours.customDates.meta.selectedSummary:{"value":1}')
-    ).toBeTruthy();
+      screen
+        .getByRole('button', { name: 'tours.customDates.actions.openPicker' })
+        .hasAttribute('disabled')
+    ).toBe(true);
+    expect(screen.getByText('tours.customDates.meta.selectedSummary:{"value":1}')).toBeTruthy();
     expect(screen.getByDisplayValue('').hasAttribute('disabled')).toBe(true);
   });
 
@@ -174,8 +166,12 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.addAssignment' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' })
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.customDates.actions.addAssignment' })
+    );
     expect(onAssignmentsChange).toHaveBeenCalledWith([
       {
         id: expect.any(String),
@@ -207,9 +203,13 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    expect(screen.getByText('tours.customDates.assignmentSection.summaryCount:{"value":1}')).toBeTruthy();
+    expect(
+      screen.getByText('tours.customDates.assignmentSection.summaryCount:{"value":1}')
+    ).toBeTruthy();
     fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
-    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), { target: { value: 'Markt' } });
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), {
+      target: { value: 'Markt' },
+    });
     fireEvent.click(screen.getByRole('option', { name: 'Musterhausen / Markt' }));
     expect(onAssignmentsChange).toHaveBeenCalledWith([
       {
@@ -242,7 +242,9 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('tours.customDates.fields.note'), { target: { value: '14:00 bis 15:00 Uhr' } });
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.note'), {
+      target: { value: '14:00 bis 15:00 Uhr' },
+    });
     expect(onAssignmentsChange).toHaveBeenCalledWith([
       {
         id: 'assignment-1',
@@ -314,12 +316,18 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' })
+    );
     fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
-    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), { target: { value: 'Unbekannt' } });
+    fireEvent.change(screen.getByLabelText('tours.customDates.fields.location'), {
+      target: { value: 'Unbekannt' },
+    });
     expect(screen.getByText('tours.customDates.fields.locationSearchEmpty')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' }));
+    fireEvent.click(
+      screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' })
+    );
     expect(onAssignmentsChange).toHaveBeenCalledWith([
       {
         id: 'assignment-1',
@@ -329,7 +337,9 @@ describe('WasteToursCustomDatesField', () => {
       },
     ]);
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeAssignment' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.customDates.actions.removeAssignment' })
+    );
     expect(onAssignmentsChange).toHaveBeenCalledWith([]);
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.removeDate' }));
@@ -357,12 +367,16 @@ describe('WasteToursCustomDatesField', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.customDates.actions.editAssignments' })
+    );
     fireEvent.focus(screen.getByLabelText('tours.customDates.fields.location'));
 
     expect(screen.getByRole('group', { name: 'tours.customDates.fields.location' })).toBeTruthy();
     expect(
-      screen.getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' }).getAttribute('aria-selected')
+      screen
+        .getByRole('option', { name: 'tours.customDates.fields.locationPlaceholder' })
+        .getAttribute('aria-selected')
     ).toBe('true');
   });
 });

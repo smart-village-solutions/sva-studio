@@ -66,7 +66,7 @@ export function SurveyModerationGroupCard({
                   <td className="px-3 py-3 align-top">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="tertiary"
                       className="h-auto whitespace-normal p-0 text-left"
                       aria-label={`${pt('fields.freeTextOpenOverlay')}: ${response.excerpt}`}
                       onClick={() => onOpenResponse(response)}
@@ -118,7 +118,7 @@ export function SurveyModerationResponseDialog({
             </div>
           </dl>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               {pt('actions.closeOverlay')}
             </Button>
           </DialogFooter>

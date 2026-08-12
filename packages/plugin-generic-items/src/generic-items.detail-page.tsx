@@ -254,13 +254,13 @@ const DetailPageActions = ({
   pt: (key: string) => string;
 }>) => (
   <div className="flex gap-2">
-    <Button asChild variant="outline">
+    <Button asChild variant="secondary">
       <Link {...genericItemsListLink}>{pt('actions.back')}</Link>
     </Button>
     {mode === 'edit' && canDelete ? (
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         disabled={disableActions || deleting}
         onClick={onDelete}
       >
@@ -739,7 +739,7 @@ export function GenericItemsDetailPage({
         {retryReferenceSync ? (
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() =>
               void retryReferenceSync().then(
                 () => {

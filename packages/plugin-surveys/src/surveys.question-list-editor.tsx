@@ -84,7 +84,7 @@ export function SurveyQuestionListEditor({ pt }: Readonly<{ pt: SurveyContentTra
 
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         onClick={() => updateQuestions([...questions, createDefaultSurveyQuestion(questions.length)])}
       >
         {pt('actions.addQuestion')}

@@ -160,7 +160,7 @@ function SurveyTargetAreaInput({
             }
           }}
         />
-        <Button type="button" variant="outline" onClick={onAddTargetArea}>
+        <Button type="button" variant="secondary" onClick={onAddTargetArea}>
           {pt('actions.addTargetArea')}
         </Button>
       </div>
@@ -187,7 +187,7 @@ function SelectedTargetAreas({
         <Button
           key={option.id}
           type="button"
-          variant="outline"
+          variant="secondary"
           size="sm"
           aria-label={pt('actions.removeTargetArea', { name: option.label })}
           onClick={() => onRemoveTargetArea(option.id)}

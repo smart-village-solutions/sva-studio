@@ -9,7 +9,7 @@ import { IamRuntimeDiagnosticDetails } from '../../../components/iam-runtime-dia
 import { StudioTableSurface } from '../../../components/StudioTableSurface';
 import { Alert, AlertDescription } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -164,7 +164,7 @@ export const GroupsPage = () => {
         </div>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'))}
         >
           {t('admin.groups.actions.sort')}
@@ -191,7 +191,7 @@ export const GroupsPage = () => {
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 onClick={() => void groupsApi.refetch()}
               >
                 {t('admin.groups.actions.retry')}
@@ -280,7 +280,7 @@ export const GroupsPage = () => {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button asChild type="button" size="sm" variant="outline">
+                      <Button asChild type="button" size="sm" variant="secondary">
                         <Link to="/admin/groups/$groupId" params={{ groupId: group.id }}>
                           {t('admin.groups.actions.edit')}
                         </Link>

@@ -10,7 +10,7 @@ export function SurveyEditorActions({
 }>) {
   return (
     <div className="flex flex-wrap gap-2">
-      <Button asChild variant="outline">
+      <Button asChild variant="secondary">
         <Link to="/admin/content">{pt('actions.back')}</Link>
       </Button>
     </div>

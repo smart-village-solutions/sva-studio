@@ -58,7 +58,7 @@ export const GlobalDateShiftDialog = ({
           <StatusNotice message={message} />
           <WasteSchedulingGlobalFields form={form} tours={tours} pt={pt} onChange={onChange} />
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
               {pt('scheduling.global.actions.cancel')}
             </Button>
             <WastePendingSaveButton

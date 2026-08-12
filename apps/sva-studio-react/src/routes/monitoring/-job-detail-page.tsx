@@ -2,7 +2,7 @@ import { Link } from '@tanstack/react-router';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
+import { Button } from '@sva/studio-ui-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { usePluginOperationJobDetail } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
@@ -356,7 +356,7 @@ export const MonitoringJobDetailPage = ({ jobId }: MonitoringJobDetailPageProps)
           </p>
           <p className="text-xs text-muted-foreground">{jobId}</p>
         </div>
-        <Button asChild variant="outline">
+        <Button asChild variant="secondary">
           <Link to="/monitoring/jobs">{t('monitoring.jobs.detail.back')}</Link>
         </Button>
       </header>

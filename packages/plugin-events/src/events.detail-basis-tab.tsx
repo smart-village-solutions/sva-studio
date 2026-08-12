@@ -177,7 +177,7 @@ export function EventsDetailBasisTab({
                     <Button
                       key={option.value}
                       type="button"
-                      variant={recurringWeekdays.includes(option.value) ? 'default' : 'outline'}
+                      variant={recurringWeekdays.includes(option.value) ? 'primary' : 'secondary'}
                       size="sm"
                       aria-pressed={recurringWeekdays.includes(option.value)}
                       aria-label={option.label}

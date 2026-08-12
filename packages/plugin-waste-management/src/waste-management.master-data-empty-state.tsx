@@ -16,7 +16,7 @@ export const WasteMasterDataEmptyState = ({
         <p>{pt('masterData.messages.emptyBody')}</p>
         <div className="flex gap-2 pt-2">
           <Button type="button" onClick={onOpenCreateFraction}>{pt('masterData.fractions.actions.openCreate')}</Button>
-          <Button type="button" variant="outline" onClick={onOpenCreateLocation}>{pt('masterData.collectionLocations.actions.openCreate')}</Button>
+          <Button type="button" variant="secondary" onClick={onOpenCreateLocation}>{pt('masterData.collectionLocations.actions.openCreate')}</Button>
         </div>
       </div>
     </StudioEmptyState>

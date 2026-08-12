@@ -57,7 +57,7 @@ const PoiPaginationNav = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={page <= 1}
         onClick={() => onPageChange(Math.max(1, page - 1))}
       >
@@ -66,7 +66,7 @@ const PoiPaginationNav = ({
       <Button
         type="button"
         size="sm"
-        variant="outline"
+        variant="secondary"
         disabled={!hasNextPage}
         onClick={() => onPageChange(page + 1)}
       >
@@ -159,7 +159,7 @@ export function PoiListPage() {
             data={result.data}
             columns={createPoiListColumns(pt)}
             rowActions={(item) => (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="secondary" size="sm">
                 <Link to="/admin/poi/$id" params={{ id: item.id }}>
                   {pt('actions.edit')}
                 </Link>

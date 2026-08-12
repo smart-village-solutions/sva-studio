@@ -37,7 +37,7 @@ export const ContentMediaMetadataDialog = ({ asset, labels, onApply, onClose, su
         <Checkbox checked={selection[key]} onChange={(event) => setSelection((current) => ({ ...current, [key]: event.currentTarget.checked }))} />
         <span className="min-w-0 space-y-2"><span className="block text-sm font-medium text-foreground">{key === 'persistentUrl' ? labels.fields.url : labels.fields[key]}</span><span className="block break-all text-xs text-muted-foreground">{labels.refresh.assetValue}: {asset[key]}</span><span className="block break-all text-xs text-muted-foreground">{labels.refresh.contentValue}: {usage[key]}</span></span>
       </label>)}</div>
-      <DialogFooter><Button type="button" variant="outline" onClick={onClose}>{labels.actions.cancel}</Button><Button type="button" onClick={apply}>{labels.actions.apply}</Button></DialogFooter>
+      <DialogFooter><Button type="button" variant="secondary" onClick={onClose}>{labels.actions.cancel}</Button><Button type="button" onClick={apply}>{labels.actions.apply}</Button></DialogFooter>
     </DialogContent>
   </Dialog>;
 };

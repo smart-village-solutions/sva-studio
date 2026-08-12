@@ -33,7 +33,7 @@ export const GenericItemsDataTable = ({
       { id: 'updatedAt', header: pt('fields.updatedAt'), cell: (item: GenericItemContentItem) => item.updatedAt },
     ]}
     rowActions={(item: GenericItemContentItem) => (
-      <Button asChild variant="outline" size="sm">
+      <Button asChild variant="secondary" size="sm">
         <Link to="/admin/generic-items/$id" params={{ id: item.id }}>
           {pt('actions.edit')}
         </Link>
@@ -61,7 +61,7 @@ export const GenericItemsPagination = ({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={pagination.page <= 1}
           onClick={() =>
             void navigate({
@@ -79,7 +79,7 @@ export const GenericItemsPagination = ({
         <Button
           type="button"
           size="sm"
-          variant="outline"
+          variant="secondary"
           disabled={!pagination.hasNextPage}
           onClick={() =>
             void navigate({

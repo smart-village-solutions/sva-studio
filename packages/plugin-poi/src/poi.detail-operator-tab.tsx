@@ -278,12 +278,12 @@ export function PoiDetailOperatorTab({ pt }: Readonly<{ pt: (key: string) => str
 
       {hasGeocodingInput || hasReverseGeocodingInput ? (
         <div className="flex flex-wrap gap-3">
-          <Button type="button" variant="outline" onClick={() => void handleOperatorGeocode()} disabled={isGeocoding}>
+          <Button type="button" variant="secondary" onClick={() => void handleOperatorGeocode()} disabled={isGeocoding}>
             {isGeocoding ? pt('actions.geocodingAddress') : pt('actions.geocodeAddress')}
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => void handleOperatorReverseGeocode()}
             disabled={isReverseGeocoding || !hasReverseGeocodingInput}
           >

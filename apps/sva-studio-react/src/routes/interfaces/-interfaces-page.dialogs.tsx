@@ -1,5 +1,6 @@
 import { t } from '../../i18n';
 import {
+  Button,
   StudioPersistentFormError,
   StudioSaveButton,
   type StudioSaveStatus,
@@ -9,7 +10,6 @@ import {
   type InstanceInterfaceDraft,
   type InstanceInterfaceType,
 } from '../../lib/instance-interfaces';
-import { Button } from '../../components/ui/button';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -86,7 +86,7 @@ export const TypePickerDialog = ({
           })}
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="secondary" onClick={onCancel}>
             {t('interfaces.create.cancel')}
           </Button>
           <Button type="button" onClick={onConfirm}>
@@ -176,7 +176,7 @@ export const InterfaceForm = ({
           saved: t('interfaces.actions.saved'),
         }}
       />
-      <Button type="button" variant="outline" disabled={saveStatus === 'saving'} onClick={onCancel}>
+      <Button type="button" variant="secondary" disabled={saveStatus === 'saving'} onClick={onCancel}>
         {t('interfaces.edit.cancel')}
       </Button>
     </div>

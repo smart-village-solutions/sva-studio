@@ -1,8 +1,25 @@
-import { describe, expect, it } from 'vitest';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 
-import { checkPluginUiBoundarySource } from '../../../scripts/ci/check-plugin-ui-boundary.ts';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import {
+  checkPluginUiBoundary,
+  checkPluginUiBoundarySource,
+} from '../../../scripts/ci/check-plugin-ui-boundary.ts';
+
+const temporaryDirectories: string[] = [];
 
 describe('plugin UI boundary check', () => {
+  afterEach(async () => {
+    await Promise.all(
+      temporaryDirectories
+        .splice(0)
+        .map((directory) => rm(directory, { recursive: true, force: true }))
+    );
+  });
+
   it('ignores app-internal paths in comments and string literals', () => {
     const result = checkPluginUiBoundarySource(
       'packages/plugin-news/src/example.tsx',
@@ -58,10 +75,25 @@ describe('plugin UI boundary check', () => {
     ];
 
     for (const sourceCode of exportCases) {
-      expect(checkPluginUiBoundarySource('packages/plugin-news/src/Button.tsx', sourceCode)).toEqual({
+      expect(
+        checkPluginUiBoundarySource('packages/plugin-news/src/Button.tsx', sourceCode)
+      ).toEqual({
         hasAppInternalImport: false,
         duplicateBasisControlExportName: 'Button',
       });
     }
+  });
+
+  it('rejects a parallel app-local Button implementation', async () => {
+    const projectRoot = await mkdtemp(path.join(os.tmpdir(), 'studio-ui-boundary-'));
+    temporaryDirectories.push(projectRoot);
+    await mkdir(path.join(projectRoot, 'packages'), { recursive: true });
+    const buttonPath = path.join(projectRoot, 'apps/sva-studio-react/src/components/ui/button.tsx');
+    await mkdir(path.dirname(buttonPath), { recursive: true });
+    await writeFile(buttonPath, 'export const Button = () => null;\n', 'utf8');
+
+    await expect(checkPluginUiBoundary(projectRoot)).resolves.toEqual([
+      'apps/sva-studio-react/src/components/ui/button.tsx: dupliziert den kanonischen Button aus @sva/studio-ui-react',
+    ]);
   });
 });

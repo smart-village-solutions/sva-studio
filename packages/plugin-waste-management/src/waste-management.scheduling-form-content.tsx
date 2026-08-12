@@ -44,7 +44,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
+      <Button type="button" variant="secondary" onClick={props.onCancel} disabled={props.saving}>
         {pt(copy.cancelKey)}
       </Button>
       <WastePendingSaveButton
@@ -90,7 +90,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
-          <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.saving}>
+          <Button type="button" variant="secondary" onClick={props.onCancel} disabled={props.saving}>
             {pt(copy.cancelKey)}
           </Button>
         </div>

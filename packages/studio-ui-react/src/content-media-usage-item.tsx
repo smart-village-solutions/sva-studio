@@ -46,10 +46,10 @@ const UsageFields = ({ errors, labels, onUpdate, supportedFields, usage }: Pick<
 
 const UsageActions = ({ canRefresh, index, labels, onMove, onRefresh, onRemove, refreshFailed, refreshing, total, usage }: Pick<ItemProps, 'canRefresh' | 'index' | 'labels' | 'onMove' | 'onRefresh' | 'onRemove' | 'refreshFailed' | 'refreshing' | 'total' | 'usage'>) => <>
   <div className="flex flex-wrap gap-2">
-    <Button type="button" variant="outline" disabled={index === 0} onClick={() => onMove(-1)}>{labels.actions.moveUp}</Button>
-    <Button type="button" variant="outline" disabled={index === total - 1} onClick={() => onMove(1)}>{labels.actions.moveDown}</Button>
-    {usage.assetId && canRefresh ? <Button type="button" variant="outline" disabled={refreshing} aria-describedby={refreshFailed ? `content-media-${usage.uiId}-refresh-error` : undefined} onClick={onRefresh}>{labels.actions.refreshMetadata}</Button> : null}
-    <Button id={`content-media-${usage.uiId}-remove`} type="button" variant="outline" onClick={onRemove}>{labels.actions.remove}</Button>
+    <Button type="button" variant="secondary" disabled={index === 0} onClick={() => onMove(-1)}>{labels.actions.moveUp}</Button>
+    <Button type="button" variant="secondary" disabled={index === total - 1} onClick={() => onMove(1)}>{labels.actions.moveDown}</Button>
+    {usage.assetId && canRefresh ? <Button type="button" variant="secondary" disabled={refreshing} aria-describedby={refreshFailed ? `content-media-${usage.uiId}-refresh-error` : undefined} onClick={onRefresh}>{labels.actions.refreshMetadata}</Button> : null}
+    <Button id={`content-media-${usage.uiId}-remove`} type="button" variant="secondary" onClick={onRemove}>{labels.actions.remove}</Button>
   </div>
   {refreshFailed ? <p id={`content-media-${usage.uiId}-refresh-error`} role="alert" className="text-sm text-destructive">{labels.states.failed}</p> : null}
 </>;

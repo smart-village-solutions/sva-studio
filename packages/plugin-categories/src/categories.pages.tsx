@@ -53,10 +53,10 @@ const renderTags = (row: CategoryTableRow, emptyLabel: string) => {
 
 const renderDisabledActions = (row: CategoryTableRow, pt: PluginTranslator) => (
   <div data-action-target-id={row.actionTargetId} className="flex justify-end gap-2">
-    <Button type="button" size="sm" variant="outline" disabled>
+    <Button type="button" size="sm" variant="secondary" disabled>
       {pt('actions.edit')}
     </Button>
-    <Button type="button" size="sm" variant="outline" disabled>
+    <Button type="button" size="sm" variant="secondary" disabled>
       {pt('actions.createChild')}
     </Button>
     <Button type="button" size="sm" variant="destructive" disabled>
@@ -189,7 +189,7 @@ const CategoriesPageContent = ({
     return (
       <div className="space-y-3">
         <StudioErrorState>{state.error}</StudioErrorState>
-        <Button type="button" variant="outline" onClick={() => void state.reload()}>
+        <Button type="button" variant="secondary" onClick={() => void state.reload()}>
           {pt('actions.reload')}
         </Button>
       </div>

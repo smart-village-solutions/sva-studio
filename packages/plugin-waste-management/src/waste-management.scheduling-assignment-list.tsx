@@ -20,7 +20,7 @@ const AssignmentActions = ({
   <div className="flex justify-end gap-1">
     <Button
       type="button"
-      variant="ghost"
+      variant="tertiary"
       size="sm"
       className="h-8 w-8 px-0"
       aria-label={pt('scheduling.assignments.actions.edit')}
@@ -31,7 +31,7 @@ const AssignmentActions = ({
     </Button>
     <Button
       type="button"
-      variant="ghost"
+      variant="tertiary"
       size="sm"
       className="h-8 w-8 px-0"
       aria-label={pt('scheduling.assignments.actions.delete')}

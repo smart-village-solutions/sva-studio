@@ -819,7 +819,7 @@ function ProjectEditor({
       description={pt(mode === 'create' ? 'editor.createDescription' : 'editor.editDescription')}
       actions={
         <div className="flex gap-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="secondary">
             <Link to="/admin/content">{pt('actions.back')}</Link>
           </Button>
           {mode === 'edit' && accessCapabilities.canDelete ? (
@@ -884,7 +884,7 @@ function ProjectEditor({
         {retryReferenceSync ? (
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             onClick={() => {
               void retryReferenceSync().then(
                 () => {
@@ -1008,7 +1008,7 @@ export function ProjectsListPage() {
               },
             ]}
             rowActions={(project) => (
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="secondary" size="sm">
                 <Link to="/admin/projects/$id" params={{ id: project.id }}>
                   {pt('actions.edit')}
                 </Link>

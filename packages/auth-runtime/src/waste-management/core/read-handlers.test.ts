@@ -523,7 +523,7 @@ describe('waste-management read handlers', () => {
       streets: [{ id: 'street-1' }],
       houseNumbers: [{ id: 'house-1' }],
       collectionLocations: [{ id: 'location-1' }],
-      locationTourLinks: [{ id: 'link-1' }],
+      locationTourLinks: [],
     }));
 
     const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(

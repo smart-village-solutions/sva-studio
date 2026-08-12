@@ -103,6 +103,7 @@ export const governanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.createCity),
   },
   '/api/v1/waste-management/cities/$cityId': {
+    PATCH: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
     PUT: routeHandler(authRuntimeRoutes.wasteManagementHandlers.updateCity),
   },
   '/api/v1/waste-management/streets': {

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   findStaleWasteLocationKeys,
   resolveNewsWasteTargetOptions,
-} from '../src/news.waste-targeting.js';
+} from './news.waste-targeting.js';
 
 const timestamp = '2026-08-12T10:00:00.000Z';
 
@@ -71,7 +71,7 @@ describe('News Waste targeting', () => {
 
   it('preserves keys that no longer resolve to current master data', () => {
     const options = resolveNewsWasteTargetOptions(overview);
-    const currentKey = options.at(0)?.key;
+    const currentKey = options[0]?.key;
     expect(currentKey).toBeDefined();
     if (!currentKey) {
       throw new Error('Expected a resolved target key');

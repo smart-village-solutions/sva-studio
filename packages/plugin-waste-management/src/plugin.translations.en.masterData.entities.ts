@@ -43,6 +43,7 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       regionId: 'Region',
       regionUnset: 'No region',
     },
+    validation: { postalCodeMaxLength: 'The postal code must not exceed 16 characters.' },
     dialog: {
       createTitle: 'Create city',
       createDescription: 'Create a city and assign it to a region when needed.',

@@ -72,15 +72,17 @@ export const useNewsTargetingEditor = (
   );
   const filteredHouseNumbers = React.useMemo(
     () =>
-      overview.houseNumbers.filter((houseNumber) => {
-        const street = streetsById.get(houseNumber.streetId);
-        const city = street ? citiesById.get(street.cityId) : undefined;
-        return (
-          (!filters.regionId || city?.regionId === filters.regionId) &&
-          (!filters.cityId || city?.id === filters.cityId) &&
-          (!filters.streetId || houseNumber.streetId === filters.streetId)
-        );
-      }),
+      filters.streetId
+        ? overview.houseNumbers.filter((houseNumber) => {
+            const street = streetsById.get(houseNumber.streetId);
+            const city = street ? citiesById.get(street.cityId) : undefined;
+            return (
+              (!filters.regionId || city?.regionId === filters.regionId) &&
+              (!filters.cityId || city?.id === filters.cityId) &&
+              (!filters.streetId || houseNumber.streetId === filters.streetId)
+            );
+          })
+        : [],
     [citiesById, filters, overview.houseNumbers, streetsById]
   );
   const filtered = React.useMemo(() => filterTargetOptions(options, filters), [filters, options]);

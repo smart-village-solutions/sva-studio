@@ -217,6 +217,7 @@ const repositoryMocks = vi.hoisted(() => ({
   upsertWasteRegion: vi.fn(async () => undefined),
   getWasteCityById: vi.fn(async (_id: string) => ({ id: 'city-1' })),
   upsertWasteCity: vi.fn(async () => undefined),
+  updateWasteCity: vi.fn(async () => undefined),
   getWasteStreetById: vi.fn(async (_id: string) => ({ id: 'street-1' })),
   upsertWasteStreet: vi.fn(async () => undefined),
   getWasteHouseNumberById: vi.fn(async (_id: string) => ({ id: 'house-1' })),
@@ -505,7 +506,7 @@ describe('waste-management server loaders', () => {
       streets: [{ id: 'street-1' }],
       houseNumbers: [{ id: 'house-1' }],
       collectionLocations: [{ id: 'location-1' }],
-      locationTourLinks: [{ id: 'link-1' }],
+      locationTourLinks: [],
     });
     expect(repositoryMocks.listWasteFractions).not.toHaveBeenCalled();
     expect(repositoryMocks.listWasteRegions).toHaveBeenCalledTimes(1);
@@ -513,7 +514,7 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.listWasteStreets).toHaveBeenCalledTimes(1);
     expect(repositoryMocks.listWasteHouseNumbers).toHaveBeenCalledTimes(1);
     expect(repositoryMocks.listWasteCollectionLocations).toHaveBeenCalledTimes(1);
-    expect(repositoryMocks.listWasteLocationTourLinks).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteLocationTourLinks).not.toHaveBeenCalled();
   });
 
   it('normalizes technical job timestamps when pg returns Date objects', async () => {
@@ -619,6 +620,9 @@ describe('waste-management server loaders', () => {
     await wasteManagementEntitySavers.saveWasteFraction('tenant-a', { id: 'fraction-2' } as never);
     await wasteManagementEntitySavers.saveWasteRegion('tenant-a', { id: 'region-2' } as never);
     await wasteManagementEntitySavers.saveWasteCity('tenant-a', { id: 'city-2' } as never);
+    await wasteManagementEntitySavers.patchWasteCity('tenant-a', 'city-2', {
+      postalCode: '19336',
+    });
     await wasteManagementEntitySavers.saveWasteStreet('tenant-a', { id: 'street-2' } as never);
     await wasteManagementEntitySavers.saveWasteHouseNumber('tenant-a', { id: 'house-2' } as never);
     await wasteManagementEntitySavers.saveWasteCollectionLocation('tenant-a', {
@@ -657,6 +661,9 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.upsertWasteFraction).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteRegion).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteCity).toHaveBeenCalled();
+    expect(repositoryMocks.updateWasteCity).toHaveBeenCalledWith('city-2', {
+      postalCode: '19336',
+    });
     expect(repositoryMocks.upsertWasteStreet).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteHouseNumber).toHaveBeenCalled();
     expect(repositoryMocks.upsertWasteCollectionLocation).toHaveBeenCalled();

@@ -5,10 +5,7 @@ import {
   createNewsEditorFormValues,
   deriveNewsEditorialStatus,
 } from '../src/news.editor-model.js';
-import {
-  requiresGlobalPushConfirmation,
-  resolveGlobalPushConfirmationKey,
-} from '../src/news.waste-payload.js';
+import { requiresGlobalPushConfirmation, resolveGlobalPushConfirmationKey } from '../src/news.waste-payload.js';
 import type { NewsContentItem, NewsDetailFormValues } from '../src/news.types.js';
 
 const newsItemFixture: NewsContentItem = {
@@ -62,12 +59,8 @@ const editorValuesFixture: NewsDetailFormValues = {
 
 describe('news.editor-model', () => {
   it('requires global Push confirmation independently of Waste targeting availability', () => {
-    expect(
-      requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 0 })
-    ).toBe(true);
-    expect(
-      requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 1 })
-    ).toBe(false);
+    expect(requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 0 })).toBe(true);
+    expect(requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 1 })).toBe(false);
     expect(
       requiresGlobalPushConfirmation({
         pushNotificationEnabled: true,
@@ -78,18 +71,11 @@ describe('news.editor-model', () => {
   });
 
   it('selects a confirmation text that matches the Waste targeting state', () => {
-    expect(resolveGlobalPushConfirmationKey('available')).toBe(
-      'targeting.globalConfirm.noTargets'
-    );
-    expect(resolveGlobalPushConfirmationKey('forbidden')).toBe(
-      'targeting.globalConfirm.forbidden'
-    );
-    expect(resolveGlobalPushConfirmationKey('load-error')).toBe(
-      'targeting.globalConfirm.loadError'
-    );
-    expect(resolveGlobalPushConfirmationKey('loading')).toBe(
-      'targeting.globalConfirm.loadError'
-    );
+    expect(resolveGlobalPushConfirmationKey('idle')).toBe('targeting.globalConfirm.noTargets');
+    expect(resolveGlobalPushConfirmationKey('available')).toBe('targeting.globalConfirm.noTargets');
+    expect(resolveGlobalPushConfirmationKey('forbidden')).toBe('targeting.globalConfirm.forbidden');
+    expect(resolveGlobalPushConfirmationKey('load-error')).toBe('targeting.globalConfirm.loadError');
+    expect(resolveGlobalPushConfirmationKey('loading')).toBe('targeting.globalConfirm.loadError');
   });
 
   it('stores legacy update fields in a hidden snapshot for compatibility-driven updates', () => {
@@ -132,7 +118,16 @@ describe('news.editor-model', () => {
       contentIntro: '',
       contentBody: '',
       sourceUrl: { url: '', description: '' },
-      contentMedia: [{ captionText: '', copyright: '', contentType: 'image', height: '', width: '', sourceUrl: { url: '', description: '' } }],
+      contentMedia: [
+        {
+          captionText: '',
+          copyright: '',
+          contentType: 'image',
+          height: '',
+          width: '',
+          sourceUrl: { url: '', description: '' },
+        },
+      ],
     });
   });
 

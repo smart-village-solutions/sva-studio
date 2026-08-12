@@ -1,9 +1,4 @@
-import type {
-  WasteCityRecord,
-  WasteHouseNumberRecord,
-  WasteRegionRecord,
-  WasteStreetRecord,
-} from '@sva/plugin-sdk';
+import type { WasteCityRecord, WasteHouseNumberRecord, WasteRegionRecord, WasteStreetRecord } from '@sva/plugin-sdk';
 
 import type {
   CreateWasteManagementCityInput,
@@ -17,9 +12,8 @@ import type {
 } from './waste-management.api.types.js';
 import { requestWasteManagementMutation } from './waste-management.api.shared.js';
 
-const createWasteManagementRegion = async (
-  input: CreateWasteManagementRegionInput
-): Promise<WasteRegionRecord> => requestWasteManagementMutation('/api/v1/waste-management/regions', input);
+const createWasteManagementRegion = async (input: CreateWasteManagementRegionInput): Promise<WasteRegionRecord> =>
+  requestWasteManagementMutation('/api/v1/waste-management/regions', input);
 
 const updateWasteManagementRegion = async (
   regionId: string,
@@ -27,19 +21,17 @@ const updateWasteManagementRegion = async (
 ): Promise<WasteRegionRecord> =>
   requestWasteManagementMutation(`/api/v1/waste-management/regions/${encodeURIComponent(regionId)}`, input, 'PUT');
 
-const createWasteManagementCity = async (
-  input: CreateWasteManagementCityInput
-): Promise<WasteCityRecord> => requestWasteManagementMutation('/api/v1/waste-management/cities', input);
+const createWasteManagementCity = async (input: CreateWasteManagementCityInput): Promise<WasteCityRecord> =>
+  requestWasteManagementMutation('/api/v1/waste-management/cities', input);
 
 const updateWasteManagementCity = async (
   cityId: string,
   input: UpdateWasteManagementCityInput
 ): Promise<WasteCityRecord> =>
-  requestWasteManagementMutation(`/api/v1/waste-management/cities/${encodeURIComponent(cityId)}`, input, 'PUT');
+  requestWasteManagementMutation(`/api/v1/waste-management/cities/${encodeURIComponent(cityId)}`, input, 'PATCH');
 
-const createWasteManagementStreet = async (
-  input: CreateWasteManagementStreetInput
-): Promise<WasteStreetRecord> => requestWasteManagementMutation('/api/v1/waste-management/streets', input);
+const createWasteManagementStreet = async (input: CreateWasteManagementStreetInput): Promise<WasteStreetRecord> =>
+  requestWasteManagementMutation('/api/v1/waste-management/streets', input);
 
 const updateWasteManagementStreet = async (
   streetId: string,

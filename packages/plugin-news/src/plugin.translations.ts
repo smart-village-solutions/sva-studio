@@ -162,6 +162,8 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       title: 'Abholorte',
       description:
         'Die Nachricht bleibt öffentlich sichtbar; nur die Push-Zustellung wird begrenzt.',
+      sentReadOnly:
+        'Die Empfänger des bereits versendeten Pushs sind dokumentiert und können nicht mehr geändert werden.',
     },
     mode: { global: 'Global – alle Geräte', targeted: 'Gezielt – {{count}} Abholorte' },
     globalHint: 'Ohne Auswahl wird die Push-Benachrichtigung an alle Geräte gesendet.',
@@ -173,6 +175,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
         'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?',
     },
     stale: 'veraltet',
+    loadError: 'Die Abholorte konnten nicht geladen werden. Versuchen Sie es erneut.',
     dialog: {
       title: 'Abholorte auswählen',
       description: 'Filtern und wählen Sie aktive, vollständig adressierte Abholorte.',
@@ -198,9 +201,11 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       emptyValue: '–',
       empty: 'Keine passenden Abholorte gefunden.',
       resultCount: '{{count}} Treffer',
+      status: '{{count}} Treffer, Seite {{page}} von {{pageCount}}',
     },
     actions: {
       edit: 'Auswahl bearbeiten',
+      loading: 'Abholorte werden geladen…',
       removeTarget: 'Abholort {{address}} entfernen',
       apply: 'Auswahl übernehmen',
       selectAll: 'Alle Filtertreffer auswählen',
@@ -599,17 +604,19 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     card: {
       title: 'Collection locations',
       description: 'The News remains public; only Push delivery is limited.',
+      sentReadOnly:
+        'The recipients of the Push that has already been sent are recorded and can no longer be changed.',
     },
     mode: { global: 'Global – all devices', targeted: 'Targeted – {{count}} collection locations' },
     globalHint: 'Without a selection the Push notification is sent to all devices.',
     globalConfirm: {
-      noTargets:
-        'No collection locations are selected. Send the Push notification to all devices?',
+      noTargets: 'No collection locations are selected. Send the Push notification to all devices?',
       forbidden: 'Send the Push notification to all devices?',
       loadError:
         'The collection locations could not be loaded. Send the Push notification to all devices?',
     },
     stale: 'stale',
+    loadError: 'The collection locations could not be loaded. Please try again.',
     dialog: {
       title: 'Select collection locations',
       description: 'Filter and select active, fully addressed collection locations.',
@@ -635,9 +642,11 @@ const newsTranslationsEn = createNewsLocaleTranslations({
       emptyValue: '–',
       empty: 'No matching collection locations found.',
       resultCount: '{{count}} results',
+      status: '{{count}} results, page {{page}} of {{pageCount}}',
     },
     actions: {
       edit: 'Edit selection',
+      loading: 'Loading collection locations…',
       removeTarget: 'Remove collection location {{address}}',
       apply: 'Apply selection',
       selectAll: 'Select all filtered results',

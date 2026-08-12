@@ -10,6 +10,17 @@ import {
 } from './news.waste-targeting.js';
 import type { NewsDetailFormValues, WasteLocationKey } from './news.types.js';
 import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
+import type { WasteTargetingAvailability } from './news.waste-payload.js';
+
+const emptyOverview: WasteManagementMasterDataOverview = {
+  fractions: [],
+  regions: [],
+  cities: [],
+  streets: [],
+  houseNumbers: [],
+  collectionLocations: [],
+  locationTourLinks: [],
+};
 
 export type NewsTargetingTranslator = (
   key: string,
@@ -20,7 +31,7 @@ type TargetingSummaryProps = Readonly<{
   selected: readonly WasteLocationKey[];
   staleIds: ReadonlySet<string>;
   pt: NewsTargetingTranslator;
-  onRemove: (key: WasteLocationKey) => void;
+  onRemove?: (key: WasteLocationKey) => void;
 }>;
 
 function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummaryProps) {
@@ -46,15 +57,17 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
                 </span>
               ) : null}
             </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={pt('targeting.actions.removeTarget', { address: targetLabel })}
-              onClick={() => onRemove(key)}
-            >
-              {pt('actions.remove')}
-            </Button>
+            {onRemove ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={pt('targeting.actions.removeTarget', { address: targetLabel })}
+                onClick={() => onRemove(key)}
+              >
+                {pt('actions.remove')}
+              </Button>
+            ) : null}
           </li>
         );
       })}
@@ -65,10 +78,23 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
 export function NewsDetailTargetingSection({
   overview,
   pt,
-}: Readonly<{ overview: WasteManagementMasterDataOverview; pt: NewsTargetingTranslator }>) {
+  readOnly = false,
+  availability = 'available',
+  onLoadOverview,
+}: Readonly<{
+  overview: WasteManagementMasterDataOverview | null;
+  pt: NewsTargetingTranslator;
+  readOnly?: boolean;
+  availability?: WasteTargetingAvailability;
+  onLoadOverview?: () => Promise<boolean>;
+}>) {
   const { control, setValue } = useFormContext<NewsDetailFormValues>();
   const selected = useWatch({ control, name: 'wasteLocationKeys' }) ?? [];
-  const options = React.useMemo(() => resolveNewsWasteTargetOptions(overview), [overview]);
+  const resolvedOverview = overview ?? emptyOverview;
+  const options = React.useMemo(
+    () => resolveNewsWasteTargetOptions(resolvedOverview),
+    [resolvedOverview]
+  );
   const staleIds = React.useMemo(
     () => new Set(findStaleWasteLocationKeys(selected, options).map(wasteLocationKeyId)),
     [options, selected]
@@ -96,6 +122,9 @@ export function NewsDetailTargetingSection({
       <div className="space-y-1">
         <p className="text-sm font-medium text-foreground">{pt('targeting.card.title')}</p>
         <p className="text-sm text-muted-foreground">{pt('targeting.card.description')}</p>
+        {readOnly ? (
+          <p className="text-sm text-muted-foreground">{pt('targeting.card.sentReadOnly')}</p>
+        ) : null}
       </div>
       <div className="space-y-4 rounded-xl border border-border/60 bg-muted/10 p-4">
         <p className="text-sm font-medium">
@@ -107,15 +136,19 @@ export function NewsDetailTargetingSection({
           selected={selected}
           staleIds={staleIds}
           pt={pt}
-          onRemove={removeSelectedTarget}
+          onRemove={readOnly ? undefined : removeSelectedTarget}
         />
-        <NewsDetailTargetingDialog
-          overview={overview}
-          options={options}
-          selected={selected}
-          pt={pt}
-          onApply={applySelection}
-        />
+        {readOnly ? null : (
+          <NewsDetailTargetingDialog
+            overview={resolvedOverview}
+            options={options}
+            selected={selected}
+            pt={pt}
+            onApply={applySelection}
+            availability={availability}
+            onBeforeOpen={onLoadOverview}
+          />
+        )}
       </div>
     </div>
   );

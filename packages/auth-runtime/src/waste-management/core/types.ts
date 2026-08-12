@@ -3,7 +3,6 @@ import type {
   ExternalInterfaceRecord,
   WasteManagementSettingsInterfaceOption,
   StudioJobStartRequest,
-  WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteCustomRecurrencePresetRecord,
   WasteFractionRecord,
@@ -41,6 +40,7 @@ import type { ResolvedWasteDataSource } from '@sva/server-runtime';
 import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
+import type { WasteCityHandlerDeps } from './city-deps.js';
 
 export type WasteCustomRecurrencePresetFallback = {
   readonly kind: 'preset' | 'default';
@@ -65,7 +65,7 @@ type ResolveWasteActorInfoResult =
       readonly error: Response;
     };
 
-export type WasteManagementHandlerDeps = {
+export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   readonly getRequestId?: () => string | undefined;
   readonly getSessionById?: (sessionId: string) => Promise<Session | undefined>;
   readonly loadDefaultInterfaceRecord?: (
@@ -181,14 +181,6 @@ export type WasteManagementHandlerDeps = {
     instanceId: string,
     regionId: string
   ) => Promise<WasteRegionRecord | null>;
-  readonly saveWasteCity?: (
-    instanceId: string,
-    input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>
-  ) => Promise<void>;
-  readonly loadWasteCityById?: (
-    instanceId: string,
-    cityId: string
-  ) => Promise<WasteCityRecord | null>;
   readonly saveWasteStreet?: (
     instanceId: string,
     input: Omit<WasteStreetRecord, 'createdAt' | 'updatedAt'>

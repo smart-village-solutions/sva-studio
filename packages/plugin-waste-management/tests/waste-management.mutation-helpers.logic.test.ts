@@ -12,9 +12,7 @@ const createWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async
 const updateWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementCityMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
-const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() =>
-  vi.fn(async () => undefined)
-);
+const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
@@ -36,29 +34,23 @@ vi.mock('../src/waste-management.api.js', () => ({
       this.code = code;
     }
   },
-  createWasteManagementCollectionLocation: (
-    ...args: Parameters<typeof createWasteManagementCollectionLocationMock>
-  ) => createWasteManagementCollectionLocationMock(...args),
-  updateWasteManagementCollectionLocation: (
-    ...args: Parameters<typeof updateWasteManagementCollectionLocationMock>
-  ) => updateWasteManagementCollectionLocationMock(...args),
+  createWasteManagementCollectionLocation: (...args: Parameters<typeof createWasteManagementCollectionLocationMock>) =>
+    createWasteManagementCollectionLocationMock(...args),
+  updateWasteManagementCollectionLocation: (...args: Parameters<typeof updateWasteManagementCollectionLocationMock>) =>
+    updateWasteManagementCollectionLocationMock(...args),
   updateWasteManagementCity: (...args: Parameters<typeof updateWasteManagementCityMock>) =>
     updateWasteManagementCityMock(...args),
-  deleteWasteManagementCollectionLocation: (
-    ...args: Parameters<typeof deleteWasteManagementCollectionLocationMock>
-  ) => deleteWasteManagementCollectionLocationMock(...args),
+  deleteWasteManagementCollectionLocation: (...args: Parameters<typeof deleteWasteManagementCollectionLocationMock>) =>
+    deleteWasteManagementCollectionLocationMock(...args),
   createWasteManagementLocationTourLinksBulk: (
     ...args: Parameters<typeof createWasteManagementLocationTourLinksBulkMock>
   ) => createWasteManagementLocationTourLinksBulkMock(...args),
-  createWasteManagementLocationTourLink: (
-    ...args: Parameters<typeof createWasteManagementLocationTourLinkMock>
-  ) => createWasteManagementLocationTourLinkMock(...args),
-  deleteWasteManagementLocationTourLink: (
-    ...args: Parameters<typeof deleteWasteManagementLocationTourLinkMock>
-  ) => deleteWasteManagementLocationTourLinkMock(...args),
-  updateWasteManagementLocationTourLink: (
-    ...args: Parameters<typeof updateWasteManagementLocationTourLinkMock>
-  ) => updateWasteManagementLocationTourLinkMock(...args),
+  createWasteManagementLocationTourLink: (...args: Parameters<typeof createWasteManagementLocationTourLinkMock>) =>
+    createWasteManagementLocationTourLinkMock(...args),
+  deleteWasteManagementLocationTourLink: (...args: Parameters<typeof deleteWasteManagementLocationTourLinkMock>) =>
+    deleteWasteManagementLocationTourLinkMock(...args),
+  updateWasteManagementLocationTourLink: (...args: Parameters<typeof updateWasteManagementLocationTourLinkMock>) =>
+    updateWasteManagementLocationTourLinkMock(...args),
 }));
 
 vi.mock('../src/waste-management.location-tour-links-bulk-client.js', () => ({
@@ -73,9 +65,7 @@ vi.mock('../src/use-waste-master-data-state.js', () => ({
 
 vi.mock('../src/waste-management.page.support.js', () => ({
   resolveApiErrorCode: (error: unknown) =>
-    typeof error === 'object' && error !== null && 'code' in error
-      ? ((error as { code?: string }).code ?? null)
-      : null,
+    typeof error === 'object' && error !== null && 'code' in error ? ((error as { code?: string }).code ?? null) : null,
 }));
 
 const createLocationState = () => ({
@@ -152,14 +142,12 @@ describe('waste-management mutation helper logic', () => {
     await handler(createLocationForm(), 'edit', { cityId: 'city-1', postalCode: '19336' });
 
     expect(updateWasteManagementCityMock).toHaveBeenCalledWith('city-1', {
-      name: 'Weisen',
       postalCode: '19336',
-      regionId: 'region-1',
     });
     expect(updateWasteManagementCollectionLocationMock).toHaveBeenCalledOnce();
-    expect(
-      updateWasteManagementCollectionLocationMock.mock.invocationCallOrder[0]
-    ).toBeLessThan(updateWasteManagementCityMock.mock.invocationCallOrder[0] ?? 0);
+    expect(updateWasteManagementCollectionLocationMock.mock.invocationCallOrder[0]).toBeLessThan(
+      updateWasteManagementCityMock.mock.invocationCallOrder[0] ?? 0
+    );
   });
 
   it('reports a partial save when the postal code update fails after the location was saved', async () => {

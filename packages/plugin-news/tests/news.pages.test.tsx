@@ -857,9 +857,13 @@ describe('News editor pages', () => {
     const confirmSpy = stubConfirm(false);
     render(<NewsCreatePage />);
 
-    await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
     await openSettingsTab();
+    expect(loadNewsWasteMasterData).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole('button', { name: /targeting\.actions\.edit|Auswahl bearbeiten/ })
+    );
+    await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalledOnce());
     fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     clickPrimaryAction('News anlegen');
@@ -898,9 +902,9 @@ describe('News editor pages', () => {
     const confirmSpy = stubConfirm(false);
     render(<NewsCreatePage />);
 
-    await waitFor(() => expect(loadNewsWasteMasterData).toHaveBeenCalled());
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Globale News' } });
     await openSettingsTab();
+    expect(loadNewsWasteMasterData).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('radio', { name: /Sofort veröffentlichen/ }));
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     clickPrimaryAction('News anlegen');

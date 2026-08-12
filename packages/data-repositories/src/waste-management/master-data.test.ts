@@ -647,6 +647,15 @@ describe('waste master data repository', () => {
         regionId: 'region-9',
       }).values
     ).toEqual(['city-4', 'Oststadt', null, 'region-9']);
+
+    await writeRepository.updateWasteCity('city-3', { postalCode: '19336' });
+    expect(write.statements[2]?.values).toEqual(['city-3', '19336']);
+    expect(write.statements[2]?.text).toContain('postal_code = $2');
+    expect(write.statements[2]?.text).not.toContain('name =');
+    expect(write.statements[2]?.text).not.toContain('region_id =');
+
+    await writeRepository.updateWasteCity('city-3', { postalCode: null });
+    expect(write.statements[3]?.values).toEqual(['city-3', null]);
   });
 
   it('lists streets and house numbers with parent filters and search', async () => {

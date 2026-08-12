@@ -975,7 +975,7 @@ describe('waste-management api client', () => {
       2,
       '/api/v1/waste-management/cities/city-3',
       expect.objectContaining({
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({
           name: 'Musterstadt Nord',
           regionId: 'region-1',

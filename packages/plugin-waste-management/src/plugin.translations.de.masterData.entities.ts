@@ -38,6 +38,7 @@ export const wasteManagementPluginTranslationsDEMasterDataEntities = {
       saving: 'Speichert…',
     },
     fields: { name: 'Name', postalCode: 'PLZ', regionId: 'Region', regionUnset: 'Keine Region' },
+    validation: { postalCodeMaxLength: 'Die PLZ darf höchstens 16 Zeichen enthalten.' },
     dialog: {
       createTitle: 'Ort anlegen',
       createDescription: 'Erstellen Sie einen Ort und ordnen Sie ihn bei Bedarf einer Region zu.',

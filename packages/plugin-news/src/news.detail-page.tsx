@@ -411,7 +411,7 @@ export const NewsDetailPage = ({
   const [wasteOverview, setWasteOverview] =
     React.useState<WasteManagementMasterDataOverview | null>(null);
   const [wasteTargetingAvailability, setWasteTargetingAvailability] =
-    React.useState<WasteTargetingAvailability>('loading');
+    React.useState<WasteTargetingAvailability>('idle');
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
@@ -702,40 +702,39 @@ export const NewsDetailPage = ({
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
+  const hasWasteTargetingAccess =
+    sessionAccess.assignedModules.includes('waste-management') &&
+    sessionAccess.permissionActions.includes('waste-management.read');
+
   React.useEffect(() => {
-    const hasWasteTargetingAccess =
-      sessionAccess.assignedModules.includes('waste-management') &&
-      sessionAccess.permissionActions.includes('waste-management.read');
     if (!hasWasteTargetingAccess) {
       setWasteOverview(null);
       setWasteTargetingAvailability('forbidden');
       return;
     }
-    if (categoryOptionsLoading) {
-      setWasteOverview(null);
-      setWasteTargetingAvailability('loading');
-      return;
+    setWasteTargetingAvailability((current) => (current === 'forbidden' ? 'idle' : current));
+  }, [hasWasteTargetingAccess]);
+
+  const loadWasteTargetingOverview = React.useCallback(async (): Promise<boolean> => {
+    if (!hasWasteTargetingAccess) {
+      setWasteTargetingAvailability('forbidden');
+      return false;
     }
-    let active = true;
+    if (wasteOverview) {
+      return true;
+    }
     setWasteTargetingAvailability('loading');
-    void loadNewsWasteMasterData().then(
-      (overview) => {
-        if (active) {
-          setWasteOverview(overview);
-          setWasteTargetingAvailability('available');
-        }
-      },
-      () => {
-        if (active) {
-          setWasteOverview(null);
-          setWasteTargetingAvailability('load-error');
-        }
-      }
-    );
-    return () => {
-      active = false;
-    };
-  }, [categoryOptionsLoading, sessionAccess.assignedModules, sessionAccess.permissionActions]);
+    try {
+      const overview = await loadNewsWasteMasterData();
+      setWasteOverview(overview);
+      setWasteTargetingAvailability('available');
+      return true;
+    } catch {
+      setWasteOverview(null);
+      setWasteTargetingAvailability('load-error');
+      return false;
+    }
+  }, [hasWasteTargetingAccess, wasteOverview]);
 
   React.useEffect(() => {
     if (mode !== 'edit') {
@@ -1087,6 +1086,8 @@ export const NewsDetailPage = ({
           mode={mode}
           pt={pt}
           wasteOverview={wasteOverview}
+          wasteTargetingAvailability={wasteTargetingAvailability}
+          onLoadWasteOverview={loadWasteTargetingOverview}
           scheduledPublicationField={{
             value: scheduledPublicationInput,
             isInvalid: invalidScheduledPublicationInput,

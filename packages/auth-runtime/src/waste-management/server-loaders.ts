@@ -674,42 +674,38 @@ const loadMasterDataLocationsOverview = (
       'query_overview',
       { instance_id: instanceId },
       async () => {
-        const regions = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_regions',
-          () => repository.listWasteRegions()
-        );
-        const cities = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_cities',
-          () => repository.listWasteCities()
-        );
-        const streets = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_streets',
-          () => repository.listWasteStreets()
-        );
-        const houseNumbers = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_house_numbers',
-          () => repository.listWasteHouseNumbers()
-        );
-        const collectionLocations = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_collection_locations',
-          () => repository.listWasteCollectionLocations()
-        );
-        const locationTourLinks = await measureWasteRepositoryStep(
-          instanceId,
-          'load_master_data_locations_overview',
-          'list_waste_location_tour_links',
-          () => repository.listWasteLocationTourLinks()
-        );
+        const [regions, cities, streets, houseNumbers, collectionLocations] = await Promise.all([
+          measureWasteRepositoryStep(
+            instanceId,
+            'load_master_data_locations_overview',
+            'list_waste_regions',
+            () => repository.listWasteRegions()
+          ),
+          measureWasteRepositoryStep(
+            instanceId,
+            'load_master_data_locations_overview',
+            'list_waste_cities',
+            () => repository.listWasteCities()
+          ),
+          measureWasteRepositoryStep(
+            instanceId,
+            'load_master_data_locations_overview',
+            'list_waste_streets',
+            () => repository.listWasteStreets()
+          ),
+          measureWasteRepositoryStep(
+            instanceId,
+            'load_master_data_locations_overview',
+            'list_waste_house_numbers',
+            () => repository.listWasteHouseNumbers()
+          ),
+          measureWasteRepositoryStep(
+            instanceId,
+            'load_master_data_locations_overview',
+            'list_waste_collection_locations',
+            () => repository.listWasteCollectionLocations()
+          ),
+        ]);
 
         return {
           fractions: [],
@@ -718,7 +714,7 @@ const loadMasterDataLocationsOverview = (
           streets,
           houseNumbers,
           collectionLocations,
-          locationTourLinks,
+          locationTourLinks: [],
         };
       }
     )
@@ -1155,6 +1151,11 @@ const saveWasteCity = createLoader(
   (repository, input: Parameters<WasteRepository['upsertWasteCity']>[0]) =>
     repository.upsertWasteCity(input)
 );
+const patchWasteCity = createLoader(
+  'patch_waste_city',
+  (repository, cityId: string, input: Parameters<WasteRepository['updateWasteCity']>[1]) =>
+    repository.updateWasteCity(cityId, input)
+);
 const loadWasteStreetById = createLoader(
   'load_waste_street_by_id',
   (repository, streetId: string) => repository.getWasteStreetById(streetId)
@@ -1439,6 +1440,7 @@ export const wasteManagementEntitySavers = {
   deleteWasteFraction,
   saveWasteRegion,
   saveWasteCity,
+  patchWasteCity,
   saveWasteStreet,
   saveWasteHouseNumber,
   saveWasteCollectionLocation,

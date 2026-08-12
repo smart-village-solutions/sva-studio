@@ -162,6 +162,39 @@ SET name = EXCLUDED.name,
   values: [input.id, input.name, input.postalCode ?? null, input.regionId ?? null],
 });
 
+const buildCityUpdateStatement = (
+  id: string,
+  input: Readonly<{
+    name?: string;
+    postalCode?: string | null;
+    regionId?: string | null;
+  }>
+): SqlStatement => {
+  const values: SqlPrimitive[] = [id];
+  const assignments: string[] = [];
+  const addAssignment = (column: string, value: SqlPrimitive) => {
+    values.push(value);
+    assignments.push(`${column} = $${values.length}`);
+  };
+
+  if (input.name !== undefined) addAssignment('name', input.name);
+  if (input.postalCode !== undefined) addAssignment('postal_code', input.postalCode);
+  if (input.regionId !== undefined) addAssignment('region_id', input.regionId);
+  if (assignments.length === 0) {
+    throw new Error('waste_city_update_empty');
+  }
+
+  return {
+    text: `
+UPDATE waste_cities
+SET ${assignments.join(',\n    ')},
+    updated_at = NOW()
+WHERE id = $1::uuid;
+`,
+    values,
+  };
+};
+
 export const createWasteRegionCityRepositoryPart = (
   executor: SqlExecutor
 ): Pick<
@@ -172,6 +205,7 @@ export const createWasteRegionCityRepositoryPart = (
   | 'listWasteCities'
   | 'getWasteCityById'
   | 'upsertWasteCity'
+  | 'updateWasteCity'
 > => ({
   async listWasteRegions(filter) {
     const result = await executor.execute<WasteRegionRow>(buildRegionListStatement(filter));
@@ -195,6 +229,9 @@ export const createWasteRegionCityRepositoryPart = (
   async upsertWasteCity(input) {
     await executor.execute(buildCityUpsertStatement(input));
   },
+  async updateWasteCity(id, input) {
+    await executor.execute(buildCityUpdateStatement(id, input));
+  },
 });
 
 export const wasteRegionCityStatements = {
@@ -204,4 +241,5 @@ export const wasteRegionCityStatements = {
   listWasteCities: buildCityListStatement,
   getWasteCityById: buildCitySelectStatement,
   upsertWasteCity: buildCityUpsertStatement,
+  updateWasteCity: buildCityUpdateStatement,
 } as const;

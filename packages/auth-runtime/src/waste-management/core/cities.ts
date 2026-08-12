@@ -90,11 +90,14 @@ export const wasteManagementCityHandlers = {
       },
       loadExisting: () => loadWasteCity(instanceId, cityId),
       save: () =>
-        requireDeps(deps.saveWasteCity, 'saveWasteCity')(instanceId, {
-          id: cityId,
-          name: parsed.data.name.trim(),
-          postalCode: normalizeOptionalString(parsed.data.postalCode),
-          regionId: normalizeOptionalString(parsed.data.regionId),
+        requireDeps(deps.patchWasteCity, 'patchWasteCity')(instanceId, cityId, {
+          ...(parsed.data.name === undefined ? {} : { name: parsed.data.name.trim() }),
+          ...(parsed.data.postalCode === undefined
+            ? {}
+            : { postalCode: normalizeOptionalString(parsed.data.postalCode ?? undefined) ?? null }),
+          ...(parsed.data.regionId === undefined
+            ? {}
+            : { regionId: normalizeOptionalString(parsed.data.regionId ?? undefined) ?? null }),
         }),
       loadSaved: () => loadWasteCity(instanceId, cityId),
     });

@@ -31,11 +31,7 @@ const resolveLocationSaveErrorMessage = (error: unknown, pt: Translate) => {
   if (code === 'forbidden') {
     return pt('masterData.collectionLocations.messages.saveForbidden');
   }
-  if (
-    error instanceof WasteManagementApiError &&
-    error.message.length > 0 &&
-    error.message !== error.code
-  ) {
+  if (error instanceof WasteManagementApiError && error.message.length > 0 && error.message !== error.code) {
     return pt('masterData.collectionLocations.messages.saveErrorWithReason', {
       reason: error.message,
     });
@@ -56,10 +52,7 @@ const runDeleteMessage = (pt: Translate, code: string | null | undefined, bulk: 
   return pt(`${messageKeyPrefix}.deleteError`);
 };
 
-const runLocationSave = async (
-  submittedForm: CollectionLocationFormState,
-  mode: 'create' | 'edit'
-) => {
+const runLocationSave = async (submittedForm: CollectionLocationFormState, mode: 'create' | 'edit') => {
   if (mode === 'create') {
     await createWasteManagementCollectionLocation(
       wasteMasterDataInputMappers.toCreateCollectionLocationInput(submittedForm)
@@ -87,24 +80,14 @@ export const createLocationSubmitHandler =
       await runLocationSave(submittedForm, mode);
       if (cityPostalCodeUpdate) {
         try {
-          const city = context.state.overview?.cities.find(
-            (candidate) => candidate.id === cityPostalCodeUpdate.cityId
-          );
-          if (!city) {
-            throw new Error('Selected city is unavailable');
-          }
-          await updateWasteManagementCity(city.id, {
-            name: city.name,
+          await updateWasteManagementCity(cityPostalCodeUpdate.cityId, {
             postalCode: cityPostalCodeUpdate.postalCode,
-            regionId: city.regionId,
           });
         } catch {
           await context.loadOverview(true);
           context.state.setMessage({
             kind: 'warning',
-            text: context.pt(
-              'masterData.collectionLocations.messages.postalCodeSaveWarning'
-            ),
+            text: context.pt('masterData.collectionLocations.messages.postalCodeSaveWarning'),
           });
           return;
         }
@@ -116,10 +99,7 @@ export const createLocationSubmitHandler =
         mode === 'create'
           ? context.pt('masterData.collectionLocations.messages.createSuccess')
           : context.pt('masterData.collectionLocations.messages.updateSuccess'),
-        () =>
-          context.state.setLastOutcome(
-            mode === 'create' ? 'location-create-success' : 'location-update-success'
-          )
+        () => context.state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
       );
     } catch (saveError) {
       context.state.setMessage({
@@ -139,9 +119,7 @@ export const createLocationDeleteHandler =
     try {
       await deleteWasteManagementCollectionLocation(location.id);
       await context.loadOverview(true);
-      context.state.setSelectedLocationIds((current) =>
-        current.filter((selectedId) => selectedId !== location.id)
-      );
+      context.state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
       context.state.setMessage({
         kind: 'success',
         text: context.pt('masterData.collectionLocations.messages.deleteSuccess'),

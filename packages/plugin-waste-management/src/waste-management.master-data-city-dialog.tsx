@@ -121,7 +121,7 @@ const CityDialogForm = ({
           noValidate
         >
           <StatusNotice message={message} />
-          <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
+          <StudioFormSummaryErrors errors={collectSummaryErrors([nameField, postalCodeField])} />
           <CityDialogFields
             control={control}
             nameField={nameField}
@@ -183,8 +183,13 @@ const CityDialogFields = ({
       <Input
         {...postalCodeField.controlProps}
         {...register('postalCode', {
+          maxLength: {
+            value: 16,
+            message: pt('masterData.cities.validation.postalCodeMaxLength'),
+          },
           onChange: (event) => onChange({ postalCode: event.target.value }),
         })}
+        maxLength={16}
         inputMode="numeric"
         autoComplete="postal-code"
       />

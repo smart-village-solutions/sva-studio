@@ -99,6 +99,7 @@ const {
   saveWastePdfStaticSettings,
   syncWasteHolidayRules,
   saveWasteCity,
+  patchWasteCity,
   saveWasteCollectionLocation,
   deleteWasteCollectionLocation,
   saveWasteFraction,
@@ -244,7 +245,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementCityInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
-        saveWasteCity,
+        patchWasteCity,
         loadWasteCityById,
       })
     ),

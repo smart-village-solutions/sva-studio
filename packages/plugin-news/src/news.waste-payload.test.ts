@@ -4,7 +4,7 @@ import {
   deduplicateWasteLocationKeys,
   mergeNewsWasteLocationKeys,
   requiresGlobalPushConfirmation,
-} from '../src/news.waste-payload.js';
+} from './news.waste-payload.js';
 
 describe('News Waste payload', () => {
   it('normalizes and deduplicates location keys', () => {

@@ -129,7 +129,15 @@ const createWasteCitySchema = z.object({
   regionId: z.string().trim().min(1).optional(),
 });
 
-const updateWasteCitySchema = createWasteCitySchema.omit({ id: true });
+const updateWasteCitySchema = z
+  .object({
+    name: z.string().trim().min(1).optional(),
+    postalCode: z.string().trim().max(16).nullable().optional(),
+    regionId: z.string().trim().min(1).nullable().optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'Mindestens ein Feld muss aktualisiert werden.',
+  });
 
 const createWasteStreetSchema = z.object({
   id: z.string().trim().min(1),

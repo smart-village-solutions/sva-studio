@@ -193,8 +193,8 @@ export const wasteMasterDataInputMappers = {
   }),
   toUpdateCityInput: (form: CityFormState): UpdateWasteManagementCityInput => ({
     name: form.name.trim(),
-    postalCode: compactOptionalString(form.postalCode),
-    regionId: compactOptionalString(form.regionId),
+    postalCode: compactOptionalString(form.postalCode) ?? null,
+    regionId: compactOptionalString(form.regionId) ?? null,
   }),
   toCreateStreetInput: (form: StreetFormState): CreateWasteManagementStreetInput => ({
     id: form.id.trim(),

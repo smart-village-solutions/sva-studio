@@ -62,11 +62,10 @@ export const requiresGlobalPushConfirmation = (input: {
   readonly targetCount: number;
   readonly pushNotificationsSentAt?: string;
 }): boolean =>
-  input.pushNotificationEnabled &&
-  input.targetCount === 0 &&
-  !input.pushNotificationsSentAt;
+  input.pushNotificationEnabled && input.targetCount === 0 && !input.pushNotificationsSentAt;
 
-export type WasteTargetingAvailability = 'available' | 'forbidden' | 'load-error' | 'loading';
+export type WasteTargetingAvailability =
+  'idle' | 'available' | 'forbidden' | 'load-error' | 'loading';
 
 export const resolveGlobalPushConfirmationKey = (
   availability: WasteTargetingAvailability
@@ -74,7 +73,9 @@ export const resolveGlobalPushConfirmationKey = (
   | 'targeting.globalConfirm.noTargets'
   | 'targeting.globalConfirm.forbidden'
   | 'targeting.globalConfirm.loadError' => {
-  if (availability === 'available') return 'targeting.globalConfirm.noTargets';
+  if (availability === 'idle' || availability === 'available') {
+    return 'targeting.globalConfirm.noTargets';
+  }
   if (availability === 'forbidden') return 'targeting.globalConfirm.forbidden';
   return 'targeting.globalConfirm.loadError';
 };

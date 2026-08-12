@@ -2,9 +2,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FormProvider, useForm } from 'react-hook-form';
 
-import { createDefaultNewsDetailFormValues } from '../src/news.detail-form.js';
-import { NewsDetailTargetingSection } from '../src/news.detail-targeting-tab.js';
-import type { NewsDetailFormValues } from '../src/news.types.js';
+import { createDefaultNewsDetailFormValues } from './news.detail-form.js';
+import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
+import type { NewsDetailFormValues } from './news.types.js';
 import type { WasteManagementMasterDataOverview } from '@sva/plugin-sdk';
 
 const timestamp = '2026-08-12T10:00:00.000Z';
@@ -51,9 +51,11 @@ const translate = (key: string, variables?: Readonly<Record<string, string | num
 function Subject({
   masterData = overview,
   initialTargets = [],
+  readOnly = false,
 }: Readonly<{
   masterData?: WasteManagementMasterDataOverview;
   initialTargets?: NewsDetailFormValues['wasteLocationKeys'];
+  readOnly?: boolean;
 }>) {
   const methods = useForm<NewsDetailFormValues>({
     defaultValues: {
@@ -63,7 +65,7 @@ function Subject({
   });
   return (
     <FormProvider {...methods}>
-      <NewsDetailTargetingSection overview={masterData} pt={translate} />
+      <NewsDetailTargetingSection overview={masterData} pt={translate} readOnly={readOnly} />
       <output data-testid="dirty-state">{methods.formState.isDirty ? 'dirty' : 'clean'}</output>
     </FormProvider>
   );
@@ -143,6 +145,12 @@ describe('NewsDetailTargetingTab', () => {
     const streetOptions = Array.from(
       (screen.getByLabelText('targeting.filters.street') as HTMLSelectElement).options
     ).map((option) => option.text);
+    expect(
+      (screen.getByLabelText('targeting.filters.houseNumber') as HTMLSelectElement).disabled
+    ).toBe(true);
+    fireEvent.change(screen.getByLabelText('targeting.filters.street'), {
+      target: { value: 's1' },
+    });
     const houseNumberOptions = Array.from(
       (screen.getByLabelText('targeting.filters.houseNumber') as HTMLSelectElement).options
     ).map((option) => option.text);
@@ -151,6 +159,28 @@ describe('NewsDetailTargetingTab', () => {
     expect(streetOptions).not.toContain('Parkweg — 54321 Südstadt');
     expect(houseNumberOptions).toContain('1 — Hauptstraße, 12345 Musterstadt');
     expect(houseNumberOptions).not.toContain('9 — Parkweg, 54321 Südstadt');
+  });
+
+  it('exposes visible filter labels and announces filtered result changes', () => {
+    render(<Subject />);
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
+
+    expect(screen.getByText('targeting.filters.search')).toBeTruthy();
+    expect(screen.getByText('targeting.filters.region')).toBeTruthy();
+    expect(screen.getByText('targeting.filters.city')).toBeTruthy();
+    expect(screen.getByText('targeting.filters.street')).toBeTruthy();
+    expect(screen.getByText('targeting.filters.houseNumber')).toBeTruthy();
+    expect(screen.getByRole('status').textContent).toContain('targeting.table.status');
+  });
+
+  it('keeps recipients read-only after the Push has been sent', () => {
+    const target = { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' };
+    render(<Subject initialTargets={[target]} readOnly />);
+
+    expect(screen.getByText('targeting.card.sentReadOnly')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'targeting.actions.edit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'targeting.actions.removeTarget' })).toBeNull();
+    expect(screen.getByTestId('dirty-state').textContent).toBe('clean');
   });
 
   it('removes a stale target directly from the summary and only marks the form as dirty', () => {

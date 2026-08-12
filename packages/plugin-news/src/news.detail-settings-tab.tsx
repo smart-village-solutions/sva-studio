@@ -14,6 +14,7 @@ import {
 import { NewsDetailCard } from './news.detail-card.js';
 import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import type { WasteTargetingAvailability } from './news.waste-payload.js';
 
 const missingDateValue = '--.--.-- --:--';
 
@@ -29,6 +30,8 @@ export type NewsDetailSettingsTabProps = Readonly<{
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
   scheduledPublicationField: ScheduledPublicationFieldState;
   wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteTargetingAvailability: WasteTargetingAvailability;
+  onLoadWasteOverview: () => Promise<boolean>;
 }>;
 
 type NewsDetailSettingsFormControl = ReturnType<
@@ -70,11 +73,15 @@ function NewsPushNotificationCard({
   loadedItem,
   pt,
   wasteOverview,
+  wasteTargetingAvailability,
+  onLoadWasteOverview,
 }: Readonly<{
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
   pt: NewsDetailSettingsTabProps['pt'];
   wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteTargetingAvailability: WasteTargetingAvailability;
+  onLoadWasteOverview: () => Promise<boolean>;
 }>) {
   return (
     <NewsDetailCard
@@ -116,7 +123,15 @@ function NewsPushNotificationCard({
           </span>
         </label>
       )}
-      {wasteOverview ? <NewsDetailTargetingSection overview={wasteOverview} pt={pt} /> : null}
+      {wasteTargetingAvailability !== 'forbidden' ? (
+        <NewsDetailTargetingSection
+          overview={wasteOverview}
+          pt={pt}
+          readOnly={Boolean(loadedItem?.pushNotificationsSentAt)}
+          availability={wasteTargetingAvailability}
+          onLoadOverview={onLoadWasteOverview}
+        />
+      ) : null}
     </NewsDetailCard>
   );
 }
@@ -234,6 +249,8 @@ export function NewsDetailSettingsTab({
   pt,
   scheduledPublicationField,
   wasteOverview,
+  wasteTargetingAvailability,
+  onLoadWasteOverview,
 }: NewsDetailSettingsTabProps) {
   const {
     control,
@@ -258,6 +275,8 @@ export function NewsDetailSettingsTab({
         loadedItem={loadedItem}
         pt={pt}
         wasteOverview={wasteOverview}
+        wasteTargetingAvailability={wasteTargetingAvailability}
+        onLoadWasteOverview={onLoadWasteOverview}
       />
       <NewsPublicationCard
         control={control}

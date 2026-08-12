@@ -11,6 +11,9 @@ import {
 import { GenericItemsDetailPage } from '../src/generic-items.detail-page.js';
 
 const navigateMock = vi.fn();
+const detailAccessState = vi.hoisted(() => ({
+  access: {} as Readonly<Record<string, boolean>>,
+}));
 
 vi.mock('../src/generic-items.api.js', () => ({
   listGenericItems: vi.fn(),
@@ -61,7 +64,7 @@ vi.mock('../src/generic-items.api.js', () => ({
       updatedAt: '2026-01-02T00:00:00.000Z',
     },
     deviations: [],
-    access: {},
+    access: detailAccessState.access,
   })),
   createGenericItem: vi.fn(async () => ({ id: 'created' })),
   updateGenericItem: vi.fn(async () => ({ id: 'generic-1' })),
@@ -100,6 +103,7 @@ vi.mock('@sva/plugin-sdk', async () => {
 describe('GenericItemsDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    detailAccessState.access = {};
     publishSessionAccessSnapshot({
       isResolved: true,
       assignedModules: ['generic-items'],
@@ -423,6 +427,30 @@ describe('GenericItemsDetailPage', () => {
         'user'
       );
     });
+  });
+
+  it('keeps visibility-changing saves disabled without the required lifecycle grant', async () => {
+    detailAccessState.access = { 'generic-items.update': true };
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['generic-items'],
+      permissionActions: ['generic-items.read', 'generic-items.update'],
+      unscopedPermissionActions: ['generic-items.read'],
+      roles: [],
+    });
+
+    render(<GenericItemsDetailPage mode="edit" contentId="generic-1" />);
+
+    await screen.findByDisplayValue('Bestehender Eintrag');
+    const saveButton = screen.getAllByRole('button', { name: 'Änderungen speichern' }).at(-1)!;
+    expect(saveButton.disabled).toBe(false);
+
+    fireEvent.click(screen.getByLabelText('Sichtbar'));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Änderungen speichern' })).toBeNull()
+    );
+    expect(updateGenericItem).not.toHaveBeenCalled();
   });
 
   it('disables delete while a delete request is in flight', async () => {

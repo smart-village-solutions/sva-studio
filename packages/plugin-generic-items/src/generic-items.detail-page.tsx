@@ -5,8 +5,10 @@ import {
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
+  hasContentLifecycleAccess,
   listHostMediaReferencesByTarget,
   readSessionAccessSnapshot,
+  resolveContentVisibilityAction,
   resolveContentMediaCapabilities,
   resolveStandardContentAccessCapabilities,
   saveContentWithHostMediaReferences,
@@ -319,7 +321,16 @@ export function GenericItemsDetailPage({
     () => resolveStandardContentAccessCapabilities('generic-items', sessionAccess, resourceAccess),
     [resourceAccess, sessionAccess]
   );
-  const canSave = mode === 'create' ? accessCapabilities.canCreate : accessCapabilities.canUpdate;
+  const nextVisible = methods.watch('visible');
+  const canSave =
+    mode === 'create'
+      ? accessCapabilities.canCreate
+      : accessCapabilities.canUpdate &&
+        loadedItem !== null &&
+        hasContentLifecycleAccess(
+          resolveContentVisibilityAction(loadedItem.visible === true, nextVisible),
+          resourceAccess
+        );
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({

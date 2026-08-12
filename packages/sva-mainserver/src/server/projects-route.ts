@@ -331,6 +331,7 @@ const detailProject = async (
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
         actions: ['projects.update', 'projects.delete'],
+        contentId,
         contentType: PROJECTS_CONTENT_TYPE,
         item: context.item,
       })

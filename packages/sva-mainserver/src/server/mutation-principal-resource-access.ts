@@ -13,6 +13,7 @@ export type MainserverResourceAccess = Readonly<Record<string, boolean>>;
 export const resolveMainserverResourceAccess = async (input: {
   readonly actor: MainserverMutationActor;
   readonly actions: readonly string[];
+  readonly contentId?: string;
   readonly contentType: string;
   readonly item: DataProviderBearingItem | undefined;
 }): Promise<MainserverResourceAccess> => {
@@ -43,7 +44,7 @@ export const resolveMainserverResourceAccess = async (input: {
           : {}),
         action,
         contentType: input.contentType,
-        contentId: input.item?.id,
+        contentId: input.contentId ?? input.item?.id,
         permissions: permissions.permissions,
         dataProviderId,
       });

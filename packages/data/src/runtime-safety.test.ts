@@ -354,6 +354,23 @@ test('system admin core permission backfill migration restores missing tenant ia
   assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
 });
 
+test('modules read permission migration backfills all tenants and grants only system administrators', () => {
+  const sql = readRepoFile('data/migrations/0080_iam_modules_read_permission.sql');
+
+  expect(sql).toMatch(/'modules\.read'/);
+  assert.match(sql, /FROM iam\.instances instances/);
+  assert.match(sql, /ON CONFLICT \(instance_id, permission_key\) DO UPDATE/);
+  assert.match(sql, /WHERE roles\.role_key = 'system_admin'/);
+  assert.match(sql, /INSERT INTO iam\.role_permissions \(instance_id, role_id, permission_id, grant_origin_kind, access_scope\)/);
+  assert.match(sql, /ON CONFLICT \(instance_id, role_id, permission_id\) DO NOTHING/);
+  assert.match(sql, /iam_permission_snapshot_invalidation/);
+  assert.match(sql, /modules_read_permission_migrated/);
+  assert.match(sql, /non-destructive rollback intentionally omitted/i);
+  assert.doesNotMatch(sql, /role_key IN/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.permissions/);
+  assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
+});
+
 test('iam ownership authorization model migration replaces legacy ownership, direct permissions and deny effects', () => {
   const sql = readRepoFile('data/migrations/0061_iam_content_ownership_authorization_model.sql');
 

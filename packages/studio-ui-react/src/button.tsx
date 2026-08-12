@@ -38,6 +38,61 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
     tooltip?: string;
   };
 
+type SlottedButtonChildProps = {
+  onClick?: React.MouseEventHandler<HTMLElement>;
+  title?: string;
+  'aria-label'?: string;
+};
+
+const preventSlottedActivation: React.MouseEventHandler<HTMLElement> = (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
+const getSlottedButtonChild = (children: React.ReactNode) =>
+  React.isValidElement<SlottedButtonChildProps>(children) ? children : null;
+
+const resolveButtonTooltip = ({
+  asChild,
+  child,
+  size,
+  tooltip,
+}: {
+  readonly asChild: boolean;
+  readonly child: React.ReactElement<SlottedButtonChildProps> | null;
+  readonly size: ButtonProps['size'];
+  readonly tooltip: string | undefined;
+}) => {
+  if (tooltip || !asChild || size !== 'icon') {
+    return tooltip;
+  }
+
+  return child?.props.title ?? child?.props['aria-label'];
+};
+
+const enhanceSlottedButtonChild = ({
+  asChild,
+  child,
+  children,
+  disabled,
+  tooltip,
+}: {
+  readonly asChild: boolean;
+  readonly child: React.ReactElement<SlottedButtonChildProps> | null;
+  readonly children: React.ReactNode;
+  readonly disabled: boolean;
+  readonly tooltip: string | undefined;
+}) => {
+  if (!asChild || !child || (!disabled && !tooltip)) {
+    return children;
+  }
+
+  return React.cloneElement(child, {
+    ...(disabled ? { onClick: preventSlottedActivation } : {}),
+    ...(tooltip ? { title: undefined } : {}),
+  });
+};
+
 const IconButtonTooltip = ({
   label,
   children,
@@ -103,32 +158,15 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : 'button';
     const isDisabled = disabled || loading;
     const disabledAsChild = asChild && isDisabled;
-    const slottedChild = React.isValidElement<{
-      onClick?: React.MouseEventHandler<HTMLElement>;
-      title?: string;
-      'aria-label'?: string;
-    }>(children)
-      ? children
-      : null;
-    const resolvedTooltip =
-      tooltip ??
-      (asChild && size === 'icon'
-        ? (slottedChild?.props.title ?? slottedChild?.props['aria-label'])
-        : undefined);
-    const renderedChildren =
-      asChild && slottedChild && (disabledAsChild || resolvedTooltip)
-        ? React.cloneElement(slottedChild, {
-            ...(disabledAsChild
-              ? {
-                  onClick: (event: React.MouseEvent<HTMLElement>) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  },
-                }
-              : {}),
-            ...(resolvedTooltip ? { title: undefined } : {}),
-          })
-        : children;
+    const slottedChild = getSlottedButtonChild(children);
+    const resolvedTooltip = resolveButtonTooltip({ asChild, child: slottedChild, size, tooltip });
+    const renderedChildren = enhanceSlottedButtonChild({
+      asChild,
+      child: slottedChild,
+      children,
+      disabled: disabledAsChild,
+      tooltip: resolvedTooltip,
+    });
     const handleClick: React.MouseEventHandler<HTMLButtonElement> = (event) => {
       if (disabledAsChild) {
         event.preventDefault();

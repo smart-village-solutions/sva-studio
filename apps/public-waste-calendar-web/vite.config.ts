@@ -151,4 +151,12 @@ const publicWasteApiPlugin = (): Plugin => {
 
 export default defineConfig({
   plugins: [react(), publicWasteApiPlugin()],
+  resolve: {
+    alias: {
+      '@sva/waste-management-contracts/unsubscribe-token': resolve(
+        import.meta.dirname,
+        '../../packages/waste-management-contracts/src/unsubscribe-token.server.ts'
+      ),
+    },
+  },
 });

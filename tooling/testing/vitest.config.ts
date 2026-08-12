@@ -16,6 +16,8 @@ export default defineConfig({
       '../../scripts/ci/pr-scope.test.ts',
       '../../scripts/ci/affected-unit-gate.test.ts',
       '../../scripts/ci/cleanup-e2e-webserver-conflicts.test.ts',
+      '../../scripts/ci/check-app-boundaries.test.ts',
+      '../../scripts/ci/check-plugin-architecture-boundary.test.ts',
       '../../scripts/ci/run-pr-gate.test.ts',
       '../../scripts/ci/run-integration-gate.test.ts',
       '../../scripts/ci/check-db-schema-snapshot.test.ts',

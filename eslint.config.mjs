@@ -139,11 +139,26 @@ export default [
             },
             {
               sourceTag: 'scope:plugin',
-              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:studio-ui-react', 'scope:plugin'],
+              onlyDependOnLibsWithTags: [
+                'scope:plugin-sdk',
+                'scope:plugin-contracts',
+                'scope:studio-ui-react',
+                'scope:plugin',
+              ],
+            },
+            {
+              sourceTag: 'scope:plugin-contracts',
+              onlyDependOnLibsWithTags: ['scope:plugin-sdk', 'scope:plugin-contracts'],
             },
             {
               sourceTag: 'scope:plugin-runtime',
-              onlyDependOnLibsWithTags: ['scope:core', 'scope:plugin-sdk', 'scope:plugin', 'scope:plugin-runtime'],
+              onlyDependOnLibsWithTags: [
+                'scope:core',
+                'scope:plugin-sdk',
+                'scope:plugin-contracts',
+                'scope:plugin',
+                'scope:plugin-runtime',
+              ],
             },
             {
               sourceTag: 'scope:studio-ui-react',
@@ -166,6 +181,7 @@ export default [
                 'scope:core',
                 'scope:plugin-sdk',
                 'scope:server-runtime',
+                'scope:plugin-contracts',
                 'scope:plugin-runtime',
                 'scope:plugin',
                 'scope:studio-ui-react',

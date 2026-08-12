@@ -7,4 +7,5 @@ export const createWasteManagementPluginOperationExecutionHandlers = (
 ): Readonly<Record<string, PluginJobExecutionHandler>> =>
   createWasteRuntimeOperationHandlers(runtime);
 
-export const createPluginJobExecutionHandlers = createWasteManagementPluginOperationExecutionHandlers;
+export const createPluginJobExecutionHandlers =
+  createWasteManagementPluginOperationExecutionHandlers;

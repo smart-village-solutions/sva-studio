@@ -14,6 +14,7 @@
     "@sva/core": "workspace:*",
     "@sva/data-repositories": "workspace:*",
     "@sva/server-runtime": "workspace:*",
+    "@sva/waste-management-contracts": "workspace:*",
     "@tabler/icons-react": "^3.46.0",
     "pg": "^8.22.0",
     "react": "^19.2.8",

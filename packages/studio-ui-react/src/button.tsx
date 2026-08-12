@@ -67,7 +67,7 @@ const resolveButtonTooltip = ({
   readonly title: string | undefined;
   readonly tooltip: string | undefined;
 }) => {
-  if (tooltip || size !== 'icon') {
+  if (tooltip || (size !== 'icon' && size !== 'sm')) {
     return tooltip;
   }
 

@@ -46,7 +46,6 @@ describe('Button', () => {
         size="sm"
         variant="tertiary"
         aria-label="Bearbeiten"
-        tooltip="Bearbeiten"
         className="h-8 w-8 px-0"
       >
         <svg aria-hidden="true" className="h-4 w-4" />

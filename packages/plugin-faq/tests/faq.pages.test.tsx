@@ -22,7 +22,11 @@ vi.mock('../src/faq.api.js', () => ({
   deleteFaq: state.deleteFaqMock,
   getFaq: state.getFaqMock,
   getFaqDetail: (...args: unknown[]) =>
-    state.getFaqMock(...args).then((data) => ({ data, deviations: [], access: {} })),
+    state.getFaqMock(...args).then((data) => ({
+      data,
+      deviations: [],
+      access: { 'content.changeStatus': true, 'content.publish': true },
+    })),
   updateFaq: state.updateFaqMock,
   FaqApiError: class FaqApiError extends Error {
     public constructor(
@@ -36,7 +40,17 @@ vi.mock('../src/faq.api.js', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
+  hasContentLifecycleAccess: (
+    action: string | undefined,
+    resourceAccess: Readonly<Record<string, boolean>>
+  ) => action === undefined || resourceAccess[action] === true,
   readSessionAccessSnapshot: () => state.accessSnapshot,
+  resolveContentVisibilityAction: (currentVisible: boolean, nextVisible: boolean) =>
+    currentVisible === nextVisible
+      ? undefined
+      : nextVisible
+        ? 'content.publish'
+        : 'content.changeStatus',
   subscribeSessionAccessSnapshot: () => () => undefined,
   resolveStandardContentAccessCapabilities: (
     pluginId: string,

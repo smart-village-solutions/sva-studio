@@ -6,7 +6,7 @@ const navigateMock = vi.fn();
 const submitMock = vi.fn();
 const controllerState = vi.hoisted(() => ({
   isLoading: false,
-  loadedItem: null,
+  loadedItem: null as null | { status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED' },
   resourceAccess: {} as Readonly<Record<string, boolean>>,
   status: null as null | { kind: 'success' | 'error'; text: string },
   onInitialSavedConsumed: undefined as undefined | (() => void),
@@ -33,7 +33,20 @@ vi.mock('@tanstack/react-router', () => ({
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
+  hasContentLifecycleAccess: (
+    action: string | undefined,
+    resourceAccess: Readonly<Record<string, boolean>>
+  ) => action === undefined || resourceAccess[action] === true,
   readSessionAccessSnapshot: () => accessState.snapshot,
+  resolveContentLifecycleAction: (
+    currentStatus: 'draft' | 'published' | 'archived',
+    nextStatus: 'draft' | 'published' | 'archived'
+  ) => {
+    if (currentStatus === nextStatus) return undefined;
+    if (nextStatus === 'published') return 'content.publish';
+    if (nextStatus === 'archived') return 'content.archive';
+    return currentStatus === 'archived' ? 'content.restore' : 'content.changeStatus';
+  },
   resolveStandardContentAccessCapabilities: (
     pluginId: string,
     snapshot: typeof accessState.snapshot,
@@ -188,6 +201,7 @@ describe('SurveyEditorPage', () => {
   });
 
   it('fails closed for scoped edits until the Mainserver grants resource access', () => {
+    controllerState.loadedItem = { status: 'DRAFT' };
     accessState.snapshot = {
       ...accessState.snapshot,
       unscopedPermissionActions: accessState.snapshot.unscopedPermissionActions.filter(

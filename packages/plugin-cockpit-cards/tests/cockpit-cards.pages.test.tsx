@@ -43,7 +43,11 @@ vi.mock('../src/cockpit-cards.api.js', () => ({
   deleteCockpitCard: state.delete,
   getCockpitCard: state.get,
   getCockpitCardDetail: (...args: unknown[]) =>
-    state.get(...args).then((data) => ({ data, deviations: [], access: {} })),
+    state.get(...args).then((data) => ({
+      data,
+      deviations: [],
+      access: { 'content.changeStatus': true, 'content.publish': true },
+    })),
   listCockpitCards: state.list,
   listCockpitCardCategories: state.listCategories,
   updateCockpitCard: state.update,
@@ -66,9 +70,19 @@ vi.mock('@sva/plugin-sdk', () => ({
   getHostMediaAsset: state.getAsset,
   getHostMediaAssetFileName: () => 'asset.jpg',
   getHostMediaDelivery: state.getDelivery,
+  hasContentLifecycleAccess: (
+    action: string | undefined,
+    resourceAccess: Readonly<Record<string, boolean>>
+  ) => action === undefined || resourceAccess[action] === true,
   listHostMediaAssets: state.listAssets,
   listHostMediaReferencesByTarget: state.listReferences,
   readSessionAccessSnapshot: () => state.sessionAccess,
+  resolveContentVisibilityAction: (currentVisible: boolean, nextVisible: boolean) =>
+    currentVisible === nextVisible
+      ? undefined
+      : nextVisible
+        ? 'content.publish'
+        : 'content.changeStatus',
   resolveContentMediaCapabilities: ({
     canEditContent,
     permissionActions,

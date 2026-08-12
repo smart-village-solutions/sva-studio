@@ -36,6 +36,7 @@ export type PermissionKey =
   | 'experimental.read'
   | 'app.read'
   | 'cockpit.read'
+  | 'modules.read'
   | 'content.read'
   | 'content.create'
   | 'content.updateMetadata'

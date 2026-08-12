@@ -11,6 +11,7 @@ import {
 describe('permission catalog', () => {
   it('grants active tenant permissions to system_admin by default', () => {
     expect(tenantCoreSystemAdminPermissionKeys).toContain('iam.accounts.delete');
+    expect(tenantCoreSystemAdminPermissionKeys).toContain('modules.read');
     expect(
       resolvesSystemAdminGrant({
         key: 'iam.example.read',

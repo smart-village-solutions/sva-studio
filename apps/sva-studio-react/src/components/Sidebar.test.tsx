@@ -318,7 +318,7 @@ describe('Sidebar', () => {
       }),
       contentAccess: createContentAccessState({
         access: defaultEditableAccessState,
-        permissionActions: ['news.read', 'app.read', 'cockpit.read'],
+        permissionActions: ['news.read', 'app.read', 'cockpit.read', 'modules.read'],
       }),
     });
 
@@ -413,6 +413,7 @@ describe('Sidebar', () => {
     );
     expect(screen.getByRole('link', { name: 'Rollen' }).getAttribute('href')).toBe('/admin/roles');
     expect(screen.queryByRole('link', { name: 'Gruppen' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
   });
 
   it('rendert Schnittstellen mit integration.manage auch ohne Legacy-Rollenname', () => {
@@ -444,7 +445,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
-  it('zeigt den Modullink fuer Tenant-Nutzer ohne Root-Systemrechte', () => {
+  it('zeigt den Modullink fuer Tenant-Nutzer mit modules.read', () => {
     renderSidebar({
       user: createSidebarUser({
         id: 'tenant-user',
@@ -453,11 +454,28 @@ describe('Sidebar', () => {
       }),
       contentAccess: createContentAccessState({
         access: defaultReadOnlyAccessState,
+        permissionActions: ['modules.read'],
       }),
     });
 
     expect(screen.getByRole('link', { name: 'Module' }).getAttribute('href')).toBe('/modules');
     expect(screen.queryByRole('link', { name: 'Monitoring' })).toBeNull();
+  });
+
+  it('blendet den Modullink fuer Tenant-Nutzer ohne modules.read aus', () => {
+    renderSidebar({
+      user: createSidebarUser({
+        id: 'tenant-user',
+        name: 'Tenant User',
+        instanceId: 'de-musterhausen',
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: [],
+      }),
+    });
+
+    expect(screen.queryByRole('link', { name: 'Module' })).toBeNull();
   });
 
   it('rendert Hilfe, Support und Lizenz innerhalb der Bereichsnavigation', () => {

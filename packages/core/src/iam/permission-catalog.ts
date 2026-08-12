@@ -53,6 +53,7 @@ export const corePermissionCatalog = [
   tenantPermission('experimental.read', 'Enable experimental shell features and placeholders'),
   tenantPermission('app.read', 'Show the app link in the sidebar'),
   tenantPermission('cockpit.read', 'Show the cockpit link in the sidebar'),
+  tenantPermission('modules.read', 'Show the modules overview in the Studio'),
   tenantPermission('content.read', 'Read content'),
   tenantPermission('content.create', 'Create content'),
   tenantPermission('content.updateMetadata', 'Update content metadata'),

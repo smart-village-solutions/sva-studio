@@ -68,6 +68,7 @@ const {
   loadMasterDataOverview,
   loadMasterDataFractionsOverview,
   loadMasterDataLocationsOverview,
+  loadMasterDataTargetingOverview,
   loadSchedulingOverview,
   loadToursOverview,
   loadWasteHistoryOverview,
@@ -140,6 +141,7 @@ export const wasteManagementHandlers = {
         loadMasterDataOverview,
         loadMasterDataFractionsOverview,
         loadMasterDataLocationsOverview,
+        loadMasterDataTargetingOverview,
       })
     ),
   getToursOverview: (request: Request): Promise<Response> =>

@@ -85,7 +85,7 @@ export const loadNewsWasteMasterData = async (): Promise<WasteManagementMasterDa
     { readonly data: WasteManagementMasterDataOverview },
     Error
   >({
-    url: '/api/v1/waste-management/master-data?scope=locations',
+    url: '/api/v1/waste-management/master-data?scope=targeting',
     errorFactory: (_code, message) => new Error(message),
   });
   return response.data;

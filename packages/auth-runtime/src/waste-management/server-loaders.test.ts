@@ -495,9 +495,31 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.listWasteLocationTourLinks).not.toHaveBeenCalled();
   });
 
-  it('loads a locations-only master-data overview without fractions', async () => {
+  it('loads a locations-only master-data overview with tour links and without fractions', async () => {
     const overview =
       await wasteManagementOverviewLoaders.loadMasterDataLocationsOverview('tenant-a');
+
+    expect(overview).toEqual({
+      fractions: [],
+      regions: [{ id: 'region-1' }],
+      cities: [{ id: 'city-1' }],
+      streets: [{ id: 'street-1' }],
+      houseNumbers: [{ id: 'house-1' }],
+      collectionLocations: [{ id: 'location-1' }],
+      locationTourLinks: [{ id: 'link-1' }],
+    });
+    expect(repositoryMocks.listWasteFractions).not.toHaveBeenCalled();
+    expect(repositoryMocks.listWasteRegions).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteCities).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteStreets).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteHouseNumbers).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteCollectionLocations).toHaveBeenCalledTimes(1);
+    expect(repositoryMocks.listWasteLocationTourLinks).toHaveBeenCalledTimes(1);
+  });
+
+  it('loads a targeting-only master-data overview without tour links or fractions', async () => {
+    const overview =
+      await wasteManagementOverviewLoaders.loadMasterDataTargetingOverview('tenant-a');
 
     expect(overview).toEqual({
       fractions: [],

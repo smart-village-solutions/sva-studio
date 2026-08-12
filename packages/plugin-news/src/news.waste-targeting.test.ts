@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+const requestMainserverJsonMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@sva/plugin-sdk', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/plugin-sdk')>()),
+  requestMainserverJson: requestMainserverJsonMock,
+}));
 
 import {
   findStaleWasteLocationKeys,
+  loadNewsWasteMasterData,
   resolveNewsWasteTargetOptions,
 } from './news.waste-targeting.js';
 
@@ -59,6 +67,17 @@ describe('News Waste targeting', () => {
     ],
     locationTourLinks: [],
   } as const;
+
+  it('loads the lightweight targeting scope without tour-link data', async () => {
+    requestMainserverJsonMock.mockResolvedValueOnce({ data: overview });
+
+    await expect(loadNewsWasteMasterData()).resolves.toEqual(overview);
+    expect(requestMainserverJsonMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: '/api/v1/waste-management/master-data?scope=targeting',
+      })
+    );
+  });
 
   it('maps active locations to deduplicated address keys including the house number', () => {
     expect(resolveNewsWasteTargetOptions(overview)).toEqual([

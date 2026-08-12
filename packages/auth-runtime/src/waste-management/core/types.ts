@@ -140,6 +140,9 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   readonly loadMasterDataLocationsOverview?: (
     instanceId: string
   ) => Promise<WasteManagementMasterDataOverview>;
+  readonly loadMasterDataTargetingOverview?: (
+    instanceId: string
+  ) => Promise<WasteManagementMasterDataOverview>;
   readonly loadToursOverview?: (instanceId: string) => Promise<WasteManagementToursOverview>;
   readonly loadSchedulingOverview?: (
     instanceId: string

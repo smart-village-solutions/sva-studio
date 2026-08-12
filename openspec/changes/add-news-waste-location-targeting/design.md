@@ -10,7 +10,7 @@ Der Mainserver kann Nachrichten-Payloads mit `wasteLocationKeys` an bereits vorb
 ## Decisions
 
 - Der News-Editor liest die vorhandene hostseitige Waste-Master-Data-API; `plugin-news` erhält keine direkte Abhängigkeit auf `plugin-waste-management`.
-- Die umfangreichen Waste-Stammdaten werden erst beim Öffnen der Zielauswahl geladen. Die Host-Fassade lädt die benötigten Hierarchien parallel und lässt Tour-Zuordnungen aus diesem Read-Modell aus.
+- Die umfangreichen Waste-Stammdaten werden erst beim Öffnen der Zielauswahl geladen. Ein dedizierter `targeting`-Scope lädt die benötigten Hierarchien parallel und lässt Tour-Zuordnungen nur aus diesem News-Read-Modell aus; der bestehende `locations`-Scope behält seine Tour-Zuordnungen für Waste-Filter und Zuordnungsansichten.
 - Ausgewählt werden konkrete aktive Abholort-Datensätze. Hierarchiestufen dienen ausschließlich als Filter.
 - Der externe Schlüssel lautet `{ street, zip, city }`; bei vorhandener Hausnummer enthält `street` den zusammengesetzten Wert. Ohne Hausnummer bezeichnet der Schlüssel die gesamte Straße.
 - Städte erhalten dafür im mandantenspezifischen Waste-Schema die optionale Spalte `postal_code`. Neu auswählbar sind nur aktive Abholorte mit vollständigem Stadt-, PLZ- und Straßenbezug; eine Hausnummer ist optional.

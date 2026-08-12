@@ -1,0 +1,4 @@
+{
+  "prNumber": 956,
+  "body": "Stabilere Entwicklungs- und Qualitätsprüfung\n\n- Die Nx-Werkzeuge wurden über alle Studio-Pakete hinweg auf einen einheitlichen aktuellen Stand gebracht.\n- Projektgraph, Builds, Tests und lokale Abhängigkeitsinstallationen verwenden dadurch dieselbe geprüfte Werkzeugversion."
+}

@@ -498,7 +498,7 @@ describe('PoiListPage', () => {
       deviations: [],
       access: { 'poi.update': true },
     } as never);
-    render(
+    const view = render(
       <PoiEditPage
         principalControl={{
           kind: 'selectable',
@@ -514,17 +514,32 @@ describe('PoiListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
-    const principalSelect = screen.getByLabelText('poi.principal.actAs');
+    const nameInput = screen.getByDisplayValue('Stadtbibliothek');
+    fireEvent.change(nameInput, { target: { value: 'Ungespeicherter Ort' } });
     vi.mocked(getPoiDetail).mockResolvedValueOnce({
       data: detailData,
       deviations: [],
       access: { 'poi.update': false },
     } as never);
-    fireEvent.change(principalSelect, { target: { value: 'organization' } });
+    view.rerender(
+      <PoiEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
     });
+    expect(screen.getByDisplayValue('Ungespeicherter Ort')).toBeTruthy();
+    expect(getPoiDetail).toHaveBeenNthCalledWith(2, 'poi-1', 'organization');
 
+    const principalSelect = screen.getByLabelText('poi.principal.actAs');
     vi.mocked(getPoiDetail).mockRejectedValueOnce(new Error('forbidden'));
     fireEvent.change(principalSelect, { target: { value: 'user' } });
     await waitFor(() => {

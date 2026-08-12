@@ -281,7 +281,7 @@ describe('NewsDetailPage', () => {
       access: { 'news.update': true, 'news.delete': false },
     });
 
-    render(
+    const view = render(
       <NewsDetailPage
         mode="edit"
         contentId="9082"
@@ -300,18 +300,35 @@ describe('NewsDetailPage', () => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
     expect(screen.queryByRole('button', { name: 'news.actions.delete' })).toBeNull();
+    const titleInput = screen.getByDisplayValue('Resolver-Personal-2026-08-11');
+    fireEvent.change(titleInput, { target: { value: 'Ungespeicherte Meldung' } });
 
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
       data: detailData,
       deviations: [],
       access: { 'news.update': false, 'news.delete': false },
     });
-    const principalSelect = screen.getByRole('combobox', { name: 'Handeln als' });
-    fireEvent.change(principalSelect, { target: { value: 'organization' } });
+    view.rerender(
+      <NewsDetailPage
+        mode="edit"
+        contentId="9082"
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
     });
+    expect(screen.getByDisplayValue('Ungespeicherte Meldung')).toBeTruthy();
+    expect(getNewsDetail).toHaveBeenNthCalledWith(2, '9082', 'organization');
 
+    const principalSelect = screen.getByRole('combobox', { name: 'Handeln als' });
     vi.mocked(getNewsDetail).mockRejectedValueOnce(new Error('forbidden'));
     fireEvent.change(principalSelect, { target: { value: 'user' } });
     await waitFor(() => {

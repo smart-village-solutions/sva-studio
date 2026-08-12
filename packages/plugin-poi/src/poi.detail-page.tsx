@@ -554,7 +554,7 @@ export function PoiDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, instanceId, mode, principalControl?.value, pt, reset]);
+  }, [contentId, instanceId, mode, pt, reset]);
 
   React.useEffect(() => {
     if (

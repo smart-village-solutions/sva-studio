@@ -194,7 +194,7 @@ describe('SurveyEditorPage', () => {
         (action) => action !== 'surveys.update'
       ),
     };
-    const view = render(<SurveyEditorPage mode="edit" contentId="survey-1" />);
+    const view = render(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate />);
 
     expect(screen.getByText('Bearbeiten nicht verfügbar.')).toBeTruthy();
     expect(
@@ -206,7 +206,7 @@ describe('SurveyEditorPage', () => {
     expect(submitMock).not.toHaveBeenCalled();
 
     controllerState.resourceAccess = { 'surveys.update': true };
-    view.rerender(<SurveyEditorPage mode="edit" contentId="survey-1" />);
+    view.rerender(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate />);
     expect(
       [
         ...view.container.querySelectorAll<HTMLButtonElement>('button[form="survey-detail-form"]'),
@@ -214,6 +214,21 @@ describe('SurveyEditorPage', () => {
     ).toBe(true);
     fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
     expect(submitMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps editing disabled when the confirmed Mainserver capability is unavailable', () => {
+    controllerState.resourceAccess = { 'surveys.update': true };
+
+    const view = render(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate={false} />);
+
+    expect(screen.getByText('Bearbeiten nicht verfügbar.')).toBeTruthy();
+    expect(
+      [
+        ...view.container.querySelectorAll<HTMLButtonElement>('button[form="survey-detail-form"]'),
+      ].every((button) => button.disabled)
+    ).toBe(true);
+    fireEvent.submit(document.getElementById('survey-detail-form') as HTMLFormElement);
+    expect(submitMock).not.toHaveBeenCalled();
   });
 
   it('fails closed when the surveys module or matching action is missing', () => {

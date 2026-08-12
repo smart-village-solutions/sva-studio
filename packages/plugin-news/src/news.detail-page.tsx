@@ -727,7 +727,7 @@ export const NewsDetailPage = ({
     return () => {
       active = false;
     };
-  }, [contentId, mode, principalControl?.value, pt, reset]);
+  }, [contentId, mode, pt, reset]);
 
   React.useEffect(() => {
     if (

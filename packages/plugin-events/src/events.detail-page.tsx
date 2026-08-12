@@ -664,7 +664,7 @@ export function EventsDetailPage({
     return () => {
       active = false;
     };
-  }, [contentId, mode, principalControl?.value, reset]);
+  }, [contentId, mode, reset]);
 
   React.useEffect(() => {
     if (

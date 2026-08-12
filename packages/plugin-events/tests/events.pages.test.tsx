@@ -418,7 +418,7 @@ describe('EventsListPage', () => {
       deviations: [],
       access: { 'events.update': true },
     } as never);
-    render(
+    const view = render(
       <EventsEditPage
         principalControl={{
           kind: 'selectable',
@@ -434,17 +434,32 @@ describe('EventsListPage', () => {
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
-    const principalSelect = screen.getByLabelText('events.principal.actAs');
+    const titleInput = screen.getByDisplayValue('Bestehendes Event');
+    fireEvent.change(titleInput, { target: { value: 'Ungespeichertes Event' } });
     vi.mocked(getEventDetail).mockResolvedValueOnce({
       data: detailData,
       deviations: [],
       access: { 'events.update': false },
     } as never);
-    fireEvent.change(principalSelect, { target: { value: 'organization' } });
+    view.rerender(
+      <EventsEditPage
+        principalControl={{
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
+      />
+    );
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
     });
+    expect(screen.getByDisplayValue('Ungespeichertes Event')).toBeTruthy();
+    expect(getEventDetail).toHaveBeenNthCalledWith(2, 'event-1', 'organization');
 
+    const principalSelect = screen.getByLabelText('events.principal.actAs');
     vi.mocked(getEventDetail).mockRejectedValueOnce(new Error('forbidden'));
     fireEvent.change(principalSelect, { target: { value: 'user' } });
     await waitFor(() => {

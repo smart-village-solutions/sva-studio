@@ -129,7 +129,6 @@ function ContentFields({
   mediaUsages,
   onMediaUsagesChange,
   canSelectMedia,
-  canUploadMedia,
   onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,

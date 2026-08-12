@@ -52,7 +52,6 @@ export function EventsDetailContentTab({
   mediaUsages,
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
-  canUploadMedia = true,
   mediaEditingDisabled = false,
   onLoadAssetSnapshot,
   onDateEndInputChange,

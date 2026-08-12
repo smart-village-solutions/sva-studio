@@ -92,7 +92,6 @@ const PoiMediaContentTypeField = ({
 export function PoiDetailMediaTab({
   mediaUsages,
   canSelectMedia = false,
-  canUploadMedia = false,
   onChangeMediaUsages = () => undefined,
   onAddManualMedia,
   onLoadAssetSnapshot = async () => {

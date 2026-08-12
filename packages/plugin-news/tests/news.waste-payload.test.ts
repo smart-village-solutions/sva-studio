@@ -40,22 +40,22 @@ describe('News Waste payload', () => {
     });
   });
 
-  it('removes only wasteLocationKeys for global delivery', () => {
+  it('preserves unrelated payload fields and explicitly clears targets for global delivery', () => {
     expect(
       mergeNewsWasteLocationKeys(
         { custom: 'retained', wasteLocationKeys: [{ street: 'Alt', zip: '1', city: 'Ort' }] },
         []
       )
-    ).toEqual({ custom: 'retained' });
+    ).toEqual({ custom: 'retained', wasteLocationKeys: [] });
   });
 
-  it('returns an explicit empty payload when removing the only existing target field', () => {
+  it('returns an explicit empty target list when removing the only existing target field', () => {
     expect(
       mergeNewsWasteLocationKeys(
         { wasteLocationKeys: [{ street: 'Alt', zip: '1', city: 'Ort' }] },
         []
       )
-    ).toEqual({});
+    ).toEqual({ wasteLocationKeys: [] });
     expect(mergeNewsWasteLocationKeys(undefined, [])).toBeUndefined();
   });
 

@@ -193,7 +193,7 @@ describe('news.editor-model', () => {
     });
   });
 
-  it('sends an explicit empty payload when the final Waste target is removed', () => {
+  it('sends an explicit empty target list when the final Waste target is removed', () => {
     const plan = buildNewsSavePayload(
       { ...editorValuesFixture, wasteLocationKeys: [] },
       {
@@ -205,7 +205,7 @@ describe('news.editor-model', () => {
       '2026-06-09T10:00:00.000Z'
     );
 
-    expect(plan.mutation).toHaveProperty('payload', {});
+    expect(plan.mutation).toHaveProperty('payload', { wasteLocationKeys: [] });
   });
 
   it('omits blank legacy character limits from update payloads', () => {

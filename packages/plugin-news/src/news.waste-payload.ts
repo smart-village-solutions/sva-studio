@@ -47,14 +47,14 @@ export const mergeNewsWasteLocationKeys = (
     existingPayload !== undefined &&
     'wasteLocationKeys' in existingPayload &&
     normalizedKeys.length === 0;
-  if (normalizedKeys.length === 0) {
+  if (removesExistingWasteLocationKeys) {
+    nextPayload.wasteLocationKeys = [];
+  } else if (normalizedKeys.length === 0) {
     delete nextPayload.wasteLocationKeys;
   } else {
     nextPayload.wasteLocationKeys = normalizedKeys;
   }
-  return Object.keys(nextPayload).length > 0 || removesExistingWasteLocationKeys
-    ? nextPayload
-    : undefined;
+  return Object.keys(nextPayload).length > 0 ? nextPayload : undefined;
 };
 
 export const requiresGlobalPushConfirmation = (input: {

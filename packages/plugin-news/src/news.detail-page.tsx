@@ -77,7 +77,7 @@ import {
   requiresGlobalPushConfirmation,
   resolveGlobalPushConfirmationKey,
   type WasteTargetingAvailability,
-} from './news.editor-model.js';
+} from './news.waste-payload.js';
 import {
   isSupportedUploadFile,
   mediaContentFromAsset,

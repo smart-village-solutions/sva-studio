@@ -66,6 +66,21 @@ const newsItemSchema = z.object({
   visible: z.boolean().nullish(),
 });
 
+const wasteLocationKeySchema = z.object({
+  street: z.string(),
+  zip: z.string(),
+  city: z.string(),
+});
+
+const newsPayloadSchema = z
+  .object({
+    imageUrl: z.string().optional().catch(undefined),
+    externalUrl: z.string().optional().catch(undefined),
+    category: z.string().optional().catch(undefined),
+    wasteLocationKeys: z.array(wasteLocationKeySchema).optional().catch(undefined),
+  })
+  .passthrough();
+
 const mapAnnouncement = (
   value: z.infer<typeof announcementSchema>
 ): SvaMainserverAnnouncementSummary => ({
@@ -148,7 +163,7 @@ export const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => 
   if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
     return {};
   }
-  return rawPayload as SvaMainserverNewsPayload;
+  return newsPayloadSchema.parse(rawPayload);
 };
 
 export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | undefined) => {

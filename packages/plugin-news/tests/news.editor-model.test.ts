@@ -4,9 +4,11 @@ import {
   buildNewsSavePayload,
   createNewsEditorFormValues,
   deriveNewsEditorialStatus,
+} from '../src/news.editor-model.js';
+import {
   requiresGlobalPushConfirmation,
   resolveGlobalPushConfirmationKey,
-} from '../src/news.editor-model.js';
+} from '../src/news.waste-payload.js';
 import type { NewsContentItem, NewsDetailFormValues } from '../src/news.types.js';
 
 const newsItemFixture: NewsContentItem = {
@@ -132,6 +134,15 @@ describe('news.editor-model', () => {
       sourceUrl: { url: '', description: '' },
       contentMedia: [{ captionText: '', copyright: '', contentType: 'image', height: '', width: '', sourceUrl: { url: '', description: '' } }],
     });
+  });
+
+  it('ignores malformed Waste target payloads while loading the editor', () => {
+    const values = createNewsEditorFormValues({
+      ...newsItemFixture,
+      payload: { wasteLocationKeys: { street: 'not-an-array' } },
+    } as unknown as NewsContentItem);
+
+    expect(values.wasteLocationKeys).toEqual([]);
   });
 
   it('does not recover editorial text from payload fields when content blocks are absent', () => {

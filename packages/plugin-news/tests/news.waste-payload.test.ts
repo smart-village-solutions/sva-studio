@@ -4,13 +4,24 @@ import {
   deduplicateWasteLocationKeys,
   mergeNewsWasteLocationKeys,
   requiresGlobalPushConfirmation,
-} from '../src/news.editor-model.js';
+} from '../src/news.waste-payload.js';
 
 describe('News Waste payload', () => {
   it('normalizes and deduplicates location keys', () => {
     expect(
       deduplicateWasteLocationKeys([
         { street: ' Hauptstraße 1 ', zip: ' 12345 ', city: ' Musterstadt ' },
+        { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' },
+      ])
+    ).toEqual([{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }]);
+  });
+
+  it('ignores malformed payload values and invalid array entries', () => {
+    expect(deduplicateWasteLocationKeys('not-an-array')).toEqual([]);
+    expect(
+      deduplicateWasteLocationKeys([
+        null,
+        { street: 7, zip: '12345', city: 'Musterstadt' },
         { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' },
       ])
     ).toEqual([{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }]);

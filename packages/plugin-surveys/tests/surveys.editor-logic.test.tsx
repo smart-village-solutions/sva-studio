@@ -318,6 +318,34 @@ describe('useSurveyEditorController', () => {
     expect(navigateToContentList).toHaveBeenCalledWith('survey-created');
   });
 
+  it('resets save feedback when form validation rejects a survey submit', async () => {
+    const { result } = renderHook(() => {
+      const methods = useForm<SurveyDetailFormValues>({
+        defaultValues: createEmptyFormValues(),
+        resolver: async () => ({
+          values: {},
+          errors: { title: { type: 'required', message: 'required' } },
+        }),
+      });
+
+      return useSurveyEditorController({
+        mode: 'create',
+        methods,
+        pt,
+        navigateToCreatedDetail: vi.fn(async () => undefined),
+        actingPrincipalType: 'user',
+      });
+    });
+
+    await act(async () => {
+      await result.current.submit();
+    });
+
+    expect(createSurveyMock).not.toHaveBeenCalled();
+    expect(updateSurveyMock).not.toHaveBeenCalled();
+    expect(result.current.saveStatus).toBe('idle');
+  });
+
   it('consumes create-to-detail feedback once and clears it when the form becomes dirty', async () => {
     const onInitialSavedConsumed = vi.fn(async () => undefined);
     let methodsRef: ReturnType<typeof useForm<SurveyDetailFormValues>> | undefined;

@@ -264,18 +264,19 @@ describe('NewsDetailPage', () => {
       assignedModules: ['news'],
       roles: [],
     });
+    const detailData = {
+      id: '9082',
+      title: 'Resolver-Personal-2026-08-11',
+      contentType: 'news.article',
+      payload: {},
+      status: 'draft' as const,
+      author: 'Persönlicher Redakteur',
+      createdAt: '2026-08-11T10:00:00.000Z',
+      updatedAt: '2026-08-11T10:00:00.000Z',
+      publishedAt: '2026-08-11T10:00:00.000Z',
+    };
     vi.mocked(getNewsDetail).mockResolvedValueOnce({
-      data: {
-        id: '9082',
-        title: 'Resolver-Personal-2026-08-11',
-        contentType: 'news.article',
-        payload: {},
-        status: 'draft',
-        author: 'Persönlicher Redakteur',
-        createdAt: '2026-08-11T10:00:00.000Z',
-        updatedAt: '2026-08-11T10:00:00.000Z',
-        publishedAt: '2026-08-11T10:00:00.000Z',
-      },
+      data: detailData,
       deviations: [],
       access: { 'news.update': true, 'news.delete': false },
     });
@@ -284,7 +285,14 @@ describe('NewsDetailPage', () => {
       <NewsDetailPage
         mode="edit"
         contentId="9082"
-        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
+        principalControl={{
+          kind: 'selectable',
+          value: 'user',
+          options: [
+            { value: 'user', label: 'Persönlich' },
+            { value: 'organization', label: 'Stadt' },
+          ],
+        }}
       />
     );
 
@@ -292,6 +300,24 @@ describe('NewsDetailPage', () => {
       expect(screen.getAllByRole('button', { name: 'Speichern' })).toHaveLength(2);
     });
     expect(screen.queryByRole('button', { name: 'news.actions.delete' })).toBeNull();
+
+    vi.mocked(getNewsDetail).mockResolvedValueOnce({
+      data: detailData,
+      deviations: [],
+      access: { 'news.update': false, 'news.delete': false },
+    });
+    const principalSelect = screen.getByRole('combobox', { name: 'Handeln als' });
+    fireEvent.change(principalSelect, { target: { value: 'organization' } });
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
+    });
+
+    vi.mocked(getNewsDetail).mockRejectedValueOnce(new Error('forbidden'));
+    fireEvent.change(principalSelect, { target: { value: 'user' } });
+    await waitFor(() => {
+      expect(getNewsDetail).toHaveBeenNthCalledWith(3, '9082', 'user');
+    });
+    expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
   it('uses the upload response url when the refreshed news asset still has no preview url', async () => {

@@ -758,9 +758,54 @@ describe('studio-ui-react primitives', () => {
     expect(screen.getByRole('columnheader', { name: 'Titel' }).getAttribute('aria-sort')).toBe(
       'none'
     );
-    expect(screen.getByRole('columnheader', { name: 'Priorität' }).getAttribute('aria-sort')).not.toBe(
-      'none'
+    expect(
+      screen.getByRole('columnheader', { name: 'Priorität' }).getAttribute('aria-sort')
+    ).not.toBe('none');
+  });
+
+  it('enables client sorting when the sorting mode changes after mount', () => {
+    const data = [
+      { id: 'b', title: 'Beta' },
+      { id: 'a', title: 'Alpha' },
+    ];
+    const baseProps = {
+      ariaLabel: 'News',
+      labels: tableLabels,
+      data,
+      getRowId: (row: (typeof data)[number]) => row.id,
+      emptyState: <p>Keine Daten</p>,
+      selectionMode: 'none' as const,
+    };
+    const { container, rerender } = render(
+      <StudioDataTable
+        {...baseProps}
+        sorting={disabledSorting}
+        columns={[{ id: 'title', header: 'Titel', cell: (row) => row.title }]}
+      />
     );
+
+    rerender(
+      <StudioDataTable
+        {...baseProps}
+        sorting={clientSorting}
+        columns={[
+          {
+            id: 'title',
+            header: 'Titel',
+            cell: (row) => row.title,
+            sortable: true,
+            sortLabel: 'Titel',
+            sortValue: (row) => row.title,
+          },
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Titel' }));
+
+    expect([...container.querySelectorAll('tbody tr')].map((row) => row.textContent)).toEqual([
+      expect.stringContaining('Alpha'),
+      expect.stringContaining('Beta'),
+    ]);
   });
 
   it('keeps externally sorted rows in server order and emits one non-empty sort field', () => {

@@ -389,7 +389,7 @@ export function StudioDataTable<TData extends RowData>({
     data: tableData,
     columns: coreColumns,
     getCoreRowModel: getCoreRowModel<TData>(),
-    ...(sortingConfig.mode === 'client' ? { getSortedRowModel: getSortedRowModel<TData>() } : {}),
+    getSortedRowModel: getSortedRowModel<TData>(),
     manualSorting: sortingConfig.mode === 'external',
     enableSortingRemoval: sortingConfig.mode !== 'external',
     enableMultiSort: false,

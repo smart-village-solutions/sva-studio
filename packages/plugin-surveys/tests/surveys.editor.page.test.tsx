@@ -245,6 +245,28 @@ describe('SurveyEditorPage', () => {
     expect(submitMock).not.toHaveBeenCalled();
   });
 
+  it('keeps fields editable so a denied lifecycle transition can be reverted', () => {
+    controllerState.loadedItem = { status: 'DRAFT' };
+    controllerState.resourceAccess = { 'surveys.update': true };
+    accessState.snapshot = {
+      ...accessState.snapshot,
+      unscopedPermissionActions: accessState.snapshot.unscopedPermissionActions.filter(
+        (action) => action !== 'surveys.update'
+      ),
+    };
+    render(<SurveyEditorPage mode="edit" contentId="survey-1" canUpdate />);
+
+    const statusSelect = screen.getByLabelText('fields.status') as HTMLSelectElement;
+    const saveButtons = screen.getAllByRole('button', { name: 'actions.update' });
+    fireEvent.change(statusSelect, { target: { value: 'ACTIVE' } });
+
+    expect(statusSelect.disabled).toBe(false);
+    expect(saveButtons.every((button) => button.hasAttribute('disabled'))).toBe(true);
+
+    fireEvent.change(statusSelect, { target: { value: 'DRAFT' } });
+    expect(saveButtons.every((button) => !button.hasAttribute('disabled'))).toBe(true);
+  });
+
   it('fails closed when the surveys module or matching action is missing', () => {
     accessState.snapshot = {
       isResolved: true,

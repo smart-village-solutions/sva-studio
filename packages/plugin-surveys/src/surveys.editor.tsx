@@ -24,7 +24,7 @@ import { SurveyEditorActions, SurveyEditorPrimaryAction } from './surveys.editor
 import { useSurveyEditorController } from './surveys.editor-logic.js';
 import { type SurveyEditorMode, type SurveyEditorTabId } from './surveys.editor.shared.js';
 import { createSurveyEditorTabs } from './surveys.editor-tabs.js';
-import { useSurveyMutationAccess as useCanMutate } from './surveys.lifecycle-access.js';
+import { useSurveyMutationAccess } from './surveys.lifecycle-access.js';
 
 const formId = 'survey-detail-form';
 
@@ -62,7 +62,8 @@ const SurveyPrincipalControl = ({
 const SurveyEditorForm = ({
   actingPrincipalType,
   activeTab,
-  canMutate,
+  canEdit,
+  canSave,
   loadedItem,
   methods,
   mode,
@@ -76,7 +77,8 @@ const SurveyEditorForm = ({
 }: Readonly<{
   actingPrincipalType: MainserverPrincipalType;
   activeTab: SurveyEditorTabId;
-  canMutate: boolean;
+  canEdit: boolean;
+  canSave: boolean;
   loadedItem: ReturnType<typeof useSurveyEditorController>['loadedItem'];
   methods: UseFormReturn<SurveyDetailFormValues>;
   mode: SurveyEditorMode;
@@ -93,15 +95,15 @@ const SurveyEditorForm = ({
       id={formId}
       onSubmit={(event) => {
         event.preventDefault();
-        if (canMutate) void submit();
+        if (canSave) void submit();
       }}
       className="space-y-5"
     >
       {status ? <StudioFormSummary kind={status.kind}>{status.text}</StudioFormSummary> : null}
-      {!canMutate ? (
+      {!canSave ? (
         <StudioFormSummary kind="error">{pt('messages.updateUnavailable')}</StudioFormSummary>
       ) : null}
-      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canMutate}>
+      <fieldset className="min-w-0 space-y-5 border-0 p-0" disabled={!canEdit}>
         <SurveyPrincipalControl
           actingPrincipalType={actingPrincipalType}
           loadedItem={loadedItem}
@@ -190,7 +192,13 @@ export const SurveyEditorPage = ({
         }),
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
-  const canMutate = useCanMutate(mode, canUpdate, loadedItem?.status, resourceAccess, methods);
+  const mutationAccess = useSurveyMutationAccess(
+    mode,
+    canUpdate,
+    loadedItem?.status,
+    resourceAccess,
+    methods
+  );
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;
@@ -203,7 +211,7 @@ export const SurveyEditorPage = ({
       actions={<SurveyEditorActions pt={pt} />}
       primaryAction={
         <SurveyEditorPrimaryAction
-          disabled={!canMutate}
+          disabled={!mutationAccess.canSave}
           mode={mode}
           formId={formId}
           pt={pt}
@@ -214,7 +222,8 @@ export const SurveyEditorPage = ({
       <SurveyEditorForm
         actingPrincipalType={actingPrincipalType}
         activeTab={activeTab}
-        canMutate={canMutate}
+        canEdit={mutationAccess.canEdit}
+        canSave={mutationAccess.canSave}
         loadedItem={loadedItem}
         methods={methods}
         mode={mode}

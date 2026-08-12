@@ -25,19 +25,26 @@ export const canMutateSurvey = (input: {
   readonly loadedStatus?: keyof typeof surveyLifecycleStatus;
   readonly nextStatus: SurveyDetailFormValues['basis']['status'];
   readonly resourceAccess: Readonly<Record<string, boolean>>;
-}) =>
-  input.mode === 'create'
-    ? input.accessCapabilities.canCreate
-    : input.canUpdate &&
-      input.accessCapabilities.canUpdate &&
-      input.loadedStatus !== undefined &&
+}) => {
+  const canEdit =
+    input.mode === 'create'
+      ? input.accessCapabilities.canCreate
+      : input.canUpdate && input.accessCapabilities.canUpdate && input.loadedStatus !== undefined;
+  const lifecycleAllowed =
+    input.mode === 'create' ||
+    (input.loadedStatus !== undefined &&
       hasContentLifecycleAccess(
         resolveContentLifecycleAction(
           surveyLifecycleStatus[input.loadedStatus],
           surveyLifecycleStatus[input.nextStatus]
         ),
         input.resourceAccess
-      );
+      ));
+  return {
+    canEdit,
+    canSave: canEdit && lifecycleAllowed,
+  };
+};
 
 export const useSurveyMutationAccess = (
   mode: SurveyEditorMode,

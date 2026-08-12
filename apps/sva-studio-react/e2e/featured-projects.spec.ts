@@ -129,17 +129,7 @@ test('creates, publishes, reorders and deletes a featured project with multiple 
     .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
     .click();
   await page
-    .getByRole('button', {
-      name: /Medium per Link hinzufügen|projects\.media\.addByLink/,
-    })
-    .click();
-  await page
     .getByRole('button', { name: /Medium hinzufügen|projects\.media\.add/ })
-    .click();
-  await page
-    .getByRole('button', {
-      name: /Medium per Link hinzufügen|projects\.media\.addByLink/,
-    })
     .click();
   await page
     .getByLabel(/Bild-URL|projects\.fields\.imageUrl/)

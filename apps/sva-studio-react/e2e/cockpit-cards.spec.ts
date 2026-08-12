@@ -152,9 +152,7 @@ test('creates, updates and deletes a Kachel while preserving its server identity
   await page.locator('#cockpit-card-category').selectOption('Service');
   await page.getByRole('tab', { name: 'Inhalt' }).click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
-  await page.getByRole('button', { name: 'Medium per Link hinzufügen' }).click();
   await page.getByRole('button', { name: 'Medium hinzufügen' }).click();
-  await page.getByRole('button', { name: 'Medium per Link hinzufügen' }).click();
   await page.getByLabel('Bild-URL').nth(0).fill('https://example.test/buergerbuero-aussen.jpg');
   await page.getByLabel('Alternativtext').nth(0).fill('Eingang des Bürgerbüros');
   await page.getByLabel('Bild-URL').nth(1).fill('https://example.test/buergerbuero-innen.jpg');

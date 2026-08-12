@@ -129,11 +129,6 @@ test.describe('news plugin', () => {
       .getByRole('button', { name: /Medium hinzufügen|news\.messages\.mediaPickerTitle/ })
       .click();
     await page
-      .getByRole('button', {
-        name: /Medium per Link hinzufügen|news\.messages\.mediaPickerLinkAction/,
-      })
-      .click();
-    await page
       .getByLabel(/Medien-URL|news\.fields\.mediaUrl/)
       .fill('https://example.com/news/image.jpg');
     await page.getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/).fill('Titelbild');

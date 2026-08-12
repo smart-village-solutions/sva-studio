@@ -51,7 +51,7 @@ export const ContentTypeFilters = ({
           <Button
             type="button"
             size="sm"
-            variant={selectedType === 'all' ? 'secondary' : 'outline'}
+            variant={selectedType === 'all' ? 'default' : 'outline'}
             aria-pressed={selectedType === 'all'}
             onClick={() => onTypeChange('all')}
           >
@@ -64,7 +64,7 @@ export const ContentTypeFilters = ({
                 key={definition.contentType}
                 type="button"
                 size="sm"
-                variant={isSelected ? 'secondary' : 'outline'}
+                variant={isSelected ? 'default' : 'outline'}
                 aria-pressed={isSelected}
                 onClick={() => onTypeChange(definition.contentType)}
               >

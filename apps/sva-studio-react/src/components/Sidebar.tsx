@@ -937,21 +937,32 @@ export default function Sidebar({
     );
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
     const readableContentTypes = studioContentTypes.filter(
-      (definition) =>
-        contentAccessApi.permissionActions.includes(definition.requiredReadAction) &&
-        isModuleAssignedToUser(definition.requiredReadAction.split('.')[0], user)
+      (definition) => {
+        const moduleId = definition.requiredReadAction.startsWith('content.')
+          ? null
+          : definition.requiredReadAction.split('.')[0];
+        return (
+          contentAccessApi.permissionActions.includes(definition.requiredReadAction) &&
+          isModuleAssignedToUser(moduleId, user)
+        );
+      }
     );
     const contentChildren: SidebarLeafItem[] = [
-      {
-        kind: 'link',
-        id: 'content-all',
-        to: '/admin/content',
-        label: t('shell.sidebar.contentAll'),
-        icon: IconArticle,
-        exact: true,
-        contentType: null,
-        search: (current) => updateContentTypeSearch(current, null),
-      },
+      ...(canAccessContent
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'content-all',
+              to: '/admin/content',
+              label: t('shell.sidebar.contentAll'),
+              icon: IconArticle,
+              exact: true,
+              contentType: null,
+              search: (current: Readonly<Record<string, unknown>>) =>
+                updateContentTypeSearch(current, null),
+            },
+          ]
+        : []),
       ...readableContentTypes.map((definition) => ({
         kind: 'link' as const,
         id: `content-type-${definition.contentType}`,
@@ -978,7 +989,7 @@ export default function Sidebar({
         icon: IconLayoutDashboard,
         exact: true,
       },
-      ...(canAccessContent
+      ...(canAccessWorkspace && contentChildren.length > 0
         ? [
             {
               kind: 'group' as const,
@@ -1208,6 +1219,7 @@ export default function Sidebar({
     canAccessMedia,
     canAccessModules,
     canAccessSystemTools,
+    canAccessWorkspace,
     canAccessContent,
     contentAccessApi.access,
     contentAccessApi.isLoading,

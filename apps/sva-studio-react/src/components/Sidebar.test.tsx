@@ -470,6 +470,50 @@ describe('Sidebar', () => {
     );
   });
 
+  it('zeigt hosteigene Inhaltstypen ohne fiktive Content-Modulzuweisung', () => {
+    studioPluginNavigationMock.items = [];
+    studioContentTypesMock.items = [
+      {
+        contentType: 'generic',
+        displayName: 'Generisch',
+        requiredReadAction: 'content.read',
+        requiredCreateAction: 'content.create',
+        createPath: '/admin/content/new',
+        detailPath: '/admin/content/$contentId',
+      },
+    ];
+    renderSidebar({
+      route: '/admin/content',
+      user: createSidebarUser({ assignedModules: [] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['content.read'],
+      }),
+    });
+
+    expect(screen.getByRole('link', { name: 'Generisch' }).getAttribute('href')).toBe(
+      '/admin/content?type=generic&page=1'
+    );
+  });
+
+  it('zeigt typbezogene Navigation auch ohne generisches content.read', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      route: '/admin/content',
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({
+        access: defaultBlockedDirectRoleAccessState,
+        permissionActions: ['news.read'],
+      }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Inhalte' }).getAttribute('aria-expanded')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Alle' })).toBeNull();
+  });
+
   it('markiert den Typfilter eindeutig und erhält kanonische Listenparameter beim Wechsel', () => {
     enableRegisteredContentTypes();
     renderSidebar({

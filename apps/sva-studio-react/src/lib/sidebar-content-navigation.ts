@@ -38,7 +38,7 @@ export const resolveContentNavigationActiveId = (
 };
 
 export const resolveContentRoutePrefix = (path: string): string => {
-  const pathname = path.split('?')[0] ?? path;
+  const pathname = path.split('?')[0];
   const dynamicSegmentIndex = pathname.indexOf('/$');
   return dynamicSegmentIndex === -1 ? pathname : pathname.slice(0, dynamicSegmentIndex);
 };

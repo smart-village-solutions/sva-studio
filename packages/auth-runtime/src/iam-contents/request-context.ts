@@ -17,7 +17,6 @@ import {
   buildContentAuthorizeRequest,
   type ContentAuthorizationAction,
   type ContentAuthorizationResource,
-  type ContentReadAction,
 } from './request-authorization.js';
 
 export type ResolvedContentActor = {

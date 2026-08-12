@@ -28,7 +28,9 @@ import {
   StudioLoadingState,
   StudioMediaPickerOverlay,
   StudioSaveButton,
+  contentMediaUsagesToMainserver,
   contentMediaUsageToReference,
+  createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
@@ -165,8 +167,9 @@ const createGenericItemsMediaPickerLabels = (
   title: pt('messages.mediaPickerTitle'),
   description: pt('messages.mediaPickerDescription'),
   modes: {
-    library: pt('actions.addImage'),
+    library: pt('messages.mediaPickerLibraryAction'),
     upload: pt('actions.uploadMedia'),
+    manual: pt('messages.mediaPickerLinkAction'),
     review: pt('messages.mediaPickerReviewMode'),
   },
   library: {
@@ -536,6 +539,24 @@ export function GenericItemsDetailPage({
   React.useEffect(() => {
     mediaAssetsRef.current = mediaAssets;
   }, [mediaAssets]);
+  const addManualMedia = React.useCallback(() => {
+    const usage = {
+      ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
+      additionalData: { contentType: '', width: '', height: '' },
+    };
+    const nextUsages = [...mediaUsages, usage];
+    methods.setValue(
+      'mediaContents',
+      contentMediaUsagesToMainserver(nextUsages) as GenericItemsDetailFormValues['mediaContents'],
+      { shouldDirty: true }
+    );
+    setMediaUsages(nextUsages);
+    setRequiresReferenceSync(
+      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+    );
+    return usage.uiId;
+  }, [mediaUsages, methods]);
+
   const mediaPickerFeedback = React.useMemo(
     () =>
       resolveGenericItemsMediaPickerFeedback(pt, mediaPicker.errorCode, mediaPicker.uploadPhase),
@@ -659,6 +680,7 @@ export function GenericItemsDetailPage({
           labels={mediaPickerLabels}
           metadataDraft={mediaPicker.metadataDraft}
           mode={mediaPicker.mode}
+          onAddManual={addManualMedia}
           onBackFromReview={mediaPicker.goBackFromReview}
           onChangeMode={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
@@ -729,6 +751,7 @@ export function GenericItemsDetailPage({
           categoryOptionsLoading={categoryOptionsLoading}
           contentId={contentId}
           labels={labels}
+          onAddManualMedia={addManualMedia}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
           }

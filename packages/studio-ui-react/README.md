@@ -11,7 +11,7 @@ Die Bibliothek sitzt damit oberhalb framework-agnostischer Kernlogik und stellt 
 - allgemeine UI-Primitives wie Buttons, Inputs, Dialoge und Tabs,
 - Studio-spezifische Layout- und Statusbausteine,
 - tabellarische Datenansichten mit Auswahl-, Sortier- und Bulk-Action-Unterstützung,
-- einfache Medienreferenz-Auswahl für Formulare.
+- Medienreferenz-Auswahl und gemeinsame Medienbearbeitung für Formulare.
 
 ## Öffentliche API
 
@@ -20,7 +20,7 @@ Das Paket exportiert seine API zentral über `src/index.ts`. Die Oberfläche gli
 - Basisbausteine: `Alert`, `AlertDialog`, `Badge`, `Button`, `Checkbox`, `Dialog`, `Input`, `Select`, `Tabs`, `Textarea`
 - Hilfsfunktion: `cn` zum Zusammenführen von Klassen
 - Studio-Primitives: `StudioPageHeader`, `StudioOverviewPageTemplate`, `StudioDetailPageTemplate`, `StudioField`, `StudioFieldGroup`, `StudioFormSummary`, `StudioStateBlock`, `StudioLoadingState`, `StudioEmptyState`, `StudioErrorState`
-- Studio-Surfaces und Datenkomponenten: `StudioResourceHeader`, `StudioSection`, `StudioEditSurface`, `StudioDetailTabs`, `StudioActionMenu`, `StudioDataTable`, `MediaReferenceField`
+- Studio-Surfaces und Datenkomponenten: `StudioResourceHeader`, `StudioSection`, `StudioEditSurface`, `StudioDetailTabs`, `StudioActionMenu`, `StudioDataTable`, `MediaReferenceField`, `ContentMediaUsageBlock`, `StudioMediaPickerOverlay`
 
 Zusätzlich werden die zugehörigen Prop- und Daten-Typen exportiert, unter anderem:
 
@@ -40,6 +40,8 @@ Für die Integration relevant:
 - Styling-Annahme: Die Komponenten verwenden Utility-Klassen wie `border-border`, `bg-card`, `text-muted-foreground` und erwarten damit passende Design-Token bzw. eine kompatible Tailwind/CSS-Konfiguration im konsumierenden Projekt
 
 Die Komponenten sind bewusst zustandsarm gehalten. Fachlogik, Datenladen, Übersetzungen und Routing bleiben in den konsumierenden Apps oder Feature-Paketen.
+
+Für Content-Medien stellt `ContentMediaUsageBlock` genau die primäre Aktion „Medium hinzufügen“ bereit. Sie öffnet den `StudioMediaPickerOverlay` im Upload-Modus. Der Picker zeigt Upload als primäre und aktive Aktion, die Bibliothek als sekundäre Aktion und die Linkeingabe als tertiären Textlink. Alle Beschriftungen werden vom konsumierenden Feature über den typisierten Label-Vertrag und dessen Übersetzungen geliefert.
 
 ## Projektstruktur
 
@@ -63,6 +65,8 @@ packages/studio-ui-react/
     ├── tabs.tsx
     ├── textarea.tsx
     ├── media-reference-field.tsx
+    ├── content-media-usage-block.tsx
+    ├── studio-media-picker-overlay.tsx
     ├── studio-data-table.tsx
     ├── studio-primitives.tsx
     ├── studio-surfaces.tsx
@@ -76,6 +80,7 @@ Wichtige interne Schwerpunkte:
 - `src/studio-primitives.tsx` enthält grundlegende Studio-Seiten-, Feld- und Statusbausteine
 - `src/studio-surfaces.tsx` bündelt größere Oberflächenstrukturen wie Header, Sections, Tabs und Aktionsleisten
 - `src/studio-data-table.tsx` implementiert die generische Studio-Tabelle mit Sortierung, Selektion und Bulk Actions
+- `src/content-media-usage-block.tsx` und `src/studio-media-picker-overlay.tsx` bilden den gemeinsamen Content-Medienfluss ab
 - `src/*.test.tsx` deckt Rendering, Accessibility-Semantik und Interaktionsverhalten zentraler Komponenten ab
 
 ## Nx-Konfiguration

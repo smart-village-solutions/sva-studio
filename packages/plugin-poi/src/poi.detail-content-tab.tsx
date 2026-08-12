@@ -9,6 +9,7 @@ import { PoiDetailPricesTab } from './poi.detail-prices-tab.js';
 import type { ContentMediaAssetSnapshot, ContentMediaUsage } from '@sva/studio-ui-react';
 
 export function PoiDetailContentTab({
+  onAddManualMedia,
   onOpenMediaPicker,
   canSelectMedia = false,
   canUploadMedia = false,
@@ -20,6 +21,7 @@ export function PoiDetailContentTab({
   },
   pt,
 }: Readonly<{
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
@@ -43,6 +45,7 @@ export function PoiDetailContentTab({
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
           mediaUsages={mediaUsages}
+          onAddManualMedia={onAddManualMedia}
           onChangeMediaUsages={onChangeMediaUsages}
           onLoadAssetSnapshot={onLoadAssetSnapshot}
           onOpenMediaPicker={onOpenMediaPicker}

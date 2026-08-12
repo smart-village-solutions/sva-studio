@@ -130,6 +130,7 @@ function ContentFields({
   onMediaUsagesChange,
   canSelectMedia,
   canUploadMedia,
+  onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,
 }: Readonly<{
@@ -139,6 +140,7 @@ function ContentFields({
   onMediaUsagesChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
+  onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) {
@@ -162,14 +164,9 @@ function ContentFields({
         <ContentMediaUsageBlock
           usages={mediaUsages}
           onChange={changeUsages}
-          onAddManual={() =>
-            changeUsages([
-              ...mediaUsages,
-              createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
-            ])
-          }
+          onAddManual={onAddManualMedia}
           onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-          onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
+          onOpenUpload={() => onOpenMediaPicker('upload')}
           onLoadAssetSnapshot={onLoadAssetSnapshot}
           showHeader={false}
           supportedFields={{ altText: true, caption: false, credit: false, license: false }}
@@ -178,9 +175,7 @@ function ContentFields({
             description: pt('media.description'),
             empty: pt('media.empty'),
             actions: {
-              library: pt('actions.selectImage'),
-              upload: pt('actions.uploadImage'),
-              manual: pt('actions.addImage'),
+              add: pt('media.add'),
               remove: pt('actions.removeImage'),
               moveUp: pt('actions.moveImageUp'),
               moveDown: pt('actions.moveImageDown'),
@@ -433,12 +428,23 @@ function Editor({
       return toDetail(asset, hasPersistablePublicDelivery(delivery) ? delivery.deliveryUrl : null);
     },
   });
+  const addManualMedia = React.useCallback(() => {
+    const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
+    const nextUsages = [...mediaUsages, usage];
+    setMediaUsages(nextUsages);
+    form.setValue('images', [...cockpitCardUsagesToMedia(nextUsages)], { shouldDirty: true });
+    setRequiresReferenceSync(
+      (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
+    );
+    return usage.uiId;
+  }, [form, mediaUsages]);
   const pickerLabels: StudioMediaPickerOverlayLabels = {
     title: pt('media.pickerTitle'),
     description: pt('media.pickerDescription'),
     modes: {
-      library: pt('actions.selectImage'),
-      upload: pt('actions.uploadImage'),
+      library: pt('media.addFromLibrary'),
+      upload: pt('media.upload'),
+      manual: pt('media.addByLink'),
       review: pt('media.review'),
     },
     library: {
@@ -658,6 +664,7 @@ function Editor({
           onMediaUsagesChange={setMediaUsages}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
+          onAddManualMedia={addManualMedia}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
           }
@@ -841,6 +848,7 @@ function Editor({
         feedbackMessage={mediaPicker.errorCode ? pt('messages.mediaError') : null}
         feedbackTone={mediaPicker.errorCode ? 'error' : 'default'}
         isAssetSelectable={(asset) => !mediaUsages.some((usage) => usage.assetId === asset.id)}
+        onAddManual={addManualMedia}
         onClose={mediaPicker.close}
         onBackFromReview={mediaPicker.goBackFromReview}
         onChangeMode={(next) =>

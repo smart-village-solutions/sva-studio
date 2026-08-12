@@ -315,6 +315,9 @@ describe('PoiListPage', () => {
         'poi.actions.uploadMedia': 'Medium hochladen',
         'poi.actions.selectImage': 'Auswählen',
         'poi.actions.removeImage': 'Entfernen',
+        'poi.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'poi.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'poi.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'poi.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
         'poi.messages.categoryOptionsLoading': 'Kategorien werden geladen.',
         'poi.messages.categoryOptionsLoadError': 'Die Kategorien konnten nicht geladen werden.',
@@ -378,7 +381,8 @@ describe('PoiListPage', () => {
       target: { value: 'https://example.com/poi' },
     });
     switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Aus Mediathek auswählen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     await waitFor(() => {
       expect(screen.getByRole('dialog')).toBeTruthy();
     });

@@ -107,12 +107,7 @@ describe('NewsDetailPage', () => {
         'media.update',
         'media.reference.manage',
       ],
-      unscopedPermissionActions: [
-        'news.read',
-        'news.create',
-        'news.update',
-        'news.delete',
-      ],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
       assignedModules: ['news'],
       roles: [],
     });
@@ -207,6 +202,8 @@ describe('NewsDetailPage', () => {
         'news.actions.removeImage': 'Bild entfernen',
         'news.messages.imagePickerEmpty': 'Keine Bilder gefunden.',
         'news.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'news.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'news.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'news.messages.mediaPickerDescription':
           'Wählen Sie ein vorhandenes Medium aus oder laden Sie ein neues Bild hoch.',
         'news.messages.mediaPickerReviewMode': 'Prüfen',
@@ -324,7 +321,7 @@ describe('NewsDetailPage', () => {
     fireEvent.change(await screen.findByLabelText('Bereich auswählen'), {
       target: { value: 'content' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Bild hochladen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: {
         files: [new File(['image'], 'uploaded.jpg', { type: 'image/jpeg' })],
@@ -365,7 +362,8 @@ describe('NewsDetailPage', () => {
     } as never);
     render(<NewsDetailPage mode="create" />);
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'content' } });
-    fireEvent.click(await screen.findByRole('button', { name: 'Bild aus Mediathek' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
     fireEvent.click(await screen.findByRole('button', { name: 'news.actions.selectImage' }));
     await screen.findByDisplayValue('Bibliotheksbild');
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));

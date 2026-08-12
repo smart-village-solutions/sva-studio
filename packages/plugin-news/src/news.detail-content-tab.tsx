@@ -1,5 +1,16 @@
 import { useFormContext, useWatch } from 'react-hook-form';
-import { ContentMediaUsageBlock, Input, RichTextHtmlEditor, Select, StudioField, StudioFormSummaryErrors, contentMediaUsagesToMainserver, createManualContentMediaUsage, getStudioFormFieldProps, mainserverContentMediaToUsages, type ContentMediaUsage } from '@sva/studio-ui-react';
+import {
+  ContentMediaUsageBlock,
+  Input,
+  RichTextHtmlEditor,
+  Select,
+  StudioField,
+  StudioFormSummaryErrors,
+  contentMediaUsagesToMainserver,
+  getStudioFormFieldProps,
+  mainserverContentMediaToUsages,
+  type ContentMediaUsage,
+} from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
 import {
@@ -12,6 +23,7 @@ import type { NewsDetailFormValues } from './news.types.js';
 
 export type NewsDetailContentTabProps = Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  onAddManualMedia: () => string;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia?: boolean;
@@ -129,6 +141,7 @@ type NewsContentMediaSectionProps = Readonly<{
   canUploadMedia: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
+  onAddManualMedia: () => string;
 }>;
 
 function NewsContentMediaSection({
@@ -139,6 +152,7 @@ function NewsContentMediaSection({
   canSelectMedia,
   canUploadMedia,
   onLoadAssetSnapshot,
+  onAddManualMedia,
   onOpenMediaPicker,
 }: NewsContentMediaSectionProps) {
   return (
@@ -146,25 +160,43 @@ function NewsContentMediaSection({
       title={pt('cards.content.media.title')}
       description={pt('cards.content.media.description')}
     >
-      <div id={mediaField.id}><ContentMediaUsageBlock
-        usages={mediaUsages}
-        onChange={onChange}
-        onAddManual={() => onChange([...mediaUsages, {
-          ...createManualContentMediaUsage({ sortOrder: mediaUsages.length }),
-          additionalData: { contentType: 'image', width: '', height: '' },
-        }])}
-        onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
-        onOpenUpload={canUploadMedia ? () => onOpenMediaPicker('upload') : undefined}
-        onLoadAssetSnapshot={onLoadAssetSnapshot}
-        supportedFields={{ altText: true, caption: true, credit: true, license: false }}
-        showHeader={false}
-        renderAdditionalFields={({ usage, update }) => <>
-          <StudioField id={`content-media-${usage.uiId}-content-type`} label={pt('fields.mediaContentType')}>
-            <Select id={`content-media-${usage.uiId}-content-type`} value={String(usage.additionalData?.contentType ?? '')} onChange={(event) => update({ additionalData: { ...usage.additionalData, contentType: event.currentTarget.value } })}><option value="">{pt('values.mediaContentTypes.unspecified')}</option><option value="image">{pt('values.mediaContentTypes.image')}</option></Select>
-          </StudioField>
-        </>}
-        labels={createNewsMediaUsageLabels(pt)}
-      /></div>
+      <div id={mediaField.id}>
+        <ContentMediaUsageBlock
+          usages={mediaUsages}
+          onChange={onChange}
+          onAddManual={onAddManualMedia}
+          onOpenLibrary={canSelectMedia ? () => onOpenMediaPicker('library') : undefined}
+          onOpenUpload={() => onOpenMediaPicker('upload')}
+          onLoadAssetSnapshot={onLoadAssetSnapshot}
+          supportedFields={{ altText: true, caption: true, credit: true, license: false }}
+          showHeader={false}
+          renderAdditionalFields={({ usage, update }) => (
+            <>
+              <StudioField
+                id={`content-media-${usage.uiId}-content-type`}
+                label={pt('fields.mediaContentType')}
+              >
+                <Select
+                  id={`content-media-${usage.uiId}-content-type`}
+                  value={String(usage.additionalData?.contentType ?? '')}
+                  onChange={(event) =>
+                    update({
+                      additionalData: {
+                        ...usage.additionalData,
+                        contentType: event.currentTarget.value,
+                      },
+                    })
+                  }
+                >
+                  <option value="">{pt('values.mediaContentTypes.unspecified')}</option>
+                  <option value="image">{pt('values.mediaContentTypes.image')}</option>
+                </Select>
+              </StudioField>
+            </>
+          )}
+          labels={createNewsMediaUsageLabels(pt)}
+        />
+      </div>
     </NewsDetailCard>
   );
 }
@@ -198,15 +230,55 @@ function NewsContentSourceSection({
 }
 
 const createNewsMediaUsageLabels = (pt: NewsDetailContentTabProps['pt']) => ({
-  title: pt('cards.content.media.title'), description: pt('cards.content.media.description'), empty: pt('cards.content.media.empty'),
-  actions: { library: pt('actions.addImage'), upload: pt('actions.uploadMedia'), manual: pt('actions.addMediaManual'), remove: pt('actions.removeImage'), moveUp: pt('media.moveUp'), moveDown: pt('media.moveDown'), refreshMetadata: pt('media.refresh'), cancel: pt('actions.cancel'), apply: pt('media.apply') },
-  fields: { url: pt('fields.mediaUrl'), altText: pt('fields.mediaUrlDescription'), caption: pt('fields.mediaCaption'), credit: pt('fields.mediaCopyright'), license: pt('messages.mediaPickerLicense') },
-  states: { linked: pt('media.linked'), manual: pt('media.manual'), synced: pt('media.synced'), pending: pt('media.pending'), missing: pt('media.missing'), additional: pt('media.additional'), unresolved: pt('media.unresolved'), failed: pt('media.failed'), previewUnavailable: pt('media.previewUnavailable') },
+  title: pt('cards.content.media.title'),
+  description: pt('cards.content.media.description'),
+  empty: pt('cards.content.media.empty'),
+  actions: {
+    add: pt('messages.mediaPickerTitle'),
+    remove: pt('actions.removeImage'),
+    moveUp: pt('media.moveUp'),
+    moveDown: pt('media.moveDown'),
+    refreshMetadata: pt('media.refresh'),
+    cancel: pt('actions.cancel'),
+    apply: pt('media.apply'),
+  },
+  fields: {
+    url: pt('fields.mediaUrl'),
+    altText: pt('fields.mediaUrlDescription'),
+    caption: pt('fields.mediaCaption'),
+    credit: pt('fields.mediaCopyright'),
+    license: pt('messages.mediaPickerLicense'),
+  },
+  states: {
+    linked: pt('media.linked'),
+    manual: pt('media.manual'),
+    synced: pt('media.synced'),
+    pending: pt('media.pending'),
+    missing: pt('media.missing'),
+    additional: pt('media.additional'),
+    unresolved: pt('media.unresolved'),
+    failed: pt('media.failed'),
+    previewUnavailable: pt('media.previewUnavailable'),
+  },
   announcements: { moved: pt('media.moved'), removed: pt('media.removed') },
-  refresh: { title: pt('media.refreshTitle'), description: pt('media.refreshDescription'), assetValue: pt('media.assetValue'), contentValue: pt('media.contentValue') },
+  refresh: {
+    title: pt('media.refreshTitle'),
+    description: pt('media.refreshDescription'),
+    assetValue: pt('media.assetValue'),
+    contentValue: pt('media.contentValue'),
+  },
 });
 
-export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onChangeMediaUsages = () => undefined, canSelectMedia = true, canUploadMedia = true, onLoadAssetSnapshot }: NewsDetailContentTabProps) {
+export function NewsDetailContentTab({
+  onOpenMediaPicker,
+  onAddManualMedia,
+  pt,
+  mediaUsages,
+  onChangeMediaUsages = () => undefined,
+  canSelectMedia = true,
+  canUploadMedia = true,
+  onLoadAssetSnapshot,
+}: NewsDetailContentTabProps) {
   const {
     control,
     formState: { errors },
@@ -220,7 +292,11 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
   const resolvedUsages = mediaUsages ?? mainserverContentMediaToUsages(mediaContents);
   const changeMedia = (usages: readonly ContentMediaUsage[]) => {
     onChangeMediaUsages(usages);
-    setValue('contentMedia', contentMediaUsagesToMainserver(usages) as NewsDetailFormValues['contentMedia'], { shouldDirty: true });
+    setValue(
+      'contentMedia',
+      contentMediaUsagesToMainserver(usages) as NewsDetailFormValues['contentMedia'],
+      { shouldDirty: true }
+    );
   };
 
   const introField = getStudioFormFieldProps({
@@ -271,6 +347,7 @@ export function NewsDetailContentTab({ onOpenMediaPicker, pt, mediaUsages, onCha
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
+        onAddManualMedia={onAddManualMedia}
         onOpenMediaPicker={onOpenMediaPicker}
       />
       <NewsContentSourceSection

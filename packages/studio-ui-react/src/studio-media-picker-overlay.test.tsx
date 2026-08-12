@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -36,7 +36,12 @@ describe('useStudioMediaPickerOverlay', () => {
         labels={{
           title: 'Media',
           description: 'Select media',
-          modes: { library: 'Library', upload: 'Upload', review: 'Review' },
+          modes: {
+            library: 'Add from library',
+            upload: 'Upload media',
+            manual: 'Add by link',
+            review: 'Review',
+          },
           library: { searchLabel: 'Search', empty: 'Empty', select: 'Select' },
           upload: {
             regionLabel: 'Upload region',
@@ -64,6 +69,7 @@ describe('useStudioMediaPickerOverlay', () => {
         metadataDraft={asset.metadata}
         mode="review"
         onBackFromReview={vi.fn()}
+        onAddManual={vi.fn()}
         onChangeMode={vi.fn()}
         onClose={vi.fn()}
         onConfirmSelection={vi.fn()}
@@ -85,6 +91,82 @@ describe('useStudioMediaPickerOverlay', () => {
     expect(screen.queryByLabelText('Description field')).toBeNull();
     expect(screen.queryByLabelText('Copyright')).toBeNull();
     expect(screen.queryByLabelText('License')).toBeNull();
+  });
+
+  it('presents upload, library and link actions in the requested hierarchy', async () => {
+    const onAddManual = vi.fn(() => 'manual-1');
+    const onChangeMode = vi.fn();
+    const onClose = vi.fn();
+    const asset = createAsset();
+    render(
+      <>
+        <StudioMediaPickerOverlay
+          assets={[]}
+          labels={{
+            title: 'Medium hinzufügen',
+            description: 'Medium auswählen',
+            modes: {
+              upload: 'Medium hochladen',
+              library: 'Medium aus der Bibliothek hinzufügen',
+              manual: 'Medium per Link hinzufügen',
+              review: 'Prüfen',
+            },
+            library: { searchLabel: 'Suchen', empty: 'Leer', select: 'Auswählen' },
+            upload: {
+              regionLabel: 'Upload',
+              title: 'Upload',
+              description: 'Upload',
+              browseAction: 'Datei auswählen',
+              supportLabel: 'Nur Bilder',
+            },
+            review: { title: 'Prüfen', description: 'Prüfen' },
+            fields: {
+              title: 'Titel',
+              altText: 'Alternativtext',
+              description: 'Beschreibung',
+              copyright: 'Copyright',
+              license: 'Lizenz',
+            },
+            actions: {
+              cancel: 'Abbrechen',
+              backToLibrary: 'Zurück',
+              backToUpload: 'Zurück',
+              openMediaManagement: 'Öffnen',
+              useMedia: 'Übernehmen',
+            },
+          }}
+          metadataDraft={asset.metadata}
+          mode="upload"
+          onAddManual={onAddManual}
+          onBackFromReview={vi.fn()}
+          onChangeMode={onChangeMode}
+          onClose={onClose}
+          onConfirmSelection={vi.fn()}
+          onMetadataChange={vi.fn()}
+          onSearchValueChange={vi.fn()}
+          onSelectAsset={vi.fn()}
+          onUploadFile={vi.fn()}
+          open
+          reviewAsset={null}
+          reviewSource="upload"
+          searchValue=""
+          uploadPhase="idle"
+        />
+        <input id="content-media-manual-1-url" aria-label="Manuelle URL" />
+      </>
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Medium hochladen' }).getAttribute('aria-pressed')
+    ).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Medium aus der Bibliothek hinzufügen' }));
+    expect(onChangeMode).toHaveBeenCalledWith('library');
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
+    expect(onAddManual).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(document.getElementById('content-media-manual-1-url'))
+    );
   });
 
   it('starts in upload mode, uploads, switches to review, and only accepts after metadata save', async () => {

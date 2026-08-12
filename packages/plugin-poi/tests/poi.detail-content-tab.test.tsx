@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { describe, expect, it, vi } from 'vitest';
+import { createManualContentMediaUsage, type ContentMediaUsage } from '@sva/studio-ui-react';
 
 import { PoiDetailContentTab } from '../src/poi.detail-content-tab.js';
 import type { PoiDetailFormValues } from '../src/poi.detail-form.js';
@@ -11,7 +12,8 @@ vi.mock('../src/poi.location-map.js', () => ({
 }));
 
 vi.mock('@sva/studio-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
+  const actual =
+    await vi.importActual<typeof import('@sva/studio-ui-react')>('@sva/studio-ui-react');
   return {
     ...actual,
     RichTextHtmlEditor: ({
@@ -121,6 +123,7 @@ const pt = (key: string) =>
     'actions.addMediaManual': 'Manuell hinzufügen',
     'actions.addImage': 'Aus Mediathek auswählen',
     'actions.uploadMedia': 'Medium hochladen',
+    'messages.mediaPickerTitle': 'Medium hinzufügen',
     'actions.addOpeningHour': 'Öffnungszeit hinzufügen',
     'actions.remove': 'Entfernen',
     'actions.geocodeAddress': 'Geo-Koordinaten ermitteln',
@@ -133,6 +136,12 @@ const pt = (key: string) =>
 
 function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
   const Wrapper = () => {
+    const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
+    const addManualMedia = () => {
+      const usage = createManualContentMediaUsage({ sortOrder: mediaUsages.length });
+      setMediaUsages([...mediaUsages, usage]);
+      return usage.uiId;
+    };
     const methods = useForm<PoiDetailFormValues>({
       defaultValues: {
         name: '',
@@ -141,7 +150,9 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
         content: {
           description: '',
           mobileDescription: '',
-          addresses: [{ street: '', zip: '', city: '', geoLocation: { latitude: '', longitude: '' } }],
+          addresses: [
+            { street: '', zip: '', city: '', geoLocation: { latitude: '', longitude: '' } },
+          ],
           location: { name: '' },
           contact: { firstName: '', lastName: '', email: '', phone: '' },
           openingHours: [{ weekday: '', timeFrom: '', open: true }],
@@ -161,6 +172,10 @@ function renderTab(defaultValues?: Partial<PoiDetailFormValues>) {
     return (
       <FormProvider {...methods}>
         <PoiDetailContentTab
+          mediaUsages={mediaUsages}
+          onChangeMediaUsages={setMediaUsages}
+          onAddManualMedia={addManualMedia}
+          onOpenMediaPicker={addManualMedia}
           pt={pt}
         />
       </FormProvider>
@@ -196,7 +211,7 @@ describe('PoiDetailContentTab', () => {
     expect(screen.getByLabelText('Preiskategorie')).toBeTruthy();
     expect(screen.getByLabelText('Preisbeschreibung')).toBeTruthy();
     expect(screen.queryByLabelText('Medienbeschriftung')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     expect(screen.getByLabelText('Medienbeschriftung')).toBeTruthy();
     expect(screen.getByLabelText('Copyright')).toBeTruthy();
     expect(screen.getByLabelText('Medientyp')).toBeTruthy();
@@ -206,7 +221,7 @@ describe('PoiDetailContentTab', () => {
   it('renders media content type as a fixed Mainserver dropdown', () => {
     renderTab();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
 
     const contentTypeSelect = screen.getByRole('combobox', { name: 'Medientyp' });
     expect(contentTypeSelect).toBeTruthy();

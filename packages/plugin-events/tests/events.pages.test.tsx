@@ -133,6 +133,9 @@ describe('EventsListPage', () => {
         'events.actions.uploadMedia': 'Medium hochladen',
         'events.actions.uploadingMedia': 'Medium wird hochgeladen',
         'events.actions.addMediaManual': 'Manuell hinzufügen',
+        'events.messages.mediaPickerTitle': 'Medium hinzufügen',
+        'events.messages.mediaPickerLibraryAction': 'Medium aus der Bibliothek hinzufügen',
+        'events.messages.mediaPickerLinkAction': 'Medium per Link hinzufügen',
         'events.actions.selectImage': 'Auswählen',
         'events.actions.removeImage': 'Medium entfernen',
         'events.fields.actions': 'Aktionen',
@@ -282,7 +285,8 @@ describe('EventsListPage', () => {
     fireEvent.change(screen.getByLabelText('Web-URL'), {
       target: { value: 'https://example.com/events' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Manuell hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medium per Link hinzufügen' }));
     fireEvent.change(await screen.findByLabelText('Bildunterschrift'), {
       target: { value: 'Bühne' },
     });

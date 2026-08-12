@@ -302,7 +302,7 @@ describe('mainserver-client', () => {
       mapListResponse: (response) => response.data,
     });
 
-    await client.ensureMutationContext('news/1');
+    await client.ensureMutationContext('news/1', 'user');
 
     expect(fetchMock).toHaveBeenCalledWith('/items/news%2F1', expect.any(Object));
     expect(readHeaders(client.mutationHeaders('news/1', 'user'))).toMatchObject({

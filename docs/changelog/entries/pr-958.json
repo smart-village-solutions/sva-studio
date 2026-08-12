@@ -1,0 +1,4 @@
+{
+  "prNumber": 958,
+  "body": "Aktualisierte TanStack-Grundlage\n\n- Routing, Server-Rendering und Entwicklungswerkzeuge verwenden aktuelle, aufeinander abgestimmte TanStack-Versionen.\n- Die Tabellenbasis wurde auf TanStack Table 9 aktualisiert; Auswahl und Sortierung verhalten sich weiterhin wie bisher."
+}

@@ -172,28 +172,26 @@ function NewsContentMediaSection({
           supportedFields={{ altText: true, caption: true, credit: true, license: false }}
           showHeader={false}
           renderAdditionalFields={({ usage, update }) => (
-            <>
-              <StudioField
+            <StudioField
+              id={`content-media-${usage.uiId}-content-type`}
+              label={pt('fields.mediaContentType')}
+            >
+              <Select
                 id={`content-media-${usage.uiId}-content-type`}
-                label={pt('fields.mediaContentType')}
+                value={String(usage.additionalData?.contentType ?? '')}
+                onChange={(event) =>
+                  update({
+                    additionalData: {
+                      ...usage.additionalData,
+                      contentType: event.currentTarget.value,
+                    },
+                  })
+                }
               >
-                <Select
-                  id={`content-media-${usage.uiId}-content-type`}
-                  value={String(usage.additionalData?.contentType ?? '')}
-                  onChange={(event) =>
-                    update({
-                      additionalData: {
-                        ...usage.additionalData,
-                        contentType: event.currentTarget.value,
-                      },
-                    })
-                  }
-                >
-                  <option value="">{pt('values.mediaContentTypes.unspecified')}</option>
-                  <option value="image">{pt('values.mediaContentTypes.image')}</option>
-                </Select>
-              </StudioField>
-            </>
+                <option value="">{pt('values.mediaContentTypes.unspecified')}</option>
+                <option value="image">{pt('values.mediaContentTypes.image')}</option>
+              </Select>
+            </StudioField>
           )}
           labels={createNewsMediaUsageLabels(pt)}
         />
@@ -201,7 +199,6 @@ function NewsContentMediaSection({
     </NewsDetailCard>
   );
 }
-
 type NewsContentSourceSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   sourceUrlField: ContentFieldBindings;

@@ -9,7 +9,6 @@ import {
   StudioFieldGroup,
   Textarea,
   ContentMediaUsageBlock,
-  contentMediaUsagesToMainserver,
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
@@ -17,6 +16,7 @@ import { useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import * as React from 'react';
 
 import type { GenericItemsDetailFormValues } from './generic-items.validation.js';
+import { genericItemMediaUsagesToFormValues } from './generic-items.content-media-adapter.js';
 import { GenericItemsDetailCard } from './generic-items.detail-card.js';
 import { GenericItemsGeoAddressFields } from './generic-items.geo-address-fields.js';
 import { getMapGeocodingConfig } from './generic-items.map-geocoding-client.js';
@@ -66,17 +66,7 @@ export const GenericItemsDetailContentTab = ({
     onChangeMediaUsages(usages);
     setValue(
       'mediaContents',
-      contentMediaUsagesToMainserver(usages).map((media) => ({
-        captionText: typeof media.captionText === 'string' ? media.captionText : '',
-        copyright: typeof media.copyright === 'string' ? media.copyright : '',
-        contentType: typeof media.contentType === 'string' ? media.contentType : '',
-        height: media.height === undefined ? '' : String(media.height),
-        width: media.width === undefined ? '' : String(media.width),
-        sourceUrl: {
-          url: typeof media.sourceUrl?.url === 'string' ? media.sourceUrl.url : '',
-          description: typeof media.sourceUrl?.description === 'string' ? media.sourceUrl.description : '',
-        },
-      })),
+      genericItemMediaUsagesToFormValues(usages),
       { shouldDirty: true }
     );
   };

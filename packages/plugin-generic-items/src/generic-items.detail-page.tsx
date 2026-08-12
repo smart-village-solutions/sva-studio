@@ -28,7 +28,6 @@ import {
   StudioLoadingState,
   StudioMediaPickerOverlay,
   StudioSaveButton,
-  contentMediaUsagesToMainserver,
   contentMediaUsageToReference,
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
@@ -50,6 +49,7 @@ import React from 'react';
 import { createGenericItem, updateGenericItem } from './generic-items.api.js';
 import {
   genericItemMediaContentsToUsages,
+  genericItemMediaUsagesToFormValues,
   genericItemMediaUsagesToContents,
 } from './generic-items.content-media-adapter.js';
 
@@ -547,7 +547,7 @@ export function GenericItemsDetailPage({
     const nextUsages = [...mediaUsages, usage];
     methods.setValue(
       'mediaContents',
-      contentMediaUsagesToMainserver(nextUsages) as GenericItemsDetailFormValues['mediaContents'],
+      genericItemMediaUsagesToFormValues(nextUsages),
       { shouldDirty: true }
     );
     setMediaUsages(nextUsages);

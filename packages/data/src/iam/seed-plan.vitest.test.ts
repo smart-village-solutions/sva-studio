@@ -36,6 +36,7 @@ const pluginContentPermissions = [
   'experimental.read',
   'app.read',
   'cockpit.read',
+  'modules.read',
   'media.read',
   'media.create',
   'media.update',
@@ -113,6 +114,7 @@ describe('iamSeedPlan content permissions', () => {
         'categories.delete',
         'integration.manage',
         'feature.toggle',
+        'modules.read',
       ])
     );
   });

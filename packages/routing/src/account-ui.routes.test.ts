@@ -15,6 +15,7 @@ const invoke = async (
   user: {
     roles: readonly string[];
     permissionActions?: readonly string[];
+    permissionStatus?: 'ok' | 'degraded';
   } | null,
   href: string
 ) => {
@@ -63,9 +64,35 @@ describe('accountUiRouteGuards', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('allows modules route for authenticated users without admin roles', async () => {
+  it('allows modules route with modules.read without admin roles', async () => {
     await expect(
-      invoke(accountUiRouteGuards.modules, { roles: ['viewer'] }, '/modules')
+      invoke(
+        accountUiRouteGuards.modules,
+        { roles: ['viewer'], permissionActions: ['modules.read'] },
+        '/modules'
+      )
+    ).resolves.toBeUndefined();
+  });
+
+  it('denies modules route without modules.read', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.modules, { roles: ['viewer'], permissionActions: [] }, '/modules')
+    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+  });
+
+  it('allows modules route for technical platform admins', async () => {
+    await expect(
+      invoke(accountUiRouteGuards.modules, { roles: ['instance_registry_admin'] }, '/modules')
+    ).resolves.toBeUndefined();
+  });
+
+  it('allows modules route for technical platform admins with degraded tenant permissions', async () => {
+    await expect(
+      invoke(
+        accountUiRouteGuards.modules,
+        { roles: ['instance_registry_admin'], permissionStatus: 'degraded' },
+        '/modules'
+      )
     ).resolves.toBeUndefined();
   });
 

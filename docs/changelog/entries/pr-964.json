@@ -1,0 +1,4 @@
+{
+  "prNumber": 964,
+  "body": "Berechtigungsgesteuerte Modulübersicht\n\n- Die neue Berechtigung `modules.read` steuert, ob Tenant-Nutzer den Menüpunkt und die Übersicht `Module` öffnen können.\n- Direkte Routenaufrufe ohne Berechtigung werden ebenfalls abgewiesen; technische Plattform-Administratoren behalten Zugriff auf die Modulverwaltung."
+}

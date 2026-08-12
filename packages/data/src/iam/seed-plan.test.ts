@@ -15,7 +15,7 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    expect(iamSeedPlan.permissions.length).toBe(58);
+    expect(iamSeedPlan.permissions.length).toBe(59);
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -73,6 +73,7 @@ describe('iam seed plan', () => {
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')?.resourceType).toBe('categories');
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType).toBe('app');
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe('cockpit');
+    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'modules.read')?.resourceType).toBe('modules');
     expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
       'experimental'
     );

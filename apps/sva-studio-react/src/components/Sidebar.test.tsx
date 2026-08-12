@@ -21,6 +21,10 @@ const useContentAccessMock = vi.fn();
 const decideAccessMock = vi.fn();
 const useRouterStateMock = vi.fn();
 const localStorageState = new Map<string, string>();
+type RouterLocationMock = Readonly<{
+  pathname: string;
+  search: Readonly<Record<string, unknown>>;
+}>;
 type PluginNavigationItemMock = {
   id: string;
   to: string;
@@ -44,6 +48,33 @@ const studioPluginNavigationMock = vi.hoisted(() => ({
 const studioPluginActionLookupMock = vi.hoisted(() => ({
   get: vi.fn(),
 }));
+const studioContentTypesMock = vi.hoisted(() => ({
+  items: [] as Array<{
+    contentType: string;
+    displayName: string;
+    titleKey?: string;
+    requiredReadAction: string;
+    requiredCreateAction: string;
+    createPath: string;
+    detailPath: string;
+  }>,
+}));
+
+const readRouterLocationMock = (): RouterLocationMock => {
+  const value = useRouterStateMock();
+  return typeof value === 'string' ? { pathname: value, search: {} } : value;
+};
+
+const serializeSearch = (search: Readonly<Record<string, unknown>>): string => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (typeof value === 'string' || typeof value === 'number') {
+      params.set(key, String(value));
+    }
+  }
+  const query = params.toString();
+  return query ? `?${query}` : '';
+};
 
 beforeAll(() => {
   mergeI18nResources(pluginNews.translations ?? {});
@@ -53,27 +84,26 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
     children,
+    search,
     ...props
   }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
     to: string;
     children: React.ReactNode;
     activeOptions?: unknown;
+    search?: (current: Readonly<Record<string, unknown>>) => Record<string, unknown>;
   }) =>
     (() => {
       const { activeOptions: _activeOptions, ...anchorProps } = props;
-      const pathname = useRouterStateMock();
-      const isActive = pathname === to || pathname.startsWith(`${to}/`);
+      const location = readRouterLocationMock();
+      const nextSearch = search ? search(location.search) : {};
       return (
-        <a href={to} aria-current={isActive ? 'page' : undefined} {...anchorProps}>
+        <a href={`${to}${serializeSearch(nextSearch)}`} {...anchorProps}>
           {children}
         </a>
       );
     })(),
-  useRouterState: (options?: {
-    select?: (state: { location: { pathname: string } }) => unknown;
-  }) => {
-    const pathname = useRouterStateMock();
-    const state = { location: { pathname } };
+  useRouterState: (options?: { select?: (state: { location: RouterLocationMock }) => unknown }) => {
+    const state = { location: readRouterLocationMock() };
     return options?.select ? options.select(state) : state;
   },
 }));
@@ -91,6 +121,9 @@ vi.mock('../providers/effective-access-provider', () => ({
 }));
 
 vi.mock('../lib/plugins', () => ({
+  get studioContentTypes() {
+    return studioContentTypesMock.items;
+  },
   get studioPluginNavigation() {
     return studioPluginNavigationMock.items;
   },
@@ -194,12 +227,13 @@ const setupSidebarSession = (
 const renderSidebar = (
   input: Readonly<{
     route?: string;
+    search?: Readonly<Record<string, unknown>>;
     user?: Record<string, unknown> | null;
     contentAccess?: ReturnType<typeof createContentAccessState>;
     props?: React.ComponentProps<typeof Sidebar>;
   }> = {}
 ) => {
-  useRouterStateMock.mockReturnValue(input.route ?? '/');
+  useRouterStateMock.mockReturnValue({ pathname: input.route ?? '/', search: input.search ?? {} });
   setupSidebarSession({
     user: input.user,
     contentAccess: input.contentAccess,
@@ -208,7 +242,7 @@ const renderSidebar = (
 };
 
 beforeEach(() => {
-  useRouterStateMock.mockReturnValue('/');
+  useRouterStateMock.mockReturnValue({ pathname: '/', search: {} });
   useContentAccessMock.mockReturnValue({
     access: null,
     permissionActions: ['news.read'],
@@ -224,6 +258,7 @@ beforeEach(() => {
       requiredAction: 'news.read',
     },
   ];
+  studioContentTypesMock.items = [];
   studioPluginActionLookupMock.get.mockReset();
   studioPluginActionLookupMock.get.mockReturnValue(undefined);
   decideAccessMock.mockReset();
@@ -267,6 +302,36 @@ it('zeigt den Tenant-Namen unter dem App-Titel und nutzt die Tenant-ID als Fallb
 });
 
 describe('Sidebar', () => {
+  const enableRegisteredContentTypes = () => {
+    studioPluginNavigationMock.items = [];
+    studioContentTypesMock.items = [
+      {
+        contentType: 'news.article',
+        displayName: 'Nachrichten',
+        requiredReadAction: 'news.read',
+        requiredCreateAction: 'news.create',
+        createPath: '/admin/news/new',
+        detailPath: '/admin/news/$id',
+      },
+      {
+        contentType: 'events.event-record',
+        displayName: 'Veranstaltungen',
+        requiredReadAction: 'events.read',
+        requiredCreateAction: 'events.create',
+        createPath: '/admin/events/new',
+        detailPath: '/admin/events/$id',
+      },
+      {
+        contentType: 'poi.point-of-interest',
+        displayName: 'Orte',
+        requiredReadAction: 'poi.read',
+        requiredCreateAction: 'poi.create',
+        createPath: '/admin/poi/new',
+        detailPath: '/admin/poi/$id',
+      },
+    ];
+  };
+
   it('gibt während des zentralen Access-Ladens trotz verfügbarer Dev-Auth keine geschützten Links frei', () => {
     renderSidebar({
       user: createSidebarUser({
@@ -333,8 +398,9 @@ describe('Sidebar', () => {
       'page'
     );
     expect(screen.getByRole('link', { name: 'Übersicht' }).getAttribute('href')).toBe('/');
-    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe(
-      '/admin/content'
+    fireEvent.click(screen.getByRole('button', { name: 'Inhalte' }));
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('href')).toBe(
+      '/admin/content?page=1'
     );
     expect(screen.getByRole('link', { name: 'App' }).getAttribute('href')).toBe('/app');
     expect(screen.getByRole('link', { name: 'Cockpit' }).getAttribute('href')).toBe(COCKPIT_URL);
@@ -374,6 +440,129 @@ describe('Sidebar', () => {
       SUPPORT_ISSUES_URL
     );
     expect(screen.getByRole('link', { name: 'Lizenz' }).getAttribute('href')).toBe(LICENSE_URL);
+  });
+
+  it('gruppiert alle lesbaren Inhaltstypen unter der kanonischen Inhaltsroute', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      route: '/admin/content',
+      user: createSidebarUser({
+        assignedModules: ['news', 'events', 'poi'],
+      }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['news.read', 'events.read', 'poi.read'],
+      }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Inhalte' }).getAttribute('aria-expanded')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('href')).toBe(
+      '/admin/content?type=news.article&page=1'
+    );
+    expect(screen.getByRole('link', { name: 'Veranstaltungen' }).getAttribute('href')).toBe(
+      '/admin/content?type=events.event-record&page=1'
+    );
+    expect(screen.getByRole('link', { name: 'Orte' }).getAttribute('href')).toBe(
+      '/admin/content?type=poi.point-of-interest&page=1'
+    );
+  });
+
+  it('zeigt hosteigene Inhaltstypen ohne fiktive Content-Modulzuweisung', () => {
+    studioPluginNavigationMock.items = [];
+    studioContentTypesMock.items = [
+      {
+        contentType: 'generic',
+        displayName: 'Generisch',
+        requiredReadAction: 'content.read',
+        requiredCreateAction: 'content.create',
+        createPath: '/admin/content/new',
+        detailPath: '/admin/content/$contentId',
+      },
+    ];
+    renderSidebar({
+      route: '/admin/content',
+      user: createSidebarUser({ assignedModules: [] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['content.read'],
+      }),
+    });
+
+    expect(screen.getByRole('link', { name: 'Generisch' }).getAttribute('href')).toBe(
+      '/admin/content?type=generic&page=1'
+    );
+  });
+
+  it('zeigt typbezogene Navigation auch ohne generisches content.read', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      route: '/admin/content',
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({
+        access: defaultBlockedDirectRoleAccessState,
+        permissionActions: ['news.read'],
+      }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Inhalte' }).getAttribute('aria-expanded')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('link', { name: 'Nachrichten' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('href')).toBe(
+      '/admin/content?page=1'
+    );
+  });
+
+  it('markiert den Typfilter eindeutig und erhält kanonische Listenparameter beim Wechsel', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      route: '/admin/content',
+      search: {
+        type: 'news.article',
+        status: 'published',
+        page: 4,
+        pageSize: 50,
+        sortBy: 'title',
+        sortDirection: 'asc',
+      },
+      user: createSidebarUser({ assignedModules: ['news', 'events'] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['news.read', 'events.read', 'poi.read'],
+      }),
+    });
+
+    expect(screen.getByRole('link', { name: 'Nachrichten' }).getAttribute('aria-current')).toBe(
+      'page'
+    );
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('aria-current')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Orte' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Veranstaltungen' }).getAttribute('href')).toBe(
+      '/admin/content?status=published&pageSize=50&sortBy=title&sortDirection=asc&type=events.event-record&page=1'
+    );
+  });
+
+  it('hält den passenden Inhalts-Unterpunkt auf typbezogenen Detailrouten aktiv', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      route: '/admin/events/event-7',
+      user: createSidebarUser({ assignedModules: ['events'] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['events.read'],
+      }),
+    });
+
+    expect(screen.getByRole('button', { name: 'Inhalte' }).getAttribute('aria-expanded')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('link', { name: 'Veranstaltungen' }).getAttribute('aria-current')).toBe(
+      'page'
+    );
+    expect(screen.getByRole('link', { name: 'Alle' }).getAttribute('aria-current')).toBeNull();
   });
 
   it('blendet Gruppen ohne Instanzkontext aus', () => {
@@ -599,7 +788,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
   });
 
   it('versteckt den Medien-Link ohne media.read-Berechtigung oder ohne Modulzuweisung', () => {
@@ -643,7 +832,7 @@ describe('Sidebar', () => {
     });
 
     expect(screen.getByRole('link', { name: 'Medien' }).getAttribute('href')).toBe('/admin/media');
-    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
   });
 
   it('zeigt den Kategorien-Link auch ohne content.read, solange categories.read vorhanden ist', () => {
@@ -662,7 +851,7 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Kategorien' }).getAttribute('href')).toBe(
       '/categories'
     );
-    expect(screen.queryByRole('link', { name: 'Inhalte' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Inhalte' })).toBeNull();
   });
 
   it('versteckt den Kategorien-Link ohne zugewiesenes Kategorien-Modul trotz categories.read', () => {
@@ -693,9 +882,7 @@ describe('Sidebar', () => {
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Inhalte' }).getAttribute('href')).toBe(
-      '/admin/content'
-    );
+    expect(screen.getByRole('button', { name: 'Inhalte' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Kategorien' })).toBeNull();
   });
 

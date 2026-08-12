@@ -518,6 +518,8 @@ Referenzen:
 - `docs/architecture/iam-service-architektur.md`
 - `apps/sva-studio-react/src/components/Header.tsx`
 - `apps/sva-studio-react/src/components/Sidebar.tsx`
+  - materialisiert `Inhalte` als hostgeführte Navigationsgruppe aus den registrierten, im aktiven Modul- und Berechtigungskontext lesbaren Studio-Inhaltstypen
+  - führt `Alle` und die typspezifischen Unterpunkte auf dieselbe kanonische Route `/admin/content`; der ausgewählte Typ bleibt ein normalisierter Search-Parameter statt einer parallelen Fachlistenroute
 - `apps/sva-studio-react/src/components/AppShell.tsx`
 - `apps/sva-studio-react/src/providers/theme-provider.tsx`
 - `apps/sva-studio-react/src/lib/theme.ts`

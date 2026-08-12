@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -952,6 +952,106 @@ describe('ContentListPage', () => {
       sortBy: 'updatedAt',
       sortDirection: 'desc',
     });
+  });
+
+  it('bietet Nachrichten und Veranstaltungen als Schnellfilter ohne Dropdown-Duplikate an', () => {
+    searchState = {
+      status: 'published',
+      page: 4,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    const quickFilterGroup = screen.getByRole('group', {
+      name: 'Schnellfilter nach Typ',
+    });
+    expect(within(quickFilterGroup).getByRole('button', { name: 'Alle' })).toBeTruthy();
+    expect(within(quickFilterGroup).getByRole('button', { name: 'Nachrichten' })).toBeTruthy();
+    expect(within(quickFilterGroup).getByRole('button', { name: 'Veranstaltungen' })).toBeTruthy();
+
+    const typeSelect = screen.getByLabelText('Weitere Typen');
+    expect(within(typeSelect).queryByRole('option', { name: 'Nachrichten' })).toBeNull();
+    expect(within(typeSelect).queryByRole('option', { name: 'Veranstaltungen' })).toBeNull();
+    expect(within(typeSelect).getByRole('option', { name: 'Orte' })).toBeTruthy();
+    expect(within(typeSelect).getByRole('option', { name: 'FAQ' })).toBeTruthy();
+
+    fireEvent.click(within(quickFilterGroup).getByRole('button', { name: 'Nachrichten' }));
+
+    const searchUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(searchUpdater?.(searchState)).toEqual({
+      type: 'news.article',
+      status: 'published',
+      page: 1,
+      pageSize: 50,
+      sortBy: 'title',
+      sortDirection: 'asc',
+    });
+  });
+
+  it('bildet aktiven Schnellfilter und weitere Typauswahl kanonisch ab', () => {
+    searchState = {
+      type: 'news.article',
+      status: 'approved',
+      page: 3,
+      pageSize: 25,
+    };
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    expect(screen.getByRole('button', { name: 'Nachrichten' }).getAttribute('aria-pressed')).toBe(
+      'true'
+    );
+    expect(screen.getByRole('button', { name: 'Alle' }).getAttribute('aria-pressed')).toBe('false');
+    expect((screen.getByLabelText('Weitere Typen') as HTMLSelectElement).value).toBe('');
+
+    fireEvent.change(screen.getByLabelText('Weitere Typen'), {
+      target: { value: 'poi.point-of-interest' },
+    });
+
+    const searchUpdater = navigateMock.mock.calls.at(-1)?.[0]?.search as
+      ((current: Record<string, unknown>) => Record<string, unknown>) | undefined;
+    expect(searchUpdater?.(searchState)).toEqual({
+      type: 'poi.point-of-interest',
+      status: 'approved',
+      page: 1,
+      pageSize: 25,
+      sortBy: 'updatedAt',
+      sortDirection: 'desc',
+    });
+  });
+
+  it('blendet Schnellfilter ohne typbezogene Leseberechtigung aus', () => {
+    useContentAccessMock.mockReturnValue({
+      access: {
+        state: 'editable',
+        canRead: true,
+        canCreate: true,
+        canUpdate: true,
+        organizationIds: ['org-1'],
+        sourceKinds: ['direct_role'],
+      },
+      permissionActions: ['content.read', 'news.read', 'poi.read'],
+      isLoading: false,
+      error: null,
+    });
+    useContentsMock.mockReturnValue(createContentsApiResult());
+
+    render(<ContentListPage />);
+
+    const quickFilterGroup = screen.getByRole('group', {
+      name: 'Schnellfilter nach Typ',
+    });
+    expect(within(quickFilterGroup).getByRole('button', { name: 'Nachrichten' })).toBeTruthy();
+    expect(within(quickFilterGroup).queryByRole('button', { name: 'Veranstaltungen' })).toBeNull();
+    expect(
+      within(screen.getByLabelText('Weitere Typen')).getByRole('option', { name: 'Orte' })
+    ).toBeTruthy();
   });
 
   it('keeps the content list query reference stable across rerenders without search changes', () => {

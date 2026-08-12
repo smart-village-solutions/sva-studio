@@ -166,6 +166,12 @@ const useSurveyTabs = (
     [contentId, loadedItem, mode, pt]
   );
 
+const canMutateSurvey = (
+  mode: SurveyEditorMode,
+  canUpdate: boolean,
+  accessCapabilities: ReturnType<typeof useSurveyAccessCapabilities>
+) => (mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate);
+
 export const SurveyEditorPage = ({
   mode,
   contentId,
@@ -207,8 +213,7 @@ export const SurveyEditorPage = ({
     });
   const tabs = useSurveyTabs(pt, mode, loadedItem, contentId);
   const accessCapabilities = useSurveyAccessCapabilities(resourceAccess);
-  const canMutate =
-    mode === 'create' ? accessCapabilities.canCreate : canUpdate && accessCapabilities.canUpdate;
+  const canMutate = canMutateSurvey(mode, canUpdate, accessCapabilities);
 
   if (isLoading) {
     return <StudioLoadingState>{pt('messages.editorLoading')}</StudioLoadingState>;

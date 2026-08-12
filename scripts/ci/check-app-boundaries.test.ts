@@ -59,13 +59,13 @@ export type { SharedType as ForwardedType } from '../../app-two/src/shared.js';
 export const dynamic = () => import('../../app-two/src/shared.js');
 export const required = require('../../app-two/src/shared.js');
 import legacy = require('../../app-two/src/shared.js');
-export const value: SharedType | boolean = shared;
+export const value: SharedType | import('../../app-two/src/shared.js').SharedType | boolean = shared;
 `
     );
 
     const violations = await collectAppBoundaryViolations(workspaceRoot);
 
-    expect(violations).toHaveLength(7);
+    expect(violations).toHaveLength(8);
     expect(violations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ sourceApp: 'app-one', targetApp: 'app-two', kind: 'type' }),

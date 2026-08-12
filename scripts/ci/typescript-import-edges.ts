@@ -7,6 +7,14 @@ export type TypeScriptImportEdge = {
   readonly kind: TypeScriptImportKind;
 };
 
+const getImportTypeSpecifier = (node: ts.Node): string | null => {
+  if (!ts.isImportTypeNode(node) || !ts.isLiteralTypeNode(node.argument)) {
+    return null;
+  }
+
+  return ts.isStringLiteral(node.argument.literal) ? node.argument.literal.text : null;
+};
+
 export const collectTypeScriptImportEdges = (
   filePath: string,
   sourceText: string
@@ -21,6 +29,16 @@ export const collectTypeScriptImportEdges = (
   const edges: TypeScriptImportEdge[] = [];
 
   const visit = (node: ts.Node): void => {
+    const importTypeSpecifier = getImportTypeSpecifier(node);
+    if (importTypeSpecifier) {
+      edges.push({
+        importSpecifier: importTypeSpecifier,
+        kind: 'type',
+      });
+      ts.forEachChild(node, visit);
+      return;
+    }
+
     if (
       ts.isImportEqualsDeclaration(node) &&
       ts.isExternalModuleReference(node.moduleReference) &&

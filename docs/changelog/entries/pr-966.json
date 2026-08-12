@@ -1,0 +1,4 @@
+{
+  "prNumber": 966,
+  "body": "Medien lassen sich einheitlich hinzufügen\n\n- Alle betroffenen Inhaltstypen verwenden nur noch die Aktion „Medium hinzufügen“.\n- Der Medien-Picker priorisiert Upload, bietet die Bibliothek sekundär an und ergänzt Medien per Link über eine Textaktion.\n- Der gemeinsame Ablauf stellt nach der Linkauswahl den Fokus auf das neue URL-Feld."
+}

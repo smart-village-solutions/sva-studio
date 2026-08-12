@@ -144,18 +144,33 @@ describe('authorizeMediaPrimitiveForUser', () => {
         status: 403,
         error: 'forbidden',
         message: 'Keine Berechtigung für diese Medienoperation.',
+        permissionDenial: {
+          required_permissions: ['media.read'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        },
       },
       {
         ok: false,
         status: 403,
         error: 'forbidden',
         message: 'Keine Berechtigung für diese Medienoperation.',
+        permissionDenial: {
+          required_permissions: ['media.create'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        },
       },
       {
         ok: false,
         status: 403,
         error: 'forbidden',
         message: 'Keine Berechtigung für diese Medienoperation.',
+        permissionDenial: {
+          required_permissions: ['media.delete'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        },
       },
     ]);
   });

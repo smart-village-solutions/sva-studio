@@ -67,6 +67,11 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung.',
+      permissionDenial: {
+        required_permissions: ['categories.read'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
 
     const response = await dispatchSvaMainserverCategoriesRequest(
@@ -78,6 +83,11 @@ describe('dispatchSvaMainserverCategoriesRequest', () => {
     await expect(response?.json()).resolves.toEqual({
       error: 'forbidden',
       message: 'Keine Berechtigung.',
+      details: {
+        required_permissions: ['categories.read'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
   });
 

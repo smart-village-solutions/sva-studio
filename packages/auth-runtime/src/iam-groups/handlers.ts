@@ -45,7 +45,8 @@ const groupReadHandlers = createGroupReadHandlers({
             result.status,
             toInstancePermissionApiErrorCode(result.error),
             result.message,
-            requestId
+            requestId,
+            result.permissionDenial
           )
     ),
   readPage,
@@ -71,7 +72,8 @@ const groupMutationHandlers = createGroupMutationHandlers({
             result.status,
             toInstancePermissionApiErrorCode(result.error),
             result.message,
-            requestId
+            requestId,
+            result.permissionDenial
           )
     ),
   notifyPermissionInvalidation,

@@ -588,7 +588,9 @@ describe('app.routes', () => {
         },
         location: { href: '/admin/content' },
       })
-    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=allOf&permissionReason=permission_missing',
+    });
 
     await expect(
       beforeLoad?.({
@@ -738,7 +740,7 @@ describe('app.routes', () => {
         location: { href: '/plugins/news' },
       })
     ).rejects.toMatchObject({
-      href: '/?error=auth.insufficientRole',
+      href: '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=allOf&permissionReason=permission_missing',
     });
   });
 
@@ -790,7 +792,9 @@ describe('app.routes', () => {
         },
         location: { href: '/plugins/news' },
       })
-    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+    ).rejects.toMatchObject({
+      href: '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=allOf&permissionReason=permission_missing',
+    });
   });
 
   it.each([
@@ -800,6 +804,7 @@ describe('app.routes', () => {
         kind: 'tenant' as const,
         actions: { mode: 'allOf' as const, values: [] },
       },
+      expectedHref: '/?error=auth.insufficientRole',
     },
     {
       name: 'resource capabilities without route-level authorization evidence',
@@ -814,8 +819,10 @@ describe('app.routes', () => {
           resourceId: 'article-1',
         },
       },
+      expectedHref:
+        '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=allOf&permissionReason=abac_condition_unmet',
     },
-  ])('denies $name in plugin route guards', async ({ accessRequirement }) => {
+  ])('denies $name in plugin route guards', async ({ accessRequirement, expectedHref }) => {
     const [routeFactory] = getPluginRouteFactories([
       {
         id: 'news',
@@ -845,7 +852,9 @@ describe('app.routes', () => {
         },
         location: { href: '/plugins/news' },
       })
-    ).rejects.toMatchObject({ href: '/?error=auth.insufficientRole' });
+    ).rejects.toMatchObject({
+      href: expectedHref,
+    });
   });
 
   it('normalizes surrounding whitespace for registered plugin permission guards', async () => {
@@ -1017,7 +1026,7 @@ describe('app.routes', () => {
         location: { href: '/admin/media/asset-1/usage' },
       })
     ).rejects.toMatchObject({
-      href: '/?error=auth.insufficientRole',
+      href: '/?error=auth.insufficientRole&requiredPermission=media.read&permissionMode=allOf&permissionReason=permission_missing',
     });
   });
 

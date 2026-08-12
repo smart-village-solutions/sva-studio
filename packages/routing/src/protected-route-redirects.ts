@@ -1,3 +1,5 @@
+import type { PermissionDenialDetails } from '@sva/core';
+
 const INTERNAL_REDIRECT_BASE = 'https://local.invalid';
 const DEFAULT_FALLBACK_PATH = '/';
 
@@ -29,9 +31,20 @@ export const buildLoginHref = (_loginPath: string, returnTo: string) => {
   return `${url.pathname}${url.search}`;
 };
 
-export const buildInsufficientRoleHref = (path: string, reasonKey: string) => {
+export const buildInsufficientRoleHref = (
+  path: string,
+  reasonKey: string,
+  permissionDenial?: PermissionDenialDetails
+) => {
   const url = new URL(normalizeInternalPath(path, DEFAULT_FALLBACK_PATH), INTERNAL_REDIRECT_BASE);
   url.searchParams.set('error', reasonKey);
+  if (permissionDenial) {
+    for (const permission of permissionDenial.required_permissions) {
+      url.searchParams.append('requiredPermission', permission);
+    }
+    url.searchParams.set('permissionMode', permissionDenial.requirement_mode);
+    url.searchParams.set('permissionReason', permissionDenial.denial_reason);
+  }
   return `${url.pathname}${url.search}`;
 };
 

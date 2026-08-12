@@ -240,7 +240,7 @@ const authorizeOrResponse = async (
       action,
       error_code: result.error,
     });
-    return errorJson(result.status, result.error, result.message);
+    return errorJson(result.status, result.error, result.message, result.permissionDenial);
   }
   return {
     instanceId: result.actor.instanceId,

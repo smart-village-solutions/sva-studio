@@ -6,6 +6,7 @@ import { Textarea } from '../../../components/ui/textarea';
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import type { IamHttpError } from '../../../lib/iam-api';
+import { getStudioPermissionDenialMessage } from '../../../lib/studio-permission-denial-message';
 
 export type GroupFormValues = {
   groupKey: string;
@@ -19,7 +20,12 @@ export const createGroupFormValues = (): GroupFormValues => ({
   description: '',
 });
 
-export const groupErrorMessage = (error: IamHttpError | null, fallbackKey: TranslationKey): string => {
+export const groupErrorMessage = (
+  error: IamHttpError | null,
+  fallbackKey: TranslationKey
+): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t(fallbackKey);
   }
@@ -52,7 +58,10 @@ export const toCreateGroupPayload = (values: GroupFormValues) => ({
   description: values.description.trim() || undefined,
 });
 
-export const diffGroupRoleIds = (currentRoleIds: readonly string[], nextRoleIds: readonly string[]) => {
+export const diffGroupRoleIds = (
+  currentRoleIds: readonly string[],
+  nextRoleIds: readonly string[]
+) => {
   const current = new Set(currentRoleIds);
   const next = new Set(nextRoleIds);
 
@@ -82,7 +91,9 @@ export const GroupTextFields = <TFormValues extends { displayName: string; descr
         id={displayNameId}
         required
         value={formValues.displayName}
-        onChange={(event) => setFormValues((current) => ({ ...current, displayName: event.target.value }))}
+        onChange={(event) =>
+          setFormValues((current) => ({ ...current, displayName: event.target.value }))
+        }
       />
     </div>
     <div className="grid gap-2 text-sm text-foreground">
@@ -90,7 +101,9 @@ export const GroupTextFields = <TFormValues extends { displayName: string; descr
       <Textarea
         id={descriptionId}
         value={formValues.description}
-        onChange={(event) => setFormValues((current) => ({ ...current, description: event.target.value }))}
+        onChange={(event) =>
+          setFormValues((current) => ({ ...current, description: event.target.value }))
+        }
       />
     </div>
   </>

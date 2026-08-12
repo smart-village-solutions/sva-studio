@@ -17,6 +17,7 @@ import {
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { t } from '../../i18n';
+import { getStudioPermissionDenialMessage } from '../../lib/studio-permission-denial-message';
 import {
   asIamError,
   getLatestAuthorizePerformanceRun,
@@ -60,6 +61,8 @@ const authorizeScenarioLabel = (
 };
 
 const describeAuthorizeError = (error: IamHttpError | null): string => {
+  const permissionMessage = getStudioPermissionDenialMessage(error);
+  if (permissionMessage) return permissionMessage;
   if (!error) {
     return t('monitoring.authorize.errors.runFailed');
   }

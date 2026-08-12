@@ -19,9 +19,12 @@ type CategoriesActor = {
   readonly activeOrganizationId?: string;
 };
 
-const matchCategoriesRoute = (request: Request): boolean => new URL(request.url).pathname === CATEGORY_COLLECTION_PATH;
+const matchCategoriesRoute = (request: Request): boolean =>
+  new URL(request.url).pathname === CATEGORY_COLLECTION_PATH;
 
-const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<CategoriesActor | Response> => {
+const authorizeOrResponse = async (
+  ctx: AuthenticatedRequestContext
+): Promise<CategoriesActor | Response> => {
   const result = await authorizeContentPrimitiveForUser({
     ctx,
     action: 'categories.read',
@@ -38,7 +41,7 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
       action: 'categories.read',
       error_code: result.error,
     });
-    return errorJson(result.status, result.error, result.message);
+    return errorJson(result.status, result.error, result.message, result.permissionDenial);
   }
 
   return {
@@ -48,11 +51,18 @@ const authorizeOrResponse = async (ctx: AuthenticatedRequestContext): Promise<Ca
   };
 };
 
-const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => {
+const dispatchAuthenticated = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext
+): Promise<Response> => {
   const workspaceContext = getWorkspaceContext();
 
   if (request.method !== 'GET') {
-    return errorJson(405, 'method_not_allowed', 'Methode wird für Mainserver-Kategorien nicht unterstützt.');
+    return errorJson(
+      405,
+      'method_not_allowed',
+      'Methode wird für Mainserver-Kategorien nicht unterstützt.'
+    );
   }
 
   try {
@@ -88,7 +98,9 @@ const dispatchAuthenticated = async (request: Request, ctx: AuthenticatedRequest
   }
 };
 
-export const dispatchSvaMainserverCategoriesRequest = async (request: Request): Promise<Response | null> => {
+export const dispatchSvaMainserverCategoriesRequest = async (
+  request: Request
+): Promise<Response | null> => {
   if (matchCategoriesRoute(request) === false) {
     return null;
   }

@@ -55,6 +55,19 @@ test.describe('tenant real auth', () => {
     await expectStudioShellReady(page);
   });
 
+  test('a denied route names the required permission and consumes its URL context', async ({
+    page,
+  }) => {
+    await page.goto(
+      '/?error=auth.insufficientRole&requiredPermission=iam.user.write&permissionMode=allOf&permissionReason=permission_missing'
+    );
+
+    await expect(
+      page.getByRole('alert').getByText('Fehlende Berechtigung: Benutzer bearbeiten (iam.user.write).')
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test('tenant session loss redirects to the tenant login', async ({ page }) => {
     await page.goto('/admin/content');
     await expectContentOverviewReady(page);

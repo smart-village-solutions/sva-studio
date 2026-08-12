@@ -5,8 +5,14 @@ import { Heart } from 'lucide-react';
 import { t } from '../i18n';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
+import {
+  formatPermissionDenialMessage,
+  readPermissionDenialFromSearch,
+} from '../lib/permission-denial-presentation';
+import { resolvePermissionTitle } from '../lib/permission-labels';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
@@ -42,14 +48,29 @@ const resolveHomeRouteState = (): HomeRouteState => {
   const search = new URLSearchParams(window.location.search);
   const authState = search.get('auth');
   const routeErrorCode = search.get('error');
-  const consumedAuthSearch = search.has('auth') || search.has('error') || search.has('returnTo');
+  const permissionDenial = readPermissionDenialFromSearch(search);
+  const consumedAuthSearch =
+    search.has('auth') ||
+    search.has('error') ||
+    search.has('returnTo') ||
+    search.has('requiredPermission') ||
+    search.has('permissionMode') ||
+    search.has('permissionReason');
 
   return {
     authReturnTo: sanitizeReturnTo(search.get('returnTo')),
     shouldStartLoginRedirect: authState === 'login',
     showDevLoginPrompt: authState === 'dev-login',
     authStateError: resolveHomeAuthStateError(authState),
-    routeError: routeErrorCode === 'auth.insufficientRole' ? t('home.authError.insufficientRole') : null,
+    routeError:
+      routeErrorCode === 'auth.insufficientRole' && permissionDenial
+        ? formatPermissionDenialMessage(permissionDenial, {
+            resolveTitle: resolvePermissionTitle,
+            translate: t,
+          })
+        : routeErrorCode === 'auth.insufficientRole'
+          ? t('home.authError.insufficientRole')
+          : null,
     consumedAuthSearch,
   };
 };
@@ -59,6 +80,9 @@ const clearConsumedHomeAuthSearch = (): void => {
   url.searchParams.delete('auth');
   url.searchParams.delete('error');
   url.searchParams.delete('returnTo');
+  url.searchParams.delete('requiredPermission');
+  url.searchParams.delete('permissionMode');
+  url.searchParams.delete('permissionReason');
   const nextSearch = url.searchParams.toString();
   const nextHref = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash}`;
   window.history.replaceState(window.history.state, '', nextHref);
@@ -132,8 +156,8 @@ const HomeAuthErrorBanner = ({
   readonly authDiagnosticSnapshot: ReturnType<typeof readLatestAuthDiagnosticSnapshot>;
   readonly authErrorLoginHref: string | null;
 }) => (
-  <div className="flex max-w-2xl flex-col gap-3 rounded-lg border border-secondary/40 bg-secondary/10 px-4 py-3 text-sm text-secondary sm:flex-row sm:items-center sm:justify-between">
-    <span>{authError}</span>
+  <Alert className="flex max-w-2xl flex-col gap-3 border-secondary/40 bg-secondary/10 text-sm text-secondary sm:flex-row sm:items-center sm:justify-between">
+    <AlertDescription>{authError}</AlertDescription>
     <div className="flex flex-col items-start gap-2 sm:items-end">
       {authDiagnosticSnapshot.requestId ? (
         <span>{t('home.authError.requestId', { requestId: authDiagnosticSnapshot.requestId })}</span>
@@ -147,7 +171,7 @@ const HomeAuthErrorBanner = ({
         </Button>
       ) : null}
     </div>
-  </div>
+  </Alert>
 );
 
 const AuthenticatedHomeOverview = ({

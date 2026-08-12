@@ -1,5 +1,9 @@
 import type { StudioJobListItem } from '@sva/core';
-import { StudioDataTable, StudioListPageTemplate, type StudioColumnDef } from '@sva/studio-ui-react';
+import {
+  StudioDataTable,
+  StudioListPageTemplate,
+  type StudioColumnDef,
+} from '@sva/studio-ui-react';
 import { Link } from '@tanstack/react-router';
 import React from 'react';
 
@@ -13,8 +17,11 @@ import { Select } from '../../components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { usePluginOperationJobs } from '../../hooks/use-plugin-operation-jobs';
 import { t } from '../../i18n';
-import type { IamHttpError } from '../../lib/iam-api';
-import { formatMonitoringJobEventMessage, formatMonitoringJobEventTitle } from './-job-event-presentation';
+import { formatMonitoringJobsListError } from './-job-error-presentation';
+import {
+  formatMonitoringJobEventMessage,
+  formatMonitoringJobEventTitle,
+} from './-job-event-presentation';
 import {
   extractMonitoringWasteLiveProgress,
   formatMonitoringJobDateTime,
@@ -30,28 +37,21 @@ import {
 type MonitoringJobsView = 'active' | 'history';
 type MonitoringJobsStatusFilter = 'all' | StudioJobListItem['status'];
 
-const monitoringStatusFilters = ['all', 'queued', 'running', 'retrying', 'succeeded', 'failed', 'cancelled'] as const;
+const monitoringStatusFilters = [
+  'all',
+  'queued',
+  'running',
+  'retrying',
+  'succeeded',
+  'failed',
+  'cancelled',
+] as const;
 
 const staleVariantByValue = {
   fresh: 'outline',
   stale: 'destructive',
   terminal: 'default',
 } as const;
-
-const jobsErrorMessage = (error: IamHttpError | null): string => {
-  if (!error) {
-    return t('monitoring.jobs.messages.loadError');
-  }
-
-  switch (error.code) {
-    case 'forbidden':
-      return t('monitoring.jobs.errors.forbidden');
-    case 'database_unavailable':
-      return t('monitoring.jobs.errors.databaseUnavailable');
-    default:
-      return t('monitoring.jobs.messages.loadError');
-  }
-};
 
 const JobsPaginationNav = ({
   page,
@@ -66,9 +66,17 @@ const JobsPaginationNav = ({
     aria-label={t('monitoring.jobs.pagination.ariaLabel')}
     className="flex items-center justify-between gap-3 text-sm text-muted-foreground"
   >
-    <p aria-live="polite">{t('monitoring.jobs.pagination.pageLabel', { page, total: pageCount })}</p>
+    <p aria-live="polite">
+      {t('monitoring.jobs.pagination.pageLabel', { page, total: pageCount })}
+    </p>
     <div className="flex items-center gap-2">
-      <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        disabled={page <= 1}
+        onClick={() => onPageChange(page - 1)}
+      >
         {t('monitoring.jobs.pagination.previous')}
       </Button>
       <Button
@@ -138,11 +146,15 @@ export const MonitoringJobsPage = () => {
       {
         id: 'progress',
         header: t('monitoring.jobs.table.progress'),
-        cell: (job) => (
+        cell: (job) =>
           (() => {
             const liveProgress = extractMonitoringWasteLiveProgress(job);
-            const primaryProgress = formatMonitoringWasteLiveProgressSummary(liveProgress) ?? formatMonitoringJobProgressSummary(job.progress);
-            const secondaryProgress = formatMonitoringWasteLiveProgressSecondary(liveProgress) ?? getMonitoringJobCurrentStep(job.progress);
+            const primaryProgress =
+              formatMonitoringWasteLiveProgressSummary(liveProgress) ??
+              formatMonitoringJobProgressSummary(job.progress);
+            const secondaryProgress =
+              formatMonitoringWasteLiveProgressSecondary(liveProgress) ??
+              getMonitoringJobCurrentStep(job.progress);
 
             return (
               <div className="space-y-1">
@@ -150,17 +162,22 @@ export const MonitoringJobsPage = () => {
                 <p className="text-xs text-muted-foreground">{secondaryProgress}</p>
               </div>
             );
-          })()
-        ),
+          })(),
       },
       {
         id: 'latestEvent',
         header: t('monitoring.jobs.table.latestEvent'),
         cell: (job) => (
           <div className="space-y-1">
-            <p>{job.latestEvent ? formatMonitoringJobEventTitle(job.latestEvent) : t('monitoring.jobs.values.notAvailable')}</p>
+            <p>
+              {job.latestEvent
+                ? formatMonitoringJobEventTitle(job.latestEvent)
+                : t('monitoring.jobs.values.notAvailable')}
+            </p>
             <p className="text-xs text-muted-foreground">
-              {job.latestEvent ? formatMonitoringJobEventMessage(job.latestEvent) : t('monitoring.jobs.values.notAvailable')}
+              {job.latestEvent
+                ? formatMonitoringJobEventMessage(job.latestEvent)
+                : t('monitoring.jobs.values.notAvailable')}
             </p>
           </div>
         ),
@@ -170,13 +187,21 @@ export const MonitoringJobsPage = () => {
         header: t('monitoring.jobs.table.timestamps'),
         cell: (job) => (
           <div className="space-y-1 text-xs text-muted-foreground">
-            <p>{t('monitoring.jobs.labels.startedAt', { value: formatMonitoringJobDateTime(job.startedAt) })}</p>
+            <p>
+              {t('monitoring.jobs.labels.startedAt', {
+                value: formatMonitoringJobDateTime(job.startedAt),
+              })}
+            </p>
             <p>
               {t('monitoring.jobs.labels.lastObservedAt', {
                 value: formatMonitoringJobDateTime(job.runtime.lastObservedAt),
               })}
             </p>
-            <p>{t('monitoring.jobs.labels.finishedAt', { value: formatMonitoringJobDateTime(job.finishedAt) })}</p>
+            <p>
+              {t('monitoring.jobs.labels.finishedAt', {
+                value: formatMonitoringJobDateTime(job.finishedAt),
+              })}
+            </p>
           </div>
         ),
       },
@@ -211,7 +236,7 @@ export const MonitoringJobsPage = () => {
       <div className="space-y-4">
         {jobsApi.error ? (
           <Alert className="border-destructive/40 text-destructive">
-            <AlertDescription>{jobsErrorMessage(jobsApi.error)}</AlertDescription>
+            <AlertDescription>{formatMonitoringJobsListError(jobsApi.error)}</AlertDescription>
           </Alert>
         ) : null}
 
@@ -222,7 +247,10 @@ export const MonitoringJobsPage = () => {
             setPage(1);
           }}
         >
-          <TabsList aria-label={t('monitoring.jobs.tabs.ariaLabel')} className="h-auto flex-wrap justify-start">
+          <TabsList
+            aria-label={t('monitoring.jobs.tabs.ariaLabel')}
+            className="h-auto flex-wrap justify-start"
+          >
             <TabsTrigger value="active">{t('monitoring.jobs.tabs.active')}</TabsTrigger>
             <TabsTrigger value="history">{t('monitoring.jobs.tabs.history')}</TabsTrigger>
           </TabsList>
@@ -230,7 +258,9 @@ export const MonitoringJobsPage = () => {
 
         <div className="grid gap-4 rounded-lg border bg-card p-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="space-y-2">
-            <Label htmlFor="monitoring-job-search">{t('monitoring.jobs.filters.searchLabel')}</Label>
+            <Label htmlFor="monitoring-job-search">
+              {t('monitoring.jobs.filters.searchLabel')}
+            </Label>
             <Input
               id="monitoring-job-search"
               value={search}
@@ -242,7 +272,9 @@ export const MonitoringJobsPage = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="monitoring-job-status">{t('monitoring.jobs.filters.statusLabel')}</Label>
+            <Label htmlFor="monitoring-job-status">
+              {t('monitoring.jobs.filters.statusLabel')}
+            </Label>
             <Select
               id="monitoring-job-status"
               value={status}
@@ -261,7 +293,9 @@ export const MonitoringJobsPage = () => {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="monitoring-job-plugin">{t('monitoring.jobs.filters.pluginLabel')}</Label>
+            <Label htmlFor="monitoring-job-plugin">
+              {t('monitoring.jobs.filters.pluginLabel')}
+            </Label>
             <Input
               id="monitoring-job-plugin"
               value={pluginId}
@@ -293,7 +327,9 @@ export const MonitoringJobsPage = () => {
           caption={t('monitoring.jobs.table.caption')}
           columns={columns}
           data={jobsApi.items}
-          emptyState={<p className="text-sm text-muted-foreground">{t('monitoring.jobs.empty.body')}</p>}
+          emptyState={
+            <p className="text-sm text-muted-foreground">{t('monitoring.jobs.empty.body')}</p>
+          }
           getRowId={(job) => job.id}
           isLoading={jobsApi.isLoading}
           loadingState={t('monitoring.jobs.messages.loading')}
@@ -302,7 +338,9 @@ export const MonitoringJobsPage = () => {
 
         <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <Label htmlFor="monitoring-job-page-size">{t('monitoring.jobs.pagination.pageSizeLabel')}</Label>
+            <Label htmlFor="monitoring-job-page-size">
+              {t('monitoring.jobs.pagination.pageSizeLabel')}
+            </Label>
             <Select
               id="monitoring-job-page-size"
               value={String(pageSize)}

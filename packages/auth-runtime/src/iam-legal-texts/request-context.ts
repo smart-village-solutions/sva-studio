@@ -39,7 +39,8 @@ export const resolveLegalTextsAdminActor = createLegalTextsAdminActorResolver<Au
       authorization.status,
       toInstancePermissionApiErrorCode(authorization.error),
       authorization.message,
-      requestId
+      requestId,
+      authorization.permissionDenial
     );
   },
   resolveActorInfo: (request, ctx) => resolveActorInfo(request, ctx, { requireActorMembership: true }),

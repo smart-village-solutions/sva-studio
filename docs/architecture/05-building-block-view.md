@@ -737,3 +737,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `StudioDataTable` besitzt ausschließlich Darstellung und Interaktion. Jeder Aufrufer muss den Sortiermodus explizit als deaktiviert, clientseitig auf einem vollständigen Bestand oder extern kontrolliert deklarieren.
 - Paginierte Inhalts-, Organisations-, Governance- und DSR-Listen lassen Filterung, Sortierung, stabile Gleichstandsauflösung und Pagination in ihrem serverseitigen Repository beziehungsweise Read-Model ausführen. Waste-Fraktionen verwenden denselben Ablauf auf dem vollständig geladenen, statusgefilterten Bestand.
 - Tenant- und Plattform-Benutzerlisten bleiben führend Keycloak-paginiert und bieten deshalb ohne vollständige Benutzerprojektion keine Sortieraktion an.
+
+### Ergänzung 2026-08: Permission-Denial-Vertrag
+
+- `@sva/core` besitzt den framework-agnostischen, begrenzten Vertrag für erforderliche Actions, `allOf`-/`anyOf`-Semantik und öffentliche Denial-Gründe.
+- `@sva/routing` transportiert diesen Kontext bei Guard-Redirects; `@sva/auth-runtime` erzeugt ihn ausschließlich aus eindeutigen serverseitigen Autorisierungsentscheidungen.
+- Die Studio-App löst Titel aus Core-Katalog und Build-time-Plugin-Registry auf. Unbekannte Actions verwenden die validierte Action-ID als Fallback.

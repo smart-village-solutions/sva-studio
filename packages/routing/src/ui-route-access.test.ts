@@ -68,7 +68,11 @@ describe('enforceUiRouteAccessRequirements', () => {
         { requiredPermissions: ['media.read', 'media.update'] },
         createBeforeLoadOptions({ permissionActions: ['media.read'] })
       )
-    ).rejects.toMatchObject(redirect({ href: '/?error=auth.insufficientRole' }));
+    ).rejects.toMatchObject(
+      redirect({
+        href: '/?error=auth.insufficientRole&requiredPermission=media.update&permissionMode=allOf&permissionReason=permission_missing',
+      })
+    );
   });
 
   it('redirects when required permissions are declared but no permission snapshot is present', async () => {
@@ -211,9 +215,15 @@ describe('enforceRouteAccessRequirement', () => {
         resourceCapability: { resourceType: 'news', capability: 'read' },
       } as const,
     },
-  ])('rejects tenant routes with $label', async ({ requirement, user }) => {
+  ])('rejects tenant routes with $label', async ({ label, requirement, user }) => {
+    const expectedRedirect =
+      label === 'a resource capability without server-side evidence'
+        ? redirect({
+            href: '/?error=auth.insufficientRole&requiredPermission=news.read&permissionMode=anyOf&permissionReason=abac_condition_unmet',
+          })
+        : insufficientRoleRedirect;
     await expect(
       enforceRouteAccessRequirement(requirement, createBeforeLoadOptions(user))
-    ).rejects.toMatchObject(insufficientRoleRedirect);
+    ).rejects.toMatchObject(expectedRedirect);
   });
 });

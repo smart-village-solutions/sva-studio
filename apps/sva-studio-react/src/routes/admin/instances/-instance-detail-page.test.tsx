@@ -47,7 +47,8 @@ const { mockStudioModuleIamContracts } = vi.hoisted(() => ({
   ],
 }));
 
-vi.mock('../../../lib/plugins', () => ({
+vi.mock('../../../lib/plugins', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../lib/plugins')>()),
   studioModuleIamContracts: mockStudioModuleIamContracts,
 }));
 

@@ -23,7 +23,8 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 
-vi.mock('@sva/studio-ui-react', () => ({
+vi.mock('@sva/studio-ui-react', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sva/studio-ui-react')>()),
   StudioListPageTemplate: ({
     children,
     description,

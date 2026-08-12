@@ -1,9 +1,12 @@
+import { parsePermissionDenialDetails, type PermissionDenialDetails } from '@sva/core';
+
 import { mergeRequestHeaders } from './http-client.js';
 import { combineAbortSignals } from './mainserver-abort-signal.js';
 
 export type MainserverErrorFactory<TError extends Error> = (
   code: string,
-  message: string
+  message: string,
+  permissionDenial?: PermissionDenialDetails
 ) => TError;
 export type MainserverActingPrincipalType = 'organization' | 'user';
 
@@ -24,8 +27,9 @@ export type MainserverResponseMeta = Readonly<{
 }>;
 
 type ApiErrorResponse = Readonly<{
-  error?: string | Readonly<{ code?: string; message?: string }>;
+  error?: string | Readonly<{ code?: string; message?: string; details?: unknown }>;
   message?: string;
+  details?: unknown;
 }>;
 
 const DEFAULT_MAINSERVER_REQUEST_TIMEOUT_MS = 10_000;
@@ -36,7 +40,8 @@ const isApiErrorResponse = (value: unknown): value is ApiErrorResponse =>
 export class MainserverApiError extends Error {
   public constructor(
     public readonly code: string,
-    message = code
+    message = code,
+    public readonly permissionDenial?: PermissionDenialDetails
   ) {
     super(message);
     this.name = 'MainserverApiError';
@@ -92,7 +97,8 @@ const resolveMainserverErrorFactory = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
 ): MainserverErrorFactory<TError | MainserverApiError> =>
   errorFactory ??
-  ((code: string, errorMessage: string) => new MainserverApiError(code, errorMessage));
+  ((code: string, errorMessage: string, permissionDenial?: PermissionDenialDetails) =>
+    new MainserverApiError(code, errorMessage, permissionDenial));
 
 const createMainserverTimeoutError = <TError extends Error>(
   errorFactory?: MainserverErrorFactory<TError>
@@ -154,6 +160,7 @@ const readStructuredErrorDetails = (
 ): {
   readonly code?: string;
   readonly message?: string;
+  readonly details?: unknown;
 } => {
   if (typeof value !== 'object' || value === null) {
     return {};
@@ -161,6 +168,7 @@ const readStructuredErrorDetails = (
   return {
     code: readNonEmptyString(value.code),
     message: readNonEmptyString(value.message),
+    details: value.details,
   };
 };
 
@@ -170,6 +178,7 @@ const parseMainserverErrorResponse = async (
 ): Promise<{
   readonly code: string;
   readonly message: string;
+  readonly permissionDenial?: PermissionDenialDetails;
 }> => {
   if (isHtmlLikeContentType(response)) {
     return {
@@ -191,9 +200,11 @@ const parseMainserverErrorResponse = async (
     const structuredError = readStructuredErrorDetails(body.error);
     const errorCode = readNonEmptyString(body.error) ?? structuredError.code ?? fallback.code;
     const message = readNonEmptyString(body.message) ?? structuredError.message ?? errorCode;
+    const permissionDenial = parsePermissionDenialDetails(body.details ?? structuredError.details);
     return {
       code: errorCode,
       message,
+      ...(permissionDenial ? { permissionDenial } : {}),
     };
   } catch (error) {
     if (isMainserverTimeoutError(error, signal)) {
@@ -211,8 +222,16 @@ const assertMainserverResponseOk = async <TError extends Error>(
   if (response.ok) {
     return;
   }
-  const { code, message } = await parseMainserverErrorResponse(response, signal);
-  throw resolveMainserverErrorFactory(errorFactory)(code, message);
+  const { code, message, permissionDenial } = await parseMainserverErrorResponse(response, signal);
+  const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
+  if (permissionDenial && !('permissionDenial' in error)) {
+    Object.defineProperty(error, 'permissionDenial', {
+      configurable: true,
+      enumerable: true,
+      value: permissionDenial,
+    });
+  }
+  throw error;
 };
 
 export function requestMainserverJson<T>(input: {

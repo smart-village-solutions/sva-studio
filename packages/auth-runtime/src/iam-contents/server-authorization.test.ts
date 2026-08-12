@@ -393,6 +393,11 @@ describe('authorizeContentPrimitiveForUser', () => {
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung für diese Inhaltsoperation.',
+      permissionDenial: {
+        required_permissions: ['content.read'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
 
     expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);
@@ -422,6 +427,11 @@ describe('authorizeContentPrimitiveForUser', () => {
       status: 403,
       error: 'forbidden',
       message: 'Keine Berechtigung für diese Inhaltsoperation.',
+      permissionDenial: {
+        required_permissions: ['poi.update'],
+        requirement_mode: 'allOf',
+        denial_reason: 'permission_missing',
+      },
     });
 
     expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledTimes(1);

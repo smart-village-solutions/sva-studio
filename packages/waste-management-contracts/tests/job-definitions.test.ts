@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { createWasteManagementPluginImportProfiles } from '../src/import-profile-definitions.js';
-import { createWasteManagementPluginJobTypes } from '../src/job-definitions.js';
+import {
+  createWasteManagementPluginImportProfiles,
+  createWasteManagementPluginJobTypes,
+} from '../src/job-definitions.js';
 
 describe('waste management contracts job definitions', () => {
   it('exposes every job type declared by the Waste operations contract', () => {

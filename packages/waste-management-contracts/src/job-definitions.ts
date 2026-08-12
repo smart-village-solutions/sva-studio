@@ -4,6 +4,8 @@ import {
   type PluginJobTypeDefinition,
 } from '@sva/plugin-sdk';
 
+export { createWasteManagementPluginImportProfiles } from './import-profile-definitions.js';
+
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
 
 const wasteManagementPluginJobTypes = [

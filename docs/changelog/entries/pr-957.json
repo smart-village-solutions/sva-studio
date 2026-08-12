@@ -1,0 +1,4 @@
+{
+  "prNumber": 957,
+  "body": "React-Basis auf aktuelle Patchstände angehoben\n\n- Studio, Public-Waste-Kalender und Projektbericht verwenden React und React DOM 19.2.8.\n- Die zugehörigen React-Typdefinitionen wurden workspaceweit synchron aktualisiert.\n- Builds, Typprüfungen und die betroffenen Oberflächentests bestätigen die Kompatibilität."
+}

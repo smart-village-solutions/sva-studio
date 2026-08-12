@@ -256,7 +256,8 @@ export const createNewsEditorFormValues = (
 export const buildNewsSavePayload = (
   values: NewsDetailEditorialFormValues,
   existingSnapshot: NewsLegacyCompatibilitySnapshot | null,
-  nowIso: string
+  nowIso: string,
+  canWriteWasteTargets = true
 ): NewsSavePlan => {
   const existingPublishedAt = getExistingPublishedAt(existingSnapshot);
   const publishedAt = resolvePublishedAt(values, existingSnapshot, existingPublishedAt, nowIso);
@@ -269,7 +270,9 @@ export const buildNewsSavePayload = (
     existingSnapshot,
     effectivePublicationTimestamp
   );
-  const payload = mergeNewsWasteLocationKeys(existingSnapshot?.payload, values.wasteLocationKeys);
+  const payload = canWriteWasteTargets
+    ? mergeNewsWasteLocationKeys(existingSnapshot?.payload, values.wasteLocationKeys)
+    : undefined;
 
   return {
     visible,

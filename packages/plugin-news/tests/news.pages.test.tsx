@@ -108,10 +108,12 @@ vi.mock('../src/news.api.js', async () => {
       contentId?: string;
       values: Parameters<typeof mapNewsDetailFormValuesToMutation>[0];
       existingItem?: Record<string, unknown> | null;
+      canWriteWasteTargets?: boolean;
     }) => {
       const mutation = mapNewsDetailFormValuesToMutation(
         input.values,
-        input.contentId ? 'edit' : 'create'
+        input.contentId ? 'edit' : 'create',
+        input.canWriteWasteTargets
       );
       const saved = input.contentId
         ? await updateNewsMock(input.contentId, mutation)

@@ -146,6 +146,7 @@ export const saveNewsEditorItem = async (
     readonly values: NewsDetailFormValues;
     readonly existingItem?: NewsContentItem | null;
     readonly actingPrincipalType?: MainserverActingPrincipalType;
+    readonly canWriteWasteTargets?: boolean;
     readonly now?: () => string;
   },
   dependencies?: {
@@ -159,7 +160,11 @@ export const saveNewsEditorItem = async (
   };
   const visible = input.values.publicationMode !== 'draft';
   const mutation = {
-    ...mapNewsDetailFormValuesToMutation(input.values, input.contentId ? 'edit' : 'create'),
+    ...mapNewsDetailFormValuesToMutation(
+      input.values,
+      input.contentId ? 'edit' : 'create',
+      input.canWriteWasteTargets ?? true
+    ),
     visible,
   } satisfies NewsFormInput;
   const saved = input.contentId

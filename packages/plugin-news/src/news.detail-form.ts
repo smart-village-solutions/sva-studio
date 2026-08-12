@@ -723,7 +723,8 @@ const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
 
 export const mapNewsDetailFormValuesToMutation = (
   values: NewsDetailFormValues,
-  mode: 'create' | 'edit'
+  mode: 'create' | 'edit',
+  canWriteWasteTargets = true
 ): NewsFormInput => {
   const normalizedValues = normalizeEditorialValues({ ...values });
   syncSnapshotFromCompatibilityValues(normalizedValues);
@@ -731,7 +732,8 @@ export const mapNewsDetailFormValuesToMutation = (
   const mutation = buildNewsSavePayload(
     normalizedValues,
     snapshot,
-    new Date().toISOString()
+    new Date().toISOString(),
+    canWriteWasteTargets
   ).mutation;
   const categories = buildCategoryMutation(normalizedValues.categories);
   const sourceUrl = compactWebUrl(

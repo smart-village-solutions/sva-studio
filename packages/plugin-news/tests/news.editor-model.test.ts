@@ -203,6 +203,23 @@ describe('news.editor-model', () => {
     expect(plan.mutation).toHaveProperty('payload', { wasteLocationKeys: [] });
   });
 
+  it('omits Waste targets when the editor cannot write targeting data', () => {
+    const plan = buildNewsSavePayload(
+      editorValuesFixture,
+      {
+        ...editorValuesFixture.__legacySnapshot,
+        payload: {
+          retained: 'existing',
+          wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+        },
+      },
+      '2026-06-09T10:00:00.000Z',
+      false
+    );
+
+    expect(plan.mutation).not.toHaveProperty('payload');
+  });
+
   it('omits blank legacy character limits from update payloads', () => {
     const payload = buildNewsSavePayload(
       editorValuesFixture,

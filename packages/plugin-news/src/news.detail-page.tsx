@@ -881,6 +881,7 @@ export const NewsDetailPage = ({
               },
               existingItem: loadedItem ?? null,
               actingPrincipalType,
+              canWriteWasteTargets: hasWasteTargetingAccess,
             },
             { createNews, updateNews }
           );

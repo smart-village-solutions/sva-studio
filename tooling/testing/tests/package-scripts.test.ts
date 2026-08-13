@@ -514,6 +514,14 @@ describe('workspace package scripts', () => {
     expect(loadProjectJson('apps/project-report').targets?.['test:coverage']?.cache).toBe(false);
   });
 
+  it('keys the shared Nx cache with the configured Node version file', () => {
+    const workspaceSetupAction = loadWorkspaceSetupAction();
+
+    expect(workspaceSetupAction).toContain('node-version-file: ${{ inputs.node-version-file }}');
+    expect(workspaceSetupAction).toContain('hashFiles(inputs.node-version-file)');
+    expect(workspaceSetupAction).not.toContain("hashFiles('.nvmrc')");
+  });
+
   it('keeps the affected unit gate app-slice-aware', () => {
     const affectedUnitGate = loadAffectedUnitGateScript();
     const affectedUnitPlan = loadScript('scripts/ci/affected-unit-plan.ts');
@@ -530,6 +538,8 @@ describe('workspace package scripts', () => {
     expect(affectedUnitGate).toContain("from './affected-unit-plan.ts'");
     expect(affectedUnitGate).toContain("from './changed-project-plan.ts'");
     expect(affectedUnitGate).toContain('--nxBail');
+    expect(affectedUnitGate).not.toContain('buildAppUnitCommand()} --nxBail');
+    expect(affectedUnitGate).not.toContain('buildAppUnitCommand(slice)} --nxBail');
     expect(affectedUnitGate).not.toContain('retries: 1');
     expect(affectedCoverageGate).toContain('`pnpm nx run ${APP_PROJECT}:test:coverage`');
     expect(runPrGateScript).toContain('formatDurationSummary');

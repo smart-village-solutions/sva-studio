@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { planChangedProjects, type ProjectRoot } from './changed-project-plan.ts';
+import {
+  planChangedProjects,
+  planChangedProjectsWithFallback,
+  type ProjectRoot,
+} from './changed-project-plan.ts';
 
 const PROJECTS: ProjectRoot[] = [
   { name: 'plugin-news', root: 'packages/plugin-news' },
@@ -66,5 +70,30 @@ describe('changed-project-plan', () => {
       remainingProjects: [],
       unmappedFiles: [],
     });
+  });
+
+  it('falls back to the complete affected scope when the Nx project graph is unavailable', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    expect(
+      planChangedProjectsWithFallback(
+        ['packages/plugin-news/src/index.ts', 'packages\\routing\\src\\index.ts'],
+        ['routing', 'plugin-news', 'routing'],
+        () => {
+          throw new Error('graph unavailable');
+        }
+      )
+    ).toEqual({
+      mode: 'affected-fallback',
+      reason: 'nx-project-graph-unavailable',
+      directProjects: [],
+      remainingProjects: ['plugin-news', 'routing'],
+      unmappedFiles: ['packages/plugin-news/src/index.ts', 'packages/routing/src/index.ts'],
+    });
+    expect(warn).toHaveBeenCalledWith(
+      'Nx-Projektgraph konnte nicht geladen werden; verwende vollständigen affected-Fallback: graph unavailable'
+    );
+
+    warn.mockRestore();
   });
 });

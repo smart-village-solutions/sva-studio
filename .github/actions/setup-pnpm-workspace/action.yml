@@ -54,10 +54,10 @@ runs:
       uses: actions/cache@v5
       with:
         path: .nx/cache
-        key: nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-${{ github.sha }}
+        key: nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles(inputs.node-version-file) }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-${{ github.sha }}
         restore-keys: |
-          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-
-          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-protected-main-${{ github.job }}-
+          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles(inputs.node-version-file) }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-
+          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles(inputs.node-version-file) }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-protected-main-${{ github.job }}-
 
     - name: Install dependencies
       shell: bash

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { planChangedProjects } from './changed-project-plan.ts';
+import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
@@ -92,16 +92,16 @@ export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => 
 export const runAffectedCoverageGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
-  reportPlan?: (plan: ReturnType<typeof planChangedProjects>) => void
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
 ): DurationEntry[] => {
   clearWorkspaceCoverageOutputs();
   const full = process.env.NX_RUN_FULL === '1';
   const changedFiles = resolveChangedFiles(options.base, options.head);
   const affectedProjects = getCoverageProjects(options.base, options.head, full);
-  const changedProjectPlan = planChangedProjects(
+  const changedProjectPlan = planChangedProjectsWithFallback(
     changedFiles,
     affectedProjects,
-    loadNxProjectRoots()
+    loadNxProjectRoots
   );
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
@@ -178,7 +178,7 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';
-  let plan: ReturnType<typeof planChangedProjects> | null = null;
+  let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
   const durationEntries: DurationEntry[] = [];
 
   try {

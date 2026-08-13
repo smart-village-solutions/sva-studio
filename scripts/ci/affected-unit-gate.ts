@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
-import { planChangedProjects } from './changed-project-plan.ts';
+import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
@@ -54,15 +54,15 @@ export const buildUnitProjectsCommand = (projects: readonly string[]): string =>
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
-  reportPlan?: (plan: ReturnType<typeof planChangedProjects>) => void
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
 ): DurationEntry[] => {
   const changedFiles = resolveChangedFiles(options.base, options.head);
   const full = process.env.NX_RUN_FULL === '1';
   const affectedProjects = getUnitProjects(options.base, options.head, full);
-  const changedProjectPlan = planChangedProjects(
+  const changedProjectPlan = planChangedProjectsWithFallback(
     changedFiles,
     affectedProjects,
-    loadNxProjectRoots()
+    loadNxProjectRoots
   );
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
@@ -110,10 +110,10 @@ export const runAffectedUnitGate = (
 
   if (affectedProjects.includes(APP_PROJECT)) {
     if (appPlan.mode === 'aggregate') {
-      recordDuration('unit:app', runCommand(`${buildAppUnitCommand()} --nxBail`));
+      recordDuration('unit:app', runCommand(buildAppUnitCommand()));
     } else if (appPlan.mode === 'slices') {
       for (const slice of appPlan.slices) {
-        recordDuration(`unit:app:${slice}`, runCommand(`${buildAppUnitCommand(slice)} --nxBail`));
+        recordDuration(`unit:app:${slice}`, runCommand(buildAppUnitCommand(slice)));
       }
     }
   }
@@ -134,7 +134,7 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
   const startedAt = new Date();
   const full = process.env.NX_RUN_FULL === '1';
-  let plan: ReturnType<typeof planChangedProjects> | null = null;
+  let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
   const durationEntries: DurationEntry[] = [];
 
   try {

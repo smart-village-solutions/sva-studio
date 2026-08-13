@@ -11,6 +11,8 @@ export interface ChangedProjectPlan {
   unmappedFiles: string[];
 }
 
+type ProjectRootLoader = () => readonly ProjectRoot[];
+
 const TOOLING_PROJECT = 'tooling-testing';
 const TOOLING_PATH_PATTERNS = [
   /^\.github\/(?:actions|workflows)\//u,
@@ -102,4 +104,27 @@ export const planChangedProjects = (
     remainingProjects: remaining,
     unmappedFiles: unmappedFiles.sort(),
   };
+};
+
+export const planChangedProjectsWithFallback = (
+  changedFiles: readonly string[],
+  affectedProjectNames: readonly string[],
+  loadProjectRoots: ProjectRootLoader
+): ChangedProjectPlan => {
+  try {
+    return planChangedProjects(changedFiles, affectedProjectNames, loadProjectRoots());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(
+      `Nx-Projektgraph konnte nicht geladen werden; verwende vollständigen affected-Fallback: ${message}`
+    );
+
+    return {
+      mode: 'affected-fallback',
+      reason: 'nx-project-graph-unavailable',
+      directProjects: [],
+      remainingProjects: [...new Set(affectedProjectNames)].sort(),
+      unmappedFiles: [...new Set(changedFiles.map(normalizePath))].sort(),
+    };
+  }
 };

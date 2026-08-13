@@ -731,3 +731,11 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Organisations-Provisioning ist über eine persistente Lease, Operationsreferenz und phasengenaue Zustände idempotent. Externe Side Effects beginnen erst nach Konfigurations- und persönlichem Credential-Preflight.
 - Die `data_provider_id` der Create-Antwort und die Identität aus `/data_provider.json` sind zwei Evidenzwege desselben garantierten Mainserver-Vertrags. Konflikte werden nicht überschrieben, sondern benötigen Reconciliation.
 - Geheimnisse bleiben write-only und verschlüsselt. Read-Models exponieren nur Vorhandensein, Status, Versuchszähler, sicheren Fehlercode und technische IDs.
+
+### CI-Fast-Feedback und Cache-Vertrauen
+
+- PR-Unit und PR-Coverage planen direkt geänderte Projekte vor dem disjunkten übrigen affected Scope. Nicht sicher zuordenbare Änderungen bleiben im konservativen Restlauf.
+- Deterministische Test- und Policy-Fehler sind nicht retryfähig. Nur klassifizierte temporäre Infrastrukturfehler dürfen targetgenau wiederholt werden.
+- Pull Requests verwenden eigene GitHub-Actions-Cache-Scopes pro Job. Geschützte `main`-, Release- und Deployment-Kontexte lesen niemals PR-erzeugte Nx-Caches.
+- Integration und E2E bleiben ungecacht. Coverage bleibt ohne targetbezogenen Fresh-/Restore-Paritätsnachweis ebenfalls ungecacht.
+- PR-E2E beendet die Suite nach dem ersten auch im Retry bestätigten Fehler; Main und Nightly sammeln alle Fehler.

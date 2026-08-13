@@ -114,13 +114,15 @@ jobs:
 
       - name: Run unit gate
         if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+          NX_HEAD: ${{ github.event.pull_request.head.sha }}
+          NX_RUN_FULL: ${{ steps.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}
         run: |
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             pnpm test:unit
-          elif [ "${{ steps.scope.outputs.quality_gate_mode }}" = "full" ]; then
-            pnpm test:unit
           else
-            NX_BASE=${{ github.event.pull_request.base.sha }} pnpm test:unit:affected
+            pnpm test:unit:affected
           fi
 
       - name: Publish unit summary
@@ -136,6 +138,15 @@ jobs:
           else
             echo 'Scope: voller Workspace-Lauf für main.' >> "$GITHUB_STEP_SUMMARY"
           fi
+
+      - name: Upload unit feedback evidence
+        if: always() && github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-feedback-${{ github.run_id }}
+          path: artifacts/ci-feedback/unit.json
+          if-no-files-found: warn
+          retention-days: 7
 
   types:
     name: Types

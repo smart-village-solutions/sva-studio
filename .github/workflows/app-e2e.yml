@@ -26,6 +26,7 @@ jobs:
       SVA_AUTH_REDIRECT_URI: http://localhost:3000/auth/callback
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
       REDIS_URL: redis://127.0.0.1:6379
+      PLAYWRIGHT_MAX_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}
 
     steps:
       - name: Checkout
@@ -118,4 +119,9 @@ jobs:
             exit 0
           fi
           echo "Artifact: \`app-e2e-report-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo 'Fehlermodus: Abbruch nach dem ersten auch im Retry bestätigten Testfehler.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Fehlermodus: vollständige Diagnose ohne PR-Fail-fast.' >> "$GITHUB_STEP_SUMMARY"
+          fi
           echo 'Services: Redis, Loki, OTEL Collector, Promtail.' >> "$GITHUB_STEP_SUMMARY"

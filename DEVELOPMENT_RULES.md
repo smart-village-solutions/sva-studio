@@ -478,11 +478,16 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 - Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.
 - Lokale `affected`-Runs gegen `origin/main` müssen vorab im Scope geprüft werden, wenn der PR-Branch bereits viele Altänderungen enthält.
 - Bei großem affected-Scope sind gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
+- PR-Unit- und PR-Coverage-Gates führen direkt geänderte Projekte vor transitiv betroffenen Projekten aus; der verbleibende affected Scope bleibt vollständig erhalten.
+- Deterministische Unit-, Snapshot-, Type- und Policy-Fehler werden in PR-Gates nicht automatisch wiederholt. Ein Retry ist nur für einen explizit klassifizierten temporären Infrastrukturfehler zulässig und darf bereits erfolgreiche Targets nicht pauschal erneut ausführen.
+- E2E- und Integrationstargets bleiben ungecacht. Coverage-Caching darf nur targetweise nach einem Contract-Test aktiviert werden, der Fresh Run und Cache Restore einschließlich Gate-Ergebnis als identisch nachweist.
 
 ### ❌ FORBIDDEN
 - „Big-bang“-Validierung erst am Ende der Umsetzung.
 - Mehrere inhaltliche Änderungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
 - Pushes, bei denen bekannte lokale Testfehler ignoriert werden.
+- Pauschale Wiederholung eines vollständigen affected Scopes nach einem deterministischen Testfehler.
+- Wiederherstellung von Pull-Request-erzeugten Nx-Caches in geschützten `main`-, Release- oder Deployment-Kontexten.
 
 ### Process
 1. Implementiere eine kleine, in sich geschlossene Änderung.

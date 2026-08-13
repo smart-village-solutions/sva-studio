@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeRetryCount } from './affected-unit-gate.ts';
+import { buildUnitProjectsCommand } from './affected-unit-gate.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 
 describe('affected-unit-gate', () => {
@@ -128,14 +128,12 @@ describe('affected-unit-gate', () => {
 
   it('builds Nx commands for aggregate and sliced app runs', () => {
     expect(buildAppUnitCommand()).toBe('pnpm nx run sva-studio-react:test:unit');
-    expect(buildAppUnitCommand('routes')).toBe(
-      'pnpm nx run sva-studio-react:test:unit:routes'
-    );
+    expect(buildAppUnitCommand('routes')).toBe('pnpm nx run sva-studio-react:test:unit:routes');
   });
 
-  it('normalizes retry counts to non-negative integers', () => {
-    expect(normalizeRetryCount(undefined)).toBe(0);
-    expect(normalizeRetryCount(-3)).toBe(0);
-    expect(normalizeRetryCount(2.8)).toBe(2);
+  it('builds fail-fast commands for an explicit project phase', () => {
+    expect(buildUnitProjectsCommand(['plugin-news', 'routing'])).toBe(
+      'env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=plugin-news,routing --parallel=1 --nxBail --output-style=stream'
+    );
   });
 });

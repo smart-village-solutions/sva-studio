@@ -10,6 +10,7 @@ import {
   loadPlaywrightEnv,
   resolveAuthSessionFile,
 } from './src/lib/playwright-auth-session-config';
+import { resolvePlaywrightMaxFailures } from './src/lib/playwright-ci-policy';
 
 const appRoot = fileURLToPath(new URL('./', import.meta.url));
 const workspaceRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -55,6 +56,9 @@ export default defineConfig({
   // can abort requests during Nitro startup and make the suite flaky.
   workers: 1,
   retries: process.env.CI ? 1 : 0,
+  // PRs stop after the first failure that remains red after Playwright's retry.
+  // Main/nightly leave the value at 0 and retain exhaustive diagnostics.
+  maxFailures: resolvePlaywrightMaxFailures(process.env),
   outputDir: './test-results',
   reporter: process.env.CI ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['list']] : 'list',
   globalSetup: './e2e/global-setup.ts',

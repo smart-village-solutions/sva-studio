@@ -155,7 +155,7 @@ Wenn die Komplexität eines kritischen Hotspots steigt, darf der bestehende Floo
 Workflow: `.github/workflows/runtime-gates.yml`
 
 - Pull Requests:
-  - Job `Coverage`: für reguläre PRs bewusster No-op; nur Coverage-/CI-kritische Änderungen triggern `full` für `test:coverage`, Patch-Coverage und New-Code-Gates
+  - Job `Coverage`: für reguläre PRs bewusster No-op; Coverage-/CI-kritische Änderungen führen direkt geänderte Projekte zuerst aus, prüfen deren Paket-Floors und Baseline-Deltas sofort und validieren danach den übrigen Scope einschließlich globaler und New-Code-Gates
   - Job `Complexity`: separates, blockierendes Komplexitäts-Gate
   - Job `PR Integration`: `affected`, `full` oder bewusster No-op für die allgemeinen echten Integrationsziele; Monitoring-spezifische Läufe bleiben bewusst im separaten Workflow `monitoring-stack`
   - Reine Doku-/Meta-PRs starten die Workflows weiterhin, beenden die betroffenen Jobs aber bewusst früh als erfolgreicher No-op, damit Required Checks nicht im Status `expected` hängen bleiben
@@ -169,7 +169,7 @@ Workflow: `.github/workflows/runtime-gates.yml`
 
 | Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
 | --- | --- | --- |
-| `Runtime Gates / Coverage` | No-op für normale PRs, voller Coverage-Lauf für Coverage-/CI-kritische PRs sowie `main`/nightly | alle PRs, `main`, nightly |
+| `Runtime Gates / Coverage` | No-op für normale PRs, Changed-first plus vollständiger finaler Scope für Coverage-/CI-kritische PRs, voller Lauf für `main`/nightly | alle PRs, `main`, nightly |
 | `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
 | `Quality Gates / A11y` | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main` | alle PRs, `main` |
 | `Runtime Gates / PR Integration` | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat | Pull Requests |
@@ -218,15 +218,19 @@ Aktivierungskriterium:
 - blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei höchstens `2 Minuten` liegt
 - initialer lokaler Benchmark am `2. Juni 2026`: bestehender Runtime-Pfad `pnpm env:verify:db-schema-snapshot` ca. `10.82s`, dedizierter CI-Check gegen einen sauberen Migrationsstand ca. `18.07s`
 
-## Nx-Cache ohne Cloud-Kosten
+## Vertrauensgebundener Nx-Cache ohne Cloud-Kosten
 
-Der Workspace verwendet Nx ausschließlich lokal. `nx.json` verhindert mit `neverConnectToCloud: true` eine versehentliche Verbindung zu Nx Cloud; die gemeinsame GitHub-Action setzt zusätzlich `NX_NO_CLOUD=true`. Dadurch bleiben Projektgraph, `affected` und der lokale Task-Cache verfügbar, während CI-Läufe weder an Nx Cloud übertragen werden noch Credits verbrauchen.
+Der Workspace verwendet keinen Nx-Cloud-Dienst. `nx.json` verhindert mit `neverConnectToCloud: true` eine versehentliche Verbindung zu Nx Cloud; die gemeinsame GitHub-Action setzt zusätzlich `NX_NO_CLOUD=true`. Der lokale `.nx/cache` deterministischer Targets wird über GitHub Actions job- und vertrauensgebunden zwischen Pushes wiederverwendet. Pull Requests dürfen eine sichere `main`-Baseline lesen und nur ihren PR-eigenen Scope schreiben; geschützte `main`-, Release- und Deployment-Kontexte stellen niemals PR-erzeugte Cache-Einträge wieder her.
 
 Verbindliche Regeln:
 
 - Keine `nxCloudId` und keinen `nxCloudAccessToken` im Repository hinterlegen.
 - `NX_NO_CLOUD=true` im gemeinsamen CI-Setup nicht entfernen.
 - `pnpm nx connect`, Nx Agents und `nx fix-ci` nicht in regulären Workflows verwenden.
+- Cache-Schlüssel müssen Plattform, Node-/pnpm-Version, Lockfile, `nx.json`, Trust-Scope, Job und Commit berücksichtigen.
+- Unit-, Type-, Lint- und deterministische Build-Targets dürfen persistiert werden. Integration und E2E bleiben ungecacht.
+- Coverage bleibt ungecacht, bis ein targetbezogener Fresh-/Restore-Contract Summary, LCOV, Pfade und Gate-Ergebnis als identisch belegt.
+- Cache-Miss, abgelehnter Scope oder Restore-Fehler führt immer zur normalen Neuberechnung.
 - Eine erneute Cloud-Anbindung benötigt eine separate Kosten-Nutzen-Bewertung und eine ausdrücklich freigegebene Änderung.
 
 ### Codecov-Schwellenwerte

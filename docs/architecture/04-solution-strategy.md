@@ -227,3 +227,7 @@ Die Instanz-Control-Plane wird über einen dünnen lokalen MCP-Adapter wiederver
 ### Ergänzung 2026-08: Kanonischer Permission-Katalog
 
 Core- und Modul-Permissions werden in einer typsicheren, validierten Katalogsicht zusammengeführt. Tenantweite und aktivierte Modul-Permissions erhalten standardmäßig einen verwalteten `system_admin`-Grant; Root-Permissions bleiben isoliert. Der Reconcile ist idempotent und additiv, während Löschungen ausschließlich über separate, ausdrücklich freigegebene Changes erfolgen.
+
+### Ergänzung 2026-08: Changed-first PR-Feedback
+
+Die Merge-Absicherung bleibt vollständig, wird aber nach erwarteter Reparaturwirkung geordnet. Direkt geänderte Nx-Projekte und eindeutig zuordenbare App-Slices laufen vor transitiv betroffenen Projekten. Deterministische PR-Fehler brechen den jeweiligen Gate-Pfad ab; Main und Nightly behalten die vollständige Diagnose. Coverage prüft die priorisierte Projektphase sofort gegen Paket-Floors und Baseline und führt anschließend den disjunkten übrigen Scope samt globalem Vertrag aus. Diese Reihenfolge ist eine Latenzoptimierung und keine Reduktion der Schutzgrenze.

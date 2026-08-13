@@ -32,6 +32,33 @@ runs:
         node-version-file: ${{ inputs.node-version-file }}
         cache: pnpm
 
+    - name: Determine trusted Nx cache scope
+      id: nx-cache-scope
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+          pr_number="${{ github.event.pull_request.number }}"
+          if ! [[ "${pr_number}" =~ ^[0-9]+$ ]]; then
+            echo 'Pull-Request-Cache-Scope konnte nicht sicher bestimmt werden.' >&2
+            exit 1
+          fi
+          echo "scope=pr-${pr_number}" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        safe_ref="${GITHUB_REF_NAME//\//-}"
+        echo "scope=protected-${safe_ref}" >> "$GITHUB_OUTPUT"
+
+    - name: Restore deterministic Nx task cache
+      uses: actions/cache@v5
+      with:
+        path: .nx/cache
+        key: nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-${{ github.sha }}
+        restore-keys: |
+          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-${{ steps.nx-cache-scope.outputs.scope }}-${{ github.job }}-
+          nx-v2-${{ runner.os }}-${{ runner.arch }}-node-${{ hashFiles('.nvmrc') }}-pnpm-${{ inputs.pnpm-version }}-lock-${{ hashFiles('pnpm-lock.yaml') }}-config-${{ hashFiles('nx.json') }}-protected-main-${{ github.job }}-
+
     - name: Install dependencies
       shell: bash
       run: ${{ inputs.install-command }}

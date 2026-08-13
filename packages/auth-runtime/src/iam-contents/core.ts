@@ -9,7 +9,6 @@ import {
 import { createSdkLogger } from '@sva/server-runtime';
 
 import {
-  asApiItem,
   asApiList,
   createApiError,
   readPage,

@@ -13,10 +13,39 @@ import {
   authorizeReadableContentItem,
   hasGlobalContentMutationPermission,
 } from './read-authorization.js';
-import { resolveContentAccess, resolveContentActor } from './request-context.js';
+import {
+  resolveContentAccess,
+  resolveContentActor,
+  type ResolvedContentActor,
+} from './request-context.js';
 import { loadContentById, loadContentDetail } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
+
+const loadProjectedMainserverContent = async (
+  actor: ResolvedContentActor['actor'],
+  contentType: string,
+  sourceEntityId: string
+): Promise<IamContentListItem | undefined> => {
+  const projectionInput = {
+    instanceId: actor.instanceId,
+    contentType,
+    sourceEntityId,
+    actorAccountId: actor.actorAccountId,
+    activeOrganizationId: actor.activeOrganizationId,
+  } as const;
+  let candidates = await loadMainserverContentProjectionCandidates(projectionInput);
+  if (
+    candidates.length !== 1 &&
+    (await hasGlobalContentMutationPermission(actor, contentType))
+  ) {
+    candidates = await loadMainserverContentProjectionCandidates({
+      ...projectionInput,
+      allowGlobalMutation: true,
+    });
+  }
+  return candidates.length === 1 ? candidates[0] : undefined;
+};
 
 export const getContentInternal = async (
   request: Request,
@@ -49,25 +78,12 @@ export const getContentInternal = async (
       if (reference) {
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       } else {
-        const projectionInput = {
-          instanceId: actorResolution.actor.instanceId,
+        item = await loadProjectedMainserverContent(
+          actorResolution.actor,
           contentType,
-          sourceEntityId: contentId,
-          actorAccountId: actorResolution.actor.actorAccountId,
-          activeOrganizationId: actorResolution.actor.activeOrganizationId,
-        } as const;
-        let candidates = await loadMainserverContentProjectionCandidates(projectionInput);
-        if (
-          candidates.length !== 1 &&
-          (await hasGlobalContentMutationPermission(actorResolution.actor, contentType))
-        ) {
-          candidates = await loadMainserverContentProjectionCandidates({
-            ...projectionInput,
-            allowGlobalMutation: true,
-          });
-        }
-        if (candidates.length === 1) {
-          [item] = candidates;
+          contentId
+        );
+        if (item) {
           projectedItem = true;
         }
       }

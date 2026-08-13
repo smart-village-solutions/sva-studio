@@ -391,6 +391,12 @@ const resolveContentSortField = (
 const isMainserverContentType = (contentType: string): boolean =>
   MAIN_SERVER_CONTENT_TYPES.has(contentType);
 
+const resolveListMutationPrincipal = (
+  item: RegisteredContentRow,
+  principalControl: MainserverPrincipalControlModel | undefined
+): MainserverPrincipalType | undefined =>
+  principalControl ? resolveStandaloneMainserverPrincipal(item, principalControl) : undefined;
+
 const isBulkActionableContent = (item: RegisteredContentRow): boolean =>
   !isMainserverContentType(item.contentType);
 
@@ -686,7 +692,7 @@ export const ContentListPage = ({
 
   const handleDeleteContent = React.useCallback(
     async (item: RegisteredContentRow) => {
-      const principal = resolveStandaloneMainserverPrincipal(item, principalControl);
+      const principal = resolveListMutationPrincipal(item, principalControl);
       if (!principal) {
         throw new Error('mainserver_mutation_principal_unavailable');
       }
@@ -814,7 +820,7 @@ export const ContentListPage = ({
         id: 'status',
         header: t('content.table.headerStatus'),
         cell: (item) => {
-          const mutationPrincipal = resolveStandaloneMainserverPrincipal(item, principalControl);
+          const mutationPrincipal = resolveListMutationPrincipal(item, principalControl);
           return (
             <ContentStatusDialog
               item={item}
@@ -997,7 +1003,7 @@ export const ContentListPage = ({
               permissionActions={effectivePermissionActions}
               enabledMainserverMutationActions={enabledMainserverMutationActions}
               mutationPrincipalAvailable={
-                resolveStandaloneMainserverPrincipal(item, principalControl) !== undefined
+                resolveListMutationPrincipal(item, principalControl) !== undefined
               }
               onDelete={handleDeleteContent}
             />

@@ -914,6 +914,50 @@ describe('ContentListPage', () => {
     ).toBe(true);
   });
 
+  it('keeps Mainserver row mutations disabled without a resolved author context', () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'news-1',
+            contentType: 'news.article',
+            title: 'Kontextlos lesbar',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Redaktion',
+            credentialSource: 'user',
+            payload: {},
+            status: 'draft',
+            access: {
+              state: 'editable',
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              organizationIds: [],
+              sourceKinds: ['direct_role'],
+            },
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      })
+    );
+
+    render(
+      <ContentListPage
+        enabledMainserverMutationActions={['news.update', 'news.delete']}
+        principalControl={undefined}
+      />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /Status von Kontextlos lesbar ändern/ })
+    ).toBeNull();
+    expect(
+      (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' }).length).toBeGreaterThan(0);
+  });
+
   it('hydrates host list controls from route search state and updates canonical params', () => {
     searchState = {
       filters: { status: 'archived' },

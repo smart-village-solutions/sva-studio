@@ -26,12 +26,6 @@ import {
 import { defined, optionalString, toSvaMainserverError } from './shared.js';
 import { parseResilientDetail } from './resilient-detail-mapper.js';
 
-const newsPayloadSchema = z.object({
-  imageUrl: z.string().optional(),
-  externalUrl: z.string().optional(),
-  category: z.string().optional(),
-});
-
 const announcementSchema = z.object({
   id: z.string().nullish(),
   title: z.string().nullish(),
@@ -71,6 +65,21 @@ const newsItemSchema = z.object({
   updatedAt: z.string().nullish(),
   visible: z.boolean().nullish(),
 });
+
+const wasteLocationKeySchema = z.object({
+  street: z.string(),
+  zip: z.string(),
+  city: z.string(),
+});
+
+const newsPayloadSchema = z
+  .object({
+    imageUrl: z.string().optional().catch(undefined),
+    externalUrl: z.string().optional().catch(undefined),
+    category: z.string().optional().catch(undefined),
+    wasteLocationKeys: z.array(wasteLocationKeySchema).optional().catch(undefined),
+  })
+  .passthrough();
 
 const mapAnnouncement = (
   value: z.infer<typeof announcementSchema>
@@ -151,11 +160,10 @@ export const parseNewsPayload = (payload: unknown): SvaMainserverNewsPayload => 
           }
         })()
       : payload;
-  const parsed = newsPayloadSchema.safeParse(rawPayload);
-  if (!parsed.success) {
+  if (!rawPayload || typeof rawPayload !== 'object' || Array.isArray(rawPayload)) {
     return {};
   }
-  return parsed.data;
+  return newsPayloadSchema.parse(rawPayload);
 };
 
 export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | undefined) => {

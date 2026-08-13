@@ -1,6 +1,4 @@
-import type {
-  WasteFractionReminderConfig,
-} from './master-data-contract.js';
+import type { WasteFractionReminderConfig } from './master-data-contract.js';
 import type { WasteLocalizedTextRecord } from './master-data-localized-text.js';
 
 export type WasteFractionRecord = {
@@ -38,6 +36,7 @@ export type WasteRegionListFilter = {
 export type WasteCityRecord = {
   readonly id: string;
   readonly name: string;
+  readonly postalCode?: string;
   readonly regionId?: string;
   readonly createdAt: string;
   readonly updatedAt: string;

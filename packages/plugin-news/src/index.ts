@@ -13,10 +13,4 @@ export {
 export { NewsDetailPage } from './news.detail-page.js';
 export { NewsCreatePage, NewsEditPage } from './news.pages.js';
 export { validateNewsForm, validateNewsPayload } from './news.validation.js';
-export type {
-  NewsPrincipalControl,
-  NewsContentItem,
-  NewsFormInput,
-  NewsListQuery,
-  NewsListResult,
-} from './news.types.js';
+export type * from './news.public-types.js';

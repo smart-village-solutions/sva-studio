@@ -19,6 +19,7 @@ type MasterDataEntityCopy = Readonly<{
   description: string;
   actions: CrudActionsCopy;
   fields: Readonly<Record<string, string>>;
+  validation?: Readonly<Record<string, string>>;
   dialog: CrudDialogCopy;
   messages: CrudMessagesCopy;
   meta?: Readonly<Record<string, string>>;
@@ -129,6 +130,7 @@ export const createMasterDataEntityTranslations = <const TCopy extends MasterDat
     description: copy.description,
     actions: createCrudActions(copy.actions),
     fields: copy.fields,
+    ...(copy.validation ? { validation: copy.validation } : {}),
     dialog: createCrudDialog(copy.dialog),
     messages: createCrudMessages(copy.messages),
     ...(copy.meta ?? {}),

@@ -10,17 +10,20 @@ import { createToursAssignmentSubmitHandler } from '../src/waste-management.tour
 
 const createWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
+const updateWasteManagementCityMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementCollectionLocationMock = vi.hoisted(() => vi.fn(async () => undefined));
 const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn(async () => undefined));
 const submitWasteLocationTourLinksBulkInChunksMock = vi.hoisted(() => vi.fn(async () => undefined));
-const applySuccessMock = vi.hoisted(() => vi.fn((close, setMessage, message, setOutcome) => {
-  close();
-  setMessage({ kind: 'success', text: message });
-  setOutcome();
-}));
+const applySuccessMock = vi.hoisted(() =>
+  vi.fn((close, setMessage, message, setOutcome) => {
+    close();
+    setMessage({ kind: 'success', text: message });
+    setOutcome();
+  })
+);
 
 vi.mock('../src/waste-management.api.js', () => ({
   WasteManagementApiError: class WasteManagementApiError extends Error {
@@ -35,10 +38,13 @@ vi.mock('../src/waste-management.api.js', () => ({
     createWasteManagementCollectionLocationMock(...args),
   updateWasteManagementCollectionLocation: (...args: Parameters<typeof updateWasteManagementCollectionLocationMock>) =>
     updateWasteManagementCollectionLocationMock(...args),
+  updateWasteManagementCity: (...args: Parameters<typeof updateWasteManagementCityMock>) =>
+    updateWasteManagementCityMock(...args),
   deleteWasteManagementCollectionLocation: (...args: Parameters<typeof deleteWasteManagementCollectionLocationMock>) =>
     deleteWasteManagementCollectionLocationMock(...args),
-  createWasteManagementLocationTourLinksBulk: (...args: Parameters<typeof createWasteManagementLocationTourLinksBulkMock>) =>
-    createWasteManagementLocationTourLinksBulkMock(...args),
+  createWasteManagementLocationTourLinksBulk: (
+    ...args: Parameters<typeof createWasteManagementLocationTourLinksBulkMock>
+  ) => createWasteManagementLocationTourLinksBulkMock(...args),
   createWasteManagementLocationTourLink: (...args: Parameters<typeof createWasteManagementLocationTourLinkMock>) =>
     createWasteManagementLocationTourLinkMock(...args),
   deleteWasteManagementLocationTourLink: (...args: Parameters<typeof deleteWasteManagementLocationTourLinkMock>) =>
@@ -59,7 +65,7 @@ vi.mock('../src/use-waste-master-data-state.js', () => ({
 
 vi.mock('../src/waste-management.page.support.js', () => ({
   resolveApiErrorCode: (error: unknown) =>
-    typeof error === 'object' && error !== null && 'code' in error ? (error as { code?: string }).code ?? null : null,
+    typeof error === 'object' && error !== null && 'code' in error ? ((error as { code?: string }).code ?? null) : null,
 }));
 
 const createLocationState = () => ({
@@ -116,6 +122,61 @@ describe('waste-management mutation helper logic', () => {
       text: 'masterData.collectionLocations.messages.createSuccess',
     });
     expect(state.setLastOutcome).toHaveBeenCalledWith('location-create-success');
+  });
+
+  it('updates the selected city postal code after saving the collection location', async () => {
+    const state = {
+      ...createLocationState(),
+      overview: {
+        cities: [{ id: 'city-1', name: 'Weisen', regionId: 'region-1' }],
+      },
+    };
+    const handler = createLocationSubmitHandler({
+      state: state as never,
+      pt,
+      search: { locationsView: 'edit' } as never,
+      loadOverview: vi.fn(async () => undefined),
+      selectedCollectionLocationIds: [],
+    });
+
+    await handler(createLocationForm(), 'edit', { cityId: 'city-1', postalCode: '19336' });
+
+    expect(updateWasteManagementCityMock).toHaveBeenCalledWith('city-1', {
+      postalCode: '19336',
+    });
+    expect(updateWasteManagementCollectionLocationMock).toHaveBeenCalledOnce();
+    expect(updateWasteManagementCollectionLocationMock.mock.invocationCallOrder[0]).toBeLessThan(
+      updateWasteManagementCityMock.mock.invocationCallOrder[0] ?? 0
+    );
+  });
+
+  it('reports a partial save when the postal code update fails after the location was saved', async () => {
+    updateWasteManagementCityMock.mockRejectedValueOnce(new Error('city update failed'));
+    const state = {
+      ...createLocationState(),
+      overview: {
+        cities: [{ id: 'city-1', name: 'Weisen', regionId: 'region-1' }],
+      },
+    };
+    const loadOverview = vi.fn(async () => undefined);
+    const handler = createLocationSubmitHandler({
+      state: state as never,
+      pt,
+      search: { locationsView: 'edit' } as never,
+      loadOverview,
+      selectedCollectionLocationIds: [],
+    });
+
+    await handler(createLocationForm(), 'edit', { cityId: 'city-1', postalCode: '19336' });
+
+    expect(updateWasteManagementCollectionLocationMock).toHaveBeenCalledOnce();
+    expect(loadOverview).toHaveBeenCalledWith(true);
+    expect(applySuccessMock).not.toHaveBeenCalled();
+    expect(state.setLocationDialogOpen).not.toHaveBeenCalled();
+    expect(state.setMessage).toHaveBeenLastCalledWith({
+      kind: 'warning',
+      text: 'masterData.collectionLocations.messages.postalCodeSaveWarning',
+    });
   });
 
   it('maps delete conflicts to the singular delete error message', async () => {
@@ -196,5 +257,4 @@ describe('waste-management mutation helper logic', () => {
       text: 'tours.assignments.messages.updateSuccess',
     });
   });
-
 });

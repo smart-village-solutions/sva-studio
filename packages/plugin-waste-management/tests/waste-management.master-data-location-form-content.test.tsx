@@ -17,6 +17,24 @@ vi.mock('@sva/studio-ui-react', () => ({
     void loading;
     return <button {...props}>{children}</button>;
   },
+  Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
+  StudioField: ({
+    id,
+    label,
+    description,
+    children,
+  }: {
+    readonly id: string;
+    readonly label: React.ReactNode;
+    readonly description?: React.ReactNode;
+    readonly children: React.ReactNode;
+  }) => (
+    <label htmlFor={id}>
+      {label}
+      {description}
+      {children}
+    </label>
+  ),
   StudioPageHeader: ({
     title,
     description,
@@ -67,6 +85,7 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
     filteredHouseNumbers,
     cityError,
     onChange,
+    cityPostalCodeField,
   }: {
     readonly form: {
       regionId: string;
@@ -80,8 +99,9 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
     readonly filteredHouseNumbers: readonly { id: string; number: string }[];
     readonly cityError?: string;
     readonly onChange: (patch: Record<string, string>) => void;
+    readonly cityPostalCodeField?: React.ReactNode;
   }) => (
-    <div>
+    <div data-testid="location-select-section">
       <label>
         region
         <select
@@ -100,6 +120,7 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
           ))}
         </select>
       </label>
+      {cityPostalCodeField}
       <label>
         city
         <select
@@ -169,6 +190,105 @@ vi.mock('../src/waste-management.master-data-location-form.parts.js', () => ({
 describe('WasteMasterDataLocationFormContent', () => {
   afterEach(() => {
     cleanup();
+  });
+
+  it('edits the postal code of the selected city together with the collection location', async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <WasteMasterDataLocationFormContent
+        mode="edit"
+        form={{
+          id: 'location-postal-code',
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={[{ id: 'city-1', name: 'Weisen', postalCode: '', regionId: 'region-1' }] as never}
+        streets={[{ id: 'street-1', name: 'Hauptstraße', cityId: 'city-1' }] as never}
+        houseNumbers={[{ id: 'house-1', number: '1', streetId: 'street-1' }] as never}
+        fractions={[] as never}
+        availableTours={[] as never}
+        locationTourLinks={[] as never}
+        saving={false}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+        onReloadAssignments={vi.fn(async () => undefined)}
+      />
+    );
+
+    expect(
+      screen
+        .getByTestId('location-select-section')
+        .contains(screen.getByLabelText('masterData.cities.fields.postalCode'))
+    ).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('masterData.cities.fields.postalCode'), {
+      target: { value: '19336' },
+    });
+    fireEvent.click(
+      screen.getAllByRole('button', {
+        name: 'masterData.collectionLocations.actions.save',
+      })[0] as HTMLButtonElement
+    );
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'location-postal-code', cityId: 'city-1' }),
+        { cityId: 'city-1', postalCode: '19336' }
+      );
+    });
+  });
+
+  it('shows the stored postal code of the newly selected city', async () => {
+    render(
+      <WasteMasterDataLocationFormContent
+        mode="edit"
+        form={{
+          id: 'location-city-change',
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: '',
+          houseNumberId: '',
+          active: true,
+        }}
+        regions={[{ id: 'region-1', name: 'Nord' }] as never}
+        cities={
+          [
+            { id: 'city-1', name: 'Altstadt', postalCode: '12345', regionId: 'region-1' },
+            { id: 'city-2', name: 'Neustadt', postalCode: '54321', regionId: 'region-1' },
+          ] as never
+        }
+        streets={[] as never}
+        houseNumbers={[] as never}
+        fractions={[] as never}
+        availableTours={[] as never}
+        locationTourLinks={[] as never}
+        saving={false}
+        onChange={vi.fn()}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+        onReloadAssignments={vi.fn(async () => undefined)}
+      />
+    );
+
+    expect(
+      (screen.getByLabelText('masterData.cities.fields.postalCode') as HTMLInputElement).value
+    ).toBe('12345');
+
+    fireEvent.change(screen.getByLabelText('city'), {
+      target: { value: 'city-2' },
+    });
+
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText('masterData.cities.fields.postalCode') as HTMLInputElement).value
+      ).toBe('54321');
+    });
   });
 
   it('submits RHF-backed location values instead of a DOM event while cascading dependent selections', async () => {

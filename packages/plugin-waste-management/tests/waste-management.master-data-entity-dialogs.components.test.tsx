@@ -15,7 +15,8 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.page.support.js', () => ({
-  StatusNotice: ({ message }: { readonly message: { text: string } | null }) => message ? <div>{message.text}</div> : null,
+  StatusNotice: ({ message }: { readonly message: { text: string } | null }) =>
+    message ? <div>{message.text}</div> : null,
 }));
 
 vi.mock('@sva/studio-ui-react', () => ({
@@ -32,20 +33,19 @@ vi.mock('@sva/studio-ui-react', () => ({
     />
   ),
   cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
-  Dialog: ({
-    open,
-    children,
-  }: {
-    readonly open: boolean;
-    readonly children: React.ReactNode;
-  }) => (open ? <div>{children}</div> : null),
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   DialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogFooter: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
-  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => <input ref={ref} {...props} />),
-  Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => <select ref={ref} {...props} />),
+  Input: React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>((props, ref) => (
+    <input ref={ref} {...props} />
+  )),
+  Select: React.forwardRef<HTMLSelectElement, React.ComponentProps<'select'>>((props, ref) => (
+    <select ref={ref} {...props} />
+  )),
   StudioFormSummaryErrors: ({ errors }: { readonly errors: readonly { field: string; message: string }[] }) =>
     errors.length > 0 ? (
       <div role="alert">
@@ -63,7 +63,13 @@ vi.mock('@sva/studio-ui-react', () => ({
     </label>
   ),
   StudioFieldGroup: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  getStudioFormFieldProps: ({ id, error }: { readonly id: string; readonly error?: { readonly message?: string } }) => ({
+  getStudioFormFieldProps: ({
+    id,
+    error,
+  }: {
+    readonly id: string;
+    readonly error?: { readonly message?: string };
+  }) => ({
     id,
     error: error?.message,
     errorId: `${id}-error`,
@@ -91,19 +97,21 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       <FractionDialog
         open
         mode="create"
-        form={{
-          name: 'Restmüll',
-          pdfShortLabel: 'RES',
-          translations: { de: 'Rest', en: '' },
-          color: '#111111',
-          containerSize: '120L',
-          description: 'Hausmüll',
-          active: true,
-          reminderConfig: {
-            reminderCount: 'none',
-            channels: { push: false, email: false, calendar: false },
-          },
-        } as never}
+        form={
+          {
+            name: 'Restmüll',
+            pdfShortLabel: 'RES',
+            translations: { de: 'Rest', en: '' },
+            color: '#111111',
+            containerSize: '120L',
+            description: 'Hausmüll',
+            active: true,
+            reminderConfig: {
+              reminderCount: 'none',
+              channels: { push: false, email: false, calendar: false },
+            },
+          } as never
+        }
         saving={false}
         message={{ kind: 'success', text: 'gespeichert' } as never}
         onOpenChange={onOpenChange}
@@ -124,7 +132,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       target: { value: 'RSD' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'masterData.fractions.actions.cancel' }));
-    const submitButton = screen.getByRole('button', { name: 'masterData.fractions.actions.create' });
+    const submitButton = screen.getByRole('button', {
+      name: 'masterData.fractions.actions.create',
+    });
     fireEvent.click(submitButton);
 
     expect(onChange).toHaveBeenCalledWith({
@@ -218,7 +228,13 @@ describe('waste-management.master-data-entity-dialogs components', () => {
 
     expect(screen.getByText('masterData.regions.dialog.editTitle')).toBeTruthy();
     expect(screen.getByText('masterData.regions.dialog.editDescription')).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'masterData.regions.actions.saving' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'masterData.regions.actions.saving',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
 
     rerender(
       <CityDialog
@@ -280,7 +296,9 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     );
 
     expect(screen.getByText('masterData.houseNumbers.dialog.editTitle')).toBeTruthy();
-    expect((screen.getByLabelText('masterData.houseNumbers.fields.streetId') as HTMLSelectElement).value).toBe('street-1');
+    expect((screen.getByLabelText('masterData.houseNumbers.fields.streetId') as HTMLSelectElement).value).toBe(
+      'street-1'
+    );
 
     fireEvent.change(screen.getByLabelText('masterData.houseNumbers.fields.streetId'), {
       target: { value: 'street-1' },
@@ -295,19 +313,21 @@ describe('waste-management.master-data-entity-dialogs components', () => {
       <FractionDialog
         open
         mode="create"
-        form={{
-          name: '',
-          pdfShortLabel: '',
-          translations: { de: '', en: '' },
-          color: '',
-          containerSize: '',
-          description: '',
-          active: true,
-          reminderConfig: {
-            reminderCount: 'none',
-            channels: { push: false, email: false, calendar: false },
-          },
-        } as never}
+        form={
+          {
+            name: '',
+            pdfShortLabel: '',
+            translations: { de: '', en: '' },
+            color: '',
+            containerSize: '',
+            description: '',
+            active: true,
+            reminderConfig: {
+              reminderCount: 'none',
+              channels: { push: false, email: false, calendar: false },
+            },
+          } as never
+        }
         saving={false}
         message={null}
         onOpenChange={() => undefined}
@@ -374,6 +394,33 @@ describe('waste-management.master-data-entity-dialogs components', () => {
     fireEvent.click(screen.getByRole('button', { name: 'masterData.houseNumbers.actions.create' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('masterData.houseNumbers.fields.number');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('validates city postal codes at the server-side length boundary', async () => {
+    const onSubmit = vi.fn();
+    render(
+      <CityDialog
+        open
+        mode="edit"
+        form={{ id: 'city-1', name: 'Musterstadt', postalCode: '', regionId: '' } as never}
+        regions={[]}
+        saving={false}
+        message={null}
+        onOpenChange={() => undefined}
+        onChange={vi.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const postalCode = screen.getByLabelText('masterData.cities.fields.postalCode');
+    expect((postalCode as HTMLInputElement).maxLength).toBe(16);
+    fireEvent.change(postalCode, { target: { value: '12345678901234567' } });
+    fireEvent.click(screen.getByRole('button', { name: 'masterData.cities.actions.save' }));
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'masterData.cities.validation.postalCodeMaxLength'
+    );
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });

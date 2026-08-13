@@ -289,6 +289,7 @@ export const svaMainserverCreateNewsDocument = `
     $address: AddressInput
     $contentBlocks: [ContentBlockInput!]
     $pointOfInterestId: ID
+    $payload: JSON
   ) {
     createNewsItem(
       id: $id
@@ -310,6 +311,7 @@ export const svaMainserverCreateNewsDocument = `
       address: $address
       contentBlocks: $contentBlocks
       pointOfInterestId: $pointOfInterestId
+      payload: $payload
     ) {
       ${newsItemFields}
     }

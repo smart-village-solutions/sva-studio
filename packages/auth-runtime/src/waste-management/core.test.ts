@@ -1071,7 +1071,7 @@ describe('waste-management auth runtime handlers', () => {
       .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
       .mockResolvedValueOnce(existingCity)
       .mockResolvedValueOnce(updatedCity);
-    const saveWasteCity = vi.fn(async () => undefined);
+    const patchWasteCity = vi.fn(async () => undefined);
 
     const response = await updateWasteManagementCityInternal(
       new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
@@ -1089,7 +1089,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
-        saveWasteCity,
+        patchWasteCity,
         loadWasteCityById,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -1098,8 +1098,7 @@ describe('waste-management auth runtime handlers', () => {
       }
     );
 
-    expect(saveWasteCity).toHaveBeenCalledWith('tenant-a', {
-      id: 'city-1',
+    expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
       name: 'Musterstadt Nord',
       regionId: 'region-1',
     });
@@ -1108,6 +1107,102 @@ describe('waste-management auth runtime handlers', () => {
       data: updatedCity,
       requestId: 'req-test',
     });
+  });
+
+  it('preserves omitted waste city fields during a partial update', async () => {
+    const existingCity: WasteCityRecord = {
+      id: 'city-1',
+      name: 'Musterstadt',
+      postalCode: '19336',
+      regionId: 'region-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+    const updatedCity: WasteCityRecord = {
+      ...existingCity,
+      name: 'Musterstadt Nord',
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+    const loadWasteCityById = vi
+      .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
+      .mockResolvedValueOnce(existingCity)
+      .mockResolvedValueOnce(updatedCity);
+    const patchWasteCity = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementCityInternal(
+      new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ name: 'Musterstadt Nord' }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        patchWasteCity,
+        loadWasteCityById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
+      name: 'Musterstadt Nord',
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('clears a waste city postal code only when null is explicit', async () => {
+    const existingCity: WasteCityRecord = {
+      id: 'city-1',
+      name: 'Musterstadt',
+      postalCode: '19336',
+      regionId: 'region-1',
+      createdAt: '2026-05-09T10:00:00.000Z',
+      updatedAt: '2026-05-09T10:00:00.000Z',
+    };
+    const updatedCity: WasteCityRecord = {
+      ...existingCity,
+      postalCode: undefined,
+      updatedAt: '2026-05-09T12:30:00.000Z',
+    };
+    const loadWasteCityById = vi
+      .fn<(_: string, __: string) => Promise<WasteCityRecord | null>>()
+      .mockResolvedValueOnce(existingCity)
+      .mockResolvedValueOnce(updatedCity);
+    const patchWasteCity = vi.fn(async () => undefined);
+
+    const response = await updateWasteManagementCityInternal(
+      new Request('https://studio.test/api/v1/waste-management/cities/city-1', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ postalCode: null }),
+      }),
+      actor,
+      {
+        getRequestId: () => 'req-test',
+        patchWasteCity,
+        loadWasteCityById,
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: allowPermission('waste-management.master-data.manage'),
+        })),
+      }
+    );
+
+    expect(patchWasteCity).toHaveBeenCalledWith('tenant-a', 'city-1', {
+      postalCode: null,
+    });
+    expect(response.status).toBe(200);
   });
 
   it('creates a waste street through the master-data mutation path', async () => {

@@ -239,6 +239,8 @@ Kernidee:
 - `mainserver_data_provider_bindings` hält ausschließlich automatisch beobachtete, instanz- und credential-versionierte Principal-zu-DataProvider-Zuordnungen. Konflikte überschreiben keine vorhandene Evidenz; historische und widerrufene Versionen bleiben ausdrücklich unterscheidbar. Aktuelle Readiness verlangt zusätzlich einen aktiven, nicht gelöschten Account beziehungsweise eine aktive, noch vorhandene Organisation; die Bindungszeile selbst bleibt für historische Herleitung und Audit erhalten.
 - `mainserver_mutation_journal` korreliert Provider-Write, Retry, Teiloperationen, Preimage/Tombstone und lokale Reconciliation über `operation_external_id`. `resolver_mode`, `candidate_authorization_mode`, `candidate_allowed` und `shadow_difference` halten Shadow-, Aktivierungs- und Rollbackentscheidungen je Operation nachvollziehbar. Das Journal ist ein Betriebs- und Auditnachweis und keine zweite sichtbare Content-History.
 
+Mandantenspezifische Waste-Stammdaten gehören nicht zum zentralen `iam`-Snapshot. Ihr kanonisches Provisioning liegt in `apps/sva-studio-react/src/lib/waste-management-operations.schema.ts`. Für ortsbezogene News-Zielgruppen enthält `waste_cities` dort die optionale Spalte `postal_code`; neu auswählbar sind nur aktive Abholorte mit vollständigem Stadt-, Postleitzahl- und Straßenbezug. Eine Hausnummer ist optional: Ist sie vorhanden, wird sie Bestandteil des Zielschlüssels; ohne Hausnummer gilt das Ziel für die gesamte Straße.
+
 ### 7. Media-Management
 
 Kernmodell für hochgeladene und referenzierte Medien:

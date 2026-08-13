@@ -27,7 +27,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
   },
   cities: {
     title: 'Cities',
-    description: 'Maintain cities with optional region assignment as the first relational master-data path.',
+    description:
+      'Maintain cities with optional region assignment as the first relational master-data path.',
     actions: {
       openCreate: 'Create city',
       edit: 'Edit',
@@ -36,7 +37,13 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       save: 'Save changes',
       saving: 'Saving…',
     },
-    fields: { name: 'Name', regionId: 'Region', regionUnset: 'No region' },
+    fields: {
+      name: 'Name',
+      postalCode: 'Postal code',
+      regionId: 'Region',
+      regionUnset: 'No region',
+    },
+    validation: { postalCodeMaxLength: 'The postal code must not exceed 16 characters.' },
     dialog: {
       createTitle: 'Create city',
       createDescription: 'Create a city and assign it to a region when needed.',
@@ -105,7 +112,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
   },
   collectionLocations: {
     title: 'Collection locations',
-    description: 'Maintain concrete collection locations with geographic selection down to house-number level.',
+    description:
+      'Maintain concrete collection locations with geographic selection down to house-number level.',
     actions: {
       openCreate: 'Create collection location',
       edit: 'Edit',
@@ -125,13 +133,17 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       streetUnset: 'All streets',
       houseNumberId: 'House number',
       houseNumberUnset: 'All house numbers',
+      postalCodeHint:
+        'The postal code belongs to the selected city and applies to all of its collection locations.',
       active: 'Status',
     },
     dialog: {
       createTitle: 'Create collection location',
-      createDescription: 'Create a new collection location from region, city, street and house number.',
+      createDescription:
+        'Create a new collection location from region, city, street and house number.',
       editTitle: 'Edit collection location',
-      editDescription: 'Adjust the geographic assignment and visibility of the collection location.',
+      editDescription:
+        'Adjust the geographic assignment and visibility of the collection location.',
     },
     meta: {
       locationId: 'Location ID: {{value}}',
@@ -144,10 +156,13 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
       deleteSuccess: 'The waste collection location was deleted.',
       saveError: 'The waste collection location could not be saved.',
       saveErrorWithReason: 'The waste collection location could not be saved: {{reason}}',
+      postalCodeSaveWarning:
+        'The collection location was saved, but the city postal code could not be saved.',
       saveForbidden: 'Missing permission to save waste collection locations.',
       deleteError: 'The waste collection location could not be deleted.',
       deleteForbidden: 'Missing permission to delete waste collection locations.',
-      deleteConflict: 'The waste collection location cannot be deleted because assignments still exist.',
+      deleteConflict:
+        'The waste collection location cannot be deleted because assignments still exist.',
     },
     assignmentEditor: {
       title: 'Tour assignments',
@@ -196,7 +211,8 @@ export const wasteManagementPluginTranslationsENMasterDataEntities = {
         deleteSuccess: 'The selected waste collection locations were deleted.',
         deleteError: 'The selected waste collection locations could not be deleted.',
         deleteForbidden: 'Missing permission to delete selected waste collection locations.',
-        deleteConflict: 'At least one selected waste collection location cannot be deleted because assignments still exist.',
+        deleteConflict:
+          'At least one selected waste collection location cannot be deleted because assignments still exist.',
       },
     },
   },

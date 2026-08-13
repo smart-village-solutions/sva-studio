@@ -50,6 +50,7 @@ export type RegionFormState = { readonly id: string; readonly name: string };
 export type CityFormState = {
   readonly id: string;
   readonly name: string;
+  readonly postalCode: string;
   readonly regionId: string;
 };
 export type StreetFormState = {
@@ -91,7 +92,7 @@ export const wasteMasterDataFormDefaults = {
     },
   }),
   createRegion: (): RegionFormState => ({ id: createId(), name: '' }),
-  createCity: (): CityFormState => ({ id: createId(), name: '', regionId: '' }),
+  createCity: (): CityFormState => ({ id: createId(), name: '', postalCode: '', regionId: '' }),
   createStreet: (): StreetFormState => ({ id: createId(), name: '', cityId: '' }),
   createHouseNumber: (): HouseNumberFormState => ({ id: createId(), number: '', streetId: '' }),
   createCollectionLocation: (): CollectionLocationFormState => ({
@@ -124,6 +125,7 @@ export const wasteMasterDataFormMappers = {
   cityToForm: (city: WasteCityRecord): CityFormState => ({
     id: city.id,
     name: city.name,
+    postalCode: city.postalCode ?? '',
     regionId: city.regionId ?? '',
   }),
   streetToForm: (street: WasteStreetRecord): StreetFormState => ({
@@ -186,11 +188,13 @@ export const wasteMasterDataInputMappers = {
   toCreateCityInput: (form: CityFormState): CreateWasteManagementCityInput => ({
     id: form.id,
     name: form.name.trim(),
+    postalCode: compactOptionalString(form.postalCode),
     regionId: compactOptionalString(form.regionId),
   }),
   toUpdateCityInput: (form: CityFormState): UpdateWasteManagementCityInput => ({
     name: form.name.trim(),
-    regionId: compactOptionalString(form.regionId),
+    postalCode: compactOptionalString(form.postalCode) ?? null,
+    regionId: compactOptionalString(form.regionId) ?? null,
   }),
   toCreateStreetInput: (form: StreetFormState): CreateWasteManagementStreetInput => ({
     id: form.id.trim(),

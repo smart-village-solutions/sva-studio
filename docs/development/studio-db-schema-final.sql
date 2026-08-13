@@ -7,6 +7,9 @@
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
 
+-- Mandantenspezifische Waste-Tabellen sind nicht Teil dieses zentralen IAM-Dumps.
+-- Ihr Provisioning-Schema enthält waste_cities.postal_code für stabile News-Zielschlüssel.
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;

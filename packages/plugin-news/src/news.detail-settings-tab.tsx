@@ -1,9 +1,20 @@
-import { formatDateTimeInEditorTimeZone } from '@sva/plugin-sdk';
+import {
+  formatDateTimeInEditorTimeZone,
+  type WasteManagementMasterDataOverview,
+} from '@sva/plugin-sdk';
 import { Controller, useFormContext, useWatch, type FieldError } from 'react-hook-form';
-import { Checkbox, Input, StudioField, StudioFormSummaryErrors, getStudioFormFieldProps } from '@sva/studio-ui-react';
+import {
+  Checkbox,
+  Input,
+  StudioField,
+  StudioFormSummaryErrors,
+  getStudioFormFieldProps,
+} from '@sva/studio-ui-react';
 
 import { NewsDetailCard } from './news.detail-card.js';
+import { NewsDetailTargetingSection } from './news.detail-targeting-tab.js';
 import type { NewsContentItem, NewsDetailFormValues } from './news.types.js';
+import type { WasteTargetingAvailability } from './news.waste-payload.js';
 
 const missingDateValue = '--.--.-- --:--';
 
@@ -18,13 +29,17 @@ export type NewsDetailSettingsTabProps = Readonly<{
   mode: 'create' | 'edit';
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
   scheduledPublicationField: ScheduledPublicationFieldState;
+  wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteTargetingAvailability: WasteTargetingAvailability;
+  onLoadWasteOverview: () => Promise<boolean>;
 }>;
 
-type NewsDetailSettingsFormControl = ReturnType<typeof useFormContext<NewsDetailFormValues>>['control'];
+type NewsDetailSettingsFormControl = ReturnType<
+  typeof useFormContext<NewsDetailFormValues>
+>['control'];
 
-const collectSummaryErrors = (
-  fields: readonly ReturnType<typeof getStudioFormFieldProps>[]
-) => fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
+const collectSummaryErrors = (fields: readonly ReturnType<typeof getStudioFormFieldProps>[]) =>
+  fields.flatMap((field) => (field.summaryError ? [field.summaryError] : []));
 
 const translateFieldError = (
   error: FieldError | undefined,
@@ -57,10 +72,16 @@ function NewsPushNotificationCard({
   control,
   loadedItem,
   pt,
+  wasteOverview,
+  wasteTargetingAvailability,
+  onLoadWasteOverview,
 }: Readonly<{
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
   pt: NewsDetailSettingsTabProps['pt'];
+  wasteOverview: WasteManagementMasterDataOverview | null;
+  wasteTargetingAvailability: WasteTargetingAvailability;
+  onLoadWasteOverview: () => Promise<boolean>;
 }>) {
   return (
     <NewsDetailCard
@@ -70,7 +91,9 @@ function NewsPushNotificationCard({
       {loadedItem?.pushNotificationsSentAt ? (
         <dl className="space-y-1 text-sm">
           <dt className="font-medium text-foreground">{pt('fields.pushNotificationsSentAt')}</dt>
-          <dd className="text-muted-foreground">{formatMetadataDate(loadedItem.pushNotificationsSentAt)}</dd>
+          <dd className="text-muted-foreground">
+            {formatMetadataDate(loadedItem.pushNotificationsSentAt)}
+          </dd>
         </dl>
       ) : (
         <label
@@ -100,6 +123,15 @@ function NewsPushNotificationCard({
           </span>
         </label>
       )}
+      {wasteTargetingAvailability !== 'forbidden' ? (
+        <NewsDetailTargetingSection
+          overview={wasteOverview}
+          pt={pt}
+          readOnly={Boolean(loadedItem?.pushNotificationsSentAt)}
+          availability={wasteTargetingAvailability}
+          onLoadOverview={onLoadWasteOverview}
+        />
+      ) : null}
     </NewsDetailCard>
   );
 }
@@ -117,7 +149,9 @@ function NewsPublicationModeFieldset({
       name="publicationMode"
       render={({ field }) => (
         <fieldset className="space-y-3" aria-label={pt('fields.publicationMode')}>
-          <legend className="text-sm font-medium text-foreground">{pt('fields.publicationMode')}</legend>
+          <legend className="text-sm font-medium text-foreground">
+            {pt('fields.publicationMode')}
+          </legend>
 
           {(['draft', 'immediate', 'scheduled'] as const).map((option) => (
             <label
@@ -190,7 +224,9 @@ function NewsPublicationCard({
                 type="datetime-local"
                 required
                 value={scheduledPublicationField.value}
-                onChange={(event) => field.onChange(scheduledPublicationField.onChange(event.target.value))}
+                onChange={(event) =>
+                  field.onChange(scheduledPublicationField.onChange(event.target.value))
+                }
               />
             )}
           />
@@ -212,6 +248,9 @@ export function NewsDetailSettingsTab({
   mode,
   pt,
   scheduledPublicationField,
+  wasteOverview,
+  wasteTargetingAvailability,
+  onLoadWasteOverview,
 }: NewsDetailSettingsTabProps) {
   const {
     control,
@@ -231,7 +270,14 @@ export function NewsDetailSettingsTab({
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-      <NewsPushNotificationCard control={control} loadedItem={loadedItem} pt={pt} />
+      <NewsPushNotificationCard
+        control={control}
+        loadedItem={loadedItem}
+        pt={pt}
+        wasteOverview={wasteOverview}
+        wasteTargetingAvailability={wasteTargetingAvailability}
+        onLoadWasteOverview={onLoadWasteOverview}
+      />
       <NewsPublicationCard
         control={control}
         loadedItem={loadedItem}

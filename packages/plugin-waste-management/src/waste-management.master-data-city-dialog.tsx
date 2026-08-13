@@ -61,6 +61,20 @@ export const CityDialog = ({
   );
 };
 
+type CityDialogFormProps = {
+  readonly formApi: ReturnType<typeof useForm<CityFormState>>;
+  readonly message: BaseProps<CityFormState>['message'];
+  readonly mode: BaseProps<CityFormState>['mode'];
+  readonly onChange: BaseProps<CityFormState>['onChange'];
+  readonly onBeforeSubmit?: BaseProps<CityFormState>['onBeforeSubmit'];
+  readonly onOpenChange: BaseProps<CityFormState>['onOpenChange'];
+  readonly onSubmit: BaseProps<CityFormState>['onSubmit'];
+  readonly open: boolean;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+  readonly regions: readonly WasteRegionRecord[];
+  readonly saving: boolean;
+};
+
 const CityDialogForm = ({
   open,
   formApi,
@@ -73,19 +87,7 @@ const CityDialogForm = ({
   pt,
   regions,
   saving,
-}: {
-  readonly formApi: ReturnType<typeof useForm<CityFormState>>;
-  readonly message: BaseProps<CityFormState>['message'];
-  readonly mode: BaseProps<CityFormState>['mode'];
-  readonly onChange: BaseProps<CityFormState>['onChange'];
-  readonly onBeforeSubmit?: BaseProps<CityFormState>['onBeforeSubmit'];
-  readonly onOpenChange: BaseProps<CityFormState>['onOpenChange'];
-  readonly onSubmit: BaseProps<CityFormState>['onSubmit'];
-  readonly open: boolean;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly regions: readonly WasteRegionRecord[];
-  readonly saving: boolean;
-}) => {
+}: CityDialogFormProps) => {
   const {
     clearErrors,
     control,
@@ -98,6 +100,10 @@ const CityDialogForm = ({
     id: 'waste-city-name',
     error: errors.name,
   });
+  const postalCodeField = getStudioFormFieldProps({
+    id: 'waste-city-postal-code',
+    error: errors.postalCode,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -109,10 +115,23 @@ const CityDialogForm = ({
           editTitle={pt('masterData.cities.dialog.editTitle')}
           mode={mode}
         />
-        <form className="space-y-4" onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)} noValidate>
+        <form
+          className="space-y-4"
+          onSubmit={createSubmitHandler(handleSubmit, onSubmit, onBeforeSubmit)}
+          noValidate
+        >
           <StatusNotice message={message} />
-          <StudioFormSummaryErrors errors={collectSummaryErrors([nameField])} />
-          <CityDialogFields control={control} nameField={nameField} onChange={onChange} pt={pt} regions={regions} register={register} clearErrors={clearErrors} />
+          <StudioFormSummaryErrors errors={collectSummaryErrors([nameField, postalCodeField])} />
+          <CityDialogFields
+            control={control}
+            nameField={nameField}
+            postalCodeField={postalCodeField}
+            onChange={onChange}
+            pt={pt}
+            regions={regions}
+            register={register}
+            clearErrors={clearErrors}
+          />
           <MasterDataDialogActions
             cancelLabel={pt('masterData.cities.actions.cancel')}
             mode={mode}
@@ -132,6 +151,7 @@ const CityDialogFields = ({
   clearErrors,
   control,
   nameField,
+  postalCodeField,
   onChange,
   pt,
   regions,
@@ -140,6 +160,7 @@ const CityDialogFields = ({
   readonly clearErrors: ReturnType<typeof useForm<CityFormState>>['clearErrors'];
   readonly control: ReturnType<typeof useForm<CityFormState>>['control'];
   readonly nameField: ReturnType<typeof getStudioFormFieldProps>;
+  readonly postalCodeField: ReturnType<typeof getStudioFormFieldProps>;
   readonly onChange: BaseProps<CityFormState>['onChange'];
   readonly pt: ReturnType<typeof usePluginTranslation>;
   readonly regions: readonly WasteRegionRecord[];
@@ -156,6 +177,21 @@ const CityDialogFields = ({
             onChange({ name: event.target.value });
           },
         })}
+      />
+    </StudioField>
+    <StudioField {...postalCodeField} label={pt('masterData.cities.fields.postalCode')}>
+      <Input
+        {...postalCodeField.controlProps}
+        {...register('postalCode', {
+          maxLength: {
+            value: 16,
+            message: pt('masterData.cities.validation.postalCodeMaxLength'),
+          },
+          onChange: (event) => onChange({ postalCode: event.target.value }),
+        })}
+        maxLength={16}
+        inputMode="numeric"
+        autoComplete="postal-code"
       />
     </StudioField>
     <StudioField id="waste-city-region-id" label={pt('masterData.cities.fields.regionId')}>

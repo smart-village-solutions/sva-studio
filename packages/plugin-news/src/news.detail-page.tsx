@@ -22,6 +22,7 @@ import {
   uploadHostMediaFile,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
+  type WasteManagementMasterDataOverview,
 } from '@sva/plugin-sdk';
 import {
   Button,
@@ -65,12 +66,18 @@ import { NewsDetailBasisTab } from './news.detail-basis-tab.js';
 import { NewsDetailContentTab } from './news.detail-content-tab.js';
 import { NewsDetailHistoryTab } from './news.detail-history-tab.js';
 import { NewsDetailSettingsTab } from './news.detail-settings-tab.js';
+import { loadNewsWasteMasterData } from './news.waste-targeting.js';
 import {
   createDefaultNewsDetailFormValues,
   deriveDirtyNewsDetailTabs,
   mapNewsItemToDetailFormValues,
   newsDetailFormResolver,
 } from './news.detail-form.js';
+import {
+  requiresGlobalPushConfirmation,
+  resolveGlobalPushConfirmationKey,
+  type WasteTargetingAvailability,
+} from './news.waste-payload.js';
 import {
   isSupportedUploadFile,
   mediaContentFromAsset,
@@ -401,6 +408,10 @@ export const NewsDetailPage = ({
   const [categoryOptions, setCategoryOptions] = React.useState<readonly NewsCategoryOption[]>([]);
   const [categoryOptionsLoading, setCategoryOptionsLoading] = React.useState(true);
   const [categoryOptionsError, setCategoryOptionsError] = React.useState<string | null>(null);
+  const [wasteOverview, setWasteOverview] =
+    React.useState<WasteManagementMasterDataOverview | null>(null);
+  const [wasteTargetingAvailability, setWasteTargetingAvailability] =
+    React.useState<WasteTargetingAvailability>('idle');
   const [mediaAssets, setMediaAssets] = React.useState<readonly HostMediaAssetListItem[]>([]);
   const [mediaUsages, setMediaUsages] = React.useState<readonly ContentMediaUsage[]>([]);
   const [requiresReferenceSync, setRequiresReferenceSync] = React.useState(false);
@@ -691,6 +702,40 @@ export const NewsDetailPage = ({
     void refreshMediaAssets();
   }, [refreshMediaAssets]);
 
+  const hasWasteTargetingAccess =
+    sessionAccess.assignedModules.includes('waste-management') &&
+    sessionAccess.permissionActions.includes('waste-management.read');
+
+  React.useEffect(() => {
+    if (!hasWasteTargetingAccess) {
+      setWasteOverview(null);
+      setWasteTargetingAvailability('forbidden');
+      return;
+    }
+    setWasteTargetingAvailability((current) => (current === 'forbidden' ? 'idle' : current));
+  }, [hasWasteTargetingAccess]);
+
+  const loadWasteTargetingOverview = React.useCallback(async (): Promise<boolean> => {
+    if (!hasWasteTargetingAccess) {
+      setWasteTargetingAvailability('forbidden');
+      return false;
+    }
+    if (wasteOverview) {
+      return true;
+    }
+    setWasteTargetingAvailability('loading');
+    try {
+      const overview = await loadNewsWasteMasterData();
+      setWasteOverview(overview);
+      setWasteTargetingAvailability('available');
+      return true;
+    } catch {
+      setWasteOverview(null);
+      setWasteTargetingAvailability('load-error');
+      return false;
+    }
+  }, [hasWasteTargetingAccess, wasteOverview]);
+
   React.useEffect(() => {
     if (mode !== 'edit') {
       return;
@@ -796,6 +841,19 @@ export const NewsDetailPage = ({
   const saveCurrentItem = methods.handleSubmit(
     async (values) => {
       if (!canSave) return;
+      if (
+        requiresGlobalPushConfirmation({
+          pushNotificationEnabled: values.pushNotificationEnabled,
+          targetCount: values.wasteLocationKeys.length,
+          pushNotificationsSentAt: loadedItem?.pushNotificationsSentAt,
+        }) &&
+        typeof globalThis.window.confirm === 'function' &&
+        globalThis.window.confirm(
+          pt(resolveGlobalPushConfirmationKey(wasteTargetingAvailability))
+        ) === false
+      ) {
+        return;
+      }
       if (retryReferenceSync) {
         setStatusMessage({
           source: 'reference',
@@ -823,6 +881,7 @@ export const NewsDetailPage = ({
               },
               existingItem: loadedItem ?? null,
               actingPrincipalType,
+              canWriteWasteTargets: hasWasteTargetingAccess,
             },
             { createNews, updateNews }
           );
@@ -1027,6 +1086,9 @@ export const NewsDetailPage = ({
           loadedItem={loadedItem}
           mode={mode}
           pt={pt}
+          wasteOverview={wasteOverview}
+          wasteTargetingAvailability={wasteTargetingAvailability}
+          onLoadWasteOverview={loadWasteTargetingOverview}
           scheduledPublicationField={{
             value: scheduledPublicationInput,
             isInvalid: invalidScheduledPublicationInput,

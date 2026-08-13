@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapNewsItemDetail } from './news-mappers.js';
+import { mapNewsItemDetail, parseNewsPayload } from './news-mappers.js';
 
 describe('news-mappers', () => {
   it('isolates invalid publication and content-block values from the news identity', () => {
@@ -25,5 +25,22 @@ describe('news-mappers', () => {
         expect.objectContaining({ fieldPath: 'contentBlocks[]', fieldGroup: 'contentBlocks' }),
       ])
     );
+  });
+
+  it('normalizes known payload fields without losing unknown properties', () => {
+    expect(
+      parseNewsPayload({
+        externalUrl: 42,
+        custom: { retained: true },
+        wasteLocationKeys: [
+          { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' },
+          { street: 7, zip: '12345', city: 'Musterstadt' },
+        ],
+      })
+    ).toEqual({
+      externalUrl: undefined,
+      custom: { retained: true },
+      wasteLocationKeys: undefined,
+    });
   });
 });

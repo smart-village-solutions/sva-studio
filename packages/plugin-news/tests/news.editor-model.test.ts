@@ -5,6 +5,7 @@ import {
   createNewsEditorFormValues,
   deriveNewsEditorialStatus,
 } from '../src/news.editor-model.js';
+import { requiresGlobalPushConfirmation, resolveGlobalPushConfirmationKey } from '../src/news.waste-payload.js';
 import type { NewsContentItem, NewsDetailFormValues } from '../src/news.types.js';
 
 const newsItemFixture: NewsContentItem = {
@@ -57,6 +58,26 @@ const editorValuesFixture: NewsDetailFormValues = {
 };
 
 describe('news.editor-model', () => {
+  it('requires global Push confirmation independently of Waste targeting availability', () => {
+    expect(requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 0 })).toBe(true);
+    expect(requiresGlobalPushConfirmation({ pushNotificationEnabled: true, targetCount: 1 })).toBe(false);
+    expect(
+      requiresGlobalPushConfirmation({
+        pushNotificationEnabled: true,
+        targetCount: 0,
+        pushNotificationsSentAt: '2026-08-12T12:00:00.000Z',
+      })
+    ).toBe(false);
+  });
+
+  it('selects a confirmation text that matches the Waste targeting state', () => {
+    expect(resolveGlobalPushConfirmationKey('idle')).toBe('targeting.globalConfirm.noTargets');
+    expect(resolveGlobalPushConfirmationKey('available')).toBe('targeting.globalConfirm.noTargets');
+    expect(resolveGlobalPushConfirmationKey('forbidden')).toBe('targeting.globalConfirm.forbidden');
+    expect(resolveGlobalPushConfirmationKey('load-error')).toBe('targeting.globalConfirm.loadError');
+    expect(resolveGlobalPushConfirmationKey('loading')).toBe('targeting.globalConfirm.loadError');
+  });
+
   it('stores legacy update fields in a hidden snapshot for compatibility-driven updates', () => {
     const values = createNewsEditorFormValues(newsItemFixture);
 
@@ -97,8 +118,26 @@ describe('news.editor-model', () => {
       contentIntro: '',
       contentBody: '',
       sourceUrl: { url: '', description: '' },
-      contentMedia: [{ captionText: '', copyright: '', contentType: 'image', height: '', width: '', sourceUrl: { url: '', description: '' } }],
+      contentMedia: [
+        {
+          captionText: '',
+          copyright: '',
+          contentType: 'image',
+          height: '',
+          width: '',
+          sourceUrl: { url: '', description: '' },
+        },
+      ],
     });
+  });
+
+  it('ignores malformed Waste target payloads while loading the editor', () => {
+    const values = createNewsEditorFormValues({
+      ...newsItemFixture,
+      payload: { wasteLocationKeys: { street: 'not-an-array' } },
+    } as unknown as NewsContentItem);
+
+    expect(values.wasteLocationKeys).toEqual([]);
   });
 
   it('does not recover editorial text from payload fields when content blocks are absent', () => {
@@ -147,6 +186,38 @@ describe('news.editor-model', () => {
       pointOfInterestId: 'poi-7',
       keywords: 'Rathaus, Termin',
     });
+  });
+
+  it('sends an explicit empty target list when the final Waste target is removed', () => {
+    const plan = buildNewsSavePayload(
+      { ...editorValuesFixture, wasteLocationKeys: [] },
+      {
+        ...editorValuesFixture.__legacySnapshot,
+        payload: {
+          wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+        },
+      },
+      '2026-06-09T10:00:00.000Z'
+    );
+
+    expect(plan.mutation).toHaveProperty('payload', { wasteLocationKeys: [] });
+  });
+
+  it('omits Waste targets when the editor cannot write targeting data', () => {
+    const plan = buildNewsSavePayload(
+      editorValuesFixture,
+      {
+        ...editorValuesFixture.__legacySnapshot,
+        payload: {
+          retained: 'existing',
+          wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+        },
+      },
+      '2026-06-09T10:00:00.000Z',
+      false
+    );
+
+    expect(plan.mutation).not.toHaveProperty('payload');
   });
 
   it('omits blank legacy character limits from update payloads', () => {

@@ -438,4 +438,45 @@ describe('news api', () => {
       'user'
     );
   });
+
+  it('omits stored Waste targets from editor updates without targeting access', async () => {
+    const updateNewsMock = vi.fn().mockResolvedValue({
+      id: 'news-1',
+      title: 'Neue News',
+      contentType: NEWS_CONTENT_TYPE,
+      payload: {
+        wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+      },
+      contentBlocks: [],
+      status: 'draft',
+      author: 'Persistierter Autor',
+      categories: [],
+      sourceUrl: { url: '', description: '' },
+      createdAt: '2026-01-01',
+      updatedAt: '2026-01-02',
+      visible: false,
+    });
+    const values = createDefaultNewsDetailFormValues();
+    values.title = 'Neue News';
+    values.publicationMode = 'draft';
+    values.wasteLocationKeys = [
+      { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' },
+    ];
+    values.__legacySnapshot = {
+      payload: {
+        wasteLocationKeys: [{ street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' }],
+      },
+    };
+
+    await saveNewsEditorItem(
+      {
+        contentId: 'news-1',
+        values,
+        canWriteWasteTargets: false,
+      },
+      { updateNews: updateNewsMock }
+    );
+
+    expect(updateNewsMock.mock.calls[0]?.[1]).not.toHaveProperty('payload');
+  });
 });

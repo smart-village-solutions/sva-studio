@@ -15,6 +15,7 @@ describe('waste master-data repository contract', () => {
       'listWasteCities',
       'getWasteCityById',
       'upsertWasteCity',
+      'updateWasteCity',
       'listWasteStreets',
       'getWasteStreetById',
       'upsertWasteStreet',

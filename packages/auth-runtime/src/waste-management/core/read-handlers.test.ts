@@ -523,7 +523,7 @@ describe('waste-management read handlers', () => {
       streets: [{ id: 'street-1' }],
       houseNumbers: [{ id: 'house-1' }],
       collectionLocations: [{ id: 'location-1' }],
-      locationTourLinks: [{ id: 'link-1' }],
+      locationTourLinks: [],
     }));
 
     const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
@@ -544,6 +544,49 @@ describe('waste-management read handlers', () => {
         fractions: [],
         regions: [{ id: 'region-1' }],
         collectionLocations: [{ id: 'location-1' }],
+      },
+    });
+  });
+
+  it('uses the lightweight targeting overview loader when master-data is requested with scope=targeting', async () => {
+    const loadMasterDataOverview = vi.fn(async () => ({
+      fractions: [{ id: 'fraction-1' }],
+      regions: [],
+      cities: [],
+      streets: [],
+      houseNumbers: [],
+      collectionLocations: [],
+      locationTourLinks: [],
+    }));
+    const loadMasterDataTargetingOverview = vi.fn(async () => ({
+      fractions: [],
+      regions: [{ id: 'region-1' }],
+      cities: [{ id: 'city-1' }],
+      streets: [{ id: 'street-1' }],
+      houseNumbers: [{ id: 'house-1' }],
+      collectionLocations: [{ id: 'location-1' }],
+      locationTourLinks: [],
+    }));
+
+    const response = await wasteManagementReadHandlers.getWasteManagementMasterDataOverviewInternal(
+      new Request('https://studio.test/api/v1/waste-management/master-data?scope=targeting'),
+      actor,
+      {
+        ...createDeps(),
+        loadMasterDataOverview,
+        loadMasterDataTargetingOverview,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMasterDataOverview).not.toHaveBeenCalled();
+    expect(loadMasterDataTargetingOverview).toHaveBeenCalledWith('tenant-a');
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        fractions: [],
+        regions: [{ id: 'region-1' }],
+        collectionLocations: [{ id: 'location-1' }],
+        locationTourLinks: [],
       },
     });
   });

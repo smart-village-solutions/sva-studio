@@ -68,6 +68,7 @@ const {
   loadMasterDataOverview,
   loadMasterDataFractionsOverview,
   loadMasterDataLocationsOverview,
+  loadMasterDataTargetingOverview,
   loadSchedulingOverview,
   loadToursOverview,
   loadWasteHistoryOverview,
@@ -99,6 +100,7 @@ const {
   saveWastePdfStaticSettings,
   syncWasteHolidayRules,
   saveWasteCity,
+  patchWasteCity,
   saveWasteCollectionLocation,
   deleteWasteCollectionLocation,
   saveWasteFraction,
@@ -139,6 +141,7 @@ export const wasteManagementHandlers = {
         loadMasterDataOverview,
         loadMasterDataFractionsOverview,
         loadMasterDataLocationsOverview,
+        loadMasterDataTargetingOverview,
       })
     ),
   getToursOverview: (request: Request): Promise<Response> =>
@@ -244,7 +247,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       updateWasteManagementCityInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
-        saveWasteCity,
+        patchWasteCity,
         loadWasteCityById,
       })
     ),

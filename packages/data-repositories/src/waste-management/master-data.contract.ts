@@ -63,6 +63,16 @@ export const wasteMasterDataRepositoryContract = {
     defineRepositoryMethod<
       (input: Omit<WasteCityRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
     >(),
+  updateWasteCity: defineRepositoryMethod<
+    (
+      id: string,
+      input: Readonly<{
+        name?: string;
+        postalCode?: string | null;
+        regionId?: string | null;
+      }>
+    ) => Promise<void>
+  >(),
   listWasteStreets:
     defineRepositoryMethod<
       (filter?: WasteStreetListFilter) => Promise<readonly WasteStreetRecord[]>

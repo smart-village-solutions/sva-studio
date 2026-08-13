@@ -93,7 +93,7 @@ describe('waste-management master-data branch handlers', () => {
           method: 'POST',
           headers: createHeaders(),
           body: JSON.stringify({}),
-      }),
+        }),
       expectedMessage: /id/i,
     },
     {
@@ -142,7 +142,13 @@ describe('waste-management master-data branch handlers', () => {
                 calendar: false,
               },
               push: {
-                slots: [{ id: 'fraction-invalid-reminder-default:push:first', maxLeadDays: 7, defaultLeadDays: 14 }],
+                slots: [
+                  {
+                    id: 'fraction-invalid-reminder-default:push:first',
+                    maxLeadDays: 7,
+                    defaultLeadDays: 14,
+                  },
+                ],
               },
             },
           }),
@@ -527,7 +533,11 @@ describe('waste-management master-data branch handlers', () => {
         new Request('https://studio.test/api/v1/waste-management/global-date-shifts/', {
           method: 'PUT',
           headers: createHeaders(),
-          body: JSON.stringify({ originalDate: '2026-05-01', actualDate: '2026-05-02', hasYear: true }),
+          body: JSON.stringify({
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+          }),
         }),
       expectedMessage: 'shiftId fehlt im Pfad.',
       deps: () => createDeps('waste-management.scheduling.manage'),
@@ -627,7 +637,7 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => ({
         ...createDeps(),
         loadWasteHouseNumberById: vi.fn(async () => null),
-        }),
+      }),
       expectedMessage: 'Die Waste-Hausnummer wurde nicht gefunden.',
     },
     {
@@ -721,7 +731,11 @@ describe('waste-management master-data branch handlers', () => {
         new Request('https://studio.test/api/v1/waste-management/global-date-shifts/shift-404', {
           method: 'PUT',
           headers: createHeaders(),
-          body: JSON.stringify({ originalDate: '2026-05-01', actualDate: '2026-05-02', hasYear: true }),
+          body: JSON.stringify({
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+          }),
         }),
       deps: () => ({
         ...createDeps('waste-management.scheduling.manage'),
@@ -773,7 +787,11 @@ describe('waste-management master-data branch handlers', () => {
       actor,
       {
         ...createDeps('waste-management.tours.manage'),
-        loadWasteLocationTourLinkById: vi.fn(async () => ({ id: 'link-delete', locationId: 'location-1', tourId: 'tour-1' })),
+        loadWasteLocationTourLinkById: vi.fn(async () => ({
+          id: 'link-delete',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+        })),
         deleteWasteLocationTourLink: vi.fn(async () => undefined),
       }
     );
@@ -1160,7 +1178,12 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => {
         const loadWasteFractionById = vi
           .fn()
-          .mockResolvedValueOnce({ id: 'fraction-verify', name: 'Alt', createdAt: '', updatedAt: '' })
+          .mockResolvedValueOnce({
+            id: 'fraction-verify',
+            name: 'Alt',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
@@ -1204,11 +1227,17 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => {
         const loadWasteCityById = vi
           .fn()
-          .mockResolvedValueOnce({ id: 'city-verify', name: 'Alt', regionId: 'region-1', createdAt: '', updatedAt: '' })
+          .mockResolvedValueOnce({
+            id: 'city-verify',
+            name: 'Alt',
+            regionId: 'region-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
-          saveWasteCity: vi.fn(async () => undefined),
+          patchWasteCity: vi.fn(async () => undefined),
           loadWasteCityById,
         };
       },
@@ -1226,7 +1255,13 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => {
         const loadWasteHouseNumberById = vi
           .fn()
-          .mockResolvedValueOnce({ id: 'house-verify', number: '41', streetId: 'street-1', createdAt: '', updatedAt: '' })
+          .mockResolvedValueOnce({
+            id: 'house-verify',
+            number: '41',
+            streetId: 'street-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
@@ -1248,7 +1283,13 @@ describe('waste-management master-data branch handlers', () => {
       deps: () => {
         const loadWasteStreetById = vi
           .fn()
-          .mockResolvedValueOnce({ id: 'street-verify', name: 'Alt', cityId: 'city-1', createdAt: '', updatedAt: '' })
+          .mockResolvedValueOnce({
+            id: 'street-verify',
+            name: 'Alt',
+            cityId: 'city-1',
+            createdAt: '',
+            updatedAt: '',
+          })
           .mockResolvedValueOnce(null);
         return {
           ...createDeps(),
@@ -1524,7 +1565,7 @@ describe('waste-management master-data branch handlers', () => {
           createdAt: '',
           updatedAt: '',
         })),
-        saveWasteCity: vi.fn(async () => {
+        patchWasteCity: vi.fn(async () => {
           throw new Error('db down');
         }),
       }),
@@ -1843,16 +1884,73 @@ describe('waste-management master-data branch handlers', () => {
         .mockResolvedValueOnce([{ id: 'link-3', locationId: 'location-3', tourId: 'tour-1' }]),
       listWasteLocationTourPickupDates: vi
         .fn()
-        .mockResolvedValueOnce([{ id: 'pickup-1', locationId: 'location-1', tourId: 'tour-1', pickupDate: '2026-05-10', note: 'A' }])
+        .mockResolvedValueOnce([
+          {
+            id: 'pickup-1',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+            pickupDate: '2026-05-10',
+            note: 'A',
+          },
+        ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: 'pickup-2', locationId: 'location-2', tourId: 'tour-1', pickupDate: '2026-05-11', note: 'B' }])
-        .mockResolvedValueOnce([{ id: 'pickup-3', locationId: 'location-3', tourId: 'tour-1', pickupDate: '2026-05-12', note: 'C' }]),
+        .mockResolvedValueOnce([
+          {
+            id: 'pickup-2',
+            locationId: 'location-2',
+            tourId: 'tour-1',
+            pickupDate: '2026-05-11',
+            note: 'B',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'pickup-3',
+            locationId: 'location-3',
+            tourId: 'tour-1',
+            pickupDate: '2026-05-12',
+            note: 'C',
+          },
+        ]),
       listWasteTourDateShiftsByTourId: vi
         .fn()
-        .mockResolvedValueOnce([{ id: 'shift-1', tourId: 'tour-1', originalDate: '2026-05-10', actualDate: '2026-05-11', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }])
+        .mockResolvedValueOnce([
+          {
+            id: 'shift-1',
+            tourId: 'tour-1',
+            originalDate: '2026-05-10',
+            actualDate: '2026-05-11',
+            hasYear: true,
+            reasonType: 'holiday',
+            reasonKey: 'holiday',
+            followUpMode: 'skip',
+          },
+        ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([{ id: 'shift-2', tourId: 'tour-1', originalDate: '2026-05-11', actualDate: '2026-05-12', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }])
-        .mockResolvedValueOnce([{ id: 'shift-3', tourId: 'tour-1', originalDate: '2026-05-12', actualDate: '2026-05-13', hasYear: true, reasonType: 'holiday', reasonKey: 'holiday', followUpMode: 'skip' }]),
+        .mockResolvedValueOnce([
+          {
+            id: 'shift-2',
+            tourId: 'tour-1',
+            originalDate: '2026-05-11',
+            actualDate: '2026-05-12',
+            hasYear: true,
+            reasonType: 'holiday',
+            reasonKey: 'holiday',
+            followUpMode: 'skip',
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
+            id: 'shift-3',
+            tourId: 'tour-1',
+            originalDate: '2026-05-12',
+            actualDate: '2026-05-13',
+            hasYear: true,
+            reasonType: 'holiday',
+            reasonKey: 'holiday',
+            followUpMode: 'skip',
+          },
+        ]),
       deleteWasteLocationTourLink: vi.fn().mockResolvedValue(undefined),
       deleteWasteLocationTourPickupDate: vi.fn().mockResolvedValue(undefined),
       deleteWasteTourDateShift: vi.fn().mockResolvedValue(undefined),

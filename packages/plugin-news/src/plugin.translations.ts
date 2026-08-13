@@ -157,6 +157,62 @@ const newsTranslationsDe = createNewsLocaleTranslations({
       description: 'Alle nachvollziehbaren Änderungen dieser Nachricht.',
     },
   },
+  targeting: {
+    card: {
+      title: 'Abholorte',
+      description:
+        'Die Nachricht bleibt öffentlich sichtbar; nur die Push-Zustellung wird begrenzt.',
+      sentReadOnly:
+        'Die Empfänger des bereits versendeten Pushs sind dokumentiert und können nicht mehr geändert werden.',
+    },
+    mode: { global: 'Global – alle Geräte', targeted: 'Gezielt – {{count}} Abholorte' },
+    globalHint: 'Ohne Auswahl wird die Push-Benachrichtigung an alle Geräte gesendet.',
+    globalConfirm: {
+      noTargets:
+        'Es sind keine Abholorte ausgewählt. Push-Benachrichtigung wirklich an alle Geräte senden?',
+      forbidden: 'Push-Benachrichtigung wirklich an alle Geräte senden?',
+      loadError:
+        'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?',
+    },
+    stale: 'veraltet',
+    loadError: 'Die Abholorte konnten nicht geladen werden. Versuchen Sie es erneut.',
+    dialog: {
+      title: 'Abholorte auswählen',
+      description: 'Filtern und wählen Sie aktive, vollständig adressierte Abholorte.',
+    },
+    filters: {
+      search: 'Abholorte suchen',
+      region: 'Region',
+      city: 'Ort',
+      street: 'Straße',
+      houseNumber: 'Hausnummer',
+      allRegions: 'Alle Regionen',
+      allCities: 'Alle Orte',
+      allStreets: 'Alle Straßen',
+      allHouseNumbers: 'Alle Hausnummern',
+    },
+    table: {
+      label: 'Auswählbare Abholorte',
+      region: 'Region',
+      city: 'Ort',
+      street: 'Straße',
+      houseNumber: 'Hausnummer',
+      designation: 'Bezeichnung des Abholorts',
+      emptyValue: '–',
+      empty: 'Keine passenden Abholorte gefunden.',
+      resultCount: '{{count}} Treffer',
+      status: '{{count}} Treffer, Seite {{page}} von {{pageCount}}',
+    },
+    actions: {
+      edit: 'Auswahl bearbeiten',
+      loading: 'Abholorte werden geladen…',
+      removeTarget: 'Abholort {{address}} entfernen',
+      apply: 'Auswahl übernehmen',
+      selectAll: 'Alle Filtertreffer auswählen',
+      previous: 'Zurück',
+      next: 'Weiter',
+    },
+  },
   history: {
     sourceNotice:
       'Diese Historie enthält ausschließlich Änderungen, die über das Studio ausgeführt wurden.',
@@ -542,6 +598,60 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     history: {
       title: 'History',
       description: 'All traceable changes for this news entry.',
+    },
+  },
+  targeting: {
+    card: {
+      title: 'Collection locations',
+      description: 'The News remains public; only Push delivery is limited.',
+      sentReadOnly:
+        'The recipients of the Push that has already been sent are recorded and can no longer be changed.',
+    },
+    mode: { global: 'Global – all devices', targeted: 'Targeted – {{count}} collection locations' },
+    globalHint: 'Without a selection the Push notification is sent to all devices.',
+    globalConfirm: {
+      noTargets: 'No collection locations are selected. Send the Push notification to all devices?',
+      forbidden: 'Send the Push notification to all devices?',
+      loadError:
+        'The collection locations could not be loaded. Send the Push notification to all devices?',
+    },
+    stale: 'stale',
+    loadError: 'The collection locations could not be loaded. Please try again.',
+    dialog: {
+      title: 'Select collection locations',
+      description: 'Filter and select active, fully addressed collection locations.',
+    },
+    filters: {
+      search: 'Search collection locations',
+      region: 'Region',
+      city: 'City',
+      street: 'Street',
+      houseNumber: 'House number',
+      allRegions: 'All regions',
+      allCities: 'All cities',
+      allStreets: 'All streets',
+      allHouseNumbers: 'All house numbers',
+    },
+    table: {
+      label: 'Selectable collection locations',
+      region: 'Region',
+      city: 'City',
+      street: 'Street',
+      houseNumber: 'House number',
+      designation: 'Collection location name',
+      emptyValue: '–',
+      empty: 'No matching collection locations found.',
+      resultCount: '{{count}} results',
+      status: '{{count}} results, page {{page}} of {{pageCount}}',
+    },
+    actions: {
+      edit: 'Edit selection',
+      loading: 'Loading collection locations…',
+      removeTarget: 'Remove collection location {{address}}',
+      apply: 'Apply selection',
+      selectAll: 'Select all filtered results',
+      previous: 'Previous',
+      next: 'Next',
     },
   },
   history: {

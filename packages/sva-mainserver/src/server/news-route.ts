@@ -11,7 +11,11 @@ import {
 } from '@sva/auth-runtime/server';
 import { createMutationWorkflow, createSdkLogger, getWorkspaceContext } from '@sva/server-runtime';
 
-import type { SvaMainserverNewsInput } from '../types.js';
+import type {
+  SvaMainserverNewsInput,
+  SvaMainserverNewsPayload,
+  SvaMainserverWasteLocationKey,
+} from '../types.js';
 import {
   errorJson,
   isRecord,
@@ -124,7 +128,6 @@ const readonlyMutationFields = new Set([
   'id',
   'contentType',
   'status',
-  'payload',
   'createdAt',
   'updatedAt',
   'dataProvider',
@@ -136,6 +139,70 @@ const readonlyMutationFields = new Set([
 ]);
 
 const isValidDate = (value: string): boolean => Number.isNaN(new Date(value).getTime()) === false;
+
+const wasteLocationKeyFields = new Set(['street', 'zip', 'city']);
+const maxWasteLocationKeys = 10_000;
+const maxWasteLocationStreetLength = 255;
+const maxWasteLocationZipLength = 16;
+const maxWasteLocationCityLength = 255;
+
+const parseNewsPayload = (value: unknown): SvaMainserverNewsPayload | undefined | Response => {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) {
+    return errorJson(400, 'invalid_request', 'Das Feld "payload" muss als Objekt gesendet werden.');
+  }
+
+  if (!('wasteLocationKeys' in value)) return undefined;
+  if (!Array.isArray(value.wasteLocationKeys)) {
+    return errorJson(
+      400,
+      'invalid_request',
+      'Das Feld "payload.wasteLocationKeys" muss als Liste gesendet werden.'
+    );
+  }
+  if (value.wasteLocationKeys.length > maxWasteLocationKeys) {
+    return errorJson(
+      400,
+      'invalid_request',
+      `Das Feld "payload.wasteLocationKeys" darf höchstens ${maxWasteLocationKeys} Einträge enthalten.`
+    );
+  }
+
+  const uniqueKeys = new Map<string, SvaMainserverWasteLocationKey>();
+  for (const entry of value.wasteLocationKeys) {
+    if (
+      !isRecord(entry) ||
+      Object.keys(entry).some((field) => !wasteLocationKeyFields.has(field))
+    ) {
+      return errorJson(
+        400,
+        'invalid_request',
+        'Jeder Abholortschlüssel muss ausschließlich street, zip und city enthalten.'
+      );
+    }
+    const street = readString(entry.street);
+    const zip = readString(entry.zip);
+    const city = readString(entry.city);
+    if (
+      !street ||
+      !zip ||
+      !city ||
+      street.length > maxWasteLocationStreetLength ||
+      zip.length > maxWasteLocationZipLength ||
+      city.length > maxWasteLocationCityLength
+    ) {
+      return errorJson(
+        400,
+        'invalid_request',
+        'Abholortschlüssel benötigen gültige Werte für street, zip und city.'
+      );
+    }
+    const key = { street, zip, city };
+    uniqueKeys.set(JSON.stringify([street, zip, city]), key);
+  }
+
+  return uniqueKeys.size > 0 ? { wasteLocationKeys: [...uniqueKeys.values()] } : {};
+};
 
 const getVisibleTextLength = (value: string): number => {
   let inTag = false;
@@ -238,6 +305,54 @@ const preserveEditorialAuthor = (
   ...(existing.author ? { author: existing.author } : {}),
 });
 
+const mergeNewsPayload = (
+  news: SvaMainserverNewsInput,
+  existing: { readonly payload?: SvaMainserverNewsPayload }
+): SvaMainserverNewsInput => {
+  const existingPayload = isRecord(existing.payload) ? existing.payload : {};
+  if (news.payload === undefined) {
+    return { ...news, payload: existingPayload };
+  }
+
+  const { wasteLocationKeys: _existingWasteLocationKeys, ...unrelatedExistingPayload } =
+    existingPayload;
+  void _existingWasteLocationKeys;
+  return {
+    ...news,
+    payload: {
+      ...unrelatedExistingPayload,
+      ...news.payload,
+    },
+  };
+};
+
+const preserveExistingNewsMetadata = (
+  news: SvaMainserverNewsInput,
+  existing: {
+    readonly author?: string;
+    readonly payload?: SvaMainserverNewsPayload;
+    readonly pushNotificationsSentAt?: string;
+  }
+): SvaMainserverNewsInput => {
+  const merged = mergeNewsPayload(preserveEditorialAuthor(news, existing), existing);
+  if (!existing.pushNotificationsSentAt) return merged;
+
+  const existingPayload = isRecord(existing.payload) ? existing.payload : {};
+  const mergedPayload = isRecord(merged.payload) ? merged.payload : {};
+  const { wasteLocationKeys: _submittedWasteLocationKeys, ...payloadWithoutWasteTargets } =
+    mergedPayload;
+  void _submittedWasteLocationKeys;
+  return {
+    ...merged,
+    payload: {
+      ...payloadWithoutWasteTargets,
+      ...('wasteLocationKeys' in existingPayload
+        ? { wasteLocationKeys: existingPayload.wasteLocationKeys }
+        : {}),
+    },
+  };
+};
+
 const buildNewsInput = (input: {
   body: Record<string, unknown>;
   title: string;
@@ -248,6 +363,7 @@ const buildNewsInput = (input: {
   sourceUrl: SvaMainserverNewsInput['sourceUrl'] | undefined;
   address: SvaMainserverNewsInput['address'] | undefined;
   contentBlocks: SvaMainserverNewsInput['contentBlocks'] | undefined;
+  payload: SvaMainserverNewsPayload | undefined;
   allowPushNotification: boolean;
 }): SvaMainserverNewsInput => ({
   title: input.title,
@@ -279,6 +395,7 @@ const buildNewsInput = (input: {
   ...(input.allowPushNotification && readBoolean(input.body.pushNotification) !== undefined
     ? { pushNotification: readBoolean(input.body.pushNotification) }
     : {}),
+  ...(input.payload ? { payload: input.payload } : {}),
 });
 
 const parseContentBlocks = (
@@ -363,6 +480,9 @@ const parseNewsInput = async (
     );
   }
 
+  const payload = parseNewsPayload(body.payload);
+  if (payload instanceof Response) return payload;
+
   const title = readString(body.title);
   const publishedAt = readString(body.publishedAt);
   if (!title || !publishedAt || !isValidDate(publishedAt)) {
@@ -420,9 +540,32 @@ const parseNewsInput = async (
       sourceUrl,
       address,
       contentBlocks,
+      payload,
       allowPushNotification: options.allowPushNotification,
     }),
   };
+};
+
+const parseAuthorizedNewsInput = async (
+  request: Request,
+  ctx: AuthenticatedRequestContext,
+  options: ParseOptions
+): Promise<ParsedNewsInput | Response> => {
+  const parsed = await parseNewsInput(request, options);
+  if (isResponse(parsed) || parsed.news.payload === undefined) return parsed;
+
+  const authorization = await authorizeContentPrimitiveForUser({
+    ctx,
+    action: 'waste-management.read',
+  });
+  if (authorization.ok) return parsed;
+
+  return errorJson(
+    authorization.status,
+    authorization.error,
+    authorization.message,
+    authorization.permissionDenial
+  );
 };
 
 const parseVisibilityInput = async (
@@ -674,7 +817,9 @@ const handleCollectionCreate = async (
         return idempotencyKey;
       }
 
-      const parsed = await parseNewsInput(request, { allowPushNotification: true });
+      const parsed = await parseAuthorizedNewsInput(request, context, {
+        allowPushNotification: true,
+      });
       if (isResponse(parsed)) {
         return parsed;
       }
@@ -836,7 +981,7 @@ const handleItemUpdate = async (
     action: 'news.update',
     requestId,
     parse: async (inputRequest) =>
-      await parseNewsInput(inputRequest, { allowPushNotification: true }),
+      await parseAuthorizedNewsInput(inputRequest, ctx, { allowPushNotification: true }),
     execute: async (actor, parsed) => {
       let response: Response;
       try {
@@ -855,7 +1000,7 @@ const handleItemUpdate = async (
         response = await updateNewsForRoute(
           { kind: 'item', newsId: route.newsId },
           actor,
-          preserveEditorialAuthor(parsed.news, existing),
+          preserveExistingNewsMetadata(parsed.news, existing),
           parsed.visible
         );
         await finalizeMainserverMutation({

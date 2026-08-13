@@ -4,6 +4,7 @@ import {
   deleteWasteManagementCollectionLocation,
   createWasteManagementLocationTourLinksBulk,
   updateWasteManagementCollectionLocation,
+  updateWasteManagementCity,
   WasteManagementApiError,
 } from './waste-management.api.js';
 import { submitWasteLocationTourLinksBulkInChunks } from './waste-management.location-tour-links-bulk-client.js';
@@ -31,7 +32,9 @@ const resolveLocationSaveErrorMessage = (error: unknown, pt: Translate) => {
     return pt('masterData.collectionLocations.messages.saveForbidden');
   }
   if (error instanceof WasteManagementApiError && error.message.length > 0 && error.message !== error.code) {
-    return pt('masterData.collectionLocations.messages.saveErrorWithReason', { reason: error.message });
+    return pt('masterData.collectionLocations.messages.saveErrorWithReason', {
+      reason: error.message,
+    });
   }
   return pt('masterData.collectionLocations.messages.saveError');
 };
@@ -49,10 +52,7 @@ const runDeleteMessage = (pt: Translate, code: string | null | undefined, bulk: 
   return pt(`${messageKeyPrefix}.deleteError`);
 };
 
-const runLocationSave = async (
-  submittedForm: CollectionLocationFormState,
-  mode: 'create' | 'edit'
-) => {
+const runLocationSave = async (submittedForm: CollectionLocationFormState, mode: 'create' | 'edit') => {
   if (mode === 'create') {
     await createWasteManagementCollectionLocation(
       wasteMasterDataInputMappers.toCreateCollectionLocationInput(submittedForm)
@@ -66,115 +66,130 @@ const runLocationSave = async (
   );
 };
 
-export const createLocationSubmitHandler = (context: LocationMutationContext) => async (
-  submittedForm: CollectionLocationFormState,
-  mode = resolveLocationMode(context.state, context.search)
-) => {
-  context.state.setSaving(true);
-  context.state.setMessage(null);
-  context.state.setLastOutcome(null);
-  try {
-    await runLocationSave(submittedForm, mode);
-    await context.loadOverview(true);
-    applySuccess(
-      () => context.state.setLocationDialogOpen(false),
-      context.state.setMessage,
-      mode === 'create'
-        ? context.pt('masterData.collectionLocations.messages.createSuccess')
-        : context.pt('masterData.collectionLocations.messages.updateSuccess'),
-      () =>
-        context.state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
-    );
-  } catch (saveError) {
-    context.state.setMessage({
-      kind: 'error',
-      text: resolveLocationSaveErrorMessage(saveError, context.pt),
-    });
-  } finally {
-    context.state.setSaving(false);
-  }
-};
-
-export const createLocationDeleteHandler = (context: LocationMutationContext) => async (location: { readonly id: string }) => {
-  context.state.setSaving(true);
-  context.state.setMessage(null);
-  context.state.setLastOutcome(null);
-  try {
-    await deleteWasteManagementCollectionLocation(location.id);
-    await context.loadOverview(true);
-    context.state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
-    context.state.setMessage({
-      kind: 'success',
-      text: context.pt('masterData.collectionLocations.messages.deleteSuccess'),
-    });
-  } catch (deleteError) {
-    context.state.setMessage({
-      kind: 'error',
-      text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), false),
-    });
-  } finally {
-    context.state.setSaving(false);
-  }
-};
-
-export const createLocationsBulkDeleteHandler = (context: LocationMutationContext) => async (
-  locationIds: readonly string[]
-) => {
-  context.state.setSaving(true);
-  context.state.setMessage(null);
-  context.state.setLastOutcome(null);
-  try {
-    for (const locationId of locationIds) {
-      await deleteWasteManagementCollectionLocation(locationId);
+export const createLocationSubmitHandler =
+  (context: LocationMutationContext) =>
+  async (
+    submittedForm: CollectionLocationFormState,
+    mode = resolveLocationMode(context.state, context.search),
+    cityPostalCodeUpdate?: Readonly<{ cityId: string; postalCode: string }>
+  ) => {
+    context.state.setSaving(true);
+    context.state.setMessage(null);
+    context.state.setLastOutcome(null);
+    try {
+      await runLocationSave(submittedForm, mode);
+      if (cityPostalCodeUpdate) {
+        try {
+          await updateWasteManagementCity(cityPostalCodeUpdate.cityId, {
+            postalCode: cityPostalCodeUpdate.postalCode,
+          });
+        } catch {
+          await context.loadOverview(true);
+          context.state.setMessage({
+            kind: 'warning',
+            text: context.pt('masterData.collectionLocations.messages.postalCodeSaveWarning'),
+          });
+          return;
+        }
+      }
+      await context.loadOverview(true);
+      applySuccess(
+        () => context.state.setLocationDialogOpen(false),
+        context.state.setMessage,
+        mode === 'create'
+          ? context.pt('masterData.collectionLocations.messages.createSuccess')
+          : context.pt('masterData.collectionLocations.messages.updateSuccess'),
+        () => context.state.setLastOutcome(mode === 'create' ? 'location-create-success' : 'location-update-success')
+      );
+    } catch (saveError) {
+      context.state.setMessage({
+        kind: 'error',
+        text: resolveLocationSaveErrorMessage(saveError, context.pt),
+      });
+    } finally {
+      context.state.setSaving(false);
     }
-    await context.loadOverview(true);
-    context.state.setSelectedLocationIds([]);
-    context.state.setMessage({
-      kind: 'success',
-      text: context.pt('masterData.collectionLocations.bulk.messages.deleteSuccess'),
-    });
-  } catch (deleteError) {
-    context.state.setMessage({
-      kind: 'error',
-      text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), true),
-    });
-  } finally {
-    context.state.setSaving(false);
-  }
-};
+  };
 
-export const createLocationBulkAssignmentsHandler = (context: LocationMutationContext) => async (
-  event: React.FormEvent<HTMLFormElement>
-) => {
-  event.preventDefault();
-  context.state.setSaving(true);
-  context.state.setMessage(null);
-  context.state.setLastOutcome(null);
-  try {
-    await submitWasteLocationTourLinksBulkInChunks(
-      wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(
-        context.state.bulkAssignmentsForm,
-        context.selectedCollectionLocationIds
-      ),
-      createWasteManagementLocationTourLinksBulk
-    );
-    await context.loadOverview(true);
-    context.state.setBulkAssignmentsDialogOpen(false);
-    context.state.setSelectedLocationIds([]);
-    context.state.setMessage({
-      kind: 'success',
-      text: context.pt('masterData.collectionLocations.bulk.messages.assignSuccess'),
-    });
-  } catch (saveError) {
-    const code = resolveApiErrorCode(saveError);
-    context.state.setMessage({
-      kind: 'error',
-      text:
-        code === 'forbidden'
-          ? context.pt('masterData.collectionLocations.bulk.messages.assignForbidden')
-          : context.pt('masterData.collectionLocations.bulk.messages.assignError'),
-    });
-  } finally {
-    context.state.setSaving(false);
-  }
-};
+export const createLocationDeleteHandler =
+  (context: LocationMutationContext) => async (location: { readonly id: string }) => {
+    context.state.setSaving(true);
+    context.state.setMessage(null);
+    context.state.setLastOutcome(null);
+    try {
+      await deleteWasteManagementCollectionLocation(location.id);
+      await context.loadOverview(true);
+      context.state.setSelectedLocationIds((current) => current.filter((selectedId) => selectedId !== location.id));
+      context.state.setMessage({
+        kind: 'success',
+        text: context.pt('masterData.collectionLocations.messages.deleteSuccess'),
+      });
+    } catch (deleteError) {
+      context.state.setMessage({
+        kind: 'error',
+        text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), false),
+      });
+    } finally {
+      context.state.setSaving(false);
+    }
+  };
+
+export const createLocationsBulkDeleteHandler =
+  (context: LocationMutationContext) => async (locationIds: readonly string[]) => {
+    context.state.setSaving(true);
+    context.state.setMessage(null);
+    context.state.setLastOutcome(null);
+    try {
+      for (const locationId of locationIds) {
+        await deleteWasteManagementCollectionLocation(locationId);
+      }
+      await context.loadOverview(true);
+      context.state.setSelectedLocationIds([]);
+      context.state.setMessage({
+        kind: 'success',
+        text: context.pt('masterData.collectionLocations.bulk.messages.deleteSuccess'),
+      });
+    } catch (deleteError) {
+      context.state.setMessage({
+        kind: 'error',
+        text: runDeleteMessage(context.pt, resolveApiErrorCode(deleteError), true),
+      });
+    } finally {
+      context.state.setSaving(false);
+    }
+  };
+
+export const createLocationBulkAssignmentsHandler =
+  (context: LocationMutationContext) => async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    context.state.setSaving(true);
+    context.state.setMessage(null);
+    context.state.setLastOutcome(null);
+    try {
+      await submitWasteLocationTourLinksBulkInChunks(
+        wasteMasterDataInputMappers.toCreateLocationTourLinksBulkInput(
+          context.state.bulkAssignmentsForm,
+          context.selectedCollectionLocationIds
+        ),
+        createWasteManagementLocationTourLinksBulk
+      );
+      await context.loadOverview(true);
+      context.state.setBulkAssignmentsDialogOpen(false);
+      context.state.setSelectedLocationIds([]);
+      context.state.setMessage({
+        kind: 'success',
+        text: context.pt('masterData.collectionLocations.bulk.messages.assignSuccess'),
+      });
+    } catch (saveError) {
+      const code = resolveApiErrorCode(saveError);
+      context.state.setMessage({
+        kind: 'error',
+        text:
+          code === 'forbidden'
+            ? context.pt('masterData.collectionLocations.bulk.messages.assignForbidden')
+            : context.pt('masterData.collectionLocations.bulk.messages.assignError'),
+      });
+    } finally {
+      context.state.setSaving(false);
+    }
+  };

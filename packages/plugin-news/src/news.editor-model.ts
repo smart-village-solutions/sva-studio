@@ -7,6 +7,10 @@ import type {
   NewsMediaContentFormValue,
   NewsSavePlan,
 } from './news.types.js';
+import {
+  deduplicateWasteLocationKeys,
+  mergeNewsWasteLocationKeys,
+} from './news.waste-payload.js';
 
 type NewsEditorialStatus = NewsSavePlan['editorialStatus'];
 type NewsLegacyCompatibilitySnapshot = NonNullable<
@@ -114,6 +118,7 @@ const createLegacySnapshot = (item: NewsContentItem): NewsLegacyCompatibilitySna
     : undefined,
   pointOfInterestId: item.pointOfInterestId,
   pushNotificationsSentAt: item.pushNotificationsSentAt,
+  payload: item.payload,
   legacyContentBlocks: mapNewsItemContentBlocks(item),
 });
 
@@ -235,6 +240,7 @@ export const createNewsEditorFormValues = (
     },
     sourceUrlDescription: item.sourceUrl?.description ?? '',
     pushNotificationEnabled: false,
+    wasteLocationKeys: deduplicateWasteLocationKeys(item.payload.wasteLocationKeys),
     publicationMode:
       editorialStatus === 'draft'
         ? 'draft'
@@ -250,7 +256,8 @@ export const createNewsEditorFormValues = (
 export const buildNewsSavePayload = (
   values: NewsDetailEditorialFormValues,
   existingSnapshot: NewsLegacyCompatibilitySnapshot | null,
-  nowIso: string
+  nowIso: string,
+  canWriteWasteTargets = true
 ): NewsSavePlan => {
   const existingPublishedAt = getExistingPublishedAt(existingSnapshot);
   const publishedAt = resolvePublishedAt(values, existingSnapshot, existingPublishedAt, nowIso);
@@ -263,6 +270,9 @@ export const buildNewsSavePayload = (
     existingSnapshot,
     effectivePublicationTimestamp
   );
+  const payload = canWriteWasteTargets
+    ? mergeNewsWasteLocationKeys(existingSnapshot?.payload, values.wasteLocationKeys)
+    : undefined;
 
   return {
     visible,
@@ -278,6 +288,7 @@ export const buildNewsSavePayload = (
         description: sourceUrlDescription,
       },
       contentBlocks: buildFirstContentBlock(values),
+      ...(payload ? { payload } : {}),
     },
   };
 };

@@ -37,6 +37,7 @@ type MutableLegacyCompatibilitySnapshot = {
   };
   pointOfInterestId?: string;
   pushNotificationsSentAt?: string;
+  payload?: NewsContentItem['payload'];
   legacyContentBlocks?: NewsContentBlockFormValue[];
 };
 
@@ -184,6 +185,7 @@ const legacySnapshotSchema = z
       .optional(),
     pointOfInterestId: z.string().optional(),
     pushNotificationsSentAt: z.string().optional(),
+    payload: z.record(z.unknown()).optional(),
     legacyContentBlocks: z
       .array(
         z.object({
@@ -233,6 +235,9 @@ export const newsDetailFormSchema = z
     }),
     sourceUrlDescription: z.string(),
     pushNotificationEnabled: z.boolean(),
+    wasteLocationKeys: z
+      .array(z.object({ street: z.string(), zip: z.string(), city: z.string() }))
+      .default([]),
     publicationMode: z.enum(['draft', 'immediate', 'scheduled']),
     scheduledPublicationAt: z.string(),
     __legacySnapshot: legacySnapshotSchema,
@@ -569,6 +574,7 @@ export const createDefaultNewsDetailFormValues = (): NewsDetailFormValues =>
     sourceUrl: emptyWebUrl(),
     sourceUrlDescription: '',
     pushNotificationEnabled: false,
+    wasteLocationKeys: [],
     publicationMode: 'draft',
     scheduledPublicationAt: '',
     __legacySnapshot: createEmptyLegacySnapshot(),
@@ -717,7 +723,8 @@ const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
 
 export const mapNewsDetailFormValuesToMutation = (
   values: NewsDetailFormValues,
-  mode: 'create' | 'edit'
+  mode: 'create' | 'edit',
+  canWriteWasteTargets = true
 ): NewsFormInput => {
   const normalizedValues = normalizeEditorialValues({ ...values });
   syncSnapshotFromCompatibilityValues(normalizedValues);
@@ -725,7 +732,8 @@ export const mapNewsDetailFormValuesToMutation = (
   const mutation = buildNewsSavePayload(
     normalizedValues,
     snapshot,
-    new Date().toISOString()
+    new Date().toISOString(),
+    canWriteWasteTargets
   ).mutation;
   const categories = buildCategoryMutation(normalizedValues.categories);
   const sourceUrl = compactWebUrl(
@@ -790,6 +798,7 @@ export const deriveDirtyNewsDetailTabs = (dirtyFields: DirtyFieldTree): DirtyTab
     ['showPublishDate'],
     ['pushNotification'],
     ['pushNotificationEnabled'],
+    ['wasteLocationKeys'],
     ['publicationMode'],
     ['scheduledPublicationAt'],
     ['externalId'],

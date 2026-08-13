@@ -2643,6 +2643,8 @@ describe('createSvaMainserverService', () => {
           title: '',
           payload: {
             externalUrl: 'https://example.test',
+            teaser: 'Kurztext',
+            body: '<p>Body</p>',
           },
           contentBlocks: [],
           createdAt: publishedAt,
@@ -2998,7 +3000,7 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('maps full nested news fields and writes full mutation variables without payload', async () => {
+  it('maps full nested news fields and writes payload mutation variables', async () => {
     const publishedAt = '2026-04-14T09:30:00.000Z';
     const fullItem = {
       id: 'news-full',
@@ -3125,6 +3127,10 @@ describe('createSvaMainserverService', () => {
           ],
           pointOfInterestId: 'poi-1',
           pushNotification: true,
+          payload: {
+            custom: 'retained',
+            wasteLocationKeys: [{ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }],
+          },
         },
       })
     ).resolves.toMatchObject({ id: 'news-full' });
@@ -3139,8 +3145,11 @@ describe('createSvaMainserverService', () => {
       categoryName: 'Allgemein',
       pushNotification: true,
       pointOfInterestId: 'poi-1',
+      payload: {
+        custom: 'retained',
+        wasteLocationKeys: [{ street: 'Markt 1', zip: '12345', city: 'Musterhausen' }],
+      },
     });
-    expect(createBody.variables).not.toHaveProperty('payload');
   });
 
   it('normalizes sparse news fields without synthesizing blocks from obsolete payload text', async () => {

@@ -4,6 +4,7 @@ import type {
   WasteRegionRecord,
   WasteStreetRecord,
 } from '@sva/plugin-sdk';
+import type { ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioFieldGroup } from '@sva/studio-ui-react';
 
@@ -41,6 +42,7 @@ export const LocationSelectSection = ({
   filteredStreets,
   filteredHouseNumbers,
   cityError,
+  cityPostalCodeField,
   onChange,
 }: {
   readonly form: CollectionLocationFormState;
@@ -49,10 +51,14 @@ export const LocationSelectSection = ({
   readonly filteredStreets: readonly WasteStreetRecord[];
   readonly filteredHouseNumbers: readonly WasteHouseNumberRecord[];
   readonly cityError?: string;
+  readonly cityPostalCodeField?: ReactNode;
   readonly onChange: (patch: Partial<CollectionLocationFormState>) => void;
 }) => (
   <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
-    <StudioFieldGroup columns={2}>
+    <StudioFieldGroup
+      columns={cityPostalCodeField ? 1 : 2}
+      className={cityPostalCodeField ? 'md:grid-cols-3' : undefined}
+    >
       <LocationRegionCityFields
         form={form}
         regions={regions}
@@ -60,6 +66,7 @@ export const LocationSelectSection = ({
         cityError={cityError}
         onChange={onChange}
       />
+      {cityPostalCodeField}
       <LocationStreetHouseNumberFields
         form={form}
         filteredStreets={filteredStreets}

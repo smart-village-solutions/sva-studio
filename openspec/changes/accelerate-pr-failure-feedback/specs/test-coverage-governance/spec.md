@@ -28,10 +28,19 @@ Das System SHALL redundante Coverage-Arbeit durch Changed-first-Ausführung, dis
 #### Scenario: Sichere Nx-Cache-Grenze in CI
 
 - **GIVEN** ein nachgewiesen deterministisches Coverage-Target läuft in GitHub Actions
+- **AND** ein von Nx unterstützter Remote-Cache mit geprüftem Vertrauensvertrag ist konfiguriert
 - **WHEN** ein Cache-Eintrag wiederhergestellt oder gespeichert wird
 - **THEN** umfasst sein Schlüssel Toolchain, Lockfile, Nx-Konfiguration, Plattform und Vertrauensscope
 - **AND** geschützte `main`-, Release- und Deployment-Kontexte stellen niemals einen von Pull Requests erzeugten Cache wieder her
 - **AND** ein zweiter kleiner PR-Push spart mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit
+
+#### Scenario: Kein unterstützter Remote-Cache konfiguriert
+
+- **GIVEN** GitHub Actions führt Nx auf wechselnden Runnern aus
+- **AND** kein von Nx unterstützter Remote-Cache ist konfiguriert
+- **WHEN** das gemeinsame Workspace-Setup ausgeführt wird
+- **THEN** wird `.nx/cache` nicht über `actions/cache` zwischen Runnern übertragen
+- **AND** ein frischer Runner berechnet benötigte Nx-Ergebnisse neu
 
 ## ADDED Requirements
 

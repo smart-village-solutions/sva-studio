@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildUnitProjectsCommand } from './affected-unit-gate.ts';
+import { buildUnitProjectsCommand, resolveAppUnitExecutionPlan } from './affected-unit-gate.ts';
 import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
 
 describe('affected-unit-gate', () => {
@@ -135,5 +135,25 @@ describe('affected-unit-gate', () => {
     expect(buildUnitProjectsCommand(['plugin-news', 'routing'])).toBe(
       'env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=plugin-news,routing --parallel=1 --nxBail --output-style=stream'
     );
+  });
+
+  it('runs the complete app unit target when the project graph fallback is active', () => {
+    expect(
+      resolveAppUnitExecutionPlan(
+        ['apps/sva-studio-react/src/routes/settings.tsx'],
+        ['sva-studio-react'],
+        {
+          mode: 'affected-fallback',
+          reason: 'nx-project-graph-unavailable',
+          directProjects: [],
+          remainingProjects: ['sva-studio-react'],
+          unmappedFiles: ['apps/sva-studio-react/src/routes/settings.tsx'],
+        }
+      )
+    ).toEqual({
+      mode: 'aggregate',
+      reason: 'nx-project-graph-unavailable',
+      slices: [],
+    });
   });
 });

@@ -18,7 +18,7 @@ Die Zeitangaben stammen aus GitHub-Log-Zeitstempeln und dienen als Ausgangsbasel
 - Für Fehler, die direkt geänderten Projekten, App-Slices oder PR-E2E-Szenarien zuordenbar sind, liegt die mediane Zeit bis zum ersten bestätigten, handlungsfähigen Signal bei höchstens 3 Minuten und P90 bei höchstens 5 Minuten.
 - Der vollständige erforderliche Gate-Scope und die bestehenden Merge-Schutzgrenzen bleiben erhalten.
 - Ein grüner PR erhält durch den zusätzlichen Fast-Feedback-Pfad keine serielle Vorstufe; die mediane terminale Zeit aller erforderlichen Checks steigt nach dem Rollout nicht um mehr als 30 Sekunden.
-- Ein zweiter PR-Push mit kleinen Änderungen vermeidet mindestens 30 Prozent der wiederholbaren Laufzeit cachefähiger unveränderter Targets, ohne Ergebnisse aus einem nicht vertrauenswürdigen PR-Kontext nach `main` zu übernehmen.
+- Sobald ein unterstützter Remote-Cache aktiviert wird, vermeidet ein zweiter PR-Push mit kleinen Änderungen mindestens 30 Prozent der wiederholbaren Laufzeit cachefähiger unveränderter Targets, ohne Ergebnisse aus einem nicht vertrauenswürdigen PR-Kontext nach `main` zu übernehmen.
 - Jeder Aggregator und jede Scope-Entscheidung ist fail-closed, maschinenlesbar getestet und in der Job-Summary nachvollziehbar.
 
 ### Non-Goals
@@ -85,13 +85,13 @@ Der Aggregator schlägt fehl bei:
 
 Ein übersprungener Shard ist nur dann grün, wenn der versionierte Scope-Plan ihn explizit als nicht erforderlich ausweist.
 
-### 7. Cache nur bei bewiesener Deterministik und sicherer Herkunft
+### 7. Cache nur bei bewiesener Deterministik und unterstütztem Transport
 
-Nx bleibt ohne Cloud-Anbindung. GitHub Actions darf den lokalen Nx-Cache zwischen PR-Pushes persistieren, wenn das Target deterministisch ist, alle relevanten Inputs einschließlich Toolchain und Environment im Hash liegen und alle benötigten Outputs reproduzierbar wiederhergestellt werden.
+Nx bleibt ohne Cloud-Anbindung. GitHub Actions cached den pnpm-Store, persistiert `.nx/cache` aber nicht über `actions/cache` zwischen Runnern. Nx behandelt diesen Pfad als lokalen, maschinengebundenen Cache; runnerübergreifende Wiederverwendung erfordert deshalb einen von Nx unterstützten Remote-Cache mit geprüftem Vertrauensvertrag.
 
-Unit-, Type-, Lint- und deterministische Build-Ergebnisse sind primäre Kandidaten. Integration und E2E bleiben ungecacht. Coverage bleibt zunächst `cache: false`; die Aktivierung pro Target erfolgt erst, wenn Contract-Tests Fresh Run und Restore hinsichtlich `coverage-summary.json`, LCOV, Pfaden und Gate-Ergebnis als identisch nachweisen. Andernfalls beschleunigen Changed-first, Sharding und Workflow-Artefakte die Coverage ohne Remote-Wiederverwendung.
+Unit-, Type-, Lint- und deterministische Build-Ergebnisse bleiben Kandidaten für einen späteren unterstützten Remote-Cache. Innerhalb eines Jobs darf Nx den lokalen Cache normal nutzen. Integration und E2E bleiben ungecacht. Coverage bleibt zunächst `cache: false`; die Aktivierung pro Target erfolgt erst, wenn Contract-Tests Fresh Run und Restore hinsichtlich `coverage-summary.json`, LCOV, Pfaden und Gate-Ergebnis als identisch nachweisen. Bis dahin beschleunigen Changed-first, Sharding und Workflow-Artefakte die Gates ohne runnerübergreifende Nx-Wiederverwendung.
 
-Cache-Schlüssel sind versioniert und enthalten mindestens OS, Architektur, Node-/pnpm-Version, Lockfile-Hash, Nx-Konfigurationsrevision und Vertrauensscope. PR-Jobs dürfen sichere Baseline-Caches von `main` lesen und ihren PR-eigenen Cache schreiben. Geschützte `main`- und Release-Jobs dürfen niemals Cache-Einträge aus einem Pull Request wiederherstellen. Cache-Miss, abgelehnter Eintrag oder Restore-Fehler führt zur Neuberechnung, nicht zum Überspringen.
+Ein späterer Remote-Cache muss Schlüssel beziehungsweise Hash-Inputs für mindestens OS, Architektur, Node-/pnpm-Version, Lockfile, Nx-Konfiguration und Vertrauensscope berücksichtigen. Geschützte `main`- und Release-Jobs dürfen niemals Cache-Einträge aus einem Pull Request wiederherstellen. Cache-Miss, abgelehnter Eintrag oder Restore-Fehler führt zur Neuberechnung, nicht zum Überspringen.
 
 ### 8. Messung steuert die gestufte Aktivierung
 

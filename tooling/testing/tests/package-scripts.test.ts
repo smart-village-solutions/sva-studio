@@ -408,14 +408,14 @@ describe('workspace package scripts', () => {
     );
   });
 
-  it('persists only job- and trust-scoped deterministic Nx cache entries', () => {
+  it('caches pnpm dependencies without restoring Nx local artifacts across runners', () => {
     const setupAction = loadWorkspaceSetupAction();
 
-    expect(setupAction).toContain('uses: actions/cache@v5');
-    expect(setupAction).toContain('path: .nx/cache');
-    expect(setupAction).toContain('${{ steps.nx-cache-scope.outputs.scope }}');
-    expect(setupAction).toContain('${{ github.job }}');
-    expect(setupAction).toContain('protected-main-${{ github.job }}-');
+    expect(setupAction).toContain('uses: actions/setup-node@v6');
+    expect(setupAction).toContain('cache: pnpm');
+    expect(setupAction).not.toContain('uses: actions/cache@');
+    expect(setupAction).not.toContain('path: .nx/cache');
+    expect(setupAction).not.toContain('nx-cache-scope');
     expect(setupAction).not.toContain('nxCloudId');
   });
 
@@ -514,12 +514,10 @@ describe('workspace package scripts', () => {
     expect(loadProjectJson('apps/project-report').targets?.['test:coverage']?.cache).toBe(false);
   });
 
-  it('keys the shared Nx cache with the configured Node version file', () => {
+  it('uses the configured Node version file during workspace setup', () => {
     const workspaceSetupAction = loadWorkspaceSetupAction();
 
     expect(workspaceSetupAction).toContain('node-version-file: ${{ inputs.node-version-file }}');
-    expect(workspaceSetupAction).toContain('hashFiles(inputs.node-version-file)');
-    expect(workspaceSetupAction).not.toContain("hashFiles('.nvmrc')");
   });
 
   it('keeps the affected unit gate app-slice-aware', () => {

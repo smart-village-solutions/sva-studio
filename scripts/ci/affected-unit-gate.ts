@@ -5,8 +5,15 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
 import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
-import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
-import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
+import {
+  buildAppUnitCommand,
+  planAppUnitExecution,
+  type AppUnitExecutionPlan,
+} from './affected-unit-plan.ts';
+import {
+  planChangedProjectsWithFallback,
+  type ChangedProjectPlan,
+} from './changed-project-plan.ts';
 import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
@@ -51,6 +58,21 @@ const getUnitProjects = (base: string, head: string, full: boolean): string[] =>
 export const buildUnitProjectsCommand = (projects: readonly string[]): string =>
   `env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=${projects.join(',')} --parallel=1 --nxBail --output-style=stream`;
 
+export const resolveAppUnitExecutionPlan = (
+  changedFiles: readonly string[],
+  affectedProjects: readonly string[],
+  changedProjectPlan: ChangedProjectPlan
+): AppUnitExecutionPlan => {
+  if (
+    changedProjectPlan.reason === 'nx-project-graph-unavailable' &&
+    affectedProjects.includes(APP_PROJECT)
+  ) {
+    return { mode: 'aggregate', reason: 'nx-project-graph-unavailable', slices: [] };
+  }
+
+  return planAppUnitExecution(changedFiles, affectedProjects);
+};
+
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
   reportDuration?: (entry: DurationEntry) => void,
@@ -66,7 +88,7 @@ export const runAffectedUnitGate = (
   );
   reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
-  const appPlan = planAppUnitExecution(changedFiles, affectedProjects);
+  const appPlan = resolveAppUnitExecutionPlan(changedFiles, affectedProjects, changedProjectPlan);
   const directNonAppProjects = changedProjectPlan.directProjects.filter(
     (project) => project !== APP_PROJECT
   );

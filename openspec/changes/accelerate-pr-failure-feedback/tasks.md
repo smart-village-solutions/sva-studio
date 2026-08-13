@@ -49,7 +49,7 @@
 - [x] 7.2 Unit-Fail-fast und PR-E2E-Fail-fast nach erfolgreichem Contract-Test blockierend aktivieren.
 - [ ] 7.3 Zweiphasige Coverage und Shard-Aggregatoren erst nach dokumentierter Parität blockierend aktivieren; alte Implementierung danach entfernen.
 - [ ] 7.4 Mindestens 20 repräsentative PR-Läufe auswerten und Zielwerte von Median höchstens 3 Minuten sowie P90 höchstens 5 Minuten bis zum bestätigten relevanten Fehler prüfen.
-- [ ] 7.5 Prüfen, dass die mediane terminale Zeit grüner Required Checks um höchstens 30 Sekunden steigt und ein zweiter kleiner PR-Push mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit spart.
+- [ ] 7.5 Prüfen, dass die mediane terminale Zeit grüner Required Checks um höchstens 30 Sekunden steigt; die Einsparung von mindestens 30 Prozent bei einem zweiten kleinen PR-Push erst nach Aktivierung eines unterstützten Remote-Caches nachweisen.
 
 ## 8. Dokumentation und Abschluss
 

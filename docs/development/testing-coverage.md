@@ -218,17 +218,18 @@ Aktivierungskriterium:
 - blockierend nur solange die relevante Median-Mehrlast im CI-Pfad bei höchstens `2 Minuten` liegt
 - initialer lokaler Benchmark am `2. Juni 2026`: bestehender Runtime-Pfad `pnpm env:verify:db-schema-snapshot` ca. `10.82s`, dedizierter CI-Check gegen einen sauberen Migrationsstand ca. `18.07s`
 
-## Vertrauensgebundener Nx-Cache ohne Cloud-Kosten
+## Nx-Cache-Grenze ohne Cloud-Anbindung
 
-Der Workspace verwendet keinen Nx-Cloud-Dienst. `nx.json` verhindert mit `neverConnectToCloud: true` eine versehentliche Verbindung zu Nx Cloud; die gemeinsame GitHub-Action setzt zusätzlich `NX_NO_CLOUD=true`. Der lokale `.nx/cache` deterministischer Targets wird über GitHub Actions job- und vertrauensgebunden zwischen Pushes wiederverwendet. Pull Requests dürfen eine sichere `main`-Baseline lesen und nur ihren PR-eigenen Scope schreiben; geschützte `main`-, Release- und Deployment-Kontexte stellen niemals PR-erzeugte Cache-Einträge wieder her.
+Der Workspace verwendet keinen Nx-Cloud-Dienst. `nx.json` verhindert mit `neverConnectToCloud: true` eine versehentliche Verbindung zu Nx Cloud; die gemeinsame GitHub-Action setzt zusätzlich `NX_NO_CLOUD=true`. `actions/setup-node` cached ausschließlich den pnpm-Store. Der lokale `.nx/cache` gilt nur innerhalb derselben Runner-Instanz und wird nicht über `actions/cache` zwischen GitHub-Runnern übertragen, weil Nx fremde lokale Cache-Artefakte nicht als unterstützten Remote-Cache akzeptiert.
 
 Verbindliche Regeln:
 
 - Keine `nxCloudId` und keinen `nxCloudAccessToken` im Repository hinterlegen.
 - `NX_NO_CLOUD=true` im gemeinsamen CI-Setup nicht entfernen.
 - `pnpm nx connect`, Nx Agents und `nx fix-ci` nicht in regulären Workflows verwenden.
-- Cache-Schlüssel müssen Plattform, Node-/pnpm-Version, Lockfile, `nx.json`, Trust-Scope, Job und Commit berücksichtigen.
-- Unit-, Type-, Lint- und deterministische Build-Targets dürfen persistiert werden. Integration und E2E bleiben ungecacht.
+- `.nx/cache` nicht mit `actions/cache` oder einem vergleichbaren Dateiartefakt-Cache runnerübergreifend restaurieren.
+- Runnerübergreifende Nx-Ergebniswiederverwendung erst mit einem von Nx unterstützten Remote-Cache und einem geprüften Vertrauens- und Determinismusvertrag aktivieren.
+- Unit-, Type-, Lint- und deterministische Build-Targets dürfen den lokalen Nx-Cache innerhalb eines Jobs nutzen. Integration und E2E bleiben ungecacht.
 - Coverage bleibt ungecacht, bis ein targetbezogener Fresh-/Restore-Contract Summary, LCOV, Pfade und Gate-Ergebnis als identisch belegt.
 - Cache-Miss, abgelehnter Scope oder Restore-Fehler führt immer zur normalen Neuberechnung.
 - Eine erneute Cloud-Anbindung benötigt eine separate Kosten-Nutzen-Bewertung und eine ausdrücklich freigegebene Änderung.

@@ -17,6 +17,16 @@ const buildReadActionForContentType = (contentType: string | undefined): Content
       return 'events.read';
     case 'poi.point-of-interest':
       return 'poi.read';
+    case 'generic-items.generic-item':
+      return 'generic-items.read';
+    case 'faq.faq':
+      return 'faq.read';
+    case 'cockpit-cards.cockpit-card':
+      return 'cockpit-cards.read';
+    case 'projects.project':
+      return 'projects.read';
+    case 'surveys.survey':
+      return 'surveys.read';
     default:
       return 'content.read';
   }

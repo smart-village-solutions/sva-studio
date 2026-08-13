@@ -3,7 +3,16 @@ import type { AuthorizeRequest } from '@sva/iam-core';
 
 import type { ResolvedContentActor } from './request-context.js';
 
-export type ContentReadAction = 'content.read' | 'news.read' | 'events.read' | 'poi.read';
+export type ContentReadAction =
+  | 'content.read'
+  | 'news.read'
+  | 'events.read'
+  | 'poi.read'
+  | 'generic-items.read'
+  | 'faq.read'
+  | 'cockpit-cards.read'
+  | 'projects.read'
+  | 'surveys.read';
 export type ContentAuthorizationAction = IamContentPrimitiveAction | ContentReadAction;
 
 export type ContentAuthorizationResource = {
@@ -18,10 +27,9 @@ export type ContentAuthorizationResource = {
 const deriveAuthorizeResourceType = (
   action: ContentAuthorizationAction
 ): AuthorizeRequest['resource']['type'] => {
-  if (action.startsWith('news.')) return 'news';
-  if (action.startsWith('events.')) return 'events';
-  if (action.startsWith('poi.')) return 'poi';
-  return 'content';
+  return action === 'content.read' || !action.endsWith('.read')
+    ? 'content'
+    : action.slice(0, -'.read'.length);
 };
 
 export const buildContentAuthorizeRequest = (

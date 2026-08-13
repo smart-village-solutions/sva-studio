@@ -550,6 +550,46 @@ describe('content core authorization', () => {
     expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
   });
 
+  it.each([
+    ['news.article', 'news.read'],
+    ['events.event-record', 'events.read'],
+    ['poi.point-of-interest', 'poi.read'],
+    ['generic-items.generic-item', 'generic-items.read'],
+    ['faq.faq', 'faq.read'],
+    ['cockpit-cards.cockpit-card', 'cockpit-cards.read'],
+    ['projects.project', 'projects.read'],
+    ['surveys.survey', 'surveys.read'],
+  ] as const)(
+    'authorizes external %s detail reads with %s',
+    async (contentType, expectedAction) => {
+      const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
+      content.contentType = contentType;
+      loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
+        contentId: 'local-content-1',
+      });
+      loadContentByIdMock.mockResolvedValue(content);
+      loadContentDetailMock.mockResolvedValue(content);
+      authorizeContentActionMock.mockResolvedValue(null);
+
+      const response = await getContentInternal(
+        new Request(
+          `https://studio.test/api/v1/iam/contents/external-id?contentType=${contentType}`
+        ),
+        ctx
+      );
+
+      expect(response.status).toBe(200);
+      expect(authorizeContentActionMock).toHaveBeenCalledWith(
+        actor,
+        expectedAction,
+        expect.objectContaining({
+          contentId: 'local-content-1',
+          contentType,
+        })
+      );
+    }
+  );
+
   it('returns a database error when loading content details fails', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
     loadContentByIdMock.mockResolvedValue(content);

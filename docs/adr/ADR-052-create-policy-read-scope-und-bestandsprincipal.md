@@ -20,6 +20,7 @@ ADR-045 koppelte `contentAuthorPolicy` zu eng an die allgemeine Mainserver-Crede
 6. Ist der aktive Organisationskontext unvollständig oder widersprüchlich, bleibt die Principal-Auflösung sichtbar `unavailable`; es gibt keinen stillen persönlichen Fallback.
 7. Kann eine erforderliche Listen-Sicht nicht geladen werden, bleiben vorhandene Daten sichtbar, die Liste und ihre Gesamtzahl werden aber ausdrücklich als unvollständig gekennzeichnet.
 8. Wird ein Benutzer gelöscht, entsteht kein neuer Eigentümer. Die konfigurierte Löschregel löscht seine Inhalte oder entfernt die aktive Benutzerzuordnung; verbleibende lokale Anzeigen verwenden `NULL` beziehungsweise „Gelöschter Benutzer“.
+9. Die IAM-Detailprojektion autorisiert Mainserver-Inhalte mit der Read-Action ihres Content-Typ-Namespace (`news.read`, `events.read`, `poi.read`, `generic-items.read`, `faq.read`, `cockpit-cards.read`, `projects.read` oder `surveys.read`). `content.read` bleibt der Fallback für generische beziehungsweise unbekannte Content-Typen.
 
 ## Konsequenzen
 

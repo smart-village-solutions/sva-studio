@@ -1,0 +1,4 @@
+{
+  "prNumber": 979,
+  "body": "Dashboard-Aktionen schneller und übersichtlicher erreichen\n\n- Die Startseite zeigt abhängig von Berechtigungen und aktiven Modulen direkte Aktionen für Nachrichten, Veranstaltungen, Medien und Benutzerverwaltung.\n- Die Aktionskarten passen ihre Breite automatisch an die Anzahl verfügbarer Einstiege an und nutzen auf großen Bildschirmen bis zu vier Spalten.\n- Der einleitende Schnellzugriffs-Text sowie die bisherigen Buttons für Inhalte und Konto entfallen.\n- Der Open-Source-Hinweis steht nun am Ende der Startseite.\n- In der Seitenleiste führt ein hervorgehobener Einstieg vor der Übersicht direkt zur Erstellung eines neuen Inhalts."
+}

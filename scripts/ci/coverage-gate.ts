@@ -907,7 +907,8 @@ export function main(): number {
   const rootDir = process.cwd();
   const updateBaseline = process.argv.includes('--update-baseline');
   const requireSummaries = process.env.COVERAGE_GATE_REQUIRE_SUMMARIES === '1';
-  const evaluateRegressions = process.env.COVERAGE_GATE_EVALUATE_REGRESSIONS === '1';
+  const evaluateRegressions =
+    process.env.COVERAGE_GATE_EVALUATE_REGRESSIONS === '1' ? true : undefined;
   const regressionProjectFilter = (process.env.COVERAGE_GATE_PROJECT_FILTER ?? '')
     .split(',')
     .map((projectName) => projectName.trim())

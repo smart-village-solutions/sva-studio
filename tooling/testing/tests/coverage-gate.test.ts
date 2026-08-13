@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   findCoverageArtifacts,
   findCoverageSummaries,
+  main,
   runCoverageGate,
 } from '../../../scripts/ci/coverage-gate.ts';
 
@@ -162,6 +163,8 @@ function writeLcovSummary(
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   for (const dir of createdDirs.splice(0, createdDirs.length)) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -418,6 +421,22 @@ describe('coverage gate', () => {
 
     expect(result.passed).toBe(false);
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
+  });
+
+  it('keeps regression checks enabled in strict CLI mode without an explicit override', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+    vi.spyOn(process, 'cwd').mockReturnValue(rootDir);
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubEnv('COVERAGE_GATE_REQUIRE_SUMMARIES', '1');
+    vi.stubEnv('COVERAGE_GATE_EVALUATE_REGRESSIONS', '');
+    vi.stubEnv('GITHUB_STEP_SUMMARY', '');
+
+    expect(main()).toBe(1);
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('dropped by'));
   });
 
   it('does not enforce baseline regressions for partial affected coverage runs', () => {

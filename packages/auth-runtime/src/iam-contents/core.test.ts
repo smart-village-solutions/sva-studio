@@ -579,6 +579,7 @@ describe('content core authorization', () => {
       actorAccountId: 'account-1',
       activeOrganizationId: '11111111-1111-4111-8111-111111111111',
     });
+    expect(resolveContentAuthorizationPermissionsMock).not.toHaveBeenCalled();
     expect(authorizeContentActionMock).toHaveBeenCalledWith(
       actor,
       'faq.read',
@@ -622,7 +623,14 @@ describe('content core authorization', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenCalledWith({
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenNthCalledWith(1, {
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      sourceEntityId: 'admin-visible-news',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenNthCalledWith(2, {
       instanceId: 'instance-1',
       contentType: 'news.article',
       sourceEntityId: 'admin-visible-news',

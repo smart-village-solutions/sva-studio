@@ -49,18 +49,23 @@ export const getContentInternal = async (
       if (reference) {
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       } else {
-        const allowGlobalMutation = await hasGlobalContentMutationPermission(
-          actorResolution.actor,
-          contentType
-        );
-        const candidates = await loadMainserverContentProjectionCandidates({
+        const projectionInput = {
           instanceId: actorResolution.actor.instanceId,
           contentType,
           sourceEntityId: contentId,
           actorAccountId: actorResolution.actor.actorAccountId,
           activeOrganizationId: actorResolution.actor.activeOrganizationId,
-          ...(allowGlobalMutation ? { allowGlobalMutation: true } : {}),
-        });
+        } as const;
+        let candidates = await loadMainserverContentProjectionCandidates(projectionInput);
+        if (
+          candidates.length !== 1 &&
+          (await hasGlobalContentMutationPermission(actorResolution.actor, contentType))
+        ) {
+          candidates = await loadMainserverContentProjectionCandidates({
+            ...projectionInput,
+            allowGlobalMutation: true,
+          });
+        }
         if (candidates.length === 1) {
           [item] = candidates;
           projectedItem = true;

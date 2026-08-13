@@ -9,34 +9,26 @@ export const homeENResources = {
     openSourceSuffix: 'in Bad Belzig',
     subtitle: 'Smart Village App self-service platform for content, modules, and extensions.',
     body: 'Manage content, account context, and connected modules in one shared interface with server-side authentication and authorization checks.',
-    primaryAction: 'Open content',
-    secondaryAction: 'Open account',
   },
   session: {
     loading: 'Session is loading ...',
   },
-  sections: {
-    overviewTitle: 'Direct entry points',
-    overviewBody:
-      'Use the key areas directly from the home page. Details about roles, guards, and technical decisions remain within their dedicated feature areas.',
-  },
   cards: {
-    content: {
-      title: 'Content',
-      description:
-        'Manage editorial content, metadata, and publication states in the central content area.',
-      action: 'Open content',
+    news: {
+      title: 'Create news item',
+      description: 'Write a new news item and prepare it for publication.',
     },
-    account: {
-      title: 'Account',
-      description:
-        'Review your profile, privacy context, and other self-service account capabilities.',
-      action: 'Open account',
+    events: {
+      title: 'Create event',
+      description: 'Add a new event with its date, location, and further details.',
     },
-    interfaces: {
-      title: 'Interfaces',
-      description: 'Review connected integrations and open the managed interface sections.',
-      action: 'Open interfaces',
+    media: {
+      title: 'Upload media',
+      description: 'Upload a new image or document to the central media library.',
+    },
+    users: {
+      title: 'Open user management',
+      description: 'Manage user accounts and their access to Studio.',
     },
   },
   changelog: {

@@ -117,6 +117,7 @@ export const shellENResources = {
       system: 'System',
     },
     overview: 'Overview',
+    createContent: 'Create content',
     content: 'Content',
     contentAll: 'All',
     media: 'Media',

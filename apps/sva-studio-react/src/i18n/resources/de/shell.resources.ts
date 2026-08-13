@@ -120,6 +120,7 @@ export const shellDEResources = {
       system: 'System',
     },
     overview: 'Übersicht',
+    createContent: 'Inhalt erstellen',
     content: 'Inhalte',
     contentAll: 'Alle',
     media: 'Medien',

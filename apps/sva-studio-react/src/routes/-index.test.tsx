@@ -5,6 +5,20 @@ import React from 'react';
 import { HomePage } from './-home-page';
 
 const useAuthMock = vi.fn();
+type HomeContentAccessMockState = {
+  access: { canRead: boolean; canCreate: boolean } | null;
+  permissionActions: string[];
+  unscopedPermissionActions: string[];
+  isLoading: boolean;
+  error: Error | null;
+};
+const useContentAccessMock = vi.fn<() => HomeContentAccessMockState>(() => ({
+  access: { canRead: true, canCreate: true },
+  permissionActions: ['news.create', 'events.create', 'media.create', 'iam.user.read'],
+  unscopedPermissionActions: [],
+  isLoading: false,
+  error: null,
+}));
 const readLatestAuthDiagnosticSnapshotMock = vi.fn(() => ({}));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -24,6 +38,28 @@ vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
 }));
 
+vi.mock('../hooks/use-content-access', () => ({
+  useContentAccess: () => useContentAccessMock(),
+}));
+
+vi.mock('../lib/plugins', () => ({
+  studioBuildTimeRegistry: {
+    pluginPermissionRegistry: new Map(),
+  },
+  studioContentTypes: [
+    {
+      contentType: 'news.article',
+      requiredCreateAction: 'news.create',
+      createPath: '/admin/news/new',
+    },
+    {
+      contentType: 'events.event-record',
+      requiredCreateAction: 'events.create',
+      createPath: '/admin/events/new',
+    },
+  ],
+}));
+
 vi.mock('../lib/auth-diagnostics', () => ({
   readLatestAuthDiagnosticSnapshot: () => readLatestAuthDiagnosticSnapshotMock(),
 }));
@@ -35,6 +71,14 @@ describe('HomePage', () => {
     readLatestAuthDiagnosticSnapshotMock.mockReset();
     readLatestAuthDiagnosticSnapshotMock.mockReturnValue({});
     useAuthMock.mockReset();
+    useContentAccessMock.mockReset();
+    useContentAccessMock.mockReturnValue({
+      access: { canRead: true, canCreate: true },
+      permissionActions: ['news.create', 'events.create', 'media.create', 'iam.user.read'],
+      unscopedPermissionActions: [],
+      isLoading: false,
+      error: null,
+    });
   });
 
   it('shows authenticated session summary without raw demo messaging', () => {
@@ -43,6 +87,7 @@ describe('HomePage', () => {
         id: 'user-1',
         roles: ['editor', 'system_admin'],
         instanceId: 'de-musterhausen',
+        assignedModules: ['news', 'events', 'media'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -58,14 +103,11 @@ describe('HomePage', () => {
 
     expect(screen.queryByText('Demo Session')).toBeNull();
     expect(screen.queryByText('IAM-Authorize (Modulpfad)')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Inhalte öffnen' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Konto öffnen' })).toBeNull();
     expect(
-      screen
-        .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/admin/content')
-    ).toBe(true);
-    expect(screen.getByRole('heading', { name: 'SVA Studio' }).closest('section')?.className).toContain(
-      'rgba(0,90,158,0.18)'
-    );
+      screen.getByRole('heading', { name: 'SVA Studio' }).closest('section')?.className
+    ).toContain('rgba(0,90,158,0.18)');
   });
 
   it('shows signed-out copy without exposing role diagnostics', () => {
@@ -88,10 +130,14 @@ describe('HomePage', () => {
     expect(screen.queryByText('Anmeldung erforderlich')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Zum Login' })).toBeNull();
     expect(
-      screen.getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' }).getAttribute('href')
+      screen
+        .getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' })
+        .getAttribute('href')
     ).toBe('https://github.com/smart-village-solutions/sva-studio');
     expect(
-      screen.getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' }).getAttribute('rel')
+      screen
+        .getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' })
+        .getAttribute('rel')
     ).toBe('noopener noreferrer');
     expect(screen.getByLabelText('love')).toBeTruthy();
     expect(screen.queryByText('Direkte Einstiege')).toBeNull();
@@ -119,12 +165,13 @@ describe('HomePage', () => {
     expect(screen.getByText('Sitzung wird geladen ...')).toBeTruthy();
   });
 
-  it('shows direct entry points instead of debug cards', () => {
+  it('shows all permitted actions as four equally sized desktop cards', () => {
     useAuthMock.mockReturnValue({
       user: {
         id: 'user-1',
         roles: ['editor'],
         instanceId: 'de-musterhausen',
+        assignedModules: ['news', 'events', 'media'],
       },
       isAuthenticated: true,
       isLoading: false,
@@ -138,20 +185,109 @@ describe('HomePage', () => {
 
     render(<HomePage />);
 
-    expect(screen.getByText('Direkte Einstiege')).toBeTruthy();
-    expect(
-      screen
-        .getAllByRole('link', { name: 'Inhalte öffnen' })
-        .some((link) => link.getAttribute('href') === '/admin/content')
-    ).toBe(true);
-    expect(
-      screen
-        .getAllByRole('link', { name: 'Konto öffnen' })
-        .some((link) => link.getAttribute('href') === '/account')
-    ).toBe(true);
-    expect(screen.getByRole('link', { name: 'Schnittstellen öffnen' }).getAttribute('href')).toBe(
-      '/interfaces'
+    expect(screen.queryByText('Direkte Einstiege')).toBeNull();
+    expect(screen.getByRole('link', { name: /Nachricht erstellen/ }).getAttribute('href')).toBe(
+      '/admin/news/new'
     );
+    expect(screen.getByRole('link', { name: /Veranstaltung anlegen/ }).getAttribute('href')).toBe(
+      '/admin/events/new'
+    );
+    expect(screen.getByRole('link', { name: /Medium hochladen/ }).getAttribute('href')).toBe(
+      '/admin/media/new'
+    );
+    const usersLink = screen.getByRole('link', { name: /Benutzerverwaltung öffnen/ });
+    expect(usersLink.getAttribute('href')).toBe('/admin/users');
+    expect(usersLink.closest('.grid')?.className).toContain('lg:grid-cols-4');
+  });
+
+  it('shows only actions allowed by permissions and assigned modules', () => {
+    useContentAccessMock.mockReturnValue({
+      access: { canRead: true, canCreate: true },
+      permissionActions: ['news.create', 'media.create'],
+      unscopedPermissionActions: [],
+      isLoading: false,
+      error: null,
+    });
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        roles: ['editor'],
+        instanceId: 'de-musterhausen',
+        assignedModules: ['news'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    });
+
+    render(<HomePage />);
+
+    const newsLink = screen.getByRole('link', { name: /Nachricht erstellen/ });
+    expect(newsLink).toBeTruthy();
+    expect(newsLink.closest('.grid')?.className).toContain('lg:grid-cols-1');
+    expect(screen.queryByRole('link', { name: /Veranstaltung anlegen/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Medium hochladen/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Benutzerverwaltung öffnen/ })).toBeNull();
+  });
+
+  it('keeps dashboard actions fail-closed while permissions are loading', () => {
+    useContentAccessMock.mockReturnValue({
+      access: null,
+      permissionActions: [],
+      unscopedPermissionActions: [],
+      isLoading: true,
+      error: null,
+    });
+    useAuthMock.mockReturnValue({
+      user: {
+        id: 'user-1',
+        roles: ['editor'],
+        instanceId: 'de-musterhausen',
+        assignedModules: ['news', 'events', 'media'],
+      },
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    });
+
+    render(<HomePage />);
+
+    expect(screen.queryByRole('link', { name: /Nachricht erstellen/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Veranstaltung anlegen/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Medium hochladen/ })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Benutzerverwaltung öffnen/ })).toBeNull();
+  });
+
+  it('places the open-source claim in the page footer', () => {
+    useAuthMock.mockReturnValue({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+      logout: vi.fn(),
+      refreshSession: vi.fn(),
+      hasResolvedSession: true,
+      isRecoveringSession: false,
+    });
+
+    render(<HomePage />);
+
+    expect(
+      screen
+        .getByRole('link', { name: 'Open Source Software made with love in Bad Belzig' })
+        .closest('footer')
+    ).toBeTruthy();
   });
 
   it('shows a helpful message after insufficient role redirect', () => {
@@ -265,7 +401,9 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     expect(screen.queryByText('Login fehlgeschlagen. Bitte erneut versuchen.')).toBeNull();
-    expect(screen.queryByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')).toBeNull();
+    expect(
+      screen.queryByText('Login abgebrochen oder abgelaufen. Bitte erneut anmelden.')
+    ).toBeNull();
   });
 
   it('starts a full-document login redirect from the home route when auth=login is present', () => {

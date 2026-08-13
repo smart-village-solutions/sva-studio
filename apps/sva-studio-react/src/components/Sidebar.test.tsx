@@ -349,6 +349,7 @@ describe('Sidebar', () => {
     expect(screen.queryByRole('link', { name: 'News' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Medien' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Benutzer' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Inhalt erstellen' })).toBeNull();
   });
 
   it('rendert im Loading-Zustand keine interaktiven Links', () => {
@@ -468,6 +469,54 @@ describe('Sidebar', () => {
     expect(screen.getByRole('link', { name: 'Orte' }).getAttribute('href')).toBe(
       '/admin/content?type=poi.point-of-interest&page=1'
     );
+  });
+
+  it('zeigt den primären Erstellen-Einstieg vor der Übersicht bei mindestens einem anlegbaren Inhaltstyp', () => {
+    enableRegisteredContentTypes();
+    renderSidebar({
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['news.read', 'news.create'],
+      }),
+    });
+
+    const dataManagementSection = screen.getByText('Datenverwaltung').closest('section');
+    expect(dataManagementSection).toBeTruthy();
+    const links = within(dataManagementSection as HTMLElement).getAllByRole('link');
+    expect(links[0]?.textContent).toContain('Inhalt erstellen');
+    expect(links[0]?.getAttribute('href')).toBe('/admin/content/new');
+    expect(links[1]?.textContent).toContain('Übersicht');
+    expect(links[0]?.className).toContain('bg-action-primary');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seitenleiste einklappen' }));
+    const collapsedCreateLink = screen.getByRole('link', { name: 'Inhalt erstellen' });
+    expect(collapsedCreateLink.getAttribute('title')).toBe('Inhalt erstellen');
+    expect(collapsedCreateLink.className).toContain('min-w-11');
+  });
+
+  it('blendet den Erstellen-Einstieg ohne passende Permission oder Modulzuweisung aus', () => {
+    enableRegisteredContentTypes();
+    const { rerender } = renderSidebar({
+      user: createSidebarUser({ assignedModules: ['news'] }),
+      contentAccess: createContentAccessState({
+        access: defaultReadOnlyAccessState,
+        permissionActions: ['news.read'],
+      }),
+    });
+
+    expect(screen.queryByRole('link', { name: 'Inhalt erstellen' })).toBeNull();
+
+    setupSidebarSession({
+      user: createSidebarUser({ assignedModules: [] }),
+      contentAccess: createContentAccessState({
+        access: defaultEditableAccessState,
+        permissionActions: ['news.read', 'news.create'],
+      }),
+    });
+    rerender(<Sidebar />);
+
+    expect(screen.queryByRole('link', { name: 'Inhalt erstellen' })).toBeNull();
   });
 
   it('zeigt hosteigene Inhaltstypen ohne fiktive Content-Modulzuweisung', () => {

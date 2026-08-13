@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from '@tanstack/react-router';
 import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
@@ -14,7 +13,7 @@ import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '@sva/studio-ui-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { HomeActionCards } from './-home-action-cards';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
 type HomeRouteState = {
@@ -88,22 +87,7 @@ const clearConsumedHomeAuthSearch = (): void => {
   window.history.replaceState(window.history.state, '', nextHref);
 };
 
-const AuthenticatedHeroActions = () => (
-  <div className="flex flex-wrap gap-3">
-    <Button asChild>
-      <Link to="/admin/content">{t('home.hero.primaryAction')}</Link>
-    </Button>
-    <Button asChild variant="secondary">
-      <Link to="/account">{t('home.hero.secondaryAction')}</Link>
-    </Button>
-  </div>
-);
-
-const AnonymousHeroActions = ({
-  loginHref,
-}: {
-  readonly loginHref: string;
-}) => (
+const AnonymousHeroActions = ({ loginHref }: { readonly loginHref: string }) => (
   <div className="flex w-full max-w-xl flex-col items-center gap-3 sm:flex-row sm:justify-center">
     <Button asChild className="h-12 min-w-48 rounded-full px-8 text-base">
       <a href={loginHref}>{t('shell.header.login')}</a>
@@ -120,7 +104,10 @@ const HomeOpenSourceClaim = () => (
       className="inline-flex items-center gap-1 underline-offset-4 transition-colors hover:text-foreground hover:underline"
     >
       <span>{`${t('home.hero.openSourcePrefix')} `}</span>
-      <span aria-label={t('home.hero.openSourceLoveLabel')} className="inline-flex items-center text-rose-500">
+      <span
+        aria-label={t('home.hero.openSourceLoveLabel')}
+        className="inline-flex items-center text-rose-500"
+      >
         <Heart aria-hidden="true" className="h-4 w-4 fill-current" strokeWidth={1.8} />
         <span className="sr-only">{t('home.hero.openSourceLoveLabel')}</span>
       </span>
@@ -143,7 +130,9 @@ const DevAuthPrompt = ({
     <Button type="button" onClick={() => void loginWithDevAuth()}>
       {t('shell.header.devLogin')}
     </Button>
-    {showDevLoginPrompt ? <span className="text-sm text-muted-foreground">{t('home.devAuth.prompt')}</span> : null}
+    {showDevLoginPrompt ? (
+      <span className="text-sm text-muted-foreground">{t('home.devAuth.prompt')}</span>
+    ) : null}
   </div>
 );
 
@@ -160,10 +149,14 @@ const HomeAuthErrorBanner = ({
     <AlertDescription>{authError}</AlertDescription>
     <div className="flex flex-col items-start gap-2 sm:items-end">
       {authDiagnosticSnapshot.requestId ? (
-        <span>{t('home.authError.requestId', { requestId: authDiagnosticSnapshot.requestId })}</span>
+        <span>
+          {t('home.authError.requestId', { requestId: authDiagnosticSnapshot.requestId })}
+        </span>
       ) : null}
       {authDiagnosticSnapshot.authFlowId ? (
-        <span>{t('home.authError.authFlowId', { authFlowId: authDiagnosticSnapshot.authFlowId })}</span>
+        <span>
+          {t('home.authError.authFlowId', { authFlowId: authDiagnosticSnapshot.authFlowId })}
+        </span>
       ) : null}
       {authErrorLoginHref ? (
         <Button asChild size="sm" variant="secondary">
@@ -176,59 +169,23 @@ const HomeAuthErrorBanner = ({
 
 const AuthenticatedHomeOverview = ({
   changelogState,
+  user,
 }: {
   readonly changelogState: StudioChangelogState;
-}) => (
-  <section className="mx-auto max-w-6xl px-6 py-12">
-    <div className="mb-6 flex flex-col gap-2">
-      <h2 className="text-2xl font-semibold tracking-tight">{t('home.sections.overviewTitle')}</h2>
-      <p className="max-w-3xl text-sm text-muted-foreground">{t('home.sections.overviewBody')}</p>
-    </div>
+  readonly user: ReturnType<typeof useAuth>['user'];
+}) => {
+  return (
+    <section className="mx-auto w-full max-w-6xl px-6 py-12">
+      <HomeActionCards user={user} />
 
-    <div className="grid gap-4 md:grid-cols-3">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('home.cards.content.title')}</CardTitle>
-          <CardDescription>{t('home.cards.content.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="secondary">
-            <Link to="/admin/content">{t('home.cards.content.action')}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('home.cards.account.title')}</CardTitle>
-          <CardDescription>{t('home.cards.account.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="secondary">
-            <Link to="/account">{t('home.cards.account.action')}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('home.cards.interfaces.title')}</CardTitle>
-          <CardDescription>{t('home.cards.interfaces.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="secondary">
-            <Link to="/interfaces">{t('home.cards.interfaces.action')}</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-
-    <StudioChangelogSection changelogState={changelogState} />
-  </section>
-);
+      <StudioChangelogSection changelogState={changelogState} />
+    </section>
+  );
+};
 
 export const HomePage = () => {
   const {
+    user,
     isAuthenticated,
     isLoading,
     error,
@@ -272,7 +229,8 @@ export const HomePage = () => {
     routeError ??
     (sessionRecoveryFailed ? t('home.authError.sessionExpired') : null) ??
     (error ? t('home.authError.sessionLoadFailed') : null);
-  const authErrorLoginHref = !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
+  const authErrorLoginHref =
+    !isAuthenticated && authError ? createLoginHref(authReturnTo ?? undefined) : null;
   const heroLoginHref = createLoginHref(authReturnTo ?? undefined);
   const isAnonymousHome = !isAuthenticated;
   const [changelogState, setChangelogState] = React.useState<StudioChangelogState>({
@@ -299,7 +257,7 @@ export const HomePage = () => {
   }, [isAuthenticated]);
 
   return (
-    <div className="min-h-full bg-background text-foreground">
+    <div className="flex min-h-full flex-col bg-background text-foreground">
       <section className="bg-[radial-gradient(circle_at_top,_rgba(0,90,158,0.18),_transparent_34%),linear-gradient(to_bottom,_rgba(241,246,252,0.98),_rgba(255,255,255,0.99)_44%,_rgb(var(--background))_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(74,132,188,0.22),_transparent_30%),linear-gradient(to_bottom,_rgba(10,16,24,1),_rgba(13,20,30,0.98)_38%,_rgb(var(--background))_100%)]">
         <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-16 sm:pb-20 sm:pt-20">
           <div
@@ -318,7 +276,9 @@ export const HomePage = () => {
               </h1>
               {isAuthenticated ? (
                 <>
-                  <p className="max-w-2xl text-lg text-muted-foreground">{t('home.hero.subtitle')}</p>
+                  <p className="max-w-2xl text-lg text-muted-foreground">
+                    {t('home.hero.subtitle')}
+                  </p>
                   <p className="max-w-2xl text-sm text-muted-foreground">{t('home.hero.body')}</p>
                 </>
               ) : (
@@ -327,14 +287,20 @@ export const HomePage = () => {
                     Die gemeinsame Oberfläche für Inhalte, Module und Organisationen.
                   </p>
                   <p className="mx-auto max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                    Melden Sie sich an, um Inhalte zu verwalten, Fachmodule zu öffnen und in Ihrem Arbeitskontext direkt weiterzuarbeiten.
+                    Melden Sie sich an, um Inhalte zu verwalten, Fachmodule zu öffnen und in Ihrem
+                    Arbeitskontext direkt weiterzuarbeiten.
                   </p>
                 </>
               )}
             </div>
-            {isAuthenticated ? <AuthenticatedHeroActions /> : !isLoading ? <AnonymousHeroActions loginHref={heroLoginHref} /> : null}
+            {!isAuthenticated && !isLoading ? (
+              <AnonymousHeroActions loginHref={heroLoginHref} />
+            ) : null}
             {isAnonymousHome && !isLoading && isDevAuthAvailable ? (
-              <DevAuthPrompt showDevLoginPrompt={showDevLoginPrompt} loginWithDevAuth={loginWithDevAuth} />
+              <DevAuthPrompt
+                showDevLoginPrompt={showDevLoginPrompt}
+                loginWithDevAuth={loginWithDevAuth}
+              />
             ) : null}
             {authError ? (
               <HomeAuthErrorBanner
@@ -343,7 +309,6 @@ export const HomePage = () => {
                 authErrorLoginHref={authErrorLoginHref}
               />
             ) : null}
-            <HomeOpenSourceClaim />
           </div>
         </div>
       </section>
@@ -353,8 +318,12 @@ export const HomePage = () => {
           <p className="text-sm text-muted-foreground">{t('home.session.loading')}</p>
         </section>
       ) : isAuthenticated ? (
-        <AuthenticatedHomeOverview changelogState={changelogState} />
+        <AuthenticatedHomeOverview changelogState={changelogState} user={user} />
       ) : null}
+
+      <footer className="mt-auto flex justify-center px-6 py-8">
+        <HomeOpenSourceClaim />
+      </footer>
     </div>
   );
 };

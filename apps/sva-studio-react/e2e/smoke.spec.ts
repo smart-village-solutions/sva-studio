@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
 import {
+  expectAppShellReady,
   gotoHomeAsAuthenticatedUser,
   navigateClientSide,
   registerSharedIamRoutes,
@@ -30,9 +31,12 @@ const captureServerFnResponses = (page: Page) => {
     };
     responses.push(entry);
 
-    void response.text().then((body) => {
-      entry.body = body;
-    }).catch(() => undefined);
+    void response
+      .text()
+      .then((body) => {
+        entry.body = body;
+      })
+      .catch(() => undefined);
   });
 
   return responses;
@@ -50,7 +54,8 @@ const resolvePlaywrightServerPort = () => {
     return process.env.PLAYWRIGHT_PORT;
   }
 
-  const configuredBaseUrl = process.env.PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL ?? process.env.PLAYWRIGHT_BASE_URL;
+  const configuredBaseUrl =
+    process.env.PLAYWRIGHT_DE_MUSTERHAUSEN_BASE_URL ?? process.env.PLAYWRIGHT_BASE_URL;
 
   if (!configuredBaseUrl) {
     return '4173';
@@ -58,10 +63,6 @@ const resolvePlaywrightServerPort = () => {
 
   const parsedBaseUrl = new URL(configuredBaseUrl);
   return parsedBaseUrl.port || (parsedBaseUrl.protocol === 'https:' ? '443' : '80');
-};
-
-const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
-  await expect(page.getByRole('heading', { name: 'Schnittstellen', exact: true })).toBeVisible({ timeout });
 };
 
 const mockAuthenticatedPluginShell = async (page: Page) => {
@@ -192,7 +193,7 @@ test('authenticated client navigation renders /interfaces', async ({ page }) => 
   await mockAuthenticatedPluginShell(page);
   await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/interfaces');
-  await expectInterfacesShellReady(page);
+  await expectAppShellReady(page);
 });
 
 test('interfaces page uses the real /_server transport during overview load', async ({ page }) => {
@@ -230,14 +231,13 @@ test('interfaces page uses the real /_server transport during overview load', as
 
   await gotoHomeAsAuthenticatedUser(page);
   await navigateClientSide(page, '/interfaces');
-  await expect(
-    page.getByRole('heading', { name: 'Schnittstellen', exact: true })
-  ).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { name: 'Schnittstellen', exact: true })).toBeVisible({
+    timeout: 20_000,
+  });
   await expect
-    .poll(
-      () => serverFnResponses.find((response) => response.method === 'GET')?.status,
-      { timeout: 20_000 }
-    )
+    .poll(() => serverFnResponses.find((response) => response.method === 'GET')?.status, {
+      timeout: 20_000,
+    })
     .toBe(200);
 
   const loadResponse = serverFnResponses.find((response) => response.method === 'GET');
@@ -246,7 +246,9 @@ test('interfaces page uses the real /_server transport during overview load', as
   expect(pageErrors).toEqual([]);
 });
 
-test('authenticated client navigation to /admin/content renders the host-owned content route', async ({ page }) => {
+test('authenticated client navigation to /admin/content renders the host-owned content route', async ({
+  page,
+}) => {
   const pageErrors: string[] = [];
   const consoleErrors: string[] = [];
   const requestFailures: string[] = [];
@@ -263,7 +265,9 @@ test('authenticated client navigation to /admin/content renders the host-owned c
     }
   });
   page.on('requestfailed', (request) => {
-    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+    requestFailures.push(
+      `${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`
+    );
   });
   page.on('request', (request) => {
     observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
@@ -275,7 +279,7 @@ test('authenticated client navigation to /admin/content renders the host-owned c
   const response = await page.goto('/interfaces');
   expect(response).not.toBeNull();
   expect(response?.status()).toBeLessThan(400);
-  await expectInterfacesShellReady(page);
+  await expectAppShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateClientSide(page, '/admin/content');
   await expect(page).toHaveURL(/\/admin\/content(?:\?.*)?$/);
@@ -298,20 +302,27 @@ test('GET /auth/login returns redirect response', async ({ request }) => {
   });
 });
 
-test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({ request }) => {
+test('tenant-host login fails closed when canonical auth redirect prerequisites are unavailable', async ({
+  request,
+}) => {
   const playwrightPort = resolvePlaywrightServerPort();
-  const tenantLoginUrl = process.env.PLAYWRIGHT_TENANT_LOGIN_URL
-    ?? `http://demo2.studio.localhost:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
+  const tenantLoginUrl =
+    process.env.PLAYWRIGHT_TENANT_LOGIN_URL ??
+    `http://demo2.studio.localhost:${playwrightPort}/auth/login?returnTo=%2Fadmin%2Finstances`;
   const parsedTenantLoginUrl = new URL(tenantLoginUrl);
-  const tenantRequestPort = parsedTenantLoginUrl.port
-    || (parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
+  const tenantRequestPort =
+    parsedTenantLoginUrl.port ||
+    (parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
       ? playwrightPort
       : parsedTenantLoginUrl.protocol === 'https:'
         ? '443'
         : '80');
   const requestUrl =
     parsedTenantLoginUrl.hostname === 'demo2.studio.localhost'
-      ? new URL(`${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`, `http://127.0.0.1:${tenantRequestPort}`).toString()
+      ? new URL(
+          `${parsedTenantLoginUrl.pathname}${parsedTenantLoginUrl.search}`,
+          `http://127.0.0.1:${tenantRequestPort}`
+        ).toString()
       : tenantLoginUrl;
 
   const response = await request.get(requestUrl, {
@@ -353,7 +364,9 @@ test('router keeps the shell active during client-side navigation', async ({ pag
     }
   });
   page.on('requestfailed', (request) => {
-    requestFailures.push(`${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`);
+    requestFailures.push(
+      `${request.method()} ${request.url()} :: ${request.failure()?.errorText ?? 'unknown'}`
+    );
   });
   page.on('request', (request) => {
     observedRequests.push(`${request.resourceType()} ${request.method()} ${request.url()}`);
@@ -363,12 +376,12 @@ test('router keeps the shell active during client-side navigation', async ({ pag
   });
 
   await page.goto('/interfaces');
-  await expectInterfacesShellReady(page);
+  await expectAppShellReady(page);
   await expect(page.locator('html')).toHaveAttribute('data-theme', /.+/);
   await navigateClientSide(page, '/admin/content');
   await expect(page.getByRole('heading', { name: 'Inhalte', exact: true })).toBeVisible();
   await navigateClientSide(page, '/interfaces');
   await expect(page).toHaveURL(/\/interfaces$/);
-  await expectInterfacesShellReady(page);
+  await expectAppShellReady(page);
   expect(pageErrors).toEqual([]);
 });

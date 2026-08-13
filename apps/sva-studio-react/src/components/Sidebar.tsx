@@ -20,6 +20,7 @@ import {
   IconPackages,
   IconPhoto,
   IconPlugConnected,
+  IconPlus,
   IconShieldCheck,
   IconShieldLock,
   IconUserSquareRounded,
@@ -88,6 +89,7 @@ type SidebarLeafItem = {
   readonly search?: (current: Readonly<Record<string, unknown>>) => Record<string, unknown>;
   readonly contentType?: string | null;
   readonly activePathPrefixes?: readonly string[];
+  readonly appearance?: 'default' | 'primary';
 };
 
 type SidebarGroupItem = {
@@ -291,6 +293,29 @@ const SidebarLeafLink = ({
   );
 
   if (item.to) {
+    if (item.appearance === 'primary') {
+      return (
+        <Button
+          asChild
+          className={`h-11 rounded-lg font-semibold shadow-sm ${
+            isCollapsed ? 'w-11 justify-center px-0' : 'w-full justify-start gap-3 px-3'
+          }`}
+        >
+          <Link
+            activeOptions={item.exact ? { exact: true } : undefined}
+            to={item.to}
+            search={item.search}
+            aria-current={isActive ? 'page' : undefined}
+            aria-label={isCollapsed ? item.label : undefined}
+            title={isCollapsed ? item.label : undefined}
+            onClick={onClick}
+          >
+            {content}
+          </Link>
+        </Button>
+      );
+    }
+
     return (
       <Link
         activeOptions={item.exact ? { exact: true } : undefined}
@@ -857,8 +882,8 @@ export default function Sidebar({
         hasPermissionAction(
           MODULES_READ_PERMISSION,
           contentAccessApi.permissionActions,
-           contentAccessApi.isLoading
-         )));
+          contentAccessApi.isLoading
+        )));
   const canAccessApplicationLink =
     canAccessWorkspace &&
     canAccessExperimentalFeatures &&
@@ -936,17 +961,24 @@ export default function Sidebar({
       (item) => item.section === 'applications'
     );
     const pluginSystemItems = pluginNavigationItems.filter((item) => item.section === 'system');
-    const readableContentTypes = studioContentTypes.filter(
-      (definition) => {
-        const moduleId = definition.requiredReadAction.startsWith('content.')
-          ? null
-          : definition.requiredReadAction.split('.')[0];
-        return (
-          contentAccessApi.permissionActions.includes(definition.requiredReadAction) &&
-          isModuleAssignedToUser(moduleId, user)
-        );
-      }
-    );
+    const readableContentTypes = studioContentTypes.filter((definition) => {
+      const moduleId = definition.requiredReadAction.startsWith('content.')
+        ? null
+        : definition.requiredReadAction.split('.')[0];
+      return (
+        contentAccessApi.permissionActions.includes(definition.requiredReadAction) &&
+        isModuleAssignedToUser(moduleId, user)
+      );
+    });
+    const creatableContentTypes = studioContentTypes.filter((definition) => {
+      const moduleId = definition.requiredCreateAction.startsWith('content.')
+        ? null
+        : definition.requiredCreateAction.split('.')[0];
+      return (
+        contentAccessApi.permissionActions.includes(definition.requiredCreateAction) &&
+        isModuleAssignedToUser(moduleId, user)
+      );
+    });
     const contentChildren: SidebarLeafItem[] = [
       ...(canAccessContent || readableContentTypes.length > 0
         ? [
@@ -981,6 +1013,19 @@ export default function Sidebar({
     ];
 
     const dataManagementItems: SidebarItem[] = [
+      ...(canAccessWorkspace && creatableContentTypes.length > 0
+        ? [
+            {
+              kind: 'link' as const,
+              id: 'create-content',
+              to: '/admin/content/new',
+              label: t('shell.sidebar.createContent'),
+              icon: IconPlus,
+              exact: true,
+              appearance: 'primary' as const,
+            },
+          ]
+        : []),
       {
         kind: 'link',
         id: 'overview',

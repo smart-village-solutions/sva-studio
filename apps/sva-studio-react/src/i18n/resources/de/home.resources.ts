@@ -9,35 +9,27 @@ export const homeDEResources = {
     openSourceSuffix: 'in Bad Belzig',
     subtitle: 'Smart Village App Self-Service Plattform für Inhalte, Module und Erweiterungen.',
     body: 'Verwalten Sie Inhalte, Kontokontext und angeschlossene Module in einer gemeinsamen Oberfläche mit serverseitig abgesicherter Authentifizierung und Berechtigungsprüfung.',
-    primaryAction: 'Inhalte öffnen',
-    secondaryAction: 'Konto öffnen',
   },
   session: {
     loading: 'Sitzung wird geladen ...',
   },
-  sections: {
-    overviewTitle: 'Direkte Einstiege',
-    overviewBody:
-      'Nutzen Sie die wichtigsten Bereiche direkt aus der Startseite. Details zu Rollen, Guards und technischen Entscheidungen bleiben in den jeweiligen Fachbereichen verankert.',
-  },
   cards: {
-    content: {
-      title: 'Inhalte',
+    news: {
+      title: 'Nachricht erstellen',
       description:
-        'Pflegen Sie redaktionelle Inhalte, Metadaten und Veröffentlichungsstände in der zentralen Inhaltsverwaltung.',
-      action: 'Inhalte öffnen',
+        'Verfassen Sie eine neue Nachricht und bereiten Sie diese für die Veröffentlichung vor.',
     },
-    account: {
-      title: 'Konto',
-      description:
-        'Prüfen Sie Ihr Profil, Ihren Datenschutzkontext und weitere selbstbedienbare Kontofunktionen.',
-      action: 'Konto öffnen',
+    events: {
+      title: 'Veranstaltung anlegen',
+      description: 'Erfassen Sie eine neue Veranstaltung mit Termin, Ort und weiteren Angaben.',
     },
-    interfaces: {
-      title: 'Schnittstellen',
-      description:
-        'Überblicken Sie angebundene Integrationen und öffnen Sie die verwalteten Schnittstellenbereiche.',
-      action: 'Schnittstellen öffnen',
+    media: {
+      title: 'Medium hochladen',
+      description: 'Laden Sie ein neues Bild oder Dokument in die zentrale Mediathek hoch.',
+    },
+    users: {
+      title: 'Benutzerverwaltung öffnen',
+      description: 'Verwalten Sie Benutzerkonten und deren Zugriff auf das Studio.',
     },
   },
   changelog: {

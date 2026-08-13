@@ -107,6 +107,14 @@ function loadAppE2EWorkflow(): string {
   return fs.readFileSync(path.join(rootDir, '.github/workflows/app-e2e.yml'), 'utf8');
 }
 
+function loadWorkspaceSetupAction(): string {
+  const rootDir = resolveRootDir();
+  return fs.readFileSync(
+    path.join(rootDir, '.github/actions/setup-pnpm-workspace/action.yml'),
+    'utf8'
+  );
+}
+
 function loadMainBuildWorkflow(): string {
   const rootDir = resolveRootDir();
   return fs.readFileSync(path.join(rootDir, '.github/workflows/main-build.yml'), 'utf8');
@@ -188,9 +196,11 @@ describe('workspace package scripts', () => {
   it('keeps full PR coverage regression checks enabled in runtime gates', () => {
     const runtimeGatesWorkflow = loadRuntimeGatesWorkflow();
 
+    expect(runtimeGatesWorkflow).toContain('NX_HEAD: ${{ github.event.pull_request.head.sha }}');
     expect(runtimeGatesWorkflow).toContain(
-      'if [ "${{ steps.scope.outputs.coverage_mode }}" = "full" ]; then'
+      "NX_RUN_FULL: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
     );
+    expect(runtimeGatesWorkflow).toContain('run: pnpm test:coverage:affected');
     expect(runtimeGatesWorkflow).toContain(
       "COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
     );
@@ -283,7 +293,10 @@ describe('workspace package scripts', () => {
       'pnpm check:app-boundaries && pnpm check:plugin-ui-boundary && pnpm check:plugin-architecture-boundary && pnpm check:boundaries:fallow && env -u NO_COLOR nx affected --target=lint --base=${NX_BASE:-origin/main}'
     );
     expect(packageJson.scripts?.['test:unit:affected']).toBe(
-      'tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main}'
+      'tsx scripts/ci/affected-unit-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}'
+    );
+    expect(packageJson.scripts?.['test:coverage:affected']).toBe(
+      'tsx scripts/ci/affected-coverage-gate.ts --base ${NX_BASE:-origin/main} --head ${NX_HEAD:-HEAD}'
     );
     expect(packageJson.scripts?.['test:types:affected']).toBe(
       'pnpm clean:generated-source-artifacts && env -u NO_COLOR nx affected --target=test:types --base=${NX_BASE:-origin/main} --parallel=1 && env -u NO_COLOR nx affected --target=typecheck --base=${NX_BASE:-origin/main} --parallel=1 && pnpm check:server-runtime:affected && pnpm exec tsc -p tsconfig.scripts.json --noEmit'
@@ -326,6 +339,9 @@ describe('workspace package scripts', () => {
     expect(e2eWorkflow).toContain('name: App E2E');
     expect(qualityWorkflow).toContain(
       'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
+    );
+    expect(qualityWorkflow).toContain(
+      "NX_RUN_FULL: ${{ steps.scope.outputs.quality_gate_mode == 'full' && '1' || '0' }}"
     );
     expect(qualityWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
@@ -387,6 +403,20 @@ describe('workspace package scripts', () => {
     expect(e2eWorkflow).not.toContain('App-E2E-Smoke abgeschlossen.');
     expect(e2eWorkflow).toContain('Run app E2E tests');
     expect(e2eWorkflow).not.toContain('Run app E2E smoke tests');
+    expect(e2eWorkflow).toContain(
+      "PLAYWRIGHT_MAX_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}"
+    );
+  });
+
+  it('caches pnpm dependencies without restoring Nx local artifacts across runners', () => {
+    const setupAction = loadWorkspaceSetupAction();
+
+    expect(setupAction).toContain('uses: actions/setup-node@v6');
+    expect(setupAction).toContain('cache: pnpm');
+    expect(setupAction).not.toContain('uses: actions/cache@');
+    expect(setupAction).not.toContain('path: .nx/cache');
+    expect(setupAction).not.toContain('nx-cache-scope');
+    expect(setupAction).not.toContain('nxCloudId');
   });
 
   it('typechecks all CI gate sources via tsconfig.scripts.json', () => {
@@ -476,6 +506,18 @@ describe('workspace package scripts', () => {
     expect(nxJson.nxCloudId).toBeUndefined();
     expect(nxJson.neverConnectToCloud).toBe(true);
     expect(coverageTarget?.cache).toBe(false);
+    expect(loadProjectJson('apps/sva-studio-react').targets?.['test:coverage']?.cache).toBe(false);
+    expect(loadProjectJson('apps/sva-studio-react').targets?.['test:e2e']?.cache).toBe(false);
+    expect(
+      loadProjectJson('apps/public-waste-calendar-web').targets?.['test:coverage']?.cache
+    ).toBe(false);
+    expect(loadProjectJson('apps/project-report').targets?.['test:coverage']?.cache).toBe(false);
+  });
+
+  it('uses the configured Node version file during workspace setup', () => {
+    const workspaceSetupAction = loadWorkspaceSetupAction();
+
+    expect(workspaceSetupAction).toContain('node-version-file: ${{ inputs.node-version-file }}');
   });
 
   it('keeps the affected unit gate app-slice-aware', () => {
@@ -492,6 +534,11 @@ describe('workspace package scripts', () => {
     );
     expect(affectedUnitPlan).toContain('return `pnpm nx run ${APP_PROJECT}:${target}`;');
     expect(affectedUnitGate).toContain("from './affected-unit-plan.ts'");
+    expect(affectedUnitGate).toContain("from './changed-project-plan.ts'");
+    expect(affectedUnitGate).toContain('--nxBail');
+    expect(affectedUnitGate).not.toContain('buildAppUnitCommand()} --nxBail');
+    expect(affectedUnitGate).not.toContain('buildAppUnitCommand(slice)} --nxBail');
+    expect(affectedUnitGate).not.toContain('retries: 1');
     expect(affectedCoverageGate).toContain('`pnpm nx run ${APP_PROJECT}:test:coverage`');
     expect(runPrGateScript).toContain('formatDurationSummary');
     expect(runPrGateScript).toContain('for (const entry of runAffectedUnitGate({ base, head }))');

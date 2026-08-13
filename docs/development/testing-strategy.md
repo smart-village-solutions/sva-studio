@@ -158,9 +158,12 @@ Diese Strategie definiert nur die Leitplanken:
 
 - Erst den Scope eingrenzen: Projekt, Target, betroffene Datei.
 - Reproduzierbarkeit lokal herstellen, bevor Workarounds dokumentiert werden.
+- PR-Gates priorisieren direkt geänderte Projekte. Erst nach deren Erfolg folgt der disjunkte übrige affected Scope; die Priorisierung reduziert nicht die finale Abdeckung.
+- Deterministische Fehler brechen den betroffenen PR-Gate-Pfad früh ab und werden nicht pauschal wiederholt. Nur klassifizierte temporäre Infrastrukturfehler dürfen targetgenau erneut laufen.
 - Flaky Tests werden entweder stabilisiert oder vorübergehend explizit aus dem Pflichtpfad herausgenommen, aber nicht stillschweigend ignoriert.
 - Flake-anfällige Vitest-Targets im Pflichtpfad laufen bevorzugt seriell, wenn Parallelisierung nachweislich Race- oder Timing-Probleme erzeugt.
 - Große App-Suiten werden bei wachsendem Umfang in stabile Nx-Slices aufgeteilt, statt dauerhaft als einzelner monolithischer Target weiterzuwachsen.
+- Playwright verwendet in Pull Requests nach dem vorhandenen Retry `maxFailures: 1`; Main und Nightly sammeln weiterhin die vollständige Fehlermatrix.
 - Jede bewusste Testlücke braucht dokumentierte Folgearbeit.
 
 ## Dokumentationspflicht

@@ -1,0 +1,4 @@
+{
+  "prNumber": 980,
+  "body": "Fehler in Pull Requests schneller erkennen\n\n- Direkt geänderte Bereiche werden in Unit- und Coverage-Prüfungen zuerst ausgeführt, ohne den vollständigen Prüfumfang zu reduzieren.\n- Bestätigte Unit- und Browser-Testfehler beenden den jeweiligen Pull-Request-Lauf früher, damit Korrekturen schneller begonnen werden können.\n- Sichere Zwischenergebnisse unveränderter Prüfungen können zwischen Pull-Request-Aktualisierungen wiederverwendet werden; Coverage-, Integrations- und Browser-Tests werden weiterhin frisch ausgeführt."
+}

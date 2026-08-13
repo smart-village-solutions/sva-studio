@@ -5,6 +5,10 @@ import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
+import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import { planChangedProjectsWithFallback } from './changed-project-plan.ts';
+import { loadNxProjectRoots } from './nx-project-graph.ts';
+import { resolveChangedFiles } from './pr-scope.ts';
 
 export interface DurationEntry {
   label: string;
@@ -13,7 +17,15 @@ export interface DurationEntry {
 
 const APP_PROJECT = 'sva-studio-react';
 const COVERAGE_WORKSPACE_ROOTS = ['apps', 'packages'] as const;
-const IGNORED_DIRECTORY_NAMES = new Set(['node_modules', '.git', '.nx', '.output', 'dist', 'build', '.generated']);
+const IGNORED_DIRECTORY_NAMES = new Set([
+  'node_modules',
+  '.git',
+  '.nx',
+  '.output',
+  'dist',
+  'build',
+  '.generated',
+]);
 const require = createRequire(import.meta.url);
 
 const runCommand = (command: string): number => {
@@ -26,12 +38,13 @@ const runCommand = (command: string): number => {
   return performance.now() - startedAt;
 };
 
-const getAffectedCoverageProjects = (base: string, head: string): string[] => {
+const getCoverageProjects = (base: string, head: string, full: boolean): string[] => {
   const nxPackageJson = require.resolve('nx/package.json');
   const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
+  const scopeArguments = full ? [] : ['--affected', '--base', base, '--head', head];
   const output = execFileSync(
     process.execPath,
-    [nxEntrypoint, 'show', 'projects', '--affected', '--withTarget=test:coverage', '--base', base, '--head', head, '--json'],
+    [nxEntrypoint, 'show', 'projects', '--withTarget=test:coverage', ...scopeArguments, '--json'],
     {
       encoding: 'utf8',
       env: process.env,
@@ -45,8 +58,13 @@ const getAffectedCoverageProjects = (base: string, head: string): string[] => {
   return JSON.parse(output) as string[];
 };
 
-export const buildAppCoverageCommand = (): string =>
-  `pnpm nx run ${APP_PROJECT}:test:coverage`;
+export const buildAppCoverageCommand = (): string => `pnpm nx run ${APP_PROJECT}:test:coverage`;
+
+export const buildCoverageProjectsCommand = (projects: readonly string[]): string =>
+  `env -u NO_COLOR pnpm nx run-many --target=test:coverage --projects=${projects.join(',')} --parallel=1 --nxBail --output-style=stream`;
+
+export const buildEarlyCoverageGateCommand = (projects: readonly string[]): string =>
+  `COVERAGE_GATE_EVALUATE_REGRESSIONS=1 COVERAGE_GATE_PROJECT_FILTER=${projects.join(',')} pnpm coverage-gate`;
 
 const removeProjectRootCoverageDirectory = (workspaceRootPath: string): void => {
   if (!fs.existsSync(workspaceRootPath)) {
@@ -73,13 +91,28 @@ export const clearWorkspaceCoverageOutputs = (rootDir = process.cwd()): void => 
 
 export const runAffectedCoverageGate = (
   options: BaseHeadCliOptions,
-  reportDuration?: (entry: DurationEntry) => void
+  reportDuration?: (entry: DurationEntry) => void,
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
 ): DurationEntry[] => {
   clearWorkspaceCoverageOutputs();
-  const affectedProjects = getAffectedCoverageProjects(options.base, options.head);
+  const full = process.env.NX_RUN_FULL === '1';
+  const changedFiles = resolveChangedFiles(options.base, options.head);
+  const affectedProjects = getCoverageProjects(options.base, options.head, full);
+  const changedProjectPlan = planChangedProjectsWithFallback(
+    changedFiles,
+    affectedProjects,
+    loadNxProjectRoots
+  );
+  reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
-  const nonAppProjects = affectedProjects.filter((project) => project !== APP_PROJECT);
-  const appAffected = affectedProjects.includes(APP_PROJECT);
+  const directNonAppProjects = changedProjectPlan.directProjects.filter(
+    (project) => project !== APP_PROJECT
+  );
+  const remainingNonAppProjects = changedProjectPlan.remainingProjects.filter(
+    (project) => project !== APP_PROJECT
+  );
+  const directApp = changedProjectPlan.directProjects.includes(APP_PROJECT);
+  const remainingApp = changedProjectPlan.remainingProjects.includes(APP_PROJECT);
 
   const recordDuration = (label: string, durationMs: number): void => {
     const entry = { label, durationMs };
@@ -92,8 +125,10 @@ export const runAffectedCoverageGate = (
       {
         base: options.base,
         head: options.head,
+        scopeMode: full ? 'full' : 'affected',
+        changedFiles,
         affectedProjects,
-        appAffected,
+        changedProjectPlan,
       },
       null,
       2
@@ -105,17 +140,33 @@ export const runAffectedCoverageGate = (
     return durationEntries;
   }
 
-  if (nonAppProjects.length > 0) {
+  if (directNonAppProjects.length > 0) {
     recordDuration(
-      'coverage:affected-workspace',
-      runCommand(
-        `env -u NO_COLOR pnpm nx affected --target=test:coverage --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream`
-      )
+      'coverage:direct-projects',
+      runCommand(buildCoverageProjectsCommand(directNonAppProjects))
     );
   }
 
-  if (appAffected) {
+  if (directApp) {
     recordDuration('coverage:app', runCommand(buildAppCoverageCommand()));
+  }
+
+  if (changedProjectPlan.directProjects.length > 0) {
+    recordDuration(
+      'coverage:direct-project-gate',
+      runCommand(buildEarlyCoverageGateCommand(changedProjectPlan.directProjects))
+    );
+  }
+
+  if (remainingNonAppProjects.length > 0) {
+    recordDuration(
+      'coverage:remaining-projects',
+      runCommand(buildCoverageProjectsCommand(remainingNonAppProjects))
+    );
+  }
+
+  if (remainingApp) {
+    recordDuration('coverage:remaining-app', runCommand(buildAppCoverageCommand()));
   }
 
   return durationEntries;
@@ -125,7 +176,37 @@ const formatDuration = (durationMs: number): string => `${(durationMs / 1000).to
 
 export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
-  const durationEntries = runAffectedCoverageGate(options);
+  const startedAt = new Date();
+  const full = process.env.NX_RUN_FULL === '1';
+  let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
+  const durationEntries: DurationEntry[] = [];
+
+  try {
+    runAffectedCoverageGate(
+      options,
+      (entry) => durationEntries.push(entry),
+      (reportedPlan) => {
+        plan = reportedPlan;
+      }
+    );
+  } catch (error) {
+    writeCiFeedbackEvidence(
+      buildCiFeedbackEvidence({
+        gate: 'coverage',
+        status: 'failed',
+        baseSha: options.base,
+        headSha: options.head,
+        scopeMode: full ? 'full' : 'affected',
+        plan,
+        phases: durationEntries,
+        startedAt,
+        finishedAt: new Date(),
+      })
+    );
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Coverage Fast Feedback fehlgeschlagen: ${message}`);
+    return 1;
+  }
 
   if (durationEntries.length > 0) {
     console.log('\nAffected coverage summary:');
@@ -133,6 +214,20 @@ export const runAffectedCoverageGateCli = (args: readonly string[]): number => {
       console.log(`- ${entry.label}: ${formatDuration(entry.durationMs)}`);
     }
   }
+
+  writeCiFeedbackEvidence(
+    buildCiFeedbackEvidence({
+      gate: 'coverage',
+      status: 'passed',
+      baseSha: options.base,
+      headSha: options.head,
+      scopeMode: full ? 'full' : 'affected',
+      plan,
+      phases: durationEntries,
+      startedAt,
+      finishedAt: new Date(),
+    })
+  );
 
   return 0;
 };

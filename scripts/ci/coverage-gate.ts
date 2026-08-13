@@ -53,6 +53,7 @@ interface RunCoverageGateOptions {
   rootDir?: string;
   updateBaseline?: boolean;
   requireSummaries?: boolean;
+  evaluateRegressions?: boolean;
   regressionProjectFilter?: readonly string[];
   stepSummaryPath?: string | null;
 }
@@ -172,8 +173,13 @@ export function assertCoveragePolicy(policy: unknown): asserts policy is Coverag
   const metrics = candidate.metrics;
   const validMetric = new Set<CoverageMetric>(['lines', 'statements', 'functions', 'branches']);
 
-  if (!Array.isArray(metrics) || metrics.some((metric) => !validMetric.has(metric as CoverageMetric))) {
-    throw new TypeError('Invalid coverage policy: metrics must be an array of coverage metric names');
+  if (
+    !Array.isArray(metrics) ||
+    metrics.some((metric) => !validMetric.has(metric as CoverageMetric))
+  ) {
+    throw new TypeError(
+      'Invalid coverage policy: metrics must be an array of coverage metric names'
+    );
   }
 
   if (!isMetricFloors(candidate.globalFloors)) {
@@ -184,7 +190,10 @@ export function assertCoveragePolicy(policy: unknown): asserts policy is Coverag
     throw new TypeError('Invalid coverage policy: maxAllowedDropPctPoints must be a number');
   }
 
-  if (!Array.isArray(candidate.exemptProjects) || candidate.exemptProjects.some((p) => typeof p !== 'string')) {
+  if (
+    !Array.isArray(candidate.exemptProjects) ||
+    candidate.exemptProjects.some((p) => typeof p !== 'string')
+  ) {
     throw new TypeError('Invalid coverage policy: exemptProjects must be an array of strings');
   }
 
@@ -287,7 +296,11 @@ export function findCoverageSummaries(dir: string, results: string[] = []): stri
   return results;
 }
 
-export function findCoverageArtifacts(dir: string, fileName: string, results: string[] = []): string[] {
+export function findCoverageArtifacts(
+  dir: string,
+  fileName: string,
+  results: string[] = []
+): string[] {
   if (!fs.existsSync(dir)) {
     return results;
   }
@@ -312,7 +325,9 @@ export function findCoverageArtifacts(dir: string, fileName: string, results: st
     }
 
     const isMatchingArtifact =
-      entry.isFile() && entry.name === fileName && entryPath.includes(`${path.sep}coverage${path.sep}`);
+      entry.isFile() &&
+      entry.name === fileName &&
+      entryPath.includes(`${path.sep}coverage${path.sep}`);
 
     if (isMatchingArtifact) {
       results.push(entryPath);
@@ -334,7 +349,9 @@ export function projectFromCoveragePath(coverageSummaryPath: string): string | n
 }
 
 function isWorkspaceProjectRoot(projectRoot: string): boolean {
-  return ['project.json', 'package.json'].some((manifest) => fs.existsSync(path.join(projectRoot, manifest)));
+  return ['project.json', 'package.json'].some((manifest) =>
+    fs.existsSync(path.join(projectRoot, manifest))
+  );
 }
 
 export function toMetricValues(summary: CoverageSummary, projectRoot?: string): MetricFloors {
@@ -467,23 +484,24 @@ function loadCoverageData(rootDir: string): LoadedCoverageData {
   }, {});
 
   const lcovFiles = paths.workspaceRoots.flatMap((dir) => findCoverageArtifacts(dir, 'lcov.info'));
-  const fileCoverageByProject = lcovFiles.reduce<Record<string, Record<string, FileCoverageMetrics>>>(
-    (acc, lcovPath) => {
-      const projectName = projectFromCoveragePath(lcovPath.replace(/lcov\.info$/, 'coverage-summary.json'));
-      if (!projectName) {
-        return acc;
-      }
-
-      const projectRoot = path.dirname(path.dirname(lcovPath));
-      if (!isWorkspaceProjectRoot(projectRoot)) {
-        return acc;
-      }
-
-      acc[projectName] = parseLcovInfo(rootDir, lcovPath);
+  const fileCoverageByProject = lcovFiles.reduce<
+    Record<string, Record<string, FileCoverageMetrics>>
+  >((acc, lcovPath) => {
+    const projectName = projectFromCoveragePath(
+      lcovPath.replace(/lcov\.info$/, 'coverage-summary.json')
+    );
+    if (!projectName) {
       return acc;
-    },
-    {}
-  );
+    }
+
+    const projectRoot = path.dirname(path.dirname(lcovPath));
+    if (!isWorkspaceProjectRoot(projectRoot)) {
+      return acc;
+    }
+
+    acc[projectName] = parseLcovInfo(rootDir, lcovPath);
+    return acc;
+  }, {});
 
   return {
     paths,
@@ -727,13 +745,13 @@ function evaluateRegressions(
   policy: CoveragePolicy,
   baseline: CoverageBaseline,
   projects: Record<string, MetricFloors>,
-  requireSummaries: boolean,
+  evaluateRegressionDrops: boolean,
   regressionProjectFilter: readonly string[] = []
 ): GateError[] {
   // Partial affected runs only generate a subset of project summaries. In that mode we
   // skip baseline-drop checks entirely instead of reporting false regressions for every
   // untouched project that intentionally has no coverage output in this invocation.
-  if (!requireSummaries) {
+  if (!evaluateRegressionDrops) {
     return [];
   }
 
@@ -787,9 +805,16 @@ function generateReport(policy: CoveragePolicy, projects: Record<string, MetricF
   const globalProjects = selectProjectsForGlobalFloors(policy, activeProjects);
   const globalCoverage = mergeGlobal(globalProjects.map(([, values]) => values));
   const globalLabel =
-    globalProjects.length > 0 ? 'Global coverage (default-floor projects avg)' : 'Global coverage (no default-floor projects)';
+    globalProjects.length > 0
+      ? 'Global coverage (default-floor projects avg)'
+      : 'Global coverage (no default-floor projects)';
 
-  const header = ['## Coverage Summary', '', '| Project | Lines | Statements | Functions | Branches |', '| --- | ---: | ---: | ---: | ---: |'];
+  const header = [
+    '## Coverage Summary',
+    '',
+    '| Project | Lines | Statements | Functions | Branches |',
+    '| --- | ---: | ---: | ---: | ---: |',
+  ];
   const rows = sortedProjects.map(
     ([projectName, values]) =>
       `| ${projectName} | ${formatPct(values.lines)} | ${formatPct(values.statements)} | ${formatPct(values.functions)} | ${formatPct(values.branches)} |`
@@ -808,6 +833,7 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   const rootDir = options.rootDir ?? process.cwd();
   const updateBaseline = options.updateBaseline ?? false;
   const requireSummaries = options.requireSummaries ?? false;
+  const evaluateRegressionDrops = options.evaluateRegressions ?? requireSummaries;
   const regressionProjectFilter = options.regressionProjectFilter ?? [];
   const stepSummaryPath = options.stepSummaryPath ?? process.env.GITHUB_STEP_SUMMARY ?? null;
 
@@ -816,7 +842,9 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
 
   if (Object.keys(projects).length === 0) {
     if (requireSummaries) {
-      throw new Error('No coverage-summary.json files found. Failing coverage gate because requireSummaries=true.');
+      throw new Error(
+        'No coverage-summary.json files found. Failing coverage gate because requireSummaries=true.'
+      );
     }
 
     return {
@@ -841,12 +869,17 @@ export function runCoverageGate(options: RunCoverageGateOptions = {}): RunCovera
   }
 
   const floorErrors = evaluateFloors(policy, projects, requireSummaries);
-  const hotspotErrors = evaluateCriticalHotspots(policy, projects, fileCoverageByProject, requireSummaries);
+  const hotspotErrors = evaluateCriticalHotspots(
+    policy,
+    projects,
+    fileCoverageByProject,
+    requireSummaries
+  );
   const regressionErrors = evaluateRegressions(
     policy,
     baseline,
     projects,
-    requireSummaries,
+    evaluateRegressionDrops,
     regressionProjectFilter
   );
   const errors = [...floorErrors, ...hotspotErrors, ...regressionErrors];
@@ -874,6 +907,8 @@ export function main(): number {
   const rootDir = process.cwd();
   const updateBaseline = process.argv.includes('--update-baseline');
   const requireSummaries = process.env.COVERAGE_GATE_REQUIRE_SUMMARIES === '1';
+  const evaluateRegressions =
+    process.env.COVERAGE_GATE_EVALUATE_REGRESSIONS === '1' ? true : undefined;
   const regressionProjectFilter = (process.env.COVERAGE_GATE_PROJECT_FILTER ?? '')
     .split(',')
     .map((projectName) => projectName.trim())
@@ -884,6 +919,7 @@ export function main(): number {
       rootDir,
       updateBaseline,
       requireSummaries,
+      evaluateRegressions,
       regressionProjectFilter,
       stepSummaryPath: process.env.GITHUB_STEP_SUMMARY ?? null,
     });
@@ -895,7 +931,9 @@ export function main(): number {
     }
 
     if (!result.summaryBody) {
-      console.warn(colors.yellow('⚠️  No coverage-summary.json files found. Skipping coverage gate.'));
+      console.warn(
+        colors.yellow('⚠️  No coverage-summary.json files found. Skipping coverage gate.')
+      );
       return 0;
     }
 

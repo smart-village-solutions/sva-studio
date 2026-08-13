@@ -381,3 +381,11 @@ Referenzen:
 - Route- und API-Vertragstests belegen einzelne, `allOf`-, `anyOf`- und kontextuelle Denials sowie generische Fallbacks für uneindeutige und technische Fehler.
 - Katalogtests sichern die deutschen und englischen Titel aller Core-/Host-Permissions; registrierte Plugin-Permissions und unbekannte Actions besitzen einen deterministischen Fallback.
 - Öffentliche Details dürfen keine Rollen-, Gruppen-, Grant- oder Policy-Daten enthalten. Unvertrauenswürdige Details sind auf Anzahl und Länge begrenzt und werden fail-closed geparst.
+
+### Ergänzung 2026-08: Messbare PR-Rückmeldezeit
+
+- Direkt zuordenbare Unit-, Coverage- oder E2E-Fehler sollen nach Aktivierung in höchstens 3 Minuten im Median und höchstens 5 Minuten bei P90 als bestätigter roter Status vorliegen.
+- Changed-first darf den final geprüften Scope nicht reduzieren; direkt ausgeführte Targets und der übrige affected Scope müssen disjunkt und gemeinsam vollständig sein.
+- Die mediane terminale Zeit grüner Required Checks darf gegenüber der Ausgangsbaseline um höchstens 30 Sekunden steigen.
+- Ein zweiter kleiner PR-Push soll mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit einsparen. Der Wert bezieht sich ausschließlich auf deterministische Targets und rechtfertigt keine Cache-Aktivierung für Coverage, Integration oder E2E ohne Paritätsnachweis.
+- Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.

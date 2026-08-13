@@ -173,6 +173,35 @@ describe('NewsDetailTargetingTab', () => {
     expect(screen.getByRole('status').textContent).toContain('targeting.table.status');
   });
 
+  it('filters down to a house number and applies an individually selected target', () => {
+    render(<Subject />);
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
+
+    fireEvent.change(screen.getByLabelText('targeting.filters.search'), {
+      target: { value: 'Hauptstraße' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.city'), {
+      target: { value: 'c1' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.street'), {
+      target: { value: 's1' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h1' },
+    });
+
+    const target = screen.getByLabelText('Hauptstraße 1, 12345 Musterstadt');
+    fireEvent.click(target);
+    expect((target as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(target);
+    expect((target as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(target);
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.apply' }));
+
+    expect(screen.getByText('targeting.mode.targeted:1')).toBeTruthy();
+    expect(screen.getByTestId('dirty-state').textContent).toBe('dirty');
+  });
+
   it('keeps recipients read-only after the Push has been sent', () => {
     const target = { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' };
     render(<Subject initialTargets={[target]} readOnly />);

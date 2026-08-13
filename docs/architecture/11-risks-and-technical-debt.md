@@ -574,3 +574,10 @@ Referenzen:
 - Restrisiko: Offset-Pagination kann sich bei gleichzeitigen Schreibvorgängen trotz stabiler ID-Gleichstandsauflösung zwischen Requests verschieben. Maßnahme: deterministische Reihenfolge beibehalten; Cursor-Pagination bei nachgewiesenem Bedarf separat entwerfen.
 - Restrisiko: Die Keycloak-geführten Tenant- und Plattform-Benutzerlisten sind nicht global nach den sichtbaren zusammengesetzten Feldern sortierbar. Maßnahme: Sortieraktionen bleiben deaktiviert, bis eine skalierbare vollständige Benutzerprojektion vorliegt.
 - Risiko: Der parallele Change `add-organization-mainserver-provisioning` berührt Organisations-Hooks, IAM-Client, Handler und Query. Maßnahme: vor Integration gegen dessen aktuellen Head rebasen und die gemeinsamen Organisations-, Runtime- und Server-Runtime-Gates erneut ausführen.
+
+### Fortschreibung 2026-08: PR-Fast-Feedback
+
+- Risiko: Changed-first ordnet eine Datei keinem direkten Projekt zu. Maßnahme: Die Datei bleibt im konservativen affected Restlauf; eine unklare Zuordnung darf niemals Projekte aus dem Scope entfernen.
+- Risiko: Ein persistierter Cache liefert wegen unvollständiger Inputs ein falsches Ergebnis. Maßnahme: nur deterministische Targets persistieren, Schlüssel an Toolchain, Lockfile, Nx-Konfiguration, Trust-Scope und Job binden sowie geschützte Kontexte von PR-Caches trennen.
+- Risiko: PR-Fail-fast zeigt pro Push weniger Folgefehler. Maßnahme: Main und Nightly bleiben diagnostisch vollständig; der PR optimiert bewusst die erste Reparaturschleife.
+- Restrisiko: Die Zielwerte für Median und P90 sind erst nach mindestens 20 repräsentativen GitHub-Läufen belastbar. Bis dahin bleibt die Laufzeitwirkung eine zu verifizierende Rollout-Aufgabe.

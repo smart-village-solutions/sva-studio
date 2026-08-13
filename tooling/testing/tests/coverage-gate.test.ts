@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   findCoverageArtifacts,
   findCoverageSummaries,
+  main,
   runCoverageGate,
 } from '../../../scripts/ci/coverage-gate.ts';
 
@@ -70,7 +71,13 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
   );
 }
 
-function writeBaseline(rootDir: string, lines = 0, statements = 0, functions = 0, branches = 0): void {
+function writeBaseline(
+  rootDir: string,
+  lines = 0,
+  statements = 0,
+  functions = 0,
+  branches = 0
+): void {
   const baseline = {
     projects: {
       'server-runtime': {
@@ -109,7 +116,10 @@ function writeCoverageSummary(
     },
   };
 
-  fs.writeFileSync(path.join(summaryPath, 'coverage-summary.json'), JSON.stringify(summary, null, 2));
+  fs.writeFileSync(
+    path.join(summaryPath, 'coverage-summary.json'),
+    JSON.stringify(summary, null, 2)
+  );
 }
 
 function writeLcovSummary(
@@ -153,6 +163,8 @@ function writeLcovSummary(
 }
 
 afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.restoreAllMocks();
   for (const dir of createdDirs.splice(0, createdDirs.length)) {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -231,7 +243,9 @@ describe('coverage gate', () => {
     });
 
     expect(result.passed).toBe(true);
-    expect(result.errors.some((error) => error.includes('missing coverage-summary.json'))).toBe(false);
+    expect(result.errors.some((error) => error.includes('missing coverage-summary.json'))).toBe(
+      false
+    );
   });
 
   it('fails in strict mode when an expected project summary is missing', () => {
@@ -261,7 +275,11 @@ describe('coverage gate', () => {
     });
 
     expect(result.passed).toBe(false);
-    expect(result.errors.some((error) => error.includes('[server-runtime] missing coverage-summary.json'))).toBe(true);
+    expect(
+      result.errors.some((error) =>
+        error.includes('[server-runtime] missing coverage-summary.json')
+      )
+    ).toBe(true);
   });
 
   it('does not enforce global floors for partial affected coverage runs', () => {
@@ -297,7 +315,9 @@ describe('coverage gate', () => {
     });
 
     expect(result.passed).toBe(true);
-    expect(result.errors.some((error) => error.includes('[global] branches below floor'))).toBe(false);
+    expect(result.errors.some((error) => error.includes('[global] branches below floor'))).toBe(
+      false
+    );
   });
 
   it('enforces global floors only for projects that inherit the global defaults', () => {
@@ -403,6 +423,22 @@ describe('coverage gate', () => {
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(true);
   });
 
+  it('keeps regression checks enabled in strict CLI mode without an explicit override', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+    vi.spyOn(process, 'cwd').mockReturnValue(rootDir);
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.stubEnv('COVERAGE_GATE_REQUIRE_SUMMARIES', '1');
+    vi.stubEnv('COVERAGE_GATE_EVALUATE_REGRESSIONS', '');
+    vi.stubEnv('GITHUB_STEP_SUMMARY', '');
+
+    expect(main()).toBe(1);
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('dropped by'));
+  });
+
   it('does not enforce baseline regressions for partial affected coverage runs', () => {
     const rootDir = createTempWorkspace();
     writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
@@ -413,6 +449,28 @@ describe('coverage gate', () => {
 
     expect(result.passed).toBe(true);
     expect(result.errors.some((error) => error.includes('dropped by'))).toBe(false);
+  });
+
+  it('can enforce baseline regressions for an explicit partial changed-first phase', () => {
+    const rootDir = createTempWorkspace();
+    writePolicy(rootDir, { maxAllowedDropPctPoints: 0.5 });
+    writeBaseline(rootDir, 90, 90, 90, 90);
+    writeCoverageSummary(rootDir, 80, 80, 80, 80);
+
+    const result = runCoverageGate({
+      rootDir,
+      requireSummaries: false,
+      evaluateRegressions: true,
+      regressionProjectFilter: ['server-runtime'],
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.errors.some((error) => error.includes('[server-runtime] lines dropped by'))).toBe(
+      true
+    );
+    expect(result.errors.some((error) => error.includes('missing coverage-summary.json'))).toBe(
+      false
+    );
   });
 
   it('enforces baseline regressions only for explicitly filtered projects', () => {
@@ -467,8 +525,12 @@ describe('coverage gate', () => {
     });
 
     expect(result.passed).toBe(false);
-    expect(result.errors.some((error) => error.includes('[sva-studio-react] lines dropped by'))).toBe(true);
-    expect(result.errors.some((error) => error.includes('[server-runtime] lines dropped by'))).toBe(false);
+    expect(
+      result.errors.some((error) => error.includes('[sva-studio-react] lines dropped by'))
+    ).toBe(true);
+    expect(result.errors.some((error) => error.includes('[server-runtime] lines dropped by'))).toBe(
+      false
+    );
   });
 
   it('enforces stricter minimum floors for critical projects', () => {
@@ -498,7 +560,11 @@ describe('coverage gate', () => {
     const result = runCoverageGate({ rootDir, requireSummaries: true });
 
     expect(result.passed).toBe(false);
-    expect(result.errors.some((error) => error.includes('[server-runtime] lines below floor: 70.00 < 80.00'))).toBe(true);
+    expect(
+      result.errors.some((error) =>
+        error.includes('[server-runtime] lines below floor: 70.00 < 80.00')
+      )
+    ).toBe(true);
   });
 
   it('enforces hotspot floors for critical files via lcov', () => {
@@ -535,20 +601,29 @@ describe('coverage gate', () => {
 
     expect(result.passed).toBe(false);
     expect(
-      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts lines below floor'))
+      result.errors.some((error) =>
+        error.includes('hotspot packages/server-runtime/src/index.ts lines below floor')
+      )
     ).toBe(true);
     expect(
-      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts functions below floor'))
+      result.errors.some((error) =>
+        error.includes('hotspot packages/server-runtime/src/index.ts functions below floor')
+      )
     ).toBe(true);
     expect(
-      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts branches below floor'))
+      result.errors.some((error) =>
+        error.includes('hotspot packages/server-runtime/src/index.ts branches below floor')
+      )
     ).toBe(true);
   });
 
   it('maps lcov js source entries back to TypeScript hotspots when a source twin exists', () => {
     const rootDir = createTempWorkspace();
     fs.mkdirSync(path.join(rootDir, 'packages/server-runtime/src'), { recursive: true });
-    fs.writeFileSync(path.join(rootDir, 'packages/server-runtime/src/index.ts'), 'export const value = 1;\n');
+    fs.writeFileSync(
+      path.join(rootDir, 'packages/server-runtime/src/index.ts'),
+      'export const value = 1;\n'
+    );
     writePolicy(rootDir, {
       criticalProjects: {
         'server-runtime': {
@@ -579,7 +654,9 @@ describe('coverage gate', () => {
 
     expect(result.passed).toBe(false);
     expect(
-      result.errors.some((error) => error.includes('hotspot packages/server-runtime/src/index.ts lines below floor'))
+      result.errors.some((error) =>
+        error.includes('hotspot packages/server-runtime/src/index.ts lines below floor')
+      )
     ).toBe(true);
     expect(result.errors.some((error) => error.includes('missing hotspot coverage'))).toBe(false);
   });
@@ -592,7 +669,9 @@ describe('coverage gate', () => {
     writeBaseline(rootDir);
     writeCoverageSummary(rootDir, 80, 80, 80, 80);
 
-    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(
+      /Invalid coverage policy/
+    );
   });
 
   it('throws when hotspot floors define no metric', () => {
@@ -614,7 +693,9 @@ describe('coverage gate', () => {
     writeCoverageSummary(rootDir, 80, 80, 80, 80);
     writeLcovSummary(rootDir);
 
-    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(/Invalid coverage policy/);
+    expect(() => runCoverageGate({ rootDir, requireSummaries: true })).toThrow(
+      /Invalid coverage policy/
+    );
   });
 
   it('passes and updates baseline with current summaries', () => {
@@ -629,7 +710,14 @@ describe('coverage gate', () => {
     const baseline = JSON.parse(
       fs.readFileSync(path.join(rootDir, 'tooling/testing/coverage-baseline.json'), 'utf8')
     ) as {
-      projects: { 'server-runtime': { lines: number; statements: number; functions: number; branches: number } };
+      projects: {
+        'server-runtime': {
+          lines: number;
+          statements: number;
+          functions: number;
+          branches: number;
+        };
+      };
     };
 
     expect(baseline.projects['server-runtime'].lines).toBe(33);

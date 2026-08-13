@@ -222,7 +222,7 @@
     "test:coverage": {
       "executor": "nx:run-commands",
       "parallelism": false,
-      "cache": true,
+      "cache": false,
       "dependsOn": ["^build"],
       "inputs": [
         "default",
@@ -309,7 +309,7 @@
     },
     "test:e2e": {
       "executor": "@nx/playwright:playwright",
-      "cache": true,
+      "cache": false,
       "dependsOn": [
         "^build"
       ],

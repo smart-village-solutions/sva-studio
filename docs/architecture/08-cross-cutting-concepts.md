@@ -703,6 +703,9 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 ### DataProvider, Principal und Scope
 
 - Actor, Mutationsprincipal, Credential-Quelle, DataProvider-Inhaber und sichtbare Autorenanzeige sind getrennte Konzepte. Die stabile authentifizierte Identity-ID beweist die aktuelle credential-versionierte Principal-Bindung; Create und Same-Credential-Re-Read bestätigen anschließend nur deren Konsistenz zum Content-Inhaber.
+- `contentAuthorPolicy` begrenzt nur den Create-Principal. IAM-Read-Scope und ressourcenbezogener Bestandsprincipal werden unabhängig davon ausgewertet; administrative Mutationen verwenden ausschließlich den persönlichen oder aktiven organisatorischen Principal.
+- Der Self-Service-Organisationskontext ist die Browserquelle für die Create-Auswahl. Ist er noch nicht geladen oder passt `activeOrganizationId` zu keinem aktiven Eintrag, bleibt die Auswahl ausdrücklich nicht verfügbar.
+- Ein fehlgeschlagener Teilrefresh setzt `isTotalFinal = false`. Alte Snapshot-Zeilen dürfen sichtbar bleiben, werden aber zusammen mit einem zugänglichen Unvollständigkeitshinweis angezeigt.
 - Fingerprints sind nicht reversibel und werden in Diagnoseansichten nur gekürzt angezeigt; API-Key, Secret, Token und rohe `/data_provider.json`-Antworten gelangen weder in Projection, Audit, Metriken noch Logs.
 - Der automatische Resolver lehnt `own` und `organization` ohne vollständige konfliktfreie Bindungen fail-closed ab. `org_only` benötigt nur die Organisationsbindung, `org_or_personal` persönliche und organisatorische Bindung. `credential_visible_compatibility` bleibt bis zum ausgewerteten Cutover ausschließlich Shadow- und Rollbackpfad.
 - Shadow-Kandidat, erzwungener Modus und Abweichung werden je Operations-ID getrennt persistiert. Dadurch ist die Aktivierung messbar und der Resolver ohne Datenverlust auf Kompatibilität zurückstellbar.

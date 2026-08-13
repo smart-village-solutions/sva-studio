@@ -118,4 +118,18 @@ export const registerSharedIamRoutes = async (
       body: JSON.stringify({ data: { activeOrganizationId: null, organizations: [] } }),
     });
   });
+  await page.route('**/api/v1/iam/contents/*', async (route) => {
+    const contentId = new URL(route.request().url()).pathname.split('/').at(-1);
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: contentId,
+          credentialSource: 'user',
+          sourceDataProviderName: 'Editor One',
+        },
+      }),
+    });
+  });
 };

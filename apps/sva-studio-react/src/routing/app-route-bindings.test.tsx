@@ -12,10 +12,21 @@ const routeState = vi.hoisted(() => ({
   authUser: null as null | { id: string; displayName?: string; name?: string; instanceId?: string },
   organizationContext: {
     activeOrganizationId: undefined as string | undefined,
-    organizations: [] as Array<{ organizationId: string; displayName: string; isActive: boolean }>,
+    organizations: [] as Array<{
+      organizationId: string;
+      organizationKey: string;
+      displayName: string;
+      organizationType: 'municipality';
+      contentAuthorPolicy: 'org_only' | 'org_or_personal';
+      isActive: boolean;
+      isDefaultContext: boolean;
+    }>,
   },
-  getOrganization: vi.fn(),
+  organizationContextIsLoading: false,
+  organizationContextIsUpdating: false,
+  organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
+  getContent: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -47,6 +58,10 @@ vi.mock('../i18n', () => ({
         'monitoring.page.title': 'Monitoring',
         'monitoring.jobs.page.title': 'Monitoring Jobs',
         'monitoring.jobs.detail.title': 'Job Details',
+        'content.principal.contextLoading': 'Author context loading',
+        'content.principal.contextUnavailable': 'Author context unavailable',
+        'content.principal.resourceLoading': 'Resource principal loading',
+        'content.principal.resourceUnavailable': 'Resource principal unavailable',
         'shell.sidebar.help': 'Help',
         'shell.sidebar.support': 'Support',
         'shell.sidebar.license': 'License',
@@ -65,6 +80,9 @@ vi.mock('../providers/auth-provider', () => ({
 vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => ({
     context: routeState.organizationContext,
+    isLoading: routeState.organizationContextIsLoading,
+    isUpdating: routeState.organizationContextIsUpdating,
+    error: routeState.organizationContextError,
   }),
 }));
 
@@ -76,13 +94,9 @@ vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
   }),
 }));
 
-vi.mock('../lib/iam-api', async () => {
-  const actual = await vi.importActual<typeof import('../lib/iam-api')>('../lib/iam-api');
-  return {
-    ...actual,
-    getOrganization: (...args: unknown[]) => routeState.getOrganization(...args),
-  };
-});
+vi.mock('../lib/iam-api', () => ({
+  getContent: routeState.getContent,
+}));
 
 vi.mock('../routes/account/-account-profile-page', () => ({
   AccountProfilePage: () => <div data-testid="account-profile-page" />,
@@ -433,8 +447,17 @@ describe('appRouteBindings', () => {
       activeOrganizationId: undefined,
       organizations: [],
     };
-    routeState.getOrganization.mockReset();
+    routeState.organizationContextIsLoading = false;
+    routeState.organizationContextIsUpdating = false;
+    routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
+    routeState.getContent.mockReset();
+    routeState.getContent.mockResolvedValue({
+      data: {
+        credentialSource: 'user',
+        sourceDataProviderName: 'Persönlicher DataProvider',
+      },
+    });
   });
 
   afterEach(() => {
@@ -469,7 +492,9 @@ describe('appRouteBindings', () => {
     routeState.params = { id: 'survey-1' };
     routeState.enabledMainserverMutationActions = ['surveys.update'];
     render(<appRouteBindings.surveysDetail />);
-    expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
+    });
   });
 
   it('renders the concrete categories plugin page instead of the placeholder', async () => {
@@ -497,26 +522,26 @@ describe('appRouteBindings', () => {
     routeState.organizationContext = {
       activeOrganizationId: 'org-1',
       organizations: [
-        { organizationId: 'org-1', displayName: 'Stadt Musterhausen', isActive: true },
-        { organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true },
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Stadt Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          isActive: true,
+          isDefaultContext: true,
+        },
+        {
+          organizationId: 'org-2',
+          organizationKey: 'org-2',
+          displayName: 'Redaktion Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_or_personal',
+          isActive: true,
+          isDefaultContext: false,
+        },
       ],
     };
-    routeState.getOrganization.mockImplementation(async (organizationId: string) => ({
-      data: {
-        id: organizationId,
-        displayName: organizationId === 'org-1' ? 'Stadt Musterhausen' : 'Redaktion Musterhausen',
-        organizationKey: organizationId,
-        organizationType: 'municipality',
-        contentAuthorPolicy: organizationId === 'org-1' ? 'org_only' : 'org_or_personal',
-        isActive: true,
-        parentOrganizationId: undefined,
-        depth: 0,
-        hierarchyPath: [],
-        metadata: {},
-        memberships: [],
-        children: [],
-      },
-    }));
 
     const { appRouteBindings } = await import('./app-route-bindings');
 
@@ -538,25 +563,17 @@ describe('appRouteBindings', () => {
     routeState.organizationContext = {
       activeOrganizationId: 'org-2',
       organizations: [
-        { organizationId: 'org-2', displayName: 'Redaktion Musterhausen', isActive: true },
+        {
+          organizationId: 'org-2',
+          organizationKey: 'org-2',
+          displayName: 'Redaktion Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_or_personal',
+          isActive: true,
+          isDefaultContext: true,
+        },
       ],
     };
-    routeState.getOrganization.mockResolvedValue({
-      data: {
-        id: 'org-2',
-        displayName: 'Redaktion Musterhausen',
-        organizationKey: 'org-2',
-        organizationType: 'municipality',
-        contentAuthorPolicy: 'org_or_personal',
-        isActive: true,
-        parentOrganizationId: undefined,
-        depth: 0,
-        hierarchyPath: [],
-        metadata: {},
-        memberships: [],
-        children: [],
-      },
-    });
 
     const { appRouteBindings } = await import('./app-route-bindings');
 
@@ -584,8 +601,87 @@ describe('appRouteBindings', () => {
     await waitFor(() => {
       expect(screen.getByTestId('news-create-principal-value').textContent).toBe('user');
     });
+  });
 
-    expect(routeState.getOrganization).not.toHaveBeenCalled();
+  it('blocks Mainserver editors when the active organization is missing from the context', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-missing',
+      organizations: [],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    expect(screen.queryByTestId('news-create-page')).toBeNull();
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+  });
+
+  it('blocks Mainserver editors when the active organization has no author policy', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Stadt Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: undefined as never,
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    expect(screen.queryByTestId('news-create-page')).toBeNull();
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+  });
+
+  it('blocks Mainserver editors while the organization context is switching', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContextIsUpdating = true;
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    expect(screen.queryByTestId('news-create-page')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
+  });
+
+  it('keeps the content list readable without enabling mutations when author context fails', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-missing',
+      organizations: [],
+    };
+    routeState.enabledMainserverMutationActions = ['news.update', 'news.delete'];
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.content />);
+
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBeNull();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
   });
 
   it('forwards the resolved principal contract to every Mainserver editor route', async () => {
@@ -618,11 +714,81 @@ describe('appRouteBindings', () => {
 
     for (const [Binding, testId] of cases) {
       render(<Binding />);
-      expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      await waitFor(() => {
+        expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      });
       cleanup();
     }
+  });
 
-    expect(routeState.getOrganization).not.toHaveBeenCalled();
+  it('uses a personal resource principal for every edit route even when create is org-only', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+      instanceId: 'de-musterhausen',
+    };
+    routeState.params = { id: 'content-1' };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Stadt Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const cases: Array<[ComponentType, string, string]> = [
+      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article'],
+      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record'],
+      [
+        appRouteBindings.genericItemsDetail,
+        'generic-items-edit-page',
+        'generic-items.generic-item',
+      ],
+      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq'],
+      [
+        appRouteBindings.cockpitCardsDetail,
+        'cockpit-cards-edit-page',
+        'cockpit-cards.cockpit-card',
+      ],
+      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project'],
+      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey'],
+    ];
+
+    for (const [Binding, testId, contentType] of cases) {
+      render(<Binding />);
+      await waitFor(() => {
+        expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      });
+      expect(routeState.getContent).toHaveBeenLastCalledWith('content-1', { contentType });
+      cleanup();
+    }
+  });
+
+  it('keeps an editor fail-closed when the resource principal is missing', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.getContent.mockResolvedValue({
+      data: {
+        credentialSource: undefined,
+        sourceDataProviderName: 'Unresolved DataProvider',
+      },
+    });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Resource principal unavailable')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('news-edit-page')).toBeNull();
   });
 
   it('offers organization or personal principal choice when contentAuthorPolicy is org_or_personal', async () => {
@@ -633,25 +799,17 @@ describe('appRouteBindings', () => {
     routeState.organizationContext = {
       activeOrganizationId: 'org-1',
       organizations: [
-        { organizationId: 'org-1', displayName: 'Organisation Musterstadt', isActive: true },
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Organisation Musterstadt',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_or_personal',
+          isActive: true,
+          isDefaultContext: true,
+        },
       ],
     };
-    routeState.getOrganization.mockResolvedValue({
-      data: {
-        id: 'org-1',
-        displayName: 'Organisation Musterstadt',
-        organizationKey: 'org-1',
-        organizationType: 'municipality',
-        contentAuthorPolicy: 'org_or_personal',
-        isActive: true,
-        parentOrganizationId: undefined,
-        depth: 0,
-        hierarchyPath: [],
-        metadata: {},
-        memberships: [],
-        children: [],
-      },
-    });
 
     const { appRouteBindings } = await import('./app-route-bindings');
 
@@ -764,7 +922,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsDetail />);
-    expect(screen.getByTestId('news-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('news-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.monitoring />);
@@ -844,6 +1002,7 @@ describe('appRouteBindings', () => {
   it('exposes the direct page bindings for the canonical route keys', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
     routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    routeState.params = { id: 'content-1' };
 
     render(<appRouteBindings.home />);
     expect(screen.getByTestId('home-page')).toBeTruthy();
@@ -931,7 +1090,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsDetail />);
-    expect(screen.getByTestId('events-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('events-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.genericItemsList />);
@@ -943,7 +1102,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.genericItemsDetail />);
-    expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.projectsList />);
@@ -955,7 +1114,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.projectsDetail />);
-    expect(screen.getByTestId('projects-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('projects-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.poiList />);
@@ -968,7 +1127,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.poiDetail />);
-    expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
     expect(screen.getByTestId('poi-edit-page').textContent).toBe('de-musterhausen');
   });
 });

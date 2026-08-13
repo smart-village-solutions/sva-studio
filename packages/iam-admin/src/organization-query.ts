@@ -45,6 +45,7 @@ export type ContextOptionRow = {
   readonly organization_key: string;
   readonly display_name: string;
   readonly organization_type: IamOrganizationType;
+  readonly content_author_policy: 'org_only' | 'org_or_personal';
   readonly is_active: boolean;
   readonly is_default_context: boolean;
 };
@@ -148,6 +149,7 @@ export const mapContextOption = (row: ContextOptionRow): IamOrganizationContextO
   organizationKey: row.organization_key,
   displayName: row.display_name,
   organizationType: row.organization_type,
+  contentAuthorPolicy: row.content_author_policy,
   isActive: row.is_active,
   isDefaultContext: row.is_default_context,
 });
@@ -196,7 +198,10 @@ export type OrganizationListSortDirection = 'asc' | 'desc';
 export const readOrganizationListSort = (
   request: Request
 ):
-  | { readonly sortBy: OrganizationListSortField; readonly sortDirection: OrganizationListSortDirection }
+  | {
+      readonly sortBy: OrganizationListSortField;
+      readonly sortDirection: OrganizationListSortDirection;
+    }
   | 'invalid' => {
   const url = new URL(request.url);
   const sortBy = readString(url.searchParams.get('sortBy')) ?? 'displayName';
@@ -450,6 +455,7 @@ SELECT
   organization.organization_key,
   organization.display_name,
   organization.organization_type,
+  organization.content_author_policy,
   organization.is_active,
   membership.is_default_context
 FROM iam.account_organizations membership

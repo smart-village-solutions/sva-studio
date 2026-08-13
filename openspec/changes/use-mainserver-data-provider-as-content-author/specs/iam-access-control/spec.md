@@ -2,7 +2,7 @@
 
 ### Requirement: Mainserver-Content-Scopes verwenden im Zielzustand exakte automatische Bindungen
 
-Das System SHALL Mainserver-Inhalte im automatischen Resolver ausschließlich anhand der aktuellen konfliktfreien Principal-zu-DataProvider-Bindungen autorisieren. Fehlende oder konfliktbehaftete erforderliche Bindungen SHALL fail-closed ablehnen. `credential_visible_compatibility` SHALL nur in den expliziten Rolloutmodi `shadow` und `compatibility` erzwungen werden. Die passende fully-qualified Action-Permission, Instanzgrenze, aktive Organisation, Principal-Policy und Mainserver-Autorisierung SHALL in jedem Modus erforderlich bleiben.
+Das System SHALL Mainserver-Inhalte im automatischen Resolver ausschließlich anhand der aktuellen konfliktfreien Principal-zu-DataProvider-Bindungen autorisieren. Fehlende oder konfliktbehaftete erforderliche Bindungen SHALL fail-closed ablehnen. `credential_visible_compatibility` SHALL nur in den expliziten Rolloutmodi `shadow` und `compatibility` erzwungen werden. Die passende fully-qualified Action-Permission, Instanzgrenze, aktive Organisation, bei Creates die Autorenrichtlinie, bei Bestandsmutationen die Ressourcen-Capability und die Mainserver-Autorisierung SHALL in jedem Modus erforderlich bleiben.
 
 Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. Update, Publish, Archive, Restore und Hard Delete SHALL jeweils einen frischen erfolgreichen Pre-Read mit exakt demselben Credential-Kontext wie der anschließende Write verlangen. Jede Aktion SHALL ihre eigene fully-qualified Permission verlangen.
 
@@ -15,11 +15,11 @@ Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. U
 - **AND** erfindet es kein lokales Owner-Mapping
 - **AND** bleiben Mainserver-`401`, `403` oder `404` ebenfalls fail-closed
 
-#### Scenario: Organization-Scope ohne vollständige policy-gesteuerte Bindung wird abgelehnt
+#### Scenario: Organization-Scope ohne erforderliche Ownership-Bindung wird abgelehnt
 
-- **GIVEN** bei `org_only` fehlt die aktuelle Organisationsbindung oder bei `org_or_personal` eine der persönlichen beziehungsweise organisatorischen Bindungen
+- **GIVEN** für einen persönlichen oder organisatorischen Bestandsinhalt fehlt die zu dessen DataProvider gehörende aktuelle Bindung
 - **AND** der Benutzer besitzt die passende Content-Action mit `organization`
-- **WHEN** er mit einem zulässigen expliziten Principal handelt
+- **WHEN** er den Inhalt mutieren möchte
 - **THEN** lehnt Studio die Mutation im automatischen Resolver ab
 - **AND** verbreitert es den Scope nicht anhand der Credential-Sichtbarkeit
 - **AND** berücksichtigt keine andere Membership oder einen anderen Credential-Kontext
@@ -56,13 +56,36 @@ Ein Projection-, Listen- oder Cache-Treffer SHALL keine Mutation autorisieren. U
 - **AND** verwendet es für diesen Scope nicht mehr `credential_visible_compatibility`
 - **AND** auditiert den automatischen Zustandswechsel
 
-#### Scenario: Organization-Scope verwendet policy-gesteuerte Readiness
+#### Scenario: Organization-Scope umfasst eigenen und aktiven Organisationsinhalt
 
-- **GIVEN** bei `org_only` ist die aktive Organisation konfliktfrei zugeordnet oder bei `org_or_personal` sind persönlicher Principal und aktive Organisation konfliktfrei zugeordnet
+- **GIVEN** der persönliche Principal und die aktive Organisation sind für ihre aktuellen Credential-Versionen konfliktfrei zugeordnet
 - **WHEN** Studio `organization` auswertet
 - **THEN** erlaubt es Inhalte des persönlichen oder organisatorischen DataProviders
 - **AND** DataProvider anderer Memberships matchen nicht
 - **AND** ohne aktive Organisation fällt der Scope auf `own` zurück
+
+#### Scenario: Organisationsrolle umfasst keine persönlichen Inhalte anderer Mitglieder
+
+- **GIVEN** ein Benutzer verwaltet die aktive Organisation
+- **AND** besitzt keine ausdrückliche `all`- oder Moderationsberechtigung für den Content-Typ
+- **WHEN** Studio einen Inhalt des persönlichen DataProviders eines anderen Mitglieds autorisiert
+- **THEN** erfüllen weder die Organisationsrolle noch `accessScope = organization` den Scope
+- **AND** bleibt der Inhalt für diesen Benutzer verborgen und unveränderbar
+
+#### Scenario: Ausdrückliche Moderationsberechtigung ist separat
+
+- **GIVEN** ein Benutzer besitzt eine ausdrücklich vergebene `all`- oder Moderationsberechtigung für den Content-Typ
+- **WHEN** Studio einen persönlichen Inhalt eines anderen Mitglieds autorisiert
+- **THEN** bewertet es diesen Zugriff über den separaten Ressourcenvertrag
+- **AND** leitet ihn nicht aus Organisationsadministration oder `contentAuthorPolicy` ab
+
+#### Scenario: Administrative Mutation verwendet keinen dritten Principal
+
+- **GIVEN** ein Administrator besitzt eine ausdrückliche `all`- oder Moderationsberechtigung und eine serverautoritativ erlaubte Ressourcen-Capability
+- **WHEN** er einen Mainserver-Inhalt mutiert
+- **THEN** verwendet Studio ausschließlich `actingPrincipalType = organization` für die aktive Organisation oder `actingPrincipalType = user` für seinen persönlichen Account
+- **AND** bestimmt die Ressourcen-Capability den zulässigen Kontext
+- **AND** bleiben Same-Credential-Pre-Read und Mainserver-Autorisierung erforderlich
 
 #### Scenario: Konflikt blockiert den automatischen Resolver
 

@@ -740,6 +740,8 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/plugin-sdk` versioniert Mutationsrequests mit Vertrag V2 und übermittelt ausschließlich den Principal-Typ, die Operations-ID und die nicht autorisierende Editor-Kontextbindung. Credentials, Principal-IDs und DataProvider-IDs kommen nie aus dem Browser.
 - Principal-gebundene Detailreads verwenden denselben versionierten Principal-Typ ohne Operations-ID. `@sva/sva-mainserver` löst die credential-versionierte DataProvider-Identität auf und liefert ausschließlich die für den konkreten Datensatz ausgewertete Action-Map `meta.access`; fehlende Identitäts- oder Bindungsnachweise bleiben fail-closed und blockieren den normalen Read nicht.
 - `@sva/studio-ui-react` stellt das gemeinsame übersetzte Principal-Control und die schreibgeschützte DataProvider-Anzeige für alle Mainserver-Content-Plugins bereit.
+- Der Self-Service-Vertrag `GET /api/v1/iam/me/context` liefert die Autorenregel der membership-gefilterten Organisationen. Die App bindet den Create-Principal exakt an `activeOrganizationId` und benötigt dafür keinen administrativen Organisationsdetail-Read.
+- Eigenständige Status- und Delete-Aktionen verwenden die an der Projektionszeile ausgewiesene Credential-Quelle des bestehenden Inhalts. Fehlt sie und existiert kein eindeutig fester Kompatibilitätskontext, bleibt die Mutation gesperrt.
 
 ### Ergänzung 2026-08: Ownership global sortierter Tabellen
 

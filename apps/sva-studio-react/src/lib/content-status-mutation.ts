@@ -18,11 +18,19 @@ const surveyStatuses = [
 ] as const satisfies readonly IamContentStatus[];
 
 export const resolveStandaloneMainserverPrincipal = (
+  item: Pick<IamContentListItem, 'credentialSource'>,
   principalControl: MainserverPrincipalControlModel | undefined
-): MainserverPrincipalType =>
-  principalControl?.kind === 'fixed' && principalControl.value === 'organization'
-    ? 'organization'
-    : 'user';
+): MainserverPrincipalType | undefined => {
+  if (item.credentialSource === 'organization' || item.credentialSource === 'user') {
+    return item.credentialSource;
+  }
+
+  // Only a personal context without an active organization is a safe legacy
+  // fallback. Organization policies never identify the owner of an existing resource.
+  return principalControl?.kind === 'fixed' && principalControl.value === 'user'
+    ? 'user'
+    : undefined;
+};
 
 export const getSupportedQuickStatuses = (contentType: string): readonly IamContentStatus[] => {
   switch (contentType) {

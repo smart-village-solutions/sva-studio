@@ -135,27 +135,47 @@ describe('content status mutation', () => {
     ).rejects.toThrow('unsupported_content_status:news.article:archived');
   });
 
-  it('uses organization only when the organization policy requires it', () => {
+  it('uses the resource credential source before the create policy', () => {
     expect(
-      resolveStandaloneMainserverPrincipal({
-        kind: 'fixed',
-        value: 'organization',
-        label: 'Organisation',
-      })
+      resolveStandaloneMainserverPrincipal(
+        { credentialSource: 'user' },
+        { kind: 'fixed', value: 'organization', label: 'Organisation' }
+      )
+    ).toBe('user');
+    expect(
+      resolveStandaloneMainserverPrincipal(
+        { credentialSource: 'organization' },
+        { kind: 'fixed', value: 'user', label: 'Persönlich' }
+      )
     ).toBe('organization');
+  });
+
+  it('fails closed when an existing resource has no principal and create is selectable', () => {
     expect(
-      resolveStandaloneMainserverPrincipal({
-        kind: 'selectable',
-        value: 'organization',
-        options: [
-          { value: 'organization', label: 'Organisation' },
-          { value: 'user', label: 'Persönlich' },
-        ],
-      })
-    ).toBe('user');
+      resolveStandaloneMainserverPrincipal(
+        {},
+        {
+          kind: 'selectable',
+          value: 'organization',
+          options: [
+            { value: 'organization', label: 'Organisation' },
+            { value: 'user', label: 'Persönlich' },
+          ],
+        }
+      )
+    ).toBeUndefined();
     expect(
-      resolveStandaloneMainserverPrincipal({ kind: 'fixed', value: 'user', label: 'Persönlich' })
+      resolveStandaloneMainserverPrincipal(
+        {},
+        { kind: 'fixed', value: 'organization', label: 'Organisation' }
+      )
+    ).toBeUndefined();
+    expect(
+      resolveStandaloneMainserverPrincipal(
+        {},
+        { kind: 'fixed', value: 'user', label: 'Persönlich' }
+      )
     ).toBe('user');
-    expect(resolveStandaloneMainserverPrincipal(undefined)).toBe('user');
+    expect(resolveStandaloneMainserverPrincipal({}, undefined)).toBeUndefined();
   });
 });

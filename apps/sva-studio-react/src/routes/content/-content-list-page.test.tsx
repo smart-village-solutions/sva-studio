@@ -3,7 +3,17 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mergeI18nResources, resetMergedI18nResources, resetTranslatorCache } from '../../i18n';
-import { ContentListPage } from './-content-list-page';
+import {
+  ContentListPage as ContentListPageComponent,
+  type ContentListPageProps,
+} from './-content-list-page';
+
+const ContentListPage = (props: ContentListPageProps) => (
+  <ContentListPageComponent
+    principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
+    {...props}
+  />
+);
 
 const useContentsMock = vi.fn();
 const useContentAccessMock = vi.fn();
@@ -526,6 +536,7 @@ describe('ContentListPage', () => {
             createdAt: '2026-03-20T10:00:00.000Z',
             updatedAt: '2026-03-21T11:00:00.000Z',
             author: 'mainserver',
+            credentialSource: 'organization',
             payload: { questionCount: 3 },
             status: 'published',
             access: {
@@ -707,11 +718,13 @@ describe('ContentListPage', () => {
               isStale: true,
               isSyncRunning: false,
               hasSnapshot: true,
+              lastErrorCode: 'mainserver_unavailable',
             },
           ],
           hasStaleMainserverContent: true,
           hasBlockingSyncGap: false,
           hasRunningMainserverSync: false,
+          isTotalFinal: false,
         },
         refreshProjection,
       })
@@ -719,7 +732,8 @@ describe('ContentListPage', () => {
 
     render(<ContentListPage />);
 
-    expect(screen.getByText(/letzten erfolgreichen Abgleich/i)).toBeTruthy();
+    expect(screen.getAllByText(/letzten erfolgreichen Abgleich/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/unvollständig/i)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Aktualisieren' }));
 
@@ -898,6 +912,50 @@ describe('ContentListPage', () => {
         .getAllByRole('button', { name: 'Gesperrt' })
         .every((button) => (button as HTMLButtonElement).disabled)
     ).toBe(true);
+  });
+
+  it('keeps Mainserver row mutations disabled without a resolved author context', () => {
+    useContentsMock.mockReturnValue(
+      createContentsApiResult({
+        contents: [
+          {
+            id: 'news-1',
+            contentType: 'news.article',
+            title: 'Kontextlos lesbar',
+            createdAt: '2026-03-20T10:00:00.000Z',
+            updatedAt: '2026-03-21T11:00:00.000Z',
+            author: 'Redaktion',
+            credentialSource: 'user',
+            payload: {},
+            status: 'draft',
+            access: {
+              state: 'editable',
+              canRead: true,
+              canCreate: true,
+              canUpdate: true,
+              organizationIds: [],
+              sourceKinds: ['direct_role'],
+            },
+          },
+        ],
+        pagination: { page: 1, pageSize: 25, total: 1 },
+      })
+    );
+
+    render(
+      <ContentListPage
+        enabledMainserverMutationActions={['news.update', 'news.delete']}
+        principalControl={undefined}
+      />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /Status von Kontextlos lesbar ändern/ })
+    ).toBeNull();
+    expect(
+      (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
+    ).toBe(true);
+    expect(screen.getAllByRole('link', { name: 'Bearbeiten' }).length).toBeGreaterThan(0);
   });
 
   it('hydrates host list controls from route search state and updates canonical params', () => {

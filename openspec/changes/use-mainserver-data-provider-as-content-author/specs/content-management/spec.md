@@ -4,22 +4,24 @@
 
 Das System SHALL bei der Erstellung eines Mainserver-basierten Contents den serverseitig validierten `actingPrincipalType` als Quelle der OAuth-Credentials verwenden und den daraus vom Mainserver gesetzten `dataProvider` als unveränderlichen ursprünglichen Inhaber übernehmen. Vor dem Create SHALL der Identity-Endpunkt die aktuelle Credential-Version binden; der bestätigte Create-DataProvider SHALL diese Bindung anschließend konsistent bestätigen.
 
-Jede Studio-initiierte Schreibaktion zum Erstellen, Aktualisieren, Veröffentlichen, Archivieren, Wiederherstellen oder Löschen SHALL einen expliziten Principal-Typ verwenden. Bei allen Aktionen nach dem Erstellen SHALL die Auswahl nur Mutationsprincipal und Credential-Quelle bestimmen; sie SHALL kein neues Principal-Mapping begründen und den bestehenden DataProvider weder ändern noch als geändert darstellen.
+Jede Studio-initiierte Schreibaktion zum Erstellen, Aktualisieren, Veröffentlichen, Archivieren, Wiederherstellen oder Löschen SHALL einen expliziten Principal-Typ verwenden. Beim Create SHALL `contentAuthorPolicy` die zulässige Eigentümerwahl begrenzen. Bei bestehenden eigenen oder organisatorischen Inhalten SHALL die konfliktfreie DataProvider-Bindung zusammen mit der Ressourcen-Capability den Principal und die Credential-Quelle bestimmen; die Oberfläche SHALL keinen freien Principal-Wechsel anbieten. Keine Aktion SHALL ein neues Principal-Mapping aus einem Content-Read begründen oder den bestehenden DataProvider ändern beziehungsweise als geändert darstellen.
 
-#### Scenario: Organisation erstellt einen Inhalt und wird automatisch gebunden
+#### Scenario: Organisation erstellt einen Inhalt mit vorab verifizierter Bindung
 
 - **GIVEN** die aktive Organisation erlaubt organisatorisches Handeln und besitzt Mainserver-Credentials
+- **AND** der Identity-Endpunkt hat die aktuelle Credential-Version konfliktfrei gebunden
 - **WHEN** ein Benutzer einen Inhalt mit `actingPrincipalType = organization` erstellt
 - **THEN** führt der Server den Create ausschließlich mit deren Credentials aus
 - **AND** liest er den bestätigten DataProvider aus Response oder Same-Credential-Re-Read
-- **AND** erzeugt oder bestätigt damit automatisch die credential-versionierte Organisationsbindung
+- **AND** bestätigt er damit ausschließlich die bereits verifizierte credential-versionierte Organisationsbindung
 
-#### Scenario: Person erstellt einen Inhalt und wird automatisch gebunden
+#### Scenario: Person erstellt einen Inhalt mit vorab verifizierter Bindung
 
 - **GIVEN** persönliches Handeln ist zulässig
+- **AND** der Identity-Endpunkt hat die aktuelle persönliche Credential-Version konfliktfrei gebunden
 - **WHEN** ein Benutzer einen Inhalt mit `actingPrincipalType = user` erstellt
 - **THEN** führt der Server den Create ausschließlich mit den persönlichen Credentials aus
-- **AND** erzeugt oder bestätigt der bestätigte DataProvider automatisch deren Bindung
+- **AND** bestätigt der Content-DataProvider ausschließlich die bereits verifizierte Bindung
 
 #### Scenario: Create kollidiert mit bestehender Bindung
 
@@ -29,14 +31,29 @@ Jede Studio-initiierte Schreibaktion zum Erstellen, Aktualisieren, Veröffentlic
 - **AND** markiert Mapping und lokale Folgearbeit als `reconciliation_required`
 - **AND** stellt den bestätigten Provider-Erfolg nicht als zurückgerollt dar
 
-#### Scenario: Bearbeitung verwendet einen anderen zulässigen Mutationsprincipal
+#### Scenario: Bearbeitung verwendet den gebundenen Ownership-Principal
 
 - **GIVEN** ein bestehender Inhalt besitzt einen DataProvider
-- **AND** Permission und Principal-Policy erlauben die Bearbeitung
-- **WHEN** ein Benutzer die Mutation mit einem anderen zulässigen `actingPrincipalType` ausführt
-- **THEN** verwendet das System dessen Credentials für Same-Credential-Pre-Read und Write
+- **AND** dessen konfliktfreie Bindung weist auf den persönlichen Principal des Actors oder die aktive Organisation
+- **AND** Permission und Ressourcen-Capability erlauben die Bearbeitung
+- **WHEN** ein Benutzer die Mutation ausführt
+- **THEN** verwendet das System den gebundenen Ownership-Principal für Same-Credential-Pre-Read und Write
 - **AND** zeigt weiterhin den bestehenden DataProvider als ursprünglichen Inhaber
-- **AND** leitet aus dem Update kein Mapping des handelnden Principal ab
+- **AND** bietet keinen freien Wechsel zum anderen Principal an
+
+#### Scenario: Persönliches Eigentum bleibt dauerhaft persönlich
+
+- **GIVEN** ein Inhalt wurde zulässig mit `actingPrincipalType = user` erstellt
+- **WHEN** die aktive Organisation, deren Autorenrichtlinie oder die Mitgliedschaft des Actors später wechselt
+- **THEN** bleibt der bestätigte persönliche DataProvider ursprünglicher Inhaber
+- **AND** überträgt Studio den Inhalt nicht auf eine Organisation
+
+#### Scenario: Organisationseigentum bleibt dauerhaft organisatorisch
+
+- **GIVEN** ein Inhalt wurde zulässig mit `actingPrincipalType = organization` erstellt
+- **WHEN** der ursprüngliche Actor die Organisation verlässt oder sein Account gesperrt wird
+- **THEN** bleibt der bestätigte Organisations-DataProvider ursprünglicher Inhaber
+- **AND** können andere berechtigte Mitglieder der Organisation den Inhalt weiter verwalten
 
 #### Scenario: Jede Schreibaktion übermittelt den Principal explizit
 
@@ -82,12 +99,12 @@ Das System SHALL für `own` und `organization` `credential_visible_compatibility
 - **THEN** lehnt Studio die Aktion vor dem Mainserver-Aufruf ab
 - **AND** leitet aus Update- oder Read-Rechten kein Löschrecht ab
 
-#### Scenario: Principal-Wechsel erfordert neuen Verfügbarkeitsnachweis
+#### Scenario: Abweichender Principal ersetzt den Ownership-Principal nicht
 
-- **GIVEN** ein Inhalt wurde mit Organisations-Credentials geladen
-- **WHEN** der Benutzer für die Mutation `actingPrincipalType = user` auswählt
-- **THEN** führt Studio einen neuen Pre-Read mit den persönlichen Credentials aus
-- **AND** autorisiert die frühere Organisationsprojektion die persönliche Mutation nicht
+- **GIVEN** ein Inhalt ist konfliktfrei an den DataProvider der aktiven Organisation gebunden
+- **WHEN** ein Client für die Mutation `actingPrincipalType = user` übermittelt
+- **THEN** weist Studio den abweichenden Principal vor dem Write zurück
+- **AND** autorisiert weder die Organisationsprojektion noch eine persönliche Read-Sicht diese Mutation
 
 ### Requirement: Freies GraphQL-author bleibt nicht autoritative Legacy-Metadatum
 
@@ -153,7 +170,7 @@ Bei lokalen Inhalten SHALL `ownerUserId` und `ownerOrganizationId` ausschließli
 
 ### Requirement: Featured Projects verwenden den host-owned Autorenvertrag
 
-Das System MUST für jedes Featured Project genau einen ursprünglichen Inhaber und sichtbaren Autor als Organisation oder Person führen. Der bestätigte Mainserver-`dataProvider` MUST diese Identität bestimmen. Die aktive Organisationsrichtlinie MUST den Create- und Mutationsprincipal serverseitig begrenzen; der Mainserver-Wert `author` und lokale Projects-Autorenmetadaten dürfen weder DataProvider-Identität noch automatische Principal-Bindung ersetzen.
+Das System MUST für jedes Featured Project genau einen ursprünglichen Inhaber und sichtbaren Autor als Organisation oder Person führen. Der bestätigte Mainserver-`dataProvider` MUST diese Identität bestimmen. Die aktive Organisationsrichtlinie MUST den Create-Principal serverseitig begrenzen; bei Bestandsmutationen MUST die konfliktfreie Ownership-Bindung den Principal bestimmen. Der Mainserver-Wert `author` und lokale Projects-Autorenmetadaten dürfen weder DataProvider-Identität noch automatische Principal-Bindung ersetzen.
 
 #### Scenario: Organisation erstellt ein Featured Project
 
@@ -161,7 +178,7 @@ Das System MUST für jedes Featured Project genau einen ursprünglichen Inhaber 
 - **WHEN** ein Projekt mit `actingPrincipalType = organization` angelegt wird
 - **THEN** verwendet der Server die Credentials der aktiven Organisation
 - **AND** übernimmt den bestätigten Organisations-DataProvider als ursprünglichen Inhaber
-- **AND** erzeugt oder bestätigt automatisch die Organisationsbindung
+- **AND** bestätigt ausschließlich die vor dem Create verifizierte Organisationsbindung
 
 #### Scenario: Persönlicher Create ist nicht zulässig
 

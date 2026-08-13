@@ -1,25 +1,25 @@
 ## ADDED Requirements
 
-### Requirement: Automatische DataProvider-Bindungen bleiben referenzwahrend über Principal-Lifecycles
+### Requirement: Gelöschte Principals werden aus der aktiven Content-Zuordnung entfernt
 
-Das System SHALL historische automatische Principal-zu-DataProvider-Bindungen referenzwahrend erhalten, wenn ein Account oder eine Organisation deaktiviert, pseudonymisiert, gelöscht oder deren Credentials rotiert beziehungsweise entfernt werden. Ein Lifecycle-Übergang SHALL keine manuelle oder automatische Übertragung des ursprünglichen Content-DataProviders auf einen anderen Principal begründen.
+Das System SHALL einen gelöschten Account nicht als aktiven Content-Principal oder als aktuelle Scope-Readiness weiterverwenden. Abhängig von der konfigurierten Content-Löschregel SHALL zugehöriger Content ebenfalls gelöscht oder ohne aktive Benutzerzuordnung weitergeführt werden. Weitergeführter Content SHALL lokal `NULL` oder eine neutrale Anzeige „Gelöschter Benutzer“ verwenden. Ein Lifecycle-Übergang SHALL keine automatische Übertragung auf einen anderen Account oder eine Organisation begründen.
 
-Aktuelle exakte Scope-Readiness SHALL ausschließlich aus aktiven, konfliktfreien Bindungen der aktuellen Credential-Version entstehen. Historische Bindungen SHALL weiterhin die Herleitung bestehender Content-Inhaber und Auditnachweise ermöglichen.
+Auditnachweise SHALL dem bestehenden Pseudonymisierungs-, Retention- und Löschvertrag folgen. Credential-Rotation oder Credential-Entfernung ohne Account-Löschung SHALL die alte Credential-Version aus der aktuellen Scope-Readiness entfernen und für eine neue Version einen neuen Identity-Nachweis verlangen.
 
 #### Scenario: Account wird pseudonymisiert
 
-- **GIVEN** ein Account besitzt historische automatisch bestätigte DataProvider-Bindungen
+- **GIVEN** ein Account besitzt automatisch bestätigte DataProvider-Bindungen
 - **WHEN** der Account pseudonymisiert wird
-- **THEN** bleiben technische DataProvider-Referenzen für bestehende Inhalte und Audit erhalten
-- **AND** werden personenbezogene Anzeigen nach dem bestehenden Pseudonymisierungsvertrag ersetzt
+- **THEN** werden personenbezogene Anzeigen nach dem bestehenden Pseudonymisierungsvertrag ersetzt
+- **AND** folgt der weitere Content-Lifecycle der konfigurierten Löschregel
 - **AND** entsteht keine Bindung zu einem anderen Account
 
-#### Scenario: Account oder Organisation wird gelöscht
+#### Scenario: Account wird gelöscht
 
-- **GIVEN** ein Principal besitzt eine bestätigte DataProvider-Bindung
-- **WHEN** der Principal gelöscht oder tombstoned wird
-- **THEN** bleibt die Bindung als historische referenzwahrende Evidenz erhalten
-- **AND** zählt sie nicht mehr als aktuelle Scope-Readiness
+- **GIVEN** ein Account besitzt eine bestätigte DataProvider-Bindung
+- **WHEN** der Account gelöscht oder tombstoned wird
+- **THEN** zählt er nicht mehr als aktiver Principal oder aktuelle Scope-Readiness
+- **AND** wird sein Content entsprechend der konfigurierten Regel gelöscht oder ohne aktive Benutzerzuordnung weitergeführt
 - **AND** wird der DataProvider keinem anderen Principal automatisch zugewiesen
 
 #### Scenario: Credentials werden entfernt oder rotiert

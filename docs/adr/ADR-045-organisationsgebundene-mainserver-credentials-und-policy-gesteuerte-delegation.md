@@ -1,6 +1,6 @@
 # ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation
 
-**Status:** Accepted
+**Status:** Superseded durch [ADR-052](./ADR-052-create-policy-read-scope-und-bestandsprincipal.md)
 **Entscheidungsdatum:** 2026-06-02
 **Entschieden durch:** IAM/Integrations-Team
 **GitHub Issue:** TBD

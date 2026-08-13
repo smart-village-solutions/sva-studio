@@ -76,6 +76,7 @@ describe('organization query helpers', () => {
         organization_key: 'alpha',
         display_name: 'Alpha',
         organization_type: 'municipality',
+        content_author_policy: 'org_or_personal',
         is_active: true,
         is_default_context: false,
       })
@@ -83,6 +84,7 @@ describe('organization query helpers', () => {
       expect.objectContaining({
         organizationId: 'org-1',
         organizationKey: 'alpha',
+        contentAuthorPolicy: 'org_or_personal',
       })
     );
   });
@@ -183,14 +185,12 @@ describe('organization query helpers', () => {
     });
     expect(
       readOrganizationListSort(
-        new Request(
-          'http://localhost/api?sortBy=parentDisplayName&sortDirection=desc'
-        )
+        new Request('http://localhost/api?sortBy=parentDisplayName&sortDirection=desc')
       )
     ).toEqual({ sortBy: 'parentDisplayName', sortDirection: 'desc' });
-    expect(
-      readOrganizationListSort(new Request('http://localhost/api?sortBy=type'))
-    ).toBe('invalid');
+    expect(readOrganizationListSort(new Request('http://localhost/api?sortBy=type'))).toBe(
+      'invalid'
+    );
   });
 
   it('loads organization details and context options', async () => {

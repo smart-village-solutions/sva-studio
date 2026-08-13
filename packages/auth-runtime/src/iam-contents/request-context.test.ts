@@ -19,11 +19,12 @@ const {
   resolveActorInfoMock: vi.fn(),
   withAuthenticatedUserMock: vi.fn(),
   getSessionMock: vi.fn(),
-  toJsonErrorResponseMock: vi.fn((status, code, message, options) =>
-    new Response(JSON.stringify({ error: { code, message }, requestId: options?.requestId }), {
-      status,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  toJsonErrorResponseMock: vi.fn(
+    (status, code, message, options) =>
+      new Response(JSON.stringify({ error: { code, message }, requestId: options?.requestId }), {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      })
   ),
 }));
 
@@ -123,7 +124,10 @@ describe('content request authorization context', () => {
       },
     });
     withAuthenticatedUserMock.mockImplementation(async (_request, handler) =>
-      handler({ sessionId: 'session-1', user: { id: 'subject-1', roles: ['editor'], instanceId: 'instance-1' } })
+      handler({
+        sessionId: 'session-1',
+        user: { id: 'subject-1', roles: ['editor'], instanceId: 'instance-1' },
+      })
     );
     getSessionMock.mockResolvedValue({ activeOrganizationId: 'org-1' });
   });
@@ -180,34 +184,46 @@ describe('content request authorization context', () => {
     );
   });
 
-  it('uses the plugin resource type for plugin-scoped read actions', async () => {
-    await expect(
-      authorizeContentAction(
-        {
-          instanceId: 'instance-1',
-          keycloakSubject: 'subject-1',
-          actorDisplayName: 'Actor',
-          activeOrganizationId: '11111111-1111-1111-8111-111111111111',
-        },
-        'news.read',
-        {
-          contentId: 'content-1',
-          contentType: 'news.article',
-        }
-      )
-    ).resolves.toBeNull();
+  it.each([
+    ['news.read', 'news'],
+    ['events.read', 'events'],
+    ['poi.read', 'poi'],
+    ['generic-items.read', 'generic-items'],
+    ['faq.read', 'faq'],
+    ['cockpit-cards.read', 'cockpit-cards'],
+    ['projects.read', 'projects'],
+    ['surveys.read', 'surveys'],
+  ] as const)(
+    'uses resource type %s for plugin-scoped read actions',
+    async (action, resourceType) => {
+      await expect(
+        authorizeContentAction(
+          {
+            instanceId: 'instance-1',
+            keycloakSubject: 'subject-1',
+            actorDisplayName: 'Actor',
+            activeOrganizationId: '11111111-1111-1111-8111-111111111111',
+          },
+          action,
+          {
+            contentId: 'content-1',
+            contentType: `${resourceType}.content`,
+          }
+        )
+      ).resolves.toBeNull();
 
-    expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: 'news.read',
-        resource: expect.objectContaining({
-          type: 'news',
-          id: 'content-1',
+      expect(evaluateAuthorizeDecisionMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action,
+          resource: expect.objectContaining({
+            type: resourceType,
+            id: 'content-1',
+          }),
         }),
-      }),
-      []
-    );
-  });
+        []
+      );
+    }
+  );
 
   it('returns forbidden and database_unavailable responses for denied or failing authorization checks', async () => {
     evaluateAuthorizeDecisionMock.mockReturnValueOnce({ allowed: false, reason: 'denied' });
@@ -265,16 +281,18 @@ describe('content request authorization context', () => {
   });
 
   it('wraps authenticated content handlers and converts unexpected failures to stable json errors', async () => {
-    const success = await withAuthenticatedContentHandler(new Request('https://example.test/content'), async () =>
-      new Response('ok', { status: 200 })
+    const success = await withAuthenticatedContentHandler(
+      new Request('https://example.test/content'),
+      async () => new Response('ok', { status: 200 })
     );
     expect(success.status).toBe(200);
 
     withAuthenticatedUserMock.mockImplementationOnce(async () => {
       throw new Error('boom');
     });
-    const failure = await withAuthenticatedContentHandler(new Request('https://example.test/content'), async () =>
-      new Response('ok', { status: 200 })
+    const failure = await withAuthenticatedContentHandler(
+      new Request('https://example.test/content'),
+      async () => new Response('ok', { status: 200 })
     );
     expect(failure.status).toBe(500);
     await expect(failure.json()).resolves.toMatchObject({

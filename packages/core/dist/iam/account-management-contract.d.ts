@@ -566,6 +566,7 @@ export type IamOrganizationContextOption = {
     readonly organizationKey: string;
     readonly displayName: string;
     readonly organizationType: IamOrganizationType;
+    readonly contentAuthorPolicy: IamContentAuthorPolicy;
     readonly isActive: boolean;
     readonly isDefaultContext: boolean;
 };

@@ -391,6 +391,12 @@ const resolveContentSortField = (
 const isMainserverContentType = (contentType: string): boolean =>
   MAIN_SERVER_CONTENT_TYPES.has(contentType);
 
+const resolveListMutationPrincipal = (
+  item: RegisteredContentRow,
+  principalControl: MainserverPrincipalControlModel | undefined
+): MainserverPrincipalType | undefined =>
+  principalControl ? resolveStandaloneMainserverPrincipal(item, principalControl) : undefined;
+
 const isBulkActionableContent = (item: RegisteredContentRow): boolean =>
   !isMainserverContentType(item.contentType);
 
@@ -413,24 +419,27 @@ const ContentRowActions = ({
   listError,
   permissionActions,
   enabledMainserverMutationActions,
+  mutationPrincipalAvailable,
   onDelete,
 }: Readonly<{
   item: RegisteredContentRow;
   listError: IamHttpError | null;
   permissionActions: readonly string[] | undefined;
   enabledMainserverMutationActions: readonly string[];
-  onDelete: (contentType: string, contentId: string) => Promise<void>;
+  mutationPrincipalAvailable: boolean;
+  onDelete: (item: RegisteredContentRow) => Promise<void>;
 }>) => {
   const resolvedAccess = resolveRowAccess(item.access, listError);
   const access = canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
     ? resolvedAccess
     : { ...resolvedAccess, canUpdate: false };
   const actionLabel = resolveRowActionLabel(access);
-  const canDelete = canDeleteMainserverItem(
-    item.contentType,
-    permissionActions,
-    enabledMainserverMutationActions
-  );
+  const canDelete =
+    canDeleteMainserverItem(
+      item.contentType,
+      permissionActions,
+      enabledMainserverMutationActions
+    ) && mutationPrincipalAvailable;
   const actionIcon = resolveRowActionIcon(access);
 
   const handleDelete = () => {
@@ -438,7 +447,7 @@ const ContentRowActions = ({
       return;
     }
 
-    void onDelete(item.contentType, item.id).catch(() => undefined);
+    void onDelete(item).catch(() => undefined);
   };
 
   return (
@@ -561,7 +570,6 @@ export const ContentListPage = ({
   const search = useSearch({ strict: false }) as RouteSearchState;
   const auth = useAuth();
   const contentAccessApi = useContentAccess();
-  const standalonePrincipalType = resolveStandaloneMainserverPrincipal(principalControl);
   const routeState = readNormalizedRouteState(search);
   const routeSortField = routeState.sort?.field;
   const routeSortDirection = routeState.sort?.direction;
@@ -683,11 +691,15 @@ export const ContentListPage = ({
   );
 
   const handleDeleteContent = React.useCallback(
-    async (contentType: string, contentId: string) => {
-      await deleteMainserverItem(contentType, contentId, standalonePrincipalType);
+    async (item: RegisteredContentRow) => {
+      const principal = resolveListMutationPrincipal(item, principalControl);
+      if (!principal) {
+        throw new Error('mainserver_mutation_principal_unavailable');
+      }
+      await deleteMainserverItem(item.contentType, item.id, principal);
       await contentsApi.refetch();
     },
-    [contentsApi, standalonePrincipalType]
+    [contentsApi, principalControl]
   );
 
   const bulkActionButtons = React.useMemo<readonly StudioBulkAction<RegisteredContentRow>[]>(
@@ -807,25 +819,24 @@ export const ContentListPage = ({
       {
         id: 'status',
         header: t('content.table.headerStatus'),
-        cell: (item) => (
-          <ContentStatusDialog
-            item={item}
-            canUpdate={
-              resolveRowAccess(item.access, contentsApi.error).canUpdate &&
-              canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
-            }
-            actingPrincipalType={standalonePrincipalType}
-            onUpdated={contentsApi.refetch}
-          />
-        ),
+        cell: (item) => {
+          const mutationPrincipal = resolveListMutationPrincipal(item, principalControl);
+          return (
+            <ContentStatusDialog
+              item={item}
+              canUpdate={
+                mutationPrincipal !== undefined &&
+                resolveRowAccess(item.access, contentsApi.error).canUpdate &&
+                canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
+              }
+              actingPrincipalType={mutationPrincipal ?? 'user'}
+              onUpdated={contentsApi.refetch}
+            />
+          );
+        },
       },
     ],
-    [
-      contentsApi.error,
-      contentsApi.refetch,
-      enabledMainserverMutationActions,
-      standalonePrincipalType,
-    ]
+    [contentsApi.error, contentsApi.refetch, enabledMainserverMutationActions, principalControl]
   );
 
   return (
@@ -991,6 +1002,9 @@ export const ContentListPage = ({
               listError={contentsApi.error}
               permissionActions={effectivePermissionActions}
               enabledMainserverMutationActions={enabledMainserverMutationActions}
+              mutationPrincipalAvailable={
+                resolveListMutationPrincipal(item, principalControl) !== undefined
+              }
               onDelete={handleDeleteContent}
             />
           )}

@@ -13,6 +13,7 @@ const {
   loadContentListItemsMock,
   loadContentListScopesMock,
   loadExternalContentReferenceBySourceEntityMock,
+  loadMainserverContentProjectionCandidatesMock,
   resolveContentAccessMock,
   resolveContentActorMock,
   resolveContentAuthorizationPermissionsMock,
@@ -28,6 +29,7 @@ const {
   loadContentListItemsMock: vi.fn(),
   loadContentListScopesMock: vi.fn(),
   loadExternalContentReferenceBySourceEntityMock: vi.fn(),
+  loadMainserverContentProjectionCandidatesMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   resolveContentActorMock: vi.fn(),
   resolveContentAuthorizationPermissionsMock: vi.fn(),
@@ -59,6 +61,10 @@ vi.mock('./mutations.js', () => ({
 
 vi.mock('./external-content-references.js', () => ({
   loadExternalContentReferenceBySourceEntity: loadExternalContentReferenceBySourceEntityMock,
+}));
+
+vi.mock('./mainserver-content-projection.js', () => ({
+  loadMainserverContentProjectionCandidates: loadMainserverContentProjectionCandidatesMock,
 }));
 
 const {
@@ -116,7 +122,10 @@ const item = (id: string, organizationId: string): IamContentListItem => ({
 });
 
 const readJson = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
-const ctx = { sessionId: 'session-1', user: { sub: 'subject-1' } } as unknown as AuthenticatedRequestContext;
+const ctx = {
+  sessionId: 'session-1',
+  user: { sub: 'subject-1' },
+} as unknown as AuthenticatedRequestContext;
 
 describe('content core authorization', () => {
   beforeEach(() => {
@@ -129,6 +138,8 @@ describe('content core authorization', () => {
     loadContentListItemsMock.mockReset();
     loadContentListScopesMock.mockReset();
     loadExternalContentReferenceBySourceEntityMock.mockReset();
+    loadMainserverContentProjectionCandidatesMock.mockReset();
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([]);
     resolveContentAccessMock.mockReset();
     resolveContentActorMock.mockReset();
     resolveContentAuthorizationPermissionsMock.mockReset();
@@ -176,7 +187,10 @@ describe('content core authorization', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 403 }));
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     expect(loadContentListScopesMock).toHaveBeenCalledWith(
@@ -225,7 +239,10 @@ describe('content core authorization', () => {
     });
     authorizeContentActionMock.mockResolvedValue(null);
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     expect(loadContentListItemsMock).toHaveBeenCalledWith(
@@ -309,7 +326,10 @@ describe('content core authorization', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 403 }));
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -345,7 +365,10 @@ describe('content core authorization', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(new Response(null, { status: 503 }));
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(503);
   });
@@ -353,7 +376,10 @@ describe('content core authorization', () => {
   it('returns actor resolution errors before listing contents', async () => {
     resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(401);
     expect(loadContentListItemsMock).not.toHaveBeenCalled();
@@ -362,7 +388,10 @@ describe('content core authorization', () => {
   it('returns a database error when listing contents fails', async () => {
     loadContentListItemsMock.mockRejectedValue(new Error('db_down'));
 
-    const response = await listContentsInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await listContentsInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(503);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -390,7 +419,10 @@ describe('content core authorization', () => {
     loadContentDetailMock.mockResolvedValue({ ...content, history: [] });
     authorizeContentActionMock.mockResolvedValue(null);
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     expect(authorizeContentActionMock).toHaveBeenCalledWith(
@@ -408,14 +440,20 @@ describe('content core authorization', () => {
   it('returns actor resolution errors before loading content details', async () => {
     resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(401);
     expect(loadContentByIdMock).not.toHaveBeenCalled();
   });
 
   it('rejects detail reads without a content id', async () => {
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(400);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -426,7 +464,10 @@ describe('content core authorization', () => {
   it('returns not found when content metadata is missing for detail reads', async () => {
     loadContentByIdMock.mockResolvedValue(undefined);
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(404);
   });
@@ -436,7 +477,10 @@ describe('content core authorization', () => {
     loadContentByIdMock.mockResolvedValue(content);
     authorizeContentActionMock.mockResolvedValue(new Response(null, { status: 403 }));
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(403);
     expect(loadContentDetailMock).not.toHaveBeenCalled();
@@ -478,28 +522,134 @@ describe('content core authorization', () => {
     loadContentDetailMock.mockResolvedValue(undefined);
     authorizeContentActionMock.mockResolvedValue(null);
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(404);
   });
 
   it('resolves external identities before local detail lookups', async () => {
     const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
-    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({ contentId: 'local-content-1' });
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
+      contentId: 'local-content-1',
+    });
     loadContentByIdMock.mockResolvedValue(content);
     loadContentDetailMock.mockResolvedValue(content);
     resolveContentAccessMock.mockResolvedValue(access);
     authorizeContentActionMock.mockResolvedValue(null);
 
     const response = await getContentInternal(
-      new Request('https://studio.test/api/v1/iam/contents/news-1?contentType=news.article'),
+      new Request(
+        'https://studio.test/api/v1/iam/contents/news%2Fwith%3F%23slug?contentType=news.article'
+      ),
       ctx
     );
 
     expect(response.status).toBe(200);
+    expect(loadExternalContentReferenceBySourceEntityMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      sourceSystem: 'mainserver',
+      sourceEntityType: 'news.article',
+      sourceEntityId: 'news/with?#slug',
+    });
     expect(loadContentByIdMock).toHaveBeenCalledTimes(1);
     expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
   });
+
+  it('resolves an unbound native Mainserver id from an exact principal projection', async () => {
+    const projection = item('upstream-faq-1', '11111111-1111-4111-8111-111111111111');
+    projection.contentType = 'faq.faq';
+    projection.credentialSource = 'organization';
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue(undefined);
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([projection]);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/upstream-faq-1?contentType=faq.faq'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'faq.faq',
+      sourceEntityId: 'upstream-faq-1',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledWith(
+      actor,
+      'faq.read',
+      expect.objectContaining({ contentId: 'upstream-faq-1' })
+    );
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: {
+        id: 'upstream-faq-1',
+        credentialSource: 'organization',
+        history: [],
+      },
+    });
+    expect(loadContentByIdMock).not.toHaveBeenCalled();
+    expect(loadContentDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when an unbound Mainserver id has ambiguous principal projections', async () => {
+    const personal = item('shared-id', '11111111-1111-4111-8111-111111111111');
+    personal.contentType = 'faq.faq';
+    personal.credentialSource = 'user';
+    const organization = { ...personal, credentialSource: 'organization' as const };
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([personal, organization]);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/shared-id?contentType=faq.faq'),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    expect(authorizeContentActionMock).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['news.article', 'news.read'],
+    ['events.event-record', 'events.read'],
+    ['poi.point-of-interest', 'poi.read'],
+    ['generic-items.generic-item', 'generic-items.read'],
+    ['faq.faq', 'faq.read'],
+    ['cockpit-cards.cockpit-card', 'cockpit-cards.read'],
+    ['projects.project', 'projects.read'],
+    ['surveys.survey', 'surveys.read'],
+  ] as const)(
+    'authorizes external %s detail reads with %s',
+    async (contentType, expectedAction) => {
+      const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
+      content.contentType = contentType;
+      loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
+        contentId: 'local-content-1',
+      });
+      loadContentByIdMock.mockResolvedValue(content);
+      loadContentDetailMock.mockResolvedValue(content);
+      authorizeContentActionMock.mockResolvedValue(null);
+
+      const response = await getContentInternal(
+        new Request(
+          `https://studio.test/api/v1/iam/contents/external-id?contentType=${contentType}`
+        ),
+        ctx
+      );
+
+      expect(response.status).toBe(200);
+      expect(authorizeContentActionMock).toHaveBeenCalledWith(
+        actor,
+        expectedAction,
+        expect.objectContaining({
+          contentId: 'local-content-1',
+          contentType,
+        })
+      );
+    }
+  );
 
   it('returns a database error when loading content details fails', async () => {
     const content = item('content-1', '11111111-1111-4111-8111-111111111111');
@@ -507,7 +657,10 @@ describe('content core authorization', () => {
     loadContentDetailMock.mockRejectedValue(new Error('db_down'));
     authorizeContentActionMock.mockResolvedValue(null);
 
-    const response = await getContentInternal(new Request('https://studio.test/api/v1/iam/contents/content-1'), ctx);
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/content-1'),
+      ctx
+    );
 
     expect(response.status).toBe(503);
     await expect(readJson(response)).resolves.toMatchObject({
@@ -584,7 +737,9 @@ describe('content core authorization', () => {
     loadExternalContentReferenceBySourceEntityMock.mockResolvedValue(undefined);
 
     const response = await getContentHistoryInternal(
-      new Request('https://studio.test/api/v1/iam/contents/news-unbound/history?contentType=news.article'),
+      new Request(
+        'https://studio.test/api/v1/iam/contents/news-unbound/history?contentType=news.article'
+      ),
       ctx
     );
 
@@ -605,7 +760,10 @@ describe('content core authorization', () => {
   });
 
   it('rejects history reads without a content id', async () => {
-    const response = await getContentHistoryInternal(new Request('https://studio.test/api/v1/iam/contents'), ctx);
+    const response = await getContentHistoryInternal(
+      new Request('https://studio.test/api/v1/iam/contents'),
+      ctx
+    );
 
     expect(response.status).toBe(400);
   });
@@ -660,7 +818,9 @@ describe('content core authorization', () => {
     const response = await createContentInternal(request, ctx);
 
     expect(response).toBe(expected);
-    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, {
+      requireActorAccountId: true,
+    });
     expect(createContentResponseMock).toHaveBeenCalledWith(request, actor);
   });
 
@@ -675,19 +835,25 @@ describe('content core authorization', () => {
   });
 
   it('delegates content updates after resolving an actor account id', async () => {
-    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'PATCH' });
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', {
+      method: 'PATCH',
+    });
     const expected = new Response(null, { status: 200 });
     updateContentResponseMock.mockResolvedValue(expected);
 
     const response = await updateContentInternal(request, ctx);
 
     expect(response).toBe(expected);
-    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, {
+      requireActorAccountId: true,
+    });
     expect(updateContentResponseMock).toHaveBeenCalledWith(request, actor);
   });
 
   it('returns actor resolution errors before delegating content updates', async () => {
-    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'PATCH' });
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', {
+      method: 'PATCH',
+    });
     resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
 
     const response = await updateContentInternal(request, ctx);
@@ -697,19 +863,25 @@ describe('content core authorization', () => {
   });
 
   it('delegates content deletion after resolving an actor account id', async () => {
-    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'DELETE' });
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', {
+      method: 'DELETE',
+    });
     const expected = new Response(null, { status: 200 });
     deleteContentResponseMock.mockResolvedValue(expected);
 
     const response = await deleteContentInternal(request, ctx);
 
     expect(response).toBe(expected);
-    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, { requireActorAccountId: true });
+    expect(resolveContentActorMock).toHaveBeenCalledWith(request, ctx, {
+      requireActorAccountId: true,
+    });
     expect(deleteContentResponseMock).toHaveBeenCalledWith(request, actor);
   });
 
   it('returns actor resolution errors before delegating content deletion', async () => {
-    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', { method: 'DELETE' });
+    const request = new Request('https://studio.test/api/v1/iam/contents/content-1', {
+      method: 'DELETE',
+    });
     resolveContentActorMock.mockResolvedValue({ error: new Response(null, { status: 401 }) });
 
     const response = await deleteContentInternal(request, ctx);
@@ -729,11 +901,35 @@ describe('content core authorization', () => {
     expect(await createContentHandler(request)).toBe(expected);
     expect(await updateContentHandler(request)).toBe(expected);
     expect(await deleteContentHandler(request)).toBe(expected);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(1, request, listContentsInternal);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(2, request, getContentInternal);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(3, request, getContentHistoryInternal);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(4, request, createContentInternal);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(5, request, updateContentInternal);
-    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(6, request, deleteContentInternal);
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      1,
+      request,
+      listContentsInternal
+    );
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      2,
+      request,
+      getContentInternal
+    );
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      3,
+      request,
+      getContentHistoryInternal
+    );
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      4,
+      request,
+      createContentInternal
+    );
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      5,
+      request,
+      updateContentInternal
+    );
+    expect(withAuthenticatedContentHandlerMock).toHaveBeenNthCalledWith(
+      6,
+      request,
+      deleteContentInternal
+    );
   });
 });

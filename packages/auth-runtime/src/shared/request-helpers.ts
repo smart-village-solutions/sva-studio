@@ -1,11 +1,6 @@
 import { createHash } from 'node:crypto';
 
-import type {
-  ApiErrorCode,
-  ApiErrorResponse,
-  ApiItemResponse,
-  ApiListResponse,
-} from '@sva/core';
+import type { ApiErrorCode, ApiErrorResponse, ApiItemResponse, ApiListResponse } from '@sva/core';
 import { deriveIamRuntimeDiagnostics } from '@sva/core';
 import { z } from 'zod';
 
@@ -69,7 +64,9 @@ export const parseRequestBody = async <T>(request: Request, schema: z.ZodType<T>
     let message = 'Ungültiger Payload.';
     if (firstIssue !== undefined) {
       message =
-        firstIssue.path.length > 0 ? `${String(firstIssue.path[0])}: ${firstIssue.message}` : firstIssue.message;
+        firstIssue.path.length > 0
+          ? `${String(firstIssue.path[0])}: ${firstIssue.message}`
+          : firstIssue.message;
     }
     return { ok: false as const, rawBody: raw, message };
   }
@@ -91,17 +88,31 @@ export const readPage = (request: Request): { page: number; pageSize: number } =
   return { page, pageSize };
 };
 
-export const readInstanceIdFromRequest = (request: Request, fallback?: string): string | undefined => {
+export const readInstanceIdFromRequest = (
+  request: Request,
+  fallback?: string
+): string | undefined => {
   const url = new URL(request.url);
   return readString(url.searchParams.get('instanceId')) ?? fallback;
 };
 
 export const readPathSegment = (request: Request, index: number): string | undefined => {
   const segments = new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0);
-  return segments[index];
+  const segment = segments[index];
+  if (!segment) {
+    return undefined;
+  }
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return undefined;
+  }
 };
 
-export const requireIdempotencyKey = (request: Request, requestId?: string): { key: string } | { error: Response } => {
+export const requireIdempotencyKey = (
+  request: Request,
+  requestId?: string
+): { key: string } | { error: Response } => {
   const idempotencyKey = readString(request.headers.get('idempotency-key'));
   if (!idempotencyKey) {
     return {

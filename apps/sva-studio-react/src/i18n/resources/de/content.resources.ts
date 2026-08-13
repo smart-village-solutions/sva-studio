@@ -130,6 +130,14 @@ export const contentDEResources = {
   },
   principal: {
     user: 'Persönlich',
+    organization: 'Organisation',
+    contextLoading: 'Der Autorenkontext wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
+    contextUnavailable:
+      'Der Autorenkontext konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
+    resourceLoading:
+      'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
+    resourceUnavailable:
+      'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
   },
   access: {
     states: {
@@ -185,7 +193,7 @@ export const contentDEResources = {
     refreshing: 'Synchronisiert ...',
     running: 'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert.',
     partial:
-      'Vorläufige Ansicht: Sortierung, Filter und Anzahl beziehen sich nur auf die bereits lokal verfügbaren Inhalte.',
+      'Die Liste ist unvollständig. Sortierung, Filter und Anzahl beziehen sich nur auf die bereits lokal verfügbaren Inhalte.',
     runningWithSnapshot:
       'Die Mainserver-Inhalte werden gerade im Hintergrund synchronisiert. Angezeigt wird der letzte erfolgreiche Stand von {{value}}.',
     stale:

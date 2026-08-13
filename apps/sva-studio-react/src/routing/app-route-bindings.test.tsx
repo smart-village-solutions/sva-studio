@@ -26,6 +26,7 @@ const routeState = vi.hoisted(() => ({
   organizationContextIsUpdating: false,
   organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
+  getContent: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
@@ -59,6 +60,8 @@ vi.mock('../i18n', () => ({
         'monitoring.jobs.detail.title': 'Job Details',
         'content.principal.contextLoading': 'Author context loading',
         'content.principal.contextUnavailable': 'Author context unavailable',
+        'content.principal.resourceLoading': 'Resource principal loading',
+        'content.principal.resourceUnavailable': 'Resource principal unavailable',
         'shell.sidebar.help': 'Help',
         'shell.sidebar.support': 'Support',
         'shell.sidebar.license': 'License',
@@ -89,6 +92,10 @@ vi.mock('../hooks/use-mainserver-mutation-capabilities', () => ({
     isLoading: false,
     error: null,
   }),
+}));
+
+vi.mock('../lib/iam-api', () => ({
+  getContent: routeState.getContent,
 }));
 
 vi.mock('../routes/account/-account-profile-page', () => ({
@@ -444,6 +451,13 @@ describe('appRouteBindings', () => {
     routeState.organizationContextIsUpdating = false;
     routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
+    routeState.getContent.mockReset();
+    routeState.getContent.mockResolvedValue({
+      data: {
+        credentialSource: 'user',
+        sourceDataProviderName: 'Persönlicher DataProvider',
+      },
+    });
   });
 
   afterEach(() => {
@@ -478,7 +492,9 @@ describe('appRouteBindings', () => {
     routeState.params = { id: 'survey-1' };
     routeState.enabledMainserverMutationActions = ['surveys.update'];
     render(<appRouteBindings.surveysDetail />);
-    expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
+    await waitFor(() => {
+      expect(screen.getByTestId('surveys-edit-page').getAttribute('data-can-update')).toBe('true');
+    });
   });
 
   it('renders the concrete categories plugin page instead of the placeholder', async () => {
@@ -698,9 +714,72 @@ describe('appRouteBindings', () => {
 
     for (const [Binding, testId] of cases) {
       render(<Binding />);
-      expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      await waitFor(() => {
+        expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      });
       cleanup();
     }
+  });
+
+  it('uses a personal resource principal for every edit route even when create is org-only', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+      instanceId: 'de-musterhausen',
+    };
+    routeState.params = { id: 'content-1' };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Stadt Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: 'org_only',
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    const cases: Array<[ComponentType, string]> = [
+      [appRouteBindings.newsDetail, 'news-edit-page'],
+      [appRouteBindings.eventsDetail, 'events-edit-page'],
+      [appRouteBindings.genericItemsDetail, 'generic-items-edit-page'],
+      [appRouteBindings.faqDetail, 'faq-edit-page'],
+      [appRouteBindings.cockpitCardsDetail, 'cockpit-cards-edit-page'],
+      [appRouteBindings.projectsDetail, 'projects-edit-page'],
+      [appRouteBindings.poiDetail, 'poi-edit-page'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page'],
+    ];
+
+    for (const [Binding, testId] of cases) {
+      render(<Binding />);
+      await waitFor(() => {
+        expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
+      });
+      cleanup();
+    }
+  });
+
+  it('keeps an editor fail-closed when the resource principal is missing', async () => {
+    routeState.params = { id: 'content-1' };
+    routeState.getContent.mockResolvedValue({
+      data: {
+        credentialSource: undefined,
+        sourceDataProviderName: 'Unresolved DataProvider',
+      },
+    });
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+    render(<appRouteBindings.newsDetail />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Resource principal unavailable')).toBeTruthy();
+    });
+    expect(screen.queryByTestId('news-edit-page')).toBeNull();
   });
 
   it('offers organization or personal principal choice when contentAuthorPolicy is org_or_personal', async () => {
@@ -834,7 +913,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.newsDetail />);
-    expect(screen.getByTestId('news-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('news-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.monitoring />);
@@ -914,6 +993,7 @@ describe('appRouteBindings', () => {
   it('exposes the direct page bindings for the canonical route keys', async () => {
     const { appRouteBindings } = await import('./app-route-bindings');
     routeState.authUser = { id: 'user-1', instanceId: 'de-musterhausen' };
+    routeState.params = { id: 'content-1' };
 
     render(<appRouteBindings.home />);
     expect(screen.getByTestId('home-page')).toBeTruthy();
@@ -1001,7 +1081,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.eventsDetail />);
-    expect(screen.getByTestId('events-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('events-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.genericItemsList />);
@@ -1013,7 +1093,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.genericItemsDetail />);
-    expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('generic-items-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.projectsList />);
@@ -1025,7 +1105,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.projectsDetail />);
-    expect(screen.getByTestId('projects-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('projects-edit-page')).toBeTruthy());
     cleanup();
 
     render(<appRouteBindings.poiList />);
@@ -1038,7 +1118,7 @@ describe('appRouteBindings', () => {
     cleanup();
 
     render(<appRouteBindings.poiDetail />);
-    expect(screen.getByTestId('poi-edit-page')).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('poi-edit-page')).toBeTruthy());
     expect(screen.getByTestId('poi-edit-page').textContent).toBe('de-musterhausen');
   });
 });

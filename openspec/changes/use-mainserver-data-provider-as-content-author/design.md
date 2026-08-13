@@ -201,8 +201,11 @@ Mutationsberechtigung oder einen Credential-Fallback ableiten.
 
 Bei bestehenden eigenen oder organisatorischen Inhalten bestimmt die konfliktfreie
 DataProvider-Bindung den erforderlichen Mutationsprincipal. Der Benutzer wählt ihn nicht
-frei um. Fehlt eine eindeutige Bindung oder serverautoritativ gelieferte
-Ressourcen-Capability, wird die Aktion blockiert. Eine ausdrücklich berechtigte
+frei um. Die host-eigene Editor-Grenze lädt dazu die IAM-Projektion der konkreten Ressource
+anhand ihrer Content-ID und reicht deren `credentialSource` als festen, nur lesbaren
+Principal an alle Bestandseditoren weiter. Fehlt die Ressource, ihre Credential-Quelle,
+eine eindeutige Bindung oder serverautoritativ gelieferte Ressourcen-Capability, wird die
+Aktion blockiert. Eine ausdrücklich berechtigte
 `all`-/Moderationsaktion bleibt ein separater Ressourcenvertrag. Auch dabei existiert kein
 dritter Admin-Principal: Die Mutation verwendet entweder `organization` für die aktive
 Organisation oder `user` für den persönlichen Account des Administrators. Die konkrete

@@ -130,9 +130,14 @@ export const contentDEResources = {
   },
   principal: {
     user: 'Persönlich',
+    organization: 'Organisation',
     contextLoading: 'Der Autorenkontext wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
     contextUnavailable:
       'Der Autorenkontext konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
+    resourceLoading:
+      'Der Ressourcenprincipal wird geladen. Schreibaktionen sind vorübergehend gesperrt.',
+    resourceUnavailable:
+      'Der Ressourcenprincipal konnte nicht eindeutig bestimmt werden. Schreibaktionen bleiben gesperrt.',
   },
   access: {
     states: {

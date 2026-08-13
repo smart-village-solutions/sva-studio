@@ -25,6 +25,7 @@ import { Alert, AlertDescription } from '../components/ui/alert';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
+import { getContent } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
 import { AccountProfilePage } from '../routes/account/-account-profile-page';
 import { AccountPrivacyPage } from '../routes/account/-account-privacy-page';
@@ -168,6 +169,86 @@ const MainserverPrincipalBoundary = ({
   return <>{children(resolution.control)}</>;
 };
 
+const useMainserverResourcePrincipalControl = (): MainserverPrincipalResolution => {
+  const params = useParams({ strict: false });
+  const contentId = readStringParam(params.contentId, readStringParam(params.id));
+  const [resolution, setResolution] = React.useState<MainserverPrincipalResolution>({
+    kind: 'unavailable',
+    reason: 'context_loading',
+  });
+
+  React.useEffect(() => {
+    if (!contentId) {
+      setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+      return;
+    }
+
+    let active = true;
+    setResolution({ kind: 'unavailable', reason: 'context_loading' });
+
+    void getContent(contentId)
+      .then(({ data }) => {
+        if (!active) {
+          return;
+        }
+
+        const principal = data.credentialSource;
+        if (principal !== 'organization' && principal !== 'user') {
+          setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+          return;
+        }
+
+        setResolution({
+          kind: 'ready',
+          control: {
+            kind: 'fixed',
+            value: principal,
+            label:
+              data.sourceDataProviderName?.trim() ||
+              t(
+                principal === 'organization'
+                  ? 'content.principal.organization'
+                  : 'content.principal.user'
+              ),
+          },
+        });
+      })
+      .catch(() => {
+        if (active) {
+          setResolution({ kind: 'unavailable', reason: 'context_unavailable' });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [contentId]);
+
+  return resolution;
+};
+
+const MainserverResourcePrincipalBoundary = ({
+  children,
+}: Readonly<{
+  children: (control: MainserverPrincipalControlModel) => React.ReactNode;
+}>) => {
+  const resolution = useMainserverResourcePrincipalControl();
+  if (resolution.kind === 'unavailable') {
+    return (
+      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+        <AlertDescription>
+          {t(
+            resolution.reason === 'context_loading'
+              ? 'content.principal.resourceLoading'
+              : 'content.principal.resourceUnavailable'
+          )}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return <>{children(resolution.control)}</>;
+};
+
 const AppPlaceholderRoutePage = () => (
   <PlaceholderPage
     section={t('shell.sidebar.sections.applications')}
@@ -213,9 +294,9 @@ const NewsCreateRoutePage = () => {
 
 const NewsEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <NewsEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -229,9 +310,9 @@ const EventsCreateRoutePage = () => {
 
 const EventsEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <EventsEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -245,9 +326,9 @@ const GenericItemsCreateRoutePage = () => {
 
 const GenericItemsEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <GenericItemsEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -261,9 +342,9 @@ const FaqCreateRoutePage = () => {
 
 const FaqEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <FaqEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -277,9 +358,9 @@ const CockpitCardsCreateRoutePage = () => {
 
 const CockpitCardsEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <CockpitCardsEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -293,9 +374,9 @@ const ProjectsCreateRoutePage = () => {
 
 const ProjectsEditRoutePage = () => {
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => <ProjectsEditPage principalControl={principalControl} />}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -313,11 +394,11 @@ const PoiCreateRoutePage = () => {
 const PoiEditRoutePage = () => {
   const { user } = useAuth();
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => (
         <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />
       )}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 
@@ -332,14 +413,14 @@ const SurveyCreateRoutePage = () => {
 const SurveyEditRoutePage = () => {
   const mutationCapabilities = useMainserverMutationCapabilities();
   return (
-    <MainserverPrincipalBoundary>
+    <MainserverResourcePrincipalBoundary>
       {(principalControl) => (
         <SurveyEditPage
           canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
           principalControl={principalControl}
         />
       )}
-    </MainserverPrincipalBoundary>
+    </MainserverResourcePrincipalBoundary>
   );
 };
 

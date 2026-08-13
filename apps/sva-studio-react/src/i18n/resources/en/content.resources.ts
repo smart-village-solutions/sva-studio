@@ -127,9 +127,14 @@ export const contentENResources = {
   },
   principal: {
     user: 'Personally',
+    organization: 'Organization',
     contextLoading: 'The author context is loading. Write actions are temporarily blocked.',
     contextUnavailable:
       'The author context could not be determined unambiguously. Write actions remain blocked.',
+    resourceLoading:
+      'The resource principal is loading. Write actions are temporarily blocked.',
+    resourceUnavailable:
+      'The resource principal could not be determined unambiguously. Write actions remain blocked.',
   },
   access: {
     states: {

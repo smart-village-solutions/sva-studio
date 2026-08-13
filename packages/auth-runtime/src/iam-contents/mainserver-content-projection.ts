@@ -6,6 +6,7 @@ import type {
   IamContentStatus,
   IamContentValidationState,
 } from '@sva/core';
+import { buildMainserverProjectionScopeKey } from '@sva/core';
 
 import { withInstanceScopedDb } from '../iam-account-management/shared.js';
 
@@ -76,11 +77,50 @@ export const loadMainserverContentProjectionCandidates = async (input: {
   readonly sourceEntityId: string;
   readonly actorAccountId?: string;
   readonly activeOrganizationId?: string;
+  readonly allowGlobalMutation?: boolean;
 }): Promise<readonly IamContentListItem[]> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
+    const actorAccountId = input.actorAccountId;
+    const globalPrincipalTypes: readonly (undefined | 'organization' | 'user')[] =
+      input.activeOrganizationId ? [undefined, 'user', 'organization'] : [undefined, 'user'];
+    const globalProjectionScopeKeys =
+      input.allowGlobalMutation && actorAccountId
+        ? globalPrincipalTypes.map((actingPrincipalType) =>
+            buildMainserverProjectionScopeKey({
+              instanceId: input.instanceId,
+              actorAccountId,
+              ...(input.activeOrganizationId
+                ? { activeOrganizationId: input.activeOrganizationId }
+                : {}),
+              ...(actingPrincipalType ? { actingPrincipalType } : {}),
+              contentType: input.contentType,
+            })
+          )
+        : [];
+    const selectClause =
+      globalProjectionScopeKeys.length > 0
+        ? 'SELECT'
+        : 'SELECT DISTINCT ON (credential_source, owner_user_id, owner_organization_id)';
+    const principalClause =
+      globalProjectionScopeKeys.length > 0
+        ? `projection_scope_key = ANY($4::text[])
+  AND credential_source IN ('organization', 'user')`
+        : `authorization_mode = 'exact'
+  AND (
+    (credential_source = 'user' AND owner_user_id = $4::uuid)
+    OR (credential_source = 'organization' AND owner_organization_id = $5::uuid)
+  )`;
+    const orderClause =
+      globalProjectionScopeKeys.length > 0
+        ? 'projection_updated_at DESC'
+        : `credential_source,
+  owner_user_id,
+  owner_organization_id,
+  projection_updated_at DESC`;
+    const limit = globalProjectionScopeKeys.length > 0 ? 1 : 2;
     const result = await client.query<ProjectionRow>(
       `
-SELECT DISTINCT ON (credential_source, owner_user_id, owner_organization_id)
+${selectClause}
   id,
   instance_id,
   organization_id::text,
@@ -112,25 +152,20 @@ WHERE instance_id = $1
   AND source_system = 'mainserver'
   AND content_type = $2
   AND source_entity_id = $3
-  AND authorization_mode = 'exact'
-  AND (
-    (credential_source = 'user' AND owner_user_id = $4::uuid)
-    OR (credential_source = 'organization' AND owner_organization_id = $5::uuid)
-  )
+  AND ${principalClause}
 ORDER BY
-  credential_source,
-  owner_user_id,
-  owner_organization_id,
-  projection_updated_at DESC
-LIMIT 2;
+  ${orderClause}
+LIMIT ${limit};
       `,
-      [
-        input.instanceId,
-        input.contentType,
-        input.sourceEntityId,
-        input.actorAccountId ?? null,
-        input.activeOrganizationId ?? null,
-      ]
+      globalProjectionScopeKeys.length > 0
+        ? [input.instanceId, input.contentType, input.sourceEntityId, globalProjectionScopeKeys]
+        : [
+            input.instanceId,
+            input.contentType,
+            input.sourceEntityId,
+            input.actorAccountId ?? null,
+            input.activeOrganizationId ?? null,
+          ]
     );
     return result.rows.map(mapProjectionRow);
   });

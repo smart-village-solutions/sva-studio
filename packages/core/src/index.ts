@@ -81,6 +81,8 @@ export type {
   ResolvedIamContentCapabilityMapping,
   UpdateIamContentInput,
 } from './content-management.js';
+export { buildMainserverProjectionScopeKey } from './mainserver-projection-scope.js';
+export type { MainserverProjectionScope } from './mainserver-projection-scope.js';
 export {
   studioImportContract,
   studioJobErrorContract,

@@ -9,7 +9,10 @@ import {
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { loadExternalContentReferenceBySourceEntity } from './external-content-references.js';
 import { loadMainserverContentProjectionCandidates } from './mainserver-content-projection.js';
-import { authorizeReadableContentItem } from './read-authorization.js';
+import {
+  authorizeReadableContentItem,
+  hasGlobalContentMutationPermission,
+} from './read-authorization.js';
 import { resolveContentAccess, resolveContentActor } from './request-context.js';
 import { loadContentById, loadContentDetail } from './repository.js';
 
@@ -46,12 +49,17 @@ export const getContentInternal = async (
       if (reference) {
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
       } else {
+        const allowGlobalMutation = await hasGlobalContentMutationPermission(
+          actorResolution.actor,
+          contentType
+        );
         const candidates = await loadMainserverContentProjectionCandidates({
           instanceId: actorResolution.actor.instanceId,
           contentType,
           sourceEntityId: contentId,
           actorAccountId: actorResolution.actor.actorAccountId,
           activeOrganizationId: actorResolution.actor.activeOrganizationId,
+          ...(allowGlobalMutation ? { allowGlobalMutation: true } : {}),
         });
         if (candidates.length === 1) {
           [item] = candidates;

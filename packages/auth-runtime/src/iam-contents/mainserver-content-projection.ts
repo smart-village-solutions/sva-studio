@@ -39,6 +39,15 @@ type ProjectionRow = Readonly<{
   last_audit_event_ref: string | null;
 }>;
 
+type ProjectionLookupInput = Readonly<{
+  instanceId: string;
+  contentType: string;
+  sourceEntityId: string;
+  actorAccountId?: string;
+  activeOrganizationId?: string;
+  allowGlobalMutation?: boolean;
+}>;
+
 const optional = <K extends string, V>(key: K, value: V | null): Partial<Record<K, V>> =>
   value === null ? {} : ({ [key]: value } as Record<K, V>);
 
@@ -71,32 +80,28 @@ const mapProjectionRow = (row: ProjectionRow): IamContentListItem => ({
   ...optional('lastAuditEventRef', row.last_audit_event_ref),
 });
 
-export const loadMainserverContentProjectionCandidates = async (input: {
-  readonly instanceId: string;
-  readonly contentType: string;
-  readonly sourceEntityId: string;
-  readonly actorAccountId?: string;
-  readonly activeOrganizationId?: string;
-  readonly allowGlobalMutation?: boolean;
-}): Promise<readonly IamContentListItem[]> =>
+const buildGlobalProjectionScopeKeys = (input: ProjectionLookupInput): readonly string[] => {
+  const actorAccountId = input.actorAccountId;
+  if (!input.allowGlobalMutation || !actorAccountId) return [];
+
+  const principalTypes: readonly (undefined | 'organization' | 'user')[] =
+    input.activeOrganizationId ? [undefined, 'user', 'organization'] : [undefined, 'user'];
+  return principalTypes.map((actingPrincipalType) =>
+    buildMainserverProjectionScopeKey({
+      instanceId: input.instanceId,
+      actorAccountId,
+      ...(input.activeOrganizationId ? { activeOrganizationId: input.activeOrganizationId } : {}),
+      ...(actingPrincipalType ? { actingPrincipalType } : {}),
+      contentType: input.contentType,
+    })
+  );
+};
+
+export const loadMainserverContentProjectionCandidates = async (
+  input: ProjectionLookupInput
+): Promise<readonly IamContentListItem[]> =>
   withInstanceScopedDb(input.instanceId, async (client) => {
-    const actorAccountId = input.actorAccountId;
-    const globalPrincipalTypes: readonly (undefined | 'organization' | 'user')[] =
-      input.activeOrganizationId ? [undefined, 'user', 'organization'] : [undefined, 'user'];
-    const globalProjectionScopeKeys =
-      input.allowGlobalMutation && actorAccountId
-        ? globalPrincipalTypes.map((actingPrincipalType) =>
-            buildMainserverProjectionScopeKey({
-              instanceId: input.instanceId,
-              actorAccountId,
-              ...(input.activeOrganizationId
-                ? { activeOrganizationId: input.activeOrganizationId }
-                : {}),
-              ...(actingPrincipalType ? { actingPrincipalType } : {}),
-              contentType: input.contentType,
-            })
-          )
-        : [];
+    const globalProjectionScopeKeys = buildGlobalProjectionScopeKeys(input);
     const selectClause =
       globalProjectionScopeKeys.length > 0
         ? 'SELECT'
@@ -112,7 +117,10 @@ export const loadMainserverContentProjectionCandidates = async (input: {
   )`;
     const orderClause =
       globalProjectionScopeKeys.length > 0
-        ? 'projection_updated_at DESC'
+        ? `projection_updated_at DESC,
+  credential_source,
+  id,
+  projection_scope_key`
         : `credential_source,
   owner_user_id,
   owner_organization_id,

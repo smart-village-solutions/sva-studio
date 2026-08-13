@@ -70,7 +70,9 @@ describe('Mainserver content projection lookup', () => {
     ]);
 
     expect(state.query).toHaveBeenCalledWith(
-      expect.stringContaining('projection_scope_key = ANY($4::text[])'),
+      expect.stringMatching(
+        /projection_scope_key = ANY\(\$4::text\[\]\)[\s\S]*ORDER BY[\s\S]*projection_updated_at DESC,[\s\S]*credential_source,[\s\S]*id,[\s\S]*projection_scope_key/
+      ),
       [
         'de-musterhausen',
         'news.article',

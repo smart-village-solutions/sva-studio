@@ -65,6 +65,31 @@ export const authorizeReadableContentItem = (
     ownerOrganizationId: item.ownerOrganizationId,
   });
 
+export const hasGlobalContentMutationPermission = async (
+  actor: ResolvedContentActor['actor'],
+  contentType: string
+): Promise<boolean> => {
+  if (!actor.actorAccountId) {
+    return false;
+  }
+
+  const action = `${contentType.split('.')[0] || 'content'}.update`;
+  const resourceType = readResourceTypeForAction(action);
+  const sourcePermissions = await resolveContentAuthorizationPermissions(actor);
+  if ('error' in sourcePermissions) {
+    return false;
+  }
+
+  return sourcePermissions.permissions.some(
+    (permission) =>
+      permission.action === action &&
+      permission.resourceType === resourceType &&
+      !permission.resourceId &&
+      (!permission.organizationId || permission.organizationId === actor.activeOrganizationId) &&
+      (!permission.accessScope || permission.accessScope === 'all')
+  );
+};
+
 export const resolveReadableContentScopes = async (
   actor: ResolvedContentActor['actor'],
   _scopes: readonly (string | null)[],
@@ -78,8 +103,7 @@ export const resolveReadableContentScopes = async (
   return resolveReadableContentAuthorization(actor, sourcePermissions.permissions, query);
 };
 
-const readResourceTypeForAction = (action: ContentReadAction): string =>
-  action.split('.')[0] || 'content';
+const readResourceTypeForAction = (action: string): string => action.split('.')[0] || 'content';
 
 const isMatchingReadPermission = (
   permission: EffectivePermission,

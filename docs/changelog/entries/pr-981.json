@@ -1,0 +1,4 @@
+{
+  "prNumber": 981,
+  "body": "Administratoren können sichtbare Mainserver-Inhalte wieder bearbeiten\n\n- Inhalte, die mit den aktuellen persönlichen oder organisatorischen Mainserver-Zugangsdaten sichtbar sind, lassen sich mit einer globalen Update-Berechtigung im Editor öffnen und ändern.\n- Eingeschränkte Berechtigungen für eigene oder organisatorische Inhalte verwenden weiterhin die exakte Eigentümerbindung.\n- Vor jeder Änderung prüfen Studio und Mainserver den Datensatz erneut mit denselben Zugangsdaten."
+}

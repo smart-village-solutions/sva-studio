@@ -579,6 +579,7 @@ describe('content core authorization', () => {
       actorAccountId: 'account-1',
       activeOrganizationId: '11111111-1111-4111-8111-111111111111',
     });
+    expect(resolveContentAuthorizationPermissionsMock).not.toHaveBeenCalled();
     expect(authorizeContentActionMock).toHaveBeenCalledWith(
       actor,
       'faq.read',
@@ -593,6 +594,56 @@ describe('content core authorization', () => {
     });
     expect(loadContentByIdMock).not.toHaveBeenCalled();
     expect(loadContentDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('resolves a visible Mainserver resource through the current actor scope for global updates', async () => {
+    const projection = item('admin-visible-news', '22222222-2222-4222-8222-222222222222');
+    projection.credentialSource = 'user';
+    projection.authorizationMode = 'credential_visible_compatibility';
+    resolveContentAuthorizationPermissionsMock.mockResolvedValue({
+      permissions: [
+        {
+          action: 'news.update',
+          resourceType: 'news',
+          accessScope: 'all',
+        },
+      ],
+    });
+    loadMainserverContentProjectionCandidatesMock.mockImplementation(
+      async (input: { allowGlobalMutation?: boolean }) =>
+        input.allowGlobalMutation ? [projection] : []
+    );
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request(
+        'https://studio.test/api/v1/iam/contents/admin-visible-news?contentType=news.article'
+      ),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenNthCalledWith(1, {
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      sourceEntityId: 'admin-visible-news',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenNthCalledWith(2, {
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      sourceEntityId: 'admin-visible-news',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+      allowGlobalMutation: true,
+    });
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: {
+        id: 'admin-visible-news',
+        credentialSource: 'user',
+      },
+    });
   });
 
   it('fails closed when an unbound Mainserver id has ambiguous principal projections', async () => {

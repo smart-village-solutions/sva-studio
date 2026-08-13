@@ -10,6 +10,7 @@ Bei Mainserver-Inhalten ist der vom Mainserver gesetzte `dataProvider` der unver
 
 - Der aktuelle Browser-Client sendet `X-SVA-Mainserver-Contract-Version: 2`, `X-SVA-Acting-Principal-Type: organization|user`, eine Operations-ID und bei Änderungen beziehungsweise Deletes zwingend die nicht autorisierende Kontextbindung. Fehlt sie lokal, lädt der Client das Detail vor der Mutation erneut; liefert auch dieser Read keine Bindung, bricht er fail-closed ab.
 - Der Server validiert Actor, aktive Organisation, `contentAuthorPolicy`, Membership, Credentials, Action und Scope erneut.
+- Bei globaler Update-Berechtigung darf der Bestandseditor die Credential-Quelle aus einer Projektion ableiten, die exakt zum aktuellen Actor und aktiven Organisationskontext gehört. Für `own` und `organization` bleibt eine exakte Ownership-Bindung erforderlich; auch im globalen Fall autorisiert die Projektion selbst keine Mutation.
 - Vor dem ersten Write mit einer neuen oder rotierten Credential-Version muss `/data_provider.json` eine nicht leere String- oder Ganzzahl-ID liefern. Fehlt eine aktuelle Bindung und scheitert dieser Nachweis, endet die Mutation fail-closed.
 - Eine verifizierte Bindung darf bei einer vorübergehenden Identity-Störung nur für exakt denselben Credential-Fingerprint weiterverwendet werden.
 - Pre-Read, Read-Merge-Write, Provider-Write, Status-/Visibility-Zweitschritt, Post-Read, Projection, Audit und Reconciliation verwenden denselben unveränderlichen Credential-Fingerprint.

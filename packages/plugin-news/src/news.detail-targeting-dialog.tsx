@@ -103,6 +103,7 @@ export function NewsDetailTargetingDialog({
           />
           <TargetingPagination
             resultCount={editor.filtered.length}
+            selectedCount={editor.selectedIds.size}
             page={editor.page}
             pageCount={editor.pageCount}
             pt={pt}

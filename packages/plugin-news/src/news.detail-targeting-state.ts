@@ -96,6 +96,7 @@ export const useNewsTargetingEditor = (
   React.useEffect(() => setPage(1), [filters]);
 
   const updateFilters = (next: Partial<TargetingFilters>) => {
+    setDraft([]);
     setFilters((current) => ({ ...current, ...next }));
   };
   const openEditor = () => {

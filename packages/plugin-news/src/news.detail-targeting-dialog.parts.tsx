@@ -189,12 +189,14 @@ export function TargetingTable({
 
 export function TargetingPagination({
   resultCount,
+  selectedCount,
   page,
   pageCount,
   pt,
   setPage,
 }: Readonly<{
   resultCount: number;
+  selectedCount: number;
   page: number;
   pageCount: number;
   pt: NewsTargetingTranslator;
@@ -203,9 +205,22 @@ export function TargetingPagination({
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-        {pt('targeting.table.status', { count: resultCount, page, pageCount })}
+        {pt('targeting.table.selectionStatus', {
+          count: resultCount,
+          selectedCount,
+          page,
+          pageCount,
+        })}
       </span>
-      <span>{pt('targeting.table.resultCount', { count: resultCount })}</span>
+      <div className="flex items-center gap-2">
+        <span>{pt('targeting.table.resultCount', { count: resultCount })}</span>
+        <span aria-hidden="true" className="text-muted-foreground">
+          ·
+        </span>
+        <span className="font-medium">
+          {pt('targeting.table.selectedCount', { count: selectedCount })}
+        </span>
+      </div>
       <div className="flex items-center gap-2">
         <Button
           type="button"

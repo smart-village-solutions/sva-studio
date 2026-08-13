@@ -71,16 +71,20 @@ test('creates, updates and deletes a Kachel while preserving its server identity
       body: JSON.stringify({ data: [] }),
     })
   );
-  await page.route('**/api/v1/iam/contents**', (route) =>
-    route.fulfill({
+  await page.route('**/api/v1/iam/contents**', async (route) => {
+    if (new URL(route.request().url()).pathname !== '/api/v1/iam/contents') {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         data: [],
         pagination: { page: 1, pageSize: 25, total: 0, hasNextPage: false },
       }),
-    })
-  );
+    });
+  });
   await page.route('**/api/v1/mainserver/cockpit-cards**', async (route) => {
     const request = route.request();
     const pathname = new URL(request.url()).pathname;

@@ -84,3 +84,6 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 - injiziert `PLAYWRIGHT_ROOT_*` und `PLAYWRIGHT_DE_MUSTERHAUSEN_*` als Secrets/Variablen
 - führt `pnpm nx run sva-studio-react:test:e2e` aus
 - lädt den Playwright-Report als Artifact hoch
+- setzt in Pull Requests `PLAYWRIGHT_MAX_FAILURES=1`; der Lauf endet damit nach dem ersten Test, der auch nach dem vorhandenen Retry rot bleibt
+- lässt `maxFailures` für Nightly und manuelle Diagnose auf `0`, damit dort alle geplanten Fehler gesammelt werden
+- verwendet keinen Nx-Ergebnis-Cache für E2E; jeder CI-Lauf startet App und Pflichtservices frisch

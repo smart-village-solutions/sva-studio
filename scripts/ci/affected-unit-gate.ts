@@ -4,7 +4,17 @@ import { performance } from 'node:perf_hooks';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseBaseHeadCliOptions, type BaseHeadCliOptions } from './base-head-cli-options.ts';
-import { buildAppUnitCommand, planAppUnitExecution } from './affected-unit-plan.ts';
+import { buildCiFeedbackEvidence, writeCiFeedbackEvidence } from './ci-feedback-evidence.ts';
+import {
+  buildAppUnitCommand,
+  planAppUnitExecution,
+  type AppUnitExecutionPlan,
+} from './affected-unit-plan.ts';
+import {
+  planChangedProjectsWithFallback,
+  type ChangedProjectPlan,
+} from './changed-project-plan.ts';
+import { loadNxProjectRoots } from './nx-project-graph.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
 
 export interface DurationEntry {
@@ -14,70 +24,24 @@ export interface DurationEntry {
 
 const APP_PROJECT = 'sva-studio-react';
 const require = createRequire(import.meta.url);
-const runCommand = (
-  command: string,
-  options?: Readonly<{
-    retries?: number;
-  }>
-): number => {
-  const retries = normalizeRetryCount(options?.retries);
+const runCommand = (command: string): number => {
   const startedAt = performance.now();
 
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    console.log(`\n$ ${command}`);
-    if (attempt > 0) {
-      console.warn(`Retrying command (${attempt}/${retries}) after previous failure.`);
-    }
-
-    try {
-      execSync(command, {
-        env: process.env,
-        stdio: 'inherit',
-      });
-      return performance.now() - startedAt;
-    } catch (error) {
-      if (attempt >= retries) {
-        throw error;
-      }
-
-      const status =
-        typeof error === 'object' && error !== null && 'status' in error ? error.status : 'unknown';
-      const signal =
-        typeof error === 'object' && error !== null && 'signal' in error ? error.signal : 'unknown';
-      console.warn(
-        `Command failed with status=${String(status)} signal=${String(signal)}. Retrying command (${attempt + 1}/${retries}).`
-      );
-    }
-  }
-
+  console.log(`\n$ ${command}`);
+  execSync(command, {
+    env: process.env,
+    stdio: 'inherit',
+  });
   return performance.now() - startedAt;
 };
 
-export const normalizeRetryCount = (retries: number | undefined): number => {
-  if (typeof retries !== 'number' || Number.isFinite(retries) === false) {
-    return 0;
-  }
-
-  return Math.max(0, Math.floor(retries));
-};
-
-const getAffectedUnitProjects = (base: string, head: string): string[] => {
+const getUnitProjects = (base: string, head: string, full: boolean): string[] => {
   const nxPackageJson = require.resolve('nx/package.json');
   const nxEntrypoint = path.join(path.dirname(nxPackageJson), 'dist', 'bin', 'nx.js');
+  const scopeArguments = full ? [] : ['--affected', '--base', base, '--head', head];
   const output = execFileSync(
     process.execPath,
-    [
-      nxEntrypoint,
-      'show',
-      'projects',
-      '--affected',
-      '--withTarget=test:unit',
-      '--base',
-      base,
-      '--head',
-      head,
-      '--json',
-    ],
+    [nxEntrypoint, 'show', 'projects', '--withTarget=test:unit', ...scopeArguments, '--json'],
     {
       encoding: 'utf8',
       env: process.env,
@@ -91,15 +55,46 @@ const getAffectedUnitProjects = (base: string, head: string): string[] => {
   return JSON.parse(output) as string[];
 };
 
+export const buildUnitProjectsCommand = (projects: readonly string[]): string =>
+  `env -u NO_COLOR pnpm nx run-many --target=test:unit --projects=${projects.join(',')} --parallel=1 --nxBail --output-style=stream`;
+
+export const resolveAppUnitExecutionPlan = (
+  changedFiles: readonly string[],
+  affectedProjects: readonly string[],
+  changedProjectPlan: ChangedProjectPlan
+): AppUnitExecutionPlan => {
+  if (
+    changedProjectPlan.reason === 'nx-project-graph-unavailable' &&
+    affectedProjects.includes(APP_PROJECT)
+  ) {
+    return { mode: 'aggregate', reason: 'nx-project-graph-unavailable', slices: [] };
+  }
+
+  return planAppUnitExecution(changedFiles, affectedProjects);
+};
+
 export const runAffectedUnitGate = (
   options: BaseHeadCliOptions,
-  reportDuration?: (entry: DurationEntry) => void
+  reportDuration?: (entry: DurationEntry) => void,
+  reportPlan?: (plan: ReturnType<typeof planChangedProjectsWithFallback>) => void
 ): DurationEntry[] => {
   const changedFiles = resolveChangedFiles(options.base, options.head);
-  const affectedProjects = getAffectedUnitProjects(options.base, options.head);
+  const full = process.env.NX_RUN_FULL === '1';
+  const affectedProjects = getUnitProjects(options.base, options.head, full);
+  const changedProjectPlan = planChangedProjectsWithFallback(
+    changedFiles,
+    affectedProjects,
+    loadNxProjectRoots
+  );
+  reportPlan?.(changedProjectPlan);
   const durationEntries: DurationEntry[] = [];
-  const appPlan = planAppUnitExecution(changedFiles, affectedProjects);
-  const nonAppProjects = affectedProjects.filter((project) => project !== APP_PROJECT);
+  const appPlan = resolveAppUnitExecutionPlan(changedFiles, affectedProjects, changedProjectPlan);
+  const directNonAppProjects = changedProjectPlan.directProjects.filter(
+    (project) => project !== APP_PROJECT
+  );
+  const remainingNonAppProjects = changedProjectPlan.remainingProjects.filter(
+    (project) => project !== APP_PROJECT
+  );
 
   const recordDuration = (label: string, durationMs: number): void => {
     const entry = { label, durationMs };
@@ -112,8 +107,10 @@ export const runAffectedUnitGate = (
       {
         base: options.base,
         head: options.head,
+        scopeMode: full ? 'full' : 'affected',
         changedFiles,
         affectedProjects,
+        changedProjectPlan,
         appPlan,
       },
       null,
@@ -126,27 +123,28 @@ export const runAffectedUnitGate = (
     return durationEntries;
   }
 
-  if (nonAppProjects.length > 0) {
+  if (directNonAppProjects.length > 0) {
     recordDuration(
-      'unit:affected-workspace',
-      runCommand(
-        `env -u NO_COLOR pnpm nx affected --target=test:unit --base=${options.base} --head=${options.head} --parallel=1 --exclude=${APP_PROJECT} --output-style=stream`,
-        { retries: 1 }
-      )
+      'unit:direct-projects',
+      runCommand(buildUnitProjectsCommand(directNonAppProjects))
     );
   }
 
-  if (appPlan.mode === 'skip') {
-    return durationEntries;
+  if (affectedProjects.includes(APP_PROJECT)) {
+    if (appPlan.mode === 'aggregate') {
+      recordDuration('unit:app', runCommand(buildAppUnitCommand()));
+    } else if (appPlan.mode === 'slices') {
+      for (const slice of appPlan.slices) {
+        recordDuration(`unit:app:${slice}`, runCommand(buildAppUnitCommand(slice)));
+      }
+    }
   }
 
-  if (appPlan.mode === 'aggregate') {
-    recordDuration('unit:app', runCommand(buildAppUnitCommand()));
-    return durationEntries;
-  }
-
-  for (const slice of appPlan.slices) {
-    recordDuration(`unit:app:${slice}`, runCommand(buildAppUnitCommand(slice)));
+  if (remainingNonAppProjects.length > 0) {
+    recordDuration(
+      'unit:remaining-projects',
+      runCommand(buildUnitProjectsCommand(remainingNonAppProjects))
+    );
   }
 
   return durationEntries;
@@ -156,7 +154,37 @@ const formatDuration = (durationMs: number): string => `${(durationMs / 1000).to
 
 export const runAffectedUnitGateCli = (args: readonly string[]): number => {
   const options = parseBaseHeadCliOptions(args);
-  const durationEntries = runAffectedUnitGate(options);
+  const startedAt = new Date();
+  const full = process.env.NX_RUN_FULL === '1';
+  let plan: ReturnType<typeof planChangedProjectsWithFallback> | null = null;
+  const durationEntries: DurationEntry[] = [];
+
+  try {
+    runAffectedUnitGate(
+      options,
+      (entry) => durationEntries.push(entry),
+      (reportedPlan) => {
+        plan = reportedPlan;
+      }
+    );
+  } catch (error) {
+    writeCiFeedbackEvidence(
+      buildCiFeedbackEvidence({
+        gate: 'unit',
+        status: 'failed',
+        baseSha: options.base,
+        headSha: options.head,
+        scopeMode: full ? 'full' : 'affected',
+        plan,
+        phases: durationEntries,
+        startedAt,
+        finishedAt: new Date(),
+      })
+    );
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Unit Fast Feedback fehlgeschlagen: ${message}`);
+    return 1;
+  }
 
   if (durationEntries.length > 0) {
     console.log('\nAffected unit summary:');
@@ -164,6 +192,20 @@ export const runAffectedUnitGateCli = (args: readonly string[]): number => {
       console.log(`- ${entry.label}: ${formatDuration(entry.durationMs)}`);
     }
   }
+
+  writeCiFeedbackEvidence(
+    buildCiFeedbackEvidence({
+      gate: 'unit',
+      status: 'passed',
+      baseSha: options.base,
+      headSha: options.head,
+      scopeMode: full ? 'full' : 'affected',
+      plan,
+      phases: durationEntries,
+      startedAt,
+      finishedAt: new Date(),
+    })
+  );
 
   return 0;
 };

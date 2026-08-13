@@ -41,7 +41,7 @@
     },
     "test:coverage": {
       "executor": "nx:run-commands",
-      "cache": true,
+      "cache": false,
       "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": ["{projectRoot}/coverage"],
       "options": {

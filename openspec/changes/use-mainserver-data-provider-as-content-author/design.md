@@ -203,7 +203,8 @@ Bei bestehenden eigenen oder organisatorischen Inhalten bestimmt die konfliktfre
 DataProvider-Bindung den erforderlichen Mutationsprincipal. Der Benutzer wählt ihn nicht
 frei um. Die host-eigene Editor-Grenze lädt dazu die IAM-Projektion der konkreten Ressource
 anhand ihrer Content-ID und reicht deren `credentialSource` als festen, nur lesbaren
-Principal an alle Bestandseditoren weiter. Fehlt die Ressource, ihre Credential-Quelle,
+Principal an alle Bestandseditoren weiter. Externe Mainserver-IDs werden dabei zusammen
+mit dem festen Content-Typ der Route auf die lokale IAM-Projektion aufgelöst. Fehlt die Ressource, ihre Credential-Quelle,
 eine eindeutige Bindung oder serverautoritativ gelieferte Ressourcen-Capability, wird die
 Aktion blockiert. Eine ausdrücklich berechtigte
 `all`-/Moderationsaktion bleibt ein separater Ressourcenvertrag. Auch dabei existiert kein

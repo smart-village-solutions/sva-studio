@@ -756,8 +756,17 @@ export const getMainserverMutationCapabilities = async (): Promise<
     '/api/v1/mainserver/mutation-capabilities'
   );
 
-export const getContent = async (contentId: string): Promise<ApiItemResponse<IamContentDetail>> =>
-  requestJson<ApiItemResponse<IamContentDetail>>(`/api/v1/iam/contents/${contentId}`);
+export const getContent = async (
+  contentId: string,
+  options: Readonly<{ contentType?: string }> = {}
+): Promise<ApiItemResponse<IamContentDetail>> => {
+  const contentTypeQuery = options.contentType
+    ? `?contentType=${encodeURIComponent(options.contentType)}`
+    : '';
+  return requestJson<ApiItemResponse<IamContentDetail>>(
+    `/api/v1/iam/contents/${encodeURIComponent(contentId)}${contentTypeQuery}`
+  );
+};
 
 export const getContentHistory = async (
   contentId: string

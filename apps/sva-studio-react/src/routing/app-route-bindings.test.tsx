@@ -744,22 +744,31 @@ describe('appRouteBindings', () => {
     };
 
     const { appRouteBindings } = await import('./app-route-bindings');
-    const cases: Array<[ComponentType, string]> = [
-      [appRouteBindings.newsDetail, 'news-edit-page'],
-      [appRouteBindings.eventsDetail, 'events-edit-page'],
-      [appRouteBindings.genericItemsDetail, 'generic-items-edit-page'],
-      [appRouteBindings.faqDetail, 'faq-edit-page'],
-      [appRouteBindings.cockpitCardsDetail, 'cockpit-cards-edit-page'],
-      [appRouteBindings.projectsDetail, 'projects-edit-page'],
-      [appRouteBindings.poiDetail, 'poi-edit-page'],
-      [appRouteBindings.surveysDetail, 'surveys-edit-page'],
+    const cases: Array<[ComponentType, string, string]> = [
+      [appRouteBindings.newsDetail, 'news-edit-page', 'news.article'],
+      [appRouteBindings.eventsDetail, 'events-edit-page', 'events.event-record'],
+      [
+        appRouteBindings.genericItemsDetail,
+        'generic-items-edit-page',
+        'generic-items.generic-item',
+      ],
+      [appRouteBindings.faqDetail, 'faq-edit-page', 'faq.faq'],
+      [
+        appRouteBindings.cockpitCardsDetail,
+        'cockpit-cards-edit-page',
+        'cockpit-cards.cockpit-card',
+      ],
+      [appRouteBindings.projectsDetail, 'projects-edit-page', 'projects.project'],
+      [appRouteBindings.poiDetail, 'poi-edit-page', 'poi.point-of-interest'],
+      [appRouteBindings.surveysDetail, 'surveys-edit-page', 'surveys.survey'],
     ];
 
-    for (const [Binding, testId] of cases) {
+    for (const [Binding, testId, contentType] of cases) {
       render(<Binding />);
       await waitFor(() => {
         expect(screen.getByTestId(testId).getAttribute('data-principal-value')).toBe('user');
       });
+      expect(routeState.getContent).toHaveBeenLastCalledWith('content-1', { contentType });
       cleanup();
     }
   });

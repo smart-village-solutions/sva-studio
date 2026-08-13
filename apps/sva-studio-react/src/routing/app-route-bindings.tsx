@@ -169,7 +169,9 @@ const MainserverPrincipalBoundary = ({
   return <>{children(resolution.control)}</>;
 };
 
-const useMainserverResourcePrincipalControl = (): MainserverPrincipalResolution => {
+const useMainserverResourcePrincipalControl = (
+  contentType: string
+): MainserverPrincipalResolution => {
   const params = useParams({ strict: false });
   const contentId = readStringParam(params.contentId, readStringParam(params.id));
   const [resolution, setResolution] = React.useState<MainserverPrincipalResolution>({
@@ -186,7 +188,7 @@ const useMainserverResourcePrincipalControl = (): MainserverPrincipalResolution 
     let active = true;
     setResolution({ kind: 'unavailable', reason: 'context_loading' });
 
-    void getContent(contentId)
+    void getContent(contentId, { contentType })
       .then(({ data }) => {
         if (!active) {
           return;
@@ -222,17 +224,19 @@ const useMainserverResourcePrincipalControl = (): MainserverPrincipalResolution 
     return () => {
       active = false;
     };
-  }, [contentId]);
+  }, [contentId, contentType]);
 
   return resolution;
 };
 
 const MainserverResourcePrincipalBoundary = ({
   children,
+  contentType,
 }: Readonly<{
   children: (control: MainserverPrincipalControlModel) => React.ReactNode;
+  contentType: string;
 }>) => {
-  const resolution = useMainserverResourcePrincipalControl();
+  const resolution = useMainserverResourcePrincipalControl(contentType);
   if (resolution.kind === 'unavailable') {
     return (
       <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
@@ -294,7 +298,7 @@ const NewsCreateRoutePage = () => {
 
 const NewsEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="news.article">
       {(principalControl) => <NewsEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -310,7 +314,7 @@ const EventsCreateRoutePage = () => {
 
 const EventsEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="events.event-record">
       {(principalControl) => <EventsEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -326,7 +330,7 @@ const GenericItemsCreateRoutePage = () => {
 
 const GenericItemsEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="generic-items.generic-item">
       {(principalControl) => <GenericItemsEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -342,7 +346,7 @@ const FaqCreateRoutePage = () => {
 
 const FaqEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="faq.faq">
       {(principalControl) => <FaqEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -358,7 +362,7 @@ const CockpitCardsCreateRoutePage = () => {
 
 const CockpitCardsEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="cockpit-cards.cockpit-card">
       {(principalControl) => <CockpitCardsEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -374,7 +378,7 @@ const ProjectsCreateRoutePage = () => {
 
 const ProjectsEditRoutePage = () => {
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="projects.project">
       {(principalControl) => <ProjectsEditPage principalControl={principalControl} />}
     </MainserverResourcePrincipalBoundary>
   );
@@ -394,7 +398,7 @@ const PoiCreateRoutePage = () => {
 const PoiEditRoutePage = () => {
   const { user } = useAuth();
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="poi.point-of-interest">
       {(principalControl) => (
         <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />
       )}
@@ -413,7 +417,7 @@ const SurveyCreateRoutePage = () => {
 const SurveyEditRoutePage = () => {
   const mutationCapabilities = useMainserverMutationCapabilities();
   return (
-    <MainserverResourcePrincipalBoundary>
+    <MainserverResourcePrincipalBoundary contentType="surveys.survey">
       {(principalControl) => (
         <SurveyEditPage
           canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}

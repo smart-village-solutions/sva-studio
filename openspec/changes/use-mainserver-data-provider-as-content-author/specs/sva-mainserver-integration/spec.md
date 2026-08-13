@@ -14,10 +14,10 @@ Der daraus erzeugte `MutationPrincipalContext` MUST für Pre-Read, Read-Merge-Wr
 - **THEN** schlägt sie vor dem GraphQL-Aufruf mit einem spezifischen Credential-Fehler fehl
 - **AND** das System fällt nicht auf persönliche Credentials zurück
 
-#### Scenario: Persönlicher Principal ist durch Richtlinie verboten
+#### Scenario: Persönlicher Create-Principal ist durch Richtlinie verboten
 
 - **GIVEN** die aktive Organisation hat `content_author_policy = 'org_only'`
-- **WHEN** ein Client `actingPrincipalType = user` übermittelt
+- **WHEN** ein Client für einen Create `actingPrincipalType = user` übermittelt
 - **THEN** lehnt der Server die Mutation vor dem GraphQL-Aufruf ab
 - **AND** verwendet weder persönliche noch organisatorische Credentials ersatzweise
 
@@ -156,7 +156,7 @@ Eine erfolgreiche Antwort ohne nicht leere ID MUST als ungültige Vertragsantwor
 
 ### Requirement: Typ- und Aktionsmatrix begrenzt Mainserver-Schreibverträge
 
-Das System MUST vor Aktivierung einer Mainserver-Content-Aktion einen bestätigten typisierten Vertrag für Pre-Read, Mutation, DataProvider-Response, Lifecycle, Idempotenz und Reconciliation besitzen. Nicht bestätigte Typ-/Aktionskombinationen MUST capability-gated bleiben.
+Das System MUST vor Aktivierung einer Mainserver-Content-Aktion mindestens einen typisierten Implementierungsvertrag für Pre-Read, Mutation, DataProvider-Response, Lifecycle, Idempotenz und Reconciliation besitzen. Nicht bestätigte Typ-/Aktionskombinationen MUST capability-gated bleiben, sofern sie nicht wie `surveys.create` durch eine ausdrückliche Produktentscheidung freigegeben wurden. Eine solche Freigabe MUST in der Vertragsmatrix sichtbar bleiben und ersetzt nicht die spätere reale Vertragsevidenz.
 
 #### Scenario: Typ liefert DataProvider nicht sicher
 
@@ -179,6 +179,14 @@ Das System MUST vor Aktivierung einer Mainserver-Content-Aktion einen bestätigt
 - **WHEN** Studio Survey-Aktionen aktiviert
 - **THEN** aktiviert es nur die belegten Principal-/Aktionskombinationen
 - **AND** übernimmt keine pauschale Immutabilitätsgarantie anderer Typen
+
+#### Scenario: Survey-Create ist ausdrücklich freigegeben
+
+- **GIVEN** `surveys.create` besitzt einen typisierten Implementierungsvertrag und ist durch Produktentscheidung freigegeben
+- **WHEN** die reale persönliche und organisatorische Vertragsevidenz noch nicht vollständig vorliegt
+- **THEN** bleibt `surveys.create` aktiv
+- **AND** weist die Vertragsmatrix die noch offene Evidenz weiterhin aus
+- **AND** werden nicht automatisch weitere Survey-Aktionen freigegeben
 
 ### Requirement: Mainserver-Mutationsjournal korreliert Provider-Erfolg und lokale Folgearbeit
 
@@ -203,22 +211,30 @@ Das System MUST für Studio-initiierte Mainserver-Mutationen eine persistente Op
 
 ### Requirement: News Mutations Preserve Policy-Driven Mainserver Delegation
 
-The system SHALL execute News create, update, archive, and delete mutations with the explicit Mainserver credentials selected by `actingPrincipalType`. For `org_only`, mutation paths use only the active organization's credentials. For `org_or_personal`, the client selects `organization` or `user` explicitly and the server MUST NOT silently fall back to the other source.
+The system SHALL execute News create, update, archive, and delete mutations with an explicit `actingPrincipalType` and MUST NOT silently fall back to the other credential source. For creates, `org_only` SHALL permit only the active organization and `org_or_personal` SHALL permit an explicit organization or user choice. For existing personally or organizationally owned News, the conflict-free DataProvider binding and resource capability SHALL determine the principal.
 
-#### Scenario: News mutation uses organization credentials for `org_only`
+#### Scenario: News create uses organization credentials for `org_only`
 
 - **GIVEN** a user has local Studio permission and the active organization's `contentAuthorPolicy` is `org_only`
-- **WHEN** the user submits a valid News mutation with `actingPrincipalType = organization`
+- **WHEN** the user submits a valid News create with `actingPrincipalType = organization`
 - **THEN** the server obtains an access token using the active organization's Mainserver credentials
 - **AND** all causal reads and writes use that same credential context
 - **AND** the resulting News item is mapped back to the Plugin News model
 
-#### Scenario: News mutation explicitly uses user credentials for `org_or_personal`
+#### Scenario: News create explicitly uses user credentials for `org_or_personal`
 
 - **GIVEN** a user has local Studio permission and `contentAuthorPolicy` is `org_or_personal`
-- **WHEN** the user submits `actingPrincipalType = user`
+- **WHEN** the user submits a News create with `actingPrincipalType = user`
 - **THEN** the server uses only the current user's Keycloak-backed credentials
 - **AND** it does not first try or fall back to organization credentials
+
+#### Scenario: Existing personal News remains personal under `org_only`
+
+- **GIVEN** an existing News item is bound to the current user's personal DataProvider
+- **AND** the active organization has `contentAuthorPolicy = org_only`
+- **WHEN** the user submits an authorized update
+- **THEN** the server uses `actingPrincipalType = user`
+- **AND** it does not transfer the item to the organization
 
 #### Scenario: Selected News credential is missing
 
@@ -236,19 +252,19 @@ The system SHALL execute News create, update, archive, and delete mutations with
 
 ### Requirement: Event And POI Mutations Preserve Policy-Driven Mainserver Delegation
 
-The system SHALL execute Event and POI create, update, archive, and delete mutations with the explicit Mainserver credentials selected by `actingPrincipalType`. For `org_only`, mutation paths use only the active organization's credentials. For `org_or_personal`, the client selects `organization` or `user` explicitly and the server MUST NOT silently fall back to the other source.
+The system SHALL execute Event and POI create, update, archive, and delete mutations with an explicit `actingPrincipalType` and MUST NOT silently fall back to the other credential source. For creates, `org_only` SHALL permit only the active organization and `org_or_personal` SHALL permit an explicit organization or user choice. For existing personally or organizationally owned records, the conflict-free DataProvider binding and resource capability SHALL determine the principal.
 
-#### Scenario: Event mutation uses organization credentials for `org_only`
+#### Scenario: Event create uses organization credentials for `org_only`
 
 - **GIVEN** a user has local Studio permission and the active organization's `contentAuthorPolicy` is `org_only`
-- **WHEN** the user submits a valid Event mutation with `actingPrincipalType = organization`
+- **WHEN** the user submits a valid Event create with `actingPrincipalType = organization`
 - **THEN** the server uses only the active organization's credentials
 - **AND** all causal reads and writes use that credential context
 
-#### Scenario: POI mutation explicitly uses user credentials
+#### Scenario: POI create explicitly uses user credentials
 
 - **GIVEN** `contentAuthorPolicy` is `org_or_personal`
-- **WHEN** the user submits a POI mutation with `actingPrincipalType = user`
+- **WHEN** the user submits a POI create with `actingPrincipalType = user`
 - **THEN** the server uses only the current user's credentials
 - **AND** it does not retry with organization credentials
 
@@ -268,7 +284,9 @@ The system SHALL execute Event and POI create, update, archive, and delete mutat
 
 ### Requirement: Mainserver-Credential-Auflösung respektiert den aktiven Organisationskontext
 
-The system SHALL resolve SVA Mainserver credentials server-side. For Studio-initiated content mutations, `actingPrincipalType` SHALL select exactly `organization` or `user` and SHALL disable implicit cross-source fallback. Pure reads and background reconciliation without a bound mutation context SHALL use user credentials for `org_or_personal` and organization credentials only for `org_only`. The chosen source SHALL be returned and included in cache and projection isolation.
+The system SHALL resolve SVA Mainserver credentials server-side. For Studio-initiated content mutations, `actingPrincipalType` SHALL select exactly `organization` or `user` and SHALL disable implicit cross-source fallback. `contentAuthorPolicy` SHALL constrain the ownership principal for creates. For existing personally or organizationally owned content, the conflict-free DataProvider binding and server-authoritative resource capability SHALL determine the mutation principal.
+
+Pure reads and background reconciliation without a bound mutation context SHALL expose the IAM-authorized result independently of `contentAuthorPolicy`: `own` contains current-user content and `organization` contains current-user plus active-organization content. Personal content of other members SHALL require an explicit `all` or moderation grant. Real contract tests SHALL determine the minimal upstream credential views needed to produce that result. If more than one source is required, every source SHALL remain isolated in cache, synchronization state and projection before the list layer deduplicates their union.
 
 #### Scenario: Explicit organization mutation uses only organization credentials
 
@@ -285,14 +303,30 @@ The system SHALL resolve SVA Mainserver credentials server-side. For Studio-init
 - **THEN** the resolver uses only current or compatible legacy user credentials
 - **AND** no organization lookup or fallback occurs
 
-#### Scenario: Pure read defaults to the personal principal
+#### Scenario: Pure organization-scoped read returns own and organization content
 
 - **GIVEN** a pure read is not causally bound to a mutation
-- **WHEN** the active organization's `contentAuthorPolicy` is `org_or_personal`
-- **THEN** the resolver uses current-user credentials
-- **AND** it does not prefer or fall back to organization credentials
-- **AND** it returns the actual credential source
-- **AND** caches and projections remain isolated by that source or credential signature
+- **AND** the user has an applicable read permission with `accessScope = organization`
+- **WHEN** Studio resolves the authorized Mainserver result
+- **THEN** it returns current-user and active-organization content independently of `contentAuthorPolicy`
+- **AND** it excludes personal content of other organization members
+- **AND** it uses no more credential views than the confirmed upstream contract requires
+
+#### Scenario: Multiple required read sources remain isolated
+
+- **GIVEN** real contract tests prove that no single credential view returns the complete authorized result
+- **WHEN** Studio loads personal and active-organization views
+- **THEN** caches, synchronization states and projections remain isolated by source and credential signature
+- **AND** the list layer deduplicates their union before global sorting and pagination
+
+#### Scenario: One union source is unavailable
+
+- **GIVEN** the confirmed Mainserver contract requires multiple credential views
+- **AND** exactly one required principal scope has an available current or last successful snapshot
+- **WHEN** synchronization of the other scope fails
+- **THEN** the read returns the available authorized subset
+- **AND** marks the response and total as incomplete for the missing principal scope
+- **AND** mutations with the unavailable principal remain blocked
 
 #### Scenario: No active organization blocks explicit organization mutation
 
@@ -315,7 +349,7 @@ The system SHALL resolve SVA Mainserver credentials server-side. For Studio-init
 - **GIVEN** a mutation already resolved its explicit credentials
 - **WHEN** it performs Pre-Read, Write, Post-Read or Reconciliation
 - **THEN** those steps reuse the bound `MutationPrincipalContext`
-- **AND** they do not invoke the general organization-first resolver again
+- **AND** they do not invoke the general credential resolver again
 
 ### Requirement: V2-Mutationen binden den geladenen Sessionkontext
 
@@ -396,7 +430,7 @@ Credential-Kontext, aktive Abfrageorganisation, freie Autorenwerte, externe Orga
 
 Das System SHALL schreibende Mainserver-Mutationen in einem expliziten Principal-Kontext ausführen. Eine Mutation SHALL entweder mit `actingPrincipalType = organization` und validierter aktiver Organisation oder mit `actingPrincipalType = user` und authentifiziertem Account laufen. Die Auswahl SHALL die Credential-Quelle bestimmen. Listenfilter, DataProvider, externe Organisationswerte, andere Memberships oder frühere UI-Auswahlen SHALL die aktive Organisation nicht ersetzen.
 
-Bei bestehenden Inhalten SHALL ein Same-Credential-Pre-Read die aktuelle Verfügbarkeit und den Content-DataProvider liefern. Update, Veröffentlichung, Archivierung und Wiederherstellung SHALL den DataProvider gemäß bestätigter Typ-/Aktionsmatrix erhalten. Hard Delete SHALL den Provider aus dem Preimage auditieren und keinen Post-Read verlangen.
+Beim Create SHALL `contentAuthorPolicy` die zulässige Wahl begrenzen. Bei bestehenden eigenen oder organisatorischen Inhalten SHALL die konfliktfreie DataProvider-Bindung zusammen mit der Ressourcen-Capability den Principal festlegen. Ein Same-Credential-Pre-Read SHALL die aktuelle Verfügbarkeit und den Content-DataProvider liefern. Update, Veröffentlichung, Archivierung und Wiederherstellung SHALL den DataProvider gemäß bestätigter Typ-/Aktionsmatrix erhalten. Hard Delete SHALL den Provider aus dem Preimage auditieren und keinen Post-Read verlangen.
 
 #### Scenario: Benutzer erstellt Datensatz im Namen der aktiven Organisation
 
@@ -404,7 +438,7 @@ Bei bestehenden Inhalten SHALL ein Same-Credential-Pre-Read die aktuelle Verfüg
 - **AND** deren Credentials sind vollständig
 - **WHEN** der Benutzer mit `actingPrincipalType = organization` erstellt
 - **THEN** verwendet Studio ausschließlich deren Credentials
-- **AND** erzeugt oder bestätigt der zurückgelieferte DataProvider automatisch die Bindung dieser Credential-Version
+- **AND** bestätigt der zurückgelieferte DataProvider ausschließlich die vorab per Identity-Endpunkt verifizierte Bindung dieser Credential-Version
 - **AND** berücksichtigt Studio keine andere Membership
 
 #### Scenario: Aktive Organisation fehlt bei Organisationsmutation
@@ -420,8 +454,23 @@ Bei bestehenden Inhalten SHALL ein Same-Credential-Pre-Read die aktuelle Verfüg
 - **GIVEN** persönliches Handeln ist zulässig
 - **WHEN** ein Benutzer mit `actingPrincipalType = user` erstellt
 - **THEN** verwendet Studio ausschließlich seine persönlichen Credentials
-- **AND** erzeugt oder bestätigt der zurückgelieferte DataProvider deren automatische Bindung
+- **AND** bestätigt der zurückgelieferte DataProvider ausschließlich die vorab per Identity-Endpunkt verifizierte persönliche Bindung
 - **AND** setzt Studio keine Organisationsownership
+
+#### Scenario: Persönlicher Bestandsinhalt verwendet den persönlichen Principal
+
+- **GIVEN** ein bestehender Inhalt ist konfliktfrei an den persönlichen DataProvider des aktuellen Benutzers gebunden
+- **AND** die aktive Organisation erzwingt bei Creates `content_author_policy = 'org_only'`
+- **WHEN** der Benutzer den Inhalt mit passender Ressourcen-Capability mutiert
+- **THEN** verwendet Studio `actingPrincipalType = user`
+- **AND** ändert oder überträgt es die Ownership nicht
+
+#### Scenario: Organisationsinhalt verwendet den Organisationsprincipal
+
+- **GIVEN** ein bestehender Inhalt ist konfliktfrei an den DataProvider der aktiven Organisation gebunden
+- **WHEN** ein berechtigtes Mitglied den Inhalt mutiert
+- **THEN** verwendet Studio `actingPrincipalType = organization`
+- **AND** bleibt der tatsächliche Benutzer als Actor im Audit erhalten
 
 #### Scenario: Bestehende Mutation verwendet Same-Credential-Pre-Read
 

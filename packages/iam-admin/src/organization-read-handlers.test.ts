@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createOrganizationReadHandlers, type OrganizationReadHandlerDeps } from './organization-read-handlers.js';
+import {
+  createOrganizationReadHandlers,
+  type OrganizationReadHandlerDeps,
+} from './organization-read-handlers.js';
 
 const state = {
   actorResolution: {
@@ -50,11 +53,13 @@ const state = {
       organizationKey: 'alpha',
       displayName: 'Alpha',
       organizationType: 'municipality',
+      contentAuthorPolicy: 'org_only',
       isActive: true,
       isDefaultContext: true,
     },
   ],
-  session: { activeOrganizationId: undefined as string | undefined } as { activeOrganizationId?: string } | undefined,
+  session: { activeOrganizationId: undefined as string | undefined } as
+    { activeOrganizationId?: string } | undefined,
 };
 
 const updateSession = vi.fn();
@@ -63,22 +68,35 @@ const json = async (response: Response) => response.json() as Promise<Record<str
 
 const buildDeps = (): OrganizationReadHandlerDeps => ({
   asApiItem: (data, requestId) => ({ data, ...(requestId ? { requestId } : {}) }),
-  asApiList: (data, pagination, requestId) => ({ data, pagination, ...(requestId ? { requestId } : {}) }),
+  asApiList: (data, pagination, requestId) => ({
+    data,
+    pagination,
+    ...(requestId ? { requestId } : {}),
+  }),
   chooseActiveOrganizationId: ({ storedActiveOrganizationId, organizations }) =>
     storedActiveOrganizationId ?? organizations[0]?.organizationId,
   consumeRateLimit: vi.fn(() => null),
   createApiError: (status, code, message, requestId, details) =>
-    new Response(JSON.stringify({ error: { code, message, ...(details ? { details } : {}) }, ...(requestId ? { requestId } : {}) }), {
-      status,
-      headers: { 'content-type': 'application/json' },
-    }),
+    new Response(
+      JSON.stringify({
+        error: { code, message, ...(details ? { details } : {}) },
+        ...(requestId ? { requestId } : {}),
+      }),
+      {
+        status,
+        headers: { 'content-type': 'application/json' },
+      }
+    ),
   ensureFeature: vi.fn(() => null),
   getFeatureFlags: vi.fn(() => ({})),
   getSession: vi.fn(async () => state.session),
   getWorkspaceContext: vi.fn(() => ({ requestId: 'req-org' })),
   isUuid: (value) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value),
   jsonResponse: (status, payload) =>
-    new Response(JSON.stringify(payload), { status, headers: { 'content-type': 'application/json' } }),
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { 'content-type': 'application/json' },
+    }),
   authorizeOrganizationReadAccess: vi.fn(async () => null),
   loadContextOptions: vi.fn(async () => state.contextOptions),
   loadOrganizationDetail: vi.fn(async () => state.detail),
@@ -91,14 +109,18 @@ const buildDeps = (): OrganizationReadHandlerDeps => ({
       new URL(request.url).pathname.split('/').filter((segment) => segment.length > 0)[index]
   ),
   readStatusFilter: vi.fn(() => undefined),
-  readString: (value) => (typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined),
+  readString: (value) =>
+    typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined,
   requireRoles: vi.fn((requestContext, roles, requestId) =>
     requestContext.user.roles.some((role) => roles.has(role))
       ? null
-      : new Response(JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }), {
-          status: 403,
-          headers: { 'content-type': 'application/json' },
-        })
+      : new Response(
+          JSON.stringify({ error: { code: 'forbidden', message: 'forbidden' }, requestId }),
+          {
+            status: 403,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
   ),
   resolveActorInfo: vi.fn(async () => state.actorResolution),
   updateSession,
@@ -151,19 +173,18 @@ describe('organization read handlers', () => {
     );
 
     expect(response.status).toBe(200);
-    expect(deps.resolveActorInfo).toHaveBeenCalledWith(
-      expect.any(Request),
-      ctx,
-      {
-        requireActorMembership: true,
-        provisionMissingActorMembership: true,
-      }
-    );
+    expect(deps.resolveActorInfo).toHaveBeenCalledWith(expect.any(Request), ctx, {
+      requireActorMembership: true,
+      provisionMissingActorMembership: true,
+    });
     expect(deps.loadOrganizationList).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ search: 'Alpha', page: 1, pageSize: 20 })
     );
-    await expect(json(response)).resolves.toMatchObject({ pagination: { total: 1 }, requestId: 'req-org' });
+    await expect(json(response)).resolves.toMatchObject({
+      pagination: { total: 1 },
+      requestId: 'req-org',
+    });
   });
 
   it('rejects invalid organization sorting before loading the read model', async () => {
@@ -202,7 +223,12 @@ describe('organization read handlers', () => {
     expect(updateSession).toHaveBeenCalledWith('session-1', { activeOrganizationId: undefined });
     await expect(json(response)).resolves.toMatchObject({
       data: {
-        organizations: [expect.objectContaining({ organizationId: '11111111-1111-1111-8111-111111111111' })],
+        organizations: [
+          expect.objectContaining({
+            organizationId: '11111111-1111-1111-8111-111111111111',
+            contentAuthorPolicy: 'org_only',
+          }),
+        ],
       },
     });
   });

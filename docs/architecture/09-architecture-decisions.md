@@ -54,6 +54,7 @@ mit Bezug auf die arc42-Abschnitte.
 - [ADR-049 kanonischer Permission-Katalog und additiver Reconcile](../adr/ADR-049-kanonischer-permission-katalog-und-additiver-reconcile.md)
 - [ADR-050 zentraler scopegebundener UI-Zugriff](../adr/ADR-050-zentraler-scopegebundener-ui-zugriff.md)
 - [ADR-051 technische Accounts und Organisations-Mainserver-Provisioning](../adr/ADR-051-technische-accounts-und-organisations-mainserver-provisioning.md)
+- [ADR-052 Create-Policy, Read-Scope und Bestandsprincipal trennen](../adr/ADR-052-create-policy-read-scope-und-bestandsprincipal.md)
 
 ### Zuordnung zu arc42-Abschnitten
 
@@ -79,7 +80,8 @@ mit Bezug auf die arc42-Abschnitte.
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-040
 - Abschnitt 04/05/06/07/08/09/10/11 (Strategie/Bausteine/Laufzeit/Deployment/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-041
 - Abschnitt 05/08/09/10 (Bausteine/Querschnitt/Entscheidungen/Qualität): ADR-043, ADR-044
-- Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-045
+- Abschnitt 04/05/06/08/09/10/11/12 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken/Glossar): ADR-045, superseded durch ADR-052
+- Abschnitt 05/06/08/09 (Bausteine/Laufzeit/Querschnitt/Entscheidungen): ADR-052
 - Abschnitt 04/05/06/08/09/10/11 (Strategie/Bausteine/Laufzeit/Querschnitt/Entscheidungen/Qualität/Risiken): ADR-046
 - Abschnitt 03/04/05/06/08 (Kontext/Strategie/Bausteine/Laufzeit/Querschnitt): ADR-021
 
@@ -122,7 +124,8 @@ mit Bezug auf die arc42-Abschnitte.
 - ADR-042: Externe Schnittstellen als host-owned Registry mit zentralem Secret-Store, Default-Auflösung und plugin-konsumierbarem Typkatalog (Abschnitt 03, 05, 08, 09, 11, 12)
 - ADR-043: Formular-Foundation mit `react-hook-form` und `zodResolver` als verbindlichem Standardpfad für neue oder grundlegend überarbeitete Formular-Flows (Abschnitt 05, 08, 09, 10)
 - ADR-044: Frontend-Test-Foundation mit `msw` für HTTP-nahe Tests und selektivem `fast-check` für kritische Kernlogik (Abschnitt 05, 08, 09, 10)
-- ADR-045: Organisationsgebundene Mainserver-Credentials und policy-gesteuerte Delegation über `contentAuthorPolicy`; persönliche Keycloak-Credentials bleiben nur Fallback bei `org_or_personal` (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
+- ADR-045: Historische Entscheidung zu organisationsgebundenen Mainserver-Credentials; durch ADR-052 superseded (Abschnitt 04, 05, 06, 08, 09, 10, 11, 12)
+- ADR-052: Trennt Create-Policy, IAM-Read-Scope und ressourcenbezogenen Bestandsprincipal und übernimmt die weiterhin gültigen Credential-, Secret- und Isolationsregeln aus ADR-045 (Abschnitt 05, 06, 08, 09)
 - ADR-046: Root-only `instance_registry_admin`, geschütztes tenantseitiges `system_admin` und die Entfernung früherer Standardrollen aus dem Sollmodell bei gleichzeitiger Absicherung historischer Altbestände über Migrationspfade (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 - ADR-050: Zentraler scopegebundener UI-Zugriff trennt Identität von Effective Access, diskriminiert Plattform-/Tenant-Scope, kombiniert Actions mit Modul-Gates und hält Ressourcen-Ownership an der Servergrenze (Abschnitt 04, 05, 06, 08, 09, 10, 11)
 
@@ -132,7 +135,7 @@ mit Bezug auf die arc42-Abschnitte.
 - Maßgeblich bleiben:
   - ADR-021 für die serverseitige Mainserver-Integrationsgrenze,
   - ADR-034 für den statischen Plugin-SDK-Vertrag und hostmaterialisierte Content-Plugins,
-  - ADR-045 für organisations- und policygeführte Mainserver-Credentials,
+  - ADR-052 für Create-Policy, IAM-Read-Scope und ressourcenbezogene Bestandsprincipals,
   - ADR-043 und ADR-044 für Formular- und Test-Foundation.
 - Der Change führt kein neues Plugin- oder Integrationsmuster ein, sondern wendet die bestehenden Entscheidungen auf ein weiteres Standard-Content-Plugin `@sva/plugin-surveys` an.
 - Die fachlichen Erweiterungen `surveys.moderate` und `surveys.export` bleiben additive Rechte innerhalb des bestehenden Plugin-/IAM-Vertrags und eröffnen keinen parallelen Autorisierungs- oder Routingpfad.
@@ -534,10 +537,10 @@ Zuordnung:
 - Abschnitt 06/07/08/09/11: ADR-048 und OpenSpec-Change `add-controlled-database-restore`
 - Abschnitt 04/05/06/08/09: ADR-049 und OpenSpec-Change `add-canonical-permission-catalog`
 
-### Fortschreibung 2026-08: DataProvider als Mainserver-Inhaber ohne neue ADR
+### Fortschreibung 2026-08: DataProvider als Mainserver-Inhaber
 
-- ADR-021 bleibt für die serverseitige Mainserver-Integrationsgrenze maßgeblich; ADR-045 bleibt für organisationsgebundene Credentials und `contentAuthorPolicy` maßgeblich.
+- ADR-021 bleibt für die serverseitige Mainserver-Integrationsgrenze maßgeblich. ADR-052 supersediert ADR-045 und trennt Create-Policy, IAM-Read-Scope und Bestandsprincipal; die Credential-, Secret- und Isolationsregeln bleiben erhalten.
 - Präzisiert wird, dass der Mainserver-DataProvider der unveränderliche ursprüngliche Inhaber ist, während der Actor und der explizit ausgewählte persönliche oder organisatorische Mutationsprincipal getrennt bleiben.
-- Wegen der noch fehlenden stabilen ID aus `/data_provider.json` werden Bindungen nur automatisch aus bestätigten Creates abgeleitet. Namens-Mapping und administrative Zuordnung sind ausgeschlossen.
-- Die Einführung erfolgt additiv über einen standardmäßig beobachtenden Shadow-Resolver, einen versionierten V2-Transport und einen expliziten Compatibility-Rollback. Diese Betriebszustände ändern keine fachliche Source-of-Truth-Entscheidung und rechtfertigen deshalb keine neue ADR.
+- Bindungen entstehen ausschließlich aus stabiler Identity-Evidenz beziehungsweise der garantierten Organisations-Provisioning-Antwort. Namens-Mapping und administrative Zuordnung sind ausgeschlossen.
+- Die Einführung erfolgt additiv über einen versionierten V2-Transport sowie beobachtbare Shadow-, Automatic- und Compatibility-Modi. Diese Betriebszustände ändern keine fachliche Source-of-Truth-Entscheidung.
 - Der vollständige Betriebsvertrag steht im [Guide zur Mainserver-DataProvider-Autorenschaft](../guides/mainserver-data-provider-authoring.md).

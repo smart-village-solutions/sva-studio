@@ -37,7 +37,7 @@ Das Studio führt folgende getrennte Identitäten:
 
 ### Mainserver-Vertrag wird vor Enforcement typenweise bestätigt
 
-Die Annahmen zu Create-Zuordnung, Cross-Principal-Write, DataProvider-Immutabilität, Credential-Sichtbarkeit und Mutation-Responses sind externe Voraussetzungen. Vor der Implementierung von exakten Scopes und UI-Cutover entsteht eine verbindliche Matrix pro Content-Typ und fachlicher Aktion.
+Die Annahmen zu Create-Zuordnung, Cross-Principal-Write, DataProvider-Immutabilität, Credential-Sichtbarkeit und Mutation-Responses sind externe Voraussetzungen. Eine verbindliche Matrix pro Content-Typ und fachlicher Aktion macht die vorhandene Evidenz und bewusst akzeptierte Abweichungen sichtbar. Development, Staging und `surveys.create` bleiben aufgrund der ausdrücklichen Produktentscheidung aktiv, obwohl einzelne reale Nachweise nachgeholt werden.
 
 Die Matrix hält mindestens fest:
 
@@ -111,17 +111,17 @@ In diesem Modus:
 - aktive Organisation, Membership, Principal-Policy, Instanzgrenze und Credential-Verfügbarkeit bleiben unverändert wirksam;
 - Mainserver-Autorisierung bleibt die nachgelagerte Obergrenze.
 
-Für Listen und Details ist der verwendete Credential-Kontext sichtbar isoliert. Ein Wechsel des Mutationsprincipal erzwingt einen neuen Pre-Read; Sichtbarkeit unter Organisations-Credentials beweist keine Verfügbarkeit unter persönlichen Credentials und umgekehrt.
+Für Listen und Details ist der verwendete Credential-Kontext sichtbar isoliert. Bei Bestandsmutationen legt die Ownership-Bindung den Principal fest; der Same-Credential-Pre-Read bestätigt dessen aktuelle Verfügbarkeit. Sichtbarkeit unter Organisations-Credentials beweist keine Verfügbarkeit unter persönlichen Credentials und umgekehrt.
 
 Der Modus wird strukturiert auditiert und metrisch gezählt. Er ist ein bewusster fachlicher Kompatibilitätsvertrag, kein technischer Fehlerzustand. Normale Editoren benötigen deshalb keine Warnung; Administration und Diagnose zeigen Bindungs-, Konflikt- und Moduszustände.
 
 ### Exakte Scope-Auswertung wird automatisch readiness-gesteuert
 
-Die Readiness wird pro aktuellem Scope- und Policy-Kontext bestimmt:
+Die Readiness wird pro aktuellem Scope- und Ownership-Kontext bestimmt:
 
 - `own` ist exakt, wenn der persönliche Principal für seine aktuelle Credential-Version konfliktfrei gebunden ist.
-- `organization` ist bei `org_only` exakt, wenn die aktive Organisation für ihre aktuelle Credential-Version konfliktfrei gebunden ist.
-- `organization` ist bei `org_or_personal` exakt, wenn sowohl der persönliche Principal als auch die aktive Organisation für ihre aktuellen Credential-Versionen konfliktfrei gebunden sind.
+- Eine einzelne persönliche oder organisatorische Bestandsmutation ist exakt, wenn der zum Content-DataProvider gehörende Ownership-Principal für seine aktuelle Credential-Version konfliktfrei gebunden ist.
+- Die vollständige Collection-Sicht für `organization` ist exakt, wenn die laut realer Contract-Matrix erforderlichen persönlichen und organisatorischen Credential-Sichten verfügbar und ihre Principals konfliktfrei gebunden sind.
 - Ohne aktive Organisation fällt `organization` auf `own` zurück.
 - `all` benötigt keine Principal-Bindung; es erlaubt alle Inhalte, die im verwendeten Mainserver-Read-Kontext verfügbar sind.
 - Andere Memberships und frühere Organisationskontexte erweitern keinen Scope.
@@ -141,7 +141,7 @@ Lokale `ownerUserId`- und `ownerOrganizationId`-Werte dürfen aus konfliktfreien
 
 Vor einer bestehenden Content-Mutation prüft der Server:
 
-1. Principal-Policy, aktive Organisation, Membership und Credential-Verfügbarkeit.
+1. Die zum Content-DataProvider gehörende Ownership-Bindung, aktive Organisation, Membership, Ressourcen-Capability und Credential-Verfügbarkeit.
 2. Einen frischen Read des adressierten Contents mit dem gebundenen Write-Credential.
 3. Die fully-qualified Action.
 4. Im automatischen Resolver die exakte DataProvider-Scope-Regel; im expliziten Shadow- oder Rollbackmodus die credential-sichtbare Vergleichsentscheidung.
@@ -155,7 +155,7 @@ Für Create existiert noch kein Content-DataProvider. Deshalb gelten vor dem Ups
 - `organization` erlaubt Create als `user` oder als aktive Organisation.
 - `all` erlaubt beide Principals, aber keinen beliebigen fremden Principal.
 - Die Principal-Policy kann diese Menge weiter einschränken.
-- Der anschließend bestätigte DataProvider erzeugt oder bestätigt die automatische Bindung.
+- Der Identity-Endpunkt muss die aktuelle Credential-Version vorab binden; der anschließend bestätigte Content-DataProvider bestätigt ausschließlich deren Konsistenz.
 
 ### MutationPrincipalContext bleibt über die gesamte Operation stabil
 
@@ -163,12 +163,68 @@ Der gemeinsame Kontext enthält mindestens Instanz, Actor, aktive Organisation, 
 
 Credential- und Token-Caches enthalten denselben Principal-Kontext beziehungsweise eine gleichwertige Credential-Signatur. Ein Wechsel der aktiven Organisation oder Credential-Version darf keinen alten Cache-Eintrag weiter autorisieren. Jeder V2-Request zum Ändern oder Löschen trägt einen nicht autorisierenden Kontext-Bindungswert aus einem aktuellen Detail-Read; fehlt er oder stimmt er beim Save nicht mehr mit der aktuellen Session überein, wird die Mutation vor dem Provider-Write abgewiesen. Legacy-Requests ohne Vertragsversion bleiben ausschließlich während des konfigurierten Übergangs kompatibel.
 
-- `org_only`: nur `organization` ist bei aktiver Organisation zulässig.
-- `org_or_personal`: `organization` und `user` sind bei aktiver Organisation zulässig.
-- kein aktiver Organisationskontext: nur `user` ist zulässig.
+- Create unter `org_only`: nur `organization` ist bei aktiver Organisation zulässig.
+- Create unter `org_or_personal`: `organization` und `user` sind bei aktiver Organisation zulässig.
+- Create ohne aktiven Organisationskontext: nur `user` ist zulässig.
+- Bestandsmutation: Der gebundene Ownership-Principal ist maßgeblich; die Create-Policy überträgt oder sperrt den Inhalt nicht.
 - fehlende Credentials erzeugen einen spezifischen Fehler; es gibt keinen stillen Fallback.
 
-Implizite Reads und Hintergrund-Reconciliation verwenden bei `org_or_personal` den persönlichen Principal; nur `org_only` wählt ohne explizite Auswahl die aktive Organisation. Automatische und gezielte Projektionsaktualisierungen trennen `user` und `organization` im Scope-Schlüssel, sobald der Principal explizit feststeht. Ein Refresh in einem Scope löscht keine Zeilen eines anderen Principal-Scopes.
+### Read-Sicht folgt dem IAM-Scope und nicht der Autorenrichtlinie
+
+`contentAuthorPolicy` bestimmt, in wessen Eigentum ein neuer Inhalt entstehen darf. Die
+Richtlinie bestimmt nicht, welche bestehenden Inhalte ein Mitglied lesen darf. Mit einer
+`organization`-gescopten Read-Permission umfasst die autorisierte Sicht im aktiven
+Organisationskontext deshalb die persönlichen Inhalte des aktuellen Accounts und die
+Inhalte der aktiven Organisation. Das gilt für `org_only` und `org_or_personal`
+gleichermaßen. Ohne aktive Organisation fällt diese Sicht auf `own` zurück.
+
+Persönliche Inhalte anderer Organisationsmitglieder gehören nicht zu dieser Menge. Auch
+eine Organisationsadministration erhält durch ihre administrative Rolle keinen
+impliziten Zugriff darauf; ein solcher Zugriff benötigt eine ausdrücklich vergebene
+`all`- oder Moderationsberechtigung. Andere Memberships und deren Inhalte bleiben vom
+aktiven Organisationskontext ausgeschlossen.
+
+Welche Mainserver-Credential-Sichten für diese fachliche Ergebnismenge abgefragt werden
+müssen, ist durch reale Contract-Tests zu belegen. Liefert eine einzelne Credential-Sicht
+die vollständige autorisierte Menge, darf Studio sie ohne künstlichen zweiten Abruf
+verwenden. Sind persönliche und organisatorische Sicht getrennt, muss Studio beide
+Credential-Scopes unabhängig synchronisieren und vor globaler Sortierung und Pagination
+anhand der stabilen Mainserver-Identität vereinigen. Cache, Sync-State, Snapshot und
+Projection bleiben dann je tatsächlichem Credential-Scope isoliert.
+
+Scheitert bei einer erforderlichen Mehrquellen-Sicht genau ein Scope, bleibt dessen
+letzter erfolgreicher Snapshot erhalten, sofern Membership, aktive Organisation und
+Credential-Version weiterhin zum aktuellen Kontext passen. Unabhängig davon, ob ein alter
+Snapshot existiert, muss die Liste einen sichtbaren Hinweis anzeigen und Ergebnis sowie
+Gesamtzahl ausdrücklich als unvollständig kennzeichnen. Die UI darf aus einer Read-Sicht keine
+Mutationsberechtigung oder einen Credential-Fallback ableiten.
+
+Bei bestehenden eigenen oder organisatorischen Inhalten bestimmt die konfliktfreie
+DataProvider-Bindung den erforderlichen Mutationsprincipal. Der Benutzer wählt ihn nicht
+frei um. Fehlt eine eindeutige Bindung oder serverautoritativ gelieferte
+Ressourcen-Capability, wird die Aktion blockiert. Eine ausdrücklich berechtigte
+`all`-/Moderationsaktion bleibt ein separater Ressourcenvertrag. Auch dabei existiert kein
+dritter Admin-Principal: Die Mutation verwendet entweder `organization` für die aktive
+Organisation oder `user` für den persönlichen Account des Administrators. Die konkrete
+Ressourcen-Capability bestimmt, welcher dieser beiden Kontexte zulässig ist; der
+Same-Credential-Pre-Read validiert die konkrete Mutation erneut.
+
+### Gelöschte Benutzer begründen keinen fortbestehenden Principal
+
+Wird ein Account gelöscht, darf seine frühere Bindung nicht mehr als aktiver Principal oder
+als Scope-Readiness verwendet werden. Die konfigurierte Content-Löschregel entscheidet, ob
+zugehörige Inhalte ebenfalls gelöscht oder weitergeführt werden. Bei weitergeführten Inhalten
+ist die lokale Benutzerzuordnung `NULL` oder wird in der Anzeige neutral als „Gelöschter
+Benutzer“ dargestellt. Auditdaten folgen dem bestehenden Pseudonymisierungs- und
+Retention-Vertrag. Es findet keine automatische Übertragung auf einen anderen Account oder
+eine Organisation statt.
+
+Diese Trennung ersetzt die Read- und Fallback-Semantik aus ADR-045 grundlegend. Vor der
+Implementierung muss deshalb eine neue ADR ADR-045 supersedieren. Sie übernimmt die dort
+weiterhin gültigen Entscheidungen zu Credential-Speicher, aktivem Organisationskontext,
+Secret-Grenzen und Cache-Isolation, ersetzt aber die globale Policy-Auflösung durch die
+hier definierte Trennung aus Create-Policy, IAM-Read-Scope und ressourcenbezogener
+Bestandsmutation.
 
 ### Hard Delete verwendet Preimage und Tombstone
 
@@ -182,13 +238,34 @@ Fehlgeschlagene oder verlorene Responses werden über ein persistentes Mutation-
 
 Beim Create bietet die Oberfläche „Erstellen als“ beziehungsweise „Veröffentlichen als“ an. Bei `org_only` ist die aktive Organisation fest vorgegeben. Bei `org_or_personal` ist die aktive Organisation vorausgewählt; der Benutzer kann bewusst zum eigenen Account wechseln.
 
-Beim Bearbeiten zeigt die Oberfläche den bestehenden DataProvider read-only als ursprünglichen Inhaber. „Handeln als“ bestimmt nur den Mutationsprincipal. Wechselt die Auswahl gegenüber dem geladenen Credential-Kontext, validiert der Server die Verfügbarkeit mit einem neuen Same-Credential-Pre-Read.
+Beim Bearbeiten zeigt die Oberfläche den bestehenden DataProvider read-only als ursprünglichen Inhaber. Für eigene und organisatorische Inhalte ist „Handeln als“ aus der konfliktfreien Ownership-Bindung festgelegt und nicht frei umschaltbar. Der Server validiert den ressourcenbezogenen Principal mit einem neuen Same-Credential-Pre-Read.
 
-Eigenständige Aktionen aus Listen oder Dialogen verwenden nur bei `org_only` automatisch
-`organization`. Bei `org_or_personal`, fehlender Richtlinie oder ohne aktive Organisation
-verwenden sie `user`, weil dort kein Principal-Dropdown die organisatorische Auswahl bestätigt.
-Der Server validiert den Principal erneut. Fehlende Credentials oder fehlende
-Mainserver-Verfügbarkeit führen nicht zu einem nachträglichen Fallback auf den anderen Principal.
+Der membership-gefilterte Session-Contract `GET /api/v1/iam/me/context` liefert für jede
+zugeordnete Organisation zusätzlich deren `contentAuthorPolicy`. Dieser leichte Self-Service-
+Contract bleibt von den administrativen Organisations-Read-Models getrennt. Ein Redakteur
+benötigt deshalb weder `iam.org.read` noch einen Aufruf von
+`GET /api/v1/iam/organizations/:organizationId`, um den zulässigen Principal zu bestimmen.
+Die Antwort enthält keine Credentials, Secrets oder administrativen Zählerdaten.
+
+Ein gemeinsamer host-owned Resolver erhält den vollständigen Organisationskontext und bestimmt
+die aktive Organisation ausschließlich über `activeOrganizationId`. `isActive` beschreibt nur
+den Zustand einer Organisation und darf nicht als Auswahlmerkmal für den aktiven Sessionkontext
+verwendet werden. Der Resolver versorgt zentral News, Events, Points of Interest, Generic Items,
+FAQ, Cockpit Cards, Projects und Surveys einschließlich ihrer Listen-, Status- und Delete-Aktionen.
+
+Eigenständige Aktionen aus Listen oder Dialogen verwenden bei bestehenden eigenen oder
+organisatorischen Inhalten den ressourcenbezogen bestätigten Ownership-Principal. Die globale
+Autorenrichtlinie oder eine frühere UI-Auswahl ersetzt diese Entscheidung nicht. Ist eine
+`activeOrganizationId` vorhanden, aber die Organisation fehlt, ist inaktiv oder besitzt keine
+gültige Richtlinie, liefert der Resolver einen blockierenden `unavailable`-Zustand. Die UI
+deaktiviert dann alle Mainserver-Schreibaktionen und zeigt einen übersetzten, konkreten
+Kontextfehler; sie darf nicht stillschweigend auf `user` zurückfallen.
+
+Nach einem erfolgreichen Organisationswechsel lädt die Shell den kanonischen Kontext neu, setzt
+die Principal-Auswahl auf den Default der neuen Richtlinie zurück und invalidiert
+principal-gebundene Queries und Projektionen. Der Server validiert den Principal bei jeder Mutation
+erneut. Fehlende Credentials, ein veralteter Kontext oder fehlende Mainserver-Verfügbarkeit führen
+nicht zu einem nachträglichen Fallback auf den anderen Principal.
 
 ### GraphQL-author und Content-Typen
 
@@ -210,6 +287,8 @@ Audit und Mutation-Journal erfassen PII-minimiert mindestens Actor, Principal, a
 - `own` und `organization` abstrakt instanzweit wie `all` behandeln: verworfen, weil Studio keine Inhalte freigeben kann, die das verwendete Mainserver-Credential nicht sieht.
 - Mapping aus Listen, Details oder Updates ableiten: verworfen, weil diese den Content-Inhaber, nicht den Provider des handelnden Principal beweisen.
 - Direkte Mainserver-Änderungen als vollständige Studio-History rekonstruieren: verworfen, weil kein vollständiger Event-Vertrag existiert.
+- `iam.org.read` an alle Organisationsredakteure vergeben: verworfen, weil das administrative Leserecht mehr Organisationsdaten freigibt als der Content-Flow benötigt und die bestehende Self-Service-Grenze umgeht.
+- Einen separaten Endpoint nur für erlaubte Mutationsprincipals einführen: verworfen, weil der kanonische Organisationskontext bereits membership-gefiltert geladen wird und die zusätzliche Policy ohne zweiten Lade-, Cache- oder Fehlerpfad transportieren kann.
 
 ## Risks / Trade-offs
 
@@ -220,11 +299,12 @@ Audit und Mutation-Journal erfassen PII-minimiert mindestens Actor, Principal, a
 - Typen ohne idempotenten Create können bei Lost Responses Duplikate erzeugen. Die Typ-/Aktionsmatrix und das Mutation-Journal müssen dieses Risiko offen ausweisen.
 - Bestehende Clients ohne `actingPrincipalType` benötigen einen versionierten Übergang.
 - Direkte Mainserver-Änderungen fehlen bewusst in der Studio-History.
+- Die additive Erweiterung des Organisationskontexts vergrößert dessen Payload geringfügig. Dafür entfallen administrative N+1-Detailaufrufe aus allen Content-Seiten.
 
 ## Migration Plan
 
 1. Überlappende Changes und Base-Specs zu Credential-Auflösung, Projektion, Autorenschaft und History komponieren.
-2. Den Objektvertrag und die stabile Identity-ID mit persönlichen und organisatorischen Credentials bestätigen; die zulässige Principal-zu-DataProvider-Kardinalität vor dem Cutover belegen.
+2. Den Objektvertrag und die stabile Identity-ID mit persönlichen und organisatorischen Credentials bestätigen; noch fehlende reale Nachweise für die zulässige Principal-zu-DataProvider-Kardinalität nachholen und vor einer Production-Aktivierung bewerten.
 3. Automatisches, credential-versioniertes Binding-Modell mit Konfliktzuständen, Mutation-Journal, Tombstone und Admin-Diagnose additiv einführen.
 4. Alle Projektionen im Shadow-Modus um DataProvider und Credential-Kontext ergänzen; keine Berechtigungsänderung.
 5. Gemeinsamen `MutationPrincipalContext` und versionierten `actingPrincipalType`-Transport typenweise einführen.
@@ -239,9 +319,58 @@ Audit und Mutation-Journal erfassen PII-minimiert mindestens Actor, Principal, a
 Der Kompatibilitätsmodus ist nur noch ein expliziter Rollout- und Rollbackvertrag. Der automatische Resolver verwendet ihn nicht bei fehlenden Bindungen. Der Rollout kann auf `automatic` wechseln, wenn:
 
 - `own`: die aktuelle persönliche Credential-Version konfliktfrei einem DataProvider zugeordnet ist;
-- `organization`: bei `org_only` die aktive organisatorische Credential-Version und bei `org_or_personal` persönliche sowie aktive organisatorische Credential-Version konfliktfrei zugeordnet sind;
+- `organization`: die laut realer Read-Contract-Matrix erforderlichen persönlichen und aktiven organisatorischen Credential-Versionen unabhängig von `contentAuthorPolicy` konfliktfrei zugeordnet sind;
 - keine konkurrierenden Claims für die benötigten DataProvider bestehen.
 
-Der erste Cutover erfolgt über das getrackte Development-Profil. Nach erfolgreicher Dev-Abnahme folgt Staging mit demselben gestuften, getrackten Konfigurationsvertrag auf `automatic`; Production bleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`. Die Promotion folgt dem regulären Same-Digest-Rolloutprozess.
+Development und Staging laufen durch bewusste Produktentscheidung bereits auf `automatic`.
+Die noch offene Vertragsevidenz ist dort Nacharbeit und kein Grund für einen automatischen
+Rollback. Production bleibt bis zu einer späteren ausdrücklichen Abnahme auf `shadow`. Jede
+Promotion folgt dem regulären Same-Digest-Rolloutprozess.
 
 Global kann der Pfad erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können, die Principal-zu-DataProvider-Kardinalität bestätigt ist und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsentscheidungen mehr zeigen.
+
+## Rebaseline und aktueller Delivery-Stand
+
+Der Change wurde am 12. August 2026 erneut gegen Implementierung, Tests, getrackte
+Remote-Konfiguration, Runtime-Telemetrie und parallele OpenSpec-Changes geprüft. Dabei
+gilt folgender Stand:
+
+- Der Kernvertrag für explizite Mutationsprincipals, stabile Credential-Kontexte,
+  Identity-Bindungen, Journal und exakte Scope-Auswertung ist implementiert und durch
+  gezielte Unit- und Integrationstests abgedeckt.
+- Die aktuelle reguläre Projektion lädt bei `org_or_personal` nur den persönlichen
+  Credential-Scope. Ob eine zweite organisatorische Credential-Sicht für die fachlich
+  geforderte Menge `own ∪ aktive Organisation` notwendig ist, wird erst durch reale
+  persönliche und organisatorische Read-Contract-Tests entschieden. Der Change schreibt
+  keine Doppelabfrage ohne diesen Nachweis vor.
+- ADR-045 ist für die bisherige globale Organisations-Primärquelle weiterhin formal
+  accepted, widerspricht aber dem hier freigegebenen Fachvertrag. Eine neue ADR muss die
+  weiterhin gültigen Teile übernehmen und ADR-045 vor Implementierungsbeginn
+  supersedieren.
+- Normale Content-Create-Responses und Same-Credential-Re-Reads bestätigen nur eine
+  bestehende Identity-Bindung. Sie dürfen keine neue Principal-Bindung begründen.
+- Development und Staging sind in den getrackten Profilen bereits auf `automatic`
+  konfiguriert. Dieser Zustand ist als Produktentscheidung akzeptiert; Production bleibt
+  auf `shadow`.
+- Die reale persönliche und organisatorische Contract-Matrix ist weiterhin offen. Die
+  bisherige Staging-Telemetrie belegt den persönlichen automatischen Pfad, aber noch
+  keine Organisationsprincipal-Mutation.
+- `surveys.create` ist bewusst freigegeben. Die noch fehlende reale persönliche und
+  organisatorische Vertragsevidenz wird nachgeholt, blockiert die bestehende Freigabe aber
+  nicht.
+- Der Mainserver-Principal wird in der Oberfläche noch über administrative
+  Organisationsdetails bestimmt. Diese Abhängigkeit und die fehlerhafte Auswahl anhand
+  des ersten `isActive`-Eintrags werden durch den zentralen Self-Service-Kontext-Resolver
+  dieses Changes ersetzt.
+
+Die bereits abgeschlossenen Changes `make-mainserver-content-authoritative`,
+`update-mainserver-editor-resilience`, `standardize-plugin-content-history` und
+`add-organization-mainserver-provisioning` bleiben fachliche Voraussetzungen. Der
+neuere Change `centralize-scoped-ui-access` ist für den gemeinsamen fail-closed
+UI-Decision- und Ressourcen-Capability-Vertrag führend. Dieser Change definiert nur die
+Mainserver-spezifische Principal-Auswahl und darf keine parallele allgemeine
+UI-Autorisierungslogik einführen.
+
+Der Change ist erst archivierbar, wenn die offenen Contract-, Capability-,
+Principal-Resolver- und Rollout-Aufgaben abgeschlossen, die Umgebungsnachweise eindeutig
+zuordenbar und die Delta-Specs mit den genannten parallelen Changes komponiert sind.

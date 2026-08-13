@@ -3,11 +3,7 @@ import {
   normalizeRoleDetailTab,
   type AppRouteBindings as BaseAppRouteBindings,
 } from '@sva/routing';
-import {
-  resolveUserDisplayName,
-  type IamOrganizationContextOption,
-  type IamOrganizationDetail,
-} from '@sva/core';
+import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import {
   CockpitCardsCreatePage,
@@ -25,10 +21,10 @@ import type { MainserverPrincipalControlModel } from '@sva/studio-ui-react';
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import React from 'react';
 
+import { Alert, AlertDescription } from '../components/ui/alert';
 import { useMainserverMutationCapabilities } from '../hooks/use-mainserver-mutation-capabilities';
 import { useOrganizationContext } from '../hooks/use-organization-context';
 import { t } from '../i18n';
-import { getOrganization } from '../lib/iam-api';
 import { useAuth } from '../providers/auth-provider';
 import { AccountProfilePage } from '../routes/account/-account-profile-page';
 import { AccountPrivacyPage } from '../routes/account/-account-privacy-page';
@@ -69,94 +65,99 @@ const readStringParam = (value: unknown, fallback = ''): string => {
 
 const EMPTY_ORGANIZATIONS: readonly IamOrganizationContextOption[] = [];
 
+export type MainserverPrincipalResolution =
+  | Readonly<{ kind: 'ready'; control: MainserverPrincipalControlModel }>
+  | Readonly<{ kind: 'unavailable'; reason: 'context_loading' | 'context_unavailable' }>;
+
 export const resolveMainserverPrincipalControl = (input: {
+  readonly contextAvailable: boolean;
+  readonly contextLoading?: boolean;
+  readonly activeOrganizationId?: string;
   readonly organizations: readonly IamOrganizationContextOption[];
-  readonly organizationDetails: ReadonlyMap<string, IamOrganizationDetail>;
   readonly userDisplayName?: string;
-}): MainserverPrincipalControlModel => {
-  const activeOrganization = input.organizations.find((organization) => organization.isActive);
+}): MainserverPrincipalResolution => {
+  if (input.contextLoading) {
+    return { kind: 'unavailable', reason: 'context_loading' };
+  }
+  if (!input.contextAvailable) {
+    return { kind: 'unavailable', reason: 'context_unavailable' };
+  }
+
+  const activeOrganization = input.activeOrganizationId
+    ? input.organizations.find(
+        (organization) =>
+          organization.organizationId === input.activeOrganizationId && organization.isActive
+      )
+    : undefined;
   const userDisplayName = input.userDisplayName?.trim() || t('content.principal.user');
   const organizationName = activeOrganization?.displayName.trim() ?? '';
-  const policy = activeOrganization
-    ? input.organizationDetails.get(activeOrganization.organizationId)?.contentAuthorPolicy
-    : undefined;
+  const policy = activeOrganization?.contentAuthorPolicy;
+
+  if (input.activeOrganizationId && (!activeOrganization || organizationName.length === 0)) {
+    return { kind: 'unavailable', reason: 'context_unavailable' };
+  }
 
   if (policy === 'org_only' && organizationName.length > 0) {
-    return { kind: 'fixed', value: 'organization', label: organizationName };
+    return {
+      kind: 'ready',
+      control: { kind: 'fixed', value: 'organization', label: organizationName },
+    };
   }
 
   if (policy === 'org_or_personal' && organizationName.length > 0) {
     return {
-      kind: 'selectable',
-      value: 'organization',
-      options: [
-        { value: 'organization', label: organizationName },
-        { value: 'user', label: userDisplayName },
-      ],
+      kind: 'ready',
+      control: {
+        kind: 'selectable',
+        value: 'organization',
+        options: [
+          { value: 'organization', label: organizationName },
+          { value: 'user', label: userDisplayName },
+        ],
+      },
     };
   }
 
-  return { kind: 'fixed', value: 'user', label: userDisplayName };
+  return {
+    kind: 'ready',
+    control: { kind: 'fixed', value: 'user', label: userDisplayName },
+  };
 };
 
 const useMainserverPrincipalControl = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { user } = useAuth();
   const organizationContext = useOrganizationContext();
-  const [organizationDetails, setOrganizationDetails] = React.useState<
-    ReadonlyMap<string, IamOrganizationDetail>
-  >(() => new Map());
-
   const organizations = organizationContext.context?.organizations ?? EMPTY_ORGANIZATIONS;
-  const activeOrganizations = React.useMemo(
-    () => organizations.filter((organization) => organization.isActive),
-    [organizations]
-  );
-  const organizationIdsKey = activeOrganizations
-    .map((organization) => organization.organizationId)
-    .sort((left, right) => left.localeCompare(right))
-    .join('|');
-
-  React.useEffect(() => {
-    if (!isAuthenticated || activeOrganizations.length === 0) {
-      setOrganizationDetails((current) => (current.size === 0 ? current : new Map()));
-      return;
-    }
-
-    let active = true;
-
-    void Promise.all(
-      activeOrganizations.map(async (organization) => {
-        try {
-          const response = await getOrganization(organization.organizationId);
-          return [organization.organizationId, response.data] as const;
-        } catch {
-          return null;
-        }
-      })
-    ).then((entries) => {
-      if (!active) {
-        return;
-      }
-
-      const nextDetails = new Map<string, IamOrganizationDetail>();
-      for (const entry of entries) {
-        if (entry) {
-          nextDetails.set(entry[0], entry[1]);
-        }
-      }
-      setOrganizationDetails(nextDetails);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [activeOrganizations, isAuthenticated, organizationIdsKey]);
 
   return resolveMainserverPrincipalControl({
+    contextAvailable: organizationContext.context !== null && organizationContext.error === null,
+    contextLoading: organizationContext.isLoading,
+    activeOrganizationId: organizationContext.context?.activeOrganizationId,
     organizations,
-    organizationDetails,
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
   });
+};
+
+const MainserverPrincipalBoundary = ({
+  children,
+}: Readonly<{
+  children: (control: MainserverPrincipalControlModel) => React.ReactNode;
+}>) => {
+  const resolution = useMainserverPrincipalControl();
+  if (resolution.kind === 'unavailable') {
+    return (
+      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+        <AlertDescription>
+          {t(
+            resolution.reason === 'context_loading'
+              ? 'content.principal.contextLoading'
+              : 'content.principal.contextUnavailable'
+          )}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+  return <>{children(resolution.control)}</>;
 };
 
 const AppPlaceholderRoutePage = () => (
@@ -167,13 +168,16 @@ const AppPlaceholderRoutePage = () => (
 );
 
 const ContentListRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
   const mutationCapabilities = useMainserverMutationCapabilities();
   return (
-    <ContentListPage
-      enabledMainserverMutationActions={mutationCapabilities.enabledActions}
-      principalControl={principalControl}
-    />
+    <MainserverPrincipalBoundary>
+      {(principalControl) => (
+        <ContentListPage
+          enabledMainserverMutationActions={mutationCapabilities.enabledActions}
+          principalControl={principalControl}
+        />
+      )}
+    </MainserverPrincipalBoundary>
   );
 };
 
@@ -185,90 +189,142 @@ const LazyMonitoringOverviewPage = React.lazy(async () => {
 const MonitoringRoutePage = () => renderLazyPage(LazyMonitoringOverviewPage);
 
 const NewsCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <NewsDetailPage mode="create" principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <NewsDetailPage mode="create" principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const NewsEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <NewsEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <NewsEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const EventsCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <EventsCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <EventsCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const EventsEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <EventsEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <EventsEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const GenericItemsCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <GenericItemsCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <GenericItemsCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const GenericItemsEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <GenericItemsEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <GenericItemsEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const FaqCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <FaqCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <FaqCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const FaqEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <FaqEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <FaqEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const CockpitCardsCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <CockpitCardsCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <CockpitCardsCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const CockpitCardsEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <CockpitCardsEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <CockpitCardsEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const ProjectsCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <ProjectsCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <ProjectsCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const ProjectsEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <ProjectsEditPage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <ProjectsEditPage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const PoiCreateRoutePage = () => {
   const { user } = useAuth();
-  const principalControl = useMainserverPrincipalControl();
-  return <PoiCreatePage instanceId={user?.instanceId} principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => (
+        <PoiCreatePage instanceId={user?.instanceId} principalControl={principalControl} />
+      )}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const PoiEditRoutePage = () => {
   const { user } = useAuth();
-  const principalControl = useMainserverPrincipalControl();
-  return <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => (
+        <PoiEditPage instanceId={user?.instanceId} principalControl={principalControl} />
+      )}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const SurveyCreateRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
-  return <SurveyCreatePage principalControl={principalControl} />;
+  return (
+    <MainserverPrincipalBoundary>
+      {(principalControl) => <SurveyCreatePage principalControl={principalControl} />}
+    </MainserverPrincipalBoundary>
+  );
 };
 
 const SurveyEditRoutePage = () => {
-  const principalControl = useMainserverPrincipalControl();
   const mutationCapabilities = useMainserverMutationCapabilities();
   return (
-    <SurveyEditPage
-      canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
-      principalControl={principalControl}
-    />
+    <MainserverPrincipalBoundary>
+      {(principalControl) => (
+        <SurveyEditPage
+          canUpdate={mutationCapabilities.enabledActions.includes('surveys.update')}
+          principalControl={principalControl}
+        />
+      )}
+    </MainserverPrincipalBoundary>
   );
 };
 

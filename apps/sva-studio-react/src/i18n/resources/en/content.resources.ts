@@ -127,6 +127,9 @@ export const contentENResources = {
   },
   principal: {
     user: 'Personally',
+    contextLoading: 'The author context is loading. Write actions are temporarily blocked.',
+    contextUnavailable:
+      'The author context could not be determined unambiguously. Write actions remain blocked.',
   },
   access: {
     states: {
@@ -181,7 +184,7 @@ export const contentENResources = {
     refreshing: 'Refreshing ...',
     running: 'Mainserver content is currently synchronizing in the background.',
     partial:
-      'Preliminary view: sorting, filters, and counts apply only to content already available locally.',
+      'This list is incomplete. Sorting, filters, and counts apply only to content already available locally.',
     runningWithSnapshot:
       'Mainserver content is currently synchronizing in the background. The last successful snapshot from {{value}} is still shown.',
     stale:

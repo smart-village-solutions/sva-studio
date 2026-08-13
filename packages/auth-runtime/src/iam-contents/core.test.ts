@@ -13,6 +13,7 @@ const {
   loadContentListItemsMock,
   loadContentListScopesMock,
   loadExternalContentReferenceBySourceEntityMock,
+  loadMainserverContentProjectionCandidatesMock,
   resolveContentAccessMock,
   resolveContentActorMock,
   resolveContentAuthorizationPermissionsMock,
@@ -28,6 +29,7 @@ const {
   loadContentListItemsMock: vi.fn(),
   loadContentListScopesMock: vi.fn(),
   loadExternalContentReferenceBySourceEntityMock: vi.fn(),
+  loadMainserverContentProjectionCandidatesMock: vi.fn(),
   resolveContentAccessMock: vi.fn(),
   resolveContentActorMock: vi.fn(),
   resolveContentAuthorizationPermissionsMock: vi.fn(),
@@ -59,6 +61,10 @@ vi.mock('./mutations.js', () => ({
 
 vi.mock('./external-content-references.js', () => ({
   loadExternalContentReferenceBySourceEntity: loadExternalContentReferenceBySourceEntityMock,
+}));
+
+vi.mock('./mainserver-content-projection.js', () => ({
+  loadMainserverContentProjectionCandidates: loadMainserverContentProjectionCandidatesMock,
 }));
 
 const {
@@ -132,6 +138,8 @@ describe('content core authorization', () => {
     loadContentListItemsMock.mockReset();
     loadContentListScopesMock.mockReset();
     loadExternalContentReferenceBySourceEntityMock.mockReset();
+    loadMainserverContentProjectionCandidatesMock.mockReset();
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([]);
     resolveContentAccessMock.mockReset();
     resolveContentActorMock.mockReset();
     resolveContentAuthorizationPermissionsMock.mockReset();
@@ -548,6 +556,59 @@ describe('content core authorization', () => {
     });
     expect(loadContentByIdMock).toHaveBeenCalledTimes(1);
     expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
+  });
+
+  it('resolves an unbound native Mainserver id from an exact principal projection', async () => {
+    const projection = item('upstream-faq-1', '11111111-1111-4111-8111-111111111111');
+    projection.contentType = 'faq.faq';
+    projection.credentialSource = 'organization';
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue(undefined);
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([projection]);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/upstream-faq-1?contentType=faq.faq'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'faq.faq',
+      sourceEntityId: 'upstream-faq-1',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(authorizeContentActionMock).toHaveBeenCalledWith(
+      actor,
+      'faq.read',
+      expect.objectContaining({ contentId: 'upstream-faq-1' })
+    );
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: {
+        id: 'upstream-faq-1',
+        credentialSource: 'organization',
+        history: [],
+      },
+    });
+    expect(loadContentByIdMock).not.toHaveBeenCalled();
+    expect(loadContentDetailMock).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when an unbound Mainserver id has ambiguous principal projections', async () => {
+    const personal = item('shared-id', '11111111-1111-4111-8111-111111111111');
+    personal.contentType = 'faq.faq';
+    personal.credentialSource = 'user';
+    const organization = { ...personal, credentialSource: 'organization' as const };
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([personal, organization]);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/shared-id?contentType=faq.faq'),
+      ctx
+    );
+
+    expect(response.status).toBe(404);
+    expect(authorizeContentActionMock).not.toHaveBeenCalled();
   });
 
   it.each([

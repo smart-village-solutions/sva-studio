@@ -3,12 +3,19 @@ import {
   iamContentListSortFields,
   iamContentStatuses,
   isUuid,
+  type IamContentListItem,
   type IamContentStatus,
   type IamContentListQuery,
 } from '@sva/core';
 import { createSdkLogger } from '@sva/server-runtime';
 
-import { asApiItem, asApiList, createApiError, readPage, readPathSegment } from '../iam-account-management/api-helpers.js';
+import {
+  asApiItem,
+  asApiList,
+  createApiError,
+  readPage,
+  readPathSegment,
+} from '../iam-account-management/api-helpers.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import {
   authorizeContentAction,
@@ -21,8 +28,13 @@ import {
   isServerAuthorizationError,
   resolveReadableContentScopes,
 } from './read-authorization.js';
-import { createContentResponse, deleteContentResponse, updateContentResponse } from './mutations.js';
+import {
+  createContentResponse,
+  deleteContentResponse,
+  updateContentResponse,
+} from './mutations.js';
 import { loadExternalContentReferenceBySourceEntity } from './external-content-references.js';
+import { loadMainserverContentProjectionCandidates } from './mainserver-content-projection.js';
 import {
   loadContentById,
   loadContentDetail,
@@ -52,7 +64,8 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
     .filter((value) => value.length > 0);
 
   if (
-    (sortByValue !== undefined && !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
+    (sortByValue !== undefined &&
+      !(iamContentListSortFields as readonly string[]).includes(sortByValue)) ||
     (sortDirectionValue !== undefined &&
       !(iamContentListSortDirections as readonly string[]).includes(sortDirectionValue))
   ) {
@@ -64,16 +77,15 @@ const readContentListQuery = (request: Request): IamContentListQuery => {
     pageSize,
     ...(q ? { q } : {}),
     ...(typeValue && typeValue !== 'all' ? { type: typeValue } : {}),
-    ...(statusValue && isContentStatus(statusValue)
-      ? { status: statusValue }
-      : {}),
+    ...(statusValue && isContentStatus(statusValue) ? { status: statusValue } : {}),
     ...(visibleTypes.length > 0 ? { visibleTypes } : {}),
     sortBy:
       sortByValue && (iamContentListSortFields as readonly string[]).includes(sortByValue)
         ? (sortByValue as IamContentListQuery['sortBy'])
         : 'updatedAt',
     sortDirection:
-      sortDirectionValue && (iamContentListSortDirections as readonly string[]).includes(sortDirectionValue)
+      sortDirectionValue &&
+      (iamContentListSortDirections as readonly string[]).includes(sortDirectionValue)
         ? (sortDirectionValue as IamContentListQuery['sortDirection'])
         : 'desc',
   };
@@ -160,12 +172,18 @@ export const getContentInternal = async (
 
   const contentId = readPathSegment(request, 4);
   if (!contentId) {
-    return createApiError(400, 'invalid_request', 'Inhalts-ID fehlt.', actorResolution.actor.requestId);
+    return createApiError(
+      400,
+      'invalid_request',
+      'Inhalts-ID fehlt.',
+      actorResolution.actor.requestId
+    );
   }
 
   try {
     const contentType = new URL(request.url).searchParams.get('contentType')?.trim();
-    let item;
+    let item: IamContentListItem | undefined;
+    let projectedItem = false;
     if (contentType) {
       const reference = await loadExternalContentReferenceBySourceEntity({
         instanceId: actorResolution.actor.instanceId,
@@ -175,13 +193,30 @@ export const getContentInternal = async (
       });
       if (reference) {
         item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
+      } else {
+        const candidates = await loadMainserverContentProjectionCandidates({
+          instanceId: actorResolution.actor.instanceId,
+          contentType,
+          sourceEntityId: contentId,
+          actorAccountId: actorResolution.actor.actorAccountId,
+          activeOrganizationId: actorResolution.actor.activeOrganizationId,
+        });
+        if (candidates.length === 1) {
+          [item] = candidates;
+          projectedItem = true;
+        }
       }
     }
     if (!item && (!contentType || isUuid(contentId))) {
       item = await loadContentById(actorResolution.actor.instanceId, contentId);
     }
     if (!item) {
-      return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
+      return createApiError(
+        404,
+        'not_found',
+        'Inhalt wurde nicht gefunden.',
+        actorResolution.actor.requestId
+      );
     }
 
     const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
@@ -190,15 +225,25 @@ export const getContentInternal = async (
     }
 
     const [detail, access] = await Promise.all([
-      loadContentDetail(actorResolution.actor.instanceId, item.id),
+      projectedItem
+        ? Promise.resolve({ ...item, history: [] })
+        : loadContentDetail(actorResolution.actor.instanceId, item.id),
       resolveContentAccess(actorResolution.actor),
     ]);
     return detail
-      ? new Response(JSON.stringify(asApiItem({ ...detail, access }, actorResolution.actor.requestId)), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      : createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
+      ? new Response(
+          JSON.stringify(asApiItem({ ...detail, access }, actorResolution.actor.requestId)),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        )
+      : createApiError(
+          404,
+          'not_found',
+          'Inhalt wurde nicht gefunden.',
+          actorResolution.actor.requestId
+        );
   } catch (error) {
     logger.error('Content detail query failed', {
       operation: 'content_detail',
@@ -228,7 +273,12 @@ export const getContentHistoryInternal = async (
 
   const contentId = readPathSegment(request, 4);
   if (!contentId) {
-    return createApiError(400, 'invalid_request', 'Inhalts-ID fehlt.', actorResolution.actor.requestId);
+    return createApiError(
+      400,
+      'invalid_request',
+      'Inhalts-ID fehlt.',
+      actorResolution.actor.requestId
+    );
   }
 
   try {
@@ -249,16 +299,25 @@ export const getContentHistoryInternal = async (
       item = await loadContentById(actorResolution.actor.instanceId, contentId);
     }
     if (!item) {
-      return createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', actorResolution.actor.requestId);
+      return createApiError(
+        404,
+        'not_found',
+        'Inhalt wurde nicht gefunden.',
+        actorResolution.actor.requestId
+      );
     }
 
-    const authorizationError = await authorizeContentAction(actorResolution.actor, 'content.readHistory', {
-      contentId: item.id,
-      contentType: item.contentType,
-      organizationId: item.organizationId,
-      ownerUserId: item.ownerUserId,
-      ownerOrganizationId: item.ownerOrganizationId,
-    });
+    const authorizationError = await authorizeContentAction(
+      actorResolution.actor,
+      'content.readHistory',
+      {
+        contentId: item.id,
+        contentType: item.contentType,
+        organizationId: item.organizationId,
+        ownerUserId: item.ownerUserId,
+        ownerOrganizationId: item.ownerOrganizationId,
+      }
+    );
     if (authorizationError) {
       return authorizationError;
     }
@@ -266,7 +325,13 @@ export const getContentHistoryInternal = async (
     const history = await loadContentHistory(actorResolution.actor.instanceId, item.id);
     const pageSize = Math.max(1, history.length);
     return new Response(
-      JSON.stringify(asApiList(history, { page: 1, pageSize, total: history.length }, actorResolution.actor.requestId)),
+      JSON.stringify(
+        asApiList(
+          history,
+          { page: 1, pageSize, total: history.length },
+          actorResolution.actor.requestId
+        )
+      ),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -292,7 +357,9 @@ export const createContentInternal = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const actorResolution = await resolveContentActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : createContentResponse(request, actorResolution.actor);
+  return 'error' in actorResolution
+    ? actorResolution.error
+    : createContentResponse(request, actorResolution.actor);
 };
 
 export const updateContentInternal = async (
@@ -300,7 +367,9 @@ export const updateContentInternal = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const actorResolution = await resolveContentActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : updateContentResponse(request, actorResolution.actor);
+  return 'error' in actorResolution
+    ? actorResolution.error
+    : updateContentResponse(request, actorResolution.actor);
 };
 
 export const deleteContentInternal = async (
@@ -308,12 +377,20 @@ export const deleteContentInternal = async (
   ctx: AuthenticatedRequestContext
 ): Promise<Response> => {
   const actorResolution = await resolveContentActor(request, ctx, { requireActorAccountId: true });
-  return 'error' in actorResolution ? actorResolution.error : deleteContentResponse(request, actorResolution.actor);
+  return 'error' in actorResolution
+    ? actorResolution.error
+    : deleteContentResponse(request, actorResolution.actor);
 };
 
-export const listContentsHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, listContentsInternal);
-export const getContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, getContentInternal);
-export const getContentHistoryHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, getContentHistoryInternal);
-export const createContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, createContentInternal);
-export const updateContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, updateContentInternal);
-export const deleteContentHandler = async (request: Request): Promise<Response> => withAuthenticatedContentHandler(request, deleteContentInternal);
+export const listContentsHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, listContentsInternal);
+export const getContentHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, getContentInternal);
+export const getContentHistoryHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, getContentHistoryInternal);
+export const createContentHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, createContentInternal);
+export const updateContentHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, updateContentInternal);
+export const deleteContentHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedContentHandler(request, deleteContentInternal);

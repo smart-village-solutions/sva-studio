@@ -1,27 +1,19 @@
 import React from 'react';
-import { Link } from '@tanstack/react-router';
-import { CalendarDays, Heart, ImageUp, Newspaper, Users } from 'lucide-react';
+import { Heart } from 'lucide-react';
 
 import { t } from '../i18n';
-import { useContentAccess } from '../hooks/use-content-access';
 import { readLatestAuthDiagnosticSnapshot } from '../lib/auth-diagnostics';
 import { createLoginHref, sanitizeReturnTo } from '../lib/auth-navigation';
-import {
-  hasPlatformInstanceAdminAccess,
-  hasUserAdminAccess,
-  isIamAdminEnabled,
-} from '../lib/iam-admin-access';
 import {
   formatPermissionDenialMessage,
   readPermissionDenialFromSearch,
 } from '../lib/permission-denial-presentation';
 import { resolvePermissionTitle } from '../lib/permission-labels';
-import { studioContentTypes } from '../lib/plugins';
 import { type StudioChangelogState } from '../lib/studio-changelog-state';
 import { useAuth } from '../providers/auth-provider';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Button } from '@sva/studio-ui-react';
-import { Card, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { HomeActionCards } from './-home-action-cards';
 import { loadStudioChangelogState, StudioChangelogSection } from './-home-page-studio-changelog';
 
 type HomeRouteState = {
@@ -182,106 +174,9 @@ const AuthenticatedHomeOverview = ({
   readonly changelogState: StudioChangelogState;
   readonly user: ReturnType<typeof useAuth>['user'];
 }) => {
-  const contentAccessApi = useContentAccess();
-  const permissionActions = contentAccessApi.permissionActions;
-  const accessUser = user ? { ...user, permissionActions } : null;
-  const isModuleAssigned = (moduleId: string) => user?.assignedModules?.includes(moduleId) === true;
-  const findCreatePath = (requiredAction: string) =>
-    studioContentTypes.find((definition) => definition.requiredCreateAction === requiredAction)
-      ?.createPath;
-  const newsCreatePath = findCreatePath('news.create');
-  const eventsCreatePath = findCreatePath('events.create');
-  const cards = [
-    ...(newsCreatePath && isModuleAssigned('news') && permissionActions.includes('news.create')
-      ? [
-          {
-            id: 'news',
-            to: newsCreatePath,
-            title: t('home.cards.news.title'),
-            description: t('home.cards.news.description'),
-            icon: Newspaper,
-          },
-        ]
-      : []),
-    ...(eventsCreatePath &&
-    isModuleAssigned('events') &&
-    permissionActions.includes('events.create')
-      ? [
-          {
-            id: 'events',
-            to: eventsCreatePath,
-            title: t('home.cards.events.title'),
-            description: t('home.cards.events.description'),
-            icon: CalendarDays,
-          },
-        ]
-      : []),
-    ...(isModuleAssigned('media') && permissionActions.includes('media.create')
-      ? [
-          {
-            id: 'media',
-            to: '/admin/media/new',
-            title: t('home.cards.media.title'),
-            description: t('home.cards.media.description'),
-            icon: ImageUp,
-          },
-        ]
-      : []),
-    ...(isIamAdminEnabled() &&
-    (hasUserAdminAccess(accessUser) || hasPlatformInstanceAdminAccess(accessUser))
-      ? [
-          {
-            id: 'users',
-            to: '/admin/users',
-            title: t('home.cards.users.title'),
-            description: t('home.cards.users.description'),
-            icon: Users,
-          },
-        ]
-      : []),
-  ];
-  const desktopGridClass =
-    cards.length >= 4
-      ? 'lg:grid-cols-4'
-      : cards.length === 3
-        ? 'lg:grid-cols-3'
-        : cards.length === 2
-          ? 'lg:grid-cols-2'
-          : 'lg:grid-cols-1';
-  const mediumGridClass = cards.length >= 2 ? 'md:grid-cols-2' : 'md:grid-cols-1';
-
   return (
     <section className="mx-auto w-full max-w-6xl px-6 py-12">
-      {cards.length > 0 ? (
-        <div className={`grid gap-4 ${mediumGridClass} ${desktopGridClass}`}>
-          {cards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Card
-                key={card.id}
-                className="h-full border-border/80 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-              >
-                <Link
-                  to={card.to}
-                  className="block h-full rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <CardHeader className="h-full space-y-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Icon aria-hidden="true" className="h-6 w-6" />
-                    </div>
-                    <div className="space-y-2">
-                      <CardTitle>{card.title}</CardTitle>
-                      <CardDescription className="text-sm leading-6">
-                        {card.description}
-                      </CardDescription>
-                    </div>
-                  </CardHeader>
-                </Link>
-              </Card>
-            );
-          })}
-        </div>
-      ) : null}
+      <HomeActionCards user={user} />
 
       <StudioChangelogSection changelogState={changelogState} />
     </section>

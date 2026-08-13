@@ -40,6 +40,12 @@ export const gotoHomeAsAuthenticatedUser = async (page: Page, expectedUserName =
   await expect(page.getByRole('button', { name: expectedTriggerPattern })).toBeVisible();
 };
 
+export const expectAppShellReady = async (page: Page, timeout = 20_000) => {
+  const mainContent = page.locator('main#main-content');
+  await expect(mainContent).toBeVisible({ timeout });
+  await expect(mainContent).toHaveAttribute('aria-busy', 'false', { timeout });
+};
+
 export const navigateClientSide = async (page: Page, targetPath: string) => {
   const routerAvailable = await page
     .waitForFunction(

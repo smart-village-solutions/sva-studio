@@ -5,11 +5,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const useAuthMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, to }: { readonly children: ReactNode; readonly to: string }) => <a href={to}>{children}</a>,
+  Link: ({ children, to }: { readonly children: ReactNode; readonly to: string }) => (
+    <a href={to}>{children}</a>
+  ),
 }));
 
 vi.mock('../providers/auth-provider', () => ({
   useAuth: () => useAuthMock(),
+}));
+
+vi.mock('../hooks/use-content-access', () => ({
+  useContentAccess: () => ({ permissionActions: [] }),
 }));
 
 import { HomePage } from './-home-page';
@@ -95,7 +101,9 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Die letzten Änderungen konnten gerade nicht geladen werden.')).toBeTruthy();
+      expect(
+        screen.getByText('Die letzten Änderungen konnten gerade nicht geladen werden.')
+      ).toBeTruthy();
     });
   });
 });

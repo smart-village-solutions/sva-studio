@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { Page, Route } from '@playwright/test';
 
-import { navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
+import {
+  expectAppShellReady,
+  navigateClientSide,
+  registerSharedIamRoutes,
+} from './studio-shell.helpers';
 
 type MediaAssetRecord = {
   readonly id: string;
@@ -77,25 +81,6 @@ const permissionPayload = {
   evaluatedAt: '2026-04-29T12:00:00.000Z',
 };
 
-const expectInterfacesShellReady = async (page: Page, timeout = 20_000) => {
-  await expect
-    .poll(
-      async () => {
-        const headingVisible = await page.getByRole('heading', { name: 'Schnittstellen' }).isVisible().catch(() => false);
-        if (headingVisible) {
-          return true;
-        }
-
-        return page
-          .getByText('Schnittstellen werden geladen ...')
-          .isVisible()
-          .catch(() => false);
-      },
-      { timeout }
-    )
-    .toBe(true);
-};
-
 const mockSharedShellRequests = async (page: Page) => {
   await page.route('**/auth/me**', async (route) => {
     await route.fulfill({
@@ -161,7 +146,11 @@ const routeMediaRequests = async (
   }
 
   if (path === '/api/v1/iam/media/upload-sessions' && method === 'POST') {
-    const body = request.postDataJSON() as { mimeType: string; byteSize: number; visibility?: 'public' | 'protected' };
+    const body = request.postDataJSON() as {
+      mimeType: string;
+      byteSize: number;
+      visibility?: 'public' | 'protected';
+    };
     const asset: MediaAssetRecord = {
       id: 'asset-1',
       instanceId: 'de-musterhausen',
@@ -302,7 +291,11 @@ const routeMediaRequests = async (
     return;
   }
 
-  await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'not_found' }) });
+  await route.fulfill({
+    status: 404,
+    contentType: 'application/json',
+    body: JSON.stringify({ error: 'not_found' }),
+  });
 };
 
 test.describe('media management', () => {
@@ -310,7 +303,9 @@ test.describe('media management', () => {
     await mockSharedShellRequests(page);
   });
 
-  test('uploads a file from the media library and opens the detail workspace afterwards', async ({ page }) => {
+  test('uploads a file from the media library and opens the detail workspace afterwards', async ({
+    page,
+  }) => {
     const state: {
       assets: MediaAssetRecord[];
       usageByAssetId: Record<string, MediaUsageRecord>;
@@ -331,7 +326,7 @@ test.describe('media management', () => {
     });
 
     await page.goto('/interfaces');
-    await expectInterfacesShellReady(page);
+    await expectAppShellReady(page);
     await navigateClientSide(page, '/admin/media');
     await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
     await page.locator('[data-testid="media-upload-input"]').setInputFiles({
@@ -349,7 +344,9 @@ test.describe('media management', () => {
 
     await page.getByRole('button', { name: 'Medium löschen' }).click();
 
-    await expect(page.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')).toBeVisible();
+    await expect(
+      page.getByText('Die Medienaktion konnte wegen eines Konflikts nicht abgeschlossen werden.')
+    ).toBeVisible();
     await expect(page.getByText('Aktive Referenzen: 1')).toBeVisible();
   });
 
@@ -370,7 +367,7 @@ test.describe('media management', () => {
     });
 
     await page.goto('/interfaces');
-    await expectInterfacesShellReady(page);
+    await expectAppShellReady(page);
     await navigateClientSide(page, '/admin/media');
     await expect(page.getByRole('heading', { name: 'Medienbibliothek' })).toBeVisible();
 

@@ -22,6 +22,9 @@ const routeState = vi.hoisted(() => ({
       isDefaultContext: boolean;
     }>,
   },
+  organizationContextIsLoading: false,
+  organizationContextIsUpdating: false,
+  organizationContextError: null as null | Error,
   enabledMainserverMutationActions: [] as string[],
 }));
 
@@ -74,8 +77,9 @@ vi.mock('../providers/auth-provider', () => ({
 vi.mock('../hooks/use-organization-context', () => ({
   useOrganizationContext: () => ({
     context: routeState.organizationContext,
-    isLoading: false,
-    error: null,
+    isLoading: routeState.organizationContextIsLoading,
+    isUpdating: routeState.organizationContextIsUpdating,
+    error: routeState.organizationContextError,
   }),
 }));
 
@@ -436,6 +440,9 @@ describe('appRouteBindings', () => {
       activeOrganizationId: undefined,
       organizations: [],
     };
+    routeState.organizationContextIsLoading = false;
+    routeState.organizationContextIsUpdating = false;
+    routeState.organizationContextError = null;
     routeState.enabledMainserverMutationActions = [];
   });
 
@@ -596,6 +603,69 @@ describe('appRouteBindings', () => {
 
     expect(screen.queryByTestId('news-create-page')).toBeNull();
     expect(screen.getByText('Author context unavailable')).toBeTruthy();
+  });
+
+  it('blocks Mainserver editors when the active organization has no author policy', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-1',
+      organizations: [
+        {
+          organizationId: 'org-1',
+          organizationKey: 'org-1',
+          displayName: 'Stadt Musterhausen',
+          organizationType: 'municipality',
+          contentAuthorPolicy: undefined as never,
+          isActive: true,
+          isDefaultContext: true,
+        },
+      ],
+    };
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    expect(screen.queryByTestId('news-create-page')).toBeNull();
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+  });
+
+  it('blocks Mainserver editors while the organization context is switching', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContextIsUpdating = true;
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.newsEditor />);
+
+    expect(screen.queryByTestId('news-create-page')).toBeNull();
+    expect(screen.getByText('Author context loading')).toBeTruthy();
+  });
+
+  it('keeps the content list readable without enabling mutations when author context fails', async () => {
+    routeState.authUser = {
+      id: 'user-1',
+      displayName: 'Philipp Wilimzig',
+    };
+    routeState.organizationContext = {
+      activeOrganizationId: 'org-missing',
+      organizations: [],
+    };
+    routeState.enabledMainserverMutationActions = ['news.update', 'news.delete'];
+
+    const { appRouteBindings } = await import('./app-route-bindings');
+
+    render(<appRouteBindings.content />);
+
+    expect(screen.getByText('Author context unavailable')).toBeTruthy();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-principal')).toBeNull();
+    expect(screen.getByTestId('content-list-page').getAttribute('data-mutation-actions')).toBe('');
   });
 
   it('forwards the resolved principal contract to every Mainserver editor route', async () => {

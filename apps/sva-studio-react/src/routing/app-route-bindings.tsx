@@ -92,8 +92,12 @@ export const resolveMainserverPrincipalControl = (input: {
   const userDisplayName = input.userDisplayName?.trim() || t('content.principal.user');
   const organizationName = activeOrganization?.displayName.trim() ?? '';
   const policy = activeOrganization?.contentAuthorPolicy;
+  const hasValidPolicy = policy === 'org_only' || policy === 'org_or_personal';
 
-  if (input.activeOrganizationId && (!activeOrganization || organizationName.length === 0)) {
+  if (
+    input.activeOrganizationId &&
+    (!activeOrganization || organizationName.length === 0 || !hasValidPolicy)
+  ) {
     return { kind: 'unavailable', reason: 'context_unavailable' };
   }
 
@@ -131,12 +135,26 @@ const useMainserverPrincipalControl = () => {
 
   return resolveMainserverPrincipalControl({
     contextAvailable: organizationContext.context !== null && organizationContext.error === null,
-    contextLoading: organizationContext.isLoading,
+    contextLoading: organizationContext.isLoading || organizationContext.isUpdating,
     activeOrganizationId: organizationContext.context?.activeOrganizationId,
     organizations,
     userDisplayName: user ? resolveUserDisplayName(user) : undefined,
   });
 };
+
+const MainserverPrincipalAlert = ({
+  reason,
+}: Readonly<{ reason: 'context_loading' | 'context_unavailable' }>) => (
+  <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
+    <AlertDescription>
+      {t(
+        reason === 'context_loading'
+          ? 'content.principal.contextLoading'
+          : 'content.principal.contextUnavailable'
+      )}
+    </AlertDescription>
+  </Alert>
+);
 
 const MainserverPrincipalBoundary = ({
   children,
@@ -145,17 +163,7 @@ const MainserverPrincipalBoundary = ({
 }>) => {
   const resolution = useMainserverPrincipalControl();
   if (resolution.kind === 'unavailable') {
-    return (
-      <Alert className="border-destructive/40 bg-destructive/5 text-destructive">
-        <AlertDescription>
-          {t(
-            resolution.reason === 'context_loading'
-              ? 'content.principal.contextLoading'
-              : 'content.principal.contextUnavailable'
-          )}
-        </AlertDescription>
-      </Alert>
-    );
+    return <MainserverPrincipalAlert reason={resolution.reason} />;
   }
   return <>{children(resolution.control)}</>;
 };
@@ -169,15 +177,22 @@ const AppPlaceholderRoutePage = () => (
 
 const ContentListRoutePage = () => {
   const mutationCapabilities = useMainserverMutationCapabilities();
+  const resolution = useMainserverPrincipalControl();
+
+  if (resolution.kind === 'unavailable') {
+    return (
+      <div className="space-y-5">
+        <MainserverPrincipalAlert reason={resolution.reason} />
+        <ContentListPage enabledMainserverMutationActions={[]} />
+      </div>
+    );
+  }
+
   return (
-    <MainserverPrincipalBoundary>
-      {(principalControl) => (
-        <ContentListPage
-          enabledMainserverMutationActions={mutationCapabilities.enabledActions}
-          principalControl={principalControl}
-        />
-      )}
-    </MainserverPrincipalBoundary>
+    <ContentListPage
+      enabledMainserverMutationActions={mutationCapabilities.enabledActions}
+      principalControl={resolution.control}
+    />
   );
 };
 

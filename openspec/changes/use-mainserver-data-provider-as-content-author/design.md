@@ -259,7 +259,9 @@ Autorenrichtlinie oder eine frühere UI-Auswahl ersetzt diese Entscheidung nicht
 `activeOrganizationId` vorhanden, aber die Organisation fehlt, ist inaktiv oder besitzt keine
 gültige Richtlinie, liefert der Resolver einen blockierenden `unavailable`-Zustand. Die UI
 deaktiviert dann alle Mainserver-Schreibaktionen und zeigt einen übersetzten, konkreten
-Kontextfehler; sie darf nicht stillschweigend auf `user` zurückfallen.
+Kontextfehler; sie darf nicht stillschweigend auf `user` zurückfallen. Die Inhaltsliste bleibt
+dabei mit Filtern, Pagination und ressourcenbezogenen Leseaktionen verfügbar, erhält aber weder
+einen Mutationsprincipal noch freigegebene Mainserver-Mutationsaktionen.
 
 Nach einem erfolgreichen Organisationswechsel lädt die Shell den kanonischen Kontext neu, setzt
 die Principal-Auswahl auf den Default der neuen Richtlinie zurück und invalidiert

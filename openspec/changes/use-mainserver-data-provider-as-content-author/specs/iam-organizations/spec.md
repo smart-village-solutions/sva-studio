@@ -74,6 +74,7 @@ Der membership-gefilterte Self-Service-Contract `GET /api/v1/iam/me/context` SHA
 - **WHEN** die Oberfläche den Mutationsprincipal bestimmt
 - **THEN** liefert der zentrale Resolver einen blockierenden Kontextfehler
 - **AND** deaktiviert die Oberfläche Create, Update, Statusänderung und Delete für alle Mainserver-Content-Typen
+- **AND** bleibt die Inhaltsliste einschließlich Filtern, Pagination und zulässigen Leseaktionen verfügbar
 - **AND** fällt sie nicht stillschweigend auf `actingPrincipalType = user` zurück
 
 #### Scenario: Mehrere Mitgliedschaften verwenden exakt die aktive Organisation

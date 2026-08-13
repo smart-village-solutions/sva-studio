@@ -72,7 +72,7 @@
 - [x] 6.6 Admin-Diagnose für Bindungen, Konflikte, Rotation, Kompatibilitätsmodus, automatische Scope-Wechsel und Reconciliation ergänzen; keine manuelle Mapping-Funktion bereitstellen.
 - [x] 6.7 UI-, Audit-, History-, Datenschutz- und Accessibility-Tests ergänzen.
 - [x] 6.8 `GET /api/v1/iam/me/context` additiv um `contentAuthorPolicy` erweitern und den administrativen Organisationsdetail-Read aus allen Content-Routen entfernen.
-- [x] 6.9 Einen zentralen, exakt an `activeOrganizationId` gebundenen Create-Principal-Resolver mit explizitem `unavailable`-Zustand für fehlende, ladende oder widersprüchliche Organisationskontexte implementieren.
+- [x] 6.9 Einen zentralen, exakt an `activeOrganizationId` gebundenen Create-Principal-Resolver mit explizitem `unavailable`-Zustand für fehlende, ladende, wechselnde oder widersprüchliche Organisationskontexte implementieren; Inhaltslisten bleiben dabei ohne Mainserver-Mutationsfähigkeiten lesbar.
 - [x] 6.10 Eigenständige Status- und Delete-Aktionen der Inhaltsliste vorrangig an die projizierte Credential-Quelle des konkreten Inhalts binden; bei auswählbarer Create-Policy ohne Ressourcenprincipal fail-closed sperren.
 - [ ] 6.11 Die ressourcenbezogene Ownership-Principal-Auflösung und read-only Anzeige in allen Bestandseditoren fertigstellen; die Create-Policy darf persönliche Bestandsinhalte unter `org_only` nicht auf die Organisation umstellen.
 - [ ] 6.12 Verbleibende Contract-, Route- und Plugin-Integrationstests für persönliche Bestandsinhalte unter `org_only`, Organisationsinhalte nach Actor-Austritt, administrative Ressourcen-Capabilities und fail-closed Editorzustände ergänzen.

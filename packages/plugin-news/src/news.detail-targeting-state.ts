@@ -38,6 +38,20 @@ const filterTargetOptions = (
   );
 };
 
+const deriveTargetingSelection = (
+  options: readonly NewsWasteTargetOption[],
+  filtered: readonly NewsWasteTargetOption[],
+  draft: readonly WasteLocationKey[]
+) => {
+  const selectedIds = new Set(draft.map(wasteLocationKeyId));
+  const optionIds = new Set(options.map((option) => option.id));
+  const effectiveDraft = filtered
+    .filter((option) => selectedIds.has(option.id))
+    .map((option) => option.key);
+  const staleDraft = draft.filter((entry) => !optionIds.has(wasteLocationKeyId(entry)));
+  return { selectedIds, effectiveDraft, appliedDraft: [...staleDraft, ...effectiveDraft] };
+};
+
 export const useNewsTargetingEditor = (
   overview: WasteManagementMasterDataOverview,
   options: readonly NewsWasteTargetOption[],
@@ -86,19 +100,9 @@ export const useNewsTargetingEditor = (
     [citiesById, filters, overview.houseNumbers, streetsById]
   );
   const filtered = React.useMemo(() => filterTargetOptions(options, filters), [filters, options]);
-  const selectedIds = React.useMemo(() => new Set(draft.map(wasteLocationKeyId)), [draft]);
-  const optionIds = React.useMemo(() => new Set(options.map((option) => option.id)), [options]);
-  const effectiveDraft = React.useMemo(
-    () => filtered.filter((option) => selectedIds.has(option.id)).map((option) => option.key),
-    [filtered, selectedIds]
-  );
-  const staleDraft = React.useMemo(
-    () => draft.filter((entry) => !optionIds.has(wasteLocationKeyId(entry))),
-    [draft, optionIds]
-  );
-  const appliedDraft = React.useMemo(
-    () => [...staleDraft, ...effectiveDraft],
-    [effectiveDraft, staleDraft]
+  const { selectedIds, effectiveDraft, appliedDraft } = React.useMemo(
+    () => deriveTargetingSelection(options, filtered, draft),
+    [draft, filtered, options]
   );
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -112,6 +116,8 @@ export const useNewsTargetingEditor = (
     setFilters((current) => ({ ...current, ...next }));
   };
   const openEditor = () => {
+    setFilters(initialFilters);
+    setPage(1);
     setDraft(selected);
     setOpen(true);
   };

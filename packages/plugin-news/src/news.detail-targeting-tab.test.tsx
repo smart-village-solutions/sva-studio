@@ -231,6 +231,35 @@ describe('NewsDetailTargetingTab', () => {
     expect(screen.getByText('targeting.mode.targeted:1')).toBeTruthy();
   });
 
+  it('resets restrictive filters before reopening and applying the selection', () => {
+    const initialTargets = houseNumbers.map((houseNumber) => ({
+      street: `Hauptstraße ${houseNumber.number}`,
+      zip: '12345',
+      city: 'Musterstadt',
+    }));
+    render(<Subject initialTargets={initialTargets} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
+    fireEvent.change(screen.getByLabelText('targeting.filters.street'), {
+      target: { value: 's1' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h1' },
+    });
+    expect(screen.getByText('targeting.table.selectedCount:1')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'actions.cancel' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
+    expect((screen.getByLabelText('targeting.filters.street') as HTMLSelectElement).value).toBe('');
+    expect(
+      (screen.getByLabelText('targeting.filters.houseNumber') as HTMLSelectElement).value
+    ).toBe('');
+    expect(screen.getByText('targeting.table.selectedCount:26')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.apply' }));
+
+    expect(screen.getByText('targeting.mode.targeted:26')).toBeTruthy();
+  });
+
   it('exposes visible filter labels and announces filtered result changes', () => {
     render(<Subject />);
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));

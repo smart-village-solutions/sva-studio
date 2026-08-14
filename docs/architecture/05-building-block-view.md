@@ -756,3 +756,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/core` besitzt den framework-agnostischen, begrenzten Vertrag für erforderliche Actions, `allOf`-/`anyOf`-Semantik und öffentliche Denial-Gründe.
 - `@sva/routing` transportiert diesen Kontext bei Guard-Redirects; `@sva/auth-runtime` erzeugt ihn ausschließlich aus eindeutigen serverseitigen Autorisierungsentscheidungen.
 - Die Studio-App löst Titel aus Core-Katalog und Build-time-Plugin-Registry auf. Unbekannte Actions verwenden die validierte Action-ID als Fallback.
+
+### Ergänzung 2026-08: Interne Bausteine der IAM-ABAC-Auswertung
+
+- `packages/iam-core/src/authorization-engine.ts` bleibt der einzige öffentliche Entscheidungsbaustein und orchestriert Instanz-Scope, RBAC-Matching, Permission-Scope und finale Antwort.
+- `packages/iam-core/src/authorization-abac.ts` normalisiert den bereits zusammengeführten Regelkontext und enthält kleine reine Evaluatoren für Pflichtkontext, Hierarchierestriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny.
+- `packages/iam-core/src/authorization-provenance.ts` leitet die von Engine und ABAC gemeinsam benötigte Rollen-/Gruppen- und Geo-Provenance ab. Beide internen Module werden nicht über den Package-Entry-Point exportiert.

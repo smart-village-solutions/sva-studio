@@ -742,3 +742,10 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Pull Requests verwenden eigene GitHub-Actions-Cache-Scopes pro Job. Geschützte `main`-, Release- und Deployment-Kontexte lesen niemals PR-erzeugte Nx-Caches.
 - Integration und E2E bleiben ungecacht. Coverage bleibt ohne targetbezogenen Fresh-/Restore-Paritätsnachweis ebenfalls ungecacht.
 - PR-E2E beendet die Suite nach dem ersten auch im Retry bestätigten Fehler; Main und Nightly sammeln alle Fehler.
+
+### Fail-closed Reihenfolge der ABAC-Regeln
+
+- Die IAM-Engine wertet ABAC-Regeln explizit in dieser Reihenfolge aus: fehlender Geo-Pflichtkontext, Organisations- und Geo-Restriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny. Die erste blockierende Entscheidung bestimmt den bestehenden Reason.
+- Geo-Unit-Freigaben haben weiterhin Vorrang vor dem Legacy-Geo-Scope-Fallback. Über-Mitternacht-Zeitfenster bleiben zulässig; ungültige vollständige Zeitfenster verweigern den Zugriff.
+- Restriktionen sind grantbezogen: Ein anderer passender und zulässiger Allow-Grant kann weiterhin erlauben. Es existiert weder eine generische Rule-Registry noch ein zweiter Authorize-Pfad.
+- Characterization-Tests sichern kollidierende Regeln, Provenance und das bestehende Force-Deny-Verhalten ohne permissiven Fallback ab.

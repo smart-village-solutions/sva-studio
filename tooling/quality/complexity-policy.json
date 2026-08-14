@@ -832,24 +832,6 @@
       "status": "open",
       "summary": "oeffentliche IAM-Core-Vertragsoberflaeche in kleinere Export-Segmente aufteilen (packages/iam-core/src/authorization-contract.ts)"
     },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Entscheidungslogik fuer Scope, ABAC und Provenance in kleinere Bausteine zerlegen (packages/iam-core/src/authorization-engine.ts)"
-    },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:fileLines": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Authorization-Engine in kleinere fachliche Einheiten zerlegen (packages/iam-core/src/authorization-engine.ts)"
-    },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:functionLines": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange IAM-Decision-Funktion in kleinere Auswertungsschritte aufteilen (packages/iam-core/src/authorization-engine.ts)"
-    },
     "iam-core:packages/iam-core/src/index.ts:publicExports": {
       "ticketId": "baseline-iam-core-index-ts",
       "ticketSystem": "policy-baseline",

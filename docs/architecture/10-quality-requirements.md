@@ -389,3 +389,10 @@ Referenzen:
 - Die mediane terminale Zeit grüner Required Checks darf gegenüber der Ausgangsbaseline um höchstens 30 Sekunden steigen.
 - Ein zweiter kleiner PR-Push soll mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit einsparen. Der Wert bezieht sich ausschließlich auf deterministische Targets und rechtfertigt keine Cache-Aktivierung für Coverage, Integration oder E2E ohne Paritätsnachweis.
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
+
+### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
+
+- Der bisherige Fallow-Hotspot `evaluateAbacRules` wird von Cyclomatic 55, Cognitive 41 und 130 Funktionszeilen auf Cyclomatic 9, Cognitive 4 und 27 Funktionszeilen reduziert.
+- Alle Dateien und Funktionen der kritischen Klasse `iam-core` bleiben unter den kanonischen Grenzen für Dateigröße, Funktionslänge und Cyclomatic Complexity; die aufgelösten Baseline-Einträge der Engine werden entfernt.
+- Unit-Tests müssen Einzelregeln und kollidierende Kombinationen für fehlenden Kontext, Hierarchie, Geo, ungültige und Über-Mitternacht-Zeitfenster, Acting-as, Force-Deny sowie Provenance abdecken.
+- Type-, Lint-, Node-ESM-Runtime-, Complexity-, OpenSpec- und Fallow-Gates bleiben für Änderungen an diesen internen Bausteinen verpflichtend.

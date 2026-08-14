@@ -581,3 +581,10 @@ Referenzen:
 - Risiko: Ein persistierter Cache liefert wegen unvollständiger Inputs ein falsches Ergebnis. Maßnahme: nur deterministische Targets persistieren, Schlüssel an Toolchain, Lockfile, Nx-Konfiguration, Trust-Scope und Job binden sowie geschützte Kontexte von PR-Caches trennen.
 - Risiko: PR-Fail-fast zeigt pro Push weniger Folgefehler. Maßnahme: Main und Nightly bleiben diagnostisch vollständig; der PR optimiert bewusst die erste Reparaturschleife.
 - Restrisiko: Die Zielwerte für Median und P90 sind erst nach mindestens 20 repräsentativen GitHub-Läufen belastbar. Bis dahin bleibt die Laufzeitwirkung eine zu verifizierende Rollout-Aufgabe.
+
+### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
+
+- Das technische Risiko der monolithischen ABAC-Funktion ist durch fachliche Evaluatoren und die entfernten Complexity-Baseline-Einträge reduziert.
+- Restrisiko: Die feste Reihenfolge der Regeln ist fachlich relevant und kann bei späteren Erweiterungen versehentlich verändert werden. Maßnahme: Reihenfolge in der Orchestrierung sichtbar halten und jede neue Regel mit kombinatorischen Characterization-Tests gegen benachbarte Regeln absichern.
+- Restrisiko: Ein Zeitfenster ohne explizite `currentTime` verwendet weiterhin die aktuelle UTC-Uhrzeit. Maßnahme: Vertrag unverändert lassen und Tests sowie Diagnosepfade mit expliziter Referenzzeit ausführen.
+- Restrisiko: Force-Deny liefert im bestehenden Vertrag keine Permission-Provenance. Maßnahme: Ist-Verhalten explizit testen; eine fachliche Erweiterung nur als separaten IAM-Vertragschange durchführen.

@@ -17,13 +17,18 @@ import { createInterface } from 'node:readline';
 import { finished } from 'node:stream/promises';
 import { pathToFileURL } from 'node:url';
 
+import {
+  validateBackupRequest,
+  validateRestoreRequest,
+  validTenantInstanceId,
+} from './request-validation.mjs';
+
 const requestPath = '/_ops/backup/v1/requests';
 const capabilityPath = '/_ops/backup/v1/capabilities';
 const restoreRequestPath = '/_ops/restore/v1/requests';
 const oidcIssuer = 'https://token.actions.githubusercontent.com';
 const jwksUrl = `${oidcIssuer}/.well-known/jwks`;
 const maxBodyBytes = 16_384;
-const maxRequestLifetimeMs = 10 * 60_000;
 const bbPrignitzWasteImportSha256 =
   'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc';
 const bbPrignitzWasteImportObjectKey =
@@ -89,11 +94,9 @@ export const resolveDatabaseTarget = (environment, database = 'studio', operatio
   return { ...target, database: 'studio' };
 };
 
-const tenantInstanceIdPattern = /^[a-z0-9][a-z0-9-]{1,62}$/u;
 const postgresIdentifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
 
-export const validTenantInstanceId = (value) =>
-  typeof value === 'string' && tenantInstanceIdPattern.test(value);
+export { validTenantInstanceId };
 
 export const deriveWasteDatabaseName = (instanceId) => {
   if (!validTenantInstanceId(instanceId)) throw new Error('waste_inventory_target_invalid');
@@ -191,131 +194,24 @@ export const canonicalRestoreRequest = (request) =>
     version: request.version,
   });
 
-export const validRequest = (request, now = Date.now()) => {
-  if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
-  const allowedKeys = new Set([
-    'action',
-    'database',
-    'deployImageDigest',
-    'environment',
-    'expiresAt',
-    'tenantInstanceId',
-    ...(request.version === 1 ? ['maintenanceWindowReference'] : []),
-    'requestId',
-    'version',
-  ]);
-  if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
-  if ((request.version !== 1 && request.version !== 2) || request.action !== 'backup-and-verify')
-    return false;
-  if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (
-    request.database !== undefined &&
-    request.database !== 'studio' &&
-    request.database !== 'waste'
-  )
-    return false;
-  if (
-    (request.database === 'waste' &&
-      request.tenantInstanceId !== undefined &&
-      !validTenantInstanceId(request.tenantInstanceId)) ||
-    (request.database !== 'waste' && request.tenantInstanceId !== undefined)
-  )
-    return false;
-  if (
-    typeof request.requestId !== 'string' ||
-    !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
-  )
-    return false;
-  if (
-    typeof request.deployImageDigest !== 'string' ||
-    !/^sha256:[a-f0-9]{64}$/u.test(request.deployImageDigest)
-  )
-    return false;
-  const expiresAt =
-    typeof request.expiresAt === 'string' ? Date.parse(request.expiresAt) : Number.NaN;
-  if (!Number.isFinite(expiresAt) || expiresAt <= now || expiresAt > now + maxRequestLifetimeMs)
-    return false;
-  return (
-    request.version === 2 ||
-    request.environment !== 'prod' ||
-    (typeof request.maintenanceWindowReference === 'string' &&
-      /^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference))
-  );
-};
+export const validRequest = (request, now = Date.now()) => validateBackupRequest(request, now).ok;
 
-export const validRestoreRequest = (request, now = Date.now()) => {
-  if (!request || typeof request !== 'object' || Array.isArray(request)) return false;
-  const allowedKeys = new Set([
-    'action',
-    'database',
-    'environment',
-    'expiresAt',
-    'maintenanceWindowReference',
-    'requestId',
-    'sourceObjectKey',
-    'sourceSha256',
-    'tenantInstanceId',
-    'version',
-  ]);
-  if (Object.keys(request).some((key) => !allowedKeys.has(key))) return false;
-  if (
-    request.version !== 1 ||
-    (request.action !== 'restore-and-verify-v1' && request.action !== 'import-waste-data-v1')
-  )
-    return false;
-  if (request.environment !== 'staging' && request.environment !== 'prod') return false;
-  if (
-    request.database !== undefined &&
-    request.database !== 'studio' &&
-    request.database !== 'waste'
-  )
-    return false;
-  if (
-    request.database === 'waste'
-      ? !validTenantInstanceId(request.tenantInstanceId)
-      : request.tenantInstanceId !== undefined
-  )
-    return false;
-  if (
-    typeof request.requestId !== 'string' ||
-    !/^[a-zA-Z0-9][a-zA-Z0-9._-]{7,127}$/u.test(request.requestId)
-  )
-    return false;
-  if (
-    typeof request.maintenanceWindowReference !== 'string' ||
-    !/^[A-Za-z0-9][A-Za-z0-9._:/# -]{2,159}$/u.test(request.maintenanceWindowReference)
-  )
-    return false;
-  if (typeof request.sourceSha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(request.sourceSha256))
-    return false;
-  const isWasteImport = request.action === 'import-waste-data-v1';
-  if (
-    isWasteImport &&
-    (request.environment !== 'prod' ||
-      request.database !== 'waste' ||
-      request.tenantInstanceId !== 'bb-prignitz' ||
-      request.sourceObjectKey !== bbPrignitzWasteImportObjectKey ||
-      request.sourceSha256 !== bbPrignitzWasteImportSha256)
-  )
-    return false;
-  const prefix =
-    request.database === 'waste'
-      ? `${targets[request.environment].prefix}/waste/${request.tenantInstanceId}/${isWasteImport ? 'import/' : ''}`
-      : `${resolveDatabaseTarget(request.environment, request.database).prefix}/`;
-  const sourcePattern = isWasteImport
-    ? /^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.sql$/u
-    : /^[A-Za-z0-9][A-Za-z0-9._/-]{7,511}\.dump$/u;
-  if (
-    typeof request.sourceObjectKey !== 'string' ||
-    !request.sourceObjectKey.startsWith(prefix) ||
-    !sourcePattern.test(request.sourceObjectKey) ||
-    request.sourceObjectKey.includes('..')
-  )
-    return false;
-  const expiresAt =
-    typeof request.expiresAt === 'string' ? Date.parse(request.expiresAt) : Number.NaN;
-  return Number.isFinite(expiresAt) && expiresAt > now && expiresAt <= now + maxRequestLifetimeMs;
-};
+const restoreValidationContract = Object.freeze({
+  environmentPrefixes: Object.freeze({
+    staging: targets.staging.prefix,
+    prod: targets.prod.prefix,
+  }),
+  wasteImport: Object.freeze({
+    objectKey: bbPrignitzWasteImportObjectKey,
+    sha256: bbPrignitzWasteImportSha256,
+    environment: 'prod',
+    database: 'waste',
+    tenantInstanceId: 'bb-prignitz',
+  }),
+});
+
+export const validRestoreRequest = (request, now = Date.now()) =>
+  validateRestoreRequest(request, restoreValidationContract, now).ok;
 
 const decodeBase64Url = (value) => Buffer.from(value, 'base64url');
 

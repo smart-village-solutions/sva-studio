@@ -1,0 +1,4 @@
+{
+  "prNumber": 985,
+  "body": "Backup- und Wiederherstellungsaufträge werden weiterhin streng und nachvollziehbar geprüft\n\n- Ungültige Felder, Ziele, Prüfsummen, Objektpfade und abgelaufene Aufträge werden an getrennten Sicherheitsgrenzen abgelehnt.\n- Die unterstützten Backup- und Restore-Verträge sowie der geschützte Wiederherstellungsablauf bleiben unverändert.\n- Das Backup-Agent-Image prüft beim Integrationstest auch die vollständige Laufzeitauflösung seiner Validierungsmodule."
+}

@@ -718,6 +718,8 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 
 Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.
 
+Die HTTP-Fassade delegiert die reine Contractprüfung an lokale ESM-Validatoren. Diese trennen Objektform und Feld-allowlist, Version und Aktion, Umgebung, Datenbank-/Tenant-Kopplung, Request-Identität, Digest beziehungsweise SHA-256, Objektpfad, Sondervertrag und Ablaufzeit. Die Fassade bleibt boolesch; OIDC, HMAC, Replay-Schutz und jede Datenbankoperation verbleiben im Agenten. Das Container-Image übernimmt die Validatoren explizit und löst sie über einen relativen `.mjs`-Import auf.
+
 Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provisioning`, sichert alle `ready`- und `disabled`-Datenbanken unter `<umgebung>/waste/<instance_id>/` und bindet Restores zusätzlich an die signierte Instanz-ID. Freie Datenbank- oder Rollennamen sind kein Bestandteil des Request-Vertrags.
 
 ### Ergänzung 2026-08: Mainserver-Inhaltsprojektion

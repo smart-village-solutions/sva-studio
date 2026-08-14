@@ -983,6 +983,8 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.
 
+Innerhalb von Schritt 2 werden die signierten Requestdaten zunächst über reine, seiteneffektfreie Contractgrenzen geprüft. Ein diskriminiertes internes Ergebnis benennt nur die abgelehnte Grenze; die bestehende öffentliche Fassade liefert weiterhin ausschließlich `true` oder `false`. Erst danach folgen OIDC-/HMAC-Prüfung und Replay-Persistenz. Dadurch ändern sich weder Prüfreihenfolge der äußeren Trust Boundary noch Antwort- oder Fehlervertrag.
+
 Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/v1/capabilities` auf. Erst eine kompatible Protokollversion, laufende Agent-Revision, vollständige Ergebnisfelder und die benötigten Datenbankziele erlauben den Auftrag. Nach dem App-Deploy wird zuerst der terminale Swarm-Service- und Task-Zustand bewertet; erst danach beginnt das externe HTTP-Warmup.
 
 ## Resilienter Mainserver-Detail- und Updateablauf
@@ -997,6 +999,7 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 
 1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.
 2. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
+   Die reine Requestprüfung charakterisiert davor unbekannte Felder, Version/Aktion, Umgebung, Datenbank/Tenant, Wartungsfensterreferenz, SHA-256, Objektpräfix, Pfadtraversal, den fest verdrahteten Waste-Import und die höchstens zehnminütige Laufzeit getrennt und fail-closed.
 3. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
 4. `pg_restore` läuft einmalig mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.
 5. Nach dem Restore rekonstruiert der Agent im festen Schema-Owner-Kontext die additiven ACLs für den allowlisteten Runtime-Principal `sva_app`. Anschließend prüft er Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Ein Fehler schreibt redigierte Evidenz und lässt die App stillgelegt.

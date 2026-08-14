@@ -95,6 +95,7 @@ Schulden auf IST-Basis.
 - Impact: hoch (Refactorings werden riskant, Sicherheits- und Routing-Fehler bleiben schwer lokalisierbar)
 - Wahrscheinlichkeit: hoch
 - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
+- Der frühere IAM-Acceptance-Sammelrunner ist in explizite, laufbezogene Prüfphasen zerlegt. Restrisiko bleiben Änderungen an realen Provider- und Umgebungsverträgen; sie benötigen weiterhin einen geschützten Acceptance-Lauf und dürfen nicht allein aus lokalen Fakes freigegeben werden.
 
 16. Registry-Cache aktuell nur als L1 im App-Prozess
 

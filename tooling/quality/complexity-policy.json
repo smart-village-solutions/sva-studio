@@ -694,24 +694,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/patch-coverage-gate.ts)"
     },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/run-iam-acceptance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/run-iam-acceptance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:functionLines": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/run-iam-acceptance.ts)"
-    },
     "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
       "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
       "ticketSystem": "policy-baseline",

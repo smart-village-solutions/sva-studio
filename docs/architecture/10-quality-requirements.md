@@ -59,6 +59,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
+  - Vitest-Characterization sichert ohne echte Zugangsdaten den CLI-Exitcode, den redigierten Konfigurationsfehlerbericht und die feste Reihenfolge der Pflichtprüfungen; fachliche Phasen bleiben einzeln typisiert und der Einstieg bleibt eine explizite Orchestrierung
 - Produktionsnahe Release-Validierung:
   - Der einzige Main-Workflow `Build` muss `verify:runtime-artifact` ausführen, genau ein App-Image für `linux/amd64` veröffentlichen und dessen Digest an Dev übergeben.
   - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.

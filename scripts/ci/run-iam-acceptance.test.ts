@@ -5,12 +5,18 @@ import { spawnSync } from 'node:child_process';
 
 import { afterEach, expect, it } from 'vitest';
 
+import { MANDATORY_ACCEPTANCE_PHASES } from './run-iam-acceptance.ts';
+
 const rootDir = resolve(import.meta.dirname, '../..');
 const runnerPath = resolve(import.meta.dirname, 'run-iam-acceptance.ts');
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
-  await Promise.all(temporaryDirectories.splice(0).map((directory) => rm(directory, { force: true, recursive: true })));
+  await Promise.all(
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { force: true, recursive: true }))
+  );
 });
 
 it('fails closed with exit code 1 and a redacted report when required configuration is missing', async () => {
@@ -50,7 +56,6 @@ it('fails closed with exit code 1 and a redacted report when required configurat
 
 it('keeps every mandatory acceptance check in its established orchestration order', async () => {
   const source = await readFile(runnerPath, 'utf8');
-  const mainSource = source.slice(source.indexOf('const main = async'));
   const mandatoryChecks = [
     "name: 'Preflight Testnutzer'",
     "name: 'Testdaten-Reset'",
@@ -64,11 +69,26 @@ it('keeps every mandatory acceptance check in its established orchestration orde
     "name: 'UI Benutzerliste'",
     "name: 'UI Organisationsstruktur'",
   ] as const;
+  expect(MANDATORY_ACCEPTANCE_PHASES).toEqual(mandatoryChecks);
 
+  const phaseCalls = [
+    'runIdentityPreflight(',
+    'resetAcceptanceTestData(',
+    'verifyReadiness(',
+    'runLoginAndJitChecks(',
+    'verifyOrganizationsAndMembership(',
+    'verifyAdminUi(',
+  ] as const;
+  const orchestratorSource = source.slice(source.indexOf('const executeMandatoryChecks'));
+  expect(phaseCalls.map((call) => orchestratorSource.indexOf(call))).toEqual(
+    [...phaseCalls].map((_, index) => expect.any(Number))
+  );
   let previousIndex = -1;
-  for (const check of mandatoryChecks) {
-    const currentIndex = mainSource.indexOf(check, previousIndex + 1);
-    expect(currentIndex, `missing or reordered mandatory check: ${check}`).toBeGreaterThan(previousIndex);
+  for (const call of phaseCalls) {
+    const currentIndex = orchestratorSource.indexOf(call, previousIndex + 1);
+    expect(currentIndex, `missing or reordered mandatory phase: ${call}`).toBeGreaterThan(
+      previousIndex
+    );
     previousIndex = currentIndex;
   }
 });

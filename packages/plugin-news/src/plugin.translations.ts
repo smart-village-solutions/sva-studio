@@ -176,7 +176,10 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     },
     stale: 'veraltet',
     loadError: 'Die Abholorte konnten nicht geladen werden. Versuchen Sie es erneut.',
-    summary: { pageStatus: 'Seite {{page}} von {{pageCount}}' },
+    summary: {
+      pageStatus: 'Seite {{page}} von {{pageCount}}',
+      staleCount: '{{count}} veraltet',
+    },
     dialog: {
       title: 'Abholorte auswählen',
       description: 'Filtern und wählen Sie aktive, vollständig adressierte Abholorte.',
@@ -620,7 +623,10 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     },
     stale: 'stale',
     loadError: 'The collection locations could not be loaded. Please try again.',
-    summary: { pageStatus: 'Page {{page}} of {{pageCount}}' },
+    summary: {
+      pageStatus: 'Page {{page}} of {{pageCount}}',
+      staleCount: '{{count}} stale',
+    },
     dialog: {
       title: 'Select collection locations',
       description: 'Filter and select active, fully addressed collection locations.',

@@ -87,6 +87,19 @@ export const useNewsTargetingEditor = (
   );
   const filtered = React.useMemo(() => filterTargetOptions(options, filters), [filters, options]);
   const selectedIds = React.useMemo(() => new Set(draft.map(wasteLocationKeyId)), [draft]);
+  const optionIds = React.useMemo(() => new Set(options.map((option) => option.id)), [options]);
+  const effectiveDraft = React.useMemo(
+    () => filtered.filter((option) => selectedIds.has(option.id)).map((option) => option.key),
+    [filtered, selectedIds]
+  );
+  const staleDraft = React.useMemo(
+    () => draft.filter((entry) => !optionIds.has(wasteLocationKeyId(entry))),
+    [draft, optionIds]
+  );
+  const appliedDraft = React.useMemo(
+    () => [...staleDraft, ...effectiveDraft],
+    [effectiveDraft, staleDraft]
+  );
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -96,7 +109,6 @@ export const useNewsTargetingEditor = (
   React.useEffect(() => setPage(1), [filters]);
 
   const updateFilters = (next: Partial<TargetingFilters>) => {
-    setDraft([]);
     setFilters((current) => ({ ...current, ...next }));
   };
   const openEditor = () => {
@@ -127,7 +139,8 @@ export const useNewsTargetingEditor = (
     open,
     setOpen,
     openEditor,
-    draft,
+    appliedDraft,
+    effectiveSelectedCount: effectiveDraft.length,
     filters,
     updateFilters,
     citiesById,

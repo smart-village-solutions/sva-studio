@@ -84,12 +84,6 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
         })}
       </ul>
       <div className="flex items-center justify-end text-sm">
-        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-          {pt('targeting.summary.pageStatus', {
-            page: currentPage,
-            pageCount,
-          })}
-        </span>
         <div className="flex items-center gap-2">
           <Button
             type="button"
@@ -99,8 +93,11 @@ function TargetingSummary({ selected, staleIds, pt, onRemove }: TargetingSummary
           >
             {pt('targeting.actions.previous')}
           </Button>
-          <span>
-            {currentPage} / {pageCount}
+          <span role="status" aria-live="polite" aria-atomic="true">
+            {pt('targeting.summary.pageStatus', {
+              page: currentPage,
+              pageCount,
+            })}
           </span>
           <Button
             type="button"
@@ -179,7 +176,14 @@ export function NewsDetailTargetingSection({
         ) : (
           <details className="group rounded-lg border border-border/60 bg-background">
             <summary className="cursor-pointer select-none px-3 py-3 text-sm font-medium marker:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
-              {pt('targeting.mode.targeted', { count: selected.length })}
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <span>{pt('targeting.mode.targeted', { count: selected.length })}</span>
+                {staleIds.size > 0 ? (
+                  <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                    {pt('targeting.summary.staleCount', { count: staleIds.size })}
+                  </span>
+                ) : null}
+              </span>
             </summary>
             <div className="border-t border-border/60 p-3">
               <TargetingSummary

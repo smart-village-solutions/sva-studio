@@ -115,12 +115,12 @@ describe('NewsDetailTargetingTab', () => {
     expect(screen.getAllByRole('button', { name: 'targeting.actions.removeTarget' })).toHaveLength(
       25
     );
-    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText('targeting.summary.pageStatus:1:2')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.next' }));
     expect(screen.getAllByRole('button', { name: 'targeting.actions.removeTarget' })).toHaveLength(
       1
     );
-    expect(screen.getByText('2 / 2')).toBeTruthy();
+    expect(screen.getByText('targeting.summary.pageStatus:2:2')).toBeTruthy();
     expect(screen.getByTestId('dirty-state').textContent).toBe('dirty');
   });
 
@@ -190,7 +190,7 @@ describe('NewsDetailTargetingTab', () => {
     expect(houseNumberOptions).not.toContain('9 — Parkweg, 54321 Südstadt');
   });
 
-  it('clears the draft selection when the filters change', () => {
+  it('remembers filtered-out selections but only applies the effective intersection', () => {
     render(<Subject />);
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
     fireEvent.change(screen.getByLabelText('targeting.filters.region'), {
@@ -199,11 +199,36 @@ describe('NewsDetailTargetingTab', () => {
     fireEvent.click(screen.getByLabelText('targeting.actions.selectAll'));
     expect(screen.getByText('targeting.table.selectedCount:26')).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText('targeting.filters.city'), {
-      target: { value: 'c1' },
+    fireEvent.change(screen.getByLabelText('targeting.filters.street'), {
+      target: { value: 's1' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h1' },
     });
 
-    expect(screen.getByText('targeting.table.selectedCount:0')).toBeTruthy();
+    expect(screen.getByText('targeting.table.selectedCount:1')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: '' },
+    });
+    expect(screen.getByText('targeting.table.selectedCount:26')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h1' },
+    });
+    fireEvent.click(screen.getByLabelText('Hauptstraße 1, 12345 Musterstadt'));
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: '' },
+    });
+    expect(screen.getByText('targeting.table.selectedCount:25')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h2' },
+    });
+    expect(screen.getByText('targeting.table.selectedCount:1')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.apply' }));
+
+    expect(screen.getByText('targeting.mode.targeted:1')).toBeTruthy();
   });
 
   it('exposes visible filter labels and announces filtered result changes', () => {
@@ -261,14 +286,13 @@ describe('NewsDetailTargetingTab', () => {
     for (let page = 1; page < 6; page += 1) {
       fireEvent.click(nextButton);
     }
-    expect(screen.getByText('6 / 6')).toBeTruthy();
     expect(screen.getByText('targeting.summary.pageStatus:6:6')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.removeTarget' }));
-    expect(screen.getByText('5 / 5')).toBeTruthy();
+    expect(screen.getByText('targeting.summary.pageStatus:5:5')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.previous' }));
 
-    expect(screen.getByText('4 / 5')).toBeTruthy();
+    expect(screen.getByText('targeting.summary.pageStatus:4:5')).toBeTruthy();
   });
 
   it('keeps recipients read-only after the Push has been sent', () => {
@@ -294,14 +318,33 @@ describe('NewsDetailTargetingTab', () => {
 
     render(<Subject initialTargets={[staleTarget]} />);
 
-    expect(screen.getByText(/targeting\.stale/)).toBeTruthy();
+    expect(screen.getByText('targeting.summary.staleCount:1')).toBeTruthy();
     expect(screen.getByTestId('dirty-state').textContent).toBe('clean');
 
     fireEvent.click(screen.getByText('targeting.mode.targeted:1'));
+    expect(screen.getByText('targeting.stale')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.removeTarget' }));
 
     expect(screen.getByText('targeting.mode.global')).toBeTruthy();
     expect(screen.getByTestId('dirty-state').textContent).toBe('dirty');
     expect(screen.queryByText('Alte Straße 7, 12345 Musterstadt')).toBeNull();
+  });
+
+  it('retains stale targets when applying an effective filtered selection', () => {
+    const staleTarget = { street: 'Alte Straße 7', zip: '12345', city: 'Musterstadt' };
+    const validTarget = { street: 'Hauptstraße 1', zip: '12345', city: 'Musterstadt' };
+    render(<Subject initialTargets={[staleTarget, validTarget]} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.edit' }));
+    fireEvent.change(screen.getByLabelText('targeting.filters.street'), {
+      target: { value: 's1' },
+    });
+    fireEvent.change(screen.getByLabelText('targeting.filters.houseNumber'), {
+      target: { value: 'h1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'targeting.actions.apply' }));
+
+    expect(screen.getByText('targeting.mode.targeted:2')).toBeTruthy();
+    expect(screen.getByText('targeting.summary.staleCount:1')).toBeTruthy();
   });
 });

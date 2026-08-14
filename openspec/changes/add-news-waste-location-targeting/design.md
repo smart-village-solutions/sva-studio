@@ -16,7 +16,7 @@ Der Mainserver kann Nachrichten-Payloads mit `wasteLocationKeys` an bereits vorb
 - Städte erhalten dafür im mandantenspezifischen Waste-Schema die optionale Spalte `postal_code`. Neu auswählbar sind nur aktive Abholorte mit vollständigem Stadt-, PLZ- und Straßenbezug; eine Hausnummer ist optional.
 - Formzustand und Mutation führen das vollständige bestehende Payload mit. Nur `wasteLocationKeys` wird ersetzt oder bei globalem Versand entfernt.
 - Nicht auflösbare gespeicherte Schlüssel bleiben als veraltete Ziele sichtbar und erhalten.
-- Der Dialog bearbeitet eine temporäre Auswahl. Erst „Auswahl übernehmen“ verändert das Formular.
+- Der Dialog bearbeitet eine temporär vorgemerkte Auswahl. Filter grenzen nur deren wirksame Schnittmenge mit den aktuellen Treffern ein: Angezeigt, gezählt und übernommen werden die aktuell passenden Ziele, während ausgeblendete gültige Ziele für ein späteres Erweitern des Filters vorgemerkt bleiben. Nicht auflösbare gespeicherte Schlüssel bleiben unabhängig davon erhalten. Erst „Auswahl übernehmen“ verändert das Formular.
 - Nach einer bestätigten Push-Zustellung ist die Zielauswahl schreibgeschützt, damit das gespeicherte Payload die historische Empfängergruppe weiterhin beschreibt.
 - Stadt-Updates verwenden feldselektive PATCH-Semantik bis zur SQL-Anweisung. Ausgelassene Felder bleiben unverändert; nur ein explizites `null` entfernt PLZ oder Region.
 

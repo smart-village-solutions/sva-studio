@@ -49,6 +49,7 @@ export default defineConfig({
       '../../scripts/ops/runtime/remote-verification.test.ts',
       '../../scripts/ops/runtime/smoke.test.ts',
       '../../scripts/ops/runtime/studio-image-verify-evidence.test.ts',
+      '../../scripts/ops/studio-instance-audit-keycloak.test.ts',
       '../../scripts/ops/tenant-ingress-audit.test.ts',
       '../../deploy/backup-agent/agent.test.ts',
       '../../deploy/backup-agent-stack.test.ts',

@@ -9,6 +9,7 @@ import { MANDATORY_ACCEPTANCE_STEP_NAMES } from './run-iam-acceptance.ts';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 const runnerPath = resolve(import.meta.dirname, 'run-iam-acceptance.ts');
+const runnerPathFromRoot = 'scripts/ci/run-iam-acceptance.ts';
 const temporaryDirectories: string[] = [];
 
 afterEach(async () => {
@@ -24,7 +25,7 @@ it('fails closed with exit code 1 and a redacted report when required configurat
   temporaryDirectories.push(reportDirectory);
   const secretMarker = 'must-not-appear-in-acceptance-output';
 
-  const result = spawnSync(process.execPath, ['--import', 'tsx', runnerPath], {
+  const result = spawnSync(process.execPath, ['--import', 'tsx', runnerPathFromRoot], {
     cwd: rootDir,
     encoding: 'utf8',
     env: {

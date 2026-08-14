@@ -952,6 +952,42 @@ describe('projects route', () => {
     );
   });
 
+  it('continues a prepared create without reserving idempotency when no provider item exists', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue({
+      ...reference,
+      sourceEntityId: undefined,
+      reconciliationStatus: 'pending',
+    });
+    state.listGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'replay',
+      responseBody: { data: { id: 'replayed-project' } },
+      responseStatus: 201,
+    });
+    state.createGenericItem.mockResolvedValue(genericItem);
+    state.bindReference.mockResolvedValue(reference);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.createGenericItem).toHaveBeenCalledTimes(1);
+    expect(state.prepareExternalContent).not.toHaveBeenCalled();
+    expect(state.bindReference).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceId, sourceEntityId: 'external-1' })
+    );
+  });
+
   it('replays the completed create without recreating a physically deleted project', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(reference);

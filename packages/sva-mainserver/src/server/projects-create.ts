@@ -206,9 +206,11 @@ export const createProject = async (
     const existing = await findExistingProjectCreate(context, state.reference);
     if (existing) return await completeExistingProjectCreate(context, state, existing);
     if (state.reference?.sourceEntityId) return await deletedProjectReplayResponse(context);
-    const reserved = await reserveOrRecoverProjectCreate(context);
-    if (isResponse(reserved)) return reserved;
-    if (reserved) return await completeExistingProjectCreate(context, state, reserved);
+    if (!state.reference) {
+      const reserved = await reserveOrRecoverProjectCreate(context);
+      if (isResponse(reserved)) return reserved;
+      if (reserved) return await completeExistingProjectCreate(context, state, reserved);
+    }
     return await createNewProviderProject(context, state, ctx);
   } catch (error) {
     await finalizeMainserverMutationFailure({ actor: context.actor, error });

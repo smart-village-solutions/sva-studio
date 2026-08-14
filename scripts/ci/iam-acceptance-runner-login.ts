@@ -1,5 +1,3 @@
-import type { IdentityListedUser } from '../../packages/auth-runtime/src/identity-provider-port.ts';
-import type { KeycloakAdminClient } from '../../packages/auth-runtime/src/keycloak-admin-client/core.ts';
 import type { AcceptanceConfig } from './iam-acceptance.ts';
 import { assertSingleProvisionedAccount } from './iam-acceptance-runner-database.ts';
 import type {
@@ -25,70 +23,6 @@ type AuthMePayload = {
 export type AcceptanceSession = {
   context: BrowserContext;
   user: NonNullable<AuthMePayload['user']>;
-};
-
-const resolveKeycloakUser = async (
-  recorder: AcceptanceRecorder,
-  client: KeycloakAdminClient,
-  username: string,
-  name: string
-): Promise<IdentityListedUser> => {
-  const matches = (await client.listUsers({ username })).filter(
-    (entry) => entry.username === username
-  );
-  if (matches.length === 0) {
-    recorder.failStep({
-      name: `Preflight ${name}`,
-      failureCode: 'acceptance_keycloak_user_missing',
-      details: `Keycloak-Testnutzer "${username}" wurde nicht gefunden.`,
-    });
-  }
-  if (matches.length > 1) {
-    recorder.failStep({
-      name: `Preflight ${name}`,
-      failureCode: 'acceptance_keycloak_user_not_unique',
-      details: `Keycloak-Testnutzer "${username}" ist nicht eindeutig.`,
-      metadata: { matches: matches.map((entry) => entry.externalId) },
-    });
-  }
-  return matches[0] as IdentityListedUser;
-};
-
-export const runIdentityPreflight = async (
-  recorder: AcceptanceRecorder,
-  keycloakAdmin: KeycloakAdminClient,
-  config: AcceptanceConfig
-): Promise<{ adminIdentity: IdentityListedUser; memberIdentity: IdentityListedUser }> => {
-  const adminIdentity = await resolveKeycloakUser(
-    recorder,
-    keycloakAdmin,
-    config.admin.username,
-    'Admin-Testnutzer'
-  );
-  const memberIdentity = await resolveKeycloakUser(
-    recorder,
-    keycloakAdmin,
-    config.member.username,
-    'Member-Testnutzer'
-  );
-  const adminRoleNames = await keycloakAdmin.listUserRoleNames(adminIdentity.externalId);
-  for (const expectedRole of config.admin.expectedRoles) {
-    if (!adminRoleNames.includes(expectedRole) && expectedRole !== 'system_admin') {
-      recorder.failStep({
-        name: 'Preflight Admin-Testnutzer',
-        failureCode: 'acceptance_expected_role_missing',
-        details: `Der Keycloak-Testnutzer "${config.admin.username}" besitzt die Rolle "${expectedRole}" nicht.`,
-        metadata: { roles: adminRoleNames },
-      });
-    }
-  }
-  recorder.recordStep({
-    name: 'Preflight Testnutzer',
-    status: 'passed',
-    details: 'Keycloak-Testnutzer und Rollenvertrag wurden geprüft.',
-    metadata: { adminSubject: adminIdentity.externalId, memberSubject: memberIdentity.externalId },
-  });
-  return { adminIdentity, memberIdentity };
 };
 
 const fillIfVisible = async (locator: Locator, value: string): Promise<boolean> => {

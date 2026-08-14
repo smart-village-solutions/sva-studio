@@ -13,9 +13,13 @@ import {
   writeAcceptanceReports,
   type AcceptanceConfig,
 } from './iam-acceptance.ts';
-import { runLoginAndJitChecks, runIdentityPreflight } from './iam-acceptance-runner-login.ts';
+import { runLoginAndJitChecks } from './iam-acceptance-runner-login.ts';
 import { verifyOrganizationsAndMembership } from './iam-acceptance-runner-organizations.ts';
-import { resetAcceptanceTestData, verifyReadiness } from './iam-acceptance-runner-preflight.ts';
+import {
+  resetAcceptanceTestData,
+  runIdentityPreflight,
+  verifyReadiness,
+} from './iam-acceptance-runner-preflight.ts';
 import {
   createAcceptanceRecorder,
   type AcceptanceRecorder,

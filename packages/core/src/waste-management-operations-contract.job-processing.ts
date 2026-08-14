@@ -8,6 +8,7 @@ import type {
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
+  WasteManagementEnrichPostalCodesJobInput,
 } from './waste-management-operations-contract.job-inputs.js';
 
 type WasteManagementMaterializeEmailRemindersJobInput = {
@@ -33,7 +34,8 @@ type WasteManagementJobInput =
   | WasteManagementSyncMainserverJobInput
   | WasteManagementSyncWasteTypesJobInput
   | WasteManagementMaterializeEmailRemindersJobInput
-  | WasteManagementProcessEmailReminderOutboxJobInput;
+  | WasteManagementProcessEmailReminderOutboxJobInput
+  | WasteManagementEnrichPostalCodesJobInput;
 
 export type {
   WasteManagementJobInput,

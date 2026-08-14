@@ -111,6 +111,7 @@ describe('useWasteToolsViewModel', () => {
     expect(useWasteTrackedJobMock).toHaveBeenCalledWith({
       lastJob: maintenanceState.lastJob,
       refreshTechnicalHistory,
+      restoreJobTypeId: 'waste-management.enrich-postal-codes',
       setLastJob: maintenanceState.setLastJob,
     });
     expect(createWasteToolsViewModelMock).toHaveBeenCalledWith(

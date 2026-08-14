@@ -231,6 +231,7 @@ export type {
   WasteManagementImportJobInput,
   WasteManagementImportProfileId,
   WasteManagementImportSourceFormat,
+  WasteManagementEnrichPostalCodesJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementJobInput,
   WasteManagementJobTypeId,

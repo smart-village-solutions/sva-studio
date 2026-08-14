@@ -188,6 +188,7 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.reset-data',
       'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
+      'waste-management.enrich-postal-codes',
       'waste-management.materialize-email-reminders',
       'waste-management.process-email-reminder-outbox',
     ]);
@@ -359,6 +360,10 @@ describe('pluginWasteManagement contract', () => {
       {
         eventType: 'waste-management.sync-waste-types.started',
         titleKey: 'wasteManagement.audit.syncWasteTypesStarted',
+      },
+      {
+        eventType: 'waste-management.postal-code-enrichment.started',
+        titleKey: 'wasteManagement.audit.postalCodeEnrichmentStarted',
       },
       {
         eventType: 'waste-management.datasource.reconfigured',

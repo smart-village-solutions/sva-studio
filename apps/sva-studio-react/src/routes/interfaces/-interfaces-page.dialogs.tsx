@@ -100,6 +100,7 @@ export const TypePickerDialog = ({
 
 type InterfaceFormProps = Readonly<{
   draft: InstanceInterfaceDraft;
+  hasStoredMapApiKey?: boolean;
   saveStatus: StudioSaveStatus;
   saveErrorMessage: string | null;
   onChange: (next: InstanceInterfaceDraft) => void;
@@ -109,6 +110,7 @@ type InterfaceFormProps = Readonly<{
 
 export const InterfaceForm = ({
   draft,
+  hasStoredMapApiKey = false,
   saveStatus,
   saveErrorMessage,
   onChange,
@@ -136,7 +138,11 @@ export const InterfaceForm = ({
     ) : draft.type === 's3' ? (
       <S3Fields draft={draft} onChange={onChange} />
     ) : draft.type === 'mapGeocoding' ? (
-      <MapGeocodingFields draft={draft} onChange={onChange} />
+      <MapGeocodingFields
+        draft={draft}
+        hasStoredApiKey={hasStoredMapApiKey}
+        onChange={onChange}
+      />
     ) : draft.type === 'mailTransport' ? (
       <MailTransportFields draft={draft} onChange={onChange} />
     ) : draft.type === 'postgresql' ? (
@@ -591,9 +597,11 @@ const MailTransportFields = ({
 
 const MapGeocodingFields = ({
   draft,
+  hasStoredApiKey,
   onChange,
 }: {
   draft: Extract<InstanceInterfaceDraft, { type: 'mapGeocoding' }>;
+  hasStoredApiKey: boolean;
   onChange: (next: InstanceInterfaceDraft) => void;
 }) => {
   const updateConfig = (
@@ -610,6 +618,28 @@ const MapGeocodingFields = ({
 
   return (
     <>
+      {draft.config.provider === 'geoapify' ? (
+        <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+          <p className="font-medium">{t('interfaces.forms.mapGeocoding.setup.title')}</p>
+          <p className="mt-1 text-muted-foreground">
+            {t('interfaces.forms.mapGeocoding.setup.description')}
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-muted-foreground">
+            <li>{t('interfaces.forms.mapGeocoding.setup.createProject')}</li>
+            <li>{t('interfaces.forms.mapGeocoding.setup.copyApiKey')}</li>
+            <li>{t('interfaces.forms.mapGeocoding.setup.keepDefaults')}</li>
+          </ol>
+          <a
+            className="mt-3 inline-flex font-medium text-primary underline-offset-4 hover:underline"
+            href="https://myprojects.geoapify.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            {t('interfaces.forms.mapGeocoding.setup.openGeoapify')}
+          </a>
+        </div>
+      ) : null}
+
       <div className="grid gap-2 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="map-provider">{t('interfaces.forms.mapGeocoding.provider')}</Label>
@@ -678,15 +708,28 @@ const MapGeocodingFields = ({
               updateConfig({ reverseGeocodeEndpoint: event.currentTarget.value })
             }
           />
+          {hasStoredApiKey ? <div aria-hidden="true" className="min-h-10" /> : null}
         </div>
         <div className="grid gap-2">
           <Label htmlFor="map-api-key">{t('interfaces.forms.mapGeocoding.apiKey')}</Label>
           <Input
             id="map-api-key"
             type="password"
+            aria-describedby={hasStoredApiKey ? 'map-api-key-hint' : undefined}
+            placeholder={
+              hasStoredApiKey
+                ? t('interfaces.forms.mapGeocoding.apiKeyReplacementPlaceholder')
+                : undefined
+            }
             value={draft.config.apiKey}
             onChange={(event) => updateConfig({ apiKey: event.currentTarget.value })}
           />
+          {hasStoredApiKey ? (
+            <div id="map-api-key-hint" className="min-h-10 space-y-1 text-xs text-muted-foreground">
+              <p>{t('interfaces.forms.mapGeocoding.apiKeyConfiguredStatus')}</p>
+              <p>{t('interfaces.forms.mapGeocoding.apiKeyConfiguredHint')}</p>
+            </div>
+          ) : null}
         </div>
       </div>
 

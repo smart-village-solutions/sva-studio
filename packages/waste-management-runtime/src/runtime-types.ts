@@ -1,3 +1,4 @@
+import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
 import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
@@ -90,6 +91,16 @@ export type WasteManagementOperationRuntime = {
   readonly syncWasteTypes: (
     instanceId: string,
     payload: WasteManagementSyncWasteTypesJobInput
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
+  readonly enrichPostalCodes: (
+    instanceId: string,
+    payload: WasteManagementEnrichPostalCodesJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+    }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;

@@ -15,11 +15,16 @@ describe('waste-management-operations-contract', () => {
       resetData: 'waste-management.reset-data',
       syncMainserver: 'waste-management.sync-mainserver',
       syncWasteTypes: 'waste-management.sync-waste-types',
+      enrichPostalCodes: 'waste-management.enrich-postal-codes',
       materializeEmailReminders: 'waste-management.materialize-email-reminders',
       processEmailReminderOutbox: 'waste-management.process-email-reminder-outbox',
     });
-    expect(wasteManagementOperationsContract.isJobTypeId('waste-management.import-data')).toBe(true);
-    expect(wasteManagementOperationsContract.isJobTypeId('waste-management.sync-mainserver')).toBe(true);
+    expect(wasteManagementOperationsContract.isJobTypeId('waste-management.import-data')).toBe(
+      true
+    );
+    expect(wasteManagementOperationsContract.isJobTypeId('waste-management.sync-mainserver')).toBe(
+      true
+    );
     expect(wasteManagementOperationsContract.isJobTypeId('waste-management.unknown')).toBe(false);
   });
 
@@ -30,7 +35,9 @@ describe('waste-management-operations-contract', () => {
       dateShifts: 'waste-management.ausweichtermine',
       locationTourPickupDates: 'waste-management.ortsbezogene-tourtermine',
     });
-    expect(wasteManagementOperationsContract.isImportProfileId('waste-management.geografie-abholorte')).toBe(true);
+    expect(
+      wasteManagementOperationsContract.isImportProfileId('waste-management.geografie-abholorte')
+    ).toBe(true);
     expect(wasteManagementOperationsContract.isImportProfileId('waste-management.foo')).toBe(false);
   });
 

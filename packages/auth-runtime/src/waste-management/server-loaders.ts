@@ -46,6 +46,7 @@ import { Pool } from 'pg';
 
 import { withInstanceDb } from '../db.js';
 import { revealField } from '../iam-account-management/encryption.js';
+import { withStudioJobRepository } from '../plugin-operations/repository.js';
 import {
   buildWasteHolidayApiUrl,
   deriveHolidayRuleConfigurationStatus,
@@ -575,6 +576,11 @@ const mapJobTypeIdToTechnicalEventType = (
   if (jobTypeId === 'waste-management.sync-waste-types') {
     return status === 'succeeded' ? 'sync.succeeded' : 'sync.failed';
   }
+  if (jobTypeId === 'waste-management.enrich-postal-codes') {
+    return status === 'succeeded'
+      ? 'postal-code-enrichment.succeeded'
+      : 'postal-code-enrichment.failed';
+  }
   return null;
 };
 
@@ -731,6 +737,22 @@ const loadWasteHistoryOverview = async (query: {
     listWasteManagementAuditRecords(client, query)
   );
 
+  const loadLatestPostalCodeJob = () =>
+    withStudioJobRepository(query.instanceId, async (repository) => {
+      for (const view of ['active', 'history'] as const) {
+        const page = await repository.listJobs(query.instanceId, {
+          view,
+          page: 1,
+          pageSize: 1,
+          pluginId: 'waste-management',
+          jobTypeId: 'waste-management.enrich-postal-codes',
+        });
+        const latest = page.items[0];
+        if (latest) return repository.getJobDetail(query.instanceId, latest.id);
+      }
+      return null;
+    });
+
   const technicalOffset = (query.page - 1) * query.pageSize;
   const technicalLimit = technicalOffset + query.pageSize;
 
@@ -772,6 +794,7 @@ const loadWasteHistoryOverview = async (query: {
       'waste-management.seed-data',
       'waste-management.reset-data',
       'waste-management.sync-waste-types',
+      'waste-management.enrich-postal-codes',
     ] as const;
     const buildJobHistoryWhereClause = (): {
       readonly clause: string;
@@ -908,7 +931,12 @@ WHERE ${whereClause.clause}
   const [
     { items: technicalJobItems, total: technicalJobTotal },
     { items: technicalAuditItems, total: technicalAuditTotal },
-  ] = await Promise.all([loadTechnicalJobHistoryPage(), loadTechnicalAuditHistoryPrefix()]);
+    latestPostalCodeJob,
+  ] = await Promise.all([
+    loadTechnicalJobHistoryPage(),
+    loadTechnicalAuditHistoryPrefix(),
+    loadLatestPostalCodeJob(),
+  ]);
 
   const mergedTechnicalItems = [...technicalAuditItems, ...technicalJobItems].sort((left, right) =>
     right.occurredAt.localeCompare(left.occurredAt)
@@ -916,6 +944,7 @@ WHERE ${whereClause.clause}
 
   return {
     audit,
+    ...(latestPostalCodeJob ? { latestPostalCodeJob } : {}),
     technical: {
       items: mergedTechnicalItems.slice(technicalOffset, technicalOffset + query.pageSize),
       total: technicalAuditTotal + technicalJobTotal,

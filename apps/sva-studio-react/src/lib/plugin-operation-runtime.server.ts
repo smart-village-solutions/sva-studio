@@ -7,25 +7,30 @@ import {
 import type { PluginCatalogEntry, PluginManifest } from '@sva/plugin-sdk';
 import studioPluginCatalogConfig from '../../plugin-catalog.json';
 
-import { createPluginBuildRegistries, resolvePluginModuleFromRegistry } from './plugin-build-registry.js';
+import {
+  createPluginBuildRegistries,
+  resolvePluginModuleFromRegistry,
+} from './plugin-build-registry.js';
 import {
   createStudioPluginCatalogReport,
   getPackagePluginModuleCandidates,
   getWorkspacePluginModuleCandidates,
   type StudioPluginCatalogConfigEntry,
 } from './plugin-catalog-loader.js';
-import {
-  createNodemailerMailDispatcher,
-} from '@sva/mail-runtime';
+import { createNodemailerMailDispatcher } from '@sva/mail-runtime';
 import { protectField, revealField } from '@sva/auth-runtime/server';
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
+import { createMapPostalCodeResolver } from './map-geocoding-api.operations.js';
 import {
   createPluginJobExecutionHandlers as createWasteManagementPluginJobExecutionHandlers,
   type WasteManagementOperationRuntime,
 } from '@sva/waste-management-runtime/server';
 
-type PluginOperationExecutionHandler = import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
-type PluginJobModuleFactory = (runtime: unknown) => Readonly<Record<string, PluginOperationExecutionHandler>>;
+type PluginOperationExecutionHandler =
+  import('@sva/auth-runtime/server').PluginOperationExecutionHandler;
+type PluginJobModuleFactory = (
+  runtime: unknown
+) => Readonly<Record<string, PluginOperationExecutionHandler>>;
 type PluginJobModuleExports = {
   readonly createPluginJobExecutionHandlers?: PluginJobModuleFactory;
 };
@@ -44,12 +49,12 @@ type StudioPluginJobSource = {
   readonly manifest: PluginManifest;
 };
 
-const compareAlphabetically = (left: string, right: string): number => left.localeCompare(right, 'de');
+const compareAlphabetically = (left: string, right: string): number =>
+  left.localeCompare(right, 'de');
 
-const workspaceJobModuleLoaders = import.meta.glob('../../../../packages/plugin-*/src/server.ts') as Record<
-  string,
-  PluginJobModuleLoader
->;
+const workspaceJobModuleLoaders = import.meta.glob(
+  '../../../../packages/plugin-*/src/server.ts'
+) as Record<string, PluginJobModuleLoader>;
 const workspacePluginModuleLoaders = {
   ...import.meta.glob('../../../../packages/plugin-*/src/index.ts'),
   ...import.meta.glob('../../../../packages/plugin-*/src/index.tsx'),
@@ -68,13 +73,22 @@ const nodePluginModuleLoaders = {
   ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.ts'),
   ...import.meta.glob('../../../../node_modules/@*/plugin-*/src/index.tsx'),
 } as Record<string, () => Promise<Record<string, unknown>>>;
-const workspaceManifestModules = import.meta.glob('../../../../packages/plugin-*/plugin.manifest.json', {
-  eager: true,
-  import: 'default',
-}) as Record<string, PluginManifest>;
+const workspaceManifestModules = import.meta.glob(
+  '../../../../packages/plugin-*/plugin.manifest.json',
+  {
+    eager: true,
+    import: 'default',
+  }
+) as Record<string, PluginManifest>;
 const nodeManifestModules = {
-  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', { eager: true, import: 'default' }),
-  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', { eager: true, import: 'default' }),
+  ...import.meta.glob('../../../../node_modules/*/plugin.manifest.json', {
+    eager: true,
+    import: 'default',
+  }),
+  ...import.meta.glob('../../../../node_modules/@*/*/plugin.manifest.json', {
+    eager: true,
+    import: 'default',
+  }),
 } as Record<string, PluginManifest>;
 
 const {
@@ -98,21 +112,34 @@ const {
   nodePluginModuleLoaders,
 });
 
-const studioPluginCatalogConfigEntries = studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
-const resolveStudioPluginManifest = (entry: StudioPluginCatalogConfigEntry): PluginManifest | undefined =>
-  entry.sourceType === 'workspace' ? workspaceManifestRegistry.get(entry.sourceRef) : nodeManifestRegistry.get(entry.sourceRef);
+const studioPluginCatalogConfigEntries =
+  studioPluginCatalogConfig as readonly StudioPluginCatalogConfigEntry[];
+const resolveStudioPluginManifest = (
+  entry: StudioPluginCatalogConfigEntry
+): PluginManifest | undefined =>
+  entry.sourceType === 'workspace'
+    ? workspaceManifestRegistry.get(entry.sourceRef)
+    : nodeManifestRegistry.get(entry.sourceRef);
 
 const resolveWorkspacePluginModule = (
   entry: PluginCatalogEntry,
   manifest: PluginManifest
 ): Promise<Record<string, unknown> | undefined> =>
-  resolvePluginModuleFromRegistry(workspaceBrowserPluginRegistry, entry.sourceRef, getWorkspacePluginModuleCandidates(manifest));
+  resolvePluginModuleFromRegistry(
+    workspaceBrowserPluginRegistry,
+    entry.sourceRef,
+    getWorkspacePluginModuleCandidates(manifest)
+  );
 
 const resolveNodePluginModule = (
   entry: PluginCatalogEntry,
   manifest: PluginManifest
 ): Promise<Record<string, unknown> | undefined> =>
-  resolvePluginModuleFromRegistry(nodeBrowserPluginRegistry, entry.sourceRef, getPackagePluginModuleCandidates(manifest));
+  resolvePluginModuleFromRegistry(
+    nodeBrowserPluginRegistry,
+    entry.sourceRef,
+    getPackagePluginModuleCandidates(manifest)
+  );
 
 const studioPluginCatalogReport = await createStudioPluginCatalogReport({
   catalogConfig: studioPluginCatalogConfigEntries,
@@ -122,9 +149,10 @@ const studioPluginCatalogReport = await createStudioPluginCatalogReport({
       ? resolveWorkspacePluginModule(entry, manifest)
       : resolveNodePluginModule(entry, manifest),
 });
-const studioDeclaredPluginOperationJobTypeIds = studioPluginCatalogReport.snapshot.registry.jobTypes.map(
-  (jobType) => jobType.jobTypeId
-) as readonly string[];
+const studioDeclaredPluginOperationJobTypeIds =
+  studioPluginCatalogReport.snapshot.registry.jobTypes.map(
+    (jobType) => jobType.jobTypeId
+  ) as readonly string[];
 const createWasteManagementHostOwnedJobModuleFactory: PluginJobModuleFactory = (runtime) =>
   createWasteManagementPluginJobExecutionHandlers(runtime as WasteManagementOperationRuntime);
 const hostOwnedPluginJobModuleDescriptors = [
@@ -134,10 +162,15 @@ const hostOwnedPluginJobModuleDescriptors = [
     createPluginJobExecutionHandlers: createWasteManagementHostOwnedJobModuleFactory,
   },
 ] as const satisfies readonly HostOwnedPluginJobModuleDescriptor[];
-const getHostOwnedPluginJobModuleDescriptor = (pluginId: string): HostOwnedPluginJobModuleDescriptor | undefined =>
+const getHostOwnedPluginJobModuleDescriptor = (
+  pluginId: string
+): HostOwnedPluginJobModuleDescriptor | undefined =>
   hostOwnedPluginJobModuleDescriptors.find((entry) => entry.pluginId === pluginId);
 const studioPluginJobSources = studioPluginCatalogReport.snapshot.pluginSources.filter(
-  (entry): entry is StudioPluginJobSource => Boolean(entry.manifest.entryPoints.jobs || getHostOwnedPluginJobModuleDescriptor(entry.pluginId))
+  (entry): entry is StudioPluginJobSource =>
+    Boolean(
+      entry.manifest.entryPoints.jobs || getHostOwnedPluginJobModuleDescriptor(entry.pluginId)
+    )
 );
 
 const normalizeEntryPath = (value: string): string => value.replace(/^[.][/]/, '').trim();
@@ -185,7 +218,8 @@ const resolvePluginJobModule = (input: {
     input.sourceType === 'workspace'
       ? getWorkspaceJobModuleCandidates(input.jobsEntry)
       : getPackageJobModuleCandidates(input.jobsEntry);
-  const registry = input.sourceType === 'workspace' ? workspaceJobModuleRegistry : nodeJobModuleRegistry;
+  const registry =
+    input.sourceType === 'workspace' ? workspaceJobModuleRegistry : nodeJobModuleRegistry;
 
   for (const relativePath of candidates) {
     const moduleLoader = registry.get(`${input.sourceRef}::${relativePath}`);
@@ -203,6 +237,7 @@ const studioPluginJobRuntimeFactories: PluginJobRuntimeFactoryRegistry = {
       dispatchMail: createNodemailerMailDispatcher({}),
       revealSecret: (ciphertext, aad) => revealField(ciphertext, aad) ?? undefined,
       protectSecret: protectField,
+      createPostalCodeResolver: createMapPostalCodeResolver,
     }),
 };
 
@@ -243,7 +278,9 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
         });
       const runtimeFactory = input.runtimeFactories[runtimeRequirement];
       if (!runtimeFactory) {
-        throw new Error(`plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`);
+        throw new Error(
+          `plugin_job_runtime_provider_missing:${source.pluginId}:${runtimeRequirement}`
+        );
       }
 
       const createPluginJobExecutionHandlers =
@@ -259,10 +296,14 @@ export const createPluginOperationExecutionHandlersFromSnapshot = (input: {
         throw new Error(`missing_plugin_job_module_factory:${source.pluginId}`);
       }
 
-      for (const [jobTypeId, handler] of Object.entries(createPluginJobExecutionHandlers(runtimeFactory()))) {
+      for (const [jobTypeId, handler] of Object.entries(
+        createPluginJobExecutionHandlers(runtimeFactory())
+      )) {
         const existingOwner = handlerOwners.get(jobTypeId);
         if (existingOwner) {
-          throw new Error(`duplicate_plugin_operation_handler:${jobTypeId}:${source.pluginId}:${existingOwner}`);
+          throw new Error(
+            `duplicate_plugin_operation_handler:${jobTypeId}:${source.pluginId}:${existingOwner}`
+          );
         }
         handlerOwners.set(jobTypeId, source.pluginId);
         handlerEntries.push([jobTypeId, handler] as const);
@@ -305,12 +346,16 @@ export const assertPluginOperationExecutionHandlerCoverage = (input: {
   const declaredJobTypeIds = [...input.declaredJobTypeIds].sort(compareAlphabetically);
   const registeredHandlerIds = collectRegisteredHandlerIds(input.handlers);
 
-  const missingHandlerIds = declaredJobTypeIds.filter((jobTypeId) => !registeredHandlerIds.includes(jobTypeId));
+  const missingHandlerIds = declaredJobTypeIds.filter(
+    (jobTypeId) => !registeredHandlerIds.includes(jobTypeId)
+  );
   if (missingHandlerIds.length > 0) {
     throw new Error(`missing_plugin_operation_handlers:${missingHandlerIds.join(',')}`);
   }
 
-  const unknownHandlerIds = registeredHandlerIds.filter((jobTypeId) => !declaredJobTypeIds.includes(jobTypeId));
+  const unknownHandlerIds = registeredHandlerIds.filter(
+    (jobTypeId) => !declaredJobTypeIds.includes(jobTypeId)
+  );
   if (unknownHandlerIds.length > 0) {
     throw new Error(`unknown_plugin_operation_handlers:${unknownHandlerIds.join(',')}`);
   }

@@ -495,6 +495,69 @@ const verifyS3Connection = async (resolvedInterface: ResolvedExternalInterface):
   }
 };
 
+const verifyMapGeocodingConnection = async (
+  resolvedInterface: ResolvedExternalInterface,
+  deps: { readonly fetchImpl?: typeof fetch }
+): Promise<void> => {
+  const provider = resolvedInterface.publicConfig.provider;
+  if (provider !== 'geoapify') {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      'map_geocoding',
+      'Automatische Verbindungsprüfungen werden derzeit nur für Geoapify unterstützt.'
+    );
+  }
+
+  const apiKey = resolvedInterface.secretConfig.apiKey?.trim();
+  if (!apiKey) {
+    throw createRuntimeError(
+      'secret_missing',
+      resolvedInterface.instanceId,
+      'map_geocoding',
+      'Für diese Karten-/Geocoding-Schnittstelle fehlt der API-Key.'
+    );
+  }
+
+  const url = new URL('https://api.geoapify.com/v1/geocode/search');
+  url.searchParams.set('text', 'Berlin');
+  url.searchParams.set('type', 'city');
+  url.searchParams.set('filter', 'countrycode:de');
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('format', 'json');
+  url.searchParams.set('apiKey', apiKey);
+
+  const timeoutMs = Number(resolvedInterface.publicConfig.requestTimeoutMs) || 10_000;
+  let response: Response;
+  try {
+    response = await (deps.fetchImpl ?? fetch)(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      'map_geocoding',
+      'Geoapify ist für die Verbindungsprüfung nicht erreichbar.',
+      true
+    );
+  }
+
+  if (!response.ok) {
+    throw createRuntimeError(
+      'connection_failed',
+      resolvedInterface.instanceId,
+      'map_geocoding',
+      response.status === 401 || response.status === 403
+        ? 'Der Geoapify-API-Key wurde abgelehnt.'
+        : `Geoapify antwortete bei der Verbindungsprüfung mit Status ${response.status}.`,
+      response.status === 429 || response.status >= 500
+    );
+  }
+};
+
 export const runStoredInterfaceHealthcheck = async (
   input: {
     readonly instanceId: string;
@@ -508,7 +571,10 @@ export const runStoredInterfaceHealthcheck = async (
   const record = await loadExternalInterfaceRecordById(input.instanceId, input.interfaceId);
   if (
     !record ||
-    (record.typeKey !== 'supabase' && record.typeKey !== 'postgresql' && record.typeKey !== 's3')
+    (record.typeKey !== 'supabase' &&
+      record.typeKey !== 'postgresql' &&
+      record.typeKey !== 's3' &&
+      record.typeKey !== 'map_geocoding')
   ) {
     return null;
   }
@@ -536,6 +602,11 @@ export const runStoredInterfaceHealthcheck = async (
 
         if (entry.typeKey === 'postgresql') {
           await verifyPostgresqlDatabase(entry, input);
+          return;
+        }
+
+        if (entry.typeKey === 'map_geocoding') {
+          await verifyMapGeocodingConnection(entry, input);
           return;
         }
 

@@ -48,6 +48,7 @@ const {
   startWasteManagementResetInternal,
   startWasteManagementSeedInternal,
   startWasteManagementSyncWasteTypesInternal,
+  startWasteManagementEnrichPostalCodesInternal,
   updateWasteManagementCityInternal,
   updateWasteManagementCollectionLocationInternal,
   updateWasteManagementFractionInternal,
@@ -528,6 +529,10 @@ export const wasteManagementHandlers = {
   startSyncWasteTypes: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       startWasteManagementSyncWasteTypesInternal(nextRequest, ctx)
+    ),
+  startEnrichPostalCodes: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      startWasteManagementEnrichPostalCodesInternal(nextRequest, ctx)
     ),
   startReset: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>

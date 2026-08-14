@@ -6,6 +6,7 @@ import { Button } from '@sva/studio-ui-react';
 export const WasteToolsAdvancedSection = ({
   canRunInitialize,
   canRunMigrations,
+  canEnrichPostalCodes,
   canRunSeed,
   canRunReset,
   initializeSection,
@@ -14,6 +15,7 @@ export const WasteToolsAdvancedSection = ({
 }: {
   readonly canRunInitialize: boolean;
   readonly canRunMigrations: boolean;
+  readonly canEnrichPostalCodes: boolean;
   readonly canRunSeed: boolean;
   readonly canRunReset: boolean;
   readonly initializeSection: ReactNode;
@@ -25,7 +27,8 @@ export const WasteToolsAdvancedSection = ({
   const [technicalOpen, setTechnicalOpen] = useState(false);
   const contentId = useId();
   const technicalId = useId();
-  const hasSystemActions = canRunInitialize || canRunMigrations || canRunSeed || canRunReset;
+  const hasSystemActions =
+    canRunInitialize || canRunMigrations || canEnrichPostalCodes || canRunSeed || canRunReset;
 
   if (!hasSystemActions && !technicalDetails) {
     return null;

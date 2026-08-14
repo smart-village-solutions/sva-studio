@@ -57,7 +57,7 @@ const createContext = (input: {
   },
   abortSignal: new AbortController().signal,
   isCancellationRequested: async () => false,
-  throwIfCancellationRequested: async () => undefined,
+  throwIfCancellationRequested: vi.fn(async () => undefined),
   requestId: 'req-1',
   actorAccountId: 'actor-1',
 });
@@ -144,6 +144,29 @@ describe('waste management runtime handlers', () => {
     expect(createPluginJobExecutionHandlers).toBe(
       createWasteManagementPluginOperationExecutionHandlers
     );
+  });
+
+  it('checks cancellation around runtime-managed postal-code progress', async () => {
+    const enrichPostalCodes = vi.fn(async (_instanceId, _payload, progressReporter) => {
+      await progressReporter?.reportProgress({
+        completedSteps: 1,
+        totalSteps: 2,
+        currentPhase: 'waste-management.enrich-postal-codes',
+        currentStepKey: 'resolve-postal-codes',
+      } as never);
+      return { durationMs: 1, details: {} };
+    });
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ enrichPostalCodes })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      inputPayload: { operation: 'enrich-postal-codes' },
+    });
+
+    await handlers['waste-management.enrich-postal-codes']?.(context);
+
+    expect(context.throwIfCancellationRequested).toHaveBeenCalledTimes(5);
   });
 
   it('delegates every non-import operation to its matching runtime method', async () => {

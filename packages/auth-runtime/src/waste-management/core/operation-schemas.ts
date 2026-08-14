@@ -19,7 +19,9 @@ const startImportSchema = z.object({
 });
 
 const previewLocationTourPickupDateImportSchema = z.object({
-  importProfileId: z.literal(wasteManagementOperationsContract.importProfileIds.locationTourPickupDates),
+  importProfileId: z.literal(
+    wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
+  ),
   sourceFormat: z.literal('text/csv'),
   blobRef: z.string().trim().min(1),
   delimiterOverride: z.enum(wasteManagementOperationsContract.csvDelimiters).optional(),
@@ -32,12 +34,16 @@ const startSeedSchema = z.object({
 const startMainserverSyncSchema = z.object({});
 
 const startSyncWasteTypesSchema = z.object({});
+const startEnrichPostalCodesSchema = z.object({});
 
 const startResetSchema = z.object({
-  confirmationToken: z.string().trim().refine(
-    (value) => value === wasteManagementOperationsContract.resetConfirmationToken,
-    `Bestätigungstoken muss exakt "${wasteManagementOperationsContract.resetConfirmationToken}" entsprechen.`
-  ),
+  confirmationToken: z
+    .string()
+    .trim()
+    .refine(
+      (value) => value === wasteManagementOperationsContract.resetConfirmationToken,
+      `Bestätigungstoken muss exakt "${wasteManagementOperationsContract.resetConfirmationToken}" entsprechen.`
+    ),
 });
 
 export const wasteManagementOperationSchemas = {
@@ -48,5 +54,6 @@ export const wasteManagementOperationSchemas = {
   startSeedSchema,
   startMainserverSyncSchema,
   startSyncWasteTypesSchema,
+  startEnrichPostalCodesSchema,
   startResetSchema,
 } as const;

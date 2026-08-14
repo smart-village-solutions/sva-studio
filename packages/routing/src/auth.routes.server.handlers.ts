@@ -214,6 +214,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/sync-waste-types': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startSyncWasteTypes),
   },
+  '/api/v1/waste-management/tools/postal-codes/enrich': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startEnrichPostalCodes),
+  },
   '/api/v1/waste-management/tools/reset': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startReset),
   },

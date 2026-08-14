@@ -9,6 +9,7 @@ export const interfacesDEResources = {
     currentLabel: 'Status',
     lastCheckedLabel: 'Zuletzt geprüft',
     connected: 'Verbunden',
+    configured: 'Eingerichtet',
     error: 'Fehler',
     disabled: 'Deaktiviert',
     unknown: 'Unbekannt',
@@ -54,6 +55,8 @@ export const interfacesDEResources = {
       'Die gewählte Schnittstelle gehört nicht zur aktuellen Instanz und konnte nicht geändert werden.',
     interfaceTypeChangeNotSupported:
       'Der Typ einer vorhandenen Schnittstelle kann nicht nachträglich geändert werden.',
+    interfaceTypeNotRegistered:
+      'Der Schnittstellentyp ist in dieser Installation noch nicht registriert. Bitte die Studio-Datenbankmigrationen ausführen und erneut versuchen.',
     supabaseRequiresWasteManagementModule:
       'Supabase kann nur für Instanzen mit zugewiesenem Abfall-Management-Modul angelegt werden.',
     secretUnreadable:
@@ -168,6 +171,16 @@ export const interfacesDEResources = {
       rateLimitPerMinute: 'Rate-Limit pro Minute',
     },
     mapGeocoding: {
+      setup: {
+        title: 'Empfohlene Einrichtung mit Geoapify',
+        description:
+          'Für die automatische Postleitzahl-Ergänzung wird ein Geoapify-API-Key benötigt.',
+        createProject: 'Bei Geoapify anmelden und ein Projekt erstellen',
+        copyApiKey: 'Den erzeugten API-Key kopieren und unten in „API-Key“ eintragen',
+        keepDefaults:
+          'Die Endpoint-Felder leer lassen, Geocoding aktivieren und den Kill-Switch deaktiviert lassen',
+        openGeoapify: 'Geoapify-Projekt und API-Key anlegen',
+      },
       provider: 'Provider',
       providerOptions: {
         custom: 'Benutzerdefiniert',
@@ -177,6 +190,9 @@ export const interfacesDEResources = {
       geocodeEndpoint: 'Geocode-Endpoint',
       reverseGeocodeEndpoint: 'Reverse-Geocode-Endpoint',
       apiKey: 'API-Key',
+      apiKeyReplacementPlaceholder: 'Neuen API-Key eingeben',
+      apiKeyConfiguredStatus: 'Ein API-Key ist bereits hinterlegt',
+      apiKeyConfiguredHint: 'Leer lassen, um den vorhandenen API-Key beizubehalten',
       requestTimeoutMs: 'Timeout in ms',
       rateLimitPerMinute: 'Rate-Limit pro Minute',
       autocompleteEnabled: 'Autocomplete aktivieren',

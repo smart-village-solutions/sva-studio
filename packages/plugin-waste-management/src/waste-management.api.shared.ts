@@ -1,4 +1,9 @@
-import type { ApiItemResponse, StudioJobDetail, StudioJobResponse } from '@sva/plugin-sdk';
+import type {
+  ApiItemResponse,
+  StudioJobDetail,
+  StudioJobResponse,
+  WasteManagementHistoryOverview,
+} from '@sva/plugin-sdk';
 import { createMainserverJsonRequestHeaders, requestMainserverJson } from '@sva/plugin-sdk';
 
 export class WasteManagementApiError extends Error {
@@ -127,6 +132,36 @@ export const requestWasteManagementJobDetail = async (
     url: `/api/v1/plugin-operations/jobs/${encodeURIComponent(jobId)}`,
     init,
   });
+
+export const requestLatestWasteManagementJob = async (
+  jobTypeId: string,
+  init?: RequestInit
+): Promise<StudioJobDetail | null> => {
+  if (jobTypeId === 'waste-management.enrich-postal-codes') {
+    const history = await requestWasteManagementItem<WasteManagementHistoryOverview>({
+      url: '/api/v1/waste-management/history?page=1&pageSize=1',
+      init,
+    });
+    return history.latestPostalCodeJob ?? null;
+  }
+  const loadLatest = async (view: 'active' | 'history') => {
+    const params = new URLSearchParams({
+      view,
+      page: '1',
+      pageSize: '1',
+      pluginId: 'waste-management',
+      jobTypeId,
+    });
+    return requestWasteManagementResponse<Readonly<{ data: readonly { readonly id: string }[] }>>({
+      url: `/api/v1/plugin-operations/jobs?${params.toString()}`,
+      init,
+    });
+  };
+
+  const active = await loadLatest('active');
+  const latest = active.data[0] ?? (await loadLatest('history')).data[0];
+  return latest ? requestWasteManagementJobDetail(latest.id, init) : null;
+};
 
 export const requestWasteManagementMutation = <T>(
   url: string,

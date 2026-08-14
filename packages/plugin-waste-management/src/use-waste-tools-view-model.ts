@@ -137,6 +137,7 @@ export const useWasteToolsViewModel = (pt: Translate) => {
   useWasteTrackedJob({
     lastJob,
     refreshTechnicalHistory,
+    restoreJobTypeId: 'waste-management.enrich-postal-codes',
     setLastJob,
   });
 

@@ -44,6 +44,8 @@ describe('waste-management-contract', () => {
       'sync.started',
       'sync.succeeded',
       'sync.failed',
+      'postal-code-enrichment.succeeded',
+      'postal-code-enrichment.failed',
     ]);
     expect(wasteManagementDataSourceContract.isTechnicalEventType('sync.failed')).toBe(true);
     expect(wasteManagementDataSourceContract.isTechnicalEventType('connection-check.pending')).toBe(

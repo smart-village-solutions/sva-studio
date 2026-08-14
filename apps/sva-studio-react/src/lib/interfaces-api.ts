@@ -760,7 +760,12 @@ export const upsertInstanceInterfaceServerFn = createServerFn({ method: 'POST' }
           throw error;
         }
 
-        if (stored.type === 'supabase' || stored.type === 'postgresql' || stored.type === 's3') {
+        if (
+          stored.type === 'supabase' ||
+          stored.type === 'postgresql' ||
+          stored.type === 's3' ||
+          (stored.type === 'mapGeocoding' && stored.config.provider === 'geoapify')
+        ) {
           try {
             const { runStoredInterfaceHealthcheck } =
               await import('./instance-interface-healthcheck.server.js');

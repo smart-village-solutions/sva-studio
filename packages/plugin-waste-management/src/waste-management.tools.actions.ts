@@ -7,6 +7,7 @@ import {
   startWasteManagementInitialize,
   startWasteManagementImport,
   startWasteManagementMigrations,
+  startWasteManagementPostalCodeEnrichment,
   startWasteManagementReset,
   startWasteManagementSeed,
   type StartWasteManagementImportInput,
@@ -16,68 +17,72 @@ import { createWasteToolErrorMessage } from './waste-management.tools.messages.j
 import { useWasteSelectedImportProfile } from './waste-management.tools.profile.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-type Action = 'import' | 'migration' | 'seed' | 'reset';
+type Action = 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
 
-export const createWasteToolsJobRunner = ({
-  pt,
-  refreshTechnicalHistory,
-  setRunningAction,
-  setMessage,
-  setLastJob,
-}: {
-  readonly pt: Translate;
-  readonly refreshTechnicalHistory: (active?: boolean) => Promise<void>;
-  readonly setRunningAction: (action: Action | null) => void;
-  readonly setMessage: (message: StatusMessage | null) => void;
-  readonly setLastJob: (job: StudioJobResponse['data'] | null) => void;
-}) => async (action: Action, callback: () => Promise<StudioJobResponse['data']>) => {
-  setRunningAction(action);
-  setMessage(null);
-  try {
-    const job = await callback();
-    setLastJob(job);
-    await refreshTechnicalHistory(true);
-    setMessage({ kind: 'success', text: pt('tools.messages.jobStarted', { jobId: job.id }) });
-    return job;
-  } catch (error) {
-    setMessage({
-      kind: 'error',
-      text: createWasteToolErrorMessage({ action, error, pt }),
-    });
-    return null;
-  } finally {
-    setRunningAction(null);
-  }
-};
-
-export const createWasteToolsHistoryDeletionRunner = ({
-  pt,
-  refreshTechnicalHistory,
-  setMessage,
-  setLastJob,
-}: {
-  readonly pt: Translate;
-  readonly refreshTechnicalHistory: (active?: boolean) => Promise<void>;
-  readonly setMessage: (message: StatusMessage | null) => void;
-  readonly setLastJob: (job: StudioJobResponse['data'] | null) => void;
-}) => async (jobId: string, currentLastJobId?: string) => {
-  setMessage(null);
-  try {
-    await deleteWasteManagementHistoryJob(jobId);
-    if (currentLastJobId === jobId) {
-      setLastJob(null);
+export const createWasteToolsJobRunner =
+  ({
+    pt,
+    refreshTechnicalHistory,
+    setRunningAction,
+    setMessage,
+    setLastJob,
+  }: {
+    readonly pt: Translate;
+    readonly refreshTechnicalHistory: (active?: boolean) => Promise<void>;
+    readonly setRunningAction: (action: Action | null) => void;
+    readonly setMessage: (message: StatusMessage | null) => void;
+    readonly setLastJob: (job: StudioJobResponse['data'] | null) => void;
+  }) =>
+  async (action: Action, callback: () => Promise<StudioJobResponse['data']>) => {
+    setRunningAction(action);
+    setMessage(null);
+    try {
+      const job = await callback();
+      setLastJob(job);
+      await refreshTechnicalHistory(true);
+      setMessage({ kind: 'success', text: pt('tools.messages.jobStarted', { jobId: job.id }) });
+      return job;
+    } catch (error) {
+      setMessage({
+        kind: 'error',
+        text: createWasteToolErrorMessage({ action, error, pt }),
+      });
+      return null;
+    } finally {
+      setRunningAction(null);
     }
-    await refreshTechnicalHistory(true);
-    setMessage({ kind: 'success', text: pt('tools.messages.historyDeleteSuccess') });
-    return true;
-  } catch (error) {
-    setMessage({
-      kind: 'error',
-      text: createWasteToolErrorMessage({ action: 'import', error, pt }),
-    });
-    return false;
-  }
-};
+  };
+
+export const createWasteToolsHistoryDeletionRunner =
+  ({
+    pt,
+    refreshTechnicalHistory,
+    setMessage,
+    setLastJob,
+  }: {
+    readonly pt: Translate;
+    readonly refreshTechnicalHistory: (active?: boolean) => Promise<void>;
+    readonly setMessage: (message: StatusMessage | null) => void;
+    readonly setLastJob: (job: StudioJobResponse['data'] | null) => void;
+  }) =>
+  async (jobId: string, currentLastJobId?: string) => {
+    setMessage(null);
+    try {
+      await deleteWasteManagementHistoryJob(jobId);
+      if (currentLastJobId === jobId) {
+        setLastJob(null);
+      }
+      await refreshTechnicalHistory(true);
+      setMessage({ kind: 'success', text: pt('tools.messages.historyDeleteSuccess') });
+      return true;
+    } catch (error) {
+      setMessage({
+        kind: 'error',
+        text: createWasteToolErrorMessage({ action: 'import', error, pt }),
+      });
+      return false;
+    }
+  };
 
 export const createWasteToolsActions = ({
   pt,
@@ -106,7 +111,9 @@ export const createWasteToolsActions = ({
   readonly importBlobRef: string;
   readonly importDryRun: boolean;
   readonly delimiterOverride: StartWasteManagementImportInput['delimiterOverride'];
-  readonly setPreviewResult: (value: Awaited<ReturnType<typeof previewWasteLocationTourPickupDateImport>> | null) => void;
+  readonly setPreviewResult: (
+    value: Awaited<ReturnType<typeof previewWasteLocationTourPickupDateImport>> | null
+  ) => void;
   readonly setPreviewReady: (value: boolean) => void;
   readonly setMessage: (message: StatusMessage | null) => void;
   readonly migrationSchema: string;
@@ -116,7 +123,10 @@ export const createWasteToolsActions = ({
   readonly setResetToken: (value: string) => void;
 }) => ({
   runPreview: async () => {
-    if (importProfileId !== 'waste-management.ortsbezogene-tourtermine' || importSourceFormat !== 'text/csv') {
+    if (
+      importProfileId !== 'waste-management.ortsbezogene-tourtermine' ||
+      importSourceFormat !== 'text/csv'
+    ) {
       return null;
     }
     try {
@@ -165,6 +175,8 @@ export const createWasteToolsActions = ({
       })
     ),
   runSeed: () => runJob('seed', () => startWasteManagementSeed()),
+  runPostalCodeEnrichment: () =>
+    runJob('postalCode', () => startWasteManagementPostalCodeEnrichment()),
   runReset: () =>
     runJob('reset', async () => {
       const job = await startWasteManagementReset({
@@ -209,8 +221,12 @@ export const useWasteToolsViewModelHelpers = ({
   readonly migrationVersion: string;
   readonly resetToken: string;
   readonly refreshTechnicalHistory: (active?: boolean) => Promise<void>;
-  readonly setImportSourceFormat: (sourceFormat: StartWasteManagementImportInput['sourceFormat']) => void;
-  readonly setPreviewResult: (value: Awaited<ReturnType<typeof previewWasteLocationTourPickupDateImport>> | null) => void;
+  readonly setImportSourceFormat: (
+    sourceFormat: StartWasteManagementImportInput['sourceFormat']
+  ) => void;
+  readonly setPreviewResult: (
+    value: Awaited<ReturnType<typeof previewWasteLocationTourPickupDateImport>> | null
+  ) => void;
   readonly setPreviewReady: (value: boolean) => void;
   readonly setResetConfirmOpen: (open: boolean) => void;
   readonly setResetToken: (value: string) => void;
@@ -269,7 +285,9 @@ export const createWasteToolsViewModel = <TActions extends Record<string, unknow
   readonly importBlobRef: string;
   readonly importDryRun: boolean;
   readonly delimiterOverride: StartWasteManagementImportInput['delimiterOverride'];
-  readonly previewResult: Awaited<ReturnType<typeof previewWasteLocationTourPickupDateImport>> | null;
+  readonly previewResult: Awaited<
+    ReturnType<typeof previewWasteLocationTourPickupDateImport>
+  > | null;
   readonly previewReady: boolean;
   readonly migrationSchema: string;
   readonly migrationVersion: string;
@@ -281,11 +299,15 @@ export const createWasteToolsViewModel = <TActions extends Record<string, unknow
   readonly technicalHistory: readonly WasteManagementHistoryOverview['technical']['items'][number][];
   readonly runDeleteHistoryEntry: (jobId: string) => Promise<boolean>;
   readonly selectedImportProfile: ReturnType<typeof getWasteManagementImportCatalog>[number] | null;
-  readonly setImportProfileId: (value: StartWasteManagementImportInput['importProfileId'] | '') => void;
+  readonly setImportProfileId: (
+    value: StartWasteManagementImportInput['importProfileId'] | ''
+  ) => void;
   readonly setImportSourceFormat: (value: StartWasteManagementImportInput['sourceFormat']) => void;
   readonly setImportBlobRef: (value: string) => void;
   readonly setImportDryRun: (value: boolean) => void;
-  readonly setDelimiterOverride: (value: StartWasteManagementImportInput['delimiterOverride']) => void;
+  readonly setDelimiterOverride: (
+    value: StartWasteManagementImportInput['delimiterOverride']
+  ) => void;
   readonly setMigrationSchema: (value: string) => void;
   readonly setMigrationVersion: (value: string) => void;
   readonly setResetToken: (value: string) => void;

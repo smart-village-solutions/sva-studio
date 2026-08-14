@@ -1,4 +1,7 @@
-import { createTabCard, type WasteManagementTabCardCopy } from './plugin.translations.shared.base.js';
+import {
+  createTabCard,
+  type WasteManagementTabCardCopy,
+} from './plugin.translations.shared.base.js';
 
 type WasteManagementTabsCopy = Readonly<{
   ariaLabel: string;
@@ -97,6 +100,14 @@ type WasteManagementToolsCopy = Readonly<{
     title: string;
     description: string;
   }>;
+  postalCodes: Readonly<{
+    title: string;
+    description: string;
+    progressTitle: string;
+    progressSummary: string;
+    resultTitle: string;
+    resultSummary: string;
+  }>;
   sync: Readonly<{
     actionLabel: string;
     startSuccess: string;
@@ -125,7 +136,9 @@ type WasteManagementToolsCopy = Readonly<{
   }>;
 }>;
 
-export const createWasteManagementTabsTranslations = <const TCopy extends WasteManagementTabsCopy>(copy: TCopy) =>
+export const createWasteManagementTabsTranslations = <const TCopy extends WasteManagementTabsCopy>(
+  copy: TCopy
+) =>
   ({
     tabs: {
       ariaLabel: copy.ariaLabel,
@@ -139,7 +152,11 @@ export const createWasteManagementTabsTranslations = <const TCopy extends WasteM
     },
   }) as const;
 
-export const createWasteManagementSettingsTranslations = <const TCopy extends WasteManagementSettingsCopy>(copy: TCopy) =>
+export const createWasteManagementSettingsTranslations = <
+  const TCopy extends WasteManagementSettingsCopy,
+>(
+  copy: TCopy
+) =>
   ({
     common: copy.common,
     settings: {
@@ -151,7 +168,11 @@ export const createWasteManagementSettingsTranslations = <const TCopy extends Wa
     },
   }) as const;
 
-export const createWasteManagementOverviewTranslations = <const TCopy extends WasteManagementOverviewCopy>(copy: TCopy) =>
+export const createWasteManagementOverviewTranslations = <
+  const TCopy extends WasteManagementOverviewCopy,
+>(
+  copy: TCopy
+) =>
   ({
     overview: {
       messages: copy.messages,
@@ -166,7 +187,7 @@ export const createWasteManagementOverviewTranslations = <const TCopy extends Wa
 export const createWasteManagementLocationsWorkspaceTranslations = <
   const TCopy extends WasteManagementLocationsWorkspaceCopy,
 >(
-  copy: TCopy,
+  copy: TCopy
 ) =>
   ({
     title: copy.title,
@@ -183,12 +204,17 @@ export const createWasteManagementLocationsWorkspaceTranslations = <
     table: copy.table,
   }) as const;
 
-export const createWasteManagementToolsTranslations = <const TCopy extends WasteManagementToolsCopy>(copy: TCopy) =>
+export const createWasteManagementToolsTranslations = <
+  const TCopy extends WasteManagementToolsCopy,
+>(
+  copy: TCopy
+) =>
   ({
     tools: {
       imports: copy.imports,
       migrations: copy.migrations,
       seed: copy.seed,
+      postalCodes: copy.postalCodes,
       sync: copy.sync,
       reset: copy.reset,
       actions: copy.actions,

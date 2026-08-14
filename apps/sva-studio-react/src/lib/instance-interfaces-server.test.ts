@@ -38,6 +38,26 @@ vi.mock('@sva/server-runtime', () => ({
   createSdkLogger: () => state.logger,
 }));
 
+const createMapGeocodingDraft = () => ({
+  type: 'mapGeocoding' as const,
+  name: 'Geoapify-Karte',
+  enabled: true,
+  config: {
+    provider: 'geoapify' as const,
+    styleUrl: 'https://tiles.example/styles/poi',
+    autocompleteEnabled: true,
+    geocodeEnabled: true,
+    reverseGeocodeEnabled: true,
+    suggestEndpoint: '',
+    geocodeEndpoint: '',
+    reverseGeocodeEndpoint: '',
+    requestTimeoutMs: '3000',
+    rateLimitPerMinute: '60',
+    killSwitchEnabled: false,
+    apiKey: 'geoapify-key',
+  },
+});
+
 describe('instance-interfaces-server', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -511,6 +531,7 @@ describe('instance-interfaces-server', () => {
     ).resolves.toEqual(
       expect.objectContaining({
         type: 'mapGeocoding',
+        apiKeyConfigured: true,
       })
     );
 
@@ -612,6 +633,20 @@ describe('instance-interfaces-server', () => {
     ).rejects.toThrow('invalid_config');
 
     expect(state.saveExternalInterfaceRecord).not.toHaveBeenCalled();
+  });
+
+  it('reports a missing map geocoding type registration with a stable error code', async () => {
+    state.loadDefaultExternalInterfaceRecord.mockResolvedValue(null);
+    state.saveExternalInterfaceRecord.mockRejectedValue({
+      code: '23503',
+      constraint: 'instance_external_interfaces_type_key_fkey',
+    });
+
+    const { upsertStoredInterface } = await import('./instance-interfaces-server');
+
+    await expect(
+      upsertStoredInterface('de-test', createMapGeocodingDraft())
+    ).rejects.toThrow('interface_type_not_registered');
   });
 
   it('clears stale optional map geocoding fields when they are removed during updates', async () => {

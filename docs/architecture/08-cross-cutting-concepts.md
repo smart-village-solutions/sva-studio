@@ -73,6 +73,7 @@ gleichzeitig beeinflussen.
 - Temporal bleibt als spätere Eskalationsoption für komplexere Orchestrierung offen, ist aber noch kein zweiter aktiver Standard.
 - Trigger.dev ist für Studio kein zulässiger Workflow-Pfad.
 - Outbox, n8n-Anbindung, SSE/WebSocket und Broker-Pfade wie NATS bleiben explizite Folgearbeit hinter derselben Hostgrenze.
+- Längere Geocoding-Massenläufe werden ebenfalls als generische Host-Jobs ausgeführt. Sie beachten das konfigurierte Provider-Rate-Limit, halten während externer Aufrufe keine lange Datenbanktransaktion offen und schreiben Einzelergebnisse nur über idempotente, konditionale Mutationen.
 
 ### Öffentlicher Waste-Web-Releasevertrag
 
@@ -126,6 +127,7 @@ gleichzeitig beeinflussen.
 - Plugin-Vertrag v1 bleibt statisch und bundlegebunden: Plugins deklarieren Metadaten über `PluginDefinition`, aber weder Runtime-Loading noch Plugin-eigene Sicherheits- oder Routing-Bypässe sind erlaubt
 - Im Zielbild der Plugin-Plattform v2 bleiben Manifest, Katalog, Loader und Runtime host-owned. Plugins dürfen diese Verträge konsumieren, aber keine parallelen Aktivierungs-, Routing-, Secret- oder Auditpfade etablieren.
 - Externe technische Schnittstellen sind ebenfalls host-owned: Typkatalog, Instanzdatensätze, Default-Regeln, Secret-Verschlüsselung, Statusprojektion und Resolver liegen zentral im Host.
+- Die Waste-Postleitzahl-Anreicherung nutzt deshalb ausschließlich die hostseitig aufgelöste Karten-Geocodierung. API-Schlüssel, vollständige Abfragen und Providerdetails gelangen weder in das Waste-Plugin noch in Job- oder Audit-Protokolle.
 - Plugin-deklarierte `externalInterfaceTypes` beschreiben nur Metadaten und Feldschemas; Persistenz, Secret-Auflösung, Health-Checks und Audit bleiben verpflichtend hostseitig.
 - Plugin-Guards werden grundsätzlich hostseitig angewendet; ein Plugin deklariert nur die fachliche Guard-Anforderung und darf keine eigene Autorisierungsschicht am Host vorbei etablieren
 - Pluginseitige Request-, Job- und Integrationsbeiträge laufen ausschließlich in host-owned Execution-Contexts mit Auth-, Instanz-, Logger-, Audit- und Fehlervertrag des Hosts

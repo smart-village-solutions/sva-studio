@@ -720,6 +720,25 @@ describe('waste master data repository', () => {
     expect(houseNumber.statements[0]?.text).toContain('number ILIKE $2');
   });
 
+  it('sets a city postal code only while the stored value is missing', async () => {
+    const updated = createExecutor([{}]);
+    const updatedRepository = createWasteMasterDataRepository(updated.executor);
+
+    await expect(
+      updatedRepository.updateWasteCityPostalCodeIfMissing('city-1', '19348')
+    ).resolves.toBe(true);
+    expect(updated.statements[0]?.values).toEqual(['city-1', '19348']);
+    expect(updated.statements[0]?.text).toContain("postal_code IS NULL OR BTRIM(postal_code) = ''");
+
+    const unchanged = createExecutor();
+    await expect(
+      createWasteMasterDataRepository(unchanged.executor).updateWasteCityPostalCodeIfMissing(
+        'city-1',
+        '19348'
+      )
+    ).resolves.toBe(false);
+  });
+
   it('reads and upserts streets and house numbers', async () => {
     const repository = createWasteMasterDataRepository(
       createExecutor([

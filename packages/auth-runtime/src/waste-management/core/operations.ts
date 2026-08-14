@@ -1,11 +1,24 @@
-import { getWasteManagementImportCatalogEntry, wasteManagementOperationsContract, type StudioJobStartRequest } from '@sva/core';
+import {
+  getWasteManagementImportCatalogEntry,
+  wasteManagementOperationsContract,
+  type StudioJobStartRequest,
+} from '@sva/core';
 import { z } from 'zod';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';
 import { validateCsrf } from '../../shared/request-security.js';
-import { asApiItem, createApiError, parseRequestBody, requireIdempotencyKey } from '../../shared/request-helpers.js';
-import { authorizeWasteManagementAction, emitWasteAuditEvent, getAuthorizedWasteManagementInstanceId } from './auth.js';
+import {
+  asApiItem,
+  createApiError,
+  parseRequestBody,
+  requireIdempotencyKey,
+} from '../../shared/request-helpers.js';
+import {
+  authorizeWasteManagementAction,
+  emitWasteAuditEvent,
+  getAuthorizedWasteManagementInstanceId,
+} from './auth.js';
 import { wasteManagementOperationSchemas } from './operation-schemas.js';
 import { startPluginOperationJobFromFacade } from './operations-support.js';
 import { loadConfiguredWasteSettings } from './settings-shared.js';
@@ -21,8 +34,8 @@ const {
   startResetSchema,
   startSeedSchema,
   startSyncWasteTypesSchema,
-} =
-  wasteManagementOperationSchemas;
+  startEnrichPostalCodesSchema,
+} = wasteManagementOperationSchemas;
 
 const requirePreview = (deps: WasteManagementHandlerDeps) => {
   if (!deps.previewWasteLocationTourPickupDateImport) {
@@ -38,7 +51,8 @@ const isPreviewInputError = (message: string): boolean =>
   message.startsWith('ambiguous_regionless_city_match:');
 
 const toPreviewErrorResponse = (error: unknown, requestId: string | undefined): Response => {
-  const message = error instanceof Error ? error.message : 'Die Importvorschau konnte nicht erstellt werden.';
+  const message =
+    error instanceof Error ? error.message : 'Die Importvorschau konnte nicht erstellt werden.';
   if (isPreviewInputError(message)) {
     if (message.startsWith('ambiguous_regionless_city_match:')) {
       const cityName = message.slice('ambiguous_regionless_city_match:'.length) || 'unbekannt';
@@ -52,7 +66,12 @@ const toPreviewErrorResponse = (error: unknown, requestId: string | undefined): 
     return createApiError(400, 'invalid_request', message, requestId);
   }
 
-  return createApiError(503, 'database_unavailable', 'Die Importvorschau konnte nicht erstellt werden.', requestId);
+  return createApiError(
+    503,
+    'database_unavailable',
+    'Die Importvorschau konnte nicht erstellt werden.',
+    requestId
+  );
 };
 
 const resolveBoundTargetSchema = async (
@@ -71,11 +90,17 @@ const resolveBoundTargetSchema = async (
     );
 
     if (!settings?.schemaName || settings.schemaName.trim().length === 0) {
-      return createApiError(400, 'invalid_request', 'Für die Instanz ist kein Waste-Schema konfiguriert.', requestId);
+      return createApiError(
+        400,
+        'invalid_request',
+        'Für die Instanz ist kein Waste-Schema konfiguriert.',
+        requestId
+      );
     }
 
     const configuredSchema = settings.schemaName.trim();
-    const normalizedRequestedSchema = typeof requestedSchema === 'string' ? requestedSchema.trim() : '';
+    const normalizedRequestedSchema =
+      typeof requestedSchema === 'string' ? requestedSchema.trim() : '';
     if (normalizedRequestedSchema.length > 0 && normalizedRequestedSchema !== configuredSchema) {
       return createApiError(
         400,
@@ -87,7 +112,12 @@ const resolveBoundTargetSchema = async (
 
     return configuredSchema;
   } catch {
-    return createApiError(503, 'database_unavailable', 'Waste-Datenquelle konnte nicht geladen werden.', requestId);
+    return createApiError(
+      503,
+      'database_unavailable',
+      'Waste-Datenquelle konnte nicht geladen werden.',
+      requestId
+    );
   }
 };
 
@@ -105,7 +135,12 @@ const startToolJob = async (
   }
 ): Promise<Response> => {
   const requestId = getRequestId(deps);
-  const authError = await authorizeWasteManagementAction(ctx, input.requiredPermission, deps, requestId);
+  const authError = await authorizeWasteManagementAction(
+    ctx,
+    input.requiredPermission,
+    deps,
+    requestId
+  );
   if (authError) {
     return authError;
   }
@@ -127,9 +162,11 @@ const startToolJob = async (
     return createApiError(400, 'invalid_request', parsed.message, requestId);
   }
 
-  const actorResolution = await (deps.resolveActorInfo ??
+  const actorResolution = await (
+    deps.resolveActorInfo ??
     ((scopedRequest: Request, scopedCtx: AuthenticatedRequestContext) =>
-      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true })))(request, ctx);
+      resolveActorInfo(scopedRequest, scopedCtx, { requireActorMembership: true }))
+  )(request, ctx);
   if ('error' in actorResolution) {
     return actorResolution.error;
   }
@@ -226,7 +263,8 @@ export const wasteManagementOperationHandlers = {
       toPayload: (data) => ({
         operation: 'apply-migrations',
         targetSchema: typeof data.targetSchema === 'string' ? data.targetSchema : undefined,
-        requestedByVersion: typeof data.requestedByVersion === 'string' ? data.requestedByVersion : undefined,
+        requestedByVersion:
+          typeof data.requestedByVersion === 'string' ? data.requestedByVersion : undefined,
       }),
     }),
   startWasteManagementImportInternal: async (
@@ -282,7 +320,8 @@ export const wasteManagementOperationHandlers = {
         sourceFormat: data.sourceFormat,
         dryRun: data.dryRun === true,
         blobRef: data.blobRef,
-        delimiterOverride: typeof data.delimiterOverride === 'string' ? data.delimiterOverride : undefined,
+        delimiterOverride:
+          typeof data.delimiterOverride === 'string' ? data.delimiterOverride : undefined,
       }),
     }),
   previewWasteManagementLocationTourPickupDateImportInternal: async (
@@ -291,7 +330,12 @@ export const wasteManagementOperationHandlers = {
     deps: WasteManagementHandlerDeps = {}
   ): Promise<Response> => {
     const requestId = getRequestId(deps);
-    const authError = await authorizeWasteManagementAction(ctx, 'waste-management.import.execute', deps, requestId);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.import.execute',
+      deps,
+      requestId
+    );
     if (authError) {
       return authError;
     }
@@ -308,14 +352,12 @@ export const wasteManagementOperationHandlers = {
     }
 
     try {
-      const preview = await requirePreview(deps)(
-        {
-          instanceId,
-          sourceFormat: parsed.data.sourceFormat,
-          blobRef: parsed.data.blobRef,
-          delimiterOverride: parsed.data.delimiterOverride,
-        }
-      );
+      const preview = await requirePreview(deps)({
+        instanceId,
+        sourceFormat: parsed.data.sourceFormat,
+        blobRef: parsed.data.blobRef,
+        delimiterOverride: parsed.data.delimiterOverride,
+      });
       return new Response(JSON.stringify(asApiItem(preview, requestId)), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -373,6 +415,19 @@ export const wasteManagementOperationHandlers = {
         keycloakSubject: ctx.user.id,
         activeOrganizationId: ctx.activeOrganizationId,
       }),
+    }),
+  startWasteManagementEnrichPostalCodesInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.master-data.manage',
+      endpoint: 'POST:/api/v1/waste-management/tools/postal-codes/enrich',
+      schema: startEnrichPostalCodesSchema,
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      auditActionId: 'waste-management.postal-code-enrichment.started',
+      toPayload: () => ({ operation: 'enrich-postal-codes' }),
     }),
   startWasteManagementResetInternal: async (
     request: Request,

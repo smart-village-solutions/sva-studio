@@ -7,6 +7,7 @@ const expectedTechnicalHistoryJobTypeIds = [
   'waste-management.seed-data',
   'waste-management.reset-data',
   'waste-management.sync-waste-types',
+  'waste-management.enrich-postal-codes',
 ] as const;
 
 const resolveWasteDataSourceMock = vi.hoisted(() =>
@@ -105,81 +106,25 @@ const withStudioJobRepositoryMock = vi.hoisted(() =>
   vi.fn(
     async (
       instanceId: string,
-      work: (repository: { listJobs: typeof listJobsMock }) => Promise<unknown>
+      work: (repository: {
+        listJobs: typeof listJobsMock;
+        getJobDetail: typeof getJobDetailMock;
+      }) => Promise<unknown>
     ) =>
       work({
         listJobs: listJobsMock,
+        getJobDetail: getJobDetailMock,
       })
   )
 );
 
 const listJobsMock = vi.hoisted(() =>
   vi.fn(async () => ({
-    items: [
-      {
-        id: 'job-1',
-        jobTypeId: 'waste-management.apply-migrations',
-        status: 'succeeded',
-        finishedAt: '2026-05-09T12:00:00.000Z',
-        updatedAt: '2026-05-09T12:00:00.000Z',
-        requestId: 'req-1',
-        latestEvent: { message: 'done' },
-        errorPayload: undefined,
-      },
-      {
-        id: 'job-2',
-        jobTypeId: 'waste-management.import-data',
-        status: 'failed',
-        finishedAt: '2026-05-09T11:00:00.000Z',
-        updatedAt: '2026-05-09T11:00:00.000Z',
-        requestId: 'req-2',
-        latestEvent: { message: 'failed' },
-        errorPayload: { code: 'import_failed' },
-      },
-      {
-        id: 'job-3',
-        jobTypeId: 'waste-management.seed-data',
-        status: 'cancelled',
-        finishedAt: '2026-05-09T10:00:00.000Z',
-        updatedAt: '2026-05-09T10:00:00.000Z',
-        requestId: 'req-3',
-        latestEvent: { message: 'cancelled' },
-        errorPayload: { code: 'cancelled' },
-      },
-      {
-        id: 'job-5',
-        jobTypeId: 'other-job',
-        status: 'succeeded',
-        finishedAt: '2026-05-09T07:00:00.000Z',
-        updatedAt: '2026-05-09T07:00:00.000Z',
-        requestId: 'req-5',
-        latestEvent: { message: 'ignored' },
-        errorPayload: undefined,
-      },
-      {
-        id: 'job-6',
-        jobTypeId: 'waste-management.reset-data',
-        status: 'running',
-        finishedAt: null,
-        updatedAt: '2026-05-09T06:00:00.000Z',
-        requestId: 'req-6',
-        latestEvent: { message: 'running' },
-        errorPayload: undefined,
-      },
-      {
-        id: 'job-4',
-        jobTypeId: 'waste-management.sync-waste-types',
-        status: 'failed',
-        finishedAt: '2026-05-09T09:00:00.000Z',
-        updatedAt: '2026-05-09T09:00:00.000Z',
-        requestId: 'req-4',
-        latestEvent: { message: 'sync failed' },
-        errorPayload: { code: 'sync_failed' },
-      },
-    ],
-    total: 6,
+    items: [],
+    total: 0,
   }))
 );
+const getJobDetailMock = vi.hoisted(() => vi.fn(async () => null));
 
 const revealFieldMock = vi.hoisted(() => vi.fn(() => 'revealed-secret'));
 const loggerMock = vi.hoisted(() => ({
@@ -1183,6 +1128,73 @@ describe('waste-management server loaders', () => {
       }),
       expect.objectContaining({ id: 'technical-audit-1' }),
     ]);
+  });
+
+  it('maps postal-code enrichment jobs into the technical history stream', async () => {
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'job-postal-codes',
+          job_type_id: 'waste-management.enrich-postal-codes',
+          status: 'succeeded',
+          finished_at: '2026-08-14T13:00:00.000Z',
+          updated_at: '2026-08-14T13:00:00.000Z',
+          request_id: 'req-postal-codes',
+          latest_event_message: 'postal codes enriched',
+          error_code: null,
+          error_message: null,
+          total_count: 1,
+        },
+      ],
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 5,
+    });
+
+    expect(historyOverview.technical.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'job:job-postal-codes:succeeded',
+          eventType: 'postal-code-enrichment.succeeded',
+          outcome: 'success',
+        }),
+      ])
+    );
+  });
+
+  it('returns the latest active postal-code job through the waste history facade', async () => {
+    listJobsMock.mockResolvedValueOnce({
+      items: [{ id: 'postal-job-active' }],
+      total: 1,
+    } as never);
+    getJobDetailMock.mockResolvedValueOnce({
+      id: 'postal-job-active',
+      jobTypeId: 'waste-management.enrich-postal-codes',
+      status: 'running',
+      progress: { details: { processedCities: 9, totalCities: 298 } },
+    } as never);
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 5,
+    });
+
+    expect(historyOverview.latestPostalCodeJob).toMatchObject({
+      id: 'postal-job-active',
+      status: 'running',
+    });
+    expect(listJobsMock).toHaveBeenCalledWith('tenant-a', {
+      view: 'active',
+      page: 1,
+      pageSize: 1,
+      pluginId: 'waste-management',
+      jobTypeId: 'waste-management.enrich-postal-codes',
+    });
   });
 
   it('searches technical job history across request and diagnosis fields', async () => {

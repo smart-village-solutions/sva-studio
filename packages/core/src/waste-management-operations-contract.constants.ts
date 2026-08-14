@@ -9,6 +9,7 @@ const wasteManagementJobTypeIds = {
   syncWasteTypes: 'waste-management.sync-waste-types',
   materializeEmailReminders: 'waste-management.materialize-email-reminders',
   processEmailReminderOutbox: 'waste-management.process-email-reminder-outbox',
+  enrichPostalCodes: 'waste-management.enrich-postal-codes',
 } as const;
 
 const wasteManagementResetConfirmationToken = 'RESET' as const;

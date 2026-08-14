@@ -47,6 +47,7 @@ export const WasteToolsPanel = (props: {
     runPreview,
     runImport,
     runMigrations,
+    runPostalCodeEnrichment,
     runSeed,
     runReset,
   } = useWasteToolsViewModel(pt);
@@ -89,6 +90,7 @@ export const WasteToolsPanel = (props: {
         setMigrationSchema={setMigrationSchema}
         setMigrationVersion={setMigrationVersion}
         runMigrations={runMigrations}
+        runPostalCodeEnrichment={runPostalCodeEnrichment}
         runSeed={runSeed}
         setResetConfirmOpen={setResetConfirmOpen}
       />

@@ -24,19 +24,32 @@ import {
 } from './-interfaces-page.controller';
 import { InterfaceForm, TypePickerDialog } from './-interfaces-page.dialogs';
 
-const statusBadgeClass: Record<InstanceInterface['status'], string> = {
+type DisplayStatus = InstanceInterface['status'] | 'configured';
+
+const statusBadgeClass: Record<DisplayStatus, string> = {
   connected: 'border-primary/40 bg-primary/15 text-primary',
+  configured: 'border-primary/40 bg-primary/10 text-primary',
   error: 'border-destructive/40 bg-destructive/10 text-destructive',
   disabled: 'border-muted-foreground/30 bg-muted text-muted-foreground',
   unknown: 'border-secondary/40 bg-secondary/10 text-secondary',
 };
 
-const statusTranslationKey: Record<InstanceInterface['status'], string> = {
+const statusTranslationKey: Record<DisplayStatus, string> = {
   connected: 'interfaces.status.connected',
+  configured: 'interfaces.status.configured',
   error: 'interfaces.status.error',
   disabled: 'interfaces.status.disabled',
   unknown: 'interfaces.status.unknown',
 };
+
+const getDisplayStatus = (entry: InstanceInterface): DisplayStatus =>
+  entry.type === 'mapGeocoding' &&
+  entry.status === 'unknown' &&
+  entry.enabled &&
+  !entry.config.killSwitchEnabled &&
+  entry.apiKeyConfigured
+    ? 'configured'
+    : entry.status;
 
 const getInterfaceEndpoint = (entry: InstanceInterface): string => {
   if (entry.type === 'mainserver') return entry.config.graphqlBaseUrl || '-';
@@ -139,24 +152,27 @@ export const InterfacesPage = () => {
       {
         id: 'status',
         header: t('interfaces.table.headerStatus'),
-        cell: (row) => (
-          <div className="flex max-w-sm flex-col gap-1">
-            <Badge
-              className={`w-fit rounded-full ${statusBadgeClass[row.status]}`}
-              variant="outline"
-            >
-              {t(statusTranslationKey[row.status])}
-            </Badge>
-            {row.statusMessage ? (
-              <span className="text-xs leading-snug text-muted-foreground">
-                {row.statusMessage}
-              </span>
-            ) : null}
-          </div>
-        ),
+        cell: (row) => {
+          const displayStatus = getDisplayStatus(row);
+          return (
+            <div className="flex max-w-sm flex-col gap-1">
+              <Badge
+                className={`w-fit rounded-full ${statusBadgeClass[displayStatus]}`}
+                variant="outline"
+              >
+                {t(statusTranslationKey[displayStatus])}
+              </Badge>
+              {row.statusMessage ? (
+                <span className="text-xs leading-snug text-muted-foreground">
+                  {row.statusMessage}
+                </span>
+              ) : null}
+            </div>
+          );
+        },
         sortable: true,
         sortLabel: t('interfaces.table.headerStatus'),
-        sortValue: (row) => row.status,
+        sortValue: (row) => getDisplayStatus(row),
       },
       {
         id: 'lastChecked',
@@ -248,6 +264,11 @@ export const InterfacesPage = () => {
           <CardContent>
             <InterfaceForm
               draft={editState.draft}
+              hasStoredMapApiKey={
+                editState.mode === 'edit' &&
+                editState.entry.type === 'mapGeocoding' &&
+                editState.entry.apiKeyConfigured
+              }
               saveStatus={saveStatus}
               saveErrorMessage={saveErrorMessage}
               onChange={(next) => {

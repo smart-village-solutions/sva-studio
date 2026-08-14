@@ -127,6 +127,7 @@ const mapGeocodingEntry = {
   name: 'POI-Karte',
   enabled: true,
   status: 'unknown',
+  apiKeyConfigured: true,
   statusMessage: 'Konfiguration gespeichert',
   lastCheckedAt: '2026-03-15T20:04:00.000Z',
   createdAt: '2026-03-15T20:04:00.000Z',
@@ -549,6 +550,17 @@ describe('InterfacesPage', () => {
         ).length
       ).toBeGreaterThan(0);
     });
+  });
+
+  it('shows a configured status for a stored Geoapify key before a successful healthcheck', async () => {
+    state.listInterfaces.mockResolvedValue(createListResponse([mapGeocodingEntry]));
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Eingerichtet').length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByText('Unbekannt')).toBeNull();
   });
 
   it('renders endpoint and status fallbacks for disabled interfaces and SMTP transports', async () => {

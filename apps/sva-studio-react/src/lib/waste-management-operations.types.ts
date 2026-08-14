@@ -12,13 +12,20 @@ import type {
   WasteManagementSeedJobInput,
   WasteManagementSyncMainserverJobInput,
   WasteManagementSyncWasteTypesJobInput,
+  WasteManagementEnrichPostalCodesJobInput,
 } from '@sva/core';
 import type { MailDispatchMessage } from '@sva/mail-runtime';
-import type { loadDefaultExternalInterfaceRecord, listExternalInterfaceRecords } from '@sva/data-repositories/server';
+import type {
+  loadDefaultExternalInterfaceRecord,
+  listExternalInterfaceRecords,
+} from '@sva/data-repositories/server';
 import type { loadWasteTenantProvisioningRecord } from '@sva/data-repositories/server';
 
 export type SqlClient = {
-  query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+  query: <TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{
     readonly rowCount: number | null;
     readonly rows: readonly TRow[];
   }>;
@@ -35,7 +42,10 @@ export type WasteOperationRuntimeDeps = {
   readonly loadDefaultInterfaceRecord?: typeof loadDefaultExternalInterfaceRecord;
   readonly listInterfaceRecords?: typeof listExternalInterfaceRecords;
   readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
-  readonly revealSecret?: (ciphertext: string | null | undefined, aad: string) => string | undefined;
+  readonly revealSecret?: (
+    ciphertext: string | null | undefined,
+    aad: string
+  ) => string | undefined;
   readonly protectSecret?: (plaintext: string, aad: string) => string | null;
   readonly createPool?: (connectionString: string) => WasteOperationSqlPool;
   readonly readBinarySource?: (blobRef: string) => Promise<Uint8Array>;
@@ -47,6 +57,22 @@ export type WasteOperationRuntimeDeps = {
   }) => Promise<{
     readonly providerMessageId?: string;
   }>;
+  readonly createPostalCodeResolver?: (instanceId: string) => Promise<{
+    readonly rateLimitPerMinute: number;
+    readonly requestBudget?: number;
+    readonly resolve: (query: string) => Promise<
+      readonly {
+        readonly label: string;
+        readonly postalCode?: string;
+        readonly city?: string;
+        readonly district?: string;
+        readonly county?: string;
+        readonly state?: string;
+        readonly countryCode?: string;
+      }[]
+    >;
+  }>;
+  readonly sleep?: (milliseconds: number) => Promise<void>;
 };
 
 export type OperationSummary = {
@@ -64,8 +90,14 @@ export type WasteManagementOperationRuntime = {
     input: WasteManagementProvisionTenantDatabaseJobInput,
     context: { readonly jobId: string }
   ) => Promise<OperationSummary>;
-  initializeDataSource: (instanceId: string, input: WasteManagementInitializeJobInput) => Promise<OperationSummary>;
-  applyMigrations: (instanceId: string, input: WasteManagementApplyMigrationsJobInput) => Promise<OperationSummary>;
+  initializeDataSource: (
+    instanceId: string,
+    input: WasteManagementInitializeJobInput
+  ) => Promise<OperationSummary>;
+  applyMigrations: (
+    instanceId: string,
+    input: WasteManagementApplyMigrationsJobInput
+  ) => Promise<OperationSummary>;
   importData: (
     instanceId: string,
     input: WasteManagementImportJobInput,
@@ -77,7 +109,15 @@ export type WasteManagementOperationRuntime = {
     input: WasteManagementSyncMainserverJobInput,
     progressReporter?: WasteOperationProgressReporter
   ) => Promise<OperationSummary>;
-  syncWasteTypes: (instanceId: string, input: WasteManagementSyncWasteTypesJobInput) => Promise<OperationSummary>;
+  syncWasteTypes: (
+    instanceId: string,
+    input: WasteManagementSyncWasteTypesJobInput
+  ) => Promise<OperationSummary>;
+  enrichPostalCodes: (
+    instanceId: string,
+    input: WasteManagementEnrichPostalCodesJobInput,
+    progressReporter?: WasteOperationProgressReporter
+  ) => Promise<OperationSummary>;
   materializeEmailReminders: (
     instanceId: string,
     input: WasteManagementMaterializeEmailRemindersJobInput

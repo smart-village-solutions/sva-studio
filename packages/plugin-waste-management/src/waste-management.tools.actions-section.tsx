@@ -3,28 +3,117 @@ import { Button, Input, StudioField, StudioFieldGroup } from '@sva/studio-ui-rea
 
 type WasteToolsActionsSectionProps = {
   readonly canRunMigrations: boolean;
+  readonly canEnrichPostalCodes: boolean;
   readonly canRunSeed: boolean;
   readonly canRunReset: boolean;
   readonly migrationSchema: string;
   readonly migrationVersion: string;
-  readonly runningAction: 'import' | 'migration' | 'seed' | 'reset' | null;
+  readonly runningAction: 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null;
+  readonly postalCodeJobActive?: boolean;
   readonly onMigrationSchemaChange: (value: string) => void;
   readonly onMigrationVersionChange: (value: string) => void;
   readonly onStartMigrations: () => void;
+  readonly onStartPostalCodeEnrichment: () => void;
   readonly onStartSeed: () => void;
   readonly onOpenReset: () => void;
 };
 
+const WasteToolAction = ({
+  title,
+  description,
+  actionLabel,
+  running,
+  disabled,
+  destructive = false,
+  onClick,
+}: {
+  readonly title: string;
+  readonly description: string;
+  readonly actionLabel: string;
+  readonly running: boolean;
+  readonly disabled: boolean;
+  readonly destructive?: boolean;
+  readonly onClick: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <Button
+        type="button"
+        variant={destructive ? 'destructive' : 'primary'}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {running ? pt('tools.actions.starting') : actionLabel}
+      </Button>
+    </div>
+  );
+};
+
+const WasteMigrationsAction = ({
+  schema,
+  version,
+  running,
+  disabled,
+  onSchemaChange,
+  onVersionChange,
+  onStart,
+}: {
+  readonly schema: string;
+  readonly version: string;
+  readonly running: boolean;
+  readonly disabled: boolean;
+  readonly onSchemaChange: (value: string) => void;
+  readonly onVersionChange: (value: string) => void;
+  readonly onStart: () => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        <h3 className="text-sm font-semibold">{pt('tools.migrations.title')}</h3>
+        <p className="text-sm text-muted-foreground">{pt('tools.migrations.description')}</p>
+      </div>
+      <StudioFieldGroup>
+        <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
+          <Input
+            id="waste-tools-migration-schema"
+            value={schema}
+            onChange={(event) => onSchemaChange(event.target.value)}
+          />
+        </StudioField>
+        <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
+          <Input
+            id="waste-tools-migration-version"
+            value={version}
+            onChange={(event) => onVersionChange(event.target.value)}
+          />
+        </StudioField>
+      </StudioFieldGroup>
+      <Button type="button" disabled={disabled} onClick={onStart}>
+        {running ? pt('tools.actions.starting') : pt('tools.actions.startMigrations')}
+      </Button>
+    </div>
+  );
+};
+
 export const WasteToolsActionsSection = ({
   canRunMigrations,
+  canEnrichPostalCodes,
   canRunSeed,
   canRunReset,
   migrationSchema,
   migrationVersion,
   runningAction,
+  postalCodeJobActive = false,
   onMigrationSchemaChange,
   onMigrationVersionChange,
   onStartMigrations,
+  onStartPostalCodeEnrichment,
   onStartSeed,
   onOpenReset,
 }: WasteToolsActionsSectionProps) => {
@@ -33,55 +122,49 @@ export const WasteToolsActionsSection = ({
   return (
     <>
       {canRunMigrations ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold">{pt('tools.migrations.title')}</h3>
-            <p className="text-sm text-muted-foreground">{pt('tools.migrations.description')}</p>
-          </div>
-          <StudioFieldGroup>
-            <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
-              <Input
-                id="waste-tools-migration-schema"
-                value={migrationSchema}
-                onChange={(event) => onMigrationSchemaChange(event.target.value)}
-              />
-            </StudioField>
-            <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
-              <Input
-                id="waste-tools-migration-version"
-                value={migrationVersion}
-                onChange={(event) => onMigrationVersionChange(event.target.value)}
-              />
-            </StudioField>
-          </StudioFieldGroup>
-          <Button type="button" disabled={runningAction !== null} onClick={onStartMigrations}>
-            {runningAction === 'migration' ? pt('tools.actions.starting') : pt('tools.actions.startMigrations')}
-          </Button>
-        </div>
+        <WasteMigrationsAction
+          schema={migrationSchema}
+          version={migrationVersion}
+          running={runningAction === 'migration'}
+          disabled={runningAction !== null}
+          onSchemaChange={onMigrationSchemaChange}
+          onVersionChange={onMigrationVersionChange}
+          onStart={onStartMigrations}
+        />
       ) : null}
 
       {canRunSeed ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold">{pt('tools.seed.title')}</h3>
-            <p className="text-sm text-muted-foreground">{pt('tools.seed.description')}</p>
-          </div>
-          <Button type="button" disabled={runningAction !== null} onClick={onStartSeed}>
-            {runningAction === 'seed' ? pt('tools.actions.starting') : pt('tools.actions.startSeed')}
-          </Button>
-        </div>
+        <WasteToolAction
+          title={pt('tools.seed.title')}
+          description={pt('tools.seed.description')}
+          actionLabel={pt('tools.actions.startSeed')}
+          running={runningAction === 'seed'}
+          disabled={runningAction !== null}
+          onClick={onStartSeed}
+        />
+      ) : null}
+
+      {canEnrichPostalCodes ? (
+        <WasteToolAction
+          title={pt('tools.postalCodes.title')}
+          description={pt('tools.postalCodes.description')}
+          actionLabel={pt('tools.actions.startPostalCodeEnrichment')}
+          running={runningAction === 'postalCode'}
+          disabled={runningAction !== null || postalCodeJobActive}
+          onClick={onStartPostalCodeEnrichment}
+        />
       ) : null}
 
       {canRunReset ? (
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-semibold">{pt('tools.reset.title')}</h3>
-            <p className="text-sm text-muted-foreground">{pt('tools.reset.description')}</p>
-          </div>
-          <Button type="button" variant="destructive" disabled={runningAction !== null} onClick={onOpenReset}>
-            {runningAction === 'reset' ? pt('tools.actions.starting') : pt('tools.actions.startReset')}
-          </Button>
-        </div>
+        <WasteToolAction
+          title={pt('tools.reset.title')}
+          description={pt('tools.reset.description')}
+          actionLabel={pt('tools.actions.startReset')}
+          running={runningAction === 'reset'}
+          disabled={runningAction !== null}
+          destructive
+          onClick={onOpenReset}
+        />
       ) : null}
     </>
   );

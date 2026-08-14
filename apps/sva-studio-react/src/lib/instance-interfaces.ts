@@ -104,6 +104,7 @@ export type InstanceInterfaceMailTransport = InstanceInterfaceBase &
 export type InstanceInterfaceMapGeocoding = InstanceInterfaceBase &
   Readonly<{
     type: 'mapGeocoding';
+    apiKeyConfigured?: boolean;
     config: InstanceInterfaceMapGeocodingConfig;
   }>;
 

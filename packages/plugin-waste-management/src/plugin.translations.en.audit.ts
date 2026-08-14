@@ -32,6 +32,7 @@ export const wasteManagementPluginTranslationsENAudit = {
     resetStarted: 'Started waste reset',
     mainserverSyncStarted: 'Started waste mainserver sync',
     syncWasteTypesStarted: 'Started waste type sync',
+    postalCodeEnrichmentStarted: 'Started missing postal code enrichment',
     dataSourceInitialized: 'Initialized waste data source',
   },
 } as const;

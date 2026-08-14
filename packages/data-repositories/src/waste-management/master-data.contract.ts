@@ -73,6 +73,8 @@ export const wasteMasterDataRepositoryContract = {
       }>
     ) => Promise<void>
   >(),
+  updateWasteCityPostalCodeIfMissing:
+    defineRepositoryMethod<(id: string, postalCode: string) => Promise<boolean>>(),
   listWasteStreets:
     defineRepositoryMethod<
       (filter?: WasteStreetListFilter) => Promise<readonly WasteStreetRecord[]>

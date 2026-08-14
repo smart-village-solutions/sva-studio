@@ -3,7 +3,8 @@ import { createWasteManagementToolsTranslations } from './plugin.translations.sh
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
   imports: {
     title: 'Importe',
-    description: 'Importieren Sie Abfalldaten Schritt für Schritt und prüfen Sie das Ergebnis vor dem Start.',
+    description:
+      'Importieren Sie Abfalldaten Schritt für Schritt und prüfen Sie das Ergebnis vor dem Start.',
     profileLabel: 'Importprofil',
     blobRefLabel: 'Quell-Referenz (Blob-Ref)',
     sourceFormatLabel: 'Quellformat',
@@ -29,11 +30,13 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       rulesTitle: 'Wichtige Regeln',
       confirmTitle: 'Import jetzt bestätigen',
       resultTitle: 'Import gestartet',
-    resultDescription: 'Der Import wurde als technischer Prozess gestartet. Details finden Sie weiter unten im Verlauf.',
+      resultDescription:
+        'Der Import wurde als technischer Prozess gestartet. Details finden Sie weiter unten im Verlauf.',
       newFractionsTitle: 'Neue Abfallarten',
       newToursTitle: 'Neue Touren',
       newLocationsTitle: 'Neue Abholorte',
-      newLocationsSummary: '{{created}} neue Abholorte werden angelegt, {{reused}} bestehende wiederverwendet.',
+      newLocationsSummary:
+        '{{created}} neue Abholorte werden angelegt, {{reused}} bestehende wiederverwendet.',
       errorTitle: 'Fehler',
       errorLine: 'Zeile {{rowNumber}}, Spalte {{column}}',
       noErrors: 'Keine Fehler erkannt.',
@@ -82,7 +85,30 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
   },
   seed: {
     title: 'Initialdaten',
-    description: 'Füllt die Abfalldatenquelle über die generische Prozessfunktion mit den Ausgangsdaten.',
+    description:
+      'Füllt die Abfalldatenquelle über die generische Prozessfunktion mit den Ausgangsdaten.',
+  },
+  postalCodes: {
+    title: 'Fehlende Postleitzahlen ergänzen',
+    description:
+      'Ermittelt fehlende Postleitzahlen für Orte anhand der konfigurierten Geocodierung. Bestehende Werte und mehrdeutige Treffer bleiben unverändert.',
+    progressTitle: 'Postleitzahlen werden ergänzt',
+    progressSummary: '{{processed}} von {{total}} Orten wurden geprüft.',
+    resultTitle: 'Ergebnis der Postleitzahl-Ergänzung',
+    resultSummary:
+      '{{updated}} ergänzt, {{ambiguous}} mehrdeutig, {{notFound}} nicht gefunden, {{failed}} fehlgeschlagen und {{skipped}} zwischenzeitlich gepflegt.',
+    budgetSummary:
+      'Das Anfragebudget wurde nach {{requests}} von {{budget}} Provideranfragen erreicht. {{unprocessed}} Orte bleiben für einen späteren Lauf offen.',
+    errorTitle: 'Postleitzahlen konnten nicht ergänzt werden',
+    errors: {
+      geocodingDisabled:
+        'Für diese Instanz ist keine aktive Karten-Geocodierung eingerichtet.',
+      openInterfaces: 'Karten-Geocodierung unter Schnittstellen einrichten',
+      timeout:
+        'Der Geocoding-Dienst hat nicht rechtzeitig geantwortet. Bis zum Abbruch wurden {{processed}} von {{total}} Orten geprüft und bereits bestätigte Postleitzahlen gespeichert. Ein neuer Lauf setzt bei den verbleibenden Orten fort.',
+      generic:
+        'Der Prozess ist fehlgeschlagen. Prüfen Sie die technische Historie oder die konfigurierte Karten-Geocodierung und starten Sie ihn anschließend erneut.',
+    },
   },
   sync: {
     actionLabel: 'Synchronisieren',
@@ -91,10 +117,12 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
   },
   reset: {
     title: 'Zurücksetzen',
-    description: 'Das Zurücksetzen bleibt ein hochriskanter Vorgang und verlangt ein explizites Bestätigungstoken.',
+    description:
+      'Das Zurücksetzen bleibt ein hochriskanter Vorgang und verlangt ein explizites Bestätigungstoken.',
     tokenLabel: 'Bestätigungstoken',
     confirmTitle: 'Daten wirklich zurücksetzen?',
-    confirmDescription: 'Das Zurücksetzen ist hochriskant. Bestätigen Sie den Vorgang explizit mit dem Token.',
+    confirmDescription:
+      'Das Zurücksetzen ist hochriskant. Bestätigen Sie den Vorgang explizit mit dem Token.',
     confirmCancel: 'Abbrechen',
     confirmAction: 'Zurücksetzen bestätigen',
   },
@@ -102,6 +130,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     startImport: 'Import starten',
     startMigrations: 'Migrationen starten',
     startSeed: 'Initialdaten laden',
+    startPostalCodeEnrichment: 'Postleitzahlen ergänzen',
     startReset: 'Daten zurücksetzen',
     starting: 'Startet…',
     downloadTemplate: 'Vorlage laden',
@@ -120,19 +149,22 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     resetValidationError: 'Das Zurücksetzen verlangt ein gültiges Bestätigungstoken.',
   },
   meta: {
-    lastJobTitle: 'Letzter Import',
-    lastJobDescription: 'Zuletzt gestarteter Abfallimport mit aktuellem Status.',
+    lastJobTitle: 'Letzter Prozess',
+    lastJobDescription: 'Zuletzt gestarteter technischer Prozess mit aktuellem Status.',
     noJobYet: 'Noch kein technischer Abfallprozess gestartet.',
     noJobStatus: 'Kein Prozess',
-    historyTitle: 'Vergangene Importe',
-    historyDescription: 'Die letzten technischen Importereignisse mit kompakten Details.',
+    historyTitle: 'Vergangene Prozesse',
+    historyDescription: 'Die letzten technischen Prozesse mit kompakten Details.',
     historyDetailsAction: 'Details anzeigen',
+    historyCloseDetailsAction: 'Details schließen',
     historyDeleteAction: 'Eintrag löschen',
     advancedTitle: 'Erweiterte Systemfunktionen',
-    advancedDescription: 'Technische Wartungsfunktionen und tiefergehende Details für Administratoren.',
+    advancedDescription:
+      'Technische Wartungsfunktionen und tiefergehende Details für Administratoren.',
     technicalDetailsToggle: 'Technische Details',
     technicalHistoryTitle: 'Technische Ereignisse',
-    technicalHistoryDescription: 'Zeigt die letzten technischen Abfallereignisse mit unterscheidbaren Ergebnissen für Start, Erfolg und Fehler.',
+    technicalHistoryDescription:
+      'Zeigt die letzten technischen Abfallereignisse mit unterscheidbaren Ergebnissen für Start, Erfolg und Fehler.',
     noTechnicalHistory: 'Noch keine technischen Abfallereignisse vorhanden.',
     jobId: 'Prozess: {{value}}',
     jobType: 'Typ: {{value}}',
@@ -149,6 +181,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     phases: {
       'waste-management.import-preparation': 'Vorbereitung läuft',
       'waste-management.import-running': 'Importlauf läuft',
+      'waste-management.enrich-postal-codes': 'Postleitzahlen werden ermittelt',
       'waste-management.completed': 'Import wird abgeschlossen',
     },
     statuses: {
@@ -159,6 +192,8 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     steps: {
       'prepare-import': 'Import wird vorbereitet',
       'process-rows': 'Gültige Zeilen werden importiert',
+      'load-cities': 'Orte ohne Postleitzahl werden geladen',
+      'resolve-postal-codes': 'Postleitzahlen werden geprüft und ergänzt',
       'complete-operation': 'Import wird abgeschlossen',
     },
   },

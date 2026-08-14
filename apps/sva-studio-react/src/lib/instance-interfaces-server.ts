@@ -71,6 +71,14 @@ type StoredInterfaceType = StoredEntry['type'];
 
 const logger = createSdkLogger({ component: 'instance-interfaces-server' });
 
+const isMissingInterfaceTypeRegistration = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === '23503' &&
+  'constraint' in error &&
+  error.constraint === 'instance_external_interfaces_type_key_fkey';
+
 type PersistedStoredEntry = StoredEntry &
   Readonly<{
     visibleStatus?: ExternalInterfaceVisibleStatus;
@@ -252,6 +260,9 @@ const mapRecordToStoredEntry = (record: ExternalInterfaceRecord): PersistedStore
       type: 'mapGeocoding',
       name: record.displayName,
       enabled: record.enabled,
+      apiKeyConfigured: Boolean(
+        parseSecretConfig(record.secretConfigCiphertext, record.id).apiKey?.trim()
+      ),
       config: {
         provider: coerceText(record.publicConfig.provider) === 'custom' ? 'custom' : 'geoapify',
         styleUrl: coerceText(record.publicConfig.styleUrl),
@@ -874,6 +885,9 @@ export const upsertStoredInterface = async (
       interface_type: draft.type,
       error_message: error instanceof Error ? error.message : String(error),
     });
+    if (isMissingInterfaceTypeRegistration(error)) {
+      throw new Error('interface_type_not_registered');
+    }
     throw error;
   }
 

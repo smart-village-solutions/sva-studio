@@ -45,6 +45,10 @@ type WasteManagementSyncWasteTypesJobInput = {
   readonly activeOrganizationId?: string;
 };
 
+type WasteManagementEnrichPostalCodesJobInput = {
+  readonly operation: 'enrich-postal-codes';
+};
+
 export type {
   WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementApplyMigrationsJobInput,
@@ -53,4 +57,5 @@ export type {
   WasteManagementResetJobInput,
   WasteManagementSeedJobInput,
   WasteManagementSyncWasteTypesJobInput,
+  WasteManagementEnrichPostalCodesJobInput,
 };

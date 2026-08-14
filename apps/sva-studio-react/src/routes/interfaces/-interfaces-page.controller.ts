@@ -120,6 +120,8 @@ export const translateInterfacesErrorMessage = (error: unknown, fallback: string
       return t('interfaces.errors.interfaceInstanceMismatch');
     case 'interface_type_change_not_supported':
       return t('interfaces.errors.interfaceTypeChangeNotSupported');
+    case 'interface_type_not_registered':
+      return t('interfaces.errors.interfaceTypeNotRegistered');
     case 'supabase_requires_waste_management_module':
       return t('interfaces.errors.supabaseRequiresWasteManagementModule');
     case 'secret_unreadable':

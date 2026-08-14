@@ -1,4 +1,4 @@
 {
   "prNumber": 991,
-  "body": "IAM-Abnahmetests bleiben zuverlässig und leichter nachvollziehbar\n\n- Die Prüfungen für Anmeldung, automatische Kontoanlage, Organisationen, Mitgliedschaften und Verwaltungsoberfläche laufen weiterhin in ihrer festen, sicherheitsrelevanten Reihenfolge.\n- Fehlende Voraussetzungen führen weiterhin zu einem klaren Abbruch und zu Berichten ohne offengelegte Zugangsdaten.\n- Die interne Ausführung ist in übersichtliche Phasen gegliedert, ohne bestehende IAM-Funktionen oder Zugriffsregeln zu verändern."
+  "body": "IAM-Abnahmetests bleiben zuverlässig und leichter nachvollziehbar\n\n- Die Prüfungen für Anmeldung, automatische Kontoanlage, Organisationen, Mitgliedschaften und Verwaltungsoberfläche laufen weiterhin in ihrer festen, sicherheitsrelevanten Reihenfolge.\n- Fehlende Voraussetzungen führen weiterhin zu einem klaren Abbruch und zu Berichten ohne offengelegte Zugangsdaten.\n- Fehlerberichte ordnen Abweichungen weiterhin eindeutig der betroffenen IAM-Prüfphase zu."
 }

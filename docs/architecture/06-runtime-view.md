@@ -1042,3 +1042,25 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 2. Routing beziehungsweise JSON-Fehler transportieren den begrenzten Denial-Kontext additiv. Der Client validiert ihn erneut und verwirft manipulierte oder unbekannte Werte.
 3. Der gemeinsame Formatter löst den lokalisierten Permission-Titel auf und zeigt Titel plus Action-ID in einem bestehenden zugänglichen Alert.
 4. Der Kontext wird nach einem Redirect einmalig aus der URL entfernt. Bei technischem Ausfall oder uneindeutigem fachlichem `403` bleibt die bisherige generische Meldung erhalten.
+
+### Szenario 19: Read-only Keycloak-Instanz-Audit
+
+1. Der operative Audit lädt das aktive Registry-Ziel und die entschlüsselten
+   Vergleichssecrets ausschließlich serverseitig.
+2. Eine temporäre `kcadm`-Konfiguration authentisiert den vorhandenen
+   Provisioner-/Admin-Client.
+3. Die Erhebung liest Realm, Login- und Tenant-Admin-Client, deren Secret-
+   Vergleichswerte, Realm-Rollen, aktiven `system_admin` und die Rollen des
+   Tenant-Admin-Serviceaccounts in fester Reihenfolge.
+4. Fehlt das Realm, endet der Pfad unmittelbar mit dem bisherigen einzelnen
+   Fehlerbefund; nachgelagerte Reads finden nicht statt.
+5. Andernfalls bewertet eine reine Funktion den vollständigen Snapshot und
+   liefert unverändert vierzehn Befunde.
+6. Das `finally`-Cleanup entfernt Config-Datei und temporäres Verzeichnis bei
+   Erfolg und Fehler.
+
+Fehlerpfad:
+
+- Der Audit führt keine Keycloak-Mutation und keinen Plattform-Fallback aus.
+- Fehlende oder abweichende Secrets bleiben Fail-Befunde, ohne Secret-Inhalte
+  in Bericht, Fehler oder Logs zu übernehmen.

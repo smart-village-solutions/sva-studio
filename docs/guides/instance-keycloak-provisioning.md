@@ -34,19 +34,19 @@ Wichtig:
 
 Die Instanzverwaltung und der Provisioning-Worker verwenden für den fachlichen Mindestzustand dieselbe kompakte Checkliste. Jeder Punkt muss im Detailstatus und nach dem letzten erfolgreichen Run grün sein.
 
-| Pflichtpunkt | Führende Quelle in Studio/Registry | Zielartefakt in Keycloak | Prüfkriterium | Automatische Aktion |
-| --- | --- | --- | --- | --- |
-| Realm | `realmMode`, `authRealm` | Realm `<authRealm>` | Realm existiert oder darf im Modus `new` erstellt werden | Realm anlegen oder Bestands-Realm validieren |
-| OIDC-Client | `authClientId` | Client `<authClientId>` | Client existiert | Client anlegen oder aktualisieren |
-| Redirect-URIs | `instanceId`, `parentDomain`, `primaryHostname` | `client.redirectUris` | Redirect-Ziele stimmen exakt | Client-URLs abgleichen |
-| Logout-URIs | `instanceId`, `parentDomain`, `primaryHostname` | `client.attributes.post.logout.redirect.uris` | Logout-Ziele stimmen exakt | Client-URLs abgleichen |
-| Web-Origins | `instanceId`, `parentDomain`, `primaryHostname` | `client.webOrigins` | Origins stimmen exakt | Client-URLs abgleichen |
-| `instanceId`-Mapper | `instanceId` | Protocol Mapper `instanceId` | Optionaler Interop-Hinweis; Mapper existiert oder fehlt sichtbar als Warnung | Mapper anlegen oder korrigieren |
-| Tenant-Secret | `authClientSecret` | Client-Secret des Login-Clients | `existing`: Registry-Secret und Keycloak-Secret sind identisch. `new`: Secret wird beim Provisioning erzeugt und danach in die Registry zurückgeschrieben. | Secret setzen, erzeugen, rotieren und Rückschreiben in die Registry |
-| Tenant-Admin | `tenantAdminBootstrap.*` | User `<username>` | User existiert | User anlegen oder aktualisieren |
-| Rolle `system_admin` | `tenantAdminBootstrap.username` | Realm-Rolle auf Tenant-Admin | Rolle vorhanden | Rollen synchronisieren |
-| Ausschluss `instance_registry_admin` | `tenantAdminBootstrap.username` | Realm-Rolle auf Tenant-Admin | Rolle ist nicht zugewiesen | Rollen synchronisieren |
-| User-Attribut `instanceId` | `instanceId`, `tenantAdminBootstrap.username` | `attributes.instanceId` am Tenant-Admin | Optionaler Interop-Hinweis; Attribut entspricht der Instanz-ID oder fehlt sichtbar als Warnung | User-Attribute aktualisieren |
+| Pflichtpunkt                         | Führende Quelle in Studio/Registry              | Zielartefakt in Keycloak                      | Prüfkriterium                                                                                                                                              | Automatische Aktion                                                 |
+| ------------------------------------ | ----------------------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Realm                                | `realmMode`, `authRealm`                        | Realm `<authRealm>`                           | Realm existiert oder darf im Modus `new` erstellt werden                                                                                                   | Realm anlegen oder Bestands-Realm validieren                        |
+| OIDC-Client                          | `authClientId`                                  | Client `<authClientId>`                       | Client existiert                                                                                                                                           | Client anlegen oder aktualisieren                                   |
+| Redirect-URIs                        | `instanceId`, `parentDomain`, `primaryHostname` | `client.redirectUris`                         | Redirect-Ziele stimmen exakt                                                                                                                               | Client-URLs abgleichen                                              |
+| Logout-URIs                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.attributes.post.logout.redirect.uris` | Logout-Ziele stimmen exakt                                                                                                                                 | Client-URLs abgleichen                                              |
+| Web-Origins                          | `instanceId`, `parentDomain`, `primaryHostname` | `client.webOrigins`                           | Origins stimmen exakt                                                                                                                                      | Client-URLs abgleichen                                              |
+| `instanceId`-Mapper                  | `instanceId`                                    | Protocol Mapper `instanceId`                  | Optionaler Interop-Hinweis; Mapper existiert oder fehlt sichtbar als Warnung                                                                               | Mapper anlegen oder korrigieren                                     |
+| Tenant-Secret                        | `authClientSecret`                              | Client-Secret des Login-Clients               | `existing`: Registry-Secret und Keycloak-Secret sind identisch. `new`: Secret wird beim Provisioning erzeugt und danach in die Registry zurückgeschrieben. | Secret setzen, erzeugen, rotieren und Rückschreiben in die Registry |
+| Tenant-Admin                         | `tenantAdminBootstrap.*`                        | User `<username>`                             | User existiert                                                                                                                                             | User anlegen oder aktualisieren                                     |
+| Rolle `system_admin`                 | `tenantAdminBootstrap.username`                 | Realm-Rolle auf Tenant-Admin                  | Rolle vorhanden                                                                                                                                            | Rollen synchronisieren                                              |
+| Ausschluss `instance_registry_admin` | `tenantAdminBootstrap.username`                 | Realm-Rolle auf Tenant-Admin                  | Rolle ist nicht zugewiesen                                                                                                                                 | Rollen synchronisieren                                              |
+| User-Attribut `instanceId`           | `instanceId`, `tenantAdminBootstrap.username`   | `attributes.instanceId` am Tenant-Admin       | Optionaler Interop-Hinweis; Attribut entspricht der Instanz-ID oder fehlt sichtbar als Warnung                                                             | User-Attribute aktualisieren                                        |
 
 Wichtig:
 
@@ -260,6 +260,25 @@ Ein Tenant gilt erst dann als betriebsbereit, wenn zusätzlich folgende Nachweis
 3. letzter Provisioning-Run ist `succeeded`
 4. Tenant-Login gegen `https://<instanceId>.studio.smart-village.app/auth/login` funktioniert
 5. `/auth/me` liefert den korrekten `instanceId`-Kontext aus Host, Registry und Realm
+
+### Read-only Studio-Instanz-Audit
+
+Der operative Studio-Instanz-Audit ergänzt den Provisioning-Nachweis, ersetzt
+aber weder Preflight noch Plan oder Ausführung. Sein Keycloak-Pfad arbeitet in
+zwei festen Schritten:
+
+1. Die Erhebung authentisiert den vorhandenen Provisioner-/Admin-Client über
+   eine kurzlebige `kcadm`-Konfiguration und liest Realm, Login-Client,
+   Tenant-Admin-Client, Rollen und Serviceaccount-Zustand in fester Reihenfolge.
+2. Eine reine Bewertung leitet aus dem typisierten Snapshot die bestehenden
+   vierzehn Check-Ergebnisse ab. Check-IDs, Titel, Zusammenfassungen, Details
+   und Fail-/Warn-/Skip-Semantik sind ein stabiler Betriebsvertrag.
+
+Der Pfad ist ausschließlich lesend. Ein fehlendes Realm beendet die Erhebung
+fail-closed mit dem einzelnen Realm-Befund. Secret-Werte dienen nur dem
+kurzlebigen Gleichheitsvergleich; Bericht, Fehler und Logs enthalten weiterhin
+nur `tenant secret compared` oder `secret missing`. Die temporäre
+`kcadm`-Konfiguration wird auch bei Fehlern entfernt.
 
 ## Referenzen
 

@@ -735,6 +735,19 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Die `data_provider_id` der Create-Antwort und die Identität aus `/data_provider.json` sind zwei Evidenzwege desselben garantierten Mainserver-Vertrags. Konflikte werden nicht überschrieben, sondern benötigen Reconciliation.
 - Geheimnisse bleiben write-only und verschlüsselt. Read-Models exponieren nur Vorhandensein, Status, Versuchszähler, sicheren Fehlercode und technische IDs.
 
+### Keycloak-Audit und Secret-Grenze
+
+- Der operative Studio-Instanz-Audit trennt read-only Erhebung und reine
+  Bewertung durch einen kleinen typisierten Snapshot.
+- Secret-Werte bleiben kurzlebige interne Vergleichsfakten. Die öffentlichen
+  Befunde unterscheiden ausschließlich verglichen, fehlend und abweichend; sie
+  enthalten weder Klarwerte noch Hashes, Längen oder Teile der Werte.
+- Characterization-Tests verwenden ausschließlich synthetische Marker und
+  prüfen deren Abwesenheit in der Ergebnisevidenz.
+- Check-IDs, Titel, Zusammenfassungen, Detailfelder und Fail-/Warn-/Skip-
+  Statuswerte bleiben gemeinsam mit der `kcadm`-Reihenfolge und dem
+  temporären Cleanup vertraglich stabil.
+
 ### CI-Fast-Feedback und Cache-Vertrauen
 
 - PR-Unit und PR-Coverage planen direkt geänderte Projekte vor dem disjunkten übrigen affected Scope. Nicht sicher zuordenbare Änderungen bleiben im konservativen Restlauf.

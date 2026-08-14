@@ -1,4 +1,4 @@
 {
   "prNumber": 988,
-  "body": "Zeitgesteuerte News-Prüfungen bleiben dauerhaft stabil\n\n- Automatisierte Tests verwenden wieder eindeutig zukünftige Veröffentlichungszeitpunkte.\n- Produktlogik, Zeitzonenverarbeitung und sichtbares Verhalten bleiben unverändert."
+  "body": "Zeitgesteuerte News bleiben im Editor zuverlässig erkennbar\n\n- Geplante Veröffentlichungen werden weiterhin als zeitgesteuert dargestellt.\n- Der lokale Veröffentlichungszeitpunkt bleibt in der erwarteten Zeitzone sichtbar."
 }

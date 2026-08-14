@@ -131,6 +131,8 @@ In den GitHub Environments `staging` und `prod` müssen dafür `RESTORE_POSTGRES
 
 Der Principal erhält keine freie Host-, Datenbank- oder Rollenwahl. Der Agent wechselt für Sicherheitsdump und Objektwiederherstellung zum festen Schema-Owner `sva`. Nach `pg_restore` rekonstruiert er zusätzlich die fest allowlisteten Rechte des Runtime-Principals `sva_app` und der Rolle `iam_app`; keine dieser Identitäten stammt aus dem Request. Das Agent-Image verwendet einheitlich fest gepinnte PostgreSQL-18-Clientwerkzeuge. Damit bleiben auch bereits mit PostgreSQL 18 erzeugte Custom-Dumps wiederherstellbar; Backups und Restores dürfen nicht mit unterschiedlichen Client-Hauptversionen ausgeführt werden.
 
+Die interne Implementierung prüft Requestform, erlaubte Felder, Version/Aktion, Umgebung, Datenbank-/Tenant-Bindung, Request-ID, Wartungsfensterreferenz, SHA-256, Objektpräfix, Pfadtraversal, den festen Waste-Import und Ablaufzeit an getrennten reinen Grenzen. Das ist keine zusätzliche Bedienoberfläche: Operatoren verwenden weiterhin ausschließlich die vorhandenen geschützten GitHub-Workflows. Die öffentliche Entscheidung bleibt boolesch, und ein abgelehnter Auftrag erreicht weder Replay-Persistenz noch Datenbankmutation.
+
 Die geschützten GitHub Environments `staging` und `prod` benötigen zusätzlich `RESTORE_IAM_SMOKE_BASE_URL` als tenantgebundene Variable sowie `RESTORE_IAM_SMOKE_USERNAME` und `RESTORE_IAM_SMOKE_PASSWORD` als Secrets. Der Zugang dient ausschließlich dem Post-Restore-Smoke und darf nicht in Logs oder Evidenz erscheinen.
 
 Ablauf:

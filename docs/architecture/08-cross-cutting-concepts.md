@@ -669,7 +669,9 @@ Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen
 
 ### Ergänzung 2026-08: Waste-Datenbankgrenze
 
-Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht in der Governance-Datenbank `sva_studio` gespeichert. Datenbank und Rollen werden kollisionssicher aus der kanonischen Instanzidentität abgeleitet. Die External-Interface-Registry schützt alle Verbindungs-URLs als tenantgebundene Secrets; Owner, Migration, Studio-Runtime und öffentliche Runtime bleiben getrennt. Die normale App besitzt keine `CREATEDB`-/`CREATEROLE`-Rechte. Backups, Restore-Drills und der einmalige Offline-Cutover behandeln jede registrierte Tenant-Datenbank als eigene Sicherungs- und Wiederherstellungseinheit.
+Waste-Fachdaten werden in einer eigenen Datenbank pro Studio-Instanz und nicht in der Governance-Datenbank `sva_studio` gespeichert. Datenbank und Rollen werden kollisionssicher aus der kanonischen Instanzidentität abgeleitet. Die External-Interface-Registry schützt alle Verbindungs-URLs als tenantgebundene Secrets; Owner, Migration, Studio-Runtime und öffentliche Runtime bleiben getrennt. Die normale App besitzt keine `CREATEDB`-/`CREATEROLE`-Rechte. Backups und Restore-Drills behandeln jede registrierte Tenant-Datenbank als eigene Sicherungs- und Wiederherstellungseinheit.
+
+Der reguläre Promote-Migrations-One-shot reconciliert neben `sva_studio` alle registrierten `ready`- und `disabled`-Waste-Datenbanken. Das Zielimage erzeugt dafür beim Build ein unveränderliches Manifest aus demselben Schema- und Rechte-Builder, den die Tenant-Neuanlage nutzt. Der zentrale Migrationsprincipal darf das Registry-Inventar lesen; in der Fachdatenbank wechselt der One-shot in die jeweilige abgeleitete Owner-Rolle. Abweichende Registry-Namen, fehlende Secrets, SQL-Fehler oder fehlende Pflichttabellen stoppen den Rollout vor dem App-Deploy. Damit bleibt der Schema-Lebenszyklus an Image-Digest, Backup-Gate und Environment-Freigabe gebunden, ohne dem App-Runtime-Principal Clusterrechte zu geben.
 
 ### Partielle Mainserver-Snapshots
 

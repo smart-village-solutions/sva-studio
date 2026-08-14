@@ -73,6 +73,27 @@ describe('promote-deploy-gates', () => {
     ]);
   });
 
+  it('fails migration assert-none when the Waste tenant schema contract changes', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [
+        'apps/sva-studio-react/src/lib/waste-management-operations.schema.ts',
+        'deploy/portainer/migrate-waste-tenants.mjs',
+      ],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: [
+        'apps/sva-studio-react/src/lib/waste-management-operations.schema.ts',
+        'deploy/portainer/migrate-waste-tenants.mjs',
+      ],
+    });
+  });
+
   it('treats application changes outside migration artifacts as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

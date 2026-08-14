@@ -52,6 +52,7 @@ export default defineConfig({
       '../../scripts/ops/tenant-ingress-audit.test.ts',
       '../../deploy/backup-agent/agent.test.ts',
       '../../deploy/backup-agent-stack.test.ts',
+      '../../deploy/portainer/migrate-waste-tenants.test.ts',
     ],
     exclude: ['coverage/**', 'node_modules/**'],
     environment: 'node',

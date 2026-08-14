@@ -47,4 +47,13 @@ log "Wende Migrationen an"
 log "Lese finalen Goose-Status"
 "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
 
+WASTE_TENANT_MIGRATOR="${WASTE_TENANT_MIGRATOR:-./migrate-waste-tenants.mjs}"
+if [ ! -f "${WASTE_TENANT_MIGRATOR}" ]; then
+  log "Waste-Tenant-Migrator fehlt: ${WASTE_TENANT_MIGRATOR}"
+  exit 1
+fi
+
+log "Gleiche registrierte Waste-Tenant-Datenbanken mit dem kanonischen Schema ab"
+node "${WASTE_TENANT_MIGRATOR}"
+
 log "Migrationsjob erfolgreich abgeschlossen"

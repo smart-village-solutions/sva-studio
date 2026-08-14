@@ -10,6 +10,7 @@ const { Workbook } = ExcelJS;
 import { createWasteManagementOperationRuntime } from './waste-management-operations.server.js';
 import {
   applySchemaStatements,
+  applyWasteSchemaGrantStatements,
   buildWasteFractionShortLabelBackfillStatement,
 } from './waste-management-operations.schema.js';
 import { parseImportRows } from './waste-management-operations.import.js';
@@ -49,6 +50,24 @@ const revealPostgresqlSecretConfig = (ciphertext: string | null | undefined): st
     : undefined;
 
 describe('waste management operations runtime', () => {
+  it('builds runtime grants from validated tenant roles', () => {
+    const statements = applyWasteSchemaGrantStatements('public', {
+      appRole: 'tenant_app',
+      ownerRole: 'tenant_owner',
+      publicAppRole: 'tenant_public',
+    }).join('\n');
+
+    expect(statements).toContain('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES');
+    expect(statements).toContain('ALTER DEFAULT PRIVILEGES FOR ROLE "tenant_owner"');
+    expect(statements).toContain('TO "tenant_public"');
+    expect(() =>
+      applyWasteSchemaGrantStatements('public', {
+        appRole: 'tenant-app',
+        ownerRole: 'tenant_owner',
+        publicAppRole: 'tenant_public',
+      })
+    ).toThrow('invalid_waste_schema:tenant-app');
+  });
   beforeEach(() => {
     vi.resetModules();
     vi.doUnmock('@sva/server-runtime');

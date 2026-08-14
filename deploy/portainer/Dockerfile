@@ -79,6 +79,8 @@ for (const distRoot of distRoots) walk(distRoot);"
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
+RUN mkdir -p /workspace/.deploy \
+  && pnpm exec tsx scripts/ci/render-waste-schema-manifest.ts > /workspace/.deploy/waste-schema-statements.json
 RUN if find /workspace/apps/sva-studio-react/.output/server -type f \
       \( -name '*.js' -o -name '*.mjs' -o -name '*.cjs' \) \
       ! -name '*.map' \
@@ -124,6 +126,8 @@ COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.
 COPY --from=build --chown=node:node /workspace/deploy/portainer/entrypoint.sh ./entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-entrypoint.sh ./migrate-entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
+COPY --from=build --chown=node:node /workspace/.deploy/waste-schema-statements.json ./waste-schema-statements.json
 COPY --from=build --chown=node:node /workspace/deploy/portainer/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/otel-bootstrap.mjs ./otel-bootstrap.mjs

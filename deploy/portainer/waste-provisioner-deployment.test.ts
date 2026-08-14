@@ -6,6 +6,12 @@ import { describe, expect, it } from 'vitest';
 const compose = readFileSync(resolve(import.meta.dirname, 'docker-compose.studio.yml'), 'utf8');
 const canonicalCompose = readFileSync(resolve(import.meta.dirname, '../../compose.yaml'), 'utf8');
 const entrypoint = readFileSync(resolve(import.meta.dirname, 'provisioner-entrypoint.sh'), 'utf8');
+const migrationEntrypoint = readFileSync(
+  resolve(import.meta.dirname, 'migrate-entrypoint.sh'),
+  'utf8'
+);
+const dockerfile = readFileSync(resolve(import.meta.dirname, 'Dockerfile'), 'utf8');
+const canonicalDockerfile = readFileSync(resolve(import.meta.dirname, '../../Dockerfile'), 'utf8');
 const appSection = compose.slice(compose.indexOf('  app:'), compose.indexOf('  provisioner:'));
 const canonicalAppSection = canonicalCompose.slice(
   canonicalCompose.indexOf('  app:'),
@@ -14,6 +20,14 @@ const canonicalAppSection = canonicalCompose.slice(
 const provisionerSection = compose.slice(
   compose.indexOf('  provisioner:'),
   compose.indexOf('  migrate:')
+);
+const migrateSection = compose.slice(
+  compose.indexOf('  migrate:'),
+  compose.indexOf('  bootstrap:')
+);
+const canonicalMigrateSection = canonicalCompose.slice(
+  canonicalCompose.indexOf('  migrate:'),
+  canonicalCompose.indexOf('  bootstrap:')
 );
 const servicesSection = compose.slice(compose.indexOf('services:'), compose.indexOf('\nnetworks:'));
 
@@ -67,6 +81,26 @@ describe('waste tenant database provisioning deployment', () => {
     expect(entrypoint).toContain('./entrypoint.sh "$@"');
     expect(entrypoint).not.toContain(
       'WASTE_DATABASE_PROVISIONER_URL="postgresql://${POSTGRES_USER}'
+    );
+  });
+
+  it('mounts the Waste provisioner secret into the isolated migration one-shot', () => {
+    for (const section of [migrateSection, canonicalMigrateSection]) {
+      expect(section).toContain('WASTE_DATABASE_PROVISIONER_USER');
+      expect(section).toContain('/run/secrets/waste_database_provisioner_password');
+      expect(section).toContain('waste-schema-statements.json');
+      expect(section).toContain('waste_database_provisioner_password');
+    }
+  });
+
+  it('ships and invokes the digest-bound Waste schema manifest after Goose', () => {
+    for (const source of [dockerfile, canonicalDockerfile]) {
+      expect(source).toContain('render-waste-schema-manifest.ts');
+      expect(source).toContain('migrate-waste-tenants.mjs');
+      expect(source).toContain('waste-schema-statements.json');
+    }
+    expect(migrationEntrypoint.indexOf('goosew.sh')).toBeLessThan(
+      migrationEntrypoint.indexOf('node "${WASTE_TENANT_MIGRATOR}"')
     );
   });
 });

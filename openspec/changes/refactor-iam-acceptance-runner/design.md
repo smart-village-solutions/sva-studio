@@ -31,4 +31,3 @@
 ## Open Questions
 
 - Keine. Der fachliche Acceptance-Vertrag bleibt unverändert.
-

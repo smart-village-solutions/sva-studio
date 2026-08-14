@@ -33,4 +33,3 @@ Das System MUST für die Organisations- und Membership-Funktionalität einen rep
 - **WHEN** Preflight, Reset, Readiness, Login/JIT, Organisations-/Membership- oder UI-Nachweis fehlschlägt
 - **THEN** werden nachgelagerte Nachweise nicht als erfolgreich ausgewiesen
 - **AND** der autoritative `acceptance_*`-Fehlercode bleibt in Log und Bericht erhalten
-

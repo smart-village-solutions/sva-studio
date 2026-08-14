@@ -18,4 +18,3 @@ Der Runner bündelt Konfiguration, Keycloak-Preflight, Testdaten-Reset, Readines
 - Affected code: `scripts/ci/run-iam-acceptance.ts` und neue interne Acceptance-Runner-Module
 - Affected tests: `scripts/ci/iam-acceptance.test.ts`, `scripts/ci/run-iam-acceptance.test.ts`
 - Affected documentation: IAM-Acceptance-Runbook sowie arc42-Abschnitte 05, 08, 10 und 11
-

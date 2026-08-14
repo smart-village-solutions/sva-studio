@@ -15,4 +15,3 @@ Das System SHALL komplexe operative Acceptance-Runner in typisierte fachliche Pr
 - **WHEN** der Refactor einen getrackten Complexity-Befund nachweislich behebt
 - **THEN** wird ausschließlich der behobene Baseline-Eintrag gemäß kanonischem Policy-Vertrag entfernt
 - **AND** es wird keine neue Suppression oder gleichwertige Ausnahme eingeführt
-

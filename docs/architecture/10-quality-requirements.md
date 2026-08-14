@@ -345,6 +345,7 @@ Referenzen:
 ### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
 
 - `plugin-poi` muss Roundtrip-Mapping, Bereichsvalidierung, Reverse-Geocode-Unterstützung und Host-Media-Referenzpersistenz über Unit-Tests explizit abdecken.
+- Der POI-Betreiberbereich muss kontrollierte Kontakt-/Adressfelder, unabhängige Web-URL-Werte, Geocoding-Lade- und Fehlerzustände, Karteninteraktionen sowie URL- und Koordinatenvalidierung durch Characterization-Tests absichern; interne Extraktionen dürfen keine Feld-ID oder Benutzeraktion ändern.
 - `plugin-sdk`-Clients für Geocoding und Media-Upload müssen deterministische HTTP- und Signed-Upload-Fehler stabil serialisieren.
 - Bei Vertragsänderungen bleiben `pnpm nx affected --target=test:types --base=origin/main` und `pnpm check:server-runtime` verpflichtende Gates.
 

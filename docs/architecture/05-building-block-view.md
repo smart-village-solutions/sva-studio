@@ -696,8 +696,9 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - definieren die browser-sicheren Host-Verträge für Geocoding-Konfiguration, Suggest/Geocode/Reverse-Geocode sowie IAM-basierte Upload-Sessions.
 2. `apps/sva-studio-react/src/lib/map-geocoding-api.ts`, `apps/sva-studio-react/src/lib/map-geocoding-api.server.ts`
    - binden tenantkonfiguriertes `mapGeocoding` an normierte Host-Endpunkte unter `/api/v1/iam/map-geocoding/*`.
-3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-media-tab.tsx`
+3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-operator-*.ts(x)`, `poi.detail-media-tab.tsx`
    - orchestrieren den vollständigen POI-Editor mit Bereichs-Tabs, Geocoding-Feldern, Reverse-Geocode-Unterstützung und Host-Media-Referenzierung.
+   - der Betreiberbereich trennt reine Feld-/Adressableitungen, kontrollierte Form- und Geocoding-Zustände sowie präsentationale Kontakt-, Adress-, Karten- und Koordinatenabschnitte; Feld-IDs, Validierung und Mainserver-Vertrag bleiben am bestehenden POI-Formular gebunden.
 
 ### Ergänzung 2026-08: Gemeinsamer Content-Media-Overlay-Flow
 

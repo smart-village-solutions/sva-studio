@@ -2,6 +2,7 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   alignHostMediaReferencesByOrder,
@@ -9,9 +10,12 @@ import {
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   hasContentLifecycleAccess,
+  isSupportedContentMediaUploadFile as isSupportedUploadFile,
   omitDeviatedMainserverFields,
   saveContentWithHostMediaReferences,
   readSessionAccessSnapshot,
+  readHostMediaAssetFileName as readAssetFileName,
+  readHostMediaAssetTitle as readAssetTitle,
   resolveContentMediaCapabilities,
   resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
@@ -77,13 +81,7 @@ import {
 import { EventsDetailBasisTab } from './events.detail-basis-tab.js';
 import { EventsDetailContentTab } from './events.detail-content-tab.js';
 import { EventsDetailHistoryTab } from './events.detail-history-tab.js';
-import {
-  isSupportedUploadFile,
-  mediaContentFromAsset,
-  readAssetFileName,
-  readAssetTitle,
-  uploadPhaseMessageKey,
-} from './events.detail-media.helpers.js';
+import { mediaContentFromAsset } from './events.detail-media.helpers.js';
 import { EventsDetailSettingsTab } from './events.detail-settings-tab.js';
 import { createEventsDetailTabDefinitions, type EventsDetailTabId } from './events.detail-tabs.js';
 import type { EventCategoryOption, EventContentItem } from './events.types.js';

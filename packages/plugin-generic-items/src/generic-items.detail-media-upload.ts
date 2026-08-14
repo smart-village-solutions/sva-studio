@@ -1,10 +1,9 @@
-import type { HostMediaAssetListItem } from '@sva/plugin-sdk';
-import React from 'react';
-
 import {
-  isSupportedUploadFile,
-  type MediaUploadPhase,
-} from './generic-items.detail-media.helpers.js';
+  isSupportedContentMediaUploadFile,
+  type ContentMediaUploadPhase,
+  type HostMediaAssetListItem,
+} from '@sva/plugin-sdk';
+import React from 'react';
 
 export const createEmptyMediaContent = () => ({
   captionText: '',
@@ -24,7 +23,7 @@ export const useGenericItemsUploadChangeHandler = ({
   appendMediaContent: (asset: HostMediaAssetListItem) => boolean;
   onUploadFile: (file: File) => Promise<HostMediaAssetListItem>;
   setUploadErrorKey: (key: string | null) => void;
-  setUploadPhase: (phase: MediaUploadPhase) => void;
+  setUploadPhase: (phase: ContentMediaUploadPhase) => void;
 }>) =>
   React.useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,7 +33,7 @@ export const useGenericItemsUploadChangeHandler = ({
         return;
       }
 
-      if (!isSupportedUploadFile(file)) {
+      if (!isSupportedContentMediaUploadFile(file)) {
         setUploadPhase('error');
         setUploadErrorKey('messages.mediaUploadUnsupportedType');
         return;

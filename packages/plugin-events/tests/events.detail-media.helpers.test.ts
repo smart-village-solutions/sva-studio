@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  getAssetPersistentUrl,
-  matchesAssetSearch,
   mediaContentFromAsset,
   mediaContentTypeFromAsset,
-  normalizeSearchValue,
-  readAssetCopyright,
-  readAssetFileName,
-  readAssetTitle,
-  uploadPhaseMessageKey,
 } from '../src/events.detail-media.helpers.js';
 import { normalizeMediaContentType } from '../src/events.detail-media-content-type.js';
 
@@ -31,38 +24,6 @@ describe('events detail media helpers', () => {
     expect(normalizeMediaContentType('attachment')).toBe('attachment');
     expect(normalizeMediaContentType('document')).toBeUndefined();
     expect(normalizeMediaContentType('   ')).toBeUndefined();
-  });
-
-  it('maps upload phases to translation keys', () => {
-    expect(uploadPhaseMessageKey('idle')).toBeNull();
-    expect(uploadPhaseMessageKey('initializing')).toBe('messages.mediaUploadInitializing');
-    expect(uploadPhaseMessageKey('uploading')).toBe('messages.mediaUploadUploading');
-    expect(uploadPhaseMessageKey('finalizing')).toBe('messages.mediaUploadFinalizing');
-    expect(uploadPhaseMessageKey('success')).toBe('messages.mediaUploadSuccess');
-    expect(uploadPhaseMessageKey('error')).toBe('messages.mediaUploadError');
-  });
-
-  it('reads asset metadata with stable fallbacks', () => {
-    expect(readAssetTitle(publicAsset)).toBe('Sommerfest');
-    expect(readAssetFileName(publicAsset)).toBe('flyeR.PNG');
-    expect(readAssetCopyright(publicAsset)).toBe('Stadt');
-
-    expect(readAssetTitle({ id: 'asset-2', fileName: ' title-from-file.jpg ' })).toBe('title-from-file.jpg');
-    expect(readAssetTitle({ id: 'asset-3', fileName: '   ' })).toBe('asset-3');
-    expect(readAssetFileName({ id: 'asset-4', fileName: '   ' })).toBe('asset-4');
-    expect(readAssetCopyright({ id: 'asset-5', metadata: { copyright: 42 } })).toBe('');
-  });
-
-  it('filters persistent urls, search matches, and media content types defensively', () => {
-    expect(getAssetPersistentUrl(publicAsset)).toBe('https://cdn.example.com/flyer.png');
-    expect(getAssetPersistentUrl({ ...publicAsset, visibility: 'private' })).toBeNull();
-    expect(getAssetPersistentUrl({ ...publicAsset, previewUrl: '   ' })).toBeNull();
-
-    const query = normalizeSearchValue('sommer');
-    expect(matchesAssetSearch(publicAsset, query)).toBe(true);
-    expect(matchesAssetSearch(publicAsset, normalizeSearchValue('png'))).toBe(true);
-    expect(matchesAssetSearch(publicAsset, normalizeSearchValue('winter'))).toBe(false);
-    expect(matchesAssetSearch(publicAsset, '')).toBe(true);
 
     expect(mediaContentTypeFromAsset({ ...publicAsset, mimeType: 'image/webp' })).toBe('image');
     expect(mediaContentTypeFromAsset({ ...publicAsset, mimeType: 'audio/mpeg' })).toBe('audio');
@@ -84,5 +45,6 @@ describe('events detail media helpers', () => {
     });
 
     expect(mediaContentFromAsset({ ...publicAsset, visibility: 'private' })).toBeNull();
+    expect(mediaContentFromAsset({ ...publicAsset, previewUrl: '   ' })).toBeNull();
   });
 });

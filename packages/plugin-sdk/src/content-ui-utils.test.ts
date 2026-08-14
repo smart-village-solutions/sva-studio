@@ -2,10 +2,16 @@ import { describe, expect, it } from 'vitest';
 
 import {
   compactOptionalString,
+  contentMediaUploadPhaseMessageKey,
   formatDateTimeInEditorTimeZone,
   formatTechnicalDateTimeInEditorTimeZone,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
+  getHostMediaAssetPersistentUrl,
+  isSupportedContentMediaUploadFile,
+  readHostMediaAssetCopyright,
+  readHostMediaAssetFileName,
+  readHostMediaAssetTitle,
   toDatetimeLocalValue,
   toHostMediaFieldOptions,
 } from './content-ui-utils.js';
@@ -109,5 +115,49 @@ describe('content-ui-utils', () => {
       )
     ).toBe('asset-2');
     expect(findHostMediaReferenceAssetId([{ assetId: 'asset-1', role: 'teaser_image' }], 'hero')).toBeNull();
+  });
+
+  it('shares image-upload and host-asset presentation semantics across content plugins', () => {
+    expect(
+      isSupportedContentMediaUploadFile(new File(['image'], 'photo.jpg', { type: 'image/jpeg' }))
+    ).toBe(true);
+    expect(
+      isSupportedContentMediaUploadFile(new File(['image'], 'photo.png', { type: 'image/png' }))
+    ).toBe(true);
+    expect(
+      isSupportedContentMediaUploadFile(new File(['image'], 'photo.webp', { type: 'image/webp' }))
+    ).toBe(true);
+    expect(
+      isSupportedContentMediaUploadFile(new File(['text'], 'notes.txt', { type: 'text/plain' }))
+    ).toBe(false);
+
+    expect(contentMediaUploadPhaseMessageKey('idle')).toBeNull();
+    expect(contentMediaUploadPhaseMessageKey('initializing')).toBe(
+      'messages.mediaUploadInitializing'
+    );
+    expect(contentMediaUploadPhaseMessageKey('uploading')).toBe('messages.mediaUploadUploading');
+    expect(contentMediaUploadPhaseMessageKey('finalizing')).toBe('messages.mediaUploadFinalizing');
+    expect(contentMediaUploadPhaseMessageKey('success')).toBe('messages.mediaUploadSuccess');
+    expect(contentMediaUploadPhaseMessageKey('error')).toBe('messages.mediaUploadError');
+
+    const asset = {
+      id: 'asset-1',
+      fileName: ' photo.jpg ',
+      previewUrl: ' https://cdn.example.com/photo.jpg ',
+      visibility: 'public',
+      metadata: { title: ' Titelbild ', copyright: ' Redaktion ' },
+    };
+    expect(readHostMediaAssetTitle(asset)).toBe('Titelbild');
+    expect(readHostMediaAssetFileName(asset)).toBe('photo.jpg');
+    expect(readHostMediaAssetCopyright(asset)).toBe('Redaktion');
+    expect(getHostMediaAssetPersistentUrl(asset)).toBe('https://cdn.example.com/photo.jpg');
+
+    expect(readHostMediaAssetTitle({ id: 'asset-2', fileName: ' fallback.png ' })).toBe(
+      'fallback.png'
+    );
+    expect(readHostMediaAssetTitle({ id: 'asset-3', fileName: '   ' })).toBe('asset-3');
+    expect(readHostMediaAssetCopyright({ id: 'asset-4', metadata: { copyright: 42 } })).toBe('');
+    expect(getHostMediaAssetPersistentUrl({ ...asset, visibility: 'protected' })).toBeNull();
+    expect(getHostMediaAssetPersistentUrl({ ...asset, previewUrl: '   ' })).toBeNull();
   });
 });

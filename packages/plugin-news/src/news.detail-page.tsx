@@ -2,6 +2,7 @@ import * as React from 'react';
 import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-form';
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
+  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   fromDatetimeLocalValue,
   getHostMediaAsset,
   getHostMediaDelivery,
@@ -10,7 +11,10 @@ import {
   listHostMediaReferencesByTarget,
   alignHostMediaReferencesByOrder,
   readSessionAccessSnapshot,
+  readHostMediaAssetFileName as readAssetFileName,
+  readHostMediaAssetTitle as readAssetTitle,
   hasContentLifecycleAccess,
+  isSupportedContentMediaUploadFile as isSupportedUploadFile,
   resolveContentMediaCapabilities,
   resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
@@ -78,14 +82,7 @@ import {
   resolveGlobalPushConfirmationKey,
   type WasteTargetingAvailability,
 } from './news.waste-payload.js';
-import {
-  isSupportedUploadFile,
-  mediaContentFromAsset,
-  mediaContentSourceKey,
-  readAssetFileName,
-  readAssetTitle,
-  uploadPhaseMessageKey,
-} from './news.detail-media.helpers.js';
+import { mediaContentFromAsset, mediaContentSourceKey } from './news.detail-media.helpers.js';
 import { createNewsDetailTabDefinitions } from './news.detail-tabs.js';
 import { addNewsCreatedSaveFeedback } from './news.save-feedback.js';
 import { getPluginNewsActionDefinition, pluginNewsActionIds } from './plugin.js';

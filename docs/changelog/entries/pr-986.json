@@ -1,0 +1,4 @@
+{
+  "prNumber": 986,
+  "body": "Medienbearbeitung in Content-Editoren bleibt konsistent\n\n- News, Veranstaltungen, POI und Generic Items verwenden für Upload-Zustände und Medieninformationen dieselben geprüften Grundlagen.\n- Plugin-spezifische Mainserver-Feldzuordnungen und Fallbacks bleiben unverändert erhalten.\n- Nicht mehr verwendete parallele Upload-, Bibliotheks-, Listen- und Vorschaupfade wurden entfernt."
+}

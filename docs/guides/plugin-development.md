@@ -332,10 +332,13 @@ Plugins binden hostseitig verwaltete Medienreferenzen über den Media-Picker-Ver
 Erlaubt:
 
 - deklarative Picker-Definitionen über `@sva/plugin-sdk`
+- gemeinsame Upload-Phasen-, MIME- und Host-Asset-Darstellungshelfer aus `@sva/plugin-sdk`; fachliche Content-Type-Fallbacks und Mainserver-Mapper bleiben im jeweiligen Plugin
 - UI-Bindings über `ContentMediaUsageBlock` und `StudioMediaPickerOverlay` aus `@sva/studio-ui-react`
 - hostseitige Referenzverwaltung über die Media-HTTP-Fassade
 
 Alle Content-Medienblöcke verwenden genau einen primären Einstieg mit der Beschriftung „Medium hinzufügen“. Dieser öffnet den gemeinsamen Picker im aktiven Upload-Modus. Im Picker ist „Medium hochladen“ die primäre Aktion, „Medium aus der Bibliothek hinzufügen“ die sekundäre Aktion und „Medium per Link hinzufügen“ ein tertiärer Textlink. Plugins dürfen daneben keine parallelen Direktaktionen für Upload, Bibliothek oder Linkeingabe rendern.
+
+Nach der Migration auf diesen gemeinsamen Flow dürfen frühere pluginlokale Upload-Hooks, Bibliotheksdialoge, Bildlisten oder Preview-Komponenten nicht als unverbundene Parallelimplementierung verbleiben. Pluginlokal bleiben nur fachlich abweichende Adapter, Validierung und Persistenzsemantik.
 
 Nicht erlaubt:
 

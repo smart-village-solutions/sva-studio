@@ -5,6 +5,11 @@ export type HostMediaFieldOption = Readonly<{
   label: string;
 }>;
 
+export type ContentMediaUploadPhase =
+  'idle' | 'initializing' | 'uploading' | 'finalizing' | 'success' | 'error';
+
+const supportedContentMediaUploadMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
 const editorTimeZone = 'Europe/Berlin';
 const defaultEditorLocale = 'de-DE';
 type DateTimeFormatOptionsWithFractionalSeconds = Intl.DateTimeFormatOptions & {
@@ -193,6 +198,52 @@ export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[
       label: String(asset.metadata?.title ?? asset.id),
     }];
   });
+};
+
+export const isSupportedContentMediaUploadFile = (file: File): boolean =>
+  supportedContentMediaUploadMimeTypes.has(file.type);
+
+export const contentMediaUploadPhaseMessageKey = (
+  phase: ContentMediaUploadPhase
+): string | null => {
+  switch (phase) {
+    case 'initializing':
+      return 'messages.mediaUploadInitializing';
+    case 'uploading':
+      return 'messages.mediaUploadUploading';
+    case 'finalizing':
+      return 'messages.mediaUploadFinalizing';
+    case 'success':
+      return 'messages.mediaUploadSuccess';
+    case 'error':
+      return 'messages.mediaUploadError';
+    case 'idle':
+      return null;
+  }
+};
+
+export const readHostMediaAssetFileName = (asset: HostMediaAssetListItem): string =>
+  asset.fileName?.trim() || asset.id;
+
+export const readHostMediaAssetTitle = (asset: HostMediaAssetListItem): string => {
+  const title = asset.metadata?.title;
+  return typeof title === 'string' && title.trim().length > 0
+    ? title.trim()
+    : readHostMediaAssetFileName(asset);
+};
+
+export const readHostMediaAssetCopyright = (asset: HostMediaAssetListItem): string => {
+  const copyright = asset.metadata?.copyright;
+  return typeof copyright === 'string' ? copyright.trim() : '';
+};
+
+export const getHostMediaAssetPersistentUrl = (asset: HostMediaAssetListItem): string | null => {
+  if (asset.visibility && asset.visibility !== 'public') {
+    return null;
+  }
+
+  const url = asset.previewUrl?.trim();
+  return url && url.length > 0 ? url : null;
 };
 
 export const findHostMediaReferenceAssetId = (

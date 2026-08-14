@@ -5,7 +5,7 @@ import {
   getPoiOperatorFieldValues,
   hasPoiOperatorGeocodingInput,
   mergePoiOperatorWebUrl,
-} from '../src/poi.detail-operator-shared.js';
+} from './poi.detail-operator-shared.js';
 
 describe('poi.detail-operator-shared', () => {
   it('flattens missing and populated operator values for the controlled fields', () => {

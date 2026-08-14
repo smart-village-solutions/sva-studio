@@ -1,4 +1,4 @@
 {
   "prNumber": 989,
-  "body": "Die Keycloak-Prüfung von Studio-Instanzen bleibt zuverlässig und besser wartbar\n\n- Alle bestehenden Prüfungen für Realm, Clients, Rollen und Zugriffsstatus liefern weiterhin dieselben Ergebnisse.\n- Zugangsdaten werden ausschließlich intern verglichen und nicht in Prüfergebnissen ausgegeben.\n- Zusätzliche Tests sichern auch fehlende oder abweichende Keycloak-Konfigurationen ab."
+  "body": "Die Keycloak-Prüfung meldet Realm-, Client-, Rollen- und Zugriffsabweichungen zuverlässig\n\n- Alle bestehenden Prüfungen für Realm, Clients, Rollen und Zugriffsstatus liefern weiterhin dieselben Ergebnisse.\n- Zugangsdaten werden ausschließlich intern verglichen und nicht in Prüfergebnissen ausgegeben.\n- Fehlende oder abweichende Keycloak-Konfigurationen werden weiterhin eindeutig ausgewiesen."
 }

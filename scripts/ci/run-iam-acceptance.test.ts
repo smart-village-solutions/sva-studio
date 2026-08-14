@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 
 import { afterEach, expect, it } from 'vitest';
 
-import { MANDATORY_ACCEPTANCE_PHASES } from './run-iam-acceptance.ts';
+import { MANDATORY_ACCEPTANCE_STEP_NAMES } from './run-iam-acceptance.ts';
 
 const rootDir = resolve(import.meta.dirname, '../..');
 const runnerPath = resolve(import.meta.dirname, 'run-iam-acceptance.ts');
@@ -57,19 +57,19 @@ it('fails closed with exit code 1 and a redacted report when required configurat
 it('keeps every mandatory acceptance check in its established orchestration order', async () => {
   const source = await readFile(runnerPath, 'utf8');
   const mandatoryChecks = [
-    "name: 'Preflight Testnutzer'",
-    "name: 'Testdaten-Reset'",
-    "name: 'Readiness'",
-    "name: 'OIDC Login Claims'",
-    "name: 'Admin JIT-Provisioning Erstlogin'",
-    "name: 'Member JIT-Provisioning Erstlogin'",
-    "name: 'Admin JIT-Provisioning Zweitlogin'",
-    "name: 'Organisations-CRUD'",
-    "name: 'Membership-Zuweisung'",
-    "name: 'UI Benutzerliste'",
-    "name: 'UI Organisationsstruktur'",
+    'Preflight Testnutzer',
+    'Testdaten-Reset',
+    'Readiness',
+    'OIDC Login Claims',
+    'Admin JIT-Provisioning Erstlogin',
+    'Member JIT-Provisioning Erstlogin',
+    'Admin JIT-Provisioning Zweitlogin',
+    'Organisations-CRUD',
+    'Membership-Zuweisung',
+    'UI Benutzerliste',
+    'UI Organisationsstruktur',
   ] as const;
-  expect(MANDATORY_ACCEPTANCE_PHASES).toEqual(mandatoryChecks);
+  expect(MANDATORY_ACCEPTANCE_STEP_NAMES).toEqual(mandatoryChecks);
 
   const phaseCalls = [
     'runIdentityPreflight(',

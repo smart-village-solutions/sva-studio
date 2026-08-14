@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
 
 import {
   KeycloakAdminClient,
@@ -29,6 +29,7 @@ import {
   type Pool,
 } from './iam-acceptance-runner-runtime.ts';
 import { verifyAdminUi } from './iam-acceptance-runner-ui.ts';
+import { isCliEntrypoint } from './path-safety.ts';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(scriptDir, '../..');
@@ -38,18 +39,18 @@ const authRuntimeRequire = createRequire(resolve(rootDir, 'packages/auth-runtime
 const { chromium } = appRequire('@playwright/test') as BrowserModule;
 const { Pool } = authRuntimeRequire('pg') as PgModule;
 
-export const MANDATORY_ACCEPTANCE_PHASES = [
-  "name: 'Preflight Testnutzer'",
-  "name: 'Testdaten-Reset'",
-  "name: 'Readiness'",
-  "name: 'OIDC Login Claims'",
-  "name: 'Admin JIT-Provisioning Erstlogin'",
-  "name: 'Member JIT-Provisioning Erstlogin'",
-  "name: 'Admin JIT-Provisioning Zweitlogin'",
-  "name: 'Organisations-CRUD'",
-  "name: 'Membership-Zuweisung'",
-  "name: 'UI Benutzerliste'",
-  "name: 'UI Organisationsstruktur'",
+export const MANDATORY_ACCEPTANCE_STEP_NAMES = [
+  'Preflight Testnutzer',
+  'Testdaten-Reset',
+  'Readiness',
+  'OIDC Login Claims',
+  'Admin JIT-Provisioning Erstlogin',
+  'Member JIT-Provisioning Erstlogin',
+  'Admin JIT-Provisioning Zweitlogin',
+  'Organisations-CRUD',
+  'Membership-Zuweisung',
+  'UI Benutzerliste',
+  'UI Organisationsstruktur',
 ] as const;
 
 const createKeycloakAdmin = (config: AcceptanceConfig): KeycloakAdminClient => {
@@ -213,8 +214,6 @@ export const runIamAcceptance = async (): Promise<void> => {
   }
 };
 
-const isEntrypoint =
-  process.argv[1] !== undefined && pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
-if (isEntrypoint) {
+if (isCliEntrypoint(import.meta.url, process.argv[1])) {
   void runIamAcceptance();
 }

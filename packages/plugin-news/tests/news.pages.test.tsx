@@ -1246,7 +1246,7 @@ describe('News editor pages', () => {
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
-      publishedAt: '2026-08-14T09:30:00.000Z',
+      publishedAt: '2099-08-14T09:30:00.000Z',
       visible: true,
     });
 
@@ -1257,7 +1257,7 @@ describe('News editor pages', () => {
     const settingsPanel = screen.getByRole('tabpanel', { name: /Einstellungen/ });
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('2026-08-14T11:30')).toBeTruthy();
+      expect(screen.getByDisplayValue('2099-08-14T11:30')).toBeTruthy();
       expect(within(settingsPanel).getByText('Veröffentlichung')).toBeTruthy();
       expect(within(settingsPanel).getByRole('radio', { name: /Zeitgesteuert/ })).toBeTruthy();
     });
@@ -1643,7 +1643,7 @@ describe('News editor pages', () => {
       author: 'Editor',
       createdAt: '2026-01-01T00:00:00.000Z',
       updatedAt: '2026-01-02T00:00:00.000Z',
-      publishedAt: '2026-08-14T09:30:00.000Z',
+      publishedAt: '2099-08-14T09:30:00.000Z',
       visible: true,
     });
 
@@ -1653,7 +1653,7 @@ describe('News editor pages', () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText('Zeitpunkt der Veröffentlichung').getAttribute('value')).toBe(
-        '2026-08-14T11:30'
+        '2099-08-14T11:30'
       );
     });
   });

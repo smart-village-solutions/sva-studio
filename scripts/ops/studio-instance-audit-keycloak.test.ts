@@ -328,6 +328,32 @@ describe('inspectRealmAndClients contract', () => {
     expect(existsSync(readConfigPath())).toBe(false);
   });
 
+  it('redacts credential command failures before they reach the audit report', async () => {
+    const leakedSecretMarker = 'synthetic-secret-that-must-not-leak';
+    kcadmMock.responder = async () => {
+      throw Object.assign(
+        new Error(`Command failed: kcadm.sh --client-secret ${leakedSecretMarker}`),
+        {
+          cmd: `kcadm.sh config credentials --client-secret ${leakedSecretMarker}`,
+          stderr: `authentication failed for ${leakedSecretMarker}`,
+        }
+      );
+    };
+
+    const publicError = await inspectRealmAndClients(target).catch((error: unknown) => error);
+    const auditFailure = {
+      details: publicError instanceof Error ? { message: publicError.message } : undefined,
+      summary: publicError instanceof Error ? publicError.message : String(publicError),
+    };
+
+    expect(publicError).toEqual(new Error('Keycloak authentication failed'));
+    expect(JSON.stringify(publicError, Object.getOwnPropertyNames(publicError))).not.toContain(
+      leakedSecretMarker
+    );
+    expect(JSON.stringify(auditFailure)).not.toContain(leakedSecretMarker);
+    expect(existsSync(readConfigPath())).toBe(false);
+  });
+
   it('returns only the established realm failure and still cleans up', async () => {
     configureScenario({ realmExists: false });
 

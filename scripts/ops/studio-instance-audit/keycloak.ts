@@ -24,6 +24,33 @@ type KeycloakRoleRepresentation = Readonly<{
   name: string;
 }>;
 
+const authenticateKcadm = async (
+  configPath: string,
+  baseUrl: string,
+  realm: string,
+  clientId: string,
+  clientSecret: string
+): Promise<void> => {
+  try {
+    await execFileAsync('kcadm.sh', [
+      'config',
+      'credentials',
+      '--server',
+      baseUrl,
+      '--realm',
+      realm,
+      '--client',
+      clientId,
+      '--client-secret',
+      clientSecret,
+      '--config',
+      configPath,
+    ]);
+  } catch {
+    throw new Error('Keycloak authentication failed');
+  }
+};
+
 const withKcadmConfig = async <T>(work: (configPath: string) => Promise<T>): Promise<T> => {
   const configPath = join(
     mkdtempSync(join(tmpdir(), 'studio-instance-audit-kcadm-')),
@@ -46,20 +73,7 @@ const withKcadmConfig = async <T>(work: (configPath: string) => Promise<T>): Pro
       throw new Error('Missing Keycloak provisioner/admin configuration');
     }
 
-    await execFileAsync('kcadm.sh', [
-      'config',
-      'credentials',
-      '--server',
-      baseUrl,
-      '--realm',
-      realm,
-      '--client',
-      clientId,
-      '--client-secret',
-      clientSecret,
-      '--config',
-      configPath,
-    ]);
+    await authenticateKcadm(configPath, baseUrl, realm, clientId, clientSecret);
     return await work(configPath);
   } finally {
     rmSync(configPath, { force: true });

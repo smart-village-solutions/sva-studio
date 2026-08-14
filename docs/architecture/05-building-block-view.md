@@ -735,6 +735,16 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/data-repositories` materialisiert Definitionen und verwaltete Grants additiv und liefert sichere Änderungszähler.
 - `@sva/instance-registry` bindet denselben Vertrag an Tenant-Bootstrap, Modul-Lifecycle und explizites `seedIamBaseline`.
 
+### Ergänzung 2026-08: Operativer Keycloak-Instanz-Audit
+
+- `scripts/ops/studio-instance-audit/keycloak.ts` besitzt die read-only
+  `kcadm`-Erhebung, die kurzlebige Auth-Konfiguration und deren Cleanup.
+- `scripts/ops/studio-instance-audit/keycloak-evaluation.ts` besitzt den
+  typisierten Snapshot und die reine Ableitung der vierzehn bestehenden
+  Keycloak-Befunde.
+- Die Grenze ist bewusst zweckgebunden: Sie führt weder eine generische Rule
+  Engine noch einen zweiten Provisioning-, Reconcile- oder Mutationspfad ein.
+
 ### Ergänzung 2026-08: DataProvider-gebundene Mainserver-Autorenschaft
 
 - `@sva/auth-runtime` besitzt die instanz- und credential-versionierten Principal-Bindungen, den Shadow-/Automatic-/Compatibility-Resolver, das persistente Mutation-Journal und die read-only Admin-Diagnose.

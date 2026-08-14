@@ -2848,24 +2848,6 @@
       "status": "open",
       "summary": "Lange Keycloak-Audit-Orchestrierung in kleinere Check- und Aggregationsschritte aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
     },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Keycloak-Audit-Verzweigungen in kleinere Client-, Realm- und Check-Bausteine zerlegen (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:fileLines": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Keycloak-Audit-Datei in kleinere Auth-, Fetch- und Bewertungsmodule splitten (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:functionLines": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Keycloak-Audit-Funktionen in kleinere Request-, Parse- und Summary-Schritte aufteilen (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
     "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
       "ticketSystem": "backlog",

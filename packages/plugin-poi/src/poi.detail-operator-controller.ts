@@ -149,7 +149,13 @@ const usePoiOperatorGeocoding = ({
   const [reverseGeocoding, setReverseGeocoding] = React.useState(false);
   const latitude = parseCoordinate(values.latitude);
   const longitude = parseCoordinate(values.longitude);
-  const hasGeocodingInput = hasPoiOperatorGeocodingInput(values);
+  const addressValues = {
+    locationName: values.locationName,
+    street: values.street,
+    zip: values.zip,
+    city: values.city,
+  };
+  const hasGeocodingInput = hasPoiOperatorGeocodingInput(addressValues);
   const hasReverseGeocodingInput = latitude !== null && longitude !== null;
 
   const geocode = React.useCallback(async () => {
@@ -161,7 +167,7 @@ const usePoiOperatorGeocoding = ({
     setError(null);
     try {
       applySearchResult(
-        await geocodeMapAddress({ address: createPoiOperatorGeocodingAddress(values) })
+        await geocodeMapAddress({ address: createPoiOperatorGeocodingAddress(addressValues) })
       );
       setMapError(null);
     } catch (cause) {
@@ -169,7 +175,7 @@ const usePoiOperatorGeocoding = ({
     } finally {
       setGeocoding(false);
     }
-  }, [applySearchResult, geocodingEnabled, hasGeocodingInput, pt, setMapError, values]);
+  }, [addressValues, applySearchResult, geocodingEnabled, hasGeocodingInput, pt, setMapError]);
 
   const reverseGeocode = React.useCallback(async () => {
     if (!reverseGeocodingEnabled || latitude === null || longitude === null) {

@@ -204,6 +204,7 @@ describe('PoiDetailOperatorTab', () => {
     expect((screen.getByLabelText('Link-Beschreibung') as HTMLInputElement).value).toBe(
       'Website des Betreibers'
     );
+    expect(screen.queryByRole('button', { name: 'Geo-Koordinaten ermitteln' })).toBeNull();
   });
 
   it('keeps geocoding actions single-flight while a lookup is pending', async () => {

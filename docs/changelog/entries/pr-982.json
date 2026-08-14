@@ -1,0 +1,4 @@
+{
+  "prNumber": 982,
+  "body": "Abholorte für Push-Nachrichten lassen sich übersichtlicher auswählen\n\n- Die Auswahl zeigt jederzeit, wie viele Abholorte im aktuellen Filter ausgewählt sind.\n- Ausgeblendete Auswahlen bleiben beim Filtern vorgemerkt und werden erst beim Erweitern des Filters wieder wirksam.\n- Beim Übernehmen werden nur die aktuell wirksamen Abholorte berücksichtigt.\n- Große Auswahllisten lassen sich ein- und ausklappen und seitenweise durchsehen.\n- Verbesserte Statusmeldungen unterstützen die Bedienung mit Screenreadern."
+}

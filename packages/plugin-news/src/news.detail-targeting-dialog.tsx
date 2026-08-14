@@ -49,7 +49,7 @@ export function NewsDetailTargetingDialog({
     return `${street?.name}, ${cityContextLabel(street?.cityId ?? '')}`;
   };
   const applySelection = () => {
-    onApply(editor.draft);
+    onApply(editor.appliedDraft);
     editor.setOpen(false);
   };
   const openEditor = async () => {
@@ -103,6 +103,7 @@ export function NewsDetailTargetingDialog({
           />
           <TargetingPagination
             resultCount={editor.filtered.length}
+            selectedCount={editor.effectiveSelectedCount}
             page={editor.page}
             pageCount={editor.pageCount}
             pt={pt}

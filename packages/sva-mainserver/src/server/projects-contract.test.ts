@@ -7,6 +7,12 @@ import {
   parseProjectInput,
   validateProjectProjection,
 } from './projects-contract.js';
+import {
+  mapAndValidateProject,
+  projectCreateResponseBody,
+  projectPayload,
+  publishedAtForProject,
+} from './projects-create-mapping.js';
 
 const project = {
   language: ' de ',
@@ -419,5 +425,35 @@ describe('projects contract', () => {
         images: [],
       })
     ).toBeNull();
+  });
+
+  it('maps create responses to stable local ids and explicit reconciliation metadata', () => {
+    const mapped = mapGenericItemToProject(existing);
+
+    expect(projectCreateResponseBody({ project: mapped })).toEqual({ data: mapped });
+    expect(
+      projectCreateResponseBody({
+        project: mapped,
+        localContentId: 'local-project',
+        reconciliationRequired: true,
+      })
+    ).toEqual({
+      data: { ...mapped, id: 'local-project' },
+      meta: { reconciliationStatus: 'reconciliation_required' },
+    });
+  });
+
+  it('owns pure create payload, publication and projection mapping', () => {
+    expect(projectPayload(projectWithoutAuthor)).toEqual({
+      language: ' de ',
+      status: 'published',
+    });
+    expect(publishedAtForProject(projectWithoutAuthor, '2026-01-01T00:00:00.000Z')).toBe(
+      '2026-01-01T00:00:00.000Z'
+    );
+    expect(mapAndValidateProject(existing)).toEqual(mapGenericItemToProject(existing));
+    expect(() => mapAndValidateProject({ ...existing, title: '' })).toThrow(
+      'Mainserver-Projekt verletzt den FeaturedProject-Vertrag.'
+    );
   });
 });

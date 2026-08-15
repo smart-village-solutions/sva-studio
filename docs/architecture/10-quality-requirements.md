@@ -148,6 +148,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
 - Öffentlicher Abfallkalender:
   - `pnpm nx run public-waste-calendar-web:test:unit` muss für Auswahlfluss, Cookie-Restore, Export-Links und Termin-Modal grün sein
+  - Repository-Characterization muss identische parametrisierte Standortfilter für Touren und explizite Einsätze, inklusive Date-only-Fenstergrenzen, deterministische Datum-/Fraktionssortierung sowie Empty- und Fehlerpfade abdecken
+  - Endpunkt-Tests müssen belegen, dass Web- und PDF-Pfade dieselbe standortgebundene Repository-Ausgabe verwenden und erst danach exportbezogen filtern
   - `pnpm nx run public-waste-calendar-web:test:e2e` deckt den vollständigen Bürgerfluss Auswahl -> Kalender -> Modal -> Reload-Restore ab
   - `pnpm nx run public-waste-calendar-web:test:types` bleibt Pflichtgate für alle app-lokalen Verträge
   - Auswahlbuttons, Fraktionsfilter, Exportlinks und Dialog müssen per Rolle oder zugänglichem Namen testbar bleiben

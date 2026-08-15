@@ -35,7 +35,7 @@ Der Snapshot bewahrt Legacy-Felder nur dann, wenn die jeweilige Compatibility-Al
 3. Altcode-Test grün dokumentieren; OpenSpec strict validieren.
 4. Gleichförmige Feldübernahmen über explizite typed descriptors oder kleine fachliche Helper reduzieren; Sonderfälle PublishedAt, Push und ContentBlocks sichtbar separat halten. Keine generische Reflection-/`any`-Lösung.
 5. Unit/Types/Lint/Build, Complexity, OpenSpec strict, File Placement, Changelog, `git diff --check`.
-6. `pnpm exec fallow audit --base origin/main --workspace @sva/plugin-news --explain --format json`: PASS mit Complexity/Dead Code/Duplication/Styling introduced 0; bei CRAP echte Coverage wiederholen.
+6. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace @sva/plugin-news --explain --format json`; PASS mit Complexity/Dead Code/Duplication/Styling introduced 0; bei CRAP echte Coverage wiederholen.
 
 ## Fertig
 

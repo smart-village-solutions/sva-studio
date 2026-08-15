@@ -34,7 +34,7 @@ Die Funktion entscheidet Ticketzustand, Rollen-ID, Zeitfenster, Self-Approval, d
 4. OpenSpec `refactor-governance-delegation` anlegen und strict validieren.
 5. Payload-Normalisierung und pure Delegationsentscheidung extrahieren; Account-Auflösung und Persistenz bleiben explizites Wiring. Bestehende Reason Codes, SQL-Parameter und Auditfelder unverändert lassen.
 6. Relevante Unit/Types/Lint, `pnpm check:server-runtime`, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen.
-7. New-only: `pnpm exec fallow audit --base origin/main --workspace @sva/iam-governance --explain --format json`; PASS mit allen introduced-Zählern 0.
+7. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace @sva/iam-governance --explain --format json`; PASS mit allen introduced-Zählern 0.
 
 ## Fertig
 

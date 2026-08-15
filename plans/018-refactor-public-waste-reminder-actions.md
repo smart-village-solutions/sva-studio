@@ -35,7 +35,7 @@ Ein Handler mischt Statusseiten, DOI-Hashing, signierte Unsubscribe-Tokens, Subs
 3. OpenSpec strict validieren.
 4. DOI- und Unsubscribe-Pfade als getrennte schmale Funktionen extrahieren; gemeinsame Response-Auswahl nur bei identischem Vertrag. Tokenwerte niemals loggen.
 5. Unit/Types/Lint/Build, Complexity, OpenSpec strict, File Placement, Changelog, `git diff --check`.
-6. `pnpm exec fallow audit --base origin/main --workspace public-waste-calendar-web --explain --format json`: PASS, alle introduced-Zähler inklusive Styling 0 soweit Styling berührt ist.
+6. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace public-waste-calendar-web --explain --format json`; PASS, alle introduced-Zähler inklusive Styling 0 soweit Styling berührt ist.
 
 ## Fertig
 

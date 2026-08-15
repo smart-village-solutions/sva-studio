@@ -11,7 +11,7 @@ eigenen Pull Request ausgeliefert.
 - Health: 3.439 Dateien, 42.970 Funktionen, 943 Findings oberhalb der
   Schwellen (173 critical, 284 high, 486 moderate), durchschnittliche
   Maintainability 90,9.
-- Production-Dead-Code/Dependency: 799 Findings; keine Importzyklen,
+- Production-Dead-Code/Dependency: 800 Findings; keine Importzyklen,
   Re-export-Zyklen oder konfigurierten Boundary-Verstöße.
 - Duplikation: 694 Gruppen, 27.833 von 329.401 analysierten Zeilen bzw. 8,45 %.
 - Offene Pull Requests bei Planung: #983 und #984. Plan 017-021 überschneiden
@@ -40,9 +40,9 @@ eigenen Pull Request ausgeliefert.
 | 014 | Account-Import-Profilreparatur entflechten | P1 | M | keine | TODO |
 | 015 | Plugin-Zugriffs- und Action-Registry modularisieren | P1 | L | keine | TODO |
 | 016 | IAM-Runtime-Diagnostik als Prioritätsmatrix modellieren | P1 | M | keine | TODO |
-| 017 | Mainserver-Event-Mutationsmapping entflechten | P1 | M | keine | TODO |
+| 017 | Instance-Registry-Mutationswerte typsicher strukturieren | P1 | M | keine | TODO |
 | 018 | Public-Waste-Reminder-Actions entflechten | P1 | M | keine | TODO |
-| 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | 018 gemergt | TODO |
+| 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | keine | TODO |
 | 020 | Event-Detailformular-Serialisierung modularisieren | P1 | L | keine | TODO |
 | 021 | News-Kompatibilitäts-Snapshot entflechten | P1 | M | keine | TODO |
 
@@ -60,18 +60,18 @@ auf der Basis rote News-Tests sichtbar und blockierte dadurch den Required-Unit-
 Check von Plan 001. PR #988 wurde SHA-genau grün und ohne offene Threads vor
 Plan 001 gemergt.
 
-Für Runde zwei sind 012-018 sowie 020-021 fachlich unabhängig. Plan 019 startet
-erst nach dem Merge von 018, weil beide denselben Public-Waste-Workspace und
-teilweise dieselben Reminder-UI-Verträge berühren. Nach jedem Merge werden noch
-laufende Branches auf den neuen `origin/main`-Stand aktualisiert und ihre
-relevanten Gates erneut ausgeführt.
+Für Runde zwei sind alle zehn Pakete fachlich unabhängig. Die Domänennähe von
+018 und 019 ist keine Source- oder Vertragsüberschneidung: 018 bearbeitet den
+Serverhandler, 019 ausschließlich Component-/View-State. Nach jedem Merge
+werden noch laufende Branches auf den neuen `origin/main`-Stand aktualisiert
+und ihre relevanten Gates erneut ausgeführt.
 
 Empfohlene Staffelung bei drei Executor-Slots:
 
 1. 012, 014, 015
 2. 013, 016, 017
 3. 018, 020, 021
-4. 019 nach 018
+4. 019
 
 ## Bewusst zurückgestellt
 
@@ -92,6 +92,10 @@ Empfohlene Staffelung bei drei Executor-Slots:
   Source-/Vertragsüberschneidung mit #983/#984 und laufender Waste-Migration.
 - `iam-content-list-projection.server.ts`, `Sidebar.tsx` und
   `-content-list-page.tsx`: weiterhin offene Vertrags-/OpenSpec-Arbeit.
+- Mainserver-Event-Mapping: realer Zielkonflikt mit dem aktiven OpenSpec
+  `refactor-sva-mainserver-service-internals`; deshalb im unabhängigen Review
+  aus Plan 017 entfernt und durch den konfliktfreien Instance-Registry-Scope
+  ersetzt.
 - Root-Skripte für Coverage, Sonar, Bootstrap und Migration: hohe Complexity-
   und Duplikatwerte, aber Fallow weist Root-`scripts/` keinem kanonischen
   Workspace zu. Damit wäre das verbindliche workspace-spezifische New-only-

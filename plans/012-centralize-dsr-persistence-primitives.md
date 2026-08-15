@@ -37,7 +37,7 @@ Legal-Hold-Prüfung, DSR-Audit-Event und Request-Event-Persistenz sind in Auth-R
 4. Shared-Funktionen im fachlichen Owner `@sva/iam-governance` extrahieren. Auth-Runtime importiert sie als deklarierte Runtime-Dependency; relative Runtime-Imports tragen `.js`.
 5. Kopien erst nach grünem Shared-Test entfernen. Keine neue Service-/Factory-Schicht und keine Änderung an SQL oder Fehlerpropagation.
 6. Gezielt prüfen: beide Unit-Targets, beide Type-Targets, `pnpm check:server-runtime`, Lint der beiden Projekte, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check`.
-7. Vor Draft und nach Revision je Workspace ausführen: `pnpm exec fallow audit --base origin/main --workspace @sva/iam-governance --explain --format json` sowie für `@sva/auth-runtime`. Beide müssen PASS und jeweils `complexity_introduced=0`, `dead_code_introduced=0`, `duplication_introduced=0` liefern.
+7. Vor dem ersten Draft-Push und nach jeder relevanten Revision je Workspace ausführen: `pnpm exec fallow audit --base origin/main --workspace @sva/iam-governance --explain --format json` sowie für `@sva/auth-runtime`. Beide müssen PASS und jeweils `complexity_introduced=0`, `dead_code_introduced=0`, `duplication_introduced=0` liefern.
 
 ## Fertig-Kriterien
 

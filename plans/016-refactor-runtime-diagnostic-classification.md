@@ -33,7 +33,7 @@ Die Reihenfolge von Reason-Code, Sync-Fehler, Session-, Keycloak-, Datenbank- un
 3. OpenSpec strict validieren.
 4. Priorisierte Regeln als readonly Daten-/Prädikatsstruktur oder kleine pure Funktionen ausdrücken. First-match-Semantik und Status-/Action-Mapping unverändert lassen; keine generische Rule Engine.
 5. Unit/Types/Lint, `pnpm check:server-runtime`, Complexity, OpenSpec strict, File Placement, Changelog, `git diff --check`.
-6. `pnpm exec fallow audit --base origin/main --workspace @sva/core --explain --format json`: PASS, alle introduced-Zähler 0; bei CRAP Coverage-Audit wiederholen.
+6. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace @sva/core --explain --format json`; PASS, alle introduced-Zähler 0; bei CRAP Coverage-Audit wiederholen.
 
 ## Fertig
 

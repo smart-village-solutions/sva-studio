@@ -31,11 +31,11 @@ Die Reparatur verbindet importierte IAM-Attribute, Keycloak-Identität, Instanzk
 ## Schritte
 
 1. Baseline: gezielter Unit-Run für `core-handler-wrappers.test.ts` und `user-import-sync-handler.request-context.test.ts`, danach `auth-runtime:test:types`.
-2. Characterization-Matrix gegen Altcode: kein Repair nötig; fehlende Identität; fehlende/partielle Attribute; gültige Reparatur; fremde Instanz/Subject; Identity-Provider nicht verfügbar; Updatefehler; Berichtserfolg/-fehler; Reihenfolge von Lookup, Update und Report; PII-freie Logargumente.
+2. Characterization-Matrix gegen Altcode: kein Repair nötig; fehlende Identität; fehlende/partielle Attribute; gültige Reparatur; fremde Instanz/Subject; Identity-Provider nicht verfügbar; Updatefehler; Berichtserfolg/-fehler; Reihenfolge von Lookup, Update und Report; PII-freie Logargumente. Die bestehende Fallback-Priorität `user value -> local seed -> username-as-email` wird für jedes Feld explizit fixiert, einschließlich blanker/partieller Werte sowie paarweiser und vollständiger Konfliktkombinationen.
 3. OpenSpec strict validieren, dann pure Plan-/Entscheidungsfunktion aus Seiteneffekt-Wiring extrahieren. Keine neue Provider-/Service-Abstraktion.
 4. Bestehende Prioritäten, Fehlercodes, `undefined`-/No-op-Semantik und genau-einmal-Aufrufverhalten erhalten.
 5. Unit/Types/Lint, `pnpm check:server-runtime`, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` grün ausführen.
-6. `pnpm exec fallow audit --base origin/main --workspace @sva/auth-runtime --explain --format json` vor Draft und nach Revision: PASS, `complexity_introduced=0`, `dead_code_introduced=0`, `duplication_introduced=0`.
+6. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace @sva/auth-runtime --explain --format json`; PASS mit `complexity_introduced=0`, `dead_code_introduced=0`, `duplication_introduced=0`.
 
 ## Fertig
 

@@ -36,7 +36,7 @@ Die Registry ist der zentrale Fail-closed-Vertrag für Plugin-Namespaces, Permis
 3. OpenSpec `refactor-plugin-access-registry` erstellen und strict validieren.
 4. Vergleich und Registry-Validierungsphasen in pure interne Module zerlegen. `createPluginActionRegistry` bleibt öffentliche Fassade; keine Config-/Factory-Schicht.
 5. Characterization nach jedem Block sowie Unit/Types/Lint, `pnpm check:server-runtime`, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check`.
-6. `pnpm exec fallow audit --base origin/main --workspace @sva/plugin-sdk --explain --format json`: PASS mit allen introduced-Zählern 0; bei CRAP Coverage erzeugen und Audit mit `coverage-final.json` wiederholen.
+6. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace @sva/plugin-sdk --explain --format json`; PASS mit allen introduced-Zählern 0; bei CRAP Coverage erzeugen und Audit mit `coverage-final.json` wiederholen.
 
 ## Fertig
 

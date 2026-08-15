@@ -7,7 +7,7 @@
 - **Priorität:** P1
 - **Aufwand:** L
 - **Risiko:** MITTEL
-- **Abhängigkeit:** Plan 018 gemergt
+- **Abhängigkeit:** keine; Domänennähe zu Plan 018 ist ohne Source- oder Vertragsüberschneidung kein Konflikt
 - **Kategorie:** Produktions-UI, CRAP, Testbarkeit
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
 - **Fallow vorher:** `CompletePublicWasteApp` in `public-waste-app.tsx:190` — cyclomatic 38, cognitive 79, 387 Zeilen, CRAP 349,9 critical; Datei 577 Zeilen, Fan-out 8, Route `index.tsx` ist produktiver Consumer.
@@ -36,7 +36,7 @@ Kalenderfilter, PDF, iCal-Erinnerungen, E-Mail-Reminder, Panelzustand, Fehler/Er
 4. Frameworkfreie Reminder-Auswahlberechnung beibehalten/extrahieren und einen eng begrenzten Hook für Zustand/Actions schaffen. Views erhalten explizite Props; keine Provider/Factory und keine neue Basis-UI.
 5. Keine hardcodierte neue Copy. Bestehende Texte nur dann anfassen, wenn planintern mit vorhandenen Translation-/Config-Verträgen ohne sichtbare Änderung möglich; sonst STOP statt Scope-Ausweitung.
 6. Unit/Types/Lint/Build, Complexity, OpenSpec strict, File Placement, Changelog, `git diff --check` und falls sinnvoll WCAG-fokussierter Test.
-7. New-only Audit für `public-waste-calendar-web`: PASS, Complexity/Dead Code/Duplication/Styling introduced jeweils 0; bei CRAP echte Coverage und Audit-Wiederholung.
+7. Vor dem ersten Draft-Push und nach jeder relevanten Revision: `pnpm exec fallow audit --base origin/main --workspace public-waste-calendar-web --explain --format json`; PASS mit Complexity/Dead Code/Duplication/Styling introduced jeweils 0; bei CRAP echte Coverage und Audit-Wiederholung.
 
 ## Fertig
 
@@ -47,5 +47,5 @@ Kalenderfilter, PDF, iCal-Erinnerungen, E-Mail-Reminder, Panelzustand, Fehler/Er
 ## STOP
 
 - STOP bei notwendiger Loader-, API-, CSS- oder Copy-Vertragsänderung.
-- STOP, wenn Plan 018 noch nicht gemergt oder derselbe Server-/Testscope driftet.
+- STOP nur bei zwischenzeitlich belegter Source-, Vertrags- oder OpenSpec-Überschneidung; reine Domänennähe reicht nicht.
 - STOP, wenn die Extraktion mehr als zwei neue Ownership-Dateien oder eine generische UI-Abstraktion verlangt.

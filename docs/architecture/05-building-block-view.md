@@ -83,6 +83,7 @@ Abhängigkeiten des aktuellen Systems.
 - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
 - kapselt Featured Projects als Mainserver-`GenericItem` mit `genericType: "FeaturedProject"`; Mainserver-ID, Lifecycle, Veröffentlichung und Autorenschaft bleiben fachlich führend, während ein lokaler `iam.contents`-Core und `iam.external_content_references` ausschließlich optionale Studio-History- und Reconciliation-Begleitzustände bilden
+- trennt die interne Featured-Project-Erstellung in Create-Orchestrierung, Idempotenz-/Replay-Handling, reine Payload-/Response-Abbildung sowie gemeinsame Autorisierungs- und Transportbausteine; `projects-route.ts` bleibt die HTTP-Fassade und exportiert keine neuen Create-Interna
 - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`

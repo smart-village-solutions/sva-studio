@@ -15,6 +15,7 @@ import { organizationProvisioningLogger } from './organization-mainserver-provis
 
 const ACCOUNT_PURPOSE = 'organization_mainserver';
 const EMAIL_DOMAIN = 'smart-village.app';
+const ASCII_ALPHANUMERIC = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
 export type DerivedOrganizationTechnicalIdentity = {
   readonly email: string;
@@ -24,15 +25,25 @@ export type DerivedOrganizationTechnicalIdentity = {
 };
 
 const normalizeAsciiSegment = (value: string, fallback: string): string => {
-  const normalized = value
+  const asciiCandidate = value
     .normalize('NFKD')
     .replaceAll('ß', 'ss')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '.')
-    .replace(/^\.+|\.+$/g, '')
-    .slice(0, 24)
-    .replace(/\.+$/g, '');
+    .toLowerCase();
+  let normalized = '';
+  for (const character of asciiCandidate) {
+    if (ASCII_ALPHANUMERIC.includes(character)) {
+      normalized += character;
+    } else if (normalized.length > 0 && !normalized.endsWith('.')) {
+      normalized += '.';
+    }
+    if (normalized.length === 24) {
+      break;
+    }
+  }
+  if (normalized.endsWith('.')) {
+    normalized = normalized.slice(0, -1);
+  }
   return normalized || fallback;
 };
 

@@ -18,14 +18,8 @@ type RuntimeDiagnosticSafeDetails = Readonly<{
   safeDetails?: IamRuntimeSafeDetails;
 }>;
 
-type RuntimeDiagnosticClassificationContext = RuntimeDiagnosticSafeDetails &
-  Readonly<{
-    reasonCode?: string;
-    syncErrorCode?: string;
-  }>;
-
 type RuntimeDiagnosticClassificationResolver = (
-  context: RuntimeDiagnosticClassificationContext
+  context: RuntimeDiagnosticSafeDetails
 ) => IamRuntimeDiagnosticClassification | undefined;
 
 const PRE_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClassification>([
@@ -91,10 +85,7 @@ const DATABASE_MAPPING_REASON_CODES = new Set([
   'rls_denied',
 ]);
 
-const ACTOR_RESOLUTION_CODES = new Set([
-  'missing_actor_account',
-  'missing_instance_membership',
-]);
+const ACTOR_RESOLUTION_CODES = new Set(['missing_actor_account', 'missing_instance_membership']);
 
 const REGISTRY_DRIFT_INPUT_CODES = new Set([
   'tenant_auth_client_secret_missing',
@@ -111,6 +102,12 @@ const REGISTRY_DRIFT_INPUT_CODES = new Set([
 const SESSION_INPUT_CODES = new Set<ApiErrorCode>(['unauthorized', 'reauth_required']);
 const KEYCLOAK_INPUT_CODES = new Set<ApiErrorCode>(['keycloak_unavailable']);
 const DATABASE_INPUT_CODES = new Set<ApiErrorCode>(['database_unavailable']);
+
+const DEPENDENCY_CLASSIFICATION_RULES = [
+  [KEYCLOAK_INPUT_CODES, KEYCLOAK_REASON_CODES, 'keycloak_dependency'],
+  [DATABASE_INPUT_CODES, DATABASE_REASON_CODES, 'database_or_schema_drift'],
+  [undefined, DATABASE_MAPPING_REASON_CODES, 'database_mapping_or_membership_inconsistency'],
+] as const;
 
 const readString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -161,13 +158,13 @@ const readSafeDetails = (
 };
 
 const resolvePreSyncClassification: RuntimeDiagnosticClassificationResolver = ({
-  reasonCode,
-}) => readReasonClassification(reasonCode, PRE_SYNC_REASON_CLASSIFICATIONS);
+  safeDetails,
+}) => readReasonClassification(safeDetails?.reason_code, PRE_SYNC_REASON_CLASSIFICATIONS);
 
 const resolveSyncClassification: RuntimeDiagnosticClassificationResolver = ({
   safeDetails,
-  syncErrorCode,
 }) => {
+  const syncErrorCode = safeDetails?.sync_error_code;
   if (syncErrorCode === 'DB_WRITE_FAILED') {
     return 'database_mapping_or_membership_inconsistency';
   }
@@ -176,59 +173,46 @@ const resolveSyncClassification: RuntimeDiagnosticClassificationResolver = ({
 };
 
 const resolveTenantHostClassification: RuntimeDiagnosticClassificationResolver = ({
-  reasonCode,
+  safeDetails,
 }) =>
-  reasonCode?.startsWith('tenant_host_resolution_')
+  safeDetails?.reason_code?.startsWith('tenant_host_resolution_')
     ? 'tenant_host_validation'
-    : readReasonClassification(reasonCode, POST_SYNC_REASON_CLASSIFICATIONS);
+    : readReasonClassification(safeDetails?.reason_code, POST_SYNC_REASON_CLASSIFICATIONS);
 
 const resolveSessionClassification: RuntimeDiagnosticClassificationResolver = ({
   input,
-  reasonCode,
+  safeDetails,
 }) =>
   SESSION_INPUT_CODES.has(input.code as ApiErrorCode) ||
-  matchesReasonCode(reasonCode, SESSION_REASON_CODES)
+  matchesReasonCode(safeDetails?.reason_code, SESSION_REASON_CODES)
     ? 'session_store_or_session_hydration'
     : undefined;
 
 const resolveActorClassification: RuntimeDiagnosticClassificationResolver = ({
-  reasonCode,
   safeDetails,
 }) =>
   matchesReasonCode(safeDetails?.actor_resolution, ACTOR_RESOLUTION_CODES) ||
-  matchesReasonCode(reasonCode, ACTOR_RESOLUTION_CODES)
+  matchesReasonCode(safeDetails?.reason_code, ACTOR_RESOLUTION_CODES)
     ? 'actor_resolution_or_membership'
     : undefined;
 
-const resolveKeycloakClassification: RuntimeDiagnosticClassificationResolver = ({
+const resolveDependencyClassification: RuntimeDiagnosticClassificationResolver = ({
   input,
-  reasonCode,
-}) =>
-  KEYCLOAK_INPUT_CODES.has(input.code as ApiErrorCode) ||
-  matchesReasonCode(reasonCode, KEYCLOAK_REASON_CODES)
-    ? 'keycloak_dependency'
-    : undefined;
+  safeDetails,
+}) => {
+  for (const [inputCodes, reasonCodes, classification] of DEPENDENCY_CLASSIFICATION_RULES) {
+    if (
+      inputCodes?.has(input.code as ApiErrorCode) ||
+      matchesReasonCode(safeDetails?.reason_code, reasonCodes)
+    ) {
+      return classification;
+    }
+  }
 
-const resolveDatabaseClassification: RuntimeDiagnosticClassificationResolver = ({
-  input,
-  reasonCode,
-}) =>
-  DATABASE_INPUT_CODES.has(input.code as ApiErrorCode) ||
-  matchesReasonCode(reasonCode, DATABASE_REASON_CODES)
-    ? 'database_or_schema_drift'
-    : undefined;
-
-const resolveDatabaseMappingClassification: RuntimeDiagnosticClassificationResolver = ({
-  reasonCode,
-}) =>
-  matchesReasonCode(reasonCode, DATABASE_MAPPING_REASON_CODES)
-    ? 'database_mapping_or_membership_inconsistency'
-    : undefined;
-
-const resolveRegistryClassification: RuntimeDiagnosticClassificationResolver = ({ input }) =>
-  REGISTRY_DRIFT_INPUT_CODES.has(input.code)
+  return REGISTRY_DRIFT_INPUT_CODES.has(input.code)
     ? 'registry_or_provisioning_drift'
     : undefined;
+};
 
 const CLASSIFICATION_RESOLVERS = [
   resolvePreSyncClassification,
@@ -236,25 +220,15 @@ const CLASSIFICATION_RESOLVERS = [
   resolveTenantHostClassification,
   resolveSessionClassification,
   resolveActorClassification,
-  resolveKeycloakClassification,
-  resolveDatabaseClassification,
-  resolveDatabaseMappingClassification,
-  resolveRegistryClassification,
+  resolveDependencyClassification,
 ] as const satisfies readonly RuntimeDiagnosticClassificationResolver[];
 
 const classify = ({
   input,
   safeDetails,
 }: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
-  const context: RuntimeDiagnosticClassificationContext = {
-    input,
-    safeDetails,
-    reasonCode: safeDetails?.reason_code,
-    syncErrorCode: safeDetails?.sync_error_code,
-  };
-
   for (const resolveClassification of CLASSIFICATION_RESOLVERS) {
-    const classification = resolveClassification(context);
+    const classification = resolveClassification({ input, safeDetails });
     if (classification) {
       return classification;
     }

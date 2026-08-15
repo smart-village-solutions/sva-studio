@@ -228,6 +228,16 @@ const priorityCases: readonly Readonly<{
     recommendedAction: 'rollenabgleich_pruefen',
   },
   {
+    name: 'post-sync tenant reason before session input',
+    input: {
+      code: 'unauthorized',
+      status: 401,
+      details: { reason_code: 'tenant_inactive' },
+    },
+    classification: 'registry_or_provisioning_drift',
+    recommendedAction: 'erneut_anmelden',
+  },
+  {
     name: 'session input before Keycloak reason',
     input: {
       code: 'unauthorized',
@@ -243,6 +253,19 @@ const priorityCases: readonly Readonly<{
       code: 'database_unavailable',
       status: 503,
       details: { reason_code: 'session_expired' },
+    },
+    classification: 'session_store_or_session_hydration',
+    recommendedAction: 'erneut_versuchen',
+  },
+  {
+    name: 'session reason before actor detail',
+    input: {
+      code: 'internal_error',
+      status: 500,
+      details: {
+        actor_resolution: 'missing_actor_account',
+        reason_code: 'session_expired',
+      },
     },
     classification: 'session_store_or_session_hydration',
     recommendedAction: 'erneut_versuchen',
@@ -271,6 +294,16 @@ const priorityCases: readonly Readonly<{
     recommendedAction: 'manuell_pruefen',
   },
   {
+    name: 'Keycloak input before database reason',
+    input: {
+      code: 'keycloak_unavailable',
+      status: 503,
+      details: { reason_code: 'missing_column' },
+    },
+    classification: 'keycloak_dependency',
+    recommendedAction: 'keycloak_pruefen',
+  },
+  {
     name: 'database input before mapping reason',
     input: {
       code: 'database_unavailable',
@@ -289,6 +322,16 @@ const priorityCases: readonly Readonly<{
     },
     classification: 'database_or_schema_drift',
     recommendedAction: 'migration_pruefen',
+  },
+  {
+    name: 'database mapping reason before registry input fallback',
+    input: {
+      code: 'mainserver_provisioning_failed',
+      status: 503,
+      details: { reason_code: 'jit_provision_failed' },
+    },
+    classification: 'database_mapping_or_membership_inconsistency',
+    recommendedAction: 'manuell_pruefen',
   },
 ];
 

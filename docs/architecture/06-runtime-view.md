@@ -136,6 +136,8 @@ Fehlerpfad:
 6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
 7. Die öffentliche Runtime ergänzt berechnete Tourtermine um explizite Einsätze. Dabei gelten Einsatzorte auch für hierarchisch untergeordnete Adressen, ohne dass ein allgemeiner Tour-Ort-Link erforderlich ist.
 8. Ein passender expliziter Einsatz verdrängt den sonst doppelten berechneten Termin; mehrere explizite Einsätze derselben Tour am selben Tag bleiben anhand ihrer Einsatz-ID getrennt.
+9. Der serverseitige Kalender-Lader verwendet für wiederkehrende Touren und explizite Einsätze dieselben positionsgebundenen Regions-, Orts-, Straßen- und Hausnummerparameter. Nach den Datenbankabfragen normalisiert und verbindet eine I/O-freie Projektion die Ergebnisse im inklusiven Date-only-Fenster vom Jahresanfang des Vorjahres bis ein Jahr nach dem Referenztag.
+10. Webansicht, PDF und iCal konsumieren weiterhin dieselbe Repository-Ausgabe; Jahres- und Fraktionsfilter der Exporte greifen erst danach.
 
 Erweiterter Reminder-Pfad:
 
@@ -159,6 +161,7 @@ Fehlerpfad:
 - Fehlt die öffentliche Konfiguration, liefert die Bootstrap-Schicht einen deterministischen Fehlerzustand `missing_config`.
 - Ungültige oder unvollständige Konfiguration endet deterministisch in `invalid_config` statt in einer teilweise geladenen Auswahloberfläche.
 - Ungültige oder veraltete Standort-Cookies werden ignoriert; die App fällt ohne Halbzustand auf die erste gültige Auswahlstufe zurück.
+- Ein ungültiger Kalender-Referenztag erzeugt keine Feiertagsabfrage und keine teilweise zusammengeführten Ersatztermine; Datenbankfehler bleiben im bestehenden öffentlichen Fehlervertrag sichtbar.
 - Fehlt die Reminder-Konfiguration, bleibt der Kalender funktionsfähig; nur CTA, Formular und Reminder-Seiten werden nicht aktiviert.
 - Überschreiten Formularanfragen die konfigurierten IP-/E-Mail-Limits oder das Standortlimit pro Adresse, antwortet die Runtime deterministisch mit fachlichen 4xx-Fehlern ohne technische Leaks.
 - Fehlt der technische Mail-Dispatcher, bleiben die Reminder-Aufträge in der Waste-Outbox; Waste-Konfiguration, DOI und Abmeldung funktionieren davon unabhängig weiter.

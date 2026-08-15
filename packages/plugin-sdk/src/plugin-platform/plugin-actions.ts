@@ -140,7 +140,7 @@ const registerAction = (
   }
 };
 
-export const createPluginActionRegistry = (
+export const buildPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
 ): ReadonlyMap<string, PluginActionRegistryEntry> => {
   const registry = new Map<string, PluginActionRegistryEntry>();

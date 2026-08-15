@@ -249,6 +249,108 @@ describe('plugin registries', () => {
     });
   });
 
+  it('characterizes access transition diagnostics across every contribution kind', () => {
+    const requirement = tenantRequirement();
+    const adminResource = newsPlugin.adminResources?.[0];
+    if (!adminResource) {
+      throw new Error('missing_news_admin_resource_fixture');
+    }
+    const diagnostics = collectPluginAccessTransitionDiagnostics([
+      {
+        ...newsPlugin,
+        actions: [
+          { id: 'news.read', titleKey: 'news.actions.read', requiredAction: 'news.read' },
+          {
+            id: 'news.create',
+            titleKey: 'news.actions.create',
+            requiredAction: 'news.create',
+            accessRequirement: tenantRequirement({
+              actions: { mode: 'allOf', values: ['news.create'] },
+            }),
+          },
+          { id: 'news.open', titleKey: 'news.actions.open' },
+        ],
+        routes: [
+          { id: 'news-list', path: '/plugins/news', guard: 'news.read', component },
+          {
+            id: 'news-create',
+            path: '/plugins/news/create',
+            guard: 'news.create',
+            accessRequirement: tenantRequirement({
+              actions: { mode: 'allOf', values: ['news.create'] },
+            }),
+            component,
+          },
+          { id: 'news-open', path: '/plugins/news/open', component },
+        ],
+        navigation: [
+          {
+            id: 'news-nav',
+            to: '/plugins/news',
+            titleKey: 'news.nav',
+            section: 'dataManagement',
+            requiredAction: 'news.read',
+          },
+          {
+            id: 'news-create-nav',
+            to: '/plugins/news/create',
+            titleKey: 'news.create',
+            section: 'dataManagement',
+            requiredAction: 'news.create',
+            accessRequirement: tenantRequirement({
+              actions: { mode: 'allOf', values: ['news.create'] },
+            }),
+          },
+          {
+            id: 'news-open-nav',
+            to: '/plugins/news/open',
+            titleKey: 'news.open',
+            section: 'dataManagement',
+          },
+        ],
+        adminResources: [
+          {
+            ...adminResource,
+            permissions: {
+              list: ['news.read'],
+              create: undefined,
+              detail: ['news.read'],
+            },
+            accessRequirements: { detail: requirement },
+          },
+        ],
+      },
+      { id: 'empty', displayName: 'Empty', routes: [] },
+    ]);
+
+    expect(diagnostics).toEqual([
+      {
+        pluginId: 'news',
+        contributionType: 'action',
+        contributionId: 'news.read',
+        code: 'missing_access_requirement',
+      },
+      {
+        pluginId: 'news',
+        contributionType: 'route',
+        contributionId: 'news-list',
+        code: 'missing_access_requirement',
+      },
+      {
+        pluginId: 'news',
+        contributionType: 'navigation',
+        contributionId: 'news-nav',
+        code: 'missing_access_requirement',
+      },
+      {
+        pluginId: 'news',
+        contributionType: 'adminResource',
+        contributionId: 'news.sources.list',
+        code: 'missing_access_requirement',
+      },
+    ]);
+  });
+
   it('fails fast when an authorizable plugin contribution omits its access requirement', () => {
     expect(() =>
       createPluginRegistry([
@@ -460,6 +562,42 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('duplicate_plugin:news');
+  });
+
+  it('characterizes plugin admin-resource access validation branches', () => {
+    const resource = newsPlugin.adminResources?.[0];
+    if (!resource) {
+      throw new Error('missing_news_admin_resource_fixture');
+    }
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          adminResources: [
+            {
+              ...resource,
+              permissions: { list: undefined, detail: ['news.read'] },
+              accessRequirements: { list: tenantRequirement(), detail: tenantRequirement() },
+            },
+          ],
+        },
+      ])
+    ).not.toThrow();
+
+    expect(() =>
+      createPluginRegistry([
+        {
+          ...newsPlugin,
+          adminResources: [
+            {
+              ...resource,
+              permissions: { list: [] },
+            },
+          ],
+        },
+      ])
+    ).toThrow('plugin_access_requirement_missing:news:news.sources.list:missing');
   });
 
   it('rejects editable content contributions without a host history binding', () => {

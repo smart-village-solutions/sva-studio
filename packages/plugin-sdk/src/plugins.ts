@@ -22,7 +22,7 @@ import { definePluginImportProfiles, definePluginJobTypes } from './plugin-opera
 import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
 import {
   assertPluginActionDefinitionAllowedKeys,
-  createPluginActionRegistry as createPluginActionRegistryInternal,
+  buildPluginActionRegistry,
   normalizePluginActionDefinition,
 } from './plugin-platform/plugin-actions.js';
 
@@ -1139,7 +1139,7 @@ export const mergePluginModuleIamContracts = (
 
 export const createPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
-): ReadonlyMap<string, PluginActionRegistryEntry> => createPluginActionRegistryInternal(plugins);
+): ReadonlyMap<string, PluginActionRegistryEntry> => buildPluginActionRegistry(plugins);
 
 export const createPluginPermissionRegistry = (
   plugins: readonly PluginDefinition[]

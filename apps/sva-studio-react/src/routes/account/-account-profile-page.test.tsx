@@ -370,6 +370,27 @@ describe('AccountProfilePage', () => {
     expect(authMockValue.refetch).not.toHaveBeenCalled();
   });
 
+  it('offers login recovery for a non-401 profile error that recommends signing in again', async () => {
+    const loadError = {
+      status: 503,
+      code: 'session_recovery_required',
+      message: 'Session recovery required',
+      recommendedAction: 'erneut_anmelden',
+    };
+    asIamErrorMock.mockReturnValue(loadError);
+    getMyProfileMock.mockRejectedValue(loadError);
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bitte zuerst anmelden, um Ihr Konto zu sehen.')).toBeTruthy();
+    });
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2F'
+    );
+    expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull();
+  });
+
   it.each([
     [
       'actor_resolution_or_membership',

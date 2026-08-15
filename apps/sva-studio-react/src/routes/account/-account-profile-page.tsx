@@ -49,13 +49,14 @@ type LoadErrorProps = Readonly<{
 }>;
 
 const AccountProfileLoadError = ({ error, loginHref, onRetry }: LoadErrorProps) => {
-  const isUnauthorized = error.status === 401;
+  const requiresLoginRecovery =
+    error.status === 401 || error.recommendedAction === 'erneut_anmelden';
   return (
     <section className="space-y-4">
       <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
       <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
         <AlertTitle>
-          {isUnauthorized
+          {requiresLoginRecovery
             ? t('account.messages.notAuthenticated')
             : t('account.messages.loadError')}
         </AlertTitle>
@@ -64,7 +65,7 @@ const AccountProfileLoadError = ({ error, loginHref, onRetry }: LoadErrorProps) 
             <p>{t(getProfileLoadErrorTranslationKey(error))}</p>
             <IamRuntimeDiagnosticDetails error={error} />
             <div className="flex flex-wrap gap-3">
-              {isUnauthorized ? (
+              {requiresLoginRecovery ? (
                 <Button asChild type="button" variant="secondary">
                   <a href={loginHref}>{t('shell.header.login')}</a>
                 </Button>

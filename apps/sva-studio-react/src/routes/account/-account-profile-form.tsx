@@ -164,8 +164,8 @@ const AccountProfileMetadataFields = ({
         disabled={isProfileReadOnly}
         onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
       >
-        <option value="de">Deutsch</option>
-        <option value="en">English</option>
+        <option value="de">{t('shell.header.languageNameDe')}</option>
+        <option value="en">{t('shell.header.languageNameEn')}</option>
       </Select>
     </div>
     <div className="grid gap-2 text-sm text-foreground">

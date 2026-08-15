@@ -6,9 +6,9 @@
 
 ## 2. Implementierung
 
-- [ ] 2.1 Reine paketinterne Serializer nach redaktionellen, Datums-, Adress- und Medienbereichen extrahieren.
-- [ ] 2.2 `mapEventsDetailFormValuesToInput` auf verhaltensgleiche Assemblierung reduzieren.
-- [ ] 2.3 Plugin- und arc42-Dokumentation aktualisieren.
+- [x] 2.1 Reine paketinterne Serializer nach redaktionellen, Datums-, Adress- und Medienbereichen extrahieren.
+- [x] 2.2 `mapEventsDetailFormValuesToInput` auf verhaltensgleiche Assemblierung reduzieren.
+- [x] 2.3 Plugin- und arc42-Dokumentation aktualisieren.
 
 ## 3. Verifikation
 

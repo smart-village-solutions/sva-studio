@@ -2,7 +2,7 @@
 
 ### Requirement: POI-Formtransformationen erhalten den bestehenden Datenvertrag
 
-Das System SHALL beim verhaltensgleichen Refactoring der POI-Formtransformationen die bestehende Übersetzung zwischen Mainserver-Inhalten und Editorformular vollständig erhalten.
+Das System SHALL bei der Characterization des POI-Formvertrags und dem verhaltensgleichen Refactoring der Serialisierung die bestehende Übersetzung zwischen Mainserver-Inhalten und Editorformular vollständig erhalten.
 
 #### Scenario: Bestehender POI wird in Formularwerte gemappt
 
@@ -18,9 +18,9 @@ Das System SHALL beim verhaltensgleichen Refactoring der POI-Formtransformatione
 - **THEN** bleiben Trimming, explizite Leerungen, Deduplikation, Filter, Fallbacks und Listenreihenfolge unverändert
 - **AND** werden falsche numerische Runtime-Werte weiterhin für die nachgelagerte Validierung erkennbar erhalten
 
-#### Scenario: Refactoring verändert keine angrenzenden Verträge
+#### Scenario: Serialisierungsrefactoring verändert keine angrenzenden Verträge
 
-- **GIVEN** die POI-Formtransformationen werden vereinfacht
+- **GIVEN** die POI-Formularserialisierung wird vereinfacht und das Inbound-Mapping bleibt produktiv unverändert
 - **WHEN** die Änderung abgeschlossen wird
 - **THEN** bleiben öffentliche POI-Typen, Mainserver-Vertrag, Validierung und Editor-UI unverändert
 - **AND** entsteht keine neue Cross-Plugin- oder Shared-Package-Ownership-Grenze

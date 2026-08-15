@@ -6,10 +6,10 @@
 - [x] 1.4 Eigene Characterization-Matrix für Inbound-Legacywerte, Defaults, Referenzen, Payload und Roundtrip ergänzen
 - [x] 1.5 Proposal und Characterization-Evidenz reviewen und vor produktiver Umsetzung freigeben
 
-## 2. Produktive Transformationen vereinfachen
+## 2. Produktive Serialisierung und wirtschaftliche Schnittkante
 
 - [x] 2.1 POI-Serialisierung in fachlich benannte, reine Transformationen entflechten, ohne Verhalten oder Vertrag zu ändern
-- [x] 2.2 `mapPoiContentToFormValues` mit einmalig berechneten fachlichen Zwischenergebnissen vereinfachen
+- [x] 2.2 Inbound-Refactor bewerten und wegen höherer Datei-CC, zusätzlicher Single-use-Mapper und wachsender Ownership vollständig revertieren
 - [x] 2.3 Nach jedem produktiven Änderungsblock die gezielten Unit-Tests ausführen
 
 ## 3. Qualitäts- und Abschlussnachweise

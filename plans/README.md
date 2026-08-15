@@ -45,6 +45,8 @@ eigenen Pull Request ausgeliefert.
 | 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | keine | DONE (#1004, `07d12bb80`) |
 | 020 | Event-Detailformular-Serialisierung modularisieren | P1 | L | keine | DONE (#1005, `6afcd8d52`) |
 | 021 | News-Kompatibilitäts-Snapshot entflechten | P1 | M | keine | DONE (#1006, `1df0515af`) |
+| 022 | POI-Formularserialisierung entflechten | P1 | M–L | Bundle A | IN PROGRESS (#1009) |
+| 023 | POI-Inbound-Mapping charakterisieren und vereinfachen | P1 | M | Bundle A | REJECTED – Characterization grün, produktiver Refactor nach Ownership-Review gestoppt (#1009) |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED`, `REJECTED`.
 
@@ -160,7 +162,7 @@ auf; Dupes endete mit 0. Alle drei Reports waren valides JSON mit `kind`, Schema
 | Kandidat | Ist-Metrik und Trace | Risiko/Wirkung | Aufwand/Testbarkeit | Überschneidung/STOP | Entscheidung |
 |---|---|---|---|---|---|
 | POI-Serialisierung | 6 CRAP-Funde, max. 268,2; produktiver Create/Update-Pfad | POI-Datenintegrität; hoher Wartungsgewinn | M–L; breite Formtests | STOP bei Form-/Mainserver-Vertragsänderung | **ausgewählt, Plan 022** |
-| POI-Inbound-Hauptmapping | `mapPoiContentToFormValues`: CC 27/Cognitive 14/CRAP 184,5; produktiver Detail-Reset | Legacy-/Default-/Reihenfolgedaten | M; derselbe Formtestpfad | kleine Mapper nur charakterisieren, nicht metrisch zerlegen | **ausgewählt, Plan 023** |
+| POI-Inbound-Hauptmapping | `mapPoiContentToFormValues`: CC 27/Cognitive 14/CRAP 184,5; produktiver Detail-Reset | Legacy-/Default-/Reihenfolgedaten | M; Characterization grün | Versuch erhöhte Datei-CC 96→101 und Funktionen 11→16; Source exakt revertiert | **REJECTED nach wirtschaftlichem STOP, Plan 023** |
 | Instance Realm Steps | vier Funde, max. CRAP 299,6; Fan-in 4 | IAM-Status darf nicht falsch erscheinen | M–L; Status-/Fallbackmatrix | STOP bei Backend-/Fixture-Overlap | **ausgewählt, Plan 024** |
 | Instance Primary Action | CC 30/Cognitive 28; produktive Detailseite | sicherheitsrelevante Aktionspriorität | M; kombinatorische Matrix | keine neue Action/Permission | **ausgewählt, Plan 025** |
 | Waste DOI Message | CC 19/Cognitive 18/CRAP 97; Outbox-Pfad | Datenschutz- und Mailvertrag | S–M; fokussierter Unit-Pfad | Token/Secret/SQL explizit out | **ausgewählt, Plan 026** |
@@ -216,7 +218,7 @@ geprüft:
 
 | Bundle | Problempläne | Owner/Workspace | Gemeinsamer Vertrag und Gate-Pfad | Risiko | Aufwand | Abhängigkeiten | Bündelungsgrund |
 |---|---|---|---|---:|---:|---|---|
-| A – POI-Formvertrag | 022, 023 | Plugin POI / `@sva/plugin-poi` | bidirektionales pluginlokales Form-Mapping; `plugin-poi` Unit/Coverage/Types/Lint/Build und Fallow-Audit | mittel | L | Vorstart-Prüfung gegen `refactor-shared-editor-primitives` und `add-studio-data-form-and-test-foundations` | gleicher Owner, dieselbe reine Formvertragstestdatei und derselbe Datenvertrag; UI-/Testinfrastruktur bleibt fremder Scope |
+| A – POI-Formvertrag | 022 produktiv; 023 Characterization mit STOP | Plugin POI / `@sva/plugin-poi` | Serialisierung und abgesicherter Inbound-Vertrag; `plugin-poi` Unit/Coverage/Types/Lint/Build und Fallow-Audit | mittel | M–L | Vorstart-Prüfung gegen `refactor-shared-editor-primitives` und `add-studio-data-form-and-test-foundations` | gleicher Owner und Testpfad; der Inbound-Produktivrefactor wurde wegen zusätzlicher Single-use-Ownership vollständig revertiert |
 | B – Instance-Realm-Operations | 024, 025 | Studio Instance UI / `sva-studio-react` | Realm-Step- und Primäraktionsmodell; gezielte Modelltests, UI-Gates und App-Audit | hoch | L | Vorstart-Prüfung gegen `update-instance-detail-module-tab` | eine Datei, eine Status-/Prioritätsmatrix und Rollback-Grenze; Module-Tab/Journey-Fixtures bleiben fremder Scope |
 | C – Waste DOI Message | 026 | Studio Waste Runtime / `sva-studio-react` | DOI-Maildarstellung; fokussierter Server-Unit-/Type-/Build-Pfad und App-Audit | mittel | S–M | keine | Einzelproblem; Token, Secret, SQL, Datum und Idempotenz bleiben bewusst getrennt |
 

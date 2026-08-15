@@ -59,6 +59,21 @@ const compareCalendarEntries = (
   left.date.localeCompare(right.date) ||
   left.fractionLabel.localeCompare(right.fractionLabel, 'de');
 
+const resolveApplicableShift = (input: {
+  readonly tourId: string;
+  readonly pickupDate: string;
+  readonly tourShifts: ReadonlyMap<string, CalendarShift>;
+  readonly globalShifts: ReturnType<typeof createGlobalShiftMaps>;
+}): CalendarShift | undefined => {
+  const tourShift = input.tourShifts.get(`${input.tourId}:${input.pickupDate}`);
+  if (tourShift) return tourShift;
+
+  const scopedGlobalShift = input.globalShifts.scoped
+    .get(input.tourId)
+    ?.get(input.pickupDate);
+  return scopedGlobalShift ?? input.globalShifts.shared.get(input.pickupDate);
+};
+
 const createAssignmentEntry = (input: {
   readonly row: TourAssignmentRow;
   readonly fractionId: string;
@@ -93,16 +108,23 @@ const resolveAssignmentShift = (input: {
   readonly globalShifts: ReturnType<typeof createGlobalShiftMaps>;
   readonly holidayRules: readonly WasteHolidayRuleRecord[];
 }) => {
-  const tourShift = input.tourShifts.get(`${input.row.tour_id}:${input.pickupDate}`);
-  const globalShift =
-    input.globalShifts.scoped.get(input.row.tour_id)?.get(input.pickupDate) ??
-    input.globalShifts.shared.get(input.pickupDate);
+  const assignmentNote = input.row.note?.trim() || null;
+  const shift = resolveApplicableShift({
+    tourId: input.row.tour_id,
+    pickupDate: input.pickupDate,
+    tourShifts: input.tourShifts,
+    globalShifts: input.globalShifts,
+  });
+  if (!shift) {
+    return {
+      shiftedDate: applyPublicWasteHolidayRulesToDate(input.pickupDate, input.holidayRules),
+      note: assignmentNote,
+    } as const;
+  }
+
   return {
-    shiftedDate: applyPublicWasteHolidayRulesToDate(
-      tourShift?.actualDate ?? globalShift?.actualDate ?? input.pickupDate,
-      input.holidayRules
-    ),
-    note: input.row.note?.trim() || tourShift?.description || globalShift?.description || null,
+    shiftedDate: applyPublicWasteHolidayRulesToDate(shift.actualDate, input.holidayRules),
+    note: assignmentNote ?? shift.description,
   } as const;
 };
 

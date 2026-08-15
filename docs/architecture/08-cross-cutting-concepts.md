@@ -166,6 +166,7 @@ gleichzeitig beeinflussen.
 - Invalidation erfolgt event-first über Postgres `NOTIFY` mit `eventId`; TTL begrenzt Eventverlust, ersetzt aber keinen technischen Failover-Pfad
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Für Mainserver-basierte Content Items autorisiert IAM ausschließlich Inhaltstyp und Action im effektiven Credential-Kontext. Fachliche Existenz, Identität, Lifecycle, Veröffentlichung, Autor und Ownership stammen aus dem typisierten Mainserver-Vertrag; lokale Content-Cores, References, History und Projektionen dürfen diese Inhalte nicht ausblenden und bleiben rekonstruierbare Begleitzustände.
+- Die Featured-Project-Erstellung hält Autorisierung und Validierung, Idempotenz-Recovery, reine Vertragsabbildung und I/O-Orchestrierung in getrennten internen Modulen. Diese Trennung verändert weder Permission- und Fehlercodes noch die Provider-first-Datenintegrität: Ein bestätigter Mainserver-Create wird bei einem späteren lokalen Begleitfehler nicht kompensierend gelöscht.
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
   - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger

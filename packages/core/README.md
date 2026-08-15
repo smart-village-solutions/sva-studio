@@ -51,6 +51,7 @@ Typische Integrationspunkte im Workspace:
 
 - Routing-Pakete kombinieren Core- und Plugin-Routen über `mergeRouteFactories()` und materialisieren sie über `buildRouteTree()`.
 - IAM-nahe Server- und Client-Pfade nutzen allgemeine Vertrags-Typen, `extractRoles()` und `deriveIamRuntimeDiagnostics()`, während Authorize-spezifische Berechtigungsentscheidungen über `@sva/iam-core` laufen.
+- `deriveIamRuntimeDiagnostics()` wertet Reason-, Sync-, Session-, Actor-, Infrastruktur- und Drift-Signale in einer festen First-match-Reihenfolge aus. Diese Reihenfolge ist Teil des kompatiblen Diagnosevertrags; Safe-Details bleiben auf die zentrale Allowlist begrenzt.
 - Tenant- und Provisioning-Pfade validieren Hosts, Instanz-IDs, Statusübergänge und Keycloak-Readiness gegen die Registry- und Checklist-Helfer.
 - Runtime-Startpfade lesen `SVA_RUNTIME_PROFILE` oder `VITE_SVA_RUNTIME_PROFILE` über `getRuntimeProfileFromEnv()` und prüfen Pflicht-Env mit `validateRuntimeProfileEnv()`.
 - Sicherheitsnahe Pakete importieren Feldverschlüsselung gezielt über `@sva/core/security`, während die generische E-Mail-Maskierung auch über den Root-Export verfügbar ist.

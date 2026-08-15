@@ -395,20 +395,20 @@ describe('waste-management-settings-public-config', () => {
       'urls and paths',
       { privacyPolicyUrl: 'not-a-url', doiConfirmPath: 'https://evil.example/confirm' },
     ],
-    [
-      'addresses and optional ttl',
-      { fromEmail: 'invalid-address', unsubscribeTokenTtlDays: 0 },
-    ],
-  ] as const)('fails closed when multiple %s sub-parsers reject the same config', (_label, overrides) => {
-    expect(
-      readWasteManagementEmailReminderConfig({
-        emailReminderConfig: {
-          ...createEmailReminderConfigInput(),
-          ...overrides,
-        },
-      })
-    ).toBeUndefined();
-  });
+    ['addresses and optional ttl', { fromEmail: 'invalid-address', unsubscribeTokenTtlDays: 0 }],
+  ] as const)(
+    'fails closed when multiple %s sub-parsers reject the same config',
+    (_label, overrides) => {
+      expect(
+        readWasteManagementEmailReminderConfig({
+          emailReminderConfig: {
+            ...createEmailReminderConfigInput(),
+            ...overrides,
+          },
+        })
+      ).toBeUndefined();
+    }
+  );
 
   it('preserves unrelated top-level config while keeping the signing secret bound to a valid reminder config', () => {
     const next = buildWasteManagementPublicConfig(

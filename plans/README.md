@@ -21,17 +21,64 @@ Sonar-Analyse vom `2026-08-15T18:26:07+0000` trägt exakt dieselbe Revision.
 
 | Plan | Titel | Priorität | Sonar vorher | Abhängigkeit | Status |
 |---|---|---:|---:|---|---|
-| 027 | Kryptografisch sichere Content-Media-UI-IDs | P0 | S2245: 1 | keine | TODO |
-| 028 | Organisationstechnische Identitäten linear normalisieren | P1 | S8786: 2 | 027 | TODO |
-| 029 | Waste-Tenant-Datenbankkennungen linear ableiten | P1 | S8786: 1 | 027, Konfliktprüfung #983/#984 | TODO |
-| 030 | Organisation-Keys linear normalisieren | P1 | S8786: 1 | 027 | TODO |
-| 031 | Changelog-HTML-Erkennung linear begrenzen | P1 | S8786: 1 | 027 | TODO |
-| 032 | Media-Base64url-Padding linear entfernen | P2 | S8786: 1 | 027 | TODO |
+| 027 | Kryptografisch sichere Content-Media-UI-IDs | P0 | S2245: 1 | keine | DONE (#1016, `c589cf958`) |
+| 028 | Organisationstechnische Identitäten linear normalisieren | P1 | S8786: 2 | 027 | DONE (#1015, `65c9ce94e`) |
+| 029 | Waste-Tenant-Datenbankkennungen linear ableiten | P1 | S8786: 1 | 027, Konfliktprüfung #983/#984 | DONE (#1014, `0206b7b1f`) |
+| 030 | Organisation-Keys linear normalisieren | P1 | S8786: 1 | 027 | DONE (#1017, `ce24778d4`) |
+| 031 | Changelog-HTML-Erkennung linear begrenzen | P1 | S8786: 1 | 027 | DONE (#1018, `828452b09`) |
+| 032 | Media-Base64url-Padding linear entfernen | P2 | S8786: 1 | 027 | DONE (#1019, `d5d56af4e`) |
+| 033 | Fehlenden Web-Crypto-Runtime-Vertrag spezifisch typisieren | P0 | S7786: 1 | 027 und dessen Main-Sonar-Scan | DONE (#1020, `46fa0343a`) |
 
 Plan 027 wird separat zuerst gemergt und über den Main-Sonar-Scan abgenommen.
 Danach dürfen 028–032 bei disjunkten Source-/Vertragsgrenzen parallel laufen.
 Die sechs S8786-Befunde sind absichtlich nach Ownership und Testpfad getrennt;
 eine gemeinsame Regex-Sammel-PR wäre fachlich nicht reviewbar.
+
+Plan 033 entstand als expliziter Zusatzplan aus dem Main-Sonar-Scan nach Plan
+027: Der korrekt fail-closed implementierte Runtime-Vertrag war sicher, löste
+aber einen neuen S7786-Befund zur unspezifischen Fehlerklasse aus. Der Zusatz
+wurde separat charakterisiert, geprüft und ohne neue Fallback-Semantik gemergt.
+
+### Abnahme der SonarCloud-Runde 1
+
+Die fachliche Source-Abnahme erfolgte über den Main-Sonar-Scan vom
+`2026-08-15T20:59:15+0000`. Seine analysierte Revision
+`828452b098078c92d6a2fef9d2421dc8a3c0bbaa` entspricht exakt dem Main-Commit,
+der alle Implementierungspakete 027–033 enthält.
+
+| Metrik | Vorher (`960955af8`) | Nachher (`828452b09`) | Änderung |
+|---|---:|---:|---:|
+| Quality Gate | ERROR | OK | alle 6 Bedingungen grün |
+| Offene Issues | 969 | 962 | -7 |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 1 | 0 | -1 |
+| Code Smells | 968 | 962 | -6 |
+| Ungeprüfte Security Hotspots | 0 | 0 | 0 |
+| Blocker / Critical / Major / Minor | 1 / 108 / 416 / 444 | 1 / 108 / 409 / 444 | Major -7 |
+| Maintainability Debt | 6.545 min | 6.425 min | -120 min |
+| Coverage | 88,0 % | 88,0 % | 0,0 Prozentpunkte |
+| Line Coverage | 92,0 % | 92,1 % | +0,1 Prozentpunkte |
+| Branch Coverage | 81,7 % | 81,8 % | +0,1 Prozentpunkte |
+| Globale Duplikation | 1,9 % | 1,9 % | 0,0 Prozentpunkte |
+| New-Code-Duplikation | 1,0 % | 1,0 % | 0,0 Prozentpunkte |
+
+Security-, Reliability- und Maintainability-Rating stehen jeweils auf `1/A`;
+New-Code Coverage beträgt 88,0 %. S2245 sank 1→0 und S8786 6→0. Der durch
+Plan 027 vorübergehend erzeugte S7786-Key `AaAHHfjRRXPx87p88P3F` sank durch
+Plan 033 ebenfalls 1→0; die globale, nicht ausgewählte S7786-Gruppe bleibt mit
+neun älteren Befunden unverändert. Alle acht Ziel-Keys sind in der vollständigen
+paginierten Inventur verschwunden. Es wurden keine Issues akzeptiert oder als
+False Positive transitioniert.
+
+Der Runtime-Gates-Lauf `31907602049` führte den erfolgreichen Sonar-Scan aus,
+endete danach aber am bereits auf der unveränderten Basis reproduzierten
+Coverage-Delta-Gate: `plugin-poi`-Branches lagen 0,56 Prozentpunkte unter der
+Referenz bei erlaubten 0,50. Keines der sieben Pakete ändert `plugin-poi`; der
+Sonar-Quality-Gate-Status der exakten Revision ist unabhängig davon `OK`.
+
+Die Runde ist damit für die ausgewählten Pakete abgeschlossen, nicht für das
+gesamte Repository: 962 Code Smells und die unten bewusst zurückgestellten
+Regelgruppen bleiben offen.
 
 ### Zurückgestellt nach Live-Prüfung
 

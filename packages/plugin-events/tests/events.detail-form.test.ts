@@ -508,7 +508,7 @@ describe('events.detail-form', () => {
     });
   });
 
-  it('filters null media entries from runtime payloads', () => {
+  it('filters nullish media entries from runtime payloads', () => {
     expect(
       mapEventsDetailFormValuesToInput({
         title: 'Defensiv',
@@ -526,7 +526,7 @@ describe('events.detail-form', () => {
           dates: [],
           addresses: [],
           urls: [],
-          mediaContents: [null],
+          mediaContents: [null, undefined],
           contacts: [],
           organizer: {},
           priceInformations: [],

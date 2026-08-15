@@ -199,7 +199,7 @@ const buildDbClient = (options: {
   const requestIds = [...(options.requestIds ?? ['request-1', 'request-2'])];
 
   return {
-    query: vi.fn(async (text: string) => {
+    query: vi.fn(async (text: string, _params?: readonly unknown[]) => {
       if (text.includes('FROM iam.accounts a')) {
         return options.account
           ? { rowCount: 1, rows: [options.account] }
@@ -566,14 +566,14 @@ describe('iam data subject rights handlers', () => {
   it('returns blocked_legal_hold when a deletion request hits an active hold', async () => {
     const { dataSubjectRequestHandler } = await import('./core.js');
 
+    const client = buildDbClient({
+      account: buildAccount({ id: 'account-42' }),
+      hasLegalHold: true,
+      requestIds: ['blocked-request-1'],
+    });
+
     mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, instanceId, work) =>
-      work(
-        buildDbClient({
-          account: buildAccount({ id: 'account-42' }),
-          hasLegalHold: true,
-          requestIds: ['blocked-request-1'],
-        })
-      )
+      work(client)
     );
 
     const response = await dataSubjectRequestHandler(
@@ -590,6 +590,92 @@ describe('iam data subject rights handlers', () => {
       status: 'blocked_legal_hold',
     });
     expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
+
+    const legalHoldQuery = client.query.mock.calls.find(([text]) => text.includes('FROM iam.legal_holds'));
+    expect(legalHoldQuery?.[0]).toContain('WHERE instance_id = $1');
+    expect(legalHoldQuery?.[0]).toContain('AND account_id = $2::uuid');
+    expect(legalHoldQuery?.[0]).toContain('AND active = true');
+    expect(legalHoldQuery?.[0]).toContain('AND (hold_until IS NULL OR hold_until > NOW())');
+    expect(legalHoldQuery?.[1]).toEqual(['de-test', 'account-42']);
+
+    const requestEventIndex = client.query.mock.calls.findIndex(([text]) =>
+      text.includes('INSERT INTO iam.data_subject_request_events')
+    );
+    const auditIndex = client.query.mock.calls.findIndex(([text]) => text.includes('INSERT INTO iam.activity_logs'));
+    expect(requestEventIndex).toBeGreaterThan(0);
+    expect(auditIndex).toBeGreaterThan(requestEventIndex);
+    expect(client.query.mock.calls[requestEventIndex]?.[1]).toEqual([
+      'de-test',
+      'blocked-request-1',
+      'account-42',
+      'deletion_blocked_legal_hold',
+      '{}',
+    ]);
+    expect(client.query.mock.calls[auditIndex]?.[1]).toEqual([
+      'de-test',
+      'account-42',
+      'dsr_deletion_requested',
+      JSON.stringify({
+        request_id: 'blocked-request-1',
+        status: 'blocked_legal_hold',
+        result: 'failure',
+      }),
+      'req-test',
+      'trace-test',
+    ]);
+  });
+
+  it.each(['inactive', 'expired', 'foreign-instance'] as const)(
+    'does not treat a %s legal hold as active',
+    async () => {
+      const { dataSubjectRequestHandler } = await import('./core.js');
+      const client = buildDbClient({
+        account: buildAccount({ id: 'account-77', keycloak_subject: 'kc-user-1' }),
+        hasLegalHold: false,
+        requestIds: ['deletion-request-1'],
+      });
+      mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) => work(client));
+
+      const response = await dataSubjectRequestHandler(
+        new Request('http://localhost/iam/me/data-subject-rights', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'deletion', payload: {} }),
+        })
+      );
+
+      await expect(expectJson(response)).resolves.toEqual({
+        requestId: 'deletion-request-1',
+        status: 'processing',
+      });
+      expect(client.query.mock.calls.find(([text]) => text.includes('FROM iam.legal_holds'))?.[1]).toEqual([
+        'de-test',
+        'account-77',
+      ]);
+    }
+  );
+
+  it('stops the DSR mutation sequence when the legal-hold query fails', async () => {
+    const { dataSubjectRequestHandler } = await import('./core.js');
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 1, rows: [buildAccount({ id: 'account-42' })] })
+      .mockRejectedValueOnce(new Error('legal_hold_query_failed'));
+    mocks.withResolvedInstanceDb.mockImplementationOnce(async (_resolver, _instanceId, work) =>
+      work({ query })
+    );
+
+    const response = await dataSubjectRequestHandler(
+      new Request('http://localhost/iam/me/data-subject-rights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'deletion', payload: {} }),
+      })
+    );
+
+    expect(response.status).toBe(503);
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls.at(-1)?.[0]).toContain('FROM iam.legal_holds');
   });
 
   it('revokes active sessions when a deletion request enters processing', async () => {

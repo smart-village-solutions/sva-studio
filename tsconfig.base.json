@@ -31,6 +31,7 @@
       ],
       "@sva/iam-governance/dsr-export-status": ["packages/iam-governance/src/dsr-export-status.ts"],
       "@sva/iam-governance/dsr-maintenance": ["packages/iam-governance/src/dsr-maintenance.ts"],
+      "@sva/iam-governance/dsr-persistence": ["packages/iam-governance/src/dsr-persistence.ts"],
       "@sva/iam-governance/dsr-read-models-internal": [
         "packages/iam-governance/src/dsr-read-models-internal.ts"
       ],

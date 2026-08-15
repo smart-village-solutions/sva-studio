@@ -257,6 +257,7 @@ gleichzeitig beeinflussen.
 - Governance-Audit folgt Dual-Write: DB (`iam.activity_logs`) + OTEL-Pipeline
 - PII-Schutz in Governance-Events: nur pseudonymisierte Actor-/Target-Referenzen
 - DSR-Wartungslauf emittiert strukturierte Audit-Events (`dsr_maintenance_executed`, `dsr_deletion_sla_escalated`)
+- Legal-Hold-Prüfung, DSR-Request-Events und DSR-Audit-Events verwenden paketübergreifend die kanonischen Primitiven aus `@sva/iam-governance/dsr-persistence`; `instance_id`, UUID-Casts, JSON-Serialisierung sowie Request-/Trace-Kontext bleiben dadurch einheitlich und Fehler werden unverändert propagiert.
 - Der DSR-Wartungslauf verarbeitet keine Export-Queues mehr; Self-Service-Exporte laufen ausschließlich über den generischen Host-Worker.
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
 - Server-Runtime-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)

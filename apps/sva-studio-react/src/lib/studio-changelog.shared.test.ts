@@ -21,9 +21,41 @@ describe('studio-changelog.shared', () => {
     expect(assertStudioChangelogBody('entry.json', '  Nutzertext  ')).toBe('Nutzertext');
   });
 
-  it('rejects empty or raw-html bodies', () => {
+  it.each([
+    'Vergleich: 2 < 3 und 5 > 4',
+    'Ein unvollständiger Verweis <section',
+    'Kontakt <redaktion@example.org>',
+    'Text mit <é> bleibt normaler Inhalt',
+    'Text mit <p/foo> bleibt normaler Inhalt',
+  ])('preserves non-html text containing angle brackets: %s', (body) => {
+    expect(assertStudioChangelogBody('entry.json', body)).toBe(body);
+  });
+
+  it.each([
+    '<p>Absatz</p>',
+    'Text mit </p>',
+    'Zeilenumbruch<br/>',
+    '<section data-kind="notice">Hinweis</section>',
+    '<x-y aria-label="Hinweis">Inhalt</x-y>',
+    '<p\nclass="notice">Inhalt</p>',
+    '<p / >',
+    'Text <<p>>',
+    '<ſ>Unicode-Faltung</ſ>',
+    '<K>Unicode-Faltung</K>',
+  ])('rejects raw-html tag syntax: %s', (body) => {
+    expect(() => assertStudioChangelogBody('entry.json', body)).toThrow(/rohes HTML/);
+  });
+
+  it('handles very long and adversarially shaped non-html text', () => {
+    const longPlainText = `Hinweis ${'inhalt '.repeat(30_000)}<section ${'attribut '.repeat(30_000)}Ende`;
+    const manyIncompleteCandidates = `${'<a attribut '.repeat(20_000)}Ende`;
+
+    expect(assertStudioChangelogBody('entry.json', longPlainText)).toBe(longPlainText);
+    expect(assertStudioChangelogBody('entry.json', manyIncompleteCandidates)).toBe(manyIncompleteCandidates);
+  });
+
+  it('rejects empty bodies', () => {
     expect(() => assertStudioChangelogBody('entry.json', '   ')).toThrow(/nicht leer/);
-    expect(() => assertStudioChangelogBody('entry.json', 'Text mit </p>')).toThrow(/rohes HTML/);
   });
 
   it('parses valid entry documents', () => {

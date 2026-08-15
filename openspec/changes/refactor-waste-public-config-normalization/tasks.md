@@ -20,5 +20,5 @@
 - [x] 3.2 Betroffene Waste-Konsumenten typprüfen
 - [x] 3.3 Complexity-Gate, Fallow und OpenSpec strict ausführen
 - [x] 3.4 Affected-Scope messen und kleinsten relevanten PR-Gate-Pfad ausführen
-- [ ] 3.5 Gesamtdiff prüfen, committen, pushen und Draft-PR mit Changelog öffnen
+- [x] 3.5 Gesamtdiff prüfen, committen, pushen und Draft-PR mit Changelog öffnen
 - [ ] 3.6 Root-Diffreview, Ready-Status, SHA-gebundene CI und Review-Threads betreuen

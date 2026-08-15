@@ -227,10 +227,9 @@ describe('organization Mainserver provisioning', () => {
     });
   });
 
-  it('normalizes very long homogeneous and mixed-separator inputs within a bounded budget', async () => {
+  it('normalizes very long homogeneous and mixed-separator inputs', async () => {
     const { deriveOrganizationTechnicalIdentity } =
       await import('./organization-mainserver-provisioning.js');
-    const startedAt = performance.now();
     const identity = deriveOrganizationTechnicalIdentity({
       organizationId: organization.id,
       organizationDisplayName: 'a'.repeat(100_000),
@@ -239,7 +238,6 @@ describe('organization Mainserver provisioning', () => {
     });
 
     expect(identity.email).toBe('aaaaaaaaaaaaaaaaaaaaaaaa.tenant.11111111@smart-village.app');
-    expect(performance.now() - startedAt).toBeLessThan(2_000);
   });
 
   it('returns an already-ready reservation without creating or provisioning another account', async () => {

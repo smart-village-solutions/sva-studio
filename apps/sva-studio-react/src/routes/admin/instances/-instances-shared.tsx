@@ -80,6 +80,29 @@ const EXISTING_REALM_STEP_TITLES: Record<
   result_validation: 'admin.instances.operations.existing.steps.resultValidation',
 };
 
+const WORKER_PREFLIGHT_COPY = {
+  new: {
+    title: NEW_REALM_STEP_TITLES.worker_preflight,
+    summary: {
+      offen: 'admin.instances.operations.new.stepSummaries.workerPreflightPending',
+      fehlgeschlagen: 'admin.instances.operations.new.stepSummaries.workerPreflightFailed',
+      erfolgreich: 'admin.instances.operations.new.stepSummaries.workerPreflightReady',
+      bereit: 'admin.instances.operations.new.stepSummaries.workerPreflightReadyToRun',
+    },
+  },
+  existing: {
+    title: EXISTING_REALM_STEP_TITLES.worker_preflight,
+    summary: {
+      offen: 'admin.instances.operations.existing.stepSummaries.workerPreflightPending',
+      fehlgeschlagen: 'admin.instances.operations.existing.stepSummaries.workerPreflightFailed',
+      erfolgreich: 'admin.instances.operations.existing.stepSummaries.workerPreflightReady',
+      bereit: 'admin.instances.operations.existing.stepSummaries.workerPreflightReadyToRun',
+    },
+  },
+} as const;
+
+type WorkerPreflightStatus = keyof (typeof WORKER_PREFLIGHT_COPY)['new']['summary'];
+
 const readLatestKeycloakRun = (instance: IamInstanceDetail) =>
   instance.latestKeycloakProvisioningRun ?? instance.keycloakProvisioningRuns[0];
 
@@ -174,65 +197,54 @@ const deriveOperationsModelStatus = (steps: OperationsStepModel[]): RealmOperati
   return 'unknown';
 };
 
+const readWorkerPreflightStatus = (
+  contractComplete: boolean,
+  preflight: IamInstanceDetail['keycloakPreflight']
+): WorkerPreflightStatus => {
+  if (!contractComplete) {
+    return 'offen';
+  }
+  if (preflight?.overallStatus === 'blocked') {
+    return 'fehlgeschlagen';
+  }
+  return preflight ? 'erfolgreich' : 'bereit';
+};
+
+const readWorkerPreflightSummary = (
+  mode: 'new' | 'existing',
+  status: WorkerPreflightStatus,
+  preflight: IamInstanceDetail['keycloakPreflight']
+) => {
+  const copy = WORKER_PREFLIGHT_COPY[mode];
+  if (mode === 'new' && status === 'fehlgeschlagen') {
+    return findPreflightCheck(preflight, 'realm_mode')?.summary ?? t(copy.summary.fehlgeschlagen);
+  }
+  return t(copy.summary[status]);
+};
+
 const buildWorkerPreflightStep = (
   mode: 'new' | 'existing',
   contractComplete: boolean,
   preflight: IamInstanceDetail['keycloakPreflight'],
 ): OperationsStepModel => {
-  const blocked = preflight?.overallStatus === 'blocked';
-  const pending = !contractComplete;
-  const ready = Boolean(preflight);
+  const status = readWorkerPreflightStatus(contractComplete, preflight);
+  const copy = WORKER_PREFLIGHT_COPY[mode];
 
   return createOperationStep({
     key: 'worker_preflight',
-    title: t(
-      mode === 'new'
-        ? NEW_REALM_STEP_TITLES.worker_preflight
-        : EXISTING_REALM_STEP_TITLES.worker_preflight
-    ),
-    status: pending
-      ? 'offen'
-      : blocked
-        ? 'fehlgeschlagen'
-        : ready
-          ? 'erfolgreich'
-          : 'bereit',
-    summary: pending
-      ? t(
-        mode === 'new'
-          ? 'admin.instances.operations.new.stepSummaries.workerPreflightPending'
-          : 'admin.instances.operations.existing.stepSummaries.workerPreflightPending'
-      )
-      : blocked
-        ? (
-          mode === 'new'
-            ? findPreflightCheck(preflight, 'realm_mode')?.summary
-              ?? t('admin.instances.operations.new.stepSummaries.workerPreflightFailed')
-            : t('admin.instances.operations.existing.stepSummaries.workerPreflightFailed')
-        )
-        : ready
-          ? t(
-            mode === 'new'
-              ? 'admin.instances.operations.new.stepSummaries.workerPreflightReady'
-              : 'admin.instances.operations.existing.stepSummaries.workerPreflightReady'
-          )
-          : t(
-            mode === 'new'
-              ? 'admin.instances.operations.new.stepSummaries.workerPreflightReadyToRun'
-              : 'admin.instances.operations.existing.stepSummaries.workerPreflightReadyToRun'
-          ),
+    title: t(copy.title),
+    status,
+    summary: readWorkerPreflightSummary(mode, status, preflight),
     evidenceSource: 'worker_preflight',
     checkedAt: readPreflightTimestamp(preflight),
-    action: contractComplete && !preflight ? 'check_preflight' : undefined,
+    action: status === 'bereit' ? 'check_preflight' : undefined,
   });
 };
 
-const buildNewRealmLeadSteps = (
+const buildNewRealmRegistryContractStep = (
   instance: IamInstanceDetail,
-  contractComplete: boolean,
-  preflight: IamInstanceDetail['keycloakPreflight'],
-  plan: IamInstanceDetail['keycloakPlan'],
-): OperationsStepModel[] => [
+  contractComplete: boolean
+): OperationsStepModel =>
   createOperationStep({
     key: 'registry_contract',
     title: t(NEW_REALM_STEP_TITLES.registry_contract),
@@ -243,29 +255,78 @@ const buildNewRealmLeadSteps = (
     evidenceSource: 'registry_contract',
     checkedAt: instance.updatedAt,
     action: contractComplete ? undefined : 'focus_configuration',
-  }),
-  buildWorkerPreflightStep('new', contractComplete, preflight),
+  });
+
+const readNewRealmWorkerPlanState = (
+  contractComplete: boolean,
+  preflight: IamInstanceDetail['keycloakPreflight'],
+  plan: IamInstanceDetail['keycloakPlan']
+): Pick<OperationsStepModel, 'status' | 'summary' | 'action'> => {
+  const action = readNewRealmWorkerPlanAction(contractComplete, preflight, plan);
+  if (!contractComplete) {
+    return {
+      status: 'offen',
+      summary: t('admin.instances.operations.new.stepSummaries.workerPlanPending'),
+      action,
+    };
+  }
+  if (preflight?.overallStatus === 'blocked') {
+    return {
+      status: 'offen',
+      summary: t('admin.instances.operations.new.stepSummaries.workerPlanPending'),
+      action,
+    };
+  }
+  if (plan?.overallStatus === 'blocked') {
+    return { status: 'fehlgeschlagen', summary: plan.driftSummary, action };
+  }
+  if (plan) {
+    return {
+      status: 'erfolgreich',
+      summary: t('admin.instances.operations.new.stepSummaries.workerPlanReady'),
+      action,
+    };
+  }
+  return {
+    status: 'bereit',
+    summary: t('admin.instances.operations.new.stepSummaries.workerPlanReadyToRun'),
+    action,
+  };
+};
+
+function readNewRealmWorkerPlanAction(
+  contractComplete: boolean,
+  preflight: IamInstanceDetail['keycloakPreflight'],
+  plan: IamInstanceDetail['keycloakPlan']
+): OperationsStepModel['action'] {
+  if (!contractComplete || !preflight) {
+    return undefined;
+  }
+  return plan ? undefined : 'plan_provisioning';
+}
+
+const buildNewRealmWorkerPlanStep = (
+  contractComplete: boolean,
+  preflight: IamInstanceDetail['keycloakPreflight'],
+  plan: IamInstanceDetail['keycloakPlan']
+): OperationsStepModel =>
   createOperationStep({
     key: 'worker_plan',
     title: t(NEW_REALM_STEP_TITLES.worker_plan),
-    status: !contractComplete || preflight?.overallStatus === 'blocked'
-      ? 'offen'
-      : plan?.overallStatus === 'blocked'
-        ? 'fehlgeschlagen'
-        : plan
-          ? 'erfolgreich'
-          : 'bereit',
-    summary: !contractComplete || preflight?.overallStatus === 'blocked'
-      ? t('admin.instances.operations.new.stepSummaries.workerPlanPending')
-      : plan?.overallStatus === 'blocked'
-        ? plan.driftSummary
-        : plan
-          ? t('admin.instances.operations.new.stepSummaries.workerPlanReady')
-          : t('admin.instances.operations.new.stepSummaries.workerPlanReadyToRun'),
     evidenceSource: 'worker_plan',
     checkedAt: plan?.generatedAt,
-    action: contractComplete && preflight && !plan ? 'plan_provisioning' : undefined,
-  }),
+    ...readNewRealmWorkerPlanState(contractComplete, preflight, plan),
+  });
+
+const buildNewRealmLeadSteps = (
+  instance: IamInstanceDetail,
+  contractComplete: boolean,
+  preflight: IamInstanceDetail['keycloakPreflight'],
+  plan: IamInstanceDetail['keycloakPlan'],
+): OperationsStepModel[] => [
+  buildNewRealmRegistryContractStep(instance, contractComplete),
+  buildWorkerPreflightStep('new', contractComplete, preflight),
+  buildNewRealmWorkerPlanStep(contractComplete, preflight, plan),
 ];
 
 const buildNewRealmOperationsSummary = (
@@ -303,156 +364,218 @@ const buildNewRealmFollowUpActions = (
     ? ['activate_instance']
     : [];
 
+type NewRealmArtifactContext = {
+  instance: IamInstanceDetail;
+  latestRun: IamInstanceDetail['latestKeycloakProvisioningRun'];
+  runState: ReturnType<typeof readProvisioningRunState>;
+};
+
+const readNewRealmArtifactState = (
+  satisfied: boolean,
+  runState: ReturnType<typeof readProvisioningRunState>,
+  failedSummaryKey: string,
+  readySummaryKey: string,
+): Pick<OperationsStepModel, 'status' | 'summary'> => {
+  if (satisfied) {
+    return { status: 'erfolgreich', summary: t(readySummaryKey) };
+  }
+  if (runState.failed || runState.succeeded) {
+    return { status: 'fehlgeschlagen', summary: t(failedSummaryKey) };
+  }
+  if (runState.running || runState.planned) {
+    return {
+      status: 'läuft',
+      summary: t('admin.instances.operations.new.stepSummaries.awaitingCurrentRun'),
+    };
+  }
+  return {
+    status: 'offen',
+    summary: t('admin.instances.operations.new.stepSummaries.pendingWorkerExecution'),
+  };
+};
+
+const buildNewRealmRealmStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'realm',
+  title: t(NEW_REALM_STEP_TITLES.realm),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(instance.keycloakStatus?.realmExists),
+    runState,
+    'admin.instances.operations.new.stepSummaries.realmFailed',
+    'admin.instances.operations.new.stepSummaries.realmReady',
+  ),
+});
+
+const buildNewRealmLoginClientStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'login_client',
+  title: t(NEW_REALM_STEP_TITLES.login_client),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(
+      instance.keycloakStatus?.clientExists
+        && instance.keycloakStatus.redirectUrisMatch
+        && instance.keycloakStatus.logoutUrisMatch
+        && instance.keycloakStatus.webOriginsMatch
+    ),
+    runState,
+    'admin.instances.operations.new.stepSummaries.loginClientFailed',
+    'admin.instances.operations.new.stepSummaries.loginClientReady',
+  ),
+});
+
+const buildNewRealmTenantAdminClientStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'tenant_admin_client',
+  title: t(NEW_REALM_STEP_TITLES.tenant_admin_client),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(instance.keycloakStatus?.tenantAdminClientExists),
+    runState,
+    'admin.instances.operations.new.stepSummaries.tenantAdminClientFailed',
+    'admin.instances.operations.new.stepSummaries.tenantAdminClientReady',
+  ),
+});
+
+const buildNewRealmRolesStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'realm_roles',
+  title: t(NEW_REALM_STEP_TITLES.realm_roles),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(instance.keycloakStatus?.tenantAdminHasSystemAdmin),
+    runState,
+    'admin.instances.operations.new.stepSummaries.realmRolesFailed',
+    'admin.instances.operations.new.stepSummaries.realmRolesReady',
+  ),
+});
+
+const buildNewRealmTenantAdminStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'tenant_admin',
+  title: t(NEW_REALM_STEP_TITLES.tenant_admin),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(instance.keycloakStatus?.tenantAdminExists),
+    runState,
+    'admin.instances.operations.new.stepSummaries.tenantAdminFailed',
+    'admin.instances.operations.new.stepSummaries.tenantAdminReady',
+  ),
+});
+
+const buildNewRealmSecretSyncStep = ({
+  instance,
+  latestRun,
+  runState,
+}: NewRealmArtifactContext): OperationsStepModel => createOperationStep({
+  key: 'secret_sync',
+  title: t(NEW_REALM_STEP_TITLES.secret_sync),
+  evidenceSource: instance.keycloakStatus ? 'final_validation' : 'keycloak_run',
+  checkedAt: readRunTimestamp(latestRun),
+  requestId: latestRun?.requestId,
+  ...readNewRealmArtifactState(
+    Boolean(
+      instance.keycloakStatus?.clientSecretAligned
+        && instance.keycloakStatus.tenantAdminClientSecretAligned
+    ),
+    runState,
+    'admin.instances.operations.new.stepSummaries.secretSyncFailed',
+    'admin.instances.operations.new.stepSummaries.secretSyncReady',
+  ),
+});
+
+const readNewRealmFinalValidationStatus = (
+  instance: IamInstanceDetail,
+  runState: ReturnType<typeof readProvisioningRunState>,
+): OperationsStepModel['status'] => {
+  if (isFinalKeycloakStateSatisfied(instance)) {
+    return 'erfolgreich';
+  }
+  if (runState.failed || runState.succeeded) {
+    return 'fehlgeschlagen';
+  }
+  return runState.running || runState.planned ? 'läuft' : 'offen';
+};
+
+const buildNewRealmFinalValidationStep = (
+  instance: IamInstanceDetail,
+  runState: ReturnType<typeof readProvisioningRunState>,
+  requestId: string | undefined,
+): OperationsStepModel => {
+  const status = readNewRealmFinalValidationStatus(instance, runState);
+  return createOperationStep({
+    key: 'final_validation',
+    title: t(NEW_REALM_STEP_TITLES.final_validation),
+    evidenceSource: 'final_validation',
+    checkedAt: instance.updatedAt,
+    requestId,
+    status,
+    summary: status === 'erfolgreich'
+      ? t('admin.instances.operations.new.stepSummaries.finalValidationReady')
+      : status === 'fehlgeschlagen'
+        ? t('admin.instances.operations.new.stepSummaries.finalValidationFailed')
+        : t('admin.instances.operations.new.stepSummaries.finalValidationPending'),
+  });
+};
+
+const buildNewRealmBootstrapCompleteStep = (
+  instance: IamInstanceDetail,
+  requestId: string | undefined,
+): OperationsStepModel => {
+  const complete = isFinalKeycloakStateSatisfied(instance);
+  return createOperationStep({
+    key: 'realm_bootstrap_complete',
+    title: t(NEW_REALM_STEP_TITLES.realm_bootstrap_complete),
+    evidenceSource: 'final_validation',
+    checkedAt: instance.updatedAt,
+    requestId,
+    status: complete ? 'erfolgreich' : 'offen',
+    summary: complete
+      ? t('admin.instances.operations.new.stepSummaries.bootstrapCompleteReady')
+      : t('admin.instances.operations.new.stepSummaries.bootstrapCompletePending'),
+  });
+};
+
 const buildNewRealmArtifactSteps = (instance: IamInstanceDetail): OperationsStepModel[] => {
   const latestRun = readLatestKeycloakRun(instance);
   const runState = readProvisioningRunState(latestRun);
-  const checkedAt = readRunTimestamp(latestRun);
+  const context = { instance, latestRun, runState };
   const requestId = latestRun?.requestId;
-  const keycloakStatus = instance.keycloakStatus;
-
-  const artifactState = (
-    satisfied: boolean,
-    failedSummaryKey: string,
-    readySummaryKey: string
-  ): Pick<OperationsStepModel, 'status' | 'summary'> => {
-    if (satisfied) {
-      return {
-        status: 'erfolgreich',
-        summary: t(readySummaryKey),
-      };
-    }
-    if (runState.failed) {
-      return {
-        status: 'fehlgeschlagen',
-        summary: t(failedSummaryKey),
-      };
-    }
-    if (runState.running || runState.planned) {
-      return {
-        status: 'läuft',
-        summary: t('admin.instances.operations.new.stepSummaries.awaitingCurrentRun'),
-      };
-    }
-    if (runState.succeeded) {
-      return {
-        status: 'fehlgeschlagen',
-        summary: t(failedSummaryKey),
-      };
-    }
-    return {
-      status: 'offen',
-      summary: t('admin.instances.operations.new.stepSummaries.pendingWorkerExecution'),
-    };
-  };
-
   return [
-    createOperationStep({
-      key: 'realm',
-      title: t(NEW_REALM_STEP_TITLES.realm),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(keycloakStatus?.realmExists),
-        'admin.instances.operations.new.stepSummaries.realmFailed',
-        'admin.instances.operations.new.stepSummaries.realmReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'login_client',
-      title: t(NEW_REALM_STEP_TITLES.login_client),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(
-          keycloakStatus?.clientExists
-            && keycloakStatus.redirectUrisMatch
-            && keycloakStatus.logoutUrisMatch
-            && keycloakStatus.webOriginsMatch
-        ),
-        'admin.instances.operations.new.stepSummaries.loginClientFailed',
-        'admin.instances.operations.new.stepSummaries.loginClientReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'tenant_admin_client',
-      title: t(NEW_REALM_STEP_TITLES.tenant_admin_client),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(keycloakStatus?.tenantAdminClientExists),
-        'admin.instances.operations.new.stepSummaries.tenantAdminClientFailed',
-        'admin.instances.operations.new.stepSummaries.tenantAdminClientReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'realm_roles',
-      title: t(NEW_REALM_STEP_TITLES.realm_roles),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(keycloakStatus?.tenantAdminHasSystemAdmin),
-        'admin.instances.operations.new.stepSummaries.realmRolesFailed',
-        'admin.instances.operations.new.stepSummaries.realmRolesReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'tenant_admin',
-      title: t(NEW_REALM_STEP_TITLES.tenant_admin),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(keycloakStatus?.tenantAdminExists),
-        'admin.instances.operations.new.stepSummaries.tenantAdminFailed',
-        'admin.instances.operations.new.stepSummaries.tenantAdminReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'secret_sync',
-      title: t(NEW_REALM_STEP_TITLES.secret_sync),
-      evidenceSource: keycloakStatus ? 'final_validation' : 'keycloak_run',
-      checkedAt,
-      requestId,
-      ...artifactState(
-        Boolean(keycloakStatus?.clientSecretAligned && keycloakStatus.tenantAdminClientSecretAligned),
-        'admin.instances.operations.new.stepSummaries.secretSyncFailed',
-        'admin.instances.operations.new.stepSummaries.secretSyncReady'
-      ),
-    }),
-    createOperationStep({
-      key: 'final_validation',
-      title: t(NEW_REALM_STEP_TITLES.final_validation),
-      evidenceSource: 'final_validation',
-      checkedAt: instance.updatedAt,
-      requestId,
-      status: isFinalKeycloakStateSatisfied(instance)
-        ? 'erfolgreich'
-        : runState.failed || runState.succeeded
-          ? 'fehlgeschlagen'
-          : runState.running || runState.planned
-            ? 'läuft'
-            : 'offen',
-      summary: isFinalKeycloakStateSatisfied(instance)
-        ? t('admin.instances.operations.new.stepSummaries.finalValidationReady')
-        : runState.failed || runState.succeeded
-            ? t('admin.instances.operations.new.stepSummaries.finalValidationFailed')
-            : t('admin.instances.operations.new.stepSummaries.finalValidationPending'),
-    }),
-    createOperationStep({
-      key: 'realm_bootstrap_complete',
-      title: t(NEW_REALM_STEP_TITLES.realm_bootstrap_complete),
-      evidenceSource: 'final_validation',
-      checkedAt: instance.updatedAt,
-      requestId,
-      status: isFinalKeycloakStateSatisfied(instance) ? 'erfolgreich' : 'offen',
-      summary: isFinalKeycloakStateSatisfied(instance)
-        ? t('admin.instances.operations.new.stepSummaries.bootstrapCompleteReady')
-        : t('admin.instances.operations.new.stepSummaries.bootstrapCompletePending'),
-    }),
+    buildNewRealmRealmStep(context),
+    buildNewRealmLoginClientStep(context),
+    buildNewRealmTenantAdminClientStep(context),
+    buildNewRealmRolesStep(context),
+    buildNewRealmTenantAdminStep(context),
+    buildNewRealmSecretSyncStep(context),
+    buildNewRealmFinalValidationStep(instance, runState, requestId),
+    buildNewRealmBootstrapCompleteStep(instance, requestId),
   ];
 };
 
@@ -490,7 +613,20 @@ const buildExistingRealmAssessmentSteps = (
   latestRun: IamInstanceDetail['latestKeycloakProvisioningRun'],
   hasDrift: boolean,
 ): OperationsStepModel[] => [
-  createOperationStep({
+  buildExistingRealmRegistryContractStep(instance, contractComplete),
+  buildWorkerPreflightStep('existing', contractComplete, preflight),
+  buildExistingRealmLiveStatusStep(instance, preflight),
+  buildExistingRealmDriftAnalysisStep(instance, hasDrift),
+  buildExistingRealmContractRepairStep(instance, contractComplete),
+  buildExistingRealmReconcileStep(instance, latestRun, hasDrift),
+  buildExistingRealmResultValidationStep(instance, hasDrift),
+];
+
+function buildExistingRealmRegistryContractStep(
+  instance: IamInstanceDetail,
+  contractComplete: boolean
+): OperationsStepModel {
+  return createOperationStep({
     key: 'registry_contract',
     title: t(EXISTING_REALM_STEP_TITLES.registry_contract),
     status: contractComplete ? 'erfolgreich' : 'fehlgeschlagen',
@@ -500,40 +636,59 @@ const buildExistingRealmAssessmentSteps = (
     evidenceSource: 'registry_contract',
     checkedAt: instance.updatedAt,
     action: contractComplete ? undefined : 'focus_configuration',
-  }),
-  buildWorkerPreflightStep('existing', contractComplete, preflight),
-  createOperationStep({
+  });
+}
+
+function buildExistingRealmLiveStatusStep(
+  instance: IamInstanceDetail,
+  preflight: IamInstanceDetail['keycloakPreflight']
+): OperationsStepModel {
+  const liveStatusAvailable = Boolean(instance.keycloakStatus);
+  return createOperationStep({
     key: 'live_status',
     title: t(EXISTING_REALM_STEP_TITLES.live_status),
-    status: instance.keycloakStatus
+    status: liveStatusAvailable
       ? 'erfolgreich'
       : preflight?.overallStatus === 'blocked'
         ? 'offen'
         : 'bereit',
-    summary: instance.keycloakStatus
+    summary: liveStatusAvailable
       ? t('admin.instances.operations.existing.stepSummaries.liveStatusReady')
       : t('admin.instances.operations.existing.stepSummaries.liveStatusPending'),
-    evidenceSource: instance.keycloakStatus ? 'final_validation' : 'worker_preflight',
+    evidenceSource: liveStatusAvailable ? 'final_validation' : 'worker_preflight',
     checkedAt: instance.updatedAt,
-    action: instance.keycloakStatus ? undefined : 'check_keycloak_status',
-  }),
-  createOperationStep({
+    action: liveStatusAvailable ? undefined : 'check_keycloak_status',
+  });
+}
+
+function buildExistingRealmDriftAnalysisStep(
+  instance: IamInstanceDetail,
+  hasDrift: boolean
+): OperationsStepModel {
+  const liveStatusAvailable = Boolean(instance.keycloakStatus);
+  return createOperationStep({
     key: 'drift_analysis',
     title: t(EXISTING_REALM_STEP_TITLES.drift_analysis),
-    status: !instance.keycloakStatus
+    status: !liveStatusAvailable
       ? 'offen'
       : hasDrift
         ? 'fehlgeschlagen'
         : 'erfolgreich',
-    summary: !instance.keycloakStatus
+    summary: !liveStatusAvailable
       ? t('admin.instances.operations.existing.stepSummaries.driftAnalysisPending')
       : hasDrift
         ? t('admin.instances.operations.existing.stepSummaries.driftAnalysisFailed')
         : t('admin.instances.operations.existing.stepSummaries.driftAnalysisReady'),
-    evidenceSource: instance.keycloakStatus ? 'final_validation' : 'history',
+    evidenceSource: liveStatusAvailable ? 'final_validation' : 'history',
     checkedAt: instance.updatedAt,
-  }),
-  createOperationStep({
+  });
+}
+
+function buildExistingRealmContractRepairStep(
+  instance: IamInstanceDetail,
+  contractComplete: boolean
+): OperationsStepModel {
+  return createOperationStep({
     key: 'contract_repair',
     title: t(EXISTING_REALM_STEP_TITLES.contract_repair),
     status: contractComplete ? 'erfolgreich' : 'fehlgeschlagen',
@@ -543,46 +698,78 @@ const buildExistingRealmAssessmentSteps = (
     evidenceSource: 'registry_contract',
     checkedAt: instance.updatedAt,
     action: contractComplete ? undefined : 'focus_configuration',
-  }),
-  createOperationStep({
+  });
+}
+
+function buildExistingRealmReconcileStep(
+  instance: IamInstanceDetail,
+  latestRun: IamInstanceDetail['latestKeycloakProvisioningRun'],
+  hasDrift: boolean
+): OperationsStepModel {
+  const liveStatusAvailable = Boolean(instance.keycloakStatus);
+  const latestRunFailed = latestRun?.overallStatus === 'failed';
+  return createOperationStep({
     key: 'reconcile',
     title: t(EXISTING_REALM_STEP_TITLES.reconcile),
-    status: !instance.keycloakStatus
-      ? 'offen'
-      : latestRun?.overallStatus === 'failed'
-        ? 'fehlgeschlagen'
-        : hasDrift
-          ? 'bereit'
-          : 'erfolgreich',
-    summary: !instance.keycloakStatus
-      ? t('admin.instances.operations.existing.stepSummaries.reconcilePending')
-      : latestRun?.overallStatus === 'failed'
-        ? t('admin.instances.operations.existing.stepSummaries.reconcileFailed')
-        : hasDrift
-          ? t('admin.instances.operations.existing.stepSummaries.reconcileReadyToRun')
-          : t('admin.instances.operations.existing.stepSummaries.reconcileReady'),
+    ...readExistingRealmReconcileState(liveStatusAvailable, latestRunFailed, hasDrift),
     evidenceSource: latestRun ? 'keycloak_run' : 'final_validation',
     checkedAt: readRunTimestamp(latestRun) ?? instance.updatedAt,
     requestId: latestRun?.requestId,
-    action: instance.keycloakStatus && hasDrift ? 'reconcileKeycloak' : undefined,
-  }),
-  createOperationStep({
+    action: liveStatusAvailable && hasDrift ? 'reconcileKeycloak' : undefined,
+  });
+}
+
+function readExistingRealmReconcileState(
+  liveStatusAvailable: boolean,
+  latestRunFailed: boolean,
+  hasDrift: boolean
+): Pick<OperationsStepModel, 'status' | 'summary'> {
+  if (!liveStatusAvailable) {
+    return {
+      status: 'offen',
+      summary: t('admin.instances.operations.existing.stepSummaries.reconcilePending'),
+    };
+  }
+  if (latestRunFailed) {
+    return {
+      status: 'fehlgeschlagen',
+      summary: t('admin.instances.operations.existing.stepSummaries.reconcileFailed'),
+    };
+  }
+  if (hasDrift) {
+    return {
+      status: 'bereit',
+      summary: t('admin.instances.operations.existing.stepSummaries.reconcileReadyToRun'),
+    };
+  }
+  return {
+    status: 'erfolgreich',
+    summary: t('admin.instances.operations.existing.stepSummaries.reconcileReady'),
+  };
+}
+
+function buildExistingRealmResultValidationStep(
+  instance: IamInstanceDetail,
+  hasDrift: boolean
+): OperationsStepModel {
+  const liveStatusAvailable = Boolean(instance.keycloakStatus);
+  return createOperationStep({
     key: 'result_validation',
     title: t(EXISTING_REALM_STEP_TITLES.result_validation),
-    status: !instance.keycloakStatus
+    status: !liveStatusAvailable
       ? 'offen'
       : hasDrift
         ? 'fehlgeschlagen'
         : 'erfolgreich',
-    summary: !instance.keycloakStatus
+    summary: !liveStatusAvailable
       ? t('admin.instances.operations.existing.stepSummaries.resultValidationPending')
       : hasDrift
         ? t('admin.instances.operations.existing.stepSummaries.resultValidationFailed')
         : t('admin.instances.operations.existing.stepSummaries.resultValidationReady'),
     evidenceSource: 'final_validation',
     checkedAt: instance.updatedAt,
-  }),
-];
+  });
+}
 
 export const buildExistingRealmOperationsModel = (
   instance: IamInstanceDetail,
@@ -616,137 +803,119 @@ export const buildExistingRealmOperationsModel = (
   };
 };
 
-export const buildOperationsPrimaryAction = (model: RealmOperationsModel): OperationsPrimaryAction => {
-  if (model.mode === 'new') {
-    const contractStep = model.steps.find((step) => step.key === 'registry_contract');
-    if (contractStep?.status === 'fehlgeschlagen') {
-      return {
-        action: 'focus_configuration',
-        label: getOperationsActionLabel('focus_configuration'),
-        reason: 'missing_contract',
-      };
-    }
-    const preflightStep = model.steps.find((step) => step.key === 'worker_preflight');
-    if (model.signals.modeConflict) {
-      return {
-        action: 'check_preflight',
-        label: getOperationsActionLabel('check_preflight'),
-        reason: 'mode_conflict',
-      };
-    }
-    if (preflightStep?.status === 'fehlgeschlagen') {
-      return {
-        action: 'check_preflight',
-        label: getOperationsActionLabel('check_preflight'),
-        reason: 'preflight_blocked',
-      };
-    }
-    const finalValidationStep = model.steps.find((step) => step.key === 'final_validation');
-    const followUpAction = model.followUpActions[0];
-    if (finalValidationStep?.status === 'erfolgreich' && followUpAction) {
-      return {
-        action: followUpAction,
-        label: getOperationsActionLabel(followUpAction),
-        reason: 'follow_up',
-      };
-    }
-    const workerPlanStep = model.steps.find((step) => step.key === 'worker_plan');
-    if (workerPlanStep?.status === 'bereit' || workerPlanStep?.status === 'fehlgeschlagen') {
-      return {
-        action: 'plan_provisioning',
-        label: getOperationsActionLabel('plan_provisioning'),
-        reason: 'follow_up',
-      };
-    }
-    const latestFailure = model.steps.find((step) =>
-      isNewRealmProvisioningStep(step.key)
-      && step.status === 'fehlgeschlagen'
-    );
-    if (latestFailure) {
-      return {
-        action: 'execute_provisioning',
-        label: getOperationsActionLabel('execute_provisioning'),
-        reason: 'run_retry',
-      };
-    }
-    const secretSyncStep = model.steps.find((step) => step.key === 'secret_sync');
-    if (secretSyncStep?.status === 'fehlgeschlagen') {
-      return {
-        action: 'execute_provisioning',
-        label: getOperationsActionLabel('execute_provisioning'),
-        reason: 'secret_sync',
-      };
-    }
-    const pendingArtifactStep = model.steps.find((step) =>
-      isNewRealmProvisioningStep(step.key)
-      && step.status === 'offen'
-    );
-    if (pendingArtifactStep) {
-      return {
-        action: 'execute_provisioning',
-        label: getOperationsActionLabel('execute_provisioning'),
-        reason: 'run_retry',
-      };
-    }
-    if (finalValidationStep?.status === 'fehlgeschlagen') {
-      return {
-        action: 'check_keycloak_status',
-        label: getOperationsActionLabel('check_keycloak_status'),
-        reason: 'final_validation',
-      };
-    }
-    if (followUpAction) {
-      return {
-        action: followUpAction,
-        label: getOperationsActionLabel(followUpAction),
-        reason: 'follow_up',
-      };
-    }
-    return {
-      action: 'check_keycloak_status',
-      label: getOperationsActionLabel('check_keycloak_status'),
-      reason: 'final_validation',
-    };
-  }
+const createOperationsPrimaryAction = (
+  action: OperationsPrimaryAction['action'],
+  reason: OperationsPrimaryAction['reason']
+): OperationsPrimaryAction => ({
+  action,
+  label: getOperationsActionLabel(action),
+  reason,
+});
 
-  const contractStep = model.steps.find((step) => step.key === 'registry_contract' || step.key === 'contract_repair');
-  if (contractStep?.status === 'fehlgeschlagen') {
-    return {
-      action: 'focus_configuration',
-      label: getOperationsActionLabel('focus_configuration'),
-      reason: 'missing_contract',
-    };
+const findOperationsStep = (model: RealmOperationsModel, key: OperationsStepKey) =>
+  model.steps.find((step) => step.key === key);
+
+const buildNewRealmPrerequisiteAction = (
+  model: RealmOperationsModel
+): OperationsPrimaryAction | undefined => {
+  if (findOperationsStep(model, 'registry_contract')?.status === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('focus_configuration', 'missing_contract');
   }
-  const preflightStep = model.steps.find((step) => step.key === 'worker_preflight');
-  if (preflightStep?.status === 'fehlgeschlagen') {
-    return {
-      action: 'check_preflight',
-      label: getOperationsActionLabel('check_preflight'),
-      reason: 'preflight_blocked',
-    };
+  if (model.signals.modeConflict) {
+    return createOperationsPrimaryAction('check_preflight', 'mode_conflict');
   }
-  const liveStatusStep = model.steps.find((step) => step.key === 'live_status');
-  if (liveStatusStep?.status === 'bereit') {
-    return {
-      action: 'check_keycloak_status',
-      label: getOperationsActionLabel('check_keycloak_status'),
-      reason: 'final_validation',
-    };
+  if (findOperationsStep(model, 'worker_preflight')?.status === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('check_preflight', 'preflight_blocked');
   }
-  const reconcileStep = model.steps.find((step) => step.key === 'reconcile');
-  if (model.signals.hasDrift || reconcileStep?.status === 'fehlgeschlagen') {
-    return {
-      action: 'reconcileKeycloak',
-      label: getOperationsActionLabel('reconcileKeycloak'),
-      reason: 'run_retry',
-    };
-  }
-  return {
-    action: 'check_keycloak_status',
-    label: getOperationsActionLabel('check_keycloak_status'),
-    reason: 'final_validation',
-  };
+  return undefined;
 };
+
+const buildCompletedNewRealmFollowUpAction = (
+  model: RealmOperationsModel
+): OperationsPrimaryAction | undefined => {
+  const followUpAction = model.followUpActions[0];
+  return findOperationsStep(model, 'final_validation')?.status === 'erfolgreich' && followUpAction
+    ? createOperationsPrimaryAction(followUpAction, 'follow_up')
+    : undefined;
+};
+
+const buildNewRealmWorkerAction = (
+  model: RealmOperationsModel
+): OperationsPrimaryAction | undefined => {
+  const workerPlanStatus = findOperationsStep(model, 'worker_plan')?.status;
+  if (workerPlanStatus === 'bereit' || workerPlanStatus === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('plan_provisioning', 'follow_up');
+  }
+  const failedArtifact = model.steps.find((step) =>
+    isNewRealmProvisioningStep(step.key) && step.status === 'fehlgeschlagen'
+  );
+  if (failedArtifact) {
+    return createOperationsPrimaryAction('execute_provisioning', 'run_retry');
+  }
+  const pendingArtifact = model.steps.find((step) =>
+    isNewRealmProvisioningStep(step.key) && step.status === 'offen'
+  );
+  return pendingArtifact
+    ? createOperationsPrimaryAction('execute_provisioning', 'run_retry')
+    : undefined;
+};
+
+const buildNewRealmFinalAction = (model: RealmOperationsModel): OperationsPrimaryAction => {
+  if (findOperationsStep(model, 'final_validation')?.status === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('check_keycloak_status', 'final_validation');
+  }
+  const followUpAction = model.followUpActions[0];
+  return followUpAction
+    ? createOperationsPrimaryAction(followUpAction, 'follow_up')
+    : createOperationsPrimaryAction('check_keycloak_status', 'final_validation');
+};
+
+const buildNewRealmPrimaryAction = (model: RealmOperationsModel): OperationsPrimaryAction => {
+  const prerequisiteAction = buildNewRealmPrerequisiteAction(model);
+  if (prerequisiteAction) {
+    return prerequisiteAction;
+  }
+  const completedFollowUpAction = buildCompletedNewRealmFollowUpAction(model);
+  if (completedFollowUpAction) {
+    return completedFollowUpAction;
+  }
+  return buildNewRealmWorkerAction(model) ?? buildNewRealmFinalAction(model);
+};
+
+const buildExistingRealmPrerequisiteAction = (
+  model: RealmOperationsModel
+): OperationsPrimaryAction | undefined => {
+  const contractStep = model.steps.find(
+    (step) => step.key === 'registry_contract' || step.key === 'contract_repair'
+  );
+  if (contractStep?.status === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('focus_configuration', 'missing_contract');
+  }
+  return findOperationsStep(model, 'worker_preflight')?.status === 'fehlgeschlagen'
+    ? createOperationsPrimaryAction('check_preflight', 'preflight_blocked')
+    : undefined;
+};
+
+const buildExistingRealmPrimaryAction = (model: RealmOperationsModel): OperationsPrimaryAction => {
+  const prerequisiteAction = buildExistingRealmPrerequisiteAction(model);
+  if (prerequisiteAction) {
+    return prerequisiteAction;
+  }
+  if (findOperationsStep(model, 'live_status')?.status === 'bereit') {
+    return createOperationsPrimaryAction('check_keycloak_status', 'final_validation');
+  }
+  if (model.signals.hasDrift || findOperationsStep(model, 'reconcile')?.status === 'fehlgeschlagen') {
+    return createOperationsPrimaryAction('reconcileKeycloak', 'run_retry');
+  }
+  return createOperationsPrimaryAction('check_keycloak_status', 'final_validation');
+};
+
+export const buildOperationsPrimaryAction = (
+  model: RealmOperationsModel
+): OperationsPrimaryAction =>
+  model.mode === 'new'
+    ? buildNewRealmPrimaryAction(model)
+    : buildExistingRealmPrimaryAction(model);
 
 export const buildHistoryWorkspaceModel = (
   instance: IamInstanceDetail,

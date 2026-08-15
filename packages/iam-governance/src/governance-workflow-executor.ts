@@ -5,6 +5,11 @@ import {
   pseudonymizeGovernanceSubject,
   resolveGovernanceAccountId,
 } from './governance-audit-shared.js';
+import {
+  normalizeDelegationPayload,
+  resolveDelegationAccountDecision,
+  resolveDelegationDecision,
+} from './governance-delegation-decision.js';
 import { readNumber, readString } from './input-readers.js';
 import type { QueryClient } from './query-client.js';
 import {
@@ -13,7 +18,6 @@ import {
 } from './governance-workflow-policy.js';
 
 const MAX_IMPERSONATION_MINUTES = 120;
-const MAX_DELEGATION_DAYS = 30;
 
 export type GovernanceWorkflowRequest = {
   operation: GovernanceOperation;
@@ -460,54 +464,39 @@ const createDelegation = async (
   actor: GovernanceActor,
   payload: Record<string, unknown>
 ): Promise<GovernanceWorkflowResponse> => {
-  const delegatorSubject = readString(payload.delegatorKeycloakSubject) ?? actor.keycloakSubject;
-  const delegateeSubject = readString(payload.delegateeKeycloakSubject);
-  const roleId = readString(payload.roleId);
-  const approverSubject = readString(payload.approverKeycloakSubject);
-  const ticketId = readString(payload.ticketId);
-  const ticketState = readString(payload.ticketState);
-  const startsAt = readString(payload.startsAt);
-  const endsAt = readString(payload.endsAt);
-
-  if (!delegateeSubject || !roleId || !deps.isUuid(roleId) || !approverSubject || !startsAt || !endsAt || !ticketId) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: 'invalid_request' };
+  const delegationDecision = resolveDelegationDecision(
+    normalizeDelegationPayload(payload, actor.keycloakSubject),
+    deps.isUuid,
+    Date.now()
+  );
+  if (!delegationDecision.ok) {
+    return { operation: 'create_delegation', status: 'error', reasonCode: delegationDecision.reasonCode };
   }
+  const { approverSubject, delegateeSubject, delegatorSubject, endDate, roleId, startDate, status, ticketId, ticketState } =
+    delegationDecision.value;
 
-  const ticketValidation = validateGovernanceTicketState(ticketState);
-  if (!ticketValidation.ok) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: ticketValidation.reasonCode };
-  }
-
-  const startDate = new Date(startsAt);
-  const endDate = new Date(endsAt);
-  if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: 'invalid_request' };
-  }
-  const durationDays = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-  if (durationDays <= 0 || durationDays > MAX_DELEGATION_DAYS) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: 'DENY_DELEGATION_DURATION_EXCEEDED' };
-  }
-
-  const delegatorAccountId = await resolveGovernanceAccountId(client, {
+  const resolvedDelegatorAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: delegatorSubject,
   });
-  const delegateeAccountId = await resolveGovernanceAccountId(client, {
+  const resolvedDelegateeAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: delegateeSubject,
   });
-  const approverAccountId = await resolveGovernanceAccountId(client, {
+  const resolvedApproverAccountId = await resolveGovernanceAccountId(client, {
     instanceId: actor.instanceId,
     keycloakSubject: approverSubject,
   });
-  if (!delegatorAccountId || !delegateeAccountId || !approverAccountId) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: 'unauthorized' };
+  const accountDecision = resolveDelegationAccountDecision({
+    delegatorAccountId: resolvedDelegatorAccountId,
+    delegateeAccountId: resolvedDelegateeAccountId,
+    approverAccountId: resolvedApproverAccountId,
+  });
+  if (!accountDecision.ok) {
+    return { operation: 'create_delegation', status: 'error', reasonCode: accountDecision.reasonCode };
   }
-  if (delegatorAccountId === approverAccountId) {
-    return { operation: 'create_delegation', status: 'error', reasonCode: 'DENY_SELF_APPROVAL' };
-  }
+  const { approverAccountId, delegateeAccountId, delegatorAccountId } = accountDecision.value;
 
-  const status = startDate.getTime() <= Date.now() ? 'active' : 'requested';
   const inserted = await client.query<{ id: string }>(
     `
 INSERT INTO iam.delegations (

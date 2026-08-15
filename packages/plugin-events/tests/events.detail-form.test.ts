@@ -442,4 +442,242 @@ describe('events.detail-form', () => {
       visible: true,
     });
   });
+
+  it('preserves false and zero while omitting null, empty, incomplete, and non-finite values', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: '  Grenzwerte  ',
+        basis: {
+          categories: [' Erste ', '', 'Zweite', 'Erste'],
+          pointOfInterestId: null,
+          repeat: false,
+          recurring: null,
+          recurringType: '',
+          recurringInterval: undefined,
+          recurringWeekdays: [' FR ', ' ', 'MO'],
+        },
+        content: {
+          description: null,
+          dates: [null, { useOnlyTimeDescription: false }, { useOnlyTimeDescription: true }],
+          addresses: [
+            { geoLocation: { latitude: '0', longitude: '0' } },
+            { geoLocation: { latitude: '0', longitude: 'nicht-endlich' } },
+            null,
+          ],
+          urls: null,
+          mediaContents: null,
+          contacts: [],
+          organizer: {},
+          priceInformations: [{ amount: 0 }, { amount: Number.POSITIVE_INFINITY }],
+          accessibilityInformation: { description: null, types: undefined, urls: null },
+        },
+        settings: {
+          visible: false,
+          externalId: null,
+          keywords: undefined,
+          tags: '   ',
+        },
+      } as never)
+    ).toEqual({
+      title: 'Grenzwerte',
+      categoryName: 'Erste',
+      categories: [{ name: 'Erste' }, { name: 'Zweite' }],
+      dates: [{ useOnlyTimeDescription: true }],
+      addresses: [{ geoLocation: { latitude: 0, longitude: 0 } }],
+      priceInformations: [{ amount: 0 }],
+      repeat: false,
+      recurringWeekdays: ['FR', 'MO'],
+      visible: false,
+    });
+  });
+
+  it('serializes media dimensions, source urls, and compatibility content types without reordering entries', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Mediengrenzen',
+        basis: {
+          categories: [],
+          pointOfInterestId: '',
+          repeat: false,
+          recurring: '',
+          recurringType: '',
+          recurringInterval: '',
+          recurringWeekdays: [],
+        },
+        content: {
+          description: '',
+          dates: [],
+          addresses: [],
+          urls: [],
+          mediaContents: [
+            {
+              captionText: ' Erstes ',
+              copyright: '',
+              contentType: ' IMAGE ',
+              sourceUrl: { url: ' http://example.test/legacy.jpg ', description: ' Altbestand ' },
+              width: '0',
+              height: 'Infinity',
+            },
+            {
+              captionText: '',
+              copyright: '',
+              contentType: 'application/pdf',
+              sourceUrl: { url: '', description: 'ohne URL' },
+              width: '',
+              height: 'NaN',
+            },
+            {
+              captionText: ' Drittes ',
+              copyright: ' Rechte ',
+              contentType: 'VIDEO',
+              sourceUrl: { url: 'https://example.test/video', description: '' },
+              width: 640,
+              height: Number.NaN,
+            },
+          ],
+          contacts: [],
+          organizer: {},
+          priceInformations: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+        },
+        settings: { visible: true, externalId: '', keywords: '', tags: '' },
+      } as never)
+    ).toEqual({
+      title: 'Mediengrenzen',
+      dates: [],
+      addresses: [],
+      mediaContents: [
+        {
+          captionText: 'Erstes',
+          contentType: 'image',
+          sourceUrl: { url: 'http://example.test/legacy.jpg', description: 'Altbestand' },
+          width: 0,
+        },
+        {
+          captionText: 'Drittes',
+          copyright: 'Rechte',
+          contentType: 'video',
+          sourceUrl: { url: 'https://example.test/video' },
+          width: 640,
+        },
+      ],
+      repeat: false,
+      recurringWeekdays: [],
+      visible: true,
+    });
+  });
+
+  it('preserves all-day, local-time, and offset-bearing date strings exactly and in order', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Zeitgrenzen',
+        basis: {
+          categories: [],
+          pointOfInterestId: '',
+          repeat: false,
+          recurring: '',
+          recurringType: '',
+          recurringInterval: '',
+          recurringWeekdays: [],
+        },
+        content: {
+          description: '',
+          dates: [
+            {
+              weekday: ' Samstag ',
+              dateStart: '2026-10-24',
+              dateEnd: '2026-10-25',
+              timeDescription: ' ganztägig ',
+              useOnlyTimeDescription: true,
+            },
+            {
+              dateStart: '2026-03-29T00:30:00+01:00',
+              dateEnd: '2026-03-29T04:30:00+02:00',
+              timeStart: ' 01:30 ',
+              timeEnd: '03:30+02:00',
+              useOnlyTimeDescription: false,
+            },
+          ],
+          addresses: [],
+          urls: [],
+          mediaContents: [],
+          contacts: [],
+          organizer: {},
+          priceInformations: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+        },
+        settings: { visible: true, externalId: '', keywords: '', tags: '' },
+      })
+    ).toEqual({
+      title: 'Zeitgrenzen',
+      dates: [
+        {
+          weekday: 'Samstag',
+          dateStart: '2026-10-24',
+          dateEnd: '2026-10-25',
+          timeDescription: 'ganztägig',
+          useOnlyTimeDescription: true,
+        },
+        {
+          dateStart: '2026-03-29T00:30:00+01:00',
+          dateEnd: '2026-03-29T04:30:00+02:00',
+          timeStart: ' 01:30 ',
+          timeEnd: '03:30+02:00',
+        },
+      ],
+      addresses: [],
+      repeat: false,
+      recurringWeekdays: [],
+      visible: true,
+    });
+  });
+
+  it('preserves the order of repeated editorial values and passes compatibility url values through', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Reihenfolge',
+        basis: {
+          categories: [],
+          pointOfInterestId: '',
+          repeat: true,
+          recurring: 'legacy-custom',
+          recurringType: 'legacy-type',
+          recurringInterval: 'legacy-interval',
+          recurringWeekdays: [],
+        },
+        content: {
+          description: '',
+          dates: [],
+          addresses: [{ city: 'Zuerst' }, { city: 'Danach' }],
+          urls: [
+            { url: 'ftp://legacy.example.test/first', description: ' Eins ' },
+            { url: 'not-a-url', description: ' Zwei ' },
+          ],
+          mediaContents: [],
+          contacts: [{ firstName: 'Zuerst' }, { firstName: 'Danach' }],
+          organizer: {},
+          priceInformations: [{ name: 'Zuerst' }, { name: 'Danach' }],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+        },
+        settings: { visible: true, externalId: '', keywords: '', tags: 'dritter, erster, zweiter' },
+      })
+    ).toEqual({
+      title: 'Reihenfolge',
+      dates: [],
+      addresses: [{ city: 'Zuerst' }, { city: 'Danach' }],
+      contacts: [{ firstName: 'Zuerst' }, { firstName: 'Danach' }],
+      urls: [
+        { url: 'ftp://legacy.example.test/first', description: 'Eins' },
+        { url: 'not-a-url', description: 'Zwei' },
+      ],
+      priceInformations: [{ name: 'Zuerst' }, { name: 'Danach' }],
+      repeat: true,
+      recurring: 'legacy-custom',
+      recurringType: 'legacy-type',
+      recurringInterval: 'legacy-interval',
+      recurringWeekdays: [],
+      tags: ['dritter', 'erster', 'zweiter'],
+      visible: true,
+    });
+  });
 });

@@ -39,6 +39,47 @@ Plan 033 entstand als expliziter Zusatzplan aus dem Main-Sonar-Scan nach Plan
 aber einen neuen S7786-Befund zur unspezifischen Fehlerklasse aus. Der Zusatz
 wurde separat charakterisiert, geprüft und ohne neue Fallback-Semantik gemergt.
 
+### Abnahme der SonarCloud-Runde 1
+
+Die fachliche Source-Abnahme erfolgte über den Main-Sonar-Scan vom
+`2026-08-15T20:59:15+0000`. Seine analysierte Revision
+`828452b098078c92d6a2fef9d2421dc8a3c0bbaa` entspricht exakt dem Main-Commit,
+der alle Implementierungspakete 027–033 enthält.
+
+| Metrik | Vorher (`960955af8`) | Nachher (`828452b09`) | Änderung |
+|---|---:|---:|---:|
+| Quality Gate | ERROR | OK | alle 6 Bedingungen grün |
+| Offene Issues | 969 | 962 | -7 |
+| Bugs | 0 | 0 | 0 |
+| Vulnerabilities | 1 | 0 | -1 |
+| Code Smells | 968 | 962 | -6 |
+| Ungeprüfte Security Hotspots | 0 | 0 | 0 |
+| Blocker / Critical / Major / Minor | 1 / 108 / 416 / 444 | 1 / 108 / 409 / 444 | Major -7 |
+| Maintainability Debt | 6.545 min | 6.425 min | -120 min |
+| Coverage | 88,0 % | 88,0 % | 0,0 Prozentpunkte |
+| Line Coverage | 92,0 % | 92,1 % | +0,1 Prozentpunkte |
+| Branch Coverage | 81,7 % | 81,8 % | +0,1 Prozentpunkte |
+| Globale Duplikation | 1,9 % | 1,9 % | 0,0 Prozentpunkte |
+| New-Code-Duplikation | 1,0 % | 1,0 % | 0,0 Prozentpunkte |
+
+Security-, Reliability- und Maintainability-Rating stehen jeweils auf `1/A`;
+New-Code Coverage beträgt 88,0 %. S2245 sank 1→0 und S8786 6→0. Der durch
+Plan 027 vorübergehend erzeugte S7786-Key `AaAHHfjRRXPx87p88P3F` sank durch
+Plan 033 ebenfalls 1→0; die globale, nicht ausgewählte S7786-Gruppe bleibt mit
+neun älteren Befunden unverändert. Alle acht Ziel-Keys sind in der vollständigen
+paginierten Inventur verschwunden. Es wurden keine Issues akzeptiert oder als
+False Positive transitioniert.
+
+Der Runtime-Gates-Lauf `31907602049` führte den erfolgreichen Sonar-Scan aus,
+endete danach aber am bereits auf der unveränderten Basis reproduzierten
+Coverage-Delta-Gate: `plugin-poi`-Branches lagen 0,56 Prozentpunkte unter der
+Referenz bei erlaubten 0,50. Keines der sieben Pakete ändert `plugin-poi`; der
+Sonar-Quality-Gate-Status der exakten Revision ist unabhängig davon `OK`.
+
+Die Runde ist damit für die ausgewählten Pakete abgeschlossen, nicht für das
+gesamte Repository: 962 Code Smells und die unten bewusst zurückgestellten
+Regelgruppen bleiben offen.
+
 ### Zurückgestellt nach Live-Prüfung
 
 - S6551 in Waste-Masterdaten besitzt echte `FormDataEntryValue`-/Datei- und

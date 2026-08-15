@@ -1,4 +1,4 @@
-import type { loadExternalContentReferenceByOperation } from '@sva/auth-runtime/server';
+import type { ExternalContentReference } from '@sva/auth-runtime/server';
 
 import type { SvaMainserverProjectInput } from '../types.js';
 import type { MainserverMutationActor } from './mutation-principal.js';
@@ -9,9 +9,7 @@ export type ProjectCreateActorInfo = Exclude<
   Response
 >;
 
-export type ProjectCreateReference = Awaited<
-  ReturnType<typeof loadExternalContentReferenceByOperation>
->;
+export type ProjectCreateReference = ExternalContentReference;
 
 export type ProjectCreateContext = Readonly<{
   actor: MainserverMutationActor;

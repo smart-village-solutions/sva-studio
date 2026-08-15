@@ -424,6 +424,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
    - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen, Audit-Event-Typen und Permissions gegen `<pluginId>.<name>`
+   - halten `createPluginRegistry` und `createPluginActionRegistry` als stabile öffentliche Fassaden; der mengenbasierte Vergleich verknüpfter Access-Anforderungen und die deterministisch geordneten Action-Validierungsphasen liegen frameworkfrei und intern unter `src/plugin-platform/`
+   - bewahren dabei Fehlercodes, Fail-fast-Priorität, reservierte Namespaces, Alias-Auflösung und alle Resource-Capability-Felder als unveränderten Sicherheitsvertrag
 2. `packages/plugin-sdk/src/build-time-registry.ts`
    - verdichtet Plugins, hosteigene Admin-Ressourcen, plugin-spezifische Permissions und Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
    - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish

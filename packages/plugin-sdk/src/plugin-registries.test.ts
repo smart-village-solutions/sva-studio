@@ -38,10 +38,53 @@ import {
   mergePluginRouteDefinitions,
   mergePluginTranslations,
   resolveStudioContentDetailPath,
+  type UiAccessRequirement,
   type PluginDefinition,
 } from './index.js';
 
 const component = () => null;
+
+const tenantRequirement = (
+  overrides: Partial<Extract<UiAccessRequirement, { kind: 'tenant' }>> = {}
+): Extract<UiAccessRequirement, { kind: 'tenant' }> => ({
+  kind: 'tenant',
+  moduleId: 'news',
+  actions: { mode: 'allOf', values: ['news.read'] },
+  ...overrides,
+});
+
+const pluginWithLinkedRequirements = (
+  actionRequirement: UiAccessRequirement | undefined,
+  ...routeRequirements: [] | [UiAccessRequirement | undefined]
+): PluginDefinition => {
+  const resolvedRouteRequirement =
+    routeRequirements.length === 0 ? actionRequirement : routeRequirements[0];
+
+  return {
+    id: 'news',
+    displayName: 'News',
+    permissions: [
+      { id: 'news.read', titleKey: 'news.permissions.read' },
+      { id: 'news.create', titleKey: 'news.permissions.create' },
+    ],
+    actions: [
+      {
+        id: 'news.open',
+        titleKey: 'news.actions.open',
+        accessRequirement: actionRequirement,
+      },
+    ],
+    routes: [
+      {
+        id: 'news-open',
+        path: '/plugins/news/open',
+        actionId: 'news.open',
+        accessRequirement: resolvedRouteRequirement,
+        component,
+      },
+    ],
+  };
+};
 
 const newsPlugin: PluginDefinition = {
   id: 'news',
@@ -215,6 +258,208 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrow('plugin_access_requirement_missing:news:news-list:news.read');
+  });
+
+  describe('plugin access requirement characterization', () => {
+    it('accepts absent or structurally identical linked requirements', () => {
+      expect(() => createPluginRegistry([pluginWithLinkedRequirements(undefined)])).not.toThrow();
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement(),
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.read'] } })
+          ),
+        ])
+      ).not.toThrow();
+    });
+
+    it('rejects a requirement present on only one linked contribution', () => {
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(tenantRequirement(), undefined)])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+      expect(() =>
+        createPluginRegistry([pluginWithLinkedRequirements(undefined, tenantRequirement())])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+    });
+
+    it.each([
+      ['public', { kind: 'public' } as const],
+      ['authenticated', { kind: 'authenticated' } as const],
+      [
+        'platform',
+        { kind: 'platform', roles: { mode: 'allOf', values: ['platform.admin'] } } as const,
+      ],
+    ])('rejects the non-tenant %s kind before linked comparison', (kind, requirement) => {
+      expect(() => createPluginRegistry([pluginWithLinkedRequirements(requirement)])).toThrow(
+        `plugin_access_requirement_scope_invalid:news:news.open:${kind}`
+      );
+    });
+
+    it('treats action values as sets while preserving mode semantics', () => {
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({
+              actions: { mode: 'allOf', values: ['news.read', 'news.create'] },
+            }),
+            tenantRequirement({
+              actions: { mode: 'allOf', values: ['news.create', 'news.read'] },
+            })
+          ),
+        ])
+      ).not.toThrow();
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.read', 'news.read'] } }),
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.read'] } })
+          ),
+        ])
+      ).not.toThrow();
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.read'] } }),
+            tenantRequirement({ actions: { mode: 'anyOf', values: ['news.read'] } })
+          ),
+        ])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.read'] } }),
+            tenantRequirement({ actions: { mode: 'allOf', values: ['news.create'] } })
+          ),
+        ])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+    });
+
+    it('keeps empty actions, module mismatch, resource context, and legacy errors distinct', () => {
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({ actions: { mode: 'allOf', values: [] } })
+          ),
+        ])
+      ).toThrow('plugin_access_requirement_actions_missing:news:news.open');
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement(),
+            tenantRequirement({ moduleId: 'events' })
+          ),
+        ])
+      ).toThrow('plugin_access_requirement_module_mismatch:news:news-open:events');
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement(),
+            tenantRequirement({ resourceContext: 'collection' })
+          ),
+        ])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+
+      expect(() =>
+        createPluginRegistry([
+          {
+            ...pluginWithLinkedRequirements(tenantRequirement()),
+            actions: [
+              {
+                id: 'news.open',
+                titleKey: 'news.actions.open',
+                requiredAction: 'news.create',
+                accessRequirement: tenantRequirement(),
+              },
+            ],
+          },
+        ])
+      ).toThrow('plugin_access_requirement_legacy_mismatch:news:news.open:news.create');
+    });
+
+    it.each([
+      ['action', { action: 'news.create' }],
+      ['allowed', { allowed: false }],
+      ['instanceId', { instanceId: 'instance-2' }],
+      ['organizationId', { organizationId: 'organization-2' }],
+      ['resourceType', { resourceType: 'news.category' }],
+      ['resourceId', { resourceId: 'article-2' }],
+    ] as const)('compares resource capability field %s exactly', (_field, override) => {
+      const capability = {
+        action: 'news.read',
+        allowed: true,
+        instanceId: 'instance-1',
+        organizationId: 'organization-1',
+        resourceType: 'news.article',
+        resourceId: 'article-1',
+      } as const;
+
+      expect(() =>
+        createPluginRegistry([
+          pluginWithLinkedRequirements(
+            tenantRequirement({ resourceCapability: capability }),
+            tenantRequirement({ resourceCapability: { ...capability, ...override } })
+          ),
+        ])
+      ).toThrow('plugin_route_action_access_requirement_mismatch:news:news-open:news.open');
+    });
+  });
+
+  it('keeps action-registry validation priority and empty-action behavior stable', () => {
+    expect(
+      createPluginActionRegistry([{ id: 'news', displayName: 'News', routes: [], actions: [] }])
+        .size
+    ).toBe(0);
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'core',
+          displayName: 'Core',
+          routes: [],
+          actions: [{ id: 'invalid', titleKey: '' }],
+        },
+      ])
+    ).toThrow('reserved_plugin_action_namespace:core');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [],
+          actions: [{ id: 'invalid', titleKey: '' }],
+        },
+      ])
+    ).toThrow('invalid_plugin_action_definition:invalid');
+
+    expect(() =>
+      createPluginActionRegistry([
+        {
+          id: 'news',
+          displayName: 'News',
+          routes: [],
+          actions: [{ id: 'events.read', titleKey: 'events.actions.read' }],
+        },
+      ])
+    ).toThrow('plugin_action_namespace_mismatch:news:events:events.read');
+
+    expect(() =>
+      createPluginActionRegistry([
+        { id: 'news', displayName: 'News', routes: [] },
+        {
+          id: 'news',
+          displayName: 'Duplicate',
+          routes: [],
+          actions: [{ id: 'invalid', titleKey: '' }],
+        },
+      ])
+    ).toThrow('duplicate_plugin:news');
   });
 
   it('rejects editable content contributions without a host history binding', () => {

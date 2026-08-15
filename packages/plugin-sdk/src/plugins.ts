@@ -19,6 +19,12 @@ import type {
   PluginJobTypeDefinition,
 } from './plugin-operations.js';
 import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
+import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
+import {
+  assertPluginActionDefinitionAllowedKeys,
+  createPluginActionRegistry as createPluginActionRegistryInternal,
+  normalizePluginActionDefinition,
+} from './plugin-platform/plugin-actions.js';
 
 export type PluginRouteGuard = string;
 
@@ -118,8 +124,6 @@ export type PluginDefinition = {
   readonly translations?: PluginTranslations;
 };
 
-const LEGACY_ACTION_ALIAS_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
 const trimTrailingSlashes = (value: string): string => {
   let endIndex = value.length;
   while (endIndex > 0 && value[endIndex - 1] === '/') {
@@ -163,14 +167,6 @@ const navigationItemAllowedKeys = new Set([
   'actionId',
   'requiredAction',
   'accessRequirement',
-] as const);
-const actionDefinitionAllowedKeys = new Set([
-  'id',
-  'titleKey',
-  'requiredAction',
-  'accessRequirement',
-  'featureFlag',
-  'legacyAliases',
 ] as const);
 const permissionDefinitionAllowedKeys = new Set(['id', 'titleKey', 'descriptionKey'] as const);
 const contentTypeDefinitionAllowedKeys = new Set([
@@ -300,52 +296,6 @@ export const collectPluginAccessTransitionDiagnostics = (
     return diagnostics;
   });
 
-const normalizeLegacyAliases = (
-  actionId: string,
-  aliases: readonly string[] | undefined
-): readonly string[] | undefined => {
-  if (!aliases || aliases.length === 0) {
-    return undefined;
-  }
-
-  const normalizedAliases = aliases.map((alias) => normalizePluginIdentifier(alias));
-  if (
-    normalizedAliases.some(
-      (alias) => alias.length === 0 || LEGACY_ACTION_ALIAS_PATTERN.test(alias) === false
-    )
-  ) {
-    throw new Error(`invalid_plugin_action_alias:${actionId}`);
-  }
-  if (normalizedAliases.some((alias) => alias === actionId)) {
-    throw new Error(`duplicate_plugin_action_alias:${actionId}:${actionId}`);
-  }
-
-  const uniqueAliases = [...new Set(normalizedAliases)];
-  if (uniqueAliases.length !== normalizedAliases.length) {
-    const duplicateAlias = normalizedAliases.find(
-      (alias, index) => normalizedAliases.indexOf(alias) !== index
-    );
-    throw new Error(`duplicate_plugin_action_alias:${actionId}:${duplicateAlias}`);
-  }
-
-  return uniqueAliases;
-};
-
-const normalizePluginActionDefinition = (
-  action: PluginActionDefinition
-): PluginActionDefinition => {
-  const actionId = normalizePluginIdentifier(action.id);
-  const titleKey = normalizePluginIdentifier(action.titleKey);
-
-  return {
-    ...action,
-    id: actionId,
-    titleKey,
-    featureFlag: normalizePluginIdentifier(action.featureFlag ?? '') || undefined,
-    legacyAliases: normalizeLegacyAliases(actionId, action.legacyAliases),
-  };
-};
-
 const normalizePluginPermissionDefinition = (
   permission: PluginPermissionDefinition
 ): PluginPermissionDefinition => ({
@@ -469,35 +419,6 @@ const assertPluginAccessRequirement = (
   }
 };
 
-const hasMatchingPluginAccessRequirement = (
-  left: UiAccessRequirement | undefined,
-  right: UiAccessRequirement | undefined
-): boolean => {
-  if (!left || !right) {
-    return left === right;
-  }
-  if (left.kind !== 'tenant' || right.kind !== 'tenant') {
-    return left.kind === right.kind;
-  }
-  const leftActions = new Set(left.actions.values);
-  const rightActions = new Set(right.actions.values);
-  const leftCapability = left.resourceCapability;
-  const rightCapability = right.resourceCapability;
-  return (
-    left.moduleId === right.moduleId &&
-    left.resourceContext === right.resourceContext &&
-    left.actions.mode === right.actions.mode &&
-    leftActions.size === rightActions.size &&
-    [...leftActions].every((action) => rightActions.has(action)) &&
-    leftCapability?.action === rightCapability?.action &&
-    leftCapability?.allowed === rightCapability?.allowed &&
-    leftCapability?.instanceId === rightCapability?.instanceId &&
-    leftCapability?.organizationId === rightCapability?.organizationId &&
-    leftCapability?.resourceType === rightCapability?.resourceType &&
-    leftCapability?.resourceId === rightCapability?.resourceId
-  );
-};
-
 const isStandardCrudPluginRoute = (pluginNamespace: string, path: string): boolean => {
   const normalizedPath = trimTrailingSlashes(path.trim()) || '/';
   const pluginRoot = `/plugins/${pluginNamespace}`;
@@ -530,12 +451,7 @@ export const definePluginActions = <const TActions extends readonly PluginAction
   }
 
   for (const action of actions) {
-    assertPluginContributionAllowedKeys(
-      action,
-      actionDefinitionAllowedKeys,
-      normalizedNamespace,
-      normalizePluginIdentifier(action.id)
-    );
+    assertPluginActionDefinitionAllowedKeys(action, normalizedNamespace);
   }
 
   const normalizedActions = actions.map((action) =>
@@ -757,12 +673,7 @@ const assertPluginRegistryActions = ({
   pluginNamespace,
 }: PluginRegistryValidationContext): void => {
   for (const action of plugin.actions ?? []) {
-    assertPluginContributionAllowedKeys(
-      action,
-      actionDefinitionAllowedKeys,
-      pluginNamespace,
-      normalizePluginIdentifier(action.id)
-    );
+    assertPluginActionDefinitionAllowedKeys(action, pluginNamespace);
     assertPluginPermissionReference(plugin, pluginNamespace, action.id, action.requiredAction);
     assertPluginAccessRequirement(
       plugin,
@@ -1228,88 +1139,7 @@ export const mergePluginModuleIamContracts = (
 
 export const createPluginActionRegistry = (
   plugins: readonly PluginDefinition[]
-): ReadonlyMap<string, PluginActionRegistryEntry> => {
-  const registry = new Map<string, PluginActionRegistryEntry>();
-  const pluginNamespaces = new Set<string>();
-
-  for (const plugin of plugins) {
-    const pluginNamespace = normalizePluginIdentifier(plugin.id);
-    const pluginDisplayName = normalizePluginIdentifier(plugin.displayName);
-    if (pluginNamespace.length === 0 || pluginDisplayName.length === 0) {
-      throw new Error('invalid_plugin_definition');
-    }
-    if (isReservedPluginNamespace(pluginNamespace)) {
-      throw new Error(`reserved_plugin_action_namespace:${pluginNamespace}`);
-    }
-    if (pluginNamespaces.has(pluginNamespace)) {
-      throw new Error(`duplicate_plugin:${pluginNamespace}`);
-    }
-
-    pluginNamespaces.add(pluginNamespace);
-
-    for (const action of plugin.actions ?? []) {
-      assertPluginContributionAllowedKeys(
-        action,
-        actionDefinitionAllowedKeys,
-        pluginNamespace,
-        normalizePluginIdentifier(action.id)
-      );
-      const normalizedAction = normalizePluginActionDefinition(action);
-      const actionId = normalizedAction.id;
-      const actionTitleKey = normalizedAction.titleKey;
-      const legacyAliases = normalizedAction.legacyAliases;
-      if (actionTitleKey.length === 0) {
-        throw new Error(`invalid_plugin_action_definition:${actionId}`);
-      }
-
-      const parsed = parseNamespacedPluginIdentifier(actionId);
-      if (parsed === undefined) {
-        throw new Error(`invalid_plugin_action_id:${actionId}`);
-      }
-      if (parsed.namespace !== pluginNamespace) {
-        throw new Error(
-          `plugin_action_namespace_mismatch:${pluginNamespace}:${parsed.namespace}:${actionId}`
-        );
-      }
-      if (registry.has(actionId)) {
-        throw new Error(`duplicate_plugin_action:${actionId}`);
-      }
-
-      registry.set(actionId, {
-        actionId,
-        namespace: parsed.namespace,
-        actionName: parsed.name,
-        ownerPluginId: pluginNamespace,
-        titleKey: actionTitleKey,
-        requiredAction: normalizedAction.requiredAction,
-        accessRequirement: normalizedAction.accessRequirement,
-        featureFlag: normalizedAction.featureFlag,
-        legacyAliases,
-      });
-
-      for (const legacyAlias of legacyAliases ?? []) {
-        if (registry.has(legacyAlias)) {
-          throw new Error(`duplicate_plugin_action:${legacyAlias}`);
-        }
-
-        registry.set(legacyAlias, {
-          actionId,
-          namespace: parsed.namespace,
-          actionName: parsed.name,
-          ownerPluginId: pluginNamespace,
-          titleKey: actionTitleKey,
-          requiredAction: normalizedAction.requiredAction,
-          accessRequirement: normalizedAction.accessRequirement,
-          featureFlag: normalizedAction.featureFlag,
-          legacyAliases,
-          deprecatedAlias: legacyAlias,
-        });
-      }
-    }
-  }
-
-  return registry;
-};
+): ReadonlyMap<string, PluginActionRegistryEntry> => createPluginActionRegistryInternal(plugins);
 
 export const createPluginPermissionRegistry = (
   plugins: readonly PluginDefinition[]

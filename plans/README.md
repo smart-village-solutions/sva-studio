@@ -21,17 +21,23 @@ Sonar-Analyse vom `2026-08-15T18:26:07+0000` trägt exakt dieselbe Revision.
 
 | Plan | Titel | Priorität | Sonar vorher | Abhängigkeit | Status |
 |---|---|---:|---:|---|---|
-| 027 | Kryptografisch sichere Content-Media-UI-IDs | P0 | S2245: 1 | keine | TODO |
-| 028 | Organisationstechnische Identitäten linear normalisieren | P1 | S8786: 2 | 027 | TODO |
-| 029 | Waste-Tenant-Datenbankkennungen linear ableiten | P1 | S8786: 1 | 027, Konfliktprüfung #983/#984 | TODO |
-| 030 | Organisation-Keys linear normalisieren | P1 | S8786: 1 | 027 | TODO |
-| 031 | Changelog-HTML-Erkennung linear begrenzen | P1 | S8786: 1 | 027 | TODO |
-| 032 | Media-Base64url-Padding linear entfernen | P2 | S8786: 1 | 027 | TODO |
+| 027 | Kryptografisch sichere Content-Media-UI-IDs | P0 | S2245: 1 | keine | DONE (#1016, `c589cf958`) |
+| 028 | Organisationstechnische Identitäten linear normalisieren | P1 | S8786: 2 | 027 | DONE (#1015, `65c9ce94e`) |
+| 029 | Waste-Tenant-Datenbankkennungen linear ableiten | P1 | S8786: 1 | 027, Konfliktprüfung #983/#984 | DONE (#1014, `0206b7b1f`) |
+| 030 | Organisation-Keys linear normalisieren | P1 | S8786: 1 | 027 | DONE (#1017, `ce24778d4`) |
+| 031 | Changelog-HTML-Erkennung linear begrenzen | P1 | S8786: 1 | 027 | DONE (#1018, `828452b09`) |
+| 032 | Media-Base64url-Padding linear entfernen | P2 | S8786: 1 | 027 | DONE (#1019, `d5d56af4e`) |
+| 033 | Fehlenden Web-Crypto-Runtime-Vertrag spezifisch typisieren | P0 | S7786: 1 | 027 und dessen Main-Sonar-Scan | DONE (#1020, `46fa0343a`) |
 
 Plan 027 wird separat zuerst gemergt und über den Main-Sonar-Scan abgenommen.
 Danach dürfen 028–032 bei disjunkten Source-/Vertragsgrenzen parallel laufen.
 Die sechs S8786-Befunde sind absichtlich nach Ownership und Testpfad getrennt;
 eine gemeinsame Regex-Sammel-PR wäre fachlich nicht reviewbar.
+
+Plan 033 entstand als expliziter Zusatzplan aus dem Main-Sonar-Scan nach Plan
+027: Der korrekt fail-closed implementierte Runtime-Vertrag war sicher, löste
+aber einen neuen S7786-Befund zur unspezifischen Fehlerklasse aus. Der Zusatz
+wurde separat charakterisiert, geprüft und ohne neue Fallback-Semantik gemergt.
 
 ### Zurückgestellt nach Live-Prüfung
 

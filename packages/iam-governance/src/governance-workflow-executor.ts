@@ -9,6 +9,7 @@ import {
   normalizeDelegationPayload,
   resolveDelegationAccountDecision,
   resolveDelegationDecision,
+  resolveDelegationStatus,
 } from './governance-delegation-decision.js';
 import { readNumber, readString } from './input-readers.js';
 import type { QueryClient } from './query-client.js';
@@ -466,13 +467,12 @@ const createDelegation = async (
 ): Promise<GovernanceWorkflowResponse> => {
   const delegationDecision = resolveDelegationDecision(
     normalizeDelegationPayload(payload, actor.keycloakSubject),
-    deps.isUuid,
-    Date.now()
+    deps.isUuid
   );
   if (!delegationDecision.ok) {
     return { operation: 'create_delegation', status: 'error', reasonCode: delegationDecision.reasonCode };
   }
-  const { approverSubject, delegateeSubject, delegatorSubject, endDate, roleId, startDate, status, ticketId, ticketState } =
+  const { approverSubject, delegateeSubject, delegatorSubject, endDate, roleId, startDate, ticketId, ticketState } =
     delegationDecision.value;
 
   const resolvedDelegatorAccountId = await resolveGovernanceAccountId(client, {
@@ -496,6 +496,7 @@ const createDelegation = async (
     return { operation: 'create_delegation', status: 'error', reasonCode: accountDecision.reasonCode };
   }
   const { approverAccountId, delegateeAccountId, delegatorAccountId } = accountDecision.value;
+  const status = resolveDelegationStatus(startDate, Date.now());
 
   const inserted = await client.query<{ id: string }>(
     `

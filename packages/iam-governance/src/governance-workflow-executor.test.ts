@@ -455,6 +455,40 @@ describe('governance workflow executor', () => {
       });
     });
 
+    it('determines the status after account resolution when the start boundary passes during lookup', async () => {
+      vi.setSystemTime(new Date('2026-01-10T11:59:59.999Z'));
+      const rowsByIndex: readonly (readonly Record<string, unknown>[])[] = [
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [{ id: uuid }],
+        [],
+      ];
+      const queries: { sql: string; params: readonly unknown[] }[] = [];
+      const client: QueryClient = {
+        async query<T>(sql: string, params: readonly unknown[] = []) {
+          const queryIndex = queries.length;
+          queries.push({ sql, params });
+          if (queryIndex === 2) {
+            vi.setSystemTime(new Date('2026-01-10T12:00:00.000Z'));
+          }
+          const rows = rowsByIndex[queryIndex] ?? [];
+          return { rowCount: rows.length, rows: rows as T[] };
+        },
+      };
+
+      await expect(executeDelegation(client, validDelegationPayload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'ok',
+        workflowId: uuid,
+      });
+      expect(queries[3]?.params?.[4]).toBe('active');
+      expect(queries[4]?.params?.[2]).toBe('governance_delegation_created');
+      expect(JSON.parse(String(queries[4]?.params?.[3]))).toMatchObject({
+        action: 'delegation_create',
+      });
+    });
+
     it('returns database_unavailable when persistence does not return an id and emits no audit', async () => {
       const deps = createDeps();
       const { client, queries } = createClient([

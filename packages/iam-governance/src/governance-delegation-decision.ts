@@ -24,7 +24,6 @@ type DelegationDecision = Readonly<{
   ticketState: string;
   startDate: Date;
   endDate: Date;
-  status: 'active' | 'requested';
 }>;
 
 type DelegationDecisionResult =
@@ -50,8 +49,7 @@ export const normalizeDelegationPayload = (
 
 export const resolveDelegationDecision = (
   input: DelegationPayload,
-  isUuid: (value: string) => boolean,
-  now: number
+  isUuid: (value: string) => boolean
 ): DelegationDecisionResult => {
   if (
     !input.delegateeSubject ||
@@ -95,10 +93,12 @@ export const resolveDelegationDecision = (
       ticketState: input.ticketState,
       startDate,
       endDate,
-      status: startDate.getTime() <= now ? 'active' : 'requested',
     },
   };
 };
+
+export const resolveDelegationStatus = (startDate: Date, now: number): 'active' | 'requested' =>
+  startDate.getTime() <= now ? 'active' : 'requested';
 
 type DelegationAccountDecision =
   | Readonly<{

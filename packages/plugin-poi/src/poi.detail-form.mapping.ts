@@ -17,8 +17,12 @@ import {
 } from './poi.detail-form.types.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
-const mapNumberToString = (value?: number) =>
-  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+const mapNumberToString = (value?: number) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '';
+  }
+  return String(value);
+};
 
 const mapGeoLocationToFormValue = (
   value?: { readonly latitude?: number; readonly longitude?: number } | null
@@ -68,37 +72,53 @@ const mapPriceToFormValue = (price?: PoiPriceInformation): PoiPriceFormValue => 
   category: price?.category ?? '',
 });
 
-const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['content'] => ({
-  description: item.description ?? '',
-  mobileDescription: item.mobileDescription ?? '',
-  addresses: item.addresses?.length
-    ? item.addresses.map(mapAddressToFormValue)
-    : [createDefaultAddress()],
-  location: mapLocationToFormValue(item.location),
-  contact: mapContactToFormValue(item.contact),
-  openingHours: item.openingHours?.length
+const mapAddressesToFormValues = (item: PoiContentItem) =>
+  item.addresses?.length ? item.addresses.map(mapAddressToFormValue) : [createDefaultAddress()];
+
+const mapOpeningHoursToFormValues = (item: PoiContentItem) =>
+  item.openingHours?.length
     ? item.openingHours.map((entry) => ({
         ...entry,
         weekday: normalizeOpeningHourWeekday(entry.weekday),
       }))
-    : [createDefaultOpeningHour()],
+    : [createDefaultOpeningHour()];
+
+const mapPricesToFormValues = (item: PoiContentItem) =>
+  item.priceInformations?.length
+    ? item.priceInformations.map(mapPriceToFormValue)
+    : [createDefaultPrice()];
+
+const mapAccessibilityInformationToFormValue = (item: PoiContentItem) => ({
+  ...createDefaultAccessibilityInformation(),
+  description: item.accessibilityInformation?.description ?? '',
+  types: item.accessibilityInformation?.types ?? '',
+  urls: item.accessibilityInformation?.urls?.length ? item.accessibilityInformation.urls : [],
+});
+
+const mapCategoryNamesToFormValue = (item: PoiContentItem): string[] => {
+  if (item.categories?.length) {
+    return item.categories.map((category) => category.name);
+  }
+  return item.categoryName ? [item.categoryName] : [];
+};
+
+const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['content'] => ({
+  description: item.description ?? '',
+  mobileDescription: item.mobileDescription ?? '',
+  addresses: mapAddressesToFormValues(item),
+  location: mapLocationToFormValue(item.location),
+  contact: mapContactToFormValue(item.contact),
+  openingHours: mapOpeningHoursToFormValues(item),
   webUrls: item.webUrls?.length ? item.webUrls : [createDefaultWebUrl()],
   operator: {
     name: item.operatingCompany?.name ?? '',
     address: mapAddressToFormValue(item.operatingCompany?.address),
     contact: mapContactToFormValue(item.operatingCompany?.contact),
   },
-  prices: item.priceInformations?.length
-    ? item.priceInformations.map(mapPriceToFormValue)
-    : [createDefaultPrice()],
+  prices: mapPricesToFormValues(item),
   mediaContents: item.mediaContents?.length ? item.mediaContents : [],
   certificates: item.certificates?.length ? item.certificates : [createDefaultCertificate()],
-  accessibilityInformation: {
-    ...createDefaultAccessibilityInformation(),
-    description: item.accessibilityInformation?.description ?? '',
-    types: item.accessibilityInformation?.types ?? '',
-    urls: item.accessibilityInformation?.urls?.length ? item.accessibilityInformation.urls : [],
-  },
+  accessibilityInformation: mapAccessibilityInformationToFormValue(item),
   tagsText: item.tags?.join(', ') ?? '',
   payloadText: JSON.stringify(item.payload === undefined ? {} : item.payload, null, 2),
 });
@@ -106,11 +126,7 @@ const mapPoiContentToFormValues = (item: PoiContentItem): PoiDetailFormValues['c
 export const mapPoiItemToDetailFormValues = (item: PoiContentItem): PoiDetailFormValues => ({
   name: item.name,
   basis: {
-    categories: item.categories?.length
-      ? item.categories.map((category) => category.name)
-      : item.categoryName
-        ? [item.categoryName]
-        : [],
+    categories: mapCategoryNamesToFormValue(item),
     active: item.active !== false,
   },
   content: mapPoiContentToFormValues(item),

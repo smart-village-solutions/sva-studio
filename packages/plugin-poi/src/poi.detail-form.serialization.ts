@@ -1,7 +1,12 @@
 import type {
   PoiAccessibilityInformation,
+  PoiAddress,
   PoiContact,
+  PoiLocation,
   PoiMediaContent,
+  PoiOpeningHour,
+  PoiOperatingCompany,
+  PoiPriceInformation,
   PoiWebUrl,
 } from './poi.content.types.js';
 import type { PoiFormInput } from './poi.types.js';
@@ -19,6 +24,15 @@ import {
   serializeTags,
 } from './poi.detail-form.serialization.metadata.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
+
+type MutablePartial<T> = {
+  -readonly [Key in keyof T]?: T[Key];
+};
+
+const withoutUndefined = <T extends Record<string, unknown>>(value: T): MutablePartial<T> =>
+  Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined)
+  ) as MutablePartial<T>;
 
 const compactString = (value?: string | null) => {
   const trimmed = value?.trim();
@@ -58,168 +72,161 @@ const compactGeoLocation = (value?: PoiFormGeoLocationValue | null) => {
   return latitude !== undefined || longitude !== undefined ? { latitude, longitude } : undefined;
 };
 
+const compactWebUrl = (entry?: PoiWebUrl | null): PoiWebUrl | undefined => {
+  const url = compactString(entry?.url);
+  if (!url) {
+    return undefined;
+  }
+  const description = compactString(entry?.description);
+  return description ? { url, description } : { url };
+};
+
 const compactWebUrls = (value?: readonly PoiWebUrl[] | null) =>
-  (value ?? [])
-    .map((entry) => ({
-      ...(compactString(entry?.url) ? { url: compactString(entry?.url) as string } : {}),
-      ...(compactString(entry?.description)
-        ? { description: compactString(entry?.description) }
-        : {}),
-    }))
-    .filter((entry): entry is PoiWebUrl => Boolean(entry.url));
+  (value ?? []).map(compactWebUrl).filter((entry): entry is PoiWebUrl => entry !== undefined);
 
 const compactAddress = (value?: PoiAddressFormValue | null) => {
-  const geoLocation = compactGeoLocation(value?.geoLocation);
-  const address = {
-    ...(compactString(value?.addition) ? { addition: compactString(value?.addition) } : {}),
-    ...(compactString(value?.street) ? { street: compactString(value?.street) } : {}),
-    ...(compactString(value?.zip) ? { zip: compactString(value?.zip) } : {}),
-    ...(compactString(value?.city) ? { city: compactString(value?.city) } : {}),
-    ...(compactString(value?.kind) ? { kind: compactString(value?.kind) } : {}),
-    ...(geoLocation ? { geoLocation } : {}),
-  };
+  const address: MutablePartial<PoiAddress> = withoutUndefined({
+    addition: compactString(value?.addition),
+    street: compactString(value?.street),
+    zip: compactString(value?.zip),
+    city: compactString(value?.city),
+    kind: compactString(value?.kind),
+    geoLocation: compactGeoLocation(value?.geoLocation),
+  });
   return Object.keys(address).length > 0 ? address : undefined;
 };
 
 const compactContact = (value?: PoiContact | null) => {
   const webUrls = compactWebUrls(value?.webUrls);
-  const contact = {
-    ...(compactString(value?.firstName) ? { firstName: compactString(value?.firstName) } : {}),
-    ...(compactString(value?.lastName) ? { lastName: compactString(value?.lastName) } : {}),
-    ...(compactString(value?.phone) ? { phone: compactString(value?.phone) } : {}),
-    ...(compactString(value?.fax) ? { fax: compactString(value?.fax) } : {}),
-    ...(compactString(value?.email) ? { email: compactString(value?.email) } : {}),
-    ...(webUrls.length > 0 ? { webUrls } : {}),
-  };
+  const contact: MutablePartial<PoiContact> = withoutUndefined({
+    firstName: compactString(value?.firstName),
+    lastName: compactString(value?.lastName),
+    phone: compactString(value?.phone),
+    fax: compactString(value?.fax),
+    email: compactString(value?.email),
+    webUrls: webUrls.length > 0 ? webUrls : undefined,
+  });
   return Object.keys(contact).length > 0 ? contact : undefined;
 };
 
 const compactLocation = (value?: PoiLocationFormValue | null) => {
-  const geoLocation = compactGeoLocation(value?.geoLocation);
-  const location = {
-    ...(compactString(value?.name) ? { name: compactString(value?.name) } : {}),
-    ...(compactString(value?.department) ? { department: compactString(value?.department) } : {}),
-    ...(compactString(value?.district) ? { district: compactString(value?.district) } : {}),
-    ...(compactString(value?.regionName) ? { regionName: compactString(value?.regionName) } : {}),
-    ...(compactString(value?.state) ? { state: compactString(value?.state) } : {}),
-    ...(geoLocation ? { geoLocation } : {}),
-  };
+  const location: MutablePartial<PoiLocation> = withoutUndefined({
+    name: compactString(value?.name),
+    department: compactString(value?.department),
+    district: compactString(value?.district),
+    regionName: compactString(value?.regionName),
+    state: compactString(value?.state),
+    geoLocation: compactGeoLocation(value?.geoLocation),
+  });
   return Object.keys(location).length > 0 ? location : undefined;
+};
+
+const serializeOpeningHour = (
+  entry: PoiDetailFormValues['content']['openingHours'][number]
+): PoiOpeningHour | undefined => {
+  const weekday = compactString(entry?.weekday);
+  const result: MutablePartial<PoiOpeningHour> = withoutUndefined({
+    weekday: weekday ? normalizeOpeningHourWeekday(weekday) : undefined,
+    dateFrom: compactString(entry?.dateFrom),
+    dateTo: compactString(entry?.dateTo),
+    timeFrom: compactString(entry?.timeFrom),
+    timeTo: compactString(entry?.timeTo),
+    sortNumber: compactFiniteNumber(entry?.sortNumber),
+    open: entry?.open,
+    useYear: entry?.useYear,
+    description: compactString(entry?.description),
+  });
+  return Object.keys(result).length > 0 && hasSubstantiveFields(result, 'open')
+    ? result
+    : undefined;
 };
 
 const serializeOpeningHours = (values: PoiDetailFormValues['content']['openingHours']) =>
   (values ?? [])
-    .map((entry) => ({
-      ...(compactString(entry?.weekday)
-        ? { weekday: normalizeOpeningHourWeekday(compactString(entry?.weekday)) }
-        : {}),
-      ...(compactString(entry?.dateFrom) ? { dateFrom: compactString(entry?.dateFrom) } : {}),
-      ...(compactString(entry?.dateTo) ? { dateTo: compactString(entry?.dateTo) } : {}),
-      ...(compactString(entry?.timeFrom) ? { timeFrom: compactString(entry?.timeFrom) } : {}),
-      ...(compactString(entry?.timeTo) ? { timeTo: compactString(entry?.timeTo) } : {}),
-      ...(compactFiniteNumber(entry?.sortNumber) !== undefined
-        ? { sortNumber: compactFiniteNumber(entry?.sortNumber) }
-        : {}),
-      ...(entry?.open !== undefined ? { open: entry.open } : {}),
-      ...(entry?.useYear !== undefined ? { useYear: entry.useYear } : {}),
-      ...(compactString(entry?.description)
-        ? { description: compactString(entry?.description) }
-        : {}),
-    }))
-    .filter((entry) => {
-      const keys = Object.keys(entry);
-      if (keys.length === 0) {
-        return false;
-      }
+    .map(serializeOpeningHour)
+    .filter((entry): entry is PoiOpeningHour => entry !== undefined);
 
-      return hasSubstantiveFields(entry, 'open');
-    });
+const serializePrice = (
+  entry: PoiDetailFormValues['content']['prices'][number]
+): PoiPriceInformation | undefined => {
+  const result: MutablePartial<PoiPriceInformation> = withoutUndefined({
+    name: compactString(entry?.name),
+    amount: compactValidatedNumber(entry?.amount),
+    groupPrice: entry?.groupPrice,
+    ageFrom: compactFiniteNumber(entry?.ageFrom),
+    ageTo: compactFiniteNumber(entry?.ageTo),
+    minAdultCount: compactFiniteNumber(entry?.minAdultCount),
+    maxAdultCount: compactFiniteNumber(entry?.maxAdultCount),
+    minChildrenCount: compactFiniteNumber(entry?.minChildrenCount),
+    maxChildrenCount: compactFiniteNumber(entry?.maxChildrenCount),
+    description: compactString(entry?.description),
+    category: compactString(entry?.category),
+  });
+  return Object.keys(result).length > 0 && hasSubstantiveFields(result, 'groupPrice')
+    ? result
+    : undefined;
+};
 
 const serializePrices = (values: PoiDetailFormValues['content']['prices']) =>
   (values ?? [])
-    .map((entry) => ({
-      ...(compactString(entry?.name) ? { name: compactString(entry?.name) } : {}),
-      ...(compactValidatedNumber(entry?.amount) !== undefined
-        ? { amount: compactValidatedNumber(entry?.amount) }
-        : {}),
-      ...(entry?.groupPrice !== undefined ? { groupPrice: entry.groupPrice } : {}),
-      ...(compactFiniteNumber(entry?.ageFrom) !== undefined
-        ? { ageFrom: compactFiniteNumber(entry?.ageFrom) }
-        : {}),
-      ...(compactFiniteNumber(entry?.ageTo) !== undefined
-        ? { ageTo: compactFiniteNumber(entry?.ageTo) }
-        : {}),
-      ...(compactFiniteNumber(entry?.minAdultCount) !== undefined
-        ? { minAdultCount: compactFiniteNumber(entry?.minAdultCount) }
-        : {}),
-      ...(compactFiniteNumber(entry?.maxAdultCount) !== undefined
-        ? { maxAdultCount: compactFiniteNumber(entry?.maxAdultCount) }
-        : {}),
-      ...(compactFiniteNumber(entry?.minChildrenCount) !== undefined
-        ? { minChildrenCount: compactFiniteNumber(entry?.minChildrenCount) }
-        : {}),
-      ...(compactFiniteNumber(entry?.maxChildrenCount) !== undefined
-        ? { maxChildrenCount: compactFiniteNumber(entry?.maxChildrenCount) }
-        : {}),
-      ...(compactString(entry?.description)
-        ? { description: compactString(entry?.description) }
-        : {}),
-      ...(compactString(entry?.category) ? { category: compactString(entry?.category) } : {}),
-    }))
-    .filter((entry) => {
-      const keys = Object.keys(entry);
-      if (keys.length === 0) {
-        return false;
-      }
+    .map(serializePrice)
+    .filter((entry): entry is PoiPriceInformation => entry !== undefined);
 
-      return hasSubstantiveFields(entry, 'groupPrice');
-    });
+const serializeMediaContent = (entry: PoiMediaContent): PoiMediaContent | undefined => {
+  const result: MutablePartial<PoiMediaContent> = withoutUndefined({
+    captionText: compactString(entry?.captionText),
+    copyright: compactString(entry?.copyright),
+    height: compactFiniteNumber(entry?.height),
+    width: compactFiniteNumber(entry?.width),
+    contentType: normalizeMediaContentType(entry?.contentType),
+    sourceUrl: compactWebUrl(entry?.sourceUrl),
+  });
+  return Object.keys(result).length > 0 ? result : undefined;
+};
 
 const serializeMediaContents = (values: readonly PoiMediaContent[]) =>
   (values ?? [])
-    .map((entry) => ({
-      ...(compactString(entry?.captionText)
-        ? { captionText: compactString(entry?.captionText) }
-        : {}),
-      ...(compactString(entry?.copyright) ? { copyright: compactString(entry?.copyright) } : {}),
-      ...(compactFiniteNumber(entry?.height) !== undefined
-        ? { height: compactFiniteNumber(entry?.height) }
-        : {}),
-      ...(compactFiniteNumber(entry?.width) !== undefined
-        ? { width: compactFiniteNumber(entry?.width) }
-        : {}),
-      ...(normalizeMediaContentType(entry?.contentType)
-        ? { contentType: normalizeMediaContentType(entry?.contentType) }
-        : {}),
-      ...(entry?.sourceUrl && compactWebUrls([entry.sourceUrl]).length > 0
-        ? { sourceUrl: compactWebUrls([entry.sourceUrl])[0] }
-        : {}),
-    }))
-    .filter((entry) => Object.keys(entry).length > 0);
+    .map(serializeMediaContent)
+    .filter((entry): entry is PoiMediaContent => entry !== undefined);
 
 const serializeAccessibilityInformation = (value: PoiAccessibilityInformation) => {
   const urls = compactWebUrls(value.urls);
-  return {
-    ...(compactString(value.description) ? { description: compactString(value.description) } : {}),
-    ...(compactString(value.types) ? { types: compactString(value.types) } : {}),
-    ...(urls.length > 0 ? { urls } : {}),
-  };
+  return withoutUndefined({
+    description: compactString(value.description),
+    types: compactString(value.types),
+    urls: urls.length > 0 ? urls : undefined,
+  });
+};
+
+const serializeCategories = (values: readonly string[]): Partial<PoiFormInput> => {
+  const categoryNames = compactCategoryNames(values);
+  return categoryNames.length > 0
+    ? {
+        categoryName: categoryNames[0],
+        categories: categoryNames.map((name) => ({ name })),
+      }
+    : {};
+};
+
+const serializeOperator = (
+  value: PoiDetailFormValues['content']['operator']
+): PoiOperatingCompany | undefined => {
+  const operator: MutablePartial<PoiOperatingCompany> = withoutUndefined({
+    name: compactString(value.name),
+    address: compactAddress(value.address),
+    contact: compactContact(value.contact),
+  });
+  return Object.keys(operator).length > 0 ? operator : undefined;
 };
 
 export const mapPoiDetailFormValuesToInput = (
   values: PoiDetailFormValues,
   payload: unknown
 ): PoiFormInput => {
+  const categories = serializeCategories(values.basis.categories);
   const contact = compactContact(values.content.contact);
-  const operatorAddress = compactAddress(values.content.operator.address);
-  const operatorContact = compactContact(values.content.operator.contact);
-  const operator = {
-    ...(compactString(values.content.operator.name)
-      ? { name: compactString(values.content.operator.name) }
-      : {}),
-    ...(operatorAddress ? { address: operatorAddress } : {}),
-    ...(operatorContact ? { contact: operatorContact } : {}),
-  };
+  const location = compactLocation(values.content.location);
+  const operator = serializeOperator(values.content.operator);
 
   return {
     name: values.name.trim(),
@@ -230,22 +237,15 @@ export const mapPoiDetailFormValuesToInput = (
     active: values.basis.active,
     externalId: values.settings.externalId?.trim() ?? '',
     keywords: values.settings.keywords?.trim() ?? '',
-    ...(compactCategoryNames(values.basis.categories).length > 0
-      ? {
-          categoryName: compactCategoryNames(values.basis.categories)[0],
-          categories: compactCategoryNames(values.basis.categories).map((name) => ({ name })),
-        }
-      : {}),
+    ...categories,
     addresses: (values.content.addresses ?? [])
       .map((entry) => compactAddress(entry))
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
     ...(contact ? { contact } : {}),
-    ...(compactLocation(values.content.location)
-      ? { location: compactLocation(values.content.location) }
-      : {}),
+    ...(location ? { location } : {}),
     openingHours: serializeOpeningHours(values.content.openingHours),
     webUrls: compactWebUrls(values.content.webUrls),
-    ...(Object.keys(operator).length > 0 ? { operatingCompany: operator } : {}),
+    ...(operator ? { operatingCompany: operator } : {}),
     priceInformations: serializePrices(values.content.prices),
     mediaContents: serializeMediaContents(values.content.mediaContents),
     certificates: serializeCertificates(values.content.certificates),

@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine; Domänennähe zu Plan 018 ist ohne Source- oder Vertragsüberschneidung kein Konflikt
 - **Kategorie:** Produktions-UI, CRAP, Testbarkeit
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1004, Merge-Commit `07d12bb803b93dcce8894a348d99f5a704ea7d5a`
 - **Fallow vorher:** `CompletePublicWasteApp` in `public-waste-app.tsx:190` — cyclomatic 38, cognitive 79, 387 Zeilen, CRAP 349,9 critical; Datei 577 Zeilen, Fan-out 8, Route `index.tsx` ist produktiver Consumer.
 
 ## Warum

@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Datenschutz, Tokens, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1003, Merge-Commit `be9e0bfc7bbeaeef435f63db518aca050935672a`
 - **Fallow vorher:** Page-Handler in `public-waste-email-reminders.server.ts:444` — cyclomatic 24, cognitive 42, 100 Zeilen, CRAP 148,4 critical; weiterer Handler CRAP 56,3; vier produktive Importpfade.
 
 ## Warum

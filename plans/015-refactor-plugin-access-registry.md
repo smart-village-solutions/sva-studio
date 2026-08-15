@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Plugin-Autorisierung, Blast Radius, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #998, Merge-Commit `f02b66e5dd891c3807e0aefbcc3e6af108c5824f`
 - **Fallow vorher:** `hasMatchingPluginAccessRequirement` CRAP 184,5 critical; `createPluginActionRegistry` cognitive 31 high; sechs Findings in `plugins.ts`, 1.470 Zeilen, Fan-in 9/Fan-out 7, 35 Commits.
 
 ## Warum

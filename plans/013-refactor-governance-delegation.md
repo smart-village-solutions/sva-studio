@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Autorisierung, Datenintegrität, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1002, Merge-Commit `b602c914127f58d7a3e7a4acd9998628d7af124f`
 - **Fallow vorher:** `createDelegation` in `governance-workflow-executor.ts:457` — cyclomatic 21, cognitive 13, 115 Zeilen, CRAP 116,3, critical; Datei 1.115 Zeilen, vier produktive Importpfade.
 
 ## Warum

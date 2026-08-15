@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** News-Datenintegrität, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1006, Merge-Commit `1df0515af94960fdfdcff44d626beccd710810a1`
 - **Fallow vorher:** `syncSnapshotFromCompatibilityValues` in `news.detail-form.ts:674` — cyclomatic 28, cognitive 27, 49 Zeilen, CRAP 197,3 critical; drei Findings, Datei 828 Zeilen, sechs direkte Konsumenten und 22 Commits.
 
 ## Warum

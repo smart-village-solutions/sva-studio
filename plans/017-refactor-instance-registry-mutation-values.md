@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Instanzdaten, Secrets, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1001, Merge-Commit `13c1964f3c99949b49e76324302d131f7b4a8b44`
 - **Fallow vorher:** `updateInstanceValues` in `repository-mutations.ts:70` — cyclomatic 21, CRAP 116,3 critical; `createInstanceValues` CRAP 88 high; Datei 214 Zeilen, Fan-out 6, produktiv über den Instance-Registry-Repository-Index erreichbar.
 
 ## Warum

@@ -215,6 +215,69 @@ describe('waste-management-settings-public-config', () => {
     expect(readWasteManagementEmailReminderConfig(next)).toEqual(createEmailReminderConfigInput());
   });
 
+  it('keeps the normalized reminder config key order stable and strips unknown or secret-shaped nested fields', () => {
+    const normalized = readWasteManagementEmailReminderConfig({
+      emailReminderConfig: {
+        ...createEmailReminderConfigInput(),
+        emailReminderSigningSecret: 'must-not-be-public',
+        unknownField: 'must-not-be-public',
+      },
+    });
+
+    expect(normalized).toEqual(createEmailReminderConfigInput());
+    expect(Object.keys(normalized ?? {})).toEqual([
+      'enabled',
+      'publicSignupEnabled',
+      'transportId',
+      'publicBaseUrl',
+      'doiConfirmPath',
+      'unsubscribePath',
+      'fromName',
+      'fromEmail',
+      'privacyPolicyUrl',
+      'imprintUrl',
+      'consentLabel',
+      'consentVersion',
+      'doiSubjectTemplate',
+      'doiIntroText',
+      'doiButtonLabel',
+      'reminderSubjectTemplate',
+      'reminderIntroTemplate',
+      'unsubscribeLinkLabel',
+      'unsubscribeSuccessHeadline',
+      'unsubscribeSuccessBody',
+      'maxSubscriptionsPerEmailAndLocation',
+      'signupRateLimitPerIpPerHour',
+      'signupRateLimitPerEmailPerHour',
+      'doiTokenTtlHours',
+      'pendingSubscriptionTtlHours',
+      'materializationLookaheadDays',
+      'signupSuccessPath',
+      'activationSuccessPath',
+      'unsubscribeSuccessPath',
+      'invalidTokenPath',
+      'replyToEmail',
+      'serviceLabel',
+      'dataControllerLabel',
+      'dataProtectionContactEmail',
+      'doiPreheader',
+      'doiFallbackText',
+      'doiExpiryNoticeText',
+      'doiSuccessHeadline',
+      'doiSuccessBody',
+      'doiErrorHeadline',
+      'doiErrorBody',
+      'reminderListIntroTemplate',
+      'reminderOutroText',
+      'reminderReasonText',
+      'unsubscribeAlreadyDoneHeadline',
+      'unsubscribeAlreadyDoneBody',
+      'unsubscribeErrorHeadline',
+      'unsubscribeErrorBody',
+    ]);
+    expect(JSON.stringify(normalized)).not.toContain('must-not-be-public');
+  });
+
   it('reads the calendar web url and signing secret only for valid email reminder config', () => {
     const next = buildWasteManagementPublicConfig(
       {},
@@ -244,6 +307,64 @@ describe('waste-management-settings-public-config', () => {
           ...createEmailReminderConfigInput(),
           doiSubjectTemplate: '   ',
         },
+      })
+    ).toBeUndefined();
+  });
+
+  it.each([
+    'transportId',
+    'publicBaseUrl',
+    'doiConfirmPath',
+    'fromEmail',
+    'privacyPolicyUrl',
+    'doiSubjectTemplate',
+    'maxSubscriptionsPerEmailAndLocation',
+    'materializationLookaheadDays',
+  ] as const)('rejects partial reminder config without required field %s', (field) => {
+    const partialConfig: Record<string, unknown> = { ...createEmailReminderConfigInput() };
+    delete partialConfig[field];
+
+    expect(
+      readWasteManagementEmailReminderConfig({ emailReminderConfig: partialConfig })
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['replyToEmail', 'invalid-address'],
+    ['dataProtectionContactEmail', 'invalid-address'],
+    ['signupSuccessPath', 'https://example.org/not-relative'],
+    ['activationSuccessPath', '//example.org/not-relative'],
+    ['unsubscribeTokenTtlDays', 0],
+  ] as const)('rejects explicitly invalid optional reminder field %s', (field, invalidValue) => {
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          [field]: invalidValue,
+        },
+      })
+    ).toBeUndefined();
+  });
+
+  it('preserves unrelated top-level config while keeping the signing secret bound to a valid reminder config', () => {
+    const next = buildWasteManagementPublicConfig(
+      { unrelatedPublicSetting: { retained: true } },
+      {
+        selected: false,
+        emailReminderConfig: createEmailReminderConfigInput(),
+        emailReminderSigningSecret: '  signing-secret  ',
+      }
+    );
+
+    expect(next.unrelatedPublicSetting).toEqual({ retained: true });
+    expect(readWasteManagementEmailReminderSigningSecret(next)).toBe('signing-secret');
+    expect(
+      readWasteManagementEmailReminderSigningSecret({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          fromEmail: 'invalid-address',
+        },
+        emailReminderSigningSecret: 'must-stay-hidden',
       })
     ).toBeUndefined();
   });

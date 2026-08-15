@@ -14,11 +14,11 @@
 ## 3. Documentation
 
 - [x] 3.1 Betroffene arc42-Abschnitte zur Loader-Ownership und den Prüfgates aktualisieren
-- [ ] 3.2 Nutzerverständlichen Changelog-Eintrag mit tatsächlicher PR-Nummer ergänzen
+- [x] 3.2 Nutzerverständlichen Changelog-Eintrag mit tatsächlicher PR-Nummer ergänzen
 
 ## 4. Verification
 
 - [x] 4.1 Repository- und öffentliche Kalender-/Export-Unit-Tests ausführen
 - [x] 4.2 Public-Waste Types, Lint und Server-Runtime prüfen
 - [x] 4.3 Complexity-Gate, Fallow, File Placement und OpenSpec strict ausführen
-- [ ] 4.4 Proportionalen PR-Gatepfad ausführen und Draft-PR zur Root-Prüfung öffnen
+- [x] 4.4 Proportionalen PR-Gatepfad ausführen und Draft-PR zur Root-Prüfung öffnen

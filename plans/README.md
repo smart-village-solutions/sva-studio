@@ -231,8 +231,8 @@ Testdateien. Vor Delegation wird die Delta-/Interaktionsprüfung wiederholt.
 
 | Plan | Titel | Priorität | Aufwand | Bundle | Status |
 |---|---|---:|---:|---|---|
-| 022 | POI-Formularserialisierung entflechten | P1 | M–L | A | TODO |
-| 023 | POI-Inbound-Mapping vereinfachen | P1 | M | A | TODO |
+| 022 | POI-Formularserialisierung entflechten | P1 | M–L | A | IN PROGRESS (#1009) |
+| 023 | POI-Inbound-Mapping vereinfachen | P1 | M | A | REJECTED – Refactor nach Ownership-Review gestoppt (#1009) |
 | 024 | Realm-Operationsschritte entflechten | P1 | M–L | B | TODO |
 | 025 | Instance-Primäraktion explizit priorisieren | P1 | M | B | TODO |
 | 026 | DOI-Versandnachricht entflechten | P1 | S–M | C | TODO |

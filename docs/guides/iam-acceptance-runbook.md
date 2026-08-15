@@ -88,6 +88,8 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
 ## Was der Acceptance-Runner prüft
 
+Der CLI-Einstieg hält die Reihenfolge der Pflichtprüfungen bewusst sichtbar und delegiert die Ausführung an getrennte interne Bausteine für Preflight/Readiness, Login/JIT, Organisations-/Membership-Nachweise und UI-Smokes. Fehlende Konfiguration endet bereits vor externen Zugriffen mit Exitcode 1; vorhandene Passwort-, Client-Secret- und Datenbank-Credential-Werte werden weder in die Konsole noch in die Fehlerberichte übernommen.
+
 ### Paket 1
 
 - `GET /health/ready` mit `db=true`, `redis=true`, `keycloak=true`

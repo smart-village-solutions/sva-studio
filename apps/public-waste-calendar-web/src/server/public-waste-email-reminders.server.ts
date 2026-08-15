@@ -28,6 +28,13 @@ type ReminderSubscriptionCounter = (input: {
   readonly selection: WasteEmailReminderPendingSignupInput['selection'];
 }) => Promise<number>;
 
+type ReminderSignupInput = Readonly<{
+  request: Request;
+  payload: PublicWasteReminderSignupRequest;
+  reminderConfig: WasteManagementEmailReminderConfig;
+  repository: SelectionSummaryRepository;
+}>;
+
 type ReminderSignupDependencies = Readonly<{
   persistPendingSignup: ReminderSignupPersistence;
   persistPendingSignupWithLimitCheck?: ReminderSignupWithLimitCheckPersistence;
@@ -58,6 +65,13 @@ type ReminderTokenActionDependencies = Readonly<{
   }) => Promise<WasteEmailReminderUnsubscribeResult>;
   now?: () => Date;
   hashValue?: (value: string) => string;
+}>;
+
+type ReminderPageInput = Readonly<{
+  request: Request;
+  pathname: string;
+  reminderConfig: WasteManagementEmailReminderConfig;
+  unsubscribeTokenSecret: string;
 }>;
 
 const DEFAULT_PENDING_HEADLINE = 'Bestätigungslink versendet';
@@ -240,14 +254,134 @@ const buildDoiDispatchPayload = (input: {
   },
 });
 
+const assertReminderSignupRateLimit = (
+  consumeRateLimit: NonNullable<ReminderSignupDependencies['consumeRateLimit']>,
+  input: {
+    readonly key: string;
+    readonly limit: number;
+    readonly now: number;
+  }
+): void => {
+  const rateLimit = consumeRateLimit({
+    ...input,
+    windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
+  });
+  if (rateLimit) {
+    throw new PublicWasteReminderSignupError({
+      code: 'rate_limited',
+      message: TOO_MANY_REQUESTS_MESSAGE,
+      status: 429,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    });
+  }
+};
+
+const enforceReminderSignupRateLimits = (input: {
+  readonly consumeRateLimit: ReminderSignupDependencies['consumeRateLimit'];
+  readonly request: Request;
+  readonly reminderConfig: WasteManagementEmailReminderConfig;
+  readonly emailHash: string;
+  readonly now: number;
+}): void => {
+  if (!input.consumeRateLimit) {
+    return;
+  }
+  assertReminderSignupRateLimit(input.consumeRateLimit, {
+    key: `ip:${resolveRequestIp(input.request)}`,
+    limit: input.reminderConfig.signupRateLimitPerIpPerHour,
+    now: input.now,
+  });
+  assertReminderSignupRateLimit(input.consumeRateLimit, {
+    key: `email:${input.emailHash}`,
+    limit: input.reminderConfig.signupRateLimitPerEmailPerHour,
+    now: input.now,
+  });
+};
+
+const buildPendingReminderSignup = (input: {
+  readonly request: ReminderSignupInput;
+  readonly email: string;
+  readonly emailHash: string;
+  readonly locationLabel: string;
+  readonly now: Date;
+  readonly subscriptionId: string;
+  readonly confirmToken: string;
+  readonly unsubscribeToken: string;
+  readonly createId: () => string;
+  readonly hashValue: (value: string) => string;
+}): WasteEmailReminderPendingSignupInput => ({
+  subscriptionId: input.subscriptionId,
+  email: input.email,
+  emailHash: input.emailHash,
+  selection: input.request.payload.selection,
+  locationLabel: input.locationLabel,
+  consentVersion: input.request.reminderConfig.consentVersion,
+  consentAcceptedAt: toIsoString(input.now),
+  doiTokenHash: input.hashValue(input.confirmToken),
+  unsubscribeTokenHash: input.hashValue(input.unsubscribeToken),
+  expiresAt: toIsoString(
+    addHours(input.now, input.request.reminderConfig.doiTokenTtlHours)
+  ),
+  items: input.request.payload.items.map((item) => ({
+    id: input.createId(),
+    fractionId: item.fractionId,
+    slotId: item.slotId,
+  })),
+  outbox: {
+    id: input.createId(),
+    transportId: input.request.reminderConfig.transportId,
+    templateKey: 'waste.email-reminder.doi',
+    sendAt: toIsoString(input.now),
+    dedupeKey: `doi:${input.subscriptionId}`,
+    payload: buildDoiDispatchPayload({
+      config: input.request.reminderConfig,
+      subscriptionId: input.subscriptionId,
+      email: input.email,
+      locationLabel: input.locationLabel,
+      confirmToken: input.confirmToken,
+    }),
+  },
+});
+
+const persistPendingReminderSignup = async (input: {
+  readonly deps: ReminderSignupDependencies;
+  readonly signup: WasteEmailReminderPendingSignupInput;
+  readonly reminderConfig: WasteManagementEmailReminderConfig;
+}): Promise<void> => {
+  if (input.deps.persistPendingSignupWithLimitCheck) {
+    const result = await input.deps.persistPendingSignupWithLimitCheck({
+      signup: input.signup,
+      maxSubscriptionsPerEmailAndLocation:
+        input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
+    });
+    if (result === 'subscription_limit_reached') {
+      throw new PublicWasteReminderSignupError({
+        code: 'subscription_limit_reached',
+        message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
+        status: 409,
+      });
+    }
+    return;
+  }
+  if (input.deps.countExistingSubscriptions) {
+    const existingCount = await input.deps.countExistingSubscriptions({
+      emailHash: input.signup.emailHash,
+      selection: input.signup.selection,
+    });
+    if (existingCount >= input.reminderConfig.maxSubscriptionsPerEmailAndLocation) {
+      throw new PublicWasteReminderSignupError({
+        code: 'subscription_limit_reached',
+        message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
+        status: 409,
+      });
+    }
+  }
+  await input.deps.persistPendingSignup(input.signup);
+};
+
 export const createPublicWasteReminderSignupSubmitter =
   (deps: ReminderSignupDependencies) =>
-  async (input: {
-    readonly request: Request;
-    readonly payload: PublicWasteReminderSignupRequest;
-    readonly reminderConfig: WasteManagementEmailReminderConfig;
-    readonly repository: SelectionSummaryRepository;
-  }): Promise<PublicWasteReminderSignupResponse> => {
+  async (input: ReminderSignupInput): Promise<PublicWasteReminderSignupResponse> => {
     const email = normalizeEmail(input.payload.email);
     const hashValue = deps.hashValue ?? createSha256Hash;
     const emailHash = hashValue(email);
@@ -261,102 +395,30 @@ export const createPublicWasteReminderSignupSubmitter =
     const subscriptionId = createId();
     const confirmToken = createToken();
     const unsubscribeToken = createToken();
-    const consumeRateLimit = deps.consumeRateLimit;
-
-    if (consumeRateLimit) {
-      const ipKey = `ip:${resolveRequestIp(input.request)}`;
-      const ipRateLimit = consumeRateLimit({
-        key: ipKey,
-        limit: input.reminderConfig.signupRateLimitPerIpPerHour,
-        windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
-        now: nowMs,
-      });
-      if (ipRateLimit) {
-        throw new PublicWasteReminderSignupError({
-          code: 'rate_limited',
-          message: TOO_MANY_REQUESTS_MESSAGE,
-          status: 429,
-          retryAfterSeconds: ipRateLimit.retryAfterSeconds,
-        });
-      }
-
-      const emailRateLimit = consumeRateLimit({
-        key: `email:${emailHash}`,
-        limit: input.reminderConfig.signupRateLimitPerEmailPerHour,
-        windowMs: SIGNUP_RATE_LIMIT_WINDOW_MS,
-        now: nowMs,
-      });
-      if (emailRateLimit) {
-        throw new PublicWasteReminderSignupError({
-          code: 'rate_limited',
-          message: TOO_MANY_REQUESTS_MESSAGE,
-          status: 429,
-          retryAfterSeconds: emailRateLimit.retryAfterSeconds,
-        });
-      }
-    }
-
-    const pendingSignup: WasteEmailReminderPendingSignupInput = {
-      subscriptionId,
+    enforceReminderSignupRateLimits({
+      consumeRateLimit: deps.consumeRateLimit,
+      request: input.request,
+      reminderConfig: input.reminderConfig,
+      emailHash,
+      now: nowMs,
+    });
+    const pendingSignup = buildPendingReminderSignup({
+      request: input,
       email,
       emailHash,
-      selection: input.payload.selection,
       locationLabel,
-      consentVersion: input.reminderConfig.consentVersion,
-      consentAcceptedAt: toIsoString(now),
-      doiTokenHash: hashValue(confirmToken),
-      unsubscribeTokenHash: hashValue(unsubscribeToken),
-      expiresAt: toIsoString(addHours(now, input.reminderConfig.doiTokenTtlHours)),
-      items: input.payload.items.map((item) => ({
-        id: createId(),
-        fractionId: item.fractionId,
-        slotId: item.slotId,
-      })),
-      outbox: {
-        id: createId(),
-        transportId: input.reminderConfig.transportId,
-        templateKey: 'waste.email-reminder.doi',
-        sendAt: toIsoString(now),
-        dedupeKey: `doi:${subscriptionId}`,
-        payload: buildDoiDispatchPayload({
-          config: input.reminderConfig,
-          subscriptionId,
-          email,
-          locationLabel,
-          confirmToken,
-        }),
-      },
-    };
-
-    if (deps.persistPendingSignupWithLimitCheck) {
-      const result = await deps.persistPendingSignupWithLimitCheck({
-        signup: pendingSignup,
-        maxSubscriptionsPerEmailAndLocation:
-          input.reminderConfig.maxSubscriptionsPerEmailAndLocation,
-      });
-      if (result === 'subscription_limit_reached') {
-        throw new PublicWasteReminderSignupError({
-          code: 'subscription_limit_reached',
-          message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
-          status: 409,
-        });
-      }
-    } else if (deps.countExistingSubscriptions) {
-      const existingCount = await deps.countExistingSubscriptions({
-        emailHash,
-        selection: input.payload.selection,
-      });
-      if (existingCount >= input.reminderConfig.maxSubscriptionsPerEmailAndLocation) {
-        throw new PublicWasteReminderSignupError({
-          code: 'subscription_limit_reached',
-          message: SUBSCRIPTION_LIMIT_REACHED_MESSAGE,
-          status: 409,
-        });
-      }
-    }
-    if (!deps.persistPendingSignupWithLimitCheck) {
-      await deps.persistPendingSignup(pendingSignup);
-    }
+      now,
+      subscriptionId,
+      confirmToken,
+      unsubscribeToken,
+      createId,
+      hashValue,
+    });
+    await persistPendingReminderSignup({
+      deps,
+      signup: pendingSignup,
+      reminderConfig: input.reminderConfig,
+    });
 
     return {
       status: 'pending',
@@ -439,14 +501,95 @@ const renderConfiguredReminderStatusPage = (input: {
   return null;
 };
 
+const renderDoiActionError = (
+  input: ReminderPageInput,
+  result: 'expired' | 'invalid'
+): Response =>
+  input.reminderConfig.invalidTokenPath
+    ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+        source: 'doi',
+        reason: result,
+      })
+    : renderDoiErrorPage(input.reminderConfig, result);
+
+const renderUnsubscribeActionError = (input: ReminderPageInput): Response =>
+  input.reminderConfig.invalidTokenPath
+    ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
+        source: 'unsubscribe',
+        reason: 'invalid',
+      })
+    : renderUnsubscribeErrorPage(input.reminderConfig);
+
+const handleDoiReminderAction = async (input: {
+  readonly deps: ReminderTokenActionDependencies;
+  readonly page: ReminderPageInput;
+  readonly token: string | undefined;
+  readonly hashValue: (value: string) => string;
+  readonly now: string;
+}): Promise<Response> => {
+  if (!input.token) {
+    return renderDoiActionError(input.page, 'invalid');
+  }
+  const result = await input.deps.activateByDoiTokenHash({
+    tokenHash: normalizeBearerTokenToHash(input.token, input.hashValue),
+    now: input.now,
+  });
+  if (result.status === 'activated' || result.status === 'already_active') {
+    return input.page.reminderConfig.activationSuccessPath
+      ? createRedirectResponse(
+          input.page.request,
+          input.page.reminderConfig.activationSuccessPath,
+          { state: result.status }
+        )
+      : renderDoiSuccessPage(input.page.reminderConfig);
+  }
+  return renderDoiActionError(input.page, result.status);
+};
+
+const handleUnsubscribeReminderAction = async (input: {
+  readonly deps: ReminderTokenActionDependencies;
+  readonly page: ReminderPageInput;
+  readonly token: string | undefined;
+  readonly now: string;
+}): Promise<Response> => {
+  if (!input.token) {
+    return renderUnsubscribeActionError(input.page);
+  }
+  const subscriptionId = readWasteManagementUnsubscribeTokenSubscriptionId(input.token);
+  if (!subscriptionId) {
+    return renderUnsubscribeActionError(input.page);
+  }
+  const subscription = await input.deps.loadUnsubscribeSubscriptionById({ subscriptionId });
+  if (
+    !subscription ||
+    !verifyWasteManagementUnsubscribeToken({
+      token: input.token,
+      subscriptionId,
+      unsubscribeTokenHash: subscription.unsubscribeTokenHash,
+      secret: input.page.unsubscribeTokenSecret,
+    })
+  ) {
+    return renderUnsubscribeActionError(input.page);
+  }
+  const result = await input.deps.unsubscribeByTokenHash({
+    tokenHash: subscription.unsubscribeTokenHash,
+    now: input.now,
+  });
+  if (result.status === 'unsubscribed' || result.status === 'already_unsubscribed') {
+    return input.page.reminderConfig.unsubscribeSuccessPath
+      ? createRedirectResponse(
+          input.page.request,
+          input.page.reminderConfig.unsubscribeSuccessPath,
+          { state: result.status }
+        )
+      : renderUnsubscribeSuccessPage(input.page.reminderConfig, result.status);
+  }
+  return renderUnsubscribeActionError(input.page);
+};
+
 export const createPublicWasteReminderPageHandler =
   (deps: ReminderTokenActionDependencies) =>
-  async (input: {
-    readonly request: Request;
-    readonly pathname: string;
-    readonly reminderConfig: WasteManagementEmailReminderConfig;
-    readonly unsubscribeTokenSecret: string;
-  }): Promise<Response | null> => {
+  async (input: ReminderPageInput): Promise<Response | null> => {
     const configuredStatusPage = renderConfiguredReminderStatusPage(input);
     if (configuredStatusPage) {
       return configuredStatusPage;
@@ -458,85 +601,22 @@ export const createPublicWasteReminderPageHandler =
     const now = toIsoString(deps.now?.() ?? new Date());
 
     if (input.pathname === input.reminderConfig.doiConfirmPath) {
-      if (!token) {
-        return input.reminderConfig.invalidTokenPath
-          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-              source: 'doi',
-              reason: 'invalid',
-            })
-          : renderDoiErrorPage(input.reminderConfig, 'invalid');
-      }
-      const result = await deps.activateByDoiTokenHash({
-        tokenHash: normalizeBearerTokenToHash(token, hashValue),
+      return await handleDoiReminderAction({
+        deps,
+        page: input,
+        token,
+        hashValue,
         now,
       });
-      if (result.status === 'activated' || result.status === 'already_active') {
-        return input.reminderConfig.activationSuccessPath
-          ? createRedirectResponse(input.request, input.reminderConfig.activationSuccessPath, {
-              state: result.status,
-            })
-          : renderDoiSuccessPage(input.reminderConfig);
-      }
-      return input.reminderConfig.invalidTokenPath
-        ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-            source: 'doi',
-            reason: result.status,
-          })
-        : renderDoiErrorPage(input.reminderConfig, result.status);
     }
 
     if (input.pathname === input.reminderConfig.unsubscribePath) {
-      if (!token) {
-        return input.reminderConfig.invalidTokenPath
-          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-              source: 'unsubscribe',
-              reason: 'invalid',
-            })
-          : renderUnsubscribeErrorPage(input.reminderConfig);
-      }
-      const subscriptionId = readWasteManagementUnsubscribeTokenSubscriptionId(token);
-      if (!subscriptionId) {
-        return input.reminderConfig.invalidTokenPath
-          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-              source: 'unsubscribe',
-              reason: 'invalid',
-            })
-          : renderUnsubscribeErrorPage(input.reminderConfig);
-      }
-      const subscription = await deps.loadUnsubscribeSubscriptionById({ subscriptionId });
-      if (
-        !subscription ||
-        !verifyWasteManagementUnsubscribeToken({
-          token,
-          subscriptionId,
-          unsubscribeTokenHash: subscription.unsubscribeTokenHash,
-          secret: input.unsubscribeTokenSecret,
-        })
-      ) {
-        return input.reminderConfig.invalidTokenPath
-          ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-              source: 'unsubscribe',
-              reason: 'invalid',
-            })
-          : renderUnsubscribeErrorPage(input.reminderConfig);
-      }
-      const result = await deps.unsubscribeByTokenHash({
-        tokenHash: subscription.unsubscribeTokenHash,
+      return await handleUnsubscribeReminderAction({
+        deps,
+        page: input,
+        token,
         now,
       });
-      if (result.status === 'unsubscribed' || result.status === 'already_unsubscribed') {
-        return input.reminderConfig.unsubscribeSuccessPath
-          ? createRedirectResponse(input.request, input.reminderConfig.unsubscribeSuccessPath, {
-              state: result.status,
-            })
-          : renderUnsubscribeSuccessPage(input.reminderConfig, result.status);
-      }
-      return input.reminderConfig.invalidTokenPath
-        ? createRedirectResponse(input.request, input.reminderConfig.invalidTokenPath, {
-            source: 'unsubscribe',
-            reason: 'invalid',
-          })
-        : renderUnsubscribeErrorPage(input.reminderConfig);
     }
 
     return null;

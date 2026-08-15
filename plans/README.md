@@ -45,8 +45,11 @@ eigenen Pull Request ausgeliefert.
 | 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | keine | DONE (#1004, `07d12bb80`) |
 | 020 | Event-Detailformular-Serialisierung modularisieren | P1 | L | keine | DONE (#1005, `6afcd8d52`) |
 | 021 | News-Kompatibilitäts-Snapshot entflechten | P1 | M | keine | DONE (#1006, `1df0515af`) |
-| 022 | POI-Formularserialisierung entflechten | P1 | M–L | Bundle A | IN PROGRESS (#1009) |
+| 022 | POI-Formularserialisierung entflechten | P1 | M–L | Bundle A | DONE (#1009, `e17772eb3`) |
 | 023 | POI-Inbound-Mapping charakterisieren und vereinfachen | P1 | M | Bundle A | REJECTED – Characterization grün, produktiver Refactor nach Ownership-Review gestoppt (#1009) |
+| 024 | Realm-Operationsschritte entflechten | P1 | M–L | Bundle B | DONE (#1011, `40787abc7`) |
+| 025 | Instance-Primäraktion explizit priorisieren | P1 | M | Bundle B | DONE (#1011, `40787abc7`) |
+| 026 | DOI-Versandnachricht entflechten | P1 | S–M | Bundle C | DONE (#1010, `98f4911e4`) |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED`, `REJECTED`.
 
@@ -222,23 +225,24 @@ geprüft:
 | B – Instance-Realm-Operations | 024, 025 | Studio Instance UI / `sva-studio-react` | Realm-Step- und Primäraktionsmodell; gezielte Modelltests, UI-Gates und App-Audit | hoch | L | Vorstart-Prüfung gegen `update-instance-detail-module-tab` | eine Datei, eine Status-/Prioritätsmatrix und Rollback-Grenze; Module-Tab/Journey-Fixtures bleiben fremder Scope |
 | C – Waste DOI Message | 026 | Studio Waste Runtime / `sva-studio-react` | DOI-Maildarstellung; fokussierter Server-Unit-/Type-/Build-Pfad und App-Audit | mittel | S–M | keine | Einzelproblem; Token, Secret, SQL, Datum und Idempotenz bleiben bewusst getrennt |
 
-Alle Bundles starten unabhängig auf dem dann aktuellen `origin/main`, aber A
-und B erst nach der oben benannten erneuten Ownership-Prüfung. Bundle B und C
-teilen zwar den kanonischen Workspace, aber weder Source, Vertrag noch
-Testdateien. Vor Delegation wird die Delta-/Interaktionsprüfung wiederholt.
+Alle Bundles starteten unabhängig auf dem jeweils aktuellen `origin/main` und
+erst nach der oben benannten Ownership-Prüfung. Bundle B und C teilten zwar den
+kanonischen Workspace, aber weder Source, Vertrag noch Testdateien. Die
+Merge-Deltas wurden vor Ready erneut auf Interaktionen geprüft.
 
 ## Reihenfolge und Status – dritte Runde
 
 | Plan | Titel | Priorität | Aufwand | Bundle | Status |
 |---|---|---:|---:|---|---|
-| 022 | POI-Formularserialisierung entflechten | P1 | M–L | A | IN PROGRESS (#1009) |
+| 022 | POI-Formularserialisierung entflechten | P1 | M–L | A | DONE (#1009, `e17772eb3`) |
 | 023 | POI-Inbound-Mapping vereinfachen | P1 | M | A | REJECTED – Refactor nach Ownership-Review gestoppt (#1009) |
-| 024 | Realm-Operationsschritte entflechten | P1 | M–L | B | TODO |
-| 025 | Instance-Primäraktion explizit priorisieren | P1 | M | B | TODO |
-| 026 | DOI-Versandnachricht entflechten | P1 | S–M | C | TODO |
+| 024 | Realm-Operationsschritte entflechten | P1 | M–L | B | DONE (#1011, `40787abc7`) |
+| 025 | Instance-Primäraktion explizit priorisieren | P1 | M | B | DONE (#1011, `40787abc7`) |
+| 026 | DOI-Versandnachricht entflechten | P1 | S–M | C | DONE (#1010, `98f4911e4`) |
 
-Das Gesamtrepository ist damit nicht findingfrei. Insbesondere verbleiben 924
-globale Health-Findings. In `news.detail-form.ts` sind zwei nachweislich
+Das Gesamtrepository ist damit nicht findingfrei. Die Live-Baseline vor dieser
+Runde enthielt 924 globale Health-Findings; die neue globale Abschlussmessung
+erfolgt nach Merge dieses Status-PRs. In `news.detail-form.ts` sind zwei nachweislich
 unveränderte, fachfremde High-Findings vorhanden; das Zielfinding
 `syncSnapshotFromCompatibilityValues` aus Plan 021 ist dagegen beseitigt.
 

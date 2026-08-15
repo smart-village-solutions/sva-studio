@@ -9,14 +9,13 @@ Die produktive Zusammensetzung der Double-Opt-in-Mail bündelt optionale Textabs
 - charakterisiert die bestehende DOI-Komposition für vollständige und fehlende Abschnitte, Leerwerte, unbekannte Platzhalter und die exakte Abschnittsreihenfolge
 - charakterisiert die Priorität von Payload-, Waste-Konfigurations- und Transportadressen einschließlich `to`, `cc`, `bcc`, `replyTo`, Absender und Anzeigenamen
 - zerlegt ausschließlich die interne DOI-Komposition in kleine typisierte Helfer für Templatewerte, Textabschnitte und Envelope
-- zentralisiert den bereits identischen lokalen Envelope-Aufbau von DOI- und Reminder-Nachricht in einem internen Helfer, damit die DOI-Zerlegung keine neue Duplikatgruppe einführt
 - erhält Betreff, Text, Leerzeilen, Fallbacks und Mail-Envelope bytegenau für dieselben Eingaben
 
 ## Out of Scope
 
 - keine Änderung an Token, Secret, Bestätigungs-URL, DOI-Lebensdauer oder Abmeldevertrag
 - keine Änderung an Outbox, SQL, Retry, Idempotenz oder Reminder-Materialisierung
-- keine Änderung der Reminder-Mail-Komposition oder der Dispatch-Auswahl für unbekannte Template-Keys
+- keine Änderung der Reminder-Mail-Komposition, ihres Envelope-Aufbaus oder der Dispatch-Auswahl für unbekannte Template-Keys
 - keine neue Template-Engine, Dependency oder öffentliche API
 - keine Änderung an PR #983 oder PR #984
 

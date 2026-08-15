@@ -304,26 +304,41 @@ const buildDoiText = (input: {
     `Impressum: ${input.templatePayload.imprintUrl}`,
   ]);
 
-const buildDispatchEnvelope = (input: {
+const resolveOptionalDoiEnvelopeAddresses = (
+  addresses: ReturnType<typeof mapPayloadAddresses>,
+  replyTo: readonly MailDispatchMessageAddress[] | undefined
+): Readonly<Pick<MailDispatchMessage, 'cc' | 'bcc' | 'replyTo'>> => ({
+  ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
+  ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
+  ...(replyTo ? { replyTo } : {}),
+});
+
+const resolveDoiEnvelopeAddresses = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
   readonly payload: MailDispatchPayload;
-  readonly subject: string;
-  readonly text: string;
-}): MailDispatchMessage => {
+}): Readonly<Pick<MailDispatchMessage, 'from' | 'to' | 'cc' | 'bcc' | 'replyTo'>> => {
   const addresses = mapPayloadAddresses(input.payload);
   const replyTo = resolveReminderReplyToAddresses(input.config, input.transport, input.payload);
 
   return {
     from: resolveReminderFromAddress(input.config, input.transport),
     to: addresses.to,
-    ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
-    ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
-    ...(replyTo ? { replyTo } : {}),
-    subject: input.subject,
-    text: input.text,
+    ...resolveOptionalDoiEnvelopeAddresses(addresses, replyTo),
   };
 };
+
+const buildDoiEnvelope = (input: {
+  readonly config: WasteManagementEmailReminderConfig;
+  readonly transport: MailTransportConfig;
+  readonly payload: MailDispatchPayload;
+  readonly subject: string;
+  readonly text: string;
+}): MailDispatchMessage => ({
+  ...resolveDoiEnvelopeAddresses(input),
+  subject: input.subject,
+  text: input.text,
+});
 
 const buildDoiDispatchMessage = (input: {
   readonly config: WasteManagementEmailReminderConfig;
@@ -333,7 +348,7 @@ const buildDoiDispatchMessage = (input: {
   const { templatePayload } = input.payload;
   const templateContext = resolveDoiTemplateContext(input.config, templatePayload);
   const text = buildDoiText({ config: input.config, templatePayload, templateContext });
-  return buildDispatchEnvelope({
+  return buildDoiEnvelope({
     ...input,
     subject: renderTemplate(input.config.doiSubjectTemplate, templateContext.values),
     text,
@@ -363,11 +378,18 @@ const buildReminderDispatchMessage = (input: {
     `Impressum: ${templatePayload.imprintUrl}`,
     serviceLabel ? `Service: ${serviceLabel}` : undefined,
   ]);
-  return buildDispatchEnvelope({
-    ...input,
+  const addresses = mapPayloadAddresses(input.payload);
+  const replyTo = resolveReminderReplyToAddresses(input.config, input.transport, input.payload);
+
+  return {
+    from: resolveReminderFromAddress(input.config, input.transport),
+    to: addresses.to,
+    ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
+    ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
+    ...(replyTo ? { replyTo } : {}),
     subject: templatePayload.subject,
     text,
-  });
+  };
 };
 
 export const buildDispatchMessage = (input: {

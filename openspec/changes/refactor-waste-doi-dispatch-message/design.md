@@ -28,9 +28,9 @@ Ein vorhandener Payload-Wert hat über Nullish-Priorität Vorrang vor der Konfig
 
 Die DOI-Abschnitte bleiben in ihrer bisherigen Reihenfolge sichtbar: Preheader, Intro, Ort, Bestätigungszeile, Fallback, Ablaufhinweis, Service, Verantwortlicher, Datenschutz und Impressum. Es wird keine generische Abschnitts-Engine erzeugt.
 
-### Decision: Das identische lokale Mail-Envelope besitzt einen gemeinsamen Helfer
+### Decision: Der Envelope-Helfer bleibt DOI-spezifisch
 
-DOI- und Reminder-Komposition verwendeten bereits denselben Aufbau für Absender, Empfänger, optionale Kopien und Reply-To. Die DOI-Zerlegung würde diese zehn Zeilen als neue lokale Duplikatgruppe attribuieren. Ein dateiinterner Helfer besitzt deshalb ausschließlich diesen bereits gemeinsamen Envelope-Vertrag; Betreff und Text bleiben bei den beiden fachlichen Kompositionen. Das ist ein kleiner technischer Gate-Blocker, keine Erweiterung des Reminder-Vertrags.
+Der dateiinterne Envelope-Helfer kapselt ausschließlich den bestehenden DOI-Aufbau für Absender, Empfänger, optionale Kopien und Reply-To. Die Reminder-Komposition und ihr eigener Envelope-Block bleiben source-seitig unverändert, damit die fachliche Scope-Grenze sichtbar und unabhängig rückrollbar bleibt.
 
 ## Risks / Trade-offs
 

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  createDefaultPoiDetailFormValues,
   mapPoiDetailFormValuesToInput,
   mapPoiItemToDetailFormValues,
+  parsePoiPayloadText,
 } from '../src/poi.detail-form.js';
 import { validatePoiForm } from '../src/poi.validation.js';
 import type { PoiContentItem } from '../src/poi.types.js';
@@ -1019,5 +1021,282 @@ describe('poi.detail-form', () => {
       { contentType: 'attachment' },
       { contentType: 'logo' },
     ]);
+  });
+
+  describe('plan 022 serialization characterization', () => {
+    it('preserves ordered category deduplication and explicit scalar clears', () => {
+      const defaults = createDefaultPoiDetailFormValues();
+      const input = mapPoiDetailFormValuesToInput(
+        {
+          ...defaults,
+          name: '  Bibliothek  ',
+          basis: {
+            active: false,
+            categories: [' Kultur ', '', 'Service', 'Kultur', ' Service '],
+          },
+          content: {
+            ...defaults.content,
+            description: '   ',
+            mobileDescription: '   ',
+            tagsText: ' wissen, , digital, wissen ',
+          },
+          settings: {
+            externalId: '   ',
+            keywords: '',
+          },
+        },
+        undefined
+      );
+
+      expect(input).toMatchObject({
+        name: 'Bibliothek',
+        active: false,
+        categoryName: 'Kultur',
+        categories: [{ name: 'Kultur' }, { name: 'Service' }],
+        mobileDescription: '',
+        externalId: '',
+        keywords: '',
+        tags: ['wissen', 'digital', 'wissen'],
+        payload: undefined,
+      });
+      expect(input).not.toHaveProperty('description');
+    });
+
+    it('keeps partial structures, invalid validation sentinels, and row filtering semantics', () => {
+      const defaults = createDefaultPoiDetailFormValues();
+      const input = mapPoiDetailFormValuesToInput(
+        {
+          ...defaults,
+          content: {
+            ...defaults.content,
+            addresses: [
+              {
+                street: ' Hauptstraße 1 ',
+                geoLocation: { latitude: '52.5', longitude: '' },
+              },
+              {
+                geoLocation: {
+                  latitude: Number.POSITIVE_INFINITY as unknown as string,
+                  longitude: '13.4',
+                },
+              },
+            ],
+            location: {
+              district: ' Mitte ',
+              geoLocation: { latitude: Number.NaN as unknown as string, longitude: '13.41' },
+            },
+            contact: {
+              email: ' info@example.test ',
+              webUrls: [
+                { url: ' ', description: 'entfernt' },
+                { url: ' https://example.test ', description: ' Kontakt ' },
+              ],
+            },
+            openingHours: [
+              { open: false },
+              { weekday: 'Freitag', open: false, useYear: false, sortNumber: '0' },
+            ],
+            operator: {
+              name: ' Betreiber ',
+              address: { city: ' Essen ' },
+              contact: { phone: ' 0201 123 ' },
+            },
+            prices: [
+              { groupPrice: false },
+              { name: ' Frei ', amount: '0', groupPrice: false, ageFrom: '0' },
+            ],
+            mediaContents: [
+              { captionText: ' Ohne Quelle ', contentType: 'image/jpeg' },
+              { sourceUrl: { url: ' ' }, contentType: 'application/pdf' },
+            ],
+          },
+        },
+        {}
+      );
+
+      expect(input.addresses).toEqual([
+        { street: 'Hauptstraße 1', geoLocation: { latitude: 52.5, longitude: undefined } },
+        { geoLocation: { latitude: Number.NaN, longitude: 13.4 } },
+      ]);
+      expect(input.location).toEqual({
+        district: 'Mitte',
+        geoLocation: { latitude: Number.NaN, longitude: 13.41 },
+      });
+      expect(input.contact).toEqual({
+        email: 'info@example.test',
+        webUrls: [{ url: 'https://example.test', description: 'Kontakt' }],
+      });
+      expect(input.openingHours).toEqual([
+        { weekday: 'FR', sortNumber: 0, open: false, useYear: false },
+      ]);
+      expect(input.operatingCompany).toEqual({
+        name: 'Betreiber',
+        address: { city: 'Essen' },
+        contact: { phone: '0201 123' },
+      });
+      expect(input.priceInformations).toEqual([
+        { name: 'Frei', amount: 0, groupPrice: false, ageFrom: 0 },
+      ]);
+      expect(input.mediaContents).toEqual([
+        { captionText: 'Ohne Quelle', contentType: 'image' },
+        { contentType: 'attachment' },
+      ]);
+    });
+
+    it.each([
+      ['undefined', undefined, { payload: undefined }],
+      ['null', null, { payload: null }],
+      ['array', ['legacy'], { payload: ['legacy'] }],
+      ['scalar', 'legacy', { payload: 'legacy' }],
+      ['empty object', {}, {}],
+      ['object', { source: 'legacy' }, { payload: { source: 'legacy' } }],
+    ] as const)('keeps the %s payload serialization contract', (_label, payload, expected) => {
+      const input = mapPoiDetailFormValuesToInput(createDefaultPoiDetailFormValues(), payload);
+
+      if ('payload' in expected) {
+        expect(input).toHaveProperty('payload', expected.payload);
+      } else {
+        expect(input).not.toHaveProperty('payload');
+      }
+    });
+  });
+
+  describe('plan 023 inbound mapping characterization', () => {
+    const item = (overrides: Partial<PoiContentItem> = {}): PoiContentItem => ({
+      id: 'poi-characterization',
+      contentType: 'poi.point-of-interest',
+      status: 'published',
+      createdAt: '2026-06-11T10:00:00.000Z',
+      updatedAt: '2026-06-11T10:00:00.000Z',
+      name: 'Characterization',
+      ...overrides,
+    });
+
+    it('keeps category precedence, active defaults, and empty-list defaults', () => {
+      const explicit = mapPoiItemToDetailFormValues(
+        item({
+          active: false,
+          categoryName: 'Legacy',
+          categories: [{ name: 'Primär' }, { name: 'Sekundär' }],
+          addresses: [],
+          openingHours: [],
+          webUrls: [],
+          priceInformations: [],
+          certificates: [],
+        })
+      );
+      const legacy = mapPoiItemToDetailFormValues(item({ categoryName: 'Legacy' }));
+      const empty = mapPoiItemToDetailFormValues(item({ categories: [], categoryName: '' }));
+
+      expect(explicit.basis).toEqual({ categories: ['Primär', 'Sekundär'], active: false });
+      expect(legacy.basis).toEqual({ categories: ['Legacy'], active: true });
+      expect(empty.basis).toEqual({ categories: [], active: true });
+      expect(explicit.content).toMatchObject({
+        addresses: [{ street: '', city: '' }],
+        openingHours: [{ weekday: '', open: true }],
+        webUrls: [{ url: '' }],
+        prices: [{ amount: '', groupPrice: false }],
+        certificates: [{ name: '' }],
+      });
+    });
+
+    it('maps partial legacy structures, finite numbers, and payload runtime shapes exactly', () => {
+      const mapped = mapPoiItemToDetailFormValues(
+        item({
+          addresses: [
+            { city: 'Essen', geoLocation: { latitude: 0, longitude: Number.POSITIVE_INFINITY } },
+          ],
+          location: { district: 'Mitte', geoLocation: { latitude: -1, longitude: Number.NaN } },
+          contact: { phone: '0201 123' },
+          operatingCompany: { name: 'Betreiber', contact: { email: 'info@example.test' } },
+          priceInformations: [{ amount: 0, ageFrom: -1, ageTo: Number.POSITIVE_INFINITY }],
+          openingHours: [{ weekday: 'Donnerstag', open: false }],
+          payload: null,
+        })
+      );
+
+      expect(mapped.content.addresses).toEqual([
+        {
+          addition: '',
+          street: '',
+          zip: '',
+          city: 'Essen',
+          kind: '',
+          geoLocation: { latitude: '0', longitude: '' },
+        },
+      ]);
+      expect(mapped.content.location).toMatchObject({
+        district: 'Mitte',
+        geoLocation: { latitude: '-1', longitude: '' },
+      });
+      expect(mapped.content.contact).toMatchObject({ phone: '0201 123', webUrls: [] });
+      expect(mapped.content.operator).toMatchObject({
+        name: 'Betreiber',
+        contact: { email: 'info@example.test', webUrls: [] },
+      });
+      expect(mapped.content.prices[0]).toMatchObject({ amount: '0', ageFrom: '-1', ageTo: '' });
+      expect(mapped.content.openingHours).toEqual([{ weekday: 'TH', open: false }]);
+      expect(mapped.content.payloadText).toBe('null');
+      expect(mapPoiItemToDetailFormValues(item({ payload: undefined })).content.payloadText).toBe(
+        '{}'
+      );
+      expect(mapPoiItemToDetailFormValues(item({ payload: ['legacy'] })).content.payloadText).toBe(
+        '[\n  "legacy"\n]'
+      );
+      expect(
+        mapPoiItemToDetailFormValues(item({ payload: { source: 'legacy' } })).content.payloadText
+      ).toBe('{\n  "source": "legacy"\n}');
+      expect(parsePoiPayloadText('{not-json')).toBeUndefined();
+    });
+
+    it('preserves list order and the legacy clone-versus-reference behavior', () => {
+      const addresses = [{ city: 'Erste' }, { city: 'Zweite' }];
+      const openingHours = [
+        { weekday: 'Mittwoch', timeFrom: '09:00' },
+        { weekday: 'Montag', timeFrom: '08:00' },
+      ];
+      const webUrls = [
+        { url: 'https://second.example.test' },
+        { url: 'https://first.example.test' },
+      ];
+      const mediaContents = [{ captionText: 'Zwei' }, { captionText: 'Eins' }];
+      const certificates = [{ name: 'B' }, { name: 'A' }];
+      const mapped = mapPoiItemToDetailFormValues(
+        item({ addresses, openingHours, webUrls, mediaContents, certificates })
+      );
+
+      expect(mapped.content.addresses.map((address) => address.city)).toEqual(['Erste', 'Zweite']);
+      expect(mapped.content.openingHours.map((hour) => hour.weekday)).toEqual(['WE', 'MO']);
+      expect(mapped.content.webUrls).toBe(webUrls);
+      expect(mapped.content.mediaContents).toBe(mediaContents);
+      expect(mapped.content.certificates).toBe(certificates);
+      expect(mapped.content.addresses).not.toBe(addresses);
+      expect(mapped.content.openingHours).not.toBe(openingHours);
+    });
+
+    it('roundtrips stable inbound values without changing list order or legacy payload', () => {
+      const source = item({
+        categories: [{ name: 'Kultur' }, { name: 'Service' }],
+        addresses: [{ city: 'Essen', geoLocation: { latitude: 51.45, longitude: 7.01 } }],
+        openingHours: [{ weekday: 'Montag', timeFrom: '08:00', open: true }],
+        webUrls: [{ url: 'https://example.test', description: 'Website' }],
+        priceInformations: [{ name: 'Frei', amount: 0, groupPrice: false }],
+        payload: { source: 'legacy' },
+      });
+      const mapped = mapPoiItemToDetailFormValues(source);
+      const serialized = mapPoiDetailFormValuesToInput(
+        mapped,
+        parsePoiPayloadText(mapped.content.payloadText)
+      );
+
+      expect(serialized).toMatchObject({
+        categories: [{ name: 'Kultur' }, { name: 'Service' }],
+        addresses: [{ city: 'Essen', geoLocation: { latitude: 51.45, longitude: 7.01 } }],
+        openingHours: [{ weekday: 'MO', timeFrom: '08:00', open: true }],
+        webUrls: [{ url: 'https://example.test', description: 'Website' }],
+        priceInformations: [{ name: 'Frei', amount: 0, groupPrice: false }],
+        payload: { source: 'legacy' },
+      });
+    });
   });
 });

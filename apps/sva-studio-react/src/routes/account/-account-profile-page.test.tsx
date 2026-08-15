@@ -181,7 +181,9 @@ describe('AccountProfilePage', () => {
       expect(screen.getByRole('button', { name: 'Speichern' })).toBeTruthy();
     });
 
-    fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
+    const saveButton = screen.getByRole('button', { name: 'Speichern' });
+    saveButton.focus();
+    fireEvent.submit(saveButton);
 
     await waitFor(() => {
       expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
@@ -198,6 +200,7 @@ describe('AccountProfilePage', () => {
         preferredLanguage: 'en',
       })
     );
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Gespeichert' }));
   });
 
   it('shows a success status after returning from password update', async () => {
@@ -269,6 +272,29 @@ describe('AccountProfilePage', () => {
       expect(screen.getByText('Die Aktion wurde abgebrochen.')).toBeTruthy();
     });
   });
+
+  it.each(['/account', '/account?accountAction=unexpected-value'])(
+    'does not show a credential status for a missing or invalid action parameter at %s',
+    async (route) => {
+      window.history.replaceState({}, '', route);
+      getMyProfileMock.mockResolvedValue(resolvedProfile());
+
+      render(<AccountProfilePage />);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+      });
+
+      expect(screen.queryByText('Das Passwort wurde aktualisiert.')).toBeNull();
+      expect(screen.queryByText('Die E-Mail-Änderung wurde abgeschlossen.')).toBeNull();
+      expect(
+        screen.queryByText(
+          'Die E-Mail-Änderung ist in dieser Keycloak-Umgebung derzeit nicht verfügbar.'
+        )
+      ).toBeNull();
+      expect(screen.queryByText('Die Aktion wurde abgebrochen.')).toBeNull();
+    }
+  );
 
   it('does not render a separate privacy cockpit entry point on the profile page', async () => {
     getMyProfileMock.mockResolvedValue(resolvedProfile());
@@ -344,6 +370,65 @@ describe('AccountProfilePage', () => {
     expect(authMockValue.refetch).not.toHaveBeenCalled();
   });
 
+  it('offers login recovery for a non-401 profile error that recommends signing in again', async () => {
+    const loadError = {
+      status: 503,
+      code: 'session_recovery_required',
+      message: 'Session recovery required',
+      recommendedAction: 'erneut_anmelden',
+    };
+    asIamErrorMock.mockReturnValue(loadError);
+    getMyProfileMock.mockRejectedValue(loadError);
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bitte zuerst anmelden, um Ihr Konto zu sehen.')).toBeTruthy();
+    });
+    expect(screen.getByRole('link', { name: 'Login' }).getAttribute('href')).toBe(
+      '/auth/login?returnTo=%2F'
+    );
+    expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull();
+  });
+
+  it.each([
+    [
+      'actor_resolution_or_membership',
+      'Ihr Konto ist technisch erreichbar, aber die fachliche Zuordnung oder Instanz-Mitgliedschaft ist unvollständig.',
+    ],
+    [
+      'database_or_schema_drift',
+      'Die Kontodaten sind derzeit wegen einer Datenbank- oder Migrationsabweichung nur eingeschränkt verfügbar.',
+    ],
+    [
+      'registry_or_provisioning_drift',
+      'Die Kontodaten sind derzeit wegen eines Registry- oder Provisioning-Drifts nur eingeschränkt verfügbar.',
+    ],
+    [
+      'keycloak_dependency',
+      'Die Kontoansicht kann derzeit nicht vollständig geladen werden, weil Keycloak oder ein nachgelagerter Rollenabgleich nicht stabil verfügbar ist.',
+    ],
+    [
+      'keycloak_reconcile',
+      'Die Kontoansicht kann derzeit nicht vollständig geladen werden, weil Keycloak oder ein nachgelagerter Rollenabgleich nicht stabil verfügbar ist.',
+    ],
+    ['unknown', 'Profil konnte nicht geladen werden.'],
+  ])(
+    'maps the %s load-error classification to its existing guidance',
+    async (classification, text) => {
+      const loadError = { status: 500, code: 'failed', message: 'failed', classification };
+      asIamErrorMock.mockReturnValue(loadError);
+      getMyProfileMock.mockRejectedValue(loadError);
+
+      render(<AccountProfilePage />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText(text).length).toBeGreaterThan(0);
+      });
+      expect(screen.getByRole('button', { name: 'Erneut versuchen' })).toBeTruthy();
+    }
+  );
+
   it('shows projection diagnostics when the loaded profile is in manual review', async () => {
     getMyProfileMock.mockResolvedValue(
       resolvedProfile({
@@ -396,7 +481,49 @@ describe('AccountProfilePage', () => {
     expect((screen.getByRole('button', { name: 'Speichern' }) as HTMLButtonElement).disabled).toBe(
       true
     );
+    for (const label of ['Vorname', 'Nachname', 'Telefon', 'Position', 'Abteilung', 'Sprache']) {
+      expect((screen.getByLabelText(label) as HTMLInputElement).disabled).toBe(true);
+    }
     expect(updateMyProfileMock).not.toHaveBeenCalled();
+  });
+
+  it('trims editable fields and omits empty optional values from the mutation', async () => {
+    getMyProfileMock.mockResolvedValue(
+      resolvedProfile({
+        phone: '+49 111111',
+        position: 'Editor',
+        department: 'News',
+        preferredLanguage: 'de',
+      })
+    );
+    updateMyProfileMock.mockResolvedValue(resolvedProfile());
+
+    render(<AccountProfilePage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Mein Konto' })).toBeTruthy();
+    });
+
+    fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: '  Jane  ' } });
+    fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: '  Doe  ' } });
+    fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '   ' } });
+    fireEvent.change(screen.getByLabelText('Position'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Abteilung'), { target: { value: '   ' } });
+    fireEvent.change(screen.getByLabelText('Sprache'), { target: { value: '' } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => {
+      expect(updateMyProfileMock).toHaveBeenCalledTimes(1);
+    });
+    expect(updateMyProfileMock).toHaveBeenCalledWith({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      displayName: 'Jane Doe',
+      phone: undefined,
+      position: undefined,
+      department: undefined,
+      preferredLanguage: undefined,
+    });
   });
 
   it('derives the display name from first and last name when no custom display name exists', async () => {
@@ -529,6 +656,14 @@ describe('AccountProfilePage', () => {
       );
       expect(updateMyProfileMock).not.toHaveBeenCalled();
     });
+    const validationSummary = screen
+      .getByText('Bitte korrigieren Sie die markierten Felder.')
+      .closest('[role="alert"]');
+    expect(validationSummary).toBeTruthy();
+    expect(document.activeElement).toBe(validationSummary);
+    expect(screen.getByLabelText('Vorname').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Nachname').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Telefon').getAttribute('aria-invalid')).toBe('true');
 
     fireEvent.change(screen.getByLabelText('Vorname'), { target: { value: 'Jane' } });
     fireEvent.change(screen.getByLabelText('Nachname'), { target: { value: 'Doe' } });
@@ -540,6 +675,14 @@ describe('AccountProfilePage', () => {
       expect(screen.getByRole('alert').textContent).toContain(
         'Profil konnte nicht gespeichert werden.'
       );
+    });
+
+    updateMyProfileMock.mockResolvedValueOnce(resolvedProfile());
+    fireEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }));
+
+    await waitFor(() => {
+      expect(updateMyProfileMock).toHaveBeenCalledTimes(2);
+      expect(screen.getByRole('button', { name: 'Gespeichert' })).toBeTruthy();
     });
   });
 });

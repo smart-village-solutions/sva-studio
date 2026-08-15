@@ -347,7 +347,7 @@ Schulden auf IST-Basis.
 
 - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
 - Wahrscheinlichkeit: mittel
-- Maßnahme: vor Produktivsetzung denselben Bürgerfluss gegen die echten öffentlichen Read-Endpunkte und die finale Konfiguration erneut als Integrations- und E2E-Gate absichern
+- Maßnahme: Repository- und Endpunkt-Characterization sichern bereits dieselbe standortgebundene Kalenderbasis für Web und PDF einschließlich Negativpfaden; vor Produktivsetzung bleibt derselbe Bürgerfluss gegen eine echte tenantgebundene Waste-Datenbank und die finale Konfiguration als Integrations- und E2E-Gate erforderlich
 
 ### Technische Schulden (Auswahl)
 

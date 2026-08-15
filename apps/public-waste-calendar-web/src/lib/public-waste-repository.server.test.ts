@@ -698,6 +698,224 @@ describe('public waste repository', () => {
     ]);
   });
 
+  it('keeps calendar window boundaries inclusive without shifting an offset reference date', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 4,
+        rows: [
+          {
+            assignment_id: 'before-window',
+            pickup_date: '2024-12-31',
+            tour_id: 'tour-1',
+            tour_name: 'Restmüll',
+            tour_description: null,
+            fraction_id: 'rest',
+            fraction_label: 'Restmüll',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+          {
+            assignment_id: 'window-start',
+            pickup_date: '2025-01-01',
+            tour_id: 'tour-1',
+            tour_name: 'Restmüll',
+            tour_description: null,
+            fraction_id: 'rest',
+            fraction_label: 'Restmüll',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+          {
+            assignment_id: 'window-end',
+            pickup_date: '2027-01-01',
+            tour_id: 'tour-1',
+            tour_name: 'Restmüll',
+            tour_description: null,
+            fraction_id: 'rest',
+            fraction_label: 'Restmüll',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+          {
+            assignment_id: 'after-window',
+            pickup_date: '2027-01-02',
+            tour_id: 'tour-1',
+            tour_name: 'Restmüll',
+            tour_description: null,
+            fraction_id: 'rest',
+            fraction_label: 'Restmüll',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: { cityId: 'city-1', streetId: 'street-1' },
+        referenceDate: '2026-01-01T23:30:00-11:00',
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({ id: 'window-start:rest', date: '2025-01-01' }),
+      expect.objectContaining({ id: 'window-end:rest', date: '2027-01-01' }),
+    ]);
+
+    expect(execute.mock.calls[4]?.[0]).toEqual(
+      expect.objectContaining({ values: ['2025-01-01', '2027-01-01'] })
+    );
+  });
+
+  it('uses the same fail-closed selection parameters for recurring and assigned pickups', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const repository = createPublicWasteRepository({ schemaName: 'tenant_public', execute });
+
+    await repository.loadCalendarEntries({
+      selection: {
+        cityId: 'city-1',
+        streetId: 'all',
+        regionId: 'region-1',
+        houseNumberId: 'house-1',
+      },
+      referenceDate: '2026-06-15',
+    });
+
+    const expectedSelectionValues = ['city-1', 'all', null, 'region-1', 'house-1'];
+    expect(execute.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ values: expectedSelectionValues })
+    );
+    expect(execute.mock.calls[3]?.[0]).toEqual(
+      expect.objectContaining({ values: expectedSelectionValues })
+    );
+    for (const call of execute.mock.calls) {
+      expect(call[0].text).toContain('"tenant_public".');
+      expect(call[0].text).not.toContain('city-1');
+      expect(call[0].text).not.toContain('region-1');
+      expect(call[0].text).not.toContain('house-1');
+    }
+  });
+
+  it('sorts merged assignments by date and then by German fraction label', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({
+        rowCount: 3,
+        rows: [
+          {
+            assignment_id: 'later',
+            pickup_date: '2026-05-20',
+            tour_id: 'tour-1',
+            tour_name: 'Tour',
+            tour_description: null,
+            fraction_id: 'alpha-later',
+            fraction_label: 'Alpha',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+          {
+            assignment_id: 'zulu',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Tour',
+            tour_description: null,
+            fraction_id: 'zulu',
+            fraction_label: 'Zulu',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+          {
+            assignment_id: 'alpha',
+            pickup_date: '2026-05-19',
+            tour_id: 'tour-1',
+            tour_name: 'Tour',
+            tour_description: null,
+            fraction_id: 'alpha',
+            fraction_label: 'Alpha',
+            fraction_description: null,
+            fraction_pdf_short_label: null,
+            fraction_color: null,
+            note: null,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    const entries = await repository.loadCalendarEntries({
+      selection: { cityId: 'city-1', streetId: 'street-1' },
+      referenceDate: '2026-01-01',
+    });
+
+    expect(entries.map((entry) => entry.id)).toEqual([
+      'alpha:alpha',
+      'zulu:zulu',
+      'later:alpha-later',
+    ]);
+  });
+
+  it('returns an empty calendar for an invalid reference date without loading holiday rules', async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: { cityId: 'city-1', streetId: 'street-1' },
+        referenceDate: 'invalid',
+      })
+    ).resolves.toEqual([]);
+
+    expect(execute).toHaveBeenCalledTimes(4);
+    expect(
+      execute.mock.calls.some(([statement]) => statement.text.includes('waste_holiday_rules'))
+    ).toBe(false);
+  });
+
+  it('propagates repository failures without exposing fallback calendar entries', async () => {
+    const databaseError = new Error('database_unavailable');
+    const execute = vi.fn().mockRejectedValueOnce(databaseError);
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(
+      repository.loadCalendarEntries({
+        selection: { cityId: 'city-1', streetId: 'street-1' },
+        referenceDate: '2026-01-01',
+      })
+    ).rejects.toBe(databaseError);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
   it('prefers exact street matches over catch-all rows for selection summaries', async () => {
     const execute = vi.fn().mockResolvedValueOnce({
       rowCount: 1,

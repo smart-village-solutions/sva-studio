@@ -68,6 +68,7 @@ Abhängigkeiten des aktuellen Systems.
    - gemeinsamer Owner für Frontend-Test-Foundations wie `msw`-Setup, Handler-Konventionen, Reset-Regeln und Test-Utilities
    - trennt HTTP-nahe Testinfrastruktur von produktiver Runtime-Logik und von E2E-/Infra-Läufen
    - bildet zusammen mit `docs/development/studio-foundations-governance.md` den Standardpfad für HTTP-nahe Frontend-Tests
+   - prüft den IAM-Acceptance-CLI-Vertrag auf Prozessebene; der dünne Einstieg `run-iam-acceptance.ts` orchestriert explizit getrennte Preflight-, Login/JIT-, Organisations-/Membership-, UI- und Berichtsbausteine unter `scripts/ci/`
 8. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 9. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)

@@ -348,6 +348,7 @@ Schulden auf IST-Basis.
 - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
 - Wahrscheinlichkeit: mittel
 - Maßnahme: vor Produktivsetzung denselben Bürgerfluss gegen die echten öffentlichen Read-Endpunkte und die finale Konfiguration erneut als Integrations- und E2E-Gate absichern
+- Die öffentliche Reminder-Konfiguration besitzt zusätzlich ein Drift-Risiko zwischen Studio-Schreibpfad und Public-Waste-Lesepfad. Maßnahme: kanonische Core-Normalisierung mit Characterization für gültige, partielle, fehlerhafte und unbekannte Werte, stabile Output-Reihenfolge und eine fail-closed Secret-Grenze; neue Defaults oder Validator-Fallbacks benötigen einen eigenen Vertrag.
 
 ### Technische Schulden (Auswahl)
 

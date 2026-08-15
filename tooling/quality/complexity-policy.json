@@ -3226,23 +3226,11 @@
       "status": "open",
       "summary": "Waste-Output-Renderer in kleinere Layout-, Table- und Footer-Helfer splitten (packages/core/src/waste-management-output.render.ts)"
     },
-    "packages-default:packages/core/src/waste-management-settings-public-config.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Settings-Normalisierung in kleinere Reader-, URL- und Reminder-Parser zerlegen (packages/core/src/waste-management-settings-public-config.ts)"
-    },
     "packages-default:packages/core/src/waste-management-settings-public-config.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-034",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Public-Waste-Settings-Datei in kleinere Parsing- und Konstantenmodule splitten (packages/core/src/waste-management-settings-public-config.ts)"
-    },
-    "packages-default:packages/core/src/waste-management-settings-public-config.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Public-Waste-Settings-Funktionen in kleinere Validierungs- und Mapping-Schritte aufteilen (packages/core/src/waste-management-settings-public-config.ts)"
     },
     "packages-default:packages/data-repositories/src/waste-management/email-reminders.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",

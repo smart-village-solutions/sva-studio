@@ -150,7 +150,6 @@ const emailReminderRequiredPositiveIntegerKeys = [
   'materializationLookaheadDays',
 ] as const;
 
-const emailReminderOptionalPositiveIntegerKeys = ['unsubscribeTokenTtlDays'] as const;
 const MAX_MATERIALIZATION_LOOKAHEAD_DAYS = 14;
 
 export type WasteManagementEmailReminderConfig = Readonly<{
@@ -205,6 +204,231 @@ export type WasteManagementEmailReminderConfig = Readonly<{
   unsubscribeTokenTtlDays?: number;
 }>;
 
+type EmailReminderRequiredStrings = Record<
+  (typeof emailReminderRequiredStringKeys)[number],
+  string
+>;
+type EmailReminderOptionalStrings = Record<
+  (typeof emailReminderOptionalStringKeys)[number],
+  string | undefined
+>;
+type EmailReminderRequiredIntegers = Record<
+  (typeof emailReminderRequiredPositiveIntegerKeys)[number],
+  number
+>;
+
+const readRequiredEmailReminderStrings = (
+  record: Readonly<Record<string, unknown>>
+): EmailReminderRequiredStrings | undefined => {
+  const fields = Object.fromEntries(
+    emailReminderRequiredStringKeys.map((key) => [key, readTrimmedString(record[key])])
+  ) as Record<(typeof emailReminderRequiredStringKeys)[number], string | undefined>;
+
+  return Object.values(fields).some((value) => value === undefined)
+    ? undefined
+    : (fields as EmailReminderRequiredStrings);
+};
+
+const readOptionalEmailReminderStrings = (
+  record: Readonly<Record<string, unknown>>
+): EmailReminderOptionalStrings =>
+  Object.fromEntries(
+    emailReminderOptionalStringKeys.map((key) => [key, readTrimmedString(record[key])])
+  ) as EmailReminderOptionalStrings;
+
+const readRequiredEmailReminderIntegers = (
+  record: Readonly<Record<string, unknown>>
+): EmailReminderRequiredIntegers | undefined => {
+  const fields = Object.fromEntries(
+    emailReminderRequiredPositiveIntegerKeys.map((key) => [
+      key,
+      key === 'materializationLookaheadDays'
+        ? readBoundedPositiveInteger(record[key], MAX_MATERIALIZATION_LOOKAHEAD_DAYS)
+        : readPositiveInteger(record[key]),
+    ])
+  ) as Record<(typeof emailReminderRequiredPositiveIntegerKeys)[number], number | undefined>;
+
+  return Object.values(fields).some((value) => value === undefined)
+    ? undefined
+    : (fields as EmailReminderRequiredIntegers);
+};
+
+const readOptionalUnsubscribeTokenTtlDays = (
+  record: Readonly<Record<string, unknown>>
+): number | null | undefined => {
+  const rawValue = record.unsubscribeTokenTtlDays;
+  const parsedValue = readPositiveInteger(rawValue);
+  return rawValue !== undefined && parsedValue === undefined ? null : parsedValue;
+};
+
+type EmailReminderUrlFields = Pick<
+  WasteManagementEmailReminderConfig,
+  'publicBaseUrl' | 'privacyPolicyUrl' | 'imprintUrl'
+>;
+
+const readEmailReminderUrls = (
+  fields: EmailReminderRequiredStrings
+): EmailReminderUrlFields | undefined => {
+  const publicBaseUrl = readPublicBaseUrl(fields.publicBaseUrl);
+  const privacyPolicyUrl = readAbsoluteHttpUrl(fields.privacyPolicyUrl);
+  const imprintUrl = readAbsoluteHttpUrl(fields.imprintUrl);
+  return publicBaseUrl && privacyPolicyUrl && imprintUrl
+    ? { publicBaseUrl, privacyPolicyUrl, imprintUrl }
+    : undefined;
+};
+
+const readOptionalRelativePath = (value: string | undefined): string | null | undefined =>
+  value === undefined ? undefined : (readRelativePath(value) ?? null);
+
+type EmailReminderPathFields = Pick<
+  WasteManagementEmailReminderConfig,
+  | 'doiConfirmPath'
+  | 'unsubscribePath'
+  | 'signupSuccessPath'
+  | 'activationSuccessPath'
+  | 'unsubscribeSuccessPath'
+  | 'invalidTokenPath'
+>;
+
+const readEmailReminderPaths = (
+  required: EmailReminderRequiredStrings,
+  optional: EmailReminderOptionalStrings
+): EmailReminderPathFields | undefined => {
+  const doiConfirmPath = readRelativePath(required.doiConfirmPath);
+  const unsubscribePath = readRelativePath(required.unsubscribePath);
+  const signupSuccessPath = readOptionalRelativePath(optional.signupSuccessPath);
+  const activationSuccessPath = readOptionalRelativePath(optional.activationSuccessPath);
+  const unsubscribeSuccessPath = readOptionalRelativePath(optional.unsubscribeSuccessPath);
+  const invalidTokenPath = readOptionalRelativePath(optional.invalidTokenPath);
+  if (
+    !doiConfirmPath ||
+    !unsubscribePath ||
+    signupSuccessPath === null ||
+    activationSuccessPath === null ||
+    unsubscribeSuccessPath === null ||
+    invalidTokenPath === null
+  ) {
+    return undefined;
+  }
+
+  return {
+    doiConfirmPath,
+    unsubscribePath,
+    ...(signupSuccessPath ? { signupSuccessPath } : {}),
+    ...(activationSuccessPath ? { activationSuccessPath } : {}),
+    ...(unsubscribeSuccessPath ? { unsubscribeSuccessPath } : {}),
+    ...(invalidTokenPath ? { invalidTokenPath } : {}),
+  };
+};
+
+const readOptionalEmail = (value: string | undefined): string | null | undefined =>
+  value === undefined ? undefined : (readEmail(value) ?? null);
+
+type EmailReminderAddressFields = Pick<
+  WasteManagementEmailReminderConfig,
+  'fromEmail' | 'replyToEmail' | 'dataProtectionContactEmail'
+>;
+
+const readEmailReminderAddresses = (
+  required: EmailReminderRequiredStrings,
+  optional: EmailReminderOptionalStrings
+): EmailReminderAddressFields | undefined => {
+  const fromEmail = readEmail(required.fromEmail);
+  const replyToEmail = readOptionalEmail(optional.replyToEmail);
+  const dataProtectionContactEmail = readOptionalEmail(optional.dataProtectionContactEmail);
+  if (!fromEmail || replyToEmail === null || dataProtectionContactEmail === null) {
+    return undefined;
+  }
+
+  return {
+    fromEmail,
+    ...(replyToEmail ? { replyToEmail } : {}),
+    ...(dataProtectionContactEmail ? { dataProtectionContactEmail } : {}),
+  };
+};
+
+const buildOptionalRouteFields = (
+  paths: EmailReminderPathFields
+): Pick<
+  WasteManagementEmailReminderConfig,
+  'signupSuccessPath' | 'activationSuccessPath' | 'unsubscribeSuccessPath' | 'invalidTokenPath'
+> => ({
+  ...(paths.signupSuccessPath ? { signupSuccessPath: paths.signupSuccessPath } : {}),
+  ...(paths.activationSuccessPath ? { activationSuccessPath: paths.activationSuccessPath } : {}),
+  ...(paths.unsubscribeSuccessPath ? { unsubscribeSuccessPath: paths.unsubscribeSuccessPath } : {}),
+  ...(paths.invalidTokenPath ? { invalidTokenPath: paths.invalidTokenPath } : {}),
+});
+
+const buildOptionalContactFields = (
+  strings: EmailReminderOptionalStrings,
+  addresses: EmailReminderAddressFields
+): Pick<
+  WasteManagementEmailReminderConfig,
+  'replyToEmail' | 'serviceLabel' | 'dataControllerLabel' | 'dataProtectionContactEmail'
+> => ({
+  ...(addresses.replyToEmail ? { replyToEmail: addresses.replyToEmail } : {}),
+  ...(strings.serviceLabel ? { serviceLabel: strings.serviceLabel } : {}),
+  ...(strings.dataControllerLabel ? { dataControllerLabel: strings.dataControllerLabel } : {}),
+  ...(addresses.dataProtectionContactEmail
+    ? { dataProtectionContactEmail: addresses.dataProtectionContactEmail }
+    : {}),
+});
+
+const buildOptionalDoiTextFields = (
+  strings: EmailReminderOptionalStrings
+): Pick<
+  WasteManagementEmailReminderConfig,
+  | 'doiPreheader'
+  | 'doiFallbackText'
+  | 'doiExpiryNoticeText'
+  | 'doiSuccessHeadline'
+  | 'doiSuccessBody'
+  | 'doiErrorHeadline'
+  | 'doiErrorBody'
+> => ({
+  ...(strings.doiPreheader ? { doiPreheader: strings.doiPreheader } : {}),
+  ...(strings.doiFallbackText ? { doiFallbackText: strings.doiFallbackText } : {}),
+  ...(strings.doiExpiryNoticeText ? { doiExpiryNoticeText: strings.doiExpiryNoticeText } : {}),
+  ...(strings.doiSuccessHeadline ? { doiSuccessHeadline: strings.doiSuccessHeadline } : {}),
+  ...(strings.doiSuccessBody ? { doiSuccessBody: strings.doiSuccessBody } : {}),
+  ...(strings.doiErrorHeadline ? { doiErrorHeadline: strings.doiErrorHeadline } : {}),
+  ...(strings.doiErrorBody ? { doiErrorBody: strings.doiErrorBody } : {}),
+});
+
+const buildOptionalReminderTextFields = (
+  strings: EmailReminderOptionalStrings
+): Pick<
+  WasteManagementEmailReminderConfig,
+  'reminderListIntroTemplate' | 'reminderOutroText' | 'reminderReasonText'
+> => ({
+  ...(strings.reminderListIntroTemplate
+    ? { reminderListIntroTemplate: strings.reminderListIntroTemplate }
+    : {}),
+  ...(strings.reminderOutroText ? { reminderOutroText: strings.reminderOutroText } : {}),
+  ...(strings.reminderReasonText ? { reminderReasonText: strings.reminderReasonText } : {}),
+});
+
+const buildOptionalUnsubscribeTextFields = (
+  strings: EmailReminderOptionalStrings
+): Pick<
+  WasteManagementEmailReminderConfig,
+  | 'unsubscribeAlreadyDoneHeadline'
+  | 'unsubscribeAlreadyDoneBody'
+  | 'unsubscribeErrorHeadline'
+  | 'unsubscribeErrorBody'
+> => ({
+  ...(strings.unsubscribeAlreadyDoneHeadline
+    ? { unsubscribeAlreadyDoneHeadline: strings.unsubscribeAlreadyDoneHeadline }
+    : {}),
+  ...(strings.unsubscribeAlreadyDoneBody
+    ? { unsubscribeAlreadyDoneBody: strings.unsubscribeAlreadyDoneBody }
+    : {}),
+  ...(strings.unsubscribeErrorHeadline
+    ? { unsubscribeErrorHeadline: strings.unsubscribeErrorHeadline }
+    : {}),
+  ...(strings.unsubscribeErrorBody ? { unsubscribeErrorBody: strings.unsubscribeErrorBody } : {}),
+});
+
 const normalizeWasteManagementEmailReminderConfig = (
   value: unknown
 ): WasteManagementEmailReminderConfig | undefined => {
@@ -219,173 +443,54 @@ const normalizeWasteManagementEmailReminderConfig = (
     return undefined;
   }
 
-  const normalizedRequiredStrings = Object.fromEntries(
-    emailReminderRequiredStringKeys.map((key) => [key, readTrimmedString(record[key])])
-  ) as Record<(typeof emailReminderRequiredStringKeys)[number], string | undefined>;
-
-  if (Object.values(normalizedRequiredStrings).some((value) => value === undefined)) {
+  const requiredStrings = readRequiredEmailReminderStrings(record);
+  const requiredIntegers = readRequiredEmailReminderIntegers(record);
+  const optionalStrings = readOptionalEmailReminderStrings(record);
+  const unsubscribeTokenTtlDays = readOptionalUnsubscribeTokenTtlDays(record);
+  if (!requiredStrings || !requiredIntegers || unsubscribeTokenTtlDays === null) {
     return undefined;
   }
 
-  const normalizedRequiredIntegers = Object.fromEntries(
-    emailReminderRequiredPositiveIntegerKeys.map((key) => [
-      key,
-      key === 'materializationLookaheadDays'
-        ? readBoundedPositiveInteger(record[key], MAX_MATERIALIZATION_LOOKAHEAD_DAYS)
-        : readPositiveInteger(record[key]),
-    ])
-  ) as Record<(typeof emailReminderRequiredPositiveIntegerKeys)[number], number | undefined>;
-
-  if (Object.values(normalizedRequiredIntegers).some((value) => value === undefined)) {
-    return undefined;
-  }
-
-  const normalizedOptionalStrings = Object.fromEntries(
-    emailReminderOptionalStringKeys.map((key) => [key, readTrimmedString(record[key])])
-  ) as Record<(typeof emailReminderOptionalStringKeys)[number], string | undefined>;
-
-  const normalizedOptionalIntegers = Object.fromEntries(
-    emailReminderOptionalPositiveIntegerKeys.map((key) => {
-      const rawValue = record[key];
-      const parsedValue = readPositiveInteger(rawValue);
-      if (rawValue !== undefined && parsedValue === undefined) {
-        return [key, null];
-      }
-      return [key, parsedValue];
-    })
-  ) as Record<(typeof emailReminderOptionalPositiveIntegerKeys)[number], number | null | undefined>;
-
-  if (Object.values(normalizedOptionalIntegers).some((value) => value === null)) {
-    return undefined;
-  }
-
-  const publicBaseUrl = readPublicBaseUrl(normalizedRequiredStrings.publicBaseUrl);
-  const privacyPolicyUrl = readAbsoluteHttpUrl(normalizedRequiredStrings.privacyPolicyUrl);
-  const imprintUrl = readAbsoluteHttpUrl(normalizedRequiredStrings.imprintUrl);
-  const doiConfirmPath = readRelativePath(normalizedRequiredStrings.doiConfirmPath);
-  const unsubscribePath = readRelativePath(normalizedRequiredStrings.unsubscribePath);
-  const fromEmail = readEmail(normalizedRequiredStrings.fromEmail);
-  const replyToEmail = normalizedOptionalStrings.replyToEmail
-    ? readEmail(normalizedOptionalStrings.replyToEmail)
-    : undefined;
-  const dataProtectionContactEmail = normalizedOptionalStrings.dataProtectionContactEmail
-    ? readEmail(normalizedOptionalStrings.dataProtectionContactEmail)
-    : undefined;
-  const signupSuccessPath = normalizedOptionalStrings.signupSuccessPath
-    ? readRelativePath(normalizedOptionalStrings.signupSuccessPath)
-    : undefined;
-  const activationSuccessPath = normalizedOptionalStrings.activationSuccessPath
-    ? readRelativePath(normalizedOptionalStrings.activationSuccessPath)
-    : undefined;
-  const unsubscribeSuccessPath = normalizedOptionalStrings.unsubscribeSuccessPath
-    ? readRelativePath(normalizedOptionalStrings.unsubscribeSuccessPath)
-    : undefined;
-  const invalidTokenPath = normalizedOptionalStrings.invalidTokenPath
-    ? readRelativePath(normalizedOptionalStrings.invalidTokenPath)
-    : undefined;
-
-  if (
-    !publicBaseUrl ||
-    !privacyPolicyUrl ||
-    !imprintUrl ||
-    !doiConfirmPath ||
-    !unsubscribePath ||
-    !fromEmail ||
-    (normalizedOptionalStrings.replyToEmail && !replyToEmail) ||
-    (normalizedOptionalStrings.dataProtectionContactEmail && !dataProtectionContactEmail) ||
-    (normalizedOptionalStrings.signupSuccessPath && !signupSuccessPath) ||
-    (normalizedOptionalStrings.activationSuccessPath && !activationSuccessPath) ||
-    (normalizedOptionalStrings.unsubscribeSuccessPath && !unsubscribeSuccessPath) ||
-    (normalizedOptionalStrings.invalidTokenPath && !invalidTokenPath)
-  ) {
+  const urls = readEmailReminderUrls(requiredStrings);
+  const paths = readEmailReminderPaths(requiredStrings, optionalStrings);
+  const addresses = readEmailReminderAddresses(requiredStrings, optionalStrings);
+  if (!urls || !paths || !addresses) {
     return undefined;
   }
 
   return {
     enabled,
     publicSignupEnabled,
-    transportId: normalizedRequiredStrings.transportId!,
-    publicBaseUrl,
-    doiConfirmPath,
-    unsubscribePath,
-    fromName: normalizedRequiredStrings.fromName!,
-    fromEmail,
-    privacyPolicyUrl,
-    imprintUrl,
-    consentLabel: normalizedRequiredStrings.consentLabel!,
-    consentVersion: normalizedRequiredStrings.consentVersion!,
-    doiSubjectTemplate: normalizedRequiredStrings.doiSubjectTemplate!,
-    doiIntroText: normalizedRequiredStrings.doiIntroText!,
-    doiButtonLabel: normalizedRequiredStrings.doiButtonLabel!,
-    reminderSubjectTemplate: normalizedRequiredStrings.reminderSubjectTemplate!,
-    reminderIntroTemplate: normalizedRequiredStrings.reminderIntroTemplate!,
-    unsubscribeLinkLabel: normalizedRequiredStrings.unsubscribeLinkLabel!,
-    unsubscribeSuccessHeadline: normalizedRequiredStrings.unsubscribeSuccessHeadline!,
-    unsubscribeSuccessBody: normalizedRequiredStrings.unsubscribeSuccessBody!,
-    maxSubscriptionsPerEmailAndLocation:
-      normalizedRequiredIntegers.maxSubscriptionsPerEmailAndLocation!,
-    signupRateLimitPerIpPerHour: normalizedRequiredIntegers.signupRateLimitPerIpPerHour!,
-    signupRateLimitPerEmailPerHour: normalizedRequiredIntegers.signupRateLimitPerEmailPerHour!,
-    doiTokenTtlHours: normalizedRequiredIntegers.doiTokenTtlHours!,
-    pendingSubscriptionTtlHours: normalizedRequiredIntegers.pendingSubscriptionTtlHours!,
-    materializationLookaheadDays: normalizedRequiredIntegers.materializationLookaheadDays!,
-    ...(signupSuccessPath ? { signupSuccessPath } : {}),
-    ...(activationSuccessPath ? { activationSuccessPath } : {}),
-    ...(unsubscribeSuccessPath ? { unsubscribeSuccessPath } : {}),
-    ...(invalidTokenPath ? { invalidTokenPath } : {}),
-    ...(replyToEmail ? { replyToEmail } : {}),
-    ...(normalizedOptionalStrings.serviceLabel
-      ? { serviceLabel: normalizedOptionalStrings.serviceLabel }
-      : {}),
-    ...(normalizedOptionalStrings.dataControllerLabel
-      ? { dataControllerLabel: normalizedOptionalStrings.dataControllerLabel }
-      : {}),
-    ...(dataProtectionContactEmail ? { dataProtectionContactEmail } : {}),
-    ...(normalizedOptionalStrings.doiPreheader
-      ? { doiPreheader: normalizedOptionalStrings.doiPreheader }
-      : {}),
-    ...(normalizedOptionalStrings.doiFallbackText
-      ? { doiFallbackText: normalizedOptionalStrings.doiFallbackText }
-      : {}),
-    ...(normalizedOptionalStrings.doiExpiryNoticeText
-      ? { doiExpiryNoticeText: normalizedOptionalStrings.doiExpiryNoticeText }
-      : {}),
-    ...(normalizedOptionalStrings.doiSuccessHeadline
-      ? { doiSuccessHeadline: normalizedOptionalStrings.doiSuccessHeadline }
-      : {}),
-    ...(normalizedOptionalStrings.doiSuccessBody
-      ? { doiSuccessBody: normalizedOptionalStrings.doiSuccessBody }
-      : {}),
-    ...(normalizedOptionalStrings.doiErrorHeadline
-      ? { doiErrorHeadline: normalizedOptionalStrings.doiErrorHeadline }
-      : {}),
-    ...(normalizedOptionalStrings.doiErrorBody
-      ? { doiErrorBody: normalizedOptionalStrings.doiErrorBody }
-      : {}),
-    ...(normalizedOptionalStrings.reminderListIntroTemplate
-      ? { reminderListIntroTemplate: normalizedOptionalStrings.reminderListIntroTemplate }
-      : {}),
-    ...(normalizedOptionalStrings.reminderOutroText
-      ? { reminderOutroText: normalizedOptionalStrings.reminderOutroText }
-      : {}),
-    ...(normalizedOptionalStrings.reminderReasonText
-      ? { reminderReasonText: normalizedOptionalStrings.reminderReasonText }
-      : {}),
-    ...(normalizedOptionalStrings.unsubscribeAlreadyDoneHeadline
-      ? { unsubscribeAlreadyDoneHeadline: normalizedOptionalStrings.unsubscribeAlreadyDoneHeadline }
-      : {}),
-    ...(normalizedOptionalStrings.unsubscribeAlreadyDoneBody
-      ? { unsubscribeAlreadyDoneBody: normalizedOptionalStrings.unsubscribeAlreadyDoneBody }
-      : {}),
-    ...(normalizedOptionalStrings.unsubscribeErrorHeadline
-      ? { unsubscribeErrorHeadline: normalizedOptionalStrings.unsubscribeErrorHeadline }
-      : {}),
-    ...(normalizedOptionalStrings.unsubscribeErrorBody
-      ? { unsubscribeErrorBody: normalizedOptionalStrings.unsubscribeErrorBody }
-      : {}),
-    ...(normalizedOptionalIntegers.unsubscribeTokenTtlDays
-      ? { unsubscribeTokenTtlDays: normalizedOptionalIntegers.unsubscribeTokenTtlDays }
-      : {}),
+    transportId: requiredStrings.transportId,
+    publicBaseUrl: urls.publicBaseUrl,
+    doiConfirmPath: paths.doiConfirmPath,
+    unsubscribePath: paths.unsubscribePath,
+    fromName: requiredStrings.fromName,
+    fromEmail: addresses.fromEmail,
+    privacyPolicyUrl: urls.privacyPolicyUrl,
+    imprintUrl: urls.imprintUrl,
+    consentLabel: requiredStrings.consentLabel,
+    consentVersion: requiredStrings.consentVersion,
+    doiSubjectTemplate: requiredStrings.doiSubjectTemplate,
+    doiIntroText: requiredStrings.doiIntroText,
+    doiButtonLabel: requiredStrings.doiButtonLabel,
+    reminderSubjectTemplate: requiredStrings.reminderSubjectTemplate,
+    reminderIntroTemplate: requiredStrings.reminderIntroTemplate,
+    unsubscribeLinkLabel: requiredStrings.unsubscribeLinkLabel,
+    unsubscribeSuccessHeadline: requiredStrings.unsubscribeSuccessHeadline,
+    unsubscribeSuccessBody: requiredStrings.unsubscribeSuccessBody,
+    maxSubscriptionsPerEmailAndLocation: requiredIntegers.maxSubscriptionsPerEmailAndLocation,
+    signupRateLimitPerIpPerHour: requiredIntegers.signupRateLimitPerIpPerHour,
+    signupRateLimitPerEmailPerHour: requiredIntegers.signupRateLimitPerEmailPerHour,
+    doiTokenTtlHours: requiredIntegers.doiTokenTtlHours,
+    pendingSubscriptionTtlHours: requiredIntegers.pendingSubscriptionTtlHours,
+    materializationLookaheadDays: requiredIntegers.materializationLookaheadDays,
+    ...buildOptionalRouteFields(paths),
+    ...buildOptionalContactFields(optionalStrings, addresses),
+    ...buildOptionalDoiTextFields(optionalStrings),
+    ...buildOptionalReminderTextFields(optionalStrings),
+    ...buildOptionalUnsubscribeTextFields(optionalStrings),
+    ...(unsubscribeTokenTtlDays ? { unsubscribeTokenTtlDays } : {}),
   };
 };
 

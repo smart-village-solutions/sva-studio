@@ -588,6 +588,7 @@ describe('projects route', () => {
         }),
       })
     );
+    expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledTimes(1);
     expect(state.changeVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'external-1', visible: true })
     );
@@ -597,21 +598,24 @@ describe('projects route', () => {
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'COMPLETED' })
     );
-    expect(state.createGenericItem.mock.invocationCallOrder[0]).toBeLessThan(
-      state.changeVisibility.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledTimes(1);
+    expect(state.createGenericItem.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!
     );
-    expect(state.changeVisibility.mock.invocationCallOrder[0]).toBeLessThan(
-      state.prepareExternalContent.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    expect(state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.changeVisibility.mock.invocationCallOrder[0]!
     );
-    expect(state.prepareExternalContent.mock.invocationCallOrder[0]).toBeLessThan(
-      state.bindReference.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    expect(state.changeVisibility.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.prepareExternalContent.mock.invocationCallOrder[0]!
     );
-    expect(state.bindReference.mock.invocationCallOrder[0]).toBeLessThan(
-      state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0] ??
-        Number.POSITIVE_INFINITY
+    expect(state.prepareExternalContent.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.bindReference.mock.invocationCallOrder[0]!
     );
-    expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]).toBeLessThan(
-      state.completeIdempotency.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
+    expect(state.bindReference.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]!
+    );
+    expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.completeIdempotency.mock.invocationCallOrder[0]!
     );
   });
 

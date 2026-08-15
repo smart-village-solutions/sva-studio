@@ -1,0 +1,4 @@
+{
+  "prNumber": 1006,
+  "body": "Der News-Editor bewahrt ältere Kompatibilitätsfelder übersichtlicher\n\n- Redaktionelle Inhalte und Legacy-Felder behalten ihre bisherige Priorität.\n- Geplante Veröffentlichung, Push-Benachrichtigung und Ortsbezug werden weiterhin nur nach einer tatsächlichen Änderung übernommen.\n- Umfangreiche Regressionstests sichern Create- und Edit-Vorgänge sowie ungültige Kompatibilitätswerte ab."
+}

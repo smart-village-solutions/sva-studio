@@ -8,7 +8,13 @@ import {
   mapNewsItemToDetailFormValues,
   newsDetailFormSchema,
 } from '../src/news.detail-form.js';
-import type { NewsContentBlockFormValue, NewsContentItem } from '../src/news.types.js';
+import type {
+  NewsContentBlockFormValue,
+  NewsContentItem,
+  NewsDetailCompatibilityField,
+  NewsDetailFormValues,
+  NewsFormInput,
+} from '../src/news.types.js';
 
 const sampleItem: NewsContentItem = {
   id: 'news-1',
@@ -47,6 +53,119 @@ const sampleItem: NewsContentItem = {
   createdAt: '2026-05-20T09:00:00.000Z',
   updatedAt: '2026-05-22T09:00:00.000Z',
 };
+
+type CompatibilityTouchRuntime = true | false | undefined;
+
+const defineCompatibilityRuntimeInput = (
+  values: NewsDetailFormValues,
+  key: NewsDetailCompatibilityField,
+  value: unknown,
+  touched: CompatibilityTouchRuntime
+) => {
+  Object.defineProperty(values, key, {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value,
+  });
+
+  if (touched === undefined) {
+    delete (values as unknown as Record<string, unknown>).__compatibilityTouched;
+    return;
+  }
+
+  Object.defineProperty(values, '__compatibilityTouched', {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: { [key]: touched },
+  });
+};
+
+const readMutationField = (mutation: NewsFormInput, key: string): unknown =>
+  (mutation as unknown as Record<string, unknown>)[key];
+
+const compatibilityFieldCases = [
+  {
+    key: 'keywords',
+    mutationKey: 'keywords',
+    validValue: 'Neue Schlagwörter',
+    invalidValue: 42,
+    initialValue: 'Rathaus, Termin',
+    updatedValue: 'Neue Schlagwörter',
+  },
+  {
+    key: 'externalId',
+    mutationKey: 'externalId',
+    validValue: 'ext-new',
+    invalidValue: false,
+    initialValue: 'ext-42',
+    updatedValue: 'ext-new',
+  },
+  {
+    key: 'newsType',
+    mutationKey: 'newsType',
+    validValue: 'warnung',
+    invalidValue: [],
+    initialValue: 'meldung',
+    updatedValue: 'warnung',
+  },
+  {
+    key: 'charactersToBeShown',
+    mutationKey: 'charactersToBeShown',
+    validValue: '240',
+    invalidValue: 240,
+    initialValue: 180,
+    updatedValue: 240,
+  },
+  {
+    key: 'fullVersion',
+    mutationKey: 'fullVersion',
+    validValue: false,
+    invalidValue: 'false',
+    initialValue: true,
+    updatedValue: false,
+  },
+  {
+    key: 'showPublishDate',
+    mutationKey: 'showPublishDate',
+    validValue: true,
+    invalidValue: 1,
+    initialValue: false,
+    updatedValue: true,
+  },
+  {
+    key: 'pushNotification',
+    mutationKey: 'pushNotification',
+    validValue: true,
+    invalidValue: 'true',
+    initialValue: false,
+    updatedValue: true,
+  },
+  {
+    key: 'pointOfInterestId',
+    mutationKey: 'pointOfInterestId',
+    validValue: 'poi-new',
+    invalidValue: null,
+    initialValue: 'poi-1',
+    updatedValue: 'poi-new',
+  },
+  {
+    key: 'address',
+    mutationKey: 'address',
+    validValue: { street: 'Neue Straße 2', zip: '54321', city: 'Neustadt' },
+    invalidValue: 'Neue Straße 2',
+    initialValue: { street: 'Marktplatz 1', zip: '12345', city: 'Musterstadt' },
+    updatedValue: { street: 'Neue Straße 2', zip: '54321', city: 'Neustadt' },
+  },
+] as const satisfies readonly {
+  key: NewsDetailCompatibilityField;
+  mutationKey: string;
+  validValue: unknown;
+  invalidValue: unknown;
+  initialValue: unknown;
+  updatedValue: unknown;
+}[];
 
 describe('news.detail-form', () => {
   it('backs compatibility aliases with the hidden snapshot instead of standalone public state', () => {
@@ -198,6 +317,123 @@ describe('news.detail-form', () => {
     expect(mutation).not.toHaveProperty('charactersToBeShown');
   });
 
+  it.each(compatibilityFieldCases)(
+    'applies touched $key compatibility values with their matching runtime type',
+    ({ key, mutationKey, validValue, updatedValue }) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(values, key, validValue, true);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(readMutationField(mutation, mutationKey)).toEqual(updatedValue);
+    }
+  );
+
+  it.each(compatibilityFieldCases)(
+    'ignores explicitly untouched $key compatibility values',
+    ({ key, mutationKey, validValue, initialValue }) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(values, key, validValue, false);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(readMutationField(mutation, mutationKey)).toEqual(initialValue);
+    }
+  );
+
+  it.each(compatibilityFieldCases)(
+    'ignores $key compatibility values when the touched marker is missing',
+    ({ key, mutationKey, validValue, initialValue }) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(values, key, validValue, undefined);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(readMutationField(mutation, mutationKey)).toEqual(initialValue);
+    }
+  );
+
+  it.each(compatibilityFieldCases)(
+    'ignores touched $key compatibility values with a mismatching runtime type',
+    ({ key, mutationKey, invalidValue, initialValue }) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(values, key, invalidValue, true);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(readMutationField(mutation, mutationKey)).toEqual(initialValue);
+    }
+  );
+
+  it('applies multiple touched compatibility fields without losing the existing snapshot', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    values.keywords = 'Mehrfach';
+    values.externalId = 'ext-multi';
+    values.fullVersion = false;
+    values.address = { street: 'Nebenstraße 4', zip: '77777', city: 'Anderswo' };
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'edit')).toMatchObject({
+      keywords: 'Mehrfach',
+      externalId: 'ext-multi',
+      fullVersion: false,
+      newsType: 'meldung',
+      pointOfInterestId: 'poi-1',
+      address: { street: 'Nebenstraße 4', zip: '77777', city: 'Anderswo' },
+    });
+  });
+
+  it.each([true, false, undefined] as const)(
+    'stores compatibility content blocks only when touched is %s',
+    (touched) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      const blocks: NewsContentBlockFormValue[] = [
+        {
+          title: 'Compatibility-Titel',
+          intro: 'Compatibility-Intro',
+          body: '<p>Compatibility-Body</p>',
+          mediaContents: [],
+        },
+      ];
+      defineCompatibilityRuntimeInput(values, 'contentBlocks', blocks, touched);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      if (touched === true) {
+        expect(values.__legacySnapshot?.legacyContentBlocks).toBe(blocks);
+      } else {
+        expect(values.__legacySnapshot?.legacyContentBlocks).not.toBe(blocks);
+      }
+      expect(mutation.contentBlocks?.[0]).toMatchObject({
+        title: 'Rathaus informiert',
+        intro: 'Kurzer Einstieg',
+        body: '<p>Ausfuehrlicher Inhalt</p>',
+      });
+      expect(mutation.contentBlocks).not.toBe(blocks);
+    }
+  );
+
+  it('ignores touched content blocks with a mismatching runtime type', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    const existingBlocks = values.__legacySnapshot?.legacyContentBlocks;
+    defineCompatibilityRuntimeInput(values, 'contentBlocks', { title: 'Kein Array' }, true);
+
+    mapNewsDetailFormValuesToMutation(values, 'edit');
+
+    expect(values.__legacySnapshot?.legacyContentBlocks).toBe(existingBlocks);
+  });
+
+  it('retains compatibility object references in the snapshot and clones mutation values', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    const address = { street: 'Referenzweg 1', zip: '10101', city: 'Klonstadt' };
+    defineCompatibilityRuntimeInput(values, 'address', address, true);
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+    expect(values.__legacySnapshot?.address).toBe(address);
+    expect(mutation.address).toEqual(address);
+    expect(mutation.address).not.toBe(address);
+  });
+
   it('preserves bullet lists, ordered lists, and links in serialized editor HTML', () => {
     const values = createDefaultNewsDetailFormValues('Redaktion');
     const formattedHtml =
@@ -251,6 +487,117 @@ describe('news.detail-form', () => {
     });
   });
 
+  it.each([true, false, undefined] as const)(
+    'updates publicationDate independently when touched is %s',
+    (touched) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(
+        values,
+        'publicationDate',
+        '2026-07-01T08:15:00.000Z',
+        touched
+      );
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(mutation.publicationDate).toBe(
+        touched === true ? '2026-07-01T08:15:00.000Z' : '2026-05-24T09:00:00.000Z'
+      );
+      expect(mutation.publishedAt).toBe('2026-05-24T09:00:00.000Z');
+    }
+  );
+
+  it('ignores a touched publicationDate with a mismatching runtime type', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    defineCompatibilityRuntimeInput(values, 'publicationDate', 1_780_300_000_000, true);
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+    expect(mutation.publicationDate).toBe('2026-05-24T08:00:00.000Z');
+    expect(values.__legacySnapshot?.publicationDate).toBe('2026-05-24T08:00:00.000Z');
+  });
+
+  it.each([false, undefined] as const)(
+    'ignores a matching publishedAt value when touched is %s',
+    (touched) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      defineCompatibilityRuntimeInput(values, 'publishedAt', '2026-07-02T09:30', touched);
+
+      const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+      expect(mutation.publishedAt).toBe('2026-05-24T09:00:00.000Z');
+      expect(values.publicationMode).toBe('immediate');
+    }
+  );
+
+  it('ignores a touched publishedAt value with a mismatching runtime type', () => {
+    const values = mapNewsItemToDetailFormValues(sampleItem);
+    defineCompatibilityRuntimeInput(values, 'publishedAt', { iso: '2026-07-02T09:30' }, true);
+
+    const mutation = mapNewsDetailFormValuesToMutation(values, 'edit');
+
+    expect(mutation.publishedAt).toBe('2026-05-24T09:00:00.000Z');
+    expect(values.__legacySnapshot?.publishedAt).toBe('2026-05-24T09:00:00.000Z');
+  });
+
+  it('synchronizes a touched publishedAt only for a draft without a scheduled value', () => {
+    const eligibleDraft = mapNewsItemToDetailFormValues(sampleItem);
+    eligibleDraft.publicationMode = 'draft';
+    eligibleDraft.scheduledPublicationAt = '';
+    defineCompatibilityRuntimeInput(eligibleDraft, 'publishedAt', '2026-07-02T09:30', true);
+
+    const occupiedDraft = mapNewsItemToDetailFormValues(sampleItem);
+    occupiedDraft.publicationMode = 'draft';
+    occupiedDraft.scheduledPublicationAt = '2026-07-03T10:45';
+    defineCompatibilityRuntimeInput(occupiedDraft, 'publishedAt', '2026-07-02T09:30', true);
+
+    const scheduled = mapNewsItemToDetailFormValues(sampleItem);
+    scheduled.publicationMode = 'scheduled';
+    scheduled.scheduledPublicationAt = '2026-07-04T11:00';
+    defineCompatibilityRuntimeInput(scheduled, 'publishedAt', '2026-07-02T09:30', true);
+
+    expect(mapNewsDetailFormValuesToMutation(eligibleDraft, 'edit')).toMatchObject({
+      publishedAt: '2026-07-02T09:30',
+      publicationDate: '2026-05-24T08:00:00.000Z',
+    });
+    expect(eligibleDraft).toMatchObject({ publicationMode: 'draft', scheduledPublicationAt: '' });
+
+    expect(mapNewsDetailFormValuesToMutation(occupiedDraft, 'edit').publishedAt).toBe(
+      '2026-07-02T09:30'
+    );
+    expect(occupiedDraft).toMatchObject({
+      publicationMode: 'draft',
+      scheduledPublicationAt: '2026-07-03T10:45',
+    });
+
+    expect(mapNewsDetailFormValuesToMutation(scheduled, 'edit').publishedAt).toBe(
+      '2026-07-04T11:00'
+    );
+    expect(scheduled).toMatchObject({
+      publicationMode: 'scheduled',
+      scheduledPublicationAt: '2026-07-04T11:00',
+    });
+  });
+
+  it('keeps blank publishedAt handling distinct for draft and scheduled values', () => {
+    const draft = mapNewsItemToDetailFormValues(sampleItem);
+    draft.publicationMode = 'draft';
+    draft.scheduledPublicationAt = '';
+    defineCompatibilityRuntimeInput(draft, 'publishedAt', '', true);
+
+    const scheduled = mapNewsItemToDetailFormValues(sampleItem);
+    scheduled.publicationMode = 'scheduled';
+    scheduled.scheduledPublicationAt = '2026-07-04T11:00';
+    defineCompatibilityRuntimeInput(scheduled, 'publishedAt', '', true);
+
+    const draftMutation = mapNewsDetailFormValuesToMutation(draft, 'edit');
+    const scheduledMutation = mapNewsDetailFormValuesToMutation(scheduled, 'edit');
+
+    expect(draft).toMatchObject({ publicationMode: 'draft', scheduledPublicationAt: '' });
+    expect(Number.isNaN(new Date(draftMutation.publishedAt).getTime())).toBe(false);
+    expect(scheduledMutation.publishedAt).toBe('2026-07-04T11:00');
+  });
+
   it('serializes edit payloads from the simplified fields even when compatibility data disagrees', () => {
     const values = mapNewsItemToDetailFormValues(sampleItem);
 
@@ -290,6 +637,44 @@ describe('news.detail-form', () => {
         }),
       ],
     });
+  });
+
+  it.each(['create', 'edit'] as const)(
+    'keeps simplified editorial values ahead of contradictory compatibility blocks in %s mode',
+    (mode) => {
+      const values = mapNewsItemToDetailFormValues(sampleItem);
+      const compatibilityBlocks: NewsContentBlockFormValue[] = [
+        {
+          title: 'Legacy-Titel',
+          intro: 'Legacy-Intro',
+          body: '<p>Legacy-Body</p>',
+          mediaContents: [],
+        },
+      ];
+      values.title = 'Führender Titel';
+      values.contentIntro = 'Führendes Intro';
+      values.contentBody = '<p>Führender Body</p>';
+      defineCompatibilityRuntimeInput(values, 'contentBlocks', compatibilityBlocks, true);
+
+      expect(mapNewsDetailFormValuesToMutation(values, mode).contentBlocks?.[0]).toMatchObject({
+        title: 'Führender Titel',
+        intro: 'Führendes Intro',
+        body: '<p>Führender Body</p>',
+      });
+    }
+  );
+
+  it('keeps push inclusion distinct for create and previously notified edits', () => {
+    const values = mapNewsItemToDetailFormValues({
+      ...sampleItem,
+      pushNotificationsSentAt: '2026-05-24T09:01:00.000Z',
+    });
+    defineCompatibilityRuntimeInput(values, 'pushNotification', true, true);
+
+    expect(mapNewsDetailFormValuesToMutation(values, 'create').pushNotification).toBe(true);
+    expect(mapNewsDetailFormValuesToMutation(values, 'edit')).not.toHaveProperty(
+      'pushNotification'
+    );
   });
 
   it('validates the compatibility-only schema branches for legacy fields and invalid urls', async () => {

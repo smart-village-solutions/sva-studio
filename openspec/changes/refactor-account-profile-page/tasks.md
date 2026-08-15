@@ -17,4 +17,4 @@
 - [x] 3.1 Fokussierte Unit-, Typ-, Lint- und A11y-Gates ausführen
 - [x] 3.2 Complexity-, Fallow-, File-Placement- und OpenSpec-Strict-Gates ausführen
 - [x] 3.3 Betroffenen Scope messen und den relevanten PR-Gate-Pfad ausführen
-- [ ] 3.4 Aufgelöste Complexity-Baselines entfernen und Changelog ergänzen
+- [x] 3.4 Aufgelöste Complexity-Baselines entfernen und Changelog ergänzen

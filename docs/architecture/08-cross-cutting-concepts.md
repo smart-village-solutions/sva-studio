@@ -101,6 +101,7 @@ gleichzeitig beeinflussen.
 - Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
+- Delegationsentscheidungen normalisieren und prüfen Payload, Ticketzustand und Zeitfenster frameworkfrei; Account-Auflösung, SQL-Persistenz und Audit-Dual-Write bleiben sichtbar sequenzielles I/O-Wiring. Dadurch dürfen sich weder Fehlerprioritäten noch Inclusive-Zeitgrenzen, Instanzfilter, Reason Codes oder Auditfelder ändern.
 - Impersonation ohne Governance-Export-Capability benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
 - Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen

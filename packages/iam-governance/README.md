@@ -29,6 +29,7 @@ Das Package ist als Node-ESM-Library mit `dist/index.js` als Laufzeiteinstieg ko
 Die Implementierung ist in weiten Teilen dependency-injected aufgebaut. Beispiele dafür sind:
 
 - `createGovernanceWorkflowExecutor`, das Logging-, UUID- und Kontext-Dependencies erwartet
+- die Delegationserstellung, deren frameworkfreie Payload- und Policy-Entscheidung von den weiterhin explizit sequenziellen Account-Lookups, SQL-Schreibvorgängen und Audit-Events getrennt ist
 - `createLegalTextRepository`, das eine instanzgebundene DB-Ausführung und Activity-Logging erhält
 - `createLegalTextHttpHandlers` und `createLegalTextMutationHandlers`, die Request-, Response-, CSRF- und Idempotency-Helfer konsumieren
 

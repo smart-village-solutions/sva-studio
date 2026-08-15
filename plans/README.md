@@ -109,7 +109,133 @@ aus Plan 020. Der bei der Planung ausdrücklich ausgegrenzte Events-/POI-Clone
 Clone `dup:9b9f8261` betrifft nur einen sechszeiligen Number-to-String-Mapper
 und wurde nicht durch eine Shared- oder Metrikabstraktion kaschiert.
 
-Die Gesamtrepository ist damit nicht findingfrei. Insbesondere verbleiben 924
+## Dritte wirtschaftliche Runde – Live-Analyse
+
+Die dritte Runde wurde am 15. August 2026 auf einem neuen sauberen detached
+Worktree des live gefetchten `origin/main`-Commits
+`98e6ca3d79f7df23674f26c5c8c8307b9da8cd82` geplant. Fallow ist im Root-
+Manifest auf `3.10.0` gepinnt; die ausgeführte signierte Binary meldete ebenfalls
+`fallow 3.10.0`. Das JSON-Report-Schema ist Version 7.
+
+Die unveränderte `.fallowrc.json` hat SHA-256
+`4ea365cbdc2b24f2407f16d483d8ea86440a26cbd123608c7cb9b965f8fcee40`.
+Sie definiert die eingecheckten Test-/Script-/Server-Entries, drei dynamische
+Entries, drei bekannte unresolved Runtime-Artefakte, vier Ignore-Patterns und
+sieben Boundary-Zonen (`app`, `routing`, `server-runtime`, `auth-runtime`,
+`iam-admin`, `instance-registry`, `integration`) mit den dort hinterlegten
+Allow-Regeln. Es wurde weder eine Suppression noch ein Schwellenwert verändert.
+
+Verwendete Baseline-Befehle, jeweils mit JSON, `--quiet`, `--explain`, getrenntem
+stderr und Exitcode-Prüfung:
+
+```bash
+fallow health --format json --quiet --explain
+fallow dead-code --production --format json --quiet --explain
+fallow dupes --format json --quiet --explain
+fallow dead-code --trace-file <kandidat> --format json --quiet --explain
+fallow dead-code --trace-dependency <paket> --format json --quiet --explain
+```
+
+Exitcode 1 trat bei Health und Production Dead Code als normaler Finding-Zustand
+auf; Dupes endete mit 0. Alle drei Reports waren valides JSON mit `kind`, Schema
+7 und `_meta`. Kein Analyzerlauf endete mit Exitcode 2.
+
+| Metrik | Live-Baseline |
+|---|---:|
+| Dateien / Funktionen | 3.452 / 43.269 |
+| Health-Findings | 924 |
+| Critical / High / Moderate | 163 / 277 / 484 |
+| Maintainability | 90,9 |
+| Production Dead Code/Dependencies | 798 |
+| Unused files / exports / types | 58 / 533 / 141 |
+| Unused / unlisted Dependencies | 3 / 14 |
+| Unresolved Imports / Dev-in-Production | 3 / 1 |
+| Importzyklen / Re-export-Zyklen | 0 / 0 |
+| Boundary / Coverage / Call | 0 / 0 / 0 |
+| Duplikatgruppen / Instanzen | 686 / 1.526 |
+| Duplizierte Zeilen / Quote | 27.400 / 8,30 % |
+
+## Kandidatenentscheidung der dritten Runde
+
+| Kandidat | Ist-Metrik und Trace | Risiko/Wirkung | Aufwand/Testbarkeit | Überschneidung/STOP | Entscheidung |
+|---|---|---|---|---|---|
+| POI-Serialisierung | 6 CRAP-Funde, max. 268,2; produktiver Create/Update-Pfad | POI-Datenintegrität; hoher Wartungsgewinn | M–L; breite Formtests | STOP bei Form-/Mainserver-Vertragsänderung | **ausgewählt, Plan 022** |
+| POI-Inbound-Hauptmapping | `mapPoiContentToFormValues`: CC 27/Cognitive 14/CRAP 184,5; produktiver Detail-Reset | Legacy-/Default-/Reihenfolgedaten | M; derselbe Formtestpfad | kleine Mapper nur charakterisieren, nicht metrisch zerlegen | **ausgewählt, Plan 023** |
+| Instance Realm Steps | vier Funde, max. CRAP 299,6; Fan-in 4 | IAM-Status darf nicht falsch erscheinen | M–L; Status-/Fallbackmatrix | STOP bei Backend-/Fixture-Overlap | **ausgewählt, Plan 024** |
+| Instance Primary Action | CC 30/Cognitive 28; produktive Detailseite | sicherheitsrelevante Aktionspriorität | M; kombinatorische Matrix | keine neue Action/Permission | **ausgewählt, Plan 025** |
+| Waste DOI Message | CC 19/Cognitive 18/CRAP 97; Outbox-Pfad | Datenschutz- und Mailvertrag | S–M; fokussierter Unit-Pfad | Token/Secret/SQL explizit out | **ausgewählt, Plan 026** |
+| Auth Permission Store | 17 Importer, zentraler Permissionpfad | höchster Blast Radius | M–L, HIGH | aktive OpenSpecs `use-mainserver-data-provider-as-content-author` und `centralize-scoped-ui-access` verändern Principal-, Permission- und UI-Zugriffsverträge | **zurückgestellt** |
+| Media `completeUpload` | CC 22/CRAP 126,5; produktiver Uploadpfad | Storage-/Idempotenzintegrität | M, gute Tests | aktive Media-OpenSpecs | **zurückgestellt** |
+| Header | CC 26/CRAP 172; AppShell | produktive Shell | M, UI/A11y | `add-account-credential-self-service` nennt Datei | **zurückgestellt** |
+| Interface Healthcheck/Server | max. CRAP 367,5; produktive Interfaces | Secrets/SQL/Netzwerk | M–L | direkte PR-#983-Sourceüberschneidung | **zurückgestellt** |
+| Content Projection/Sidebar | hohe Hotspots und Reichweite | IAM/Content | L | aktive DataProvider-/Scoped-Access-Verträge | **zurückgestellt** |
+| Mainserver Event/News/POI | mehrere Critical/High und große Clones | öffentlicher Runtimevertrag | M–L | aktiver Service-Internals-Change; PR #1005/#1006 frisch | **zurückgestellt** |
+| Root-/Deploy-Dependencies | 3 unused, 14 unlisted, 1 dev-in-production | mögliche Ownership-Lücke | S–M | kein kanonischer Workspace-Audit; Traces überwiegend Script/Debug | **verworfen** |
+| Radix-/sanitize-html-Doppeldeklaration | je ein bereits korrekt besitzender Zielworkspace | geringe Ownership-Bereinigung | S, gut prüfbar | eigener PR-/CI-Aufwand überwiegt Nutzen | **verworfen** |
+| große Cross-Plugin-Clones | bis 926 Zeilen nominell | unterschiedliche Fachverträge | L/unklar | neue Shared-Ownership, >2 Workspaces | **verworfen** |
+| verbleibender Dead Code | 798 Findings, überwiegend nicht produktiv erreichbar | kein belegter Runtime-Nutzen | variabel | Production-Reachability fehlt | **verworfen für diese Runde** |
+
+Die Schnittkante liegt hinter Plan 026: Auch dieses Ziel ist noch wirtschaftlich,
+weil ein klarer produktiver DOI-Vertrag, ein einzelner Owner und ein kompakter
+Test-/Rollback-Pfad vorliegen. Der fachlich stärkere nächste Auth-Kandidat ist
+wegen der aktiven OpenSpecs `use-mainserver-data-provider-as-content-author`
+und `centralize-scoped-ui-access` aktuell nicht unabhängig reviewbar: Beide
+verändern Principal-/Permission- beziehungsweise darauf aufbauende UI-
+Zugriffsverträge mit demselben Konsumentenradius. Kleinere Dependency- oder
+Moderate-Funde rechtfertigen keinen zusätzlichen PR- und CI-Zyklus.
+
+## Abgrenzung zu aktiven Änderungen
+
+Die Auswahl wurde nicht allein über Domänennamen abgegrenzt, sondern gegen die
+aktiven OpenSpec-Aufgaben und die beim Analysebeginn vorhandenen Branch-Deltas
+geprüft:
+
+- `refactor-shared-editor-primitives` migriert POI-UI-Section- und Repeater-
+  Primitives. Der Change erklärt Mapping, Validierung und Speichern ausdrücklich
+  als pluginlokal. Bundle A beansprucht nur
+  `poi.detail-form.serialization.ts`, `poi.detail-form.mapping.ts` und die
+  reinen Formvertragsfälle in `poi.detail-form.test.ts`; UI-Komponenten,
+  Repeater und deren Tests sind ausgeschlossen.
+- `add-studio-data-form-and-test-foundations` inventarisiert POI als Konsument,
+  setzt seine Referenzimplementierung jedoch in Admin-Users, -Roles und Content
+  um. Bundle A ändert keine Testinfrastruktur, keinen Form-Provider und keine
+  Shared-Testutility. Eine spätere Änderung dieser Ownership ist eine harte
+  STOP-Bedingung.
+- `update-instance-detail-module-tab` besitzt den neuen Module-Tab und dessen
+  Journey-/UI-Vertrag. Bundle B besitzt ausschließlich die bestehenden Realm-
+  Operationsmodelle in `-instances-shared.tsx` und deren Modelltests; Tab,
+  Navigation, Module-Workspace und dessen Fixtures sind ausgeschlossen.
+- Die zu Analysebeginn vorhandenen Deltas der Principal-, Mainserver-, Content-
+  und Instance-Module-Branches (`f6b72e7`, `8b3c6e4`, `6db1dfa`, `b2110b7`)
+  enthielten keine der für Bundle A oder B ausgewählten Source-Dateien. Vor
+  Delegation wird dieselbe Datei-/Vertragsprüfung gegen die dann live aktiven
+  Branches, PRs und OpenSpec-Aufgaben wiederholt; bei Treffer wird das Bundle
+  zurückgestellt, nicht parallel gestartet.
+
+## Bundle-Matrix der dritten Runde
+
+| Bundle | Problempläne | Owner/Workspace | Gemeinsamer Vertrag und Gate-Pfad | Risiko | Aufwand | Abhängigkeiten | Bündelungsgrund |
+|---|---|---|---|---:|---:|---|---|
+| A – POI-Formvertrag | 022, 023 | Plugin POI / `@sva/plugin-poi` | bidirektionales pluginlokales Form-Mapping; `plugin-poi` Unit/Coverage/Types/Lint/Build und Fallow-Audit | mittel | L | Vorstart-Prüfung gegen `refactor-shared-editor-primitives` und `add-studio-data-form-and-test-foundations` | gleicher Owner, dieselbe reine Formvertragstestdatei und derselbe Datenvertrag; UI-/Testinfrastruktur bleibt fremder Scope |
+| B – Instance-Realm-Operations | 024, 025 | Studio Instance UI / `sva-studio-react` | Realm-Step- und Primäraktionsmodell; gezielte Modelltests, UI-Gates und App-Audit | hoch | L | Vorstart-Prüfung gegen `update-instance-detail-module-tab` | eine Datei, eine Status-/Prioritätsmatrix und Rollback-Grenze; Module-Tab/Journey-Fixtures bleiben fremder Scope |
+| C – Waste DOI Message | 026 | Studio Waste Runtime / `sva-studio-react` | DOI-Maildarstellung; fokussierter Server-Unit-/Type-/Build-Pfad und App-Audit | mittel | S–M | keine | Einzelproblem; Token, Secret, SQL, Datum und Idempotenz bleiben bewusst getrennt |
+
+Alle Bundles starten unabhängig auf dem dann aktuellen `origin/main`, aber A
+und B erst nach der oben benannten erneuten Ownership-Prüfung. Bundle B und C
+teilen zwar den kanonischen Workspace, aber weder Source, Vertrag noch
+Testdateien. Vor Delegation wird die Delta-/Interaktionsprüfung wiederholt.
+
+## Reihenfolge und Status – dritte Runde
+
+| Plan | Titel | Priorität | Aufwand | Bundle | Status |
+|---|---|---:|---:|---|---|
+| 022 | POI-Formularserialisierung entflechten | P1 | M–L | A | TODO |
+| 023 | POI-Inbound-Mapping vereinfachen | P1 | M | A | TODO |
+| 024 | Realm-Operationsschritte entflechten | P1 | M–L | B | TODO |
+| 025 | Instance-Primäraktion explizit priorisieren | P1 | M | B | TODO |
+| 026 | DOI-Versandnachricht entflechten | P1 | S–M | C | TODO |
+
+Das Gesamtrepository ist damit nicht findingfrei. Insbesondere verbleiben 924
 globale Health-Findings. In `news.detail-form.ts` sind zwei nachweislich
 unveränderte, fachfremde High-Findings vorhanden; das Zielfinding
 `syncSnapshotFromCompatibilityValues` aus Plan 021 ist dagegen beseitigt.

@@ -334,6 +334,8 @@ describe('waste-management-settings-public-config', () => {
     ['dataProtectionContactEmail', 'invalid-address'],
     ['signupSuccessPath', 'https://example.org/not-relative'],
     ['activationSuccessPath', '//example.org/not-relative'],
+    ['unsubscribeSuccessPath', 'https://example.org/not-relative'],
+    ['invalidTokenPath', '//example.org/not-relative'],
     ['unsubscribeTokenTtlDays', 0],
   ] as const)('rejects explicitly invalid optional reminder field %s', (field, invalidValue) => {
     expect(
@@ -341,6 +343,68 @@ describe('waste-management-settings-public-config', () => {
         emailReminderConfig: {
           ...createEmailReminderConfigInput(),
           [field]: invalidValue,
+        },
+      })
+    ).toBeUndefined();
+  });
+
+  it.each([
+    ['signupSuccessPath', '/email-reminders/signed-up'],
+    ['activationSuccessPath', '/email-reminders/active'],
+    ['unsubscribeSuccessPath', '/email-reminders/unsubscribed'],
+    ['invalidTokenPath', '/email-reminders/invalid-token'],
+  ] as const)('normalizes valid optional reminder path %s independently', (field, path) => {
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          [field]: `  ${path}  `,
+        },
+      })?.[field]
+    ).toBe(path);
+  });
+
+  it.each([
+    'signupSuccessPath',
+    'activationSuccessPath',
+    'unsubscribeSuccessPath',
+    'invalidTokenPath',
+  ] as const)('omits absent or blank optional reminder path %s independently', (field) => {
+    const withoutPath: Record<string, unknown> = { ...createEmailReminderConfigInput() };
+    delete withoutPath[field];
+
+    expect(
+      readWasteManagementEmailReminderConfig({ emailReminderConfig: withoutPath })
+    ).not.toHaveProperty(field);
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          [field]: '   ',
+        },
+      })
+    ).not.toHaveProperty(field);
+  });
+
+  it.each([
+    [
+      'required strings and integers',
+      { transportId: '   ', maxSubscriptionsPerEmailAndLocation: 0 },
+    ],
+    [
+      'urls and paths',
+      { privacyPolicyUrl: 'not-a-url', doiConfirmPath: 'https://evil.example/confirm' },
+    ],
+    [
+      'addresses and optional ttl',
+      { fromEmail: 'invalid-address', unsubscribeTokenTtlDays: 0 },
+    ],
+  ] as const)('fails closed when multiple %s sub-parsers reject the same config', (_label, overrides) => {
+    expect(
+      readWasteManagementEmailReminderConfig({
+        emailReminderConfig: {
+          ...createEmailReminderConfigInput(),
+          ...overrides,
         },
       })
     ).toBeUndefined();

@@ -1,5 +1,52 @@
 # Implementierungspläne zur Fallow-Sanierung
 
+## SonarCloud-Runde 1 – Live-Baseline und Ausführung
+
+Die SonarCloud-Runde wurde am 15. August 2026 auf dem live gefetchten
+`origin/main` `960955af8e356554e605eecc1c591924a3aaaff4` geplant. Die jüngste
+Sonar-Analyse vom `2026-08-15T18:26:07+0000` trägt exakt dieselbe Revision.
+
+- Quality Gate: `ERROR`; allein rot ist New-Code Security Rating `3/C` bei
+  erlaubtem Wert `1/A`.
+- 969 offene Issues: 1 Vulnerability, 0 Bugs, 968 Code Smells; 0 ungeprüfte
+  Security Hotspots.
+- Severity: 1 Blocker, 108 Critical, 416 Major, 444 Minor.
+- Debt: 6.545 Minuten (109 h 05 min); Coverage 88,0 %, Line Coverage 92,0 %,
+  Branch Coverage 81,7 %, globale Duplikation 1,9 %, New-Code-Duplikation 1,0 %.
+- Bestätigte Hauptgruppen: S3358 241, S1874 127, S3776 91, S4782 52,
+  S7763 41, S3863 34, S6478 30, S6551 28, S6571 24, S3735 16,
+  S6819 15, S9020 15 und S8786 6.
+
+### Gewählte Bündel und Reihenfolge
+
+| Plan | Titel | Priorität | Sonar vorher | Abhängigkeit | Status |
+|---|---|---:|---:|---|---|
+| 027 | Kryptografisch sichere Content-Media-UI-IDs | P0 | S2245: 1 | keine | TODO |
+| 028 | Organisationstechnische Identitäten linear normalisieren | P1 | S8786: 2 | 027 | TODO |
+| 029 | Waste-Tenant-Datenbankkennungen linear ableiten | P1 | S8786: 1 | 027, Konfliktprüfung #983/#984 | TODO |
+| 030 | Organisation-Keys linear normalisieren | P1 | S8786: 1 | 027 | TODO |
+| 031 | Changelog-HTML-Erkennung linear begrenzen | P1 | S8786: 1 | 027 | TODO |
+| 032 | Media-Base64url-Padding linear entfernen | P2 | S8786: 1 | 027 | TODO |
+
+Plan 027 wird separat zuerst gemergt und über den Main-Sonar-Scan abgenommen.
+Danach dürfen 028–032 bei disjunkten Source-/Vertragsgrenzen parallel laufen.
+Die sechs S8786-Befunde sind absichtlich nach Ownership und Testpfad getrennt;
+eine gemeinsame Regex-Sammel-PR wäre fachlich nicht reviewbar.
+
+### Zurückgestellt nach Live-Prüfung
+
+- S6551 in Waste-Masterdaten besitzt echte `FormDataEntryValue`-/Datei- und
+  Datenintegritätsrelevanz, überschneidet sich aber fachlich mit PR #983 und
+  dem Postal-Code-Backfill. Nach dessen terminalem Zustand neu bewerten.
+- Auth-/IAM-S3776, Sidebar/Content und Mainserver-Routen bleiben wegen aktiver
+  Principal-/Scoped-Access- beziehungsweise Service-Internals-OpenSpecs aus
+  dieser konfliktarmen ersten Sonar-Runde heraus.
+- S1874 ist keine reine React-Event-Migration: die Gruppe enthält auch Zod,
+  TanStack Table, OpenTelemetry und Browser-API-Deprecations. Sie wird später
+  nach API-Ownern geplant, nicht global ersetzt.
+- S3358/S4782/S7763/S3863/S6571 werden erst nach den produktionsriskanteren
+  Security-, Datenintegritäts- und Accessibility-Paketen mechanisch abgebaut.
+
 Erste Runde erstellt am 14. August 2026. Die zweite Runde wurde am
 15. August 2026 auf dem live gefetchten `origin/main`-Commit `067e7a8e6`
 geplant.

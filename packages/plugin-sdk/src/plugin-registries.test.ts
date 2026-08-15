@@ -376,6 +376,25 @@ describe('plugin registries', () => {
       ).not.toThrow();
     });
 
+    it.each([
+      ['action', undefined, {}],
+      ['route', {}, undefined],
+      ['null action', null, {}],
+      ['null route', {}, null],
+    ] as const)(
+      'keeps a null or absent capability equivalent to a malformed empty capability on the %s requirement',
+      (_source, actionCapability, routeCapability) => {
+        expect(() =>
+          createPluginRegistry([
+            pluginWithLinkedRequirements(
+              tenantRequirement({ resourceCapability: actionCapability as never }),
+              tenantRequirement({ resourceCapability: routeCapability as never })
+            ),
+          ])
+        ).not.toThrow();
+      }
+    );
+
     it('rejects a requirement present on only one linked contribution', () => {
       expect(() =>
         createPluginRegistry([pluginWithLinkedRequirements(tenantRequirement(), undefined)])

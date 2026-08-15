@@ -29,12 +29,7 @@ const haveEqualValues = (left: readonly string[], right: readonly string[]): boo
 const haveEqualResourceCapabilities = (
   left: UiResourceCapability | undefined,
   right: UiResourceCapability | undefined
-): boolean => {
-  if (!left || !right) {
-    return left === right;
-  }
-  return resourceCapabilityFields.every((field) => left[field] === right[field]);
-};
+): boolean => resourceCapabilityFields.every((field) => left?.[field] === right?.[field]);
 
 const haveEqualTenantRequirements = (
   left: TenantAccessRequirement,

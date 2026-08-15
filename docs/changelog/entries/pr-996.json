@@ -1,0 +1,4 @@
+{
+  "prNumber": 996,
+  "body": "Die nächste Runde technischer Qualitätsverbesserungen ist nachvollziehbar geplant\n\n- Zehn produktiv erreichbare Schwerpunkte sind mit Risiken, Abhängigkeiten und klaren Abbruchbedingungen dokumentiert.\n- Sicherheits-, Datenschutz- und Datenintegritätsverträge werden vor jedem Refactoring durch gezielte Bestandstests abgesichert.\n- Jede Umsetzung erhält einen eigenen geprüften Pull Request mit einem exakten Fallow-New-only-Audit."
+}

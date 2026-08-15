@@ -11,6 +11,8 @@
 - **Kategorie:** POI-Datenintegrität, Complexity, CRAP
 - **Geplant auf:** `98e6ca3d7`, 15. August 2026
 - **Fallow vorher:** `poi.detail-form.serialization.ts` hat 259 Zeilen, 27 Funktionen, Cyclomatic gesamt 197, Cognitive gesamt 85, MI 69,4, Complexity-Dichte 0,76 und sechs CRAP-Findings. Kritisch sind die Mapper ab Zeile 140 mit CC 33/CRAP 268,2 und ab Zeile 112 mit CC 26/CRAP 172; `compactAddress`, `compactContact`, `compactLocation` und der Medienmapper liegen jeweils bei CC 19/CRAP 97.
+- **Ergebnis:** DONE – PR #1009, Merge-Commit `e17772eb3d0c7e2de47750d2c75e0dc67a74b94a`
+- **Fallow nachher:** 259 Zeilen, 31 Funktionen, Cyclomatic gesamt 118, Cognitive gesamt 41, MI 78,4, Complexity-Dichte 0,46 und keine CRAP-Findings. Der Hauptserializer sank von CC 33 auf 9; der coveragegebundene Audit gegen das beim Merge aktuelle `origin/main` meldete PASS und für Complexity, Dead Code, Duplikation und Styling jeweils 0 eingeführte Befunde.
 
 ## Warum und Produktionsreichweite
 

@@ -11,6 +11,8 @@
 - **Kategorie:** Waste-DOI, Datenschutz, Complexity, CRAP
 - **Geplant auf:** `98e6ca3d7`, 15. August 2026
 - **Fallow vorher:** `buildDoiDispatchMessage` in `waste-management-email-reminder-dispatch.server.ts:231` hat CC 19, Cognitive 18, 55 Zeilen und CRAP 97 (High). Die Datei hat 332 Zeilen, Fan-in 2, MI 87 und keine Dead-Code-Quote.
+- **Ergebnis:** DONE – PR #1010, Merge-Commit `98f4911e4fb9da83cc0001705c1a47c0e87cbf8f`
+- **Fallow nachher:** `buildDoiDispatchMessage` hat CC 1, Cognitive 0, 14 Zeilen und CRAP 1. Der coveragegebundene New-only-Audit meldete PASS und für Complexity, Dead Code, Duplikation und Styling jeweils 0 eingeführte Befunde.
 
 ## Warum und Produktionsreichweite
 

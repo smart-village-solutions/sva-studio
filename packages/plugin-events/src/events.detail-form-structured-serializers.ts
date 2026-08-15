@@ -115,9 +115,10 @@ export const serializeEventOrganizer = (organizer: SerializableOrganizer) => {
 };
 
 export const serializeEventMediaContents = (
-  mediaContents: readonly SerializableMediaContent[] | undefined | null
+  mediaContents: readonly (SerializableMediaContent | null)[] | undefined | null
 ) =>
   (mediaContents ?? [])
+    .filter((entry): entry is SerializableMediaContent => entry !== null)
     .map(serializeEventMediaContent)
     .filter((entry) => Object.keys(entry).length > 0);
 

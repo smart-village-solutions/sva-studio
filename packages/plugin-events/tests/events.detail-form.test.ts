@@ -508,6 +508,47 @@ describe('events.detail-form', () => {
     });
   });
 
+  it('filters null media entries from runtime payloads', () => {
+    expect(
+      mapEventsDetailFormValuesToInput({
+        title: 'Defensiv',
+        basis: {
+          categories: [],
+          pointOfInterestId: '',
+          repeat: false,
+          recurring: '',
+          recurringType: '',
+          recurringInterval: '',
+          recurringWeekdays: [],
+        },
+        content: {
+          description: '',
+          dates: [],
+          addresses: [],
+          urls: [],
+          mediaContents: [null],
+          contacts: [],
+          organizer: {},
+          priceInformations: [],
+          accessibilityInformation: { description: '', types: '', urls: [] },
+        },
+        settings: {
+          visible: true,
+          externalId: '',
+          keywords: '',
+          tags: '',
+        },
+      } as never)
+    ).toEqual({
+      title: 'Defensiv',
+      dates: [],
+      addresses: [],
+      repeat: false,
+      recurringWeekdays: [],
+      visible: true,
+    });
+  });
+
   it('preserves false and zero while omitting null, empty, incomplete, and non-finite values', () => {
     expect(
       mapEventsDetailFormValuesToInput({

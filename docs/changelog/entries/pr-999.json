@@ -1,0 +1,4 @@
+{
+  "prNumber": 999,
+  "body": "Der manuelle Keycloak-Benutzerimport repariert unvollständige Profile weiterhin deterministisch, ist intern aber deutlich leichter prüfbar.\n\n- Bereits vorhandene Benutzerwerte haben weiterhin Vorrang vor lokalen Profildaten und dem Benutzernamen als E-Mail-Ersatz.\n- Unvollständige Profile bleiben bei fehlenden belastbaren Daten in der manuellen Prüfung.\n- Die technische Aufteilung reduziert die Komplexität, ohne Mandanten-, Identitäts- oder Fehlergrenzen zu verändern."
+}

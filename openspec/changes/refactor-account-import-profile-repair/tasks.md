@@ -14,5 +14,5 @@
 
 - [x] 3.1 Arc42-Abschnitte 05 und 08 um interne Entscheidungsgrenze und fail-closed Datenfluss ergänzen.
 - [x] 3.2 Fallow-Vorher-/Nachherwerte und echte Nx-Coverage erfassen; keine Baseline oder Schwelle anheben.
-- [ ] 3.3 Unit-, Type-, Lint-, Runtime-, Complexity-, OpenSpec-, File-Placement-, Changelog- und Fallow-Gates grün ausführen.
-- [ ] 3.4 Vollständigen Diff und PR-Evidenz für Root- und unabhängiges Security-Review vorbereiten.
+- [x] 3.3 Unit-, Type-, Lint-, Runtime-, Complexity-, OpenSpec-, File-Placement-, Changelog- und Fallow-Gates grün ausführen.
+- [x] 3.4 Vollständigen Diff und PR-Evidenz für Root- und unabhängiges Security-Review vorbereiten.

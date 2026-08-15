@@ -25,6 +25,7 @@ export default defineConfig({
       '@sva/data-repositories': resolve(__dirname, '../data-repositories/src/index.ts'),
       '@sva/monitoring-client/logging': resolve(__dirname, '../monitoring-client/src/logging.ts'),
       '@sva/server-runtime': resolve(__dirname, '../server-runtime/src/index.ts'),
+      '@sva/studio-module-iam': resolve(__dirname, '../studio-module-iam/src/index.ts'),
     },
   },
 });

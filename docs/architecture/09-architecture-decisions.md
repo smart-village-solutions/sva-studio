@@ -227,6 +227,12 @@ Zuordnung:
 
 - Abschnitt 04/05/06/08/10/11: OpenSpec-Change `refactor-runtime-module-iam-contract-source`
 
+### Fortschreibung 2026-08: Kanonische DSR-Persistenzprimitiven
+
+- ADR-017 gilt nach dem Package-Hard-Cut fort: `@sva/iam-governance` besitzt die fachlichen DSR-Persistenzprimitiven.
+- Auth-Runtime bleibt HTTP- und Transaktionsadapter, enthält aber keine zweite SQL-Ownership für Legal Holds oder DSR-Events.
+- OpenSpec-Change: `refactor-dsr-persistence-primitives`.
+
 ### Fortschreibung 2026-05: Mainserver-Listen-Pagination ohne neue ADR
 
 - Für `add-mainserver-plugin-list-pagination` wurde ebenfalls keine neue ADR angelegt.

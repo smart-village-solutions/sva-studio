@@ -3,7 +3,11 @@ import type { SqlExecutor } from '../iam/repositories/types.js';
 import type { InstanceRegistryRepository } from './repository-contract.js';
 import { buildInstanceSelectColumns, upsertPrimaryHostnameSql } from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
-import { createInstanceValues, updateInstanceValues } from './repository-mutation-values.js';
+import {
+  createInstanceValues,
+  resolveInstanceMutationActorId,
+  updateInstanceValues,
+} from './repository-mutation-values.js';
 import { queryRows, statement } from './repository-shared.js';
 import type { InstanceListRow } from './repository-types.js';
 
@@ -11,8 +15,6 @@ type MutationRepository = Pick<
   InstanceRegistryRepository,
   'createInstance' | 'updateInstance' | 'setInstanceStatus' | 'setInstanceRealmMode'
 >;
-
-const defaultActorId = (actorId: string | undefined): string => actorId ?? 'system';
 
 const runMutationStep = async <T>(stepKey: string, work: () => Promise<T>): Promise<T> => {
   try {
@@ -41,7 +43,7 @@ const upsertPrimaryHostname = async (
 ): Promise<void> => {
   await executor.execute({
     text: upsertPrimaryHostnameSql,
-    values: [hostname, instanceId, defaultActorId(actorId)],
+    values: [hostname, instanceId, resolveInstanceMutationActorId(actorId)],
   });
 };
 
@@ -130,7 +132,7 @@ WHERE id = $1
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
-      [input.instanceId, input.status, defaultActorId(input.actorId)]
+      [input.instanceId, input.status, resolveInstanceMutationActorId(input.actorId)]
     )
   );
   return rows[0] ? mapInstance(rows[0]) : null;
@@ -153,7 +155,7 @@ WHERE id = $1
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
-      [input.instanceId, input.realmMode, defaultActorId(input.actorId)]
+      [input.instanceId, input.realmMode, resolveInstanceMutationActorId(input.actorId)]
     )
   );
   return rows[0] ? mapInstance(rows[0]) : null;

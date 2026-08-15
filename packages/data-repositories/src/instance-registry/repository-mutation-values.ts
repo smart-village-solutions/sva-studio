@@ -40,7 +40,8 @@ type InstanceConfigurationValues = readonly [
   actorId: string,
 ];
 
-const defaultActorId = (actorId: string | undefined): string => actorId ?? 'system';
+export const resolveInstanceMutationActorId = (actorId: string | undefined): string =>
+  actorId ?? 'system';
 
 const secretMutationValues = (
   keepExisting: boolean | undefined,
@@ -98,7 +99,7 @@ const instanceConfigurationValues = (
   input.themeKey ?? null,
   JSON.stringify(input.featureFlags ?? {}),
   input.mainserverConfigRef ?? null,
-  defaultActorId(input.actorId),
+  resolveInstanceMutationActorId(input.actorId),
 ];
 
 export const createInstanceValues = (input: CreateInstanceInput): readonly SqlPrimitive[] => [

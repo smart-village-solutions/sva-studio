@@ -16,9 +16,9 @@
 
 ## 3. Dokumentation und Qualität
 
-- [ ] 3.1 Studio-Changelog ergänzen und Planstatus aktualisieren
+- [x] 3.1 Studio-Changelog ergänzen und Planstatus aktualisieren
 - [x] 3.2 Unit, Coverage, Types, Lint, Build und Accessibility ausführen
-- [ ] 3.3 Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen
+- [x] 3.3 Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen
 - [x] 3.4 Fallow New-only für `sva-studio-react` mit echter Coverage ausführen
 - [ ] 3.5 Root-Review und unabhängiges IAM-/Semantikreview auf dem exakten Head abschließen
 - [ ] 3.6 Terminale CI, null offene Threads und Mergeability nachweisen

@@ -13,5 +13,5 @@
 ## 3. Dokumentation und Qualität
 
 - [x] 3.1 Arc42-Abschnitte 05 und 08 auf die interne Ownership und den stabilen Sicherheitsvertrag aktualisieren.
-- [ ] 3.2 Unit-, Type-, Lint-, Runtime-, Complexity-, OpenSpec-, File-Placement- und Changelog-Gates ausführen.
-- [ ] 3.3 New-only-Fallow-Audit vor Draft und nach jeder relevanten Revision mit allen Introduced-Zählern auf null belegen.
+- [x] 3.2 Unit-, Type-, Lint-, Runtime-, Complexity-, OpenSpec-, File-Placement- und Changelog-Gates ausführen.
+- [x] 3.3 New-only-Fallow-Audit vor Draft und nach jeder relevanten Revision mit allen Introduced-Zählern auf null belegen.

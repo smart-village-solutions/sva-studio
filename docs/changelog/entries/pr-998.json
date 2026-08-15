@@ -1,0 +1,4 @@
+{
+  "prNumber": 998,
+  "body": "Plugin-Zugriffsprüfungen bleiben bei Änderungen leichter nachvollziehbar\n\n- Verknüpfte Actions, Routen und Navigation behalten dieselben fail-closed Zugriffsverträge.\n- Namespaces, reservierte Kennungen und Legacy-Aliase werden weiterhin in stabiler Reihenfolge mit denselben Fehlercodes geprüft.\n- Ressourcenbezogene Berechtigungen vergleichen weiterhin jede Capability-Angabe exakt."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1000,
+  "body": "Die IAM-Runtime-Diagnostik behält ihre bisherigen Klassifikationen und Folgeaktionen bei, wertet konkurrierende Fehlersignale intern aber klarer und leichter prüfbar aus. Die feste Priorität von Auth-, Sync-, Session-, Actor-, Infrastruktur- und Drift-Signalen ist nun umfassend gegen Regressionen abgesichert."
+}

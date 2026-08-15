@@ -682,18 +682,21 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
    - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.
-6. Medienvertrag (`packages/media`)
+6. `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
+   - Trennt die reine Profilreparatur-Entscheidung vom tenantgebundenen Seed-Lookup, der optionalen Keycloak-Mutation, der IAM-Persistenz und der Reportbildung. Quellwerte bleiben vor lokalen Seed-Werten vorrangig; nur für eine weiterhin fehlende E-Mail darf ein syntaktisch gültiger Username dienen.
+   - Seed-Lookup, Provider-Update und Persistenz bleiben fail-closed an dieselbe `instanceId` und dasselbe Keycloak-Subject gebunden. Unvollständige Profile gehen ohne IAM-Persistenz in die manuelle Prüfung; Logs enthalten nur einen gehashten Subject-Verweis und Reparaturflags.
+7. Medienvertrag (`packages/media`)
    - kanonische Typen für `MediaAsset`, `MediaVariant`, `MediaReference`, Rollen, Sichtbarkeit, Upload- und Processing-Status
    - fail-closed Regeln für Löschbarkeit und Referenzierbarkeit
-7. Datenzugriff (`packages/data-repositories`)
+8. Datenzugriff (`packages/data-repositories`)
    - Medien-Repositories für Assets, Varianten, Referenzen, Upload-Sessions, Quota und Usage-Impact
-8. Auth-Runtime (`packages/auth-runtime`)
+9. Auth-Runtime (`packages/auth-runtime`)
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
    - Audit, Autorisierung und Upload-Processing für Medien
-9. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
-   - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
-   - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine
+10. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
+    - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
+    - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine
 
 ### Ergänzung 2026-06: POI-Geocoding- und Media-Bridges
 

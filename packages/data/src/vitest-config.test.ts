@@ -17,4 +17,10 @@ describe('data vitest coverage config', () => {
     );
     expect(vitestConfigSource).toContain("exclude: [...localTestGlobs, dataClientSourceGlob, dataRepositoriesSourceGlob]");
   });
+
+  it('resolves the IAM permission catalog from workspace source in fresh coverage runs', () => {
+    expect(vitestConfigSource).toContain(
+      "'@sva/studio-module-iam': resolve(__dirname, '../studio-module-iam/src/index.ts')"
+    );
+  });
 });

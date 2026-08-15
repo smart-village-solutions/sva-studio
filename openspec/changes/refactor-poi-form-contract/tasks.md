@@ -15,6 +15,6 @@
 ## 3. Qualitäts- und Abschlussnachweise
 
 - [x] 3.1 POI-Unit-, Coverage-, Type-, Lint- und Build-Targets grün ausführen
-- [ ] 3.2 Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` grün ausführen
+- [x] 3.2 Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` grün ausführen
 - [x] 3.3 Exakten Fallow-New-only-Audit für `@sva/plugin-poi` ohne eingeführte Findings nachweisen
 - [ ] 3.4 Praktikabilität des gemessenen affected Scopes bewerten und den finalen PR-Gate-Pfad ausführen

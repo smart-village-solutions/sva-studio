@@ -333,6 +333,7 @@ Abhängigkeiten des aktuellen Systems.
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
 - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
+- trennt in der vollständigen Standortansicht Kalender-/Dialog-Ownership vom konkreten Action-Hub; Reminder-Slot-Auswahl und lokaler Panel-/Formularzustand bleiben app-lokal, während Fraktionsfilter und PDF-Download weiterhin aus dem gemeinsamen Standortmodell gespeist werden
 - kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
 - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
 - hält die Kalender-Repository-Fassade stabil, trennt darunter aber parametrisierte SQL-/I/O-Ownership in `public-waste-calendar-loader.server.ts` von der I/O-freien Normalisierung in `public-waste-calendar-loader.projection.ts` und der Einsatz-Zusammenführung in `public-waste-calendar-loader.assignments.ts`; die zeilenförmigen internen Datenverträge bleiben app-lokal

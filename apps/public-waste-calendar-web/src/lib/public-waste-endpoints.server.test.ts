@@ -1,5 +1,5 @@
 import * as wasteOutput from '@sva/core';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 import {
@@ -11,6 +11,10 @@ import {
 } from './public-waste-endpoints.server.js';
 
 describe('public waste endpoints', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns the next selection step as json', async () => {
     const response = await handlePublicWasteSelectionRequest({
       repository: {

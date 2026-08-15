@@ -64,6 +64,20 @@ describe('public waste calendar assignment projection', () => {
     );
   });
 
+  it('keeps the global description fallback when the preferred tour shift has no description', () => {
+    expect(
+      mergeAssignment({
+        tourDateShiftRows: [tourShift({ description: null })],
+        globalDateShiftRows: [globalShift()],
+      })
+    ).toContainEqual(
+      expect.objectContaining({
+        date: '2026-05-20',
+        note: 'Allgemein verschoben',
+      })
+    );
+  });
+
   it('prefers a tour-scoped global shift over a shared global shift', () => {
     expect(
       mergeAssignment({

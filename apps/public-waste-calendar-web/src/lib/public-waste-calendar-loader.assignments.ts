@@ -66,12 +66,14 @@ const resolveApplicableShift = (input: {
   readonly globalShifts: ReturnType<typeof createGlobalShiftMaps>;
 }): CalendarShift | undefined => {
   const tourShift = input.tourShifts.get(`${input.tourId}:${input.pickupDate}`);
-  if (tourShift) return tourShift;
+  const scopedGlobalShift = input.globalShifts.scoped.get(input.tourId)?.get(input.pickupDate);
+  const globalShift = scopedGlobalShift ?? input.globalShifts.shared.get(input.pickupDate);
+  if (!tourShift) return globalShift;
 
-  const scopedGlobalShift = input.globalShifts.scoped
-    .get(input.tourId)
-    ?.get(input.pickupDate);
-  return scopedGlobalShift ?? input.globalShifts.shared.get(input.pickupDate);
+  return {
+    actualDate: tourShift.actualDate,
+    description: tourShift.description ?? globalShift?.description ?? null,
+  };
 };
 
 const createAssignmentEntry = (input: {

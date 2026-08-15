@@ -12,8 +12,8 @@ import type {
 type LinkedTour = CalculatePublicWasteCalendarEntriesInput['linkedTours'][number];
 type LinkedFraction = LinkedTour['tour']['fractions'][number];
 type MutableLinkedTour = Omit<LinkedTour, 'tour'> & {
-  readonly tour: Omit<LinkedTour['tour'], 'fractions'> & {
-    readonly fractions: LinkedFraction[];
+  tour: Omit<LinkedTour['tour'], 'fractions'> & {
+    fractions: LinkedFraction[];
   };
 };
 const normalizeCustomDates = (

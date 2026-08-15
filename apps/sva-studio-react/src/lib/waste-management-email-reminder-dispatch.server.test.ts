@@ -120,6 +120,28 @@ const createReminderPayload = (
   ...overrides,
 });
 
+const createDoiPayload = (overrides: Partial<MailDispatchPayload> = {}): MailDispatchPayload => ({
+  ...createReminderPayload(),
+  templateKey: 'waste.email-reminder.doi',
+  addresses: [{ kind: 'to', email: 'recipient@invalid.example' }],
+  templatePayload: {
+    subject: 'ignored by DOI composition',
+    introText: 'ignored by DOI composition',
+    listIntroText: '',
+    outroText: '',
+    reasonText: '',
+    unsubscribeLabel: '',
+    unsubscribeUrl: '',
+    locationLabel: 'Testort',
+    pickupDate: '',
+    fractionName: '',
+    privacyPolicyUrl: 'https://invalid.example/privacy',
+    imprintUrl: 'https://invalid.example/imprint',
+    confirmUrl: 'https://invalid.example/confirm',
+  },
+  ...overrides,
+});
+
 describe('waste email reminder dispatch helpers', () => {
   it('builds UTC dates and rejects invalid pickup dates', () => {
     expect(createUtcIsoAtHour(new Date('2026-06-15T12:30:00.000Z'), 6)).toBe(
@@ -347,5 +369,205 @@ describe('waste email reminder dispatch helpers', () => {
         'Impressum: https://example.org/imprint',
       ].join('\n\n'),
     });
+  });
+
+  it('preserves the complete DOI section order, template rendering and payload address priority', () => {
+    const message = buildDispatchMessage({
+      config: createReminderConfig({
+        fromEmail: 'configured-from@invalid.example',
+        fromName: 'Configured Sender',
+        replyToEmail: 'configured-reply@invalid.example',
+        serviceLabel: 'Configured Service',
+        dataControllerLabel: 'Configured Controller',
+        doiSubjectTemplate: 'DOI {{locationLabel}} {{unknownPlaceholder}}',
+        doiPreheader: 'Preheader {{serviceLabel}}',
+        doiIntroText: 'Intro {{locationLabel}}',
+        doiButtonLabel: 'Confirm',
+        doiFallbackText: 'Fallback {{confirmUrl}}',
+        doiExpiryNoticeText: 'Expiry {{dataControllerLabel}}',
+      }),
+      transport: createTransport({
+        defaultFromEmail: 'transport-from@invalid.example',
+        defaultFromName: 'Transport Sender',
+        defaultReplyToEmail: 'transport-reply@invalid.example',
+      }),
+      payload: createDoiPayload({
+        addresses: [
+          {
+            kind: 'to',
+            email: 'recipient@invalid.example',
+            displayName: 'Synthetic Recipient',
+          },
+          { kind: 'cc', email: 'copy@invalid.example', displayName: 'Synthetic Copy' },
+          { kind: 'bcc', email: 'blind@invalid.example' },
+          {
+            kind: 'reply_to',
+            email: 'payload-reply@invalid.example',
+            displayName: 'Synthetic Reply',
+          },
+        ],
+        templatePayload: {
+          ...createDoiPayload().templatePayload,
+          locationLabel: 'Payload Place',
+          serviceLabel: 'Payload Service',
+          dataControllerLabel: 'Payload Controller',
+        },
+      }),
+    });
+
+    expect(message).toEqual({
+      from: {
+        email: 'configured-from@invalid.example',
+        displayName: 'Configured Sender',
+      },
+      to: [
+        {
+          email: 'recipient@invalid.example',
+          displayName: 'Synthetic Recipient',
+        },
+      ],
+      cc: [{ email: 'copy@invalid.example', displayName: 'Synthetic Copy' }],
+      bcc: [{ email: 'blind@invalid.example' }],
+      replyTo: [
+        {
+          email: 'payload-reply@invalid.example',
+          displayName: 'Synthetic Reply',
+        },
+      ],
+      subject: 'DOI Payload Place ',
+      text: [
+        'Preheader Payload Service',
+        'Intro Payload Place',
+        'Ort: Payload Place',
+        'Confirm: https://invalid.example/confirm',
+        'Fallback https://invalid.example/confirm',
+        'Expiry Payload Controller',
+        'Service: Payload Service',
+        'Verantwortlich: Payload Controller',
+        'Datenschutz: https://invalid.example/privacy',
+        'Impressum: https://invalid.example/imprint',
+      ].join('\n\n'),
+    });
+  });
+
+  it('uses configured DOI labels only when payload labels are absent', () => {
+    const configuredFallback = buildDispatchMessage({
+      config: createReminderConfig({
+        serviceLabel: 'Configured Service',
+        dataControllerLabel: 'Configured Controller',
+        doiPreheader: undefined,
+        doiFallbackText: undefined,
+        doiExpiryNoticeText: undefined,
+      }),
+      transport: createTransport(),
+      payload: createDoiPayload(),
+    });
+    const payloadWhitespace = buildDispatchMessage({
+      config: createReminderConfig({
+        serviceLabel: 'Configured Service',
+        dataControllerLabel: 'Configured Controller',
+        doiPreheader: undefined,
+        doiFallbackText: undefined,
+        doiExpiryNoticeText: undefined,
+      }),
+      transport: createTransport(),
+      payload: createDoiPayload({
+        templatePayload: {
+          ...createDoiPayload().templatePayload,
+          serviceLabel: '   ',
+          dataControllerLabel: '',
+        },
+      }),
+    });
+
+    expect(configuredFallback.text).toContain('Service: Configured Service');
+    expect(configuredFallback.text).toContain('Verantwortlich: Configured Controller');
+    expect(payloadWhitespace.text).not.toContain('Service:');
+    expect(payloadWhitespace.text).not.toContain('Verantwortlich:');
+  });
+
+  it.each([
+    {
+      name: 'configured reply-to before transport',
+      configReplyTo: 'configured-reply@invalid.example',
+      transportReplyTo: 'transport-reply@invalid.example',
+      expectedReplyTo: [{ email: 'configured-reply@invalid.example' }],
+    },
+    {
+      name: 'transport reply-to when configuration is absent',
+      configReplyTo: undefined,
+      transportReplyTo: 'transport-reply@invalid.example',
+      expectedReplyTo: [{ email: 'transport-reply@invalid.example' }],
+    },
+    {
+      name: 'no reply-to when every fallback is absent',
+      configReplyTo: undefined,
+      transportReplyTo: undefined,
+      expectedReplyTo: undefined,
+    },
+  ])('$name', ({ configReplyTo, transportReplyTo, expectedReplyTo }) => {
+    const message = buildDispatchMessage({
+      config: createReminderConfig({
+        replyToEmail: configReplyTo,
+        doiPreheader: undefined,
+        doiFallbackText: undefined,
+        doiExpiryNoticeText: undefined,
+      }),
+      transport: createTransport({ defaultReplyToEmail: transportReplyTo }),
+      payload: createDoiPayload(),
+    });
+
+    expect(message.replyTo).toEqual(expectedReplyTo);
+  });
+
+  it('preserves empty DOI values and the button-label fallback without normalizing the contract', () => {
+    const message = buildDispatchMessage({
+      config: createReminderConfig({
+        fromEmail: '',
+        fromName: '',
+        replyToEmail: undefined,
+        doiSubjectTemplate: '{{locationLabel}}/{{unknownPlaceholder}}',
+        doiPreheader: 'Rendered blank: {{unknownPlaceholder}}',
+        doiIntroText: 'Intro {{locationLabel}}',
+        doiButtonLabel: '',
+        doiFallbackText: '   ',
+        doiExpiryNoticeText: '',
+        serviceLabel: undefined,
+        dataControllerLabel: undefined,
+      }),
+      transport: createTransport({
+        defaultFromEmail: '',
+        defaultFromName: '',
+        defaultReplyToEmail: undefined,
+      }),
+      payload: createDoiPayload({
+        templatePayload: {
+          ...createDoiPayload().templatePayload,
+          locationLabel: '   ',
+          confirmUrl: '',
+          privacyPolicyUrl: '',
+          imprintUrl: '',
+        },
+      }),
+    });
+
+    expect(message).toEqual({
+      from: { email: '', displayName: undefined },
+      to: [{ email: 'recipient@invalid.example' }],
+      subject: '   /',
+      text: ['Rendered blank:', 'Intro', 'Datenschutz:', 'Impressum:'].join('\n\n'),
+    });
+  });
+
+  it('keeps unknown template keys on the existing reminder dispatch path', () => {
+    const message = buildDispatchMessage({
+      config: createReminderConfig(),
+      transport: createTransport(),
+      payload: createReminderPayload({ templateKey: 'waste.email-reminder.unknown' }),
+    });
+
+    expect(message.subject).toBe('Abfalltermine');
+    expect(message.text).toContain('- Papier (Di., 16.06.)');
+    expect(message.text).not.toContain('Jetzt bestaetigen');
   });
 });

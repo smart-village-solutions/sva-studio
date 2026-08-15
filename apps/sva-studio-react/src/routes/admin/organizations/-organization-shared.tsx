@@ -88,14 +88,23 @@ export const toOrganizationMutationPayload = (values: OrganizationFormValues) =>
   mainserverApplicationSecret: values.mainserverApplicationSecret.trim() || undefined,
 });
 
-const normalizeOrganizationKeyBase = (value: string): string =>
-  value
+const trimTrailingHyphens = (value: string): string => {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '-') {
+    end -= 1;
+  }
+  return value.slice(0, end);
+};
+
+const normalizeOrganizationKeyBase = (value: string): string => {
+  const normalized = value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLocaleLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+/g, '')
-    .replace(/-+$/g, '');
+    .replace(/^-+/g, '');
+  return trimTrailingHyphens(normalized);
+};
 
 const buildOrganizationKeyCandidate = (baseKey: string, suffix: number): string =>
   suffix <= 1 ? baseKey : `${baseKey}-${suffix}`;

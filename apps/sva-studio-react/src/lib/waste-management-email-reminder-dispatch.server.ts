@@ -273,17 +273,6 @@ const renderOptionalDoiTemplate = (
 ): string | undefined =>
   normalizeMailTextLine(template) ? renderTemplate(template!, values) : undefined;
 
-const buildDoiLocationSection = (locationLabel: string | undefined): string | undefined =>
-  normalizeMailTextLine(locationLabel) ? `Ort: ${locationLabel}` : undefined;
-const buildDoiConfirmationSection = (
-  buttonLabel: string,
-  confirmUrl: string | undefined
-): string | undefined => (buttonLabel ? `${buttonLabel}: ${confirmUrl}` : confirmUrl);
-const buildOptionalDoiLabelSection = (
-  label: 'Service' | 'Verantwortlich',
-  value: string | undefined
-): string | undefined => (value ? `${label}: ${value}` : undefined);
-
 const buildDoiText = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly templatePayload: MailDispatchPayload['templatePayload'];
@@ -292,49 +281,45 @@ const buildDoiText = (input: {
   joinMailTextSections([
     renderOptionalDoiTemplate(input.config.doiPreheader, input.templateContext.values),
     renderTemplate(input.config.doiIntroText, input.templateContext.values),
-    buildDoiLocationSection(input.templatePayload.locationLabel),
-    buildDoiConfirmationSection(input.config.doiButtonLabel, input.templatePayload.confirmUrl),
+    normalizeMailTextLine(input.templatePayload.locationLabel)
+      ? `Ort: ${input.templatePayload.locationLabel}`
+      : undefined,
+    input.config.doiButtonLabel
+      ? `${input.config.doiButtonLabel}: ${input.templatePayload.confirmUrl}`
+      : input.templatePayload.confirmUrl,
     renderOptionalDoiTemplate(input.config.doiFallbackText, input.templateContext.values),
     renderOptionalDoiTemplate(input.config.doiExpiryNoticeText, input.templateContext.values),
-    buildOptionalDoiLabelSection('Service', input.templateContext.serviceLabel),
-    buildOptionalDoiLabelSection('Verantwortlich', input.templateContext.dataControllerLabel),
+    input.templateContext.serviceLabel
+      ? `Service: ${input.templateContext.serviceLabel}`
+      : undefined,
+    input.templateContext.dataControllerLabel
+      ? `Verantwortlich: ${input.templateContext.dataControllerLabel}`
+      : undefined,
     `Datenschutz: ${input.templatePayload.privacyPolicyUrl}`,
     `Impressum: ${input.templatePayload.imprintUrl}`,
   ]);
 
-const resolveOptionalDoiEnvelopeAddresses = (
-  addresses: ReturnType<typeof mapPayloadAddresses>,
-  replyTo: readonly MailDispatchMessageAddress[] | undefined
-): Readonly<Pick<MailDispatchMessage, 'cc' | 'bcc' | 'replyTo'>> => ({
-  ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
-  ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
-  ...(replyTo ? { replyTo } : {}),
-});
-const resolveDoiEnvelopeAddresses = (input: {
-  readonly config: WasteManagementEmailReminderConfig;
-  readonly transport: MailTransportConfig;
-  readonly payload: MailDispatchPayload;
-}): Readonly<Pick<MailDispatchMessage, 'from' | 'to' | 'cc' | 'bcc' | 'replyTo'>> => {
-  const addresses = mapPayloadAddresses(input.payload);
-  const replyTo = resolveReminderReplyToAddresses(input.config, input.transport, input.payload);
-
-  return {
-    from: resolveReminderFromAddress(input.config, input.transport),
-    to: addresses.to,
-    ...resolveOptionalDoiEnvelopeAddresses(addresses, replyTo),
-  };
-};
 const buildDoiEnvelope = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
   readonly payload: MailDispatchPayload;
   readonly subject: string;
   readonly text: string;
-}): MailDispatchMessage => ({
-  ...resolveDoiEnvelopeAddresses(input),
-  subject: input.subject,
-  text: input.text,
-});
+}): MailDispatchMessage => {
+  const { config, transport, payload, subject, text } = input;
+  const { to, cc, bcc } = mapPayloadAddresses(payload);
+  const replyTo = resolveReminderReplyToAddresses(config, transport, payload);
+
+  return {
+    from: resolveReminderFromAddress(config, transport),
+    to,
+    ...(cc.length > 0 ? { cc } : {}),
+    ...(bcc.length > 0 ? { bcc } : {}),
+    ...(replyTo ? { replyTo } : {}),
+    subject,
+    text,
+  };
+};
 
 const buildDoiDispatchMessage = (input: {
   readonly config: WasteManagementEmailReminderConfig;

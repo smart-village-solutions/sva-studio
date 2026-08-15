@@ -14,6 +14,6 @@
 ## 3. Dokumentation und Qualität
 
 - [x] 3.1 arc42 Abschnitt 08 um den snapshotbasierten Compatibility-Vertrag ergänzen
-- [ ] 3.2 Studio-Changelog-Eintrag für die tatsächliche PR-Nummer ergänzen
-- [ ] 3.3 Unit, Types, Lint, Build, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` grün ausführen
-- [ ] 3.4 Statischen und coveragegestützten New-only-Audit mit allen introduced Attributionen 0 ausführen
+- [x] 3.2 Studio-Changelog-Eintrag für die tatsächliche PR-Nummer ergänzen
+- [x] 3.3 Unit, Types, Lint, Build, Complexity, OpenSpec strict, File Placement, Changelog und `git diff --check` grün ausführen
+- [x] 3.4 Statischen und coveragegestützten New-only-Audit mit allen introduced Attributionen 0 ausführen

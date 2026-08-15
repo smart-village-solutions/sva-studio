@@ -671,41 +671,97 @@ const normalizeEditorialValues = (values: NewsDetailFormValues): NewsDetailFormV
   return values;
 };
 
-const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
-  const compatibilityValues = values as CompatibilityFormValues;
-  const snapshot = ensureLegacySnapshot(values);
-  const touched = ensureCompatibilityTouched(values);
+type StringCompatibilitySnapshotField =
+  | 'keywords'
+  | 'externalId'
+  | 'newsType'
+  | 'charactersToBeShown'
+  | 'pointOfInterestId';
 
-  if (touched.keywords && typeof compatibilityValues.keywords === 'string') {
-    snapshot.keywords = compatibilityValues.keywords;
+type BooleanCompatibilitySnapshotField = 'fullVersion' | 'showPublishDate';
+
+const METADATA_STRING_COMPATIBILITY_FIELDS = [
+  'keywords',
+  'externalId',
+  'newsType',
+  'charactersToBeShown',
+] as const satisfies readonly StringCompatibilitySnapshotField[];
+
+const POINT_OF_INTEREST_COMPATIBILITY_FIELD = [
+  'pointOfInterestId',
+] as const satisfies readonly StringCompatibilitySnapshotField[];
+
+const BOOLEAN_COMPATIBILITY_FIELDS = [
+  'fullVersion',
+  'showPublishDate',
+] as const satisfies readonly BooleanCompatibilitySnapshotField[];
+
+const syncStringCompatibilityFields = (
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>,
+  fields: readonly StringCompatibilitySnapshotField[]
+) => {
+  for (const field of fields) {
+    const nextValue = compatibilityValues[field];
+    if (touched[field] && typeof nextValue === 'string') {
+      snapshot[field] = nextValue;
+    }
   }
-  if (touched.externalId && typeof compatibilityValues.externalId === 'string') {
-    snapshot.externalId = compatibilityValues.externalId;
+};
+
+const syncBooleanCompatibilityFields = (
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
+  for (const field of BOOLEAN_COMPATIBILITY_FIELDS) {
+    const nextValue = compatibilityValues[field];
+    if (touched[field] && typeof nextValue === 'boolean') {
+      snapshot[field] = nextValue;
+    }
   }
-  if (touched.newsType && typeof compatibilityValues.newsType === 'string') {
-    snapshot.newsType = compatibilityValues.newsType;
-  }
-  if (touched.charactersToBeShown && typeof compatibilityValues.charactersToBeShown === 'string') {
-    snapshot.charactersToBeShown = compatibilityValues.charactersToBeShown;
-  }
-  if (touched.fullVersion && typeof compatibilityValues.fullVersion === 'boolean') {
-    snapshot.fullVersion = compatibilityValues.fullVersion;
-  }
-  if (touched.showPublishDate && typeof compatibilityValues.showPublishDate === 'boolean') {
-    snapshot.showPublishDate = compatibilityValues.showPublishDate;
-  }
+};
+
+const syncPushNotificationCompatibilityValue = (
+  values: NewsDetailFormValues,
+  compatibilityValues: CompatibilityFormValues,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
   if (touched.pushNotification && typeof compatibilityValues.pushNotification === 'boolean') {
     values.pushNotificationEnabled = compatibilityValues.pushNotification;
   }
+};
+
+const syncPublishedAtCompatibilityValue = (
+  values: NewsDetailFormValues,
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
   if (touched.publishedAt && typeof compatibilityValues.publishedAt === 'string') {
     snapshot.publishedAt = compatibilityValues.publishedAt;
     if (values.publicationMode === 'draft' && values.scheduledPublicationAt.trim().length === 0) {
       syncPublicationModeFromPublishedAt(values, compatibilityValues.publishedAt);
     }
   }
+};
+
+const syncPublicationDateCompatibilityValue = (
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
   if (touched.publicationDate && typeof compatibilityValues.publicationDate === 'string') {
     snapshot.publicationDate = compatibilityValues.publicationDate;
   }
+};
+
+const syncAddressCompatibilityValue = (
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
   if (
     touched.address &&
     compatibilityValues.address &&
@@ -713,12 +769,41 @@ const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
   ) {
     snapshot.address = compatibilityValues.address;
   }
-  if (touched.pointOfInterestId && typeof compatibilityValues.pointOfInterestId === 'string') {
-    snapshot.pointOfInterestId = compatibilityValues.pointOfInterestId;
-  }
+};
+
+const syncContentBlocksCompatibilityValue = (
+  compatibilityValues: CompatibilityFormValues,
+  snapshot: MutableLegacyCompatibilitySnapshot,
+  touched: NonNullable<NewsDetailEditorialFormValues['__compatibilityTouched']>
+) => {
   if (touched.contentBlocks && Array.isArray(compatibilityValues.contentBlocks)) {
     snapshot.legacyContentBlocks = compatibilityValues.contentBlocks;
   }
+};
+
+const syncSnapshotFromCompatibilityValues = (values: NewsDetailFormValues) => {
+  const compatibilityValues = values as CompatibilityFormValues;
+  const snapshot = ensureLegacySnapshot(values);
+  const touched = ensureCompatibilityTouched(values);
+
+  syncStringCompatibilityFields(
+    compatibilityValues,
+    snapshot,
+    touched,
+    METADATA_STRING_COMPATIBILITY_FIELDS
+  );
+  syncBooleanCompatibilityFields(compatibilityValues, snapshot, touched);
+  syncPushNotificationCompatibilityValue(values, compatibilityValues, touched);
+  syncPublishedAtCompatibilityValue(values, compatibilityValues, snapshot, touched);
+  syncPublicationDateCompatibilityValue(compatibilityValues, snapshot, touched);
+  syncAddressCompatibilityValue(compatibilityValues, snapshot, touched);
+  syncStringCompatibilityFields(
+    compatibilityValues,
+    snapshot,
+    touched,
+    POINT_OF_INTEREST_COMPATIBILITY_FIELD
+  );
+  syncContentBlocksCompatibilityValue(compatibilityValues, snapshot, touched);
 };
 
 export const mapNewsDetailFormValuesToMutation = (

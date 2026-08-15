@@ -772,3 +772,7 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Geo-Unit-Freigaben haben weiterhin Vorrang vor dem Legacy-Geo-Scope-Fallback. Über-Mitternacht-Zeitfenster bleiben zulässig; ungültige vollständige Zeitfenster verweigern den Zugriff.
 - Restriktionen sind grantbezogen: Ein anderer passender und zulässiger Allow-Grant kann weiterhin erlauben. Es existiert weder eine generische Rule-Registry noch ein zweiter Authorize-Pfad.
 - Characterization-Tests sichern kollidierende Regeln, Provenance und das bestehende Force-Deny-Verhalten ohne permissiven Fallback ab.
+
+### News-Kompatibilitäts-Snapshot
+
+Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Snapshot: Nur ausdrücklich berührte Compatibility-Aliase mit passendem Laufzeittyp aktualisieren diesen Snapshot, während vereinfachte redaktionelle Felder und die bestehenden Publication-, Push- und ContentBlocks-Prioritäten führend bleiben.

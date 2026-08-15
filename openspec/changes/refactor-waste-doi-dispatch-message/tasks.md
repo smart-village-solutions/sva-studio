@@ -16,9 +16,9 @@
 
 ## 3. Abschlussvalidierung
 
-- [ ] 3.1 fokussierte Unit-, Coverage-, Type-, Lint- und Build-Targets grün ausführen
-- [ ] 3.2 `pnpm check:server-runtime`, `pnpm complexity-gate`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `git diff --check` grün ausführen
-- [ ] 3.3 `openspec validate refactor-waste-doi-dispatch-message --strict` grün ausführen
-- [ ] 3.4 New-only-Fallow-Audit für `sva-studio-react` mit Coverage ausführen und PASS ohne eingeführte Complexity-, Dead-Code-, Duplication-, Styling- oder moderate CRAP-Findings belegen
+- [x] 3.1 fokussierte Unit-, Coverage-, Type-, Lint- und Build-Targets grün ausführen
+- [x] 3.2 `pnpm check:server-runtime`, `pnpm complexity-gate`, `pnpm check:file-placement`, `pnpm check:studio-changelog` und `git diff --check` grün ausführen
+- [x] 3.3 `openspec validate refactor-waste-doi-dispatch-message --strict` grün ausführen
+- [x] 3.4 New-only-Fallow-Audit für `sva-studio-react` mit Coverage ausführen und PASS ohne eingeführte Complexity-, Dead-Code-, Duplication-, Styling- oder moderate CRAP-Findings belegen
 - [ ] 3.5 Root-Review und unabhängiges Datenschutz-/Runtime-Vertragsreview auf dem exakten PR-Head abschließen
 - [ ] 3.6 alle berechtigten Findings beheben und terminale PR-Gates ohne offene Threads abschließen

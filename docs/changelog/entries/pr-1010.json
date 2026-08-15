@@ -1,0 +1,4 @@
+{
+  "prNumber": 1010,
+  "body": "Die interne Double-Opt-in-Mailkomposition der Abfall-Erinnerungen ist klarer aufgeteilt\n\n- Templatewerte, Textabschnitte und Mail-Envelope besitzen jetzt klar getrennte interne Verantwortungen.\n- Betreff, Abschnittsreihenfolge, Leerzeilen, Adressprioritäten und Fallbacks bleiben unverändert.\n- Zusätzliche Characterization schützt Datenschutzangaben, Empfängerfelder und den unveränderten Reminder-Pfad."
+}

@@ -35,6 +35,10 @@
       "types": "./dist/dsr-maintenance.d.ts",
       "default": "./dist/dsr-maintenance.js"
     },
+    "./dsr-persistence": {
+      "types": "./dist/dsr-persistence.d.ts",
+      "default": "./dist/dsr-persistence.js"
+    },
     "./governance-workflow-policy": {
       "types": "./dist/governance-workflow-policy.d.ts",
       "default": "./dist/governance-workflow-policy.js"

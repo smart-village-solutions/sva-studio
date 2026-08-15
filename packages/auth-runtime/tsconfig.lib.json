@@ -26,6 +26,9 @@
       "@sva/iam-governance/dsr-maintenance": [
         "packages/iam-governance/dist/dsr-maintenance.d.ts"
       ],
+      "@sva/iam-governance/dsr-persistence": [
+        "packages/iam-governance/dist/dsr-persistence.d.ts"
+      ],
       "@sva/iam-governance/dsr-read-models-internal": [
         "packages/iam-governance/dist/dsr-read-models-internal.d.ts"
       ],

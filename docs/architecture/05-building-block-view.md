@@ -216,6 +216,7 @@ Abhängigkeiten des aktuellen Systems.
   - plattformgebunden: `iam.platform_activity_logs`
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/iam-governance`
+  - besitzt in `dsr-persistence.ts` die kanonischen, mandantengebundenen Persistenzprimitiven für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events; Auth-Runtime, Export-Flows und Wartung konsumieren diese Verträge ohne eigene SQL-Kopien
   - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
   - liefert für den Account-Self-Service sowohl die Overview-Projektion mit `activityItems` als auch den `caseId`-basierten Detailzugriff für Deep-Links auf einzelne Datenschutzvorgänge
 - Inhaltsverwaltung als Core-Element:

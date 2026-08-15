@@ -39,6 +39,10 @@ Konkret bedeutet das:
 
 ## Konsequenzen
 
+### Fortschreibung nach dem Package-Hard-Cut
+
+Die ursprüngliche Fassadenentscheidung wird in der heutigen Package-Zielarchitektur so fortgeführt, dass `@sva/iam-governance` die fachliche Ownership für DSR-Persistenz trägt. Die parametrierten Verträge für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events liegen genau einmal in `dsr-persistence.ts`; `@sva/auth-runtime` bleibt Consumer und Transport-/Transaktionsadapter. Querytext, Mandantenbindung, Kontextkorrelation und Fehlerpropagation ändern sich dadurch nicht.
+
 ### Positiv
 
 - Öffentliche IAM-Entry-Points bleiben klein und reviewbar.

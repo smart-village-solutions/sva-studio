@@ -17,12 +17,8 @@ import {
 } from './poi.detail-form.types.js';
 import { normalizeOpeningHourWeekday } from './poi.opening-hours.js';
 
-const mapNumberToString = (value?: number) => {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return '';
-  }
-  return String(value);
-};
+const mapNumberToString = (value?: number) =>
+  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 
 const mapGeoLocationToFormValue = (
   value?: { readonly latitude?: number; readonly longitude?: number } | null

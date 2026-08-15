@@ -35,16 +35,16 @@ eigenen Pull Request ausgeliefert.
 | 009 | IAM-Acceptance-Orchestrierung modularisieren | P1 | L | 002 gemergt | DONE |
 | 010 | Account-Profilseite entflechten | P1 | L | IAM-Verträge stabil | DONE |
 | 011 | Public-Waste-Kalender-Lader entflechten | P1 | L | Waste-Änderungen abgegrenzt | DONE |
-| 012 | DSR-Persistenzprimitiven zentralisieren | P1 | M | keine | TODO |
-| 013 | Governance-Delegation entflechten | P1 | M | keine | TODO |
-| 014 | Account-Import-Profilreparatur entflechten | P1 | M | keine | TODO |
-| 015 | Plugin-Zugriffs- und Action-Registry modularisieren | P1 | L | keine | TODO |
-| 016 | IAM-Runtime-Diagnostik als Prioritätsmatrix modellieren | P1 | M | keine | TODO |
-| 017 | Instance-Registry-Mutationswerte typsicher strukturieren | P1 | M | keine | TODO |
-| 018 | Public-Waste-Reminder-Actions entflechten | P1 | M | keine | TODO |
-| 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | keine | TODO |
-| 020 | Event-Detailformular-Serialisierung modularisieren | P1 | L | keine | TODO |
-| 021 | News-Kompatibilitäts-Snapshot entflechten | P1 | M | keine | TODO |
+| 012 | DSR-Persistenzprimitiven zentralisieren | P1 | M | keine | DONE (#997, `57d7bdd5e`) |
+| 013 | Governance-Delegation entflechten | P1 | M | keine | DONE (#1002, `b602c9141`) |
+| 014 | Account-Import-Profilreparatur entflechten | P1 | M | keine | DONE (#999, `69dbbd493`) |
+| 015 | Plugin-Zugriffs- und Action-Registry modularisieren | P1 | L | keine | DONE (#998, `f02b66e5d`) |
+| 016 | IAM-Runtime-Diagnostik als Prioritätsmatrix modellieren | P1 | M | keine | DONE (#1000, `57b78f9d1`) |
+| 017 | Instance-Registry-Mutationswerte typsicher strukturieren | P1 | M | keine | DONE (#1001, `13c1964f3`) |
+| 018 | Public-Waste-Reminder-Actions entflechten | P1 | M | keine | DONE (#1003, `be9e0bfc7`) |
+| 019 | Public-Waste-App-Zustand und Actions trennen | P1 | L | keine | DONE (#1004, `07d12bb80`) |
+| 020 | Event-Detailformular-Serialisierung modularisieren | P1 | L | keine | DONE (#1005, `6afcd8d52`) |
+| 021 | News-Kompatibilitäts-Snapshot entflechten | P1 | M | keine | DONE (#1006, `1df0515af`) |
 
 Statuswerte: `TODO`, `IN PROGRESS`, `DONE`, `BLOCKED`, `REJECTED`.
 
@@ -72,6 +72,47 @@ Empfohlene Staffelung bei drei Executor-Slots:
 2. 013, 016, 017
 3. 018, 020, 021
 4. 019
+
+## Abnahme der zweiten Runde
+
+Alle zehn Pakete wurden am 15. August 2026 über eigene Pull Requests mit
+Merge-Commit ausgeliefert. Der abschließende Audit lief in einem sauberen,
+detached Worktree auf `origin/main` `6afcd8d528956c37149016dadf27b16d343fc75c`
+mit Fallow 3.10.0 und der eingecheckten `.fallowrc.json`.
+
+| Metrik | Vorher (`067e7a8e6`) | Nachher (`6afcd8d52`) | Änderung |
+|---|---:|---:|---:|
+| Health-Findings | 943 | 924 | -19 |
+| Critical | 173 | 163 | -10 |
+| High | 284 | 277 | -7 |
+| Moderate | 486 | 484 | -2 |
+| Dateien | 3.439 | 3.452 | +13 |
+| Funktionen | 42.970 | 43.269 | +299 |
+| Maintainability | 90,9 | 90,9 | 0,0 |
+| Production-Dead-Code/Dependency | 800 | 798 | -2 |
+| Duplikatgruppen | 694 | 686 | -8 |
+| Duplizierte Zeilen | 27.833 | 27.400 | -433 |
+| Duplikationsanteil | 8,45 % | 8,30 % | -0,15 Prozentpunkte |
+
+Der finale Production-Report enthält weiterhin drei ungelöste Imports, drei
+ungenutzte und 14 nicht gelistete Dependencies sowie eine Development-
+Dependency im Produktionspfad. Importzyklen, Re-export-Zyklen und alle drei
+konfigurierten Boundary-Finding-Kategorien stehen jeweils bei null. Diese
+Bestandsbefunde waren nicht Ziel der zehn Pakete.
+
+Alle zehn Zielanker sind im finalen Health- beziehungsweise Duplikatreport
+verschwunden. Das umfasst insbesondere die DSR-Fingerprints `dup:54714cc9` und
+`dup:f9215d48`, die jeweils benannten Complexity-/CRAP-Funktionen der Pläne
+013-019 und 021 sowie sämtliche sechs berührten Event-Detailformular-Findings
+aus Plan 020. Der bei der Planung ausdrücklich ausgegrenzte Events-/POI-Clone
+`dup:714de343` ist ebenfalls nicht mehr vorhanden; der verbleibende geerbte
+Clone `dup:9b9f8261` betrifft nur einen sechszeiligen Number-to-String-Mapper
+und wurde nicht durch eine Shared- oder Metrikabstraktion kaschiert.
+
+Die Gesamtrepository ist damit nicht findingfrei. Insbesondere verbleiben 924
+globale Health-Findings. In `news.detail-form.ts` sind zwei nachweislich
+unveränderte, fachfremde High-Findings vorhanden; das Zielfinding
+`syncSnapshotFromCompatibilityValues` aus Plan 021 ist dagegen beseitigt.
 
 ## Bewusst zurückgestellt
 

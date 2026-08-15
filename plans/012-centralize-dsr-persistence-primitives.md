@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Datenschutz, Datenintegrität, Duplikation
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #997, Merge-Commit `57d7bdd5e02a1de5fa8163ba87f757f0d46973fa`
 - **Fallow vorher:** Duplikat `dup:54714cc9` mit 141 Tokens/100 Zeilen in zwei Instanzen sowie `dup:f9215d48` mit 86 Tokens/90 Zeilen in drei Instanzen; `core.ts` hat 1.737 Zeilen, Fan-out 22 und ist produktiv erreichbar.
 
 ## Warum

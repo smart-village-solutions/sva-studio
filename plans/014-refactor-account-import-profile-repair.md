@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Identität, Mandantengrenze, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #999, Merge-Commit `69dbbd493363ea54fa19687834460f9531221e5f`
 - **Fallow vorher:** `repairIdentityUserProfileIfPossible` in `user-import-sync-handler.ts:93` — cyclomatic 21, 71 Zeilen, CRAP 116,3 critical; `report` CRAP 88 high; Datei 462 Zeilen, Fan-out 17, drei direkte Importpfade.
 
 ## Warum

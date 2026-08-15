@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** IAM-Fehlerdiagnostik, Blast Radius, CRAP
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1000, Merge-Commit `57b78f9d1dec99f14c5eaa2664f7f77f2c4e0be5`
 - **Fallow vorher:** `classify` in `runtime-diagnostics.ts:148` — cyclomatic 24, 75 Zeilen, CRAP 148,4 critical; `resolveRecommendedAction` CRAP 63,6 high; produktive Aufrufe aus Studio und Auth-Runtime.
 
 ## Warum

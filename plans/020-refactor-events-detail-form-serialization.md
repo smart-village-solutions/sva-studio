@@ -10,6 +10,7 @@
 - **Abhängigkeit:** keine
 - **Kategorie:** Event-Datenintegrität, CRAP, Duplikation
 - **Geplant auf:** `067e7a8e6`, 15. August 2026
+- **Ausgeliefert:** DONE über PR #1005, Merge-Commit `6afcd8d528956c37149016dadf27b16d343fc75c`
 - **Fallow vorher:** `mapEventsDetailFormValuesToInput` — cyclomatic 42, cognitive 53, 146 Zeilen, CRAP 48 critical bei hoher geschätzter Coverage; fünf weitere Complexity-/CRAP-Findings, Datei 406 Zeilen, MI 75,2, sieben direkte Konsumenten.
 
 ## Warum

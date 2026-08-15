@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapEventItemToDetailFormValues, mapEventsDetailFormValuesToInput } from '../src/events.detail-form.js';
+import {
+  mapEventItemToDetailFormValues,
+  mapEventsDetailFormValuesToInput,
+} from '../src/events.detail-form.js';
 import type { EventContentItem } from '../src/events.types.js';
 
 describe('events.detail-form', () => {
@@ -18,7 +21,13 @@ describe('events.detail-form', () => {
         keywords: 'stadt,fest',
         categoryName: 'Kultur',
         categories: [{ name: 'Kultur' }, { name: 'Open Air' }],
-        dates: [{ dateStart: '2026-06-11T10:00:00.000Z', timeDescription: 'ab 10 Uhr', weekday: 'Mittwoch' }],
+        dates: [
+          {
+            dateStart: '2026-06-11T10:00:00.000Z',
+            timeDescription: 'ab 10 Uhr',
+            weekday: 'Mittwoch',
+          },
+        ],
         addresses: [
           {
             addition: 'Rathausplatz',
@@ -27,11 +36,20 @@ describe('events.detail-form', () => {
             geoLocation: { latitude: 51.4818, longitude: 7.2162 },
           },
         ],
-        mediaContents: [{ sourceUrl: { url: 'https://example.test/header.jpg', description: 'Headerdatei' }, captionText: 'Headerbild' }],
+        mediaContents: [
+          {
+            sourceUrl: { url: 'https://example.test/header.jpg', description: 'Headerdatei' },
+            captionText: 'Headerbild',
+          },
+        ],
         contacts: [{ firstName: 'Erika', email: 'kontakt@example.test' }],
         organizer: {
           name: 'Stadt Bochum',
-          address: { street: 'Rathausplatz 1', city: 'Bochum', geoLocation: { latitude: 51.4819, longitude: 7.2165 } },
+          address: {
+            street: 'Rathausplatz 1',
+            city: 'Bochum',
+            geoLocation: { latitude: 51.4819, longitude: 7.2165 },
+          },
         },
         priceInformations: [{ category: 'Erwachsene', amount: 12 }],
         accessibilityInformation: { description: 'Stufenlos zugänglich' },
@@ -65,7 +83,11 @@ describe('events.detail-form', () => {
         contacts: [{ firstName: 'Erika', email: 'kontakt@example.test' }],
         organizer: {
           name: 'Stadt Bochum',
-          address: { street: 'Rathausplatz 1', city: 'Bochum', geoLocation: { latitude: '51.4819', longitude: '7.2165' } },
+          address: {
+            street: 'Rathausplatz 1',
+            city: 'Bochum',
+            geoLocation: { latitude: '51.4819', longitude: '7.2165' },
+          },
         },
         priceInformations: [{ category: 'Erwachsene', amount: 12 }],
         accessibilityInformation: { description: 'Stufenlos zugänglich' },
@@ -124,10 +146,21 @@ describe('events.detail-form', () => {
               width: '1200',
               height: '630',
             },
-            { sourceUrl: { url: '', description: '' }, captionText: '', copyright: '', contentType: '', width: '', height: '' },
+            {
+              sourceUrl: { url: '', description: '' },
+              captionText: '',
+              copyright: '',
+              contentType: '',
+              width: '',
+              height: '',
+            },
           ],
           contacts: [
-            { firstName: ' Erika ', email: 'event@example.test', webUrls: [{ url: 'https://example.test/kontakt' }] },
+            {
+              firstName: ' Erika ',
+              email: 'event@example.test',
+              webUrls: [{ url: 'https://example.test/kontakt' }],
+            },
             { firstName: '' },
           ],
           organizer: {
@@ -139,11 +172,17 @@ describe('events.detail-form', () => {
             },
             contact: { phone: ' 0123 ' },
           },
-          priceInformations: [{ category: 'Erwachsene', amount: 10, description: ' Abendkasse ' }, {}],
+          priceInformations: [
+            { category: 'Erwachsene', amount: 10, description: ' Abendkasse ' },
+            {},
+          ],
           accessibilityInformation: {
             description: ' Stufenlos ',
             types: ' rollstuhl ',
-            urls: [{ url: 'https://example.test/barrierefreiheit', description: ' Details ' }, { url: '' }],
+            urls: [
+              { url: 'https://example.test/barrierefreiheit', description: ' Details ' },
+              { url: '' },
+            ],
           },
         },
         settings: {
@@ -160,7 +199,14 @@ describe('events.detail-form', () => {
       categories: [{ name: 'Kultur' }, { name: 'Open Air' }],
       externalId: 'ext-7',
       keywords: 'sommer',
-      dates: [{ weekday: 'Montag', dateStart: '2026-07-01', timeDescription: 'ganztägig', useOnlyTimeDescription: true }],
+      dates: [
+        {
+          weekday: 'Montag',
+          dateStart: '2026-07-01',
+          timeDescription: 'ganztägig',
+          useOnlyTimeDescription: true,
+        },
+      ],
       addresses: [
         {
           addition: 'Markt',
@@ -180,7 +226,13 @@ describe('events.detail-form', () => {
           height: 630,
         },
       ],
-      contacts: [{ firstName: 'Erika', email: 'event@example.test', webUrls: [{ url: 'https://example.test/kontakt' }] }],
+      contacts: [
+        {
+          firstName: 'Erika',
+          email: 'event@example.test',
+          webUrls: [{ url: 'https://example.test/kontakt' }],
+        },
+      ],
       organizer: {
         name: 'Stadt Bochum',
         address: {
@@ -367,14 +419,27 @@ describe('events.detail-form', () => {
         ],
         urls: [{ url: '', description: '' }],
         mediaContents: [],
-        contacts: [{ firstName: '', lastName: '', phone: '', fax: '', email: '', webUrls: [{ url: '', description: '' }] }],
+        contacts: [
+          {
+            firstName: '',
+            lastName: '',
+            phone: '',
+            fax: '',
+            email: '',
+            webUrls: [{ url: '', description: '' }],
+          },
+        ],
         organizer: {
           address: {
             geoLocation: { latitude: '', longitude: '' },
           },
         },
         priceInformations: [{ category: '', description: '', amount: undefined }],
-        accessibilityInformation: { description: '', types: '', urls: [{ url: '', description: '' }] },
+        accessibilityInformation: {
+          description: '',
+          types: '',
+          urls: [{ url: '', description: '' }],
+        },
       },
       settings: {
         visible: true,

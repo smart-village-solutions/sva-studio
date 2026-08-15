@@ -165,11 +165,10 @@ export const createDefaultEventsDetailFormValues = (): EventsDetailFormValues =>
   },
 });
 
-const mapNumberToString = (value?: number) =>
-  typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+const mapNumberToString = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? String(value) : '');
 
 const mapGeoLocationToFormValue = (
-  value?: { readonly latitude?: number; readonly longitude?: number } | null
+  value?: { readonly latitude?: number; readonly longitude?: number } | null,
 ): EventsFormGeoLocationValue => ({
   latitude: mapNumberToString(value?.latitude),
   longitude: mapNumberToString(value?.longitude),

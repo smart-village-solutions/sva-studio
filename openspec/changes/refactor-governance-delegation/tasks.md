@@ -13,5 +13,5 @@
 ## 3. Verifikation
 
 - [x] 3.1 Relevante Unit-, Type-, Lint-, Runtime- und Complexity-Gates ausführen.
-- [ ] 3.2 OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen.
+- [x] 3.2 OpenSpec strict, File Placement, Changelog und `git diff --check` ausführen.
 - [x] 3.3 Exakten Fallow-New-only-Audit mit allen eingeführten Zählern auf null nachweisen.

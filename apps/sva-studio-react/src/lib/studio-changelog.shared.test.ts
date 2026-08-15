@@ -27,6 +27,7 @@ describe('studio-changelog.shared', () => {
     'Kontakt <redaktion@example.org>',
     'Text mit <é> bleibt normaler Inhalt',
     'Text mit <p/foo> bleibt normaler Inhalt',
+    'Text mit <p/ > bleibt normaler Inhalt',
   ])('preserves non-html text containing angle brackets: %s', (body) => {
     expect(assertStudioChangelogBody('entry.json', body)).toBe(body);
   });

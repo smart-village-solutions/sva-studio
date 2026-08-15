@@ -1,0 +1,4 @@
+{
+  "prNumber": 1014,
+  "body": "Waste-Tenant-Datenbankkennungen werden auch bei sehr langen Instanznamen zuverlässig abgeleitet\n\n- Bestehende Datenbank- und Rollennamen bleiben unverändert.\n- Die Verarbeitung ungewöhnlicher Trennzeichen, Unicode-Zeichen und leerer Werte ist durch zusätzliche Regressionstests abgesichert."
+}

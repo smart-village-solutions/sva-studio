@@ -525,6 +525,7 @@ Referenzen:
 - Plattform- und Tenant-Scope sind diskriminiert. Tenant-Entscheidungen kombinieren vollständig qualifizierte Actions mit einem additiven Modul-Gate; technische Plattformrollen dürfen nicht als Tenant-Permission-Ersatz dienen.
 - Ressourcenbezogene `own`-, Organisations- oder Geo-Rechte benötigen eine passende serverautoritativ gelieferte Capability. Globale Action-Mitgliedschaft allein gibt keine Datensatzmutation frei.
 - Plugin-Actions, Navigation, Routen und Admin-Ressourcen deklarieren Access-Anforderungen. Der Host veröffentlicht daraus einen aufgelösten Session-Snapshot; Plugin-UI führt keinen eigenen Auth-Read aus.
+- Verknüpfte Plugin-Beiträge werden vor Snapshot-Veröffentlichung gegen denselben Access-Vertrag geprüft: Action-Werte besitzen Mengen-Semantik, während Modus, Modul, Ressourcen-Kontext und jedes Resource-Capability-Feld exakt übereinstimmen müssen. Die interne Modularisierung im Plugin SDK ändert weder öffentliche Registry-Fassaden noch Fehlerpriorität oder Fehlercodes.
 
 - `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
 - UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.

@@ -42,6 +42,9 @@ packages/plugin-sdk/
 |   |-- index.ts
 |   |-- public-api.ts
 |   |-- plugins.ts
+|   |-- plugin-platform/
+|   |   |-- access-requirements.ts
+|   |   `-- plugin-actions.ts
 |   |-- build-time-registry.ts
 |   |-- admin-resources.ts
 |   |-- content-types.ts
@@ -64,6 +67,7 @@ packages/plugin-sdk/
 Orientierung innerhalb von `src/`:
 
 - [`plugins.ts`](./src/plugins.ts): zentrale Plugin-Typen, Merge-Logik und Registries für Actions, Permissions, Audit-Events und IAM
+- [`plugin-platform/`](./src/plugin-platform/): interne, frameworkfreie Vergleichs- und Validierungsphasen für Access-Anforderungen und Action-Registries; diese Module sind keine öffentlichen Package-Subpaths
 - [`build-time-registry.ts`](./src/build-time-registry.ts): Aggregation aller Plugin-Beiträge für die Build-Zeit
 - [`admin-resources.ts`](./src/admin-resources.ts) und [`content-types.ts`](./src/content-types.ts): fachliche Verträge inklusive Validierung
 - [`standard-content-plugin.ts`](./src/standard-content-plugin.ts): Opinionated Factory-Funktionen für Standard-Content-Plugins

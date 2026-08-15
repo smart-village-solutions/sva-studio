@@ -228,48 +228,89 @@ const resolveReminderReplyToAddresses = (
   return [{ email: fallbackEmail }];
 };
 
-const buildDoiDispatchMessage = (input: {
+type DoiTemplateContext = Readonly<{
+  serviceLabel: string | undefined;
+  dataControllerLabel: string | undefined;
+  values: Readonly<
+    Record<
+      | 'confirmUrl'
+      | 'locationLabel'
+      | 'privacyPolicyUrl'
+      | 'imprintUrl'
+      | 'serviceLabel'
+      | 'dataControllerLabel',
+      string
+    >
+  >;
+}>;
+
+const resolveDoiTemplateContext = (
+  config: WasteManagementEmailReminderConfig,
+  templatePayload: MailDispatchPayload['templatePayload']
+): DoiTemplateContext => {
+  const serviceLabel = normalizeMailTextLine(templatePayload.serviceLabel ?? config.serviceLabel);
+  const dataControllerLabel = normalizeMailTextLine(
+    templatePayload.dataControllerLabel ?? config.dataControllerLabel
+  );
+
+  return {
+    serviceLabel,
+    dataControllerLabel,
+    values: {
+      confirmUrl: templatePayload.confirmUrl ?? '',
+      locationLabel: templatePayload.locationLabel ?? '',
+      privacyPolicyUrl: templatePayload.privacyPolicyUrl ?? '',
+      imprintUrl: templatePayload.imprintUrl ?? '',
+      serviceLabel: serviceLabel ?? '',
+      dataControllerLabel: dataControllerLabel ?? '',
+    },
+  };
+};
+
+const renderOptionalDoiTemplate = (
+  template: string | undefined,
+  values: DoiTemplateContext['values']
+): string | undefined =>
+  normalizeMailTextLine(template) ? renderTemplate(template!, values) : undefined;
+
+const buildDoiLocationSection = (locationLabel: string | undefined): string | undefined =>
+  normalizeMailTextLine(locationLabel) ? `Ort: ${locationLabel}` : undefined;
+
+const buildDoiConfirmationSection = (
+  buttonLabel: string,
+  confirmUrl: string | undefined
+): string | undefined => (buttonLabel ? `${buttonLabel}: ${confirmUrl}` : confirmUrl);
+
+const buildOptionalDoiLabelSection = (
+  label: 'Service' | 'Verantwortlich',
+  value: string | undefined
+): string | undefined => (value ? `${label}: ${value}` : undefined);
+
+const buildDoiText = (input: {
+  readonly config: WasteManagementEmailReminderConfig;
+  readonly templatePayload: MailDispatchPayload['templatePayload'];
+  readonly templateContext: DoiTemplateContext;
+}): string =>
+  joinMailTextSections([
+    renderOptionalDoiTemplate(input.config.doiPreheader, input.templateContext.values),
+    renderTemplate(input.config.doiIntroText, input.templateContext.values),
+    buildDoiLocationSection(input.templatePayload.locationLabel),
+    buildDoiConfirmationSection(input.config.doiButtonLabel, input.templatePayload.confirmUrl),
+    renderOptionalDoiTemplate(input.config.doiFallbackText, input.templateContext.values),
+    renderOptionalDoiTemplate(input.config.doiExpiryNoticeText, input.templateContext.values),
+    buildOptionalDoiLabelSection('Service', input.templateContext.serviceLabel),
+    buildOptionalDoiLabelSection('Verantwortlich', input.templateContext.dataControllerLabel),
+    `Datenschutz: ${input.templatePayload.privacyPolicyUrl}`,
+    `Impressum: ${input.templatePayload.imprintUrl}`,
+  ]);
+
+const buildDispatchEnvelope = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
   readonly payload: MailDispatchPayload;
+  readonly subject: string;
+  readonly text: string;
 }): MailDispatchMessage => {
-  const { templatePayload } = input.payload;
-  const serviceLabel = normalizeMailTextLine(
-    templatePayload.serviceLabel ?? input.config.serviceLabel
-  );
-  const dataControllerLabel = normalizeMailTextLine(
-    templatePayload.dataControllerLabel ?? input.config.dataControllerLabel
-  );
-  const templateValues = {
-    confirmUrl: templatePayload.confirmUrl ?? '',
-    locationLabel: templatePayload.locationLabel ?? '',
-    privacyPolicyUrl: templatePayload.privacyPolicyUrl ?? '',
-    imprintUrl: templatePayload.imprintUrl ?? '',
-    serviceLabel: serviceLabel ?? '',
-    dataControllerLabel: dataControllerLabel ?? '',
-  } as const;
-  const text = joinMailTextSections([
-    normalizeMailTextLine(input.config.doiPreheader)
-      ? renderTemplate(input.config.doiPreheader!, templateValues)
-      : undefined,
-    renderTemplate(input.config.doiIntroText, templateValues),
-    normalizeMailTextLine(templatePayload.locationLabel)
-      ? `Ort: ${templatePayload.locationLabel}`
-      : undefined,
-    input.config.doiButtonLabel
-      ? `${input.config.doiButtonLabel}: ${templatePayload.confirmUrl}`
-      : templatePayload.confirmUrl,
-    normalizeMailTextLine(input.config.doiFallbackText)
-      ? renderTemplate(input.config.doiFallbackText!, templateValues)
-      : undefined,
-    normalizeMailTextLine(input.config.doiExpiryNoticeText)
-      ? renderTemplate(input.config.doiExpiryNoticeText!, templateValues)
-      : undefined,
-    serviceLabel ? `Service: ${serviceLabel}` : undefined,
-    dataControllerLabel ? `Verantwortlich: ${dataControllerLabel}` : undefined,
-    `Datenschutz: ${templatePayload.privacyPolicyUrl}`,
-    `Impressum: ${templatePayload.imprintUrl}`,
-  ]);
   const addresses = mapPayloadAddresses(input.payload);
   const replyTo = resolveReminderReplyToAddresses(input.config, input.transport, input.payload);
 
@@ -279,9 +320,24 @@ const buildDoiDispatchMessage = (input: {
     ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
     ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
     ...(replyTo ? { replyTo } : {}),
-    subject: renderTemplate(input.config.doiSubjectTemplate, templateValues),
-    text,
+    subject: input.subject,
+    text: input.text,
   };
+};
+
+const buildDoiDispatchMessage = (input: {
+  readonly config: WasteManagementEmailReminderConfig;
+  readonly transport: MailTransportConfig;
+  readonly payload: MailDispatchPayload;
+}): MailDispatchMessage => {
+  const { templatePayload } = input.payload;
+  const templateContext = resolveDoiTemplateContext(input.config, templatePayload);
+  const text = buildDoiText({ config: input.config, templatePayload, templateContext });
+  return buildDispatchEnvelope({
+    ...input,
+    subject: renderTemplate(input.config.doiSubjectTemplate, templateContext.values),
+    text,
+  });
 };
 
 const buildReminderDispatchMessage = (input: {
@@ -307,18 +363,11 @@ const buildReminderDispatchMessage = (input: {
     `Impressum: ${templatePayload.imprintUrl}`,
     serviceLabel ? `Service: ${serviceLabel}` : undefined,
   ]);
-  const addresses = mapPayloadAddresses(input.payload);
-  const replyTo = resolveReminderReplyToAddresses(input.config, input.transport, input.payload);
-
-  return {
-    from: resolveReminderFromAddress(input.config, input.transport),
-    to: addresses.to,
-    ...(addresses.cc.length > 0 ? { cc: addresses.cc } : {}),
-    ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
-    ...(replyTo ? { replyTo } : {}),
+  return buildDispatchEnvelope({
+    ...input,
     subject: templatePayload.subject,
     text,
-  };
+  });
 };
 
 export const buildDispatchMessage = (input: {

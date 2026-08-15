@@ -348,6 +348,7 @@ Schulden auf IST-Basis.
 - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
 - Wahrscheinlichkeit: mittel
 - Maßnahme: Repository- und Endpunkt-Characterization sichern bereits dieselbe standortgebundene Kalenderbasis für Web und PDF einschließlich Negativpfaden; vor Produktivsetzung bleibt derselbe Bürgerfluss gegen eine echte tenantgebundene Waste-Datenbank und die finale Konfiguration als Integrations- und E2E-Gate erforderlich
+- Die öffentliche Reminder-Konfiguration besitzt zusätzlich ein Drift-Risiko zwischen Studio-Schreibpfad und Public-Waste-Lesepfad. Maßnahme: kanonische Core-Normalisierung mit Characterization für gültige, partielle, fehlerhafte und unbekannte Werte, stabile Output-Reihenfolge und eine fail-closed Secret-Grenze; neue Defaults oder Validator-Fallbacks benötigen einen eigenen Vertrag.
 
 ### Technische Schulden (Auswahl)
 

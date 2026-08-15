@@ -201,6 +201,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
 - Waste-Abmeldetoken-Boundary:
   - `@sva/waste-management-contracts/unsubscribe-token` ist die einzige kanonische Implementierung für Erzeugung, Lesen und Verifikation signierter Waste-Abmeldetoken und installiert weder Job-Runtime noch Browser-Plugin
+  - Die Normalisierung der öffentlichen Reminder-Konfiguration ist durch eine Negativmatrix für Pflicht- und Optionalfelder, unbekannte Eingaben, stabile Feldreihenfolge sowie die Secret-Grenze charakterisiert; reine feldweise Reader senken die Zielkomplexität, ohne Defaults oder Serialisierung zu ändern.
   - ein Golden-Test hält Tokenaufbau, HMAC-SHA-256-Inhalt und Base64url-Signatur für bestehende `v1`-Links bytekompatibel
   - der Nx-Graph enthält keine direkte Kante `sva-studio-react -> public-waste-calendar-web`; beide Apps konsumieren stattdessen `waste-management-contracts`
   - `sva-studio-react:test:types` darf `public-waste-calendar-web:build` nicht als vorgelagerten Task einplanen

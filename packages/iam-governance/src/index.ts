@@ -58,6 +58,11 @@ export {
   type DsrMaintenanceResult,
 } from './dsr-maintenance.js';
 export {
+  appendDsrRequestEvent,
+  emitDsrAuditEvent,
+  isDsrLegalHoldActive,
+} from './dsr-persistence.js';
+export {
   readGovernanceCaseType,
   readGovernanceOperation,
   requiresPrivilegedGovernanceWorkflowRole,

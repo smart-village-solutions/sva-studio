@@ -1,11 +1,10 @@
-import { getWorkspaceContext } from '@sva/server-runtime';
-
 import {
   collectDsrExportPayload,
   serializeDsrExportPayload,
   type DsrExportAccountSnapshot,
   type DsrExportFormat,
 } from './dsr-export-payload.js';
+import { appendDsrRequestEvent, emitDsrAuditEvent } from './dsr-persistence.js';
 import type { QueryClient } from './query-client.js';
 
 export type DsrExportRequestInput = {
@@ -225,56 +224,6 @@ SET
 WHERE id = $1::uuid;
 `,
     [input.exportJobId, input.errorMessage]
-  );
-};
-
-const appendDsrRequestEvent = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    requestId: string;
-    actorAccountId?: string;
-    eventType: string;
-    payload?: Record<string, unknown>;
-  }
-): Promise<void> => {
-  await client.query(
-    `
-INSERT INTO iam.data_subject_request_events (instance_id, request_id, actor_account_id, event_type, event_payload)
-VALUES ($1, $2::uuid, $3::uuid, $4, $5::jsonb);
-`,
-    [
-      input.instanceId,
-      input.requestId,
-      input.actorAccountId ?? null,
-      input.eventType,
-      JSON.stringify(input.payload ?? {}),
-    ]
-  );
-};
-
-const emitDsrAuditEvent = async (
-  client: QueryClient,
-  input: {
-    instanceId: string;
-    accountId?: string;
-    eventType: string;
-    payload: Record<string, unknown>;
-  }
-): Promise<void> => {
-  await client.query(
-    `
-INSERT INTO iam.activity_logs (instance_id, account_id, event_type, payload, request_id, trace_id)
-VALUES ($1, $2::uuid, $3, $4::jsonb, $5, $6);
-`,
-    [
-      input.instanceId,
-      input.accountId ?? null,
-      input.eventType,
-      JSON.stringify(input.payload),
-      getWorkspaceContext().requestId ?? null,
-      getWorkspaceContext().traceId ?? null,
-    ]
   );
 };
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1001,
+  "body": "Instanzdaten und geschützte Zugangsdaten bleiben bei Registry-Änderungen zuverlässig zugeordnet\n\n- Anlage und Aktualisierung behalten dieselben festen Datenbankpositionen.\n- Zugangsdaten werden weiterhin eindeutig erhalten, gelöscht oder ersetzt.\n- Hostname-Aktualisierung, Idempotenz und bestehende Fehlerzuordnung bleiben unverändert."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1019,
+  "body": "Bucket-Medienkennungen werden auch bei langen und ungewöhnlichen Dateipfaden zuverlässig erzeugt\n\n- Die Browser-Kodierung entfernt Base64-Padding jetzt mit einer klar begrenzten Operation.\n- Node- und Browser-Ausgaben bleiben für leere, Unicode- und sehr lange Speicherpfade identisch."
+}

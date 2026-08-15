@@ -25,6 +25,7 @@ describe('content media usage', () => {
   it('fails closed when the runtime does not provide crypto.randomUUID', () => {
     vi.stubGlobal('crypto', {});
 
+    expect(() => createContentMediaUiId()).toThrow(TypeError);
     expect(() => createContentMediaUiId()).toThrow(
       'Content media UI IDs require crypto.randomUUID'
     );

@@ -26,7 +26,7 @@ export type ContentMediaUsagePatch = Partial<Omit<ContentMediaUsage, 'uiId'>>;
 
 export const createContentMediaUiId = (): string => {
   if (typeof globalThis.crypto?.randomUUID !== 'function') {
-    throw new Error('Content media UI IDs require crypto.randomUUID');
+    throw new TypeError('Content media UI IDs require crypto.randomUUID');
   }
 
   return globalThis.crypto.randomUUID();

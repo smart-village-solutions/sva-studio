@@ -10,6 +10,6 @@
 
 ## 3. Dokumentation und Qualität
 
-- [ ] 3.1 Arc42-Dokumentation und Changelog aktualisieren
-- [ ] 3.2 Unit, Types, Lint, Server-Runtime, Complexity und Fallow New-only ausführen
-- [ ] 3.3 OpenSpec strict, File Placement, Changelog und `git diff --check` validieren
+- [x] 3.1 Arc42-Dokumentation und Changelog aktualisieren
+- [x] 3.2 Unit, Types, Lint, Server-Runtime, Complexity und Fallow New-only ausführen
+- [x] 3.3 OpenSpec strict, File Placement, Changelog und `git diff --check` validieren

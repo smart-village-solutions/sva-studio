@@ -1,8 +1,13 @@
-import type { SqlExecutor, SqlPrimitive } from '../iam/repositories/types.js';
+import type { SqlExecutor } from '../iam/repositories/types.js';
 
 import type { InstanceRegistryRepository } from './repository-contract.js';
 import { buildInstanceSelectColumns, upsertPrimaryHostnameSql } from './repository-instance-select.js';
 import { mapInstance } from './repository-mappers.js';
+import {
+  createInstanceValues,
+  resolveInstanceMutationActorId,
+  updateInstanceValues,
+} from './repository-mutation-values.js';
 import { queryRows, statement } from './repository-shared.js';
 import type { InstanceListRow } from './repository-types.js';
 
@@ -10,8 +15,6 @@ type MutationRepository = Pick<
   InstanceRegistryRepository,
   'createInstance' | 'updateInstance' | 'setInstanceStatus' | 'setInstanceRealmMode'
 >;
-
-const defaultActorId = (actorId: string | undefined): string => actorId ?? 'system';
 
 const runMutationStep = async <T>(stepKey: string, work: () => Promise<T>): Promise<T> => {
   try {
@@ -40,56 +43,9 @@ const upsertPrimaryHostname = async (
 ): Promise<void> => {
   await executor.execute({
     text: upsertPrimaryHostnameSql,
-    values: [hostname, instanceId, defaultActorId(actorId)],
+    values: [hostname, instanceId, resolveInstanceMutationActorId(actorId)],
   });
 };
-
-const createInstanceValues = (input: Parameters<MutationRepository['createInstance']>[0]): readonly SqlPrimitive[] => [
-  input.instanceId,
-  input.displayName,
-  input.status,
-  input.parentDomain,
-  input.primaryHostname,
-  input.realmMode,
-  input.authRealm,
-  input.authClientId,
-  input.authIssuerUrl ?? null,
-  input.authClientSecretCiphertext ?? null,
-  input.tenantAdminClient?.clientId ?? null,
-  input.tenantAdminClient?.secretCiphertext ?? null,
-  input.tenantAdminBootstrap?.username ?? null,
-  input.tenantAdminBootstrap?.email ?? null,
-  input.tenantAdminBootstrap?.firstName ?? null,
-  input.tenantAdminBootstrap?.lastName ?? null,
-  input.themeKey ?? null,
-  JSON.stringify(input.featureFlags ?? {}),
-  input.mainserverConfigRef ?? null,
-  defaultActorId(input.actorId),
-];
-
-const updateInstanceValues = (input: Parameters<MutationRepository['updateInstance']>[0]): readonly SqlPrimitive[] => [
-  input.instanceId,
-  input.displayName,
-  input.parentDomain,
-  input.primaryHostname,
-  input.realmMode,
-  input.authRealm,
-  input.authClientId,
-  input.authIssuerUrl ?? null,
-  input.keepExistingAuthClientSecret !== false && typeof input.authClientSecretCiphertext === 'undefined',
-  input.authClientSecretCiphertext ?? null,
-  input.tenantAdminClient?.clientId ?? null,
-  input.keepExistingTenantAdminClientSecret !== false && typeof input.tenantAdminClient?.secretCiphertext === 'undefined',
-  input.tenantAdminClient?.secretCiphertext ?? null,
-  input.tenantAdminBootstrap?.username ?? null,
-  input.tenantAdminBootstrap?.email ?? null,
-  input.tenantAdminBootstrap?.firstName ?? null,
-  input.tenantAdminBootstrap?.lastName ?? null,
-  input.themeKey ?? null,
-  JSON.stringify(input.featureFlags ?? {}),
-  input.mainserverConfigRef ?? null,
-  defaultActorId(input.actorId),
-];
 
 const createInstance = async (executor: SqlExecutor, input: Parameters<MutationRepository['createInstance']>[0]) => {
   const rows = await runMutationStep('registry_insert', () => queryRows<InstanceListRow>(
@@ -176,7 +132,7 @@ WHERE id = $1
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
-      [input.instanceId, input.status, defaultActorId(input.actorId)]
+      [input.instanceId, input.status, resolveInstanceMutationActorId(input.actorId)]
     )
   );
   return rows[0] ? mapInstance(rows[0]) : null;
@@ -199,7 +155,7 @@ WHERE id = $1
 RETURNING
 ${buildInstanceSelectColumns()};
 `,
-      [input.instanceId, input.realmMode, defaultActorId(input.actorId)]
+      [input.instanceId, input.realmMode, resolveInstanceMutationActorId(input.actorId)]
     )
   );
   return rows[0] ? mapInstance(rows[0]) : null;

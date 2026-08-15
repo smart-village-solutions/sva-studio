@@ -1,0 +1,4 @@
+{
+  "prNumber": 1011,
+  "body": "Die Realm-Operationsanzeige priorisiert Verwaltungsaktionen intern übersichtlicher\n\n- Realm-Vertrag, Preflight, Provisionierung, Drift und Reconcile behalten ihre bisherigen Status, Hinweise und Reihenfolgen.\n- Auch ungewöhnliche Legacy-Prioritäten und fehlende optionale Laufzeitdaten bleiben unverändert fail-closed.\n- Kombinatorische Regressionstests sichern die sichtbaren Schritte und die genau eine primäre Folgeaktion ab."
+}

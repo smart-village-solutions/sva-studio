@@ -11,6 +11,8 @@
 - **Kategorie:** IAM-UI-Aktionspriorität, CRAP
 - **Geplant auf:** `98e6ca3d7`, 15. August 2026
 - **Fallow vorher:** `buildOperationsPrimaryAction` in `-instances-shared.tsx:619` hat CC 30, Cognitive 28, 131 Zeilen und CRAP 33 bei geschätzter hoher Coverage; lokaler Clone `dup:a9825bed` umfasst 16 Zeilen.
+- **Umsetzung:** Draft-PR #1011; die getrennte Prioritätsmatrix und der Source-Diff sind durch Root-Review freigegeben.
+- **Fallow nachher:** `buildOperationsPrimaryAction` ist nur noch der typisierte New-/Existing-Dispatcher; der Zielanker und sein lokaler Clone sind aus den Findings verschwunden. Der Coverage-gebundene New-only-Audit meldet keine eingeführte Complexity, keinen moderaten CRAP-Befund und keine eingeführte Duplikation.
 
 ## Warum und Produktionsreichweite
 

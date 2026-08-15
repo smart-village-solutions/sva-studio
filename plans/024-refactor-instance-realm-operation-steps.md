@@ -11,6 +11,8 @@
 - **Kategorie:** IAM-UI-Vertrag, Datenintegrität, Complexity, CRAP
 - **Geplant auf:** `98e6ca3d7`, 15. August 2026
 - **Fallow vorher:** `-instances-shared.tsx` hat 778 Zeilen, 39 Funktionen, Fan-in 4, CC gesamt 232, Cognitive gesamt 171, MI 79,6, fünf CRAP-Findings und Hotspot-Score 5,6 bei 22 Commits. Zielgruppe: `buildExistingRealmAssessmentSteps` CC 35/Cognitive 41/CRAP 299,6; `buildNewRealmArtifactSteps` 28/22/197,3; `buildNewRealmLeadSteps` 20/19/106,4; `buildWorkerPreflightStep` 17/29/79,4.
+- **Umsetzung:** Draft-PR #1011; Characterization und Source-Diff durch Root-Review freigegeben.
+- **Fallow nachher:** Die vier Zielanker sind aus den Complexity-/CRAP-Findings verschwunden. Die Datei hat 947 Zeilen, 63 kleine fachlich benannte Funktionen, CC gesamt 245, Cognitive gesamt 120, MI 80,8 und CRAP-Maximum 16,1; New-only meldet für Complexity, Dead Code, Duplikation und Styling jeweils 0 eingeführte Befunde.
 
 ## Warum und Produktionsreichweite
 

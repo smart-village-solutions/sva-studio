@@ -14,6 +14,8 @@ import {
   buildOperationsPrimaryAction,
   getErrorMessage,
   getOperationsEvidenceSourceLabel,
+  type OperationsStepModel,
+  type RealmOperationsModel,
 } from './-instances-shared';
 import {
   createEmptyCreateForm,
@@ -1379,5 +1381,568 @@ describe('instances shared helpers', () => {
     expect(model.currentRun?.id).toBe('run-success');
     expect(model.historicalRuns.map((run) => run.id)).toEqual(['run-failed']);
     expect(model.hasHistoricalMismatchHint).toBe(true);
+  });
+});
+
+const createOperationsStepFixture = (
+  key: OperationsStepModel['key'],
+  status: OperationsStepModel['status']
+): OperationsStepModel => ({
+  key,
+  status,
+  title: key,
+  summary: `${key}:${status}`,
+  evidenceSource: 'history',
+});
+
+const createOperationsModelFixture = (
+  mode: RealmOperationsModel['mode'],
+  steps: readonly OperationsStepModel[],
+  overrides: Partial<RealmOperationsModel> = {}
+): RealmOperationsModel => ({
+  mode,
+  status: 'degraded',
+  summary: 'characterization',
+  steps,
+  followUpActions: [],
+  signals: {
+    modeConflict: false,
+    hasDrift: false,
+  },
+  ...overrides,
+});
+
+const incompleteKeycloakStatus = {
+  realmExists: false,
+  clientExists: false,
+  tenantAdminClientExists: false,
+  tenantAdminExists: false,
+  tenantAdminHasSystemAdmin: false,
+  systemAdminRoleExists: false,
+  redirectUrisMatch: false,
+  logoutUrisMatch: false,
+  webOriginsMatch: false,
+  clientSecretConfigured: false,
+  tenantClientSecretReadable: false,
+  clientSecretAligned: false,
+  tenantAdminClientSecretConfigured: false,
+  tenantAdminClientSecretReadable: false,
+  tenantAdminClientSecretAligned: false,
+  runtimeSecretSource: 'platform',
+} as const;
+
+const completeKeycloakStatus = {
+  ...incompleteKeycloakStatus,
+  realmExists: true,
+  clientExists: true,
+  tenantAdminClientExists: true,
+  tenantAdminExists: true,
+  tenantAdminHasSystemAdmin: true,
+  systemAdminRoleExists: true,
+  redirectUrisMatch: true,
+  logoutUrisMatch: true,
+  webOriginsMatch: true,
+  clientSecretConfigured: true,
+  tenantClientSecretReadable: true,
+  clientSecretAligned: true,
+  tenantAdminClientSecretConfigured: true,
+  tenantAdminClientSecretReadable: true,
+  tenantAdminClientSecretAligned: true,
+  runtimeSecretSource: 'tenant',
+} as const;
+
+const createProvisioningRunFixture = (
+  overallStatus: 'planned' | 'running' | 'succeeded' | 'failed'
+) => ({
+  id: `run-${overallStatus}`,
+  instanceId: 'demo',
+  intent: 'provision' as const,
+  mode: 'new' as const,
+  overallStatus,
+  driftSummary: `Run ${overallStatus}`,
+  requestId: `request-${overallStatus}`,
+  createdAt: '2026-08-15T09:00:00.000Z',
+  updatedAt: '2026-08-15T09:05:00.000Z',
+  steps: [],
+});
+
+describe('realm operations step characterization', () => {
+  it.each([
+    {
+      name: 'incomplete contract keeps preflight and plan pending',
+      overrides: { displayName: '' },
+      expected: {
+        registry_contract: { status: 'fehlgeschlagen', action: 'focus_configuration' },
+        worker_preflight: { status: 'offen', action: undefined },
+        worker_plan: { status: 'offen', action: undefined },
+      },
+    },
+    {
+      name: 'complete contract offers preflight before a plan exists',
+      overrides: {},
+      expected: {
+        registry_contract: { status: 'erfolgreich', action: undefined },
+        worker_preflight: { status: 'bereit', action: 'check_preflight' },
+        worker_plan: { status: 'bereit', action: undefined },
+      },
+    },
+    {
+      name: 'blocked realm-mode preflight preserves its diagnostic summary',
+      overrides: {
+        keycloakPreflight: {
+          overallStatus: 'blocked',
+          checkedAt: '2026-08-15T08:00:00.000Z',
+          checks: [
+            {
+              checkKey: 'realm_mode',
+              status: 'blocked',
+              title: 'Realm mode',
+              summary: 'Live realm already exists.',
+              details: {},
+            },
+          ],
+        },
+      },
+      expected: {
+        registry_contract: { status: 'erfolgreich', action: undefined },
+        worker_preflight: {
+          status: 'fehlgeschlagen',
+          action: undefined,
+          summary: 'Live realm already exists.',
+          checkedAt: '2026-08-15T08:00:00.000Z',
+        },
+        worker_plan: { status: 'offen', action: 'plan_provisioning' },
+      },
+    },
+    {
+      name: 'ready preflight offers plan generation',
+      overrides: {
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-08-15T08:00:00.000Z',
+          checks: [],
+        },
+      },
+      expected: {
+        registry_contract: { status: 'erfolgreich', action: undefined },
+        worker_preflight: {
+          status: 'erfolgreich',
+          action: undefined,
+          checkedAt: '2026-08-15T08:00:00.000Z',
+        },
+        worker_plan: { status: 'bereit', action: 'plan_provisioning' },
+      },
+    },
+    {
+      name: 'blocked plan preserves worker drift evidence',
+      overrides: {
+        keycloakPreflight: {
+          overallStatus: 'ready',
+          checkedAt: '2026-08-15T08:00:00.000Z',
+          checks: [],
+        },
+        keycloakPlan: {
+          mode: 'new',
+          overallStatus: 'blocked',
+          generatedAt: '2026-08-15T08:05:00.000Z',
+          driftSummary: 'Plan cannot reconcile the target realm.',
+          steps: [],
+        },
+      },
+      expected: {
+        registry_contract: { status: 'erfolgreich', action: undefined },
+        worker_preflight: { status: 'erfolgreich', action: undefined },
+        worker_plan: {
+          status: 'fehlgeschlagen',
+          action: undefined,
+          summary: 'Plan cannot reconcile the target realm.',
+          checkedAt: '2026-08-15T08:05:00.000Z',
+        },
+      },
+    },
+  ])('keeps new-realm lead-step semantics when $name', ({ overrides, expected }) => {
+    const model = buildNewRealmOperationsModel(createDetailFixture(overrides), null);
+
+    for (const [key, stepExpectation] of Object.entries(expected)) {
+      expect(model.steps.find((step) => step.key === key)).toMatchObject(stepExpectation);
+    }
+  });
+
+  it.each([
+    { runStatus: undefined, artifactStatus: 'offen', finalStatus: 'offen' },
+    { runStatus: 'planned', artifactStatus: 'läuft', finalStatus: 'läuft' },
+    { runStatus: 'running', artifactStatus: 'läuft', finalStatus: 'läuft' },
+    { runStatus: 'failed', artifactStatus: 'fehlgeschlagen', finalStatus: 'fehlgeschlagen' },
+    { runStatus: 'succeeded', artifactStatus: 'fehlgeschlagen', finalStatus: 'fehlgeschlagen' },
+  ] as const)(
+    'maps a $runStatus worker run to $artifactStatus artifacts and $finalStatus validation',
+    ({ runStatus, artifactStatus, finalStatus }) => {
+      const run = runStatus ? createProvisioningRunFixture(runStatus) : undefined;
+      const model = buildNewRealmOperationsModel(
+        createDetailFixture({
+          latestKeycloakProvisioningRun: run,
+          keycloakProvisioningRuns: run ? [run] : [],
+        }),
+        null
+      );
+
+      expect(model.steps.find((step) => step.key === 'realm')).toMatchObject({
+        status: artifactStatus,
+        evidenceSource: 'keycloak_run',
+        checkedAt: run?.updatedAt,
+        requestId: run?.requestId,
+      });
+      expect(model.steps.find((step) => step.key === 'final_validation')).toMatchObject({
+        status: finalStatus,
+        evidenceSource: 'final_validation',
+        checkedAt: '2026-01-01T00:00:00.000Z',
+        requestId: run?.requestId,
+      });
+    }
+  );
+
+  it.each([
+    ['realm', { realmExists: true }],
+    [
+      'login_client',
+      {
+        clientExists: true,
+        redirectUrisMatch: true,
+        logoutUrisMatch: true,
+        webOriginsMatch: true,
+      },
+    ],
+    ['tenant_admin_client', { tenantAdminClientExists: true }],
+    ['realm_roles', { tenantAdminHasSystemAdmin: true }],
+    ['tenant_admin', { tenantAdminExists: true }],
+    [
+      'secret_sync',
+      {
+        clientSecretAligned: true,
+        tenantAdminClientSecretAligned: true,
+      },
+    ],
+  ] as const)(
+    'marks only satisfied %s artifact evidence successful',
+    (stepKey, statusOverrides) => {
+      const run = createProvisioningRunFixture('running');
+      const model = buildNewRealmOperationsModel(
+        createDetailFixture({
+          keycloakStatus: {
+            ...incompleteKeycloakStatus,
+            ...statusOverrides,
+          },
+          latestKeycloakProvisioningRun: run,
+          keycloakProvisioningRuns: [run],
+        }),
+        null
+      );
+
+      expect(model.steps.find((step) => step.key === stepKey)).toMatchObject({
+        status: 'erfolgreich',
+        evidenceSource: 'final_validation',
+        checkedAt: run.updatedAt,
+        requestId: run.requestId,
+      });
+    }
+  );
+
+  it.each([
+    {
+      name: 'missing contract and evidence',
+      overrides: { displayName: '', tenantAdminClient: null, keycloakPreflight: null },
+      expected: {
+        registry_contract: { status: 'fehlgeschlagen', action: 'focus_configuration' },
+        worker_preflight: { status: 'offen', action: undefined },
+        live_status: { status: 'bereit', action: 'check_keycloak_status' },
+        drift_analysis: { status: 'offen' },
+        contract_repair: { status: 'fehlgeschlagen', action: 'focus_configuration' },
+        reconcile: { status: 'offen', action: undefined },
+        result_validation: { status: 'offen' },
+      },
+    },
+    {
+      name: 'blocked preflight without live status',
+      overrides: {
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        keycloakPreflight: {
+          overallStatus: 'blocked',
+          checkedAt: '2026-08-15T10:00:00.000Z',
+          checks: [],
+        },
+      },
+      expected: {
+        worker_preflight: {
+          status: 'fehlgeschlagen',
+          checkedAt: '2026-08-15T10:00:00.000Z',
+        },
+        live_status: { status: 'offen', action: 'check_keycloak_status' },
+        drift_analysis: { status: 'offen' },
+        reconcile: { status: 'offen' },
+        result_validation: { status: 'offen' },
+      },
+    },
+    {
+      name: 'complete live status without drift',
+      overrides: {
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        keycloakStatus: completeKeycloakStatus,
+      },
+      expected: {
+        live_status: { status: 'erfolgreich', evidenceSource: 'final_validation' },
+        drift_analysis: { status: 'erfolgreich', evidenceSource: 'final_validation' },
+        reconcile: {
+          status: 'erfolgreich',
+          action: undefined,
+          evidenceSource: 'final_validation',
+        },
+        result_validation: { status: 'erfolgreich' },
+      },
+    },
+    {
+      name: 'drift with a failed latest run',
+      overrides: {
+        realmMode: 'existing',
+        authClientSecretConfigured: true,
+        keycloakStatus: {
+          ...completeKeycloakStatus,
+          logoutUrisMatch: false,
+        },
+        latestKeycloakProvisioningRun: {
+          ...createProvisioningRunFixture('failed'),
+          mode: 'existing',
+        },
+      },
+      expected: {
+        drift_analysis: { status: 'fehlgeschlagen' },
+        reconcile: {
+          status: 'fehlgeschlagen',
+          action: 'reconcileKeycloak',
+          evidenceSource: 'keycloak_run',
+          checkedAt: '2026-08-15T09:05:00.000Z',
+          requestId: 'request-failed',
+        },
+        result_validation: { status: 'fehlgeschlagen' },
+      },
+    },
+  ])('keeps existing-realm assessment semantics for $name', ({ overrides, expected }) => {
+    const model = buildExistingRealmOperationsModel(createDetailFixture(overrides) as never, null);
+
+    for (const [key, stepExpectation] of Object.entries(expected)) {
+      expect(model.steps.find((step) => step.key === key)).toMatchObject(stepExpectation);
+    }
+  });
+
+  it('ignores mutation errors in both operation-model projections', () => {
+    const mutationError = {
+      name: 'IamHttpError',
+      status: 409,
+      code: 'conflict',
+      message: 'legacy mutation error',
+    } as const;
+
+    expect(buildNewRealmOperationsModel(createDetailFixture(), mutationError)).toEqual(
+      buildNewRealmOperationsModel(createDetailFixture(), null)
+    );
+    expect(
+      buildExistingRealmOperationsModel(
+        createDetailFixture({ realmMode: 'existing', authClientSecretConfigured: true }),
+        mutationError
+      )
+    ).toEqual(
+      buildExistingRealmOperationsModel(
+        createDetailFixture({ realmMode: 'existing', authClientSecretConfigured: true }),
+        null
+      )
+    );
+  });
+});
+
+describe('realm operations primary-action priority characterization', () => {
+  it.each([
+    {
+      name: 'contract failure beats every later candidate',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'fehlgeschlagen'),
+        createOperationsStepFixture('worker_preflight', 'fehlgeschlagen'),
+        createOperationsStepFixture('worker_plan', 'bereit'),
+        createOperationsStepFixture('realm', 'fehlgeschlagen'),
+      ],
+      overrides: { signals: { modeConflict: true, hasDrift: false } },
+      expected: { action: 'focus_configuration', reason: 'missing_contract' },
+    },
+    {
+      name: 'mode conflict beats a blocked preflight',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'fehlgeschlagen'),
+      ],
+      overrides: { signals: { modeConflict: true, hasDrift: false } },
+      expected: { action: 'check_preflight', reason: 'mode_conflict' },
+    },
+    {
+      name: 'blocked preflight beats worker planning',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'fehlgeschlagen'),
+        createOperationsStepFixture('worker_plan', 'bereit'),
+      ],
+      expected: { action: 'check_preflight', reason: 'preflight_blocked' },
+    },
+    {
+      name: 'completed validation exposes the first follow-up before stale plan evidence',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('final_validation', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'bereit'),
+      ],
+      overrides: { followUpActions: ['activate_instance', 'probeTenantIamAccess'] as const },
+      expected: { action: 'activate_instance', reason: 'follow_up' },
+    },
+    {
+      name: 'worker planning beats failed artifacts',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'bereit'),
+        createOperationsStepFixture('realm', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'plan_provisioning', reason: 'follow_up' },
+    },
+    {
+      name: 'failed worker plan is replanned before execution retry',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'fehlgeschlagen'),
+        createOperationsStepFixture('realm', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'plan_provisioning', reason: 'follow_up' },
+    },
+    {
+      name: 'failed provisioning artifact requests an execution retry',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'erfolgreich'),
+        createOperationsStepFixture('realm', 'fehlgeschlagen'),
+        createOperationsStepFixture('final_validation', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'execute_provisioning', reason: 'run_retry' },
+    },
+    {
+      name: 'failed secret sync retains the legacy run-retry reason',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'erfolgreich'),
+        createOperationsStepFixture('secret_sync', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'execute_provisioning', reason: 'run_retry' },
+    },
+    {
+      name: 'open provisioning artifact starts worker execution',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'erfolgreich'),
+        createOperationsStepFixture('tenant_admin', 'offen'),
+      ],
+      expected: { action: 'execute_provisioning', reason: 'run_retry' },
+    },
+    {
+      name: 'failed final validation refreshes live status',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('worker_plan', 'erfolgreich'),
+        createOperationsStepFixture('final_validation', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'check_keycloak_status', reason: 'final_validation' },
+    },
+    {
+      name: 'follow-up remains available without final-validation evidence',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+      ],
+      overrides: { followUpActions: ['probeTenantIamAccess'] as const },
+      expected: { action: 'probeTenantIamAccess', reason: 'follow_up' },
+    },
+    {
+      name: 'missing optional steps fail closed to status validation',
+      steps: [],
+      expected: { action: 'check_keycloak_status', reason: 'final_validation' },
+    },
+  ])('keeps new-realm priority when $name', ({ steps, overrides, expected }) => {
+    expect(
+      buildOperationsPrimaryAction(createOperationsModelFixture('new', steps, overrides))
+    ).toMatchObject(expected);
+  });
+
+  it.each([
+    {
+      name: 'contract repair beats preflight and drift',
+      steps: [
+        createOperationsStepFixture('contract_repair', 'fehlgeschlagen'),
+        createOperationsStepFixture('worker_preflight', 'fehlgeschlagen'),
+        createOperationsStepFixture('reconcile', 'fehlgeschlagen'),
+      ],
+      overrides: { signals: { modeConflict: false, hasDrift: true } },
+      expected: { action: 'focus_configuration', reason: 'missing_contract' },
+    },
+    {
+      name: 'preflight blocker beats missing live status',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'fehlgeschlagen'),
+        createOperationsStepFixture('live_status', 'bereit'),
+      ],
+      expected: { action: 'check_preflight', reason: 'preflight_blocked' },
+    },
+    {
+      name: 'missing live status beats drift reconciliation',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('live_status', 'bereit'),
+        createOperationsStepFixture('reconcile', 'fehlgeschlagen'),
+      ],
+      overrides: { signals: { modeConflict: false, hasDrift: true } },
+      expected: { action: 'check_keycloak_status', reason: 'final_validation' },
+    },
+    {
+      name: 'drift requests reconcile',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('live_status', 'erfolgreich'),
+        createOperationsStepFixture('reconcile', 'bereit'),
+      ],
+      overrides: { signals: { modeConflict: false, hasDrift: true } },
+      expected: { action: 'reconcileKeycloak', reason: 'run_retry' },
+    },
+    {
+      name: 'failed reconcile retries even without a drift signal',
+      steps: [
+        createOperationsStepFixture('registry_contract', 'erfolgreich'),
+        createOperationsStepFixture('worker_preflight', 'erfolgreich'),
+        createOperationsStepFixture('live_status', 'erfolgreich'),
+        createOperationsStepFixture('reconcile', 'fehlgeschlagen'),
+      ],
+      expected: { action: 'reconcileKeycloak', reason: 'run_retry' },
+    },
+    {
+      name: 'missing optional steps fail closed to status validation',
+      steps: [],
+      expected: { action: 'check_keycloak_status', reason: 'final_validation' },
+    },
+  ])('keeps existing-realm priority when $name', ({ steps, overrides, expected }) => {
+    expect(
+      buildOperationsPrimaryAction(createOperationsModelFixture('existing', steps, overrides))
+    ).toMatchObject(expected);
   });
 });

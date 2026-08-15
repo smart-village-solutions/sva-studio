@@ -24,8 +24,13 @@ export type ContentMediaUsage = Readonly<{
 
 export type ContentMediaUsagePatch = Partial<Omit<ContentMediaUsage, 'uiId'>>;
 
-export const createContentMediaUiId = (): string =>
-  globalThis.crypto?.randomUUID?.() ?? `media-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+export const createContentMediaUiId = (): string => {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') {
+    throw new Error('Content media UI IDs require crypto.randomUUID');
+  }
+
+  return globalThis.crypto.randomUUID();
+};
 
 export const createManualContentMediaUsage = (input?: {
   readonly role?: string;

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1003,
+  "body": "Öffentliche E-Mail-Erinnerungslinks bleiben zuverlässig und datenschutzgerecht verarbeitet\n\n- Bestätigungs- und Abmeldelinks behalten dieselben sicheren Prüfungen, Weiterleitungen und Statusseiten.\n- Abmeldungen ändern ein Abo weiterhin erst nach erfolgreicher Signaturprüfung.\n- Wiederholte Abmeldungen und Signup-Limits bleiben unverändert idempotent."
+}

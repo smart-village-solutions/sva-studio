@@ -1,47 +1,20 @@
-import type { IamUserDetail } from '@sva/core';
-import {
-  Button,
-  StudioPersistentFormError,
-  StudioSaveButton,
-  useStudioSaveFeedback,
-} from '@sva/studio-ui-react';
+import { Button } from '@sva/studio-ui-react';
 import React from 'react';
 
-import { asIamError, getMyProfile, IamHttpError, updateMyProfile } from '../../lib/iam-api';
 import { IamRuntimeDiagnosticDetails } from '../../components/iam-runtime-diagnostic-details';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
-import { Badge } from '../../components/ui/badge';
-import { Card } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Select } from '../../components/ui/select';
 import { t } from '../../i18n';
+import type { IamHttpError } from '../../lib/iam-api';
 import { createLoginHref, resolveCurrentReturnTo } from '../../lib/auth-navigation';
-import { pickInitials } from '../../lib/display-name';
-import { formatEditorDateTime } from '../../lib/editor-date-time';
 import { hasPlatformInstanceAdminAccess } from '../../lib/iam-admin-access';
-import { notifyIamUsersUpdated } from '../../lib/iam-user-events';
 import { useAuth } from '../../providers/auth-provider';
-
-type ProfileFormValues = {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  position: string;
-  department: string;
-  preferredLanguage: string;
-};
-
-type ProfileErrors = Partial<Record<keyof ProfileFormValues, string>>;
-
-const EMPTY_FORM: ProfileFormValues = {
-  firstName: '',
-  lastName: '',
-  phone: '',
-  position: '',
-  department: '',
-  preferredLanguage: '',
-};
+import { AccountProfileForm } from './-account-profile-form';
+import {
+  getProfileLoadErrorTranslationKey,
+  readAccountActionStatus,
+} from './-account-profile-model';
+import { AccountProfileSummary } from './-account-profile-summary';
+import { useAccountProfile } from './-use-account-profile';
 
 const statusTranslationKeyByValue = {
   active: 'account.status.active',
@@ -49,496 +22,129 @@ const statusTranslationKeyByValue = {
   pending: 'account.status.pending',
 } as const;
 
-const toFormValues = (profile: IamUserDetail): ProfileFormValues => ({
-  firstName: profile.firstName ?? '',
-  lastName: profile.lastName ?? '',
-  phone: profile.phone ?? '',
-  position: profile.position ?? '',
-  department: profile.department ?? '',
-  preferredLanguage: profile.preferredLanguage ?? 'de',
-});
+const AccountProfileLoading = () => (
+  <section aria-busy="true" className="space-y-3">
+    <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
+    <p role="status" className="text-sm text-muted-foreground">
+      {t('account.messages.loading')}
+    </p>
+  </section>
+);
 
-const deriveDisplayName = (firstName: string, lastName: string): string =>
-  [firstName.trim(), lastName.trim()].filter(Boolean).join(' ');
+const AccountProfileUnauthenticated = ({ loginHref }: { loginHref: string }) => (
+  <Alert className="border-secondary/40 bg-secondary/10 text-sm text-secondary" role="status">
+    <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <span>{t('account.messages.notAuthenticated')}</span>
+      <Button asChild variant="secondary">
+        <a href={loginHref}>{t('shell.header.login')}</a>
+      </Button>
+    </AlertDescription>
+  </Alert>
+);
 
-const formatDateTime = (value?: string) => {
-  if (!value) {
-    return '—';
-  }
-  return formatEditorDateTime(value) ?? value;
-};
+type LoadErrorProps = Readonly<{
+  error: IamHttpError;
+  loginHref: string;
+  onRetry: () => void;
+}>;
 
-const mappingStatusTranslationKeyByValue = {
-  mapped: 'account.projection.mappingStatus.mapped',
-  unmapped: 'account.projection.mappingStatus.unmapped',
-  manual_review: 'account.projection.mappingStatus.manualReview',
-} as const;
-
-const editabilityTranslationKeyByValue = {
-  editable: 'account.projection.editability.editable',
-  read_only: 'account.projection.editability.readOnly',
-  blocked: 'account.projection.editability.blocked',
-} as const;
-
-type AccountActionStatus =
-  'password-updated' | 'email-update-finished' | 'email-update-unavailable' | 'cancelled';
-
-const readAccountActionStatusFromLocation = (): AccountActionStatus | null => {
-  const currentWindow = globalThis.window;
-  if (!currentWindow) {
-    return null;
-  }
-
-  const accountAction = new URLSearchParams(currentWindow.location.search).get('accountAction');
-  if (
-    accountAction === 'password-updated' ||
-    accountAction === 'email-update-finished' ||
-    accountAction === 'email-update-unavailable' ||
-    accountAction === 'cancelled'
-  ) {
-    return accountAction;
-  }
-
-  return null;
-};
-
-const validateForm = (values: ProfileFormValues): ProfileErrors => {
-  const errors: ProfileErrors = {};
-
-  if (!values.firstName.trim()) {
-    errors.firstName = t('account.validation.firstNameRequired');
-  }
-  if (!values.lastName.trim()) {
-    errors.lastName = t('account.validation.lastNameRequired');
-  }
-
-  if (values.phone.trim() && !/^\+?[0-9()\-\s]{6,20}$/.test(values.phone.trim())) {
-    errors.phone = t('account.validation.phoneInvalid');
-  }
-
-  return errors;
-};
-
-const getLoadErrorDescription = (error: IamHttpError) => {
-  if (error.recommendedAction === 'erneut_anmelden' || error.status === 401) {
-    return t('account.diagnostics.sessionRecovery');
-  }
-
-  switch (error.classification) {
-    case 'actor_resolution_or_membership':
-      return t('account.diagnostics.actorResolutionOrMembership');
-    case 'database_or_schema_drift':
-      return t('account.diagnostics.databaseOrSchemaDrift');
-    case 'registry_or_provisioning_drift':
-      return t('account.diagnostics.registryOrProvisioningDrift');
-    case 'keycloak_dependency':
-    case 'keycloak_reconcile':
-      return t('account.diagnostics.keycloakDependency');
-    default:
-      return t('account.messages.loadError');
-  }
+const AccountProfileLoadError = ({ error, loginHref, onRetry }: LoadErrorProps) => {
+  const requiresLoginRecovery =
+    error.status === 401 || error.recommendedAction === 'erneut_anmelden';
+  return (
+    <section className="space-y-4">
+      <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
+      <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
+        <AlertTitle>
+          {requiresLoginRecovery
+            ? t('account.messages.notAuthenticated')
+            : t('account.messages.loadError')}
+        </AlertTitle>
+        <AlertDescription className="mt-3">
+          <div className="space-y-3">
+            <p>{t(getProfileLoadErrorTranslationKey(error))}</p>
+            <IamRuntimeDiagnosticDetails error={error} />
+            <div className="flex flex-wrap gap-3">
+              {requiresLoginRecovery ? (
+                <Button asChild type="button" variant="secondary">
+                  <a href={loginHref}>{t('shell.header.login')}</a>
+                </Button>
+              ) : (
+                <Button type="button" variant="secondary" onClick={onRetry}>
+                  {t('account.actions.retry')}
+                </Button>
+              )}
+            </div>
+          </div>
+        </AlertDescription>
+      </Alert>
+    </section>
+  );
 };
 
 export const AccountProfilePage = () => {
   const { user, isAuthenticated, isLoading: isAuthLoading, hasResolvedSession } = useAuth();
-  const isPlatformScope = user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
-  const accountActionStatus = readAccountActionStatusFromLocation();
-
-  const [profile, setProfile] = React.useState<IamUserDetail | null>(null);
-  const [formValues, setFormValues] = React.useState<ProfileFormValues>(EMPTY_FORM);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [loadError, setLoadError] = React.useState<IamHttpError | null>(null);
-  const [saveError, setSaveError] = React.useState<IamHttpError | null>(null);
-  const [validationErrors, setValidationErrors] = React.useState<ProfileErrors>({});
-  const errorSummaryRef = React.useRef<HTMLDivElement>(null);
-  const saveFeedback = useStudioSaveFeedback();
+  const isProfileReadOnly =
+    user !== null && !user.instanceId && hasPlatformInstanceAdminAccess(user);
+  const accountActionStatus = readAccountActionStatus(
+    typeof window === 'undefined' ? undefined : window.location.search
+  );
   const loginHref = React.useMemo(() => createLoginHref(resolveCurrentReturnTo()), []);
+  const accountProfile = useAccountProfile({
+    hasResolvedSession,
+    isAuthenticated,
+    isAuthLoading,
+    isProfileReadOnly,
+  });
 
-  const loadProfile = React.useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-
-    try {
-      const response = await getMyProfile();
-      setProfile(response.data);
-      setFormValues(toFormValues(response.data));
-    } catch (cause) {
-      setLoadError(asIamError(cause));
-      setProfile(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  React.useEffect(() => {
-    if (isAuthLoading || !hasResolvedSession) {
-      return;
-    }
-
-    if (!isAuthenticated) {
-      setProfile(null);
-      setLoadError(null);
-      setIsLoading(false);
-      return;
-    }
-
-    loadProfile().catch(() => undefined);
-  }, [hasResolvedSession, isAuthenticated, isAuthLoading, loadProfile]);
-
-  const handleRetryLoad = React.useCallback(() => {
-    loadProfile().catch(() => undefined);
-  }, [loadProfile]);
-
-  React.useEffect(() => {
-    if (Object.keys(validationErrors).length > 0) {
-      errorSummaryRef.current?.focus();
-    }
-  }, [validationErrors]);
-
-  const onFieldChange = (field: keyof ProfileFormValues, value: string) => {
-    setFormValues((current) => ({
-      ...current,
-      [field]: value,
-    }));
-    saveFeedback.markDirty();
-    setSaveError(null);
-  };
-
-  const saveProfile = async () => {
-    if (isPlatformScope) {
-      return;
-    }
-
-    const nextErrors = validateForm(formValues);
-    setValidationErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    const operationId = saveFeedback.beginSaving();
-    setSaveError(null);
-
-    try {
-      const nextDerivedDisplayName = deriveDisplayName(formValues.firstName, formValues.lastName);
-
-      const response = await updateMyProfile({
-        firstName: formValues.firstName.trim(),
-        lastName: formValues.lastName.trim(),
-        displayName: nextDerivedDisplayName,
-        phone: formValues.phone.trim() || undefined,
-        position: formValues.position.trim() || undefined,
-        department: formValues.department.trim() || undefined,
-        preferredLanguage: formValues.preferredLanguage.trim() || undefined,
-      });
-
-      setProfile(response.data);
-      setFormValues(toFormValues(response.data));
-      notifyIamUsersUpdated();
-      setValidationErrors({});
-      saveFeedback.markSaved(operationId);
-    } catch (cause) {
-      setSaveError(asIamError(cause));
-      saveFeedback.markFailed(operationId);
-    }
-  };
-
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    void saveProfile();
-  };
-
-  if (isLoading || isAuthLoading || !hasResolvedSession) {
+  if (accountProfile.isLoading || isAuthLoading || !hasResolvedSession) {
+    return <AccountProfileLoading />;
+  }
+  if (!isAuthenticated && !accountProfile.profile) {
+    return <AccountProfileUnauthenticated loginHref={loginHref} />;
+  }
+  if (accountProfile.loadError && !accountProfile.profile) {
     return (
-      <section aria-busy="true" className="space-y-3">
-        <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
-        <p role="status" className="text-sm text-muted-foreground">
-          {t('account.messages.loading')}
-        </p>
-      </section>
+      <AccountProfileLoadError
+        error={accountProfile.loadError}
+        loginHref={loginHref}
+        onRetry={() => void accountProfile.retryLoad()}
+      />
     );
   }
 
-  if (!isAuthenticated && !profile) {
-    return (
-      <Alert className="border-secondary/40 bg-secondary/10 text-sm text-secondary" role="status">
-        <AlertDescription className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span>{t('account.messages.notAuthenticated')}</span>
-          <Button asChild variant="secondary">
-            <a href={loginHref}>{t('shell.header.login')}</a>
-          </Button>
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (loadError && !profile) {
-    const isUnauthorized = loadError.status === 401;
-    return (
-      <section className="space-y-4">
-        <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
-        <Alert className="border-destructive/40 bg-destructive/10 text-destructive">
-          <AlertTitle>
-            {isUnauthorized
-              ? t('account.messages.notAuthenticated')
-              : t('account.messages.loadError')}
-          </AlertTitle>
-          <AlertDescription className="mt-3">
-            <div className="space-y-3">
-              <p>{getLoadErrorDescription(loadError)}</p>
-              <IamRuntimeDiagnosticDetails error={loadError} />
-              <div className="flex flex-wrap gap-3">
-                {isUnauthorized ? (
-                  <Button asChild type="button" variant="secondary">
-                    <a href={loginHref}>{t('shell.header.login')}</a>
-                  </Button>
-                ) : (
-                  <Button type="button" variant="secondary" onClick={handleRetryLoad}>
-                    {t('account.actions.retry')}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </AlertDescription>
-        </Alert>
-      </section>
-    );
-  }
-
-  const statusKey = profile?.status
-    ? statusTranslationKeyByValue[profile.status]
+  const statusKey = accountProfile.profile?.status
+    ? statusTranslationKeyByValue[accountProfile.profile.status]
     : statusTranslationKeyByValue.pending;
-  const displayName =
-    profile?.displayName ??
-    deriveDisplayName(formValues.firstName, formValues.lastName) ??
-    user?.id ??
-    '-';
-  const email = profile?.email ?? '-';
-  const roleNames = profile?.roles.map((role) => role.roleName).join(', ') || '-';
-  const keycloakRoleNames = profile?.keycloakRoles?.join(', ') || '-';
-  const hasProjectionWarning =
-    profile?.mappingStatus === 'manual_review' || Boolean(profile?.diagnostics?.length);
-  const projectionStatusLabel = profile?.mappingStatus
-    ? t(mappingStatusTranslationKeyByValue[profile.mappingStatus])
-    : null;
-  const editabilityLabel = profile?.editability
-    ? t(editabilityTranslationKeyByValue[profile.editability])
-    : null;
-  const diagnosticCodes =
-    profile?.diagnostics?.map((diagnostic) => diagnostic.code).join(', ') ?? null;
-  const isProfileReadOnly = isPlatformScope;
-  const accountActionMessage =
-    accountActionStatus === 'password-updated'
-      ? t('account.messages.passwordUpdated')
-      : accountActionStatus === 'email-update-finished'
-        ? t('account.messages.emailUpdateFinished')
-        : accountActionStatus === 'email-update-unavailable'
-          ? t('account.messages.emailUpdateUnavailable')
-          : accountActionStatus === 'cancelled'
-            ? t('account.messages.accountActionCancelled')
-            : null;
-  const accountActionAlertClassName =
-    accountActionStatus === 'cancelled'
-      ? 'border-secondary/40 bg-secondary/10 text-secondary'
-      : 'border-primary/40 bg-primary/10 text-primary';
+  const roleNames = accountProfile.profile?.roles.map((role) => role.roleName).join(', ') || '-';
+  const keycloakRoleNames = accountProfile.profile?.keycloakRoles?.join(', ') || '-';
 
   return (
-    <section className="space-y-5" aria-busy={saveFeedback.status === 'saving'}>
+    <section className="space-y-5" aria-busy={accountProfile.saveFeedback.status === 'saving'}>
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold text-foreground">{t('account.profile.title')}</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">{t('account.profile.subtitle')}</p>
       </header>
-
-      <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background text-lg font-semibold text-foreground">
-            {pickInitials(displayName)}
-          </div>
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground">{displayName}</h2>
-            <p className="text-sm text-muted-foreground">{email}</p>
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              <Badge variant="outline">{t(statusKey)}</Badge>
-              {profile?.roles.length ? (
-                profile.roles.map((role) => (
-                  <Badge key={role.roleId} variant="outline" className="h-auto items-start py-1">
-                    <span className="block">{role.roleName}</span>
-                  </Badge>
-                ))
-              ) : (
-                <Badge variant="outline">{t('account.fields.role')}: -</Badge>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{t('account.fields.lastLogin')}: </span>
-          {formatDateTime(profile?.lastLoginAt)}
-        </div>
-      </Card>
-
-      {hasProjectionWarning ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-900">
-          <AlertTitle>{t('account.projection.warningTitle')}</AlertTitle>
-          <AlertDescription className="space-y-2">
-            <p>{t('account.projection.warningBody')}</p>
-            {projectionStatusLabel ? (
-              <p>{t('account.projection.statusLine', { value: projectionStatusLabel })}</p>
-            ) : null}
-            {editabilityLabel ? (
-              <p>{t('account.projection.editabilityLine', { value: editabilityLabel })}</p>
-            ) : null}
-            {diagnosticCodes ? (
-              <p>{t('account.projection.diagnosticCodesLine', { value: diagnosticCodes })}</p>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {isProfileReadOnly ? (
-        <Alert className="border-secondary/40 bg-secondary/10 text-secondary">
-          <AlertTitle>{t('account.profile.platformReadOnlyTitle')}</AlertTitle>
-          <AlertDescription>{t('account.profile.platformReadOnlyBody')}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {accountActionMessage ? (
-        <Alert className={accountActionAlertClassName} role="status">
-          <AlertDescription>{accountActionMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {Object.keys(validationErrors).length > 0 ? (
-        <Alert
-          ref={errorSummaryRef}
-          tabIndex={-1}
-          className="border-destructive/40 bg-destructive/10 text-destructive"
-        >
-          <AlertTitle>{t('account.messages.validationSummary')}</AlertTitle>
-          <ul className="mt-2 list-disc space-y-1 pl-5">
-            {Object.values(validationErrors).map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
-        </Alert>
-      ) : null}
-
-      {saveError ? (
-        <StudioPersistentFormError
-          message={t('account.messages.saveError')}
-          details={<IamRuntimeDiagnosticDetails error={saveError} />}
-          retryLabel={t('account.actions.retry')}
-          retryDisabled={saveFeedback.status === 'saving'}
-          onRetry={() => void saveProfile()}
-        />
-      ) : null}
-
-      <form className="space-y-4" onSubmit={onSubmit} noValidate>
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2">
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-first-name">{t('account.fields.firstName')}</Label>
-            <Input
-              id="account-first-name"
-              autoComplete="given-name"
-              value={formValues.firstName}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('firstName', event.target.value)}
-              aria-invalid={Boolean(validationErrors.firstName)}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-last-name">{t('account.fields.lastName')}</Label>
-            <Input
-              id="account-last-name"
-              autoComplete="family-name"
-              value={formValues.lastName}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('lastName', event.target.value)}
-              aria-invalid={Boolean(validationErrors.lastName)}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="account-phone">{t('account.fields.phone')}</Label>
-            <Input
-              id="account-phone"
-              autoComplete="tel"
-              value={formValues.phone}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('phone', event.target.value)}
-              aria-invalid={Boolean(validationErrors.phone)}
-            />
-          </div>
-        </section>
-
-        <section className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-shell md:grid-cols-2">
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-position">{t('account.fields.position')}</Label>
-            <Input
-              id="account-position"
-              value={formValues.position}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('position', event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-department">{t('account.fields.department')}</Label>
-            <Input
-              id="account-department"
-              value={formValues.department}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('department', event.target.value)}
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-language">{t('account.fields.language')}</Label>
-            <Select
-              id="account-language"
-              value={formValues.preferredLanguage}
-              disabled={isProfileReadOnly}
-              onChange={(event) => onFieldChange('preferredLanguage', event.target.value)}
-            >
-              <option value="de">Deutsch</option>
-              <option value="en">English</option>
-            </Select>
-          </div>
-          <div className="grid gap-2 text-sm text-foreground">
-            <Label htmlFor="account-status-readonly">{t('account.fields.status')}</Label>
-            <Input
-              id="account-status-readonly"
-              value={t(statusKey)}
-              readOnly
-              aria-readonly="true"
-            />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="account-roles-readonly">{t('account.fields.role')}</Label>
-            <Input id="account-roles-readonly" value={roleNames} readOnly aria-readonly="true" />
-          </div>
-          <div className="grid gap-2 text-sm text-foreground md:col-span-2">
-            <Label htmlFor="account-keycloak-roles-readonly">
-              {t('account.fields.keycloakRoles')}
-            </Label>
-            <Input
-              id="account-keycloak-roles-readonly"
-              value={keycloakRoleNames}
-              readOnly
-              aria-readonly="true"
-            />
-          </div>
-        </section>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <StudioSaveButton
-            type="submit"
-            status={saveFeedback.status}
-            disabled={isProfileReadOnly}
-            labels={{
-              idle: t('account.actions.save'),
-              saving: t('account.actions.saving'),
-              saved: t('account.actions.saved'),
-            }}
-          />
-        </div>
-      </form>
+      <AccountProfileSummary
+        accountActionStatus={accountActionStatus}
+        fallbackUserId={user?.id}
+        formValues={accountProfile.formValues}
+        isProfileReadOnly={isProfileReadOnly}
+        profile={accountProfile.profile}
+      />
+      <AccountProfileForm
+        errorSummaryRef={accountProfile.errorSummaryRef}
+        formValues={accountProfile.formValues}
+        isProfileReadOnly={isProfileReadOnly}
+        keycloakRoleNames={keycloakRoleNames}
+        onFieldChange={accountProfile.onFieldChange}
+        onSave={() => void accountProfile.saveProfile()}
+        roleNames={roleNames}
+        saveError={accountProfile.saveError}
+        saveStatus={accountProfile.saveFeedback.status}
+        statusLabel={t(statusKey)}
+        validationErrors={accountProfile.validationErrors}
+      />
     </section>
   );
 };

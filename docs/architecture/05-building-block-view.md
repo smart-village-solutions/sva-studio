@@ -537,6 +537,7 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 1. `apps/sva-studio-react/src/routes/account/-account-profile-page.tsx`
    - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary, tenantlokaler Profilpflege und einer kleinen Studio-owned Rückkehrmeldung nach delegierten Keycloak-Credential-Flows.
+   - Die co-located Bausteine `-account-profile-model.ts`, `-use-account-profile.ts`, `-account-profile-summary.tsx` und `-account-profile-form.tsx` trennen framework-unabhängige Formularregeln, asynchronen Seitenzustand und zugängliche Darstellung, ohne den IAM- oder Credential-Self-Service-Vertrag zu verändern.
 2. `apps/sva-studio-react/src/components/Header.tsx` und `apps/sva-studio-react/src/lib/auth-navigation.ts`
    - Das Kontomenü startet derzeit nur die Passwort-Änderung über den kanonischen Pfad `/auth/account-action?action=update-password&returnTo=/account`; die E-Mail-Änderung bleibt bis zur serverseitigen Keycloak-Freischaltung ausgeblendet, statt eigene Formularlogik im Browser aufzubauen.
 3. `apps/sva-studio-react/src/routes/admin/users/*`

@@ -275,12 +275,10 @@ const renderOptionalDoiTemplate = (
 
 const buildDoiLocationSection = (locationLabel: string | undefined): string | undefined =>
   normalizeMailTextLine(locationLabel) ? `Ort: ${locationLabel}` : undefined;
-
 const buildDoiConfirmationSection = (
   buttonLabel: string,
   confirmUrl: string | undefined
 ): string | undefined => (buttonLabel ? `${buttonLabel}: ${confirmUrl}` : confirmUrl);
-
 const buildOptionalDoiLabelSection = (
   label: 'Service' | 'Verantwortlich',
   value: string | undefined
@@ -312,7 +310,6 @@ const resolveOptionalDoiEnvelopeAddresses = (
   ...(addresses.bcc.length > 0 ? { bcc: addresses.bcc } : {}),
   ...(replyTo ? { replyTo } : {}),
 });
-
 const resolveDoiEnvelopeAddresses = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;
@@ -327,7 +324,6 @@ const resolveDoiEnvelopeAddresses = (input: {
     ...resolveOptionalDoiEnvelopeAddresses(addresses, replyTo),
   };
 };
-
 const buildDoiEnvelope = (input: {
   readonly config: WasteManagementEmailReminderConfig;
   readonly transport: MailTransportConfig;

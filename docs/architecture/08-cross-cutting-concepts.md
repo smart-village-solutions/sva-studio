@@ -229,6 +229,7 @@ gleichzeitig beeinflussen.
 - AsyncLocalStorage für `workspace_id`/request context
 - OTEL Pipeline für Logs + Metrics
 - Development nutzt lokale Console-Logs als Diagnosepfad; produktionsnahe Telemetrie läuft über OTEL
+- `SVA_DEPLOYMENT_ENVIRONMENT` kennzeichnet Dev, Staging und Production unabhängig vom für alle gebauten Remote-Runtimes notwendigen `NODE_ENV=production`; OTEL verwendet diesen Wert als `deployment.environment`.
 - Operative Logs enthalten keine Tokens, keine tokenhaltigen Redirect- oder Logout-URLs und keine decodierbaren JWT-Strings; zulässig sind nur sichere Summary-Felder
 - Runtime-Diagnostik folgt einem zweistufigen Modell: öffentliche Health-/API-Responses liefern knappe, nicht-sensitive `reason_code`s; OTEL liefert die tiefe technische Korrelation über Span-Attribute und Events
 - Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren

@@ -20,7 +20,7 @@ Der Mainserver-Endpunkt `/data_provider.json` liefert inzwischen für authentifi
 - Ein alter Projection-Eintrag ist kein Verfügbarkeitsnachweis. Vor jeder bestehenden Content-Mutation erfolgt ein frischer Pre-Read mit exakt demselben Credential-Kontext wie der anschließende Write.
 - `own` benötigt die aktuelle persönliche Bindung. Die vollständige Collection-Sicht für `organization` umfasst unabhängig von der Autorenrichtlinie den persönlichen und den aktiven organisatorischen Principal; eine Bestandsmutation benötigt die Bindung des konkreten Content-DataProviders. Fehlende oder konfliktbehaftete erforderliche Bindungen werden im automatischen Resolver nicht durch Kompatibilität verbreitert. `all` benötigt kein Principal-Mapping, bleibt aber durch Instanz und Mainserver-Sichtbarkeit begrenzt.
 - Jede schreibende Studio-Aktion am Mainserver-Content übermittelt explizit `actingPrincipalType: 'organization' | 'user'`. Fehlende Credentials führen nie zu einem stillen Fallback.
-- Die Read-Sicht folgt unabhängig von `contentAuthorPolicy` dem IAM-Scope: Im aktiven Organisationskontext sieht ein Mitglied die eigenen und die Inhalte der aktiven Organisation, nicht aber persönliche Inhalte anderer Mitglieder. Ob dafür eine oder zwei Mainserver-Credential-Sichten nötig sind, entscheidet die reale Contract-Matrix; mehrere erforderliche Sichten bleiben isoliert und werden dedupliziert vereinigt. Kann eine erforderliche Sicht nicht geladen werden, kennzeichnet Studio die Liste immer sichtbar als unvollständig.
+- Die Read-Sicht folgt unabhängig von `contentAuthorPolicy` dem IAM-Scope: Im aktiven Organisationskontext sieht ein Mitglied die eigenen und die Inhalte der aktiven Organisation, nicht aber persönliche Inhalte anderer Mitglieder. Persönliche und organisatorische Mainserver-Credential-Sichten bleiben isoliert und werden dedupliziert vereinigt. Kann eine erforderliche Sicht nicht geladen werden, kennzeichnet Studio die Liste immer sichtbar als unvollständig.
 - Persönliche und organisatorische Ownership bleibt dauerhaft erhalten. `org_only` beziehungsweise `org_or_personal` steuert den Principal beim Create; bestehende eigene und organisatorische Inhalte verwenden den durch DataProvider-Bindung und Ressourcen-Capability bestätigten Ownership-Principal.
 - Administrativ erlaubte Bestandsmutationen führen keinen dritten technischen Admin-Principal ein: Sie verwenden entweder die aktive Organisation oder den persönlichen Account des Administrators und bleiben an Action, Ressourcen-Capability und Same-Credential-Pre-Read gebunden.
 - Der membership-gefilterte Session-Contract `GET /api/v1/iam/me/context` liefert die `contentAuthorPolicy` der zugeordneten Organisationen. Alle Mainserver-Editoren und eigenständigen Content-Aktionen bestimmen den Principal zentral anhand von `activeOrganizationId`; sie benötigen dafür weder administrative Organisationsdetails noch `iam.org.read` und bleiben bei unvollständigem Organisationskontext fail-closed.
@@ -49,3 +49,12 @@ organisatorische Read-Contract-Matrix und deren minimal notwendige Auflösungsst
 Development und Staging laufen durch bewusste Produktentscheidung bereits auf `automatic`;
 `surveys.create` ist ebenfalls bewusst freigegeben. Production bleibt bis zur späteren
 Abnahme auf `shadow`.
+
+## Pragmatischer Abschluss vom 17. August 2026
+
+Der Production-Cutover verlangt keinen realen Volltest jedes Content-Typs mit jeder Aktion.
+Maßgeblich ist ein risikobasierter Staging-Canary mit beiden Principal-Arten, einem positiven
+Create-/Bestandsmutationspfad je Credential-Art, einem Cross-Principal-Negativfall,
+unverändertem ursprünglichem DataProvider und ohne neue ungeklärte Reconciliation-Fälle.
+Die übrigen Adapter bleiben über gemeinsame zentrale Verträge, Integrationstests und
+Capability-Gates abgesichert.

@@ -22,9 +22,9 @@ const defaultRuntimeConfig: RuntimeConfig = {
 };
 
 const importBootstrap = async (input: {
-  runtimeConfig?: Partial<RuntimeConfig>;
-  startOtelSdk?: ReturnType<typeof vi.fn>;
-  setWorkspaceContextGetter?: ReturnType<typeof vi.fn>;
+    runtimeConfig?: Partial<RuntimeConfig>;
+    startOtelSdk?: ReturnType<typeof vi.fn>;
+    setWorkspaceContextGetter?: ReturnType<typeof vi.fn>;
 } = {}) => {
   const runtimeConfig = { ...defaultRuntimeConfig, ...input.runtimeConfig };
   const setOtelInitializationResult = vi.fn();
@@ -94,11 +94,12 @@ describe('server bootstrap', () => {
     const sdk = { shutdown, loggerProvider: { forceFlush } };
     const processOn = vi.spyOn(process, 'on').mockReturnValue(process);
     const { module, setOtelInitializationResult, setWorkspaceContextGetter, startOtelSdk } = await importBootstrap({
-      startOtelSdk: vi.fn().mockResolvedValue(sdk),
-    });
+        startOtelSdk: vi.fn().mockResolvedValue(sdk),
+      });
 
     vi.stubEnv('OTEL_SERVICE_NAME', 'server-runtime-test');
     vi.stubEnv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://otel.example');
+    vi.stubEnv('SVA_DEPLOYMENT_ENVIRONMENT', 'staging');
 
     const result = await module.initializeOtelSdk();
     await module.flushOtelSdk(1234);
@@ -107,7 +108,7 @@ describe('server bootstrap', () => {
     expect(setWorkspaceContextGetter).toHaveBeenCalledWith(expect.any(Function));
     expect(startOtelSdk).toHaveBeenCalledWith({
       serviceName: 'server-runtime-test',
-      environment: process.env.NODE_ENV ?? 'development',
+      environment: 'staging',
       otlpEndpoint: 'http://otel.example',
     });
     expect(setOtelInitializationResult).toHaveBeenCalledWith({ status: 'ready', sdk });

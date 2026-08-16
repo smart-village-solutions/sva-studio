@@ -24,16 +24,17 @@ const overrides = Object.entries(remoteConfigContract)
 
 describe('remote app config builder', () => {
   it.each([
-    ['dev', 'automatic'],
-    ['staging', 'automatic'],
-    ['prod', 'shadow'],
-  ] as const)('materializes the %s resolver rollout mode as %s', (environment, resolverMode) => {
+    ['dev', 'development', 'automatic'],
+    ['staging', 'staging', 'automatic'],
+    ['prod', 'production', 'shadow'],
+  ] as const)('materializes the %s deployment environment and resolver mode', (environment, deploymentEnvironment, resolverMode) => {
     const remoteProfile = readFileSync(
       new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
       'utf8'
     );
     const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
 
+    expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
     expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
   });
 

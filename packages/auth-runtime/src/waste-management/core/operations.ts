@@ -346,20 +346,6 @@ export const wasteManagementOperationHandlers = {
       requiredPermission: 'waste-management.export.execute',
       endpoint: 'POST:/api/v1/waste-management/tools/exports',
       schema: startExportSchema.superRefine((value, refinementCtx) => {
-        for (const profileId of value.profileIds) {
-          if (
-            !Object.values(wasteManagementOperationsContract.importProfileIds).includes(
-              profileId as never
-            ) ||
-            profileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
-          ) {
-            refinementCtx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'Unbekanntes Waste-Exportprofil.',
-              path: ['profileIds'],
-            });
-          }
-        }
         if (value.targetFormat === 'application/json' && value.profileIds.length !== 1) {
           refinementCtx.addIssue({
             code: z.ZodIssueCode.custom,

@@ -112,10 +112,10 @@ export const createOperationHandler =
       runtime: WasteManagementOperationRuntime,
       instanceId: string,
       payload: TJobInput,
-      progressReporter?: {
+      progressReporter: {
         readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
-      },
-      context?: {
+      } | undefined,
+      context: {
         readonly jobId: string;
         readonly previousProgress?: WasteManagementJobProgress;
       }

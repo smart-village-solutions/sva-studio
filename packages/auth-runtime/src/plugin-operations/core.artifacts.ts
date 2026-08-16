@@ -25,8 +25,6 @@ const readArtifactIds = (request: Request): { jobId: string; artifactId: string 
 
 export const downloadPluginOperationArtifactHandler = async (request: Request): Promise<Response> =>
   withAuthenticatedUser(request, async (ctx) => {
-    const monitoringError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
-    if (monitoringError) return monitoringError;
     const instanceId = requireActorInstanceId(ctx.user.instanceId);
     if (instanceId instanceof Response) return instanceId;
     const ids = readArtifactIds(request);
@@ -49,6 +47,9 @@ export const downloadPluginOperationArtifactHandler = async (request: Request): 
         if (!authorization.ok) {
           return createApiError(authorization.status, toInstancePermissionApiErrorCode(authorization.error), 'Keine Berechtigung zum Herunterladen des Waste-Exports.', getRequestId(), authorization.permissionDenial);
         }
+      } else {
+        const monitoringError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
+        if (monitoringError) return monitoringError;
       }
       const artifact = job.resultPayload?.artifacts?.find((entry) => entry.artifactId === ids.artifactId);
       if (!artifact || Date.parse(artifact.expiresAt) <= Date.now()) {

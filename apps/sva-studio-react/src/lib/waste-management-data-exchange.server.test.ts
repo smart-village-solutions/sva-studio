@@ -1,13 +1,40 @@
 import { describe, expect, it, vi } from 'vitest';
-import { strFromU8, unzipSync } from 'fflate';
+import { createHash } from 'node:crypto';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
 
-import type {
-  ExternalInterfaceRecord,
-  StudioJobResultArtifact,
-  WasteFractionRecord,
-  WastePdfStaticSettingsRecord,
-  WasteTourRecord,
+import {
+  serializeWasteManagementDataExchangeJson,
+  type ExternalInterfaceRecord,
+  type StudioJobResultArtifact,
+  type WasteFractionRecord,
+  type WastePdfStaticSettingsRecord,
+  type WasteTourRecord,
 } from '@sva/core';
+
+/*
+ * Keep package construction independent from the export path so import tests can
+ * distinguish source settings from the target interface that must be restored.
+ */
+const createPortablePackage = (calendarWebUrl: string): Uint8Array => {
+  const fileName = 'portable-einstellungen.json';
+  const contents = serializeWasteManagementDataExchangeJson({
+    profileId: 'waste-management.portable-einstellungen',
+    exportedAt: '2026-08-16T09:00:00.000Z',
+    records: [{ entityType: 'portableSettings', calendarWebUrl, holidayStateCode: 'BB' }],
+  });
+  return zipSync({
+    'manifest.json': strToU8(JSON.stringify({
+      formatVersion: '1.0.0',
+      pluginId: 'waste-management',
+      profiles: [{
+        profileId: 'waste-management.portable-einstellungen',
+        fileName,
+        sha256: createHash('sha256').update(contents).digest('hex'),
+      }],
+    })),
+    [fileName]: strToU8(contents),
+  });
+};
 
 const repository = vi.hoisted(() => ({
   listWasteFractions: vi.fn(async (): Promise<WasteFractionRecord[]> => []),
@@ -309,6 +336,69 @@ describe('Waste data exchange operations', () => {
       importProfileId: 'waste-management.datenpaket',
       sourceFormat: 'application/zip',
     });
+  });
+
+  it('rolls back all Waste writes when portable package settings cannot be saved', async () => {
+    const targetInterface: ExternalInterfaceRecord = {
+      ...createInterfaceRecord(),
+      publicConfig: { schemaName: 'wm', calendarWebUrl: 'https://old.example' },
+    };
+    const { deps, query } = createDeps();
+    const saveInterfaceRecord = vi.fn(async () => {
+      throw new Error('interface_save_failed');
+    });
+
+    await expect(importCanonicalWasteManagementPackage({
+      deps: {
+        ...deps,
+        loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
+        readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
+        saveInterfaceRecord,
+      },
+      instanceId: 'instance-1',
+      blobRef: 'blob:portable-package',
+      dryRun: false,
+    })).rejects.toThrow('interface_save_failed');
+
+    expect(saveInterfaceRecord).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls.map(([statement]) => statement).filter(
+      (statement) => ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+    )).toEqual(['BEGIN', 'ROLLBACK']);
+  });
+
+  it('restores portable settings when the Waste commit fails after their update', async () => {
+    const targetInterface: ExternalInterfaceRecord = {
+      ...createInterfaceRecord(),
+      publicConfig: { schemaName: 'wm', calendarWebUrl: 'https://old.example' },
+    };
+    const { deps, query } = createDeps();
+    query.mockImplementation(async (statement: string) => {
+      if (statement === 'COMMIT') throw new Error('waste_commit_failed');
+      return { rowCount: 0, rows: [] };
+    });
+    const savedInterfaces: ExternalInterfaceRecord[] = [];
+    const saveInterfaceRecord = vi.fn(async (record: ExternalInterfaceRecord) => {
+      savedInterfaces.push(record);
+    });
+
+    await expect(importCanonicalWasteManagementPackage({
+      deps: {
+        ...deps,
+        loadDefaultInterfaceRecord: vi.fn(async () => targetInterface),
+        readBinarySource: vi.fn(async () => createPortablePackage('https://new.example')),
+        saveInterfaceRecord,
+      },
+      instanceId: 'instance-1',
+      blobRef: 'blob:portable-package',
+      dryRun: false,
+    })).rejects.toThrow('waste_commit_failed');
+
+    expect(savedInterfaces).toHaveLength(2);
+    expect(savedInterfaces[0]?.publicConfig).toMatchObject({
+      calendarWebUrl: 'https://new.example',
+    });
+    expect(savedInterfaces[1]).toEqual(targetInterface);
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
   });
 
   it('transfers portable public settings while excluding and preserving email configuration', async () => {

@@ -16,18 +16,42 @@ export type WasteManagementDataProfileId =
 export type WasteManagementDataFieldValueType =
   'boolean' | 'date' | 'integer' | 'number' | 'object' | 'string' | 'string-array';
 
+export type WasteManagementStructuredFieldShape =
+  | 'custom-tour-dates'
+  | 'fraction-reminder-config'
+  | 'localized-text';
+
 export type WasteManagementDataFieldInput =
   | { readonly kind: 'required' }
   | { readonly kind: 'optional'; readonly nullable: boolean }
   | { readonly kind: 'defaultable'; readonly defaultValue: unknown };
 
-export type WasteManagementIncludedFieldDefinition = {
+type WasteManagementIncludedFieldDefinitionBase = {
   readonly key: string;
-  readonly valueType: WasteManagementDataFieldValueType;
   readonly transfer: 'included';
   readonly input: WasteManagementDataFieldInput;
   readonly references?: Readonly<{ entityType: string; many?: boolean }>;
 };
+
+export type WasteManagementIncludedFieldDefinition =
+  WasteManagementIncludedFieldDefinitionBase &
+    (
+      | {
+          readonly valueType: 'object';
+          readonly structuredShape: WasteManagementStructuredFieldShape;
+          readonly allowedValues?: never;
+        }
+      | {
+          readonly valueType: 'string';
+          readonly allowedValues?: readonly string[];
+          readonly structuredShape?: never;
+        }
+      | {
+          readonly valueType: Exclude<WasteManagementDataFieldValueType, 'object' | 'string'>;
+          readonly allowedValues?: never;
+          readonly structuredShape?: never;
+        }
+    );
 
 export type WasteManagementExcludedFieldDefinition = {
   readonly key: string;

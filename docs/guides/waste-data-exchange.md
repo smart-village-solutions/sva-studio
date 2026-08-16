@@ -34,10 +34,18 @@ Systemexporte schreiben alle enthaltenen Felder deterministisch aus. Technische 
 2. Den Exportjob starten und nach erfolgreichem Abschluss das geschützte Artefakt herunterladen. Der Download wird erneut gegen Instanz, Actor und Berechtigung geprüft und läuft nach 24 Stunden ab.
 3. In der Zielinstanz mit `waste-management.import.execute` das passende JSON-Profil oder „Waste-Datenpaket“ wählen und die Datei hochladen.
 4. Optional zuerst einen Dry-Run ausführen. Er validiert Vertrag, Version, Pflichtwerte, Defaults und Referenzen und schreibt keine Fachdaten.
-5. Den Import starten. Einzelprofile und die Waste-Datenbankanteile eines Pakets werden atomar geschrieben; bei einem Fehler erfolgt ein Rollback.
+5. Den Import starten. Einzelprofile und Pakete werden ohne fachlichen Teilerfolg geschrieben. Portable Schnittstelleneinstellungen werden vor dem Waste-Datenbank-Commit gespeichert; schlägt der Commit danach fehl, stellt das System die vorherige Schnittstellenkonfiguration wieder her.
 
 Portable Kalender- und Feiertagseinstellungen werden zusätzlich in der ausgewählten Schnittstellenkonfiguration aktualisiert. Binäre Branding-Artefakte werden nicht kopiert; lediglich ihre konfigurierte Referenz ist portabel.
 
 ## Paketgrenzen
 
-Ein Export akzeptiert höchstens neun Profile. JSON ist auf genau ein Profil beschränkt. Ein ZIP wird vollständig vor der Mutation validiert und in kanonischer Abhängigkeitsreihenfolge importiert. Exportartefakte liegen nicht öffentlich im Media-Speicher und werden nicht als Bürger-Feed angeboten.
+Ein Export akzeptiert höchstens neun Profile. JSON ist auf genau ein Profil beschränkt. Ein ZIP wird vollständig vor der Mutation validiert und in kanonischer Abhängigkeitsreihenfolge importiert. Für importierte ZIP-Pakete gelten folgende Grenzen:
+
+- höchstens 16 MiB komprimierte Paketgröße
+- höchstens zehn flache, eindeutig benannte Einträge, einschließlich Manifest
+- höchstens 16 MiB unkomprimierte Größe je Eintrag
+- höchstens 64 MiB unkomprimierte Gesamtgröße
+- höchstens 256 KiB für `manifest.json`
+
+Einträge werden anhand ihrer ZIP-Metadaten vor der Dekompression abgewiesen, sobald eine Grenze überschritten wird. Exportartefakte liegen nicht öffentlich im Media-Speicher und werden nicht als Bürger-Feed angeboten.

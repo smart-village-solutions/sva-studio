@@ -5,6 +5,7 @@ import {
   entity,
   excludedTargetTimestamps,
   optional,
+  optionalStructured,
   reference,
   required,
 } from './waste-management-data-profile-builders.js';
@@ -22,7 +23,8 @@ export const wasteManagementSchedulingDataProfiles = [
       reference(required('wasteFractionIds', 'string-array'), 'fraction', true),
       optional('recurrence', 'string'), reference(optional('customRecurrenceId', 'string'), 'recurrencePreset'),
       optional('customRecurrenceName', 'string'), optional('customRecurrenceIntervalDays', 'integer'),
-      optional('firstDate', 'date'), optional('endDate', 'date'), optional('customDates', 'object'),
+      optional('firstDate', 'date'), optional('endDate', 'date'),
+      optionalStructured('customDates', 'custom-tour-dates'),
       defaultable('active', 'boolean', true),
       { key: 'locationCount', transfer: 'intentionally-excluded', reason: 'derived-value' },
       ...excludedTargetTimestamps,

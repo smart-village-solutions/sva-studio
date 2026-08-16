@@ -8,6 +8,16 @@ import {
 import { createHash } from 'node:crypto';
 import { strFromU8, unzipSync } from 'fflate';
 
+const MEBIBYTE = 1024 * 1024;
+
+export const wasteDataPackageLimits = {
+  maxCompressedBytes: 16 * MEBIBYTE,
+  maxEntries: 10,
+  maxEntryBytes: 16 * MEBIBYTE,
+  maxManifestBytes: 256 * 1024,
+  maxUncompressedBytes: 64 * MEBIBYTE,
+} as const;
+
 export type ParsedWasteDataPackageProfile = Readonly<{
   manifest: Readonly<{
     profileId: WasteManagementDataProfileId;
@@ -43,9 +53,37 @@ const parsePackageProfile = (
 export const readWasteDataPackage = (
   source: Uint8Array
 ): readonly ParsedWasteDataPackageProfile[] => {
-  const files = unzipSync(source);
+  if (source.byteLength > wasteDataPackageLimits.maxCompressedBytes) {
+    throw new Error('waste_data_package_compressed_size_limit_exceeded');
+  }
+  let entryCount = 0;
+  let totalUncompressedBytes = 0;
+  const entryNames = new Set<string>();
+  const files = unzipSync(source, {
+    filter: (entry) => {
+      entryCount += 1;
+      totalUncompressedBytes += entry.originalSize;
+      if (entryCount > wasteDataPackageLimits.maxEntries) {
+        throw new Error('waste_data_package_entry_count_limit_exceeded');
+      }
+      if (entry.originalSize > wasteDataPackageLimits.maxEntryBytes) {
+        throw new Error(`waste_data_package_entry_size_limit_exceeded:${entry.name}`);
+      }
+      if (totalUncompressedBytes > wasteDataPackageLimits.maxUncompressedBytes) {
+        throw new Error('waste_data_package_uncompressed_size_limit_exceeded');
+      }
+      if (!/^[A-Za-z0-9._-]+$/.test(entry.name) || entryNames.has(entry.name)) {
+        throw new Error(`invalid_waste_data_package_entry:${entry.name}`);
+      }
+      entryNames.add(entry.name);
+      return true;
+    },
+  });
   const manifestBytes = files['manifest.json'];
   if (!manifestBytes) throw new Error('missing_waste_data_package_manifest');
+  if (manifestBytes.byteLength > wasteDataPackageLimits.maxManifestBytes) {
+    throw new Error('waste_data_package_manifest_size_limit_exceeded');
+  }
   const manifest = JSON.parse(strFromU8(manifestBytes)) as {
     formatVersion?: unknown;
     pluginId?: unknown;

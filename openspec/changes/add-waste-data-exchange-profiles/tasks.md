@@ -50,7 +50,7 @@
 ## 7. Qualität, Dokumentation und Gates
 
 - [x] 7.1 Fachliche Roundtrip-Invariante `import(export(data)) = normalisierte Fachdaten` für alle Profile testen.
-- [ ] 7.2 Größen-, Batch-, Speicher-, Transaktions- und Artefaktaufbewahrungsgrenzen festlegen und testen.
+- [x] 7.2 Größen-, Batch-, Speicher-, Transaktions- und Artefaktaufbewahrungsgrenzen festlegen und testen.
 - [x] 7.3 Waste-Data-Tools-Guide und relevante deutsche Fachdokumentation aktualisieren.
 - [x] 7.4 `docs/architecture/05-building-block-view.md`, `docs/architecture/06-runtime-view.md`, `docs/architecture/08-cross-cutting-concepts.md` und `docs/architecture/10-quality-requirements.md` fortschreiben.
 - [x] 7.5 Falls Datenbankschemaänderungen erforderlich werden, `docs/development/studio-db-schema-final.sql` und `docs/development/studio-db-schema.md` im selben Change aktualisieren.

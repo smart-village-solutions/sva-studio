@@ -189,6 +189,66 @@ describe('Waste data exchange JSON', () => {
     ).toThrow('invalid_waste_data_exchange:records[0].name');
   });
 
+  it.each([
+    {
+      profileId: wasteManagementDataProfileIds.fractions,
+      record: {
+        entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00',
+        translations: [],
+      },
+      path: 'records[0].translations',
+    },
+    {
+      profileId: wasteManagementDataProfileIds.fractions,
+      record: {
+        entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00',
+        reminderConfig: { reminderCount: 'once', channels: { push: true } },
+      },
+      path: 'records[0].reminderConfig',
+    },
+    {
+      profileId: wasteManagementDataProfileIds.tours,
+      record: {
+        entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: [],
+        customDates: {},
+      },
+      path: 'records[0].customDates',
+    },
+    {
+      profileId: wasteManagementDataProfileIds.portableSettings,
+      record: { entityType: 'portableSettings', holidayStateCode: 'XX' },
+      path: 'records[0].holidayStateCode',
+    },
+  ])('rejects malformed structured or enumerated field at $path', ({ profileId, record, path }) => {
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId,
+        exportedAt,
+        records: [record],
+      }, { applyDefaults: false })
+    ).toMatchObject({ ok: false, issues: [{ code: 'invalid_field_type', path }] });
+  });
+
+  it('accepts the canonical shapes of structured profile fields', () => {
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: wasteManagementDataProfileIds.tours,
+        exportedAt,
+        records: [{
+          entityType: 'tour',
+          id: 'tour-1',
+          name: 'Tour 1',
+          wasteFractionIds: [],
+          customDates: [{ date: '2026-08-16', description: 'Sonderleerung' }],
+        }],
+      }, { applyDefaults: false })
+    ).toMatchObject({ ok: true });
+  });
+
   it.each(wasteManagementDataProfiles)(
     'roundtrips every offered JSON profile: $profileId',
     (profile) => {

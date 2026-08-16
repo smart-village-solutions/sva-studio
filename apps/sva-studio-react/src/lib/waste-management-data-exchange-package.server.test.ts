@@ -11,6 +11,7 @@ import {
   collectWasteDataPackageSourceIds,
   readWasteDataPackage,
   type ParsedWasteDataPackageProfile,
+  wasteDataPackageLimits,
 } from './waste-management-data-exchange-package.server.js';
 
 const profileId = wasteManagementDataProfileIds.fractions;
@@ -118,5 +119,32 @@ describe('Waste data exchange package helpers', () => {
     expect(() =>
       readWasteDataPackage(archive(packageManifest([manifestProfile(), manifestProfile()])))
     ).toThrow('duplicate_waste_data_package_profile');
+  });
+
+  it('rejects archives before expanding oversized or excessive entries', () => {
+    expect(() =>
+      readWasteDataPackage(new Uint8Array(wasteDataPackageLimits.maxCompressedBytes + 1))
+    ).toThrow('waste_data_package_compressed_size_limit_exceeded');
+
+    const oversizedEntry = new Uint8Array(wasteDataPackageLimits.maxEntryBytes + 1);
+    expect(() =>
+      readWasteDataPackage(zipSync({ 'oversized.json': oversizedEntry }))
+    ).toThrow('waste_data_package_entry_size_limit_exceeded:oversized.json');
+
+    const excessiveEntries = Object.fromEntries(
+      Array.from({ length: wasteDataPackageLimits.maxEntries + 1 }, (_, index) => [
+        `entry-${index}.json`,
+        new Uint8Array([index]),
+      ])
+    );
+    expect(() => readWasteDataPackage(zipSync(excessiveEntries))).toThrow(
+      'waste_data_package_entry_count_limit_exceeded'
+    );
+  });
+
+  it('rejects unsafe entry paths before package parsing', () => {
+    expect(() =>
+      readWasteDataPackage(zipSync({ '../manifest.json': strToU8('{}') }))
+    ).toThrow('invalid_waste_data_package_entry:../manifest.json');
   });
 });

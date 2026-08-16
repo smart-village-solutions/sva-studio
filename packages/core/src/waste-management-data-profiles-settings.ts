@@ -1,6 +1,7 @@
 import { wasteManagementDataProfileIds } from './waste-management-data-exchange.js';
 import type { WasteManagementDataProfileDefinition } from './waste-management-data-exchange.js';
-import { entity, optional } from './waste-management-data-profile-builders.js';
+import { entity, optional, optionalEnum } from './waste-management-data-profile-builders.js';
+import { wasteManagementMasterDataContract } from './waste-management/master-data-contract.js';
 
 export const wasteManagementSettingsDataProfiles = [{
   profileId: wasteManagementDataProfileIds.portableSettings,
@@ -11,7 +12,8 @@ export const wasteManagementSettingsDataProfiles = [{
   formats: ['application/json'],
   entities: [entity('portableSettings', [
     optional('calendarWebUrl', 'string'), optional('pdfBrandingAssetUrl', 'string'),
-    optional('pdfContactBlock', 'string'), optional('holidayStateCode', 'string'),
+    optional('pdfContactBlock', 'string'),
+    optionalEnum('holidayStateCode', wasteManagementMasterDataContract.holidayStateCodes),
     { key: 'instanceId', transfer: 'intentionally-excluded', reason: 'instance-identity' },
     { key: 'provider', transfer: 'intentionally-excluded', reason: 'credential' },
     { key: 'schemaName', transfer: 'intentionally-excluded', reason: 'credential' },

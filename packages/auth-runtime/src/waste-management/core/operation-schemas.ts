@@ -1,5 +1,16 @@
-import { wasteManagementOperationsContract } from '@sva/core';
+import {
+  wasteManagementDataProfileIds,
+  wasteManagementOperationsContract,
+  type WasteManagementDataProfileId,
+} from '@sva/core';
 import { z } from 'zod';
+
+const wasteManagementDataProfileIdSchema = z.enum(
+  Object.values(wasteManagementDataProfileIds) as [
+    WasteManagementDataProfileId,
+    ...WasteManagementDataProfileId[],
+  ]
+);
 
 const startMigrationsSchema = z.object({
   targetSchema: z.string().trim().min(1).optional(),
@@ -19,7 +30,7 @@ const startImportSchema = z.object({
 });
 
 const startExportSchema = z.object({
-  profileIds: z.array(z.string().trim().min(1)).min(1).max(9),
+  profileIds: z.array(wasteManagementDataProfileIdSchema).min(1).max(9),
   targetFormat: z.enum(wasteManagementOperationsContract.exportTargetFormats),
 });
 

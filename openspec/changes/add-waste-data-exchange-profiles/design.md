@@ -64,6 +64,8 @@ Alternativen:
 
 Ein Paket enthält ein Manifest, eine auswählbare Menge eigenständiger Profil-JSON-Dateien, deren Versionen, Abhängigkeiten, Datensatzanzahlen und Prüfsummen. Das Manifest definiert keine zweite Fachdatenrepräsentation.
 
+Der Import begrenzt Pakete vor der Dekompression auf 16 MiB komprimierte Daten, zehn flache und eindeutige Einträge, 16 MiB je Eintrag, 64 MiB unkomprimierte Gesamtdaten sowie 256 KiB für das Manifest. Dadurch können hoch komprimierte oder strukturell missbräuchliche Archive den Worker nicht unbegrenzt belegen.
+
 Die fachliche Reihenfolge ist mindestens:
 
 1. Fraktionen, Geografie und Abstandspresets
@@ -116,7 +118,7 @@ Der Standardimport legt Datensätze mit stabilen IDs an oder aktualisiert sie. N
 - unbekannte Profil-/Formatversionen
 - nicht portable oder im Ziel ungültige konfigurierte Referenzen
 
-Ein Einzelprofil wird atomar geschrieben. Ein Paket wird nach vollständigem Preflight in Abhängigkeitsreihenfolge und innerhalb einer gemeinsamen Transaktion geschrieben, soweit alle Profile dieselbe Waste-Fachdatenbank betreffen. Teilerfolge sind nicht zulässig.
+Ein Einzelprofil wird atomar geschrieben. Ein Paket wird nach vollständigem Preflight in Abhängigkeitsreihenfolge und innerhalb einer gemeinsamen Transaktion geschrieben, soweit alle Profile dieselbe Waste-Fachdatenbank betreffen. Portable Schnittstelleneinstellungen werden innerhalb dieser Commit-Grenze vor dem Waste-Commit persistiert und bei einem nachfolgenden Commitfehler kompensierend auf ihren vorherigen Stand zurückgesetzt. Teilerfolge sind nicht zulässig.
 
 ### Decision: Exporte laufen als hostgeführte, autorisierte Jobs
 
@@ -146,4 +148,4 @@ Bestehende Spezialimporte bleiben kompatibel und werden nicht automatisch zu Rou
 
 ## Open Questions
 
-Keine offenen Produktentscheidungen. Konkrete Größenlimits, Artefaktaufbewahrung und Batchgrößen werden innerhalb der bestehenden Plattformgrenzen während der Implementierungsplanung festgelegt und müssen sicherheits- sowie betrieblich getestet werden.
+Keine offenen Produktentscheidungen.

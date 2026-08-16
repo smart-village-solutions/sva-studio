@@ -2,9 +2,11 @@ import { wasteManagementDataProfileIds } from './waste-management-data-exchange.
 import type { WasteManagementDataProfileDefinition } from './waste-management-data-exchange.js';
 import {
   defaultable,
+  defaultableStructured,
   entity,
   excludedTargetTimestamps,
   optional,
+  optionalStructured,
   reference,
   required,
 } from './waste-management-data-profile-builders.js';
@@ -22,12 +24,12 @@ export const wasteManagementMasterDataProfiles = [
         required('id', 'string'),
         required('name', 'string'),
         optional('pdfShortLabel', 'string'),
-        optional('translations', 'object'),
+        optionalStructured('translations', 'localized-text'),
         optional('containerSize', 'string'),
         required('color', 'string'),
         optional('description', 'string'),
         defaultable('active', 'boolean', true),
-        defaultable('reminderConfig', 'object', {
+        defaultableStructured('reminderConfig', 'fraction-reminder-config', {
           reminderCount: 'none',
           channels: { push: false, email: false, calendar: false },
         }),

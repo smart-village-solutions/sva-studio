@@ -22,7 +22,10 @@ import {
   upsertWasteDataRecord,
 } from './waste-management-data-exchange-records.server.js';
 import { validateWasteDataReferences } from './waste-management-data-exchange-references.server.js';
-import { persistPortableWasteSettings } from './waste-management-data-exchange-portable-settings.server.js';
+import {
+  persistPortableWasteSettings,
+  restorePortableWasteSettings,
+} from './waste-management-data-exchange-portable-settings.server.js';
 import {
   collectWasteDataPackageSourceIds,
   readWasteDataPackage,
@@ -35,6 +38,51 @@ type CanonicalImportResult = Readonly<{
   defaultedFields: readonly string[];
   rowCount: number;
 }>;
+
+type PortableInterface = NonNullable<Awaited<ReturnType<typeof loadSelectedWasteInterfaceRecord>>>;
+
+const executeAtomicCanonicalImport = async <T>(input: Readonly<{
+  deps: WasteOperationRuntimeDeps;
+  instanceId: string;
+  dryRun: boolean;
+  portableInterface: PortableInterface | null;
+  portableRecord?: WasteManagementDataExchangeRecord;
+  apply: (repository: WasteMasterDataRepository) => Promise<T>;
+}>): Promise<T> =>
+  withWasteClient(input.deps, input.instanceId, async ({ client, repository }) => {
+    await client.query('BEGIN');
+    let portableSettingsPersisted = false;
+    try {
+      const result = await input.apply(repository);
+      if (!input.dryRun && input.portableInterface && input.portableRecord) {
+        await persistPortableWasteSettings(
+          input.deps,
+          input.portableInterface,
+          input.portableRecord
+        );
+        portableSettingsPersisted = true;
+      }
+      await client.query(input.dryRun ? 'ROLLBACK' : 'COMMIT');
+      return result;
+    } catch (error) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // Preserve the import failure; the portable settings compensation below is still required.
+      }
+      if (portableSettingsPersisted && input.portableInterface) {
+        try {
+          await restorePortableWasteSettings(input.deps, input.portableInterface);
+        } catch (compensationError) {
+          throw new AggregateError(
+            [error, compensationError],
+            'waste_data_import_compensation_failed'
+          );
+        }
+      }
+      throw error;
+    }
+  });
 
 const applyCanonicalRecords = async (
   repository: WasteMasterDataRepository,
@@ -101,37 +149,24 @@ export const importCanonicalWasteManagementJson = async (
     input.profileId === 'waste-management.portable-einstellungen'
       ? await loadSelectedWasteInterfaceRecord(input.deps, input.instanceId)
       : null;
-
-  const result = await withWasteClient(
-    input.deps,
-    input.instanceId,
-    async ({ client, repository }) => {
-      await client.query('BEGIN');
-      try {
-        const importResult = await applyCanonicalRecords(
-          repository,
-          input.profileId,
-          parsed.envelope.records,
-          input.dryRun,
-          portableInterface?.publicConfig ?? null
-        );
-        await client.query(input.dryRun ? 'ROLLBACK' : 'COMMIT');
-        return importResult;
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    }
+  const portableRecord = parsed.envelope.records.find(
+    (record) => record.entityType === 'portableSettings'
   );
-
-  if (!input.dryRun && portableInterface) {
-    const portableRecord = parsed.envelope.records.find(
-      (record) => record.entityType === 'portableSettings'
-    );
-    if (portableRecord) {
-      await persistPortableWasteSettings(input.deps, portableInterface, portableRecord);
-    }
-  }
+  const result = await executeAtomicCanonicalImport({
+    deps: input.deps,
+    instanceId: input.instanceId,
+    dryRun: input.dryRun,
+    portableInterface,
+    portableRecord,
+    apply: async (repository) =>
+      applyCanonicalRecords(
+        repository,
+        input.profileId,
+        parsed.envelope.records,
+        input.dryRun,
+        portableInterface?.publicConfig ?? null
+      ),
+  });
 
   return {
     durationMs: Math.max(1, Date.now() - startedAt),
@@ -165,39 +200,30 @@ export const importCanonicalWasteManagementPackage = async (
   const portableInterface = portableProfile
     ? await loadSelectedWasteInterfaceRecord(input.deps, input.instanceId)
     : null;
-
-  const results = await withWasteClient(
-    input.deps,
-    input.instanceId,
-    async ({ client, repository }) => {
-      await client.query('BEGIN');
-      try {
-        const imported: Record<string, CanonicalImportResult> = {};
-        for (const profile of parsedProfiles) {
-          imported[profile.manifest.profileId] = await applyCanonicalRecords(
-            repository,
-            profile.manifest.profileId,
-            profile.records,
-            input.dryRun,
-            portableInterface?.publicConfig ?? null,
-            packageSourceIds
-          );
-        }
-        await client.query(input.dryRun ? 'ROLLBACK' : 'COMMIT');
-        return imported;
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    }
-  );
-
   const portableRecord = portableProfile?.records.find(
     (record) => record.entityType === 'portableSettings'
   );
-  if (!input.dryRun && portableInterface && portableRecord) {
-    await persistPortableWasteSettings(input.deps, portableInterface, portableRecord);
-  }
+  const results = await executeAtomicCanonicalImport({
+    deps: input.deps,
+    instanceId: input.instanceId,
+    dryRun: input.dryRun,
+    portableInterface,
+    portableRecord,
+    apply: async (repository) => {
+      const imported: Record<string, CanonicalImportResult> = {};
+      for (const profile of parsedProfiles) {
+        imported[profile.manifest.profileId] = await applyCanonicalRecords(
+          repository,
+          profile.manifest.profileId,
+          profile.records,
+          input.dryRun,
+          portableInterface?.publicConfig ?? null,
+          packageSourceIds
+        );
+      }
+      return imported;
+    },
+  });
   return {
     durationMs: Math.max(1, Date.now() - startedAt),
     details: {

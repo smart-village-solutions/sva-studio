@@ -54,7 +54,7 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       phaseKey: 'waste-management.provision-database',
       execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
         runtimeArg.provisionTenantDatabase(instanceId, payload, {
-          jobId: context?.jobId ?? '',
+          jobId: context.jobId,
         }),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.initializeDataSource]:
@@ -79,7 +79,7 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       expectedOperation: 'export-data',
       phaseKey: 'waste-management.export-running',
       execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
-        runtimeArg.exportData(instanceId, payload, { jobId: context?.jobId ?? '' }),
+        runtimeArg.exportData(instanceId, payload, { jobId: context.jobId }),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.seedData]:
     createOperationHandler<WasteManagementSeedJobInput>({

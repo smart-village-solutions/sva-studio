@@ -333,6 +333,34 @@ describe('waste-management operation handlers', () => {
     expect(startPluginOperationJob).not.toHaveBeenCalled();
   });
 
+  it('rejects unknown export profile ids as invalid requests before starting a job', async () => {
+    const startPluginOperationJob = vi.fn();
+    const response = await wasteManagementOperationHandlers.startWasteManagementExportInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/exports', {
+        profileIds: ['waste-management.unknown-profile'],
+        targetFormat: 'application/json',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [{
+            action: 'waste-management.export.execute',
+            resourceType: 'waste-management',
+          }],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
+    });
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
   it('resolves the IAM actor account id before starting a migrations job', async () => {
     const startPluginOperationJob = vi.fn(
       async () => new Response(JSON.stringify({ data: { id: 'job-1' } }), { status: 202 })

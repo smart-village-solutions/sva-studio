@@ -997,6 +997,12 @@ describe('plugin operations handlers', () => {
       body,
       contentType: 'application/json',
     });
+    middlewareState.authorizeInstancePermissionForUser.mockImplementation(
+      async ({ action }: { action: string }) =>
+        action === 'waste-management.export.execute'
+          ? { ok: true as const, permissions: [] }
+          : { ok: false as const, status: 403, error: 'forbidden' }
+    );
 
     const response = await downloadPluginOperationArtifactHandler(
       new Request(
@@ -1011,6 +1017,9 @@ describe('plugin operations handlers', () => {
     );
     expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'waste-management.export.execute' })
+    );
+    expect(middlewareState.authorizeInstancePermissionForUser).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'iam.monitoring.read' })
     );
     expect(await response.text()).toBe('{"ok":true}');
   });

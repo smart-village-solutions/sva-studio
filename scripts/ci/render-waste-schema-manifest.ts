@@ -5,7 +5,7 @@ import {
   applySchemaStatements,
   applyWasteSchemaGrantStatements,
 } from '../../apps/sva-studio-react/src/lib/waste-management-operations.schema.js';
-import { requiredWasteTables } from '../../apps/sva-studio-react/src/lib/waste-management-operations.shared.js';
+import { requiredWasteTables } from '../../apps/sva-studio-react/src/lib/waste-management-operations.schema-contract.js';
 
 export const wasteSchemaRolePlaceholders = {
   appRole: 'waste_manifest_app',

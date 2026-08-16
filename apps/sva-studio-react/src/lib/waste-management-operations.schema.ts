@@ -1,4 +1,7 @@
-import { quoteIdentifier, requiredWasteTables } from './waste-management-operations.shared.js';
+import {
+  quoteIdentifier,
+  requiredWasteTables,
+} from './waste-management-operations.schema-contract.js';
 import type { SqlClient } from './waste-management-operations.types.js';
 
 export const inspectWasteSchema = async (client: SqlClient, schemaName: string) => {

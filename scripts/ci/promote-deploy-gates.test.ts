@@ -104,6 +104,26 @@ describe('promote-deploy-gates', () => {
     });
   });
 
+  it('fails migration assert-none when Waste one-shot deployment artifacts change', () => {
+    const files = [
+      'Dockerfile',
+      'deploy/portainer/Dockerfile',
+      'deploy/portainer/docker-compose.studio.yml',
+    ];
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: files,
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: files,
+    });
+  });
+
   it('treats application changes outside migration artifacts as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

@@ -129,9 +129,11 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
         client,
         migrations: wasteTenantMigrations,
         ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
       })
     ).resolves.toEqual({ appliedMigrationCount: 0 });
 
@@ -139,6 +141,9 @@ describe('Waste-Tenant-Migration', () => {
     expect(queriedSql(client)).not.toContain('ADD COLUMN IF NOT EXISTS postal_code TEXT');
     expect(queriedSql(client)).not.toContain('INSERT INTO public.sva_waste_schema_migrations');
     expect(queriedSql(client)).toContain('COMMIT;');
+    expect(queriedSql(client)).toContain(
+      'REVOKE ALL PRIVILEGES ON TABLE public.sva_waste_schema_migrations FROM "alpha_app", "alpha_public"'
+    );
   });
 
   it('rolls back all tenant changes when a migration statement fails', async () => {
@@ -146,9 +151,11 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
         client,
         migrations: wasteTenantMigrations,
         ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
       })
     ).rejects.toThrow('database_failure');
 
@@ -162,9 +169,11 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
         client,
         migrations: wasteTenantMigrations,
         ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
       })
     ).rejects.toThrow(`waste_migration_verification_failed:${migrationId}`);
 
@@ -184,9 +193,11 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
         client,
         migrations: wasteTenantMigrations,
         ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
       })
     ).rejects.toMatchObject({
       cause: expect.objectContaining({ message: 'rollback_failure' }),

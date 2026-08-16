@@ -78,7 +78,13 @@ const verifyMigration = async (client, migration) => {
   }
 };
 
-export const migrateWasteTenantDatabase = async ({ client, migrations, ownerRole }) => {
+export const migrateWasteTenantDatabase = async ({
+  appRole,
+  client,
+  migrations,
+  ownerRole,
+  publicAppRole,
+}) => {
   let transactionStarted = false;
   try {
     await client.query('BEGIN;');
@@ -92,6 +98,10 @@ export const migrateWasteTenantDatabase = async ({ client, migrations, ownerRole
         applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    await client.query(`REVOKE ALL PRIVILEGES ON TABLE ${migrationLedgerTable} FROM PUBLIC;`);
+    await client.query(
+      `REVOKE ALL PRIVILEGES ON TABLE ${migrationLedgerTable} FROM ${quoteIdentifier(appRole)}, ${quoteIdentifier(publicAppRole)};`
+    );
 
     const applied = await client.query(
       `SELECT migration_id FROM ${migrationLedgerTable} ORDER BY migration_id ASC;`
@@ -166,9 +176,11 @@ export const migrateWasteTenantDatabases = async ({
       const tenantClient = await connectTenant(names.database);
       try {
         const result = await migrateWasteTenantDatabase({
+          appRole: names.appRole,
           client: tenantClient,
           migrations,
           ownerRole: names.ownerRole,
+          publicAppRole: names.publicAppRole,
         });
         appliedMigrationCount += result.appliedMigrationCount;
         migratedTenantCount += 1;

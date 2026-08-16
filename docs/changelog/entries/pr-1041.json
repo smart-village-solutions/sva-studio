@@ -1,4 +1,4 @@
 {
   "prNumber": 1041,
-  "body": "Der aktive Production-Tenant bb-prignitz ist wieder vollständig im Studio-Release-Scope enthalten\n\n- Der geschützte Candidate-Preflight erkennt den tatsächlichen aktiven Production-Tenant nicht länger als Scope-Abweichung.\n- Die zugehörige Tenant-Origin ist für CSRF-geschützte Studio-Anfragen freigegeben."
+  "body": "Die versionierte Production-Konfiguration bildet den aktiven Tenant bb-prignitz wieder vollständig ab\n\n- Der Tenant ist im expliziten Studio-Release-Scope enthalten.\n- Seine Origin ist für CSRF-geschützte Studio-Anfragen freigegeben."
 }

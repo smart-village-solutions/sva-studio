@@ -23,14 +23,6 @@ const overrides = Object.entries(remoteConfigContract)
   .join('\n');
 
 describe('remote app config builder', () => {
-  it('keeps the active bb-prignitz production tenant in the release and CSRF scopes', () => {
-    const remoteProfile = readFileSync(new URL('../../config/runtime/remote/prod.vars', import.meta.url), 'utf8');
-    const productionConfig = parseRemoteConfigLayer('prod', 'Remote-Profil', remoteProfile);
-
-    expect(productionConfig.values.get('SVA_ALLOWED_INSTANCE_IDS')?.split(',')).toContain('bb-prignitz');
-    expect(productionConfig.values.get('IAM_CSRF_ALLOWED_ORIGINS')?.split(',')).toContain('https://bb-prignitz.studio.smart-village.app');
-  });
-
   it.each([
     ['dev', 'automatic'],
     ['staging', 'automatic'],

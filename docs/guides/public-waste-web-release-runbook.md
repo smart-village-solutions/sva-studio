@@ -61,6 +61,29 @@ Empfohlener Wert für `PUBLIC_WASTE_STACK_NAME`:
 6. Der Stack `web-waste-calendar` wird neu ausgerollt.
 7. Smoke-Checks gegen `/health/live`, `/` und `/api/public-waste/selection` bestätigen den Rollout.
 
+## Kanonische Domain umstellen
+
+Eine Domainumstellung verändert ausschließlich den Host und die kanonische
+Basis-URL des vorhandenen tenantgebundenen Stacks. Vor dem Cutover muss der
+neue DNS-Name auf den produktiven Ingress zeigen. Der Helfer prüft die erwartete
+Instanz und erhält Image-Tag, Datenbankverbindung sowie alle weiteren
+Stackvariablen unverändert. Für die automatische Ausstellung des neuen
+Einzelzertifikats bindet der Router explizit den vorhandenen Traefik-Resolver
+`default` ein:
+
+```bash
+PUBLIC_WASTE_EXPECTED_INSTANCE_ID=bb-prignitz \
+PUBLIC_WASTE_STACK_NAME=web-waste-calendar \
+PUBLIC_WASTE_TARGET_HOST=prignitz.abfallkalender.pro \
+pnpm exec tsx scripts/ops/public-waste/portainer-domain-cutover.ts
+```
+
+Nach dem Stack-Update müssen das GitHub Environment `web-waste-calendar`, die
+Instanzkonfiguration `calendarWebUrl` und die Reminder-`publicBaseUrl` dieselbe
+kanonische Basis-URL verwenden. DNS, TLS, `/health/live`,
+`/api/public-waste/selection` und ein realer Kalenderabruf sind anschließend
+getrennt zu prüfen.
+
 Beispiel:
 
 ```bash

@@ -3,6 +3,108 @@ import { describe, expect, it, vi } from 'vitest';
 import { createPublicWasteRepository } from './public-waste-repository.server.js';
 
 describe('public waste repository', () => {
+  it('projects, deduplicates and sorts active public collection locations', async () => {
+    const execute = vi.fn().mockResolvedValueOnce({
+      rowCount: 4,
+      rows: [
+        {
+          region_id: 'region-2',
+          region_name: 'Wittenberge',
+          city_id: 'city-2',
+          city_name: 'Bentwisch',
+          street_id: null,
+          street_name: null,
+          house_number_id: null,
+          house_number_label: null,
+        },
+        {
+          region_id: 'region-1',
+          region_name: 'Karstädt',
+          city_id: 'city-1',
+          city_name: 'Birkholz',
+          street_id: 'street-1',
+          street_name: 'Dorfstraße',
+          house_number_id: 'house-1',
+          house_number_label: '1–9',
+        },
+        {
+          region_id: 'region-1',
+          region_name: 'Karstädt',
+          city_id: 'city-1',
+          city_name: 'Birkholz',
+          street_id: 'street-1',
+          street_name: 'Dorfstraße',
+          house_number_id: 'house-1',
+          house_number_label: '1–9',
+        },
+        {
+          region_id: null,
+          region_name: null,
+          city_id: 'city-3',
+          city_name: 'Musterort',
+          street_id: 'street-3',
+          street_name: 'Hauptstraße',
+          house_number_id: null,
+          house_number_label: null,
+        },
+      ],
+    });
+    const repository = createPublicWasteRepository({ schemaName: 'waste', execute });
+
+    await expect(repository.listPublicLocations()).resolves.toEqual([
+      {
+        id: 'region-1:city-1:street-1:house-1',
+        municipality: { id: 'region-1', name: 'Karstädt' },
+        district: { id: 'city-1', name: 'Birkholz' },
+        streetOrCollectionDistrict: { id: 'street-1', name: 'Dorfstraße' },
+        houseNumber: { id: 'house-1', label: '1–9' },
+        mappingComplete: true,
+        missingFields: [],
+        calendarQuery: {
+          regionId: 'region-1',
+          cityId: 'city-1',
+          streetId: 'street-1',
+          houseNumberId: 'house-1',
+        },
+      },
+      {
+        id: '~:city-3:street-3:~',
+        municipality: null,
+        district: { id: 'city-3', name: 'Musterort' },
+        streetOrCollectionDistrict: { id: 'street-3', name: 'Hauptstraße' },
+        houseNumber: { id: 'all', label: 'Alle Hausnummern' },
+        mappingComplete: false,
+        missingFields: ['municipality'],
+        calendarQuery: {
+          cityId: 'city-3',
+          streetId: 'street-3',
+        },
+      },
+      {
+        id: 'region-2:city-2:all:~',
+        municipality: { id: 'region-2', name: 'Wittenberge' },
+        district: { id: 'city-2', name: 'Bentwisch' },
+        streetOrCollectionDistrict: { id: 'all', name: 'Alle Straßen' },
+        houseNumber: { id: 'all', label: 'Alle Hausnummern' },
+        mappingComplete: true,
+        missingFields: [],
+        calendarQuery: {
+          regionId: 'region-2',
+          cityId: 'city-2',
+          streetId: 'all',
+        },
+      },
+    ]);
+
+    expect(execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('WHERE cl.active = true'),
+      })
+    );
+    expect(execute.mock.calls[0]?.[0].text).toContain('t.active = true');
+    expect(execute.mock.calls[0]?.[0].text).not.toContain('waste_email_reminder');
+  });
+
   it('lists only the next valid step options for a partially selected location', async () => {
     const execute = vi
       .fn()

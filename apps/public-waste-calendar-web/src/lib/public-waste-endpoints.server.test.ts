@@ -5,6 +5,7 @@ import { PublicWasteReminderSignupError } from '../server/public-waste-email-rem
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
@@ -34,6 +35,30 @@ describe('public waste endpoints', () => {
       step: 'city',
       options: [{ id: 'c-1', label: 'Musterstadt' }],
     });
+  });
+
+  it('returns the public collection location catalog as json', async () => {
+    const items = [
+      {
+        id: 'region-1:city-1:all:~',
+        municipality: { id: 'region-1', name: 'Karstädt' },
+        district: { id: 'city-1', name: 'Birkholz' },
+        streetOrCollectionDistrict: { id: 'all', name: 'Alle Straßen' },
+        houseNumber: { id: 'all', label: 'Alle Hausnummern' },
+        mappingComplete: true,
+        missingFields: [],
+        calendarQuery: { regionId: 'region-1', cityId: 'city-1', streetId: 'all' },
+      },
+    ];
+    const response = await handlePublicWasteLocationsRequest({
+      repository: {
+        listPublicLocations: vi.fn().mockResolvedValue(items),
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('application/json');
+    await expect(response.json()).resolves.toEqual({ items });
   });
 
   it('returns the resolved calendar model as json', async () => {

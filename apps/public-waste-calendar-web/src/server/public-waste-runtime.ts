@@ -12,10 +12,12 @@ import {
   readPublicWasteBootstrapStateFromEnvironment,
   type PublicWasteBootstrapState,
 } from '../lib/public-waste-bootstrap.server.js';
+import { resolvePublicWasteReadApiRoute } from '../lib/public-waste-api-routing.js';
 import { type PublicWasteConfig } from '../lib/public-waste-config.server.js';
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
@@ -35,7 +37,11 @@ export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 
 type PublicWasteRuntimeRepository = Pick<
   PublicWasteRepository,
-  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
+  | 'listPublicLocations'
+  | 'listSelectionOptions'
+  | 'loadCalendarEntries'
+  | 'loadSelectionSummary'
+  | 'loadReminderOptions'
 >;
 
 type RepositoryHandle = {
@@ -77,14 +83,6 @@ export type PublicWasteRuntime = {
   handle: (request: Request) => Promise<Response>;
   dispose: () => Promise<void>;
 };
-
-const publicWasteApiPrefixes = [
-  '/api/public-waste/selection',
-  '/api/public-waste/calendar',
-  '/api/public-waste/pdf',
-  '/api/public-waste/ical',
-  '/api/public-waste/reminder-signups',
-] as const;
 
 const staticMimeTypes: Readonly<Record<string, string>> = {
   '.css': 'text/css; charset=utf-8',
@@ -303,7 +301,8 @@ const createDefaultReminderPageHandler = (input: {
 };
 
 const isPublicWasteApiPath = (pathname: string): boolean =>
-  publicWasteApiPrefixes.some((prefix) => pathname.startsWith(prefix));
+  resolvePublicWasteReadApiRoute(pathname) !== null ||
+  pathname.startsWith('/api/public-waste/reminder-signups');
 
 const createInvalidConfigResponse = (bootstrapState: PublicWasteBootstrapState): Response =>
   jsonResponse(
@@ -385,14 +384,22 @@ const dispatchPublicWasteApiRequest = async (input: {
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
   readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<Response> => {
-  if (input.pathname.startsWith('/api/public-waste/selection')) {
+  const readApiRoute = resolvePublicWasteReadApiRoute(input.pathname);
+
+  if (readApiRoute === 'locations') {
+    return handlePublicWasteLocationsRequest({
+      repository: input.repository,
+    });
+  }
+
+  if (readApiRoute === 'selection') {
     return handlePublicWasteSelectionRequest({
       repository: input.repository,
       request: input.request,
     });
   }
 
-  if (input.pathname.startsWith('/api/public-waste/calendar')) {
+  if (readApiRoute === 'calendar') {
     return handlePublicWasteCalendarRequest({
       repository: input.repository,
       request: input.request,
@@ -400,7 +407,7 @@ const dispatchPublicWasteApiRequest = async (input: {
     });
   }
 
-  if (input.pathname.startsWith('/api/public-waste/pdf')) {
+  if (readApiRoute === 'pdf') {
     return handlePublicWastePdfRequest({
       repository: input.repository,
       request: input.request,
@@ -422,10 +429,14 @@ const dispatchPublicWasteApiRequest = async (input: {
     });
   }
 
-  return handlePublicWasteIcalRequest({
-    repository: input.repository,
-    request: input.request,
-  });
+  if (readApiRoute === 'ical') {
+    return handlePublicWasteIcalRequest({
+      repository: input.repository,
+      request: input.request,
+    });
+  }
+
+  return new Response('Not Found', { status: 404 });
 };
 
 export const createPublicWasteRuntime = async (input: {

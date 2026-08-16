@@ -82,6 +82,14 @@ gleichzeitig beeinflussen.
 - Der Portainer-Updatepfad verändert ausschließlich `PUBLIC_WASTE_IMAGE_TAG` und belässt alle übrigen Stack-Variablen unverändert, damit Host, Datenbankpfad und PDF-Konfiguration operativ getrennt steuerbar bleiben.
 - Für diesen speziellen Bürger-Frontend-Stack ist bewusst das einfache SemVer-Tag-Modell führend; Digest-Pinning des Studio-Referenzpfads wird hier nicht auf den Waste-Web-Stack übertragen.
 
+### Datenminimierung im öffentlichen Waste-Ortskatalog
+
+- `/api/public-waste/locations` liefert ausschließlich aktive Adresswerte, die bereits über den öffentlichen Standortauswahlfluss erreichbar sind, sowie die zugehörigen öffentlichen Kalenderparameter.
+- Das Mapping verwendet vorhandene IDs und Originalnamen. Region wird als `municipality`, Ort als `district` projiziert; eine fehlende Region bleibt `null` und wird als unvollständiges Mapping ausgewiesen.
+- Der Katalog liest nur über die bestehende eingeschränkte Public-Waste-Rolle. Abonnements, Consent-, Token-, Outbox-, Credential-, Audit- und Jobdaten bleiben außerhalb des Vertrags.
+- Die Sammelwerte `Alle Straßen` und `Alle Hausnummern` verwenden ausschließlich die bereits etablierte öffentliche `all`-Semantik und erzeugen keine neuen Waste-Fachdaten.
+- Rate Limiting und weitere Ingress-Regeln bleiben eine getrennte betriebliche Änderung und sind nicht Bestandteil dieses fachlichen Read-Vertrags.
+
 ### Security und Privacy
 
 - OIDC Authorization Code Flow mit PKCE

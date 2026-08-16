@@ -77,6 +77,92 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
+  it('serves the public collection location catalog without changing calendar routing', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const listPublicLocations = vi.fn().mockResolvedValue([
+      {
+        id: 'region-1:city-1:all:~',
+        municipality: { id: 'region-1', name: 'Karstädt' },
+        district: { id: 'city-1', name: 'Birkholz' },
+        streetOrCollectionDistrict: { id: 'all', name: 'Alle Straßen' },
+        houseNumber: { id: 'all', label: 'Alle Hausnummern' },
+        mappingComplete: true,
+        missingFields: [],
+        calendarQuery: { regionId: 'region-1', cityId: 'city-1', streetId: 'all' },
+      },
+    ]);
+    const loadCalendarEntries = vi.fn();
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
+        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+      },
+      createRepository: async () => ({
+        repository: {
+          listPublicLocations,
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries,
+          loadSelectionSummary: vi.fn(),
+          loadReminderOptions: vi.fn(),
+        },
+        pool: { connect: vi.fn() } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const response = await runtime.handle(
+      new Request('http://localhost/api/public-waste/locations')
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      items: [expect.objectContaining({ id: 'region-1:city-1:all:~' })],
+    });
+    expect(listPublicLocations).toHaveBeenCalledOnce();
+    expect(loadCalendarEntries).not.toHaveBeenCalled();
+
+    await runtime.dispose();
+  });
+
+  it('does not route similarly named paths to the locations endpoint', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const listPublicLocations = vi.fn();
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
+        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+      },
+      createRepository: async () => ({
+        repository: {
+          listPublicLocations,
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn(),
+          loadSelectionSummary: vi.fn(),
+          loadReminderOptions: vi.fn(),
+        },
+        pool: { connect: vi.fn() } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const response = await runtime.handle(
+      new Request('http://localhost/api/public-waste/locationsXYZ')
+    );
+
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(listPublicLocations).not.toHaveBeenCalled();
+
+    await runtime.dispose();
+  });
+
   it('passes the resolved postgresql config into the pdf static settings loader', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);
@@ -95,6 +181,7 @@ describe('public waste runtime', () => {
       },
       createRepository: async () => ({
         repository: {
+          listPublicLocations: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn().mockResolvedValue([
             {
@@ -201,6 +288,7 @@ describe('public waste runtime', () => {
       },
       createRepository: async () => ({
         repository: {
+          listPublicLocations: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn(),
@@ -283,6 +371,7 @@ describe('public waste runtime', () => {
       },
       createRepository: async () => ({
         repository: {
+          listPublicLocations: vi.fn(),
           listSelectionOptions: vi.fn(),
           loadCalendarEntries: vi.fn(),
           loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),

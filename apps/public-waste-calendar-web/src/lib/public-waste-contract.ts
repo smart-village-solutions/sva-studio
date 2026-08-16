@@ -34,6 +34,42 @@ export type PublicWasteResolvedSelection = {
   readonly houseNumberId?: string;
 };
 
+export type PublicWasteLocationCatalogNamedValue = {
+  readonly id: string;
+  readonly name: string;
+};
+
+export type PublicWasteLocationCatalogHouseNumber = {
+  readonly id: string;
+  readonly label: string;
+};
+
+type PublicWasteLocationCatalogEntryBase = {
+  readonly id: string;
+  readonly district: PublicWasteLocationCatalogNamedValue;
+  readonly streetOrCollectionDistrict: PublicWasteLocationCatalogNamedValue;
+  readonly houseNumber: PublicWasteLocationCatalogHouseNumber;
+  readonly calendarQuery: PublicWasteResolvedSelection;
+};
+
+export type PublicWasteLocationCatalogEntry = PublicWasteLocationCatalogEntryBase &
+  (
+    | {
+        readonly municipality: PublicWasteLocationCatalogNamedValue;
+        readonly mappingComplete: true;
+        readonly missingFields: readonly [];
+      }
+    | {
+        readonly municipality: null;
+        readonly mappingComplete: false;
+        readonly missingFields: readonly ['municipality'];
+      }
+  );
+
+export type PublicWasteLocationCatalogResponse = {
+  readonly items: readonly PublicWasteLocationCatalogEntry[];
+};
+
 export type PublicWasteCalendarEntry = {
   readonly id: string;
   readonly date: string;
@@ -100,6 +136,7 @@ export type PublicWasteReminderSignupResponse = Readonly<{
 
 const PUBLIC_WASTE_LOCATION_KEY_EMPTY_SEGMENT = '~';
 export const PUBLIC_WASTE_CATCH_ALL_STREET_ID = 'all';
+export const PUBLIC_WASTE_CATCH_ALL_HOUSE_NUMBER_ID = 'all';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

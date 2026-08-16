@@ -107,6 +107,14 @@ type WasteManagementToolsCopy = Readonly<{
     progressSummary: string;
     resultTitle: string;
     resultSummary: string;
+    budgetSummary: string;
+    errorTitle: string;
+    errors: Readonly<{
+      geocodingDisabled: string;
+      openInterfaces: string;
+      timeout: string;
+      generic: string;
+    }>;
   }>;
   sync: Readonly<{
     actionLabel: string;

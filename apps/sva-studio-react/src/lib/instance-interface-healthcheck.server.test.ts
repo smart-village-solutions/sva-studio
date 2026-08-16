@@ -181,7 +181,12 @@ describe('instance-interface-healthcheck.server', () => {
 
   it.each([
     [undefined, { schemaName: 'waste' }, 'database_url_missing', 'error'],
-    ['postgres://user:secret@localhost/waste', { schemaName: 'waste' }, 'connection_failed', 'error'],
+    [
+      'postgres://user:secret@localhost/waste',
+      { schemaName: 'waste' },
+      'connection_failed',
+      'error',
+    ],
   ])(
     'fails closed for unusable PostgreSQL database urls',
     async (databaseUrl, publicConfig, errorCode, visibleStatus) => {
@@ -775,6 +780,59 @@ describe('instance-interface-healthcheck.server', () => {
     expect(requestedUrl.searchParams.get('apiKey')).toBe('geoapify-key');
     expect(state.saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith(
       expect.objectContaining({ checkStatus: 'succeeded', visibleStatus: 'ok' })
+    );
+  });
+
+  it('persists a disabled Geoapify check without contacting the provider when the kill switch is active', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'map-geocoding-1',
+      instanceId: 'de-test',
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Geoapify',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      authMode: 'api_key',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        provider: 'geoapify',
+        killSwitchEnabled: true,
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:map-geocoding-1:{"apiKey":"geoapify-key"}',
+    });
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'map-geocoding-1',
+        now: () => '2026-08-16T12:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      instanceId: 'de-test',
+      interfaceId: 'map-geocoding-1',
+      checkedAt: '2026-08-16T12:00:00.000Z',
+      checkStatus: 'failed',
+      visibleStatus: 'disabled',
+      errorCode: 'disabled',
+      errorMessage: 'Die Karten-/Geocoding-Schnittstelle ist per Kill-Switch deaktiviert.',
+    });
+
+    expect(state.fetch).not.toHaveBeenCalled();
+    expect(state.revealField).not.toHaveBeenCalled();
+    expect(state.saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        interfaceId: 'map-geocoding-1',
+        visibleStatus: 'disabled',
+        errorCode: 'disabled',
+      })
     );
   });
 

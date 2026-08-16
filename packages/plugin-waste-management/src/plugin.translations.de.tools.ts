@@ -101,8 +101,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
       'Das Anfragebudget wurde nach {{requests}} von {{budget}} Provideranfragen erreicht. {{unprocessed}} Orte bleiben für einen späteren Lauf offen.',
     errorTitle: 'Postleitzahlen konnten nicht ergänzt werden',
     errors: {
-      geocodingDisabled:
-        'Für diese Instanz ist keine aktive Karten-Geocodierung eingerichtet.',
+      geocodingDisabled: 'Für diese Instanz ist keine aktive Karten-Geocodierung eingerichtet.',
       openInterfaces: 'Karten-Geocodierung unter Schnittstellen einrichten',
       timeout:
         'Der Geocoding-Dienst hat nicht rechtzeitig geantwortet. Bis zum Abbruch wurden {{processed}} von {{total}} Orten geprüft und bereits bestätigte Postleitzahlen gespeichert. Ein neuer Lauf setzt bei den verbleibenden Orten fort.',
@@ -142,6 +141,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     jobStarted: 'Prozess {{jobId}} wurde gestartet.',
     previewReady: 'Die Importvorschau ist bereit.',
     historyDeleteSuccess: 'Der Historieneintrag wurde gelöscht.',
+    historyDeleteError: 'Der Historieneintrag konnte nicht gelöscht werden.',
     jobStartError: 'Der Abfallprozess konnte nicht gestartet werden.',
     jobStartErrorWithReason: 'Der Abfallprozess konnte nicht gestartet werden: {{reason}}',
     forbidden: 'Für diesen Abfallvorgang fehlt die Berechtigung.',

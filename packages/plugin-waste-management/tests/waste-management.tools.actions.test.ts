@@ -49,7 +49,7 @@ describe('waste-management tools action helpers', () => {
       setLastJob,
     });
 
-    const job = await runner('import', async () => ({ id: 'job-1' } as never));
+    const job = await runner('import', async () => ({ id: 'job-1' }) as never);
     expect(job).toMatchObject({ id: 'job-1' });
     expect(setRunningAction).toHaveBeenNthCalledWith(1, 'import');
     expect(setLastJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'job-1' }));
@@ -95,7 +95,7 @@ describe('waste-management tools action helpers', () => {
     await expect(deleteRunner('job-2', 'job-1')).resolves.toBe(false);
     expect(setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
-      text: 'tools.messages.jobStartError',
+      text: 'tools.messages.historyDeleteError',
     });
   });
 

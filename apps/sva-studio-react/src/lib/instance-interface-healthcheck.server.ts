@@ -581,6 +581,21 @@ export const runStoredInterfaceHealthcheck = async (
 
   const checkedAt = resolveCheckedAt(input.now);
 
+  if (record.typeKey === 'map_geocoding' && record.publicConfig.killSwitchEnabled === true) {
+    const result = toConnectionCheckRecord(
+      record,
+      createRuntimeError(
+        'disabled',
+        input.instanceId,
+        record.typeKey,
+        'Die Karten-/Geocoding-Schnittstelle ist per Kill-Switch deaktiviert.'
+      ),
+      checkedAt
+    );
+    await saveExternalInterfaceConnectionCheck(result);
+    return result;
+  }
+
   try {
     const resolvedInterface = await resolveExternalInterface({
       instanceId: input.instanceId,

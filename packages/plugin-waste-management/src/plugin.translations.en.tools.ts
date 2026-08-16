@@ -100,8 +100,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
       'The request budget was reached after {{requests}} of {{budget}} provider requests. {{unprocessed}} cities remain open for a later run.',
     errorTitle: 'Postal codes could not be added',
     errors: {
-      geocodingDisabled:
-        'No active map geocoding interface is configured for this instance.',
+      geocodingDisabled: 'No active map geocoding interface is configured for this instance.',
       openInterfaces: 'Configure map geocoding under Interfaces',
       timeout:
         'The geocoding service did not respond in time. {{processed}} of {{total}} cities were checked before the interruption, and confirmed postal codes were saved. A new run continues with the remaining cities.',
@@ -139,6 +138,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     jobStarted: 'Job {{jobId}} was started.',
     previewReady: 'The import preview is ready.',
     historyDeleteSuccess: 'The history entry was deleted.',
+    historyDeleteError: 'The history entry could not be deleted.',
     jobStartError: 'The waste job could not be started.',
     jobStartErrorWithReason: 'The waste job could not be started: {{reason}}',
     forbidden: 'Missing permission for this waste operation.',

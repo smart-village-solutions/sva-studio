@@ -78,7 +78,7 @@ export const createWasteToolsHistoryDeletionRunner =
     } catch (error) {
       setMessage({
         kind: 'error',
-        text: createWasteToolErrorMessage({ action: 'import', error, pt }),
+        text: createWasteToolErrorMessage({ action: 'historyDelete', error, pt }),
       });
       return false;
     }

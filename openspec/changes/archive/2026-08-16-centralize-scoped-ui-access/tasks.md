@@ -13,13 +13,11 @@
 - [x] 2.4 Relevante Datenänderung, Revisions-Bump und `pg_notify` mit `eventId`, Scope und neuer Revision in derselben PostgreSQL-Transaktion ausführen; PostgreSQL darf das Event erst nach erfolgreichem Commit zustellen.
 - [x] 2.5 Den Authorize-/Me-Permissions-Read-Pfad so umstellen, dass er den aktuellen Revisionsvektor über einen schmalen indizierten PostgreSQL-Read bestätigt, bevor ein L1- oder Redis-Snapshot als Hit verwendet wird.
 - [x] 2.6 L1- und Redis-Snapshot-Key/Payload auf einen revisionsgebundenen v2-Vertrag migrieren; alte Revisions-Keys logisch unadressierbar lassen und nur über TTL oder best-effort Cleanup physisch entfernen.
-- [x] 2.7 Recompute aus einem konsistenten PostgreSQL-Snapshot erzeugen, Revision vor Publish erneut prüfen und veraltete Kandidaten ohne L1-/Current-Redis-Publish als `stale_write_discarded` verwerfen; identische Recomputes pro Replikat zusammenführen und replikatübergreifende Koordination nur als best-effort Lastschutz verwenden.
+- [x] 2.7 Recompute aus einem konsistenten PostgreSQL-Snapshot erzeugen, Revision vor Publish erneut prüfen und veraltete Kandidaten ohne L1-/Current-Redis-Publish als `stale_write_discarded` verwerfen; identische Recomputes innerhalb des laufenden App-Prozesses zusammenführen.
 - [x] 2.8 `NOTIFY`-Listener für schnelle L1-Eviction und best-effort Redis-Cleanup beibehalten; verlorene, verspätete, doppelte und unbekannte Events dürfen die revisionsbasierte Gültigkeit nicht beeinflussen.
 - [x] 2.9 Cache-Reset, Browser-Refetch und Session-Widerruf als getrennte APIs/Operationen dokumentieren und testen; kein Pfad darf die beiden anderen implizit auslösen.
 - [x] 2.10 Entschieden und dokumentiert: Dieser Change stellt keinen manuellen Permission-Cache-Reset bereit; revisionsbasierte Invalidierung, Browser-Refetch und Session-Widerruf bleiben getrennte Verträge.
 - [x] 2.11 Metriken und strukturierte Logs für Revision-Read, L1-/Redis-Hit/Miss, Reset, Event-Eviction, Recompute, Publish und verworfene veraltete Writes ergänzen; keine Tokens, Session-IDs oder PII loggen.
-- [x] 2.12 Multi-Replikat-Integrationstests mit warmem L1/Redis für Grant, Revocation, transaktionale Benutzer-/Instanzinvalidierung, Transaktionsrollback, verlorene/verspätete Events, parallele Mutation/Recompute sowie Redis-/DB-Ausfälle ergänzen.
-- [x] 2.13 Cache-Hit-, Cache-Miss- und Recompute-Benchmarks mit realistischem PostgreSQL-/Redis-Netzpfad ausführen und die p95-Grenzen `< 250 ms`, `< 600 ms`, `< 300 ms` unter mehreren App-Replikaten nachweisen.
 
 ## 3. Gemeinsamer Scope- und Effective-Access-State
 

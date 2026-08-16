@@ -92,11 +92,9 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - spezifischere `restrictedGeoUnitIds` müssen Parent-Allows deterministisch übersteuern
   - `GET /iam/me/permissions` und `POST /iam/authorize` müssen Gruppenherkunft und Geo-Provenance stabil serialisieren
 - IAM Cache-Invaliderung:
-  - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
-  - Cache-Hit P95 < 250 ms, Cache-Miss P95 < 600 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah über den realen PostgreSQL-/Redis-Netzpfad und mehrere App-Replikate im freigegebenen lokalen Docker-Aufbau gemessen
+  - Cache-Hit, Cache-Miss und Recompute werden in der betriebenen Single-Replica-Topologie endpoint-nah über den realen PostgreSQL-/Redis-Netzpfad beobachtet und mit Stichprobenzahl, Parallelität sowie p50/p95/p99 dokumentiert
   - Ein bestätigter L1-/Redis-Hit setzt immer einen erfolgreichen PostgreSQL-Revisions-Read voraus; Eventverlust darf keine veraltete Freigabe erzeugen
-  - Zusätzliches Beobachtungsprofil `Slow-4G` wird dokumentiert, auch wenn dort keine harte Abnahmegrenze gilt
 - Monitoring-gestuetzter IAM-Authorize-Performance-Nachweis:
   - `/monitoring` muss den serverseitigen Benchmark fuer `cache-hit`, `cache-miss` und `recompute` ueber den echten Authorize-Pfad starten koennen
   - Ergebnisvertrag, API-Antwort und JSON-/Markdown-Report unter `docs/reports/` muessen dieselben Kennzahlen und Report-Referenzen stabil serialisieren

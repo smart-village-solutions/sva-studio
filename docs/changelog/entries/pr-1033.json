@@ -1,4 +1,4 @@
 {
   "prNumber": 1033,
-  "body": "Scopegebundene Zugriffsentscheidungen sind nun auch unter mehreren App-Replikaten belastbar nachgewiesen.\n\n- Grant, Entzug und Cache-Invalidierung konvergieren über PostgreSQL und Redis ohne veraltete Freigaben.\n- Datenbank- und Redis-Ausfälle bleiben fail-closed und liefern keine Berechtigung aus einem alten Snapshot.\n- Der reproduzierbare Lastnachweis dokumentiert Cache-Hit, Cache-Miss und Recompute mit 100 gleichzeitigen Anfragen."
+  "body": "Der zentrale scopegebundene UI-Zugriffsvertrag ist vollständig dokumentiert und archiviert.\n\n- PostgreSQL-Revisionen verhindern veraltete Berechtigungsentscheidungen auch bei verlorenen oder verspäteten Cache-Events.\n- Während einer Mutation laufende Recomputes werden vor dem Publish erneut geprüft und veraltete Ergebnisse verworfen.\n- Datenbank- und Redis-Fehler bleiben fail-closed und liefern keine Berechtigung aus einem nicht verifizierbaren Snapshot."
 }

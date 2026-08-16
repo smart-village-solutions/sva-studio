@@ -31,9 +31,9 @@ type ScenarioExecutionInput = BenchmarkInput & {
 const scenarioThresholdMs = (scenario: AuthorizePerformanceScenario): number => {
   switch (scenario) {
     case 'cache-hit':
-      return 250;
+      return 100;
     case 'cache-miss':
-      return 600;
+      return 300;
     case 'recompute':
       return 300;
   }

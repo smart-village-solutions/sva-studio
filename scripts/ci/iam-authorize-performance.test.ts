@@ -168,8 +168,8 @@ describe('iam-authorize-performance helpers', () => {
     expect(markdown).toMatch(/Cache-Miss/);
     expect(markdown).toMatch(/Recompute/);
     expect(markdown).toMatch(/nicht erfüllt/);
-    expect(markdown).toMatch(/p95 < 250 ms im Cache-Hit-Szenario: erfüllt/);
-    expect(markdown).toMatch(/p95 < 600 ms im Cache-Miss-Szenario/);
+    expect(markdown).toMatch(/p95 < 10 ms im Cache-Hit-Szenario: erfüllt/);
+    expect(markdown).toMatch(/p95 < 80 ms im Cache-Miss-Szenario/);
     expect(markdown).toMatch(/p95 < 300 ms im Recompute-Szenario/);
   });
 });

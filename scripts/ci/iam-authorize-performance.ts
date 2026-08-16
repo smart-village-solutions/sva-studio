@@ -1,8 +1,8 @@
 export type AuthorizeBenchmarkScenario = 'cache-hit' | 'cache-miss' | 'recompute';
 
 export const authorizeBenchmarkP95ThresholdMs = {
-  'cache-hit': 250,
-  'cache-miss': 600,
+  'cache-hit': 10,
+  'cache-miss': 80,
   recompute: 300,
 } as const satisfies Record<AuthorizeBenchmarkScenario, number>;
 

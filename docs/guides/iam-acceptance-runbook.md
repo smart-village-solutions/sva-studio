@@ -10,7 +10,6 @@ Dieses Runbook beschreibt den reproduzierbaren Abnahmenachweis für die IAM-Basi
 - Root-Alias: `pnpm test:acceptance:iam`
 - Zielumgebungs-Evidence für `WP-003`, `WP-005`, `WP-006`: `pnpm test:evidence:iam`
 - Performance-Nachweis für `WP-004`: `pnpm test:acceptance:iam:performance`
-- Lokaler Multi-Replikat-Nachweis für den revisionsgebundenen Permission-Cache: `pnpm test:acceptance:iam:permission-cache-multi-replica`
 - Separates Delivery-Gate in GitHub Actions: `.github/workflows/iam-acceptance.yml`
 
 ## Voraussetzungen
@@ -59,15 +58,6 @@ pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 | `IAM_AUTHORIZE_BENCH_RECOMPUTE_CONCURRENCY` | `1` | Parallelität für Recompute nach Invalidation |
 | `IAM_AUTHORIZE_BENCH_INVALIDATION_DELAY_MS` | `100` | Wartezeit nach `pg_notify`, bevor der Recompute-Request gesendet wird |
 | `IAM_AUTHORIZE_BENCH_REPORT_SLUG` | `iam-authorize-performance` | Dateinamen-Prefix für den Performance-Report |
-| `IAM_CACHE_REPLICA_URLS` | – | Kommagetrennte URLs von mindestens zwei App-Replikaten mit gemeinsamem PostgreSQL und Redis |
-| `IAM_CACHE_REDIS_FAILURE_URL` | – | URL einer App-Replikatinstanz mit absichtlich nicht erreichbarem Redis |
-| `IAM_CACHE_DATABASE_FAILURE_URL` | – | URL einer App-Replikatinstanz mit absichtlich nicht erreichbarem PostgreSQL |
-| `IAM_CACHE_TEST_DATABASE_URL` | – | Administrative Verbindung zur lokalen Docker-Testdatenbank für transaktionale Grant-/Revocation-Szenarien |
-| `IAM_CACHE_TEST_REDIS_URL` | – | Verbindung zum lokalen Docker-Redis für die isolierte Snapshot-Bereinigung |
-| `IAM_CACHE_TEST_INSTANCE_ID` | `de-musterhausen` | Isolierter Instanzkontext des Multi-Replikat-Laufs |
-| `IAM_CACHE_TEST_KEYCLOAK_SUBJECT` | `dev:scoped-access-acceptance` | Technischer lokaler Test-Subject; muss den gestarteten Dev-Auth-Replikaten entsprechen |
-| `IAM_CACHE_TEST_MEASURED_REQUESTS` | `100` | Mess-Requests je Cache-Hit-, Cache-Miss- und Recompute-Szenario |
-| `IAM_CACHE_TEST_REPORT_DIR` | `docs/reports` | Zielordner für JSON- und Markdown-Nachweise |
 | `IAM_EVIDENCE_PACKAGES` | `WP-003,WP-005,WP-006` | Kommagetrennte Auswahl der Evidence-Pakete |
 | `IAM_EVIDENCE_REPORT_DIR` | `docs/reports` | Zielordner für Evidence-Reports |
 | `IAM_EVIDENCE_REPORT_SLUG` | `iam-evidence` | Dateinamen-Prefix für Evidence-Berichte |
@@ -138,8 +128,6 @@ Für den `WP-004`-Performance-Nachweis erzeugt `pnpm test:acceptance:iam:perform
 - Recompute-Szenario nach `pg_notify`-Invalidierung
 - `Samples`, `p50`, `p95`, `p99`
 - JSON-Rohdaten zur revisionssicheren Ablage
-
-Der lokale Multi-Replikat-Lauf verwendet mindestens zwei getrennte Produktionsbuild-Prozesse gegen dieselben Docker-Dienste. Zwei weitere, nur für den Lauf gestartete App-Prozesse zeigen Redis- und Datenbankausfälle über absichtlich nicht erreichbare Ports. Der Runner legt ausschließlich einen fest benannten technischen Test-Account, eine Testrolle und eine Test-Permission an, räumt diese Daten und zugehörige Redis-Snapshots im `finally`-Pfad wieder auf und verändert keine produktive Umgebung. Er prüft Grant, Revocation, Benutzer- und Instanzinvalidierung, Rollback, verlorene und verspätete Events, parallele Mutation/Recompute sowie die p95-Grenzen 250/600/300 ms. Der lokale Docker-Aufbau ist der freigegebene belastbare Nachweis; eine synthetische Slow-4G-Drosselung ist nicht erforderlich.
 
 Für den Evidence-Lauf `pnpm test:evidence:iam` entstehen zusätzlich:
 

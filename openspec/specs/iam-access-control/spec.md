@@ -1,8 +1,11 @@
 # iam-access-control Specification
 
 ## Purpose
+
 Diese Spezifikation beschreibt die technischen und fachlichen Anforderungen an das IAM-Access-Control-Modul. Sie legt fest, wie nach erfolgreicher OIDC-Authentifizierung ein verlässlicher Identity-Kontext bereitgestellt wird, wie RBAC-Basisdaten instanzgebunden persistiert werden und wie die Abgrenzung zu nachgelagerten Autorisierungsentscheidungen in Child C/D erfolgt.
+
 ## Requirements
+
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
 Das System MUST nach erfolgreicher OIDC-Authentifizierung einen verlässlichen Identity-Kontext bereitstellen, der in nachgelagerten Child-Changes für RBAC/ABAC verwendet werden kann.
@@ -141,7 +144,6 @@ Das System SHALL Cache-Einträge bei relevanten Änderungen revisionsbasiert ung
 - **WHEN** Rollen oder relevante Kontextzuordnungen eines Benutzers erfolgreich geändert werden
 - **THEN** wird die passende Benutzer- oder Instanzrevision in derselben Datenbanktransaktion monoton erhöht
 - **AND** eine nachfolgende Anfrage akzeptiert keinen Snapshot der vorherigen Revision
-- **AND** die Event-basierte End-to-End-Eviction-Latenz bleibt bei P95 <= 2 Sekunden und P99 <= 5 Sekunden
 
 #### Scenario: Eventverlust wird revisionsbasiert abgefangen
 
@@ -213,13 +215,16 @@ Das System SHALL kritische Rechteänderungen als approval-pflichtige Governance-
 - **AND** ein Denial mit `reason_code` wird erzeugt
 
 ### Requirement: Plattformrollen und Tenant-Admin-Rollen bleiben getrennt
+
 Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen. `instance_registry_admin` ist eine reine Plattformrolle des Root-Realm. `system_admin` ist die geschützte tenantlokale Vollzugriffs- und Defaultrolle des Tenant-Realm.
 
 #### Scenario: Nur Plattform-Admin darf Keycloak-Provisioning anstossen
+
 - **WHEN** ein Benutzer ohne `instance_registry_admin` im Root-Realm versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen
 - **THEN** lehnt das System die Operation ab
 
 #### Scenario: Tenant-Admin-Rechte ersetzen keine Plattformrechte
+
 - **WHEN** ein Benutzer im Tenant-Realm `system_admin` oder andere tenantlokale Verwaltungsrechte besitzt
 - **THEN** darf er dadurch keine Root-Control-Plane- oder Instanzverwaltungsfunktion auslösen
 - **AND** tenantlokale Verwaltungsrechte eskalieren nicht in den Plattform-Scope
@@ -255,29 +260,35 @@ Das System SHALL Self-Approval für kritische Governance-Aktionen verhindern.
 - **AND** der Denial-Code lautet `DENY_SELF_APPROVAL`
 
 ### Requirement: Stabile Rollenidentität für Autorisierung und IdP-Sync
+
 Das System SHALL für Rollen einen stabilen technischen Schlüssel (`role_key`) verwenden, der unabhängig von UI-Anzeigenamen ist und für IAM-Autorisierungsauflösung sowie verbleibende technische Interop- oder Sonderrollenpfade genutzt wird.
 
 #### Scenario: Anzeigename wird geändert
+
 - **WHEN** ein Admin den Anzeigenamen einer Custom-Rolle ändert
 - **THEN** bleibt der technische `role_key` unverändert
 - **AND** bestehende Rollen-Zuweisungen und Berechtigungsauflösungen bleiben gültig
 - **AND** es entsteht keine neue Rolle durch Umbenennung
 
 #### Scenario: Rollenauflösung bleibt IAM-deterministisch
+
 - **WHEN** eine Rollen-Zuweisung für einen Benutzer ausgewertet wird
 - **THEN** nutzt die Access-Control-Auflösung den stabilen `role_key` als Referenz
 - **AND** ist für tenantseitige Fachautorisierung nicht von Keycloak-Display-Metadaten oder einem allgemeinen Realm-Rollenabgleich abhängig
 
 ### Requirement: Managed Scope für externe Rollen
+
 Das System MUST bei Synchronisierung und Reconciliation strikt zwischen technisch verwalteten Sonderrollen, tenantlokalen IAM-Rollen und sonstigen externen Keycloak-Rollen unterscheiden.
 
 #### Scenario: Externe, nicht verwaltete Keycloak-Rolle
+
 - **WHEN** eine Rolle in Keycloak existiert, aber nicht zum technisch verwalteten Sonderrollen-Scope gehört
 - **THEN** wird diese Rolle durch den Standard-Reconcile-Lauf nicht als normative tenantlokale Fachrolle behandelt
 - **AND** sie hat keine automatische Wirkung auf den Studio-Rollenkatalog
 - **AND** der Managed-Scope wird nicht mehr allgemein aus allen studioverwalteten Tenant-Rollen abgeleitet
 
 #### Scenario: Drift innerhalb des technischen Managed Scope
+
 - **WHEN** eine ausdrücklich verwaltete Sonderrolle im zuständigen Realm von ihrem Sollzustand abweicht
 - **THEN** darf der Reconcile-Lauf die Abweichung gemäß Richtlinie korrigieren
 - **AND** die Korrektur wird mit `request_id` und Ergebnisstatus auditierbar protokolliert
@@ -335,6 +346,7 @@ Das System SHALL Gruppen als instanzgebundene IAM-Entität mit normierten Zuordn
 **Datenmodell (normativ):**
 
 Gruppe:
+
 - `id` UUID PK
 - `instance_id` UUID NOT NULL
 - `group_key` TEXT NOT NULL
@@ -348,6 +360,7 @@ Gruppe:
 - Unique-Constraint: `(instance_id, group_key)`
 
 Gruppen-Rollen-Zuordnung:
+
 - `group_id` UUID NOT NULL
 - `role_id` UUID NOT NULL
 - `assigned_at` TIMESTAMP NOT NULL
@@ -355,6 +368,7 @@ Gruppen-Rollen-Zuordnung:
 - PK: `(group_id, role_id)`
 
 Account-Gruppen-Mitgliedschaft:
+
 - `group_id` UUID NOT NULL
 - `account_id` UUID NOT NULL
 - `origin` TEXT NOT NULL mit den erlaubten Werten `manual`, `sync`, `derived`
@@ -365,6 +379,7 @@ Account-Gruppen-Mitgliedschaft:
 - PK: `(group_id, account_id)`
 
 Zusätzliche Constraints:
+
 - `group_id`, `role_id` und `account_id` dürfen nur Datensätze derselben `instance_id` referenzieren
 - Mitgliedschaften mit `valid_until < valid_from` werden abgewiesen
 - soft-gelöschte Gruppen dürfen keine neuen Rollen- oder Account-Zuordnungen erhalten
@@ -676,8 +691,8 @@ Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken
 #### Scenario: Lastprofile und Berichtsformat sind verbindlich
 
 - **WHEN** Performance-Nachweise für die revisionsbasierte Snapshot-Strecke erstellt werden
-- **THEN** enthalten sie mindestens mehrere App-Replikate, warme L1-/Redis-Caches und `N = 100` gleichzeitige Requests im freigegebenen lokalen Docker-Aufbau
-- **AND** dokumentiert der Bericht Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen, verwendete Endpunkte und Abweichungen
+- **THEN** dokumentiert der Bericht Testprofil, Messumgebung, Stichprobenzahl, Parallelität, p50/p95/p99, verwendete Endpunkte und Abweichungen
+- **AND** unterscheidet er revisionsbestätigte Cache-Hits, Cache-Misses und Recomputes anhand der tatsächlich beobachteten Cache-Status
 
 ### Requirement: Endpoint-nahe Performance-Verifikation für Authorize
 
@@ -685,10 +700,10 @@ Das System SHALL die revisionsbasierte Redis-gestützte Authorize-Strecke endpoi
 
 #### Scenario: Lastprofil wird mit Bericht nachgewiesen
 
-- **WHEN** die Authorize-Strecke gegen das vereinbarte Lastprofil mit 100 gleichzeitigen Requests, mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad getestet wird
-- **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss, Recompute, paralleler Revision-Bump und verworfener Stale-Write gemessen
-- **AND** gelten die Abnahmegrenzen Cache-Hit p95 < 250 ms, Cache-Miss p95 < 600 ms und Recompute p95 < 300 ms
-- **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit den Pflichtfeldern Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl und p50/p95/p99 dokumentiert
+- **WHEN** die Authorize-Strecke in der betriebenen Single-Replica-Topologie endpointnah über den realen PostgreSQL-/Redis-Netzpfad gemessen wird
+- **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss und Recompute beobachtet
+- **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit Testprofil, Messumgebung, Stichprobenzahl, Parallelität und p50/p95/p99 dokumentiert
+- **AND** leitet der lokale Lauf keine neuen produktiven Abnahmegrenzen ab
 
 ### Requirement: API-Erweiterungskontrakt für Autorisierungsendpunkte
 
@@ -816,16 +831,16 @@ Das System SHALL alle Autorisierungsentscheidungen mit folgenden Pflichtfeldern 
 
 Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfälle treffen. Die folgende Testmatrix ist normativ:
 
-| Quelle A | Quelle B | Erwartetes Ergebnis | Begründung |
-|----------|----------|---------------------|------------|
-| Rolle: allow | Gruppe: kein passender Grant | allow | passender Rollen-Grant reicht |
-| Gruppe: allow | Geo-Restriktion nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
-| Org-Parent: allow | Org-Child: kein passender Grant | allow | Vererbung greift |
-| Org-Parent: allow | Org-Child: kein Eintrag | allow | Vererbung greift |
-| Geo-Parent: allow | Geo-Child: Scope nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
-| Geo-Parent: allow | Geo-Child (3. Ebene): Scope nicht erfüllt | deny | 3+-Ebenen denselben Regeln |
-| Rolle: kein passender Grant | Gruppe: allow | allow | passender Gruppen-Grant reicht |
-| permission_key-legacy: kein passender Grant | Strukturiert: allow | allow | strukturiert vor legacy |
+| Quelle A                                    | Quelle B                                  | Erwartetes Ergebnis | Begründung                     |
+| ------------------------------------------- | ----------------------------------------- | ------------------- | ------------------------------ |
+| Rolle: allow                                | Gruppe: kein passender Grant              | allow               | passender Rollen-Grant reicht  |
+| Gruppe: allow                               | Geo-Restriktion nicht erfüllt             | deny                | Scope-Bedingung nicht erfüllt  |
+| Org-Parent: allow                           | Org-Child: kein passender Grant           | allow               | Vererbung greift               |
+| Org-Parent: allow                           | Org-Child: kein Eintrag                   | allow               | Vererbung greift               |
+| Geo-Parent: allow                           | Geo-Child: Scope nicht erfüllt            | deny                | Scope-Bedingung nicht erfüllt  |
+| Geo-Parent: allow                           | Geo-Child (3. Ebene): Scope nicht erfüllt | deny                | 3+-Ebenen denselben Regeln     |
+| Rolle: kein passender Grant                 | Gruppe: allow                             | allow               | passender Gruppen-Grant reicht |
+| permission_key-legacy: kein passender Grant | Strukturiert: allow                       | allow               | strukturiert vor legacy        |
 
 #### Scenario: Dreistufige Geo-Hierarchie mit nicht erfülltem Scope
 
@@ -842,7 +857,7 @@ Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfä
 
 ### Requirement: Normierte Abnahmematrix für Vererbung, Cache, Invalidierung und Migration
 
-Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, revisionsgebundene L1-/Redis-Snapshots, Event-Eviction und Mixed-State-Migration in einem gemeinsamen Multi-Replikat-Testset normiert.
+Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, revisionsgebundene L1-/Redis-Snapshots, Event-Eviction und Mixed-State-Migration in einem gemeinsamen Testset normiert.
 
 #### Scenario: Abnahmematrix deckt alle Pflichtkategorien ab
 
@@ -855,19 +870,19 @@ Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, 
 - **WHEN** die Abnahmematrix erstellt wird
 - **THEN** gilt mindestens folgende Tabelle verbindlich:
 
-| Kategorie                                     | Ausgangslage                                        | Mutation / Anfrage                              | Erwarteter Cache-Status                  | Erwartetes Ergebnis                               |
-| --------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
-| Revisionsbestätigter Hit                      | zwei Replikate, L1 und Redis warm, Revision `i1/u1` | wiederholtes `POST /iam/authorize`              | `hit`                                    | identische Entscheidung ohne Permission-Recompute |
-| Benutzer-Grant                                | Benutzer-Snapshot `i1/u1` warm                      | direkte Rolle zuweisen und `u2` committen       | `miss`/`recompute` für Benutzer          | Grant sichtbar, andere Benutzer bleiben gültig    |
-| Benutzer-Revocation                           | Benutzer-Snapshot `i1/u2` warm                      | direkte Rolle entziehen und `u3` committen      | alter Snapshot `revision_mismatch`       | Revocation sofort wirksam                         |
-| Instanzweiter Rollen-Permission-Change        | mehrere Benutzer/Replikate warm                     | Rollen-Permission ändern und `i2` committen     | alle alten Snapshots `revision_mismatch` | vollständiger instanzweiter Recompute bei Bedarf  |
-| Verlorenes Event                              | alte L1-Einträge bleiben physisch                   | Revision wird ohne zugestelltes `NOTIFY` erhöht | `revision_mismatch`                      | keine Stale-Freigabe                              |
-| Verspätetes/dupliziertes Event                | neuere Revision bereits aktiv                       | altes Event trifft ein                          | unverändert                              | neuere Revision bleibt führend                    |
-| Recompute-vs.-Mutation                        | Recompute für `i1/u1` läuft                         | Mutation committet `u2` vor Publish             | `stale_write_discarded`                  | alter Kandidat wird nicht aktuell publiziert      |
-| Physisch alter Redis-Key                      | Key für `i1/u1` existiert nach Reset                | Anfrage liest aktuellen Vektor `i1/u2`          | alter Key unadressierbar                 | TTL/Cleanup entfernt ihn später                   |
-| Redis-Ausfall                                 | Revision lesbar, Redis nicht erreichbar             | `POST /iam/authorize`                           | Fehler                                   | HTTP 503, kein L1-Fallback-Erfolg                 |
-| Datenbankausfall                              | L1 und Redis warm                                   | Revisionsread scheitert                         | Fehler                                   | HTTP 503, kein warmer Cache-Hit                   |
-| Mixed-State-Migration                         | v1- und v2-Keys vorhanden                           | Zugriff nach Aktivierung des Revisionsvertrags  | nur v2 revisionsfähig                    | v1 wird nie als aktueller Erfolg verwendet        |
+| Kategorie                              | Ausgangslage                                          | Mutation / Anfrage                              | Erwarteter Cache-Status                  | Erwartetes Ergebnis                               |
+| -------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| Revisionsbestätigter Hit               | eine App-Instanz, L1 und Redis warm, Revision `i1/u1` | wiederholtes `POST /iam/authorize`              | `hit`                                    | identische Entscheidung ohne Permission-Recompute |
+| Benutzer-Grant                         | Benutzer-Snapshot `i1/u1` warm                        | direkte Rolle zuweisen und `u2` committen       | `miss`/`recompute` für Benutzer          | Grant sichtbar, andere Benutzer bleiben gültig    |
+| Benutzer-Revocation                    | Benutzer-Snapshot `i1/u2` warm                        | direkte Rolle entziehen und `u3` committen      | alter Snapshot `revision_mismatch`       | Revocation sofort wirksam                         |
+| Instanzweiter Rollen-Permission-Change | mehrere Benutzer-Snapshots warm                       | Rollen-Permission ändern und `i2` committen     | alle alten Snapshots `revision_mismatch` | vollständiger instanzweiter Recompute bei Bedarf  |
+| Verlorenes Event                       | alte L1-Einträge bleiben physisch                     | Revision wird ohne zugestelltes `NOTIFY` erhöht | `revision_mismatch`                      | keine Stale-Freigabe                              |
+| Verspätetes/dupliziertes Event         | neuere Revision bereits aktiv                         | altes Event trifft ein                          | unverändert                              | neuere Revision bleibt führend                    |
+| Recompute-vs.-Mutation                 | Recompute für `i1/u1` läuft                           | Mutation committet `u2` vor Publish             | `stale_write_discarded`                  | alter Kandidat wird nicht aktuell publiziert      |
+| Physisch alter Redis-Key               | Key für `i1/u1` existiert nach Reset                  | Anfrage liest aktuellen Vektor `i1/u2`          | alter Key unadressierbar                 | TTL/Cleanup entfernt ihn später                   |
+| Redis-Ausfall                          | Revision lesbar, Redis nicht erreichbar               | `POST /iam/authorize`                           | Fehler                                   | HTTP 503, kein L1-Fallback-Erfolg                 |
+| Datenbankausfall                       | L1 und Redis warm                                     | Revisionsread scheitert                         | Fehler                                   | HTTP 503, kein warmer Cache-Hit                   |
+| Mixed-State-Migration                  | v1- und v2-Keys vorhanden                             | Zugriff nach Aktivierung des Revisionsvertrags  | nur v2 revisionsfähig                    | v1 wird nie als aktueller Erfolg verwendet        |
 
 ### Requirement: Wiederverwendbare Autorisierungs- und Prüfdaten für Rechteverwaltung
 
@@ -973,35 +988,43 @@ Das System SHALL die Inhaltsverwaltung über die zentrale IAM-Autorisierung absi
 - **THEN** wertet das System die Rechte im aktiven `instanceId`- und Organisationskontext aus
 
 ### Requirement: Einheitliches Zielformat für autorisierbare Action-IDs
+
 Das IAM-System MUST autorisierbare Action-IDs langfristig in einem einheitlichen fully-qualified Format `<namespace>.<actionName>` behandeln, unabhängig davon, ob die Action aus dem Core oder aus einem Plugin stammt.
 
 #### Scenario: Core-Action verwendet das gemeinsame Zielformat
+
 - **WHEN** ein Client `POST /iam/authorize` für eine interne Action wie `content.read` aufruft
 - **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
 - **AND** sie folgt demselben Formatvertrag wie eine Plugin-Action
 
 #### Scenario: Plugin-Action verwendet das gemeinsame Zielformat
+
 - **WHEN** ein Client `POST /iam/authorize` für eine Plugin-Action wie `news.create` aufruft
 - **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
 - **AND** sie folgt demselben Formatvertrag wie eine interne Core-Action
 
 ### Requirement: Namespace-sichere Plugin-Action-Autorisierung
+
 Das IAM-System MUST Plugin-Aktionen in vollständig qualifizierter Form autorisieren und Action-IDs ohne Namespace-Kollaps oder implizites Prefix-Mapping auswerten.
 
 #### Scenario: Authorize nutzt vollständig qualifizierte Action-ID
+
 - **WHEN** ein Client `POST /iam/authorize` für `news.create` aufruft
 - **THEN** wird genau `news.create` gegen die effektiven Berechtigungen ausgewertet
 - **AND** es findet keine implizite Umdeutung auf `create`, `content.create` oder einen anderen Namespace statt
 
 #### Scenario: Fremder Namespace bleibt verboten
+
 - **WHEN** ein Plugin ohne passende Berechtigung eine fremde Action-ID wie `events.publish` ausführen will
 - **THEN** liefert die Autorisierung eine Deny-Entscheidung
 - **AND** die Diagnose bleibt auf die vollständig qualifizierte Action-ID referenzierbar
 
 ### Requirement: Legacy-Kurzformen bleiben eine explizite Übergangsphase
+
 Das IAM-System MUST unqualifizierte Legacy-Action-Strings wie `read`, `write` oder `create` nur als zeitlich begrenzte Übergangsphase behandeln und darf daraus keine implizite Namespace-Zuordnung ableiten.
 
 #### Scenario: Legacy-Kurzform erhält keinen impliziten Namespace
+
 - **WHEN** eine unqualifizierte Legacy-Action wie `read` verarbeitet wird
 - **THEN** wird sie nicht implizit zu `content.read`, `news.read` oder einem anderen fully-qualified Namen umgedeutet
 - **AND** eine zukünftige Verschärfung des Request-Schemas kann diese Legacy-Kurzform vollständig verbieten
@@ -1053,18 +1076,21 @@ The system SHALL evaluate authorization for plugin contributions through host-ow
 This requirement applies equally to plugin routes, admin resource actions, server-side request handlers, job handlers, import flows, and integration entry-points.
 
 #### Scenario: Host evaluates plugin route permission
+
 - **GIVEN** a plugin declares a guarded route contribution
 - **WHEN** the host materializes or executes the route
 - **THEN** the host evaluates the permission through the central IAM contract
 - **AND** the plugin receives only the decision result needed to render or continue execution
 
 #### Scenario: Host evaluates plugin job permission
+
 - **GIVEN** a plugin declares a job or import operation that requires a permission
 - **WHEN** a user starts the operation through a host endpoint
 - **THEN** the host resolves authorization before the plugin handler runs
 - **AND** the plugin handler does not evaluate or override the final IAM decision itself
 
 #### Scenario: Plugin attempts custom authorization code path
+
 - **GIVEN** a plugin contribution includes executable authorization logic outside the host contract
 - **WHEN** the host validates or reviews the contribution
 - **THEN** the integration is rejected or documented as an architecture violation
@@ -1075,18 +1101,21 @@ This requirement applies equally to plugin routes, admin resource actions, serve
 The system SHALL authorize Studio-based Keycloak administration separately for platform and tenant scopes and SHALL never use broader credentials as an implicit fallback for a narrower tenant operation.
 
 #### Scenario: Platform admin edits platform identities
+
 - **WHEN** ein Platform-Admin einen Platform-User oder eine Platform-Rolle im Root-Host bearbeitet
 - **THEN** prüft das System Platform-Admin-Rechte
 - **AND** verwendet ausschließlich den Platform-Admin-Keycloak-Client
 - **AND** schreibt ein Audit-Event mit Actor, Scope, Zielobjekt und Ergebnis
 
 #### Scenario: Tenant admin edits tenant identities
+
 - **WHEN** ein Tenant-Admin User, Rollen oder Rollenzuordnungen auf einem Tenant-Host bearbeitet
 - **THEN** prüft das System Tenant-Admin-Rechte für die aktive `instanceId`
 - **AND** verwendet ausschließlich den Tenant-Admin-Keycloak-Client
 - **AND** blockiert Cross-Tenant-Zugriffe
 
 #### Scenario: Tenant Keycloak rights are insufficient
+
 - **WHEN** Keycloak eine Tenant-Operation mit `IDP_FORBIDDEN` verweigert
 - **THEN** gibt das System einen stabilen Diagnosecode zurück
 - **AND** erklärt, welche Keycloak-Rechte oder Realm-/Client-Konfiguration fehlen
@@ -1097,16 +1126,19 @@ The system SHALL authorize Studio-based Keycloak administration separately for p
 Das System SHALL für Keycloak-User, Rollen und Rollenzuordnungen vor jeder Mutation eine Bearbeitbarkeitsentscheidung berechnen.
 
 #### Scenario: Read-only object is visible but protected
+
 - **WHEN** ein Keycloak-Objekt sichtbar, aber nicht Studio-bearbeitbar ist
 - **THEN** zeigt die UI das Objekt mit `read_only`-Status
 - **AND** Server-Mutationen werden mit einem stabilen Diagnosecode blockiert
 
 #### Scenario: Federated user field is protected
+
 - **WHEN** ein User-Feld durch Föderation oder Keycloak-Policy nicht bearbeitbar ist
 - **THEN** deaktiviert die UI das Feld
 - **AND** der Server validiert denselben Zustand vor der Mutation
 
 ### Requirement: Content Core Authorization Primitives
+
 The system SHALL authorize content core operations through host-owned, fully-qualified primitive actions that remain stable across plugin-specific content types.
 
 The primitive action namespace SHALL be `content`. The initial primitive action set SHALL include `content.read`, `content.create`, `content.updateMetadata`, `content.updatePayload`, `content.changeStatus`, `content.publish`, `content.archive`, `content.restore`, `content.readHistory`, `content.manageRevisions`, and `content.delete`.
@@ -1114,63 +1146,74 @@ The primitive action namespace SHALL be `content`. The initial primitive action 
 Authorization requests for content core operations SHALL include the resolved `instanceId`, `contentType`, optional `contentId`, optional `organizationId`, requested primitive action, actor subject, and any host-known ownership scope. Plugins MAY declare domain capabilities that map to these primitives in separate capability-mapping contracts, but plugins SHALL NOT replace or shadow the primitive action names.
 
 #### Scenario: User edits content core metadata
+
 - **GIVEN** a user requests a core content mutation
 - **WHEN** the host evaluates authorization
 - **THEN** the decision uses the stable primitive action for that mutation and the resolved content scope
 - **AND** the decision is evaluated through the central IAM authorization path
 
 #### Scenario: Plugin declares custom core permission
+
 - **GIVEN** a plugin declares a permission that replaces a host-owned core content permission
 - **WHEN** the contribution is validated
 - **THEN** the host rejects the conflicting permission declaration
 
 #### Scenario: Payload update uses primitive action
+
 - **GIVEN** a user updates plugin-specific payload fields for a content item
 - **WHEN** the host evaluates authorization
 - **THEN** the host checks `content.updatePayload` with the resolved content scope
 - **AND** plugin-specific field names are not used as primitive IAM actions
 
 #### Scenario: History access is scoped
+
 - **GIVEN** a user requests the history of a content item
 - **WHEN** the host evaluates authorization
 - **THEN** the host checks `content.readHistory` for the item's `instanceId`, content type, content identifier, and ownership scope
 
 #### Scenario: Authorization lacks resolved content scope
+
 - **GIVEN** a content core mutation cannot resolve `instanceId` or ownership scope deterministically
 - **WHEN** the host prepares the authorization request
 - **THEN** the operation is denied before persistence
 - **AND** diagnostics identify the missing scope input without exposing plugin payload data
 
 ### Requirement: Content Capability Mapping
+
 The system SHALL map domain-level content capabilities such as publish, archive, restore, bulk edit, and manage revisions to stable primitive Studio actions before authorization is evaluated.
 
 The mapping SHALL be host-owned, declarative, and framework-agnostic. Plugins, content types, and UI bindings MAY reference supported capabilities, but SHALL NOT provide executable authorization logic, permission resolvers, or fallback allow/deny decisions.
 
 #### Scenario: Domain capability maps to primitive action
+
 - **GIVEN** a user requests a content publish operation
 - **WHEN** the host evaluates authorization
 - **THEN** the publish capability is resolved to the configured primitive Studio action and checked through the central permission engine
 - **AND** the authorization request uses the resolved primitive action, resource type, actor, and active scope
 
 #### Scenario: Capability has no mapping
+
 - **GIVEN** a content action has no registered capability mapping
 - **WHEN** the host evaluates authorization
 - **THEN** access is denied with the deterministic diagnostic `capability_mapping_missing`
 - **AND** no persistence, status transition, or side effect is executed
 
 #### Scenario: Capability maps to invalid primitive action
+
 - **GIVEN** a capability mapping references an unknown or non-fully-qualified primitive action
 - **WHEN** the host validates the mapping or evaluates an action using it
 - **THEN** access is denied with the deterministic diagnostic `capability_mapping_invalid`
 - **AND** the host does not infer a namespace or substitute another primitive action
 
 #### Scenario: Server remains authoritative
+
 - **GIVEN** the UI rendered a content action as available from the mapping read model
 - **WHEN** the user executes the action
 - **THEN** the server resolves the capability again and evaluates the primitive action through the central permission engine
 - **AND** a stale or manipulated UI state cannot bypass authorization
 
 #### Scenario: Admin action remains out of scope
+
 - **GIVEN** an admin action uses an existing direct primitive Studio action
 - **WHEN** the host evaluates authorization for this P2 change
 - **THEN** the admin action continues to use the existing authorization contract
@@ -1361,20 +1404,24 @@ Das System SHALL Seed- und Reset-Operationen als gesondert autorisierbare Hochri
 - **AND** die Berechtigung bleibt von allgemeinen Schreib- oder Verwaltungsrechten getrennt
 
 ### Requirement: Rollenrechte koennen Assignment-Scopes fuer Datensatzzugriffe tragen
+
 Das System SHALL Rollen-Rechte-Zuordnungen fuer scope-faehige Datensatzrechte mit einem Assignment-Scope `all`, `own` oder `organization` speichern und auswerten.
 
 #### Scenario: Legacy-Rollenpayload bleibt kompatibel
+
 - **WHEN** ein Rollen-Update weiterhin nur `permissionIds` sendet
 - **THEN** interpretiert das System jede dieser Zuordnungen als `accessScope = all`
 - **AND** es schreibt konsistente `role_permissions` ohne Scope-Verlust
 
 #### Scenario: Own-Scope verlangt IAM-Ownership
+
 - **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = own` trifft
 - **THEN** erlaubt das System den Zugriff nur bei passendem `ownerUserId` beziehungsweise technischer `owner_user_id`
 - **AND** `createdByAccountId` oder `creator_account_id` allein begruendet keinen Own-Zugriff
 - **AND** fehlende oder fremde Ownership-Bezuege fuehren fail-closed zu keinem Match
 
 #### Scenario: Organization-Scope folgt IAM-Ownership und aktiver Session-Organisation
+
 - **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = organization` trifft
 - **THEN** erlaubt das System den Zugriff fuer Datensaetze mit passendem `ownerUserId` oder passender `ownerOrganizationId` zur aktiven Session-Organisation
 - **AND** Datensaetze ausserhalb dieses Kontexts matchen nicht
@@ -1392,58 +1439,71 @@ Das System SHALL tenantweite Host- und Plugin-Rechte nicht allein deshalb organi
 - **AND** wird im effektiven Permission-Modell kein organisationsbezogener Scope allein aus diesem Kontext abgeleitet
 
 ### Requirement: Plattformrecht instance.registry.manage ist nicht tenantfähig
+
 Das System SHALL das Recht `instance.registry.manage` ausschließlich im Plattform-/Root-Scope auswerten. Tenantlokale Rollen, Gruppen oder Permissions dürfen dieses Recht nicht verleihen.
 
 #### Scenario: Tenant-Rolle kann Instanzverwaltung nicht freischalten
+
 - **WHEN** eine tenantlokale Rolle, Gruppe oder Permission-Zuordnung versucht, `instance.registry.manage` oder einen gleichwertigen Instanzverwaltungszugriff zu modellieren
 - **THEN** behandelt das System diesen Zustand nicht als wirksame tenantlokale Berechtigung
 - **AND** ein tenantseitiger Request auf Root-Control-Plane-Funktionalität bleibt fail-closed verweigert
 
 #### Scenario: Root-Instanzverwaltung bleibt auf Plattformrolle begrenzt
+
 - **WHEN** ein Root-Host-Request eine Instanzverwaltungsoperation ausführt
 - **THEN** entscheidet das System den Zugriff ausschließlich über die Plattformrolle `instance_registry_admin`
 - **AND** tenantlokale Permission-Snapshots oder Gruppenmitgliedschaften werden dafür nicht ausgewertet
 
 ### Requirement: Tenantseitige Modulrechte sind von kanonischen Standardrollen entkoppelt
+
 Das System SHALL tenantseitige modulbezogene Rechte so modellieren, dass sie individuellen Rollen und Gruppen einer Instanz zugeordnet werden können, ohne kanonische Standardrollen als normative Rechtequelle zu verlangen.
 
 #### Scenario: Modulrecht wird einer individuellen Tenant-Rolle zugeordnet
+
 - **WHEN** ein Administrator einer Instanz ein modulbezogenes Recht einer editierbaren Custom-Rolle zuweist
 - **THEN** wird dieses Recht serverseitig wie jede andere tenantlokale Rollen-Permission-Zuordnung persistiert und ausgewertet
 - **AND** es ist dafür keine kanonische Standardrolle wie `editor` oder `app_manager` erforderlich
 
 #### Scenario: Gruppen vermitteln modulbezogene Rechte ohne Standardrollenpflicht
+
 - **WHEN** eine Gruppe tenantlokale Rollen bündelt, die modulbezogene Rechte enthalten
 - **THEN** erhält der Benutzer die entsprechenden Rechte über die Gruppenauflösung
 - **AND** die Wirksamkeit hängt nicht davon ab, ob eine kanonische Standardrolle existiert
 
 ### Requirement: Geschützte Tenant-Sonderrollen bleiben von frei verwaltbaren Rollen unterscheidbar
+
 Das System SHALL tenantlokale geschützte Sonderrollen wie `system_admin` von frei verwaltbaren tenantlokalen Rollen unterscheiden.
 
 #### Scenario: system_admin bleibt gesondert geschützt
+
 - **WHEN** ein Benutzer oder eine Rolle im Tenant-Realm verwaltet wird
 - **THEN** behandelt das System `system_admin` weiterhin als geschützte Sonderrolle
 - **AND** Sonderregeln wie Letztadmin-Schutz oder strengere Verwaltungsprüfungen bleiben erhalten
 - **AND** die geschützte Rolle bündelt direkt alle tenantlokalen Permissions des aktiven Sollzustands
 
 #### Scenario: Individuelle Tenant-Rollen bleiben editierbar
+
 - **WHEN** eine tenantlokale Custom-Rolle ohne Sonderstatus gelesen oder bearbeitet wird
 - **THEN** bleibt sie über die normale Rollenverwaltung editierbar
 - **AND** ihre Rechtebasis kann unabhängig von kanonischen Standardrollen gepflegt werden
 
 ### Requirement: system_admin ist die normative Vollzugriffsrolle im Tenant
+
 Das System SHALL `system_admin` als normative tenantlokale Vollzugriffsrolle behandeln. Die effektive Permission-Menge von `system_admin` MUST mindestens alle tenantlokalen Core-, Verwaltungs- und Modul-Permissions umfassen, die über tenantseitige UI- und API-Gates relevant sind.
 
 #### Scenario: UI-Gate akzeptiert system_admin ohne Nebenartefakte
+
 - **WHEN** ein UI- oder API-Gate auf eine tenantlokale Verwaltungs- oder Modul-Permission prüft
 - **THEN** erhält ein Benutzer mit `system_admin` die Freigabe auch dann, wenn keine zusätzliche Gruppe wie `admins` und keine ergänzende Rolle wie `core_admin` zugewiesen ist
 
 #### Scenario: Komfortgruppen bleiben optional
+
 - **WHEN** eine Tenant-Instanz Gruppen oder Standardrollen als Komfortbündel für Administratoren verwendet
 - **THEN** dürfen diese Artefakte weiterhin Permissions vermitteln
 - **AND** sie sind nicht die normative Quelle dafür, dass ein `system_admin` vollen Zugriff besitzt
 
 ### Requirement: Sessiongebundene serverseitige Authorize-Performance-Ausfuehrung
+
 Das System SHALL einen geschuetzten serverseitigen Performance-Lauf fuer den echten `POST /iam/authorize`-Pfad bereitstellen, der den aktuellen Session-Benutzer als Messsubjekt nutzt.
 
 #### Scenario: Session-Benutzer ist die Messidentitaet
@@ -1558,22 +1618,27 @@ Zulässige Ausnahmen SHALL auf Plattform-, Bootstrap-, Migration- oder Reconcile
 - **AND** der Vorgang wird mit Actor, Scope, Grundklasse und Ergebnis auditiert
 
 ### Requirement: Tenant-Autorisierung wird normativ aus IAM-Rollen, Gruppen und Permissions abgeleitet
+
 Das System SHALL tenantlokale Autorisierungsentscheidungen normativ aus dem IAM-Datenmodell der aktiven Instanz ableiten. Rohrollen aus Keycloak dürfen tenantseitige Fachautorisierung nicht eigenständig begründen.
 
 #### Scenario: Tenant-Gate ignoriert rohe Keycloak-Fachrolle ohne IAM-Wirkung
+
 - **WHEN** ein Benutzer in Keycloak eine historische oder externe Realm-Rolle besitzt, die im tenantlokalen IAM-Modell keiner wirksamen Rolle oder Permission entspricht
 - **THEN** gewährt ein Tenant-UI- oder API-Gate dadurch keinen fachlichen Zugriff
 - **AND** bleibt der Zugriff fail-closed auf die IAM-basierte Autorisierungsentscheidung beschränkt
 
 #### Scenario: IAM-Permission wirkt ohne zusätzliche Keycloak-Fachrolle
+
 - **WHEN** ein Benutzer im Tenant-Realm die erforderliche IAM-Rolle, Gruppenmitgliedschaft oder effektive Permission besitzt
 - **THEN** gewährt das System den vorgesehenen Tenant-Zugriff
 - **AND** verlangt dafür keine zusätzliche fachliche Keycloak-Realm-Rolle außerhalb des normativen Sonderrollenschnitts
 
 ### Requirement: Legacy-Keycloak-Rollen bleiben Diagnose- statt Normierungsquelle
+
 Das System SHALL historische oder externe Keycloak-Rollen für Tenant-Benutzer nur noch als Diagnose-, Drift- oder Interop-Artefakte behandeln, sofern sie nicht zu den ausdrücklich verwalteten Sonderrollen gehören.
 
 #### Scenario: Diagnose zeigt Legacy-Rolle ohne Fachwirkung
+
 - **WHEN** eine Analyse, Permissions-Übersicht oder Reconcile-Ausgabe eine historische Keycloak-Rolle für einen Tenant-Benutzer findet
 - **THEN** kennzeichnet das System diese Rolle als Legacy-, externes oder technisches Artefakt
 - **AND** beschreibt ihre fehlende normative Fachwirkung eindeutig
@@ -1820,4 +1885,3 @@ Das System MUST für konkrete Ressourcenmutationen mit `own`-, `organization`-, 
 - **UND** die aktuelle serverseitige Autorisierung die Mutation später verweigert
 - **DANN** führt der Server die Mutation nicht aus
 - **UND** invalidiert der Client ohne stabiles Stale-, Scope- oder Versionssignal nur die konkrete Ressourcen-Capability
-

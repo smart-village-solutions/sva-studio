@@ -589,6 +589,7 @@ eigene Runtime-Variablen routen.
 - **WHEN** der produktive Waste-Web-Stack gerendert wird
 - **THEN** leitet die Compose-Datei den öffentlichen Host aus `PUBLIC_WASTE_PUBLIC_HOST` ab
 - **AND** die Runtime nutzt `PUBLIC_WASTE_BASE_URL` als kanonische Base-URL
+- **AND** bindet der TLS-Router den vorhandenen ACME-Resolver `default` für das Einzelzertifikat des Hosts ein
 - **AND** weder Host noch Base-URL werden aus `SVA_PARENT_DOMAIN` oder `SVA_PUBLIC_BASE_URL` des Studios abgeleitet
 
 ### Requirement: Studio-Release wird in Vorbereitung und lokalen Final-Deploy getrennt
@@ -743,4 +744,3 @@ Das System SHALL nach jedem Umgebungsrollout den Root-Host, jeden explizit freig
 - **WHEN** die Smoke-Matrix einen syntaktisch gültigen, aber nicht freigegebenen Tenant-Host anfragt
 - **THEN** darf dieser Host nicht als betriebsbereiter Tenant erscheinen
 - **AND** liefert die Plattform weder Tenant-Daten noch einen tenant-spezifischen Login-Flow aus
-

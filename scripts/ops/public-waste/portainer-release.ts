@@ -55,15 +55,15 @@ type MaintenanceResult = {
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-const defaultDeps: ReleaseDeps = {
+export const defaultDeps: ReleaseDeps = {
   commandExists: (commandName) => commandExists(rootDir, commandName),
   fetch: globalThis.fetch.bind(globalThis),
   runCapture: (commandName, args, env) => runCapture(rootDir, commandName, args, env),
 };
 
-const trimTrailingSlash = (value: string) => value.replace(/\/+$/u, '');
+export const trimTrailingSlash = (value: string) => value.replace(/\/+$/u, '');
 
-const requireEnvValue = (value: string | undefined, key: string): string => {
+export const requireEnvValue = (value: string | undefined, key: string): string => {
   const normalized = value?.trim();
   if (!normalized) {
     throw new Error(`${key} fehlt.`);
@@ -72,7 +72,9 @@ const requireEnvValue = (value: string | undefined, key: string): string => {
   return normalized;
 };
 
-const normalizeStackEnv = (env: readonly PortainerStackEnvRecord[] | undefined): StackEnvEntry[] =>
+export const normalizeStackEnv = (
+  env: readonly PortainerStackEnvRecord[] | undefined
+): StackEnvEntry[] =>
   (env ?? [])
     .map((entry) => ({
       name: entry.name ?? entry.Name ?? '',
@@ -80,7 +82,7 @@ const normalizeStackEnv = (env: readonly PortainerStackEnvRecord[] | undefined):
     }))
     .filter((entry) => entry.name.length > 0);
 
-const parseStackFileContent = (rawText: string): string => {
+export const parseStackFileContent = (rawText: string): string => {
   try {
     const parsed = JSON.parse(rawText) as unknown;
 
@@ -103,7 +105,7 @@ const parseStackFileContent = (rawText: string): string => {
   return rawText;
 };
 
-const portainerRequest = async (input: {
+export const portainerRequest = async (input: {
   readonly deps: ReleaseDeps;
   readonly host: string;
   readonly apiKey: string;
@@ -344,4 +346,11 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     });
 }
 
-export type { MaintenanceResult, ReleaseDeps, ReleaseResult, StackEnvEntry };
+export type {
+  MaintenanceResult,
+  PortainerStackEnvRecord,
+  PortainerStackRecord,
+  ReleaseDeps,
+  ReleaseResult,
+  StackEnvEntry,
+};

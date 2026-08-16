@@ -1,0 +1,4 @@
+{
+  "prNumber": 1038,
+  "body": "Der öffentliche Abfallkalender der Prignitz ist unter der neuen Produktdomain erreichbar.\n\n- Die Instanz verwendet prignitz.abfallkalender.pro als öffentliche Basisadresse.\n- Der Domainwechsel prüft Ziel-Stack, Endpoint und Mandant vor jeder Änderung und lässt andere Swarm-Stacks unangetastet.\n- Die beiden internen Verweise können über einen separaten, verifizierenden Einstellungs-Cutover aktualisiert werden."
+}

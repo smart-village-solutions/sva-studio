@@ -8,6 +8,11 @@ import {
   updatePublicWasteReplicas,
   updateStackEnv,
 } from './portainer-release.ts';
+import {
+  cutoverPublicWasteStackDomain,
+  ensurePublicWasteCertificateResolver,
+  updatePublicWasteDomainEnv,
+} from './portainer-domain-cutover.ts';
 
 describe('public waste portainer release', () => {
   it('accepts waste-web SemVer tags', () => {
@@ -56,6 +61,211 @@ describe('public waste portainer release', () => {
       { name: 'PUBLIC_WASTE_DATABASE_URL', value: 'postgres://tenant-db' },
       { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
     ]);
+  });
+
+  it('updates only the public host and base URL for the expected tenant', () => {
+    const current = [
+      { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
+      { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'old.example' },
+      { name: 'PUBLIC_WASTE_BASE_URL', value: 'https://old.example' },
+      { name: 'PUBLIC_WASTE_DATABASE_URL', value: 'postgres://secret' },
+    ];
+    expect(updatePublicWasteDomainEnv(current, 'bb-prignitz', 'Prignitz.Example.')).toEqual([
+      { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
+      { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'prignitz.example' },
+      { name: 'PUBLIC_WASTE_BASE_URL', value: 'https://prignitz.example' },
+      { name: 'PUBLIC_WASTE_DATABASE_URL', value: 'postgres://secret' },
+    ]);
+    expect(() => updatePublicWasteDomainEnv(current, 'other-tenant', 'prignitz.example')).toThrow(
+      'stimmt nicht ueberein'
+    );
+    expect(() =>
+      updatePublicWasteDomainEnv(current, 'bb-prignitz', 'https://prignitz.example/path')
+    ).toThrow('ungueltig');
+  });
+
+  it('adds the explicit Traefik certificate resolver idempotently', () => {
+    const stack = [
+      'services:',
+      '  app:',
+      '    deploy:',
+      '      labels:',
+      "        - 'traefik.http.routers.public-waste.tls=true'",
+      '',
+    ].join('\n');
+    const updated = ensurePublicWasteCertificateResolver(stack);
+    expect(updated).toContain(
+      "        - 'traefik.http.routers.public-waste.tls.certresolver=default'"
+    );
+    expect(ensurePublicWasteCertificateResolver(updated)).toBe(updated);
+    expect(
+      ensurePublicWasteCertificateResolver(
+        '      labels:\n        - "traefik.http.routers.public-waste.tls=true"\n'
+      )
+    ).toContain('        - "traefik.http.routers.public-waste.tls.certresolver=default"');
+    const customResolver = [
+      '      labels:',
+      '        - "traefik.http.routers.public-waste.tls=true"',
+      '        - "traefik.http.routers.public-waste.tls.certresolver=custom"',
+      '',
+    ].join('\n');
+    const normalizedResolver = ensurePublicWasteCertificateResolver(customResolver);
+    expect(normalizedResolver).toContain(
+      '        - "traefik.http.routers.public-waste.tls.certresolver=default"'
+    );
+    expect(normalizedResolver).not.toContain('certresolver=custom');
+    expect(normalizedResolver.match(/certresolver=/gu)).toHaveLength(1);
+    expect(() =>
+      ensurePublicWasteCertificateResolver(
+        `${normalizedResolver}        - "traefik.http.routers.public-waste.tls.certresolver=other"\n`
+      )
+    ).toThrow('mehrere');
+    expect(() => ensurePublicWasteCertificateResolver('services: {}\n')).toThrow('eindeutiges');
+  });
+
+  it('cuts over the remote stack domain while preserving unrelated env values', async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]))
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            Env: [
+              { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
+              { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'old.example' },
+              { name: 'PUBLIC_WASTE_BASE_URL', value: 'https://old.example' },
+              { name: 'PUBLIC_WASTE_DATABASE_URL', value: 'postgres://secret' },
+            ],
+          })
+        )
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            StackFileContent:
+              'services:\n  app:\n    image: example\n    deploy:\n      labels:\n        - "traefik.http.routers.public-waste.tls=true"\n',
+          })
+        )
+      )
+      .mockResolvedValueOnce(new Response('{}'));
+
+    await expect(
+      cutoverPublicWasteStackDomain(
+        {
+          PUBLIC_WASTE_EXPECTED_INSTANCE_ID: 'bb-prignitz',
+          PUBLIC_WASTE_STACK_NAME: 'web-waste-calendar',
+          PUBLIC_WASTE_TARGET_HOST: 'prignitz.abfallkalender.pro',
+          QUANTUM_API_KEY: 'secret',
+          QUANTUM_ENDPOINT_ID: '7',
+          QUANTUM_HOST: 'https://portainer.example.invalid',
+        },
+        { commandExists: vi.fn().mockReturnValue(false), fetch, runCapture: vi.fn() }
+      )
+    ).resolves.toMatchObject({
+      changed: true,
+      previousHost: 'old.example',
+      targetHost: 'prignitz.abfallkalender.pro',
+    });
+
+    const payload = JSON.parse(String(fetch.mock.calls[3]?.[1]?.body));
+    expect(payload.Env).toEqual([
+      { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
+      { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'prignitz.abfallkalender.pro' },
+      { name: 'PUBLIC_WASTE_BASE_URL', value: 'https://prignitz.abfallkalender.pro' },
+      { name: 'PUBLIC_WASTE_DATABASE_URL', value: 'postgres://secret' },
+    ]);
+    expect(payload.StackFileContent).toContain(
+      '        - "traefik.http.routers.public-waste.tls.certresolver=default"'
+    );
+  });
+
+  it('does not update an already matching stack and still verifies the tenant', async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]))
+      .mockResolvedValueOnce(
+        Response.json({
+          Env: [
+            { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'bb-prignitz' },
+            { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'prignitz.abfallkalender.pro' },
+            {
+              name: 'PUBLIC_WASTE_BASE_URL',
+              value: 'https://prignitz.abfallkalender.pro',
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          StackFileContent: [
+            'services:',
+            '  app:',
+            '    deploy:',
+            '      labels:',
+            '        - "traefik.http.routers.public-waste.tls=true"',
+            '        - "traefik.http.routers.public-waste.tls.certresolver=default"',
+            '',
+          ].join('\n'),
+        })
+      );
+
+    await expect(
+      cutoverPublicWasteStackDomain(
+        {
+          PUBLIC_WASTE_EXPECTED_INSTANCE_ID: 'bb-prignitz',
+          PUBLIC_WASTE_STACK_NAME: 'web-waste-calendar',
+          PUBLIC_WASTE_TARGET_HOST: 'prignitz.abfallkalender.pro',
+          QUANTUM_API_KEY: 'secret',
+          QUANTUM_ENDPOINT_ID: '7',
+          QUANTUM_HOST: 'https://portainer.example.invalid',
+        },
+        { commandExists: vi.fn().mockReturnValue(false), fetch, runCapture: vi.fn() }
+      )
+    ).resolves.toMatchObject({ changed: false, routingChanged: false });
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
+  });
+
+  it('fails closed for a tenant mismatch without updating the matching stack', async () => {
+    const fetch = vi
+      .fn<typeof globalThis.fetch>()
+      .mockResolvedValueOnce(Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]))
+      .mockResolvedValueOnce(
+        Response.json({
+          Env: [
+            { name: 'PUBLIC_WASTE_INSTANCE_ID', value: 'other-tenant' },
+            { name: 'PUBLIC_WASTE_PUBLIC_HOST', value: 'prignitz.abfallkalender.pro' },
+            {
+              name: 'PUBLIC_WASTE_BASE_URL',
+              value: 'https://prignitz.abfallkalender.pro',
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          StackFileContent:
+            '      labels:\n        - "traefik.http.routers.public-waste.tls=true"\n        - "traefik.http.routers.public-waste.tls.certresolver=default"\n',
+        })
+      );
+
+    await expect(
+      cutoverPublicWasteStackDomain(
+        {
+          PUBLIC_WASTE_EXPECTED_INSTANCE_ID: 'bb-prignitz',
+          PUBLIC_WASTE_STACK_NAME: 'web-waste-calendar',
+          PUBLIC_WASTE_TARGET_HOST: 'prignitz.abfallkalender.pro',
+          QUANTUM_API_KEY: 'secret',
+          QUANTUM_ENDPOINT_ID: '7',
+          QUANTUM_HOST: 'https://portainer.example.invalid',
+        },
+        { commandExists: vi.fn().mockReturnValue(false), fetch, runCapture: vi.fn() }
+      )
+    ).rejects.toThrow('stimmt nicht ueberein');
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false);
   });
 
   it('updates the remote stack payload without changing unrelated env values', async () => {

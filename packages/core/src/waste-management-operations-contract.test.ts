@@ -11,6 +11,7 @@ describe('waste-management-operations-contract', () => {
       initializeDataSource: 'waste-management.initialize-data-source',
       applyMigrations: 'waste-management.apply-migrations',
       importData: 'waste-management.import-data',
+      exportData: 'waste-management.export-data',
       seedData: 'waste-management.seed-data',
       resetData: 'waste-management.reset-data',
       syncMainserver: 'waste-management.sync-mainserver',
@@ -30,9 +31,16 @@ describe('waste-management-operations-contract', () => {
 
   it('defines the mandatory waste import profile ids on the shared plugin contract', () => {
     expect(wasteManagementOperationsContract.importProfileIds).toEqual({
+      fractions: 'waste-management.fraktionen',
       geographyCollectionLocations: 'waste-management.geografie-abholorte',
+      recurrencePresets: 'waste-management.abstandspresets',
       tours: 'waste-management.touren',
+      locationTourLinks: 'waste-management.abholort-tour-zuordnungen',
+      tourAssignments: 'waste-management.tour-einsaetze',
       dateShifts: 'waste-management.ausweichtermine',
+      holidayRules: 'waste-management.feiertagsregeln',
+      portableSettings: 'waste-management.portable-einstellungen',
+      dataPackage: 'waste-management.datenpaket',
       locationTourPickupDates: 'waste-management.ortsbezogene-tourtermine',
     });
     expect(
@@ -41,8 +49,10 @@ describe('waste-management-operations-contract', () => {
     expect(wasteManagementOperationsContract.isImportProfileId('waste-management.foo')).toBe(false);
   });
 
-  it('supports csv and xlsx as the current waste import source formats', () => {
+  it('supports canonical JSON and ZIP plus the legacy tabular import formats', () => {
     expect(wasteManagementOperationsContract.importSourceFormats).toEqual([
+      'application/json',
+      'application/zip',
       'text/csv',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ]);
@@ -52,7 +62,7 @@ describe('waste-management-operations-contract', () => {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       )
     ).toBe(true);
-    expect(wasteManagementOperationsContract.isImportSourceFormat('application/json')).toBe(false);
+    expect(wasteManagementOperationsContract.isImportSourceFormat('application/json')).toBe(true);
   });
 
   it('exposes the supported CSV delimiters for the address pickup-date import', () => {

@@ -5,6 +5,7 @@ import {
 } from '@sva/plugin-sdk';
 
 import {
+  createWasteManagementPluginExportProfiles,
   createWasteManagementPluginImportProfiles,
   createWasteManagementPluginJobTypes,
 } from './waste-management.job-definitions.js';
@@ -30,6 +31,10 @@ export const wasteManagementPermissionDefinitions = definePluginPermissions('was
   {
     id: 'waste-management.import.execute',
     titleKey: 'wasteManagement.permissions.importExecute.title',
+  },
+  {
+    id: 'waste-management.export.execute',
+    titleKey: 'wasteManagement.permissions.exportExecute.title',
   },
   {
     id: 'waste-management.seed.execute',
@@ -159,6 +164,10 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
     titleKey: 'wasteManagement.audit.importStarted',
   },
   {
+    eventType: 'waste-management.export.started',
+    titleKey: 'wasteManagement.audit.exportStarted',
+  },
+  {
     eventType: 'waste-management.seed.started',
     titleKey: 'wasteManagement.audit.seedStarted',
   },
@@ -222,5 +231,6 @@ export const pluginWasteManagement: PluginDefinition = {
   contentHistory: { mode: 'domain', reasonCode: 'domain_history' },
   jobTypes: createWasteManagementPluginJobTypes(),
   importProfiles: createWasteManagementPluginImportProfiles(),
+  exportProfiles: createWasteManagementPluginExportProfiles(),
   translations: wasteManagementPluginTranslations,
 };

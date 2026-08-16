@@ -29,6 +29,8 @@ import {
   getWasteManagementToursOverview,
   startWasteManagementInitialize,
   startWasteManagementImport,
+  uploadWasteManagementImportSource,
+  startWasteManagementExport,
   startWasteManagementMigrations,
   startWasteManagementPostalCodeEnrichment,
   startWasteManagementHolidaySync,
@@ -1809,6 +1811,46 @@ describe('waste-management api client', () => {
     const [, init] = firstCall ?? [];
     const headers = init?.headers as Headers;
     expect(headers.get('Idempotency-Key')).toBe('idem-1');
+  });
+
+  it('uploads import files before job creation and returns the opaque source reference', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({
+      data: {
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
+        sizeBytes: 3,
+      },
+    }), { status: 201, headers: { 'Content-Type': 'application/json' } }));
+    const file = new File(['zip'], 'waste.zip', { type: 'application/zip' });
+
+    await expect(uploadWasteManagementImportSource(file, 'application/zip')).resolves.toBe(
+      'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/tools/imports/upload',
+      expect.objectContaining({ method: 'POST', body: file })
+    );
+    const headers = fetchMock.mock.calls[0]?.[1]?.headers as Headers;
+    expect(headers.get('Content-Type')).toBe('application/zip');
+  });
+
+  it('starts a canonical waste export through the protected export endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(createJobResponse('waste-management.export-data'));
+
+    await startWasteManagementExport({
+      profileIds: ['waste-management.fraktionen'],
+      targetFormat: 'application/json',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/tools/exports',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          profileIds: ['waste-management.fraktionen'],
+          targetFormat: 'application/json',
+        }),
+      })
+    );
   });
 
   it('maps host errors into WasteManagementApiError', async () => {

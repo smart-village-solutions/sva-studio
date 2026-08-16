@@ -205,6 +205,11 @@ export const startWasteManagementMigrations = async (input: StartWasteManagement
 export const startWasteManagementImport = async (input: StartWasteManagementImportInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/imports', input);
 
+export {
+  startWasteManagementExport,
+  uploadWasteManagementImportSource,
+} from './waste-management.api.operations.data-exchange.js';
+
 export const previewWasteLocationTourPickupDateImport = async (
   input: PreviewWasteLocationTourPickupDateImportInput
 ): Promise<PreviewWasteLocationTourPickupDateImportResult> =>

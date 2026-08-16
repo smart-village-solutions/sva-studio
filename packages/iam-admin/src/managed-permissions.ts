@@ -36,9 +36,13 @@ const RECORD_SCOPED_PERMISSION_KEYS = [
   'poi.update',
   'poi.delete',
 ] as const satisfies readonly string[];
-const RECORD_SCOPED_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(RECORD_SCOPED_PERMISSION_KEYS);
+const RECORD_SCOPED_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(
+  RECORD_SCOPED_PERMISSION_KEYS
+);
 const ORGANIZATION_CONTEXT_PERMISSION_KEYS = [] as const satisfies readonly string[];
-const ORGANIZATION_CONTEXT_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(ORGANIZATION_CONTEXT_PERMISSION_KEYS);
+const ORGANIZATION_CONTEXT_PERMISSION_KEY_SET: ReadonlySet<string> = new Set(
+  ORGANIZATION_CONTEXT_PERMISSION_KEYS
+);
 
 const isRecordScopedPermission = (permissionKey: string): boolean =>
   RECORD_SCOPED_PERMISSION_KEY_SET.has(permissionKey);
@@ -63,6 +67,7 @@ const managedPermissionDescriptions = {
   'waste-management.tours.manage': 'Touren im Waste-Management verwalten',
   'waste-management.scheduling.manage': 'Ausweichtermine im Waste-Management verwalten',
   'waste-management.import.execute': 'Waste-Importe ausführen',
+  'waste-management.export.execute': 'Waste-Exporte ausführen',
   'waste-management.seed.execute': 'Waste-Seeds ausführen',
   'waste-management.reset.execute': 'Waste-Resets ausführen',
   'waste-management.settings.manage': 'Waste-Datenquellen und technische Einstellungen verwalten',
@@ -95,7 +100,8 @@ const managedPermissionMetadata = [
   },
   ...studioModuleIamContracts.flatMap((contract) =>
     contract.permissionIds.flatMap((permissionKey) => {
-      const description = managedPermissionDescriptions[permissionKey as keyof typeof managedPermissionDescriptions];
+      const description =
+        managedPermissionDescriptions[permissionKey as keyof typeof managedPermissionDescriptions];
       return description || isRecordScopedPermission(permissionKey)
         ? [
             {
@@ -115,7 +121,8 @@ const managedPermissionMetadata = [
     })
   ),
   ...RECORD_SCOPED_PERMISSION_KEYS.filter(
-    (permissionKey) => !studioModuleIamContracts.some((contract) => contract.permissionIds.includes(permissionKey))
+    (permissionKey) =>
+      !studioModuleIamContracts.some((contract) => contract.permissionIds.includes(permissionKey))
   ).map(
     (permissionKey) =>
       ({
@@ -132,10 +139,12 @@ const managedPermissionMetadataByKey = new Map(
   managedPermissionMetadata.map((entry) => [entry.permissionKey, entry] as const)
 ) as ReadonlyMap<string, ManagedPermissionMetadata>;
 
-export const listManagedPermissionMetadata = (): readonly ManagedPermissionMetadata[] => managedPermissionMetadata;
+export const listManagedPermissionMetadata = (): readonly ManagedPermissionMetadata[] =>
+  managedPermissionMetadata;
 
-export const getManagedPermissionMetadata = (permissionKey: string): ManagedPermissionMetadata | undefined =>
-  managedPermissionMetadataByKey.get(permissionKey);
+export const getManagedPermissionMetadata = (
+  permissionKey: string
+): ManagedPermissionMetadata | undefined => managedPermissionMetadataByKey.get(permissionKey);
 
 export const isRootOnlyPermissionKey = (permissionKey: string): boolean =>
   ROOT_ONLY_PERMISSION_KEY_SET.has(permissionKey);

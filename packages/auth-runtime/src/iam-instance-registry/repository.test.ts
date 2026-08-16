@@ -17,7 +17,12 @@ const studioModuleIamRegistryMock = new Map([
     {
       moduleId: 'news',
       permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
-      systemRoles: [{ roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] }],
+      systemRoles: [
+        {
+          roleName: 'system_admin',
+          permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+        },
+      ],
     },
   ],
   [
@@ -45,6 +50,7 @@ const studioModuleIamRegistryMock = new Map([
         'waste-management.tours.manage',
         'waste-management.scheduling.manage',
         'waste-management.import.execute',
+        'waste-management.export.execute',
         'waste-management.seed.execute',
         'waste-management.reset.execute',
         'waste-management.settings.manage',
@@ -58,6 +64,7 @@ const studioModuleIamRegistryMock = new Map([
             'waste-management.tours.manage',
             'waste-management.scheduling.manage',
             'waste-management.import.execute',
+            'waste-management.export.execute',
             'waste-management.seed.execute',
             'waste-management.reset.execute',
             'waste-management.settings.manage',
@@ -125,8 +132,10 @@ vi.mock('../iam-account-management/encryption.js', () => ({
 }));
 
 vi.mock('../iam-account-management/shared-runtime.js', () => ({
-  resolveIdentityProviderForInstance: (...args: unknown[]) => resolveIdentityProviderForInstanceMock(...args),
-  isKeycloakIdentityProvider: (provider: unknown) => typeof provider === 'object' && provider !== null && 'getOidcClientByClientId' in provider,
+  resolveIdentityProviderForInstance: (...args: unknown[]) =>
+    resolveIdentityProviderForInstanceMock(...args),
+  isKeycloakIdentityProvider: (provider: unknown) =>
+    typeof provider === 'object' && provider !== null && 'getOidcClientByClientId' in provider,
   withInstanceScopedDb: vi.fn(),
 }));
 
@@ -149,7 +158,12 @@ describe('iam instance registry repository wiring', () => {
     expect(serviceRegistry?.get('news')).toEqual(
       expect.objectContaining({
         moduleId: 'news',
-        permissionIds: expect.arrayContaining(['news.read', 'news.create', 'news.update', 'news.delete']),
+        permissionIds: expect.arrayContaining([
+          'news.read',
+          'news.create',
+          'news.update',
+          'news.delete',
+        ]),
       })
     );
     expect(serviceRegistry?.get('media')).toEqual(
@@ -171,6 +185,7 @@ describe('iam instance registry repository wiring', () => {
         permissionIds: expect.arrayContaining([
           'waste-management.read',
           'waste-management.import.execute',
+          'waste-management.export.execute',
           'waste-management.seed.execute',
           'waste-management.reset.execute',
           'waste-management.settings.manage',

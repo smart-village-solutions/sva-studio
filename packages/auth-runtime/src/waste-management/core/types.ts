@@ -125,6 +125,9 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
     readonly data: StudioJobStartRequest;
     readonly rejectWhenActiveJobExists?: boolean;
   }) => Promise<Response>;
+  readonly storeWasteImportSource?: (
+    input: Readonly<{ instanceId: string; body: Uint8Array; contentType: string }>
+  ) => Promise<string>;
   readonly emitAuditEvent?: typeof emitAuthAuditEvent;
   readonly loadWasteAuditOverview?: (
     query: WasteManagementAuditQuery
@@ -164,7 +167,7 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   ) => readonly WasteManagementSettingsInterfaceOption[];
   readonly previewWasteLocationTourPickupDateImport?: (input: {
     readonly instanceId: string;
-    readonly sourceFormat: WasteManagementImportSourceFormat;
+    readonly sourceFormat: Exclude<WasteManagementImportSourceFormat, 'application/json' | 'application/zip'>;
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
   }) => Promise<WasteLocationTourPickupDateImportPreview>;

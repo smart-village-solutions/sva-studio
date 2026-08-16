@@ -120,6 +120,7 @@ export {
 } from './iam-media/core.js';
 export {
   deletePluginOperationJobHandler,
+  downloadPluginOperationArtifactHandler,
   cancelPluginOperationJobHandler,
   getPluginOperationJobHandler,
   listPluginOperationJobsHandler,

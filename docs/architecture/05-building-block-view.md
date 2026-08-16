@@ -791,3 +791,10 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `packages/iam-core/src/authorization-engine.ts` bleibt der einzige öffentliche Entscheidungsbaustein und orchestriert Instanz-Scope, RBAC-Matching, Permission-Scope und finale Antwort.
 - `packages/iam-core/src/authorization-abac.ts` normalisiert den bereits zusammengeführten Regelkontext und enthält kleine reine Evaluatoren für Pflichtkontext, Hierarchierestriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny.
 - `packages/iam-core/src/authorization-provenance.ts` leitet die von Engine und ABAC gemeinsam benötigte Rollen-/Gruppen- und Geo-Provenance ab. Beide internen Module werden nicht über den Package-Entry-Point exportiert.
+
+### Ergänzung 2026-08: Waste-Datenaustausch
+
+- `@sva/core` besitzt den versionierten, framework-agnostischen Vertrag für neun Waste-Datenprofile einschließlich Feldklassifikation, Defaults, Referenzen und Ausschlussgründen.
+- `@sva/plugin-sdk` registriert Exportprofile neben Job- und Importprofilen. `@sva/waste-management-contracts` besitzt die konkreten Import-, Export- und Jobdefinitionen.
+- Die hostseitige Waste-Runtime liest und schreibt ausschließlich die im Profil enthaltenen Fachfelder. E-Mail-Abonnements, Consent, Token und Outbox bleiben außerhalb dieses Bausteins.
+- Exportartefakte werden instanzgebunden im geschützten Media-Speicher abgelegt. Die Auth-Runtime prüft beim Download Job, Actor, Instanz, aktuelle Exportberechtigung, Ablauf, Größe und SHA-256 erneut.

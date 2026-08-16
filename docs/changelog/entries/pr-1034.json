@@ -1,0 +1,4 @@
+{
+  "prNumber": 1034,
+  "body": "Waste-Daten lassen sich über neun kanonische Profile einzeln als JSON oder gemeinsam als ZIP exportieren und in andere Instanzen importieren. Pflichtfelder, optionale Werte und sinnvolle Defaults werden explizit behandelt; E-Mail-Abonnements, ausgewählte Adressen, Consent-, Token- und Outbox-Daten bleiben aus Datenschutzgründen ausgeschlossen."
+}

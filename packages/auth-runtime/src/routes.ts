@@ -130,6 +130,8 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/settings/provisioning/retry'
   | '/api/v1/waste-management/tools/initialize'
   | '/api/v1/waste-management/tools/imports'
+  | '/api/v1/waste-management/tools/imports/upload'
+  | '/api/v1/waste-management/tools/exports'
   | '/api/v1/waste-management/tools/imports/preview'
   | '/api/v1/waste-management/tools/migrations'
   | '/api/v1/waste-management/tools/seed'
@@ -139,6 +141,7 @@ export type AuthRoutePath =
   | '/api/v1/waste-management/tools/reset'
   | '/api/v1/plugin-operations/jobs'
   | '/api/v1/plugin-operations/jobs/$jobId'
+  | '/api/v1/plugin-operations/jobs/$jobId/artifacts/$artifactId'
   | '/api/v1/plugin-operations/jobs/$jobId/cancel';
 
 export const authRoutePaths = [
@@ -272,6 +275,8 @@ export const authRoutePaths = [
   '/api/v1/waste-management/settings/provisioning/retry',
   '/api/v1/waste-management/tools/initialize',
   '/api/v1/waste-management/tools/imports',
+  '/api/v1/waste-management/tools/imports/upload',
+  '/api/v1/waste-management/tools/exports',
   '/api/v1/waste-management/tools/imports/preview',
   '/api/v1/waste-management/tools/migrations',
   '/api/v1/waste-management/tools/seed',
@@ -281,5 +286,6 @@ export const authRoutePaths = [
   '/api/v1/waste-management/tools/reset',
   '/api/v1/plugin-operations/jobs',
   '/api/v1/plugin-operations/jobs/$jobId',
+  '/api/v1/plugin-operations/jobs/$jobId/artifacts/$artifactId',
   '/api/v1/plugin-operations/jobs/$jobId/cancel',
 ] as const satisfies readonly AuthRoutePath[];

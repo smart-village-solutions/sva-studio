@@ -6,6 +6,7 @@ import {
 
 import { wastePostalCodeJobType } from './job-definitions.postal-code.js';
 
+export { createWasteManagementPluginExportProfiles } from './export-profile-definitions.js';
 export { createWasteManagementPluginImportProfiles } from './import-profile-definitions.js';
 
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
@@ -102,6 +103,26 @@ const wasteManagementPluginJobTypes = [
     },
     errors: {
       detailKeys: ['failed-step', 'source-row'],
+    },
+  },
+  {
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+    queue: wasteManagementOperationsContract.queueName,
+    displayName: 'Abfall-Daten exportieren',
+    progress: {
+      phaseKeys: [
+        'waste-management.export-preparation',
+        'waste-management.export-running',
+        'waste-management.completed',
+      ],
+      stepKeys: ['prepare-export', 'serialize-profiles', 'store-artifact', 'complete-operation'],
+    },
+    result: {
+      summaryKeys: ['durationMs'],
+      detailKeys: ['profileIds', 'targetFormat', 'recordCounts'],
+    },
+    errors: {
+      detailKeys: ['failed-step', 'profileId'],
     },
   },
   {

@@ -1,6 +1,26 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsENTools = createWasteManagementToolsTranslations({
+  exports: {
+    title: 'Export domain data',
+    description: 'Export one profile as JSON or multiple profiles as a ZIP package.',
+    profilesLabel: 'Data profiles',
+    formatLabel: 'Export format',
+    formats: { json: 'JSON (one profile)', zip: 'ZIP package' },
+    profiles: {
+      fractions: 'Fractions',
+      geographyCollectionLocations: 'Geography and collection locations',
+      recurrencePresets: 'Recurrence presets',
+      tours: 'Tours',
+      locationTourLinks: 'Collection location tour links',
+      tourAssignments: 'Tour assignments',
+      dateShifts: 'Date shifts',
+      holidayRules: 'Holiday rules',
+      portableSettings: 'Portable settings',
+    },
+    privacyNotice:
+      'Email subscriptions, recipient addresses, consent, tokens, and outbox data are never exported.',
+  },
   imports: {
     title: 'Imports',
     description: 'Import waste data step by step and review the result before starting the job.',
@@ -12,6 +32,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     sourceFormats: {
       csv: 'CSV',
       xlsx: 'Excel (.xlsx)',
+      json: 'JSON',
+      zip: 'ZIP package',
     },
     dryRunLabel: 'Preflight only (dry run)',
     templateColumns: 'Canonical import columns',
@@ -123,6 +145,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     confirmAction: 'Confirm reset',
   },
   actions: {
+    startExport: 'Start export',
     startImport: 'Start import',
     startMigrations: 'Start migrations',
     startSeed: 'Start seed',
@@ -146,6 +169,9 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     resetValidationError: 'Reset requires a valid confirmation token.',
   },
   meta: {
+    downloadsTitle: 'Protected export download',
+    downloadArtifact: 'Download {{fileName}}',
+    downloadExpiresAt: 'Download available until {{value}}.',
     lastJobTitle: 'Latest process',
     lastJobDescription: 'Most recently started technical process with its current status.',
     noJobYet: 'No technical waste job has been started yet.',

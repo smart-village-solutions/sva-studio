@@ -5,6 +5,7 @@ export type PluginManifestCapability =
   | 'audit'
   | 'jobs'
   | 'imports'
+  | 'exports'
   | 'server'
   | 'integrations';
 

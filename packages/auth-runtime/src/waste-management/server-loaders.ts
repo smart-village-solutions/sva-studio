@@ -1145,6 +1145,7 @@ const previewWasteLocationTourPickupDateImport = (input: {
         { instance_id: input.instanceId },
         async () =>
           buildWasteLocationTourPickupDateImportPreview(repository, {
+            instanceId: input.instanceId,
             sourceFormat: input.sourceFormat,
             blobRef: input.blobRef,
             delimiterOverride: input.delimiterOverride,

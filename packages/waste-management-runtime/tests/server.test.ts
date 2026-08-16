@@ -191,6 +191,7 @@ describe('waste management runtime handlers', () => {
     const methodNames = [
       ['provisionTenantDatabase', 'provision-tenant-database'],
       ['initializeDataSource', 'initialize-data-source'],
+      ['exportData', 'export-data'],
       ['seedData', 'seed-data'],
       ['resetData', 'reset-data'],
       ['syncMainserver', 'sync-mainserver'],
@@ -236,7 +237,7 @@ describe('waste management runtime handlers', () => {
         expect.objectContaining({ operation }),
         ...(methodName === 'syncMainserver'
           ? [expect.objectContaining({ reportProgress: expect.any(Function) })]
-          : methodName === 'provisionTenantDatabase'
+          : methodName === 'provisionTenantDatabase' || methodName === 'exportData'
             ? [{ jobId: 'job-1' }]
             : [])
       );
@@ -325,6 +326,14 @@ const createRuntime = (
       skippedRows: 0,
       errorCount: 0,
       preview: [],
+    },
+  }),
+  exportData: async () => ({
+    durationMs: 1,
+    details: {
+      profileIds: ['waste-management.fraktionen'],
+      targetFormat: 'application/json',
+      recordCounts: { 'waste-management.fraktionen': 1 },
     },
   }),
   seedData: async () => ({

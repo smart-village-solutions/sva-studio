@@ -4,7 +4,11 @@ import { createIsomorphicFn } from '@tanstack/react-start';
 import { isMockAuthRuntimeProfile, parseRuntimeProfile } from '@sva/core';
 import type { AppRouteFactory, RouteGuardUser } from '@sva/routing';
 
-import { hasActiveDevAuthSession, hasActiveDevAuthSessionCookie, isDevAuthAvailable } from './lib/dev-auth';
+import {
+  hasActiveDevAuthSession,
+  hasActiveDevAuthSessionCookie,
+  isDevAuthAvailable,
+} from './lib/dev-auth';
 import { fetchWithRequestTimeout } from './lib/iam-api';
 import { fetchAuthMeSingleFlight } from './lib/auth-me-singleflight';
 import { appRouteBindings } from './routing/app-route-bindings';
@@ -99,6 +103,7 @@ export const createMockRouteGuardUser = (): RouteGuardUser => ({
     'waste-management.tours.manage',
     'waste-management.scheduling.manage',
     'waste-management.import.execute',
+    'waste-management.export.execute',
     'waste-management.seed.execute',
     'waste-management.reset.execute',
     'waste-management.settings.manage',
@@ -132,7 +137,9 @@ const readRouteGuardPayloadUser = (payload: unknown): RouteGuardUserPayload['use
 };
 
 const readStringArray = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((entry: unknown): entry is string => typeof entry === 'string') : [];
+  Array.isArray(value)
+    ? value.filter((entry: unknown): entry is string => typeof entry === 'string')
+    : [];
 
 export const readRouteGuardUser = (payload: unknown): RouteGuardUser => {
   const user = readRouteGuardPayloadUser(payload);
@@ -175,7 +182,9 @@ const readActiveOrganizationId = (payload: unknown): string | undefined => {
     return undefined;
   }
   const organizationId = (data as { activeOrganizationId?: unknown }).activeOrganizationId;
-  return typeof organizationId === 'string' && organizationId.length > 0 ? organizationId : undefined;
+  return typeof organizationId === 'string' && organizationId.length > 0
+    ? organizationId
+    : undefined;
 };
 
 const readEffectivePermissionActions = (payload: unknown): readonly string[] | null => {
@@ -188,7 +197,11 @@ const readEffectivePermissionActions = (payload: unknown): readonly string[] | n
   }
   const actions: string[] = [];
   for (const permission of permissions) {
-    if (!permission || typeof permission !== 'object' || typeof (permission as { action?: unknown }).action !== 'string') {
+    if (
+      !permission ||
+      typeof permission !== 'object' ||
+      typeof (permission as { action?: unknown }).action !== 'string'
+    ) {
       return null;
     }
     actions.push((permission as { action: string }).action);
@@ -236,7 +249,10 @@ const loadScopedRouteGuardUser = async (
   }
 };
 
-const loadRouteGuardUserFromAuthMe = async (url: string, init?: RequestInit): Promise<RouteGuardUser | null> => {
+const loadRouteGuardUserFromAuthMe = async (
+  url: string,
+  init?: RequestInit
+): Promise<RouteGuardUser | null> => {
   const response = await fetchWithRequestTimeout(url, init, { timeoutMs: 5_000 });
 
   if (!response.ok) {
@@ -277,16 +293,16 @@ const getRouteGuardUser = createIsomorphicFn()
     }
     try {
       const result = await fetchAuthMeSingleFlight(() =>
-        fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, { timeoutMs: 5_000 })
+        fetchWithRequestTimeout(new URL('/auth/me', resolveBaseUrl()).toString(), undefined, {
+          timeoutMs: 5_000,
+        })
       );
       if (!result.ok) return null;
       const user = parseRouteGuardUser(result.payload);
       return user
-        ? await loadScopedRouteGuardUser(
-            user,
-            new URL('/auth/me', resolveBaseUrl()).toString(),
-            { credentials: 'include' }
-          )
+        ? await loadScopedRouteGuardUser(user, new URL('/auth/me', resolveBaseUrl()).toString(), {
+            credentials: 'include',
+          })
         : null;
     } catch {
       return null;
@@ -301,7 +317,9 @@ const materializeRoutes = <TFactories extends readonly AppRouteFactory[]>(factor
   // TanStack Router: createRootRoute() liefert einen konkreten Typ, der nicht
   // direkt mit dem generischen RootRoute-Parameter der Factories kompatibel ist.
   // Workaround bis TanStack Router dies nativ unterstützt.
-  factories.map((factory) => factory(rootRoute as unknown as RootRoute)) as MaterializedRoutes<TFactories>;
+  factories.map((factory) =>
+    factory(rootRoute as unknown as RootRoute)
+  ) as MaterializedRoutes<TFactories>;
 export const createRuntimeRouteTree = <TFactories extends readonly AppRouteFactory[]>(
   runtimeRouteFactories: TFactories
 ) => {

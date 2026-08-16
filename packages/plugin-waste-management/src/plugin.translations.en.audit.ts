@@ -28,6 +28,7 @@ export const wasteManagementPluginTranslationsENAudit = {
     globalDateShiftDeleted: 'Deleted global date shift',
     migrationsStarted: 'Started waste migration',
     importStarted: 'Started waste import',
+    exportStarted: 'Started waste export',
     seedStarted: 'Started waste seed',
     resetStarted: 'Started waste reset',
     mainserverSyncStarted: 'Started waste mainserver sync',

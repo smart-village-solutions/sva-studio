@@ -8,9 +8,21 @@ import type {
   IamRuntimeSafeDetails,
 } from './iam/account-management-contract.js';
 
-const studioJobStatuses = ['queued', 'running', 'retrying', 'succeeded', 'failed', 'cancelled'] as const;
+const studioJobStatuses = [
+  'queued',
+  'running',
+  'retrying',
+  'succeeded',
+  'failed',
+  'cancelled',
+] as const;
 const terminalStudioJobStatuses = ['succeeded', 'failed', 'cancelled'] as const;
-const studioJobErrorCategories = ['retryable', 'permanent', 'validation', 'external_dependency'] as const;
+const studioJobErrorCategories = [
+  'retryable',
+  'permanent',
+  'validation',
+  'external_dependency',
+] as const;
 const studioJobEventTypes = [
   'job.queued',
   'job.started',
@@ -99,9 +111,19 @@ export type StudioJobResultSummary = {
   readonly durationMs?: number;
 };
 
+export type StudioJobResultArtifact = {
+  readonly artifactId: string;
+  readonly contentType: string;
+  readonly fileName: string;
+  readonly sizeBytes: number;
+  readonly sha256: string;
+  readonly expiresAt: string;
+};
+
 export type StudioJobResult = {
   readonly summary?: StudioJobResultSummary;
   readonly plugin?: Readonly<Record<string, unknown>>;
+  readonly artifacts?: readonly StudioJobResultArtifact[];
 };
 
 export type StudioJobError = {

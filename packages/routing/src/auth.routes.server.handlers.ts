@@ -197,6 +197,12 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/imports': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
   },
+  '/api/v1/waste-management/tools/imports/upload': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.uploadImportSource),
+  },
+  '/api/v1/waste-management/tools/exports': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startExport),
+  },
   '/api/v1/waste-management/tools/imports/preview': {
     POST: routeHandler(
       authRuntimeRoutes.wasteManagementHandlers.previewLocationTourPickupDateImport
@@ -227,6 +233,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/plugin-operations/jobs/$jobId': {
     DELETE: routeHandler(authRuntimeRoutes.deletePluginOperationJobHandler),
     GET: routeHandler(authRuntimeRoutes.getPluginOperationJobHandler),
+  },
+  '/api/v1/plugin-operations/jobs/$jobId/artifacts/$artifactId': {
+    GET: routeHandler(authRuntimeRoutes.downloadPluginOperationArtifactHandler),
   },
   '/api/v1/plugin-operations/jobs/$jobId/cancel': {
     POST: routeHandler(authRuntimeRoutes.cancelPluginOperationJobHandler),

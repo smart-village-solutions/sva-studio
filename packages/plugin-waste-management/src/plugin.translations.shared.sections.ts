@@ -53,6 +53,15 @@ type WasteManagementLocationsWorkspaceCopy = Readonly<{
 }>;
 
 type WasteManagementToolsCopy = Readonly<{
+  exports: Readonly<{
+    title: string;
+    description: string;
+    profilesLabel: string;
+    formatLabel: string;
+    formats: Readonly<Record<string, string>>;
+    profiles: Readonly<Record<string, string>>;
+    privacyNotice: string;
+  }>;
   imports: Readonly<{
     title: string;
     description: string;
@@ -219,6 +228,7 @@ export const createWasteManagementToolsTranslations = <
 ) =>
   ({
     tools: {
+      exports: copy.exports,
       imports: copy.imports,
       migrations: copy.migrations,
       seed: copy.seed,

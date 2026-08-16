@@ -1,6 +1,7 @@
 import type { StudioJobProgress, WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
 import type {
   WasteManagementApplyMigrationsJobInput,
+  WasteManagementExportJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementMaterializeEmailRemindersJobInput,
@@ -63,6 +64,15 @@ export type WasteManagementOperationRuntime = {
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
+  }>;
+  readonly exportData: (
+    instanceId: string,
+    payload: WasteManagementExportJobInput,
+    context: { readonly jobId: string }
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+    readonly artifacts?: readonly import('@sva/plugin-sdk').StudioJobResultArtifact[];
   }>;
   readonly seedData: (
     instanceId: string,

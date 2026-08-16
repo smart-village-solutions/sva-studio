@@ -66,7 +66,7 @@ export const WasteToolsImportProfileCard = ({
           {pt('tools.imports.blobRefLabel')}
         </Button>
         {requiresPreview ? (
-          <Button type="button" variant="secondary" disabled={running || !importBlobRef.startsWith('data:')} onClick={onRunPreview}>
+          <Button type="button" variant="secondary" disabled={running || !importBlobRef.startsWith('plugin-operation-input:')} onClick={onRunPreview}>
             {pt('tools.actions.previewImport')}
           </Button>
         ) : null}
@@ -77,7 +77,7 @@ export const WasteToolsImportProfileCard = ({
         ) : null}
         <Button
           type="button"
-          disabled={running || !importBlobRef.startsWith('data:') || (requiresPreview && !previewReady)}
+          disabled={running || !importBlobRef.startsWith('plugin-operation-input:') || (requiresPreview && !previewReady)}
           onClick={onStartImport}
         >
           {running ? pt('tools.actions.starting') : pt('tools.actions.startImport')}

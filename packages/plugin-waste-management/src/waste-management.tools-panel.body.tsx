@@ -4,6 +4,7 @@ import { StatusNotice } from './waste-management.page.support.js';
 import { WasteToolsAdvancedSection } from './waste-management.tools.advanced-section.js';
 import { WasteToolsActionsSection } from './waste-management.tools.actions-section.js';
 import { WasteToolsHistory } from './waste-management.tools.history.js';
+import { WasteToolsExportSection } from './waste-management.tools.export-section.js';
 import { WasteToolsImportSection } from './waste-management.tools.import-section.js';
 import {
   createImportSelectionHandlers,
@@ -36,6 +37,7 @@ type WasteToolsPanelBodyProps = {
   readonly setDelimiterOverride: ReturnType<typeof useWasteToolsViewModel>['setDelimiterOverride'];
   readonly runPreview: ReturnType<typeof useWasteToolsViewModel>['runPreview'];
   readonly runImport: ReturnType<typeof useWasteToolsViewModel>['runImport'];
+  readonly runExport: ReturnType<typeof useWasteToolsViewModel>['runExport'];
   readonly runInitialize: ReturnType<typeof useWasteToolsViewModel>['runInitialize'];
   readonly migrationSchema: ReturnType<typeof useWasteToolsViewModel>['migrationSchema'];
   readonly migrationVersion: ReturnType<typeof useWasteToolsViewModel>['migrationVersion'];
@@ -52,6 +54,12 @@ type WasteToolsPanelBodyProps = {
 export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
   <div className="space-y-4">
     <StatusNotice message={props.message} />
+    {props.access.canRunExport ? (
+      <WasteToolsExportSection
+        running={props.runningAction !== null}
+        onStartExport={props.runExport}
+      />
+    ) : null}
     {props.access.canRunImport ? (
       <WasteToolsImportSection
         importCatalog={props.importCatalog}

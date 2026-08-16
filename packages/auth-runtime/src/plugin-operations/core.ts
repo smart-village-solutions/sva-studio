@@ -3,25 +3,32 @@ import { createMutationWorkflow, getWorkspaceContext } from '@sva/server-runtime
 import { z } from 'zod';
 
 import {
-  createApiError, parseRequestBody, requireIdempotencyKey,
+  createApiError,
+  parseRequestBody,
+  requireIdempotencyKey,
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { validateCsrf } from '../shared/request-security.js';
 import {
-  executeStartPluginOperationJob, reserveStartIdempotency, validateStartRequestData,
+  executeStartPluginOperationJob,
+  reserveStartIdempotency,
+  validateStartRequestData,
 } from './core.start.js';
 import {
   cancelPluginOperationJobHandler,
   deletePluginOperationJobHandler,
   getPluginOperationJobHandler,
   listPluginOperationJobsHandler,
-  requireActorInstanceId, requireMonitoringAccess,
+  requireActorInstanceId,
+  requireMonitoringAccess,
 } from './core.monitoring.js';
+import { downloadPluginOperationArtifactHandler } from './core.artifacts.js';
 
 export {
   cancelPluginOperationJobHandler,
   deletePluginOperationJobHandler,
+  downloadPluginOperationArtifactHandler,
   getPluginOperationJobHandler,
   listPluginOperationJobsHandler,
 };
@@ -69,7 +76,8 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
           actorAccountId: context.user.id,
         };
       },
-      authorize: async ({ context }) => (await requireMonitoringAccess(context, MONITORING_WRITE_ACTION)) ?? {},
+      authorize: async ({ context }) =>
+        (await requireMonitoringAccess(context, MONITORING_WRITE_ACTION)) ?? {},
       csrf: ({ request, requestId }) => validateCsrf(request, requestId) ?? undefined,
       idempotency: ({ request, requestId }) => {
         const idempotency = requireIdempotencyKey(request, requestId);
@@ -110,7 +118,12 @@ export const startPluginOperationJobHandler = async (request: Request): Promise<
         });
       },
       mapError: (_error, state) =>
-        createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht angelegt werden.', state.requestId),
+        createApiError(
+          503,
+          'database_unavailable',
+          'Der Plugin-Job konnte nicht angelegt werden.',
+          state.requestId
+        ),
       respond: (response) => response,
     })(request, ctx)
   );

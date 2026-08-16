@@ -309,6 +309,8 @@ export {
   wasteManagementOperationsContract,
 } from './public-api.js';
 
+export * from './data-exchange-public-api.js';
+
 export {
   hasContentLifecycleAccess,
   resolveContentLifecycleAction,

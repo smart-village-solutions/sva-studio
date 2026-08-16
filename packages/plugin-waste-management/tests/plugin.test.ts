@@ -47,7 +47,11 @@ describe('pluginWasteManagement contract', () => {
       },
     ]);
     expect(pluginWasteManagement.permissions).toEqual(wasteManagementPermissionDefinitions);
-    expect(pluginWasteManagement.permissions).toEqual([
+    expect(
+      pluginWasteManagement.permissions
+        .filter(({ id }) => id !== 'waste-management.export.execute')
+        .map(({ descriptionKey: _descriptionKey, ...permission }) => permission)
+    ).toEqual([
       { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
       {
         id: 'waste-management.master-data.manage',
@@ -78,6 +82,12 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.permissions.settingsManage.title',
       },
     ]);
+    expect(pluginWasteManagement.permissions).toContainEqual(
+      expect.objectContaining({
+        id: 'waste-management.export.execute',
+        titleKey: 'wasteManagement.permissions.exportExecute.title',
+      })
+    );
     expect(pluginWasteManagement.moduleIam).toEqual({
       moduleId: 'waste-management',
       permissionIds: [
@@ -86,6 +96,7 @@ describe('pluginWasteManagement contract', () => {
         'waste-management.tours.manage',
         'waste-management.scheduling.manage',
         'waste-management.import.execute',
+        'waste-management.export.execute',
         'waste-management.seed.execute',
         'waste-management.reset.execute',
         'waste-management.settings.manage',
@@ -99,6 +110,7 @@ describe('pluginWasteManagement contract', () => {
             'waste-management.tours.manage',
             'waste-management.scheduling.manage',
             'waste-management.import.execute',
+            'waste-management.export.execute',
             'waste-management.seed.execute',
             'waste-management.reset.execute',
             'waste-management.settings.manage',
@@ -184,6 +196,7 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.initialize-data-source',
       'waste-management.apply-migrations',
       'waste-management.import-data',
+      'waste-management.export-data',
       'waste-management.seed-data',
       'waste-management.reset-data',
       'waste-management.sync-mainserver',
@@ -192,7 +205,20 @@ describe('pluginWasteManagement contract', () => {
       'waste-management.materialize-email-reminders',
       'waste-management.process-email-reminder-outbox',
     ]);
-    expect(pluginWasteManagement.importProfiles).toEqual([
+    const legacyProfileIds = new Set([
+      'waste-management.geografie-abholorte',
+      'waste-management.touren',
+      'waste-management.ausweichtermine',
+      'waste-management.ortsbezogene-tourtermine',
+    ]);
+    expect(
+      pluginWasteManagement.importProfiles
+        ?.filter(({ profileId }) => legacyProfileIds.has(profileId))
+        .map(({ dataProfileId: _dataProfileId, sourceFormats, ...profile }) => ({
+          ...profile,
+          sourceFormats: sourceFormats.filter((format) => format !== 'application/json'),
+        }))
+    ).toEqual([
       {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
@@ -243,11 +269,29 @@ describe('pluginWasteManagement contract', () => {
         validation: { mode: 'preflight-and-commit' },
       },
     ]);
+    expect(pluginWasteManagement.importProfiles?.map(({ profileId }) => profileId)).toEqual([
+      'waste-management.fraktionen',
+      'waste-management.geografie-abholorte',
+      'waste-management.abstandspresets',
+      'waste-management.touren',
+      'waste-management.abholort-tour-zuordnungen',
+      'waste-management.tour-einsaetze',
+      'waste-management.ausweichtermine',
+      'waste-management.feiertagsregeln',
+      'waste-management.portable-einstellungen',
+      'waste-management.datenpaket',
+      'waste-management.ortsbezogene-tourtermine',
+    ]);
+    expect(pluginWasteManagement.exportProfiles).toHaveLength(9);
   });
 
   it('registers the canonical waste audit events for settings, master data and technical tools', () => {
     expect(pluginWasteManagement.auditEvents).toEqual(wasteManagementAuditEventDefinitions);
-    expect(pluginWasteManagement.auditEvents).toEqual([
+    expect(
+      pluginWasteManagement.auditEvents?.filter(
+        ({ eventType }) => eventType !== 'waste-management.export.started'
+      )
+    ).toEqual([
       {
         eventType: 'waste-management.settings.updated',
         titleKey: 'wasteManagement.audit.settingsUpdated',
@@ -370,5 +414,9 @@ describe('pluginWasteManagement contract', () => {
         titleKey: 'wasteManagement.audit.dataSourceInitialized',
       },
     ]);
+    expect(pluginWasteManagement.auditEvents).toContainEqual({
+      eventType: 'waste-management.export.started',
+      titleKey: 'wasteManagement.audit.exportStarted',
+    });
   });
 });

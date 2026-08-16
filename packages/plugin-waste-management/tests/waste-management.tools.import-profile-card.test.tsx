@@ -81,7 +81,7 @@ describe('WasteToolsImportProfileCard', () => {
         profile={previewProfile}
         sourceFormat="text/csv"
         running={false}
-        importBlobRef="data:text/csv;base64,ZmFrZQ=="
+        importBlobRef="plugin-operation-input:00000000-0000-4000-8000-000000000001"
         previewResult={{
           detectedDelimiter: '\t',
           delimiter: ';',

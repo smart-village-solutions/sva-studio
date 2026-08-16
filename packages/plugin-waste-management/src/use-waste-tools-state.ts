@@ -54,7 +54,7 @@ export const useWasteMaintenanceState = () => {
   const [resetToken, setResetToken] = useState('');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [runningAction, setRunningAction] = useState<
-    'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null
+    'export' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null
   >(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [lastJob, setLastJob] = useState<StudioJobResponse['data'] | null>(null);

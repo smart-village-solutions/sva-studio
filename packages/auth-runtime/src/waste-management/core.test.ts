@@ -3095,7 +3095,7 @@ describe('waste-management auth runtime handlers', () => {
         body: JSON.stringify({
           importProfileId: 'waste-management.geografie-abholorte',
           sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          blobRef: 'blob:waste/imports/catalog.csv',
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
           dryRun: true,
         }),
       }),
@@ -3119,7 +3119,7 @@ describe('waste-management auth runtime handlers', () => {
           importProfileId: 'waste-management.geografie-abholorte',
           sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           dryRun: true,
-          blobRef: 'blob:waste/imports/catalog.csv',
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
         },
         jobTypeId: 'waste-management.import-data',
         pluginId: 'waste-management',

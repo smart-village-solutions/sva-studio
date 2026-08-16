@@ -113,6 +113,75 @@ const actorWithoutInstance: AuthenticatedRequestContext = {
 };
 
 describe('waste-management operation handlers', () => {
+  it('stores import uploads before queuing and returns only an opaque reference', async () => {
+    const storeWasteImportSource = vi.fn(async () =>
+      'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+    );
+    const response = await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
+      new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/zip',
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new Uint8Array([1, 2, 3]),
+      }),
+      actor,
+      { ...createDeps(), storeWasteImportSource }
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toMatchObject({
+      data: {
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
+        sizeBytes: 3,
+      },
+    });
+    expect(storeWasteImportSource).toHaveBeenCalledWith({
+      instanceId: 'tenant-a',
+      body: new Uint8Array([1, 2, 3]),
+      contentType: 'application/zip',
+    });
+  });
+
+  it('rejects oversized import uploads before writing storage', async () => {
+    const storeWasteImportSource = vi.fn();
+    const response = await wasteManagementOperationHandlers.uploadWasteManagementImportSourceInternal(
+      new Request('https://studio.test/api/v1/waste-management/tools/imports/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/zip',
+          'Content-Length': String(16 * 1024 * 1024 + 1),
+          Origin: 'https://studio.test',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new Uint8Array([1]),
+      }),
+      actor,
+      { ...createDeps(), storeWasteImportSource }
+    );
+
+    expect(response.status).toBe(413);
+    expect(storeWasteImportSource).not.toHaveBeenCalled();
+  });
+
+  it('rejects inline file contents in job payloads', async () => {
+    const startPluginOperationJob = vi.fn();
+    const response = await wasteManagementOperationHandlers.startWasteManagementImportInternal(
+      createImportRequest({
+        importProfileId: 'waste-management.geografie-abholorte',
+        sourceFormat: 'text/csv',
+        blobRef: 'data:text/csv;base64,ZmFrZQ==',
+      }),
+      actor,
+      { ...createDeps(), startPluginOperationJob }
+    );
+
+    expect(response.status).toBe(400);
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       label: 'initialize returns forbidden when the dedicated permission is missing',
@@ -264,7 +333,7 @@ describe('waste-management operation handlers', () => {
           {
             importProfileId: 'waste-management.geografie-abholorte',
             sourceFormat: 'text/csv',
-            blobRef: 'blob:import',
+            blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
           },
           {
             'Idempotency-Key': '',
@@ -313,7 +382,7 @@ describe('waste-management operation handlers', () => {
       createImportRequest({
         importProfileId: 'waste-management.unknown-profile',
         sourceFormat: 'text/csv',
-        blobRef: 'blob:import',
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
       }),
       actor,
       {
@@ -329,6 +398,34 @@ describe('waste-management operation handlers', () => {
         message: expect.stringContaining('Unbekanntes Waste-Importprofil'),
       },
       requestId: 'req-test',
+    });
+    expect(startPluginOperationJob).not.toHaveBeenCalled();
+  });
+
+  it('rejects unknown export profile ids as invalid requests before starting a job', async () => {
+    const startPluginOperationJob = vi.fn();
+    const response = await wasteManagementOperationHandlers.startWasteManagementExportInternal(
+      createToolRequest('https://studio.test/api/v1/waste-management/tools/exports', {
+        profileIds: ['waste-management.unknown-profile'],
+        targetFormat: 'application/json',
+      }),
+      actor,
+      {
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [{
+            action: 'waste-management.export.execute',
+            resourceType: 'waste-management',
+          }],
+        })),
+        startPluginOperationJob,
+      }
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'invalid_request' },
     });
     expect(startPluginOperationJob).not.toHaveBeenCalled();
   });
@@ -537,7 +634,7 @@ describe('waste-management operation handlers', () => {
       createImportRequest({
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'text/csv',
-        blobRef: 'blob:import',
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
       }),
       actor,
       {
@@ -567,7 +664,7 @@ describe('waste-management operation handlers', () => {
       createImportRequest({
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        blobRef: 'blob:import',
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
       }),
       actor,
       {
@@ -593,7 +690,7 @@ describe('waste-management operation handlers', () => {
       createImportRequest({
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'application/unknown',
-        blobRef: 'blob:import',
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
       }),
       actor,
       {
@@ -901,7 +998,7 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
           importProfileId: 'waste-management.ortsbezogene-tourtermine',
           sourceFormat: 'text/csv',
-          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
           delimiterOverride: ';',
         }),
         actor,
@@ -914,7 +1011,7 @@ describe('waste-management operation handlers', () => {
     expect(previewWasteLocationTourPickupDateImport).toHaveBeenCalledWith({
       instanceId: 'tenant-a',
       sourceFormat: 'text/csv',
-      blobRef: 'data:text/csv;base64,ZmFrZQ==',
+      blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
       delimiterOverride: ';',
     });
     expect(response.status).toBe(200);
@@ -933,7 +1030,7 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
           importProfileId: 'waste-management.ortsbezogene-tourtermine',
           sourceFormat: 'text/csv',
-          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
         }),
         actor,
         createDeps()
@@ -952,7 +1049,7 @@ describe('waste-management operation handlers', () => {
         createToolRequest('https://studio.test/api/v1/waste-management/tools/imports/preview', {
           importProfileId: 'waste-management.ortsbezogene-tourtermine',
           sourceFormat: 'text/csv',
-          blobRef: 'data:text/csv;base64,ZmFrZQ==',
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
         }),
         actor,
         {

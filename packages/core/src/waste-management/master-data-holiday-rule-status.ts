@@ -1,5 +1,10 @@
-export type WasteHolidayRuleSourceStatus = 'confirmed' | 'not-confirmed';
+export const wasteHolidayRuleSourceStatuses = ['confirmed', 'not-confirmed'] as const;
+export const wasteHolidayRuleConfigurationStatuses = ['draft', 'configured'] as const;
+export const wasteHolidayRuleConflictStatuses = ['none', 'manual-global-rule'] as const;
 
-export type WasteHolidayRuleConfigurationStatus = 'draft' | 'configured';
+export type WasteHolidayRuleSourceStatus = (typeof wasteHolidayRuleSourceStatuses)[number];
 
-export type WasteHolidayRuleConflictStatus = 'none' | 'manual-global-rule';
+export type WasteHolidayRuleConfigurationStatus =
+  (typeof wasteHolidayRuleConfigurationStatuses)[number];
+
+export type WasteHolidayRuleConflictStatus = (typeof wasteHolidayRuleConflictStatuses)[number];

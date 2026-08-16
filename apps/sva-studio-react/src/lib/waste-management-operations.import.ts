@@ -149,6 +149,7 @@ const decodeTextSource = (source: Uint8Array): string => new TextDecoder('utf-8'
 export const parseImportRows = async (
   deps: WasteOperationRuntimeDeps,
   input: {
+    readonly instanceId?: string;
     readonly profileId: WasteManagementImportProfileId;
     readonly sourceFormat: WasteManagementImportSourceFormat;
     readonly blobRef?: string;
@@ -157,7 +158,9 @@ export const parseImportRows = async (
   if (!input.blobRef) throw new Error('missing_blob_ref');
   const catalogEntry = getWasteManagementImportCatalogEntry(input.profileId);
   if (!catalogEntry) throw new Error(`unknown_import_profile:${input.profileId}`);
-  const source = await (deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
+  const source = deps.readBinarySource
+    ? await deps.readBinarySource(input.blobRef)
+    : await defaultReadBinarySource(input.blobRef, input.instanceId);
   const worksheet = await readWorkbookWorksheet(source, input.sourceFormat);
   const rows = parseImportWorksheetRows(worksheet);
   const headers = rows[0] ? Object.keys(rows[0]) : [];
@@ -168,6 +171,7 @@ export const parseImportRows = async (
 export const parseLocationTourPickupDateImport = async (
   deps: WasteOperationRuntimeDeps,
   input: {
+    readonly instanceId?: string;
     readonly sourceFormat: WasteManagementImportSourceFormat;
     readonly blobRef?: string;
     readonly delimiterOverride?: ';' | ',' | '\t' | '|';
@@ -179,7 +183,9 @@ export const parseLocationTourPickupDateImport = async (
   if (input.sourceFormat !== 'text/csv') {
     throw new Error(`unsupported_import_source_format:${input.sourceFormat}`);
   }
-  const source = await (deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
+  const source = deps.readBinarySource
+    ? await deps.readBinarySource(input.blobRef)
+    : await defaultReadBinarySource(input.blobRef, input.instanceId);
   return parseWasteLocationTourPickupDateCsv({
     text: decodeTextSource(source),
     delimiterOverride: input.delimiterOverride,

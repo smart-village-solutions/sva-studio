@@ -8,6 +8,8 @@ import type {
   WasteHolidayStateCode,
   WasteLocationTourPickupDateImportPreview,
   WasteManagementCsvDelimiter,
+  WasteManagementDataProfileId,
+  WasteManagementExportTargetFormat,
   WasteManagementImportSourceFormat,
   WasteTourDateShiftFollowUpMode,
   WasteTourRecurrence,
@@ -155,6 +157,11 @@ export type StartWasteManagementImportInput = Readonly<{
   blobRef: string;
   dryRun?: boolean;
   delimiterOverride?: WasteManagementCsvDelimiter;
+}>;
+
+export type StartWasteManagementExportInput = Readonly<{
+  profileIds: readonly WasteManagementDataProfileId[];
+  targetFormat: WasteManagementExportTargetFormat;
 }>;
 
 export type PreviewWasteLocationTourPickupDateImportInput = Readonly<{

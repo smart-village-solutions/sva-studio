@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToolsImportSection } from '../src/waste-management.tools.import-section.js';
-import { readFileAsDataUrl } from '../src/waste-management.page.support.js';
+import { uploadWasteManagementImportSource } from '../src/waste-management.api.js';
 import {
   createImportFileChangeHandler,
   isPreviewRequiredImportProfile,
@@ -17,9 +17,15 @@ import {
   transitionToReachableStep,
 } from '../src/waste-management.tools.import-wizard-state.js';
 
-const { downloadImportTemplateMock, downloadImportPreviewErrorsMock } = vi.hoisted(() => ({
+const { downloadImportTemplateMock, downloadImportPreviewErrorsMock, uploadImportSourceMock } = vi.hoisted(() => ({
   downloadImportTemplateMock: vi.fn(),
   downloadImportPreviewErrorsMock: vi.fn(),
+  uploadImportSourceMock: vi.fn(async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'),
+}));
+
+vi.mock('../src/waste-management.api.js', async () => ({
+  ...(await vi.importActual<typeof import('../src/waste-management.api.js')>('../src/waste-management.api.js')),
+  uploadWasteManagementImportSource: uploadImportSourceMock,
 }));
 
 vi.mock('@sva/plugin-sdk', () => ({
@@ -39,7 +45,6 @@ vi.mock('../src/waste-management.page.support.js', async () => {
 
   return {
     ...actual,
-    readFileAsDataUrl: vi.fn(async (file: File) => `data:${file.type};base64,ZmFrZQ==`),
     downloadImportTemplate: downloadImportTemplateMock,
     downloadImportPreviewErrors: downloadImportPreviewErrorsMock,
   };
@@ -200,8 +205,8 @@ describe('WasteToolsImportSection', () => {
     expect(dryRunCheckbox.checked).toBe(true);
   });
 
-  it('handles failed file reads without triggering the preview callback', async () => {
-    vi.mocked(readFileAsDataUrl).mockRejectedValueOnce(new Error('read failed'));
+  it('handles failed file uploads without triggering the preview callback', async () => {
+    vi.mocked(uploadWasteManagementImportSource).mockRejectedValueOnce(new Error('upload failed'));
 
     const { callbacks } = renderImportSection();
     fireEvent.click(screen.getByRole('button', { name: 'tools.imports.wizard.actions.continue' }));
@@ -218,7 +223,7 @@ describe('WasteToolsImportSection', () => {
     });
 
     await waitFor(() => {
-      expect(vi.mocked(readFileAsDataUrl)).toHaveBeenCalled();
+      expect(vi.mocked(uploadWasteManagementImportSource)).toHaveBeenCalled();
     });
     expect(callbacks.onRunPreview).not.toHaveBeenCalled();
   });
@@ -598,7 +603,7 @@ describe('WasteToolsImportSection', () => {
     const onAfterChange = vi.fn();
     const handler = createImportFileChangeHandler({
       onImportBlobRefChange,
-      readFileAsDataUrl: vi.fn(async () => 'data:text/csv;base64,ZmFrZQ=='),
+      uploadFile: vi.fn(async () => 'plugin-operation-input:00000000-0000-4000-8000-000000000001'),
       onAfterChange,
     });
 
@@ -609,13 +614,15 @@ describe('WasteToolsImportSection', () => {
     } as React.ChangeEvent<HTMLInputElement>);
 
     await waitFor(() => {
-      expect(onImportBlobRefChange).toHaveBeenCalledWith('data:text/csv;base64,ZmFrZQ==');
+      expect(onImportBlobRefChange).toHaveBeenCalledWith(
+        'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+      );
     });
     expect(onAfterChange).toHaveBeenCalledTimes(1);
 
     const noFileHandler = createImportFileChangeHandler({
       onImportBlobRefChange,
-      readFileAsDataUrl: vi.fn(async () => 'ignored'),
+      uploadFile: vi.fn(async () => 'ignored'),
       onAfterChange,
     });
     noFileHandler({ target: { files: [] } } as React.ChangeEvent<HTMLInputElement>);

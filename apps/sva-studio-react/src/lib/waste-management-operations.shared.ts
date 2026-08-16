@@ -8,9 +8,7 @@ import {
   loadDefaultExternalInterfaceRecord,
   loadWasteTenantProvisioningRecord,
 } from '@sva/data-repositories/server';
-import {
-  findSelectedWasteManagementInterfaceRecord,
-} from '@sva/core';
+import { findSelectedWasteManagementInterfaceRecord } from '@sva/core';
 import type {
   ExternalInterfaceRecord,
   WasteCustomTourDate,
@@ -20,10 +18,8 @@ import type {
   WasteTourRecurrence,
 } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
-import {
-  resolveWasteDataSource,
-  type ResolvedWasteDataSource,
-} from '@sva/server-runtime';
+import { readPluginOperationInput } from '@sva/auth-runtime/server';
+import { resolveWasteDataSource, type ResolvedWasteDataSource } from '@sva/server-runtime';
 import { Pool } from 'pg';
 
 import type {
@@ -65,12 +61,17 @@ export const quoteIdentifier = (value: string): string => {
 };
 
 export const createSqlExecutor = (client: {
-  query: <TRow = Record<string, unknown>>(text: string, values?: readonly unknown[]) => Promise<{
+  query: <TRow = Record<string, unknown>>(
+    text: string,
+    values?: readonly unknown[]
+  ) => Promise<{
     readonly rowCount: number | null;
     readonly rows: readonly TRow[];
   }>;
 }): SqlExecutor => ({
-  async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+  async execute<TRow = Record<string, unknown>>(
+    statement: SqlStatement
+  ): Promise<SqlExecutionResult<TRow>> {
     const result = await client.query<TRow>(statement.text, statement.values);
     return {
       rowCount: result.rowCount ?? 0,
@@ -106,7 +107,9 @@ export const parseDelimitedStringArray = (value: string | undefined): readonly s
     .filter((entry) => entry.length > 0);
 };
 
-export const parseCustomDates = (value: string | undefined): readonly WasteCustomTourDate[] | undefined => {
+export const parseCustomDates = (
+  value: string | undefined
+): readonly WasteCustomTourDate[] | undefined => {
   const entries = parseDelimitedStringArray(value);
   return entries.length > 0 ? entries.map((date) => ({ date })) : undefined;
 };
@@ -175,7 +178,14 @@ export const parseFollowUpMode = (
   return trimmed;
 };
 
-export const defaultReadBinarySource = async (blobRef: string): Promise<Uint8Array> => {
+export const defaultReadBinarySource = async (
+  blobRef: string,
+  instanceId?: string
+): Promise<Uint8Array> => {
+  if (blobRef.startsWith('plugin-operation-input:')) {
+    if (!instanceId) throw new Error('missing_plugin_operation_input_instance');
+    return (await readPluginOperationInput({ instanceId, blobRef })).body;
+  }
   if (blobRef.startsWith('data:')) {
     const separatorIndex = blobRef.indexOf(',');
     if (separatorIndex < 0) {
@@ -201,16 +211,25 @@ export const defaultCreatePool = (connectionString: string): WasteOperationSqlPo
     connectionTimeoutMillis: 5_000,
   });
 
-const loadSelectedWasteInterfaceRecord = async (
+export const loadSelectedWasteInterfaceRecord = async (
   deps: WasteOperationRuntimeDeps,
   instanceId: string
 ): Promise<ExternalInterfaceRecord | null> => {
   if (!deps.listInterfaceRecords) {
-    return await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'postgresql');
+    return await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(
+      instanceId,
+      'postgresql'
+    );
   }
 
   const records = await deps.listInterfaceRecords(instanceId);
-  return findSelectedWasteManagementInterfaceRecord(records) ?? (await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(instanceId, 'postgresql'));
+  return (
+    findSelectedWasteManagementInterfaceRecord(records) ??
+    (await (deps.loadDefaultInterfaceRecord ?? loadDefaultExternalInterfaceRecord)(
+      instanceId,
+      'postgresql'
+    ))
+  );
 };
 
 export const resolveRuntimeDataSource = async (
@@ -221,7 +240,8 @@ export const resolveRuntimeDataSource = async (
     instanceId,
     loadDefaultInterface: async () => await loadSelectedWasteInterfaceRecord(deps, instanceId),
     loadProvisioning: deps.loadProvisioning ?? loadWasteTenantProvisioningRecord,
-    revealSecret: deps.revealSecret ?? ((ciphertext, aad) => revealField(ciphertext, aad) ?? undefined),
+    revealSecret:
+      deps.revealSecret ?? ((ciphertext, aad) => revealField(ciphertext, aad) ?? undefined),
   });
 
 export const setWasteSearchPath = async (client: SqlClient, schemaName: string): Promise<void> => {
@@ -253,7 +273,10 @@ export const withWasteClient = async <T>(
   }
 };
 
-export const buildOperationSummary = (startedAt: number, details: Record<string, unknown>): OperationSummary => ({
+export const buildOperationSummary = (
+  startedAt: number,
+  details: Record<string, unknown>
+): OperationSummary => ({
   durationMs: Math.max(1, Date.now() - startedAt),
   details,
 });

@@ -255,6 +255,8 @@ const authServerMocks = vi.hoisted(() => {
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
+      uploadImportSource: vi.fn(async () => response('uploadWasteManagementImportSourceHandler')),
+      startExport: vi.fn(async () => response('startWasteManagementExportHandler')),
       previewLocationTourPickupDateImport: vi.fn(async () =>
         response('previewLocationTourPickupDateImportHandler')
       ),
@@ -355,6 +357,9 @@ const authServerMocks = vi.hoisted(() => {
     listPluginOperationJobsHandler: vi.fn(async () => response('listPluginOperationJobsHandler')),
     startPluginOperationJobHandler: vi.fn(async () => response('startPluginOperationJobHandler')),
     getPluginOperationJobHandler: vi.fn(async () => response('getPluginOperationJobHandler')),
+    downloadPluginOperationArtifactHandler: vi.fn(async () =>
+      response('downloadPluginOperationArtifactHandler')
+    ),
     deletePluginOperationJobHandler: vi.fn(async () => response('deletePluginOperationJobHandler')),
     cancelPluginOperationJobHandler: vi.fn(async () => response('cancelPluginOperationJobHandler')),
   };
@@ -471,6 +476,9 @@ describe('auth.routes.server', () => {
     const createHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs');
     const detailHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId');
     const cancelHandlers = resolveAuthHandlers('/api/v1/plugin-operations/jobs/$jobId/cancel');
+    const artifactHandlers = resolveAuthHandlers(
+      '/api/v1/plugin-operations/jobs/$jobId/artifacts/$artifactId'
+    );
     const authorizePerformanceHandlers = resolveAuthHandlers('/api/v1/iam/authorize-performance');
 
     expect(createHandlers?.GET).toBeDefined();
@@ -478,6 +486,7 @@ describe('auth.routes.server', () => {
     expect(detailHandlers?.GET).toBeDefined();
     expect(detailHandlers?.DELETE).toBeDefined();
     expect(cancelHandlers?.POST).toBeDefined();
+    expect(artifactHandlers?.GET).toBeDefined();
     expect(authorizePerformanceHandlers?.GET).toBeDefined();
     expect(authorizePerformanceHandlers?.POST).toBeDefined();
 
@@ -486,6 +495,7 @@ describe('auth.routes.server', () => {
     const get = detailHandlers?.GET;
     const remove = detailHandlers?.DELETE;
     const cancel = cancelHandlers?.POST;
+    const downloadArtifact = artifactHandlers?.GET;
     const authorizePerformanceGet = authorizePerformanceHandlers?.GET;
     const authorizePerformancePost = authorizePerformanceHandlers?.POST;
 
@@ -495,6 +505,7 @@ describe('auth.routes.server', () => {
       !get ||
       !remove ||
       !cancel ||
+      !downloadArtifact ||
       !authorizePerformanceGet ||
       !authorizePerformancePost
     ) {
@@ -522,6 +533,12 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await downloadArtifact({
+      request: new Request(
+        'http://localhost/api/v1/plugin-operations/jobs/job-1/artifacts/artifact-1',
+        { method: 'GET' }
+      ),
+    });
     await authorizePerformanceGet({
       request: new Request('http://localhost/api/v1/iam/authorize-performance', { method: 'GET' }),
     });
@@ -534,6 +551,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.getPluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.deletePluginOperationJobHandler).toHaveBeenCalled();
     expect(authServerMocks.cancelPluginOperationJobHandler).toHaveBeenCalled();
+    expect(authServerMocks.downloadPluginOperationArtifactHandler).toHaveBeenCalled();
     expect(authServerMocks.getLatestAuthorizePerformanceRunHandler).toHaveBeenCalled();
     expect(authServerMocks.startAuthorizePerformanceRunHandler).toHaveBeenCalled();
   });
@@ -651,6 +669,10 @@ describe('auth.routes.server', () => {
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
+    const importUploadHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/imports/upload'
+    );
+    const exportHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/exports');
     const importPreviewHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/imports/preview'
     );
@@ -925,6 +947,16 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await importUploadHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports/upload', {
+        method: 'POST',
+      }),
+    });
+    await exportHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/exports', {
+        method: 'POST',
+      }),
+    });
     await importPreviewHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/imports/preview', {
         method: 'POST',
@@ -998,6 +1030,8 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.uploadImportSource).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startExport).toHaveBeenCalled();
     expect(
       authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport
     ).toHaveBeenCalled();

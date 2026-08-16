@@ -1,6 +1,8 @@
 import type {
   StudioJobProgress,
+  StudioJobResultArtifact,
   WasteManagementApplyMigrationsJobInput,
+  WasteManagementExportJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementMaterializeEmailRemindersJobInput,
@@ -18,6 +20,7 @@ import type { MailDispatchMessage } from '@sva/mail-runtime';
 import type {
   loadDefaultExternalInterfaceRecord,
   listExternalInterfaceRecords,
+  saveExternalInterfaceRecord,
 } from '@sva/data-repositories/server';
 import type { loadWasteTenantProvisioningRecord } from '@sva/data-repositories/server';
 
@@ -41,6 +44,7 @@ export type WasteOperationRuntimeDeps = {
   readonly now?: () => Date;
   readonly loadDefaultInterfaceRecord?: typeof loadDefaultExternalInterfaceRecord;
   readonly listInterfaceRecords?: typeof listExternalInterfaceRecords;
+  readonly saveInterfaceRecord?: typeof saveExternalInterfaceRecord;
   readonly loadProvisioning?: typeof loadWasteTenantProvisioningRecord;
   readonly revealSecret?: (
     ciphertext: string | null | undefined,
@@ -49,6 +53,14 @@ export type WasteOperationRuntimeDeps = {
   readonly protectSecret?: (plaintext: string, aad: string) => string | null;
   readonly createPool?: (connectionString: string) => WasteOperationSqlPool;
   readonly readBinarySource?: (blobRef: string) => Promise<Uint8Array>;
+  readonly storeJobArtifact?: (
+    input: Readonly<{
+      instanceId: string;
+      body: Uint8Array;
+      contentType: string;
+      fileName: string;
+    }>
+  ) => Promise<StudioJobResultArtifact>;
   readonly dispatchMail?: (input: {
     readonly instanceId: string;
     readonly transport: MailTransportConfig;
@@ -78,6 +90,7 @@ export type WasteOperationRuntimeDeps = {
 export type OperationSummary = {
   readonly durationMs: number;
   readonly details: Record<string, unknown>;
+  readonly artifacts?: readonly StudioJobResultArtifact[];
 };
 
 export type WasteOperationProgressReporter = {
@@ -102,6 +115,11 @@ export type WasteManagementOperationRuntime = {
     instanceId: string,
     input: WasteManagementImportJobInput,
     progressReporter?: WasteOperationProgressReporter
+  ) => Promise<OperationSummary>;
+  exportData: (
+    instanceId: string,
+    input: WasteManagementExportJobInput,
+    context: { readonly jobId: string }
   ) => Promise<OperationSummary>;
   seedData: (instanceId: string, input: WasteManagementSeedJobInput) => Promise<OperationSummary>;
   syncMainserver: (

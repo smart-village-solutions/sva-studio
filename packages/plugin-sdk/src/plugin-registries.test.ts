@@ -7,6 +7,7 @@ import {
   createPluginActionRegistry,
   createPluginAuditEventRegistry,
   createPluginExternalInterfaceTypeRegistry,
+  createPluginExportProfileRegistry,
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
   createPluginModuleIamRegistry,
@@ -18,6 +19,7 @@ import {
   definePluginAdminResources,
   definePluginAuditEvents,
   definePluginExternalInterfaceTypes,
+  definePluginExportProfiles,
   definePluginImportProfiles,
   definePluginJobTypes,
   definePluginModuleIamContract,
@@ -30,6 +32,7 @@ import {
   mergePluginAuditEventDefinitions,
   mergePluginContentTypes,
   mergePluginExternalInterfaceTypes,
+  mergePluginExportProfiles,
   mergePluginImportProfiles,
   mergePluginJobTypes,
   mergePluginModuleIamContracts,
@@ -207,6 +210,18 @@ const newsPlugin: PluginDefinition = {
       validation: {
         mode: 'preflight-and-commit',
       },
+    },
+  ]),
+  exportProfiles: definePluginExportProfiles('news', [
+    {
+      profileId: 'news.article-export',
+      dataProfileId: 'news.articles',
+      jobTypeId: 'news.import-articles',
+      displayName: 'Article export',
+      targetFormats: ['application/json'],
+      schemaVersion: '1',
+      schemaStrategy: 'json-schema',
+      mappingStrategy: 'field-map',
     },
   ]),
   externalInterfaceTypes: definePluginExternalInterfaceTypes('news', [
@@ -698,6 +713,7 @@ describe('plugin registries', () => {
     expect(mergePluginModuleIamContracts([...registry.values()])).toHaveLength(1);
     expect(mergePluginJobTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginImportProfiles([...registry.values()])).toHaveLength(1);
+    expect(mergePluginExportProfiles([...registry.values()])).toHaveLength(1);
     expect(mergePluginExternalInterfaceTypes([...registry.values()])).toHaveLength(1);
     expect(mergePluginTranslations([...registry.values()]).de).toEqual({
       news: {
@@ -707,7 +723,7 @@ describe('plugin registries', () => {
     });
   });
 
-  it('persists normalized job types and import profiles in the plugin registry snapshot', () => {
+  it('persists normalized job types and data profiles in the plugin registry snapshot', () => {
     const registry = createPluginRegistry([
       {
         ...newsPlugin,
@@ -732,6 +748,18 @@ describe('plugin registries', () => {
             },
           },
         ],
+        exportProfiles: [
+          {
+            profileId: ' news.article-export ',
+            dataProfileId: ' news.articles ',
+            jobTypeId: ' news.import-articles ',
+            displayName: ' Article export ',
+            targetFormats: [' application/json '],
+            schemaVersion: ' 1.0.0 ',
+            schemaStrategy: ' news.schema ',
+            mappingStrategy: ' news.mapping ',
+          },
+        ],
       },
     ]);
 
@@ -752,6 +780,14 @@ describe('plugin registries', () => {
         mappingStrategy: 'news.mapping',
       }),
     ]);
+    expect(registry.get('news')?.exportProfiles).toEqual([
+      expect.objectContaining({
+        profileId: 'news.article-export',
+        dataProfileId: 'news.articles',
+        targetFormats: ['application/json'],
+        schemaVersion: '1.0.0',
+      }),
+    ]);
   });
 
   it('builds action and audit registries including legacy aliases', () => {
@@ -760,6 +796,7 @@ describe('plugin registries', () => {
     const modules = createPluginModuleIamRegistry([newsPlugin]);
     const jobTypes = createPluginJobTypeRegistry([newsPlugin]);
     const importProfiles = createPluginImportProfileRegistry([newsPlugin]);
+    const exportProfiles = createPluginExportProfileRegistry([newsPlugin]);
     const externalInterfaceTypes = createPluginExternalInterfaceTypeRegistry([newsPlugin]);
     const readAction = actions.get('news.read');
     const legacyAction = actions.get('news-read');
@@ -826,10 +863,18 @@ describe('plugin registries', () => {
     });
     expect(importProfiles.get('news.article-import')).toMatchObject({
       profileId: 'news.article-import',
+      dataProfileId: 'news.article-import',
       namespace: 'news',
       ownerPluginId: 'news',
       jobTypeId: 'news.import-articles',
       sourceFormats: ['application/json', 'text/csv'],
+    });
+    expect(exportProfiles.get('news.article-export')).toMatchObject({
+      profileId: 'news.article-export',
+      dataProfileId: 'news.articles',
+      namespace: 'news',
+      ownerPluginId: 'news',
+      targetFormats: ['application/json'],
     });
     expect(externalInterfaceTypes.get('news.rss-feed')).toMatchObject({
       typeKey: 'news.rss-feed',
@@ -868,6 +913,79 @@ describe('plugin registries', () => {
         },
       ])
     ).toThrowError('invalid_plugin_job_type:news.import-articles');
+  });
+
+  it('rejects invalid export profile namespaces and required metadata', () => {
+    const profile = {
+      profileId: 'news.article-export',
+      dataProfileId: 'news.articles',
+      jobTypeId: 'news.import-articles',
+      displayName: 'Article export',
+      targetFormats: ['application/json'],
+      schemaVersion: '1',
+      schemaStrategy: 'json-schema',
+      mappingStrategy: 'field-map',
+    } as const;
+
+    expect(() => definePluginExportProfiles('core', [profile])).toThrowError(
+      'reserved_plugin_namespace:core'
+    );
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, profileId: 'invalid' }])
+    ).toThrowError('invalid_plugin_export_profile:invalid');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, profileId: 'events.article-export' }])
+    ).toThrowError('plugin_export_profile_namespace_mismatch:news:events:events.article-export');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, dataProfileId: 'events.articles' }])
+    ).toThrowError('plugin_export_data_profile_namespace_mismatch:news:events.articles');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, jobTypeId: 'events.export' }])
+    ).toThrowError(
+      'plugin_export_profile_job_type_namespace_mismatch:news:events.export'
+    );
+
+    for (const override of [
+      { displayName: ' ' },
+      { targetFormats: [' '] },
+      { schemaVersion: ' ' },
+      { schemaStrategy: ' ' },
+      { mappingStrategy: ' ' },
+    ]) {
+      expect(() => definePluginExportProfiles('news', [{ ...profile, ...override }])).toThrowError(
+        'invalid_plugin_export_profile:news.article-export'
+      );
+    }
+  });
+
+  it('rejects duplicate export profiles and profiles without a registered job type', () => {
+    expect(() =>
+      createPluginExportProfileRegistry([
+        { ...newsPlugin, exportProfiles: [...(newsPlugin.exportProfiles ?? []), ...(newsPlugin.exportProfiles ?? [])] },
+      ])
+    ).toThrowError('duplicate_plugin_export_profile:news.article-export');
+
+    expect(() =>
+      createPluginExportProfileRegistry([
+        {
+          ...newsPlugin,
+          exportProfiles: definePluginExportProfiles('news', [
+            {
+              profileId: 'news.missing-job-export',
+              dataProfileId: 'news.articles',
+              jobTypeId: 'news.missing-job',
+              displayName: 'Missing job export',
+              targetFormats: ['application/json'],
+              schemaVersion: '1',
+              schemaStrategy: 'json-schema',
+              mappingStrategy: 'field-map',
+            },
+          ]),
+        },
+      ])
+    ).toThrowError(
+      'unknown_plugin_export_profile_job_type:news.missing-job-export:news.missing-job'
+    );
   });
 
   it('builds the complete build-time registry from plugin and host resources', () => {
@@ -923,6 +1041,12 @@ describe('plugin registries', () => {
         jobTypeId: 'news.import-articles',
       }),
     ]);
+    expect(registry.exportProfiles).toEqual([
+      expect.objectContaining({
+        profileId: 'news.article-export',
+        dataProfileId: 'news.articles',
+      }),
+    ]);
     expect(registry.externalInterfaceTypes).toEqual([
       expect.objectContaining({
         typeKey: 'news.rss-feed',
@@ -934,6 +1058,10 @@ describe('plugin registries', () => {
     });
     expect(registry.pluginImportProfileRegistry.get('news.article-import')).toMatchObject({
       ownerPluginId: 'news',
+    });
+    expect(registry.pluginExportProfileRegistry.get('news.article-export')).toMatchObject({
+      ownerPluginId: 'news',
+      dataProfileId: 'news.articles',
     });
     expect(registry.pluginExternalInterfaceTypeRegistry.get('news.rss-feed')).toMatchObject({
       ownerPluginId: 'news',

@@ -31,8 +31,10 @@ import type { ContentTypeDefinition, RegisteredStudioContentType } from './conte
 import { collectRegisteredStudioContentTypes } from './content-types.js';
 import { createMainserverGenericTypeRegistry } from './mainserver-generic-type-registry.js';
 import {
+  createPluginExportProfileRegistry,
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
+  mergePluginExportProfiles,
   mergePluginImportProfiles,
   mergePluginJobTypes,
 } from './plugin-operations.js';
@@ -45,6 +47,8 @@ import {
   mergePluginExternalInterfaceTypes,
 } from './external-interfaces.js';
 import type {
+  PluginExportProfileDefinition,
+  PluginExportProfileRegistryEntry,
   PluginImportProfileDefinition,
   PluginImportProfileRegistryEntry,
   PluginJobTypeDefinition,
@@ -65,6 +69,7 @@ export type BuildTimeRegistry = {
   readonly pluginModuleIamRegistry: ReadonlyMap<string, PluginModuleIamRegistryEntry>;
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
+  readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
   readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
     string,
     PluginExternalInterfaceTypeRegistryEntry
@@ -73,6 +78,7 @@ export type BuildTimeRegistry = {
   readonly pluginModuleIamContracts: readonly PluginModuleIamRegistryEntry[];
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
+  readonly exportProfiles: readonly PluginExportProfileDefinition[];
   readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly routes: readonly PluginRouteDefinition[];
   readonly navigation: readonly PluginNavigationItem[];
@@ -122,9 +128,11 @@ type PermissionPhaseOutput = {
 type OperationsPhaseOutput = {
   readonly jobTypes: readonly PluginJobTypeDefinition[];
   readonly importProfiles: readonly PluginImportProfileDefinition[];
+  readonly exportProfiles: readonly PluginExportProfileDefinition[];
   readonly externalInterfaceTypes: readonly PluginExternalInterfaceTypeDefinition[];
   readonly pluginJobTypeRegistry: ReadonlyMap<string, PluginJobTypeRegistryEntry>;
   readonly pluginImportProfileRegistry: ReadonlyMap<string, PluginImportProfileRegistryEntry>;
+  readonly pluginExportProfileRegistry: ReadonlyMap<string, PluginExportProfileRegistryEntry>;
   readonly pluginExternalInterfaceTypeRegistry: ReadonlyMap<
     string,
     PluginExternalInterfaceTypeRegistryEntry
@@ -198,9 +206,11 @@ const runPermissionPhase = (plugins: readonly PluginDefinition[]): PermissionPha
 const runOperationsPhase = (plugins: readonly PluginDefinition[]): OperationsPhaseOutput => ({
   jobTypes: mergePluginJobTypes(plugins),
   importProfiles: mergePluginImportProfiles(plugins),
+  exportProfiles: mergePluginExportProfiles(plugins),
   externalInterfaceTypes: mergePluginExternalInterfaceTypes(plugins),
   pluginJobTypeRegistry: createPluginJobTypeRegistry(plugins),
   pluginImportProfileRegistry: createPluginImportProfileRegistry(plugins),
+  pluginExportProfileRegistry: createPluginExportProfileRegistry(plugins),
   pluginExternalInterfaceTypeRegistry: createPluginExternalInterfaceTypeRegistry(plugins),
 });
 
@@ -235,11 +245,13 @@ const publishBuildTimeRegistry = ({
   pluginModuleIamRegistry: permissions.pluginModuleIamRegistry,
   pluginJobTypeRegistry: operations.pluginJobTypeRegistry,
   pluginImportProfileRegistry: operations.pluginImportProfileRegistry,
+  pluginExportProfileRegistry: operations.pluginExportProfileRegistry,
   pluginExternalInterfaceTypeRegistry: operations.pluginExternalInterfaceTypeRegistry,
   pluginPermissions: permissions.pluginPermissions,
   pluginModuleIamContracts: permissions.pluginModuleIamContracts,
   jobTypes: operations.jobTypes,
   importProfiles: operations.importProfiles,
+  exportProfiles: operations.exportProfiles,
   externalInterfaceTypes: operations.externalInterfaceTypes,
   routes: routing.routes,
   navigation: routing.navigation,

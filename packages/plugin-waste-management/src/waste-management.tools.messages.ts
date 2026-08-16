@@ -8,7 +8,8 @@ export const createWasteToolErrorMessage = ({
   error,
   pt,
 }: {
-  readonly action: 'historyDelete' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
+  readonly action:
+    'export' | 'historyDelete' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
   readonly error: unknown;
   readonly pt: Translate;
 }) => {

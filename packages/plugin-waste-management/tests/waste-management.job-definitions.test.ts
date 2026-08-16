@@ -7,7 +7,10 @@ import {
 
 describe('waste management job definitions', () => {
   it('keeps the contracts-owned waste job types available through the plugin compatibility export', () => {
-    expect(createWasteManagementPluginJobTypes()).toEqual([
+    const jobTypes = createWasteManagementPluginJobTypes();
+    expect(
+      jobTypes.filter(({ jobTypeId }) => jobTypeId !== 'waste-management.export-data')
+    ).toEqual([
       {
         jobTypeId: 'waste-management.provision-tenant-database',
         queue: 'plugin-operations',
@@ -263,10 +266,30 @@ describe('waste management job definitions', () => {
         },
       },
     ]);
+    expect(jobTypes).toContainEqual(
+      expect.objectContaining({
+        jobTypeId: 'waste-management.export-data',
+        queue: 'plugin-operations',
+      })
+    );
   });
 
   it('keeps the contracts-owned import profiles available through the plugin compatibility export', () => {
-    expect(createWasteManagementPluginImportProfiles()).toEqual([
+    const profiles = createWasteManagementPluginImportProfiles();
+    const legacyProfileIds = new Set([
+      'waste-management.geografie-abholorte',
+      'waste-management.touren',
+      'waste-management.ausweichtermine',
+      'waste-management.ortsbezogene-tourtermine',
+    ]);
+    expect(
+      profiles
+        .filter(({ profileId }) => legacyProfileIds.has(profileId))
+        .map(({ dataProfileId: _dataProfileId, sourceFormats, ...profile }) => ({
+          ...profile,
+          sourceFormats: sourceFormats.filter((format) => format !== 'application/json'),
+        }))
+    ).toEqual([
       {
         profileId: 'waste-management.geografie-abholorte',
         jobTypeId: 'waste-management.import-data',
@@ -324,6 +347,19 @@ describe('waste management job definitions', () => {
           mode: 'preflight-and-commit',
         },
       },
+    ]);
+    expect(profiles.map(({ profileId }) => profileId)).toEqual([
+      'waste-management.fraktionen',
+      'waste-management.geografie-abholorte',
+      'waste-management.abstandspresets',
+      'waste-management.touren',
+      'waste-management.abholort-tour-zuordnungen',
+      'waste-management.tour-einsaetze',
+      'waste-management.ausweichtermine',
+      'waste-management.feiertagsregeln',
+      'waste-management.portable-einstellungen',
+      'waste-management.datenpaket',
+      'waste-management.ortsbezogene-tourtermine',
     ]);
   });
 });

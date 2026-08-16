@@ -56,6 +56,7 @@ describe('@sva/studio-module-iam', () => {
         'waste-management.tours.manage',
         'waste-management.scheduling.manage',
         'waste-management.import.execute',
+        'waste-management.export.execute',
         'waste-management.seed.execute',
         'waste-management.reset.execute',
         'waste-management.settings.manage',
@@ -64,10 +65,14 @@ describe('@sva/studio-module-iam', () => {
   });
 
   it('publishes one validated view of core and module permissions', () => {
-    expect(studioPermissionCatalog.find((permission) => permission.key === 'iam.accounts.delete')).toMatchObject({
+    expect(
+      studioPermissionCatalog.find((permission) => permission.key === 'iam.accounts.delete')
+    ).toMatchObject({
       availability: { kind: 'tenant' },
     });
-    expect(studioPermissionCatalog.find((permission) => permission.key === 'media.delete')).toMatchObject({
+    expect(
+      studioPermissionCatalog.find((permission) => permission.key === 'media.delete')
+    ).toMatchObject({
       availability: { kind: 'module', moduleId: 'media' },
     });
     expect(new Set(studioPermissionCatalog.map((permission) => permission.key)).size).toBe(
@@ -80,11 +85,21 @@ describe('@sva/studio-module-iam', () => {
       moduleId: 'categories',
       namespace: 'categories',
       ownerPluginId: 'categories',
-      permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+      permissionIds: [
+        'categories.read',
+        'categories.create',
+        'categories.update',
+        'categories.delete',
+      ],
       tenantBootstrapRoles: [
         {
           roleName: 'system_admin',
-          permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+          permissionIds: [
+            'categories.read',
+            'categories.create',
+            'categories.update',
+            'categories.delete',
+          ],
         },
       ],
     });
@@ -100,12 +115,12 @@ describe('@sva/studio-module-iam', () => {
         },
       ],
     });
-    expect(getStudioModuleIamContract('events')?.tenantBootstrapRoles.map((role) => role.roleName)).toEqual([
-      'system_admin',
-    ]);
-    expect(getStudioModuleIamContract('poi')?.tenantBootstrapRoles.map((role) => role.roleName)).toEqual([
-      'system_admin',
-    ]);
+    expect(
+      getStudioModuleIamContract('events')?.tenantBootstrapRoles.map((role) => role.roleName)
+    ).toEqual(['system_admin']);
+    expect(
+      getStudioModuleIamContract('poi')?.tenantBootstrapRoles.map((role) => role.roleName)
+    ).toEqual(['system_admin']);
     expect(getStudioModuleIamContract('poi')?.systemRoles).toEqual([
       {
         roleName: 'system_admin',
@@ -144,7 +159,12 @@ describe('@sva/studio-module-iam', () => {
       moduleId: 'cockpit-cards',
       namespace: 'cockpit-cards',
       ownerPluginId: 'cockpit-cards',
-      permissionIds: ['cockpit-cards.read', 'cockpit-cards.create', 'cockpit-cards.update', 'cockpit-cards.delete'],
+      permissionIds: [
+        'cockpit-cards.read',
+        'cockpit-cards.create',
+        'cockpit-cards.update',
+        'cockpit-cards.delete',
+      ],
     });
     expect(getStudioModuleIamContract('projects')).toMatchObject({
       moduleId: 'projects',
@@ -199,6 +219,7 @@ describe('@sva/studio-module-iam', () => {
           'waste-management.tours.manage',
           'waste-management.scheduling.manage',
           'waste-management.import.execute',
+          'waste-management.export.execute',
           'waste-management.seed.execute',
           'waste-management.reset.execute',
           'waste-management.settings.manage',

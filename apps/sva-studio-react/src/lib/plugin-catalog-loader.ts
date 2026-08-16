@@ -42,7 +42,7 @@ type StudioPluginCatalogReport = ResolvedPluginCatalog & {
 export const studioHostPluginPlatform: PluginPlatformHost = {
   studioVersion: '0.0.1',
   sdkVersion: pluginSdkVersion,
-  capabilities: ['routing', 'navigation', 'iam', 'audit', 'jobs', 'imports', 'server'],
+  capabilities: ['routing', 'navigation', 'iam', 'audit', 'jobs', 'imports', 'exports', 'server'],
 };
 
 const createConfigIssue = (

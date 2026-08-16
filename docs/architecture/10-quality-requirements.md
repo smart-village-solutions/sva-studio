@@ -399,3 +399,11 @@ Referenzen:
 - Alle Dateien und Funktionen der kritischen Klasse `iam-core` bleiben unter den kanonischen Grenzen für Dateigröße, Funktionslänge und Cyclomatic Complexity; die aufgelösten Baseline-Einträge der Engine werden entfernt.
 - Unit-Tests müssen Einzelregeln und kollidierende Kombinationen für fehlenden Kontext, Hierarchie, Geo, ungültige und Über-Mitternacht-Zeitfenster, Acting-as, Force-Deny sowie Provenance abdecken.
 - Type-, Lint-, Node-ESM-Runtime-, Complexity-, OpenSpec- und Fallow-Gates bleiben für Änderungen an diesen internen Bausteinen verpflichtend.
+
+### Qualitätsziele für den Waste-Datenaustausch
+
+- Contract-Coverage muss jedes Waste-Modellfeld als enthalten oder begründet ausgeschlossen nachweisen; E-Mail-Abonnement-, Consent-, Token- und Outbox-Daten dürfen in keinem Exportartefakt vorkommen.
+- JSON-Profile sichern Version, unbekannte Felder, `null`, Missing, Create-Defaults, Update-Erhalt, stabile IDs und Referenzen durch Unit- und Roundtrip-Tests ab.
+- ZIP-Tests prüfen Manifest, Profilanzahl, SHA-256, paketinterne Referenzen, gemeinsame Transaktion und Rollback. JSON bleibt auf ein Profil, Pakete bleiben auf neun Profile begrenzt.
+- Downloadtests belegen Actor-, Instanz- und Rechtebindung sowie Ablauf-, Größen- und Prüfsummenprüfung. Artefakte laufen nach 24 Stunden ab und werden mit `private, no-store` ausgeliefert.
+- Bestehende CSV-/XLSX-Spezialimporte sind kein Ersatz für die kanonischen JSON-Roundtrip-Gates und dürfen nicht als vollständiger Fachdatenexport angeboten werden.

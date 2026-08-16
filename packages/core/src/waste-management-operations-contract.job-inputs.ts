@@ -16,9 +16,11 @@ type WasteManagementApplyMigrationsJobInput = {
 
 import type {
   WasteManagementCsvDelimiter,
+  WasteManagementExportTargetFormat,
   WasteManagementImportProfileId,
   WasteManagementImportSourceFormat,
 } from './waste-management-operations-contract.constants.js';
+import type { WasteManagementDataProfileId } from './waste-management-data-exchange.js';
 
 type WasteManagementImportJobInput = {
   readonly operation: 'import-data';
@@ -27,6 +29,12 @@ type WasteManagementImportJobInput = {
   readonly dryRun?: boolean;
   readonly blobRef?: string;
   readonly delimiterOverride?: WasteManagementCsvDelimiter;
+};
+
+type WasteManagementExportJobInput = {
+  readonly operation: 'export-data';
+  readonly profileIds: readonly WasteManagementDataProfileId[];
+  readonly targetFormat: WasteManagementExportTargetFormat;
 };
 
 type WasteManagementSeedJobInput = {
@@ -52,6 +60,7 @@ type WasteManagementEnrichPostalCodesJobInput = {
 export type {
   WasteManagementProvisionTenantDatabaseJobInput,
   WasteManagementApplyMigrationsJobInput,
+  WasteManagementExportJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementResetJobInput,

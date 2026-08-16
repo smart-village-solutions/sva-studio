@@ -1,28 +1,31 @@
 export const wasteManagementPluginTranslationsENPermissions = {
-  "permissions": {
-    "read": {
-      "title": "Read waste calendar"
+  permissions: {
+    read: {
+      title: 'Read waste calendar',
     },
-    "masterDataManage": {
-      "title": "Manage master data"
+    masterDataManage: {
+      title: 'Manage master data',
     },
-    "toursManage": {
-      "title": "Manage tours"
+    toursManage: {
+      title: 'Manage tours',
     },
-    "schedulingManage": {
-      "title": "Manage schedule deviations"
+    schedulingManage: {
+      title: 'Manage schedule deviations',
     },
-    "importExecute": {
-      "title": "Run imports"
+    importExecute: {
+      title: 'Run imports',
     },
-    "seedExecute": {
-      "title": "Run seed"
+    exportExecute: {
+      title: 'Run exports',
     },
-    "resetExecute": {
-      "title": "Run reset"
+    seedExecute: {
+      title: 'Run seed',
     },
-    "settingsManage": {
-      "title": "Manage settings"
-    }
-  }
+    resetExecute: {
+      title: 'Run reset',
+    },
+    settingsManage: {
+      title: 'Manage settings',
+    },
+  },
 } as const;

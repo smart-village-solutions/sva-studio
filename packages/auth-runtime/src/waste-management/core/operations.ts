@@ -4,6 +4,7 @@ import {
   type StudioJobStartRequest,
 } from '@sva/core';
 import { z } from 'zod';
+import { storePluginOperationInput } from '../../plugin-operation-artifacts.server.js';
 
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import { resolveActorInfo } from '../../iam-account-management/shared.js';
@@ -27,6 +28,7 @@ import { getRequestId } from './utils.js';
 
 const {
   previewLocationTourPickupDateImportSchema,
+  startExportSchema,
   startImportSchema,
   startInitializeSchema,
   startMainserverSyncSchema,
@@ -245,6 +247,54 @@ const startToolJob = async (
 };
 
 export const wasteManagementOperationHandlers = {
+  uploadWasteManagementImportSourceInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> => {
+    const requestId = getRequestId(deps);
+    const authError = await authorizeWasteManagementAction(
+      ctx,
+      'waste-management.import.execute',
+      deps,
+      requestId
+    );
+    if (authError) return authError;
+    const csrfError = validateCsrf(request, requestId);
+    if (csrfError) return csrfError;
+
+    const contentType = request.headers.get('content-type')?.split(';', 1)[0]?.trim() ?? '';
+    if (!wasteManagementOperationsContract.isImportSourceFormat(contentType)) {
+      return createApiError(400, 'invalid_request', 'Unbekanntes Waste-Importformat.', requestId);
+    }
+    const contentLength = Number(request.headers.get('content-length') ?? '0');
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength > wasteManagementOperationsContract.importUploadMaxBytes
+    ) {
+      return createApiError(413, 'invalid_request', 'Importdatei ist zu groß.', requestId);
+    }
+    const body = new Uint8Array(await request.arrayBuffer());
+    if (body.byteLength === 0) {
+      return createApiError(400, 'invalid_request', 'Importdatei ist leer.', requestId);
+    }
+    if (body.byteLength > wasteManagementOperationsContract.importUploadMaxBytes) {
+      return createApiError(413, 'invalid_request', 'Importdatei ist zu groß.', requestId);
+    }
+    const instanceId = getAuthorizedWasteManagementInstanceId(ctx);
+    const blobRef = await (deps.storeWasteImportSource ?? storePluginOperationInput)({
+      instanceId,
+      body,
+      contentType,
+    });
+    return new Response(
+      JSON.stringify(asApiItem({ blobRef, sizeBytes: body.byteLength }, requestId)),
+      {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  },
   startWasteManagementInitializeInternal: async (
     request: Request,
     ctx: AuthenticatedRequestContext,
@@ -334,6 +384,31 @@ export const wasteManagementOperationHandlers = {
         blobRef: data.blobRef,
         delimiterOverride:
           typeof data.delimiterOverride === 'string' ? data.delimiterOverride : undefined,
+      }),
+    }),
+  startWasteManagementExportInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.export.execute',
+      endpoint: 'POST:/api/v1/waste-management/tools/exports',
+      schema: startExportSchema.superRefine((value, refinementCtx) => {
+        if (value.targetFormat === 'application/json' && value.profileIds.length !== 1) {
+          refinementCtx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'JSON-Exporte benötigen genau ein Profil.',
+            path: ['profileIds'],
+          });
+        }
+      }),
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+      auditActionId: 'waste-management.export.started',
+      toPayload: (data) => ({
+        operation: 'export-data',
+        profileIds: data.profileIds,
+        targetFormat: data.targetFormat,
       }),
     }),
   previewWasteManagementLocationTourPickupDateImportInternal: async (

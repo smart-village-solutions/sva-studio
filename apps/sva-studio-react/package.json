@@ -64,6 +64,7 @@
     "react-hook-form": "^7.80.0",
     "tailwind-merge": "^3.5.0",
     "exceljs": "^4.4.0",
+    "fflate": "^0.8.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {

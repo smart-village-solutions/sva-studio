@@ -6,6 +6,7 @@ import { StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
 import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
+import { WasteToolsArtifactDownloads } from './waste-management.tools.artifact-downloads.js';
 
 const activeImportStatuses = new Set(['queued', 'running', 'retrying']);
 
@@ -65,7 +66,9 @@ const resolveImportProgressMessageKey = (job: StudioJobResponse['data']) => {
 };
 
 const resolveImportProgressPhaseKey = (job: StudioJobResponse['data']) =>
-  job.progress?.currentPhase ? `tools.progress.phases.${job.progress.currentPhase}` : `tools.progress.statuses.${job.status}`;
+  job.progress?.currentPhase
+    ? `tools.progress.phases.${job.progress.currentPhase}`
+    : `tools.progress.statuses.${job.status}`;
 
 const resolveImportProgressRows = (job: StudioJobResponse['data']) => {
   const structuredProgress = readStructuredRowProgress(job);
@@ -82,11 +85,7 @@ const resolveImportProgressRows = (job: StudioJobResponse['data']) => {
   };
 };
 
-const WasteToolsActiveImportProgress = ({
-  job,
-}: {
-  readonly job: StudioJobResponse['data'];
-}) => {
+const WasteToolsActiveImportProgress = ({ job }: { readonly job: StudioJobResponse['data'] }) => {
   const pt = usePluginTranslation('wasteManagement');
   const progressPercentage = resolveImportProgressPercentage(job);
   const progressMessageKey = resolveImportProgressMessageKey(job);
@@ -133,7 +132,11 @@ const WasteToolsActiveImportProgress = ({
               : pt(progressMessageKey)}
           </span>
           {job.progress?.lastUpdatedAt ? (
-            <span>{pt('tools.progress.updatedAt', { value: formatUpdatedAt(job.progress.lastUpdatedAt) })}</span>
+            <span>
+              {pt('tools.progress.updatedAt', {
+                value: formatUpdatedAt(job.progress.lastUpdatedAt),
+              })}
+            </span>
           ) : null}
         </div>
       </div>
@@ -173,21 +176,34 @@ export const WasteToolsHistory = ({
     <div className="space-y-4">
       <StudioJobSummaryCard
         title={pt('tools.meta.lastJobTitle')}
-        description={displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')}
+        description={
+          displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')
+        }
         statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
         statusTone={toJobStatusTone(displayedLastJob?.status)}
         metadata={
           displayedLastJob
             ? [
                 { id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: displayedLastJob.id },
-                { id: 'jobTypeId', label: pt('tools.meta.jobTypeLabel'), value: displayedLastJob.jobTypeId },
-                { id: 'jobStatus', label: pt('tools.meta.jobStatusLabel'), value: displayedLastJob.status },
+                {
+                  id: 'jobTypeId',
+                  label: pt('tools.meta.jobTypeLabel'),
+                  value: displayedLastJob.jobTypeId,
+                },
+                {
+                  id: 'jobStatus',
+                  label: pt('tools.meta.jobStatusLabel'),
+                  value: displayedLastJob.status,
+                },
               ]
             : undefined
         }
       />
-      {isActiveImportJob(displayedLastJob) ? <WasteToolsActiveImportProgress job={displayedLastJob} /> : null}
+      {isActiveImportJob(displayedLastJob) ? (
+        <WasteToolsActiveImportProgress job={displayedLastJob} />
+      ) : null}
       <WasteToolsPostalCodeStatus job={displayedLastJob} />
+      {displayedLastJob ? <WasteToolsArtifactDownloads job={displayedLastJob} /> : null}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.historyTitle')}</h3>

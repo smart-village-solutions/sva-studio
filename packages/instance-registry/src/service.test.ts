@@ -56,7 +56,9 @@ const latestRun = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
-const createRepository = (overrides: Partial<InstanceRegistryRepository> = {}): InstanceRegistryRepository =>
+const createRepository = (
+  overrides: Partial<InstanceRegistryRepository> = {}
+): InstanceRegistryRepository =>
   ({
     listInstances: vi.fn(async () => [baseInstance]),
     getInstanceById: vi.fn(async () => baseInstance),
@@ -150,11 +152,21 @@ const createDeps = (
       {
         moduleId: 'categories',
         ownerPluginId: 'categories',
-        permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+        permissionIds: [
+          'categories.read',
+          'categories.create',
+          'categories.update',
+          'categories.delete',
+        ],
         systemRoles: [
           {
             roleName: 'system_admin',
-            permissionIds: ['categories.read', 'categories.create', 'categories.update', 'categories.delete'],
+            permissionIds: [
+              'categories.read',
+              'categories.create',
+              'categories.update',
+              'categories.delete',
+            ],
           },
         ],
       },
@@ -166,7 +178,10 @@ const createDeps = (
         ownerPluginId: 'news',
         permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
         systemRoles: [
-          { roleName: 'system_admin', permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'] },
+          {
+            roleName: 'system_admin',
+            permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+          },
         ],
       },
     ],
@@ -190,6 +205,7 @@ const createDeps = (
           'waste-management.tours.manage',
           'waste-management.scheduling.manage',
           'waste-management.import.execute',
+          'waste-management.export.execute',
           'waste-management.seed.execute',
           'waste-management.reset.execute',
           'waste-management.settings.manage',
@@ -203,6 +219,7 @@ const createDeps = (
               'waste-management.tours.manage',
               'waste-management.scheduling.manage',
               'waste-management.import.execute',
+              'waste-management.export.execute',
               'waste-management.seed.execute',
               'waste-management.reset.execute',
               'waste-management.settings.manage',
@@ -221,13 +238,24 @@ describe('instance registry service facade', () => {
     const service = createInstanceRegistryService(createDeps(repository));
 
     await service.recordConfirmationAttempt({
-      instanceId: 'demo', actorId: 'service-account', actionId: 'instance.secret.rotate',
-      outcome: 'rejected', reason: 'invalid_confirmation', requestId: 'req-confirm',
+      instanceId: 'demo',
+      actorId: 'service-account',
+      actionId: 'instance.secret.rotate',
+      outcome: 'rejected',
+      reason: 'invalid_confirmation',
+      requestId: 'req-confirm',
     });
 
     expect(repository.appendAuditEvent).toHaveBeenCalledWith({
-      instanceId: 'demo', eventType: 'instance_confirmation_rejected', actorId: 'service-account', requestId: 'req-confirm',
-      details: { actionId: 'instance.secret.rotate', outcome: 'rejected', reason: 'invalid_confirmation' },
+      instanceId: 'demo',
+      eventType: 'instance_confirmation_rejected',
+      actorId: 'service-account',
+      requestId: 'req-confirm',
+      details: {
+        actionId: 'instance.secret.rotate',
+        outcome: 'rejected',
+        reason: 'invalid_confirmation',
+      },
     });
   });
 
@@ -251,10 +279,7 @@ describe('instance registry service facade', () => {
   });
 
   it('builds a single-instance audit run with explicit checks', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch
-    );
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch);
 
     const repository = createRepository({
       countLocalSystemAdminAssignments: vi.fn(async () => 2),
@@ -330,10 +355,7 @@ describe('instance registry service facade', () => {
   });
 
   it('marks dependent keycloak checks as skipped when the realm cannot be read', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(null, { status: 503 })) as typeof fetch
-    );
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 503 })) as typeof fetch);
 
     const service = createInstanceRegistryService(
       createDeps(createRepository(), {
@@ -373,10 +395,7 @@ describe('instance registry service facade', () => {
   });
 
   it('supports running the audit without an explicit input object', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch
-    );
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200 })) as typeof fetch);
 
     const service = createInstanceRegistryService(
       createDeps(createRepository(), {
@@ -490,19 +509,20 @@ describe('instance registry service facade', () => {
       })
     ).resolves.toEqual({
       ok: true,
-      instance: expect.objectContaining({ instanceId: 'demo', primaryHostname: 'demo.studio.example.org' }),
+      instance: expect.objectContaining({
+        instanceId: 'demo',
+        primaryHostname: 'demo.studio.example.org',
+      }),
     });
 
     expect(repository.createInstance).toHaveBeenCalledWith(
       expect.objectContaining({
         parentDomain: 'studio.example.org',
         primaryHostname: 'demo.studio.example.org',
-        authClientSecretCiphertext:
-          'protected:iam.instances.auth_client_secret:demo:auth-secret',
+        authClientSecretCiphertext: 'protected:iam.instances.auth_client_secret:demo:auth-secret',
         tenantAdminClient: {
           clientId: 'tenant-admin',
-          secretCiphertext:
-            'protected:iam.instances.tenant_admin_client_secret:demo:tenant-secret',
+          secretCiphertext: 'protected:iam.instances.tenant_admin_client_secret:demo:tenant-secret',
         },
       })
     );
@@ -513,22 +533,52 @@ describe('instance registry service facade', () => {
   });
 
   it.each([
-    ['registry_lookup', { getInstanceById: vi.fn(async () => { throw new Error('lookup secret'); }) }, undefined],
-    ['registry_insert', {
-      getInstanceById: vi.fn(async () => null),
-      createInstance: vi.fn(async () => { throw new Error('insert secret'); }),
-    }, undefined],
-    ['provisioning_run_insert', {
-      getInstanceById: vi.fn(async () => null),
-      createProvisioningRun: vi.fn(async () => { throw new Error('run secret'); }),
-    }, undefined],
-    ['audit_event_insert', {
-      getInstanceById: vi.fn(async () => null),
-      appendAuditEvent: vi.fn(async () => { throw new Error('audit secret'); }),
-    }, undefined],
-    ['host_cache_invalidate', { getInstanceById: vi.fn(async () => null) }, vi.fn(() => {
-      throw new Error('cache secret');
-    })],
+    [
+      'registry_lookup',
+      {
+        getInstanceById: vi.fn(async () => {
+          throw new Error('lookup secret');
+        }),
+      },
+      undefined,
+    ],
+    [
+      'registry_insert',
+      {
+        getInstanceById: vi.fn(async () => null),
+        createInstance: vi.fn(async () => {
+          throw new Error('insert secret');
+        }),
+      },
+      undefined,
+    ],
+    [
+      'provisioning_run_insert',
+      {
+        getInstanceById: vi.fn(async () => null),
+        createProvisioningRun: vi.fn(async () => {
+          throw new Error('run secret');
+        }),
+      },
+      undefined,
+    ],
+    [
+      'audit_event_insert',
+      {
+        getInstanceById: vi.fn(async () => null),
+        appendAuditEvent: vi.fn(async () => {
+          throw new Error('audit secret');
+        }),
+      },
+      undefined,
+    ],
+    [
+      'host_cache_invalidate',
+      { getInstanceById: vi.fn(async () => null) },
+      vi.fn(() => {
+        throw new Error('cache secret');
+      }),
+    ],
   ] as const)('annotates create failures at %s', async (stepKey, overrides, invalidateHost) => {
     const repository = createRepository(overrides);
     const deps = createDeps(repository);
@@ -536,8 +586,13 @@ describe('instance registry service facade', () => {
     const service = createInstanceRegistryService(deps);
 
     const result = service.createProvisioningRequest({
-      instanceId: 'demo', displayName: 'Demo', parentDomain: 'studio.example.org',
-      realmMode: 'new', authRealm: 'demo', authClientId: 'studio-client', idempotencyKey: 'idem-errors',
+      instanceId: 'demo',
+      displayName: 'Demo',
+      parentDomain: 'studio.example.org',
+      realmMode: 'new',
+      authRealm: 'demo',
+      authClientId: 'studio-client',
+      idempotencyKey: 'idem-errors',
     });
     await expect(result).rejects.toMatchObject({ instanceRegistryStep: stepKey });
   });
@@ -629,7 +684,9 @@ describe('instance registry service facade', () => {
 
   it('returns status errors for missing or invalid transitions', async () => {
     await expect(
-      createInstanceRegistryService(createDeps(createRepository({ getInstanceById: vi.fn(async () => null) }))).changeStatus({
+      createInstanceRegistryService(
+        createDeps(createRepository({ getInstanceById: vi.fn(async () => null) }))
+      ).changeStatus({
         instanceId: 'missing',
         nextStatus: 'active',
         idempotencyKey: 'idem-1',
@@ -638,7 +695,11 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(
-        createDeps(createRepository({ getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })) }))
+        createDeps(
+          createRepository({
+            getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'active' as const })),
+          })
+        )
       ).changeStatus({
         instanceId: 'demo',
         nextStatus: 'active',
@@ -651,7 +712,11 @@ describe('instance registry service facade', () => {
 
     await expect(
       createInstanceRegistryService(
-        createDeps(createRepository({ getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'archived' as const })) }))
+        createDeps(
+          createRepository({
+            getInstanceById: vi.fn(async () => ({ ...baseInstance, status: 'archived' as const })),
+          })
+        )
       ).changeStatus({
         instanceId: 'demo',
         nextStatus: 'active',
@@ -668,10 +733,7 @@ describe('instance registry service facade', () => {
       primaryHostname: 'demo.example.org',
     };
     const repository = createRepository({
-      getInstanceById: vi
-        .fn()
-        .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValue(updated),
+      getInstanceById: vi.fn().mockResolvedValueOnce(baseInstance).mockResolvedValue(updated),
       updateInstance: vi.fn(async () => updated),
     });
     const deps = createDeps(repository);
@@ -695,7 +757,9 @@ describe('instance registry service facade', () => {
       expect.objectContaining({
         instanceId: 'demo',
         displayName: 'Updated',
-        hostnames: [{ hostname: 'demo.example.org', isPrimary: true, createdAt: baseInstance.createdAt }],
+        hostnames: [
+          { hostname: 'demo.example.org', isPrimary: true, createdAt: baseInstance.createdAt },
+        ],
       })
     );
 
@@ -719,10 +783,7 @@ describe('instance registry service facade', () => {
       primaryHostname: 'demo.example.org',
     };
     const repository = createRepository({
-      getInstanceById: vi
-        .fn()
-        .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValue(updated),
+      getInstanceById: vi.fn().mockResolvedValueOnce(baseInstance).mockResolvedValue(updated),
       updateInstance: vi.fn(async () => updated),
     });
     const deps = createDeps(repository, {
@@ -961,7 +1022,10 @@ describe('instance registry service facade', () => {
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['categories', 'events', 'news'] }),
+        .mockResolvedValueOnce({
+          ...baseInstance,
+          assignedModules: ['categories', 'events', 'news'],
+        }),
     });
     const service = createInstanceRegistryService(createDeps(repository));
 
@@ -984,7 +1048,12 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: expect.arrayContaining(['categories', 'news', 'events', 'waste-management']),
+        managedModuleIds: expect.arrayContaining([
+          'categories',
+          'news',
+          'events',
+          'waste-management',
+        ]),
         contracts: expect.arrayContaining([
           expect.objectContaining({ moduleId: 'categories' }),
           expect.objectContaining({ moduleId: 'news' }),
@@ -1053,11 +1122,17 @@ describe('instance registry service facade', () => {
   it('bootstraps the editable admin structure and assigns selected modules first', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['categories', 'events', 'news']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['categories', 'events', 'news']),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
-        .mockResolvedValueOnce({ ...baseInstance, assignedModules: ['categories', 'events', 'news'] }),
+        .mockResolvedValueOnce({
+          ...baseInstance,
+          assignedModules: ['categories', 'events', 'news'],
+        }),
     });
     const service = createInstanceRegistryService(createDeps(repository));
 
@@ -1082,7 +1157,12 @@ describe('instance registry service facade', () => {
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
         instanceId: 'demo',
-        managedModuleIds: expect.arrayContaining(['categories', 'news', 'events', 'waste-management']),
+        managedModuleIds: expect.arrayContaining([
+          'categories',
+          'news',
+          'events',
+          'waste-management',
+        ]),
       })
     );
     expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalledWith({
@@ -1152,7 +1232,10 @@ describe('instance registry service facade', () => {
   it('continues bootstrapping when a requested module was assigned concurrently', async () => {
     const repository = createRepository({
       assignModule: vi.fn(async () => false),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
       getInstanceById: vi
         .fn()
         .mockResolvedValueOnce(baseInstance)
@@ -1178,7 +1261,10 @@ describe('instance registry service facade', () => {
     expect(repository.assignModule).toHaveBeenCalledWith('demo', 'events');
     expect(repository.syncAssignedModuleIam).toHaveBeenCalledWith(
       expect.objectContaining({
-        contracts: expect.arrayContaining([expect.objectContaining({ moduleId: 'news' }), expect.objectContaining({ moduleId: 'events' })]),
+        contracts: expect.arrayContaining([
+          expect.objectContaining({ moduleId: 'news' }),
+          expect.objectContaining({ moduleId: 'events' }),
+        ]),
       })
     );
     expect(repository.syncProtectedSystemRolePermissions).toHaveBeenCalled();
@@ -1188,7 +1274,10 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
       revokeModule: vi.fn(async () => true),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -1220,7 +1309,10 @@ describe('instance registry service facade', () => {
       revokeModule: vi.fn(async () => {
         throw new Error('rollback_failed');
       }),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -1247,8 +1339,12 @@ describe('instance registry service facade', () => {
         syncError: expect.any(Error),
         rollbackError: expect.any(Error),
       });
-      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
-      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe(
+        'sync_failed'
+      );
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe(
+        'rollback_failed'
+      );
     }
   });
 
@@ -1256,7 +1352,10 @@ describe('instance registry service facade', () => {
     const repository = createRepository({
       assignModule: vi.fn(async (instanceId: string, moduleId: string) => moduleId === 'events'),
       revokeModule: vi.fn(async () => false),
-      listAssignedModules: vi.fn().mockResolvedValueOnce(['news']).mockResolvedValueOnce(['news', 'events']),
+      listAssignedModules: vi
+        .fn()
+        .mockResolvedValueOnce(['news'])
+        .mockResolvedValueOnce(['news', 'events']),
       syncAssignedModuleIam: vi.fn(async () => {
         throw new Error('sync_failed');
       }),
@@ -1461,14 +1560,20 @@ describe('instance registry service facade', () => {
       expect.unreachable('assignModule should throw');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('instance_module_assign_rollback_failed:demo:events:sync_failed');
+      expect((error as Error).message).toBe(
+        'instance_module_assign_rollback_failed:demo:events:sync_failed'
+      );
       expect((error as Error).name).toBe('InstanceModuleAssignRollbackError');
       expect((error as Error).cause).toEqual({
         syncError: expect.any(Error),
         rollbackError: expect.any(Error),
       });
-      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe('sync_failed');
-      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe('rollback_failed');
+      expect(((error as Error).cause as { syncError: Error }).syncError.message).toBe(
+        'sync_failed'
+      );
+      expect(((error as Error).cause as { rollbackError: Error }).rollbackError.message).toBe(
+        'rollback_failed'
+      );
     }
   });
 
@@ -1609,7 +1714,9 @@ describe('instance registry service facade', () => {
       getTenantAdminClientSecretCiphertext,
     });
 
-    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { revealSecret: undefined })
+    )('demo');
 
     expect(status).toEqual({
       realmExists: false,
@@ -1677,7 +1784,9 @@ describe('instance registry service facade', () => {
       ]),
     });
 
-    await expect(createGetKeycloakStatusHandler(createDeps(repository))('demo')).resolves.toBeNull();
+    await expect(
+      createGetKeycloakStatusHandler(createDeps(repository))('demo')
+    ).resolves.toBeNull();
   });
 
   it('returns a persisted keycloak status snapshot without loading secrets', async () => {
@@ -1731,7 +1840,9 @@ describe('instance registry service facade', () => {
       getTenantAdminClientSecretCiphertext,
     });
 
-    const status = await createGetKeycloakStatusHandler(createDeps(repository, { revealSecret: undefined }))('demo');
+    const status = await createGetKeycloakStatusHandler(
+      createDeps(repository, { revealSecret: undefined })
+    )('demo');
 
     expect(status).toEqual({
       realmExists: true,

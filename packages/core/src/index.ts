@@ -149,6 +149,7 @@ export type {
   StudioJobResponse,
   StudioJobProgress,
   StudioJobResult,
+  StudioJobResultArtifact,
   StudioJobResultSummary,
   StudioJobRecord,
   StudioJobRuntimeDiagnostics,
@@ -199,6 +200,32 @@ export type {
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 export {
+  wasteManagementDataProfileIds,
+} from './waste-management-data-exchange.js';
+export {
+  getWasteManagementDataProfile,
+  wasteManagementDataProfiles,
+  wasteManagementExcludedDataDomains,
+} from './waste-management-data-profiles.js';
+export {
+  parseWasteManagementDataExchangeJson,
+  serializeWasteManagementDataExchangeJson,
+} from './waste-management-data-exchange-json.js';
+export type {
+  WasteManagementDataExchangeIssue,
+  WasteManagementDataExchangeParseResult,
+} from './waste-management-data-exchange-json.js';
+export type {
+  WasteManagementDataEntityDefinition,
+  WasteManagementDataExchangeEnvelope,
+  WasteManagementDataExchangeRecord,
+  WasteManagementDataFieldDefinition,
+  WasteManagementDataFieldInput,
+  WasteManagementDataFieldValueType,
+  WasteManagementDataProfileDefinition,
+  WasteManagementDataProfileId,
+} from './waste-management-data-exchange.js';
+export {
   getWasteManagementImportCatalogEntry,
   wasteManagementImportCatalog,
 } from './waste-management-import-catalog.js';
@@ -227,6 +254,8 @@ export type {
 } from './waste-management-location-tour-pickup-date-import.js';
 export type {
   WasteManagementCsvDelimiter,
+  WasteManagementExportJobInput,
+  WasteManagementExportTargetFormat,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
   WasteManagementImportProfileId,

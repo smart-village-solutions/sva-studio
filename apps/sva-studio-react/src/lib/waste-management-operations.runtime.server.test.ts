@@ -16,6 +16,7 @@ describe('waste management operations runtime assembly', () => {
       initializeDataSource: expect.any(Function),
       applyMigrations: expect.any(Function),
       importData: expect.any(Function),
+      exportData: expect.any(Function),
       seedData: expect.any(Function),
       syncMainserver: expect.any(Function),
       syncWasteTypes: expect.any(Function),

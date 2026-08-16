@@ -105,6 +105,13 @@ const reportProgress = async (
     lastUpdatedAt: new Date().toISOString(),
   });
 
+const readProviderRequestCount = (
+  progress: Parameters<WasteManagementOperationRuntime['enrichPostalCodes']>[3]
+): number => {
+  const value = progress?.previousProgress?.details?.providerRequestCount;
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0;
+};
+
 const reportCompleted = async (
   reporter: WasteOperationProgressReporter | undefined,
   completedSteps: number,
@@ -210,12 +217,7 @@ export const createEnrichPostalCodesOperation =
       missingCities.length > 0 ? await deps.createPostalCodeResolver?.(instanceId) : undefined;
     if (missingCities.length > 0 && !resolver) throw new Error('postal_code_resolver_unavailable');
 
-    const persistedProviderRequestCount =
-      typeof context?.previousProgress?.details?.providerRequestCount === 'number' &&
-      Number.isSafeInteger(context.previousProgress.details.providerRequestCount) &&
-      context.previousProgress.details.providerRequestCount >= 0
-        ? context.previousProgress.details.providerRequestCount
-        : 0;
+    const persistedProviderRequestCount = readProviderRequestCount(context);
     const counts = {
       cityCount: cities.length,
       missingCount: missingCities.length,

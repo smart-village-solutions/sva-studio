@@ -202,7 +202,7 @@ const startToolJob = async (
     idempotencyKey: idempotency.key,
     requestId,
     scheduledAt: new Date().toISOString(),
-    ...(input.rejectWhenActiveJobExists ? { rejectWhenActiveJobExists: true } : {}),
+    rejectWhenActiveJobExists: input.rejectWhenActiveJobExists === true,
     data: {
       pluginId: wasteManagementOperationsContract.pluginId,
       jobTypeId: input.jobTypeId,

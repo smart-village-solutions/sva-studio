@@ -1112,6 +1112,17 @@ describe('plugin operations handlers', () => {
       },
       'expired artifact',
     ],
+    [
+      {
+        artifactId: '22222222-2222-4222-8222-222222222222',
+        contentType: 'application/json',
+        fileName: 'invalid-expiry.json',
+        sizeBytes: 2,
+        sha256: 'unused',
+        expiresAt: 'not-a-timestamp',
+      },
+      'artifact with invalid expiry',
+    ],
   ])('returns not found for unavailable result metadata: %s', async (artifact) => {
     repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
       work({

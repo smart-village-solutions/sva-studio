@@ -52,7 +52,8 @@ export const downloadPluginOperationArtifactHandler = async (request: Request): 
         if (monitoringError) return monitoringError;
       }
       const artifact = job.resultPayload?.artifacts?.find((entry) => entry.artifactId === ids.artifactId);
-      if (!artifact || Date.parse(artifact.expiresAt) <= Date.now()) {
+      const expiresAt = artifact ? Date.parse(artifact.expiresAt) : Number.NaN;
+      if (!artifact || !Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
         return createApiError(404, 'not_found', 'Exportartefakt ist nicht mehr verfügbar.', getRequestId());
       }
       const stored = await readPluginOperationArtifact({ instanceId, artifactId: ids.artifactId });

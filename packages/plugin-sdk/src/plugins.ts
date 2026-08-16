@@ -15,10 +15,15 @@ import {
 import type { PluginExternalInterfaceTypeDefinition } from './external-interfaces.js';
 import { definePluginExternalInterfaceTypes } from './external-interfaces.js';
 import type {
+  PluginExportProfileDefinition,
   PluginImportProfileDefinition,
   PluginJobTypeDefinition,
 } from './plugin-operations.js';
-import { definePluginImportProfiles, definePluginJobTypes } from './plugin-operations.js';
+import {
+  definePluginExportProfiles,
+  definePluginImportProfiles,
+  definePluginJobTypes,
+} from './plugin-operations.js';
 import { hasMatchingPluginAccessRequirement } from './plugin-platform/access-requirements.js';
 import {
   assertPluginActionDefinitionAllowedKeys,
@@ -119,6 +124,7 @@ export type PluginDefinition = {
   readonly moduleIam?: PluginModuleIamContract;
   readonly jobTypes?: readonly PluginJobTypeDefinition[];
   readonly importProfiles?: readonly PluginImportProfileDefinition[];
+  readonly exportProfiles?: readonly PluginExportProfileDefinition[];
   readonly externalInterfaceTypes?: readonly PluginExternalInterfaceTypeDefinition[];
   readonly contentHistory?: PluginContentHistoryContract;
   readonly translations?: PluginTranslations;
@@ -145,6 +151,7 @@ const pluginDefinitionAllowedKeys = new Set([
   'moduleIam',
   'jobTypes',
   'importProfiles',
+  'exportProfiles',
   'externalInterfaceTypes',
   'contentHistory',
   'translations',
@@ -1040,7 +1047,7 @@ const normalizePluginRegistryOperations = ({
   pluginNamespace,
 }: PluginRegistryValidationContext): Pick<
   PluginDefinition,
-  'jobTypes' | 'importProfiles' | 'externalInterfaceTypes'
+  'jobTypes' | 'importProfiles' | 'exportProfiles' | 'externalInterfaceTypes'
 > => ({
   jobTypes: plugin.jobTypes
     ? definePluginJobTypes(pluginNamespace, plugin.jobTypes)
@@ -1048,6 +1055,9 @@ const normalizePluginRegistryOperations = ({
   importProfiles: plugin.importProfiles
     ? definePluginImportProfiles(pluginNamespace, plugin.importProfiles)
     : plugin.importProfiles,
+  exportProfiles: plugin.exportProfiles
+    ? definePluginExportProfiles(pluginNamespace, plugin.exportProfiles)
+    : plugin.exportProfiles,
   externalInterfaceTypes: plugin.externalInterfaceTypes
     ? definePluginExternalInterfaceTypes(pluginNamespace, plugin.externalInterfaceTypes)
     : plugin.externalInterfaceTypes,

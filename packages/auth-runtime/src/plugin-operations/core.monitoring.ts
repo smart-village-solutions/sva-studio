@@ -1,17 +1,20 @@
-import {
-  studioJobContract,
-  studioJobListContract,
-  type StudioJobListQuery,
-} from '@sva/core';
+import { studioJobContract, studioJobListContract, type StudioJobListQuery } from '@sva/core';
 import { createMutationWorkflow, getWorkspaceContext } from '@sva/server-runtime';
+import { createHash } from 'node:crypto';
 
 import {
-  asApiItem, asApiList, createApiError, readPage, readPathSegment,
+  asApiItem,
+  asApiList,
+  createApiError,
+  readPage,
+  readPathSegment,
 } from '../shared/request-helpers.js';
 import { withAuthenticatedUser } from '../middleware.js';
 import type { AuthenticatedRequestContext } from '../middleware.js';
 import { isUuid } from '../shared/input-readers.js';
 import { validateCsrf } from '../shared/request-security.js';
+import { resolveActorInfo } from '../iam-account-management/shared.js';
+import { readPluginOperationArtifact } from '../plugin-operation-artifacts.server.js';
 import {
   authorizeInstancePermissionForUser,
   toInstancePermissionApiErrorCode,
@@ -51,7 +54,8 @@ export const requireMonitoringAccess = async (
 const readJobId = (request: Request): string | Response => {
   const jobId = readPathSegment(request, 4);
   if (!jobId) return createApiError(400, 'invalid_request', 'Job-ID fehlt.', getRequestId());
-  if (!isUuid(jobId)) return createApiError(400, 'invalid_request', 'Job-ID muss eine UUID sein.', getRequestId());
+  if (!isUuid(jobId))
+    return createApiError(400, 'invalid_request', 'Job-ID muss eine UUID sein.', getRequestId());
   return jobId;
 };
 
@@ -81,20 +85,18 @@ const readJobListQuery = (request: Request): StudioJobListQuery | Response => {
   };
 };
 
-const createMonitoringMutationHandler = <TInput>(
-  input: {
-    readonly parse: (request: Request, requestId?: string) => Promise<TInput | Response>;
-    readonly execute: (
-      state: Readonly<{
-        request: Request;
-        context: AuthenticatedRequestContext;
-        requestId?: string;
-        instanceId: string;
-      }>,
-      parsed: TInput
-    ) => Promise<Response>;
-  }
-) => {
+const createMonitoringMutationHandler = <TInput>(input: {
+  readonly parse: (request: Request, requestId?: string) => Promise<TInput | Response>;
+  readonly execute: (
+    state: Readonly<{
+      request: Request;
+      context: AuthenticatedRequestContext;
+      requestId?: string;
+      instanceId: string;
+    }>,
+    parsed: TInput
+  ) => Promise<Response>;
+}) => {
   const workflow = createMutationWorkflow<
     AuthenticatedRequestContext,
     { readonly requestId?: string; readonly instanceId: string },
@@ -108,7 +110,8 @@ const createMonitoringMutationHandler = <TInput>(
       const instanceId = requireActorInstanceId(context.user.instanceId);
       return instanceId instanceof Response ? instanceId : { requestId, instanceId };
     },
-    authorize: async ({ context }) => (await requireMonitoringAccess(context, MONITORING_WRITE_ACTION)) ?? {},
+    authorize: async ({ context }) =>
+      (await requireMonitoringAccess(context, MONITORING_WRITE_ACTION)) ?? {},
     csrf: ({ request, requestId }) => validateCsrf(request, requestId) ?? undefined,
     parse: ({ request, requestId }) => input.parse(request, requestId),
     execute: async (state) => input.execute(state, state.input),
@@ -122,7 +125,8 @@ const createMonitoringMutationHandler = <TInput>(
     respond: (response) => response,
   });
 
-  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> => workflow(request, ctx);
+  return (request: Request, ctx: AuthenticatedRequestContext): Promise<Response> =>
+    workflow(request, ctx);
 };
 
 const parseJobId = async (request: Request): Promise<string | Response> => readJobId(request);
@@ -139,12 +143,113 @@ export const getPluginOperationJobHandler = async (request: Request): Promise<Re
     if (jobId instanceof Response) return jobId;
 
     try {
-      const job = await withStudioJobRepository(instanceId, (repository) => repository.getJobDetail(instanceId, jobId));
+      const job = await withStudioJobRepository(instanceId, (repository) =>
+        repository.getJobDetail(instanceId, jobId)
+      );
       return job
         ? createJsonItemResponse(200, normalizeStudioJobDetail(job), getRequestId())
         : createApiError(404, 'not_found', 'Job wurde nicht gefunden.', getRequestId());
     } catch {
-      return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht geladen werden.', getRequestId());
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Der Plugin-Job konnte nicht geladen werden.',
+        getRequestId()
+      );
+    }
+  });
+
+const safeArtifactFileName = (value: string): string =>
+  value.replaceAll(/[^A-Za-z0-9._-]/g, '_').slice(0, 160) || 'export.bin';
+
+export const downloadPluginOperationArtifactHandler = async (request: Request): Promise<Response> =>
+  withAuthenticatedUser(request, async (ctx) => {
+    const monitoringError = await requireMonitoringAccess(ctx, MONITORING_READ_ACTION);
+    if (monitoringError) return monitoringError;
+    const instanceId = requireActorInstanceId(ctx.user.instanceId);
+    if (instanceId instanceof Response) return instanceId;
+    const jobId = readPathSegment(request, 4);
+    const artifactId = readPathSegment(request, 6);
+    if (!jobId || !isUuid(jobId) || !artifactId || !isUuid(artifactId)) {
+      return createApiError(
+        400,
+        'invalid_request',
+        'Job- oder Artefakt-ID ist ungültig.',
+        getRequestId()
+      );
+    }
+
+    const actorResolution = await resolveActorInfo(request, ctx, { requireActorMembership: true });
+    if ('error' in actorResolution) return actorResolution.error;
+    try {
+      const job = await withStudioJobRepository(instanceId, (repository) =>
+        repository.getJobDetail(instanceId, jobId)
+      );
+      if (!job || job.status !== 'succeeded') {
+        return createApiError(
+          404,
+          'not_found',
+          'Exportartefakt wurde nicht gefunden.',
+          getRequestId()
+        );
+      }
+      if (
+        !actorResolution.actor.actorAccountId ||
+        job.actorAccountId !== actorResolution.actor.actorAccountId
+      ) {
+        return createApiError(
+          403,
+          'forbidden',
+          'Exportartefakt gehört einem anderen Akteur.',
+          getRequestId()
+        );
+      }
+      if (job.pluginId === 'waste-management') {
+        const authorization = await authorizeInstancePermissionForUser({
+          ctx,
+          action: 'waste-management.export.execute',
+        });
+        if (!authorization.ok) {
+          return createApiError(
+            authorization.status,
+            toInstancePermissionApiErrorCode(authorization.error),
+            'Keine Berechtigung zum Herunterladen des Waste-Exports.',
+            getRequestId(),
+            authorization.permissionDenial
+          );
+        }
+      }
+      const artifact = job.resultPayload?.artifacts?.find(
+        (entry) => entry.artifactId === artifactId
+      );
+      if (!artifact || Date.parse(artifact.expiresAt) <= Date.now()) {
+        return createApiError(
+          404,
+          'not_found',
+          'Exportartefakt ist nicht mehr verfügbar.',
+          getRequestId()
+        );
+      }
+      const stored = await readPluginOperationArtifact({ instanceId, artifactId });
+      const checksum = createHash('sha256').update(stored.body).digest('hex');
+      if (checksum !== artifact.sha256 || stored.body.byteLength !== artifact.sizeBytes) {
+        return createApiError(409, 'conflict', 'Exportartefakt ist beschädigt.', getRequestId());
+      }
+      return new Response(stored.body as BodyInit, {
+        status: 200,
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'Content-Disposition': `attachment; filename="${safeArtifactFileName(artifact.fileName)}"`,
+          'Content-Type': artifact.contentType,
+        },
+      });
+    } catch {
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Exportartefakt konnte nicht geladen werden.',
+        getRequestId()
+      );
     }
   });
 
@@ -173,7 +278,12 @@ export const deletePluginOperationJobHandler = async (request: Request): Promise
               requestId
             );
           }
-          return createApiError(503, 'database_unavailable', 'Der Plugin-Job konnte nicht gelöscht werden.', requestId);
+          return createApiError(
+            503,
+            'database_unavailable',
+            'Der Plugin-Job konnte nicht gelöscht werden.',
+            requestId
+          );
         }
       },
     })(request, ctx)
@@ -191,7 +301,9 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
     if (query instanceof Response) return query;
 
     try {
-      const jobs = await withStudioJobRepository(instanceId, (repository) => repository.listJobs(instanceId, query));
+      const jobs = await withStudioJobRepository(instanceId, (repository) =>
+        repository.listJobs(instanceId, query)
+      );
       return new Response(
         JSON.stringify(
           asApiList(
@@ -203,7 +315,12 @@ export const listPluginOperationJobsHandler = async (request: Request): Promise<
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     } catch {
-      return createApiError(503, 'database_unavailable', 'Die Plugin-Jobliste konnte nicht geladen werden.', getRequestId());
+      return createApiError(
+        503,
+        'database_unavailable',
+        'Die Plugin-Jobliste konnte nicht geladen werden.',
+        getRequestId()
+      );
     }
   });
 

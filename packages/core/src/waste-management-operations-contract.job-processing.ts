@@ -2,6 +2,7 @@ import type { WasteManagementSyncMainserverJobInput } from './waste-management-s
 
 import type {
   WasteManagementApplyMigrationsJobInput,
+  WasteManagementExportJobInput,
   WasteManagementImportJobInput,
   WasteManagementInitializeJobInput,
   WasteManagementProvisionTenantDatabaseJobInput,
@@ -29,6 +30,7 @@ type WasteManagementJobInput =
   | WasteManagementInitializeJobInput
   | WasteManagementApplyMigrationsJobInput
   | WasteManagementImportJobInput
+  | WasteManagementExportJobInput
   | WasteManagementSeedJobInput
   | WasteManagementResetJobInput
   | WasteManagementSyncMainserverJobInput

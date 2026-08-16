@@ -29,6 +29,7 @@ import {
   getWasteManagementToursOverview,
   startWasteManagementInitialize,
   startWasteManagementImport,
+  startWasteManagementExport,
   startWasteManagementMigrations,
   startWasteManagementPostalCodeEnrichment,
   startWasteManagementHolidaySync,
@@ -1809,6 +1810,26 @@ describe('waste-management api client', () => {
     const [, init] = firstCall ?? [];
     const headers = init?.headers as Headers;
     expect(headers.get('Idempotency-Key')).toBe('idem-1');
+  });
+
+  it('starts a canonical waste export through the protected export endpoint', async () => {
+    fetchMock.mockResolvedValueOnce(createJobResponse('waste-management.export-data'));
+
+    await startWasteManagementExport({
+      profileIds: ['waste-management.fraktionen'],
+      targetFormat: 'application/json',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/tools/exports',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          profileIds: ['waste-management.fraktionen'],
+          targetFormat: 'application/json',
+        }),
+      })
+    );
   });
 
   it('maps host errors into WasteManagementApiError', async () => {

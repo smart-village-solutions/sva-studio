@@ -790,3 +790,11 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 ### News-Kompatibilitäts-Snapshot
 
 Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Snapshot: Nur ausdrücklich berührte Compatibility-Aliase mit passendem Laufzeittyp aktualisieren diesen Snapshot, während vereinfachte redaktionelle Felder und die bestehenden Publication-, Push- und ContentBlocks-Prioritäten führend bleiben.
+
+### Waste-Datenprofil- und Datenschutzvertrag
+
+- Import und Export verwenden dieselbe versionierte Feldquelle. `required`, `optional` und `defaultable` unterscheiden Pflicht, fachliche Abwesenheit und Create-Defaults; fehlende Updatefelder bleiben unverändert.
+- Jedes bekannte Modellfeld ist enthalten oder mit stabilem Grund ausgeschlossen. Neue unklassifizierte Felder brechen den Coverage-Test.
+- Operative E-Mail-Abodaten, personenbezogene Adressauswahlen, Consent, Token und Outbox sind positive Ausschlüsse. Fraktionsbezogene Reminder-Einstellungen enthalten keine Personen und bleiben Fachkonfiguration.
+- Fachliche IDs werden erhalten; technische Zeitstempel und Zielidentitäten entstehen im Ziel. Der Austausch löscht keine zusätzlichen Zielzeilen und ist kein Tenant-Klon.
+- JSON ist das kanonische Roundtrip-Format. Bestehende tabellarische Importe bleiben Legacy-Eingangsadapter, solange kein Verlustfreiheitsnachweis vorliegt.

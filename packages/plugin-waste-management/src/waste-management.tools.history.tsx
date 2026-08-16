@@ -65,7 +65,9 @@ const resolveImportProgressMessageKey = (job: StudioJobResponse['data']) => {
 };
 
 const resolveImportProgressPhaseKey = (job: StudioJobResponse['data']) =>
-  job.progress?.currentPhase ? `tools.progress.phases.${job.progress.currentPhase}` : `tools.progress.statuses.${job.status}`;
+  job.progress?.currentPhase
+    ? `tools.progress.phases.${job.progress.currentPhase}`
+    : `tools.progress.statuses.${job.status}`;
 
 const resolveImportProgressRows = (job: StudioJobResponse['data']) => {
   const structuredProgress = readStructuredRowProgress(job);
@@ -82,11 +84,7 @@ const resolveImportProgressRows = (job: StudioJobResponse['data']) => {
   };
 };
 
-const WasteToolsActiveImportProgress = ({
-  job,
-}: {
-  readonly job: StudioJobResponse['data'];
-}) => {
+const WasteToolsActiveImportProgress = ({ job }: { readonly job: StudioJobResponse['data'] }) => {
   const pt = usePluginTranslation('wasteManagement');
   const progressPercentage = resolveImportProgressPercentage(job);
   const progressMessageKey = resolveImportProgressMessageKey(job);
@@ -133,7 +131,11 @@ const WasteToolsActiveImportProgress = ({
               : pt(progressMessageKey)}
           </span>
           {job.progress?.lastUpdatedAt ? (
-            <span>{pt('tools.progress.updatedAt', { value: formatUpdatedAt(job.progress.lastUpdatedAt) })}</span>
+            <span>
+              {pt('tools.progress.updatedAt', {
+                value: formatUpdatedAt(job.progress.lastUpdatedAt),
+              })}
+            </span>
           ) : null}
         </div>
       </div>
@@ -188,6 +190,28 @@ export const WasteToolsHistory = ({
       />
       {isActiveImportJob(displayedLastJob) ? <WasteToolsActiveImportProgress job={displayedLastJob} /> : null}
       <WasteToolsPostalCodeStatus job={displayedLastJob} />
+      {displayedLastJob?.status === 'succeeded' &&
+      displayedLastJob.resultPayload?.artifacts?.length ? (
+        <section className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-4">
+          <h3 className="text-sm font-semibold">{pt('tools.meta.downloadsTitle')}</h3>
+          <div className="flex flex-wrap gap-2">
+            {displayedLastJob.resultPayload.artifacts.map((artifact) => (
+              <a
+                key={artifact.artifactId}
+                className="inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted"
+                href={`/api/v1/plugin-operations/jobs/${encodeURIComponent(displayedLastJob.id)}/artifacts/${encodeURIComponent(artifact.artifactId)}`}
+              >
+                {pt('tools.meta.downloadArtifact', { fileName: artifact.fileName })}
+              </a>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {pt('tools.meta.downloadExpiresAt', {
+              value: formatUpdatedAt(displayedLastJob.resultPayload.artifacts[0].expiresAt),
+            })}
+          </p>
+        </section>
+      ) : null}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.historyTitle')}</h3>

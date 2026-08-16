@@ -164,7 +164,10 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   ) => readonly WasteManagementSettingsInterfaceOption[];
   readonly previewWasteLocationTourPickupDateImport?: (input: {
     readonly instanceId: string;
-    readonly sourceFormat: WasteManagementImportSourceFormat;
+    readonly sourceFormat: Exclude<
+      WasteManagementImportSourceFormat,
+      'application/json' | 'application/zip'
+    >;
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
   }) => Promise<WasteLocationTourPickupDateImportPreview>;

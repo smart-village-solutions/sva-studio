@@ -19,6 +19,7 @@ export type WasteManagementUiAccess = Readonly<{
   canRunMigrations: boolean;
   canEnrichPostalCodes: boolean;
   canRunImport: boolean;
+  canRunExport: boolean;
   canRunSeed: boolean;
   canRunReset: boolean;
   canRunMainserverSync: boolean;
@@ -34,6 +35,7 @@ export const deriveWasteManagementUiAccess = (
   const canRunInitialize = canAccessSettings;
   const canRunMigrations = canAccessSettings;
   const canRunImport = grantedPermissions.has('waste-management.import.execute');
+  const canRunExport = grantedPermissions.has('waste-management.export.execute');
   const canRunSeed = grantedPermissions.has('waste-management.seed.execute');
   const canRunReset = grantedPermissions.has('waste-management.reset.execute');
   const canEnrichPostalCodes = grantedPermissions.has('waste-management.master-data.manage');
@@ -41,8 +43,9 @@ export const deriveWasteManagementUiAccess = (
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools =
     canRunInitialize ||
-    canRunMigrations ||
-    canRunImport ||
+      canRunMigrations ||
+      canRunImport ||
+    canRunExport ||
     canRunSeed ||
     canRunReset ||
     canEnrichPostalCodes ||
@@ -74,6 +77,7 @@ export const deriveWasteManagementUiAccess = (
     canRunMigrations,
     canEnrichPostalCodes,
     canRunImport,
+    canRunExport,
     canRunSeed,
     canRunReset,
     canRunMainserverSync: canManageScheduling,

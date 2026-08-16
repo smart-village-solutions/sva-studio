@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 const repositoryState = vi.hoisted(() => ({
   withStudioJobRepository: vi.fn(),
@@ -23,6 +24,11 @@ const idempotencyState = vi.hoisted(() => ({
   completeIdempotency: vi.fn(),
 }));
 
+const artifactState = vi.hoisted(() => ({
+  readPluginOperationArtifact: vi.fn(),
+  resolveActorInfo: vi.fn(),
+}));
+
 vi.mock('@sva/server-runtime', async () => {
   const actual = await vi.importActual<typeof import('@sva/server-runtime')>('@sva/server-runtime');
   return {
@@ -41,12 +47,18 @@ vi.mock('./repository.js', () => ({
 
 vi.mock('./runner.js', () => ({
   queuePluginOperationJob: runnerState.queuePluginOperationJob,
-  getRegisteredPluginOperationExecutionRegistry: runnerState.getRegisteredPluginOperationExecutionRegistry,
+  getRegisteredPluginOperationExecutionRegistry:
+    runnerState.getRegisteredPluginOperationExecutionRegistry,
 }));
 
 vi.mock('../iam-account-management/shared.js', () => ({
   reserveIdempotency: idempotencyState.reserveIdempotency,
   completeIdempotency: idempotencyState.completeIdempotency,
+  resolveActorInfo: artifactState.resolveActorInfo,
+}));
+
+vi.mock('../plugin-operation-artifacts.server.js', () => ({
+  readPluginOperationArtifact: artifactState.readPluginOperationArtifact,
 }));
 
 vi.mock('../instance-permission-authorization.js', () => ({
@@ -64,6 +76,7 @@ vi.mock('../instance-permission-authorization.js', () => ({
 import {
   cancelPluginOperationJobHandler,
   deletePluginOperationJobHandler,
+  downloadPluginOperationArtifactHandler,
   getPluginOperationJobHandler,
   listPluginOperationJobsHandler,
   startPluginOperationJobHandler,
@@ -98,7 +111,13 @@ describe('plugin operations handlers', () => {
         },
       })
     );
-    middlewareState.authorizeInstancePermissionForUser.mockResolvedValue({ ok: true, permissions: [] });
+    middlewareState.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: true,
+      permissions: [],
+    });
+    artifactState.resolveActorInfo.mockResolvedValue({
+      actor: { actorAccountId: 'account-1' },
+    });
   });
 
   afterEach(() => {
@@ -440,9 +459,12 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await getPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
-        method: 'GET',
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        {
+          method: 'GET',
+        }
+      )
     );
 
     expect(response.status).toBe(200);
@@ -583,13 +605,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await cancelPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
-        method: 'POST',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(202);
@@ -627,13 +652,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await deletePluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
-        method: 'DELETE',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        {
+          method: 'DELETE',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(200);
@@ -670,13 +698,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await deletePluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
-        method: 'DELETE',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        {
+          method: 'DELETE',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(409);
@@ -690,9 +721,12 @@ describe('plugin operations handlers', () => {
 
   it('rejects cancellation requests without csrf protection before touching repositories', async () => {
     const response = await cancelPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
-        method: 'POST',
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+        }
+      )
     );
 
     expect(response.status).toBe(403);
@@ -723,7 +757,9 @@ describe('plugin operations handlers', () => {
     });
 
     const response = await listPluginOperationJobsHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', { method: 'GET' })
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', {
+        method: 'GET',
+      })
     );
 
     expect(response.status).toBe(403);
@@ -748,7 +784,9 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await listPluginOperationJobsHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', { method: 'GET' })
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?view=active', {
+        method: 'GET',
+      })
     );
 
     expect(response.status).toBe(400);
@@ -762,7 +800,9 @@ describe('plugin operations handlers', () => {
 
   it('rejects unknown job status filters before querying the repository', async () => {
     const response = await listPluginOperationJobsHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs?status=not-a-status', { method: 'GET' })
+      new Request('https://studio.test/api/v1/plugin-operations/jobs?status=not-a-status', {
+        method: 'GET',
+      })
     );
 
     expect(response.status).toBe(400);
@@ -825,13 +865,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await cancelPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
-        method: 'POST',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(404);
@@ -852,13 +895,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await cancelPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel', {
-        method: 'POST',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/cancel',
+        {
+          method: 'POST',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(503);
@@ -880,13 +926,16 @@ describe('plugin operations handlers', () => {
     );
 
     const response = await deletePluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
-        method: 'DELETE',
-        headers: {
-          Origin: 'https://studio.test',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        {
+          method: 'DELETE',
+          headers: {
+            Origin: 'https://studio.test',
+            'X-Requested-With': 'XMLHttpRequest',
+          },
+        }
+      )
     );
 
     expect(response.status).toBe(404);
@@ -903,9 +952,12 @@ describe('plugin operations handlers', () => {
     });
 
     const response = await getPluginOperationJobHandler(
-      new Request('https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111', {
-        method: 'GET',
-      })
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111',
+        {
+          method: 'GET',
+        }
+      )
     );
 
     expect(response.status).toBe(503);
@@ -916,4 +968,72 @@ describe('plugin operations handlers', () => {
     });
   });
 
+  it('downloads an intact export artifact only for its actor and current export permission', async () => {
+    const body = new TextEncoder().encode('{"ok":true}');
+    const artifactId = '22222222-2222-4222-8222-222222222222';
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          id: '11111111-1111-4111-8111-111111111111',
+          status: 'succeeded',
+          pluginId: 'waste-management',
+          actorAccountId: 'account-1',
+          resultPayload: {
+            artifacts: [
+              {
+                artifactId,
+                contentType: 'application/json',
+                fileName: 'fachdaten.json',
+                sizeBytes: body.byteLength,
+                sha256: createHash('sha256').update(body).digest('hex'),
+                expiresAt: '2026-05-10T12:02:00.000Z',
+              },
+            ],
+          },
+        })),
+      })
+    );
+    artifactState.readPluginOperationArtifact.mockResolvedValue({
+      body,
+      contentType: 'application/json',
+    });
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        `https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/${artifactId}`
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+    expect(response.headers.get('Content-Disposition')).toBe(
+      'attachment; filename="fachdaten.json"'
+    );
+    expect(middlewareState.authorizeInstancePermissionForUser).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'waste-management.export.execute' })
+    );
+    expect(await response.text()).toBe('{"ok":true}');
+  });
+
+  it('rejects export artifact access by another actor before reading storage', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          status: 'succeeded',
+          pluginId: 'waste-management',
+          actorAccountId: 'account-other',
+          resultPayload: { artifacts: [] },
+        })),
+      })
+    );
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/22222222-2222-4222-8222-222222222222'
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(artifactState.readPluginOperationArtifact).not.toHaveBeenCalled();
+  });
 });

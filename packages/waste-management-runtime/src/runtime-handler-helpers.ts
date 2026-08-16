@@ -1,6 +1,7 @@
 import {
   wasteManagementOperationsContract,
   type WasteManagementApplyMigrationsJobInput,
+  type WasteManagementExportJobInput,
   type WasteManagementInitializeJobInput,
   type WasteManagementMaterializeEmailRemindersJobInput,
   type WasteManagementProcessEmailReminderOutboxJobInput,
@@ -53,6 +54,14 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       execute: (runtimeArg, instanceId, payload) => runtimeArg.applyMigrations(instanceId, payload),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.importData]: createImportDataHandler(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.exportData]:
+    createOperationHandler<WasteManagementExportJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+      expectedOperation: 'export-data',
+      phaseKey: 'waste-management.export-running',
+      execute: (runtimeArg, instanceId, payload, _progressReporter, context) =>
+        runtimeArg.exportData(instanceId, payload, { jobId: context?.jobId ?? '' }),
+    })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.seedData]:
     createOperationHandler<WasteManagementSeedJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.seedData,

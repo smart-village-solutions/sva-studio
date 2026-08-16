@@ -19,6 +19,7 @@ import type {
   PreviewWasteLocationTourPickupDateImportInput,
   PreviewWasteLocationTourPickupDateImportResult,
   StartWasteManagementImportInput,
+  StartWasteManagementExportInput,
   StartWasteManagementMainserverSyncInput,
   StartWasteManagementMigrationsInput,
   StartWasteManagementResetInput,
@@ -204,6 +205,9 @@ export const startWasteManagementMigrations = async (input: StartWasteManagement
 
 export const startWasteManagementImport = async (input: StartWasteManagementImportInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/imports', input);
+
+export const startWasteManagementExport = async (input: StartWasteManagementExportInput) =>
+  requestWasteManagementJob('/api/v1/waste-management/tools/exports', input);
 
 export const previewWasteLocationTourPickupDateImport = async (
   input: PreviewWasteLocationTourPickupDateImportInput

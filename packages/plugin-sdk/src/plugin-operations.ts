@@ -36,6 +36,7 @@ export type PluginImportProfileValidationMode = 'preflight-only' | 'preflight-an
 
 export type PluginImportProfileDefinition = {
   readonly profileId: string;
+  readonly dataProfileId?: string;
   readonly jobTypeId: string;
   readonly displayName: string;
   readonly sourceFormats: readonly string[];
@@ -45,6 +46,17 @@ export type PluginImportProfileDefinition = {
   readonly validation: {
     readonly mode: PluginImportProfileValidationMode;
   };
+};
+
+export type PluginExportProfileDefinition = {
+  readonly profileId: string;
+  readonly dataProfileId: string;
+  readonly jobTypeId: string;
+  readonly displayName: string;
+  readonly targetFormats: readonly string[];
+  readonly schemaVersion: string;
+  readonly schemaStrategy: string;
+  readonly mappingStrategy: string;
 };
 
 export type PluginJobTypeRegistryEntry = {
@@ -77,6 +89,7 @@ export type PluginJobTypeRegistryEntry = {
 
 export type PluginImportProfileRegistryEntry = {
   readonly profileId: string;
+  readonly dataProfileId: string;
   readonly namespace: string;
   readonly profileName: string;
   readonly ownerPluginId: string;
@@ -91,6 +104,20 @@ export type PluginImportProfileRegistryEntry = {
   };
 };
 
+export type PluginExportProfileRegistryEntry = {
+  readonly profileId: string;
+  readonly dataProfileId: string;
+  readonly namespace: string;
+  readonly profileName: string;
+  readonly ownerPluginId: string;
+  readonly jobTypeId: string;
+  readonly displayName: string;
+  readonly targetFormats: readonly string[];
+  readonly schemaVersion: string;
+  readonly schemaStrategy: string;
+  readonly mappingStrategy: string;
+};
+
 const jobTypeDefinitionAllowedKeys = new Set([
   'jobTypeId',
   'queue',
@@ -103,6 +130,7 @@ const jobTypeDefinitionAllowedKeys = new Set([
 
 const importProfileDefinitionAllowedKeys = new Set([
   'profileId',
+  'dataProfileId',
   'jobTypeId',
   'displayName',
   'sourceFormats',
@@ -112,12 +140,25 @@ const importProfileDefinitionAllowedKeys = new Set([
   'validation',
 ] as const);
 
+const exportProfileDefinitionAllowedKeys = new Set([
+  'profileId',
+  'dataProfileId',
+  'jobTypeId',
+  'displayName',
+  'targetFormats',
+  'schemaVersion',
+  'schemaStrategy',
+  'mappingStrategy',
+] as const);
+
 const importProfileValidationAllowedKeys = new Set(['mode'] as const);
 const jobTypeProgressAllowedKeys = new Set(['phaseKeys', 'stepKeys'] as const);
 const jobTypeResultAllowedKeys = new Set(['summaryKeys', 'detailKeys'] as const);
 const jobTypeErrorAllowedKeys = new Set(['detailKeys'] as const);
 
-const normalizeProgressKeys = (keys: readonly string[] | undefined): readonly string[] | undefined => {
+const normalizeProgressKeys = (
+  keys: readonly string[] | undefined
+): readonly string[] | undefined => {
   if (!keys) {
     return undefined;
   }
@@ -132,12 +173,29 @@ const normalizeProgressKeys = (keys: readonly string[] | undefined): readonly st
 
 const normalizeSummaryKeys = (
   keys:
-    | readonly ('processedItems' | 'acceptedItems' | 'rejectedItems' | 'skippedItems' | 'warningCount' | 'durationMs')[]
+    | readonly (
+        | 'processedItems'
+        | 'acceptedItems'
+        | 'rejectedItems'
+        | 'skippedItems'
+        | 'warningCount'
+        | 'durationMs'
+      )[]
     | undefined
-): readonly ('processedItems' | 'acceptedItems' | 'rejectedItems' | 'skippedItems' | 'warningCount' | 'durationMs')[] | undefined =>
-  keys && keys.length > 0 ? [...new Set(keys)] : undefined;
+):
+  | readonly (
+      | 'processedItems'
+      | 'acceptedItems'
+      | 'rejectedItems'
+      | 'skippedItems'
+      | 'warningCount'
+      | 'durationMs'
+    )[]
+  | undefined => (keys && keys.length > 0 ? [...new Set(keys)] : undefined);
 
-const normalizeDetailKeys = (keys: readonly string[] | undefined): readonly string[] | undefined => {
+const normalizeDetailKeys = (
+  keys: readonly string[] | undefined
+): readonly string[] | undefined => {
   if (!keys) {
     return undefined;
   }
@@ -150,7 +208,9 @@ const normalizeDetailKeys = (keys: readonly string[] | undefined): readonly stri
   return normalizedKeys.length > 0 ? normalizedKeys : undefined;
 };
 
-const normalizeJobTypeDefinition = (definition: PluginJobTypeDefinition): PluginJobTypeDefinition => ({
+const normalizeJobTypeDefinition = (
+  definition: PluginJobTypeDefinition
+): PluginJobTypeDefinition => ({
   ...definition,
   jobTypeId: normalizePluginIdentifier(definition.jobTypeId),
   queue: normalizePluginIdentifier(definition.queue),
@@ -182,9 +242,28 @@ const normalizeImportProfileDefinition = (
 ): PluginImportProfileDefinition => ({
   ...definition,
   profileId: normalizePluginIdentifier(definition.profileId),
+  dataProfileId: normalizePluginIdentifier(definition.dataProfileId ?? definition.profileId),
   jobTypeId: normalizePluginIdentifier(definition.jobTypeId),
   displayName: definition.displayName.trim(),
-  sourceFormats: definition.sourceFormats.map((format) => format.trim()).filter((format) => format.length > 0),
+  sourceFormats: definition.sourceFormats
+    .map((format) => format.trim())
+    .filter((format) => format.length > 0),
+  schemaVersion: definition.schemaVersion.trim(),
+  schemaStrategy: normalizePluginIdentifier(definition.schemaStrategy),
+  mappingStrategy: normalizePluginIdentifier(definition.mappingStrategy),
+});
+
+const normalizeExportProfileDefinition = (
+  definition: PluginExportProfileDefinition
+): PluginExportProfileDefinition => ({
+  ...definition,
+  profileId: normalizePluginIdentifier(definition.profileId),
+  dataProfileId: normalizePluginIdentifier(definition.dataProfileId),
+  jobTypeId: normalizePluginIdentifier(definition.jobTypeId),
+  displayName: definition.displayName.trim(),
+  targetFormats: definition.targetFormats
+    .map((format) => format.trim())
+    .filter((format) => format.length > 0),
   schemaVersion: definition.schemaVersion.trim(),
   schemaStrategy: normalizePluginIdentifier(definition.schemaStrategy),
   mappingStrategy: normalizePluginIdentifier(definition.mappingStrategy),
@@ -295,6 +374,15 @@ export const definePluginImportProfiles = <
       );
     }
 
+    const parsedDataProfile = parseNamespacedPluginIdentifier(
+      normalizedProfile.dataProfileId ?? normalizedProfile.profileId
+    );
+    if (parsedDataProfile === undefined || parsedDataProfile.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_import_data_profile_namespace_mismatch:${normalizedNamespace}:${normalizedProfile.dataProfileId}`
+      );
+    }
+
     const parsedJobType = parseNamespacedPluginIdentifier(normalizedProfile.jobTypeId);
     if (parsedJobType === undefined) {
       throw new Error(`invalid_plugin_import_profile_job_type:${normalizedProfile.jobTypeId}`);
@@ -321,13 +409,79 @@ export const definePluginImportProfiles = <
   return normalizedImportProfiles as unknown as TImportProfiles;
 };
 
+export const definePluginExportProfiles = <
+  const TExportProfiles extends readonly PluginExportProfileDefinition[],
+>(
+  namespace: string,
+  exportProfiles: TExportProfiles
+): TExportProfiles => {
+  const normalizedNamespace = normalizePluginNamespace(namespace);
+  if (isReservedPluginNamespace(normalizedNamespace)) {
+    throw new Error(`reserved_plugin_namespace:${normalizedNamespace}`);
+  }
+
+  const normalizedExportProfiles = exportProfiles.map((profile) => {
+    assertPluginContributionAllowedKeys(
+      profile,
+      exportProfileDefinitionAllowedKeys,
+      normalizedNamespace,
+      normalizePluginIdentifier(profile.profileId)
+    );
+
+    const normalizedProfile = normalizeExportProfileDefinition(profile);
+    const parsedProfile = parseNamespacedPluginIdentifier(normalizedProfile.profileId);
+    if (parsedProfile === undefined) {
+      throw new Error(`invalid_plugin_export_profile:${normalizedProfile.profileId}`);
+    }
+    if (parsedProfile.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_export_profile_namespace_mismatch:${normalizedNamespace}:${parsedProfile.namespace}:${normalizedProfile.profileId}`
+      );
+    }
+
+    const parsedDataProfile = parseNamespacedPluginIdentifier(normalizedProfile.dataProfileId);
+    if (parsedDataProfile === undefined || parsedDataProfile.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_export_data_profile_namespace_mismatch:${normalizedNamespace}:${normalizedProfile.dataProfileId}`
+      );
+    }
+
+    const parsedJobType = parseNamespacedPluginIdentifier(normalizedProfile.jobTypeId);
+    if (parsedJobType === undefined || parsedJobType.namespace !== normalizedNamespace) {
+      throw new Error(
+        `plugin_export_profile_job_type_namespace_mismatch:${normalizedNamespace}:${normalizedProfile.jobTypeId}`
+      );
+    }
+
+    if (
+      normalizedProfile.displayName.length === 0 ||
+      normalizedProfile.targetFormats.length === 0 ||
+      normalizedProfile.schemaVersion.length === 0 ||
+      normalizedProfile.schemaStrategy.length === 0 ||
+      normalizedProfile.mappingStrategy.length === 0
+    ) {
+      throw new Error(`invalid_plugin_export_profile:${normalizedProfile.profileId}`);
+    }
+
+    return normalizedProfile;
+  });
+
+  return normalizedExportProfiles as unknown as TExportProfiles;
+};
+
 export const mergePluginJobTypes = (
   plugins: readonly PluginDefinition[]
 ): readonly PluginJobTypeDefinition[] => plugins.flatMap((plugin) => plugin.jobTypes ?? []);
 
 export const mergePluginImportProfiles = (
   plugins: readonly PluginDefinition[]
-): readonly PluginImportProfileDefinition[] => plugins.flatMap((plugin) => plugin.importProfiles ?? []);
+): readonly PluginImportProfileDefinition[] =>
+  plugins.flatMap((plugin) => plugin.importProfiles ?? []);
+
+export const mergePluginExportProfiles = (
+  plugins: readonly PluginDefinition[]
+): readonly PluginExportProfileDefinition[] =>
+  plugins.flatMap((plugin) => plugin.exportProfiles ?? []);
 
 export const createPluginJobTypeRegistry = (
   plugins: readonly PluginDefinition[]
@@ -393,6 +547,7 @@ export const createPluginImportProfileRegistry = (
 
       registry.set(normalizedProfile.profileId, {
         profileId: normalizedProfile.profileId,
+        dataProfileId: normalizedProfile.dataProfileId ?? normalizedProfile.profileId,
         namespace: parsed.namespace,
         profileName: parsed.name,
         ownerPluginId: pluginNamespace,
@@ -403,6 +558,50 @@ export const createPluginImportProfileRegistry = (
         schemaStrategy: normalizedProfile.schemaStrategy,
         mappingStrategy: normalizedProfile.mappingStrategy,
         validation: normalizedProfile.validation,
+      });
+    }
+  }
+
+  return registry;
+};
+
+export const createPluginExportProfileRegistry = (
+  plugins: readonly PluginDefinition[]
+): ReadonlyMap<string, PluginExportProfileRegistryEntry> => {
+  const registry = new Map<string, PluginExportProfileRegistryEntry>();
+  const jobTypeRegistry = createPluginJobTypeRegistry(plugins);
+
+  for (const plugin of plugins) {
+    const pluginNamespace = normalizePluginNamespace(plugin.id);
+
+    for (const profile of plugin.exportProfiles ?? []) {
+      const normalizedProfile = definePluginExportProfiles(pluginNamespace, [profile])[0];
+      if (registry.has(normalizedProfile.profileId)) {
+        throw new Error(`duplicate_plugin_export_profile:${normalizedProfile.profileId}`);
+      }
+      if (!jobTypeRegistry.has(normalizedProfile.jobTypeId)) {
+        throw new Error(
+          `unknown_plugin_export_profile_job_type:${normalizedProfile.profileId}:${normalizedProfile.jobTypeId}`
+        );
+      }
+
+      const parsed = parseNamespacedPluginIdentifier(normalizedProfile.profileId);
+      if (parsed === undefined) {
+        throw new Error(`invalid_plugin_export_profile:${normalizedProfile.profileId}`);
+      }
+
+      registry.set(normalizedProfile.profileId, {
+        profileId: normalizedProfile.profileId,
+        dataProfileId: normalizedProfile.dataProfileId,
+        namespace: parsed.namespace,
+        profileName: parsed.name,
+        ownerPluginId: pluginNamespace,
+        jobTypeId: normalizedProfile.jobTypeId,
+        displayName: normalizedProfile.displayName,
+        targetFormats: normalizedProfile.targetFormats,
+        schemaVersion: normalizedProfile.schemaVersion,
+        schemaStrategy: normalizedProfile.schemaStrategy,
+        mappingStrategy: normalizedProfile.mappingStrategy,
       });
     }
   }

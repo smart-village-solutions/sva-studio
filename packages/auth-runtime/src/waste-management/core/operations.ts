@@ -27,6 +27,7 @@ import { getRequestId } from './utils.js';
 
 const {
   previewLocationTourPickupDateImportSchema,
+  startExportSchema,
   startImportSchema,
   startInitializeSchema,
   startMainserverSyncSchema,
@@ -334,6 +335,45 @@ export const wasteManagementOperationHandlers = {
         blobRef: data.blobRef,
         delimiterOverride:
           typeof data.delimiterOverride === 'string' ? data.delimiterOverride : undefined,
+      }),
+    }),
+  startWasteManagementExportInternal: async (
+    request: Request,
+    ctx: AuthenticatedRequestContext,
+    deps: WasteManagementHandlerDeps = {}
+  ): Promise<Response> =>
+    startToolJob(request, ctx, deps, {
+      requiredPermission: 'waste-management.export.execute',
+      endpoint: 'POST:/api/v1/waste-management/tools/exports',
+      schema: startExportSchema.superRefine((value, refinementCtx) => {
+        for (const profileId of value.profileIds) {
+          if (
+            !Object.values(wasteManagementOperationsContract.importProfileIds).includes(
+              profileId as never
+            ) ||
+            profileId === wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
+          ) {
+            refinementCtx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'Unbekanntes Waste-Exportprofil.',
+              path: ['profileIds'],
+            });
+          }
+        }
+        if (value.targetFormat === 'application/json' && value.profileIds.length !== 1) {
+          refinementCtx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'JSON-Exporte benötigen genau ein Profil.',
+            path: ['profileIds'],
+          });
+        }
+      }),
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.exportData,
+      auditActionId: 'waste-management.export.started',
+      toPayload: (data) => ({
+        operation: 'export-data',
+        profileIds: data.profileIds,
+        targetFormat: data.targetFormat,
       }),
     }),
   previewWasteManagementLocationTourPickupDateImportInternal: async (

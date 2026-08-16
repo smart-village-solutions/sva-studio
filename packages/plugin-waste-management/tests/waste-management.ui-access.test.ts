@@ -12,6 +12,7 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunInitialize).toBe(false);
     expect(access.canRunMigrations).toBe(false);
     expect(access.canRunImport).toBe(false);
+    expect(access.canRunExport).toBe(false);
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(false);
     expect(access.canEnrichPostalCodes).toBe(false);
@@ -34,6 +35,7 @@ describe('waste-management.ui-access', () => {
       'waste-management.read',
       'waste-management.settings.manage',
       'waste-management.import.execute',
+      'waste-management.export.execute',
       'waste-management.reset.execute',
     ]);
 
@@ -51,6 +53,7 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunInitialize).toBe(true);
     expect(access.canRunMigrations).toBe(true);
     expect(access.canRunImport).toBe(true);
+    expect(access.canRunExport).toBe(true);
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(true);
     expect(access.canDuplicateTour).toBe(false);

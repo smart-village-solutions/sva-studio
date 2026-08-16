@@ -46,6 +46,7 @@ export const WasteToolsPanel = (props: {
     runInitialize,
     runPreview,
     runImport,
+    runExport,
     runMigrations,
     runPostalCodeEnrichment,
     runSeed,
@@ -84,6 +85,7 @@ export const WasteToolsPanel = (props: {
         setDelimiterOverride={setDelimiterOverride}
         runPreview={runPreview}
         runImport={runImport}
+        runExport={runExport}
         runInitialize={runInitialize}
         migrationSchema={migrationSchema}
         migrationVersion={migrationVersion}

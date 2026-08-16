@@ -77,6 +77,7 @@ export const createOperationResult = <TJobInput extends WasteManagementJobInput>
   readonly operationResult: {
     readonly durationMs: number;
     readonly details: Record<string, unknown>;
+    readonly artifacts?: readonly import('@sva/plugin-sdk').StudioJobResultArtifact[];
   };
   readonly startedAt: number;
   readonly progress: WasteManagementJobProgress;
@@ -97,6 +98,7 @@ export const createOperationResult = <TJobInput extends WasteManagementJobInput>
         input.jobTypeDefinition.result?.detailKeys ?? []
       ),
     },
+    ...(input.operationResult.artifacts ? { artifacts: input.operationResult.artifacts } : {}),
   },
 });
 
@@ -120,6 +122,7 @@ export const createOperationHandler =
     ) => Promise<{
       readonly durationMs: number;
       readonly details: Record<string, unknown>;
+      readonly artifacts?: readonly import('@sva/plugin-sdk').StudioJobResultArtifact[];
     }>;
   }) =>
   (runtime: WasteManagementOperationRuntime): PluginJobExecutionHandler =>

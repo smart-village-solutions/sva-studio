@@ -1,6 +1,27 @@
 import { createWasteManagementToolsTranslations } from './plugin.translations.shared.sections.js';
 
 export const wasteManagementPluginTranslationsDETools = createWasteManagementToolsTranslations({
+  exports: {
+    title: 'Fachdaten exportieren',
+    description:
+      'Exportieren Sie ein einzelnes Profil als JSON oder mehrere Profile als ZIP-Paket.',
+    profilesLabel: 'Datenprofile',
+    formatLabel: 'Exportformat',
+    formats: { json: 'JSON (ein Profil)', zip: 'ZIP-Paket' },
+    profiles: {
+      fractions: 'Fraktionen',
+      geographyCollectionLocations: 'Geografie und Abholorte',
+      recurrencePresets: 'Abstandspresets',
+      tours: 'Touren',
+      locationTourLinks: 'Abholort-Tour-Zuordnungen',
+      tourAssignments: 'Tour-Einsätze',
+      dateShifts: 'Ausweichtermine',
+      holidayRules: 'Feiertagsregeln',
+      portableSettings: 'Portable Einstellungen',
+    },
+    privacyNotice:
+      'E-Mail-Abonnements, Empfängeradressen, Einwilligungen, Tokens und Outbox-Daten werden niemals exportiert.',
+  },
   imports: {
     title: 'Importe',
     description:
@@ -13,6 +34,8 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     sourceFormats: {
       csv: 'CSV',
       xlsx: 'Excel (.xlsx)',
+      json: 'JSON',
+      zip: 'ZIP-Paket',
     },
     dryRunLabel: 'Nur Vorprüfung (Dry-Run)',
     templateColumns: 'Kanonische Importspalten',
@@ -126,6 +149,7 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     confirmAction: 'Zurücksetzen bestätigen',
   },
   actions: {
+    startExport: 'Export starten',
     startImport: 'Import starten',
     startMigrations: 'Migrationen starten',
     startSeed: 'Initialdaten laden',
@@ -149,6 +173,9 @@ export const wasteManagementPluginTranslationsDETools = createWasteManagementToo
     resetValidationError: 'Das Zurücksetzen verlangt ein gültiges Bestätigungstoken.',
   },
   meta: {
+    downloadsTitle: 'Geschützter Export-Download',
+    downloadArtifact: '{{fileName}} herunterladen',
+    downloadExpiresAt: 'Download verfügbar bis {{value}}.',
     lastJobTitle: 'Letzter Prozess',
     lastJobDescription: 'Zuletzt gestarteter technischer Prozess mit aktuellem Status.',
     noJobYet: 'Noch kein technischer Abfallprozess gestartet.',

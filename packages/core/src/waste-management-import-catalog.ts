@@ -4,6 +4,7 @@ import {
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
 } from './waste-management-operations-contract.js';
+import { wasteManagementDataProfiles } from './waste-management-data-exchange.js';
 
 export type WasteManagementImportColumnDefinition = {
   readonly key: string;
@@ -33,25 +34,37 @@ export type WasteManagementImportProfileCatalogEntry = {
 };
 
 const createTemplates = (
-  profileId: WasteManagementImportProfileId
-): readonly WasteManagementImportMappingTemplate[] => [
-  {
-    templateId: `${profileId}.canonical-csv-v1`,
-    displayName: 'Canonical CSV v1',
+  profileId: WasteManagementImportProfileId,
+  sourceFormats: readonly WasteManagementImportSourceFormat[]
+): readonly WasteManagementImportMappingTemplate[] =>
+  sourceFormats.map((sourceFormat) => ({
+    templateId: `${profileId}.${
+      sourceFormat === 'application/json'
+        ? 'canonical-json-v1'
+        : sourceFormat === 'application/zip'
+          ? 'canonical-package-v1'
+          : sourceFormat === 'text/csv'
+            ? 'canonical-csv-v1'
+            : 'canonical-xlsx-v1'
+    }`,
+    displayName:
+      sourceFormat === 'application/json'
+        ? 'Canonical JSON v1'
+        : sourceFormat === 'application/zip'
+          ? 'Canonical package v1'
+          : sourceFormat === 'text/csv'
+            ? 'Canonical CSV v1'
+            : 'Canonical XLSX v1',
     description:
-      'Uses the shared canonical waste CSV column layout without plugin-local persistence.',
-    sourceFormat: 'text/csv',
-  },
-  {
-    templateId: `${profileId}.canonical-xlsx-v1`,
-    displayName: 'Canonical XLSX v1',
-    description:
-      'Uses the shared canonical waste XLSX workbook layout without plugin-local persistence.',
-    sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  },
-];
+      'Uses the versioned canonical waste data profile without plugin-local persistence.',
+    sourceFormat,
+  }));
 
-const importSourceFormats = [...wasteManagementOperationsContract.importSourceFormats] as const;
+const importSourceFormats = [
+  'application/json',
+  'text/csv',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+] as const satisfies readonly WasteManagementImportSourceFormat[];
 
 const importTemplate = (input: {
   readonly profileId: WasteManagementImportProfileId;
@@ -76,11 +89,44 @@ const importTemplate = (input: {
     'Required columns must be present on every row.',
     'Referenced ids must be stable across repeated imports.',
   ],
-  mappingTemplates: createTemplates(input.profileId),
+  mappingTemplates: createTemplates(input.profileId, input.sourceFormats ?? importSourceFormats),
   templateDelimiter: input.templateDelimiter,
   templateHeaders: input.templateHeaders,
   templateSampleRows: input.templateSampleRows,
 });
+
+const existingCanonicalProfileIds = new Set<WasteManagementImportProfileId>([
+  wasteManagementOperationsContract.importProfileIds.geographyCollectionLocations,
+  wasteManagementOperationsContract.importProfileIds.tours,
+  wasteManagementOperationsContract.importProfileIds.dateShifts,
+]);
+
+const remainingCanonicalJsonEntries = wasteManagementDataProfiles
+  .filter((profile) => !existingCanonicalProfileIds.has(profile.profileId))
+  .map((profile) =>
+    importTemplate({
+      profileId: profile.profileId,
+      displayName: profile.displayName,
+      description: profile.description,
+      sourceFormats: ['application/json'],
+      requiredColumns: profile.entities.flatMap((entityDefinition) =>
+        entityDefinition.fields
+          .filter((field) => field.transfer === 'included' && field.input.kind === 'required')
+          .map((field) => ({ key: `${entityDefinition.entityType}.${field.key}`, required: true }))
+      ),
+      optionalColumns: profile.entities.flatMap((entityDefinition) =>
+        entityDefinition.fields
+          .filter((field) => field.transfer === 'included' && field.input.kind !== 'required')
+          .map((field) => ({ key: `${entityDefinition.entityType}.${field.key}`, required: false }))
+      ),
+      validationRules: [
+        `The JSON envelope must use formatVersion ${profile.formatVersion}.`,
+        `The JSON envelope profileId must be ${profile.profileId}.`,
+        'Unknown and intentionally excluded fields are rejected.',
+        'Required fields must be present; defaultable fields receive their documented defaults on create.',
+      ],
+    })
+  );
 
 export const wasteManagementImportCatalog = [
   importTemplate({
@@ -103,6 +149,7 @@ export const wasteManagementImportCatalog = [
       { key: 'house_number_value', required: false, example: '42a' },
     ],
   }),
+  ...remainingCanonicalJsonEntries,
   importTemplate({
     profileId: wasteManagementOperationsContract.importProfileIds.tours,
     displayName: 'Touren',
@@ -138,6 +185,19 @@ export const wasteManagementImportCatalog = [
       { key: 'tour_id', required: false, example: 'tour-restmuell-1' },
       { key: 'description', required: false, example: 'Feiertagsverschiebung' },
       { key: 'tour_ids', required: false, example: 'tour-restmuell-1|tour-bio-2' },
+    ],
+  }),
+  importTemplate({
+    profileId: wasteManagementOperationsContract.importProfileIds.dataPackage,
+    displayName: 'Waste-Datenpaket',
+    description: 'Importiert ein versioniertes ZIP-Paket mit mehreren kanonischen JSON-Profilen.',
+    sourceFormats: ['application/zip'],
+    requiredColumns: [{ key: 'manifest.json', required: true }],
+    optionalColumns: [],
+    validationRules: [
+      'The package must contain a versioned manifest and every declared profile file.',
+      'Every profile checksum must match the manifest.',
+      'Profile dependencies determine the import order.',
     ],
   }),
   importTemplate({

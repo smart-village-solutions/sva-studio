@@ -147,7 +147,8 @@ describe('router runtime helpers', () => {
     routerMocks.rootRoute.addChildren.mockClear();
     routerMocks.parseRuntimeProfile.mockClear();
     routerMocks.isMockAuthRuntimeProfile.mockClear();
-    delete (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__;
+    delete (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown })
+      .__SVA_PLAYWRIGHT_ROUTER__;
     Object.defineProperty(document, 'cookie', {
       configurable: true,
       get: () => cookieState,
@@ -219,6 +220,7 @@ describe('router runtime helpers', () => {
         'waste-management.tours.manage',
         'waste-management.scheduling.manage',
         'waste-management.import.execute',
+        'waste-management.export.execute',
         'waste-management.seed.execute',
         'waste-management.reset.execute',
         'waste-management.settings.manage',
@@ -285,7 +287,9 @@ describe('router runtime helpers', () => {
         },
       })
     );
-    expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBe(router);
+    expect(
+      (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__
+    ).toBe(router);
   });
 
   it('does not expose the Playwright hook outside Playwright runs', async () => {
@@ -294,7 +298,9 @@ describe('router runtime helpers', () => {
 
     await getRouter();
 
-    expect((window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__).toBeUndefined();
+    expect(
+      (window as typeof window & { __SVA_PLAYWRIGHT_ROUTER__?: unknown }).__SVA_PLAYWRIGHT_ROUTER__
+    ).toBeUndefined();
   });
 
   it('resolves route-guard users on the client from /auth/me and handles non-ok and failure cases', async () => {
@@ -313,8 +319,8 @@ describe('router runtime helpers', () => {
           },
         }),
         {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
+          status: 200,
+          headers: { 'content-type': 'application/json' },
         }
       )
     );
@@ -330,7 +336,9 @@ describe('router runtime helpers', () => {
       { timeoutMs: 5_000 }
     );
 
-    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(new Response(null, { status: 401 }));
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(null, { status: 401 })
+    );
     expect(await getUser()).toBeNull();
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('timeout'));
@@ -483,10 +491,13 @@ describe('router runtime helpers', () => {
         })
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ instanceId: 'instance-1', permissions: [{ action: 'news.read' }] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        })
+        new Response(
+          JSON.stringify({ instanceId: 'instance-1', permissions: [{ action: 'news.read' }] }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        )
       );
     expect(await getUser()).toEqual({
       instanceId: 'instance-1',
@@ -502,7 +513,9 @@ describe('router runtime helpers', () => {
       { timeoutMs: 5_000 }
     );
 
-    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(new Response(null, { status: 401 }));
+    routerMocks.fetchWithRequestTimeoutSpy.mockResolvedValueOnce(
+      new Response(null, { status: 401 })
+    );
     expect(await getUser()).toBeNull();
 
     routerMocks.fetchWithRequestTimeoutSpy.mockRejectedValueOnce(new Error('auth failed'));

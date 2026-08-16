@@ -7,6 +7,7 @@ import {
   createSyncMainserverOperation,
   createSyncWasteTypesOperation,
 } from './waste-management-operations.handlers.server.js';
+import { createExportDataOperation } from './waste-management-operations.export.server.js';
 import {
   createMaterializeEmailRemindersOperation,
   createProcessEmailReminderOutboxOperation,
@@ -30,6 +31,7 @@ export const createWasteManagementOperationRuntime = (
   initializeDataSource: createInitializeDataSourceOperation(deps),
   applyMigrations: createApplyMigrationsOperation(deps),
   importData: createImportDataOperation(deps),
+  exportData: createExportDataOperation(deps),
   seedData: createSeedDataOperation(deps),
   syncMainserver: createSyncMainserverOperation(deps),
   syncWasteTypes: createSyncWasteTypesOperation(deps),

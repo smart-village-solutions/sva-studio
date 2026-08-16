@@ -42,6 +42,7 @@ const {
   retryWasteTenantProvisioningInternal,
   startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
+  startWasteManagementExportInternal,
   previewWasteManagementLocationTourPickupDateImportInternal,
   startWasteManagementMigrationsInternal,
   startWasteManagementMainserverSyncInternal,
@@ -510,6 +511,10 @@ export const wasteManagementHandlers = {
   startImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       startWasteManagementImportInternal(nextRequest, ctx)
+    ),
+  startExport: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      startWasteManagementExportInternal(nextRequest, ctx)
     ),
   previewLocationTourPickupDateImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>

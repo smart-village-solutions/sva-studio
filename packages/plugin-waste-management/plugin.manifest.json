@@ -4,7 +4,7 @@
   "sdkVersion": "0.0.1",
   "hostCompatibility": {
     "studioVersionRange": "^0.0.1",
-    "requiredCapabilities": ["routing", "navigation", "iam", "jobs", "imports"]
+    "requiredCapabilities": ["routing", "navigation", "iam", "jobs", "imports", "exports"]
   },
   "entryPoints": {
     "browser": "./dist/index.js"

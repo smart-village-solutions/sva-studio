@@ -1,10 +1,12 @@
 import {
   wasteManagementCsvDelimiters,
+  wasteManagementExportTargetFormats,
   wasteManagementImportProfileIds,
   wasteManagementImportSourceFormats,
   wasteManagementJobTypeIds,
   wasteManagementResetConfirmationToken,
   type WasteManagementCsvDelimiter,
+  type WasteManagementExportTargetFormat,
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
   type WasteManagementJobTypeId,
@@ -18,6 +20,7 @@ const wasteManagementOperationsContract = {
   importProfileIds: wasteManagementImportProfileIds,
   importSourceFormats: wasteManagementImportSourceFormats,
   csvDelimiters: wasteManagementCsvDelimiters,
+  exportTargetFormats: wasteManagementExportTargetFormats,
   isJobTypeId: (value: string): value is WasteManagementJobTypeId =>
     (Object.values(wasteManagementJobTypeIds) as readonly string[]).includes(value),
   isImportProfileId: (value: string): value is WasteManagementImportProfileId =>
@@ -26,6 +29,8 @@ const wasteManagementOperationsContract = {
     (wasteManagementImportSourceFormats as readonly string[]).includes(value),
   isCsvDelimiter: (value: string): value is WasteManagementCsvDelimiter =>
     (wasteManagementCsvDelimiters as readonly string[]).includes(value),
+  isExportTargetFormat: (value: string): value is WasteManagementExportTargetFormat =>
+    (wasteManagementExportTargetFormats as readonly string[]).includes(value),
 } as const;
 
 export { wasteManagementOperationsContract };

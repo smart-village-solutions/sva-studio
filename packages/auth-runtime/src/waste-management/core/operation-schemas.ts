@@ -18,6 +18,11 @@ const startImportSchema = z.object({
   delimiterOverride: z.enum(wasteManagementOperationsContract.csvDelimiters).optional(),
 });
 
+const startExportSchema = z.object({
+  profileIds: z.array(z.string().trim().min(1)).min(1).max(9),
+  targetFormat: z.enum(wasteManagementOperationsContract.exportTargetFormats),
+});
+
 const previewLocationTourPickupDateImportSchema = z.object({
   importProfileId: z.literal(
     wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
@@ -50,6 +55,7 @@ export const wasteManagementOperationSchemas = {
   startInitializeSchema,
   startMigrationsSchema,
   startImportSchema,
+  startExportSchema,
   previewLocationTourPickupDateImportSchema,
   startSeedSchema,
   startMainserverSyncSchema,

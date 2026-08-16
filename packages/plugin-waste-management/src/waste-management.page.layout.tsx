@@ -21,6 +21,7 @@ type Translate = (key: string, variables?: Readonly<Record<string, string | numb
 const defaultUiAccess = deriveWasteManagementUiAccess([
   'waste-management.settings.manage',
   'waste-management.import.execute',
+  'waste-management.export.execute',
   'waste-management.seed.execute',
   'waste-management.reset.execute',
 ]);

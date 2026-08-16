@@ -34,7 +34,20 @@ export const resolveSelectedImportProfile = (
 export const resolveImportFileAccept = (importSourceFormat: WasteManagementImportSourceFormat) =>
   importSourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ? '.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    : '.csv,text/csv';
+    : importSourceFormat === 'application/json'
+      ? '.json,application/json'
+      : importSourceFormat === 'application/zip'
+        ? '.zip,application/zip'
+        : '.csv,text/csv';
+
+const sourceFormatTranslationKey = (sourceFormat: WasteManagementImportSourceFormat) =>
+  sourceFormat === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ? 'xlsx'
+    : sourceFormat === 'application/json'
+      ? 'json'
+      : sourceFormat === 'application/zip'
+        ? 'zip'
+        : 'csv';
 
 export const isPreviewRequiredImportProfile = (profile: ImportCatalogEntry | null) =>
   profile?.profileId === locationTourPickupDateProfileId;
@@ -269,10 +282,7 @@ const WasteToolsUploadFields = ({
           >
             {selectedImportProfile.sourceFormats.map((sourceFormat) => (
               <option key={sourceFormat} value={sourceFormat}>
-                {sourceFormat ===
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                  ? pt('tools.imports.sourceFormats.xlsx')
-                  : pt('tools.imports.sourceFormats.csv')}
+                {pt(`tools.imports.sourceFormats.${sourceFormatTranslationKey(sourceFormat)}`)}
               </option>
             ))}
           </Select>
@@ -665,7 +675,12 @@ export const WasteToolsValidationStep = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const action = previewRequired ? (
-    <Button type="button" variant="secondary" disabled={running || !canContinue} onClick={onPreview}>
+    <Button
+      type="button"
+      variant="secondary"
+      disabled={running || !canContinue}
+      onClick={onPreview}
+    >
       {pt('tools.actions.previewImport')}
     </Button>
   ) : (

@@ -1,50 +1,50 @@
 import {
   definePluginImportProfiles,
+  wasteManagementDataProfiles,
   wasteManagementOperationsContract,
   type PluginImportProfileDefinition,
 } from '@sva/plugin-sdk';
 
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
 
+const canonicalImportProfiles = wasteManagementDataProfiles.map((profile) => ({
+  profileId: profile.profileId,
+  dataProfileId: profile.profileId,
+  jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
+  displayName: profile.displayName,
+  sourceFormats:
+    profile.profileId ===
+      wasteManagementOperationsContract.importProfileIds.geographyCollectionLocations ||
+    profile.profileId === wasteManagementOperationsContract.importProfileIds.tours ||
+    profile.profileId === wasteManagementOperationsContract.importProfileIds.dateShifts
+      ? [
+          'application/json',
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]
+      : ['application/json'],
+  schemaVersion: profile.formatVersion,
+  schemaStrategy: `${profile.profileId}.schema`,
+  mappingStrategy: `${profile.profileId}.mapping`,
+  validation: { mode: 'preflight-and-commit' as const },
+}));
+
 const wasteManagementPluginImportProfiles = [
+  ...canonicalImportProfiles,
   {
-    profileId: wasteManagementOperationsContract.importProfileIds.geographyCollectionLocations,
+    profileId: wasteManagementOperationsContract.importProfileIds.dataPackage,
+    dataProfileId: wasteManagementOperationsContract.importProfileIds.dataPackage,
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
-    displayName: 'Geografie und Abholorte',
-    sourceFormats: [...wasteManagementOperationsContract.importSourceFormats],
+    displayName: 'Waste-Datenpaket',
+    sourceFormats: ['application/zip'],
     schemaVersion: '1.0.0',
-    schemaStrategy: 'waste-management.geografie-abholorte.schema',
-    mappingStrategy: 'waste-management.geografie-abholorte.mapping',
-    validation: {
-      mode: 'preflight-and-commit',
-    },
-  },
-  {
-    profileId: wasteManagementOperationsContract.importProfileIds.tours,
-    jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
-    displayName: 'Touren',
-    sourceFormats: [...wasteManagementOperationsContract.importSourceFormats],
-    schemaVersion: '1.0.0',
-    schemaStrategy: 'waste-management.touren.schema',
-    mappingStrategy: 'waste-management.touren.mapping',
-    validation: {
-      mode: 'preflight-and-commit',
-    },
-  },
-  {
-    profileId: wasteManagementOperationsContract.importProfileIds.dateShifts,
-    jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
-    displayName: 'Ausweichtermine',
-    sourceFormats: [...wasteManagementOperationsContract.importSourceFormats],
-    schemaVersion: '1.0.0',
-    schemaStrategy: 'waste-management.ausweichtermine.schema',
-    mappingStrategy: 'waste-management.ausweichtermine.mapping',
-    validation: {
-      mode: 'preflight-and-commit',
-    },
+    schemaStrategy: 'waste-management.datenpaket.schema',
+    mappingStrategy: 'waste-management.datenpaket.mapping',
+    validation: { mode: 'preflight-and-commit' as const },
   },
   {
     profileId: wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
+    dataProfileId: wasteManagementOperationsContract.importProfileIds.locationTourPickupDates,
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.importData,
     displayName: 'Tourzuordnungen nach Fraktionen',
     sourceFormats: ['text/csv'],

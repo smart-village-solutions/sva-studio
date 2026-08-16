@@ -29,6 +29,10 @@ export {
   resolveBaseAuthConfig,
 } from './config.js';
 export { buildLogContext } from './log-context.js';
+export {
+  readPluginOperationArtifact,
+  storePluginOperationArtifact,
+} from './plugin-operation-artifacts.server.js';
 export { buildRequestOriginFromHeaders, resolveEffectiveRequestHost } from './request-hosts.js';
 export { resolveAuthRequestHost, sanitizeAuthReturnTo } from './auth-return-to.js';
 export {

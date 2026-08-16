@@ -6,18 +6,20 @@ import {
   previewWasteLocationTourPickupDateImport,
   startWasteManagementInitialize,
   startWasteManagementImport,
+  startWasteManagementExport,
   startWasteManagementMigrations,
   startWasteManagementPostalCodeEnrichment,
   startWasteManagementReset,
   startWasteManagementSeed,
   type StartWasteManagementImportInput,
+  type StartWasteManagementExportInput,
 } from './waste-management.api.js';
 import { compactOptionalString, type StatusMessage } from './waste-management.page.support.js';
 import { createWasteToolErrorMessage } from './waste-management.tools.messages.js';
 import { useWasteSelectedImportProfile } from './waste-management.tools.profile.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
-type Action = 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
+type Action = 'export' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
 
 export const createWasteToolsJobRunner =
   ({
@@ -122,6 +124,8 @@ export const createWasteToolsActions = ({
   readonly setResetConfirmOpen: (open: boolean) => void;
   readonly setResetToken: (value: string) => void;
 }) => ({
+  runExport: (input: StartWasteManagementExportInput) =>
+    runJob('export', () => startWasteManagementExport(input)),
   runPreview: async () => {
     if (
       importProfileId !== 'waste-management.ortsbezogene-tourtermine' ||

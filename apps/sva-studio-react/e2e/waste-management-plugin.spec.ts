@@ -104,6 +104,7 @@ type WasteHarness = {
     createdFractions: Array<Record<string, unknown>>;
     createdTours: Array<Record<string, unknown>>;
     tourValidityUpdates: Array<Record<string, unknown>>;
+    exportInputs: Array<Record<string, unknown>>;
     startedJobTypes: string[];
   };
 };
@@ -181,6 +182,7 @@ const mockWasteFacade = async (page: Page, input: {
     createdFractions: [] as Array<Record<string, unknown>>,
     createdTours: [] as Array<Record<string, unknown>>,
     tourValidityUpdates: [] as Array<Record<string, unknown>>,
+    exportInputs: [] as Array<Record<string, unknown>>,
     startedJobTypes: [] as string[],
   };
 
@@ -473,6 +475,18 @@ const mockWasteFacade = async (page: Page, input: {
       return;
     }
 
+    if (method === 'POST' && path === '/api/v1/waste-management/tools/exports') {
+      requests.exportInputs.push(request.postDataJSON() as Record<string, unknown>);
+      requests.startedJobTypes.push('waste-management.export-data');
+      const job: WasteJobState = {
+        id: 'job-export-1',
+        jobTypeId: 'waste-management.export-data',
+        status: 'pending',
+      };
+      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      return;
+    }
+
     if (method === 'POST' && path === '/api/v1/waste-management/tools/migrations') {
       requests.startedJobTypes.push('waste-management.apply-migrations');
       const job: WasteJobState = {
@@ -528,6 +542,7 @@ test.describe('waste management plugin', () => {
         'waste-management.master-data.manage',
         'waste-management.tours.manage',
         'waste-management.scheduling.manage',
+        'waste-management.export.execute',
         'waste-management.import.execute',
         'waste-management.seed.execute',
         'waste-management.reset.execute',
@@ -658,6 +673,14 @@ test.describe('waste management plugin', () => {
     });
 
     await page.getByRole('tab', { name: 'Datentools' }).click();
+    await page.getByRole('checkbox', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Export starten' }).click();
+    expect(harness.requests.exportInputs).toEqual([
+      {
+        profileIds: ['waste-management.fraktionen', 'waste-management.touren'],
+        targetFormat: 'application/zip',
+      },
+    ]);
     await page.getByRole('button', { name: /Tourzuordnungen nach Fraktionen/ }).click();
     const toolsPanel = page.getByText('Datei hochladen').locator('xpath=ancestor::div[contains(@class,"rounded-2xl")]').first();
     await toolsPanel.locator('input[type="file"]').setInputFiles({
@@ -692,6 +715,7 @@ test.describe('waste management plugin', () => {
     });
 
     expect(harness.requests.startedJobTypes).toEqual([
+      'waste-management.export-data',
       'waste-management.import-data',
       'waste-management.apply-migrations',
       'waste-management.seed-data',

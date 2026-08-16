@@ -4,6 +4,8 @@ export * from './host-media-public-api.js';
 export {
   isWasteTourValidityApplicable,
   resolveWasteTourValidityDates,
+  wasteManagementDataProfileIds,
+  wasteManagementDataProfiles,
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
@@ -14,6 +16,7 @@ export type {
   IamContentStatus,
   StudioJobDetail,
   StudioJobResponse,
+  StudioJobResultArtifact,
   WasteCityRecord,
   WasteCollectionLocationRecord,
   WasteCustomRecurrencePresetRecord,
@@ -39,6 +42,9 @@ export type {
   WasteLocationTourLinkBulkCreateResult,
   WasteLocationTourLinkRecord,
   WasteManagementCsvDelimiter,
+  WasteManagementDataProfileId,
+  WasteManagementExportJobInput,
+  WasteManagementExportTargetFormat,
   WasteManagementApplyMigrationsJobInput,
   WasteManagementHistoryOverview,
   WasteManagementImportJobInput,
@@ -104,12 +110,19 @@ export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-pi
 export { defineMediaPickerDefinition } from './media-picker.js';
 export type { ContentMediaUploadPhase, HostMediaFieldOption } from './content-ui-utils.js';
 export {
-  compactOptionalString, contentMediaUploadPhaseMessageKey,
-  formatDateTimeInEditorTimeZone, formatTechnicalDateTimeInEditorTimeZone,
-  findHostMediaReferenceAssetId, fromDatetimeLocalValue, getHostMediaAssetPersistentUrl,
-  isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
-  readHostMediaAssetFileName, readHostMediaAssetTitle,
-  toDatetimeLocalValue, toHostMediaFieldOptions,
+  compactOptionalString,
+  contentMediaUploadPhaseMessageKey,
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  getHostMediaAssetPersistentUrl,
+  isSupportedContentMediaUploadFile,
+  readHostMediaAssetCopyright,
+  readHostMediaAssetFileName,
+  readHostMediaAssetTitle,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
 export type {
@@ -246,6 +259,8 @@ export type {
   ResolvedPluginCatalog,
 } from './plugin-platform-resolution.js';
 export type {
+  PluginExportProfileDefinition,
+  PluginExportProfileRegistryEntry,
   PluginImportProfileDefinition,
   PluginImportProfileRegistryEntry,
   PluginImportProfileValidationMode,
@@ -253,10 +268,13 @@ export type {
   PluginJobTypeRegistryEntry,
 } from './plugin-operations.js';
 export {
+  createPluginExportProfileRegistry,
   createPluginImportProfileRegistry,
   createPluginJobTypeRegistry,
+  definePluginExportProfiles,
   definePluginImportProfiles,
   definePluginJobTypes,
+  mergePluginExportProfiles,
   mergePluginImportProfiles,
   mergePluginJobTypes,
 } from './plugin-operations.js';

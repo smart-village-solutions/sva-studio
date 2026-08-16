@@ -8,9 +8,14 @@ import {
   extractPluginDefinition,
   getPackagePluginModuleCandidates,
   getWorkspacePluginModuleCandidates,
+  studioHostPluginPlatform,
 } from './plugin-catalog-loader.js';
 
 describe('plugin catalog loader', () => {
+  it('advertises the export capability required by data-exporting plugins', () => {
+    expect(studioHostPluginPlatform.capabilities).toContain('exports');
+  });
+
   it('prefers source entries for workspace plugins and manifest entries for packaged plugins', () => {
     const manifest = definePluginManifest({
       pluginId: 'news',

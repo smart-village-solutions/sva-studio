@@ -1074,3 +1074,12 @@ Fehlerpfad:
 - Der Audit führt keine Keycloak-Mutation und keinen Plattform-Fallback aus.
 - Fehlende oder abweichende Secrets bleiben Fail-Befunde, ohne Secret-Inhalte
   in Bericht, Fehler oder Logs zu übernehmen.
+
+### Waste-Management: Fachdaten exportieren und importieren
+
+1. Der Actor startet mit `waste-management.export.execute` einen Exportjob für genau ein JSON-Profil oder höchstens neun Profile als ZIP.
+2. Die Runtime löst die aktive Waste-Datenquelle serverseitig auf, liest nur die Allowlist des Profilvertrags und serialisiert ohne Zielzeitstempel oder ausgeschlossene E-Mail-Abodaten.
+3. Ein ZIP enthält eigenständige Profil-JSON-Dateien sowie Manifest, Abhängigkeiten, Anzahlen und Prüfsummen. Das geschützte Artefakt läuft nach 24 Stunden ab.
+4. Der Downloadpfad prüft Job, Instanz, Actor, aktuelle Export-Action, Ablauf, Größe und SHA-256 vor der Antwort mit `private, no-store`.
+5. Der Import validiert Envelope, Version, Feldtypen, Defaults und Referenzen vor dem Schreiben. Ein ZIP wird vollständig geprüft und in einer gemeinsamen Waste-Datenbanktransaktion verarbeitet.
+6. Dry-Runs und Fehler rollen die Transaktion zurück. Nicht enthaltene Zielwerte oder Zielzeilen werden nicht implizit gelöscht.

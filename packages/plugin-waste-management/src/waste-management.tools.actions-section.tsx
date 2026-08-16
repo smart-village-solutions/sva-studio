@@ -8,7 +8,7 @@ type WasteToolsActionsSectionProps = {
   readonly canRunReset: boolean;
   readonly migrationSchema: string;
   readonly migrationVersion: string;
-  readonly runningAction: 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null;
+  readonly runningAction: 'export' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null;
   readonly postalCodeJobActive?: boolean;
   readonly onMigrationSchemaChange: (value: string) => void;
   readonly onMigrationVersionChange: (value: string) => void;

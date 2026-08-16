@@ -65,7 +65,7 @@ Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene 
 - **WHEN** ein Snapshot in Redis persistiert wird
 - **THEN** beträgt die physische Basis-TTL 15 Minuten
 - **AND** der Snapshot wird als JSON serialisiert
-- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `snapshotVersion`, `instanceRevision`, `userRevision` und `hmac`
+- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `version`, `binding.instanceRevision`, `binding.userRevision` und `hmac`
 - **AND** darf ein Ablauf-, Recompute- oder Eviction-Fenster keine revisionsveraltete Freigabe erzeugen
 - **AND** bleibt die Redis-Eviction-Policy Teil des Betriebsmodells, nicht der logischen Gültigkeit
 
@@ -186,8 +186,8 @@ Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken
 
 - **WHEN** der Snapshot-Pfad gelesen, recomputet, publiziert, zurückgesetzt oder best-effort bereinigt wird
 - **THEN** emittiert das System mindestens OTEL-Metriken für Revision-Read-Latenz/-Fehler, L1-/Redis-Lookups (`hit`/`miss`/`revision_mismatch`), Revisionsscope, Event-Eviction, Recompute-Aktivität und `stale_write_discarded`
-- **AND** strukturierte Logs verwenden mindestens die Operationen `revision_read`, `cache_lookup`, `cache_evict`, `cache_recompute`, `cache_publish`, `stale_write_discarded` und die jeweiligen Fehleroperationen
-- **AND** enthalten sie Revision-Scope, alte/neue beziehungsweise erwartete/tatsächliche Revision, `instance_id`, Request-ID und Trace-ID, aber keine Tokens, Session-IDs oder PII
+- **AND** strukturierte Logs verwenden für tatsächlich geloggte Lebenszyklusereignisse mindestens `cache_lookup`, `cache_invalidate` und `stale_write_discarded` sowie die Fehleroperationen `revision_read_failed`, `cache_store_failed`, `cache_invalidate_failed` und `integrity_check_failed`
+- **AND** enthalten sie, soweit für das jeweilige Ereignis vorhanden, Revisions-Scope, alte/neue beziehungsweise erwartete/tatsächliche Revision, `instance_id`, Request-ID und Trace-ID, aber keine Tokens, Session-IDs oder PII
 
 #### Scenario: Redis-Exporter ist Bestandteil des Betriebsmodells
 
@@ -258,8 +258,8 @@ Das System SHALL die Felder in `POST /iam/authorize` und `GET /iam/me/permission
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
   "permissionRevision": {
-    "instance": 42,
-    "user": 7
+    "instanceRevision": 42,
+    "userRevision": 7
   },
   "provenance": {
     "sourceKinds": ["group_role"],
@@ -295,8 +295,8 @@ Bei Verweigerung enthält `reason` einen maschinenlesbaren Code, beispielsweise 
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
   "permissionRevision": {
-    "instance": 42,
-    "user": 7
+    "instanceRevision": 42,
+    "userRevision": 7
   },
   "provenance": {
     "hasGroupDerivedPermissions": true,
@@ -344,7 +344,7 @@ Das System MUST revisionsgebundene Redis-Snapshots gegen unbefugte Manipulation 
 #### Scenario: Snapshot wird mitsamt Revision und Kontext signiert
 
 - **WHEN** ein Permission-Snapshot in Redis geschrieben wird
-- **THEN** wird der kanonisch serialisierte Payload einschließlich `schema_version`, `signed_at`, `instanceRevision`, `userRevision`, Instanz-, Benutzer- und Kontextbindung sowie Permissions mit HMAC-SHA-256 signiert
+- **THEN** wird der kanonisch serialisierte Payload einschließlich `schema_version`, `signed_at`, `version`, `binding.instanceRevision`, `binding.userRevision`, Instanz-, Benutzer- und Kontextbindung sowie Permissions mit HMAC-SHA-256 signiert
 - **AND** liegt der Signaturschlüssel außerhalb von Redis
 
 #### Scenario: Integritäts- oder Bindungsprüfung schlägt fehl

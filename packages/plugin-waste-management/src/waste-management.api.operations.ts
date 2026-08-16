@@ -214,10 +214,12 @@ export const uploadWasteManagementImportSource = async (
   sourceFormat: WasteManagementImportSourceFormat
 ): Promise<string> => {
   const headers = createMainserverJsonRequestHeaders({ 'Content-Type': sourceFormat });
-  const result = await requestWasteManagementItem<Readonly<{ blobRef: string; sizeBytes: number }>>({
-    url: '/api/v1/waste-management/tools/imports/upload',
-    init: { method: 'POST', headers, body: file },
-  });
+  const result = await requestWasteManagementItem<Readonly<{ blobRef: string; sizeBytes: number }>>(
+    {
+      url: '/api/v1/waste-management/tools/imports/upload',
+      init: { method: 'POST', headers, body: file },
+    }
+  );
   return result.blobRef;
 };
 

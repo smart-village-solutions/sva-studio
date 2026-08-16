@@ -9,13 +9,7 @@ export const createWasteToolErrorMessage = ({
   pt,
 }: {
   readonly action:
-    | 'export'
-    | 'historyDelete'
-    | 'import'
-    | 'migration'
-    | 'postalCode'
-    | 'seed'
-    | 'reset';
+    'export' | 'historyDelete' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
   readonly error: unknown;
   readonly pt: Translate;
 }) => {

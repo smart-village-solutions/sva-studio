@@ -43,8 +43,8 @@ export const deriveWasteManagementUiAccess = (
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools =
     canRunInitialize ||
-      canRunMigrations ||
-      canRunImport ||
+    canRunMigrations ||
+    canRunImport ||
     canRunExport ||
     canRunSeed ||
     canRunReset ||

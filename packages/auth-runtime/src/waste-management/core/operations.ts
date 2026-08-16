@@ -287,10 +287,13 @@ export const wasteManagementOperationHandlers = {
       body,
       contentType,
     });
-    return new Response(JSON.stringify(asApiItem({ blobRef, sizeBytes: body.byteLength }, requestId)), {
-      status: 201,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify(asApiItem({ blobRef, sizeBytes: body.byteLength }, requestId)),
+      {
+        status: 201,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   },
   startWasteManagementInitializeInternal: async (
     request: Request,

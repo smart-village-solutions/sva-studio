@@ -8,7 +8,8 @@ type WasteToolsActionsSectionProps = {
   readonly canRunReset: boolean;
   readonly migrationSchema: string;
   readonly migrationVersion: string;
-  readonly runningAction: 'export' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null;
+  readonly runningAction:
+    'export' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null;
   readonly postalCodeJobActive?: boolean;
   readonly onMigrationSchemaChange: (value: string) => void;
   readonly onMigrationVersionChange: (value: string) => void;
@@ -79,14 +80,24 @@ const WasteToolsMigrationActions = ({
       </div>
       <StudioFieldGroup>
         <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
-          <Input id="waste-tools-migration-schema" value={migrationSchema} onChange={(event) => onMigrationSchemaChange(event.target.value)} />
+          <Input
+            id="waste-tools-migration-schema"
+            value={migrationSchema}
+            onChange={(event) => onMigrationSchemaChange(event.target.value)}
+          />
         </StudioField>
         <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
-          <Input id="waste-tools-migration-version" value={migrationVersion} onChange={(event) => onMigrationVersionChange(event.target.value)} />
+          <Input
+            id="waste-tools-migration-version"
+            value={migrationVersion}
+            onChange={(event) => onMigrationVersionChange(event.target.value)}
+          />
         </StudioField>
       </StudioFieldGroup>
       <Button type="button" disabled={runningAction !== null} onClick={onStartMigrations}>
-        {runningAction === 'migration' ? pt('tools.actions.starting') : pt('tools.actions.startMigrations')}
+        {runningAction === 'migration'
+          ? pt('tools.actions.starting')
+          : pt('tools.actions.startMigrations')}
       </Button>
     </div>
   );

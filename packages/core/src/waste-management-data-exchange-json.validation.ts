@@ -77,6 +77,19 @@ const structuredFieldValidators = {
   'localized-text': isLocalizedText,
 } satisfies Record<WasteManagementStructuredFieldShape, (value: unknown) => boolean>;
 
+const isAllowedString = (value: unknown, field: WasteManagementIncludedFieldDefinition): boolean =>
+  typeof value === 'string' &&
+  (field.valueType !== 'string' || field.allowedValues === undefined || field.allowedValues.includes(value));
+
+const isAllowedStringArray = (value: unknown, field: WasteManagementIncludedFieldDefinition): boolean =>
+  field.valueType === 'string-array' &&
+  Array.isArray(value) &&
+  (field.minItems === undefined || value.length >= field.minItems) &&
+  value.every((entry) =>
+    typeof entry === 'string' &&
+    (field.minItemLength === undefined || entry.length >= field.minItemLength)
+  );
+
 const hasExpectedType = (value: unknown, field: WasteManagementIncludedFieldDefinition): boolean => {
   switch (field.valueType) {
     case 'boolean': return typeof value === 'boolean';
@@ -84,16 +97,8 @@ const hasExpectedType = (value: unknown, field: WasteManagementIncludedFieldDefi
     case 'integer': return typeof value === 'number' && Number.isInteger(value);
     case 'number': return typeof value === 'number' && Number.isFinite(value);
     case 'object': return structuredFieldValidators[field.structuredShape](value);
-    case 'string':
-      return typeof value === 'string' &&
-        (field.allowedValues === undefined || field.allowedValues.includes(value));
-    case 'string-array':
-      return Array.isArray(value) &&
-        (field.minItems === undefined || value.length >= field.minItems) &&
-        value.every((entry) =>
-          typeof entry === 'string' &&
-          (field.minItemLength === undefined || entry.length >= field.minItemLength)
-        );
+    case 'string': return isAllowedString(value, field);
+    case 'string-array': return isAllowedStringArray(value, field);
   }
 };
 

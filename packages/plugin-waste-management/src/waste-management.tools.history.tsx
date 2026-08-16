@@ -176,20 +176,32 @@ export const WasteToolsHistory = ({
     <div className="space-y-4">
       <StudioJobSummaryCard
         title={pt('tools.meta.lastJobTitle')}
-        description={displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')}
+        description={
+          displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')
+        }
         statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
         statusTone={toJobStatusTone(displayedLastJob?.status)}
         metadata={
           displayedLastJob
             ? [
                 { id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: displayedLastJob.id },
-                { id: 'jobTypeId', label: pt('tools.meta.jobTypeLabel'), value: displayedLastJob.jobTypeId },
-                { id: 'jobStatus', label: pt('tools.meta.jobStatusLabel'), value: displayedLastJob.status },
+                {
+                  id: 'jobTypeId',
+                  label: pt('tools.meta.jobTypeLabel'),
+                  value: displayedLastJob.jobTypeId,
+                },
+                {
+                  id: 'jobStatus',
+                  label: pt('tools.meta.jobStatusLabel'),
+                  value: displayedLastJob.status,
+                },
               ]
             : undefined
         }
       />
-      {isActiveImportJob(displayedLastJob) ? <WasteToolsActiveImportProgress job={displayedLastJob} /> : null}
+      {isActiveImportJob(displayedLastJob) ? (
+        <WasteToolsActiveImportProgress job={displayedLastJob} />
+      ) : null}
       <WasteToolsPostalCodeStatus job={displayedLastJob} />
       {displayedLastJob ? <WasteToolsArtifactDownloads job={displayedLastJob} /> : null}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">

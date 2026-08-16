@@ -1,5 +1,6 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
+import { Button } from '@sva/studio-ui-react';
 
 import type {
   WasteManagementMasterDataOverview,
@@ -15,9 +16,9 @@ import {
   WasteToursRowDatesCell,
   WasteToursRowFractionCell,
   WasteToursRowSelectionCell,
-  WasteToursRowShiftCell,
   WasteToursRowStatusCell,
 } from './waste-management.tours.table-row.parts.js';
+import { WasteToursRowShiftCell } from './waste-management.tours.table-row-shift.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 const WasteToursRowSummaryCell = ({ name }: { readonly name: string }) => (
@@ -30,45 +31,48 @@ const WasteToursRowAssignmentCountCell = ({
   assignmentContextLoading,
   assignmentCount,
   pt,
-  tourId,
+  assignmentId,
+  tour,
+  onOpenCreateAssignmentsDialog,
+  onOpenEditAssignmentsDialog,
 }: {
   readonly assignmentContextLoading: boolean;
   readonly assignmentCount: number;
   readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly tourId: string;
+  readonly assignmentId?: string;
+  readonly tour: WasteTourRecord;
+  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
+  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
 }) => (
   <td className="w-[94px] px-3 py-3">
     {assignmentContextLoading ? (
       <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
     ) : (
-      <span data-testid={`tour-assignment-count-${tourId}`} className="text-sm">
+      <Button
+        type="button"
+        variant="tertiary"
+        size="sm"
+        className="h-auto p-0 text-sm font-medium underline-offset-4 hover:underline"
+        aria-label={pt('tours.actions.openAssignmentsAccessible', {
+          name: tour.name,
+          count: assignmentCount,
+        })}
+        data-testid={`tour-assignment-count-${tour.id}`}
+        onClick={() => {
+          if (assignmentId) {
+            onOpenEditAssignmentsDialog(tour, assignmentId);
+            return;
+          }
+          onOpenCreateAssignmentsDialog(tour);
+        }}
+      >
         {assignmentCount}
-      </span>
+      </Button>
     )}
   </td>
 );
 
-export const WasteToursTableRow = ({
-  tour,
-  fractionsById,
-  masterDataOverview,
-  schedulingOverview,
-  assignmentContextLoading,
-  selected,
-  saving,
-  onToggleSelectedTour,
-  onOpenCalendar,
-  onOpenEditFraction,
-  onOpenEditDialog,
-  onOpenDuplicateDialog,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
-  canDuplicateTour,
-  canManageScheduling,
-  search,
-  onToggleTourStatus,
-  onRequestDeleteTour,
-}: {
+type WasteToursTableRowProps = {
   readonly tour: WasteTourRecord;
   readonly fractionsById: ReadonlyMap<string, string>;
   readonly masterDataOverview: WasteManagementMasterDataOverview | null;
@@ -88,9 +92,12 @@ export const WasteToursTableRow = ({
   readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
-}) => {
+};
+
+export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const assignmentItems = resolveTourAssignmentItems(pt, masterDataOverview, tour);
+  const { tour } = props;
+  const assignmentItems = resolveTourAssignmentItems(pt, props.masterDataOverview, tour);
   const recurrenceValue = formatTourRecurrence(
     pt,
     tour.recurrence,
@@ -100,25 +107,25 @@ export const WasteToursTableRow = ({
   const recurrenceLabel =
     recurrenceValue === '—' ? pt('tours.table.noRecurrence') : recurrenceValue;
   const fractions = tour.wasteFractionIds.flatMap((fractionId) => {
-    const name = fractionsById.get(fractionId);
+    const name = props.fractionsById.get(fractionId);
     return name ? [{ id: fractionId, name }] : [];
   });
-  const shiftDetails = resolveTourShiftDetails(tour, schedulingOverview);
+  const shiftDetails = resolveTourShiftDetails(tour, props.schedulingOverview);
   const firstAssignmentId = assignmentItems[0]?.id;
 
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
       <WasteToursRowSelectionCell
         tour={tour}
-        selected={selected}
-        onToggleSelectedTour={onToggleSelectedTour}
+        selected={props.selected}
+        onToggleSelectedTour={props.onToggleSelectedTour}
       />
       <WasteToursRowSummaryCell name={tour.name} />
       <WasteToursRowFractionCell
         tourId={tour.id}
         fractionNames={fractions.map((fraction) => fraction.name)}
         fractionIds={fractions.map((fraction) => fraction.id)}
-        onOpenEditFraction={onOpenEditFraction}
+        onOpenEditFraction={props.onOpenEditFraction}
       />
       <td className="w-[132px] px-3 py-3 text-sm">{recurrenceLabel}</td>
       <WasteToursRowDatesCell firstDate={tour.firstDate} endDate={tour.endDate} />
@@ -126,30 +133,30 @@ export const WasteToursTableRow = ({
         tourId={tour.id}
         tourName={tour.name}
         shiftDetails={shiftDetails}
-        canManageScheduling={canManageScheduling}
-        search={search}
+        canManageScheduling={props.canManageScheduling}
+        search={props.search}
       />
       <WasteToursRowAssignmentCountCell
-        assignmentContextLoading={assignmentContextLoading}
+        assignmentContextLoading={props.assignmentContextLoading}
         assignmentCount={assignmentItems.length}
         pt={pt}
-        tourId={tour.id}
+        assignmentId={firstAssignmentId}
+        tour={tour}
+        onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
+        onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
       />
       <WasteToursRowStatusCell
         tour={tour}
-        disabled={assignmentContextLoading || saving}
-        onToggleTourStatus={onToggleTourStatus}
+        disabled={props.assignmentContextLoading || props.saving}
+        onToggleTourStatus={props.onToggleTourStatus}
       />
       <WasteToursRowActionsCell
         tour={tour}
-        assignmentId={firstAssignmentId}
-        onOpenCalendar={onOpenCalendar}
-        onOpenEditDialog={onOpenEditDialog}
-        onOpenDuplicateDialog={onOpenDuplicateDialog}
-        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-        onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
-        canDuplicateTour={canDuplicateTour}
-        onRequestDeleteTour={onRequestDeleteTour}
+        onOpenCalendar={props.onOpenCalendar}
+        onOpenEditDialog={props.onOpenEditDialog}
+        onOpenDuplicateDialog={props.onOpenDuplicateDialog}
+        canDuplicateTour={props.canDuplicateTour}
+        onRequestDeleteTour={props.onRequestDeleteTour}
       />
     </tr>
   );

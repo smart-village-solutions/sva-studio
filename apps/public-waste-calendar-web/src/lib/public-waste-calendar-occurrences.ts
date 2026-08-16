@@ -47,7 +47,7 @@ type PublicWasteTourDateShift = {
   readonly tourId: string;
   readonly originalDate: string;
   readonly actualDate: string;
-  readonly hasYear?: boolean;
+  readonly hasYear: boolean;
   readonly description?: string;
 };
 
@@ -298,9 +298,7 @@ export const calculatePublicWasteCalendarEntries = (
     ).filter(Number.isSafeInteger);
     const relevantTourDateShifts = occurrenceYears.flatMap((year) =>
       resolveEffectiveWasteTourDateShiftsForYear(
-        input.tourDateShifts
-          .filter((shift) => shift.tourId === linkedTour.tour.id)
-          .map((shift) => ({ ...shift, hasYear: shift.hasYear ?? true })),
+        input.tourDateShifts.filter((shift) => shift.tourId === linkedTour.tour.id),
         year
       )
     );

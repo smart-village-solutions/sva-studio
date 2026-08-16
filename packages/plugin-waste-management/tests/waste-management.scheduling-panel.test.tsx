@@ -201,6 +201,65 @@ describe('WasteSchedulingPanel', () => {
     });
   });
 
+  it('does not hydrate after the user edits the default form while tours are loading', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.loading = true;
+    const search = {
+      tab: 'scheduling',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'create',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      tourValidityPeriod: 'all',
+      shiftContext: 'tour',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      schedulingEntryType: 'tour-shift',
+      schedulingTourId: 'tour-42',
+      schedulingOriginalDate: '2026-12-24',
+    } as const;
+    const view = render(<WasteSchedulingPanel search={search} />);
+
+    controllerMock.tourShiftForm = { id: 'tour-form-user-edited' };
+    controllerMock.availableTours = [{ id: 'tour-42' }];
+    controllerMock.loading = false;
+    view.rerender(<WasteSchedulingPanel search={search} />);
+
+    expect(controllerMock.setTourShiftForm).not.toHaveBeenCalled();
+  });
+
+  it('hydrates a context only once during normal rerenders', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.availableTours = [{ id: 'tour-42' }];
+    const search = {
+      tab: 'scheduling',
+      masterDataTab: 'fractions',
+      fractionsView: 'list',
+      toursView: 'list',
+      locationsView: 'list',
+      schedulingView: 'create',
+      q: '',
+      page: 1,
+      pageSize: 25,
+      status: 'all',
+      tourValidityPeriod: 'all',
+      shiftContext: 'tour',
+      fractionsSortBy: 'name',
+      fractionsSortDirection: 'asc',
+      schedulingEntryType: 'tour-shift',
+      schedulingTourId: 'tour-42',
+    } as const;
+    const view = render(<WasteSchedulingPanel search={search} />);
+    view.rerender(<WasteSchedulingPanel search={search} />);
+
+    expect(controllerMock.setTourShiftForm).toHaveBeenCalledTimes(1);
+  });
+
   it('hydrates the tour shift edit form from the route shift id after a reload', () => {
     controllerMock.lastOutcome = null;
     controllerMock.overview = {

@@ -20,16 +20,13 @@ import {
   StudioFieldGroup,
 } from '@sva/studio-ui-react';
 import { ValidityModeField, type ValidityMode } from './waste-management.tours-validity-field.js';
+import {
+  InvalidValidityRanges,
+  type InvalidValidityRange,
+} from './waste-management.tours-validity-dialog.errors.js';
 
 const createDateOperation = (mode: ValidityMode, value: string): WasteTourValidityDateOperation =>
   mode === 'set' ? { mode, value } : { mode };
-
-type InvalidValidityRange = Readonly<{
-  tourId: string;
-  tourName: string;
-  firstDate: string;
-  endDate: string;
-}>;
 
 const collectInvalidValidityRanges = (
   tours: readonly WasteTourRecord[],
@@ -214,24 +211,7 @@ export const WasteToursValidityDialog = ({
 
           <InapplicableToursWarning tours={state.inapplicableTours} />
           <ValidityFields state={state} saving={saving} />
-          {state.invalidRanges.length > 0 ? (
-            <div className="text-sm text-destructive" role="alert">
-              <p className="font-semibold">
-                {pt('tours.bulkValidityDialog.invalidRangeTitle')}
-              </p>
-              <ul className="mt-1 list-disc space-y-1 pl-5">
-                {state.invalidRanges.map((range) => (
-                  <li key={range.tourId}>
-                    {pt('tours.bulkValidityDialog.invalidRangeItem', {
-                      name: range.tourName,
-                      firstDate: range.firstDate,
-                      endDate: range.endDate,
-                    })}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <InvalidValidityRanges ranges={state.invalidRanges} />
 
           <DialogFooter>
             <Button

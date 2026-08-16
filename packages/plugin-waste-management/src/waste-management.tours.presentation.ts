@@ -231,6 +231,28 @@ type TourOccurrenceEntryInternal = Readonly<{
   readonly holidayNames: readonly string[];
 }>;
 
+const resolveHolidayRulesForYear = (scheduling: WasteManagementSchedulingOverview, year: number) =>
+  (scheduling.holidayRules ?? [])
+    .map((rule) => ({ ...rule, holidayDate: normalizeDateOnly(rule.holidayDate) }))
+    .filter((rule) => rule.holidayDate.startsWith(`${year}-`) && rule.scope && rule.strategy)
+    .map((rule) => ({
+      triggerDate: rule.holidayDate,
+      holidayName: rule.holidayName,
+      direction:
+        rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
+      coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',
+    }))
+    .filter(
+      (
+        rule
+      ): rule is {
+        readonly triggerDate: string;
+        readonly holidayName: string;
+        readonly direction: HolidayRuleDirection;
+        readonly coverage: HolidayRuleCoverage;
+      } => rule.direction !== null
+    );
+
 const calculateTourOccurrenceEntriesForYearInternal = (
   tour: WasteTourRecord,
   year: number,
@@ -251,29 +273,7 @@ const calculateTourOccurrenceEntriesForYearInternal = (
       (shift) => !shift.tourIds || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
     )
   );
-  const holidayRules = (scheduling.holidayRules ?? [])
-    .map((rule) => ({
-      ...rule,
-      holidayDate: normalizeDateOnly(rule.holidayDate),
-    }))
-    .filter((rule) => rule.holidayDate.startsWith(`${year}-`) && rule.scope && rule.strategy)
-    .map((rule) => ({
-      triggerDate: rule.holidayDate,
-      holidayName: rule.holidayName,
-      direction:
-        rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
-      coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',
-    }))
-    .filter(
-      (
-        rule
-      ): rule is {
-        readonly triggerDate: string;
-        readonly holidayName: string;
-        readonly direction: HolidayRuleDirection;
-        readonly coverage: HolidayRuleCoverage;
-      } => rule.direction !== null
-    );
+  const holidayRules = resolveHolidayRulesForYear(scheduling, year);
 
   const shiftedResults = new Map<
     string,

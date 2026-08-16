@@ -137,8 +137,19 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tour-shift-create-link.js', () => ({
-  WasteTourShiftCreateLink: ({ label }: { readonly label: string }) => (
-    <a href="/plugins/waste-management" target="_blank" rel="noopener noreferrer">
+  WasteTourShiftCreateLink: ({
+    label,
+    accessibleLabel,
+  }: {
+    readonly label: string;
+    readonly accessibleLabel?: string;
+  }) => (
+    <a
+      href="/plugins/waste-management"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={accessibleLabel ?? label}
+    >
       {label}
     </a>
   ),
@@ -271,7 +282,12 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('recurrence:weekly')).toBeTruthy();
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.getByText('Biomüll')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'tours.actions.createShift' })).toBeTruthy();
+    expect(screen.getByText('tours.actions.createShiftShort')).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'tours.actions.createShiftAccessible:Restmüll Nord',
+      })
+    ).toBeTruthy();
     expect(screen.getByTestId('tour-assignment-count-tour-1').textContent).toBe('2');
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
     expect(screen.getAllByTestId('badge')).toHaveLength(2);
@@ -279,7 +295,12 @@ describe('WasteToursContent', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restmüll' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
+    expect(screen.queryByRole('button', { name: 'tours.actions.openAssignments' })).toBeNull();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'tours.actions.openAssignmentsAccessible:Restmüll Nord|2',
+      })
+    );
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
     fireEvent.click(
       screen.getByRole('switch', { name: 'tours.actions.deactivateStatus:Restmüll Nord' })
@@ -353,8 +374,9 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
   });
 
-  it('opens the exact holiday-rule based shifts from the shifts column', () => {
+  it('opens zero assignments and the exact holiday-rule based shifts from their columns', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([]);
+    const onOpenCreateAssignmentsDialog = vi.fn();
 
     render(
       <WasteToursContent
@@ -383,7 +405,7 @@ describe('WasteToursContent', () => {
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
-        onOpenCreateAssignmentsDialog={vi.fn()}
+        onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={vi.fn()}
         onOpenCalendar={vi.fn()}
         onToggleTourStatus={vi.fn(async () => undefined)}
@@ -410,6 +432,15 @@ describe('WasteToursContent', () => {
 
     fireEvent.click(
       screen.getByRole('button', {
+        name: 'tours.actions.openAssignmentsAccessible:Restmüll Nord|0',
+      })
+    );
+    expect(onOpenCreateAssignmentsDialog).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'tour-1' })
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', {
         name: 'tours.shiftDetails.open:4|Restmüll Nord',
       })
     );
@@ -432,7 +463,12 @@ describe('WasteToursContent', () => {
       )
     ).toBeTruthy();
     expect(screen.getAllByText('tours.shiftDetails.holidays:Neujahrstag')).toHaveLength(2);
-    expect(screen.getByRole('link', { name: 'tours.actions.createAnotherShift' })).toBeTruthy();
+    expect(screen.getByText('tours.actions.createAnotherShift')).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'tours.actions.createShiftAccessible:Restmüll Nord',
+      })
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.shiftDetails.close' }));
     expect(screen.queryByText('tours.shiftDetails.title:Restmüll Nord')).toBeNull();

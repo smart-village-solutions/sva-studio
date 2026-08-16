@@ -180,7 +180,7 @@ export const WasteToursTourFields = ({
           ) : null}
         </StudioFieldGroup>
         {schedulingAction ? (
-          <div className="flex flex-wrap justify-end">{schedulingAction}</div>
+          <div className="flex min-w-0 flex-wrap justify-end">{schedulingAction}</div>
         ) : null}
       </TourSection>
 

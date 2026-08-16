@@ -12,6 +12,7 @@ export const WasteTourShiftCreateLink = ({
   tourId,
   originalDate,
   label,
+  accessibleLabel = label,
   variant = 'secondary',
   size = 'sm',
   className,
@@ -25,6 +26,7 @@ export const WasteTourShiftCreateLink = ({
   readonly tourId: string;
   readonly originalDate?: string;
   readonly label: string;
+  readonly accessibleLabel?: string;
   readonly variant?: ButtonProps['variant'];
   readonly size?: ButtonProps['size'];
   readonly className?: string;
@@ -49,7 +51,7 @@ export const WasteTourShiftCreateLink = ({
     return (
       <span
         aria-disabled="true"
-        aria-label={`${label}. ${disabledDescription ?? ''}`.trim()}
+        aria-label={`${accessibleLabel}. ${disabledDescription ?? ''}`.trim()}
         className={cn(linkClassName, 'cursor-not-allowed opacity-60')}
       >
         {content}
@@ -63,7 +65,7 @@ export const WasteTourShiftCreateLink = ({
       search={toCreateTourShiftSearch(search, { tourId, originalDate })}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${label} ${pt('tours.actions.opensInNewTab')}`}
+      aria-label={`${accessibleLabel} ${pt('tours.actions.opensInNewTab')}`}
       className={linkClassName}
     >
       {content}

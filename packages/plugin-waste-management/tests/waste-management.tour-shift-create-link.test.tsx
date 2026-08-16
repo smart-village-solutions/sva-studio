@@ -81,4 +81,41 @@ describe('WasteTourShiftCreateLink', () => {
       })
     );
   });
+
+  it('keeps a compact visible label while exposing the complete accessible action', () => {
+    render(
+      <WasteTourShiftCreateLink
+        search={search}
+        tourId="tour-42"
+        label="Anlegen"
+        accessibleLabel="Ausweichtermin für die Tour Restmüll Nord anlegen"
+      />
+    );
+
+    expect(screen.getByText('Anlegen')).toBeTruthy();
+    expect(
+      screen.getByRole('link', {
+        name: 'Ausweichtermin für die Tour Restmüll Nord anlegen tours.actions.opensInNewTab',
+      })
+    ).toBeTruthy();
+  });
+
+  it('renders a non-navigating disabled action with its reason in the accessible name', () => {
+    render(
+      <WasteTourShiftCreateLink
+        search={search}
+        tourId="tour-42"
+        label="Ausweichtermin anlegen"
+        disabled
+        disabledDescription="Speichern Sie zuerst die Terminänderungen."
+      />
+    );
+
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(
+      screen
+        .getByLabelText('Ausweichtermin anlegen. Speichern Sie zuerst die Terminänderungen.')
+        .getAttribute('aria-disabled')
+    ).toBe('true');
+  });
 });

@@ -9,7 +9,7 @@ import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
   clearTourShiftCreateContext,
-  resolveTourShiftCreatePrefill,
+  type TourShiftCreateContextResolution,
 } from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
@@ -117,13 +117,15 @@ export const useWasteSchedulingSuccessRedirect = ({
 
 export const useWasteSchedulingCreateRouteHydration = ({
   controller,
+  context,
   search,
 }: {
   readonly controller: WasteViewModel;
+  readonly context: TourShiftCreateContextResolution;
   readonly search: WasteManagementSearchParams;
 }) => {
-  const hydratedContextRef = useRef<string | null>(null);
-  const contextKey = `${search.schedulingTourId ?? ''}:${search.schedulingOriginalDate ?? ''}`;
+  const initialFormRef = useRef(controller.tourShiftForm);
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
     if (
@@ -134,24 +136,21 @@ export const useWasteSchedulingCreateRouteHydration = ({
       return;
     }
 
-    if (search.schedulingTourId && controller.availableTours.length === 0) {
+    if (
+      context.kind !== 'valid' ||
+      hydratedRef.current ||
+      controller.tourShiftForm !== initialFormRef.current
+    ) {
       return;
     }
 
-    const prefill = resolveTourShiftCreatePrefill(search, controller.availableTours);
-    if (!prefill || hydratedContextRef.current === contextKey) {
-      return;
-    }
-
-    controller.setTourShiftForm((current) => ({ ...current, ...prefill }));
-    hydratedContextRef.current = contextKey;
-  }, [
-    contextKey,
-    controller.availableTours,
-    controller.loading,
-    controller.setTourShiftForm,
-    search,
-  ]);
+    controller.setTourShiftForm((current) => ({
+      ...current,
+      tourId: context.tourId,
+      ...(context.originalDate ? { originalDate: context.originalDate } : {}),
+    }));
+    hydratedRef.current = true;
+  }, [context, controller.loading, controller.setTourShiftForm, controller.tourShiftForm, search]);
 };
 
 export const useWasteSchedulingEditRouteHydration = ({

@@ -1,76 +1,24 @@
-import {
-  contentMediaUploadPhaseMessageKey,
-  getHostMediaAsset,
-  getHostMediaAssetFileName,
-  getHostMediaDelivery,
-  isSupportedContentMediaUploadFile,
-  listHostMediaAssets,
-  readHostMediaAssetFileName,
-  readHostMediaAssetTitle,
-  readSessionAccessSnapshot,
-  resolveContentMediaCapabilities,
-  subscribeSessionAccessSnapshot,
-  updateHostMediaAsset,
-  uploadHostMediaFile,
-  type HostMediaAssetDetail,
-  type HostMediaAssetListItem,
-} from '@sva/plugin-sdk';
+import { contentMediaUploadPhaseMessageKey } from '@sva/plugin-sdk';
 import {
   Button,
   Input,
   isPersistableContentMediaUrl,
   StudioField,
   StudioMediaPickerOverlay,
-  useStudioMediaPickerOverlay,
-  type StudioMediaPickerAssetDetail,
-  type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,
   type StudioMediaPickerOverlayLabels,
 } from '@sva/studio-ui-react';
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useMemo } from 'react';
+
+import {
+  toMediaPickerSummary,
+  useWasteBrandingMediaController,
+} from './waste-management.output-branding-media.logic.js';
 
 export type WasteOutputTranslate = (
   key: string,
   variables?: Record<string, string | number>
 ) => string;
-
-type WasteBrandingMediaPickerAsset = StudioMediaPickerAssetDetail;
-
-const toMediaPickerSummary = (asset: HostMediaAssetListItem): StudioMediaPickerAssetSummary => ({
-  id: asset.id,
-  title: readHostMediaAssetTitle(asset),
-  fileName: readHostMediaAssetFileName(asset),
-  previewUrl: asset.previewUrl,
-  mimeType: asset.mimeType,
-  visibility: asset.visibility,
-});
-
-const toMediaPickerDetail = (
-  asset: HostMediaAssetDetail,
-  persistentUrl: string | null,
-  summary?: HostMediaAssetListItem
-): WasteBrandingMediaPickerAsset => {
-  const fileName = summary ? readHostMediaAssetFileName(summary) : getHostMediaAssetFileName(asset);
-  const title =
-    asset.metadata.title?.trim() || (summary ? readHostMediaAssetTitle(summary) : fileName);
-
-  return {
-    id: asset.id,
-    title,
-    fileName,
-    previewUrl: asset.previewUrl?.trim() || summary?.previewUrl?.trim() || null,
-    mimeType: asset.mimeType,
-    visibility: asset.visibility,
-    persistentUrl,
-    metadata: {
-      title,
-      altText: asset.metadata.altText?.trim() ?? '',
-      description: asset.metadata.description?.trim() ?? '',
-      copyright: asset.metadata.copyright?.trim() ?? '',
-      license: asset.metadata.license?.trim() ?? '',
-    },
-  };
-};
 
 const createMediaPickerLabels = (
   translate: WasteOutputTranslate
@@ -142,117 +90,37 @@ const resolvePickerFeedback = (
     : { message: null, tone: 'default' as const };
 };
 
-const isPublicPersistableAsset = (asset: WasteBrandingMediaPickerAsset): boolean =>
-  asset.visibility === 'public' &&
-  Boolean(asset.persistentUrl && isPersistableContentMediaUrl(asset.persistentUrl));
-
-export const WasteOutputBrandingMediaField = ({
-  error,
-  onChange,
-  translate,
-  value,
-}: {
+type WasteOutputBrandingMediaFieldProps = {
   readonly error?: string;
   readonly onChange: (value: string) => void;
   readonly translate: WasteOutputTranslate;
   readonly value: string;
-}) => {
-  const sessionAccess = useSyncExternalStore(
-    subscribeSessionAccessSnapshot,
-    readSessionAccessSnapshot,
-    readSessionAccessSnapshot
-  );
-  const mediaCapabilities = useMemo(
-    () =>
-      resolveContentMediaCapabilities({
-        canEditContent:
-          sessionAccess.isResolved &&
-          sessionAccess.permissionActions.includes('waste-management.settings.manage'),
-        permissionActions: sessionAccess.permissionActions,
-      }),
-    [sessionAccess.isResolved, sessionAccess.permissionActions]
-  );
-  const [mediaAssets, setMediaAssets] = useState<readonly HostMediaAssetListItem[]>([]);
-  const mediaAssetsRef = useRef<readonly HostMediaAssetListItem[]>([]);
+};
 
-  const refreshMediaAssets = useCallback(async () => {
-    try {
-      const assets = await listHostMediaAssets({
-        fetch: globalThis.fetch.bind(globalThis),
-        visibility: 'public',
-      });
-      mediaAssetsRef.current = assets;
-      setMediaAssets(assets);
-      return assets;
-    } catch {
-      mediaAssetsRef.current = [];
-      setMediaAssets([]);
-      return [];
-    }
-  }, []);
+const BrandingPreview = ({
+  onRemove,
+  translate,
+  value,
+}: Readonly<{
+  onRemove: () => void;
+  translate: WasteOutputTranslate;
+  value: string;
+}>) => (
+  <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 sm:flex-row sm:items-center">
+    <img
+      alt={translate('output.pdf.mediaPicker.previewAlt')}
+      className="max-h-24 max-w-64 rounded-lg border border-border/60 bg-background object-contain p-2"
+      src={value}
+    />
+    <Button type="button" variant="secondary" onClick={onRemove}>
+      {translate('output.pdf.mediaPicker.remove')}
+    </Button>
+  </div>
+);
 
-  const loadMediaAsset = useCallback(
-    async (assetId: string): Promise<WasteBrandingMediaPickerAsset> => {
-      const [asset, delivery] = await Promise.all([
-        getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-        getHostMediaDelivery({ fetch: globalThis.fetch.bind(globalThis), assetId }),
-      ]);
-      const persistentUrl =
-        delivery.isPublicUrl === true && isPersistableContentMediaUrl(delivery.deliveryUrl)
-          ? delivery.deliveryUrl
-          : null;
-      return toMediaPickerDetail(
-        asset,
-        persistentUrl,
-        mediaAssetsRef.current.find((entry) => entry.id === assetId)
-      );
-    },
-    []
-  );
-
-  const mediaPicker = useStudioMediaPickerOverlay<WasteBrandingMediaPickerAsset>({
-    onAccept: (asset) => {
-      if (asset.persistentUrl && isPublicPersistableAsset(asset)) {
-        onChange(asset.persistentUrl);
-      }
-    },
-    canAcceptAsset: isPublicPersistableAsset,
-    editableMetadataFields: mediaCapabilities.canEditAssetMetadata
-      ? ['title', 'altText', 'description', 'copyright', 'license']
-      : [],
-    isSupportedUploadFile: isSupportedContentMediaUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-      });
-      await refreshMediaAssets();
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
-    loadAsset: loadMediaAsset,
-    saveAssetMetadata: async (assetId, metadata) => {
-      await updateHostMediaAsset({
-        fetch: globalThis.fetch.bind(globalThis),
-        assetId,
-        metadata,
-        visibility: 'public',
-      });
-      await refreshMediaAssets();
-      return loadMediaAsset(assetId);
-    },
-  });
-
-  useEffect(() => {
-    if (mediaCapabilities.canSelect) {
-      void refreshMediaAssets();
-      return;
-    }
-    setMediaAssets([]);
-    mediaAssetsRef.current = [];
-    mediaPicker.close();
-  }, [mediaCapabilities.canSelect, mediaPicker.close, refreshMediaAssets]);
+export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFieldProps) => {
+  const { error, onChange, translate, value } = props;
+  const { mediaAssets, mediaCapabilities, mediaPicker } = useWasteBrandingMediaController(onChange);
 
   const labels = useMemo(() => createMediaPickerLabels(translate), [translate]);
   const feedback = useMemo(
@@ -270,16 +138,7 @@ export const WasteOutputBrandingMediaField = ({
     >
       <div className="space-y-3">
         {hasPreview ? (
-          <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 sm:flex-row sm:items-center">
-            <img
-              alt={translate('output.pdf.mediaPicker.previewAlt')}
-              className="max-h-24 max-w-64 rounded-lg border border-border/60 bg-background object-contain p-2"
-              src={value}
-            />
-            <Button type="button" variant="secondary" onClick={() => onChange('')}>
-              {translate('output.pdf.mediaPicker.remove')}
-            </Button>
-          </div>
+          <BrandingPreview value={value} translate={translate} onRemove={() => onChange('')} />
         ) : null}
         <Input
           id="content-media-branding-url"

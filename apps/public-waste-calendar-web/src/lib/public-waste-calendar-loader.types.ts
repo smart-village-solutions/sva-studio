@@ -25,7 +25,7 @@ export type TourDateShiftRow = {
   readonly tour_id: string;
   readonly original_date: string;
   readonly actual_date: string;
-  readonly has_year?: boolean;
+  readonly has_year: boolean;
   readonly description: string | null;
 };
 

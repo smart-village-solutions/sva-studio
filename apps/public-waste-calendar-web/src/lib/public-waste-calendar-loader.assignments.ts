@@ -34,7 +34,7 @@ const createTourShiftMap = (
         tourId: row.tour_id,
         originalDate: row.original_date,
         actualDate: row.actual_date,
-        hasYear: row.has_year ?? true,
+        hasYear: row.has_year,
       })),
       year
     )

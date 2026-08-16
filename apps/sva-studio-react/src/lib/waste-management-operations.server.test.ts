@@ -154,6 +154,14 @@ describe('waste management operations runtime', () => {
     expect(statements).toContain('waste_location_tour_links_tour_id_fkey');
     expect(statements).toContain('waste_location_tour_pickup_dates_tour_id_fkey');
     expect(statements).toContain('waste_tour_date_shifts_tour_id_fkey');
+    expect(statements).toContain('original_date DATE NOT NULL');
+    expect(statements).toContain('actual_date DATE NOT NULL');
+    expect(statements).toContain(
+      'UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_specific_origin ON "wm".waste_tour_date_shifts(tour_id, original_date) WHERE has_year'
+    );
+    expect(statements).toContain(
+      'UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_annual_origin ON "wm".waste_tour_date_shifts(tour_id, (EXTRACT(MONTH FROM original_date)), (EXTRACT(DAY FROM original_date))) WHERE NOT has_year'
+    );
     expect(statements).toContain(
       'DROP CONSTRAINT IF EXISTS waste_location_tour_links_tour_id_fkey'
     );

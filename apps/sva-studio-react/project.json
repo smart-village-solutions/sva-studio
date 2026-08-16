@@ -3,10 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/sva-studio-react/src",
   "projectType": "application",
-  "tags": [
-    "scope:app",
-    "type:app"
-  ],
+  "tags": ["scope:app", "type:app"],
   "targets": {
     "check:i18n": {
       "executor": "nx:run-commands",
@@ -31,10 +28,7 @@
     "check:account-ui-foundation": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "default",
-        "{workspaceRoot}/scripts/ci/check-account-ui-foundation.ts"
-      ],
+      "inputs": ["default", "{workspaceRoot}/scripts/ci/check-account-ui-foundation.ts"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -44,12 +38,7 @@
     "serve": {
       "executor": "@nx/vite:dev-server",
       "continuous": true,
-      "inputs": [
-        "default",
-        "^production",
-        "frontendTooling",
-        "frontendEnvServe"
-      ],
+      "inputs": ["default", "^production", "frontendTooling", "frontendEnvServe"],
       "outputs": [],
       "options": {
         "buildTarget": "sva-studio-react:build",
@@ -76,9 +65,7 @@
         "{workspaceRoot}/scripts/ci/run-workspace-node.sh",
         "{projectRoot}/src/lib/studio-changelog.shared.ts"
       ],
-      "outputs": [
-        "{projectRoot}/.output"
-      ],
+      "outputs": ["{projectRoot}/.output"],
       "options": {
         "cwd": "apps/sva-studio-react",
         "command": "rm -rf public/generated .output/public/generated && pnpm exec tsx ../../scripts/ci/generate-studio-changelog-artifact.ts --output .generated/studio-changelog.json && pnpm exec vite build && bash ../../scripts/ci/run-workspace-node.sh -e \"const fs=require('node:fs'); fs.mkdirSync('.output/server/generated',{recursive:true}); fs.copyFileSync('.generated/studio-changelog.json','.output/server/generated/studio-changelog.json')\" && bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/patch-runtime-artifact.ts ."
@@ -95,12 +82,8 @@
     "verify:runtime-artifact": {
       "executor": "nx:run-commands",
       "cache": false,
-      "dependsOn": [
-        "build"
-      ],
-      "outputs": [
-        "{workspaceRoot}/artifacts/runtime/runtime-artifact-verify"
-      ],
+      "dependsOn": ["build"],
+      "outputs": ["{workspaceRoot}/artifacts/runtime/runtime-artifact-verify"],
       "options": {
         "command": "bash scripts/ci/verify-runtime-artifact.sh apps/sva-studio-react artifacts/runtime/runtime-artifact-verify"
       }
@@ -135,23 +118,13 @@
           "params": "forward"
         }
       ],
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": []
     },
     "test:unit:ui": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -162,12 +135,7 @@
       "executor": "nx:run-commands",
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -177,12 +145,7 @@
     "test:unit:hooks": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -192,12 +155,7 @@
     "test:unit:server": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -207,12 +165,7 @@
     "test:a11y": {
       "executor": "nx:run-commands",
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -224,15 +177,8 @@
       "parallelism": false,
       "cache": false,
       "dependsOn": ["^build"],
-      "inputs": [
-        "default",
-        "^production",
-        "testing",
-        "frontendTooling"
-      ],
-      "outputs": [
-        "{projectRoot}/coverage"
-      ],
+      "inputs": ["default", "^production", "testing", "frontendTooling"],
+      "outputs": ["{projectRoot}/coverage"],
       "options": {
         "cwd": "apps/sva-studio-react",
         "command": "rm -rf coverage && pnpm exec tsx ../../scripts/ci/run-vitest-target.ts --coverage --reporter=verbose --config vitest.coverage.config.ts"
@@ -241,9 +187,7 @@
     "test:explore:admin": {
       "executor": "nx:run-commands",
       "cache": false,
-      "outputs": [
-        "{workspaceRoot}/docs/reports/stagehand-admin-exploration"
-      ],
+      "outputs": ["{workspaceRoot}/docs/reports/stagehand-admin-exploration"],
       "options": {
         "cwd": "apps/sva-studio-react",
         "command": "STAGEHAND_RUN_MODE=story-loop bash ../../scripts/ci/run-workspace-node.sh --import tsx ./stagehand/cli.ts"
@@ -251,22 +195,25 @@
     },
     "test:integration": {
       "executor": "nx:run-commands",
+      "cache": false,
+      "inputs": [
+        "default",
+        "^production",
+        "testing",
+        "{workspaceRoot}/compose.yaml",
+        "{workspaceRoot}/compose.override.yaml"
+      ],
       "outputs": [],
       "options": {
-        "command": "node -e \"console.log('no integration tests configured for sva-studio-react')\""
+        "command": "bash scripts/test-waste-tour-date-shifts.sh",
+        "cwd": "apps/sva-studio-react"
       }
     },
     "test:types": {
       "executor": "nx:run-commands",
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^production",
-        "frontendTooling"
-      ],
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -276,14 +223,8 @@
     "typecheck": {
       "executor": "nx:run-commands",
       "cache": true,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^production",
-        "frontendTooling"
-      ],
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],
       "options": {
         "cwd": "apps/sva-studio-react",
@@ -293,11 +234,7 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "cache": true,
-      "inputs": [
-        "default",
-        "^production",
-        "frontendTooling"
-      ],
+      "inputs": ["default", "^production", "frontendTooling"],
       "outputs": [],
       "options": {
         "lintFilePatterns": [
@@ -310,20 +247,9 @@
     "test:e2e": {
       "executor": "@nx/playwright:playwright",
       "cache": false,
-      "dependsOn": [
-        "^build"
-      ],
-      "inputs": [
-        "default",
-        "^production",
-        "frontendTooling",
-        "frontendEnvE2E",
-        "frontendEnvServe"
-      ],
-      "outputs": [
-        "{projectRoot}/playwright-report",
-        "{projectRoot}/test-results"
-      ],
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^production", "frontendTooling", "frontendEnvE2E", "frontendEnvServe"],
+      "outputs": ["{projectRoot}/playwright-report", "{projectRoot}/test-results"],
       "options": {
         "config": "apps/sva-studio-react/playwright.config.ts",
         "skipInstall": true

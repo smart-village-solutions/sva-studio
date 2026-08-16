@@ -31,105 +31,139 @@ type WasteToursFormContentProps = {
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
 };
 
-export const WasteToursFormContent = ({
-  mode,
-  form,
-  fractions,
-  locations,
-  customRecurrencePresets,
-  showDuplicationHint = false,
-  duplicateFromTourName,
-  saving,
-  search,
-  canManageScheduling = false,
-  persistedTour,
-  onChange,
-  onCancel,
-  onSubmit,
-}: WasteToursFormContentProps) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const saveLabel = saving
-    ? pt('tours.actions.saving')
-    : mode === 'create'
-      ? pt('tours.actions.create')
-      : pt('tours.actions.save');
-  const persistedTourSupportsShifts = Boolean(
-    persistedTour && isWasteTourValidityApplicable(persistedTour)
-  );
-  const hasUnsavedSchedulingChanges = Boolean(
-    persistedTour &&
-    (form.recurrence !== (persistedTour.recurrence ?? '') ||
-      form.customRecurrenceId !== (persistedTour.customRecurrenceId ?? '') ||
-      form.firstDate !== (persistedTour.firstDate ?? '') ||
-      form.endDate !== (persistedTour.endDate ?? ''))
-  );
-  const dirtySchedulingHint = pt('tours.messages.saveSchedulingBeforeShift');
-  const schedulingAction =
-    mode === 'edit' &&
-    canManageScheduling &&
-    search &&
-    persistedTourSupportsShifts &&
-    persistedTour ? (
-      <div className="space-y-2 text-right">
-        <WasteTourShiftCreateLink
-          search={search}
-          tourId={persistedTour.id}
-          label={pt('tours.actions.createShift')}
-          disabled={hasUnsavedSchedulingChanges}
-          disabledDescription={hasUnsavedSchedulingChanges ? dirtySchedulingHint : undefined}
-        />
-        {hasUnsavedSchedulingChanges ? (
-          <p className="text-sm text-muted-foreground">{dirtySchedulingHint}</p>
-        ) : null}
-      </div>
-    ) : null;
+const hasSchedulingChanges = (form: TourFormState, tour: WasteTourRecord): boolean =>
+  form.recurrence !== (tour.recurrence ?? '') ||
+  form.customRecurrenceId !== (tour.customRecurrenceId ?? '') ||
+  form.firstDate !== (tour.firstDate ?? '') ||
+  form.endDate !== (tour.endDate ?? '');
 
-  const topActions = (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
-        {pt('tours.actions.cancel')}
-      </Button>
-      <WastePendingSaveButton
-        type="submit"
-        form="waste-tour-form"
-        saving={saving}
-        label={saveLabel}
+const TourShiftSchedulingAction = ({
+  form,
+  persistedTour,
+  search,
+  pt,
+}: {
+  readonly form: TourFormState;
+  readonly persistedTour: WasteTourRecord;
+  readonly search: WasteManagementSearchParams;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+}) => {
+  const dirty = hasSchedulingChanges(form, persistedTour);
+  const dirtyHint = pt('tours.messages.saveSchedulingBeforeShift');
+  return (
+    <div className="min-w-0 space-y-2 text-right">
+      <WasteTourShiftCreateLink
+        search={search}
+        tourId={persistedTour.id}
+        label={pt('tours.actions.createShift')}
+        disabled={dirty}
+        disabledDescription={dirty ? dirtyHint : undefined}
       />
+      {dirty ? <p className="break-words text-sm text-muted-foreground">{dirtyHint}</p> : null}
     </div>
   );
+};
+
+const resolveSaveLabel = (
+  pt: ReturnType<typeof usePluginTranslation>,
+  mode: 'create' | 'edit',
+  saving: boolean
+): string =>
+  saving
+    ? pt('tours.actions.saving')
+    : pt(mode === 'create' ? 'tours.actions.create' : 'tours.actions.save');
+
+const TourFormTopActions = ({
+  label,
+  onCancel,
+  pt,
+  saving,
+}: Readonly<{
+  label: string;
+  onCancel: () => void;
+  pt: ReturnType<typeof usePluginTranslation>;
+  saving: boolean;
+}>) => (
+  <div className="flex flex-wrap items-center justify-end gap-2">
+    <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
+      {pt('tours.actions.cancel')}
+    </Button>
+    <WastePendingSaveButton type="submit" form="waste-tour-form" saving={saving} label={label} />
+  </div>
+);
+
+export const WasteToursFormContent = (props: WasteToursFormContentProps) => {
+  const pt = usePluginTranslation('wasteManagement');
+  const saveLabel = resolveSaveLabel(pt, props.mode, props.saving);
+  const showSchedulingAction = Boolean(
+    props.mode === 'edit' &&
+    props.canManageScheduling &&
+    props.search &&
+    props.persistedTour &&
+    isWasteTourValidityApplicable(props.persistedTour)
+  );
+  const schedulingAction =
+    showSchedulingAction && props.search && props.persistedTour ? (
+      <TourShiftSchedulingAction
+        form={props.form}
+        persistedTour={props.persistedTour}
+        search={props.search}
+        pt={pt}
+      />
+    ) : null;
 
   return (
     <div className="space-y-6">
       <StudioPageHeader
-        title={mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')}
+        title={
+          props.mode === 'create' ? pt('tours.dialog.createTitle') : pt('tours.dialog.editTitle')
+        }
         description={
-          mode === 'create'
+          props.mode === 'create'
             ? pt('tours.dialog.createDescription')
             : pt('tours.dialog.editDescription')
         }
-        actions={topActions}
+        actions={
+          <TourFormTopActions
+            label={saveLabel}
+            onCancel={props.onCancel}
+            pt={pt}
+            saving={props.saving}
+          />
+        }
       />
 
-      <form id="waste-tour-form" className="space-y-6" onSubmit={(event) => void onSubmit(event)}>
+      <form
+        id="waste-tour-form"
+        className="space-y-6"
+        onSubmit={(event) => void props.onSubmit(event)}
+      >
         <WasteToursTourFields
-          form={form}
-          fractions={fractions}
-          locations={locations}
-          customRecurrencePresets={customRecurrencePresets}
+          form={props.form}
+          fractions={props.fractions}
+          locations={props.locations}
+          customRecurrencePresets={props.customRecurrencePresets}
           pt={pt}
-          onChange={onChange}
+          onChange={props.onChange}
           schedulingAction={schedulingAction}
         />
 
-        {showDuplicationHint ? (
+        {props.showDuplicationHint ? (
           <div className="rounded-2xl border border-info/40 bg-info/5 px-4 py-3 text-sm text-foreground">
-            {pt('tours.messages.duplicateHint', { sourceName: duplicateFromTourName ?? '' })}
+            {pt('tours.messages.duplicateHint', {
+              sourceName: props.duplicateFromTourName ?? '',
+            })}
           </div>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
-          <WastePendingSaveButton type="submit" saving={saving} label={saveLabel} />
-          <Button type="button" variant="secondary" onClick={onCancel} disabled={saving}>
+          <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={props.onCancel}
+            disabled={props.saving}
+          >
             {pt('tours.actions.cancel')}
           </Button>
         </div>

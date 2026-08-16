@@ -17,7 +17,7 @@ describe('run-integration-gate', () => {
         'plugin-news',
         'monitoring-client',
       ])
-    ).toEqual(['data']);
+    ).toEqual(['data', 'sva-studio-react']);
   });
 
   it('parses newline-separated nx project output', () => {
@@ -35,7 +35,7 @@ describe('run-integration-gate', () => {
   });
 
   it('documents the split between general and monitoring-specific integration projects', () => {
-    expect(GENERAL_INTEGRATION_PROJECTS).toEqual(['data']);
+    expect(GENERAL_INTEGRATION_PROJECTS).toEqual(['data', 'sva-studio-react']);
     expect(MONITORING_STACK_PROJECTS).toEqual(['monitoring-client']);
   });
 });

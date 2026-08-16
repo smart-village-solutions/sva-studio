@@ -372,21 +372,20 @@ describe('waste-management search params', () => {
       })
     );
 
-    expect(
-      normalizeWasteManagementSearchParams({
-        tab: 'scheduling',
-        schedulingView: 'create',
-        schedulingEntryType: 'tour-shift',
-        schedulingTourId: 'tour-42',
-        schedulingOriginalDate: '2026-02-30',
-      })
-    ).toEqual(
+    const invalidDateSearch = normalizeWasteManagementSearchParams({
+      tab: 'scheduling',
+      schedulingView: 'create',
+      schedulingEntryType: 'tour-shift',
+      schedulingTourId: 'tour-42',
+      schedulingOriginalDate: '2026-02-30',
+    });
+    expect(invalidDateSearch).toEqual(
       expect.objectContaining({
         schedulingTourId: 'tour-42',
         schedulingOriginalDate: undefined,
-        schedulingContextInvalid: true,
       })
     );
+    expect(invalidDateSearch).not.toHaveProperty('schedulingContextInvalid');
 
     expect(
       normalizeWasteManagementSearchParams({

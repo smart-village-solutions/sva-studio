@@ -124,11 +124,9 @@ const buildMaterializationRules = (
       shiftDays: move.shiftDays,
       direction: move.direction,
       coverage: toCoverage(shift.followUpMode),
-      hasYear: shift.hasYear,
+      hasYear: true,
     };
-    if (
-      !isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, shift.hasYear, yearWindow)
-    ) {
+    if (!isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, true, yearWindow)) {
       continue;
     }
     tourRules.push(rule);

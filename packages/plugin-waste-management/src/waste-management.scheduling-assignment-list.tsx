@@ -43,6 +43,66 @@ const AssignmentActions = ({
   </div>
 );
 
+const AssignmentRow = ({
+  entry,
+  tourLabels,
+  locationLabels,
+  pt,
+  onOpenLinkedTour,
+  onOpenLinkedLocation,
+  onEdit,
+  onDeleteRequest,
+}: {
+  readonly entry: WasteTourAssignmentRecord;
+  readonly tourLabels: ReadonlyMap<string, string>;
+  readonly locationLabels: ReadonlyMap<string, string>;
+  readonly pt: Translate;
+  readonly onOpenLinkedTour?: (tourId: string) => void;
+  readonly onOpenLinkedLocation?: (collectionLocationId: string) => void;
+  readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
+  readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
+}) => (
+  <tr className="border-b border-border/60 align-top text-[14px] last:border-b-0 hover:bg-muted/20">
+    <td className="px-3 py-3">{entry.pickupDate}</td>
+    <td className="px-3 py-3">
+      {onOpenLinkedTour ? (
+        <button
+          type="button"
+          className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          onClick={() => onOpenLinkedTour(entry.tourId)}
+        >
+          {tourLabels.get(entry.tourId) ?? entry.tourId}
+        </button>
+      ) : (
+        (tourLabels.get(entry.tourId) ?? entry.tourId)
+      )}
+    </td>
+    <td className="px-3 py-3">
+      <ul>
+        {entry.locationIds.map((id) => (
+          <li key={id}>
+            {onOpenLinkedLocation ? (
+              <button
+                type="button"
+                className="text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onClick={() => onOpenLinkedLocation(id)}
+              >
+                {locationLabels.get(id) ?? id}
+              </button>
+            ) : (
+              (locationLabels.get(id) ?? id)
+            )}
+          </li>
+        ))}
+      </ul>
+    </td>
+    <td className="px-3 py-3">{entry.note ?? ''}</td>
+    <td className="px-3 py-3">
+      <AssignmentActions entry={entry} pt={pt} onEdit={onEdit} onDeleteRequest={onDeleteRequest} />
+    </td>
+  </tr>
+);
+
 const WasteTourAssignmentsTable = ({
   entries,
   tourLabels,
@@ -83,53 +143,17 @@ const WasteTourAssignmentsTable = ({
       </thead>
       <tbody>
         {entries.map((entry) => (
-          <tr
+          <AssignmentRow
             key={entry.id}
-            className="border-b border-border/60 align-top text-[14px] last:border-b-0 hover:bg-muted/20"
-          >
-            <td className="px-3 py-3">{entry.pickupDate}</td>
-            <td className="px-3 py-3">
-              {onOpenLinkedTour ? (
-                <button
-                  type="button"
-                  className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={() => onOpenLinkedTour(entry.tourId)}
-                >
-                  {tourLabels.get(entry.tourId) ?? entry.tourId}
-                </button>
-              ) : (
-                (tourLabels.get(entry.tourId) ?? entry.tourId)
-              )}
-            </td>
-            <td className="px-3 py-3">
-              <ul>
-                {entry.locationIds.map((id) => (
-                  <li key={id}>
-                    {onOpenLinkedLocation ? (
-                      <button
-                        type="button"
-                        className="text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                        onClick={() => onOpenLinkedLocation(id)}
-                      >
-                        {locationLabels.get(id) ?? id}
-                      </button>
-                    ) : (
-                      (locationLabels.get(id) ?? id)
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </td>
-            <td className="px-3 py-3">{entry.note ?? ''}</td>
-            <td className="px-3 py-3">
-              <AssignmentActions
-                entry={entry}
-                pt={pt}
-                onEdit={onEdit}
-                onDeleteRequest={onDeleteRequest}
-              />
-            </td>
-          </tr>
+            entry={entry}
+            tourLabels={tourLabels}
+            locationLabels={locationLabels}
+            pt={pt}
+            onOpenLinkedTour={onOpenLinkedTour}
+            onOpenLinkedLocation={onOpenLinkedLocation}
+            onEdit={onEdit}
+            onDeleteRequest={onDeleteRequest}
+          />
         ))}
       </tbody>
     </table>

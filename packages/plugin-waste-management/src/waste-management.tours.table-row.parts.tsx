@@ -1,31 +1,10 @@
-import {
-  IconCalendarMonth,
-  IconCopy,
-  IconEdit,
-  IconListDetails,
-  IconTrash,
-} from '@tabler/icons-react';
+import { IconCalendarMonth, IconCopy, IconEdit, IconTrash } from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import {
-  Badge,
-  Button,
-  Checkbox,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  cn,
-} from '@sva/studio-ui-react';
-import { useState, type ReactNode } from 'react';
+import { Badge, Button, Checkbox, cn } from '@sva/studio-ui-react';
+import type { ReactNode } from 'react';
 
-import type { TourShiftDetail } from './waste-management.tours.presentation.js';
-import type { WasteManagementSearchParams } from './search-params.js';
-import { WasteTourShiftCreateLink } from './waste-management.tour-shift-create-link.js';
-
-const formatDisplayDate = (value: string) => {
+export const formatTourDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);
   return Number.isNaN(parsed.getTime())
     ? value
@@ -57,33 +36,6 @@ const RowActionButton = ({
   >
     {children}
   </Button>
-);
-
-const TourAssignmentsActionButton = ({
-  assignmentId,
-  tour,
-  pt,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
-}: {
-  readonly assignmentId?: string;
-  readonly tour: WasteTourRecord;
-  readonly pt: ReturnType<typeof usePluginTranslation>;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
-}) => (
-  <RowActionButton
-    ariaLabel={pt('tours.actions.openAssignments')}
-    onClick={() => {
-      if (assignmentId) {
-        onOpenEditAssignmentsDialog(tour, assignmentId);
-        return;
-      }
-      onOpenCreateAssignmentsDialog(tour);
-    }}
-  >
-    <IconListDetails aria-hidden="true" className="h-4 w-4" />
-  </RowActionButton>
 );
 
 export const WasteToursRowSelectionCell = ({
@@ -164,114 +116,13 @@ export const WasteToursRowDatesCell = ({
     <td className="w-[156px] px-3 py-3">
       <div className="space-y-1 text-sm">
         {firstDate ? (
-          <p>{pt('tours.meta.startDate', { value: formatDisplayDate(firstDate) })}</p>
+          <p>{pt('tours.meta.startDate', { value: formatTourDisplayDate(firstDate) })}</p>
         ) : null}
-        {endDate ? <p>{pt('tours.meta.endDate', { value: formatDisplayDate(endDate) })}</p> : null}
+        {endDate ? (
+          <p>{pt('tours.meta.endDate', { value: formatTourDisplayDate(endDate) })}</p>
+        ) : null}
         {!firstDate && !endDate ? <span className="text-muted-foreground">—</span> : null}
       </div>
-    </td>
-  );
-};
-
-const WasteTourShiftDetailItem = ({ detail }: { readonly detail: TourShiftDetail }) => {
-  const pt = usePluginTranslation('wasteManagement');
-
-  return (
-    <li className="rounded-md border border-border/60 p-3">
-      <p className="font-medium">{pt(`tours.shiftDetails.sources.${detail.source}`)}</p>
-      <p className="mt-1 text-sm">
-        {pt('tours.shiftDetails.dateChange', {
-          originalDate: formatDisplayDate(detail.originalDate),
-          actualDate: formatDisplayDate(detail.actualDate),
-        })}
-      </p>
-      {detail.source === 'holiday' ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          {pt('tours.shiftDetails.holidays', { value: detail.holidayNames.join(', ') })}
-        </p>
-      ) : (
-        <div className="mt-1 space-y-1 text-sm text-muted-foreground">
-          {detail.description ? <p>{detail.description}</p> : null}
-          {detail.reasonType ? <p>{pt(`scheduling.reasonTypes.${detail.reasonType}`)}</p> : null}
-          {detail.reasonKey ? (
-            <p>{pt('tours.shiftDetails.reasonKey', { value: detail.reasonKey })}</p>
-          ) : null}
-        </div>
-      )}
-    </li>
-  );
-};
-
-export const WasteToursRowShiftCell = ({
-  tourId,
-  tourName,
-  shiftDetails,
-  canManageScheduling = false,
-  search,
-}: {
-  readonly tourId: string;
-  readonly tourName: string;
-  readonly shiftDetails: readonly TourShiftDetail[];
-  readonly canManageScheduling?: boolean;
-  readonly search?: WasteManagementSearchParams;
-}) => {
-  const pt = usePluginTranslation('wasteManagement');
-  const [open, setOpen] = useState(false);
-  const count = shiftDetails.length;
-
-  return (
-    <td className="w-[168px] px-3 py-3">
-      {count > 0 ? (
-        <>
-          <Button
-            type="button"
-            variant="tertiary"
-            size="sm"
-            className="h-auto p-0 text-sm font-medium underline underline-offset-4"
-            aria-label={pt('tours.shiftDetails.open', { count, name: tourName })}
-            onClick={() => setOpen(true)}
-          >
-            {pt('tours.meta.shiftCount', { value: count })}
-          </Button>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>{pt('tours.shiftDetails.title', { name: tourName })}</DialogTitle>
-                <DialogDescription>
-                  {pt('tours.shiftDetails.description', { value: count })}
-                </DialogDescription>
-              </DialogHeader>
-              <ul className="max-h-[60vh] space-y-2 overflow-y-auto">
-                {shiftDetails.map((detail) => (
-                  <WasteTourShiftDetailItem key={`${detail.source}-${detail.id}`} detail={detail} />
-                ))}
-              </ul>
-              <DialogFooter>
-                {canManageScheduling && search ? (
-                  <WasteTourShiftCreateLink
-                    search={search}
-                    tourId={tourId}
-                    label={pt('tours.actions.createAnotherShift')}
-                  />
-                ) : null}
-                <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
-                  {pt('tours.shiftDetails.close')}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </>
-      ) : canManageScheduling && search ? (
-        <WasteTourShiftCreateLink
-          search={search}
-          tourId={tourId}
-          label={pt('tours.actions.createShift')}
-          variant="tertiary"
-          className="h-auto p-0 text-sm font-medium underline underline-offset-4"
-        />
-      ) : (
-        <span className="text-sm text-muted-foreground">{pt('tours.table.noShifts')}</span>
-      )}
     </td>
   );
 };
@@ -325,22 +176,16 @@ export const WasteToursRowStatusCell = ({
 
 export const WasteToursRowActionsCell = ({
   tour,
-  assignmentId,
   onOpenCalendar,
   onOpenEditDialog,
   onOpenDuplicateDialog,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
   canDuplicateTour,
   onRequestDeleteTour,
 }: {
   readonly tour: WasteTourRecord;
-  readonly assignmentId?: string;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
-  readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => {
@@ -355,13 +200,6 @@ export const WasteToursRowActionsCell = ({
         >
           <IconCalendarMonth aria-hidden="true" className="h-4 w-4" />
         </RowActionButton>
-        <TourAssignmentsActionButton
-          assignmentId={assignmentId}
-          tour={tour}
-          pt={pt}
-          onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-          onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
-        />
         <RowActionButton
           ariaLabel={pt('tours.actions.edit')}
           onClick={() => onOpenEditDialog(tour)}

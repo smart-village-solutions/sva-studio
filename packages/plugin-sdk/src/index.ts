@@ -188,17 +188,13 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from './public-api.js';
-
 export {
   resolveContentMediaCapabilities,
   type ContentMediaCapabilities,
 } from './content-media-permissions.js';
-export {
-  isWasteTourValidityApplicable,
-  resolveEffectiveWasteTourDateShiftsForYear,
-  resolveWasteTourValidityDates,
-} from './public-api.js';
-export type { EffectiveWasteTourDateShift } from './public-api.js';
+export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
+export { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
+export type { EffectiveWasteTourDateShift } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

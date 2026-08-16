@@ -7,8 +7,61 @@ export type TourShiftCreateContext = Readonly<{
 
 export type TourShiftCreatePrefill = Readonly<{
   tourId: string;
-  originalDate: string;
+  originalDate?: string;
 }>;
+
+export type TourShiftCreateContextResolution =
+  | Readonly<{ kind: 'none' }>
+  | Readonly<{ kind: 'valid'; tourId: string; originalDate?: string }>
+  | Readonly<{
+      kind: 'invalid';
+      reason: 'invalid-date' | 'missing-tour' | 'contradictory-context';
+    }>;
+
+const compactRouteValue = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+
+const normalizeIsoDateOnly = (value: unknown): string | undefined => {
+  const normalized = compactRouteValue(value);
+  if (!normalized || !/^\d{4}-\d{2}-\d{2}$/u.test(normalized)) return undefined;
+  const parsed = new Date(`${normalized}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== normalized
+    ? undefined
+    : normalized;
+};
+
+export const resolveTourShiftCreateContext = (
+  rawSearch: Readonly<Record<string, unknown>>,
+  availableTours?: readonly { readonly id: string }[]
+): TourShiftCreateContextResolution => {
+  if (
+    rawSearch.tab !== 'scheduling' ||
+    rawSearch.schedulingView !== 'create' ||
+    rawSearch.schedulingEntryType !== 'tour-shift'
+  ) {
+    return { kind: 'none' };
+  }
+
+  const tourId = compactRouteValue(rawSearch.schedulingTourId);
+  const rawOriginalDate = compactRouteValue(rawSearch.schedulingOriginalDate);
+  if (rawOriginalDate && !normalizeIsoDateOnly(rawOriginalDate)) {
+    return { kind: 'invalid', reason: 'invalid-date' };
+  }
+  if (rawOriginalDate && !tourId) {
+    return { kind: 'invalid', reason: 'contradictory-context' };
+  }
+  if (!tourId) return { kind: 'none' };
+  if (availableTours && !availableTours.some((tour) => tour.id === tourId)) {
+    return { kind: 'invalid', reason: 'missing-tour' };
+  }
+
+  const originalDate = normalizeIsoDateOnly(rawOriginalDate);
+  return {
+    kind: 'valid',
+    tourId,
+    ...(originalDate ? { originalDate } : {}),
+  };
+};
 
 export const clearTourShiftCreateContext = (
   search: WasteManagementSearchParams
@@ -16,7 +69,6 @@ export const clearTourShiftCreateContext = (
   ...search,
   schedulingTourId: undefined,
   schedulingOriginalDate: undefined,
-  schedulingContextInvalid: undefined,
 });
 
 export const toCreateTourShiftSearch = (
@@ -39,28 +91,17 @@ export const toCreateTourShiftSearch = (
   schedulingEntryId: undefined,
   schedulingTourId: context.tourId,
   schedulingOriginalDate: context.originalDate,
-  schedulingContextInvalid: undefined,
 });
 
 export const resolveTourShiftCreatePrefill = (
-  search: WasteManagementSearchParams,
+  rawSearch: Readonly<Record<string, unknown>>,
   availableTours: readonly { readonly id: string }[]
 ): TourShiftCreatePrefill | null => {
-  if (
-    search.tab !== 'scheduling' ||
-    search.schedulingView !== 'create' ||
-    search.schedulingEntryType !== 'tour-shift' ||
-    (!search.schedulingTourId && !search.schedulingOriginalDate)
-  ) {
-    return null;
-  }
-
-  const tourId = availableTours.some((tour) => tour.id === search.schedulingTourId)
-    ? (search.schedulingTourId ?? '')
-    : '';
-
-  return {
-    tourId,
-    originalDate: search.schedulingOriginalDate ?? '',
-  };
+  const resolution = resolveTourShiftCreateContext(rawSearch, availableTours);
+  return resolution.kind === 'valid'
+    ? {
+        tourId: resolution.tourId,
+        ...(resolution.originalDate ? { originalDate: resolution.originalDate } : {}),
+      }
+    : null;
 };

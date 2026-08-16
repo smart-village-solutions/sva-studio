@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 import { Select, StudioField, StudioFieldGroup } from '@sva/studio-ui-react';
 import { useNavigate } from '@tanstack/react-router';
@@ -8,6 +8,7 @@ import { WasteSchedulingFormContent } from './waste-management.scheduling-form-c
 import { resolveSchedulingEntryTypeFromShiftContext } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { clearTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
+import type { TourShiftCreateContextResolution } from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 type WasteSchedulingCreateVariant = 'global-shift' | 'tour-shift';
@@ -85,23 +86,8 @@ const WasteSchedulingCreateVariantField = ({
   </StudioFieldGroup>
 );
 
-export const WasteSchedulingCreateFormView = ({
-  controller,
-  search,
-}: {
-  readonly controller: WasteViewModel;
-  readonly search: WasteManagementSearchParams;
-}) => {
-  const navigate = useNavigate();
-  const pt = usePluginTranslation('wasteManagement');
-  const [variant, setVariant] = useState<WasteSchedulingCreateVariant>(() =>
-    resolveDefaultCreateVariant(search, controller.availableTours)
-  );
-  const contextualTour = search.schedulingTourId
-    ? controller.availableTours.find((tour) => tour.id === search.schedulingTourId)
-    : undefined;
-  const hasTourContext = Boolean(search.schedulingTourId || search.schedulingContextInvalid);
-  const overridesAnnualRule = Boolean(
+const hasAnnualBaseRule = (controller: WasteViewModel): boolean =>
+  Boolean(
     controller.tourShiftForm.hasYear &&
     controller.tourShiftForm.tourId &&
     /^\d{4}-\d{2}-\d{2}$/u.test(controller.tourShiftForm.originalDate) &&
@@ -112,6 +98,69 @@ export const WasteSchedulingCreateFormView = ({
         shift.originalDate.slice(5) === controller.tourShiftForm.originalDate.slice(5)
     )
   );
+
+const WasteSchedulingCreateContextFields = ({
+  context,
+  contextualTourName,
+  controller,
+  variantField,
+  pt,
+}: {
+  readonly context: TourShiftCreateContextResolution;
+  readonly contextualTourName?: string;
+  readonly controller: WasteViewModel;
+  readonly variantField: ReactNode;
+  readonly pt: ReturnType<typeof usePluginTranslation>;
+}) => (
+  <div className="space-y-3">
+    {context.kind === 'none' ? (
+      variantField
+    ) : (
+      <div
+        role={context.kind === 'valid' && contextualTourName ? 'note' : 'status'}
+        className="min-w-0 space-y-1 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm"
+      >
+        <p className="font-semibold">{pt('scheduling.create.contextTitle')}</p>
+        {context.kind === 'valid' && contextualTourName ? (
+          <p className="break-words text-muted-foreground">
+            {pt('scheduling.create.contextDescription', {
+              tour: contextualTourName,
+              date: context.originalDate ?? pt('scheduling.create.contextDateUnset'),
+            })}
+          </p>
+        ) : (
+          <p className="text-destructive">{pt('scheduling.create.contextInvalid')}</p>
+        )}
+      </div>
+    )}
+    {hasAnnualBaseRule(controller) ? (
+      <p role="note" className="rounded-xl border border-info/40 bg-info/5 px-4 py-3 text-sm">
+        {pt('scheduling.create.annualOverrideHint', {
+          year: controller.tourShiftForm.originalDate.slice(0, 4),
+        })}
+      </p>
+    ) : null}
+  </div>
+);
+
+type WasteSchedulingCreateFormViewProps = {
+  readonly controller: WasteViewModel;
+  readonly search: WasteManagementSearchParams;
+  readonly tourShiftCreateContext?: TourShiftCreateContextResolution;
+};
+
+export const WasteSchedulingCreateFormView = (props: WasteSchedulingCreateFormViewProps) => {
+  const { controller, search } = props;
+  const tourShiftCreateContext = props.tourShiftCreateContext ?? { kind: 'none' };
+  const navigate = useNavigate();
+  const pt = usePluginTranslation('wasteManagement');
+  const [variant, setVariant] = useState<WasteSchedulingCreateVariant>(() =>
+    resolveDefaultCreateVariant(search, controller.availableTours)
+  );
+  const contextualTourName =
+    tourShiftCreateContext.kind === 'valid'
+      ? controller.availableTours.find((tour) => tour.id === tourShiftCreateContext.tourId)?.name
+      : undefined;
 
   const handleCancel = () => {
     controller.setDialogOpen(false);
@@ -125,24 +174,7 @@ export const WasteSchedulingCreateFormView = ({
     });
   };
 
-  const variantField = hasTourContext ? (
-    <div
-      role={contextualTour && !search.schedulingContextInvalid ? 'note' : 'status'}
-      className="space-y-1 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm"
-    >
-      <p className="font-semibold">{pt('scheduling.create.contextTitle')}</p>
-      {contextualTour && !search.schedulingContextInvalid ? (
-        <p className="text-muted-foreground">
-          {pt('scheduling.create.contextDescription', {
-            tour: contextualTour.name,
-            date: search.schedulingOriginalDate ?? pt('scheduling.create.contextDateUnset'),
-          })}
-        </p>
-      ) : (
-        <p className="text-destructive">{pt('scheduling.create.contextInvalid')}</p>
-      )}
-    </div>
-  ) : (
+  const variantField = (
     <WasteSchedulingCreateVariantField
       pt={pt}
       search={search}
@@ -152,16 +184,13 @@ export const WasteSchedulingCreateFormView = ({
     />
   );
   const beforeFields = (
-    <div className="space-y-3">
-      {variantField}
-      {overridesAnnualRule ? (
-        <p role="note" className="rounded-xl border border-info/40 bg-info/5 px-4 py-3 text-sm">
-          {pt('scheduling.create.annualOverrideHint', {
-            year: controller.tourShiftForm.originalDate.slice(0, 4),
-          })}
-        </p>
-      ) : null}
-    </div>
+    <WasteSchedulingCreateContextFields
+      context={tourShiftCreateContext}
+      contextualTourName={contextualTourName}
+      controller={controller}
+      variantField={variantField}
+      pt={pt}
+    />
   );
 
   if (variant === 'global-shift') {

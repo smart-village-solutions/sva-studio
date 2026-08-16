@@ -22,7 +22,8 @@ describe('resolveEffectiveWasteTourDateShiftsForYear', () => {
         id: 'annual',
         originalDate: '2026-12-31',
         actualDate: '2027-01-02',
-        hasYear: true,
+        hasYear: false,
+        specificity: 'annual',
       }),
     ]);
   });
@@ -36,7 +37,14 @@ describe('resolveEffectiveWasteTourDateShiftsForYear', () => {
       2026
     );
 
-    expect(result).toEqual([expect.objectContaining({ id: 'specific', actualDate: '2026-05-04' })]);
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'specific',
+        actualDate: '2026-05-04',
+        hasYear: true,
+        specificity: 'year-specific',
+      }),
+    ]);
   });
 
   it('keeps annual rules in other years and rejects invalid calendar dates', () => {
@@ -67,5 +75,67 @@ describe('resolveEffectiveWasteTourDateShiftsForYear', () => {
     } finally {
       process.env.TZ = previousTimeZone;
     }
+  });
+
+  it('selects equal-specificity duplicates deterministically regardless of input order', () => {
+    const annualA = shift('annual-a', '2024-05-01', '2024-05-02', false);
+    const annualB = shift('annual-b', '2023-05-01', '2023-05-03', false);
+    const specificA = shift('specific-a', '2026-06-01', '2026-06-02', true);
+    const specificB = shift('specific-b', '2026-06-01', '2026-06-03', true);
+
+    const forward = resolveEffectiveWasteTourDateShiftsForYear(
+      [annualB, specificB, annualA, specificA],
+      2026
+    );
+    const reverse = resolveEffectiveWasteTourDateShiftsForYear(
+      [specificA, annualA, specificB, annualB],
+      2026
+    );
+
+    expect(reverse).toEqual(forward);
+    expect(forward.map(({ id }) => id)).toEqual(['annual-a', 'specific-a']);
+  });
+
+  it('keeps tours independent when their original dates match', () => {
+    const result = resolveEffectiveWasteTourDateShiftsForYear(
+      [
+        shift('tour-1-shift', '2024-05-01', '2024-05-02', false),
+        {
+          ...shift('tour-2-shift', '2024-05-01', '2024-05-03', false),
+          tourId: 'tour-2',
+        },
+      ],
+      2026
+    );
+
+    expect(result.map(({ id }) => id)).toEqual(['tour-1-shift', 'tour-2-shift']);
+  });
+
+  it('expands leap-day rules only into leap years', () => {
+    const leapDay = shift('leap-day', '2024-02-29', '2024-03-01', false);
+
+    expect(resolveEffectiveWasteTourDateShiftsForYear([leapDay], 2026)).toEqual([]);
+    expect(resolveEffectiveWasteTourDateShiftsForYear([leapDay], 2028)).toEqual([
+      expect.objectContaining({
+        originalDate: '2028-02-29',
+        actualDate: '2028-03-01',
+        specificity: 'annual',
+      }),
+    ]);
+  });
+
+  it('rejects invalid actual dates and invalid target years', () => {
+    expect(
+      resolveEffectiveWasteTourDateShiftsForYear(
+        [shift('invalid-actual', '2026-05-01', '2026-02-30', true)],
+        2026
+      )
+    ).toEqual([]);
+    expect(
+      resolveEffectiveWasteTourDateShiftsForYear(
+        [shift('annual', '2024-05-01', '2024-05-02', false)],
+        Number.NaN
+      )
+    ).toEqual([]);
   });
 });

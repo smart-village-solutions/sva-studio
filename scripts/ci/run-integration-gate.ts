@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-export const GENERAL_INTEGRATION_PROJECTS = ['data'] as const;
+export const GENERAL_INTEGRATION_PROJECTS = ['data', 'sva-studio-react'] as const;
 export const MONITORING_STACK_PROJECTS = ['monitoring-client'] as const;
 
 type IntegrationGateMode = 'full' | 'affected';

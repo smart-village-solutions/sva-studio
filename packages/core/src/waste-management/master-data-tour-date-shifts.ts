@@ -10,7 +10,7 @@ export type EffectiveWasteTourDateShift<TShift extends WasteTourDateShiftSelecti
   Readonly<{
     originalDate: string;
     actualDate: string;
-    hasYear: true;
+    specificity: 'annual' | 'year-specific';
   }>;
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/u;
@@ -55,7 +55,7 @@ const expandAnnualShift = <TShift extends WasteTourDateShiftSelectionInput>(
     ...shift,
     originalDate,
     actualDate: actual.toISOString().slice(0, 10),
-    hasYear: true,
+    specificity: 'annual',
   };
 };
 
@@ -66,7 +66,18 @@ const normalizeSpecificShift = <TShift extends WasteTourDateShiftSelectionInput>
   const originalDate = parseIsoDateOnlyUtc(shift.originalDate);
   const actualDate = parseIsoDateOnlyUtc(shift.actualDate);
   if (!originalDate || !actualDate || originalDate.getUTCFullYear() !== year) return null;
-  return { ...shift, hasYear: true };
+  return { ...shift, specificity: 'year-specific' };
+};
+
+const selectPreferredShift = <TShift extends WasteTourDateShiftSelectionInput>(
+  current: EffectiveWasteTourDateShift<TShift> | undefined,
+  candidate: EffectiveWasteTourDateShift<TShift>
+): EffectiveWasteTourDateShift<TShift> => {
+  if (!current) return candidate;
+  if (current.specificity !== candidate.specificity) {
+    return candidate.specificity === 'year-specific' ? candidate : current;
+  }
+  return candidate.id.localeCompare(current.id) < 0 ? candidate : current;
 };
 
 /**
@@ -82,27 +93,15 @@ export const resolveEffectiveWasteTourDateShiftsForYear = <
 ): readonly EffectiveWasteTourDateShift<TShift>[] => {
   if (!Number.isSafeInteger(year)) return [];
 
-  const ordered = [...shifts].sort((left, right) => left.id.localeCompare(right.id));
   const effective = new Map<string, EffectiveWasteTourDateShift<TShift>>();
 
-  for (const shift of ordered) {
-    if (shift.hasYear) continue;
-    const expanded = expandAnnualShift(shift, year);
-    if (!expanded) continue;
-    const key = `${expanded.tourId}:${expanded.originalDate}`;
-    if (!effective.has(key)) effective.set(key, expanded);
-  }
-
-  for (const shift of ordered) {
-    if (!shift.hasYear) continue;
-    const normalized = normalizeSpecificShift(shift, year);
-    if (!normalized) continue;
-    const key = `${normalized.tourId}:${normalized.originalDate}`;
-    if (effective.get(key)?.hasYear === true && effective.get(key)?.id !== normalized.id) {
-      effective.set(key, normalized);
-    } else if (!effective.has(key)) {
-      effective.set(key, normalized);
-    }
+  for (const shift of shifts) {
+    const candidate = shift.hasYear
+      ? normalizeSpecificShift(shift, year)
+      : expandAnnualShift(shift, year);
+    if (!candidate) continue;
+    const key = `${candidate.tourId}:${candidate.originalDate}`;
+    effective.set(key, selectPreferredShift(effective.get(key), candidate));
   }
 
   return [...effective.values()].sort(

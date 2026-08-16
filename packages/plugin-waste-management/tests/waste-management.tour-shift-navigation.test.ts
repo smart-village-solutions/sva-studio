@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { WasteManagementSearchParams } from '../src/search-params.js';
 import {
   clearTourShiftCreateContext,
+  resolveTourShiftCreateContext,
   resolveTourShiftCreatePrefill,
   toCreateTourShiftSearch,
 } from '../src/waste-management.tour-shift-navigation.js';
@@ -97,6 +98,43 @@ describe('waste-management tour-shift navigation', () => {
         },
         [{ id: 'tour-42' }]
       )
-    ).toEqual({ tourId: '', originalDate: '2026-12-24' });
+    ).toBeNull();
+  });
+
+  it('resolves valid, invalid, contradictory, and absent create contexts', () => {
+    const route = {
+      tab: 'scheduling',
+      schedulingView: 'create',
+      schedulingEntryType: 'tour-shift',
+    };
+
+    expect(
+      resolveTourShiftCreateContext(
+        { ...route, schedulingTourId: 'tour-42', schedulingOriginalDate: '2026-12-24' },
+        [{ id: 'tour-42' }]
+      )
+    ).toEqual({ kind: 'valid', tourId: 'tour-42', originalDate: '2026-12-24' });
+    expect(
+      resolveTourShiftCreateContext(
+        { ...route, schedulingTourId: 'tour-42', schedulingOriginalDate: '2026-02-30' },
+        [{ id: 'tour-42' }]
+      )
+    ).toEqual({ kind: 'invalid', reason: 'invalid-date' });
+    expect(
+      resolveTourShiftCreateContext({ ...route, schedulingOriginalDate: '2026-12-24' }, [])
+    ).toEqual({ kind: 'invalid', reason: 'contradictory-context' });
+    expect(
+      resolveTourShiftCreateContext({ ...route, schedulingTourId: 'removed-tour' }, [
+        { id: 'tour-42' },
+      ])
+    ).toEqual({ kind: 'invalid', reason: 'missing-tour' });
+    expect(resolveTourShiftCreateContext(route, [])).toEqual({ kind: 'none' });
+    expect(
+      resolveTourShiftCreateContext({
+        ...route,
+        schedulingEntryType: 'global-shift',
+        schedulingTourId: 'tour-42',
+      })
+    ).toEqual({ kind: 'none' });
   });
 });

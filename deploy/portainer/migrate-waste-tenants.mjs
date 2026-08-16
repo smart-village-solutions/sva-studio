@@ -41,17 +41,60 @@ export const wasteTenantMigrations = Object.freeze([
     ]),
     verification: Object.freeze({
       sql: `
+        WITH date_columns AS (
+          SELECT COUNT(*) = 2 AS satisfied
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'waste_tour_date_shifts'
+            AND column_name IN ('original_date', 'actual_date')
+            AND data_type = 'date'
+        ), index_contracts AS (
+          SELECT
+            index_class.relname AS index_name,
+            index_definition.indisunique,
+            index_definition.indnkeyatts,
+            pg_get_indexdef(index_definition.indexrelid, 1, TRUE) AS first_key,
+            pg_get_indexdef(index_definition.indexrelid, 2, TRUE) AS second_key,
+            pg_get_indexdef(index_definition.indexrelid, 3, TRUE) AS third_key,
+            pg_get_expr(index_definition.indpred, index_definition.indrelid, TRUE) AS predicate
+          FROM pg_index AS index_definition
+          INNER JOIN pg_class AS table_class
+            ON table_class.oid = index_definition.indrelid
+          INNER JOIN pg_namespace AS table_namespace
+            ON table_namespace.oid = table_class.relnamespace
+          INNER JOIN pg_class AS index_class
+            ON index_class.oid = index_definition.indexrelid
+          WHERE table_namespace.nspname = 'public'
+            AND table_class.relname = 'waste_tour_date_shifts'
+            AND index_class.relname IN (
+              'uq_waste_tour_date_shifts_specific_origin',
+              'uq_waste_tour_date_shifts_annual_origin'
+            )
+        )
         SELECT
-          COUNT(*) FILTER (
-            WHERE table_schema = 'public'
-              AND table_name = 'waste_tour_date_shifts'
-              AND column_name IN ('original_date', 'actual_date')
-              AND data_type = 'date'
-          ) = 2
-          AND to_regclass('public.uq_waste_tour_date_shifts_specific_origin') IS NOT NULL
-          AND to_regclass('public.uq_waste_tour_date_shifts_annual_origin') IS NOT NULL
-          AS satisfied
-        FROM information_schema.columns;
+          (SELECT satisfied FROM date_columns)
+          AND COALESCE((
+            SELECT indisunique
+              AND indnkeyatts = 2
+              AND first_key = 'tour_id'
+              AND second_key = 'original_date'
+              AND regexp_replace(lower(predicate), '[[:space:]()]', '', 'g') = 'has_year'
+            FROM index_contracts
+            WHERE index_name = 'uq_waste_tour_date_shifts_specific_origin'
+          ), FALSE)
+          AND COALESCE((
+            SELECT indisunique
+              AND indnkeyatts = 3
+              AND first_key = 'tour_id'
+              AND regexp_replace(lower(second_key), '[[:space:]()]', '', 'g') =
+                'extract(monthfromoriginal_date)'
+              AND regexp_replace(lower(third_key), '[[:space:]()]', '', 'g') =
+                'extract(dayfromoriginal_date)'
+              AND regexp_replace(lower(predicate), '[[:space:]()]', '', 'g') = 'nothas_year'
+            FROM index_contracts
+            WHERE index_name = 'uq_waste_tour_date_shifts_annual_origin'
+          ), FALSE)
+          AS satisfied;
       `,
       values: Object.freeze([]),
     }),

@@ -21,21 +21,33 @@ const namesFor = (instanceId: string) => ({
 
 const createTenantClient = ({
   appliedMigrationIds = [],
+  failMessage = 'database_failure',
   failOnSql,
+  tourShiftVerificationSatisfied = true,
   verificationSatisfied = true,
 }: {
   readonly appliedMigrationIds?: readonly string[];
+  readonly failMessage?: string;
   readonly failOnSql?: string;
+  readonly tourShiftVerificationSatisfied?: boolean;
   readonly verificationSatisfied?: boolean;
 } = {}) => ({
   end: vi.fn().mockResolvedValue(undefined),
   query: vi.fn(async (sql: string) => {
-    if (failOnSql && sql.includes(failOnSql)) throw new Error('database_failure');
+    if (failOnSql && sql.includes(failOnSql)) throw new Error(failMessage);
     if (sql.includes('SELECT migration_id')) {
       return { rows: appliedMigrationIds.map((migration_id) => ({ migration_id })) };
     }
     if (sql.includes('information_schema.columns')) {
-      return { rows: [{ satisfied: verificationSatisfied }] };
+      return {
+        rows: [
+          {
+            satisfied: sql.includes('pg_get_indexdef')
+              ? tourShiftVerificationSatisfied
+              : verificationSatisfied,
+          },
+        ],
+      };
     }
     return { rows: [] };
   }),
@@ -68,6 +80,10 @@ describe('Waste-Tenant-Migration', () => {
     expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
       'ALTER COLUMN original_date TYPE DATE'
     );
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_indexdef');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_expr');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('indnkeyatts = 3');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('nothas_year');
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -188,6 +204,45 @@ describe('Waste-Tenant-Migration', () => {
     expect(queriedSql(client)).toContain('ROLLBACK;');
     expect(queriedSql(client)).not.toContain('COMMIT;');
     expect(queriedSql(client)).not.toContain('INSERT INTO public.sva_waste_schema_migrations');
+  });
+
+  it('rolls back the hard cut when its empty-table preflight fails', async () => {
+    const client = createTenantClient({
+      failMessage: 'waste_migration_tour_date_shift_data_present',
+      failOnSql: 'IF EXISTS (SELECT 1 FROM public.waste_tour_date_shifts LIMIT 1)',
+    });
+
+    await expect(
+      migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
+        client,
+        migrations: wasteTenantMigrations,
+        ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
+      })
+    ).rejects.toThrow('waste_migration_tour_date_shift_data_present');
+
+    expect(queriedSql(client)).toContain('ROLLBACK;');
+    expect(queriedSql(client)).not.toContain('ALTER COLUMN original_date TYPE DATE');
+    expect(queriedSql(client)).not.toContain('pg_get_indexdef');
+  });
+
+  it('rolls back when the migrated index contract does not match its postcondition', async () => {
+    const client = createTenantClient({ tourShiftVerificationSatisfied: false });
+
+    await expect(
+      migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
+        client,
+        migrations: wasteTenantMigrations,
+        ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
+      })
+    ).rejects.toThrow(`waste_migration_verification_failed:${tourShiftMigrationId}`);
+
+    expect(queriedSql(client)).toContain('pg_get_indexdef');
+    expect(queriedSql(client)).toContain('ROLLBACK;');
+    expect(queriedSql(client)).not.toContain('COMMIT;');
   });
 
   it('preserves the migration and rollback failures when rollback itself fails', async () => {

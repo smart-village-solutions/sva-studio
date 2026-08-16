@@ -12,8 +12,10 @@ import { wasteManagementStreetHandlers } from './streets.js';
 import { wasteManagementTourHandlers } from './tours.js';
 import { wasteManagementTourDateShiftHandlers } from './tour-date-shifts.js';
 
+const updateWasteVisibleStatusMock = vi.hoisted(() => vi.fn(async () => undefined));
+
 vi.mock('./settings-shared.js', () => ({
-  updateWasteVisibleStatus: vi.fn(async () => undefined),
+  updateWasteVisibleStatus: updateWasteVisibleStatusMock,
 }));
 
 const actor: AuthenticatedRequestContext = {
@@ -800,6 +802,25 @@ describe('waste-management master-data branch handlers', () => {
   });
 
   it('maps a concurrent tour-date-shift uniqueness violation to conflict', async () => {
+    updateWasteVisibleStatusMock.mockClear();
+    const deps = {
+      ...createDeps('waste-management.scheduling.manage'),
+      loadWasteTourDateShiftById: vi.fn(async () => ({
+        id: 'tour-shift-db',
+        tourId: 'tour-1',
+        originalDate: '2026-05-01',
+        actualDate: '2026-05-02',
+        hasYear: true,
+        createdAt: '',
+        updatedAt: '',
+      })),
+      saveWasteTourDateShift: vi.fn(async () => {
+        throw Object.assign(new Error('duplicate'), {
+          code: '23505',
+          constraint: 'uq_waste_tour_date_shifts_specific_origin',
+        });
+      }),
+    };
     const response =
       await wasteManagementTourDateShiftHandlers.updateWasteManagementTourDateShiftInternal(
         new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/tour-shift-db', {
@@ -813,30 +834,120 @@ describe('waste-management master-data branch handlers', () => {
           }),
         }),
         actor,
-        {
-          ...createDeps('waste-management.scheduling.manage'),
-          loadWasteTourDateShiftById: vi.fn(async () => ({
-            id: 'tour-shift-db',
-            tourId: 'tour-1',
-            originalDate: '2026-05-01',
-            actualDate: '2026-05-02',
-            hasYear: true,
-            createdAt: '',
-            updatedAt: '',
-          })),
-          saveWasteTourDateShift: vi.fn(async () => {
-            throw Object.assign(new Error('duplicate'), {
-              code: '23505',
-              constraint: 'uq_waste_tour_date_shifts_specific_origin',
-            });
-          }),
-        }
+        deps
       );
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({
       error: { code: 'conflict' },
       requestId: 'req-test',
+    });
+    expect(deps.emitAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outcome: 'failure',
+        pluginAction: expect.objectContaining({ reasonCode: 'tour_date_shift_conflict' }),
+      })
+    );
+    expect(updateWasteVisibleStatusMock).toHaveBeenCalledWith(deps, 'tenant-a', 'success');
+  });
+
+  it('maps an annual tour-date-shift create collision to conflict', async () => {
+    const response =
+      await wasteManagementTourDateShiftHandlers.createWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'tour-shift-new',
+            tourId: 'tour-1',
+            originalDate: '2024-05-01',
+            actualDate: '2024-05-02',
+            hasYear: false,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          saveWasteTourDateShift: vi.fn(async () => {
+            throw Object.assign(new Error('duplicate'), {
+              code: '23505',
+              constraint: 'uq_waste_tour_date_shifts_annual_origin',
+            });
+          }),
+        }
+      );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'conflict' } });
+  });
+
+  it('allows a tour-date-shift update of the same persisted record', async () => {
+    const saved = {
+      id: 'tour-shift-db',
+      tourId: 'tour-1',
+      originalDate: '2026-05-01',
+      actualDate: '2026-05-03',
+      hasYear: true,
+      createdAt: '',
+      updatedAt: '',
+    };
+    const saveWasteTourDateShift = vi.fn(async () => undefined);
+    const response =
+      await wasteManagementTourDateShiftHandlers.updateWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/tour-shift-db', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            tourId: 'tour-1',
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-03',
+            hasYear: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          loadWasteTourDateShiftById: vi.fn(async () => saved),
+          saveWasteTourDateShift,
+        }
+      );
+
+    expect(response.status).toBe(200);
+    expect(saveWasteTourDateShift).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.objectContaining({ id: 'tour-shift-db', actualDate: '2026-05-03' })
+    );
+  });
+
+  it('keeps unknown uniqueness violations on the database-unavailable path', async () => {
+    const response =
+      await wasteManagementTourDateShiftHandlers.createWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'tour-shift-new',
+            tourId: 'tour-1',
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          saveWasteTourDateShift: vi.fn(async () => {
+            throw Object.assign(new Error('duplicate'), {
+              code: '23505',
+              constraint: 'some_other_unique_constraint',
+            });
+          }),
+        }
+      );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'database_unavailable' },
     });
   });
 

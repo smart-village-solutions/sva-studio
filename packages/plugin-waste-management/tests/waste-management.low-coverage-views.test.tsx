@@ -768,6 +768,11 @@ describe('waste-management low coverage views', () => {
     render(
       <WasteSchedulingCreateFormView
         controller={controller}
+        tourShiftCreateContext={{
+          kind: 'valid',
+          tourId: 'tour-1',
+          originalDate: '2026-05-01',
+        }}
         search={{
           ...createBaseSearch(),
           schedulingEntryType: 'tour-shift',

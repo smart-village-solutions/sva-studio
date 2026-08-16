@@ -66,22 +66,22 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
    a. Betroffene Datei lesen und Kontext verstehen
    b. Änderung implementieren (minimal, korrekt, im Scope des Kommentars)
    c. Falls der Kommentar unklar oder unbegründet ist: Rückfrage als Reply formulieren statt blind umzusetzen
-   d. Betroffene Tests lokal ausfuehren, aber mit real existierendem Nx-Target fuer das Projekt
+   d. Bei kleinen Folgefixes einen betroffenen Test nur lokal ausführen, wenn er den geänderten Pfad schnell und aussagekräftig absichert oder das konkrete Fehlersignal reproduziert; keine breite Wiederholung bereits durch GitHub abgedeckter Gates
 5. **Resolve nur mit Nachweis**: Jeder Thread braucht eine inhaltliche Antwort, eine nachweisbare Code-Aenderung oder eine sauber begruendete Nicht-Aenderung
 6. **Tool-Luecken explizit behandeln**: Wenn direkte Reply-/Resolve-APIs nicht verfuegbar sind, fuer jeden offenen Thread eine konkrete Antwortvorlage und den verbleibenden manuellen Schritt im Abschlussbericht festhalten; externe GitHub-Skills oder Connectoren sind dafuer nur Fallback, nicht Primärpfad
 
 ### Phase 2: Tests reparieren
 
-1. **Betroffene Tests ermitteln**: Mit `nx-workspace` die passenden Targets je Projekt ermitteln und dann `pnpm nx affected --target=<target> --base=origin/main` ausfuehren
+1. **Konkretes Fehlersignal ermitteln**: Mit `nx-workspace` die passenden Targets je Projekt ermitteln. Bei kleinen Folgefixes nur den unmittelbar betroffenen Test gezielt ausführen, wenn er das Fehlersignal schnell reproduziert; keinen breiten `affected`-Lauf als Standard starten.
 2. **Failing Tests analysieren**:
    a. Fehlermeldung lesen und Root Cause identifizieren
    b. Ist es ein echter Bug im Produktivcode → Produktivcode fixen
    c. Ist der Test veraltet (z.B. geändertes API) → Test korrekt anpassen
    d. Fehlt ein Test für neue Logik → Test schreiben
-3. **Typ-Checks prüfen**: Reales Typ-Target des Workspaces verwenden, haeufig `typecheck` oder `test:types`
-4. **Lint pruefen**: Reales Lint-Target des Workspaces verwenden, haeufig `lint` oder `test:eslint`
-5. **Ergebnis validieren**: Alle betroffenen Tests müssen grün sein, bevor du weitermachst
-6. **Shift-left-Prinzip**: Nach jeder Änderung sofort die betroffenen Tests laufen lassen – nicht erst am Ende
+3. **Typ-Checks prüfen**: Wenn der Fix ein Typfehlsignal oder einen wesentlichen Typvertrag betrifft, das reale Typ-Target des betroffenen Projekts verwenden, häufig `typecheck` oder `test:types`; andernfalls die vollständige Prüfung GitHub überlassen.
+4. **Lint prüfen**: Wenn der Fix ein Lint-Fehlsignal adressiert, das reale Lint-Target des betroffenen Projekts verwenden, häufig `lint` oder `test:eslint`; keinen breiten Lint-Lauf vorsorglich wiederholen.
+5. **Ergebnis validieren**: Ein gezielt reproduziertes Fehlersignal muss lokal grün sein, bevor du weitermachst; die vollständige PR-Validierung erfolgt anschließend über GitHub.
+6. **Shift-left-Prinzip**: Neue oder wesentlich erweiterte Logik früh lokal testen. Bei kleinen Folgefixes den schnellen konkreten Test nutzen, falls vorhanden, und ansonsten ohne breiten lokalen Wiederholungslauf zügig die GitHub-Gates anstoßen.
 
 ### Phase 3: Externe Quality Gates prüfen
 
@@ -93,7 +93,7 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 4. **Pro Issue**:
    a. Issue verstehen (Regel lesen mit `show_rule` falls nötig)
    b. Korrekte Lösung implementieren
-   c. Betroffene Tests lokal prüfen
+   c. Falls ein schneller aussagekräftiger Test existiert, den unmittelbar betroffenen Pfad lokal prüfen; die verbindliche Rückmeldung der vollständigen Analyse kommt über den nächsten CI-Durchlauf
 5. **Security Hotspots**: `search_security_hotspots` prüfen und beheben
 6. **Nach Änderungen**: `analyze_file_list` fuer geaenderte Dateien aufrufen
 7. **Keine verfruehte Server-Verifikation erwarten**: Frisch behobene Sonar-Issues nicht ueber erneute Projekt-Issue-Suche als sofort bestaetigt behandeln; die verbindliche Rueckmeldung kommt ueber den naechsten Analyse-/CI-Durchlauf
@@ -109,14 +109,16 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 
 1. **Worktree pruefen**: Vor jedem Commit `git status` pruefen und fremde oder bereits vorhandene lokale Aenderungen identifizieren
 2. **Änderungen selektiv stagen**: Nur die fuer den Fix relevanten Dateien mit expliziter Dateiliste stagen; niemals pauschal alles stagen
-2. **Commit-Message**: Descriptive, auf Deutsch oder Englisch je nach Repo-Konvention
+3. **Commit-Message**: Descriptive, auf Deutsch oder Englisch je nach Repo-Konvention
    - Format: `fix: <kurze Beschreibung>` oder `test: <kurze Beschreibung>`
    - Kein Sammel-Commit für unzusammenhängende Änderungen
-3. **Vor dem Push**:
-   - `pnpm nx affected --target=<unit-target> --base=origin/main`
-   - `pnpm nx affected --target=<types-target> --base=origin/main`
-   - `pnpm nx affected --target=<lint-target> --base=origin/main`
-4. **Push**: `git push`
+4. **Vor dem Push eines kleinen Folgefixes im bestehenden PR**:
+   - keine pauschalen breiten `affected`- oder `test:pr`-Läufe wiederholen
+   - nur den unmittelbar geänderten Pfad gezielt prüfen, wenn ein schneller aussagekräftiger Test existiert oder ein konkretes Fehlersignal reproduziert werden muss
+   - reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine Tests
+   - spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen, Server-Runtime sowie CI-/Workspace-Tooling weiterhin ausführen; bei Änderungen an `scripts/ci/**`, Root-TypeScript-Skripten oder Workspace-Tooling insbesondere `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper verwenden
+   - nach dem Push die GitHub-Gates für den exakten neuen HEAD als führende Gesamtvalidierung abwarten
+5. **Push**: `git push`
 
 ### Phase 5: Re-Evaluation (Loop)
 

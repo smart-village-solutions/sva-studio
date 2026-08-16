@@ -22,10 +22,10 @@ Dieses Dokument beschreibt die übergeordnete Teststrategie für das Nx-Monorepo
 
 ## Grundregeln
 
-- Nach jedem abgeschlossenen Änderungsblock laufen die betroffenen Tests sofort.
+- Nach jedem neuen Codeblock oder einer wesentlichen Scope-Erweiterung laufen die betroffenen Tests; kleine Folgefixes in bestehenden PRs werden gemäß dem differenzierten Push-Workflow behandelt.
 - Es wird nicht auf bekannt rotem Teststand weiterimplementiert.
 - Nx-Targets sind der Standardweg für projektbezogene Läufe.
-- Bei Typänderungen sind Type- und Unit-Checks obligatorisch.
+- Bei Typänderungen in neuen Codeblöcken oder wesentlichen Scope-Erweiterungen sind Type- und Unit-Checks obligatorisch; bei kleinen Folgefixes kann die Gesamtvalidierung durch die GitHub-Gates erfolgen.
 - Vor größeren Test- oder Coverage-Läufen werden versehentlich erzeugte Source-Artefakte mit `pnpm clean:generated-source-artifacts` bereinigt.
 
 ## Studio-Foundations für Formulare und Frontend-Tests
@@ -64,21 +64,30 @@ Für neue oder grundlegend überarbeitete Studio-Flows gelten zusätzlich die ve
 4. `pnpm test:eslint`
 5. bei UI-, Routing- oder Integrationswirkung zusätzlich `pnpm test:e2e`
 
-### Vor Push
+### Vor initialem oder wesentlich scope-erweiterndem Code-Push
 
-- `pnpm test:unit:affected`
+- den affected Scope zuerst mit `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` messen
+- bei kleinem Scope `pnpm test:unit:affected`
 - bei Typänderungen zusätzlich `pnpm test:types:affected`
-- bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen zusätzlich `pnpm test:pr`
-- bei isolierten App-Änderungen optional gezielt:
+- bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen nach Möglichkeit zusätzlich `pnpm test:pr`
+- bei isolierten App-Änderungen alternativ gezielt:
   - `pnpm nx run sva-studio-react:test:unit:ui`
   - `pnpm nx run sva-studio-react:test:unit:routes`
   - `pnpm nx run sva-studio-react:test:unit:hooks`
     Deckt im `affected`-Pfad auch nicht-serverseitige Änderungen unter `apps/sva-studio-react/src/lib/` ab.
   - `pnpm nx run sva-studio-react:test:unit:server`
 
-### Vor PR-Update
+### Vor kleinem Folgefix in einem bestehenden PR
 
-- `pnpm test:pr`
+- keine breite lokale Wiederholung von `pnpm test:unit:affected`, `pnpm test:types:affected` oder `pnpm test:pr` allein wegen des Pushs
+- einen gezielten Test nur ausführen, wenn er den unmittelbar geänderten Pfad schnell und aussagekräftig absichert oder ein konkretes CI-Fehlersignal reproduziert
+- reine Text-, Kommentar- und Dokumentationsänderungen ohne Tests pushen
+- spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime beibehalten
+- nach dem Push die GitHub-Gates für den exakten neuen HEAD als führende Gesamtvalidierung auswerten
+
+### Vor erster PR-Erstellung
+
+- nach Möglichkeit `pnpm test:pr`
 
 `pnpm test:pr` spiegelt den blockierenden GitHub-PR-Pfad so nah wie lokal sinnvoll möglich:
 

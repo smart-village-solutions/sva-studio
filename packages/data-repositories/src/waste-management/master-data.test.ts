@@ -1366,8 +1366,8 @@ describe('waste master data repository', () => {
       {
         id: 'shift-1',
         tour_id: 'tour-1',
-        original_date: '12-24',
-        actual_date: '12-23',
+        original_date: '2024-12-24',
+        actual_date: '2024-12-23',
         has_year: false,
         reason_type: 'manual-adjustment',
         reason_key: 'xmas-pull-forward',
@@ -1387,8 +1387,8 @@ describe('waste master data repository', () => {
       {
         id: 'shift-1',
         tourId: 'tour-1',
-        originalDate: '12-24',
-        actualDate: '12-23',
+        originalDate: '2024-12-24',
+        actualDate: '2024-12-23',
         hasYear: false,
         reasonType: 'manual-adjustment',
         reasonKey: 'xmas-pull-forward',
@@ -1401,6 +1401,20 @@ describe('waste master data repository', () => {
 
     expect(tourShift.statements[0]?.values).toEqual(['tour-1', false]);
     expect(tourShift.statements[0]?.text).toContain('FROM waste_tour_date_shifts');
+    expect(tourShift.statements[0]?.text).toContain(
+      "to_char(original_date, 'YYYY-MM-DD') AS original_date"
+    );
+    expect(tourShift.statements[0]?.text).toContain(
+      "to_char(actual_date, 'YYYY-MM-DD') AS actual_date"
+    );
+
+    await createWasteMasterDataRepository(tourShift.executor).getWasteTourDateShiftById('shift-1');
+    expect(tourShift.statements[1]?.text).toContain(
+      "to_char(original_date, 'YYYY-MM-DD') AS original_date"
+    );
+    expect(tourShift.statements[1]?.text).toContain(
+      "to_char(actual_date, 'YYYY-MM-DD') AS actual_date"
+    );
 
     const globalShift = createExecutor([
       {
@@ -1472,6 +1486,17 @@ describe('waste master data repository', () => {
 
     const write = createExecutor();
     const repository = createWasteMasterDataRepository(write.executor);
+    await repository.insertWasteTourDateShift({
+      id: 'shift-1',
+      tourId: 'tour-1',
+      originalDate: '2026-10-02',
+      actualDate: '2026-10-03',
+      hasYear: true,
+      reasonType: 'manual-adjustment',
+      reasonKey: undefined,
+      followUpMode: 'none',
+      description: undefined,
+    });
     await repository.upsertWasteTourDateShift({
       id: 'shift-2',
       tourId: 'tour-2',
@@ -1494,7 +1519,8 @@ describe('waste master data repository', () => {
       tourIds: ['tour-3', 'tour-4'],
     });
 
-    expect(write.statements[0]?.values).toEqual([
+    expect(write.statements[0]?.text).not.toContain('ON CONFLICT');
+    expect(write.statements[1]?.values).toEqual([
       'shift-2',
       'tour-2',
       '2026-10-03',
@@ -1505,7 +1531,10 @@ describe('waste master data repository', () => {
       'propagate-series',
       'Einmalige Verschiebung',
     ]);
-    expect(write.statements[1]?.values).toEqual([
+    expect(write.statements[1]?.text).toContain('$3::date');
+    expect(write.statements[1]?.text).toContain('$4::date');
+    expect(write.statements[1]?.text).toContain('ON CONFLICT (id) DO UPDATE');
+    expect(write.statements[2]?.values).toEqual([
       'global-3',
       '12-31',
       '01-02',

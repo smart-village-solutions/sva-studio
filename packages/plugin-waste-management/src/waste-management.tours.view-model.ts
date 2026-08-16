@@ -10,6 +10,7 @@ import type {
   WasteToursFilterStatus,
   WasteToursFilterValidityPeriod,
 } from './waste-management.tours.filter-state.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 export const createTourAssignmentSelectionSummary = ({
   filteredLocationIds,
@@ -41,7 +42,23 @@ type TourAssignmentSortValue = Readonly<{
   regionName?: string;
   cityName?: string;
   streetName?: string;
+  houseNumberName?: string;
 }>;
+
+export type TourAssignmentSortField = 'regionName' | 'cityName' | 'streetName' | 'houseNumberName';
+
+export type TourAssignmentSortDirection = 'asc' | 'desc';
+
+export type TourAssignmentSortOptions = Readonly<{
+  includeRegion?: boolean;
+  direction?: TourAssignmentSortDirection;
+}>;
+
+const tourAssignmentAddressSortFields: readonly TourAssignmentSortField[] = [
+  'cityName',
+  'streetName',
+  'houseNumberName',
+];
 
 const tourAssignmentCollator = new Intl.Collator('de', {
   numeric: true,
@@ -61,22 +78,40 @@ const compareOptionalTourAssignmentValue = (
 
 const compareTourAssignmentLocations = <T extends TourAssignmentSortValue>(
   left: T,
-  right: T
+  right: T,
+  sortFields: readonly TourAssignmentSortField[],
+  sortDirection: TourAssignmentSortDirection
 ): number => {
-  for (const key of ['regionName', 'cityName', 'streetName', 'label', 'id'] as const) {
-    const comparison = compareOptionalTourAssignmentValue(left[key], right[key]);
-    if (comparison !== 0) return comparison;
+  for (const field of sortFields) {
+    const leftValue = left[field]?.trim() ?? '';
+    const rightValue = right[field]?.trim() ?? '';
+    if (!leftValue && rightValue) return 1;
+    if (leftValue && !rightValue) return -1;
+
+    const comparison = tourAssignmentCollator.compare(leftValue, rightValue);
+    if (comparison !== 0) {
+      return sortDirection === 'asc' ? comparison : comparison * -1;
+    }
+  }
+
+  for (const key of ['label', 'id'] as const) {
+    const tieBreakerComparison = compareOptionalTourAssignmentValue(left[key], right[key]);
+    if (tieBreakerComparison !== 0) return tieBreakerComparison;
   }
   return 0;
 };
 
 export const orderTourAssignmentLocations = <T extends TourAssignmentSortValue>(
   locations: readonly T[],
-  selectedLocationIds: readonly string[]
+  selectedLocationIds: readonly string[],
+  { includeRegion = false, direction = 'asc' }: TourAssignmentSortOptions = {}
 ): readonly T[] => {
   const selectedLocationIdSet = new Set(selectedLocationIds);
   const selectedLocations: T[] = [];
   const unselectedLocations: T[] = [];
+  const sortFields: readonly TourAssignmentSortField[] = includeRegion
+    ? ['regionName', ...tourAssignmentAddressSortFields]
+    : tourAssignmentAddressSortFields;
 
   for (const location of locations) {
     if (selectedLocationIdSet.has(location.id)) {
@@ -87,8 +122,12 @@ export const orderTourAssignmentLocations = <T extends TourAssignmentSortValue>(
   }
 
   return [
-    ...selectedLocations.sort(compareTourAssignmentLocations),
-    ...unselectedLocations.sort(compareTourAssignmentLocations),
+    ...selectedLocations.sort((left, right) =>
+      compareTourAssignmentLocations(left, right, sortFields, direction)
+    ),
+    ...unselectedLocations.sort((left, right) =>
+      compareTourAssignmentLocations(left, right, sortFields, direction)
+    ),
   ];
 };
 
@@ -108,6 +147,7 @@ export type WasteToursActionsProps = {
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
@@ -116,6 +156,8 @@ export type WasteToursActionsProps = {
 
 export type WasteToursCapabilitiesProps = {
   readonly canDuplicateTour?: boolean;
+  readonly canManageScheduling?: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly saving?: boolean;
 };
 

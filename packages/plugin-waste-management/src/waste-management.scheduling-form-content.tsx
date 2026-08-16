@@ -12,6 +12,7 @@ import type {
   TourDateShiftFormState,
 } from './waste-management.scheduling.shared.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 
 type WasteSchedulingFormContentProps =
   | {
@@ -24,6 +25,7 @@ type WasteSchedulingFormContentProps =
       readonly onCancel: () => void;
       readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
       readonly beforeFields?: ReactNode;
+      readonly message?: StatusMessage | null;
     }
   | {
       readonly variant: 'tour';
@@ -35,6 +37,7 @@ type WasteSchedulingFormContentProps =
       readonly onCancel: () => void;
       readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
       readonly beforeFields?: ReactNode;
+      readonly message?: StatusMessage | null;
     };
 
 export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProps) => {
@@ -63,6 +66,7 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
         description={pt(copy.descriptionKey)}
         actions={topActions}
       />
+      <StatusNotice message={props.message ?? null} />
 
       <form
         id="waste-scheduling-form"
@@ -90,7 +94,12 @@ export const WasteSchedulingFormContent = (props: WasteSchedulingFormContentProp
 
         <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-border bg-background px-5 py-4 shadow-shell">
           <WastePendingSaveButton type="submit" saving={props.saving} label={saveLabel} />
-          <Button type="button" variant="secondary" onClick={props.onCancel} disabled={props.saving}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={props.onCancel}
+            disabled={props.saving}
+          >
             {pt(copy.cancelKey)}
           </Button>
         </div>

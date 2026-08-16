@@ -1,4 +1,8 @@
-import type { WasteTourRecord, WasteLocationTourPickupDateRecord } from '@sva/core';
+import {
+  resolveEffectiveWasteTourDateShiftsForYear,
+  type WasteLocationTourPickupDateRecord,
+  type WasteTourRecord,
+} from '@sva/core';
 import {
   addDays,
   addDaysWithWeekendClampForAdvance,
@@ -103,7 +107,11 @@ const buildMaterializationRules = (
 ): readonly MaterializationRule[] => {
   const yearWindow = getEffectiveYearWindow(input.currentYear, input.nextYear);
   const tourRules: MaterializationRule[] = [];
-  for (const shift of input.tourDateShifts) {
+  const tourShiftYears = Array.from(new Set([yearWindow[0] - 1, ...yearWindow]));
+  const effectiveTourDateShifts = tourShiftYears.flatMap((year) =>
+    resolveEffectiveWasteTourDateShiftsForYear(input.tourDateShifts, year)
+  );
+  for (const shift of effectiveTourDateShifts) {
     const move = shiftDirection(shift.originalDate, shift.actualDate);
     if (!move) {
       continue;
@@ -116,14 +124,12 @@ const buildMaterializationRules = (
       shiftDays: move.shiftDays,
       direction: move.direction,
       coverage: toCoverage(shift.followUpMode),
-      hasYear: shift.hasYear,
+      hasYear: true,
     };
-    if (
-      !isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, shift.hasYear, yearWindow)
-    ) {
+    if (!isShiftRelevantToYearWindow(shift.originalDate, shift.actualDate, true, yearWindow)) {
       continue;
     }
-    tourRules.push(...expandRuleAcrossYearWindow(rule, yearWindow));
+    tourRules.push(rule);
   }
 
   const globalRules: MaterializationRule[] = [];

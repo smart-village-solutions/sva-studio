@@ -29,17 +29,19 @@ const defaultUiAccess = deriveWasteManagementUiAccess([
 export const WasteManagementPageTabs = ({
   pt,
   search,
+  rawSearch = search,
   access = defaultUiAccess,
   visibleTabIds = wasteManagementTabIds,
   onTabChange,
 }: {
   readonly pt: Translate;
   readonly search: WasteManagementSearchParams;
+  readonly rawSearch?: Readonly<Record<string, unknown>>;
   readonly access?: WasteManagementUiAccess;
   readonly visibleTabIds?: readonly WasteManagementTabId[];
   readonly onTabChange: (value: WasteManagementTabId) => void;
 }) => {
-  const content = createWasteManagementTabContentMap(search, access);
+  const content = createWasteManagementTabContentMap(search, access, rawSearch);
   const activeTab = visibleTabIds.includes(search.tab)
     ? search.tab
     : (visibleTabIds[0] ?? search.tab);

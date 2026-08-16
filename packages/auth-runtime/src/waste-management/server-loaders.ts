@@ -1326,6 +1326,11 @@ const saveWasteTourDateShift = createLoader(
   (repository, input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) =>
     repository.upsertWasteTourDateShift(input)
 );
+const createWasteTourDateShift = createLoader(
+  'create_waste_tour_date_shift',
+  (repository, input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) =>
+    repository.insertWasteTourDateShift(input)
+);
 const loadWasteGlobalDateShiftById = createLoader(
   'load_waste_global_date_shift_by_id',
   (repository, shiftId: string) => repository.getWasteGlobalDateShiftById(shiftId)
@@ -1489,6 +1494,7 @@ export const wasteManagementEntitySavers = {
   updateWasteTourValidityBulk,
   deleteWasteTour,
   deleteWasteTourDateShift,
+  createWasteTourDateShift,
   saveWasteTourDateShift,
   deleteWasteGlobalDateShift,
   saveWasteGlobalDateShift,

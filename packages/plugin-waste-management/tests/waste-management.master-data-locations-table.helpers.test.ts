@@ -22,6 +22,11 @@ describe('createLocationsTableMaps', () => {
 
     expect(result.toursById.get('tour-a')?.name).toBe('Papier');
     expect(result.locationTourNamesByLocationId.get('location-1')).toEqual(['Bio', 'Papier']);
+    expect(result.locationToursByLocationId.get('location-1')?.map((tour) => tour.id)).toEqual([
+      'tour-b',
+      'tour-a',
+    ]);
     expect(result.locationTourNamesByLocationId.has('location-2')).toBe(false);
+    expect(result.locationToursByLocationId.has('location-2')).toBe(false);
   });
 });

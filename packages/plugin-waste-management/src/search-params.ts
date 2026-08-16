@@ -70,6 +70,8 @@ export type WasteManagementSearchParams = Readonly<{
   endDateTo?: string;
   schedulingEntryType?: WasteManagementSchedulingEntryType;
   schedulingEntryId?: string;
+  schedulingTourId?: string;
+  schedulingOriginalDate?: string;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
 }>;
@@ -205,6 +207,12 @@ export const normalizeWasteManagementSearchParams = (
 ): WasteManagementSearchParams => {
   const tab = normalizeTab(search.tab);
   const pageSize = normalizePageSize(search.pageSize);
+  const schedulingView = normalizeSchedulingView(search.schedulingView);
+  const schedulingEntryType = normalizeSchedulingEntryType(search.schedulingEntryType);
+  const keepsTourShiftCreateContext =
+    tab === 'scheduling' && schedulingView === 'create' && schedulingEntryType === 'tour-shift';
+  const normalizedSchedulingOriginalDate = normalizeOptionalIsoDate(search.schedulingOriginalDate);
+  const schedulingTourId = compactOptionalString(search.schedulingTourId);
 
   return {
     tab,
@@ -212,7 +220,7 @@ export const normalizeWasteManagementSearchParams = (
     fractionsView: normalizeFractionsView(search.fractionsView),
     toursView: normalizeToursView(search.toursView),
     locationsView: normalizeLocationsView(search.locationsView),
-    schedulingView: normalizeSchedulingView(search.schedulingView),
+    schedulingView,
     q: compactOptionalString(search.q) ?? '',
     page: normalizePositiveInteger(search.page, 1),
     pageSize,
@@ -233,8 +241,12 @@ export const normalizeWasteManagementSearchParams = (
     firstDateTo: normalizeOptionalIsoDate(search.firstDateTo),
     endDateFrom: normalizeOptionalIsoDate(search.endDateFrom),
     endDateTo: normalizeOptionalIsoDate(search.endDateTo),
-    schedulingEntryType: normalizeSchedulingEntryType(search.schedulingEntryType),
+    schedulingEntryType,
     schedulingEntryId: compactOptionalString(search.schedulingEntryId),
+    schedulingTourId: keepsTourShiftCreateContext ? schedulingTourId : undefined,
+    schedulingOriginalDate: keepsTourShiftCreateContext
+      ? normalizedSchedulingOriginalDate
+      : undefined,
     tourDateShiftId: undefined,
     globalDateShiftId: undefined,
   };

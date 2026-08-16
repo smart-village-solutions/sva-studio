@@ -8,7 +8,14 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   actions: {
     openCreate: 'Neue Tour',
     openCalendar: 'Jahreskalender anzeigen',
-    openAssignments: 'Zugeordnete Abholorte bearbeiten',
+    createShift: 'Ausweichtermin anlegen',
+    createShiftShort: 'Anlegen',
+    createShiftAccessible: 'Ausweichtermin für die Tour {{name}} anlegen',
+    createAnotherShift: 'Tourbezogenen Ausweichtermin anlegen',
+    shiftDate: 'Diesen Termin verschieben',
+    shiftDateAccessible: 'Termin {{date}} der Tour {{name}} verschieben',
+    opensInNewTab: 'Öffnet in neuem Tab',
+    openAssignmentsAccessible: 'Zugeordnete Abholorte für {{name}} bearbeiten ({{count}})',
     edit: 'Bearbeiten',
     duplicate: 'Duplizieren',
     delete: 'Löschen',
@@ -153,7 +160,9 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     inapplicableTitle: 'Nicht anwendbare Touren',
     inapplicableDescription:
       'Individuelle oder bedarfsabhängige Touren besitzen keinen turnusbasierten Gültigkeitszeitraum. Entfernen Sie diese Touren aus der Auswahl: {{value}}',
-    invalidRange: 'Der resultierende Zeitraum wäre bei mindestens einer Tour ungültig.',
+    invalidRangeTitle: 'Folgende Touren hätten einen ungültigen Gültigkeitszeitraum:',
+    invalidRangeItem:
+      '{{name}}: Der Gültigkeitsbeginn {{firstDate}} liegt nach dem Gültigkeitsende {{endDate}}.',
     fields: {
       firstMode: 'Gültig ab',
       firstDate: 'Neuer Gültigkeitsbeginn',
@@ -167,6 +176,20 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     },
     apply: 'Zeitraum ändern',
     cancel: 'Abbrechen',
+  },
+  shiftDetails: {
+    open: '{{count}} Verschiebungen für {{name}} anzeigen',
+    title: 'Verschiebungen: {{name}}',
+    description: '{{value}} Verschiebungen für diese Tour.',
+    dateChange: '{{originalDate}} → {{actualDate}}',
+    holidays: 'Feiertag: {{value}}',
+    reasonKey: 'Grundschlüssel: {{value}}',
+    close: 'Schließen',
+    sources: {
+      tour: 'Tourspezifische Verschiebung',
+      global: 'Globale Verschiebung',
+      holiday: 'Berechnete Feiertagsverschiebung',
+    },
   },
   recurrence: {
     weekly: 'Wöchentlich',
@@ -263,7 +286,16 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       visibleCount: '{{value}} sichtbar',
       hiddenSelectedCount: '{{value}} außerhalb des Filters ausgewählt',
       noLocations: 'Keine Abholorte passen auf die aktuellen Filter.',
-      assigned: 'Bereits zugeordnet',
+      tableLabel: 'Abholorte der Tour',
+      tableCaption: 'Sortierbare Abholorte für die Tour-Zuordnung',
+      sortingOrder: 'Sortierreihenfolge',
+      sortingDirection: 'Sortierrichtung',
+      includeRegion: 'Region vorschalten',
+      sortOrderWithRegion: 'Region → Ort → Straße → Hausnummer',
+      sortOrderWithoutRegion: 'Ort → Straße → Hausnummer',
+      asc: 'Aufsteigend',
+      desc: 'Absteigend',
+      selectLocation: 'Abholort {{value}} auswählen',
     },
     messages: {
       createSuccess: 'Die Abfall-Tour-Zuordnung wurde angelegt.',
@@ -298,6 +330,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       'Alle Abholort-Zuordnungen, Einzeltermine und tourbezogenen Datumsverschiebungen werden nach dem Speichern übernommen. Für die Zuordnungen gilt der Zeitraum der neuen Tour.',
     assignmentIncomplete:
       'Bitte hinterlegen Sie für jede Termin-Ort-Zuordnung sowohl einen Abholort als auch einen Hinweis.',
+    saveSchedulingBeforeShift:
+      'Speichern Sie zuerst die geänderte Terminlogik, bevor Sie einen Ausweichtermin anlegen.',
     deleteSuccess: 'Die Abfall-Tour wurde gelöscht.',
     deletePartialSuccess: '{{count}} von {{total}} Abfall-Touren wurden gelöscht.',
     saveError: 'Die Abfall-Tour konnte nicht gespeichert werden.',

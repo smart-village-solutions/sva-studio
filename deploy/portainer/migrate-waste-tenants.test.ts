@@ -9,6 +9,7 @@ const {
 } = await import('./migrate-waste-tenants.mjs');
 
 const migrationId = '20260816_01_add_waste_city_postal_code';
+const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -20,21 +21,33 @@ const namesFor = (instanceId: string) => ({
 
 const createTenantClient = ({
   appliedMigrationIds = [],
+  failMessage = 'database_failure',
   failOnSql,
+  tourShiftVerificationSatisfied = true,
   verificationSatisfied = true,
 }: {
   readonly appliedMigrationIds?: readonly string[];
+  readonly failMessage?: string;
   readonly failOnSql?: string;
+  readonly tourShiftVerificationSatisfied?: boolean;
   readonly verificationSatisfied?: boolean;
 } = {}) => ({
   end: vi.fn().mockResolvedValue(undefined),
   query: vi.fn(async (sql: string) => {
-    if (failOnSql && sql.includes(failOnSql)) throw new Error('database_failure');
+    if (failOnSql && sql.includes(failOnSql)) throw new Error(failMessage);
     if (sql.includes('SELECT migration_id')) {
       return { rows: appliedMigrationIds.map((migration_id) => ({ migration_id })) };
     }
     if (sql.includes('information_schema.columns')) {
-      return { rows: [{ satisfied: verificationSatisfied }] };
+      return {
+        rows: [
+          {
+            satisfied: sql.includes('pg_get_indexdef')
+              ? tourShiftVerificationSatisfied
+              : verificationSatisfied,
+          },
+        ],
+      };
     }
     return { rows: [] };
   }),
@@ -50,18 +63,27 @@ const createAdminClient = (rows: readonly object[]) => ({
 });
 
 describe('Waste-Tenant-Migration', () => {
-  it('contains only the explicit additive postal-code migration', () => {
+  it('contains the additive postal-code migration and the guarded tour-shift contract', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(1);
+    expect(wasteTenantMigrations).toHaveLength(2);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
-      statements: [
-        'ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;',
-      ],
+      statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
     });
     expect(wasteTenantMigrations[0]?.statements.join('\n')).not.toMatch(
       /\b(?:DELETE|DROP|TRUNCATE|UPDATE)\b/u
     );
+    expect(wasteTenantMigrations[1]).toMatchObject({ id: tourShiftMigrationId });
+    expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
+      'waste_migration_tour_date_shift_data_present'
+    );
+    expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
+      'ALTER COLUMN original_date TYPE DATE'
+    );
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_indexdef');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('pg_get_expr');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('indnkeyatts = 3');
+    expect(wasteTenantMigrations[1]?.verification.sql).toContain('nothas_year');
   });
 
   it('rejects duplicate migration identifiers before connecting to a tenant', () => {
@@ -90,7 +112,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 2, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 4, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -125,7 +147,9 @@ describe('Waste-Tenant-Migration', () => {
   });
 
   it('verifies but does not reapply an already recorded migration', async () => {
-    const client = createTenantClient({ appliedMigrationIds: [migrationId] });
+    const client = createTenantClient({
+      appliedMigrationIds: [migrationId, tourShiftMigrationId],
+    });
 
     await expect(
       migrateWasteTenantDatabase({
@@ -180,6 +204,45 @@ describe('Waste-Tenant-Migration', () => {
     expect(queriedSql(client)).toContain('ROLLBACK;');
     expect(queriedSql(client)).not.toContain('COMMIT;');
     expect(queriedSql(client)).not.toContain('INSERT INTO public.sva_waste_schema_migrations');
+  });
+
+  it('rolls back the hard cut when its empty-table preflight fails', async () => {
+    const client = createTenantClient({
+      failMessage: 'waste_migration_tour_date_shift_data_present',
+      failOnSql: 'IF EXISTS (SELECT 1 FROM public.waste_tour_date_shifts LIMIT 1)',
+    });
+
+    await expect(
+      migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
+        client,
+        migrations: wasteTenantMigrations,
+        ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
+      })
+    ).rejects.toThrow('waste_migration_tour_date_shift_data_present');
+
+    expect(queriedSql(client)).toContain('ROLLBACK;');
+    expect(queriedSql(client)).not.toContain('ALTER COLUMN original_date TYPE DATE');
+    expect(queriedSql(client)).not.toContain('pg_get_indexdef');
+  });
+
+  it('rolls back when the migrated index contract does not match its postcondition', async () => {
+    const client = createTenantClient({ tourShiftVerificationSatisfied: false });
+
+    await expect(
+      migrateWasteTenantDatabase({
+        appRole: 'alpha_app',
+        client,
+        migrations: wasteTenantMigrations,
+        ownerRole: 'alpha_owner',
+        publicAppRole: 'alpha_public',
+      })
+    ).rejects.toThrow(`waste_migration_verification_failed:${tourShiftMigrationId}`);
+
+    expect(queriedSql(client)).toContain('pg_get_indexdef');
+    expect(queriedSql(client)).toContain('ROLLBACK;');
+    expect(queriedSql(client)).not.toContain('COMMIT;');
   });
 
   it('preserves the migration and rollback failures when rollback itself fails', async () => {

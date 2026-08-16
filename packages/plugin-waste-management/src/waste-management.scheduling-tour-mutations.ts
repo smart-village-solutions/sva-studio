@@ -5,7 +5,10 @@ import {
   updateWasteManagementTourDateShift,
 } from './waste-management.api.js';
 import { resolveApiErrorCode } from './waste-management.page.support.js';
-import { toCreateTourDateShiftInput, toUpdateTourDateShiftInput } from './waste-management.scheduling.shared.js';
+import {
+  toCreateTourDateShiftInput,
+  toUpdateTourDateShiftInput,
+} from './waste-management.scheduling.shared.js';
 import type { WasteSchedulingState } from './use-waste-scheduling-state.js';
 
 type Translate = (key: string, variables?: Readonly<Record<string, string | number>>) => string;
@@ -52,7 +55,9 @@ export const createWasteSchedulingTourMutationHandlers = ({
         text:
           code === 'forbidden'
             ? pt('scheduling.tour.messages.saveForbidden')
-            : pt('scheduling.tour.messages.saveError'),
+            : code === 'conflict'
+              ? pt('scheduling.tour.messages.saveConflict')
+              : pt('scheduling.tour.messages.saveError'),
       });
     } finally {
       state.setSaving(false);

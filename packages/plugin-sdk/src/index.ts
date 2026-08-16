@@ -188,12 +188,13 @@ export type {
   WasteTourValidityBulkUpdateResult,
   WasteTourValidityDateOperation,
 } from './public-api.js';
-
 export {
   resolveContentMediaCapabilities,
   type ContentMediaCapabilities,
 } from './content-media-permissions.js';
 export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
+export { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/core';
+export type { EffectiveWasteTourDateShift } from '@sva/core';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,
@@ -249,6 +250,7 @@ export {
   alignHostMediaReferencesByOrder,
   formatDateTimeInEditorTimeZone,
   formatTechnicalDateTimeInEditorTimeZone,
+  resolveEditorLocale,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   getHostMediaAssetPersistentUrl,
@@ -310,7 +312,6 @@ export {
 } from './public-api.js';
 
 export * from './data-exchange-public-api.js';
-
 export {
   hasContentLifecycleAccess,
   resolveContentLifecycleAction,

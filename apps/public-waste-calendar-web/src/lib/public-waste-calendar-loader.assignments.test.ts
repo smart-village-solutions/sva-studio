@@ -27,6 +27,7 @@ const tourShift = (overrides: Partial<TourDateShiftRow> = {}): TourDateShiftRow 
   tour_id: 'tour-1',
   original_date: '2026-05-19',
   actual_date: '2026-05-20',
+  has_year: true,
   description: 'Tour wurde verschoben',
   ...overrides,
 });

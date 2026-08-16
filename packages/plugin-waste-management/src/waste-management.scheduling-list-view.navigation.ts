@@ -11,12 +11,17 @@ import type {
 } from './search-params.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
+  toWasteCollectionLocationEditSearch,
+  toWasteTourEditSearch,
+} from './waste-management.cross-link.navigation.js';
+import {
   createDefaultGlobalDateShiftForm,
   createDefaultTourDateShiftForm,
   mapGlobalDateShiftToForm,
   mapTourDateShiftToForm,
   resolveSchedulingEntryTypeFromShiftContext,
 } from './waste-management.scheduling.shared.js';
+import { clearTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
@@ -34,22 +39,24 @@ const clearSchedulingEntrySearch = (
 export const toCreateSchedulingEntrySearch = (
   search: WasteManagementSearchParams,
   schedulingEntryType: Exclude<WasteManagementSchedulingEntryType, 'holiday-rule'>,
-): WasteManagementSearchParams => ({
-  ...clearSchedulingEntrySearch(search),
-  schedulingView: 'create',
-  schedulingEntryType,
-});
+): WasteManagementSearchParams =>
+  clearTourShiftCreateContext({
+    ...clearSchedulingEntrySearch(search),
+    schedulingView: 'create',
+    schedulingEntryType,
+  });
 
 export const toEditSchedulingEntrySearch = (
   search: WasteManagementSearchParams,
   schedulingEntryType: WasteManagementSchedulingEntryType,
   schedulingEntryId: string,
-): WasteManagementSearchParams => ({
-  ...clearSchedulingEntrySearch(search),
-  schedulingView: 'edit',
-  schedulingEntryType,
-  schedulingEntryId,
-});
+): WasteManagementSearchParams =>
+  clearTourShiftCreateContext({
+    ...clearSchedulingEntrySearch(search),
+    schedulingView: 'edit',
+    schedulingEntryType,
+    schedulingEntryId,
+  });
 
 export const toSchedulingPageSearch = (
   search: WasteManagementSearchParams,
@@ -72,7 +79,6 @@ const resetSchedulingViewState = (controller: WasteViewModel) => {
   controller.setMessage(null);
   controller.setLastOutcome(null);
 };
-
 const resetSchedulingCreateForms = (
   controller: WasteViewModel,
   availableTours: readonly { readonly id: string }[],
@@ -105,6 +111,16 @@ export const useWasteSchedulingListNavigation = (
   const navigate = useNavigate();
 
   return {
+    openLinkedTour: (tourId: string) => {
+      void navigateToSchedulingSearch(navigate, search, toWasteTourEditSearch(search, tourId));
+    },
+    openLinkedLocation: (collectionLocationId: string) => {
+      void navigateToSchedulingSearch(
+        navigate,
+        search,
+        toWasteCollectionLocationEditSearch(search, collectionLocationId)
+      );
+    },
     openCreate: () => {
       const schedulingEntryType = resolveSchedulingEntryTypeFromShiftContext(
         search.shiftContext,

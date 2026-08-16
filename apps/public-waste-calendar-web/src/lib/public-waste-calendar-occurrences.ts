@@ -1,4 +1,4 @@
-import type { WasteHolidayRuleRecord } from '@sva/core';
+import { resolveEffectiveWasteTourDateShiftsForYear, type WasteHolidayRuleRecord } from '@sva/core';
 
 import type {
   PublicWasteCalendarEntry,
@@ -47,6 +47,7 @@ type PublicWasteTourDateShift = {
   readonly tourId: string;
   readonly originalDate: string;
   readonly actualDate: string;
+  readonly hasYear: boolean;
   readonly description?: string;
 };
 
@@ -291,13 +292,19 @@ export const calculatePublicWasteCalendarEntries = (
     );
 
   for (const linkedTour of input.linkedTours) {
-    const relevantTourDateShifts = input.tourDateShifts.filter(
-      (shift) => shift.tourId === linkedTour.tour.id
+    const occurrences = calculateTourOccurrences(linkedTour.tour, windowStart, windowEnd);
+    const occurrenceYears = Array.from(
+      new Set(occurrences.map((occurrence) => Number(occurrence.date.slice(0, 4))))
+    ).filter(Number.isSafeInteger);
+    const relevantTourDateShifts = occurrenceYears.flatMap((year) =>
+      resolveEffectiveWasteTourDateShiftsForYear(
+        input.tourDateShifts.filter((shift) => shift.tourId === linkedTour.tour.id),
+        year
+      )
     );
     const relevantGlobalDateShifts = input.globalDateShifts.filter(
       (shift) => !shift.tourIds || shift.tourIds.includes(linkedTour.tour.id)
     );
-    const occurrences = calculateTourOccurrences(linkedTour.tour, windowStart, windowEnd);
     const tourShiftMap = buildShiftMap(relevantTourDateShifts);
     const globalShiftMap = buildShiftMap(relevantGlobalDateShifts);
 

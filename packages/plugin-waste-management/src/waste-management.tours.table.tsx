@@ -2,14 +2,22 @@ import { useMemo } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
-import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { WastePanelTableBottomBar, createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
+import {
+  WastePanelTableBottomBar,
+  createPagedItems,
+  usePagedRouteSync,
+} from './waste-management.table-frame.js';
 import {
   WasteToursTableHeader,
   type WasteToursSortDirection,
   type WasteToursSortField,
 } from './waste-management.tours.table.parts.js';
 import { WasteToursTableRow } from './waste-management.tours.table-row.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 type WasteToursTableProps = {
   readonly tours: readonly WasteTourRecord[];
@@ -32,11 +40,14 @@ type WasteToursTableProps = {
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 };
@@ -51,11 +62,14 @@ const WasteToursTableBody = ({
   saving,
   onToggleSelectedTour,
   onOpenCalendar,
+  onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
   canDuplicateTour,
+  canManageScheduling,
+  search,
   onToggleTourStatus,
   onRequestDeleteTour,
 }: {
@@ -68,11 +82,14 @@ const WasteToursTableBody = ({
   readonly saving: boolean;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => (
@@ -89,11 +106,14 @@ const WasteToursTableBody = ({
         saving={saving}
         onToggleSelectedTour={onToggleSelectedTour}
         onOpenCalendar={onOpenCalendar}
+        onOpenEditFraction={onOpenEditFraction}
         onOpenEditDialog={onOpenEditDialog}
         onOpenDuplicateDialog={onOpenDuplicateDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         canDuplicateTour={canDuplicateTour}
+        canManageScheduling={canManageScheduling}
+        search={search}
         onToggleTourStatus={onToggleTourStatus}
         onRequestDeleteTour={onRequestDeleteTour}
       />
@@ -101,39 +121,22 @@ const WasteToursTableBody = ({
   </tbody>
 );
 
-export const WasteToursTable = ({
-  tours,
-  fractions,
-  masterDataOverview,
-  schedulingOverview,
-  assignmentContextLoading,
-  selectedTourIds,
-  allVisibleSelected,
-  someVisibleSelected,
-  saving,
-  sortField,
-  sortDirection,
-  page,
-  pageSize,
-  onPageChange,
-  onSyncPageChange,
-  onPageSizeChange,
-  onSortChange,
-  onToggleSelectAllVisible,
-  onToggleSelectedTour,
-  onOpenCalendar,
-  onOpenEditDialog,
-  onOpenDuplicateDialog,
-  onOpenCreateAssignmentsDialog,
-  onOpenEditAssignmentsDialog,
-  canDuplicateTour,
-  onToggleTourStatus,
-  onRequestDeleteTour,
-}: WasteToursTableProps) => {
+export const WasteToursTable = (props: WasteToursTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const pagedTours = useMemo(() => createPagedItems({ items: tours, page, pageSize }), [page, pageSize, tours]);
-  const fractionsById = useMemo(() => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)), [fractions]);
-  usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
+  const pagedTours = useMemo(
+    () => createPagedItems({ items: props.tours, page: props.page, pageSize: props.pageSize }),
+    [props.page, props.pageSize, props.tours]
+  );
+  const fractionsById = useMemo(
+    () => new Map(props.fractions.map((fraction) => [fraction.id, fraction.name] as const)),
+    [props.fractions]
+  );
+  usePagedRouteSync({
+    page: props.page,
+    safePage: pagedTours.safePage,
+    onPageChange: props.onPageChange,
+    onSyncPageChange: props.onSyncPageChange,
+  });
 
   return (
     <>
@@ -141,41 +144,44 @@ export const WasteToursTable = ({
         <table className="min-w-full border-collapse">
           <caption className="sr-only">{pt('tours.table.caption')}</caption>
           <WasteToursTableHeader
-            allVisibleSelected={allVisibleSelected}
-            someVisibleSelected={someVisibleSelected}
-            onToggleSelectAllVisible={onToggleSelectAllVisible}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            onSortChange={onSortChange}
+            allVisibleSelected={props.allVisibleSelected}
+            someVisibleSelected={props.someVisibleSelected}
+            onToggleSelectAllVisible={props.onToggleSelectAllVisible}
+            sortField={props.sortField}
+            sortDirection={props.sortDirection}
+            onSortChange={props.onSortChange}
           />
           <WasteToursTableBody
             tours={pagedTours.items}
             fractionsById={fractionsById}
-            masterDataOverview={masterDataOverview}
-            schedulingOverview={schedulingOverview}
-            assignmentContextLoading={assignmentContextLoading}
-            selectedTourIds={selectedTourIds}
-            saving={saving}
-            onToggleSelectedTour={onToggleSelectedTour}
-            onOpenCalendar={onOpenCalendar}
-            onOpenEditDialog={onOpenEditDialog}
-            onOpenDuplicateDialog={onOpenDuplicateDialog}
-            onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
-            onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
-            canDuplicateTour={canDuplicateTour}
-            onToggleTourStatus={onToggleTourStatus}
-            onRequestDeleteTour={onRequestDeleteTour}
+            masterDataOverview={props.masterDataOverview}
+            schedulingOverview={props.schedulingOverview}
+            assignmentContextLoading={props.assignmentContextLoading}
+            selectedTourIds={props.selectedTourIds}
+            saving={props.saving}
+            onToggleSelectedTour={props.onToggleSelectedTour}
+            onOpenCalendar={props.onOpenCalendar}
+            onOpenEditFraction={props.onOpenEditFraction}
+            onOpenEditDialog={props.onOpenEditDialog}
+            onOpenDuplicateDialog={props.onOpenDuplicateDialog}
+            onOpenCreateAssignmentsDialog={props.onOpenCreateAssignmentsDialog}
+            onOpenEditAssignmentsDialog={props.onOpenEditAssignmentsDialog}
+            canDuplicateTour={props.canDuplicateTour}
+            canManageScheduling={props.canManageScheduling}
+            search={props.search}
+            onToggleTourStatus={props.onToggleTourStatus}
+            onRequestDeleteTour={props.onRequestDeleteTour}
           />
         </table>
       </div>
       <WastePanelTableBottomBar
         pt={pt}
         page={pagedTours.safePage}
-        pageSize={pageSize}
+        pageSize={props.pageSize}
         pageCount={pagedTours.pageCount}
         totalItems={pagedTours.totalItems}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
+        onPageChange={props.onPageChange}
+        onPageSizeChange={props.onPageSizeChange}
       />
     </>
   );

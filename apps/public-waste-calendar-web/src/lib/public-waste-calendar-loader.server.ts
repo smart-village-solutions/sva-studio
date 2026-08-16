@@ -90,8 +90,9 @@ const loadTourDateShiftRows = (context: CalendarQueryContext) =>
       SELECT
         id::text,
         tour_id::text,
-        original_date,
-        actual_date,
+        to_char(original_date, 'YYYY-MM-DD') AS original_date,
+        to_char(actual_date, 'YYYY-MM-DD') AS actual_date,
+        has_year,
         description
       FROM ${context.schemaName}.waste_tour_date_shifts
       ORDER BY original_date ASC, actual_date ASC, id ASC;

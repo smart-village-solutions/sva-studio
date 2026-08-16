@@ -21,9 +21,7 @@ const buildTour = (override: Partial<WasteTourRecord> = {}): WasteTourRecord =>
 describe('waste-management-mainserver-sync.materialization', () => {
   it('uses the central tour validity window for every linked location', () => {
     const result = buildMaterializedLocationTourPickupDates({
-      tours: [
-        buildTour({ recurrence: 'weekly', firstDate: '2026-01-01', endDate: '2026-01-15' }),
-      ],
+      tours: [buildTour({ recurrence: 'weekly', firstDate: '2026-01-01', endDate: '2026-01-15' })],
       links: [
         {
           id: 'link-1',
@@ -472,6 +470,48 @@ describe('waste-management-mainserver-sync.materialization', () => {
         expect.objectContaining({ pickupDate: '2027-01-01' }),
       ])
     );
+  });
+
+  it('prefers a year-specific tour shift over the annual base rule', () => {
+    const pickupDates = buildMaterializedLocationTourPickupDates({
+      tours: [buildTour({ recurrence: 'yearly', firstDate: '2024-01-01' })],
+      links: [
+        {
+          id: 'link-1',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      locationTourPickupDates: [],
+      tourDateShifts: [
+        {
+          id: 'annual',
+          tourId: 'tour-1',
+          originalDate: '2024-01-01',
+          actualDate: '2024-01-02',
+          hasYear: false,
+          createdAt: '',
+          updatedAt: '',
+        },
+        {
+          id: 'specific',
+          tourId: 'tour-1',
+          originalDate: '2026-01-01',
+          actualDate: '2026-01-04',
+          hasYear: true,
+          createdAt: '',
+          updatedAt: '',
+        },
+      ],
+      globalDateShifts: [],
+      holidayRules: [],
+      currentYear: 2026,
+      nextYear: 2027,
+    });
+
+    expect(pickupDates.map((entry) => entry.pickupDate)).toEqual(['2026-01-04', '2027-01-02']);
   });
 
   it('prefers tour-specific shifts over global shifts for the same original date', () => {

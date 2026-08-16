@@ -32,7 +32,7 @@ describe('createTourAssignmentSelectionSummary', () => {
 });
 
 describe('orderTourAssignmentLocations', () => {
-  it('places selected locations first and sorts both groups by region, city, and street', () => {
+  it('places selected locations first and sorts both groups by city, street, and house number', () => {
     expect(
       orderTourAssignmentLocations(
         [
@@ -73,5 +73,90 @@ describe('orderTourAssignmentLocations', () => {
       expect.objectContaining({ id: 'two' }),
       expect.objectContaining({ id: 'four' }),
     ]);
+  });
+
+  it('applies the full address hierarchy and direction within both selection groups', () => {
+    const locations = [
+      {
+        id: 'selected-a-two',
+        label: 'Ort A / Straße A / 2',
+        cityName: 'Ort A',
+        streetName: 'Straße A',
+        houseNumberName: '2',
+      },
+      {
+        id: 'selected-a-ten',
+        label: 'Ort A / Straße A / 10',
+        cityName: 'Ort A',
+        streetName: 'Straße A',
+        houseNumberName: '10',
+      },
+      {
+        id: 'unselected-a',
+        label: 'Ort A / Straße B / 1',
+        cityName: 'Ort A',
+        streetName: 'Straße B',
+        houseNumberName: '1',
+      },
+      {
+        id: 'unselected-b',
+        label: 'Ort B / Straße A / 1',
+        cityName: 'Ort B',
+        streetName: 'Straße A',
+        houseNumberName: '1',
+      },
+    ];
+
+    expect(
+      orderTourAssignmentLocations(locations, ['selected-a-two', 'selected-a-ten'], {
+        direction: 'desc',
+      }).map((location) => location.id)
+    ).toEqual(['selected-a-ten', 'selected-a-two', 'unselected-b', 'unselected-a']);
+  });
+
+  it('optionally places region before city, street, and house number', () => {
+    const locations = [
+      {
+        id: 'city-first',
+        label: 'Süd / A-Stadt',
+        regionName: 'Süd',
+        cityName: 'A-Stadt',
+      },
+      {
+        id: 'region-first',
+        label: 'Nord / B-Stadt',
+        regionName: 'Nord',
+        cityName: 'B-Stadt',
+      },
+    ];
+
+    expect(orderTourAssignmentLocations(locations, []).map((location) => location.id)).toEqual([
+      'city-first',
+      'region-first',
+    ]);
+    expect(
+      orderTourAssignmentLocations(locations, [], { includeRegion: true }).map(
+        (location) => location.id
+      )
+    ).toEqual(['region-first', 'city-first']);
+  });
+
+  it('keeps missing hierarchy values last in both directions and applies stable tie-breakers', () => {
+    const locations = [
+      { id: 'missing', label: 'Ohne Ort', cityName: '' },
+      { id: 'second', label: 'Gleicher Ort', cityName: 'Amt', streetName: 'B-Straße' },
+      { id: 'first', label: 'Gleicher Ort', cityName: 'Amt', streetName: 'A-Straße' },
+    ];
+
+    expect(orderTourAssignmentLocations(locations, []).map((location) => location.id)).toEqual([
+      'first',
+      'second',
+      'missing',
+    ]);
+    expect(
+      orderTourAssignmentLocations(locations, [], { direction: 'desc' }).map(
+        (location) => location.id
+      )
+    ).toEqual(['second', 'first', 'missing']);
   });
 });

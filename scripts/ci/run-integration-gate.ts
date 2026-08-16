@@ -1,7 +1,7 @@
 import { execSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-export const GENERAL_INTEGRATION_PROJECTS = ['data'] as const;
+export const GENERAL_INTEGRATION_PROJECTS = ['data', 'sva-studio-react'] as const;
 export const MONITORING_STACK_PROJECTS = ['monitoring-client'] as const;
 
 type IntegrationGateMode = 'full' | 'affected';
@@ -24,7 +24,7 @@ export const filterRunnableIntegrationProjects = (projects: readonly string[]): 
 };
 
 export const buildRunManyIntegrationCommand = (projects: readonly string[]): string =>
-  `env -u NO_COLOR pnpm nx run-many -t test:integration --projects=${projects.join(',')} --output-style=stream`;
+  `env -u NO_COLOR pnpm nx run-many -t test:integration --projects=${projects.join(',')} --parallel=1 --output-style=stream`;
 
 const parseCliOptions = (args: readonly string[]): IntegrationGateOptions => {
   let base = 'origin/main';

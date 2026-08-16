@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type BrowserContext, type Page } from '@playwright/test';
 import { resolveUserInitials } from '@sva/core';
 
 const escapeForRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -94,7 +94,7 @@ export const createEmptyPaginatedDataResponse = (pageSize = 0) =>
   });
 
 export const registerSharedIamRoutes = async (
-  page: Page,
+  page: Page | BrowserContext,
   options: { pendingLegalTextsPageSize?: number } = {}
 ) => {
   await page.route('**/iam/authorize', async (route) => {

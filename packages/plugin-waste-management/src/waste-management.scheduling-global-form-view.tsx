@@ -22,6 +22,7 @@ export const WasteSchedulingGlobalFormView = ({
       form={controller.globalShiftForm}
       tours={controller.availableTours}
       saving={controller.saving}
+      message={controller.message}
       onChange={(patch) => controller.setGlobalShiftForm((current) => ({ ...current, ...patch }))}
       onCancel={() => {
         controller.setGlobalDialogOpen(false);

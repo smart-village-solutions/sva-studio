@@ -67,8 +67,10 @@ describe('waste-management guard branches', () => {
       deps: () => createDeps('waste-management.read'),
     },
     {
-      label: 'collection location create returns forbidden when the dedicated permission is missing',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      label:
+        'collection location create returns forbidden when the dedicated permission is missing',
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -83,7 +85,8 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'location tour link create returns forbidden when the dedicated permission is missing',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -93,17 +96,21 @@ describe('waste-management guard branches', () => {
             locationId: 'location-1',
             tourId: 'tour-1',
           }),
-      }),
+        }),
       deps: () => createDeps('waste-management.read'),
     },
     {
       label: 'location tour link delete returns forbidden when the dedicated permission is missing',
-      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-guard-delete', {
-          method: 'DELETE',
-          headers: createHeaders(),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/location-tour-links/link-guard-delete',
+          {
+            method: 'DELETE',
+            headers: createHeaders(),
+          }
+        ),
       deps: () => createDeps('waste-management.read'),
     },
     {
@@ -181,7 +188,8 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'collection location create rejects a missing actor instance id',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -196,7 +204,8 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'location tour link create rejects a missing actor instance id',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -294,7 +303,8 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'collection location create rethrows missing save dependencies',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -316,7 +326,8 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'location tour link create rethrows missing save dependencies',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -404,7 +415,7 @@ describe('waste-management guard branches', () => {
         ...createDeps('waste-management.scheduling.manage'),
         loadWasteTourDateShiftById: vi.fn(async () => null),
       }),
-      expectedError: 'missing_dependency:saveWasteTourDateShift',
+      expectedError: 'missing_dependency:createWasteTourDateShift',
     },
   ])('$label', async ({ handler, request, deps, expectedError }) => {
     await expect(handler(request(), actor, deps())).rejects.toThrow(expectedError);
@@ -431,17 +442,21 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'collection location update rethrows missing load dependencies',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-update-missing', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            cityId: 'city-1',
-            regionId: 'region-1',
-            active: true,
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-update-missing',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              cityId: 'city-1',
+              regionId: 'region-1',
+              active: true,
+            }),
+          }
+        ),
       deps: () => ({
         ...createDeps('waste-management.master-data.manage'),
         saveWasteCollectionLocation: vi.fn(async () => undefined),
@@ -450,17 +465,21 @@ describe('waste-management guard branches', () => {
     },
     {
       label: 'location tour link update rethrows missing load dependencies',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-update-missing', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            locationId: 'location-1',
-            tourId: 'tour-1',
-            startDate: ' 2026-05-01 ',
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/location-tour-links/link-update-missing',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              locationId: 'location-1',
+              tourId: 'tour-1',
+              startDate: ' 2026-05-01 ',
+            }),
+          }
+        ),
       deps: () => ({
         ...createDeps('waste-management.tours.manage'),
         saveWasteLocationTourLink: vi.fn(async () => undefined),
@@ -494,18 +513,21 @@ describe('waste-management guard branches', () => {
       label: 'global shift update rethrows missing load dependencies',
       handler: wasteManagementGlobalDateShiftHandlers.updateWasteManagementGlobalDateShiftInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/global-date-shifts/global-update-missing', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            originalDate: '2026-05-01',
-            actualDate: '2026-05-02',
-            hasYear: true,
-            reasonKey: ' feiertag ',
-            description: ' verschoben ',
-            tourIds: [],
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/global-date-shifts/global-update-missing',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              originalDate: '2026-05-01',
+              actualDate: '2026-05-02',
+              hasYear: true,
+              reasonKey: ' feiertag ',
+              description: ' verschoben ',
+              tourIds: [],
+            }),
+          }
+        ),
       deps: () => ({
         ...createDeps('waste-management.scheduling.manage'),
         saveWasteGlobalDateShift: vi.fn(async () => undefined),
@@ -516,18 +538,21 @@ describe('waste-management guard branches', () => {
       label: 'tour shift update rethrows missing load dependencies',
       handler: wasteManagementTourDateShiftHandlers.updateWasteManagementTourDateShiftInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/tour-shift-update-missing', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            tourId: 'tour-1',
-            originalDate: '2026-05-01',
-            actualDate: '2026-05-02',
-            hasYear: true,
-            reasonKey: ' feiertag ',
-            description: ' verschoben ',
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/tour-date-shifts/tour-shift-update-missing',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              tourId: 'tour-1',
+              originalDate: '2026-05-01',
+              actualDate: '2026-05-02',
+              hasYear: true,
+              reasonKey: ' feiertag ',
+              description: ' verschoben ',
+            }),
+          }
+        ),
       deps: () => ({
         ...createDeps('waste-management.scheduling.manage'),
         saveWasteTourDateShift: vi.fn(async () => undefined),
@@ -564,16 +589,19 @@ describe('waste-management guard branches', () => {
       expectedCode: 'forbidden',
       status: 403,
     },
-  ])('$label', async ({ handler, request, deps, actor: scopedActor = actor, expectedCode, status = 403 }) => {
-    const response = await handler(request(), scopedActor, deps());
+  ])(
+    '$label',
+    async ({ handler, request, deps, actor: scopedActor = actor, expectedCode, status = 403 }) => {
+      const response = await handler(request(), scopedActor, deps());
 
-    expect(response.status).toBe(status);
-    await expect(response.json()).resolves.toMatchObject({
-      error: {
-        code: expectedCode,
-      },
-    });
-  });
+      expect(response.status).toBe(status);
+      await expect(response.json()).resolves.toMatchObject({
+        error: {
+          code: expectedCode,
+        },
+      });
+    }
+  );
 
   it('covers collection-location create and update guard responses directly for missing instances and csrf violations', async () => {
     const createRequest = () =>
@@ -583,11 +611,14 @@ describe('waste-management guard branches', () => {
         body: JSON.stringify({ id: 'location-guard-direct', cityId: 'city-1', active: true }),
       });
     const updateRequest = () =>
-      new Request('https://studio.test/api/v1/waste-management/collection-locations/location-guard-direct', {
-        method: 'PUT',
-        headers: createHeaders(),
-        body: JSON.stringify({ cityId: 'city-1', active: true }),
-      });
+      new Request(
+        'https://studio.test/api/v1/waste-management/collection-locations/location-guard-direct',
+        {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({ cityId: 'city-1', active: true }),
+        }
+      );
 
     expect(
       await wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal(
@@ -618,11 +649,14 @@ describe('waste-management guard branches', () => {
     ).toMatchObject({ status: 403 });
     expect(
       await wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal(
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-csrf-direct', {
-          method: 'PUT',
-          headers: csrfHeaders,
-          body: JSON.stringify({ cityId: 'city-1', active: true }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-csrf-direct',
+          {
+            method: 'PUT',
+            headers: csrfHeaders,
+            body: JSON.stringify({ cityId: 'city-1', active: true }),
+          }
+        ),
         actor,
         createDeps('waste-management.master-data.manage')
       )
@@ -634,14 +668,21 @@ describe('waste-management guard branches', () => {
       new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
         method: 'POST',
         headers: createHeaders(),
-        body: JSON.stringify({ id: 'link-guard-direct', locationId: 'location-1', tourId: 'tour-1' }),
+        body: JSON.stringify({
+          id: 'link-guard-direct',
+          locationId: 'location-1',
+          tourId: 'tour-1',
+        }),
       });
     const updateRequest = () =>
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-guard-direct', {
-        method: 'PUT',
-        headers: createHeaders(),
-        body: JSON.stringify({ locationId: 'location-1', tourId: 'tour-1' }),
-      });
+      new Request(
+        'https://studio.test/api/v1/waste-management/location-tour-links/link-guard-direct',
+        {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({ locationId: 'location-1', tourId: 'tour-1' }),
+        }
+      );
 
     expect(
       await wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal(
@@ -664,7 +705,11 @@ describe('waste-management guard branches', () => {
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
           headers: csrfHeaders,
-          body: JSON.stringify({ id: 'link-csrf-direct', locationId: 'location-1', tourId: 'tour-1' }),
+          body: JSON.stringify({
+            id: 'link-csrf-direct',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+          }),
         }),
         actor,
         createDeps('waste-management.tours.manage')
@@ -672,11 +717,14 @@ describe('waste-management guard branches', () => {
     ).toMatchObject({ status: 403 });
     expect(
       await wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal(
-        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-csrf-direct', {
-          method: 'PUT',
-          headers: csrfHeaders,
-          body: JSON.stringify({ locationId: 'location-1', tourId: 'tour-1' }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/location-tour-links/link-csrf-direct',
+          {
+            method: 'PUT',
+            headers: csrfHeaders,
+            body: JSON.stringify({ locationId: 'location-1', tourId: 'tour-1' }),
+          }
+        ),
         actor,
         createDeps('waste-management.tours.manage')
       )

@@ -16,6 +16,7 @@ export const createWasteDateShiftRepositoryPart = (
   WasteMasterDataRepository,
   | 'listWasteTourDateShifts'
   | 'getWasteTourDateShiftById'
+  | 'insertWasteTourDateShift'
   | 'upsertWasteTourDateShift'
   | 'listWasteGlobalDateShifts'
   | 'getWasteGlobalDateShiftById'

@@ -17,6 +17,7 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunReset).toBe(false);
     expect(access.canEnrichPostalCodes).toBe(false);
     expect(access.canDuplicateTour).toBe(false);
+    expect(access.canManageScheduling).toBe(false);
   });
 
   it('allows postal-code enrichment only with master-data management access', () => {
@@ -57,6 +58,7 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(true);
     expect(access.canDuplicateTour).toBe(false);
+    expect(access.canManageScheduling).toBe(false);
   });
 
   it('shows duplicate action only when user can manage tours and scheduling', () => {
@@ -81,6 +83,7 @@ describe('waste-management.ui-access', () => {
     ]);
 
     expect(access.canRunMainserverSync).toBe(true);
+    expect(access.canManageScheduling).toBe(true);
     expect(access.canAccessTools).toBe(true);
     expect(access.visibleTabIds).toEqual([
       'fractions',

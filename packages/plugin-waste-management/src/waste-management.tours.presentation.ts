@@ -1,7 +1,6 @@
-import type {
-  WasteManagementSchedulingOverview,
-  WasteTourRecord,
-} from './waste-management.api.js';
+import { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/plugin-sdk';
+
+import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 
 export const formatTourRecurrence = (
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string,
@@ -94,7 +93,8 @@ const resolveAdvanceStrategy = (
   customRecurrenceIntervalDays?: number
 ) => {
   if (typeof customRecurrenceIntervalDays === 'number' && customRecurrenceIntervalDays > 0) {
-    return (current: Date) => current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
+    return (current: Date) =>
+      current.setUTCDate(current.getUTCDate() + customRecurrenceIntervalDays);
   }
   if (recurrence === 'weekly') {
     return (current: Date) => current.setUTCDate(current.getUTCDate() + 7);
@@ -136,7 +136,8 @@ const collectCustomTourDates = (results: Set<string>, tour: WasteTourRecord, yea
 
 const buildShiftMap = (
   shifts: readonly { readonly originalDate: string; readonly actualDate: string }[]
-): Map<string, string> => new Map(shifts.map((shift) => [shift.originalDate, shift.actualDate] as const));
+): Map<string, string> =>
+  new Map(shifts.map((shift) => [shift.originalDate, shift.actualDate] as const));
 
 type HolidayRuleDirection = 'advance' | 'postpone';
 type HolidayRuleCoverage = 'single_pickup' | 'rest_of_week';
@@ -227,7 +228,30 @@ type TourOccurrenceEntryInternal = Readonly<{
   readonly shifted: boolean;
   readonly originalDate: string | null;
   readonly shiftedByHoliday: boolean;
+  readonly holidayNames: readonly string[];
 }>;
+
+const resolveHolidayRulesForYear = (scheduling: WasteManagementSchedulingOverview, year: number) =>
+  (scheduling.holidayRules ?? [])
+    .map((rule) => ({ ...rule, holidayDate: normalizeDateOnly(rule.holidayDate) }))
+    .filter((rule) => rule.holidayDate.startsWith(`${year}-`) && rule.scope && rule.strategy)
+    .map((rule) => ({
+      triggerDate: rule.holidayDate,
+      holidayName: rule.holidayName,
+      direction:
+        rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
+      coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',
+    }))
+    .filter(
+      (
+        rule
+      ): rule is {
+        readonly triggerDate: string;
+        readonly holidayName: string;
+        readonly direction: HolidayRuleDirection;
+        readonly coverage: HolidayRuleCoverage;
+      } => rule.direction !== null
+    );
 
 const calculateTourOccurrenceEntriesForYearInternal = (
   tour: WasteTourRecord,
@@ -239,29 +263,17 @@ const calculateTourOccurrenceEntriesForYearInternal = (
   collectCustomTourDates(results, tour, year);
 
   const tourShiftMap = buildShiftMap(
-    (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id)
+    resolveEffectiveWasteTourDateShiftsForYear(
+      (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
+      year
+    )
   );
   const globalShiftMap = buildShiftMap(
-    (scheduling.globalDateShifts ?? []).filter((shift) => !shift.tourIds || shift.tourIds.includes(tour.id))
+    (scheduling.globalDateShifts ?? []).filter(
+      (shift) => !shift.tourIds || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
+    )
   );
-  const holidayRules = (scheduling.holidayRules ?? [])
-    .map((rule) => ({
-      ...rule,
-      holidayDate: normalizeDateOnly(rule.holidayDate),
-    }))
-    .filter((rule) => rule.holidayDate.startsWith(`${year}-`) && rule.scope && rule.strategy)
-    .map((rule) => ({
-      triggerDate: rule.holidayDate,
-      direction: rule.strategy === 'advance' ? 'advance' : rule.strategy === 'postpone' ? 'postpone' : null,
-      coverage: rule.scope === 'full-week' ? 'rest_of_week' : 'single_pickup',
-    }))
-    .filter(
-      (rule): rule is {
-        readonly triggerDate: string;
-        readonly direction: HolidayRuleDirection;
-        readonly coverage: HolidayRuleCoverage;
-      } => rule.direction !== null
-    );
+  const holidayRules = resolveHolidayRulesForYear(scheduling, year);
 
   const shiftedResults = new Map<
     string,
@@ -269,24 +281,29 @@ const calculateTourOccurrenceEntriesForYearInternal = (
       readonly shifted: boolean;
       readonly originalDate: string | null;
       readonly shiftedByHoliday: boolean;
+      readonly holidayNames: readonly string[];
     }
   >();
   for (const date of results) {
     const manuallyShifted = tourShiftMap.get(date) ?? globalShiftMap.get(date) ?? date;
-    let shiftedByHoliday = false;
+    const holidayNames: string[] = [];
     const holidayShifted = holidayRules.reduce((currentDate, rule) => {
       const nextDate = applyHolidayRule(currentDate, rule);
       if (nextDate !== currentDate) {
-        shiftedByHoliday = true;
+        holidayNames.push(rule.holidayName);
       }
       return nextDate;
     }, manuallyShifted);
     const shifted = holidayShifted !== date;
     const previous = shiftedResults.get(holidayShifted);
+    const combinedHolidayNames = Array.from(
+      new Set([...(previous?.holidayNames ?? []), ...holidayNames])
+    );
     shiftedResults.set(holidayShifted, {
       shifted: previous?.shifted === true || shifted,
       originalDate: previous?.originalDate ?? (shifted ? date : null),
-      shiftedByHoliday: previous?.shiftedByHoliday === true || shiftedByHoliday,
+      shiftedByHoliday: combinedHolidayNames.length > 0,
+      holidayNames: combinedHolidayNames,
     });
   }
 
@@ -298,7 +315,100 @@ const calculateTourOccurrenceEntriesForYearInternal = (
       shifted: entry.shifted,
       originalDate: entry.originalDate,
       shiftedByHoliday: entry.shiftedByHoliday,
+      holidayNames: entry.holidayNames,
     }));
+};
+
+type ManualTourShift = WasteManagementSchedulingOverview['tourDateShifts'][number];
+type GlobalTourShift = WasteManagementSchedulingOverview['globalDateShifts'][number];
+
+export type TourShiftDetail =
+  | Readonly<{
+      id: string;
+      source: 'tour' | 'global';
+      originalDate: string;
+      actualDate: string;
+      reasonType: ManualTourShift['reasonType'] | GlobalTourShift['reasonType'];
+      reasonKey: string | undefined;
+      description: string | undefined;
+    }>
+  | Readonly<{
+      id: string;
+      source: 'holiday';
+      originalDate: string;
+      actualDate: string;
+      holidayNames: readonly string[];
+    }>;
+
+const resolveHolidayShiftDetails = (
+  tour: WasteTourRecord,
+  scheduling: WasteManagementSchedulingOverview
+): readonly TourShiftDetail[] => {
+  const holidayYears = Array.from(
+    new Set(
+      (scheduling.holidayRules ?? [])
+        .map((rule) => normalizeDateOnly(rule.holidayDate))
+        .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
+        .map((value) => Number(value.slice(0, 4)))
+        .filter((value) => Number.isInteger(value))
+    )
+  );
+
+  return holidayYears.flatMap((year) =>
+    calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling)
+      .filter(
+        (entry): entry is typeof entry & { readonly originalDate: string } =>
+          entry.shiftedByHoliday && entry.originalDate !== null
+      )
+      .map((entry) => ({
+        id: `holiday:${entry.originalDate}:${entry.date}`,
+        source: 'holiday' as const,
+        originalDate: entry.originalDate,
+        actualDate: entry.date,
+        holidayNames: entry.holidayNames,
+      }))
+  );
+};
+
+export const resolveTourShiftDetails = (
+  tour: WasteTourRecord,
+  scheduling: WasteManagementSchedulingOverview | null
+): readonly TourShiftDetail[] => {
+  if (!scheduling) {
+    return [];
+  }
+
+  const tourShifts: readonly TourShiftDetail[] = (scheduling.tourDateShifts ?? [])
+    .filter((shift) => shift.tourId === tour.id)
+    .map((shift) => ({
+      id: shift.id,
+      source: 'tour',
+      originalDate: shift.originalDate,
+      actualDate: shift.actualDate,
+      reasonType: shift.reasonType,
+      reasonKey: shift.reasonKey,
+      description: shift.description,
+    }));
+  const globalShifts: readonly TourShiftDetail[] = (scheduling.globalDateShifts ?? [])
+    .filter(
+      (shift) =>
+        shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
+    )
+    .map((shift) => ({
+      id: shift.id,
+      source: 'global',
+      originalDate: shift.originalDate,
+      actualDate: shift.actualDate,
+      reasonType: shift.reasonType,
+      reasonKey: shift.reasonKey,
+      description: shift.description,
+    }));
+
+  return [...tourShifts, ...globalShifts, ...resolveHolidayShiftDetails(tour, scheduling)].sort(
+    (left, right) =>
+      left.originalDate.localeCompare(right.originalDate) ||
+      left.actualDate.localeCompare(right.actualDate)
+  );
 };
 
 export const calculateTourOccurrencesForYear = (
@@ -317,30 +427,10 @@ export const calculateTourOccurrenceEntriesForYear = (
   readonly shifted: boolean;
   readonly originalDate: string | null;
 }>[] =>
-  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map(({ date, shifted, originalDate }) => ({
-    date,
-    shifted,
-    originalDate,
-  }));
-
-export const countHolidayShiftedTourOccurrences = (
-  tour: WasteTourRecord,
-  scheduling: WasteManagementSchedulingOverview
-): number => {
-  const holidayYears = Array.from(
-    new Set(
-      (scheduling.holidayRules ?? [])
-        .map((rule) => normalizeDateOnly(rule.holidayDate))
-        .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value))
-        .map((value) => Number(value.slice(0, 4)))
-        .filter((value) => Number.isInteger(value))
-    )
+  calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).map(
+    ({ date, shifted, originalDate }) => ({
+      date,
+      shifted,
+      originalDate,
+    })
   );
-
-  return holidayYears.reduce(
-    (sum, year) =>
-      sum +
-      calculateTourOccurrenceEntriesForYearInternal(tour, year, scheduling).filter((entry) => entry.shiftedByHoliday).length,
-    0
-  );
-};

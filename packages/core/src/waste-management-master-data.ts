@@ -3,6 +3,7 @@ export * from './waste-management/master-data-localized-text.js';
 export * from './waste-management/master-data-addresses.js';
 export * from './waste-management/master-data-tours.js';
 export * from './waste-management/master-data-tour-validity.js';
+export * from './waste-management/master-data-tour-date-shifts.js';
 export * from './waste-management/master-data-scheduling.js';
 export * from './waste-management/master-data-holiday-rule-status.js';
 export * from './waste-management/master-data-overview.js';

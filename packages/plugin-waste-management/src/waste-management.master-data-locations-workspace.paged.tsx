@@ -40,6 +40,7 @@ export const WasteMasterDataPagedLocationsTable = ({
   | 'onDeleteLocation'
   | 'onDeleteLocations'
   | 'onOpenEditLocation'
+  | 'onOpenEditTour'
   | 'getLocationLabel'
 >) => {
   const pagedCollectionLocations = createPagedItems({ items: collectionLocations, page, pageSize });

@@ -35,7 +35,8 @@ const createDateTimeFormatter = (
     ...options,
   });
 
-const datetimeLocalPattern = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/;
+const datetimeLocalPattern =
+  /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/;
 
 const parseDate = (value?: string): Date | null => {
   if (!value) {
@@ -48,7 +49,8 @@ const parseDate = (value?: string): Date | null => {
 
 const formatEditorDateTimeParts = (date: Date) => {
   const parts = editorDateTimePartsFormatter.formatToParts(date);
-  const readPart = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value ?? '';
+  const readPart = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
 
   return {
     year: readPart('year'),
@@ -85,8 +87,9 @@ const inferEditorLocaleFromEnvironment = (): string | undefined => {
   return documentLocale;
 };
 
-const resolveEditorLocale = (locale?: string): string => {
-  const candidate = compactOptionalString(locale) ?? inferEditorLocaleFromEnvironment() ?? defaultEditorLocale;
+export const resolveEditorLocale = (locale?: string): string => {
+  const candidate =
+    compactOptionalString(locale) ?? inferEditorLocaleFromEnvironment() ?? defaultEditorLocale;
 
   try {
     return Intl.DateTimeFormat.supportedLocalesOf(candidate)[0] ?? defaultEditorLocale;
@@ -95,7 +98,10 @@ const resolveEditorLocale = (locale?: string): string => {
   }
 };
 
-export const formatDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
+export const formatDateTimeInEditorTimeZone = (
+  value?: string,
+  locale?: string
+): string | undefined => {
   const date = parseDate(value);
   return date
     ? createDateTimeFormatter(resolveEditorLocale(locale), {
@@ -109,7 +115,10 @@ export const formatDateTimeInEditorTimeZone = (value?: string, locale?: string):
     : value;
 };
 
-export const formatTechnicalDateTimeInEditorTimeZone = (value?: string, locale?: string): string | undefined => {
+export const formatTechnicalDateTimeInEditorTimeZone = (
+  value?: string,
+  locale?: string
+): string | undefined => {
   const date = parseDate(value);
   return date
     ? createDateTimeFormatter(resolveEditorLocale(locale), {
@@ -175,7 +184,11 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
   const naiveUtcTime = Date.UTC(year, month - 1, day, hour, minute);
   const searchWindowMs = 4 * 60 * 60 * 1000;
 
-  for (let currentMs = naiveUtcTime - searchWindowMs; currentMs <= naiveUtcTime + searchWindowMs; currentMs += 60_000) {
+  for (
+    let currentMs = naiveUtcTime - searchWindowMs;
+    currentMs <= naiveUtcTime + searchWindowMs;
+    currentMs += 60_000
+  ) {
     const isoValue = new Date(currentMs).toISOString();
     if (toDatetimeLocalValue(isoValue) === value) {
       return isoValue;
@@ -185,7 +198,9 @@ export const fromDatetimeLocalValue = (value: string, referenceValue?: string): 
   return '';
 };
 
-export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[]): readonly HostMediaFieldOption[] => {
+export const toHostMediaFieldOptions = (
+  assets: readonly HostMediaAssetListItem[]
+): readonly HostMediaFieldOption[] => {
   const seenAssetIds = new Set<string>();
 
   return assets.flatMap((asset) => {
@@ -193,10 +208,12 @@ export const toHostMediaFieldOptions = (assets: readonly HostMediaAssetListItem[
       return [];
     }
     seenAssetIds.add(asset.id);
-    return [{
-      assetId: asset.id,
-      label: String(asset.metadata?.title ?? asset.id),
-    }];
+    return [
+      {
+        assetId: asset.id,
+        label: String(asset.metadata?.title ?? asset.id),
+      },
+    ];
   });
 };
 

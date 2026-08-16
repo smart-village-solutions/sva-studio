@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
+  useWasteSchedulingCreateRouteHydration,
   useWasteSchedulingEditRouteHydration,
   useWasteSchedulingSuccessRedirect,
 } from './waste-management.scheduling-panel.effects.js';
@@ -16,12 +17,24 @@ import {
   WasteSchedulingTourFormView,
 } from './waste-management.scheduling-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { resolveTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
 
-export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
+export const WasteSchedulingPanel = ({
+  search,
+  rawSearch = search,
+}: {
+  readonly search: WasteManagementSearchParams;
+  readonly rawSearch?: Readonly<Record<string, unknown>>;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const controller = useWasteSchedulingViewModel(pt, search);
+  const tourShiftCreateContext = resolveTourShiftCreateContext(
+    rawSearch,
+    controller.loading ? undefined : controller.availableTours
+  );
   useWasteSchedulingSuccessRedirect({ controller, navigate, search });
+  useWasteSchedulingCreateRouteHydration({ controller, context: tourShiftCreateContext, search });
   useWasteSchedulingEditRouteHydration({ controller, navigate, search });
 
   if (controller.loading) {
@@ -37,7 +50,11 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
   if (search.schedulingView === 'create') {
     return (
       <>
-        <WasteSchedulingCreateFormView controller={controller} search={search} />
+        <WasteSchedulingCreateFormView
+          controller={controller}
+          search={search}
+          tourShiftCreateContext={tourShiftCreateContext}
+        />
         {dialogs}
       </>
     );

@@ -58,6 +58,7 @@ describe('waste master-data repository contract', () => {
       'listWasteTourDateShifts',
       'listWasteTourDateShiftsByTourId',
       'getWasteTourDateShiftById',
+      'insertWasteTourDateShift',
       'upsertWasteTourDateShift',
       'deleteWasteTourDateShift',
       'listWasteGlobalDateShifts',

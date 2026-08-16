@@ -36,7 +36,9 @@ const mapWasteTourDateShiftRow = (row: WasteTourDateShiftRow): WasteTourDateShif
   updatedAt: row.updated_at,
 });
 
-const buildTourDateShiftListStatement = (filter: WasteTourDateShiftListFilter = {}): SqlStatement => {
+const buildTourDateShiftListStatement = (
+  filter: WasteTourDateShiftListFilter = {}
+): SqlStatement => {
   const values: SqlPrimitive[] = [];
   const conditions: string[] = [];
 
@@ -55,8 +57,8 @@ const buildTourDateShiftListStatement = (filter: WasteTourDateShiftListFilter = 
 SELECT
   id::text,
   tour_id::text,
-  original_date,
-  actual_date,
+  to_char(original_date, 'YYYY-MM-DD') AS original_date,
+  to_char(actual_date, 'YYYY-MM-DD') AS actual_date,
   has_year,
   reason_type,
   reason_key,
@@ -77,8 +79,8 @@ const buildTourDateShiftSelectStatement = (id: string): SqlStatement => ({
 SELECT
   id::text,
   tour_id::text,
-  original_date,
-  actual_date,
+  to_char(original_date, 'YYYY-MM-DD') AS original_date,
+  to_char(actual_date, 'YYYY-MM-DD') AS actual_date,
   has_year,
   reason_type,
   reason_key,
@@ -93,10 +95,7 @@ LIMIT 1;
   values: [id],
 });
 
-const buildTourDateShiftUpsertStatement = (
-  input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
-): SqlStatement => ({
-  text: `
+const tourDateShiftInsertSql = `
 INSERT INTO waste_tour_date_shifts (
   id,
   tour_id,
@@ -108,7 +107,34 @@ INSERT INTO waste_tour_date_shifts (
   follow_up_mode,
   description
 )
-VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1::uuid, $2::uuid, $3::date, $4::date, $5, $6, $7, $8, $9)`;
+
+const buildTourDateShiftValues = (
+  input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
+): readonly SqlPrimitive[] => [
+  input.id,
+  input.tourId,
+  input.originalDate,
+  input.actualDate,
+  input.hasYear,
+  input.reasonType ?? null,
+  input.reasonKey ?? null,
+  input.followUpMode ?? null,
+  input.description ?? null,
+];
+
+const buildTourDateShiftInsertStatement = (
+  input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => ({
+  text: `${tourDateShiftInsertSql};`,
+  values: buildTourDateShiftValues(input),
+});
+
+const buildTourDateShiftUpsertStatement = (
+  input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
+): SqlStatement => {
+  return {
+    text: `${tourDateShiftInsertSql}
 ON CONFLICT (id) DO UPDATE
 SET tour_id = EXCLUDED.tour_id,
     original_date = EXCLUDED.original_date,
@@ -118,20 +144,10 @@ SET tour_id = EXCLUDED.tour_id,
     reason_key = EXCLUDED.reason_key,
     follow_up_mode = EXCLUDED.follow_up_mode,
     description = EXCLUDED.description,
-    updated_at = NOW();
-`,
-  values: [
-    input.id,
-    input.tourId,
-    input.originalDate,
-    input.actualDate,
-    input.hasYear,
-    input.reasonType ?? null,
-    input.reasonKey ?? null,
-    input.followUpMode ?? null,
-    input.description ?? null,
-  ],
-});
+    updated_at = NOW();`,
+    values: buildTourDateShiftValues(input),
+  };
+};
 
 const buildTourDateShiftDeleteStatement = (id: string): SqlStatement => ({
   text: `
@@ -148,20 +164,30 @@ export const createWasteTourDateShiftRepositoryPart = (
   | 'listWasteTourDateShifts'
   | 'listWasteTourDateShiftsByTourId'
   | 'getWasteTourDateShiftById'
+  | 'insertWasteTourDateShift'
   | 'upsertWasteTourDateShift'
   | 'deleteWasteTourDateShift'
 > => ({
   async listWasteTourDateShifts(filter) {
-    const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftListStatement(filter));
+    const result = await executor.execute<WasteTourDateShiftRow>(
+      buildTourDateShiftListStatement(filter)
+    );
     return result.rows.map(mapWasteTourDateShiftRow);
   },
   async listWasteTourDateShiftsByTourId(tourId) {
-    const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftListStatement({ tourId }));
+    const result = await executor.execute<WasteTourDateShiftRow>(
+      buildTourDateShiftListStatement({ tourId })
+    );
     return result.rows.map(mapWasteTourDateShiftRow);
   },
   async getWasteTourDateShiftById(id) {
-    const result = await executor.execute<WasteTourDateShiftRow>(buildTourDateShiftSelectStatement(id));
+    const result = await executor.execute<WasteTourDateShiftRow>(
+      buildTourDateShiftSelectStatement(id)
+    );
     return result.rows[0] ? mapWasteTourDateShiftRow(result.rows[0]) : null;
+  },
+  async insertWasteTourDateShift(input) {
+    await executor.execute(buildTourDateShiftInsertStatement(input));
   },
   async upsertWasteTourDateShift(input) {
     await executor.execute(buildTourDateShiftUpsertStatement(input));
@@ -174,6 +200,7 @@ export const createWasteTourDateShiftRepositoryPart = (
 export const wasteTourDateShiftStatements = {
   listWasteTourDateShifts: buildTourDateShiftListStatement,
   getWasteTourDateShiftById: buildTourDateShiftSelectStatement,
+  insertWasteTourDateShift: buildTourDateShiftInsertStatement,
   upsertWasteTourDateShift: buildTourDateShiftUpsertStatement,
   deleteWasteTourDateShift: buildTourDateShiftDeleteStatement,
 } as const;

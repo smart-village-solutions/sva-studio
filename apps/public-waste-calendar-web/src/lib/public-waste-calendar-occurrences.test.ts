@@ -62,6 +62,7 @@ describe('public waste calendar occurrences', () => {
           tourId: 'tour-bio',
           originalDate: '2026-06-03',
           actualDate: '2026-06-04',
+          hasYear: true,
           description: 'Verschoben wegen Feiertag',
         },
       ],
@@ -199,6 +200,7 @@ describe('public waste calendar occurrences', () => {
           tourId: 'tour-rest',
           originalDate: '2025-12-31',
           actualDate: '2026-01-02',
+          hasYear: true,
           description: 'Verschoben nach Neujahr',
         },
       ],
@@ -318,5 +320,47 @@ describe('public waste calendar occurrences', () => {
         note: null,
       },
     ]);
+  });
+
+  it('prefers a year-specific tour shift over an annual base rule', () => {
+    const entries = calculatePublicWasteCalendarEntries({
+      referenceDate: '2026-05-01',
+      selection: { cityId: 'city-1', streetId: 'street-1' },
+      linkedTours: [
+        {
+          linkId: 'link-1',
+          locationId: 'location-1',
+          tour: {
+            id: 'tour-1',
+            name: 'Bio',
+            recurrence: 'yearly',
+            firstDate: '2025-05-01',
+            endDate: '2027-05-01',
+            fractions: [{ id: 'bio', label: 'Bio' }],
+          },
+        },
+      ],
+      tourDateShifts: [
+        {
+          id: 'annual',
+          tourId: 'tour-1',
+          originalDate: '2024-05-01',
+          actualDate: '2024-05-02',
+          hasYear: false,
+        },
+        {
+          id: 'specific',
+          tourId: 'tour-1',
+          originalDate: '2026-05-01',
+          actualDate: '2026-05-04',
+          hasYear: true,
+        },
+      ],
+      globalDateShifts: [],
+    });
+
+    expect(entries.map((entry) => entry.date)).toContain('2026-05-04');
+    expect(entries.map((entry) => entry.date)).toContain('2025-05-02');
+    expect(entries.map((entry) => entry.date)).not.toContain('2026-05-02');
   });
 });

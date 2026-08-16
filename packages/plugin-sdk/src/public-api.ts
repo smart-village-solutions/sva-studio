@@ -1,9 +1,10 @@
-export type { RouteFactory } from '@sva/core';
+export type { EffectiveWasteTourDateShift, RouteFactory } from '@sva/core';
 export * from './content-media-contracts-public-api.js';
 export * from './host-media-public-api.js';
 export * from './data-exchange-public-api.js';
 export {
   isWasteTourValidityApplicable,
+  resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
@@ -104,13 +105,12 @@ export {
 export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
 export { defineMediaPickerDefinition } from './media-picker.js';
 export type { ContentMediaUploadPhase, HostMediaFieldOption } from './content-ui-utils.js';
+// prettier-ignore
 export {
-  compactOptionalString, contentMediaUploadPhaseMessageKey,
-  formatDateTimeInEditorTimeZone, formatTechnicalDateTimeInEditorTimeZone,
-  findHostMediaReferenceAssetId, fromDatetimeLocalValue, getHostMediaAssetPersistentUrl,
-  isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
-  readHostMediaAssetFileName, readHostMediaAssetTitle,
-  toDatetimeLocalValue, toHostMediaFieldOptions,
+  compactOptionalString, contentMediaUploadPhaseMessageKey, formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone, findHostMediaReferenceAssetId, fromDatetimeLocalValue,
+  getHostMediaAssetPersistentUrl, isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
+  readHostMediaAssetFileName, readHostMediaAssetTitle, resolveEditorLocale, toDatetimeLocalValue, toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
 export type {

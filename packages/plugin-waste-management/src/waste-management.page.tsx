@@ -9,7 +9,10 @@ import {
   type WasteManagementSearchParams,
   type WasteManagementTabId,
 } from './search-params.js';
-import { getWasteManagementSettings, startWasteManagementMainserverSync } from './waste-management.api.js';
+import {
+  getWasteManagementSettings,
+  startWasteManagementMainserverSync,
+} from './waste-management.api.js';
 import { WasteManagementPageDescription } from './waste-management.page.description.js';
 import { useWasteManagementUiAccess } from './waste-management.ui-access.js';
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
@@ -70,7 +73,9 @@ const useWasteManagementVisibleTabRedirect = (
   }, [navigate, search, uiAccess.isResolved, uiAccess.visibleTabIds]);
 };
 
-const useWasteManagementCalendarWebUrl = (uiAccess: ReturnType<typeof useWasteManagementUiAccess>) => {
+const useWasteManagementCalendarWebUrl = (
+  uiAccess: ReturnType<typeof useWasteManagementUiAccess>
+) => {
   const [calendarWebUrl, setCalendarWebUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -184,6 +189,7 @@ export const WasteManagementPage = () => {
       <WasteManagementPageTabs
         pt={pt}
         search={search}
+        rawSearch={rawSearch as Record<string, unknown>}
         access={uiAccess}
         visibleTabIds={uiAccess.visibleTabIds}
         onTabChange={(value) => updateSearch(navigate, search, { tab: value })}

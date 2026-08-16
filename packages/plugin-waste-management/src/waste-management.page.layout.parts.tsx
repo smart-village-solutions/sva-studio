@@ -45,12 +45,19 @@ const wasteManagementTabIconMap = {
 
 export const createWasteManagementTabContentMap = (
   search: WasteManagementSearchParams,
-  access: WasteManagementUiAccess
+  access: WasteManagementUiAccess,
+  rawSearch: Readonly<Record<string, unknown>> = search
 ): Record<WasteManagementTabId, ReactNode> => ({
   fractions: <WasteMasterDataPanel search={search} tab="fractions" />,
-  tours: <WasteToursPanel search={search} canDuplicateTour={access.canDuplicateTour} />,
+  tours: (
+    <WasteToursPanel
+      search={search}
+      canDuplicateTour={access.canDuplicateTour}
+      canManageScheduling={access.canManageScheduling}
+    />
+  ),
   locations: <WasteMasterDataPanel search={search} tab="locations" />,
-  scheduling: <WasteSchedulingPanel search={search} />,
+  scheduling: <WasteSchedulingPanel search={search} rawSearch={rawSearch} />,
   output: <WasteOutputPanel />,
   settings: <WasteSettingsPanel />,
   tools: <WasteToolsPanel access={access} overview={<WasteOverviewPanel search={search} />} />,

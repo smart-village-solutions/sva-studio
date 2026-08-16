@@ -9,23 +9,65 @@ import { TourYearCalendarDialog } from '../src/waste-management.tours-year-calen
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
+  resolveEditorLocale: () => (document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE'),
+  isWasteTourValidityApplicable: (tour: { recurrence?: string; customRecurrenceId?: string }) =>
+    Boolean(tour.customRecurrenceId) ||
+    ['weekly', 'biweekly', 'fourweekly', 'yearly'].includes(tour.recurrence ?? ''),
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
   calculateTourOccurrenceEntriesForYear: calculateTourOccurrenceEntriesForYearMock,
 }));
 
+vi.mock('../src/waste-management.tour-shift-create-link.js', () => ({
+  WasteTourShiftCreateLink: ({
+    label,
+    originalDate,
+    children,
+  }: {
+    readonly label: string;
+    readonly originalDate?: string;
+    readonly children?: React.ReactNode;
+  }) => (
+    <a
+      href={`/plugins/waste-management?originalDate=${originalDate ?? ''}`}
+      target="_blank"
+      aria-label={label}
+    >
+      {children ?? label}
+    </a>
+  ),
+}));
+
+const toursSearch = {
+  tab: 'tours' as const,
+  masterDataTab: 'locations' as const,
+  fractionsView: 'list' as const,
+  toursView: 'list' as const,
+  locationsView: 'list' as const,
+  schedulingView: 'list' as const,
+  q: '',
+  page: 1,
+  pageSize: 25,
+  status: 'all' as const,
+  tourValidityPeriod: 'all' as const,
+  shiftContext: 'all' as const,
+  fractionsSortBy: 'name' as const,
+  fractionsSortDirection: 'asc' as const,
+};
+
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Dialog: ({
-    open,
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div data-testid="dialog-root">{children}</div> : null,
+  DialogContent: ({
     children,
+    className,
   }: {
-    readonly open: boolean;
     readonly children: React.ReactNode;
-  }) => (open ? <div data-testid="dialog-root">{children}</div> : null),
-  DialogContent: ({ children, className }: { readonly children: React.ReactNode; readonly className?: string }) => <div className={className}>{children}</div>,
+    readonly className?: string;
+  }) => <div className={className}>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
@@ -36,6 +78,7 @@ describe('TourYearCalendarDialog', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-10T09:00:00.000Z'));
     calculateTourOccurrenceEntriesForYearMock.mockReset();
+    document.documentElement.lang = 'de';
   });
 
   afterEach(() => {
@@ -56,8 +99,10 @@ describe('TourYearCalendarDialog', () => {
     const { container } = render(
       <TourYearCalendarDialog
         open
-        tour={{ id: 'tour-1', name: 'Restmüll Nord' } as never}
+        tour={{ id: 'tour-1', name: 'Restmüll Nord', recurrence: 'weekly' } as never}
         scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
+        canManageScheduling
+        search={toursSearch}
         onOpenChange={() => undefined}
       />
     );
@@ -73,16 +118,36 @@ describe('TourYearCalendarDialog', () => {
       expect.anything()
     );
 
-    const highlightedDays = Array.from(container.querySelectorAll('.bg-primary')).map((element) => element.textContent?.trim());
-    expect(highlightedDays).toContain('15');
+    const highlightedDays = Array.from(container.querySelectorAll('.bg-primary')).map((element) =>
+      element.textContent?.trim()
+    );
+    expect(highlightedDays.some((value) => value.startsWith('15'))).toBe(true);
     expect(container.querySelector('[data-shifted="false"]')?.textContent).toContain('15');
     expect(container.querySelector('[data-shifted="true"]')?.textContent).toContain('2');
     const shiftedDay = container.querySelector('[data-shifted="true"]');
-    expect(shiftedDay?.getAttribute('style')).toContain('border-color: #009e8f');
-    expect(shiftedDay?.getAttribute('style')).toContain('background-color: rgba(0, 158, 143, 0.16)');
-    expect(shiftedDay?.getAttribute('title')).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026');
+    expect(shiftedDay?.getAttribute('style')).toBeNull();
+    expect(shiftedDay?.className).toContain('border-info/60');
+    expect(shiftedDay?.getAttribute('tabindex')).toBe('0');
+    expect(shiftedDay?.getAttribute('aria-describedby')).toBe(
+      shiftedDay?.querySelector('.sr-only')?.id
+    );
+    expect(shiftedDay?.querySelector('[aria-hidden="true"]')?.className).toContain(
+      'group-focus:block'
+    );
+    expect(shiftedDay?.querySelector('.sr-only')?.textContent).toBe(
+      'tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026'
+    );
+    const shiftLinks = screen.getAllByRole('link', {
+      name: /tours\.actions\.shiftDateAccessible/,
+    });
+    expect(shiftLinks).toHaveLength(1);
+    expect(shiftLinks[0]?.getAttribute('href')).toBe(
+      '/plugins/waste-management?originalDate=2026-01-15'
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.previousYear' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.yearCalendar.actions.previousYear' })
+    );
     expect(screen.getByText('tours.yearCalendar.meta.year:2025')).toBeTruthy();
     expect(screen.getByText('2025-12-30')).toBeTruthy();
 
@@ -95,12 +160,7 @@ describe('TourYearCalendarDialog', () => {
     const onOpenChange = vi.fn();
 
     const { rerender } = render(
-      <TourYearCalendarDialog
-        open
-        tour={null}
-        scheduling={null}
-        onOpenChange={onOpenChange}
-      />
+      <TourYearCalendarDialog open tour={null} scheduling={null} onOpenChange={onOpenChange} />
     );
 
     expect(screen.getByText('tours.yearCalendar.descriptionFallback')).toBeTruthy();
@@ -120,12 +180,7 @@ describe('TourYearCalendarDialog', () => {
     expect(screen.queryByTestId('dialog-root')).toBeNull();
 
     rerender(
-      <TourYearCalendarDialog
-        open
-        tour={null}
-        scheduling={null}
-        onOpenChange={onOpenChange}
-      />
+      <TourYearCalendarDialog open tour={null} scheduling={null} onOpenChange={onOpenChange} />
     );
     expect(screen.getByText('tours.yearCalendar.meta.year:2026')).toBeTruthy();
     expect(calculateTourOccurrenceEntriesForYearMock).not.toHaveBeenCalled();
@@ -146,9 +201,31 @@ describe('TourYearCalendarDialog', () => {
       />
     );
 
-    expect(container.querySelector('[data-shifted="true"]')?.getAttribute('title')).toBe(
-      'tours.yearCalendar.meta.shiftedReplacementFor:01.01.2026'
-    );
+    expect(
+      container.querySelector('[data-shifted="true"]')?.querySelector('.sr-only')?.textContent
+    ).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01.01.2026');
     expect(container.querySelector('[data-shifted="false"]')?.getAttribute('title')).toBeNull();
+  });
+
+  it('formats dates, month names, and weekday labels with the active document locale', () => {
+    document.documentElement.lang = 'en';
+    calculateTourOccurrenceEntriesForYearMock.mockReturnValue([
+      { date: '2026-03-02', shifted: true, originalDate: '2026-03-01' },
+    ]);
+
+    const { container } = render(
+      <TourYearCalendarDialog
+        open
+        tour={{ id: 'tour-1', name: 'Residual waste', recurrence: 'weekly' } as never}
+        scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
+        onOpenChange={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'March' })).toBeTruthy();
+    expect(screen.getAllByText('Mon').length).toBeGreaterThan(0);
+    expect(
+      container.querySelector('[data-shifted="true"]')?.querySelector('.sr-only')?.textContent
+    ).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01/03/2026');
   });
 });

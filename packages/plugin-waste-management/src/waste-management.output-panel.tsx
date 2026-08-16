@@ -1,5 +1,10 @@
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { StudioErrorState, StudioLoadingState, useStudioSaveFeedback } from '@sva/studio-ui-react';
+import {
+  isPersistableContentMediaUrl,
+  StudioErrorState,
+  StudioLoadingState,
+  useStudioSaveFeedback,
+} from '@sva/studio-ui-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import type {
   WasteManagementEmailReminderConfig,
@@ -66,6 +71,7 @@ export const WasteOutputPanel = () => {
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [emailMessage, setEmailMessage] = useState<StatusMessage | null>(null);
   const [brandingAssetUrl, setBrandingAssetUrl] = useState('');
+  const [brandingAssetUrlError, setBrandingAssetUrlError] = useState<string | undefined>();
   const [contactBlock, setContactBlock] = useState('');
   const [emailReminderConfig, setEmailReminderConfig] =
     useState<WasteManagementEmailReminderConfig | null>(null);
@@ -75,6 +81,7 @@ export const WasteOutputPanel = () => {
   useEffect(() => {
     const nextMailTransportOptions = getMailTransportOptions(settings?.availableInterfaces ?? []);
     setBrandingAssetUrl(settings?.pdfBrandingAssetUrl ?? '');
+    setBrandingAssetUrlError(undefined);
     setContactBlock(settings?.pdfContactBlock ?? '');
     setEmailReminderConfig(
       normalizeEmailReminderConfig({
@@ -105,6 +112,12 @@ export const WasteOutputPanel = () => {
       return;
     }
 
+    const compactBrandingAssetUrl = compactOptionalString(brandingAssetUrl);
+    if (compactBrandingAssetUrl && !isPersistableContentMediaUrl(compactBrandingAssetUrl)) {
+      setBrandingAssetUrlError(pt('output.pdf.messages.invalidBrandingAssetUrl'));
+      return;
+    }
+
     const operationId = pdfSaveFeedback.beginSaving();
     setMessage(null);
 
@@ -115,7 +128,7 @@ export const WasteOutputPanel = () => {
         enabled: settings.enabled,
         selectedInterfaceId: settings.selectedInterfaceId,
         calendarWebUrl: settings.calendarWebUrl,
-        pdfBrandingAssetUrl: compactOptionalString(brandingAssetUrl),
+        pdfBrandingAssetUrl: compactBrandingAssetUrl,
         pdfContactBlock: compactOptionalString(contactBlock),
         emailReminderConfig: settings.emailReminderConfig ?? undefined,
         holidayStateCode: settings.holidayStateCode,
@@ -146,6 +159,12 @@ export const WasteOutputPanel = () => {
       return;
     }
 
+    const compactBrandingAssetUrl = compactOptionalString(brandingAssetUrl);
+    if (compactBrandingAssetUrl && !isPersistableContentMediaUrl(compactBrandingAssetUrl)) {
+      setBrandingAssetUrlError(pt('output.pdf.messages.invalidBrandingAssetUrl'));
+      return;
+    }
+
     const operationId = emailSaveFeedback.beginSaving();
     setEmailMessage(null);
 
@@ -153,7 +172,7 @@ export const WasteOutputPanel = () => {
       const nextSettings = await persistEmailReminderSettings({
         settings,
         emailReminderConfig,
-        brandingAssetUrl,
+        brandingAssetUrl: compactBrandingAssetUrl ?? '',
         contactBlock,
       });
       setSettings(nextSettings);
@@ -184,11 +203,13 @@ export const WasteOutputPanel = () => {
       <StatusNotice message={emailMessage} />
       <WasteOutputConfigurationSection
         brandingAssetUrl={brandingAssetUrl}
+        brandingAssetUrlError={brandingAssetUrlError}
         contactBlock={contactBlock}
         onSubmit={onSubmit}
         saveStatus={pdfSaveFeedback.status}
         setBrandingAssetUrl={(value) => {
           pdfSaveFeedback.markDirty();
+          setBrandingAssetUrlError(undefined);
           setBrandingAssetUrl(value);
         }}
         setContactBlock={(value) => {

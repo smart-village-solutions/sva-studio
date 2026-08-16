@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Page, Route } from '@playwright/test';
+import type { BrowserContext, Page, Route } from '@playwright/test';
 
 import { registerSharedIamRoutes } from './studio-shell.helpers';
 
@@ -111,10 +111,13 @@ type WasteHarness = {
 
 const createApiItem = <T>(data: T) => JSON.stringify({ data });
 
-const mockSharedShellRequests = async (page: Page, input: {
-  readonly instanceId: string;
-  readonly permissionActions: readonly string[];
-}) => {
+const mockSharedShellRequests = async (
+  page: Page | BrowserContext,
+  input: {
+    readonly instanceId: string;
+    readonly permissionActions: readonly string[];
+  }
+) => {
   await page.route('**/auth/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -156,18 +159,21 @@ const mockSharedShellRequests = async (page: Page, input: {
   await registerSharedIamRoutes(page);
 };
 
-const mockWasteFacade = async (page: Page, input: {
-  readonly instanceId: string;
-  readonly settings: WasteSettingsState;
-  readonly fractions: WasteFractionState[];
-  readonly tours: WasteTourState[];
-  readonly regions?: WasteRegionState[];
-  readonly cities?: WasteCityState[];
-  readonly streets?: WasteStreetState[];
-  readonly houseNumbers?: WasteHouseNumberState[];
-  readonly collectionLocations?: WasteCollectionLocationState[];
-  readonly allowFractionCreate?: boolean;
-}) : Promise<WasteHarness> => {
+const mockWasteFacade = async (
+  page: Page | BrowserContext,
+  input: {
+    readonly instanceId: string;
+    readonly settings: WasteSettingsState;
+    readonly fractions: WasteFractionState[];
+    readonly tours: WasteTourState[];
+    readonly regions?: WasteRegionState[];
+    readonly cities?: WasteCityState[];
+    readonly streets?: WasteStreetState[];
+    readonly houseNumbers?: WasteHouseNumberState[];
+    readonly collectionLocations?: WasteCollectionLocationState[];
+    readonly allowFractionCreate?: boolean;
+  }
+): Promise<WasteHarness> => {
   const settingsState: WasteSettingsState = { ...input.settings };
   settingsState.customRecurrencePresets = [...(input.settings.customRecurrencePresets ?? [])];
   const fractionsState = [...input.fractions];
@@ -278,7 +284,9 @@ const mockWasteFacade = async (page: Page, input: {
       requests.tourValidityUpdates.push(body);
       const selectedTours = toursState.filter((tour) => body.tourIds?.includes(tour.id));
       const applicable = selectedTours.every(
-        (tour) => Boolean(tour.customRecurrenceId) || !['custom', 'on-demand'].includes(tour.recurrence ?? '')
+        (tour) =>
+          Boolean(tour.customRecurrenceId) ||
+          !['custom', 'on-demand'].includes(tour.recurrence ?? '')
       );
       if (
         selectedTours.length !== body.tourIds?.length ||
@@ -409,14 +417,22 @@ const mockWasteFacade = async (page: Page, input: {
       requests.createdTours.push(body);
       const preset =
         typeof body.customRecurrenceId === 'string'
-          ? (settingsState.customRecurrencePresets ?? []).find((candidate) => candidate.id === body.customRecurrenceId)
+          ? (settingsState.customRecurrencePresets ?? []).find(
+              (candidate) => candidate.id === body.customRecurrenceId
+            )
           : undefined;
       const created: WasteTourState = {
         id: String(body.id),
         name: String(body.name),
-        wasteFractionIds: Array.isArray(body.wasteFractionIds) ? body.wasteFractionIds.map(String) : [],
-        recurrence: typeof body.recurrence === 'string' ? (body.recurrence as WasteTourState['recurrence']) : undefined,
-        customRecurrenceId: typeof body.customRecurrenceId === 'string' ? body.customRecurrenceId : undefined,
+        wasteFractionIds: Array.isArray(body.wasteFractionIds)
+          ? body.wasteFractionIds.map(String)
+          : [],
+        recurrence:
+          typeof body.recurrence === 'string'
+            ? (body.recurrence as WasteTourState['recurrence'])
+            : undefined,
+        customRecurrenceId:
+          typeof body.customRecurrenceId === 'string' ? body.customRecurrenceId : undefined,
         customRecurrenceName: preset?.name,
         customRecurrenceIntervalDays: preset?.intervalDays,
         firstDate: typeof body.firstDate === 'string' ? body.firstDate : undefined,
@@ -483,7 +499,11 @@ const mockWasteFacade = async (page: Page, input: {
         jobTypeId: 'waste-management.import-data',
         status: 'pending',
       };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(job),
+      });
       return;
     }
 
@@ -495,7 +515,11 @@ const mockWasteFacade = async (page: Page, input: {
         jobTypeId: 'waste-management.export-data',
         status: 'pending',
       };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(job),
+      });
       return;
     }
 
@@ -506,7 +530,11 @@ const mockWasteFacade = async (page: Page, input: {
         jobTypeId: 'waste-management.apply-migrations',
         status: 'pending',
       };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(job),
+      });
       return;
     }
 
@@ -517,7 +545,11 @@ const mockWasteFacade = async (page: Page, input: {
         jobTypeId: 'waste-management.seed-data',
         status: 'pending',
       };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(job),
+      });
       return;
     }
 
@@ -528,7 +560,11 @@ const mockWasteFacade = async (page: Page, input: {
         jobTypeId: 'waste-management.reset-data',
         status: 'pending',
       };
-      await route.fulfill({ status: 201, contentType: 'application/json', body: createApiItem(job) });
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem(job),
+      });
       return;
     }
 
@@ -545,8 +581,93 @@ const openWastePlugin = async (page: Page) => {
   await expect(page.getByRole('heading', { name: 'Abfallkalender' })).toBeVisible();
 };
 
+const establishServerReadableAuthSession = async (context: BrowserContext, page: Page) => {
+  const origin = new URL(page.url()).origin;
+  const response = await context.request.post(
+    new URL('/auth/dev-login?returnTo=%2F', origin).toString(),
+    {
+      headers: {
+        Origin: origin,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      maxRedirects: 0,
+    }
+  );
+
+  // Credential-free suites use the server's Playwright-only dev-auth mode.
+  // When real auth credentials are configured, the endpoint stays disabled
+  // and the persisted Keycloak session already belongs to this context.
+  expect([302, 404]).toContain(response.status());
+};
+
 test.describe('waste management plugin', () => {
-  test('supports settings, fraction creation and technical job starters through the host facade', async ({ page }) => {
+  test('opens contextual tour-shift creation in a new tab without losing the tour workflow', async ({
+    context,
+    page,
+  }) => {
+    await mockSharedShellRequests(context, {
+      instanceId: 'de-tour-shift-context',
+      permissionActions: [
+        'waste-management.read',
+        'waste-management.tours.manage',
+        'waste-management.scheduling.manage',
+      ],
+    });
+    await mockWasteFacade(context, {
+      instanceId: 'de-tour-shift-context',
+      settings: {
+        provider: 'postgresql',
+        schemaName: 'waste_shift_context',
+        enabled: true,
+        databaseUrlConfigured: true,
+        visibleStatus: 'ok',
+      },
+      fractions: [],
+      tours: [
+        {
+          id: 'tour-1',
+          name: 'Restmüll Nord',
+          wasteFractionIds: [],
+          recurrence: 'weekly',
+          firstDate: '2026-05-12',
+          active: true,
+          createdAt: '2026-05-10T11:00:00.000Z',
+          updatedAt: '2026-05-10T11:00:00.000Z',
+        },
+      ],
+    });
+
+    await openWastePlugin(page);
+    await page.getByRole('tab', { name: 'Touren' }).click();
+    await page.getByRole('button', { name: 'Jahreskalender anzeigen' }).click();
+
+    const createShiftLink = page
+      .getByRole('link', {
+        name: /Termin .* der Tour Restmüll Nord verschieben Öffnet in neuem Tab/u,
+      })
+      .first();
+    await expect(createShiftLink).toHaveAttribute('target', '_blank');
+    await expect(createShiftLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const sourceUrl = page.url();
+    await establishServerReadableAuthSession(context, page);
+    const popupPromise = page.waitForEvent('popup');
+    await createShiftLink.click();
+    const popup = await popupPromise;
+
+    await expect(popup.getByRole('heading', { name: 'Abfallkalender' })).toBeVisible();
+    await expect(popup.locator('#waste-tour-shift-tour')).toHaveValue('tour-1');
+    const originalDate = await popup.locator('#waste-tour-shift-original-date').inputValue();
+    expect(originalDate).toMatch(/^2026-\d{2}-\d{2}$/u);
+    await expect(popup).toHaveURL(/schedulingTourId=tour-1/u);
+    await expect(popup).toHaveURL(new RegExp(`schedulingOriginalDate=${originalDate}`, 'u'));
+    await expect(page).toHaveURL(sourceUrl);
+    await expect(page.getByRole('heading', { name: 'Jahreskalender' })).toBeVisible();
+  });
+
+  test('supports settings, fraction creation and technical job starters through the host facade', async ({
+    page,
+  }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-musterhausen',
       permissionActions: [
@@ -646,7 +767,11 @@ test.describe('waste management plugin', () => {
     await openWastePlugin(page);
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
     await expect(
-      page.getByText('Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.').first()
+      page
+        .getByText(
+          'Die Abfalldatenbank wird automatisch für diese Instanz bereitgestellt und verwaltet.'
+        )
+        .first()
     ).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toBeDisabled();
     await expect(page.getByRole('textbox', { name: 'Schema' })).toHaveValue('waste_ops');
@@ -670,7 +795,10 @@ test.describe('waste management plugin', () => {
     await page.locator('#waste-fraction-color-text').fill('#00aaee');
     await page.locator('#waste-fraction-container-size').fill('240l');
     await page.locator('#waste-fraction-description').fill('Papierfraktion für den E2E-Pfad.');
-    await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
+    await page
+      .locator('#waste-fraction-create-form')
+      .getByRole('button', { name: 'Abfallart speichern' })
+      .click();
 
     await expect(page.getByRole('button', { name: 'Fraktion anlegen' })).toBeVisible();
     await expect(
@@ -694,11 +822,16 @@ test.describe('waste management plugin', () => {
       },
     ]);
     await page.getByRole('button', { name: /Tourzuordnungen nach Fraktionen/ }).click();
-    const toolsPanel = page.getByText('Datei hochladen').locator('xpath=ancestor::div[contains(@class,"rounded-2xl")]').first();
+    const toolsPanel = page
+      .getByText('Datei hochladen')
+      .locator('xpath=ancestor::div[contains(@class,"rounded-2xl")]')
+      .first();
     await toolsPanel.locator('input[type="file"]').setInputFiles({
       name: 'tenant-a.csv',
       mimeType: 'text/csv',
-      buffer: Buffer.from('Ort;Straße;Hausmüll;Papier;Gelbe Säcke\nPerleberg;Ackerstr.;HM.3.3;PPK.7.2;LVP.9.4\n'),
+      buffer: Buffer.from(
+        'Ort;Straße;Hausmüll;Papier;Gelbe Säcke\nPerleberg;Ackerstr.;HM.3.3;PPK.7.2;LVP.9.4\n'
+      ),
     });
     await page.getByRole('button', { name: 'Vorschau prüfen' }).click();
     await expect(page.getByRole('button', { name: 'Import starten' })).toBeVisible();
@@ -735,13 +868,12 @@ test.describe('waste management plugin', () => {
     ]);
   });
 
-  test('keeps settings instance-scoped and hides master-data mutations without the dedicated permission', async ({ page }) => {
+  test('keeps settings instance-scoped and hides master-data mutations without the dedicated permission', async ({
+    page,
+  }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-zweitstadt',
-      permissionActions: [
-        'waste-management.read',
-        'waste-management.settings.manage',
-      ],
+      permissionActions: ['waste-management.read', 'waste-management.settings.manage'],
     });
 
     await mockWasteFacade(page, {
@@ -783,11 +915,18 @@ test.describe('waste management plugin', () => {
     await page.locator('#waste-fraction-name').fill('Papier Plus');
     await page.locator('#waste-fraction-pdf-short-label').fill('PP');
     await page.locator('#waste-fraction-color-text').fill('#123456');
-    await page.locator('#waste-fraction-create-form').getByRole('button', { name: 'Abfallart speichern' }).click();
-    await expect(page.getByText('Für das Speichern von Abfall-Fraktionen fehlt die Berechtigung.').first()).toBeVisible();
+    await page
+      .locator('#waste-fraction-create-form')
+      .getByRole('button', { name: 'Abfallart speichern' })
+      .click();
+    await expect(
+      page.getByText('Für das Speichern von Abfall-Fraktionen fehlt die Berechtigung.').first()
+    ).toBeVisible();
   });
 
-  test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({ page }) => {
+  test('supports custom recurrence preset creation, tour selection, editing and fallback deletion', async ({
+    page,
+  }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-recurring',
       permissionActions: [
@@ -829,20 +968,25 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('Ferien 10 Tage');
     await page.locator('#waste-settings-custom-recurrence-interval-days').selectOption('10');
-    await page.locator('#waste-settings-custom-recurrence-description').fill('Saisonaler Sommerturnus');
+    await page
+      .locator('#waste-settings-custom-recurrence-description')
+      .fill('Saisonaler Sommerturnus');
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Abstand hinzufügen' }).click();
     await page.locator('#waste-settings-custom-recurrence-name').fill('14 Tage Fallback');
     await page.locator('#waste-settings-custom-recurrence-interval-days').selectOption('14');
-    await page.locator('#waste-settings-custom-recurrence-description').fill('Fallback für entfernte Sommerturnusse');
+    await page
+      .locator('#waste-settings-custom-recurrence-description')
+      .fill('Fallback für entfernte Sommerturnusse');
     await page.getByRole('button', { name: 'Abstand übernehmen' }).click();
 
     await page.getByRole('button', { name: 'Einstellungen speichern' }).click();
     await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 
     const createdPresetIds = (
-      (harness.requests.settingsUpdates[0]?.customRecurrencePresets as Array<Record<string, unknown>> | undefined) ?? []
+      (harness.requests.settingsUpdates[0]?.customRecurrencePresets as
+        Array<Record<string, unknown>> | undefined) ?? []
     ).map((preset) => String(preset.id));
     expect(createdPresetIds).toHaveLength(2);
 
@@ -850,13 +994,12 @@ test.describe('waste management plugin', () => {
     await page.getByRole('button', { name: 'Neue Tour' }).click();
     await page.locator('#waste-tour-name').fill('Ferienroute');
     await page.getByLabel('Restmüll').click();
-    await page.locator('#waste-tour-recurrence').selectOption({ label: 'Ferien 10 Tage (alle 10 Tage)' });
+    await page
+      .locator('#waste-tour-recurrence')
+      .selectOption({ label: 'Ferien 10 Tage (alle 10 Tage)' });
     await page.locator('#waste-tour-first-date').fill('2026-06-01');
     await page.locator('#waste-tour-end-date').fill('2026-08-31');
-    await page
-      .locator('#waste-tour-form')
-      .getByRole('button', { name: 'Tour speichern' })
-      .click();
+    await page.locator('#waste-tour-form').getByRole('button', { name: 'Tour speichern' }).click();
 
     await expect.poll(() => harness.requests.createdTours.length).toBe(1);
     expect(harness.requests.createdTours[0]).toMatchObject({
@@ -869,7 +1012,9 @@ test.describe('waste management plugin', () => {
     });
     expect(harness.requests.createdTours[0]).not.toHaveProperty('recurrence');
 
-    await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 10 Tage \(alle 10 Tage\)/ })).toBeVisible();
+    await expect(
+      page.getByRole('row', { name: /Ferienroute.*Ferien 10 Tage \(alle 10 Tage\)/ })
+    ).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
     const editedPresetRow = page.getByRole('row', { name: /Ferien 10 Tage.*Alle 10 Tage/ });
@@ -882,7 +1027,9 @@ test.describe('waste management plugin', () => {
     await expect(page.getByRole('button', { name: 'Gespeichert' })).toBeVisible();
 
     await page.getByRole('tab', { name: 'Touren' }).click();
-    await expect(page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })).toBeVisible();
+    await expect(
+      page.getByRole('row', { name: /Ferienroute.*Ferien 12 Tage \(alle 12 Tage\)/ })
+    ).toBeVisible();
 
     await page.getByRole('tab', { name: 'Einstellungen' }).click();
     const presetRowToDelete = page.getByRole('row', { name: /Ferien 12 Tage.*Alle 12 Tage/ });
@@ -906,10 +1053,14 @@ test.describe('waste management plugin', () => {
     });
 
     await page.getByRole('tab', { name: 'Touren' }).click();
-    await expect(page.getByRole('row', { name: /Ferienroute.*14 Tage Fallback \(alle 14 Tage\)/ })).toBeVisible();
+    await expect(
+      page.getByRole('row', { name: /Ferienroute.*14 Tage Fallback \(alle 14 Tage\)/ })
+    ).toBeVisible();
   });
 
-  test('updates selected tour validity atomically and blocks inapplicable selections', async ({ page }) => {
+  test('updates selected tour validity atomically and blocks inapplicable selections', async ({
+    page,
+  }) => {
     await mockSharedShellRequests(page, {
       instanceId: 'de-tour-validity',
       permissionActions: ['waste-management.read', 'waste-management.tours.manage'],
@@ -969,7 +1120,9 @@ test.describe('waste management plugin', () => {
     await page.getByLabel('Gültig bis').selectOption('clear');
     await page.getByRole('button', { name: 'Zeitraum ändern' }).click();
 
-    await expect(page.getByText('Der Gültigkeitszeitraum von 2 Touren wurde aktualisiert.')).toBeVisible();
+    await expect(
+      page.getByText('Der Gültigkeitszeitraum von 2 Touren wurde aktualisiert.')
+    ).toBeVisible();
     expect(harness.requests.tourValidityUpdates).toEqual([
       {
         tourIds: ['tour-weekly', 'tour-biweekly'],

@@ -5,7 +5,10 @@ export const appRoot = fileURLToPath(new URL('.', import.meta.url));
 export const studioMswSetupFile = fileURLToPath(
   new URL(import.meta.resolve('tooling-testing/msw/setup'))
 );
-export const prGateExcludedTestFiles = ['src/lib/plugins.test.ts'] as const;
+export const prGateExcludedTestFiles = [
+  'src/lib/plugins.test.ts',
+  'src/**/*.postgres.integration.test.ts',
+] as const;
 
 export const sharedVitestConfig = defineConfig({
   root: appRoot,

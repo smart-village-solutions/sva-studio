@@ -200,6 +200,7 @@ const repositoryMocks = vi.hoisted(() => ({
   ),
   upsertWasteTour: vi.fn(async () => undefined),
   getWasteTourDateShiftById: vi.fn(async (_id: string) => ({ id: 'shift-1' })),
+  insertWasteTourDateShift: vi.fn(async () => undefined),
   upsertWasteTourDateShift: vi.fn(async () => undefined),
   deleteWasteTourDateShift: vi.fn(async () => undefined),
   getWasteGlobalDateShiftById: vi.fn(async (_id: string) => ({ id: 'global-shift-1' })),
@@ -602,6 +603,9 @@ describe('waste-management server loaders', () => {
     await wasteManagementEntitySavers.deleteWasteLocationTourLink('tenant-a', 'link-2');
     await wasteManagementEntitySavers.saveWasteTour('tenant-a', { id: 'tour-2' } as never);
     await wasteManagementEntitySavers.deleteWasteTourDateShift('tenant-a', 'shift-2');
+    await wasteManagementEntitySavers.createWasteTourDateShift('tenant-a', {
+      id: 'shift-created',
+    } as never);
     await wasteManagementEntitySavers.saveWasteTourDateShift('tenant-a', {
       id: 'shift-2',
     } as never);
@@ -638,6 +642,9 @@ describe('waste-management server loaders', () => {
     expect(repositoryMocks.upsertWasteLocationTourLink).toHaveBeenCalled();
     expect(repositoryMocks.deleteWasteLocationTourLink).toHaveBeenCalledWith('link-2');
     expect(repositoryMocks.upsertWasteTour).toHaveBeenCalled();
+    expect(repositoryMocks.insertWasteTourDateShift).toHaveBeenCalledWith({
+      id: 'shift-created',
+    });
     expect(repositoryMocks.deleteWasteTourDateShift).toHaveBeenCalledWith('shift-2');
     expect(repositoryMocks.upsertWasteTourDateShift).toHaveBeenCalled();
     expect(repositoryMocks.deleteWasteGlobalDateShift).toHaveBeenCalledWith('global-shift-2');

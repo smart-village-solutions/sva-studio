@@ -69,6 +69,8 @@ export const WasteSchedulingContent = ({
   onEditHolidayRule,
   onEditGlobalShiftDialog,
   onEditTourShiftDialog,
+  onOpenLinkedTour,
+  onOpenLinkedLocation,
   onDeleteSchedulingRows,
   onSaveTourAssignment,
   onDeleteTourAssignment,
@@ -88,6 +90,8 @@ export const WasteSchedulingContent = ({
   readonly onEditHolidayRule: (rule: WasteHolidayRuleRecord) => void;
   readonly onEditGlobalShiftDialog: (shift: WasteGlobalDateShiftRecord) => void;
   readonly onEditTourShiftDialog: (shift: WasteTourDateShiftRecord) => void;
+  readonly onOpenLinkedTour?: (tourId: string) => void;
+  readonly onOpenLinkedLocation?: (collectionLocationId: string) => void;
   readonly onDeleteSchedulingRows: (rows: readonly WasteSchedulingTableEntry[]) => Promise<void>;
   readonly onSaveTourAssignment: (
     input: {
@@ -144,6 +148,8 @@ export const WasteSchedulingContent = ({
         entries={tourAssignments}
         tourLabels={tourLabels}
         locationLabels={locationLabels}
+        onOpenLinkedTour={onOpenLinkedTour}
+        onOpenLinkedLocation={onOpenLinkedLocation}
         onCreate={() => {
           setDialogMode('create');
           setForm(createAssignmentForm());

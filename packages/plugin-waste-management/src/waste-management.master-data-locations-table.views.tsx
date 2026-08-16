@@ -159,7 +159,6 @@ const WasteLocationsCreateMenu = ({
     </div>
   );
 };
-
 export const WasteMasterDataLocationsTableToolbar = ({
   selectedCollectionLocationsCount,
   availableTours,
@@ -374,6 +373,7 @@ export const WasteMasterDataLocationsRow = ({
   onCopyLocation,
   onDeleteLocation,
   onOpenEditLocation,
+  onOpenEditTour,
 }: {
   readonly location: WasteCollectionLocationRecord;
   readonly maps: WasteMasterDataLocationsTableMaps;
@@ -382,13 +382,14 @@ export const WasteMasterDataLocationsRow = ({
   readonly onCopyLocation: (location: WasteCollectionLocationRecord) => void;
   readonly onDeleteLocation: (location: WasteCollectionLocationRecord) => Promise<void>;
   readonly onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
+  readonly onOpenEditTour?: (tourId: string) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const region = location.regionId ? maps.regionsById.get(location.regionId) : undefined;
   const city = maps.citiesById.get(location.cityId);
   const street = location.streetId ? maps.streetsById.get(location.streetId) : undefined;
   const houseNumber = location.houseNumberId ? maps.houseNumbersById.get(location.houseNumberId) : undefined;
-  const linkedTourNames = maps.locationTourNamesByLocationId.get(location.id) ?? [];
+  const linkedTours = maps.locationToursByLocationId?.get(location.id) ?? [];
   const editLabel = pt('masterData.collectionLocations.actions.edit');
   const copyLabel = pt('masterData.collectionLocations.actions.copy');
   const deleteLabel = pt('masterData.collectionLocations.actions.delete');
@@ -415,13 +416,26 @@ export const WasteMasterDataLocationsRow = ({
         <span className="text-sm">{houseNumber?.number ?? pt('masterData.locationsWorkspace.table.houseNumbersUnavailable')}</span>
       </td>
       <td className="px-3 py-3 align-top">
-        {linkedTourNames.length ? (
+        {linkedTours.length ? (
           <div className="space-y-1">
-            {linkedTourNames.map((tourName) => (
-              <p key={`${location.id}-${tourName}`} className="text-sm">
-                {tourName}
-              </p>
-            ))}
+            {linkedTours.map((tour) =>
+              onOpenEditTour ? (
+                <Button
+                  key={tour.id}
+                  type="button"
+                  variant="tertiary"
+                  size="sm"
+                  className="block h-auto p-0 text-left text-sm font-medium underline-offset-4 hover:underline"
+                  onClick={() => onOpenEditTour(tour.id)}
+                >
+                  {tour.name}
+                </Button>
+              ) : (
+                <p key={tour.id} className="text-sm">
+                  {tour.name}
+                </p>
+              )
+            )}
           </div>
         ) : (
           <span className="text-sm text-muted-foreground">{pt('masterData.locationsWorkspace.table.noTours')}</span>

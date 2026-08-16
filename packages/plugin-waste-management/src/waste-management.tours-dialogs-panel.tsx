@@ -8,10 +8,19 @@ import {
   createDefaultTourForm,
 } from './waste-management.tours.shared.js';
 import type { useWasteToursViewModel } from './use-waste-tours-view-model.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 type Controller = ReturnType<typeof useWasteToursViewModel>;
 
-export const WasteToursDialogs = ({ controller }: { readonly controller: Controller }) => (
+export const WasteToursDialogs = ({
+  controller,
+  search,
+  canManageScheduling = false,
+}: {
+  readonly controller: Controller;
+  readonly search: WasteManagementSearchParams;
+  readonly canManageScheduling?: boolean;
+}) => (
   <>
     <TourDialog
       open={controller.dialogOpen}
@@ -54,6 +63,8 @@ export const WasteToursDialogs = ({ controller }: { readonly controller: Control
       open={controller.calendarOpen}
       tour={controller.selectedTour}
       scheduling={controller.schedulingOverview}
+      search={search}
+      canManageScheduling={canManageScheduling}
       onOpenChange={controller.setCalendarOpen}
     />
   </>

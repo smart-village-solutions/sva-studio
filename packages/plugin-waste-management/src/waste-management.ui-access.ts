@@ -15,6 +15,7 @@ export type WasteManagementUiAccess = Readonly<{
   canAccessSettings: boolean;
   canAccessTools: boolean;
   canDuplicateTour: boolean;
+  canManageScheduling: boolean;
   canRunInitialize: boolean;
   canRunMigrations: boolean;
   canEnrichPostalCodes: boolean;
@@ -73,6 +74,7 @@ export const deriveWasteManagementUiAccess = (
     canAccessSettings,
     canAccessTools,
     canDuplicateTour: canManageTours && canManageScheduling,
+    canManageScheduling,
     canRunInitialize,
     canRunMigrations,
     canEnrichPostalCodes,

@@ -1,4 +1,4 @@
-import type { WasteHolidayRuleRecord } from '@sva/core';
+import { resolveEffectiveWasteTourDateShiftsForYear, type WasteHolidayRuleRecord } from '@sva/core';
 
 import { applyPublicWasteHolidayRulesToDate } from './public-waste-calendar-occurrences.js';
 import type { PublicWasteCalendarEntry } from './public-waste-contract.js';
@@ -23,12 +23,29 @@ const normalizeShift = (row: {
 };
 
 const createTourShiftMap = (
-  rows: readonly TourDateShiftRow[]
+  rows: readonly TourDateShiftRow[],
+  years: readonly number[]
 ): ReadonlyMap<string, CalendarShift> => {
   const shifts = new Map<string, CalendarShift>();
-  for (const row of rows) {
-    const shift = normalizeShift(row);
-    if (shift) shifts.set(`${row.tour_id}:${shift[0]}`, shift[1]);
+  const effectiveRows = years.flatMap((year) =>
+    resolveEffectiveWasteTourDateShiftsForYear(
+      rows.map((row) => ({
+        ...row,
+        tourId: row.tour_id,
+        originalDate: row.original_date,
+        actualDate: row.actual_date,
+        hasYear: row.has_year,
+      })),
+      year
+    )
+  );
+  for (const row of effectiveRows) {
+    const shift = normalizeShift({
+      original_date: row.originalDate,
+      actual_date: row.actualDate,
+      description: row.description,
+    });
+    if (shift) shifts.set(`${row.tourId}:${shift[0]}`, shift[1]);
   }
   return shifts;
 };
@@ -178,7 +195,10 @@ export const mergeCalendarAssignmentEntries = (input: {
   readonly windowEnd: string;
 }): readonly PublicWasteCalendarEntry[] => {
   const mergedEntries = new Map(input.calculatedEntries.map((entry) => [entry.id, entry] as const));
-  const tourShifts = createTourShiftMap(input.tourDateShiftRows);
+  const assignmentYears = Array.from(
+    new Set(input.assignmentRows.map((row) => Number(row.pickup_date.slice(0, 4))))
+  ).filter(Number.isSafeInteger);
+  const tourShifts = createTourShiftMap(input.tourDateShiftRows, assignmentYears);
   const globalShifts = createGlobalShiftMaps(input.globalDateShiftRows);
 
   for (const row of input.assignmentRows) {

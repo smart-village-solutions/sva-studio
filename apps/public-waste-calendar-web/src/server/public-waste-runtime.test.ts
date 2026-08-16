@@ -128,6 +128,41 @@ describe('public waste runtime', () => {
     await runtime.dispose();
   });
 
+  it('does not route similarly named paths to the locations endpoint', async () => {
+    const assetsDir = await createAssetsDir();
+    cleanupPaths.add(assetsDir);
+    const listPublicLocations = vi.fn();
+    const runtime = await createPublicWasteRuntime({
+      assetsDir,
+      env: {
+        PUBLIC_WASTE_INSTANCE_ID: 'bb-prignitz',
+        PUBLIC_WASTE_DATABASE_URL: databaseUrlFor('bb-prignitz'),
+        PUBLIC_WASTE_SCHEMA_NAME: 'public',
+      },
+      createRepository: async () => ({
+        repository: {
+          listPublicLocations,
+          listSelectionOptions: vi.fn(),
+          loadCalendarEntries: vi.fn(),
+          loadSelectionSummary: vi.fn(),
+          loadReminderOptions: vi.fn(),
+        },
+        pool: { connect: vi.fn() } as never,
+        schemaName: 'public',
+        dispose: async () => {},
+      }),
+    });
+
+    const response = await runtime.handle(
+      new Request('http://localhost/api/public-waste/locationsXYZ')
+    );
+
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(listPublicLocations).not.toHaveBeenCalled();
+
+    await runtime.dispose();
+  });
+
   it('passes the resolved postgresql config into the pdf static settings loader', async () => {
     const assetsDir = await createAssetsDir();
     cleanupPaths.add(assetsDir);

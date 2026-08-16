@@ -6,8 +6,13 @@ import react from '@vitejs/plugin-react';
 
 import { readPublicWasteBootstrapStateFromEnvironment } from './src/lib/public-waste-bootstrap.server.js';
 import {
+  resolvePublicWasteReadApiRoute,
+  type PublicWasteReadApiRoute,
+} from './src/lib/public-waste-api-routing.js';
+import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
   handlePublicWasteSelectionRequest,
 } from './src/lib/public-waste-endpoints.server.js';
@@ -56,7 +61,11 @@ const publicWasteApiPlugin = (): Plugin => {
         })
       : null;
 
-  const handleApiRequest = async (url: string, headers: Headers): Promise<Response> => {
+  const handleApiRequest = async (
+    url: string,
+    headers: Headers,
+    route: PublicWasteReadApiRoute
+  ): Promise<Response> => {
     if (bootstrapState.status !== 'ready' || !repository) {
       return new Response(
         JSON.stringify({
@@ -75,13 +84,16 @@ const publicWasteApiPlugin = (): Plugin => {
 
     const request = new Request(url, { method: 'GET', headers });
 
-    if (url.includes('/api/public-waste/selection')) {
+    if (route === 'locations') {
+      return handlePublicWasteLocationsRequest({ repository });
+    }
+    if (route === 'selection') {
       return handlePublicWasteSelectionRequest({ repository, request });
     }
-    if (url.includes('/api/public-waste/calendar')) {
+    if (route === 'calendar') {
       return handlePublicWasteCalendarRequest({ repository, request });
     }
-    if (url.includes('/api/public-waste/pdf')) {
+    if (route === 'pdf') {
       return handlePublicWastePdfRequest({
         repository,
         request,
@@ -104,18 +116,15 @@ const publicWasteApiPlugin = (): Plugin => {
       });
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
-        if (
-          !url.startsWith('/api/public-waste/selection') &&
-          !url.startsWith('/api/public-waste/calendar') &&
-          !url.startsWith('/api/public-waste/pdf') &&
-          !url.startsWith('/api/public-waste/ical')
-        ) {
+        const route = resolvePublicWasteReadApiRoute(new URL(url, 'http://localhost').pathname);
+        if (!route) {
           return next();
         }
 
         const response = await handleApiRequest(
           `http://localhost${url}`,
-          new Headers(req.headers as Record<string, string>)
+          new Headers(req.headers as Record<string, string>),
+          route
         );
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));
@@ -128,18 +137,15 @@ const publicWasteApiPlugin = (): Plugin => {
       });
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? '';
-        if (
-          !url.startsWith('/api/public-waste/selection') &&
-          !url.startsWith('/api/public-waste/calendar') &&
-          !url.startsWith('/api/public-waste/pdf') &&
-          !url.startsWith('/api/public-waste/ical')
-        ) {
+        const route = resolvePublicWasteReadApiRoute(new URL(url, 'http://localhost').pathname);
+        if (!route) {
           return next();
         }
 
         const response = await handleApiRequest(
           `http://localhost${url}`,
-          new Headers(req.headers as Record<string, string>)
+          new Headers(req.headers as Record<string, string>),
+          route
         );
         res.statusCode = response.status;
         response.headers.forEach((value, key) => res.setHeader(key, value));

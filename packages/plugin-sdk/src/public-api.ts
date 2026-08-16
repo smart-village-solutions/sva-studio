@@ -102,15 +102,14 @@ export {
 } from './admin-resources.js';
 export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-picker.js';
 export { defineMediaPickerDefinition } from './media-picker.js';
-export type { HostMediaFieldOption } from './content-ui-utils.js';
+export type { ContentMediaUploadPhase, HostMediaFieldOption } from './content-ui-utils.js';
 export {
-  compactOptionalString,
-  formatDateTimeInEditorTimeZone,
-  formatTechnicalDateTimeInEditorTimeZone,
-  findHostMediaReferenceAssetId,
-  fromDatetimeLocalValue,
-  toDatetimeLocalValue,
-  toHostMediaFieldOptions,
+  compactOptionalString, contentMediaUploadPhaseMessageKey,
+  formatDateTimeInEditorTimeZone, formatTechnicalDateTimeInEditorTimeZone,
+  findHostMediaReferenceAssetId, fromDatetimeLocalValue, getHostMediaAssetPersistentUrl,
+  isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
+  readHostMediaAssetFileName, readHostMediaAssetTitle,
+  toDatetimeLocalValue, toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
 export type {

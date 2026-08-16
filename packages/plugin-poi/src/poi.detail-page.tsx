@@ -2,6 +2,7 @@ import React from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
+  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
@@ -9,8 +10,11 @@ import {
   listHostMediaAssets,
   listHostMediaReferencesByTarget,
   hasContentLifecycleAccess,
+  isSupportedContentMediaUploadFile as isSupportedUploadFile,
   omitDeviatedMainserverFields,
   readSessionAccessSnapshot,
+  readHostMediaAssetFileName as readAssetFileName,
+  readHostMediaAssetTitle as readAssetTitle,
   resolveContentMediaCapabilities,
   resolveContentVisibilityAction,
   resolveStandardContentAccessCapabilities,
@@ -73,13 +77,7 @@ import {
   type PoiDetailFormValues,
 } from './poi.detail-form.js';
 import { PoiDetailHistoryTab } from './poi.detail-history-tab.js';
-import {
-  isSupportedUploadFile,
-  mediaContentSourceKey,
-  readAssetFileName,
-  readAssetTitle,
-  uploadPhaseMessageKey,
-} from './poi.detail-media.helpers.js';
+import { mediaContentSourceKey } from './poi.detail-media.helpers.js';
 import { PoiDetailSettingsTab } from './poi.detail-settings-tab.js';
 import { createPoiDetailTabDefinitions, type PoiDetailTabId } from './poi.detail-tabs.js';
 import type { PoiCategoryOption, PoiContentItem } from './poi.types.js';

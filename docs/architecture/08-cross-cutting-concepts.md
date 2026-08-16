@@ -101,6 +101,7 @@ gleichzeitig beeinflussen.
 - Redaction sensibler Logfelder in `@sva/server-runtime` und im OTEL Processor
 - Governance-Gates: Ticketpflicht, Vier-Augen-Prinzip, keine Self-Approvals
 - Harte Laufzeitgrenzen: Impersonation max. 120 Minuten, Delegation max. 30 Tage
+- Delegationsentscheidungen normalisieren und prüfen Payload, Ticketzustand und Zeitfenster frameworkfrei; Account-Auflösung, SQL-Persistenz und Audit-Dual-Write bleiben sichtbar sequenzielles I/O-Wiring. Dadurch dürfen sich weder Fehlerprioritäten noch Inclusive-Zeitgrenzen, Instanzfilter, Reason Codes oder Auditfelder ändern.
 - Impersonation ohne Governance-Export-Capability benötigt zusätzlichen Security-Approver
 - DSGVO-Betroffenenrechte im IAM: Auskunft, Berichtigung, Löschung, Einschränkung, Widerspruch
 - Account-Self-Service trennt bewusst zwischen Aktivitätscockpit (`/account/privacy`) und Regelseite (`/account/rules`); die UI darf beide Bereiche gemeinsam navigierbar machen, ohne DSR- und Governance-Verträge fachlich zu verwischen
@@ -166,6 +167,7 @@ gleichzeitig beeinflussen.
 - Invalidation erfolgt event-first über Postgres `NOTIFY` mit `eventId`; TTL begrenzt Eventverlust, ersetzt aber keinen technischen Failover-Pfad
 - Permission-Snapshots sind reine Laufzeitoptimierung und keine fachliche Source of Truth
 - Für Mainserver-basierte Content Items autorisiert IAM ausschließlich Inhaltstyp und Action im effektiven Credential-Kontext. Fachliche Existenz, Identität, Lifecycle, Veröffentlichung, Autor und Ownership stammen aus dem typisierten Mainserver-Vertrag; lokale Content-Cores, References, History und Projektionen dürfen diese Inhalte nicht ausblenden und bleiben rekonstruierbare Begleitzustände.
+- Die Featured-Project-Erstellung hält Autorisierung und Validierung, Idempotenz-Recovery, reine Vertragsabbildung und I/O-Orchestrierung in getrennten internen Modulen. Diese Trennung verändert weder Permission- und Fehlercodes noch die Provider-first-Datenintegrität: Ein bestätigter Mainserver-Create wird bei einem späteren lokalen Begleitfehler nicht kompensierend gelöscht.
 - Änderungen an direkten Nutzerrechten invalidieren dieselben Snapshot-Pfade wie Rollen- und Gruppenänderungen; Cache-Konsistenz ist damit für `me/permissions` und `authorize` identisch abgesichert
 - Audit-Logging für IAM-Ereignisse folgt Dual-Write:
   - Tenant-Scope: `iam.activity_logs` + OTEL via Server-Runtime-Logger
@@ -206,6 +208,7 @@ gleichzeitig beeinflussen.
 - Keycloak-Built-in-Rollen bleiben als Rollenobjekte read-only, werden aber in Listen nicht ausgeblendet.
 - Keycloak-Provisioning für Instanzen ist ein expliziter mehrstufiger Root-Host-Workflow aus Preflight, Plan, Ausführung und persistiertem Schrittprotokoll
 - Registry-Daten und Keycloak-Mutation sind getrennte Aktionen; ein Speichern von Instanzdaten führt keine implizite Keycloak-Änderung aus
+- Registry-Mutationen halten ihre SQL-Parameterlisten explizit positionsstabil. Für Auth- und Tenant-Admin-Secrets bleiben Keep-Flag und Ciphertext getrennte Werte, sodass `undefined`, explizites Löschen und Ersetzen ohne impliziten Secret-Default unterscheidbar sind.
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
 - Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
 - `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als Kompatibilitätsfeld sichtbar, ist aber kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
@@ -235,6 +238,7 @@ gleichzeitig beeinflussen.
 - IAM-v1-Fehlerantworten dürfen additive `details` tragen, enthalten dort aber nur nicht-sensitive Diagnosefelder wie `reason_code`, `dependency`, `schema_object`, `expected_migration`, `actor_resolution` und `instance_id`
 - Für den Zielpfad der IAM-Diagnostik ist derselbe allowlist-basierte Feldsatz die Grundlage für einen classification-basierten öffentlichen Diagnosevertrag; tiefe Rohfehler bleiben weiterhin OTEL- und Serverlog-intern
 - Der öffentliche Diagnosekern umfasst neben IAM-, Keycloak-, Schema- und Provisioning-Klassen auch `auth_resolution`, `oidc_discovery_or_exchange`, `frontend_state_or_permission_staleness` und `legacy_workaround_or_regression`; neue Klassen werden zentral in `@sva/core` ergänzt
+- Konkurrierende IAM-Diagnosesignale folgen in `@sva/core` einer festen First-match-Reihenfolge: Pre-Sync vor Sync vor Post-Sync, danach Session und Actor vor Keycloak und Datenbank sowie Datenbank vor Mapping- und Registry-Fallback. Die interne Resolverstruktur ist pure Kernlogik und ändert weder Klassifikationen noch Status, Aktionen oder Safe-Details.
 - Tenant-Host-Validierung unterscheidet öffentlich zwischen `tenant_not_found`, `tenant_inactive`, `tenant_lookup_failed` und Session-Hydration-Defekten wie `missing_session_instance_id`; UI und Betrieb erhalten damit denselben sicheren Diagnosekern statt generischer `403`-/`401`-Fälle
 - Widerspricht ein vorhandener OIDC-Claim `instanceId` dem Host-/Realm-Scope, wird der Callback mit `tenant_scope_conflict` fail-closed protokolliert und nicht als tenant-lose Session fortgesetzt.
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
@@ -242,6 +246,7 @@ gleichzeitig beeinflussen.
 - IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
 - Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um die verwendete `goose`-Version sowie Metadaten des dedizierten Swarm-Migrations- und Bootstrap-Jobs, ohne Secrets oder Roh-SQL nach außen zu exponieren
 - Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `auth_realm`, `provider_source`, `execution_mode`, `skipped_count` und `sample_instance_ids`
+- Die Profilreparatur beim tenantlokalen Keycloak-Import folgt deterministisch `Quellwert -> instanz- und subjectgebundener lokaler Seed -> syntaktisch gültiger Username nur als E-Mail`. Die reine Entscheidung ist von Lookup, Provider-Mutation, Savepoint, IAM-Persistenz und Reporting getrennt; ein verbleibend unvollständiges Profil wird ohne Persistenz als `manual_review` behandelt.
 - Der Sync-Report darf additive, nicht-sensitive Diagnosefelder wie `authRealm`, `providerSource`, `executionMode`, `matchedWithoutInstanceAttributeCount` und `skippedInstanceIds` zurückgeben, damit UI und Doctor Realm-/Instanz-Drift ohne `kcadm.sh` eingrenzen können
 - Role-Sync- und Reconcile-Pfade verwenden ausschließlich den Server-Runtime-Logger; `console.*` ist serverseitig ausgeschlossen
 - Role-Sync-Audit nutzt ein einheitliches Schema mit `workspace_id`, `operation`, `result`, `error_code?`, `request_id`, `trace_id?`, `span_id?`
@@ -255,6 +260,7 @@ gleichzeitig beeinflussen.
 - Governance-Audit folgt Dual-Write: DB (`iam.activity_logs`) + OTEL-Pipeline
 - PII-Schutz in Governance-Events: nur pseudonymisierte Actor-/Target-Referenzen
 - DSR-Wartungslauf emittiert strukturierte Audit-Events (`dsr_maintenance_executed`, `dsr_deletion_sla_escalated`)
+- Legal-Hold-Prüfung, DSR-Request-Events und DSR-Audit-Events verwenden paketübergreifend die kanonischen Primitiven aus `@sva/iam-governance/dsr-persistence`; `instance_id`, UUID-Casts, JSON-Serialisierung sowie Request-/Trace-Kontext bleiben dadurch einheitlich und Fehler werden unverändert propagiert.
 - Der DSR-Wartungslauf verarbeitet keine Export-Queues mehr; Self-Service-Exporte laufen ausschließlich über den generischen Host-Worker.
 - Finale Löschung pseudonymisiert Audit-Referenzen (`subject_pseudonym`) statt Klartext-PII
 - Server-Runtime-Logger nutzt typisierte OTEL-Bridge (keine `any`-Casts in Transport/Bootstrap)
@@ -330,6 +336,9 @@ gleichzeitig beeinflussen.
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Technische Entflechtung ist für serverseitige Integrationspfade verbindlich: öffentliche Host-Fassaden bleiben stabil, während Transport-, Cache- und Fachlogik in getrennten internen Modulen liegen und nicht wieder in Sammeldateien zusammengeführt werden
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
+- Seine sicherheitsrelevante Reihenfolge bleibt am CLI-Einstieg sichtbar: Keycloak-Preflight, kontrollierter Testdaten-Reset, Readiness, Login/JIT, Organisations-/Membership-Nachweise und UI-Smokes. Laufbezogene Schrittaufzeichnung verhindert Zustandsübernahme zwischen wiederholten Aufrufen; Characterization prüft Exitcode 1 und Secret-Redaction bei Frühfehlern.
+- Die öffentliche Waste-Reminder-Konfiguration bleibt fail-closed: Pflichtfelder und explizit gesetzte optionale Felder werden feldweise typisiert validiert, unbekannte oder Secret-förmige Nested-Felder nicht in das normalisierte Objekt übernommen und das Signing-Secret nur über den bestehenden, an eine gültige Konfiguration gebundenen Reader freigegeben.
+- Öffentliche Waste-Reminder-Actions bleiben ebenfalls fail-closed: konfigurierte Statusseiten werden ohne Tokenzugriff gerendert, DOI-Aktivierung und Abmeldung laufen über getrennte interne Orchestrierungen und eine Abmeldung erreicht die Mutation erst nach Read, Subscription-Lookup und Signaturprüfung. Tokenformat, Signing-Secret, Redirects und sichtbare Texte bleiben dabei im bestehenden Vertrag.
 - Der Gruppen-CRUD arbeitet fail-closed: unbekannte `roleIds`, instanzfremde Gruppen oder fehlerhafte CSRF-/Idempotency-Header erzeugen stabile `invalid_request`-, `forbidden`- oder `csrf_validation_failed`-Antworten
 - Die Rechtstext-Verwaltung arbeitet fail-closed: ungültige Statuswechsel, fehlendes `publishedAt` bei `valid` oder nicht reloadbare Neuanlagen liefern stabile `invalid_request`- bzw. `database_unavailable`-Antworten
 - Die Inhaltsverwaltung arbeitet fail-closed: ungültiges JSON, fehlendes `publishedAt` bei `published`, nicht erlaubte Rollen oder nicht auflösbare Inhalte liefern stabile `invalid_request`-, `forbidden`- bzw. `not_found`-Antworten
@@ -520,6 +529,7 @@ Referenzen:
 - Plattform- und Tenant-Scope sind diskriminiert. Tenant-Entscheidungen kombinieren vollständig qualifizierte Actions mit einem additiven Modul-Gate; technische Plattformrollen dürfen nicht als Tenant-Permission-Ersatz dienen.
 - Ressourcenbezogene `own`-, Organisations- oder Geo-Rechte benötigen eine passende serverautoritativ gelieferte Capability. Globale Action-Mitgliedschaft allein gibt keine Datensatzmutation frei.
 - Plugin-Actions, Navigation, Routen und Admin-Ressourcen deklarieren Access-Anforderungen. Der Host veröffentlicht daraus einen aufgelösten Session-Snapshot; Plugin-UI führt keinen eigenen Auth-Read aus.
+- Verknüpfte Plugin-Beiträge werden vor Snapshot-Veröffentlichung gegen denselben Access-Vertrag geprüft: Action-Werte besitzen Mengen-Semantik, während Modus, Modul, Ressourcen-Kontext und jedes Resource-Capability-Feld exakt übereinstimmen müssen. Die interne Modularisierung im Plugin SDK ändert weder öffentliche Registry-Fassaden noch Fehlerpriorität oder Fehlercodes.
 
 - `AuthProvider` kapselt Session-Status zentral in der Root-Shell.
 - UI-Bausteine konsumieren Auth-Daten ausschließlich über `useAuth()`.
@@ -663,6 +673,8 @@ Der Backup-Agent kombiniert GitHub-OIDC mit umgebungsspezifischen HMAC-Signature
 
 Der Restore-Vertrag erweitert diese Grenze action-spezifisch: Nur `database-restore.yml` darf `restore-and-verify-v1` aufrufen; Restore-HMAC, Restore-Principal, Bucket, Präfix, Host, Datenbank, App-Rolle und `pg_restore`-Optionen sind fest vorgegeben. Unbekannte Request-Felder, Pfadtraversal, fremde Umgebungen, aktive App-Sessions und Schemaabweichungen werden vor der Mutation abgelehnt. Request-, Sicherheitsdump- und Ergebnisevidenz liegen getrennt unter `control/restores/` und enthalten weder Secrets noch Datenbankinhalte.
 
+Die syntaktische Requestprüfung ist in reine, einzeln testbare Grenzen zerlegt. Ihre diskriminierten internen Ergebnisse dienen ausschließlich der Testbarkeit; sie werden weder als zusätzliche HTTP-Information noch als frei steuerbare Konfiguration veröffentlicht. Die boolesche Fassade, die kanonische Signaturbildung und die aus der kompilierten Zielumgebung abgeleiteten Präfixe bleiben der verbindliche Vertrag. Der einmalige Waste-Import bleibt zusätzlich an seine feste Umgebung, Datenbank, Instanz, Objektidentität und SHA-256 gebunden.
+
 Restore-Dumps werden bewusst ohne Owner- und Privilegübernahme behandelt. Deshalb ist die idempotente ACL-Reconciliation für den internen Runtime-Principal ein fester Bestandteil derselben Trust Boundary: Der Agent darf ausschließlich die kompilierten Grants für `sva_app` und `iam_app` gegen die feste Zieldatenbank anwenden. Freie SQL-Eingaben und App-Passwörter bleiben ausgeschlossen. Erfolgreiche Evidenz verlangt sowohl boolesche Datenbank-Privilegproben als auch nach dem Neustart einen authentifizierten IAM-Anwendungssmoke; Payloads, Benutzernamen und Berechtigungslisten werden nicht protokolliert.
 
 Nach Mutationsbeginn gibt es keinen automatischen Retry und keinen automatischen Gegenrestore. Jeder weitere Versuch benötigt eine neue GitHub-Environment-Freigabe und Request-ID. Fehlende DB-, Health- oder Tenant-Nachweise halten die App fail-closed stillgelegt. Keycloak gehört nicht zur Datenbankmutation; IAM-Drift bleibt Aufgabe der vorhandenen Reconcile-Verträge.
@@ -735,6 +747,19 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Die `data_provider_id` der Create-Antwort und die Identität aus `/data_provider.json` sind zwei Evidenzwege desselben garantierten Mainserver-Vertrags. Konflikte werden nicht überschrieben, sondern benötigen Reconciliation.
 - Geheimnisse bleiben write-only und verschlüsselt. Read-Models exponieren nur Vorhandensein, Status, Versuchszähler, sicheren Fehlercode und technische IDs.
 
+### Keycloak-Audit und Secret-Grenze
+
+- Der operative Studio-Instanz-Audit trennt read-only Erhebung und reine
+  Bewertung durch einen kleinen typisierten Snapshot.
+- Secret-Werte bleiben kurzlebige interne Vergleichsfakten. Die öffentlichen
+  Befunde unterscheiden ausschließlich verglichen, fehlend und abweichend; sie
+  enthalten weder Klarwerte noch Hashes, Längen oder Teile der Werte.
+- Characterization-Tests verwenden ausschließlich synthetische Marker und
+  prüfen deren Abwesenheit in der Ergebnisevidenz.
+- Check-IDs, Titel, Zusammenfassungen, Detailfelder und Fail-/Warn-/Skip-
+  Statuswerte bleiben gemeinsam mit der `kcadm`-Reihenfolge und dem
+  temporären Cleanup vertraglich stabil.
+
 ### CI-Fast-Feedback und Cache-Vertrauen
 
 - PR-Unit und PR-Coverage planen direkt geänderte Projekte vor dem disjunkten übrigen affected Scope. Nicht sicher zuordenbare Änderungen bleiben im konservativen Restlauf.
@@ -742,3 +767,14 @@ Listenparameter werden aus den URL-Search-Params normalisiert. Fachfilter, die d
 - Pull Requests verwenden eigene GitHub-Actions-Cache-Scopes pro Job. Geschützte `main`-, Release- und Deployment-Kontexte lesen niemals PR-erzeugte Nx-Caches.
 - Integration und E2E bleiben ungecacht. Coverage bleibt ohne targetbezogenen Fresh-/Restore-Paritätsnachweis ebenfalls ungecacht.
 - PR-E2E beendet die Suite nach dem ersten auch im Retry bestätigten Fehler; Main und Nightly sammeln alle Fehler.
+
+### Fail-closed Reihenfolge der ABAC-Regeln
+
+- Die IAM-Engine wertet ABAC-Regeln explizit in dieser Reihenfolge aus: fehlender Geo-Pflichtkontext, Organisations- und Geo-Restriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny. Die erste blockierende Entscheidung bestimmt den bestehenden Reason.
+- Geo-Unit-Freigaben haben weiterhin Vorrang vor dem Legacy-Geo-Scope-Fallback. Über-Mitternacht-Zeitfenster bleiben zulässig; ungültige vollständige Zeitfenster verweigern den Zugriff.
+- Restriktionen sind grantbezogen: Ein anderer passender und zulässiger Allow-Grant kann weiterhin erlauben. Es existiert weder eine generische Rule-Registry noch ein zweiter Authorize-Pfad.
+- Characterization-Tests sichern kollidierende Regeln, Provenance und das bestehende Force-Deny-Verhalten ohne permissiven Fallback ab.
+
+### News-Kompatibilitäts-Snapshot
+
+Der News-Editor hält historische Mainserver-Felder in einem internen Legacy-Snapshot: Nur ausdrücklich berührte Compatibility-Aliase mit passendem Laufzeittyp aktualisieren diesen Snapshot, während vereinfachte redaktionelle Felder und die bestehenden Publication-, Push- und ContentBlocks-Prioritäten führend bleiben.

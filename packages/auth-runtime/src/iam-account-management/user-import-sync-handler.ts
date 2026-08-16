@@ -90,12 +90,91 @@ class KeycloakUserSyncManualReviewError extends Error {
 
 const { loadLocalProfileSeed, upsertIdentityUser } = createUserImportPersistence({ logger });
 
+type IdentityProviderResolution = NonNullable<
+  Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>
+>;
+
+type LocalProfileSeed = Awaited<ReturnType<typeof loadLocalProfileSeed>>;
+
+type ResolvedProfileFields = {
+  readonly username?: string;
+  readonly email?: string;
+  readonly firstName?: string;
+  readonly lastName?: string;
+};
+
+type ProfileRepairPlan = {
+  readonly user: IdentityListedUser;
+  readonly update: ResolvedProfileFields;
+  readonly repairedEmail: boolean;
+  readonly repairedFirstName: boolean;
+  readonly repairedLastName: boolean;
+};
+
+const resolveProfileValue = (
+  sourceValue: string | undefined,
+  seedValue: string | undefined
+): string | undefined => normalizeOptionalText(sourceValue) ?? seedValue;
+
+const resolveProfileEmail = (
+  sourceEmail: string | undefined,
+  seedEmail: string | undefined,
+  username: string | undefined
+): string | undefined =>
+  resolveProfileValue(sourceEmail, seedEmail) ?? (looksLikeEmail(username) ? username : undefined);
+
+const resolveProfileFields = (
+  user: IdentityListedUser,
+  localSeed: LocalProfileSeed
+): ResolvedProfileFields => {
+  const username = resolveProfileValue(user.username, localSeed?.username);
+  return {
+    username,
+    email: resolveProfileEmail(user.email, localSeed?.email, username),
+    firstName: resolveProfileValue(user.firstName, localSeed?.firstName),
+    lastName: resolveProfileValue(user.lastName, localSeed?.lastName),
+  };
+};
+
+const toProfileUpdate = (fields: ResolvedProfileFields): ProfileRepairPlan['update'] => ({
+  ...(fields.username ? { username: fields.username } : {}),
+  ...(fields.email ? { email: fields.email } : {}),
+  ...(fields.firstName ? { firstName: fields.firstName } : {}),
+  ...(fields.lastName ? { lastName: fields.lastName } : {}),
+});
+
+const buildProfileRepairPlan = (
+  user: IdentityListedUser,
+  localSeed: LocalProfileSeed
+): ProfileRepairPlan | undefined => {
+  const sourceEmail = normalizeOptionalText(user.email);
+  const sourceFirstName = normalizeOptionalText(user.firstName);
+  const sourceLastName = normalizeOptionalText(user.lastName);
+  const resolved = resolveProfileFields(user, localSeed);
+  const repairedEmail = resolved.email !== sourceEmail;
+  const repairedFirstName = resolved.firstName !== sourceFirstName;
+  const repairedLastName = resolved.lastName !== sourceLastName;
+
+  if (!repairedEmail && !repairedFirstName && !repairedLastName) {
+    return undefined;
+  }
+
+  const update = toProfileUpdate(resolved);
+  return {
+    user: { ...user, ...update },
+    update,
+    repairedEmail,
+    repairedFirstName,
+    repairedLastName,
+  };
+};
+
 const repairIdentityUserProfileIfPossible = async (
   client: QueryClient,
   input: {
     instanceId: string;
     user: IdentityListedUser;
-    identityProvider: NonNullable<Awaited<ReturnType<typeof resolveIdentityProviderForInstance>>>;
+    identityProvider: IdentityProviderResolution;
     requestId?: string;
     traceId?: string;
   }
@@ -104,37 +183,13 @@ const repairIdentityUserProfileIfPossible = async (
     instanceId: input.instanceId,
     keycloakSubject: input.user.externalId,
   });
-
-  const username = normalizeOptionalText(input.user.username) ?? localSeed?.username;
-  const email =
-    normalizeOptionalText(input.user.email) ??
-    localSeed?.email ??
-    (looksLikeEmail(username) ? username : undefined);
-  const firstName = normalizeOptionalText(input.user.firstName) ?? localSeed?.firstName;
-  const lastName = normalizeOptionalText(input.user.lastName) ?? localSeed?.lastName;
-
-  const needsRepair =
-    normalizeOptionalText(input.user.email) === undefined ||
-    normalizeOptionalText(input.user.firstName) === undefined ||
-    normalizeOptionalText(input.user.lastName) === undefined;
-
-  const canRepair =
-    needsRepair &&
-    (email !== normalizeOptionalText(input.user.email) ||
-      firstName !== normalizeOptionalText(input.user.firstName) ||
-      lastName !== normalizeOptionalText(input.user.lastName));
-
-  if (!canRepair) {
+  const repair = buildProfileRepairPlan(input.user, localSeed);
+  if (!repair) {
     return { user: input.user, repaired: false };
   }
 
   await trackKeycloakCall('repair_imported_user_profile', () =>
-    input.identityProvider.provider.updateUser(input.user.externalId, {
-      ...(username ? { username } : {}),
-      ...(email ? { email } : {}),
-      ...(firstName ? { firstName } : {}),
-      ...(lastName ? { lastName } : {}),
-    })
+    input.identityProvider.provider.updateUser(input.user.externalId, repair.update)
   );
 
   logger.info('Keycloak user profile repaired during IAM sync', {
@@ -145,21 +200,12 @@ const repairIdentityUserProfileIfPossible = async (
     request_id: input.requestId,
     trace_id: input.traceId,
     subject_ref: toSubjectRef(input.user.externalId),
-    repaired_email: email !== normalizeOptionalText(input.user.email),
-    repaired_first_name: firstName !== normalizeOptionalText(input.user.firstName),
-    repaired_last_name: lastName !== normalizeOptionalText(input.user.lastName),
+    repaired_email: repair.repairedEmail,
+    repaired_first_name: repair.repairedFirstName,
+    repaired_last_name: repair.repairedLastName,
   });
 
-  return {
-    repaired: true,
-    user: {
-      ...input.user,
-      ...(username ? { username } : {}),
-      ...(email ? { email } : {}),
-      ...(firstName ? { firstName } : {}),
-      ...(lastName ? { lastName } : {}),
-    },
-  };
+  return { repaired: true, user: repair.user };
 };
 
 const listAllKeycloakUsers = async (
@@ -229,7 +275,10 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
     );
   }
   const errorMessage = error instanceof Error ? error.message : String(error);
-  if (error instanceof KeycloakAdminRequestError || error instanceof KeycloakAdminUnavailableError) {
+  if (
+    error instanceof KeycloakAdminRequestError ||
+    error instanceof KeycloakAdminUnavailableError
+  ) {
     return createApiError(
       503,
       'keycloak_unavailable',
@@ -262,6 +311,215 @@ const mapSyncErrorResponse = (error: unknown, requestId?: string): Response | un
   return undefined;
 };
 
+type ImportCounters = {
+  importedCount: number;
+  updatedCount: number;
+  repairedProfileCount: number;
+  manualReviewCount: number;
+};
+
+type ImportDiagnostics = {
+  readonly authRealm: string;
+  readonly providerSource: IdentityProviderResolution['source'];
+  readonly executionMode: IdentityProviderResolution['executionMode'];
+};
+
+const resolveImportOutcome = (
+  correctedCount: number,
+  manualReviewCount: number
+): IamUserImportSyncReport['outcome'] => {
+  if (manualReviewCount === 0) {
+    return 'success';
+  }
+  return correctedCount > 0 ? 'partial_failure' : 'failed';
+};
+
+const buildImportReport = (input: {
+  readonly counters: ImportCounters;
+  readonly diagnostics: ImportDiagnostics;
+  readonly totalKeycloakUsers: number;
+}): IamUserImportSyncReport => {
+  const { counters } = input;
+  const correctedCount = counters.importedCount + counters.updatedCount;
+  return {
+    outcome: resolveImportOutcome(correctedCount, counters.manualReviewCount),
+    checkedCount: input.totalKeycloakUsers,
+    correctedCount,
+    manualReviewCount: counters.manualReviewCount,
+    importedCount: counters.importedCount,
+    updatedCount: counters.updatedCount,
+    skippedCount: 0,
+    totalKeycloakUsers: input.totalKeycloakUsers,
+    diagnostics: input.diagnostics,
+    ...(counters.repairedProfileCount > 0
+      ? { repairedProfileCount: counters.repairedProfileCount }
+      : {}),
+  };
+};
+
+const logManualReview = (
+  user: IdentityListedUser,
+  input: {
+    readonly instanceId: string;
+    readonly identityProvider: IdentityProviderResolution;
+    readonly requestId?: string;
+    readonly traceId?: string;
+  },
+  error: KeycloakUserSyncManualReviewError
+): void => {
+  logger.warn('Keycloak user sync left a user in manual review', {
+    operation: 'sync_keycloak_users',
+    instance_id: input.instanceId,
+    auth_realm: input.identityProvider.realm,
+    provider_source: input.identityProvider.source,
+    request_id: input.requestId,
+    trace_id: input.traceId,
+    subject_ref: toSubjectRef(user.externalId),
+    reason: error.reason,
+    error: error.message,
+  });
+};
+
+const syncIdentityUser = async (
+  client: QueryClient,
+  user: IdentityListedUser,
+  input: {
+    readonly instanceId: string;
+    readonly identityProvider: IdentityProviderResolution;
+    readonly requestId?: string;
+    readonly traceId?: string;
+  }
+): Promise<{
+  readonly created?: boolean;
+  readonly manualReview: boolean;
+  readonly repaired: boolean;
+}> => {
+  await client.query(`SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+  let repairedProfile = false;
+  try {
+    const repaired = await repairIdentityUserProfileIfPossible(client, {
+      instanceId: input.instanceId,
+      user,
+      identityProvider: input.identityProvider,
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+    repairedProfile = repaired.repaired;
+    if (!hasRequiredProfileFields(repaired.user)) {
+      throw new KeycloakUserSyncManualReviewError(
+        'identity_profile_incomplete',
+        'Keycloak-Benutzerprofil ist unvollständig und erfordert manuelle Prüfung.'
+      );
+    }
+    const result = await upsertIdentityUser(client, {
+      instanceId: input.instanceId,
+      user: repaired.user,
+    });
+    await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+    return { created: result.created, manualReview: false, repaired: repairedProfile };
+  } catch (error) {
+    await client.query(`ROLLBACK TO SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+    await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
+    if (error instanceof KeycloakUserSyncManualReviewError) {
+      logManualReview(user, input, error);
+      return { manualReview: true, repaired: repairedProfile };
+    }
+    throw error;
+  }
+};
+
+const addItemResult = (
+  counters: ImportCounters,
+  result: Awaited<ReturnType<typeof syncIdentityUser>>
+): void => {
+  if (result.repaired) {
+    counters.repairedProfileCount += 1;
+  }
+  if (result.manualReview) {
+    counters.manualReviewCount += 1;
+  } else if (result.created) {
+    counters.importedCount += 1;
+  } else {
+    counters.updatedCount += 1;
+  }
+};
+
+const emitImportActivityIfPossible = async (
+  client: QueryClient,
+  input: {
+    readonly instanceId: string;
+    readonly actorAccountId?: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+  },
+  report: IamUserImportSyncReport,
+  repairedProfileCount: number
+): Promise<void> => {
+  if (!input.actorAccountId) {
+    return;
+  }
+  try {
+    await emitActivityLog(client, {
+      instanceId: input.instanceId,
+      accountId: input.actorAccountId,
+      subjectId: input.actorAccountId,
+      eventType: 'user.keycloak_import_synced',
+      result: 'success',
+      payload: {
+        checked_count: report.checkedCount,
+        corrected_count: report.correctedCount,
+        manual_review_count: report.manualReviewCount,
+        imported_count: report.importedCount,
+        updated_count: report.updatedCount,
+        skipped_count: report.skippedCount,
+        total_keycloak_users: report.totalKeycloakUsers,
+        repaired_profile_count: repairedProfileCount,
+      },
+      requestId: input.requestId,
+      traceId: input.traceId,
+    });
+  } catch (error) {
+    logger.warn('Skipped audit log for Keycloak user sync after successful import', {
+      operation: 'sync_keycloak_users',
+      instance_id: input.instanceId,
+      actor_account_id: input.actorAccountId,
+      request_id: input.requestId,
+      trace_id: input.traceId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+const importIdentityUsers = async (
+  client: QueryClient,
+  users: readonly IdentityListedUser[],
+  input: {
+    readonly instanceId: string;
+    readonly actorAccountId?: string;
+    readonly requestId?: string;
+    readonly traceId?: string;
+    readonly identityProvider: IdentityProviderResolution;
+    readonly diagnostics: ImportDiagnostics;
+  }
+): Promise<IamUserImportSyncReport> => {
+  const counters: ImportCounters = {
+    importedCount: 0,
+    updatedCount: 0,
+    repairedProfileCount: 0,
+    manualReviewCount: 0,
+  };
+  for (const user of users) {
+    addItemResult(counters, await syncIdentityUser(client, user, input));
+  }
+  const report = buildImportReport({
+    counters,
+    diagnostics: input.diagnostics,
+    totalKeycloakUsers: users.length,
+  });
+  await emitImportActivityIfPossible(client, input, report, counters.repairedProfileCount);
+  return report;
+};
+
 const runKeycloakUserImportSync = async (input: {
   instanceId: string;
   actorAccountId?: string;
@@ -290,130 +548,13 @@ const runKeycloakUserImportSync = async (input: {
     executionMode: resolution.executionMode,
   } as const;
 
-  const report = await withInstanceScopedDb(input.instanceId, async (client) => {
-    let importedCount = 0;
-    let updatedCount = 0;
-    let repairedProfileCount = 0;
-    let manualReviewCount = 0;
-
-    for (const user of matchingUsers) {
-      await client.query(`SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
-      try {
-        const repaired = await repairIdentityUserProfileIfPossible(client, {
-          instanceId: input.instanceId,
-          user,
-          identityProvider: resolution,
-          requestId: input.requestId,
-          traceId: input.traceId,
-        });
-        if (repaired.repaired) {
-          repairedProfileCount += 1;
-        }
-        if (!hasRequiredProfileFields(repaired.user)) {
-          throw new KeycloakUserSyncManualReviewError(
-            'identity_profile_incomplete',
-            'Keycloak-Benutzerprofil ist unvollständig und erfordert manuelle Prüfung.'
-          );
-        }
-        const result = await upsertIdentityUser(client, {
-          instanceId: input.instanceId,
-          user: repaired.user,
-        });
-        if (result.created) {
-          importedCount += 1;
-        } else {
-          updatedCount += 1;
-        }
-        await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
-      } catch (error) {
-        await client.query(`ROLLBACK TO SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
-        await client.query(`RELEASE SAVEPOINT ${USER_SYNC_SAVEPOINT}`);
-
-        if (error instanceof KeycloakUserSyncManualReviewError) {
-          manualReviewCount += 1;
-          logger.warn('Keycloak user sync left a user in manual review', {
-            operation: 'sync_keycloak_users',
-            instance_id: input.instanceId,
-            auth_realm: resolution.realm,
-            provider_source: resolution.source,
-            request_id: input.requestId,
-            trace_id: input.traceId,
-            subject_ref: toSubjectRef(user.externalId),
-            reason: error.reason,
-            error: error.message,
-          });
-          continue;
-        }
-
-        if (
-          error instanceof KeycloakUserSyncBlockedError ||
-          error instanceof KeycloakAdminRequestError ||
-          error instanceof KeycloakAdminUnavailableError ||
-          error instanceof IamSchemaDriftError
-        ) {
-          throw error;
-        }
-
-        throw error;
-      }
-    }
-
-    const correctedCount = importedCount + updatedCount;
-    const outcome =
-      manualReviewCount > 0
-        ? correctedCount > 0
-          ? 'partial_failure'
-          : 'failed'
-        : 'success';
-
-    const summary: IamUserImportSyncReport = {
-      outcome,
-      checkedCount: matchingUsers.length,
-      correctedCount,
-      manualReviewCount,
-      importedCount,
-      updatedCount,
-      skippedCount,
-      totalKeycloakUsers: listedUsers.length,
-      ...(diagnostics ? { diagnostics } : {}),
-      ...(repairedProfileCount > 0 ? { repairedProfileCount } : {}),
-    };
-
-    if (input.actorAccountId) {
-      try {
-        await emitActivityLog(client, {
-          instanceId: input.instanceId,
-          accountId: input.actorAccountId,
-          subjectId: input.actorAccountId,
-          eventType: 'user.keycloak_import_synced',
-          result: 'success',
-          payload: {
-            checked_count: summary.checkedCount,
-            corrected_count: summary.correctedCount,
-            manual_review_count: summary.manualReviewCount,
-            imported_count: summary.importedCount,
-            updated_count: summary.updatedCount,
-            skipped_count: summary.skippedCount,
-            total_keycloak_users: summary.totalKeycloakUsers,
-            repaired_profile_count: repairedProfileCount,
-          },
-          requestId: input.requestId,
-          traceId: input.traceId,
-        });
-      } catch (error) {
-        logger.warn('Skipped audit log for Keycloak user sync after successful import', {
-          operation: 'sync_keycloak_users',
-          instance_id: input.instanceId,
-          actor_account_id: input.actorAccountId,
-          request_id: input.requestId,
-          trace_id: input.traceId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    return summary;
-  });
+  const report = await withInstanceScopedDb(input.instanceId, (client) =>
+    importIdentityUsers(client, matchingUsers, {
+      ...input,
+      identityProvider: resolution,
+      diagnostics,
+    })
+  );
 
   logger.info('sync_keycloak_users_completed', {
     operation: 'sync_keycloak_users',

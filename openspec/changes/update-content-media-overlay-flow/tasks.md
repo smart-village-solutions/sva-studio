@@ -32,7 +32,7 @@
 - [x] 4.5 Projects einschließlich `altText`, `caption`, `credits` und lückenloser Positionsableitung migrieren
 - [x] 4.6 Cockpit Cards einschließlich `sourceUrl.description`, festem `contentType`, Reihenfolge und Pflichtbildvalidierung migrieren
 - [x] 4.7 Die bestehende Medienrolle `gallery_item` sowie `targetType`, `targetId` und `sortOrder` in allen sechs Referenzadaptern durch Tests fixieren
-- [x] 4.8 Plugin-eigene Upload-, Picker-, Bildlisten- und Preview-Duplikate erst nach erfolgreicher jeweiliger Migration entfernen
+- [x] 4.8 Plugin-eigene Upload-, Picker-, Bildlisten- und Preview-Duplikate nach erfolgreicher Migration per Produktions-Importgraph verifizieren und entfernen; vollständig identische Upload-/Host-Asset-Grundlogik gemeinsam besitzen, fachliche Mapper und Fallbacks pluginlokal belassen
 - [x] 4.9 Bestehende Inhalte und unbekannte fachliche Felder ohne Datenmigration und ohne Roundtrip-Verlust laden, bearbeiten und speichern
 
 ## 5. Tests und Gates
@@ -44,7 +44,7 @@
 - [x] 5.5 Integrations- oder E2E-Tests für Mainserver-/Referenzerfolg, Referenzteilfehler und idempotente Wiederholung ergänzen
 - [x] 5.6 Negative Tests für geschützte Assets, fehlende persistierbare URL und presigned URLs ergänzen
 - [x] 5.7 Nach jedem Plugin-Block dessen Nx-Unit- und Type-Targets ausführen; bei Runtime-Änderungen an serverseitigen Packages früh `pnpm check:server-runtime` ausführen
-- [ ] 5.8 Vor finaler Freigabe den affected Scope messen und `pnpm test:pr` oder den dokumentierten kleinsten vollständigen Gate-Pfad grün ausführen
+- [x] 5.8 Vor finaler Freigabe den affected Scope messen und `pnpm test:pr` oder den dokumentierten kleinsten vollständigen Gate-Pfad grün ausführen
 
 ## 6. Dokumentation
 

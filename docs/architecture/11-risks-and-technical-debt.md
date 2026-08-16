@@ -95,6 +95,7 @@ Schulden auf IST-Basis.
 - Impact: hoch (Refactorings werden riskant, Sicherheits- und Routing-Fehler bleiben schwer lokalisierbar)
 - Wahrscheinlichkeit: hoch
 - Maßnahme: `complexity-gate`, ticketpflichtige tracked findings, Hotspot-Coverage für kritische Dateien
+- Der frühere IAM-Acceptance-Sammelrunner ist in explizite, laufbezogene Prüfphasen zerlegt. Restrisiko bleiben Änderungen an realen Provider- und Umgebungsverträgen; sie benötigen weiterhin einen geschützten Acceptance-Lauf und dürfen nicht allein aus lokalen Fakes freigegeben werden.
 
 16. Registry-Cache aktuell nur als L1 im App-Prozess
 
@@ -346,7 +347,8 @@ Schulden auf IST-Basis.
 
 - Impact: mittel bis hoch (grüne lokale Auswahl- und E2E-Flows beweisen noch nicht den finalen Server-/Datenpfad)
 - Wahrscheinlichkeit: mittel
-- Maßnahme: vor Produktivsetzung denselben Bürgerfluss gegen die echten öffentlichen Read-Endpunkte und die finale Konfiguration erneut als Integrations- und E2E-Gate absichern
+- Maßnahme: Repository- und Endpunkt-Characterization sichern bereits dieselbe standortgebundene Kalenderbasis für Web und PDF einschließlich Negativpfaden; vor Produktivsetzung bleibt derselbe Bürgerfluss gegen eine echte tenantgebundene Waste-Datenbank und die finale Konfiguration als Integrations- und E2E-Gate erforderlich
+- Die öffentliche Reminder-Konfiguration besitzt zusätzlich ein Drift-Risiko zwischen Studio-Schreibpfad und Public-Waste-Lesepfad. Maßnahme: kanonische Core-Normalisierung mit Characterization für gültige, partielle, fehlerhafte und unbekannte Werte, stabile Output-Reihenfolge und eine fail-closed Secret-Grenze; neue Defaults oder Validator-Fallbacks benötigen einen eigenen Vertrag.
 
 ### Technische Schulden (Auswahl)
 
@@ -581,3 +583,10 @@ Referenzen:
 - Risiko: Ein persistierter Cache liefert wegen unvollständiger Inputs ein falsches Ergebnis. Maßnahme: nur deterministische Targets persistieren, Schlüssel an Toolchain, Lockfile, Nx-Konfiguration, Trust-Scope und Job binden sowie geschützte Kontexte von PR-Caches trennen.
 - Risiko: PR-Fail-fast zeigt pro Push weniger Folgefehler. Maßnahme: Main und Nightly bleiben diagnostisch vollständig; der PR optimiert bewusst die erste Reparaturschleife.
 - Restrisiko: Die Zielwerte für Median und P90 sind erst nach mindestens 20 repräsentativen GitHub-Läufen belastbar. Bis dahin bleibt die Laufzeitwirkung eine zu verifizierende Rollout-Aufgabe.
+
+### Fortschreibung 2026-08: IAM-ABAC-Entscheidungsbausteine
+
+- Das technische Risiko der monolithischen ABAC-Funktion ist durch fachliche Evaluatoren und die entfernten Complexity-Baseline-Einträge reduziert.
+- Restrisiko: Die feste Reihenfolge der Regeln ist fachlich relevant und kann bei späteren Erweiterungen versehentlich verändert werden. Maßnahme: Reihenfolge in der Orchestrierung sichtbar halten und jede neue Regel mit kombinatorischen Characterization-Tests gegen benachbarte Regeln absichern.
+- Restrisiko: Ein Zeitfenster ohne explizite `currentTime` verwendet weiterhin die aktuelle UTC-Uhrzeit. Maßnahme: Vertrag unverändert lassen und Tests sowie Diagnosepfade mit expliziter Referenzzeit ausführen.
+- Restrisiko: Force-Deny liefert im bestehenden Vertrag keine Permission-Provenance. Maßnahme: Ist-Verhalten explizit testen; eine fachliche Erweiterung nur als separaten IAM-Vertragschange durchführen.

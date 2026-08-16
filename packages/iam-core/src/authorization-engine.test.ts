@@ -138,6 +138,138 @@ describe('evaluateAuthorizeDecision', () => {
     expect(result.reason).toBe('allowed_by_abac');
   });
 
+  it('prioritizes missing required geo context over force deny', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        scope: {
+          requireGeoScope: true,
+          forceDeny: true,
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('context_attribute_missing');
+    expect(result.diagnostics?.stage).toBe('abac');
+  });
+
+  it('prioritizes organization restrictions over satisfied allows and force deny', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'geo-child',
+          geoHierarchy: ['geo-root', 'geo-child'],
+        },
+      },
+      context: {
+        ...baseRequest().context,
+        actingAsUserId: 'user-impersonated',
+        attributes: {
+          organizationHierarchy: ['org-root', 'org-child'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        scope: {
+          restrictedOrganizationIds: ['org-child'],
+          allowedGeoUnitIds: ['geo-root'],
+          timeWindow: { start: '23:00', end: '01:00' },
+          currentTime: '00:30',
+          requireActingAs: true,
+          forceDeny: true,
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('hierarchy_restriction');
+  });
+
+  it('prioritizes descendant geo restrictions over ancestor allows and reports provenance', () => {
+    const request: AuthorizeRequest = {
+      ...baseRequest(),
+      resource: {
+        ...baseRequest().resource,
+        attributes: {
+          geoUnitId: 'geo-child',
+          geoHierarchy: ['geo-root', 'geo-child'],
+        },
+      },
+    };
+
+    const result = evaluateAuthorizeDecision(request, [
+      {
+        ...basePermission(),
+        provenance: { sourceKinds: ['direct_role'] },
+        scope: {
+          allowedGeoUnitIds: ['geo-root'],
+          restrictedGeoUnitIds: ['geo-child'],
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('hierarchy_restriction');
+    expect(result.provenance).toEqual({
+      sourceKinds: ['direct_role'],
+      restrictedByGeoUnitId: 'geo-child',
+    });
+  });
+
+  it('prioritizes an invalid time window over missing acting-as context and force deny', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        scope: {
+          timeWindow: { start: 'invalid', end: '01:00' },
+          requireActingAs: true,
+          forceDeny: true,
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('abac_condition_unmet');
+  });
+
+  it('prioritizes missing acting-as context over force deny', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        scope: {
+          requireActingAs: true,
+          forceDeny: true,
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('context_attribute_missing');
+  });
+
+  it('keeps force-deny decisions without adding permission provenance', () => {
+    const result = evaluateAuthorizeDecision(baseRequest(), [
+      {
+        ...basePermission(),
+        sourceGroupIds: ['group-1'],
+        provenance: { sourceKinds: ['group_role'] },
+        scope: {
+          forceDeny: true,
+        },
+      },
+    ]);
+
+    expect(result.allowed).toBe(false);
+    expect(result.reason).toBe('policy_conflict_restrictive_wins');
+    expect(result.provenance).toBeUndefined();
+  });
+
   it('treats duplicate matching permissions as allow-only grants', () => {
     const request = baseRequest();
 

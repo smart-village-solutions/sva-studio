@@ -2,12 +2,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
+  contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
   hasContentLifecycleAccess,
+  isSupportedContentMediaUploadFile as isSupportedUploadFile,
   listHostMediaReferencesByTarget,
   readSessionAccessSnapshot,
+  readHostMediaAssetFileName as readAssetFileName,
+  readHostMediaAssetTitle as readAssetTitle,
   resolveContentVisibilityAction,
   resolveContentMediaCapabilities,
   resolveStandardContentAccessCapabilities,
@@ -60,13 +64,7 @@ import {
   mapGenericItemsDetailFormValuesToInput,
   mapGenericItemToDetailFormValues,
 } from './generic-items.detail-form.js';
-import {
-  isSupportedUploadFile,
-  mediaContentFromAsset,
-  readAssetFileName,
-  readAssetTitle,
-  uploadPhaseMessageKey,
-} from './generic-items.detail-media.helpers.js';
+import { mediaContentFromAsset } from './generic-items.detail-media.helpers.js';
 import { createEmptyMediaContent } from './generic-items.detail-media-upload.js';
 import { createGenericItemsDetailLabels } from './generic-items.detail-page.labels.js';
 import {

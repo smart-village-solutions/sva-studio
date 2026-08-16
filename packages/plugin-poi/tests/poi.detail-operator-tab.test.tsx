@@ -2,7 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { FormProvider, useForm } from 'react-hook-form';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createDefaultPoiDetailFormValues, type PoiDetailFormValues } from '../src/poi.detail-form.js';
+import {
+  createDefaultPoiDetailFormValues,
+  type PoiDetailFormValues,
+} from '../src/poi.detail-form.js';
 import { PoiDetailOperatorTab } from '../src/poi.detail-operator-tab.js';
 
 const translations: Record<string, string> = {
@@ -75,7 +78,8 @@ vi.mock('../src/poi.map-geocoding-client.js', () => ({
   geocodeMapAddress: (input: {
     address: { query?: string; street?: string; zip?: string; city?: string; country?: string };
   }) => geocodingState.geocodeAddress(input),
-  reverseMapCoordinates: (input: { latitude: number; longitude: number }) => geocodingState.reverseCoordinates(input),
+  reverseMapCoordinates: (input: { latitude: number; longitude: number }) =>
+    geocodingState.reverseCoordinates(input),
 }));
 
 vi.mock('../src/poi.location-map.js', () => ({
@@ -87,7 +91,10 @@ vi.mock('../src/poi.location-map.js', () => ({
     onError: (message: string | null) => void;
   }) => (
     <div>
-      <button type="button" onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}>
+      <button
+        type="button"
+        onClick={() => onCoordinatesChange({ latitude: '50.123456', longitude: '8.654321' })}
+      >
         Kartenpunkt setzen
       </button>
       <button type="button" onClick={() => onError('map_error')}>
@@ -172,6 +179,76 @@ describe('PoiDetailOperatorTab', () => {
     });
   });
 
+  it('keeps all operator contact fields and both web url values independently editable', async () => {
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    const updates = [
+      ['Name des Betreibers', 'Stadtwerke'],
+      ['E-Mail', 'kontakt@example.test'],
+      ['Vorname', 'Erika'],
+      ['Nachname', 'Mustermann'],
+      ['Telefon', '+49 30 123456'],
+      ['Fax', '+49 30 654321'],
+      ['Link-Beschreibung', 'Website des Betreibers'],
+      ['URL', 'https://example.test/operator'],
+    ] as const;
+
+    for (const [label, value] of updates) {
+      fireEvent.change(screen.getByLabelText(label), { target: { value } });
+      expect((screen.getByLabelText(label) as HTMLInputElement).value).toBe(value);
+    }
+
+    expect((screen.getByLabelText('Link-Beschreibung') as HTMLInputElement).value).toBe(
+      'Website des Betreibers'
+    );
+    expect(screen.queryByRole('button', { name: 'Geo-Koordinaten ermitteln' })).toBeNull();
+  });
+
+  it('keeps geocoding actions single-flight while a lookup is pending', async () => {
+    let resolveGeocode:
+      ((value: Awaited<ReturnType<typeof geocodingState.geocodeAddress>>) => void) | undefined;
+    geocodingState.geocodeAddress.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveGeocode = resolve;
+        })
+    );
+
+    render(<TestForm />);
+    await waitFor(() => {
+      expect(geocodingState.getConfig).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.change(screen.getByLabelText('Ort'), { target: { value: 'Musterstadt' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' }));
+
+    const pendingButton = await screen.findByRole('button', {
+      name: 'Geo-Koordinaten werden ermittelt',
+    });
+    expect((pendingButton as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(pendingButton);
+    expect(geocodingState.geocodeAddress).toHaveBeenCalledTimes(1);
+
+    resolveGeocode?.({
+      label: 'Betreiberhaus, 12345 Musterstadt',
+      coordinates: { latitude: 48.2, longitude: 11.6 },
+      street: 'Andere Straße',
+      houseNumber: '9',
+      postalCode: '54321',
+      city: 'Anderstadt',
+      country: 'Deutschland',
+      countryCode: 'de',
+      source: 'geoapify',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Geo-Koordinaten ermitteln' })).toBeTruthy();
+    });
+  });
+
   it('reverse geocodes operator coordinates, updates the address and syncs map interactions', async () => {
     render(<TestForm />);
     await waitFor(() => {
@@ -210,7 +287,9 @@ describe('PoiDetailOperatorTab', () => {
   });
 
   it('surfaces empty and generic geocoding failures for operator lookups', async () => {
-    geocodingState.geocodeAddress.mockRejectedValueOnce(new Error('no_result')).mockRejectedValueOnce(new Error('boom'));
+    geocodingState.geocodeAddress
+      .mockRejectedValueOnce(new Error('no_result'))
+      .mockRejectedValueOnce(new Error('boom'));
     geocodingState.reverseCoordinates.mockRejectedValueOnce(new Error('no_result'));
 
     render(<TestForm />);

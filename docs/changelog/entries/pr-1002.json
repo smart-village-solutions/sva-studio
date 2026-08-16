@@ -1,0 +1,4 @@
+{
+  "prNumber": 1002,
+  "body": "Delegationen werden mit klar getrennten Prüf- und Speicherregeln verarbeitet\n\n- Pflichtfelder, Ticketstatus und Zeitgrenzen werden weiterhin in derselben Reihenfolge geprüft.\n- Beteiligte Konten und Selbstfreigaben bleiben mandantensicher aufgelöst.\n- Speicherung und Audit-Protokoll behalten ihre bestehenden Daten und Statuswerte."
+}

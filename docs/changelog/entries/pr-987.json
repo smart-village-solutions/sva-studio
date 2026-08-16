@@ -1,0 +1,4 @@
+{
+  "prNumber": 987,
+  "body": "IAM-Berechtigungsentscheidungen werden zuverlässiger abgesichert\n\n- Kontextabhängige Regeln für Geografie, Organisation, Zeitfenster und Acting-as werden weiterhin in ihrer festen, zugriffssicheren Reihenfolge ausgewertet.\n- Zusätzliche Tests sichern kollidierende Regeln, fehlenden Kontext und die Herkunft von Berechtigungen ab.\n- Die interne Entscheidungslogik ist deutlich weniger komplex, ohne öffentliche Schnittstellen oder bestehende Zugriffsentscheidungen zu verändern."
+}

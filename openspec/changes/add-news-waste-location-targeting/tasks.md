@@ -9,6 +9,7 @@
 - [x] 2.2 Zielgruppenbereich in den Push-Einstellungen mit Status, Zusammenfassung und veralteten Zielen ergänzen
 - [x] 2.3 Barrierefreies Auswahl-Overlay mit Hierarchiefiltern, Suche und seitenübergreifender Auswahl ergänzen
 - [x] 2.4 Globalen Push beim auslösenden Speichern bestätigen
+- [x] 2.5 Vorgemerkte und wirksame Auswahl über ein filterabhängiges Schnittmengenmodell trennen
 
 ## 3. Qualität und Dokumentation
 
@@ -18,3 +19,4 @@
 - [x] 3.4 City-Updates atomar auf feldselektive PATCH-Semantik härten
 - [x] 3.5 Zielauswahl lazy laden, dynamische Ergebnisse barrierefrei ankündigen und versendete Ziele sperren
 - [x] 3.6 Neue Tests modulnah platzieren und Review-Regressionen abdecken
+- [x] 3.7 Lokalisierte Seitennavigation, sichtbare veraltete Ziele und das Schnittmengenmodell absichern

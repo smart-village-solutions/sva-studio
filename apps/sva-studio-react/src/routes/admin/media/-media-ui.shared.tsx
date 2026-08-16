@@ -23,10 +23,16 @@ const encodeBase64Url = (value: string): string => {
     return Buffer.from(value, 'utf-8').toString('base64url');
   }
 
-  return bytesToBase64(textEncoder.encode(value))
+  const encoded = bytesToBase64(textEncoder.encode(value))
     .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/g, '');
+    .replaceAll('/', '_');
+  if (encoded.endsWith('==')) {
+    return encoded.slice(0, -2);
+  }
+  if (encoded.endsWith('=')) {
+    return encoded.slice(0, -1);
+  }
+  return encoded;
 };
 
 const decodeBase64Url = (value: string): string => {

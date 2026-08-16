@@ -694,24 +694,6 @@
       "status": "open",
       "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/patch-coverage-gate.ts)"
     },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (scripts/ci/run-iam-acceptance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:fileLines": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (scripts/ci/run-iam-acceptance.ts)"
-    },
-    "ci-scripts:scripts/ci/run-iam-acceptance.ts:functionLines": {
-      "ticketId": "baseline-ci-run-iam-acceptance-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (scripts/ci/run-iam-acceptance.ts)"
-    },
     "ci-scripts:scripts/ci/run-iam-authorize-performance.ts:fileLines": {
       "ticketId": "baseline-ci-run-iam-authorize-performance-ts",
       "ticketSystem": "policy-baseline",
@@ -832,24 +814,6 @@
       "status": "open",
       "summary": "oeffentliche IAM-Core-Vertragsoberflaeche in kleinere Export-Segmente aufteilen (packages/iam-core/src/authorization-contract.ts)"
     },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:cyclomaticComplexity": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Entscheidungslogik fuer Scope, ABAC und Provenance in kleinere Bausteine zerlegen (packages/iam-core/src/authorization-engine.ts)"
-    },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:fileLines": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "IAM-Authorization-Engine in kleinere fachliche Einheiten zerlegen (packages/iam-core/src/authorization-engine.ts)"
-    },
-    "iam-core:packages/iam-core/src/authorization-engine.ts:functionLines": {
-      "ticketId": "baseline-iam-core-authorization-engine-ts",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange IAM-Decision-Funktion in kleinere Auswertungsschritte aufteilen (packages/iam-core/src/authorization-engine.ts)"
-    },
     "iam-core:packages/iam-core/src/index.ts:publicExports": {
       "ticketId": "baseline-iam-core-index-ts",
       "ticketSystem": "policy-baseline",
@@ -969,24 +933,6 @@
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Route-Bindings in kleinere Lazy-Loader-, Placeholder- und Detail-Resolver-Module aufteilen (apps/sva-studio-react/src/routing/app-route-bindings.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:cyclomaticComplexity": {
-      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Kontrollfluss und Verzweigungen in kleinere Entscheidungsbausteine zerlegen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:fileLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "Datei in kleinere fachliche Einheiten zerlegen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
-    },
-    "frontend-app:apps/sva-studio-react/src/routes/account/-account-profile-page.tsx:functionLines": {
-      "ticketId": "baseline-sva-studio-react-src-routes-account-account-profile-page-tsx",
-      "ticketSystem": "policy-baseline",
-      "status": "open",
-      "summary": "lange Funktionen oder Handler in kleinere Schritte aufteilen (apps/sva-studio-react/src/routes/account/-account-profile-page.tsx)"
     },
     "frontend-app:apps/sva-studio-react/src/routes/admin/-iam-page.tsx:cyclomaticComplexity": {
       "ticketId": "baseline-sva-studio-react-src-routes-admin-iam-page-tsx",
@@ -2866,24 +2812,6 @@
       "status": "open",
       "summary": "Lange Keycloak-Audit-Orchestrierung in kleinere Check- und Aggregationsschritte aufteilen (packages/instance-registry/src/service-audit-keycloak.ts)"
     },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Keycloak-Audit-Verzweigungen in kleinere Client-, Realm- und Check-Bausteine zerlegen (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:fileLines": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Keycloak-Audit-Datei in kleinere Auth-, Fetch- und Bewertungsmodule splitten (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
-    "ops-scripts:scripts/ops/studio-instance-audit/keycloak.ts:functionLines": {
-      "ticketId": "QUAL-STUDIO-AUDIT-001",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Keycloak-Audit-Funktionen in kleinere Request-, Parse- und Summary-Schritte aufteilen (scripts/ops/studio-instance-audit/keycloak.ts)"
-    },
     "packages-default:packages/plugin-events/src/events.detail-content-tab.tsx:cyclomaticComplexity": {
       "ticketId": "QUAL-PLUGIN-EVENTS-DETAIL-001",
       "ticketSystem": "backlog",
@@ -3280,23 +3208,11 @@
       "status": "open",
       "summary": "Waste-Output-Renderer in kleinere Layout-, Table- und Footer-Helfer splitten (packages/core/src/waste-management-output.render.ts)"
     },
-    "packages-default:packages/core/src/waste-management-settings-public-config.ts:cyclomaticComplexity": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Public-Waste-Settings-Normalisierung in kleinere Reader-, URL- und Reminder-Parser zerlegen (packages/core/src/waste-management-settings-public-config.ts)"
-    },
     "packages-default:packages/core/src/waste-management-settings-public-config.ts:fileLines": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-034",
       "ticketSystem": "backlog",
       "status": "open",
       "summary": "Public-Waste-Settings-Datei in kleinere Parsing- und Konstantenmodule splitten (packages/core/src/waste-management-settings-public-config.ts)"
-    },
-    "packages-default:packages/core/src/waste-management-settings-public-config.ts:functionLines": {
-      "ticketId": "QUAL-WASTE-COMPLEXITY-034",
-      "ticketSystem": "backlog",
-      "status": "open",
-      "summary": "Lange Public-Waste-Settings-Funktionen in kleinere Validierungs- und Mapping-Schritte aufteilen (packages/core/src/waste-management-settings-public-config.ts)"
     },
     "packages-default:packages/data-repositories/src/waste-management/email-reminders.ts:cyclomaticComplexity": {
       "ticketId": "QUAL-WASTE-COMPLEXITY-035",

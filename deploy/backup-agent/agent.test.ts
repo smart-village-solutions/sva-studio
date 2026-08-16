@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { canonicalBackupRequest } from '../../scripts/ci/backup-agent-contract.ts';
+import { validateBackupRequest, validateRestoreRequest } from './request-validation.mjs';
 
 import {
   archiveSchemaCompatible,
@@ -50,6 +51,30 @@ const request = {
   environment: 'staging',
   deployImageDigest: `sha256:${'a'.repeat(64)}`,
   expiresAt: '2026-07-30T10:10:00.000Z',
+} as const;
+
+const restoreRequest = {
+  version: 1,
+  action: 'restore-and-verify-v1',
+  requestId: 'restore-12345678',
+  environment: 'staging',
+  expiresAt: '2026-07-30T10:10:00.000Z',
+  maintenanceWindowReference: 'INC-42',
+  sourceObjectKey: `staging/2026-07-30/${'a'.repeat(64)}/backup.dump`,
+  sourceSha256: 'b'.repeat(64),
+} as const;
+
+const wasteImportRequest = {
+  version: 1,
+  action: 'import-waste-data-v1',
+  requestId: 'import-12345678',
+  environment: 'prod',
+  expiresAt: '2026-07-30T10:05:00.000Z',
+  maintenanceWindowReference: '2026-08-09 bb-prignitz',
+  sourceObjectKey: 'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql',
+  sourceSha256: 'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc',
+  database: 'waste',
+  tenantInstanceId: 'bb-prignitz',
 } as const;
 
 describe('backup agent runtime contract', () => {
@@ -200,6 +225,65 @@ describe('backup agent runtime contract', () => {
         Date.parse('2026-07-30T10:00:00.000Z')
       )
     ).toBe(false);
+  });
+
+  it.each([
+    ['unknown field', { ...request, bucket: 'studio-db-backup-staging' }],
+    ['unknown version', { ...request, version: 3 }],
+    ['unknown action', { ...request, action: 'restore-and-verify-v1' }],
+    ['unknown environment', { ...request, environment: 'dev' }],
+    ['unknown database', { ...request, database: 'postgres' }],
+    ['tenant without Waste database', { ...request, tenantInstanceId: 'bb-prignitz' }],
+    ['invalid Waste tenant', { ...request, database: 'waste', tenantInstanceId: '../bb-prignitz' }],
+    ['invalid digest', { ...request, deployImageDigest: `sha256:${'A'.repeat(64)}` }],
+    ['expired request', { ...request, expiresAt: '2026-07-30T10:00:00.000Z' }],
+    ['request beyond maximum lifetime', { ...request, expiresAt: '2026-07-30T10:10:00.001Z' }],
+  ])('rejects the backup contract boundary for %s', (_label, candidate) => {
+    expect(validRequest(candidate, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(false);
+  });
+
+  it('preserves the accepted production backup versions exactly', () => {
+    const now = Date.parse('2026-07-30T10:00:00.000Z');
+    expect(validRequest({ ...request, environment: 'prod' }, now)).toBe(false);
+    expect(
+      validRequest({ ...request, environment: 'prod', maintenanceWindowReference: 'CAB-42' }, now)
+    ).toBe(true);
+    expect(validRequest({ ...request, version: 2, environment: 'prod' }, now)).toBe(true);
+    expect(
+      validRequest(
+        {
+          ...request,
+          version: 2,
+          environment: 'prod',
+          maintenanceWindowReference: 'CAB-42',
+        },
+        now
+      )
+    ).toBe(false);
+  });
+
+  it('returns discriminated internal validation boundaries without changing boolean facades', () => {
+    const now = Date.parse('2026-07-30T10:00:00.000Z');
+    expect(validateBackupRequest({ ...request, bucket: 'foreign' }, now)).toEqual({
+      ok: false,
+      boundary: 'keys',
+    });
+    expect(
+      validateRestoreRequest(
+        { ...restoreRequest, sourceObjectKey: 'staging/path/../backup.dump' },
+        {
+          environmentPrefixes: { staging: 'staging', prod: 'prod' },
+          wasteImport: {
+            objectKey: wasteImportRequest.sourceObjectKey,
+            sha256: wasteImportRequest.sourceSha256,
+            environment: 'prod',
+            database: 'waste',
+            tenantInstanceId: 'bb-prignitz',
+          },
+        },
+        now
+      )
+    ).toEqual({ ok: false, boundary: 'object-key' });
   });
 
   it('accepts production backups without maintenance evidence', () => {
@@ -462,21 +546,11 @@ describe('backup agent runtime contract', () => {
   });
 
   it('validates restore requests independently and stores separate evidence', () => {
-    const restore = {
-      version: 1,
-      action: 'restore-and-verify-v1',
-      requestId: 'restore-12345678',
-      environment: 'staging',
-      expiresAt: '2026-07-30T10:10:00.000Z',
-      maintenanceWindowReference: 'INC-42',
-      sourceObjectKey: `staging/2026-07-30/${'a'.repeat(64)}/backup.dump`,
-      sourceSha256: 'b'.repeat(64),
-    } as const;
-    expect(validRestoreRequest(restore, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
+    expect(validRestoreRequest(restoreRequest, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(true);
     expect(
       validRestoreRequest(
         {
-          ...restore,
+          ...restoreRequest,
           database: 'waste',
           tenantInstanceId: 'bb-prignitz',
           sourceObjectKey: `staging/waste/bb-prignitz/2026-07-30/${'a'.repeat(64)}/backup.dump`,
@@ -486,53 +560,97 @@ describe('backup agent runtime contract', () => {
     ).toBe(true);
     expect(
       validRestoreRequest(
-        { ...restore, sourceObjectKey: 'prod/backup.dump' },
+        { ...restoreRequest, sourceObjectKey: 'prod/backup.dump' },
         Date.parse('2026-07-30T10:00:00.000Z')
       )
     ).toBe(false);
-    expect(canonicalRestoreRequest(restore)).not.toContain('postgres');
-    expect(restoreControlKeysFor(restore.requestId)).toEqual({
-      request: `control/restores/requests/${restore.requestId}.json`,
-      safetyBackup: `control/restores/safety-backups/${restore.requestId}.json`,
-      result: `control/restores/results/${restore.requestId}.json`,
+    expect(canonicalRestoreRequest(restoreRequest)).not.toContain('postgres');
+    expect(restoreControlKeysFor(restoreRequest.requestId)).toEqual({
+      request: `control/restores/requests/${restoreRequest.requestId}.json`,
+      safetyBackup: `control/restores/safety-backups/${restoreRequest.requestId}.json`,
+      result: `control/restores/results/${restoreRequest.requestId}.json`,
     });
   });
 
+  it.each([
+    ['non-object payload', null],
+    ['array payload', []],
+    ['unknown field', { ...restoreRequest, postgresHost: 'studio_postgres' }],
+    ['unknown version', { ...restoreRequest, version: 2 }],
+    ['backup action', { ...restoreRequest, action: 'backup-and-verify' }],
+    ['unknown environment', { ...restoreRequest, environment: 'dev' }],
+    ['unknown database', { ...restoreRequest, database: 'postgres' }],
+    ['tenant without Waste database', { ...restoreRequest, tenantInstanceId: 'bb-prignitz' }],
+    [
+      'Waste database without tenant',
+      { ...restoreRequest, database: 'waste', sourceObjectKey: 'staging/waste/backup.dump' },
+    ],
+    [
+      'invalid Waste tenant',
+      { ...restoreRequest, database: 'waste', tenantInstanceId: '../bb-prignitz' },
+    ],
+    ['invalid request id', { ...restoreRequest, requestId: 'short' }],
+    ['missing maintenance evidence', { ...restoreRequest, maintenanceWindowReference: undefined }],
+    ['uppercase SHA-256', { ...restoreRequest, sourceSha256: 'B'.repeat(64) }],
+    ['short SHA-256', { ...restoreRequest, sourceSha256: 'b'.repeat(63) }],
+    ['foreign prefix', { ...restoreRequest, sourceObjectKey: 'prod/path/backup.dump' }],
+    ['path traversal', { ...restoreRequest, sourceObjectKey: 'staging/path/../other/backup.dump' }],
+    ['wrong archive extension', { ...restoreRequest, sourceObjectKey: 'staging/path/backup.sql' }],
+    ['expired request', { ...restoreRequest, expiresAt: '2026-07-30T10:00:00.000Z' }],
+    [
+      'request beyond maximum lifetime',
+      { ...restoreRequest, expiresAt: '2026-07-30T10:10:00.001Z' },
+    ],
+  ])('rejects the restore contract boundary for %s', (_label, candidate) => {
+    expect(validRestoreRequest(candidate, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(false);
+  });
+
   it('accepts the one-time production import only for the fixed bb-prignitz source', () => {
-    const importRequest = {
-      version: 1,
-      action: 'import-waste-data-v1',
-      requestId: 'import-12345678',
-      environment: 'prod',
-      expiresAt: '2026-07-30T10:05:00.000Z',
-      maintenanceWindowReference: '2026-08-09 bb-prignitz',
-      sourceObjectKey: 'prod/waste/bb-prignitz/import/2026-08-09/waste-data-pg16.sql',
-      sourceSha256: 'df75392bee510be71444eec28914f704c0917a5a59ac46e6380ef050c3ffd5dc',
-      database: 'waste',
-      tenantInstanceId: 'bb-prignitz',
-    };
     const now = Date.parse('2026-07-30T10:00:00.000Z');
 
-    expect(validRestoreRequest(importRequest, now)).toBe(true);
-    expect(validRestoreRequest({ ...importRequest, environment: 'staging' }, now)).toBe(false);
-    expect(validRestoreRequest({ ...importRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(
+    expect(validRestoreRequest(wasteImportRequest, now)).toBe(true);
+    expect(validRestoreRequest({ ...wasteImportRequest, environment: 'staging' }, now)).toBe(false);
+    expect(validRestoreRequest({ ...wasteImportRequest, tenantInstanceId: 'bb-guben' }, now)).toBe(
       false
     );
     expect(
       validRestoreRequest(
-        { ...importRequest, sourceObjectKey: 'prod/waste/bb-prignitz/backup.dump' },
+        { ...wasteImportRequest, sourceObjectKey: 'prod/waste/bb-prignitz/backup.dump' },
         now
       )
     ).toBe(false);
     expect(
       validRestoreRequest(
         {
-          ...importRequest,
+          ...wasteImportRequest,
           sourceObjectKey: 'prod/waste/bb-prignitz/import/other/waste-data-pg16.sql',
         },
         now
       )
     ).toBe(false);
+  });
+
+  it.each([
+    ['wrong environment', { ...wasteImportRequest, environment: 'staging' }],
+    ['wrong database', { ...wasteImportRequest, database: 'studio' }],
+    ['wrong tenant', { ...wasteImportRequest, tenantInstanceId: 'bb-guben' }],
+    [
+      'wrong audited object',
+      {
+        ...wasteImportRequest,
+        sourceObjectKey: 'prod/waste/bb-prignitz/import/2026-08-09/other.sql',
+      },
+    ],
+    ['wrong audited SHA-256', { ...wasteImportRequest, sourceSha256: 'a'.repeat(64) }],
+    [
+      'path traversal',
+      {
+        ...wasteImportRequest,
+        sourceObjectKey: 'prod/waste/bb-prignitz/import/../waste-data-pg16.sql',
+      },
+    ],
+  ])('rejects the one-time Waste import boundary for %s', (_label, candidate) => {
+    expect(validRestoreRequest(candidate, Date.parse('2026-07-30T10:00:00.000Z'))).toBe(false);
   });
 
   it('binds the one-time import to the audited source inventory and legacy backfill', () => {

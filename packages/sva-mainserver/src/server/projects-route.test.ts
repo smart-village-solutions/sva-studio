@@ -509,6 +509,44 @@ describe('projects route', () => {
     );
   });
 
+  it('fails closed before create side effects when authorization or validation fails', async () => {
+    prepareDefaults();
+    state.authorize.mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+      message: 'Nicht erlaubt',
+    });
+
+    const forbidden = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(forbidden?.status).toBe(403);
+    expect(state.resolveMutationPrincipalContext).not.toHaveBeenCalled();
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+
+    vi.clearAllMocks();
+    prepareDefaults();
+    const invalid = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-2' },
+        body: JSON.stringify({ ...input, title: ' ' }),
+      })
+    );
+
+    expect(invalid?.status).toBe(400);
+    expect(state.resolveActorInfo).toHaveBeenCalledTimes(1);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.createGenericItem).not.toHaveBeenCalled();
+  });
+
   it('creates local core and stable external reference before binding the provider result', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(undefined);
@@ -518,7 +556,10 @@ describe('projects route', () => {
       reference: { ...reference, sourceEntityId: undefined, reconciliationStatus: 'pending' },
     });
     state.loadCore.mockResolvedValue(core);
-    state.createGenericItem.mockResolvedValue(genericItem);
+    state.createGenericItem.mockResolvedValue({
+      ...genericItem,
+      dataProvider: { id: 'dp-org-1', name: 'Gemeinde' },
+    });
     state.bindReference.mockResolvedValue(reference);
 
     const response = await dispatchSvaMainserverProjectsRequest(
@@ -547,6 +588,7 @@ describe('projects route', () => {
         }),
       })
     );
+    expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledTimes(1);
     expect(state.changeVisibility).toHaveBeenCalledWith(
       expect.objectContaining({ genericItemId: 'external-1', visible: true })
     );
@@ -555,6 +597,25 @@ describe('projects route', () => {
     );
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'COMPLETED' })
+    );
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalledTimes(1);
+    expect(state.createGenericItem.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!
+    );
+    expect(state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.changeVisibility.mock.invocationCallOrder[0]!
+    );
+    expect(state.changeVisibility.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.prepareExternalContent.mock.invocationCallOrder[0]!
+    );
+    expect(state.prepareExternalContent.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.bindReference.mock.invocationCallOrder[0]!
+    );
+    expect(state.bindReference.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]!
+    );
+    expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]!).toBeLessThan(
+      state.completeIdempotency.mock.invocationCallOrder[0]!
     );
   });
 
@@ -625,6 +686,35 @@ describe('projects route', () => {
     expect(response?.status).toBe(500);
     expect(state.updateReconciliation).not.toHaveBeenCalled();
     expect(state.completeIdempotency).not.toHaveBeenCalled();
+    expect(state.changeVisibility).not.toHaveBeenCalled();
+    expect(state.prepareExternalContent).not.toHaveBeenCalled();
+    expect(state.deleteGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalled();
+  });
+
+  it('does not invent a provider rollback when visibility fails after create', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue(undefined);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.createGenericItem.mockResolvedValue(genericItem);
+    state.changeVisibility.mockRejectedValue(new Error('visibility_lost'));
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(500);
+    expect(state.createGenericItem).toHaveBeenCalledTimes(1);
+    expect(state.changeVisibility).toHaveBeenCalledTimes(1);
+    expect(state.prepareExternalContent).not.toHaveBeenCalled();
+    expect(state.bindReference).not.toHaveBeenCalled();
+    expect(state.deleteGenericItem).not.toHaveBeenCalled();
+    expect(state.completeIdempotency).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal).toHaveBeenCalled();
   });
 
   it('read-merges hidden fields on serialized updates and physically deletes the GenericItem', async () => {
@@ -866,6 +956,42 @@ describe('projects route', () => {
     );
   });
 
+  it('continues a prepared create without reserving idempotency when no provider item exists', async () => {
+    prepareDefaults();
+    state.loadReferenceByOperation.mockResolvedValue({
+      ...reference,
+      sourceEntityId: undefined,
+      reconciliationStatus: 'pending',
+    });
+    state.listGenericItems.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+    state.reserveIdempotency.mockResolvedValue({
+      status: 'replay',
+      responseBody: { data: { id: 'replayed-project' } },
+      responseStatus: 201,
+    });
+    state.createGenericItem.mockResolvedValue(genericItem);
+    state.bindReference.mockResolvedValue(reference);
+
+    const response = await dispatchSvaMainserverProjectsRequest(
+      request('/api/v1/mainserver/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'operation-1' },
+        body: JSON.stringify(input),
+      })
+    );
+
+    expect(response?.status).toBe(201);
+    expect(state.reserveIdempotency).not.toHaveBeenCalled();
+    expect(state.createGenericItem).toHaveBeenCalledTimes(1);
+    expect(state.prepareExternalContent).not.toHaveBeenCalled();
+    expect(state.bindReference).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceId, sourceEntityId: 'external-1' })
+    );
+  });
+
   it('replays the completed create without recreating a physically deleted project', async () => {
     prepareDefaults();
     state.loadReferenceByOperation.mockResolvedValue(reference);
@@ -933,7 +1059,10 @@ describe('projects route', () => {
     state.loadReferenceByOperation.mockResolvedValue(undefined);
     state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
     state.prepareExternalContent.mockRejectedValue(new Error('database_lost'));
-    state.createGenericItem.mockResolvedValue(genericItem);
+    state.createGenericItem.mockResolvedValue({
+      ...genericItem,
+      dataProvider: { id: 'dp-org-1', name: 'Gemeinde' },
+    });
     state.changeVisibility.mockResolvedValue(undefined);
 
     const response = await dispatchSvaMainserverProjectsRequest(
@@ -945,6 +1074,7 @@ describe('projects route', () => {
     );
 
     expect(response?.status).toBe(201);
+    await expect(response?.json()).resolves.not.toHaveProperty('meta');
     expect(state.completeIdempotency).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'COMPLETED',
@@ -954,6 +1084,10 @@ describe('projects route', () => {
     expect(state.loggerWarn).toHaveBeenCalledWith(
       'Project local follow-up failed after provider create',
       expect.objectContaining({ operation: 'mainserver_projects_local_follow_up' })
+    );
+    expect(state.deleteGenericItem).not.toHaveBeenCalled();
+    expect(state.finalizeMainserverMutationJournal.mock.invocationCallOrder[0]).toBeLessThan(
+      state.completeIdempotency.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY
     );
   });
 

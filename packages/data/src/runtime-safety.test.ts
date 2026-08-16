@@ -622,6 +622,14 @@ test('sva-studio-react vite SSR config resolves mail-runtime from workspace sour
   assert.doesNotMatch(viteConfig, /lvh\.me/);
 });
 
+test('sva-studio-react vite SSR config resolves DSR persistence from workspace source', () => {
+  const viteConfig = readRepoFile('../apps/sva-studio-react/vite.config.ts');
+
+  expect(viteConfig).toMatch(
+    /'@sva\/iam-governance\/dsr-persistence': resolveAppPath\(\s*'\.\.\/\.\.\/packages\/iam-governance\/src\/dsr-persistence\.ts'\s*\)/
+  );
+});
+
 test('sva-studio-react vitest shared config resolves mail-runtime from workspace source', () => {
   const vitestSharedConfig = readRepoFile('../apps/sva-studio-react/vitest.shared.ts');
 

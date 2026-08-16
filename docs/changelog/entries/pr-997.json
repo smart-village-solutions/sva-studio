@@ -1,0 +1,4 @@
+{
+  "prNumber": 997,
+  "body": "Datenschutzvorgänge verwenden einheitliche, mandantengebundene Persistenzverträge\n\n- Legal-Hold-Prüfungen binden weiterhin immer die betroffene Instanz und das betroffene Konto.\n- DSR-Request- und Audit-Ereignisse behalten ihre Parameter, Kontextkorrelation und JSON-Serialisierung unverändert bei.\n- Persistenzfehler stoppen den jeweiligen Vorgang weiterhin unmittelbar, ohne nachfolgende Schreibzugriffe auszuführen."
+}

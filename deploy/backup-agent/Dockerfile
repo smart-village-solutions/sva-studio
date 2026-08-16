@@ -15,6 +15,7 @@ RUN apk add --no-cache aws-cli ca-certificates curl postgresql18-client \
   && pg_restore --version
 
 COPY --chown=node:node deploy/backup-agent/agent.mjs /app/agent.mjs
+COPY --chown=node:node deploy/backup-agent/request-validation.mjs /app/request-validation.mjs
 
 USER node
 

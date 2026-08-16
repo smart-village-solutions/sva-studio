@@ -11,6 +11,7 @@ Die Bibliothek sitzt an der Grenze zwischen Host-Framework und Fachobjekt:
 - `src/plugin.tsx` beschreibt die Plugin-Metadaten, Übersetzungen, Audit-Events und Media-Picker-Rollen.
 - `src/events.api.ts` kapselt den Zugriff auf die Mainserver-Endpunkte `/api/v1/mainserver/events` und `/api/v1/mainserver/poi`.
 - `src/events.pages.tsx` implementiert die Admin-Oberflächen für Listen-, Anlegen- und Bearbeiten-Flows mit Komponenten aus `@sva/studio-ui-react`.
+- `src/events.detail-form-*-serializers.ts` hält die reine, paketinterne Serialisierung von Redaktion, Datum, Adresse, Medien und weiteren strukturierten Formularbereichen in den bestehenden Mainserver-Input.
 - `src/events.validation.ts` hält die lokale Vorvalidierung des Formulars schlank und framework-unabhängig.
 
 ## Öffentliche API
@@ -63,6 +64,10 @@ packages/plugin-events/
 |  |- plugin.tsx
 |  |- events.api.ts
 |  |- events.constants.ts
+|  |- events.detail-form.ts
+|  |- events.detail-form-input-serializers.ts
+|  |- events.detail-form-serialization-common.ts
+|  |- events.detail-form-structured-serializers.ts
 |  |- events.pages.tsx
 |  |- events.types.ts
 |  `- events.validation.ts
@@ -82,6 +87,8 @@ Wichtige Dateiverantwortlichkeiten:
 
 - `src/plugin.tsx`: Plugin-Vertrag, Standard-Content-Contribution, Berechtigungen, Actions und Übersetzungen
 - `src/events.pages.tsx`: Formularzustand, Paginierung, Lade-/Fehlerzustände, Delete-Flow und Media-Referenz-Synchronisierung
+- `src/events.detail-form.ts`: öffentlich innerhalb des Pakets konsumiertes Formularmodell und Assemblierung des Mutation-Inputs
+- `src/events.detail-form-*-serializers.ts`: frameworkfreie, paketinterne Serializer mit unveränderten Omit-, Reihenfolge- und Kompatibilitätsregeln
 - `tests/plugin.test.ts`: sichert den kanonischen Plugin-Vertrag
 - `tests/events.pages.test.tsx`: deckt Empty-State, Fehlerfall, Create-Flow mit Media-Referenzen und Edit-Flow ab
 

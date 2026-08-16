@@ -1,0 +1,4 @@
+{
+  "prNumber": 1005,
+  "body": "Das Veranstaltungsformular verarbeitet redaktionelle Eingaben intern übersichtlicher\n\n- Optionale Angaben, Datumswerte, Adressen, Medien und Kontakte werden weiterhin unverändert an den Mainserver übergeben.\n- Leere Platzhalter werden wie bisher entfernt, während gültige Werte wie 0 oder deaktivierte Optionen erhalten bleiben.\n- Bestehende Veranstaltungen behalten beim Laden und Speichern die Reihenfolge ihrer wiederholbaren Angaben."
+}

@@ -1,5 +1,5 @@
 import * as wasteOutput from '@sva/core';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PublicWasteReminderSignupError } from '../server/public-waste-email-reminders.server.js';
 import {
@@ -11,6 +11,10 @@ import {
 } from './public-waste-endpoints.server.js';
 
 describe('public waste endpoints', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('returns the next selection step as json', async () => {
     const response = await handlePublicWasteSelectionRequest({
       repository: {
@@ -180,6 +184,81 @@ describe('public waste endpoints', () => {
     });
     expect(pdfText).not.toContain('Stand ');
     expect(pdfText).not.toContain('Alle wirksamen Fraktionen und Verschiebungen sind enthalten.');
+  });
+
+  it('uses the same resolved calendar entries for web and PDF before export filters', async () => {
+    const entries = [
+      {
+        id: 'pickup-bio',
+        date: '2026-05-19',
+        fractionId: 'bio',
+        fractionLabel: 'Bioabfall',
+        fractionShortLabel: 'BIO',
+        note: null,
+      },
+      {
+        id: 'pickup-paper',
+        date: '2026-05-20',
+        fractionId: 'paper',
+        fractionLabel: 'Papier',
+        fractionShortLabel: 'PAP',
+        note: null,
+      },
+    ];
+    const loadCalendarEntries = vi.fn().mockResolvedValue(entries);
+    const loadSelectionSummary = vi.fn().mockResolvedValue('Musterstadt, Hauptstraße 1');
+    const selectionQuery =
+      'cityId=22222222-2222-4222-8222-222222222222&streetId=33333333-3333-4333-8333-333333333333&houseNumberId=44444444-4444-4444-8444-444444444444';
+
+    const webResponse = await handlePublicWasteCalendarRequest({
+      repository: {
+        loadCalendarEntries,
+        loadSelectionSummary,
+        loadReminderOptions: vi.fn().mockResolvedValue([]),
+      },
+      request: new Request(
+        `https://example.invalid/public-waste/calendar?${selectionQuery}&referenceDate=2026-01-01`
+      ),
+    });
+    const webPayload = (await webResponse.json()) as { readonly listEntries: readonly unknown[] };
+
+    const buildDocumentSpy = vi.spyOn(wasteOutput, 'buildWasteCalendarPdfDocument');
+    const pdfResponse = await handlePublicWastePdfRequest({
+      repository: { loadCalendarEntries, loadSelectionSummary },
+      request: new Request(
+        `https://example.invalid/public-waste/pdf?${selectionQuery}&year=2026&fractionId=bio`
+      ),
+      loadPdfStaticConfig: vi.fn().mockResolvedValue({}),
+    });
+
+    expect(webPayload.listEntries).toEqual(entries);
+    expect(pdfResponse.status).toBe(200);
+    expect(loadCalendarEntries).toHaveBeenNthCalledWith(1, {
+      selection: {
+        cityId: '22222222-2222-4222-8222-222222222222',
+        streetId: '33333333-3333-4333-8333-333333333333',
+        houseNumberId: '44444444-4444-4444-8444-444444444444',
+      },
+      referenceDate: '2026-01-01',
+    });
+    expect(loadCalendarEntries).toHaveBeenNthCalledWith(2, {
+      selection: {
+        cityId: '22222222-2222-4222-8222-222222222222',
+        streetId: '33333333-3333-4333-8333-333333333333',
+        houseNumberId: '44444444-4444-4444-8444-444444444444',
+      },
+      referenceDate: '2026-01-01',
+    });
+    expect(buildDocumentSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pickups: [
+          expect.objectContaining({
+            date: '2026-05-19',
+            fractions: [expect.objectContaining({ id: 'bio' })],
+          }),
+        ],
+      })
+    );
   });
 
   it('deduplicates fractions per pickup date before rendering the pdf payload', async () => {

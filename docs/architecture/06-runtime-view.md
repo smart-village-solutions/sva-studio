@@ -136,6 +136,8 @@ Fehlerpfad:
 6. Ein Reload mit gültigem Cookie stellt denselben Standort wieder her und zeigt einen expliziten Hinweis auf die automatisch geladene Adresse.
 7. Die öffentliche Runtime ergänzt berechnete Tourtermine um explizite Einsätze. Dabei gelten Einsatzorte auch für hierarchisch untergeordnete Adressen, ohne dass ein allgemeiner Tour-Ort-Link erforderlich ist.
 8. Ein passender expliziter Einsatz verdrängt den sonst doppelten berechneten Termin; mehrere explizite Einsätze derselben Tour am selben Tag bleiben anhand ihrer Einsatz-ID getrennt.
+9. Der serverseitige Kalender-Lader verwendet für wiederkehrende Touren und explizite Einsätze dieselben positionsgebundenen Regions-, Orts-, Straßen- und Hausnummerparameter. Nach den Datenbankabfragen normalisiert und verbindet eine I/O-freie Projektion die Ergebnisse im inklusiven Date-only-Fenster vom Jahresanfang des Vorjahres bis ein Jahr nach dem Referenztag.
+10. Webansicht, PDF und iCal konsumieren weiterhin dieselbe Repository-Ausgabe; Jahres- und Fraktionsfilter der Exporte greifen erst danach.
 
 Erweiterter Reminder-Pfad:
 
@@ -159,6 +161,7 @@ Fehlerpfad:
 - Fehlt die öffentliche Konfiguration, liefert die Bootstrap-Schicht einen deterministischen Fehlerzustand `missing_config`.
 - Ungültige oder unvollständige Konfiguration endet deterministisch in `invalid_config` statt in einer teilweise geladenen Auswahloberfläche.
 - Ungültige oder veraltete Standort-Cookies werden ignoriert; die App fällt ohne Halbzustand auf die erste gültige Auswahlstufe zurück.
+- Ein ungültiger Kalender-Referenztag erzeugt keine Feiertagsabfrage und keine teilweise zusammengeführten Ersatztermine; Datenbankfehler bleiben im bestehenden öffentlichen Fehlervertrag sichtbar.
 - Fehlt die Reminder-Konfiguration, bleibt der Kalender funktionsfähig; nur CTA, Formular und Reminder-Seiten werden nicht aktiviert.
 - Überschreiten Formularanfragen die konfigurierten IP-/E-Mail-Limits oder das Standortlimit pro Adresse, antwortet die Runtime deterministisch mit fachlichen 4xx-Fehlern ohne technische Leaks.
 - Fehlt der technische Mail-Dispatcher, bleiben die Reminder-Aufträge in der Waste-Outbox; Waste-Konfiguration, DOI und Abmeldung funktionieren davon unabhängig weiter.
@@ -268,6 +271,8 @@ Fehlerpfad:
 17. Der GenericItem-Pfad selektiert oder schreibt kein Root-Feld `teaser`. Einleitungen laufen ausschließlich über `ContentBlock.intro`; Featured Projects verwenden dafür den ersten Block gemeinsam mit dem Volltext in `body`, während FAQ und Kacheln ihre vorhandenen reinen Body-Verträge behalten. News lesen und schreiben Einleitung und Haupttext ebenfalls ausschließlich als `contentBlocks[].intro/body`; historische Textwerte im Payload werden nicht übernommen.
 18. Nach erfolgreichen Mainserver-Mutationen lädt der Host gezielt genau den betroffenen Datensatz per typed Detailadapter nach und aktualisiert nur dessen Projektionszeile; bei einem geänderten GenericItem-Discriminator entfernt er zuvor passende fachliche oder generische Geschwisterzeilen. Delete-Pfade entfernen die Zeile identitätsbasiert ohne typweiten Vollrefresh.
 19. Derselbe erfolgreiche Follow-up-Pfad kann die Mainserver-Identität an einen lokalen IAM-Content-Core binden und genau einen History-Eintrag mit Request-/Idempotenz-Korrelation finalisieren. Diese Folgearbeit ist optional: Ihr Fehlschlag ändert einen bestätigten Mainserver-Erfolg nicht. Providerfehler und Autorisierungsablehnungen erzeugen keinen sichtbaren Erfolgseintrag.
+    - Für Featured Projects bleibt die Reihenfolge explizit: CSRF/IAM/Principal und Payload werden vor jedem Seiteneffekt geprüft; danach folgen Replay- oder Reservation-Prüfung, Mainserver-Create, DataProvider-Beobachtung, Visibility, optionale lokale Referenzpflege, Mutationsjournal und Idempotenz-Completion.
+    - Scheitert nach bestätigtem Project-Create nur Visibility oder lokale Folgearbeit, erfindet der Host kein kompensierendes Mainserver-Delete. Ein rein lokaler Folgefehler markiert die interne Reconciliation, ergänzt aber keine DataProvider-Konfliktmetadaten in der Erfolgsantwort.
 20. Beim Speichern von News laufen zwei technische Schritte: zuerst `createNews` oder `updateNews`, danach für den redaktionellen Zustand ein separater `changeVisibility(recordType: "NewsItem")`-Aufruf.
 21. Die host-owned Studio-Newsliste liest denselben Pfad mit `includeInvisible=true` und filtert redaktionelle Stati (`Entwurf`, `Geplant`, `Veröffentlicht`) erst auf Studio-Seite aus Sichtbarkeit und `publishedAt`.
 22. Besitzt der Redakteur `waste-management.read`, lädt der News-Editor aktive Abholorte erst beim Öffnen der Zielauswahl über den dedizierten `targeting`-Scope der Waste-Master-Data-Fassade. Dieser Scope liest die benötigten Hierarchien parallel und ohne Tour-Zuordnungen; der bestehende `locations`-Scope liefert Tour-Zuordnungen weiterhin für Waste-Filter und Zuordnungsansichten. Die UI hält IDs nur für Filterung und Auswahl; beim Speichern dedupliziert der Adapter stabile Adressschlüssel und führt sie verlustfrei mit dem vorhandenen News-Payload zusammen. Ohne Ziele fehlt `wasteLocationKeys`; bei einem tatsächlich ausgelösten Push bestätigt der Redakteur diesen globalen Zustand ausdrücklich. Nach bestätigter Zustellung bleibt die gespeicherte Empfängergruppe schreibgeschützt.
@@ -983,6 +988,8 @@ Fehlerpfad: Auth- und Scope-Fehler werden nicht diagnostisch umgedeutet. Eine ab
 4. Der einzelne Worker erzeugt einen Custom-Dump, lädt ihn hoch und wieder herunter, vergleicht Größe und SHA-256 und führt `pg_restore --list` aus.
 5. Das terminale Ergebnis unter `control/results/` entscheidet fail-closed, ob Migration, Bootstrap und Deploy fortgesetzt werden.
 
+Innerhalb von Schritt 2 werden die signierten Requestdaten zunächst über reine, seiteneffektfreie Contractgrenzen geprüft. Ein diskriminiertes internes Ergebnis benennt nur die abgelehnte Grenze; die bestehende öffentliche Fassade liefert weiterhin ausschließlich `true` oder `false`. Erst danach folgen OIDC-/HMAC-Prüfung und Replay-Persistenz. Dadurch ändern sich weder Prüfreihenfolge der äußeren Trust Boundary noch Antwort- oder Fehlervertrag.
+
 Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/v1/capabilities` auf. Erst eine kompatible Protokollversion, laufende Agent-Revision, vollständige Ergebnisfelder und die benötigten Datenbankziele erlauben den Auftrag. Nach dem App-Deploy wird zuerst der terminale Swarm-Service- und Task-Zustand bewertet; erst danach beginnt das externe HTTP-Warmup.
 
 ## Resilienter Mainserver-Detail- und Updateablauf
@@ -997,6 +1004,7 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 
 1. Der freigegebene Workflow `database-restore.yml` bindet Zielumgebung, unveränderliches App-Image, Wartungsfenster, MinIO-Objekt und SHA-256. Staging und Production werden unabhängig durch ihr jeweiliges GitHub Environment autorisiert und geprüft.
 2. Der Workflow setzt App und Provisioner auf null Replikate. Der Agent akzeptiert den Auftrag erst nach OIDC-/HMAC-Prüfung, action-spezifischer Workflow-Allowlist, Replay-Prüfung und nachgewiesenem Session-Drain.
+   Die reine Requestprüfung charakterisiert davor unbekannte Felder, Version/Aktion, Umgebung, Datenbank/Tenant, Wartungsfensterreferenz, SHA-256, Objektpräfix, Pfadtraversal, den fest verdrahteten Waste-Import und die höchstens zehnminütige Laufzeit getrennt und fail-closed.
 3. Der Agent lädt ausschließlich aus Bucket und Präfix der Zielumgebung, prüft SHA-256, Custom-Archiv sowie Goose- und IAM-Einträge und erzeugt vor der Mutation einen erneut heruntergeladenen und verifizierten Sicherheitsdump.
 4. `pg_restore` läuft einmalig mit demselben fest gepinnten PostgreSQL-18-Client wie der Backup-Pfad, festem Host, fester Datenbank und festem Rollenwechsel zur App-Rolle. Freie Optionen oder automatische Wiederholungen existieren nicht.
 5. Nach dem Restore rekonstruiert der Agent im festen Schema-Owner-Kontext die additiven ACLs für den allowlisteten Runtime-Principal `sva_app`. Anschließend prüft er Goose-Version, IAM-Schema, `iam_app`-Mitgliedschaft, Datenbank-, Schema-, Tabellen- und Sequenzrechte sowie Registry. Ein Fehler schreibt redigierte Evidenz und lässt die App stillgelegt.
@@ -1039,3 +1047,25 @@ Vor Schritt 1 ruft `Promote` mit derselben GitHub-OIDC-Grenze `GET /_ops/backup/
 2. Routing beziehungsweise JSON-Fehler transportieren den begrenzten Denial-Kontext additiv. Der Client validiert ihn erneut und verwirft manipulierte oder unbekannte Werte.
 3. Der gemeinsame Formatter löst den lokalisierten Permission-Titel auf und zeigt Titel plus Action-ID in einem bestehenden zugänglichen Alert.
 4. Der Kontext wird nach einem Redirect einmalig aus der URL entfernt. Bei technischem Ausfall oder uneindeutigem fachlichem `403` bleibt die bisherige generische Meldung erhalten.
+
+### Szenario 19: Read-only Keycloak-Instanz-Audit
+
+1. Der operative Audit lädt das aktive Registry-Ziel und die entschlüsselten
+   Vergleichssecrets ausschließlich serverseitig.
+2. Eine temporäre `kcadm`-Konfiguration authentisiert den vorhandenen
+   Provisioner-/Admin-Client.
+3. Die Erhebung liest Realm, Login- und Tenant-Admin-Client, deren Secret-
+   Vergleichswerte, Realm-Rollen, aktiven `system_admin` und die Rollen des
+   Tenant-Admin-Serviceaccounts in fester Reihenfolge.
+4. Fehlt das Realm, endet der Pfad unmittelbar mit dem bisherigen einzelnen
+   Fehlerbefund; nachgelagerte Reads finden nicht statt.
+5. Andernfalls bewertet eine reine Funktion den vollständigen Snapshot und
+   liefert unverändert vierzehn Befunde.
+6. Das `finally`-Cleanup entfernt Config-Datei und temporäres Verzeichnis bei
+   Erfolg und Fehler.
+
+Fehlerpfad:
+
+- Der Audit führt keine Keycloak-Mutation und keinen Plattform-Fallback aus.
+- Fehlende oder abweichende Secrets bleiben Fail-Befunde, ohne Secret-Inhalte
+  in Bericht, Fehler oder Logs zu übernehmen.

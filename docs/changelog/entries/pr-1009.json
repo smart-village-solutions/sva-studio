@@ -1,0 +1,4 @@
+{
+  "prNumber": 1009,
+  "body": "POI-Formulardaten werden übersichtlicher und verlässlich verarbeitet\n\n- Kategorien, Adressen, Kontakte und Standortdaten behalten beim Laden und Speichern ihre bisherige Reihenfolge und ihre Standardwerte.\n- Öffnungszeiten, Preise und Medieninhalte werden weiterhin vollständig validiert und leere Platzhalter zuverlässig ausgefiltert.\n- Zusätzliche Regressionstests sichern ältere POI-Daten, explizite Leerwerte und unveränderte Zusatzdaten ab."
+}

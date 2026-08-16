@@ -1,7 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createWasteManagementUnsubscribeToken } from '@sva/waste-management-contracts/unsubscribe-token';
 
-import type { WasteEmailReminderPendingSignupInput } from '@sva/data-repositories';
+import type { WasteManagementEmailReminderConfig } from '@sva/core';
+import type {
+  WasteEmailReminderActivationResult,
+  WasteEmailReminderPendingSignupInput,
+  WasteEmailReminderUnsubscribeResult,
+  WasteEmailReminderUnsubscribeSubscription,
+} from '@sva/data-repositories';
 import {
   createPublicWasteReminderPageHandler as createReminderPageHandler,
   createPublicWasteReminderSignupRateLimitConsumer as createReminderSignupRateLimitConsumer,
@@ -438,5 +444,505 @@ describe('public waste email reminders server helper', () => {
       now: '2026-06-14T20:00:00.000Z',
     });
     expect(response?.status).toBe(200);
+  });
+});
+
+const fixedActionNow = new Date('2026-06-14T20:00:00.000Z');
+const testUnsubscribeSecret = 'public-waste-reminder-test-secret';
+const storedUnsubscribeTokenHash = 'sha256:stored-unsubscribe-token';
+
+const reminderActionConfig = {
+  enabled: true,
+  publicSignupEnabled: true,
+  transportId: 'mail-1',
+  publicBaseUrl: 'https://example.invalid',
+  doiConfirmPath: '/erinnerungen/bestaetigen',
+  activationSuccessPath: '/erinnerungen/aktiviert',
+  unsubscribePath: '/erinnerungen/abmelden',
+  unsubscribeSuccessPath: '/erinnerungen/abgemeldet',
+  invalidTokenPath: '/erinnerungen/ungueltig',
+  fromName: 'Abfallwirtschaft',
+  fromEmail: 'abfall@example.invalid',
+  privacyPolicyUrl: 'https://example.invalid/datenschutz',
+  imprintUrl: 'https://example.invalid/impressum',
+  consentLabel: 'Ich stimme der Verarbeitung meiner Daten zu.',
+  consentVersion: 'v2',
+  doiSubjectTemplate: 'Bitte bestaetigen',
+  doiIntroText: 'Bitte bestaetigen Sie.',
+  doiButtonLabel: 'Jetzt bestaetigen',
+  doiSuccessHeadline: 'Aktiviert',
+  doiSuccessBody: 'Ihre Erinnerung ist nun aktiv.',
+  doiErrorHeadline: 'Bestaetigung fehlgeschlagen',
+  doiErrorBody: 'Der Bestaetigungslink ist ungueltig.',
+  doiExpiryNoticeText: 'Der Bestaetigungslink ist abgelaufen.',
+  reminderSubjectTemplate: 'Erinnerung',
+  reminderIntroTemplate: 'Nicht vergessen.',
+  unsubscribeLinkLabel: 'Abmelden',
+  unsubscribeSuccessHeadline: 'Abgemeldet',
+  unsubscribeSuccessBody: 'Sie erhalten keine weiteren E-Mails.',
+  unsubscribeAlreadyDoneHeadline: 'Bereits abgemeldet',
+  unsubscribeAlreadyDoneBody: 'Die Erinnerung war bereits abgemeldet.',
+  unsubscribeErrorHeadline: 'Abmeldung fehlgeschlagen',
+  unsubscribeErrorBody: 'Der Abmeldelink ist ungueltig.',
+  maxSubscriptionsPerEmailAndLocation: 3,
+  signupRateLimitPerIpPerHour: 10,
+  signupRateLimitPerEmailPerHour: 3,
+  doiTokenTtlHours: 24,
+  pendingSubscriptionTtlHours: 48,
+  materializationLookaheadDays: 7,
+} satisfies WasteManagementEmailReminderConfig;
+
+const reminderActionFallbackConfig = {
+  ...reminderActionConfig,
+  activationSuccessPath: '',
+  unsubscribeSuccessPath: '',
+  invalidTokenPath: '',
+} satisfies WasteManagementEmailReminderConfig;
+
+type ReminderActionHarnessOptions = Readonly<{
+  activationResult?: WasteEmailReminderActivationResult;
+  subscription?: WasteEmailReminderUnsubscribeSubscription | null;
+  unsubscribeResult?: WasteEmailReminderUnsubscribeResult;
+}>;
+
+const createReminderActionHarness = (options: ReminderActionHarnessOptions = {}) => {
+  const calls: string[] = [];
+  const now = vi.fn(() => {
+    calls.push('now');
+    return fixedActionNow;
+  });
+  const hashValue = vi.fn((value: string) => {
+    calls.push('hash');
+    return `sha256:${value}`;
+  });
+  const activateByDoiTokenHash = vi.fn(async () => {
+    calls.push('activate');
+    return options.activationResult ?? ({ status: 'invalid' } as const);
+  });
+  const loadUnsubscribeSubscriptionById = vi.fn(async () => {
+    calls.push('load');
+    return options.subscription === undefined
+      ? {
+          subscriptionId: 'subscription-1',
+          unsubscribeTokenHash: storedUnsubscribeTokenHash,
+        }
+      : options.subscription;
+  });
+  const unsubscribeByTokenHash = vi.fn(async () => {
+    calls.push('unsubscribe');
+    return options.unsubscribeResult ?? ({ status: 'invalid' } as const);
+  });
+  const handler = createReminderPageHandler({
+    activateByDoiTokenHash,
+    loadUnsubscribeSubscriptionById,
+    unsubscribeByTokenHash,
+    now,
+    hashValue,
+  });
+
+  return {
+    activateByDoiTokenHash,
+    calls,
+    handler,
+    hashValue,
+    loadUnsubscribeSubscriptionById,
+    now,
+    unsubscribeByTokenHash,
+  };
+};
+
+const invokeReminderAction = async (input: {
+  readonly handler: ReturnType<typeof createReminderPageHandler>;
+  readonly pathname: string;
+  readonly query?: Readonly<Record<string, string>>;
+  readonly reminderConfig?: WasteManagementEmailReminderConfig;
+}): Promise<Response | null> => {
+  const url = new URL(input.pathname, 'https://example.invalid');
+  for (const [key, value] of Object.entries(input.query ?? {})) {
+    url.searchParams.set(key, value);
+  }
+  return await input.handler({
+    request: new Request(url),
+    pathname: input.pathname,
+    reminderConfig: input.reminderConfig ?? reminderActionConfig,
+    unsubscribeTokenSecret: testUnsubscribeSecret,
+  });
+};
+
+const createSignedUnsubscribeToken = (
+  unsubscribeTokenHash: string = storedUnsubscribeTokenHash
+): string =>
+  createWasteManagementUnsubscribeToken({
+    subscriptionId: 'subscription-1',
+    unsubscribeTokenHash,
+    secret: testUnsubscribeSecret,
+  });
+
+describe('public waste reminder action characterization', () => {
+  it.each([
+    {
+      label: 'DOI activation success',
+      pathname: reminderActionConfig.activationSuccessPath,
+      query: {},
+      expectedText: 'Aktiviert',
+    },
+    {
+      label: 'unsubscribe success',
+      pathname: reminderActionConfig.unsubscribeSuccessPath,
+      query: { state: 'unsubscribed' },
+      expectedText: 'Abgemeldet',
+    },
+    {
+      label: 'already unsubscribed',
+      pathname: reminderActionConfig.unsubscribeSuccessPath,
+      query: { state: 'already_unsubscribed' },
+      expectedText: 'Bereits abgemeldet',
+    },
+    {
+      label: 'DOI invalid token',
+      pathname: reminderActionConfig.invalidTokenPath,
+      query: { source: 'doi' },
+      expectedText: 'Bestaetigung fehlgeschlagen',
+    },
+    {
+      label: 'unsubscribe invalid token',
+      pathname: reminderActionConfig.invalidTokenPath,
+      query: { source: 'unsubscribe' },
+      expectedText: 'Abmeldung fehlgeschlagen',
+    },
+  ] satisfies readonly Readonly<{
+    label: string;
+    pathname: string;
+    query: Readonly<Record<string, string>>;
+    expectedText: string;
+  }>[])('renders the configured $label page before token dependencies', async (testCase) => {
+    const harness = createReminderActionHarness();
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: testCase.pathname,
+      query: testCase.query as Readonly<Record<string, string>>,
+    });
+
+    expect(response?.status).toBe(200);
+    await expect(response?.text()).resolves.toContain(testCase.expectedText);
+    expect(harness.calls).toEqual([]);
+  });
+
+  it('rejects a missing DOI token before hashing or activation', async () => {
+    const harness = createReminderActionHarness();
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.doiConfirmPath,
+    });
+
+    expect(response?.status).toBe(302);
+    expect(response?.headers.get('location')).toBe(
+      'https://example.invalid/erinnerungen/ungueltig?source=doi&reason=invalid'
+    );
+    expect(harness.calls).toEqual(['now']);
+    expect(harness.activateByDoiTokenHash).not.toHaveBeenCalled();
+    expect(harness.hashValue).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 'activated' as const, path: 'aktiviert', state: 'activated' },
+    { status: 'already_active' as const, path: 'aktiviert', state: 'already_active' },
+    { status: 'expired' as const, path: 'ungueltig', state: 'expired' },
+    { status: 'invalid' as const, path: 'ungueltig', state: 'invalid' },
+  ])('preserves DOI $status redirects, fixed time, hashing, and call order', async (testCase) => {
+    const activationResult: WasteEmailReminderActivationResult =
+      testCase.status === 'activated' || testCase.status === 'already_active'
+        ? {
+            status: testCase.status,
+            subscriptionId: 'subscription-1',
+            locationLabel: 'Perleberg, Ackerstr. 12',
+          }
+        : { status: testCase.status };
+    const harness = createReminderActionHarness({ activationResult });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.doiConfirmPath,
+      query: { token: 'doi-token' },
+    });
+
+    expect(response?.status).toBe(302);
+    expect(response?.headers.get('location')).toBe(
+      testCase.path === 'aktiviert'
+        ? `https://example.invalid/erinnerungen/aktiviert?state=${testCase.state}`
+        : `https://example.invalid/erinnerungen/ungueltig?source=doi&reason=${testCase.state}`
+    );
+    expect(harness.calls).toEqual(['now', 'hash', 'activate']);
+    expect(harness.hashValue).toHaveBeenCalledOnce();
+    expect(harness.activateByDoiTokenHash).toHaveBeenCalledWith({
+      tokenHash: 'sha256:doi-token',
+      now: fixedActionNow.toISOString(),
+    });
+  });
+
+  it.each([
+    { status: 'activated' as const, expectedText: 'Aktiviert' },
+    { status: 'expired' as const, expectedText: 'Der Bestaetigungslink ist abgelaufen.' },
+  ])('renders the DOI $status fallback response without configured redirects', async (testCase) => {
+    const activationResult: WasteEmailReminderActivationResult =
+      testCase.status === 'activated'
+        ? {
+            status: 'activated',
+            subscriptionId: 'subscription-1',
+            locationLabel: 'Perleberg, Ackerstr. 12',
+          }
+        : { status: 'expired' };
+    const harness = createReminderActionHarness({ activationResult });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionFallbackConfig.doiConfirmPath,
+      query: { token: 'doi-token' },
+      reminderConfig: reminderActionFallbackConfig,
+    });
+
+    expect(response?.status).toBe(200);
+    await expect(response?.text()).resolves.toContain(testCase.expectedText);
+  });
+
+  it.each([
+    { label: 'missing token', token: undefined, expectedCalls: ['now'] },
+    { label: 'unreadable subscription id', token: 'unreadable', expectedCalls: ['now'] },
+  ])('rejects an unsubscribe $label before lookup or mutation', async (testCase) => {
+    const harness = createReminderActionHarness();
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.unsubscribePath,
+      query: testCase.token ? { token: testCase.token } : {},
+    });
+
+    expect(response?.status).toBe(302);
+    expect(response?.headers.get('location')).toBe(
+      'https://example.invalid/erinnerungen/ungueltig?source=unsubscribe&reason=invalid'
+    );
+    expect(harness.calls).toEqual(testCase.expectedCalls);
+    expect(harness.loadUnsubscribeSubscriptionById).not.toHaveBeenCalled();
+    expect(harness.unsubscribeByTokenHash).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing unsubscribe subscription without mutation', async () => {
+    const harness = createReminderActionHarness({ subscription: null });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.unsubscribePath,
+      query: { token: createSignedUnsubscribeToken() },
+    });
+
+    expect(response?.status).toBe(302);
+    expect(harness.calls).toEqual(['now', 'load']);
+    expect(harness.loadUnsubscribeSubscriptionById).toHaveBeenCalledWith({
+      subscriptionId: 'subscription-1',
+    });
+    expect(harness.unsubscribeByTokenHash).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: 'signature mismatch',
+      token: `${createSignedUnsubscribeToken()}-changed`,
+      subscriptionHash: storedUnsubscribeTokenHash,
+    },
+    {
+      label: 'foreign subscription hash',
+      token: createSignedUnsubscribeToken('sha256:other-subscription-token'),
+      subscriptionHash: storedUnsubscribeTokenHash,
+    },
+  ])('rejects an unsubscribe $label after lookup and before mutation', async (testCase) => {
+    const harness = createReminderActionHarness({
+      subscription: {
+        subscriptionId: 'subscription-1',
+        unsubscribeTokenHash: testCase.subscriptionHash,
+      },
+    });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.unsubscribePath,
+      query: { token: testCase.token },
+    });
+
+    expect(response?.status).toBe(302);
+    expect(harness.calls).toEqual(['now', 'load']);
+    expect(harness.loadUnsubscribeSubscriptionById).toHaveBeenCalledOnce();
+    expect(harness.unsubscribeByTokenHash).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { status: 'unsubscribed' as const, path: 'abgemeldet', state: 'unsubscribed' },
+    {
+      status: 'already_unsubscribed' as const,
+      path: 'abgemeldet',
+      state: 'already_unsubscribed',
+    },
+    { status: 'invalid' as const, path: 'ungueltig', state: 'invalid' },
+  ])('preserves unsubscribe $status redirects, fixed time, and mutation order', async (testCase) => {
+    const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
+      testCase.status === 'invalid'
+        ? { status: 'invalid' }
+        : {
+            status: testCase.status,
+            subscriptionId: 'subscription-1',
+            locationLabel: 'Perleberg, Ackerstr. 12',
+          };
+    const harness = createReminderActionHarness({ unsubscribeResult });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionConfig.unsubscribePath,
+      query: { token: createSignedUnsubscribeToken() },
+    });
+
+    expect(response?.status).toBe(302);
+    expect(response?.headers.get('location')).toBe(
+      testCase.path === 'abgemeldet'
+        ? `https://example.invalid/erinnerungen/abgemeldet?state=${testCase.state}`
+        : 'https://example.invalid/erinnerungen/ungueltig?source=unsubscribe&reason=invalid'
+    );
+    expect(harness.calls).toEqual(['now', 'load', 'unsubscribe']);
+    expect(harness.loadUnsubscribeSubscriptionById).toHaveBeenCalledOnce();
+    expect(harness.unsubscribeByTokenHash).toHaveBeenCalledOnce();
+    expect(harness.unsubscribeByTokenHash).toHaveBeenCalledWith({
+      tokenHash: storedUnsubscribeTokenHash,
+      now: fixedActionNow.toISOString(),
+    });
+  });
+
+  it.each([
+    { status: 'already_unsubscribed' as const, expectedText: 'Bereits abgemeldet' },
+    { status: 'invalid' as const, expectedText: 'Abmeldung fehlgeschlagen' },
+  ])('renders the unsubscribe $status fallback response without configured redirects', async (testCase) => {
+    const unsubscribeResult: WasteEmailReminderUnsubscribeResult =
+      testCase.status === 'invalid'
+        ? { status: 'invalid' }
+        : {
+            status: 'already_unsubscribed',
+            subscriptionId: 'subscription-1',
+            locationLabel: 'Perleberg, Ackerstr. 12',
+          };
+    const harness = createReminderActionHarness({ unsubscribeResult });
+
+    const response = await invokeReminderAction({
+      handler: harness.handler,
+      pathname: reminderActionFallbackConfig.unsubscribePath,
+      query: { token: createSignedUnsubscribeToken() },
+      reminderConfig: reminderActionFallbackConfig,
+    });
+
+    expect(response?.status).toBe(200);
+    await expect(response?.text()).resolves.toContain(testCase.expectedText);
+  });
+
+  it('returns null for unrelated paths after resolving the fixed time only', async () => {
+    const harness = createReminderActionHarness();
+
+    await expect(
+      invokeReminderAction({ handler: harness.handler, pathname: '/unrelated' })
+    ).resolves.toBeNull();
+    expect(harness.calls).toEqual(['now']);
+  });
+});
+
+const createSignupCharacterizationInput = () => ({
+  request: new Request('https://example.invalid/api/public-waste/reminder-signups', {
+    method: 'POST',
+    headers: { 'x-forwarded-for': '203.0.113.10' },
+  }),
+  payload: {
+    selection: {
+      cityId: '22222222-2222-4222-8222-222222222222',
+      streetId: '33333333-3333-4333-8333-333333333333',
+    },
+    email: 'person@example.invalid',
+    items: [{ fractionId: 'bio', slotId: 'bio:first' }],
+    consentAccepted: true,
+  },
+  reminderConfig: reminderActionConfig,
+  repository: {
+    loadSelectionSummary: vi.fn().mockResolvedValue('Perleberg, Ackerstr. 12'),
+  },
+});
+
+describe('public waste reminder signup orchestration characterization', () => {
+  it('stops at the IP rate limit before consuming the email limit or persisting', async () => {
+    const consumeRateLimit = vi
+      .fn()
+      .mockReturnValueOnce({ retryAfterSeconds: 60 })
+      .mockReturnValueOnce(null);
+    const persistPendingSignup = vi.fn();
+    const submitter = createReminderSignupSubmitter({
+      persistPendingSignup,
+      consumeRateLimit,
+      now: () => fixedActionNow,
+      createId: vi.fn().mockReturnValue('generated-id'),
+      createToken: vi.fn().mockReturnValue('generated-token'),
+      hashValue: (value) => `sha256:${value}`,
+    });
+
+    await expect(submitter(createSignupCharacterizationInput())).rejects.toMatchObject({
+      code: 'rate_limited',
+      retryAfterSeconds: 60,
+      status: 429,
+    });
+    expect(consumeRateLimit).toHaveBeenCalledOnce();
+    expect(consumeRateLimit).toHaveBeenCalledWith({
+      key: 'ip:203.0.113.10',
+      limit: reminderActionConfig.signupRateLimitPerIpPerHour,
+      windowMs: 3_600_000,
+      now: fixedActionNow.getTime(),
+    });
+    expect(persistPendingSignup).not.toHaveBeenCalled();
+  });
+
+  it('uses successful atomic limit-checked persistence without count or fallback persistence', async () => {
+    const persistPendingSignup = vi.fn();
+    const persistPendingSignupWithLimitCheck = vi.fn().mockResolvedValue('created');
+    const countExistingSubscriptions = vi.fn();
+    const submitter = createReminderSignupSubmitter({
+      persistPendingSignup,
+      persistPendingSignupWithLimitCheck,
+      countExistingSubscriptions,
+      now: () => fixedActionNow,
+      createId: vi.fn().mockReturnValue('generated-id'),
+      createToken: vi.fn().mockReturnValue('generated-token'),
+      hashValue: (value) => `sha256:${value}`,
+    });
+
+    await expect(submitter(createSignupCharacterizationInput())).resolves.toMatchObject({
+      status: 'pending',
+    });
+    expect(persistPendingSignupWithLimitCheck).toHaveBeenCalledOnce();
+    expect(countExistingSubscriptions).not.toHaveBeenCalled();
+    expect(persistPendingSignup).not.toHaveBeenCalled();
+  });
+
+  it('preserves the atomic subscription-limit error without fallback persistence', async () => {
+    const persistPendingSignup = vi.fn();
+    const persistPendingSignupWithLimitCheck = vi
+      .fn()
+      .mockResolvedValue('subscription_limit_reached');
+    const submitter = createReminderSignupSubmitter({
+      persistPendingSignup,
+      persistPendingSignupWithLimitCheck,
+      now: () => fixedActionNow,
+      createId: vi.fn().mockReturnValue('generated-id'),
+      createToken: vi.fn().mockReturnValue('generated-token'),
+      hashValue: (value) => `sha256:${value}`,
+    });
+
+    await expect(submitter(createSignupCharacterizationInput())).rejects.toMatchObject({
+      code: 'subscription_limit_reached',
+      status: 409,
+    });
+    expect(persistPendingSignupWithLimitCheck).toHaveBeenCalledOnce();
+    expect(persistPendingSignup).not.toHaveBeenCalled();
   });
 });

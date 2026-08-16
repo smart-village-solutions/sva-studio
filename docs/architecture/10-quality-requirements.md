@@ -59,6 +59,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - `pnpm nx run sva-studio-react:test:acceptance` läuft als separates Delivery-Gate gegen die Testumgebung
   - Bericht mit JSON- und Markdown-Artefakt wird unter `docs/reports/` geschrieben
   - `/health/ready` sowie Login-, JIT-, Organisations- und Membership-Nachweise müssen im Bericht als `passed` erscheinen
+  - Vitest-Characterization sichert ohne echte Zugangsdaten den CLI-Exitcode, den redigierten Konfigurationsfehlerbericht und die feste Reihenfolge der Pflichtprüfungen; fachliche Phasen bleiben einzeln typisiert und der Einstieg bleibt eine explizite Orchestrierung
 - Produktionsnahe Release-Validierung:
   - Der einzige Main-Workflow `Build` muss `verify:runtime-artifact` ausführen, genau ein App-Image für `linux/amd64` veröffentlichen und dessen Digest an Dev übergeben.
   - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
@@ -147,6 +148,8 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Unbekannte `instanceId` fällt deterministisch auf ein Basis-Theme zurück
 - Öffentlicher Abfallkalender:
   - `pnpm nx run public-waste-calendar-web:test:unit` muss für Auswahlfluss, Cookie-Restore, Export-Links und Termin-Modal grün sein
+  - Repository-Characterization muss identische parametrisierte Standortfilter für Touren und explizite Einsätze, inklusive Date-only-Fenstergrenzen, deterministische Datum-/Fraktionssortierung sowie Empty- und Fehlerpfade abdecken
+  - Endpunkt-Tests müssen belegen, dass Web- und PDF-Pfade dieselbe standortgebundene Repository-Ausgabe verwenden und erst danach exportbezogen filtern
   - `pnpm nx run public-waste-calendar-web:test:e2e` deckt den vollständigen Bürgerfluss Auswahl -> Kalender -> Modal -> Reload-Restore ab
   - `pnpm nx run public-waste-calendar-web:test:types` bleibt Pflichtgate für alle app-lokalen Verträge
   - Auswahlbuttons, Fraktionsfilter, Exportlinks und Dialog müssen per Rolle oder zugänglichem Namen testbar bleiben
@@ -198,6 +201,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Allowlist-Aenderungen, neue Advanced-Path-Faehigkeiten und verbleibende Brownfield-Historie in `docs/reports/plugin-architecture-boundary-baseline.md` gelten als review-pflichtige Architekturereignisse
 - Waste-Abmeldetoken-Boundary:
   - `@sva/waste-management-contracts/unsubscribe-token` ist die einzige kanonische Implementierung für Erzeugung, Lesen und Verifikation signierter Waste-Abmeldetoken und installiert weder Job-Runtime noch Browser-Plugin
+  - Die Normalisierung der öffentlichen Reminder-Konfiguration ist durch eine Negativmatrix für Pflicht- und Optionalfelder, unbekannte Eingaben, stabile Feldreihenfolge sowie die Secret-Grenze charakterisiert; reine feldweise Reader senken die Zielkomplexität, ohne Defaults oder Serialisierung zu ändern.
   - ein Golden-Test hält Tokenaufbau, HMAC-SHA-256-Inhalt und Base64url-Signatur für bestehende `v1`-Links bytekompatibel
   - der Nx-Graph enthält keine direkte Kante `sva-studio-react -> public-waste-calendar-web`; beide Apps konsumieren stattdessen `waste-management-contracts`
   - `sva-studio-react:test:types` darf `public-waste-calendar-web:build` nicht als vorgelagerten Task einplanen
@@ -345,6 +349,7 @@ Referenzen:
 ### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
 
 - `plugin-poi` muss Roundtrip-Mapping, Bereichsvalidierung, Reverse-Geocode-Unterstützung und Host-Media-Referenzpersistenz über Unit-Tests explizit abdecken.
+- Der POI-Betreiberbereich muss kontrollierte Kontakt-/Adressfelder, unabhängige Web-URL-Werte, Geocoding-Lade- und Fehlerzustände, Karteninteraktionen sowie URL- und Koordinatenvalidierung durch Characterization-Tests absichern; interne Extraktionen dürfen keine Feld-ID oder Benutzeraktion ändern.
 - `plugin-sdk`-Clients für Geocoding und Media-Upload müssen deterministische HTTP- und Signed-Upload-Fehler stabil serialisieren.
 - Bei Vertragsänderungen bleiben `pnpm nx affected --target=test:types --base=origin/main` und `pnpm check:server-runtime` verpflichtende Gates.
 
@@ -389,3 +394,10 @@ Referenzen:
 - Die mediane terminale Zeit grüner Required Checks darf gegenüber der Ausgangsbaseline um höchstens 30 Sekunden steigen.
 - Ein zweiter kleiner PR-Push soll mindestens 30 Prozent der cachefähigen unveränderten Target-Laufzeit einsparen. Der Wert bezieht sich ausschließlich auf deterministische Targets und rechtfertigt keine Cache-Aktivierung für Coverage, Integration oder E2E ohne Paritätsnachweis.
 - Die Abnahme benötigt mindestens 20 repräsentative PR-Läufe; lokale Einzelmessungen sind noch kein Erfüllungsnachweis.
+
+### Ergänzung 2026-08: Qualitätsziele der IAM-ABAC-Auswertung
+
+- Der bisherige Fallow-Hotspot `evaluateAbacRules` wird von Cyclomatic 55, Cognitive 41 und 130 Funktionszeilen auf Cyclomatic 9, Cognitive 4 und 27 Funktionszeilen reduziert.
+- Alle Dateien und Funktionen der kritischen Klasse `iam-core` bleiben unter den kanonischen Grenzen für Dateigröße, Funktionslänge und Cyclomatic Complexity; die aufgelösten Baseline-Einträge der Engine werden entfernt.
+- Unit-Tests müssen Einzelregeln und kollidierende Kombinationen für fehlenden Kontext, Hierarchie, Geo, ungültige und Über-Mitternacht-Zeitfenster, Acting-as, Force-Deny sowie Provenance abdecken.
+- Type-, Lint-, Node-ESM-Runtime-, Complexity-, OpenSpec- und Fallow-Gates bleiben für Änderungen an diesen internen Bausteinen verpflichtend.

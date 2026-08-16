@@ -37,6 +37,27 @@ const createClient = (queuedRows: readonly (readonly Record<string, unknown>[])[
   return { client, queries };
 };
 
+const validDelegationPayload = {
+  delegateeKeycloakSubject: 'delegatee-subject',
+  roleId: uuid,
+  approverKeycloakSubject: 'approver-subject',
+  ticketId: 'JIRA-2',
+  ticketState: 'open',
+  startsAt: '2026-01-10T12:00:00.000Z',
+  endsAt: '2026-01-11T12:00:00.000Z',
+} as const;
+
+const executeDelegation = (
+  client: QueryClient,
+  payload: Record<string, unknown>,
+  currentActor: GovernanceActor = actor
+) =>
+  createGovernanceWorkflowExecutor(createDeps()).executeWorkflow(client, currentActor, {
+    operation: 'create_delegation',
+    instanceId: currentActor.instanceId,
+    payload,
+  });
+
 describe('governance workflow executor', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -219,6 +240,304 @@ describe('governance workflow executor', () => {
       })
     ).resolves.toEqual({ operation: 'revoke_delegation', status: 'ok', workflowId: uuid });
     expect(revoked.queries[1]?.sql).toContain("SET status = 'revoked'");
+  });
+
+  describe('create delegation characterization', () => {
+    it.each([
+      'delegateeKeycloakSubject',
+      'roleId',
+      'approverKeycloakSubject',
+      'ticketId',
+      'startsAt',
+      'endsAt',
+    ] as const)('rejects a missing %s before querying the database', async (field) => {
+      const payload: Record<string, unknown> = { ...validDelegationPayload };
+      delete payload[field];
+      const { client, queries } = createClient();
+
+      await expect(executeDelegation(client, payload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'invalid_request',
+      });
+      expect(queries).toHaveLength(0);
+    });
+
+    it('rejects a missing ticket state with the ticket-required reason before querying', async () => {
+      const payload: Record<string, unknown> = { ...validDelegationPayload };
+      delete payload.ticketState;
+      const { client, queries } = createClient();
+
+      await expect(executeDelegation(client, payload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'DENY_TICKET_REQUIRED',
+      });
+      expect(queries).toHaveLength(0);
+    });
+
+    it('rejects an invalid role UUID before querying the database', async () => {
+      const { client, queries } = createClient();
+
+      await expect(executeDelegation(client, { ...validDelegationPayload, roleId: 'not-a-uuid' })).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'invalid_request',
+      });
+      expect(queries).toHaveLength(0);
+    });
+
+    it.each(['open', 'in_progress', 'approved_for_execution'])(
+      'accepts the %s ticket state unchanged in persistence',
+      async (ticketState) => {
+        const { client, queries } = createClient([
+          [{ id: 'delegator-account' }],
+          [{ id: 'delegatee-account' }],
+          [{ id: 'approver-account' }],
+          [{ id: uuid }],
+          [],
+        ]);
+
+        await expect(executeDelegation(client, { ...validDelegationPayload, ticketState })).resolves.toEqual({
+          operation: 'create_delegation',
+          status: 'ok',
+          workflowId: uuid,
+        });
+        expect(queries[3]?.params?.[7]).toBe(ticketState);
+      }
+    );
+
+    it('rejects an invalid ticket state before querying the database', async () => {
+      const { client, queries } = createClient();
+
+      await expect(
+        executeDelegation(client, { ...validDelegationPayload, ticketState: 'closed' })
+      ).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'DENY_TICKET_STATE_INVALID',
+      });
+      expect(queries).toHaveLength(0);
+    });
+
+    it.each([
+      ['invalid start', 'not-a-date', validDelegationPayload.endsAt, 'invalid_request'],
+      ['invalid end', validDelegationPayload.startsAt, 'not-a-date', 'invalid_request'],
+      ['equal boundary', validDelegationPayload.startsAt, validDelegationPayload.startsAt, 'DENY_DELEGATION_DURATION_EXCEEDED'],
+      ['negative duration', validDelegationPayload.endsAt, validDelegationPayload.startsAt, 'DENY_DELEGATION_DURATION_EXCEEDED'],
+      ['overlong duration', validDelegationPayload.startsAt, '2026-02-09T12:00:00.001Z', 'DENY_DELEGATION_DURATION_EXCEEDED'],
+    ] as const)('rejects %s before account resolution', async (_case, startsAt, endsAt, reasonCode) => {
+      const { client, queries } = createClient();
+
+      await expect(executeDelegation(client, { ...validDelegationPayload, startsAt, endsAt })).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode,
+      });
+      expect(queries).toHaveLength(0);
+    });
+
+    it('accepts the exact thirty-day duration boundary', async () => {
+      const { client, queries } = createClient([
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [{ id: uuid }],
+        [],
+      ]);
+
+      await expect(
+        executeDelegation(client, {
+          ...validDelegationPayload,
+          endsAt: '2026-02-09T12:00:00.000Z',
+        })
+      ).resolves.toEqual({ operation: 'create_delegation', status: 'ok', workflowId: uuid });
+      expect(queries[3]?.params?.slice(8)).toEqual([
+        '2026-01-10T12:00:00.000Z',
+        '2026-02-09T12:00:00.000Z',
+      ]);
+    });
+
+    it('uses the actor subject as delegator fallback and preserves instance-scoped account query order', async () => {
+      const { client, queries } = createClient([
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [{ id: uuid }],
+        [],
+      ]);
+
+      await expect(executeDelegation(client, validDelegationPayload)).resolves.toMatchObject({ status: 'ok' });
+      expect(queries.slice(0, 3).map(({ params }) => params)).toEqual([
+        ['tenant-a', 'actor-subject'],
+        ['tenant-a', 'delegatee-subject'],
+        ['tenant-a', 'approver-subject'],
+      ]);
+    });
+
+    it.each([
+      ['delegator', [[], [{ id: 'delegatee-account' }], [{ id: 'approver-account' }]], 3],
+      ['delegatee', [[{ id: 'delegator-account' }], [], [{ id: 'approver-account' }]], 3],
+      ['approver', [[{ id: 'delegator-account' }], [{ id: 'delegatee-account' }], []], 3],
+    ] as const)('rejects when the %s account is missing after all account resolutions', async (_account, rows, queryCount) => {
+      const { client, queries } = createClient(rows);
+
+      await expect(executeDelegation(client, validDelegationPayload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'unauthorized',
+      });
+      expect(queries).toHaveLength(queryCount);
+    });
+
+    it('rejects self approval after resolving all three accounts and before persistence', async () => {
+      const { client, queries } = createClient([
+        [{ id: 'same-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'same-account' }],
+      ]);
+
+      await expect(executeDelegation(client, validDelegationPayload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'DENY_SELF_APPROVAL',
+      });
+      expect(queries).toHaveLength(3);
+    });
+
+    it.each([
+      ['equal-now start', '2026-01-10T12:00:00.000Z', 'active', 'governance_delegation_created'],
+      ['past start', '2026-01-10T11:59:59.999Z', 'active', 'governance_delegation_created'],
+      ['future start', '2026-01-10T12:00:00.001Z', 'requested', 'governance_delegation_requested'],
+    ] as const)('persists and audits the %s as %s', async (_case, startsAt, status, eventType) => {
+      const deps = createDeps();
+      const { client, queries } = createClient([
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [{ id: uuid }],
+        [],
+      ]);
+
+      await expect(
+        createGovernanceWorkflowExecutor(deps).executeWorkflow(client, actor, {
+          operation: 'create_delegation',
+          instanceId: 'tenant-a',
+          payload: {
+            ...validDelegationPayload,
+            startsAt,
+            endsAt: '2026-01-11T12:00:00.000Z',
+          },
+        })
+      ).resolves.toEqual({ operation: 'create_delegation', status: 'ok', workflowId: uuid });
+      expect(queries[3]?.params).toEqual([
+        'tenant-a',
+        'delegator-account',
+        'delegatee-account',
+        uuid,
+        status,
+        'approver-account',
+        'JIRA-2',
+        'open',
+        startsAt,
+        '2026-01-11T12:00:00.000Z',
+      ]);
+      expect(queries[4]?.sql).toContain('INSERT INTO iam.activity_logs');
+      expect(queries[4]?.params?.slice(0, 3)).toEqual(['tenant-a', 'delegator-account', eventType]);
+      expect(JSON.parse(String(queries[4]?.params?.[3]))).toMatchObject({
+        instance_id: 'tenant-a',
+        action: status === 'active' ? 'delegation_create' : 'delegation_request',
+        result: 'success',
+        target_ref: uuid,
+        ticket_id: 'JIRA-2',
+        request_id: 'request-1',
+        trace_id: 'trace-1',
+      });
+    });
+
+    it('determines the status after account resolution when the start boundary passes during lookup', async () => {
+      vi.setSystemTime(new Date('2026-01-10T11:59:59.999Z'));
+      const rowsByIndex: readonly (readonly Record<string, unknown>[])[] = [
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [{ id: uuid }],
+        [],
+      ];
+      const queries: { sql: string; params: readonly unknown[] }[] = [];
+      const client: QueryClient = {
+        async query<T>(sql: string, params: readonly unknown[] = []) {
+          const queryIndex = queries.length;
+          queries.push({ sql, params });
+          if (queryIndex === 2) {
+            vi.setSystemTime(new Date('2026-01-10T12:00:00.000Z'));
+          }
+          const rows = rowsByIndex[queryIndex] ?? [];
+          return { rowCount: rows.length, rows: rows as T[] };
+        },
+      };
+
+      await expect(executeDelegation(client, validDelegationPayload)).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'ok',
+        workflowId: uuid,
+      });
+      expect(queries[3]?.params?.[4]).toBe('active');
+      expect(queries[4]?.params?.[2]).toBe('governance_delegation_created');
+      expect(JSON.parse(String(queries[4]?.params?.[3]))).toMatchObject({
+        action: 'delegation_create',
+      });
+    });
+
+    it('returns database_unavailable when persistence does not return an id and emits no audit', async () => {
+      const deps = createDeps();
+      const { client, queries } = createClient([
+        [{ id: 'delegator-account' }],
+        [{ id: 'delegatee-account' }],
+        [{ id: 'approver-account' }],
+        [],
+      ]);
+
+      await expect(
+        createGovernanceWorkflowExecutor(deps).executeWorkflow(client, actor, {
+          operation: 'create_delegation',
+          instanceId: 'tenant-a',
+          payload: validDelegationPayload,
+        })
+      ).resolves.toEqual({
+        operation: 'create_delegation',
+        status: 'error',
+        reasonCode: 'database_unavailable',
+      });
+      expect(queries).toHaveLength(4);
+      expect(deps.logInfo).not.toHaveBeenCalled();
+      expect(deps.logWarn).not.toHaveBeenCalled();
+    });
+
+    it.each([0, 3, 4])('propagates a query failure at ordered query index %s', async (failureIndex) => {
+      const expectedError = new Error(`query-${failureIndex}-failed`);
+      let queryIndex = 0;
+      const client: QueryClient = {
+        async query<T>() {
+          const currentIndex = queryIndex++;
+          if (currentIndex === failureIndex) {
+            throw expectedError;
+          }
+          const rowsByIndex: Record<number, readonly Record<string, unknown>[]> = {
+            0: [{ id: 'delegator-account' }],
+            1: [{ id: 'delegatee-account' }],
+            2: [{ id: 'approver-account' }],
+            3: [{ id: uuid }],
+            4: [],
+          };
+          const rows = rowsByIndex[currentIndex] ?? [];
+          return { rowCount: rows.length, rows: rows as T[] };
+        },
+      };
+
+      await expect(executeDelegation(client, validDelegationPayload)).rejects.toBe(expectedError);
+      expect(queryIndex).toBe(failureIndex + 1);
+    });
   });
 
   it('starts and ends impersonation sessions', async () => {

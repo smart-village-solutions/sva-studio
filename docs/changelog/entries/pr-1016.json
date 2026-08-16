@@ -1,0 +1,4 @@
+{
+  "prNumber": 1016,
+  "body": "Temporäre Content-Media-Kennungen werden ausschließlich kryptografisch sicher erzeugt\n\n- Neue Medienzuordnungen verwenden die sichere UUID-Funktion des unterstützten Browsers.\n- Ein unsicherer Zufallsfallback kommt nicht mehr zum Einsatz.\n- Fehlt die erforderliche Browserfunktion wider Erwarten, bricht die Erzeugung eindeutig ab, statt eine schwache Kennung zu verwenden."
+}

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1017,
+  "body": "Vorgeschlagene Organisationsschlüssel werden auch aus sehr langen Namen zuverlässig erzeugt\n\n- Bestehende Schlüsselvorschläge und die Reihenfolge automatischer Nummern bleiben unverändert.\n- Unicode-Zeichen, ungewöhnliche Trennzeichen und bereits vergebene Schlüssel sind durch zusätzliche Regressionstests abgesichert."
+}

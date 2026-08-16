@@ -151,6 +151,9 @@ const config = defineConfig({
       '@sva/iam-governance/dsr-maintenance': resolveAppPath(
         '../../packages/iam-governance/src/dsr-maintenance.ts'
       ),
+      '@sva/iam-governance/dsr-persistence': resolveAppPath(
+        '../../packages/iam-governance/src/dsr-persistence.ts'
+      ),
       '@sva/iam-governance/legal-text-repository-shared': resolveAppPath(
         '../../packages/iam-governance/src/legal-text-repository-shared.ts'
       ),

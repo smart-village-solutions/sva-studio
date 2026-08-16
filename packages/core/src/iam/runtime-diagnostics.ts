@@ -18,6 +18,10 @@ type RuntimeDiagnosticSafeDetails = Readonly<{
   safeDetails?: IamRuntimeSafeDetails;
 }>;
 
+type RuntimeDiagnosticClassificationResolver = (
+  context: RuntimeDiagnosticSafeDetails
+) => IamRuntimeDiagnosticClassification | undefined;
+
 const PRE_SYNC_REASON_CLASSIFICATIONS = new Map<string, IamRuntimeDiagnosticClassification>([
   ['auth_resolution_failed', 'auth_resolution'],
   ['auth_config_missing', 'auth_resolution'],
@@ -81,6 +85,8 @@ const DATABASE_MAPPING_REASON_CODES = new Set([
   'rls_denied',
 ]);
 
+const ACTOR_RESOLUTION_CODES = new Set(['missing_actor_account', 'missing_instance_membership']);
+
 const REGISTRY_DRIFT_INPUT_CODES = new Set([
   'tenant_auth_client_secret_missing',
   'tenant_admin_client_not_configured',
@@ -96,6 +102,12 @@ const REGISTRY_DRIFT_INPUT_CODES = new Set([
 const SESSION_INPUT_CODES = new Set<ApiErrorCode>(['unauthorized', 'reauth_required']);
 const KEYCLOAK_INPUT_CODES = new Set<ApiErrorCode>(['keycloak_unavailable']);
 const DATABASE_INPUT_CODES = new Set<ApiErrorCode>(['database_unavailable']);
+
+const DEPENDENCY_CLASSIFICATION_RULES = [
+  [KEYCLOAK_INPUT_CODES, KEYCLOAK_REASON_CODES, 'keycloak_dependency'],
+  [DATABASE_INPUT_CODES, DATABASE_REASON_CODES, 'database_or_schema_drift'],
+  [undefined, DATABASE_MAPPING_REASON_CODES, 'database_mapping_or_membership_inconsistency'],
+] as const;
 
 const readString = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
@@ -145,77 +157,81 @@ const readSafeDetails = (
     : undefined;
 };
 
-const classify = ({
-  input,
+const resolvePreSyncClassification: RuntimeDiagnosticClassificationResolver = ({
   safeDetails,
-}: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
-  const reasonCode = safeDetails?.reason_code;
+}) => readReasonClassification(safeDetails?.reason_code, PRE_SYNC_REASON_CLASSIFICATIONS);
+
+const resolveSyncClassification: RuntimeDiagnosticClassificationResolver = ({
+  safeDetails,
+}) => {
   const syncErrorCode = safeDetails?.sync_error_code;
-  const preSyncClassification = readReasonClassification(
-    reasonCode,
-    PRE_SYNC_REASON_CLASSIFICATIONS
-  );
-
-  if (preSyncClassification) {
-    return preSyncClassification;
-  }
-
   if (syncErrorCode === 'DB_WRITE_FAILED') {
     return 'database_mapping_or_membership_inconsistency';
   }
 
-  if (syncErrorCode || safeDetails?.sync_state) {
-    return 'keycloak_reconcile';
+  return syncErrorCode || safeDetails?.sync_state ? 'keycloak_reconcile' : undefined;
+};
+
+const resolveTenantHostClassification: RuntimeDiagnosticClassificationResolver = ({
+  safeDetails,
+}) =>
+  safeDetails?.reason_code?.startsWith('tenant_host_resolution_')
+    ? 'tenant_host_validation'
+    : readReasonClassification(safeDetails?.reason_code, POST_SYNC_REASON_CLASSIFICATIONS);
+
+const resolveSessionClassification: RuntimeDiagnosticClassificationResolver = ({
+  input,
+  safeDetails,
+}) =>
+  SESSION_INPUT_CODES.has(input.code as ApiErrorCode) ||
+  matchesReasonCode(safeDetails?.reason_code, SESSION_REASON_CODES)
+    ? 'session_store_or_session_hydration'
+    : undefined;
+
+const resolveActorClassification: RuntimeDiagnosticClassificationResolver = ({
+  safeDetails,
+}) =>
+  matchesReasonCode(safeDetails?.actor_resolution, ACTOR_RESOLUTION_CODES) ||
+  matchesReasonCode(safeDetails?.reason_code, ACTOR_RESOLUTION_CODES)
+    ? 'actor_resolution_or_membership'
+    : undefined;
+
+const resolveDependencyClassification: RuntimeDiagnosticClassificationResolver = ({
+  input,
+  safeDetails,
+}) => {
+  for (const [inputCodes, reasonCodes, classification] of DEPENDENCY_CLASSIFICATION_RULES) {
+    if (
+      inputCodes?.has(input.code as ApiErrorCode) ||
+      matchesReasonCode(safeDetails?.reason_code, reasonCodes)
+    ) {
+      return classification;
+    }
   }
 
-  if (reasonCode?.startsWith('tenant_host_resolution_')) {
-    return 'tenant_host_validation';
-  }
+  return REGISTRY_DRIFT_INPUT_CODES.has(input.code)
+    ? 'registry_or_provisioning_drift'
+    : undefined;
+};
 
-  const postSyncClassification = readReasonClassification(
-    reasonCode,
-    POST_SYNC_REASON_CLASSIFICATIONS
-  );
-  if (postSyncClassification) {
-    return postSyncClassification;
-  }
+const CLASSIFICATION_RESOLVERS = [
+  resolvePreSyncClassification,
+  resolveSyncClassification,
+  resolveTenantHostClassification,
+  resolveSessionClassification,
+  resolveActorClassification,
+  resolveDependencyClassification,
+] as const satisfies readonly RuntimeDiagnosticClassificationResolver[];
 
-  if (
-    SESSION_INPUT_CODES.has(input.code as ApiErrorCode) ||
-    matchesReasonCode(reasonCode, SESSION_REASON_CODES)
-  ) {
-    return 'session_store_or_session_hydration';
-  }
-
-  if (
-    safeDetails?.actor_resolution === 'missing_actor_account' ||
-    safeDetails?.actor_resolution === 'missing_instance_membership' ||
-    reasonCode === 'missing_actor_account' ||
-    reasonCode === 'missing_instance_membership'
-  ) {
-    return 'actor_resolution_or_membership';
-  }
-
-  if (
-    KEYCLOAK_INPUT_CODES.has(input.code as ApiErrorCode) ||
-    matchesReasonCode(reasonCode, KEYCLOAK_REASON_CODES)
-  ) {
-    return 'keycloak_dependency';
-  }
-
-  if (
-    DATABASE_INPUT_CODES.has(input.code as ApiErrorCode) ||
-    matchesReasonCode(reasonCode, DATABASE_REASON_CODES)
-  ) {
-    return 'database_or_schema_drift';
-  }
-
-  if (matchesReasonCode(reasonCode, DATABASE_MAPPING_REASON_CODES)) {
-    return 'database_mapping_or_membership_inconsistency';
-  }
-
-  if (REGISTRY_DRIFT_INPUT_CODES.has(input.code)) {
-    return 'registry_or_provisioning_drift';
+const classify = ({
+  input,
+  safeDetails,
+}: RuntimeDiagnosticSafeDetails): IamRuntimeDiagnosticClassification => {
+  for (const resolveClassification of CLASSIFICATION_RESOLVERS) {
+    const classification = resolveClassification({ input, safeDetails });
+    if (classification) {
+      return classification;
+    }
   }
 
   return 'unknown';
@@ -243,6 +259,24 @@ const resolveStatus = (
   return 'degradiert';
 };
 
+const CLASSIFICATION_RECOMMENDED_ACTIONS = {
+  auth_resolution: 'erneut_anmelden',
+  oidc_discovery_or_exchange: 'erneut_anmelden',
+  tenant_host_validation: 'erneut_versuchen',
+  session_store_or_session_hydration: 'erneut_versuchen',
+  actor_resolution_or_membership: 'manuell_pruefen',
+  keycloak_dependency: 'keycloak_pruefen',
+  database_or_schema_drift: 'migration_pruefen',
+  database_mapping_or_membership_inconsistency: 'manuell_pruefen',
+  registry_or_provisioning_drift: 'provisioning_pruefen',
+  keycloak_reconcile: 'rollenabgleich_pruefen',
+  frontend_state_or_permission_staleness: 'erneut_versuchen',
+  legacy_workaround_or_regression: 'manuell_pruefen',
+  unknown: 'erneut_versuchen',
+} as const satisfies Readonly<
+  Record<IamRuntimeDiagnosticClassification, IamRuntimeRecommendedAction>
+>;
+
 const resolveRecommendedAction = (
   input: RuntimeDiagnosticInput,
   classification: IamRuntimeDiagnosticClassification
@@ -251,29 +285,11 @@ const resolveRecommendedAction = (
     return 'erneut_anmelden';
   }
 
-  switch (classification) {
-    case 'auth_resolution':
-    case 'oidc_discovery_or_exchange':
-      return 'erneut_anmelden';
-    case 'keycloak_dependency':
-      return 'keycloak_pruefen';
-    case 'database_or_schema_drift':
-      return 'migration_pruefen';
-    case 'registry_or_provisioning_drift':
-      return 'provisioning_pruefen';
-    case 'keycloak_reconcile':
-      return 'rollenabgleich_pruefen';
-    case 'actor_resolution_or_membership':
-    case 'database_mapping_or_membership_inconsistency':
-    case 'legacy_workaround_or_regression':
-      return 'manuell_pruefen';
-    case 'frontend_state_or_permission_staleness':
-      return 'erneut_versuchen';
-    case 'unknown':
-      return input.status >= 500 ? 'support_kontaktieren' : 'erneut_versuchen';
-    default:
-      return 'erneut_versuchen';
+  if (classification === 'unknown' && input.status >= 500) {
+    return 'support_kontaktieren';
   }
+
+  return CLASSIFICATION_RECOMMENDED_ACTIONS[classification];
 };
 
 export const deriveIamRuntimeDiagnostics = (

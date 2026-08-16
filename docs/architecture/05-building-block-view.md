@@ -68,6 +68,7 @@ Abhängigkeiten des aktuellen Systems.
    - gemeinsamer Owner für Frontend-Test-Foundations wie `msw`-Setup, Handler-Konventionen, Reset-Regeln und Test-Utilities
    - trennt HTTP-nahe Testinfrastruktur von produktiver Runtime-Logik und von E2E-/Infra-Läufen
    - bildet zusammen mit `docs/development/studio-foundations-governance.md` den Standardpfad für HTTP-nahe Frontend-Tests
+   - prüft den IAM-Acceptance-CLI-Vertrag auf Prozessebene; der dünne Einstieg `run-iam-acceptance.ts` orchestriert explizit getrennte Preflight-, Login/JIT-, Organisations-/Membership-, UI- und Berichtsbausteine unter `scripts/ci/`
 8. Monitoring Client (`packages/monitoring-client`)
    - OTEL SDK Setup, Exporter, Log-Redaction-Processor
 9. Data Client und Data Repositories (`packages/data-client`, `packages/data-repositories`)
@@ -82,6 +83,7 @@ Abhängigkeiten des aktuellen Systems.
 - trennt client-sichere Typen von serverseitigen Delegations- und Diagnostikfunktionen
 - exportiert die kanonischen serverseitigen Host-Verträge für Mainserver-News, -Events, -POI und die Schnittstellenverwaltung; `apps/sva-studio-react` hält dafür nur dünne Request- und TanStack-Adapter
 - kapselt Featured Projects als Mainserver-`GenericItem` mit `genericType: "FeaturedProject"`; Mainserver-ID, Lifecycle, Veröffentlichung und Autorenschaft bleiben fachlich führend, während ein lokaler `iam.contents`-Core und `iam.external_content_references` ausschließlich optionale Studio-History- und Reconciliation-Begleitzustände bilden
+- trennt die interne Featured-Project-Erstellung in Create-Orchestrierung, Idempotenz-/Replay-Handling, reine Payload-/Response-Abbildung sowie gemeinsame Autorisierungs- und Transportbausteine; `projects-route.ts` bleibt die HTTP-Fassade und exportiert keine neuen Create-Interna
 - kapselt zusätzlich den getypten Schreibpfad für Mainserver-Static-Content wie `wasteTypes` über `createOrUpdateStaticContent`, ohne Browser- oder Plugin-Code direkt an GraphQL zu koppeln
 - liest seine instanzbezogene Endpunktkonfiguration nicht mehr aus einer Mainserver-Spezialtabelle, sondern aus der zentralen External-Interface-Registry
 - hält `src/server/service.ts` bewusst als schlanke Fassade; Credentials, Token, GraphQL-Transport, Sichtbarkeits-Pagination, Mapper und ressourcenspezifische Operationen liegen in getrennten internen Modulen unter `src/server/service-internals/`
@@ -150,6 +152,7 @@ Abhängigkeiten des aktuellen Systems.
 - persistiert die letzte explizite Tenant-IAM-Access-Probe als Audit-Evidenz in `iam.instance_audit_events` und stellt sie der Detailseite korrelierbar mit `requestId`, `errorCode` und Zeitstempel bereit
 - `apps/sva-studio-react`: gefuehrte Admin-Control-Plane unter `/admin/instances` mit Preflight, Plan, Ausfuehrung und Protokoll
 - der Instanzvertrag trennt `authClientId` fuer interaktive Logins von `tenantAdminClient.clientId` fuer tenant-lokale Admin-Mutationen und Reconcile
+- `@sva/data-repositories` setzt Create- und Update-Werte der Registry aus fachlich benannten, puren Segmenten in einer festen SQL-Parameterreihenfolge zusammen; Secret-Erhalt, explizites Löschen und Ersetzen bleiben dabei eigenständige Positionsverträge
 - blockerrelevanter Drift aus Preflight, Provisioning-Plan oder fehlendem Tenant-Admin-Vertrag wird vor Reconcile-/Sync-Starts fail-closed durchgesetzt
 - HTTP-Handler, Service-Komposition und Keycloak-Ausführung sind intern entlang Read, Mutation, Payload/Sync/Finalize und Diagnose getrennt, damit Runtime-Consumer stabile Fassaden nutzen und fachliche Flows nicht wieder in Sammeldateien zusammenlaufen
   13a. Lokaler Studio-MCP (`packages/studio-mcp`)
@@ -213,6 +216,8 @@ Abhängigkeiten des aktuellen Systems.
   - plattformgebunden: `iam.platform_activity_logs`
 - Governance und DSGVO-Betroffenenrechte:
   - `packages/iam-governance`
+  - trennt bei der Delegationserstellung die frameworkfreie Payload-/Policy-Entscheidung vom explizit sequenziellen Wiring für instanzgebundene Account-Auflösung, Persistenz und Audit; Reason Codes, Zeitgrenzen und SQL-/Auditverträge bleiben Eigentum des bestehenden Governance-Workflows
+  - besitzt in `dsr-persistence.ts` die kanonischen, mandantengebundenen Persistenzprimitiven für aktive Legal Holds, DSR-Request-Events und DSR-Audit-Events; Auth-Runtime, Export-Flows und Wartung konsumieren diese Verträge ohne eigene SQL-Kopien
   - enthält auch die kanonische Legal-Text-Sanitisierung; React-Consumer importieren keinen app-lokalen HTML-Sanitizer mehr
   - liefert für den Account-Self-Service sowohl die Overview-Projektion mit `activityItems` als auch den `caseId`-basierten Detailzugriff für Deep-Links auf einzelne Datenschutzvorgänge
 - Inhaltsverwaltung als Core-Element:
@@ -328,8 +333,10 @@ Abhängigkeiten des aktuellen Systems.
 - eigenständige Vite/React-App für den öffentlichen Waste-Kalender außerhalb der Studio-Admin-Shell
 - hält Resolver, Kalenderprojektion, Demo-Runtime, Cookie-Restore, PDF-/iCal-Links und Modal-Interaktion bewusst app-lokal
 - nutzt eine reduzierte UI aus `PublicWasteApp`, `PublicWasteSelectionForm`, `PublicWasteCalendarPanels` und `PublicWasteEventDialog`
+- trennt in der vollständigen Standortansicht Kalender-/Dialog-Ownership vom konkreten Action-Hub; Reminder-Slot-Auswahl und lokaler Panel-/Formularzustand bleiben app-lokal, während Fraktionsfilter und PDF-Download weiterhin aus dem gemeinsamen Standortmodell gespeist werden
 - kapselt servernahe Verträge in `src/lib/public-waste-*.ts` und nutzt dafür bewusst gemeinsame Workspace-Verträge aus `@sva/core`, `@sva/data-repositories` und `@sva/waste-management-contracts/unsubscribe-token`, ohne an die Studio-Admin-UI oder das Plugin-Routing zu koppeln
 - besitzt zusätzlich eine eigene produktive Node-Runtime unter `src/server/**`, die das gebaute Frontend statisch ausliefert und die öffentlichen Read-Endpunkte `/api/public-waste/*` lokal bedient
+- hält die Kalender-Repository-Fassade stabil, trennt darunter aber parametrisierte SQL-/I/O-Ownership in `public-waste-calendar-loader.server.ts` von der I/O-freien Normalisierung in `public-waste-calendar-loader.projection.ts` und der Einsatz-Zusammenführung in `public-waste-calendar-loader.assignments.ts`; die zeilenförmigen internen Datenverträge bleiben app-lokal
 - erweitert diese Runtime um den öffentlichen Reminder-Flow mit CTA im finalen Standortkontext, Formularabsendung, Double-Opt-In-Bestätigung und Abmeldeseiten unter derselben App-URL
 - persistiert Pending- und aktive Reminder-Abos sowie DOI-Aufträge über gemeinsame Waste-Repositories, ohne selbst technische Mail-Credentials zu kennen
 - wird betrieblich über ein dediziertes Image, einen dedizierten Portainer-Stack `web-waste-calendar` und einen separaten Git-Tag-Releasepfad `waste-web-vX.Y.Z` ausgerollt, ohne den normalen Studio-Releasevertrag mitzubenutzen
@@ -340,6 +347,7 @@ Abhängigkeiten des aktuellen Systems.
 
 - erweitert die bestehende Waste-Operations-Runtime um zwei technische Jobs: Materialisierung fraktions- und slotbezogener Reminder-Outbox-Einträge sowie inkrementelle Batch-Verarbeitung fälliger Outbox-Elemente
 - nutzt dafür die führende Waste-Fachkonfiguration aus dem `output`-Tab, die fraktionsbezogenen Reminder-Slots aus den Abfallarten und die zentrale Schnittstelle `mail_transport`
+- normalisiert die öffentliche Reminder-Konfiguration in `@sva/core` über kleine feldgruppenspezifische Reader für Pflichtwerte, URLs, Pfade, Adressen und optionale Texte; der öffentliche Objektvertrag und seine Feldreihenfolge bleiben dabei unverändert
 - hält den Mailversand selbst adapterbasiert; Studio erzeugt und leased nur transportagnostische `MailDispatchPayload`s und kann damit an eine separate Mail-App oder einen äquivalenten Runtime-Adapter angeschlossen werden
 - stellt den signierten `v1`-Abmeldetokenvertrag zentral über `@sva/waste-management-contracts/unsubscribe-token` bereit; Studio erzeugt und Public-Waste liest sowie verifiziert denselben Vertrag ohne direkte App-zu-App-Abhängigkeit oder Installation der Job-Runtime
 
@@ -413,6 +421,7 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
    - `plugin-categories` stellt eine freie Fachroute unter `/categories` als redaktionelles Begleitmodul für Mainserver-Kategorien bereit
    - `plugin-news`, `plugin-events` und `plugin-poi` registrieren `adminResources` mit `resourceId` `news.content`, `events.content` und `poi.content`, jeweils auf Basis der Host-Views `content`, `contentCreate` und `contentDetail`
    - liefern über `contentUi` optionale Bindings für `list`, `detail` und `editor`; Events und POI nutzen dabei dieselbe feste Tab-Struktur `Basis` / `Inhalt` / `Einstellungen` / `Historie` wie News, während Route, Guard, Shell und Persistenz host-owned bleiben
+   - halten die Event-Formularserialisierung als frameworkfreie, paketinterne Fachlogik getrennt von den React-Tabs; redaktionelle, Datums-, Adress- und Medienwerte werden ohne neue Shared-API in den bestehenden Mainserver-Input assembliert
    - beziehen gemeinsame Standard-Metadaten, Mainserver-CRUD-Basis und kleine Hilfsfunktionen aus `@sva/plugin-sdk`, ohne einander zu importieren
    - schreiben ihre Fachdaten über hostgeführte Fassaden; Legacy-`payload` bleibt nur dort Lesefallback, wo die jeweilige Fassade ihn noch toleriert
 
@@ -420,6 +429,8 @@ Nicht erlaubt: `@sva/plugin-*` -> `apps/sva-studio-react/src/**`
 
 1. `packages/plugin-sdk/src/plugins.ts` + `packages/plugin-sdk/src/plugin-identifiers.ts`
    - definieren die technische Plugin-Identität über `PluginDefinition.id` als führenden Namespace und validieren plugin-beigestellte `contentType`s, Admin-Ressourcen, Audit-Event-Typen und Permissions gegen `<pluginId>.<name>`
+   - halten `createPluginRegistry` und `createPluginActionRegistry` als stabile öffentliche Fassaden; der mengenbasierte Vergleich verknüpfter Access-Anforderungen und die deterministisch geordneten Action-Validierungsphasen liegen frameworkfrei und intern unter `src/plugin-platform/`
+   - bewahren dabei Fehlercodes, Fail-fast-Priorität, reservierte Namespaces, Alias-Auflösung und alle Resource-Capability-Felder als unveränderten Sicherheitsvertrag
 2. `packages/plugin-sdk/src/build-time-registry.ts`
    - verdichtet Plugins, hosteigene Admin-Ressourcen, plugin-spezifische Permissions und Audit-Event-Definitionen phasenweise in einen gemeinsamen Registry-Snapshot für Host und Routing
    - hält die bestehende `BuildTimeRegistry`-API stabil; interne Phasen ordnen Preflight, Content, Admin, Audit, Permissions, Routing und Publish
@@ -534,6 +545,7 @@ Neu hinzugekommene Bausteine im Change `add-account-user-management-ui`:
 
 1. `apps/sva-studio-react/src/routes/account/-account-profile-page.tsx`
    - Self-Service-Profilseite (`/account`) mit Validierung, Error-Summary, tenantlokaler Profilpflege und einer kleinen Studio-owned Rückkehrmeldung nach delegierten Keycloak-Credential-Flows.
+   - Die co-located Bausteine `-account-profile-model.ts`, `-use-account-profile.ts`, `-account-profile-summary.tsx` und `-account-profile-form.tsx` trennen framework-unabhängige Formularregeln, asynchronen Seitenzustand und zugängliche Darstellung, ohne den IAM- oder Credential-Self-Service-Vertrag zu verändern.
 2. `apps/sva-studio-react/src/components/Header.tsx` und `apps/sva-studio-react/src/lib/auth-navigation.ts`
    - Das Kontomenü startet derzeit nur die Passwort-Änderung über den kanonischen Pfad `/auth/account-action?action=update-password&returnTo=/account`; die E-Mail-Änderung bleibt bis zur serverseitigen Keycloak-Freischaltung ausgeblendet, statt eigene Formularlogik im Browser aufzubauen.
 3. `apps/sva-studio-react/src/routes/admin/users/*`
@@ -677,18 +689,21 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - Definiert den gemeinsamen Sync-Report (`importedCount`, `updatedCount`, `skippedCount`, `totalKeycloakUsers`) für Server und Frontend.
 5. `apps/sva-studio-react/src/hooks/use-users.ts` und `apps/sva-studio-react/src/routes/admin/users/-user-list-page.tsx`
    - Binden die Aktion „Aus Keycloak synchronisieren“ in `/admin/users` an, zeigen Statusfeedback an und laden die User-Liste nach erfolgreichem Import neu.
-6. Medienvertrag (`packages/media`)
+6. `packages/auth-runtime/src/iam-account-management/user-import-sync-handler.ts`
+   - Trennt die reine Profilreparatur-Entscheidung vom tenantgebundenen Seed-Lookup, der optionalen Keycloak-Mutation, der IAM-Persistenz und der Reportbildung. Quellwerte bleiben vor lokalen Seed-Werten vorrangig; nur für eine weiterhin fehlende E-Mail darf ein syntaktisch gültiger Username dienen.
+   - Seed-Lookup, Provider-Update und Persistenz bleiben fail-closed an dieselbe `instanceId` und dasselbe Keycloak-Subject gebunden. Unvollständige Profile gehen ohne IAM-Persistenz in die manuelle Prüfung; Logs enthalten nur einen gehashten Subject-Verweis und Reparaturflags.
+7. Medienvertrag (`packages/media`)
    - kanonische Typen für `MediaAsset`, `MediaVariant`, `MediaReference`, Rollen, Sichtbarkeit, Upload- und Processing-Status
    - fail-closed Regeln für Löschbarkeit und Referenzierbarkeit
-7. Datenzugriff (`packages/data-repositories`)
+8. Datenzugriff (`packages/data-repositories`)
    - Medien-Repositories für Assets, Varianten, Referenzen, Upload-Sessions, Quota und Usage-Impact
-8. Auth-Runtime (`packages/auth-runtime`)
+9. Auth-Runtime (`packages/auth-runtime`)
    - hostseitige Media-HTTP-Endpunkte
    - interner Storage-Port und S3-/MinIO-Adapter
    - Audit, Autorisierung und Upload-Processing für Medien
-9. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
-   - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
-   - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine
+10. Studio-Frontend (`apps/sva-studio-react/src/routes/admin/media/*`, `src/hooks/use-media.ts`)
+    - startet in `/admin/media` den Browser-Flow `initialize -> signed PUT -> complete`
+    - trennt Bibliotheks-UI, Upload-Orchestrierung und Detailnavigation bewusst in eigene Bausteine
 
 ### Ergänzung 2026-06: POI-Geocoding- und Media-Bridges
 
@@ -696,17 +711,18 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
    - definieren die browser-sicheren Host-Verträge für Geocoding-Konfiguration, Suggest/Geocode/Reverse-Geocode sowie IAM-basierte Upload-Sessions.
 2. `apps/sva-studio-react/src/lib/map-geocoding-api.ts`, `apps/sva-studio-react/src/lib/map-geocoding-api.server.ts`
    - binden tenantkonfiguriertes `mapGeocoding` an normierte Host-Endpunkte unter `/api/v1/iam/map-geocoding/*`.
-3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-media-tab.tsx`
+3. `packages/plugin-poi/src/poi.detail-page.tsx`, `poi.detail-location-tab.tsx`, `poi.detail-operator-*.ts(x)`, `poi.detail-media-tab.tsx`
    - orchestrieren den vollständigen POI-Editor mit Bereichs-Tabs, Geocoding-Feldern, Reverse-Geocode-Unterstützung und Host-Media-Referenzierung.
+   - der Betreiberbereich trennt reine Feld-/Adressableitungen, kontrollierte Form- und Geocoding-Zustände sowie präsentationale Kontakt-, Adress-, Karten- und Koordinatenabschnitte; Feld-IDs, Validierung und Mainserver-Vertrag bleiben am bestehenden POI-Formular gebunden.
 
 ### Ergänzung 2026-08: Gemeinsamer Content-Media-Overlay-Flow
 
 1. `packages/studio-ui-react/src/content-media-usage*.ts(x)`
    - definiert den kontrollierten Bildblock, barrierefreie Reihenfolgeaktionen, sichtbare Referenzzustände und den feldweisen Metadatenabgleich.
-2. `packages/plugin-sdk/src/media-picker-client.ts`, `content-media-persistence.ts`
-   - liefert browser-sichere Asset-/Delivery-/Referenzverträge und die Sequenz „Fachinhalt zuerst, Referenzen danach“ mit isoliertem Retry.
+2. `packages/plugin-sdk/src/media-picker-client.ts`, `content-ui-utils.ts`, `content-media-persistence.ts`
+   - liefert browser-sichere Asset-/Delivery-/Referenzverträge, gemeinsam verwendete Upload-Phasen-, MIME- und Asset-Darstellungslogik sowie die Sequenz „Fachinhalt zuerst, Referenzen danach“ mit isoliertem Retry.
 3. POI, News, Events, Generic Items, Projects und Cockpit Cards
-   - behalten ihre Mainserver- beziehungsweise Fachmodelle als führenden Snapshot und übersetzen ausschließlich am Pluginrand in `ContentMediaUsage`; `gallery_item` und der normalisierte Listenindex bilden die geordnete Hostreferenz.
+   - behalten ihre Mainserver- beziehungsweise Fachmodelle als führenden Snapshot und übersetzen ausschließlich am Pluginrand in `ContentMediaUsage`; `gallery_item` und der normalisierte Listenindex bilden die geordnete Hostreferenz. Fachliche Content-Type-Fallbacks bleiben pluginlokal, während abgelöste Upload-, Picker-, Listen- und Preview-Implementierungen entfernt werden.
 
 ## Zentraler Backup-Agent
 
@@ -717,6 +733,8 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 - `@sva/studio-ui-react` rendert die gemeinsame zugängliche Abweichungszusammenfassung. Fachplugins bleiben für lokalisierte Abschnittshinweise und die kontrollierten Formularfelder verantwortlich.
 
 Der `studio-backup-agent` ist ein eigenständiger operativer Baustein außerhalb der App-Stacks. Sein HTTP-Port wird nicht veröffentlicht; Traefik leitet ausschließlich die beiden exakten Backup-Request-Pfade an ihn weiter. Der Baustein besitzt getrennte Staging-/Production-Secrets und leitet Datenbankhost, Bucket und Objektpräfix ausschließlich aus der validierten Zielumgebung ab.
+
+Die HTTP-Fassade delegiert die reine Contractprüfung an lokale ESM-Validatoren. Diese trennen Objektform und Feld-allowlist, Version und Aktion, Umgebung, Datenbank-/Tenant-Kopplung, Request-Identität, Digest beziehungsweise SHA-256, Objektpfad, Sondervertrag und Ablaufzeit. Die Fassade bleibt boolesch; OIDC, HMAC, Replay-Schutz und jede Datenbankoperation verbleiben im Agenten. Das Container-Image übernimmt die Validatoren explizit und löst sie über einen relativen `.mjs`-Import auf.
 
 Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provisioning`, sichert alle `ready`- und `disabled`-Datenbanken unter `<umgebung>/waste/<instance_id>/` und bindet Restores zusätzlich an die signierte Instanz-ID. Freie Datenbank- oder Rollennamen sind kein Bestandteil des Request-Vertrags.
 
@@ -732,6 +750,16 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/studio-module-iam` komponiert die bestehenden Modulverträge zur validierten Gesamtsicht `studioPermissionCatalog`.
 - `@sva/data-repositories` materialisiert Definitionen und verwaltete Grants additiv und liefert sichere Änderungszähler.
 - `@sva/instance-registry` bindet denselben Vertrag an Tenant-Bootstrap, Modul-Lifecycle und explizites `seedIamBaseline`.
+
+### Ergänzung 2026-08: Operativer Keycloak-Instanz-Audit
+
+- `scripts/ops/studio-instance-audit/keycloak.ts` besitzt die read-only
+  `kcadm`-Erhebung, die kurzlebige Auth-Konfiguration und deren Cleanup.
+- `scripts/ops/studio-instance-audit/keycloak-evaluation.ts` besitzt den
+  typisierten Snapshot und die reine Ableitung der vierzehn bestehenden
+  Keycloak-Befunde.
+- Die Grenze ist bewusst zweckgebunden: Sie führt weder eine generische Rule
+  Engine noch einen zweiten Provisioning-, Reconcile- oder Mutationspfad ein.
 
 ### Ergänzung 2026-08: DataProvider-gebundene Mainserver-Autorenschaft
 
@@ -754,3 +782,9 @@ Für Waste liest der Agent das kanonische Inventar aus `iam.instance_waste_provi
 - `@sva/core` besitzt den framework-agnostischen, begrenzten Vertrag für erforderliche Actions, `allOf`-/`anyOf`-Semantik und öffentliche Denial-Gründe.
 - `@sva/routing` transportiert diesen Kontext bei Guard-Redirects; `@sva/auth-runtime` erzeugt ihn ausschließlich aus eindeutigen serverseitigen Autorisierungsentscheidungen.
 - Die Studio-App löst Titel aus Core-Katalog und Build-time-Plugin-Registry auf. Unbekannte Actions verwenden die validierte Action-ID als Fallback.
+
+### Ergänzung 2026-08: Interne Bausteine der IAM-ABAC-Auswertung
+
+- `packages/iam-core/src/authorization-engine.ts` bleibt der einzige öffentliche Entscheidungsbaustein und orchestriert Instanz-Scope, RBAC-Matching, Permission-Scope und finale Antwort.
+- `packages/iam-core/src/authorization-abac.ts` normalisiert den bereits zusammengeführten Regelkontext und enthält kleine reine Evaluatoren für Pflichtkontext, Hierarchierestriktionen, Geo-Freigaben, Zeitfenster, Acting-as und Force-Deny.
+- `packages/iam-core/src/authorization-provenance.ts` leitet die von Engine und ABAC gemeinsam benötigte Rollen-/Gruppen- und Geo-Provenance ab. Beide internen Module werden nicht über den Package-Entry-Point exportiert.

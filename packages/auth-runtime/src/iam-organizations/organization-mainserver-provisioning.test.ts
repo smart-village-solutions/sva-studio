@@ -178,6 +178,68 @@ describe('organization Mainserver provisioning', () => {
     ).toBe('stadtische.werke.koln.stadt.koln.11111111@smart-village.app');
   });
 
+  it.each([
+    {
+      label: 'normalizes umlauts, sharp s and combining marks',
+      organizationDisplayName: 'ÄÖÜ ß Café',
+      tenantDisplayName: 'Crème Brûlée',
+      expectedEmail: 'aou.ss.cafe.creme.brulee@smart-village.app',
+    },
+    {
+      label: 'uses both fallbacks for empty values',
+      organizationDisplayName: '',
+      tenantDisplayName: '',
+      expectedEmail: 'organization.tenant@smart-village.app',
+    },
+    {
+      label: 'uses both fallbacks for separator-only values',
+      organizationDisplayName: ' ._- / ',
+      tenantDisplayName: '---___...',
+      expectedEmail: 'organization.tenant@smart-village.app',
+    },
+    {
+      label: 'collapses internal separators and removes edge separators',
+      organizationDisplayName: '...Alpha___Beta---',
+      tenantDisplayName: '__North / East..',
+      expectedEmail: 'alpha.beta.north.east@smart-village.app',
+    },
+    {
+      label: 'truncates each normalized segment without leaving a trailing separator',
+      organizationDisplayName: 'abcdefghijklmnopqrstuvw-xyz',
+      tenantDisplayName: '12345678901234567890123-tenant',
+      expectedEmail: 'abcdefghijklmnopqrstuvw.12345678901234567890123@smart-village.app',
+    },
+  ])('$label', async ({ organizationDisplayName, tenantDisplayName, expectedEmail }) => {
+    const { deriveOrganizationTechnicalIdentity } =
+      await import('./organization-mainserver-provisioning.js');
+
+    expect(
+      deriveOrganizationTechnicalIdentity({
+        organizationId: organization.id,
+        organizationDisplayName,
+        tenantDisplayName,
+      })
+    ).toEqual({
+      email: expectedEmail,
+      username: expectedEmail,
+      firstName: organizationDisplayName,
+      lastName: tenantDisplayName,
+    });
+  });
+
+  it('normalizes very long homogeneous and mixed-separator inputs', async () => {
+    const { deriveOrganizationTechnicalIdentity } =
+      await import('./organization-mainserver-provisioning.js');
+    const identity = deriveOrganizationTechnicalIdentity({
+      organizationId: organization.id,
+      organizationDisplayName: 'a'.repeat(100_000),
+      tenantDisplayName: `${'._- '.repeat(25_000)}Tenant${' -_.'.repeat(25_000)}`,
+      collisionSafe: true,
+    });
+
+    expect(identity.email).toBe('aaaaaaaaaaaaaaaaaaaaaaaa.tenant.11111111@smart-village.app');
+  });
+
   it('returns an already-ready reservation without creating or provisioning another account', async () => {
     state.reserveOrganizationMainserverProvisioning.mockResolvedValue({
       acquired: false,
@@ -509,9 +571,9 @@ describe('organization Mainserver provisioning', () => {
         mainserverUserApplicationSecret: 'existing-secret',
       },
     });
-    expect(
-      state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0]
-    ).toBeLessThan(state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0] ?? 0);
+    expect(state.persistProvisionedMainserverCredentials.mock.invocationCallOrder[0]).toBeLessThan(
+      state.recordMainserverDataProviderObservation.mock.invocationCallOrder[0] ?? 0
+    );
     expect(state.recordMainserverDataProviderObservation).toHaveBeenCalledWith(
       expect.objectContaining({
         dataProviderId: '4711',

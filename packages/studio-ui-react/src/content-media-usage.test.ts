@@ -1,13 +1,36 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   contentMediaUsageToReference,
+  createContentMediaUiId,
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
 } from './content-media-usage.js';
 
 describe('content media usage', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses the Web Crypto UUID as its UI identity', () => {
+    const uiId = '722328a4-8731-47b0-a7ea-b544be7dd527';
+    const randomUUID = vi.fn(() => uiId);
+    vi.stubGlobal('crypto', { randomUUID });
+
+    expect(createContentMediaUiId()).toBe(uiId);
+    expect(randomUUID).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when the runtime does not provide crypto.randomUUID', () => {
+    vi.stubGlobal('crypto', {});
+
+    expect(() => createContentMediaUiId()).toThrow(TypeError);
+    expect(() => createContentMediaUiId()).toThrow(
+      'Content media UI IDs require crypto.randomUUID'
+    );
+  });
+
   it('keeps UI identity while normalizing order', () => {
     const first = { ...createManualContentMediaUsage(), uiId: 'first', sortOrder: 0 };
     const second = { ...createManualContentMediaUsage(), uiId: 'second', sortOrder: 1 };

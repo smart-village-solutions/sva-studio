@@ -384,6 +384,7 @@ describe('waste-management search params', () => {
       expect.objectContaining({
         schedulingTourId: 'tour-42',
         schedulingOriginalDate: undefined,
+        schedulingContextInvalid: true,
       })
     );
 

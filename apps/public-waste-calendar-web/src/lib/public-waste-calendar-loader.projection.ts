@@ -114,6 +114,7 @@ export const mapCalendarTourDateShifts = (
     tourId: row.tour_id,
     originalDate: row.original_date,
     actualDate: row.actual_date,
+    hasYear: row.has_year ?? true,
     ...(row.description ? { description: row.description } : {}),
   }));
 

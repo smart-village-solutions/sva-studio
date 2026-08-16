@@ -9,6 +9,7 @@ const {
 } = await import('./migrate-waste-tenants.mjs');
 
 const migrationId = '20260816_01_add_waste_city_postal_code';
+const tourShiftMigrationId = '20260816_02_tour_date_shift_date_contract';
 
 const namesFor = (instanceId: string) => ({
   appRole: `${instanceId}_app`,
@@ -50,17 +51,22 @@ const createAdminClient = (rows: readonly object[]) => ({
 });
 
 describe('Waste-Tenant-Migration', () => {
-  it('contains only the explicit additive postal-code migration', () => {
+  it('contains the additive postal-code migration and the guarded tour-shift contract', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
-    expect(wasteTenantMigrations).toHaveLength(1);
+    expect(wasteTenantMigrations).toHaveLength(2);
     expect(wasteTenantMigrations[0]).toMatchObject({
       id: migrationId,
-      statements: [
-        'ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;',
-      ],
+      statements: ['ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;'],
     });
     expect(wasteTenantMigrations[0]?.statements.join('\n')).not.toMatch(
       /\b(?:DELETE|DROP|TRUNCATE|UPDATE)\b/u
+    );
+    expect(wasteTenantMigrations[1]).toMatchObject({ id: tourShiftMigrationId });
+    expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
+      'waste_migration_tour_date_shift_data_present'
+    );
+    expect(wasteTenantMigrations[1]?.statements.join('\n')).toContain(
+      'ALTER COLUMN original_date TYPE DATE'
     );
   });
 
@@ -90,7 +96,7 @@ describe('Waste-Tenant-Migration', () => {
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
-    ).resolves.toEqual({ appliedMigrationCount: 2, migratedTenantCount: 2, status: 'ok' });
+    ).resolves.toEqual({ appliedMigrationCount: 4, migratedTenantCount: 2, status: 'ok' });
 
     for (const database of ['alpha_db', 'beta_db']) {
       const client = tenantClients.get(database);
@@ -125,7 +131,9 @@ describe('Waste-Tenant-Migration', () => {
   });
 
   it('verifies but does not reapply an already recorded migration', async () => {
-    const client = createTenantClient({ appliedMigrationIds: [migrationId] });
+    const client = createTenantClient({
+      appliedMigrationIds: [migrationId, tourShiftMigrationId],
+    });
 
     await expect(
       migrateWasteTenantDatabase({

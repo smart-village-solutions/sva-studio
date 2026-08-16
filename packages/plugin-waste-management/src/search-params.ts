@@ -72,6 +72,7 @@ export type WasteManagementSearchParams = Readonly<{
   schedulingEntryId?: string;
   schedulingTourId?: string;
   schedulingOriginalDate?: string;
+  schedulingContextInvalid?: boolean;
   tourDateShiftId?: string;
   globalDateShiftId?: string;
 }>;
@@ -210,9 +211,14 @@ export const normalizeWasteManagementSearchParams = (
   const schedulingView = normalizeSchedulingView(search.schedulingView);
   const schedulingEntryType = normalizeSchedulingEntryType(search.schedulingEntryType);
   const keepsTourShiftCreateContext =
-    tab === 'scheduling' &&
-    schedulingView === 'create' &&
-    schedulingEntryType === 'tour-shift';
+    tab === 'scheduling' && schedulingView === 'create' && schedulingEntryType === 'tour-shift';
+  const rawSchedulingOriginalDate = compactOptionalString(search.schedulingOriginalDate);
+  const normalizedSchedulingOriginalDate = normalizeOptionalIsoDate(search.schedulingOriginalDate);
+  const schedulingTourId = compactOptionalString(search.schedulingTourId);
+  const schedulingContextInvalid =
+    keepsTourShiftCreateContext &&
+    ((rawSchedulingOriginalDate !== undefined && normalizedSchedulingOriginalDate === undefined) ||
+      (normalizedSchedulingOriginalDate !== undefined && schedulingTourId === undefined));
 
   return {
     tab,
@@ -243,12 +249,11 @@ export const normalizeWasteManagementSearchParams = (
     endDateTo: normalizeOptionalIsoDate(search.endDateTo),
     schedulingEntryType,
     schedulingEntryId: compactOptionalString(search.schedulingEntryId),
-    schedulingTourId: keepsTourShiftCreateContext
-      ? compactOptionalString(search.schedulingTourId)
-      : undefined,
+    schedulingTourId: keepsTourShiftCreateContext ? schedulingTourId : undefined,
     schedulingOriginalDate: keepsTourShiftCreateContext
-      ? normalizeOptionalIsoDate(search.schedulingOriginalDate)
+      ? normalizedSchedulingOriginalDate
       : undefined,
+    ...(schedulingContextInvalid ? { schedulingContextInvalid: true } : {}),
     tourDateShiftId: undefined,
     globalDateShiftId: undefined,
   };

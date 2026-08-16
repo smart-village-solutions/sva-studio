@@ -1,6 +1,10 @@
 import type { FormEvent } from 'react';
 
-import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
+import type {
+  WasteCustomRecurrencePresetRecord,
+  WasteFractionRecord,
+  WasteTourRecord,
+} from '@sva/plugin-sdk';
 import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
@@ -21,6 +25,7 @@ type WasteToursFormContentProps = {
   readonly saving: boolean;
   readonly search?: WasteManagementSearchParams;
   readonly canManageScheduling?: boolean;
+  readonly persistedTour?: WasteTourRecord;
   readonly onChange: (patch: Partial<TourFormState>) => void;
   readonly onCancel: () => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -37,6 +42,7 @@ export const WasteToursFormContent = ({
   saving,
   search,
   canManageScheduling = false,
+  persistedTour,
   onChange,
   onCancel,
   onSubmit,
@@ -47,20 +53,35 @@ export const WasteToursFormContent = ({
     : mode === 'create'
       ? pt('tours.actions.create')
       : pt('tours.actions.save');
+  const persistedTourSupportsShifts = Boolean(
+    persistedTour && isWasteTourValidityApplicable(persistedTour)
+  );
+  const hasUnsavedSchedulingChanges = Boolean(
+    persistedTour &&
+    (form.recurrence !== (persistedTour.recurrence ?? '') ||
+      form.customRecurrenceId !== (persistedTour.customRecurrenceId ?? '') ||
+      form.firstDate !== (persistedTour.firstDate ?? '') ||
+      form.endDate !== (persistedTour.endDate ?? ''))
+  );
+  const dirtySchedulingHint = pt('tours.messages.saveSchedulingBeforeShift');
   const schedulingAction =
     mode === 'edit' &&
     canManageScheduling &&
     search &&
-    form.recurrence !== '' &&
-    isWasteTourValidityApplicable({
-      recurrence: form.recurrence,
-      customRecurrenceId: form.customRecurrenceId,
-    }) ? (
-      <WasteTourShiftCreateLink
-        search={search}
-        tourId={form.id}
-        label={pt('tours.actions.createShift')}
-      />
+    persistedTourSupportsShifts &&
+    persistedTour ? (
+      <div className="space-y-2 text-right">
+        <WasteTourShiftCreateLink
+          search={search}
+          tourId={persistedTour.id}
+          label={pt('tours.actions.createShift')}
+          disabled={hasUnsavedSchedulingChanges}
+          disabledDescription={hasUnsavedSchedulingChanges ? dirtySchedulingHint : undefined}
+        />
+        {hasUnsavedSchedulingChanges ? (
+          <p className="text-sm text-muted-foreground">{dirtySchedulingHint}</p>
+        ) : null}
+      </div>
     ) : null;
 
   const topActions = (

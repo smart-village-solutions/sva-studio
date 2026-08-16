@@ -193,7 +193,12 @@ export {
   resolveContentMediaCapabilities,
   type ContentMediaCapabilities,
 } from './content-media-permissions.js';
-export { isWasteTourValidityApplicable, resolveWasteTourValidityDates } from './public-api.js';
+export {
+  isWasteTourValidityApplicable,
+  resolveEffectiveWasteTourDateShiftsForYear,
+  resolveWasteTourValidityDates,
+} from './public-api.js';
+export type { EffectiveWasteTourDateShift } from './public-api.js';
 export {
   createAdminResourceRegistry,
   createBuildTimeRegistry,

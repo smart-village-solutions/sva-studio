@@ -201,7 +201,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location create rejects invalid payloads',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -212,7 +213,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link create rejects invalid payloads',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -284,23 +286,31 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location update rejects invalid payloads even when the path id exists',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-invalid', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({}),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-invalid',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({}),
+          }
+        ),
     },
     {
       label: 'location-tour-link update rejects invalid payloads even when the path id exists',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-invalid', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({}),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/location-tour-links/link-invalid',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({}),
+          }
+        ),
       deps: () => createDeps('waste-management.tours.manage'),
     },
   ])('$label', async ({ handler, request, deps }) => {
@@ -339,27 +349,28 @@ describe('waste-management master-data branch handlers', () => {
 
     const saveWasteFraction = vi.fn(async () => undefined);
 
-    const createResponse = await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions', {
-        method: 'POST',
-        headers: createHeaders(),
-        body: JSON.stringify({
-          id: 'fraction-new',
-          name: 'Biomüll extra',
-          pdfShortLabel: 'bio',
-          color: '#22aa55',
-          active: true,
-          ...noneReminderConfigPayload,
+    const createResponse =
+      await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'fraction-new',
+            name: 'Biomüll extra',
+            pdfShortLabel: 'bio',
+            color: '#22aa55',
+            active: true,
+            ...noneReminderConfigPayload,
+          }),
         }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        saveWasteFraction,
-        loadWasteFractionById: vi.fn(async () => null),
-        loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
-      }
-    );
+        actor,
+        {
+          ...createDeps(),
+          saveWasteFraction,
+          loadWasteFractionById: vi.fn(async () => null),
+          loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
+        }
+      );
 
     expect(createResponse.status).toBe(409);
     await expect(createResponse.json()).resolves.toMatchObject({
@@ -372,42 +383,43 @@ describe('waste-management master-data branch handlers', () => {
     expect(saveWasteFraction).not.toHaveBeenCalled();
 
     const updateSaveWasteFraction = vi.fn(async () => undefined);
-    const updateResponse = await wasteManagementFractionHandlers.updateWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-update', {
-        method: 'PUT',
-        headers: createHeaders(),
-        body: JSON.stringify({
-          name: 'Biomüll extra',
-          pdfShortLabel: 'bio',
-          color: '#22aa55',
-          active: true,
-          ...noneReminderConfigPayload,
+    const updateResponse =
+      await wasteManagementFractionHandlers.updateWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions/fraction-update', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            name: 'Biomüll extra',
+            pdfShortLabel: 'bio',
+            color: '#22aa55',
+            active: true,
+            ...noneReminderConfigPayload,
+          }),
         }),
-      }),
-      actor,
-      {
-        ...createDeps(),
-        saveWasteFraction: updateSaveWasteFraction,
-        loadWasteFractionById: vi.fn(async () => ({
-          id: 'fraction-update',
-          name: 'Papier',
-          pdfShortLabel: 'PAP',
-          color: '#123456',
-          active: true,
-          reminderConfig: {
-            reminderCount: 'none',
-            channels: {
-              push: false,
-              email: false,
-              calendar: false,
+        actor,
+        {
+          ...createDeps(),
+          saveWasteFraction: updateSaveWasteFraction,
+          loadWasteFractionById: vi.fn(async () => ({
+            id: 'fraction-update',
+            name: 'Papier',
+            pdfShortLabel: 'PAP',
+            color: '#123456',
+            active: true,
+            reminderConfig: {
+              reminderCount: 'none',
+              channels: {
+                push: false,
+                email: false,
+                calendar: false,
+              },
             },
-          },
-          createdAt: '2026-05-09T10:00:00.000Z',
-          updatedAt: '2026-05-09T10:00:00.000Z',
-        })),
-        loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
-      }
-    );
+            createdAt: '2026-05-09T10:00:00.000Z',
+            updatedAt: '2026-05-09T10:00:00.000Z',
+          })),
+          loadMasterDataFractionsOverview: vi.fn(async () => duplicateOverview),
+        }
+      );
 
     expect(updateResponse.status).toBe(409);
     await expect(updateResponse.json()).resolves.toMatchObject({
@@ -482,7 +494,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location update rejects missing path ids',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations/', {
           method: 'PUT',
@@ -493,7 +506,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link update rejects missing path ids',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/', {
           method: 'PUT',
@@ -505,7 +519,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link delete rejects missing path ids',
-      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/', {
           method: 'DELETE',
@@ -657,13 +672,17 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location update returns not_found for unknown records',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-404', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({ cityId: 'city-1', regionId: 'region-1', active: true }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-404',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({ cityId: 'city-1', regionId: 'region-1', active: true }),
+          }
+        ),
       deps: () => ({
         ...createDeps(),
         loadWasteCollectionLocationById: vi.fn(async () => null),
@@ -673,7 +692,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link update returns not_found for unknown records',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-404', {
           method: 'PUT',
@@ -689,7 +709,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link delete returns not_found for unknown records',
-      handler: wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-404', {
           method: 'DELETE',
@@ -778,23 +799,65 @@ describe('waste-management master-data branch handlers', () => {
     });
   });
 
+  it('maps a concurrent tour-date-shift uniqueness violation to conflict', async () => {
+    const response =
+      await wasteManagementTourDateShiftHandlers.updateWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/tour-shift-db', {
+          method: 'PUT',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            tourId: 'tour-1',
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          loadWasteTourDateShiftById: vi.fn(async () => ({
+            id: 'tour-shift-db',
+            tourId: 'tour-1',
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+            createdAt: '',
+            updatedAt: '',
+          })),
+          saveWasteTourDateShift: vi.fn(async () => {
+            throw Object.assign(new Error('duplicate'), {
+              code: '23505',
+              constraint: 'uq_waste_tour_date_shifts_specific_origin',
+            });
+          }),
+        }
+      );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'conflict' },
+      requestId: 'req-test',
+    });
+  });
+
   it('location-tour-link delete returns the deleted resource id on success', async () => {
-    const response = await wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal(
-      new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-delete', {
-        method: 'DELETE',
-        headers: createHeaders(),
-      }),
-      actor,
-      {
-        ...createDeps('waste-management.tours.manage'),
-        loadWasteLocationTourLinkById: vi.fn(async () => ({
-          id: 'link-delete',
-          locationId: 'location-1',
-          tourId: 'tour-1',
-        })),
-        deleteWasteLocationTourLink: vi.fn(async () => undefined),
-      }
-    );
+    const response =
+      await wasteManagementLocationTourLinkHandlers.deleteWasteManagementLocationTourLinkInternal(
+        new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-delete', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.tours.manage'),
+          loadWasteLocationTourLinkById: vi.fn(async () => ({
+            id: 'link-delete',
+            locationId: 'location-1',
+            tourId: 'tour-1',
+          })),
+          deleteWasteLocationTourLink: vi.fn(async () => undefined),
+        }
+      );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -899,7 +962,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location create maps persistence failures to database_unavailable',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -916,7 +980,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link create maps persistence failures to database_unavailable',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -1002,7 +1067,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Stadt konnte nicht verifiziert werden.',
     },
     {
-      label: 'house-number create returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'house-number create returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementHouseNumberHandlers.createWasteManagementHouseNumberInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/house-numbers', {
@@ -1034,8 +1100,10 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Straße konnte nicht verifiziert werden.',
     },
     {
-      label: 'collection-location create returns verification_failed when the saved record cannot be reloaded',
-      handler: wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
+      label:
+        'collection-location create returns verification_failed when the saved record cannot be reloaded',
+      handler:
+        wasteManagementCollectionLocationHandlers.createWasteManagementCollectionLocationInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/collection-locations', {
           method: 'POST',
@@ -1057,8 +1125,10 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
     },
     {
-      label: 'location-tour-link create returns verification_failed when the saved record cannot be reloaded',
-      handler: wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
+      label:
+        'location-tour-link create returns verification_failed when the saved record cannot be reloaded',
+      handler:
+        wasteManagementLocationTourLinkHandlers.createWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links', {
           method: 'POST',
@@ -1102,7 +1172,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Tour konnte nicht verifiziert werden.',
     },
     {
-      label: 'global-date-shift create returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'global-date-shift create returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementGlobalDateShiftHandlers.createWasteManagementGlobalDateShiftInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/global-date-shifts', {
@@ -1124,7 +1195,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Der globale Waste-Ausweichtermin konnte nicht verifiziert werden.',
     },
     {
-      label: 'tour-date-shift create returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'tour-date-shift create returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementTourDateShiftHandlers.createWasteManagementTourDateShiftInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
@@ -1244,7 +1316,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Stadt konnte nicht verifiziert werden.',
     },
     {
-      label: 'house-number update returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'house-number update returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementHouseNumberHandlers.updateWasteManagementHouseNumberInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/house-numbers/house-verify', {
@@ -1300,20 +1373,25 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Straße konnte nicht verifiziert werden.',
     },
     {
-      label: 'collection-location update returns verification_failed when the saved record cannot be reloaded',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      label:
+        'collection-location update returns verification_failed when the saved record cannot be reloaded',
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-verify', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            cityId: 'city-1',
-            regionId: 'region-1',
-            streetId: 'street-1',
-            houseNumberId: 'house-1',
-            active: true,
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-verify',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              cityId: 'city-1',
+              regionId: 'region-1',
+              streetId: 'street-1',
+              houseNumberId: 'house-1',
+              active: true,
+            }),
+          }
+        ),
       deps: () => {
         const loadWasteCollectionLocationById = vi
           .fn()
@@ -1337,8 +1415,10 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Der Waste-Abholort konnte nicht verifiziert werden.',
     },
     {
-      label: 'location-tour-link update returns verification_failed when the saved record cannot be reloaded',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      label:
+        'location-tour-link update returns verification_failed when the saved record cannot be reloaded',
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-verify', {
           method: 'PUT',
@@ -1410,7 +1490,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Die Waste-Tour konnte nicht verifiziert werden.',
     },
     {
-      label: 'global-date-shift update returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'global-date-shift update returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementGlobalDateShiftHandlers.updateWasteManagementGlobalDateShiftInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/global-date-shifts/shift-verify', {
@@ -1443,7 +1524,8 @@ describe('waste-management master-data branch handlers', () => {
       expectedMessage: 'Der globale Waste-Ausweichtermin konnte nicht verifiziert werden.',
     },
     {
-      label: 'tour-date-shift update returns verification_failed when the saved record cannot be reloaded',
+      label:
+        'tour-date-shift update returns verification_failed when the saved record cannot be reloaded',
       handler: wasteManagementTourDateShiftHandlers.updateWasteManagementTourDateShiftInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/tour-date-shifts/shift-verify', {
@@ -1597,19 +1679,23 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'collection-location update maps persistence failures to database_unavailable',
-      handler: wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
+      handler:
+        wasteManagementCollectionLocationHandlers.updateWasteManagementCollectionLocationInternal,
       request: () =>
-        new Request('https://studio.test/api/v1/waste-management/collection-locations/location-db', {
-          method: 'PUT',
-          headers: createHeaders(),
-          body: JSON.stringify({
-            cityId: 'city-1',
-            regionId: 'region-1',
-            streetId: 'street-1',
-            houseNumberId: 'house-1',
-            active: true,
-          }),
-        }),
+        new Request(
+          'https://studio.test/api/v1/waste-management/collection-locations/location-db',
+          {
+            method: 'PUT',
+            headers: createHeaders(),
+            body: JSON.stringify({
+              cityId: 'city-1',
+              regionId: 'region-1',
+              streetId: 'street-1',
+              houseNumberId: 'house-1',
+              active: true,
+            }),
+          }
+        ),
       deps: () => ({
         ...createDeps(),
         loadWasteCollectionLocationById: vi.fn(async () => ({
@@ -1630,7 +1716,8 @@ describe('waste-management master-data branch handlers', () => {
     },
     {
       label: 'location-tour-link update maps persistence failures to database_unavailable',
-      handler: wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
+      handler:
+        wasteManagementLocationTourLinkHandlers.updateWasteManagementLocationTourLinkInternal,
       request: () =>
         new Request('https://studio.test/api/v1/waste-management/location-tour-links/link-db', {
           method: 'PUT',
@@ -1806,22 +1893,23 @@ describe('waste-management master-data branch handlers', () => {
 
     const deps = createDepsWithRepository();
 
-    const createVerificationFailed = await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions', {
-        method: 'POST',
-        headers: createHeaders(),
-        body: JSON.stringify({
-          id: 'fraction-1',
-          name: 'Restmüll',
-          pdfShortLabel: 'RES',
-          color: '#111111',
-          active: true,
-          ...noneReminderConfigPayload,
+    const createVerificationFailed =
+      await wasteManagementFractionHandlers.createWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'fraction-1',
+            name: 'Restmüll',
+            pdfShortLabel: 'RES',
+            color: '#111111',
+            active: true,
+            ...noneReminderConfigPayload,
+          }),
         }),
-      }),
-      actor,
-      deps
-    );
+        actor,
+        deps
+      );
 
     expect(createVerificationFailed.status).toBe(503);
     await expect(createVerificationFailed.json()).resolves.toMatchObject({
@@ -1830,25 +1918,27 @@ describe('waste-management master-data branch handlers', () => {
       },
     });
 
-    const deleteSucceeded = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
-        method: 'DELETE',
-        headers: createHeaders(),
-      }),
-      actor,
-      deps
-    );
+    const deleteSucceeded =
+      await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+        actor,
+        deps
+      );
     expect(deleteSucceeded.status).toBe(200);
     expect(deps.startPluginOperationJob).toHaveBeenCalledTimes(1);
 
-    const deleteConflict = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
-        method: 'DELETE',
-        headers: createHeaders(),
-      }),
-      actor,
-      deps
-    );
+    const deleteConflict =
+      await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+        actor,
+        deps
+      );
     expect(deleteConflict.status).toBe(409);
     await expect(deleteConflict.json()).resolves.toMatchObject({
       error: {
@@ -1856,14 +1946,15 @@ describe('waste-management master-data branch handlers', () => {
       },
     });
 
-    const deleteFailure = await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
-      new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
-        method: 'DELETE',
-        headers: createHeaders(),
-      }),
-      actor,
-      deps
-    );
+    const deleteFailure =
+      await wasteManagementFractionHandlers.deleteWasteManagementFractionInternal(
+        new Request('https://studio.test/api/v1/waste-management/fractions/fraction-1', {
+          method: 'DELETE',
+          headers: createHeaders(),
+        }),
+        actor,
+        deps
+      );
     expect(deleteFailure.status).toBe(503);
     await expect(deleteFailure.json()).resolves.toMatchObject({
       error: {
@@ -2001,7 +2092,11 @@ describe('waste-management master-data branch handlers', () => {
     expect(deleteSucceeded.status).toBe(200);
     expect(deps.deleteWasteTour).toHaveBeenNthCalledWith(1, 'tenant-a', 'tour-1');
     expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(1, 'tenant-a', 'link-1');
-    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(1, 'tenant-a', 'pickup-1');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      1,
+      'tenant-a',
+      'pickup-1'
+    );
     expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(1, 'tenant-a', 'shift-1');
 
     const deleteNotFound = await wasteManagementTourHandlers.deleteWasteManagementTourInternal(
@@ -2049,7 +2144,11 @@ describe('waste-management master-data branch handlers', () => {
       },
     });
     expect(deps.deleteWasteLocationTourLink).toHaveBeenNthCalledWith(2, 'tenant-a', 'link-2');
-    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(2, 'tenant-a', 'pickup-2');
+    expect(deps.deleteWasteLocationTourPickupDate).toHaveBeenNthCalledWith(
+      2,
+      'tenant-a',
+      'pickup-2'
+    );
     expect(deps.deleteWasteTourDateShift).toHaveBeenNthCalledWith(2, 'tenant-a', 'shift-2');
   });
 });

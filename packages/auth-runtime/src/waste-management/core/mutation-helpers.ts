@@ -3,6 +3,14 @@ import { emitWasteAuditEvent } from './auth.js';
 import { updateWasteVisibleStatus } from './settings-shared.js';
 import type { WasteManagementHandlerDeps } from './types.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
+import type { ApiErrorCode } from '@sva/core';
+
+type MappedPersistenceError = Readonly<{
+  status: number;
+  code: ApiErrorCode;
+  message: string;
+  reasonCode: string;
+}>;
 
 type MutationAuditConfig = Readonly<{
   actionId: string;
@@ -13,6 +21,7 @@ type MutationMessages = Readonly<{
   verificationFailed: string;
   persistenceFailed: string;
   mapPersistenceErrorMessage?: (error: unknown) => string | undefined;
+  mapPersistenceError?: (error: unknown) => MappedPersistenceError | undefined;
 }>;
 
 type UpdateMutationMessages = MutationMessages &
@@ -111,17 +120,21 @@ export const runWasteCreateMutation = async <TSaved>({
       throw error;
     }
 
+    const mappedError = messages.mapPersistenceError?.(error);
     await emitWasteAuditEvent({
       deps,
       ctx,
       instanceId,
       actionId: audit.actionId,
       result: 'failure',
-      reasonCode: 'database_unavailable',
+      reasonCode: mappedError?.reasonCode ?? 'database_unavailable',
       resourceType: audit.resourceType,
       resourceId,
     });
-    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    await updateWasteVisibleStatus(deps, instanceId, mappedError ? 'success' : 'revalidate');
+    if (mappedError) {
+      return createApiError(mappedError.status, mappedError.code, mappedError.message, requestId);
+    }
     return createApiError(
       503,
       'database_unavailable',
@@ -186,17 +199,21 @@ export const runWasteUpdateMutation = async <TSaved>({
       throw error;
     }
 
+    const mappedError = messages.mapPersistenceError?.(error);
     await emitWasteAuditEvent({
       deps,
       ctx,
       instanceId,
       actionId: audit.actionId,
       result: 'failure',
-      reasonCode: 'database_unavailable',
+      reasonCode: mappedError?.reasonCode ?? 'database_unavailable',
       resourceType: audit.resourceType,
       resourceId,
     });
-    await updateWasteVisibleStatus(deps, instanceId, 'revalidate');
+    await updateWasteVisibleStatus(deps, instanceId, mappedError ? 'success' : 'revalidate');
+    if (mappedError) {
+      return createApiError(mappedError.status, mappedError.code, mappedError.message, requestId);
+    }
     return createApiError(
       503,
       'database_unavailable',

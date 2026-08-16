@@ -4,12 +4,14 @@ export * from './host-media-public-api.js';
 export * from './data-exchange-public-api.js';
 export {
   isWasteTourValidityApplicable,
+  resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
   wasteManagementImportCatalog,
   wasteManagementMasterDataContract,
   wasteManagementOperationsContract,
 } from '@sva/core';
 export type {
+  EffectiveWasteTourDateShift,
   ApiItemResponse,
   IamContentHistoryEntry,
   IamContentStatus,
@@ -105,12 +107,19 @@ export type { MediaPickerDefinition, MediaPickerSelectionMode } from './media-pi
 export { defineMediaPickerDefinition } from './media-picker.js';
 export type { ContentMediaUploadPhase, HostMediaFieldOption } from './content-ui-utils.js';
 export {
-  compactOptionalString, contentMediaUploadPhaseMessageKey,
-  formatDateTimeInEditorTimeZone, formatTechnicalDateTimeInEditorTimeZone,
-  findHostMediaReferenceAssetId, fromDatetimeLocalValue, getHostMediaAssetPersistentUrl,
-  isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
-  readHostMediaAssetFileName, readHostMediaAssetTitle,
-  toDatetimeLocalValue, toHostMediaFieldOptions,
+  compactOptionalString,
+  contentMediaUploadPhaseMessageKey,
+  formatDateTimeInEditorTimeZone,
+  formatTechnicalDateTimeInEditorTimeZone,
+  findHostMediaReferenceAssetId,
+  fromDatetimeLocalValue,
+  getHostMediaAssetPersistentUrl,
+  isSupportedContentMediaUploadFile,
+  readHostMediaAssetCopyright,
+  readHostMediaAssetFileName,
+  readHostMediaAssetTitle,
+  toDatetimeLocalValue,
+  toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
 export type {

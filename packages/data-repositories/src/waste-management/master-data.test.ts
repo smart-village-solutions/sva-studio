@@ -1505,6 +1505,8 @@ describe('waste master data repository', () => {
       'propagate-series',
       'Einmalige Verschiebung',
     ]);
+    expect(write.statements[0]?.text).toContain('$3::date');
+    expect(write.statements[0]?.text).toContain('$4::date');
     expect(write.statements[1]?.values).toEqual([
       'global-3',
       '12-31',

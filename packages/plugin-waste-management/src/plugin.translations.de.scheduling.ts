@@ -99,6 +99,8 @@ export const wasteManagementPluginTranslationsDEScheduling =
         createSuccess: 'Der tourbezogene Abfall-Ausweichtermin wurde angelegt.',
         updateSuccess: 'Der tourbezogene Abfall-Ausweichtermin wurde aktualisiert.',
         saveError: 'Der tourbezogene Abfall-Ausweichtermin konnte nicht gespeichert werden.',
+        saveConflict:
+          'Für diese Tour und diesen Ursprung existiert bereits ein Ausweichtermin derselben Gültigkeit. Bearbeiten Sie den vorhandenen Eintrag.',
         saveForbidden:
           'Für das Speichern tourbezogener Abfall-Ausweichtermine fehlt die Berechtigung.',
       },
@@ -167,6 +169,13 @@ export const wasteManagementPluginTranslationsDEScheduling =
         'Legen Sie hier fest, ob der Ausweichtermin global wirkt oder zu einer konkreten Tour gehört.',
       scopeGlobal: 'Globaler Ausweichtermin',
       scopeTour: 'Tourbezogener Ausweichtermin',
+      contextTitle: 'Übernommener Tourkontext',
+      contextDescription: 'Tour: {{tour}} · Ursprünglicher Termin: {{date}}',
+      contextDateUnset: 'noch nicht festgelegt',
+      contextInvalid:
+        'Die verlinkte Tour oder das ursprüngliche Datum ist nicht mehr verfügbar. Bitte wählen Sie die Angaben erneut.',
+      annualOverrideHint:
+        'Diese jahresbezogene Ausnahme ersetzt im Jahr {{year}} die vorhandene jährliche Grundregel für denselben Ursprung.',
     },
     bulkDeleteDialog: {
       title: 'Ausweichtermine löschen',

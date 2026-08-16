@@ -261,18 +261,16 @@ export const WasteToursRowShiftCell = ({
             </DialogContent>
           </Dialog>
         </>
+      ) : canManageScheduling && search ? (
+        <WasteTourShiftCreateLink
+          search={search}
+          tourId={tourId}
+          label={pt('tours.actions.createShift')}
+          variant="tertiary"
+          className="h-auto p-0 text-sm font-medium underline underline-offset-4"
+        />
       ) : (
-        canManageScheduling && search ? (
-          <WasteTourShiftCreateLink
-            search={search}
-            tourId={tourId}
-            label={pt('tours.actions.createShift')}
-            variant="tertiary"
-            className="h-auto p-0 text-sm font-medium underline underline-offset-4"
-          />
-        ) : (
-          <span className="text-sm text-muted-foreground">{pt('tours.table.noShifts')}</span>
-        )
+        <span className="text-sm text-muted-foreground">{pt('tours.table.noShifts')}</span>
       )}
     </td>
   );

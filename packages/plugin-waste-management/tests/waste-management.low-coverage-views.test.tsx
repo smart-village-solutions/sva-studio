@@ -730,6 +730,59 @@ describe('waste-management low coverage views', () => {
     expect(controller.setTourShiftForm).toHaveBeenCalledTimes(1);
   });
 
+  it('replaces the type selector with contextual tour information and shows annual overrides', () => {
+    const controller = {
+      availableTours: [{ id: 'tour-1', name: 'Tour 1' }],
+      overview: {
+        tourDateShifts: [
+          {
+            id: 'annual',
+            tourId: 'tour-1',
+            originalDate: '2024-05-01',
+            actualDate: '2024-05-02',
+            hasYear: false,
+          },
+        ],
+      },
+      globalShiftForm: { id: 'global-1' },
+      tourShiftForm: {
+        id: 'shift-1',
+        tourId: 'tour-1',
+        originalDate: '2026-05-01',
+        actualDate: '',
+        hasYear: true,
+      },
+      saving: false,
+      message: null,
+      setDialogOpen: vi.fn(),
+      setGlobalDialogOpen: vi.fn(),
+      resetTourShiftForm: vi.fn(),
+      resetGlobalShiftForm: vi.fn(),
+      setMessage: vi.fn(),
+      setGlobalShiftForm: vi.fn(),
+      setTourShiftForm: vi.fn(),
+      onSubmitGlobalShift: vi.fn(),
+      onSubmitTourShift: vi.fn(),
+    } as never;
+
+    render(
+      <WasteSchedulingCreateFormView
+        controller={controller}
+        search={{
+          ...createBaseSearch(),
+          schedulingEntryType: 'tour-shift',
+          schedulingTourId: 'tour-1',
+          schedulingOriginalDate: '2026-05-01',
+        }}
+      />
+    );
+
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.getByText('scheduling.create.contextTitle')).toBeTruthy();
+    expect(screen.getByText(/scheduling\.create\.contextDescription/)).toBeTruthy();
+    expect(screen.getByText(/scheduling\.create\.annualOverrideHint/)).toBeTruthy();
+  });
+
   it('renders the tour-assignment dialog without an explicit tour or validity-date selector', () => {
     const onSubmit = vi.fn();
     const onChange = vi.fn();

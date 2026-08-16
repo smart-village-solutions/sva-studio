@@ -18,6 +18,8 @@ export const WasteTourShiftCreateLink = ({
   children,
   unstyled = false,
   showExternalIcon = true,
+  disabled = false,
+  disabledDescription,
 }: {
   readonly search: WasteManagementSearchParams;
   readonly tourId: string;
@@ -29,8 +31,31 @@ export const WasteTourShiftCreateLink = ({
   readonly children?: ReactNode;
   readonly unstyled?: boolean;
   readonly showExternalIcon?: boolean;
+  readonly disabled?: boolean;
+  readonly disabledDescription?: string;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
+
+  const content = (
+    <>
+      {children ?? <span>{label}</span>}
+      {showExternalIcon ? <IconExternalLink aria-hidden="true" className="h-4 w-4" /> : null}
+      {disabledDescription ? <span className="sr-only"> {disabledDescription}</span> : null}
+    </>
+  );
+  const linkClassName = unstyled ? className : cn(buttonVariants({ variant, size }), className);
+
+  if (disabled) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={`${label}. ${disabledDescription ?? ''}`.trim()}
+        className={cn(linkClassName, 'cursor-not-allowed opacity-60')}
+      >
+        {content}
+      </span>
+    );
+  }
 
   return (
     <Link
@@ -39,10 +64,9 @@ export const WasteTourShiftCreateLink = ({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={`${label} ${pt('tours.actions.opensInNewTab')}`}
-      className={unstyled ? className : cn(buttonVariants({ variant, size }), className)}
+      className={linkClassName}
     >
-      {children ?? <span>{label}</span>}
-      {showExternalIcon ? <IconExternalLink aria-hidden="true" className="h-4 w-4" /> : null}
+      {content}
     </Link>
   );
 };

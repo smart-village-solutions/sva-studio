@@ -373,6 +373,12 @@ gleichzeitig beeinflussen.
 
 - Ein expliziter Einsatz gehört zu einer normalen Tour und besitzt ein Datum, einen optionalen gemeinsamen Hinweis sowie mindestens einen Abholort.
 - Abfallfraktionen werden nicht am Einsatz dupliziert, sondern aus der Tourzuordnung übernommen; dadurch verwenden Kalenderansicht, PDF, iCal und Erinnerungen denselben Fraktionsvertrag.
+
+### Date-only-Vertrag und Priorität von Waste-Tourverschiebungen
+
+- Ursprungs- und Zieldatum einer Tourverschiebung sind Fachwerte im Format `YYYY-MM-DD` ohne Uhrzeit oder Zeitzone. Repositories lesen PostgreSQL-`DATE` ausdrücklich als Text und binden Schreibwerte mit `::date`.
+- Eine jahresbezogene Ausnahme hat für Tour und konkreten Ursprung Vorrang vor der jährlichen Grundregel. Gleiche Spezifität ist durch partielle Unique-Indizes konkurrenzsicher ausgeschlossen und wird an der HTTP-Grenze als fachlicher `409 Conflict` dargestellt.
+- Die gemeinsame Core-Auswahl expandiert jährliche Regeln mit UTC-Date-only-Arithmetik. Prozesszeitzone sowie Sommer- und Winterzeit dürfen das Kalenderdatum nicht verändern.
 - Bei öffentlichen Abfragen gilt ein übergeordneter Einsatzort für seine konkreteren Straßen- und Adresskontexte. Die Auflösung erfolgt von der konkreten Auswahl zu ihren Vorfahren, nicht umgekehrt.
 - Allgemeine `waste_location_tour_links` bleiben Eigentümer der Wiederholungslogik, sind aber keine Sichtbarkeitsvoraussetzung für explizite Einsätze.
 

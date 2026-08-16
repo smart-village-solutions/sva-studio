@@ -57,6 +57,21 @@ type WasteManagementToursYearCalendarCopy = Readonly<{
   meta: Readonly<Record<string, string>>;
 }>;
 
+type WasteManagementToursShiftDetailsCopy = Readonly<{
+  open: string;
+  title: string;
+  description: string;
+  dateChange: string;
+  holidays: string;
+  reasonKey: string;
+  close: string;
+  sources: Readonly<{
+    tour: string;
+    global: string;
+    holiday: string;
+  }>;
+}>;
+
 type WasteManagementToursCopy = Readonly<{
   actions: CrudActionsCopy;
   fields: Readonly<Record<string, string>>;
@@ -105,6 +120,7 @@ type WasteManagementToursCopy = Readonly<{
   statusDialog?: Readonly<Record<string, string>>;
   bulkDeleteDialog?: Readonly<Record<string, string>>;
   bulkValidityDialog?: Readonly<Record<string, unknown>>;
+  shiftDetails: WasteManagementToursShiftDetailsCopy;
   messages: Readonly<Record<string, string>>;
   assignments?: WasteManagementToursAssignmentsCopy;
   yearCalendar?: WasteManagementToursYearCalendarCopy;
@@ -198,6 +214,7 @@ export const createWasteManagementToursTranslations = <
           statusDialog: copy.statusDialog,
           bulkDeleteDialog: copy.bulkDeleteDialog,
           bulkValidityDialog: copy.bulkValidityDialog,
+          shiftDetails: copy.shiftDetails,
           messages: copy.messages,
         } as const,
         'assignments',

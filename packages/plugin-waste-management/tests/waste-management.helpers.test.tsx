@@ -7,13 +7,13 @@ const { Workbook } = ExcelJS;
 const createWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 const createWasteManagementLocationTourLinksBulkMock = vi.hoisted(() => vi.fn());
 const deleteWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
-const getWasteManagementSchedulingOverviewMock = vi.hoisted(() => vi.fn(async () => ({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] })));
+const getWasteManagementSchedulingOverviewMock = vi.hoisted(() =>
+  vi.fn(async () => ({ holidayRules: [], globalDateShifts: [], tourDateShifts: [] }))
+);
 const updateWasteManagementLocationTourLinkMock = vi.hoisted(() => vi.fn());
 
 import { WasteManagementApiError } from '../src/waste-management.api.js';
-import {
-  createWasteMasterDataEntityActions,
-} from '../src/waste-management.master-data.entity-actions.js';
+import { createWasteMasterDataEntityActions } from '../src/waste-management.master-data.entity-actions.js';
 import {
   wasteMasterDataFormDefaults,
   wasteMasterDataFormMappers,
@@ -53,25 +53,31 @@ vi.mock('../src/waste-management.api.js', async (importOriginal) => {
   };
 });
 
-vi.mock('@sva/plugin-sdk', () => ({
-  formatTechnicalDateTimeInEditorTimeZone: (value?: string) => {
-    if (!value) {
-      return value;
-    }
+vi.mock('@sva/plugin-sdk', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sva/plugin-sdk')>();
+  return {
+    ...actual,
+    formatTechnicalDateTimeInEditorTimeZone: (value?: string) => {
+      if (!value) {
+        return value;
+      }
 
-    return value === '2026-05-10T10:00:00.000Z' ? '10.05.2026, 12:00:00,000' : value;
-  },
-  usePluginTranslation: () => (key: string) => key,
-  wasteManagementMasterDataContract: {
-    fractionReminderLeadDayMin: 1,
-  },
-  wasteManagementOperationsContract: {
-    resetConfirmationToken: 'RESET',
-  },
-}));
+      return value === '2026-05-10T10:00:00.000Z' ? '10.05.2026, 12:00:00,000' : value;
+    },
+    usePluginTranslation: () => (key: string) => key,
+    wasteManagementMasterDataContract: {
+      fractionReminderLeadDayMin: 1,
+    },
+    wasteManagementOperationsContract: {
+      resetConfirmationToken: 'RESET',
+    },
+  };
+});
 
 vi.mock('@sva/studio-ui-react', () => ({
-  Alert: ({ children }: { readonly children: React.ReactNode }) => <div data-testid="alert">{children}</div>,
+  Alert: ({ children }: { readonly children: React.ReactNode }) => (
+    <div data-testid="alert">{children}</div>
+  ),
   AlertDescription: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertTitle: ({ children }: { readonly children: React.ReactNode }) => <strong>{children}</strong>,
   Input: (props: React.ComponentProps<'input'>) => <input {...props} />,
@@ -114,7 +120,9 @@ describe('waste management helper modules', () => {
   it('covers page support helpers, template/error downloads, and the reset dialog shell', async () => {
     expect(compactOptionalString('  ')).toBeUndefined();
     expect(compactOptionalString(' value ')).toBe('value');
-    expect(resolveApiErrorCode(new WasteManagementApiError('invalid_input', 'Fehler'))).toBe('invalid_input');
+    expect(resolveApiErrorCode(new WasteManagementApiError('invalid_input', 'Fehler'))).toBe(
+      'invalid_input'
+    );
     expect(resolveApiErrorCode(new Error('boom'))).toBeNull();
     expect(formatUpdatedAt(undefined)).toBe('—');
     expect(formatUpdatedAt('invalid-date')).toBe('invalid-date');
@@ -133,34 +141,39 @@ describe('waste management helper modules', () => {
     const anchorClick = vi.fn();
     const createdAnchors: Array<{ href?: string; download?: string }> = [];
     const originalCreateElement = document.createElement.bind(document);
-    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
-      if (tagName === 'a') {
-        const anchor = {
-          click: anchorClick,
-          set href(value: string) {
-            this._href = value;
-          },
-          get href() {
-            return this._href;
-          },
-          set download(value: string) {
-            this._download = value;
-          },
-          get download() {
-            return this._download;
-          },
-        } as unknown as HTMLAnchorElement & { _href?: string; _download?: string };
-        createdAnchors.push(anchor);
-        return anchor;
-      }
-      return originalCreateElement(tagName);
-    });
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: string) => {
+        if (tagName === 'a') {
+          const anchor = {
+            click: anchorClick,
+            set href(value: string) {
+              this._href = value;
+            },
+            get href() {
+              return this._href;
+            },
+            set download(value: string) {
+              this._download = value;
+            },
+            get download() {
+              return this._download;
+            },
+          } as unknown as HTMLAnchorElement & { _href?: string; _download?: string };
+          createdAnchors.push(anchor);
+          return anchor;
+        }
+        return originalCreateElement(tagName);
+      });
 
     const profile = {
       profileId: 'waste-management.geografie-abholorte',
       displayName: 'Geografie',
       description: 'Importiert Geografie.',
-      sourceFormats: ['text/csv', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+      sourceFormats: [
+        'text/csv',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ],
       requiredColumns: [{ key: 'region_id', required: true, example: 'region-1' }],
       optionalColumns: [{ key: 'street_id', required: false, example: 'street-1' }],
       validationRules: [],
@@ -168,7 +181,10 @@ describe('waste management helper modules', () => {
     } as const;
 
     await downloadImportTemplate(profile, 'text/csv');
-    await downloadImportTemplate(profile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await downloadImportTemplate(
+      profile,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
     downloadImportPreviewErrors({
       detectedDelimiter: ';',
       delimiter: ';',
@@ -223,7 +239,9 @@ describe('waste management helper modules', () => {
         onConfirm={onConfirm}
       />
     );
-    expect(screen.getByRole('button', { name: 'tools.reset.confirmAction' }).hasAttribute('disabled')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'tools.reset.confirmAction' }).hasAttribute('disabled')
+    ).toBe(true);
     fireEvent.change(screen.getByPlaceholderText('RESET'), { target: { value: 'RESET' } });
     expect(onTokenChange).toHaveBeenCalledWith('RESET');
 
@@ -237,7 +255,9 @@ describe('waste management helper modules', () => {
         onConfirm={onConfirm}
       />
     );
-    expect(screen.getByRole('button', { name: 'tools.reset.confirmAction' }).hasAttribute('disabled')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'tools.reset.confirmAction' }).hasAttribute('disabled')
+    ).toBe(true);
 
     rerender(
       <ResetConfirmationDialog
@@ -249,7 +269,9 @@ describe('waste management helper modules', () => {
         onConfirm={onConfirm}
       />
     );
-    expect(screen.getByRole('button', { name: 'tools.actions.starting' }).hasAttribute('disabled')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: 'tools.actions.starting' }).hasAttribute('disabled')
+    ).toBe(true);
 
     createElementSpy.mockRestore();
     objectUrlSpy.mockRestore();
@@ -603,9 +625,15 @@ describe('waste management helper modules', () => {
     });
 
     expect(state.setDialogOpen).toHaveBeenCalledWith(true);
-    expect(state.setCityForm).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'region-1' }));
-    expect(state.setStreetForm).toHaveBeenCalledWith(expect.objectContaining({ cityId: 'city-99' }));
-    expect(state.setHouseNumberForm).toHaveBeenCalledWith(expect.objectContaining({ streetId: 'street-1' }));
+    expect(state.setCityForm).toHaveBeenCalledWith(
+      expect.objectContaining({ regionId: 'region-1' })
+    );
+    expect(state.setStreetForm).toHaveBeenCalledWith(
+      expect.objectContaining({ cityId: 'city-99' })
+    );
+    expect(state.setHouseNumberForm).toHaveBeenCalledWith(
+      expect.objectContaining({ streetId: 'street-1' })
+    );
 
     const locationActions = createWasteMasterDataLocationActions(
       state as never,
@@ -630,8 +658,12 @@ describe('waste management helper modules', () => {
     locationActions.toggleSelectAllFilteredLocations(true);
     locationActions.toggleSelectAllFilteredLocations(false);
 
-    expect(state.setLocationForm).toHaveBeenCalledWith(expect.objectContaining({ regionId: 'region-7', cityId: 'city-7' }));
-    expect(state.setBulkAssignmentsForm).toHaveBeenCalledWith(expect.objectContaining({ tourId: 'tour-1' }));
+    expect(state.setLocationForm).toHaveBeenCalledWith(
+      expect.objectContaining({ regionId: 'region-7', cityId: 'city-7' })
+    );
+    expect(state.setBulkAssignmentsForm).toHaveBeenCalledWith(
+      expect.objectContaining({ tourId: 'tour-1' })
+    );
     expect(state.setSelectedLocationIds).toHaveBeenCalledWith(['location-2', 'location-3']);
     expect(state.setSelectedLocationIds).toHaveBeenCalledTimes(5);
   });
@@ -707,22 +739,32 @@ describe('waste management helper modules', () => {
     const createWasteManagementFractionMock = vi.fn(async () => ({
       data: { id: 'fraction-1' },
       syncStatus: 'queued',
-      syncJob: { id: 'job-sync-1', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+      syncJob: {
+        id: 'job-sync-1',
+        jobTypeId: 'waste-management.sync-waste-types',
+        status: 'queued',
+      },
     }));
     const updateWasteManagementFractionMock = vi.fn(async () => ({
       data: { id: 'fraction-1' },
       syncStatus: 'queued',
-      syncJob: { id: 'job-sync-2', jobTypeId: 'waste-management.sync-waste-types', status: 'queued' },
+      syncJob: {
+        id: 'job-sync-2',
+        jobTypeId: 'waste-management.sync-waste-types',
+        status: 'queued',
+      },
     }));
     const deleteWasteManagementFractionMock = vi.fn();
     const createWasteManagementRegionMock = vi.fn();
     const updateWasteManagementRegionMock = vi.fn();
-    const applySuccessSpy = vi.fn((close, setMessage, text: string, _onSuccess?: () => void, showMessage = true) => {
-      close();
-      if (showMessage) {
-        setMessage({ kind: 'success', text });
+    const applySuccessSpy = vi.fn(
+      (close, setMessage, text: string, _onSuccess?: () => void, showMessage = true) => {
+        close();
+        if (showMessage) {
+          setMessage({ kind: 'success', text });
+        }
       }
-    });
+    );
 
     vi.doMock('../src/waste-management.api.js', async (importOriginal) => {
       const actual = await importOriginal<typeof import('../src/waste-management.api.js')>();
@@ -744,9 +786,8 @@ describe('waste management helper modules', () => {
       };
     });
 
-    const { createWasteMasterDataFractionRegionMutations: createSubmissions } = await import(
-      '../src/waste-management.master-data.fraction-region-mutations.js'
-    );
+    const { createWasteMasterDataFractionRegionMutations: createSubmissions } =
+      await import('../src/waste-management.master-data.fraction-region-mutations.js');
 
     const setSaving = vi.fn();
     const setMessage = vi.fn();
@@ -788,7 +829,9 @@ describe('waste management helper modules', () => {
     expect(setDialogOpen).toHaveBeenCalledWith(false);
 
     state.dialogMode = 'edit';
-    updateWasteManagementFractionMock.mockRejectedValueOnce(new WasteManagementApiError('forbidden', 'nope'));
+    updateWasteManagementFractionMock.mockRejectedValueOnce(
+      new WasteManagementApiError('forbidden', 'nope')
+    );
     await handlers.onSubmitFraction(createEvent);
     expect(updateWasteManagementFractionMock).toHaveBeenCalledOnce();
     expect(setMessage).toHaveBeenLastCalledWith({
@@ -796,14 +839,18 @@ describe('waste management helper modules', () => {
       text: 'masterData.fractions.messages.saveForbidden',
     });
 
-    deleteWasteManagementFractionMock.mockRejectedValueOnce(new WasteManagementApiError('invalid_request', 'busy'));
+    deleteWasteManagementFractionMock.mockRejectedValueOnce(
+      new WasteManagementApiError('invalid_request', 'busy')
+    );
     await handlers.deleteFraction('fraction-1');
     expect(setMessage).toHaveBeenLastCalledWith({
       kind: 'error',
       text: 'masterData.fractions.messages.deleteConflict',
     });
 
-    createWasteManagementRegionMock.mockRejectedValueOnce(new WasteManagementApiError('forbidden', 'nope'));
+    createWasteManagementRegionMock.mockRejectedValueOnce(
+      new WasteManagementApiError('forbidden', 'nope')
+    );
     state.regionDialogMode = 'create';
     await handlers.onSubmitRegion(createEvent);
     expect(setMessage).toHaveBeenLastCalledWith({
@@ -919,7 +966,11 @@ describe('waste management helper modules', () => {
       loadOverview,
     });
 
-    await bulkHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, ['location-2', 'location-3', 'location-3']);
+    await bulkHandlers.onSubmitAssignments({ preventDefault: vi.fn() } as never, [
+      'location-2',
+      'location-3',
+      'location-3',
+    ]);
 
     expect(createWasteManagementLocationTourLinksBulkMock).toHaveBeenCalledWith({
       locationIds: ['location-3'],
@@ -1010,9 +1061,15 @@ describe('waste management helper modules', () => {
 
     expect(formatTourRecurrence(pt, undefined)).toBe('—');
     expect(formatTourRecurrence(pt, 'on-demand')).toBe('tours.recurrence.onDemand');
-    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe('tours.meta.customRecurrenceLabel');
-    expect(formatTourDateRange({ firstDate: '2026-01-01', endDate: '2026-12-31' } as never)).toBe('2026-01-01 – 2026-12-31');
-    expect(formatTourDateRange({ firstDate: undefined, endDate: '2026-12-31' } as never)).toBe('2026-12-31');
+    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe(
+      'tours.meta.customRecurrenceLabel'
+    );
+    expect(formatTourDateRange({ firstDate: '2026-01-01', endDate: '2026-12-31' } as never)).toBe(
+      '2026-01-01 – 2026-12-31'
+    );
+    expect(formatTourDateRange({ firstDate: undefined, endDate: '2026-12-31' } as never)).toBe(
+      '2026-12-31'
+    );
 
     expect(
       calculateTourOccurrencesForYear(
@@ -1025,8 +1082,12 @@ describe('waste management helper modules', () => {
         } as never,
         2026,
         {
-          tourDateShifts: [{ tourId: 'tour-1', originalDate: '2026-01-09', actualDate: '2026-01-10' }],
-          globalDateShifts: [{ originalDate: '2026-02-01', actualDate: '2026-02-02', tourIds: ['tour-1'] }],
+          tourDateShifts: [
+            { tourId: 'tour-1', originalDate: '2026-01-09', actualDate: '2026-01-10' },
+          ],
+          globalDateShifts: [
+            { originalDate: '2026-02-01', actualDate: '2026-02-02', tourIds: ['tour-1'] },
+          ],
         } as never
       )
     ).toEqual(['2026-01-02', '2026-01-10', '2026-01-16', '2026-02-02']);

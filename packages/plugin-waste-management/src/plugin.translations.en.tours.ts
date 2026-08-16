@@ -11,6 +11,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     createShift: 'Create replacement date',
     createAnotherShift: 'Create another date shift',
     shiftDate: 'Shift this date',
+    shiftDateAccessible: 'Shift date {{date}} of tour {{name}}',
     opensInNewTab: 'Opens in a new tab',
     openAssignments: 'Edit assigned pickup locations',
     edit: 'Edit',
@@ -324,6 +325,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       'All collection-location assignments, individual pickup dates, and tour-specific date shifts are copied after saving. Assignments use the validity period of the new tour.',
     assignmentIncomplete:
       'Please provide both a collection location and a note for every date-location assignment.',
+    saveSchedulingBeforeShift:
+      'Save the changed scheduling logic before creating a replacement date.',
     deleteSuccess: 'The waste tour was deleted.',
     deletePartialSuccess: '{{count}} of {{total}} waste tours were deleted.',
     saveError: 'The waste tour could not be saved.',

@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
-import { mapGlobalDateShiftToForm, mapTourDateShiftToForm } from './waste-management.scheduling.shared.js';
+import {
+  mapGlobalDateShiftToForm,
+  mapTourDateShiftToForm,
+} from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
@@ -23,7 +26,7 @@ const clearSchedulingEntryRoute = (
 
 const navigateToSchedulingList = (
   navigate: ReturnType<typeof useNavigate>,
-  search: WasteManagementSearchParams,
+  search: WasteManagementSearchParams
 ) =>
   navigate({
     to: '/plugins/waste-management',
@@ -39,9 +42,11 @@ const resetSchedulingEditState = (controller: WasteViewModel) => {
 const syncTourShiftRoute = (
   controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
-  search: WasteManagementSearchParams,
+  search: WasteManagementSearchParams
 ) => {
-  const routeShift = controller.overview?.tourDateShifts.find((shift) => shift.id === search.schedulingEntryId);
+  const routeShift = controller.overview?.tourDateShifts.find(
+    (shift) => shift.id === search.schedulingEntryId
+  );
   if (!routeShift) {
     void navigateToSchedulingList(navigate, search);
     return;
@@ -58,9 +63,11 @@ const syncTourShiftRoute = (
 const syncGlobalShiftRoute = (
   controller: WasteViewModel,
   navigate: ReturnType<typeof useNavigate>,
-  search: WasteManagementSearchParams,
+  search: WasteManagementSearchParams
 ) => {
-  const routeShift = controller.overview?.globalDateShifts.find((shift) => shift.id === search.schedulingEntryId);
+  const routeShift = controller.overview?.globalDateShifts.find(
+    (shift) => shift.id === search.schedulingEntryId
+  );
   if (!routeShift) {
     void navigateToSchedulingList(navigate, search);
     return;
@@ -171,7 +178,9 @@ export const useWasteSchedulingEditRouteHydration = ({
     }
 
     if (search.schedulingEntryType === 'holiday-rule') {
-      const routeRule = controller.overview.holidayRules.find((rule) => rule.id === search.schedulingEntryId);
+      const routeRule = controller.overview.holidayRules.find(
+        (rule) => rule.id === search.schedulingEntryId
+      );
       if (!routeRule) {
         void navigateToSchedulingList(navigate, search);
       }

@@ -60,10 +60,22 @@ export const WasteToursTourFields = ({
 
   return (
     <div className="space-y-6">
-      <TourSection title={pt('tours.sections.basics')} description={pt('tours.sections.basicsHint')}>
+      <TourSection
+        title={pt('tours.sections.basics')}
+        description={pt('tours.sections.basicsHint')}
+      >
         <StudioFieldGroup>
-          <StudioField id="waste-tour-name" label={pt('tours.fields.name')} description={pt('tours.fieldHints.name')} required>
-            <Input id="waste-tour-name" value={form.name} onChange={(event) => onChange({ name: event.target.value })} />
+          <StudioField
+            id="waste-tour-name"
+            label={pt('tours.fields.name')}
+            description={pt('tours.fieldHints.name')}
+            required
+          >
+            <Input
+              id="waste-tour-name"
+              value={form.name}
+              onChange={(event) => onChange({ name: event.target.value })}
+            />
           </StudioField>
           <StudioField
             id="waste-tour-fractions"
@@ -78,15 +90,32 @@ export const WasteToursTourFields = ({
               onChange={(wasteFractionIds) => onChange({ wasteFractionIds })}
             />
           </StudioField>
-          <StudioField id="waste-tour-description" label={pt('tours.fields.description')} description={pt('tours.fieldHints.description')}>
-            <Textarea id="waste-tour-description" value={form.description} rows={4} maxLength={300} onChange={(event) => onChange({ description: event.target.value })} />
+          <StudioField
+            id="waste-tour-description"
+            label={pt('tours.fields.description')}
+            description={pt('tours.fieldHints.description')}
+          >
+            <Textarea
+              id="waste-tour-description"
+              value={form.description}
+              rows={4}
+              maxLength={300}
+              onChange={(event) => onChange({ description: event.target.value })}
+            />
           </StudioField>
         </StudioFieldGroup>
       </TourSection>
 
-      <TourSection title={pt('tours.sections.scheduling')} description={pt('tours.sections.schedulingHint')}>
+      <TourSection
+        title={pt('tours.sections.scheduling')}
+        description={pt('tours.sections.schedulingHint')}
+      >
         <StudioFieldGroup>
-          <StudioField id="waste-tour-recurrence" label={pt('tours.fields.recurrence')} description={pt('tours.fieldHints.recurrence')}>
+          <StudioField
+            id="waste-tour-recurrence"
+            label={pt('tours.fields.recurrence')}
+            description={pt('tours.fieldHints.recurrence')}
+          >
             <Select
               id="waste-tour-recurrence"
               value={selectValue}
@@ -112,15 +141,29 @@ export const WasteToursTourFields = ({
           {showsDateRange ? (
             <>
               <StudioField id="waste-tour-first-date" label={pt('tours.fields.firstDate')}>
-                <Input id="waste-tour-first-date" type="date" value={form.firstDate} onChange={(event) => onChange({ firstDate: event.target.value })} />
+                <Input
+                  id="waste-tour-first-date"
+                  type="date"
+                  value={form.firstDate}
+                  onChange={(event) => onChange({ firstDate: event.target.value })}
+                />
               </StudioField>
               <StudioField id="waste-tour-end-date" label={pt('tours.fields.endDate')}>
-                <Input id="waste-tour-end-date" type="date" value={form.endDate} onChange={(event) => onChange({ endDate: event.target.value })} />
+                <Input
+                  id="waste-tour-end-date"
+                  type="date"
+                  value={form.endDate}
+                  onChange={(event) => onChange({ endDate: event.target.value })}
+                />
               </StudioField>
             </>
           ) : null}
           {showsCustomDates ? (
-            <StudioField id="waste-tour-custom-dates" label={pt('tours.fields.customDates')} description={pt('tours.fieldHints.customDates')}>
+            <StudioField
+              id="waste-tour-custom-dates"
+              label={pt('tours.fields.customDates')}
+              description={pt('tours.fieldHints.customDates')}
+            >
               <WasteToursCustomDatesField
                 customDates={form.customDates}
                 dateLocationAssignments={form.dateLocationAssignments}
@@ -129,7 +172,9 @@ export const WasteToursTourFields = ({
                 endDate={form.endDate}
                 disabled={saving}
                 onChange={(customDates) => onChange({ customDates })}
-                onAssignmentsChange={(dateLocationAssignments) => onChange({ dateLocationAssignments })}
+                onAssignmentsChange={(dateLocationAssignments) =>
+                  onChange({ dateLocationAssignments })
+                }
               />
             </StudioField>
           ) : null}
@@ -139,7 +184,10 @@ export const WasteToursTourFields = ({
         ) : null}
       </TourSection>
 
-      <TourSection title={pt('tours.sections.visibility')} description={pt('tours.sections.visibilityHint')}>
+      <TourSection
+        title={pt('tours.sections.visibility')}
+        description={pt('tours.sections.visibilityHint')}
+      >
         <div className="flex items-center gap-3">
           <WasteManagementFormSwitch
             checked={form.active}
@@ -147,7 +195,9 @@ export const WasteToursTourFields = ({
             onChange={(active) => onChange({ active })}
           />
           <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">{form.active ? pt('common.active') : pt('common.inactive')}</p>
+            <p className="text-sm font-medium text-foreground">
+              {form.active ? pt('common.active') : pt('common.inactive')}
+            </p>
             <p className="text-xs text-muted-foreground">
               {form.active ? pt('tours.statusHints.active') : pt('tours.statusHints.inactive')}
             </p>

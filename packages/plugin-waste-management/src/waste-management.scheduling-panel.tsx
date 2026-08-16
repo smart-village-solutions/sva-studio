@@ -18,7 +18,11 @@ import {
 } from './waste-management.scheduling-panel.views.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagementSearchParams }) => {
+export const WasteSchedulingPanel = ({
+  search,
+}: {
+  readonly search: WasteManagementSearchParams;
+}) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
   const controller = useWasteSchedulingViewModel(pt, search);

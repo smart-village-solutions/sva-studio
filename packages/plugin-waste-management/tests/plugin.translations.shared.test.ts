@@ -171,6 +171,20 @@ describe('waste-management translation builders', () => {
           comment: 'Hinweis: {{value}}',
         },
       },
+      shiftDetails: {
+        open: 'Verschiebungen anzeigen',
+        title: 'Verschiebungen',
+        description: 'Verschiebungen dieser Tour',
+        dateChange: 'Datum geändert',
+        holidays: 'Feiertage',
+        reasonKey: 'Grundschlüssel',
+        close: 'Schließen',
+        sources: {
+          tour: 'Tour',
+          global: 'Global',
+          holiday: 'Feiertag',
+        },
+      },
       messages: {
         loading: 'Laedt',
         loadError: 'Fehler',
@@ -395,6 +409,27 @@ describe('waste-management translation builders', () => {
               previous: 'Letztes Jahr ({{year}})',
               current: 'Aktuelles Jahr ({{year}})',
               next: 'Nächstes Jahr ({{year}})',
+            },
+          },
+        },
+      },
+    });
+  });
+
+  it('keeps tour shift detail labels at their public translation paths', () => {
+    expect(
+      createWasteManagementPluginTranslationLocale([wasteManagementPluginTranslationsDETours])
+    ).toMatchObject({
+      wasteManagement: {
+        tours: {
+          shiftDetails: {
+            title: 'Verschiebungen: {{name}}',
+            description: '{{value}} Verschiebungen für diese Tour.',
+            dateChange: '{{originalDate}} → {{actualDate}}',
+            holidays: 'Feiertag: {{value}}',
+            close: 'Schließen',
+            sources: {
+              holiday: 'Berechnete Feiertagsverschiebung',
             },
           },
         },

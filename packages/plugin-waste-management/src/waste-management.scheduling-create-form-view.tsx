@@ -14,9 +14,12 @@ type WasteSchedulingCreateVariant = 'global-shift' | 'tour-shift';
 
 const resolveDefaultCreateVariant = (
   search: WasteManagementSearchParams,
-  availableTours: readonly { readonly id: string }[],
+  availableTours: readonly { readonly id: string }[]
 ): WasteSchedulingCreateVariant => {
-  if (search.schedulingEntryType === 'global-shift' || search.schedulingEntryType === 'tour-shift') {
+  if (
+    search.schedulingEntryType === 'global-shift' ||
+    search.schedulingEntryType === 'tour-shift'
+  ) {
     return search.schedulingEntryType;
   }
   return resolveSchedulingEntryTypeFromShiftContext(search.shiftContext, availableTours);
@@ -34,7 +37,7 @@ const createSchedulingListSearch = (
 
 const createSchedulingVariantSearch = (
   search: WasteManagementSearchParams,
-  variant: WasteSchedulingCreateVariant,
+  variant: WasteSchedulingCreateVariant
 ): WasteManagementSearchParams =>
   clearTourShiftCreateContext({
     ...search,
@@ -92,7 +95,22 @@ export const WasteSchedulingCreateFormView = ({
   const navigate = useNavigate();
   const pt = usePluginTranslation('wasteManagement');
   const [variant, setVariant] = useState<WasteSchedulingCreateVariant>(() =>
-    resolveDefaultCreateVariant(search, controller.availableTours),
+    resolveDefaultCreateVariant(search, controller.availableTours)
+  );
+  const contextualTour = search.schedulingTourId
+    ? controller.availableTours.find((tour) => tour.id === search.schedulingTourId)
+    : undefined;
+  const hasTourContext = Boolean(search.schedulingTourId || search.schedulingContextInvalid);
+  const overridesAnnualRule = Boolean(
+    controller.tourShiftForm.hasYear &&
+    controller.tourShiftForm.tourId &&
+    /^\d{4}-\d{2}-\d{2}$/u.test(controller.tourShiftForm.originalDate) &&
+    controller.overview?.tourDateShifts.some(
+      (shift) =>
+        !shift.hasYear &&
+        shift.tourId === controller.tourShiftForm.tourId &&
+        shift.originalDate.slice(5) === controller.tourShiftForm.originalDate.slice(5)
+    )
   );
 
   const handleCancel = () => {
@@ -107,7 +125,24 @@ export const WasteSchedulingCreateFormView = ({
     });
   };
 
-  const variantField = (
+  const variantField = hasTourContext ? (
+    <div
+      role={contextualTour && !search.schedulingContextInvalid ? 'note' : 'status'}
+      className="space-y-1 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm"
+    >
+      <p className="font-semibold">{pt('scheduling.create.contextTitle')}</p>
+      {contextualTour && !search.schedulingContextInvalid ? (
+        <p className="text-muted-foreground">
+          {pt('scheduling.create.contextDescription', {
+            tour: contextualTour.name,
+            date: search.schedulingOriginalDate ?? pt('scheduling.create.contextDateUnset'),
+          })}
+        </p>
+      ) : (
+        <p className="text-destructive">{pt('scheduling.create.contextInvalid')}</p>
+      )}
+    </div>
+  ) : (
     <WasteSchedulingCreateVariantField
       pt={pt}
       search={search}
@@ -115,6 +150,18 @@ export const WasteSchedulingCreateFormView = ({
       setVariant={setVariant}
       navigate={navigate}
     />
+  );
+  const beforeFields = (
+    <div className="space-y-3">
+      {variantField}
+      {overridesAnnualRule ? (
+        <p role="note" className="rounded-xl border border-info/40 bg-info/5 px-4 py-3 text-sm">
+          {pt('scheduling.create.annualOverrideHint', {
+            year: controller.tourShiftForm.originalDate.slice(0, 4),
+          })}
+        </p>
+      ) : null}
+    </div>
   );
 
   if (variant === 'global-shift') {
@@ -125,7 +172,8 @@ export const WasteSchedulingCreateFormView = ({
         form={controller.globalShiftForm}
         tours={controller.availableTours}
         saving={controller.saving}
-        beforeFields={variantField}
+        message={controller.message}
+        beforeFields={beforeFields}
         onChange={(patch) => controller.setGlobalShiftForm((current) => ({ ...current, ...patch }))}
         onCancel={handleCancel}
         onSubmit={(event) => controller.onSubmitGlobalShift(event, 'create')}
@@ -140,7 +188,8 @@ export const WasteSchedulingCreateFormView = ({
       form={controller.tourShiftForm}
       tours={controller.availableTours}
       saving={controller.saving}
-      beforeFields={variantField}
+      message={controller.message}
+      beforeFields={beforeFields}
       onChange={(patch) => controller.setTourShiftForm((current) => ({ ...current, ...patch }))}
       onCancel={handleCancel}
       onSubmit={(event) => controller.onSubmitTourShift(event, 'create')}

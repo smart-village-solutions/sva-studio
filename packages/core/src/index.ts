@@ -199,9 +199,7 @@ export type {
   WasteManagementTechnicalEventType,
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
-export {
-  wasteManagementDataProfileIds,
-} from './waste-management-data-exchange.js';
+export { wasteManagementDataProfileIds } from './waste-management-data-exchange.js';
 export {
   getWasteManagementDataProfile,
   wasteManagementDataProfiles,
@@ -335,8 +333,10 @@ export type {
 } from './waste-management-master-data.js';
 export {
   isWasteTourValidityApplicable,
+  resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,
 } from './waste-management-master-data.js';
+export type { EffectiveWasteTourDateShift } from './waste-management-master-data.js';
 export { wasteManagementMasterDataContract } from './waste-management-master-data.js';
 export {
   buildWasteCalendarPdfDocument,

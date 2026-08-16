@@ -1,3 +1,5 @@
+import { resolveEffectiveWasteTourDateShiftsForYear } from '@sva/plugin-sdk';
+
 import type { WasteManagementSchedulingOverview, WasteTourRecord } from './waste-management.api.js';
 
 export const formatTourRecurrence = (
@@ -239,7 +241,10 @@ const calculateTourOccurrenceEntriesForYearInternal = (
   collectCustomTourDates(results, tour, year);
 
   const tourShiftMap = buildShiftMap(
-    (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id)
+    resolveEffectiveWasteTourDateShiftsForYear(
+      (scheduling.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id),
+      year
+    )
   );
   const globalShiftMap = buildShiftMap(
     (scheduling.globalDateShifts ?? []).filter(

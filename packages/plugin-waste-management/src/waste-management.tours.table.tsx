@@ -2,8 +2,15 @@ import { useMemo } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
-import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
-import { WastePanelTableBottomBar, createPagedItems, usePagedRouteSync } from './waste-management.table-frame.js';
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
+import {
+  WastePanelTableBottomBar,
+  createPagedItems,
+  usePagedRouteSync,
+} from './waste-management.table-frame.js';
 import {
   WasteToursTableHeader,
   type WasteToursSortDirection,
@@ -147,8 +154,14 @@ export const WasteToursTable = ({
   onRequestDeleteTour,
 }: WasteToursTableProps) => {
   const pt = usePluginTranslation('wasteManagement');
-  const pagedTours = useMemo(() => createPagedItems({ items: tours, page, pageSize }), [page, pageSize, tours]);
-  const fractionsById = useMemo(() => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)), [fractions]);
+  const pagedTours = useMemo(
+    () => createPagedItems({ items: tours, page, pageSize }),
+    [page, pageSize, tours]
+  );
+  const fractionsById = useMemo(
+    () => new Map(fractions.map((fraction) => [fraction.id, fraction.name] as const)),
+    [fractions]
+  );
   usePagedRouteSync({ page, safePage: pagedTours.safePage, onPageChange, onSyncPageChange });
 
   return (

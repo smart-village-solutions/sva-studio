@@ -1,4 +1,12 @@
-import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@sva/studio-ui-react';
 import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
 import { useEffect, useState } from 'react';
 
@@ -29,20 +37,27 @@ const TourYearCalendarMonth = ({
   tourId,
   search,
   canCreateShift,
+  tourName,
   pt,
 }: {
   readonly monthIndex: number;
   readonly year: number;
-  readonly highlightedDays: ReadonlyMap<number, { readonly shifted: boolean; readonly originalDate: string | null }>;
+  readonly highlightedDays: ReadonlyMap<
+    number,
+    { readonly shifted: boolean; readonly originalDate: string | null }
+  >;
   readonly tourId: string | undefined;
   readonly search: WasteManagementSearchParams | undefined;
   readonly canCreateShift: boolean;
+  readonly tourName: string | undefined;
   readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
   const first = new Date(year, monthIndex, 1);
   const startWeekday = (first.getDay() + 6) % 7;
   const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(new Date(year, monthIndex, 1));
+  const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(
+    new Date(year, monthIndex, 1)
+  );
 
   return (
     <section className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
@@ -61,9 +76,12 @@ const TourYearCalendarMonth = ({
           const shifted = occurrence?.shifted ?? false;
           const active = highlightedDays.has(day);
           const originalDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const shiftedLabel = shifted && occurrence?.originalDate
-            ? pt('tours.yearCalendar.meta.shiftedReplacementFor', { value: formatCalendarDate(occurrence.originalDate) })
-            : null;
+          const shiftedLabel =
+            shifted && occurrence?.originalDate
+              ? pt('tours.yearCalendar.meta.shiftedReplacementFor', {
+                  value: formatCalendarDate(occurrence.originalDate),
+                })
+              : null;
           return (
             <div
               key={`${monthIndex}-${day}`}
@@ -92,7 +110,10 @@ const TourYearCalendarMonth = ({
                   search={search}
                   tourId={tourId}
                   originalDate={originalDate}
-                  label={pt('tours.actions.shiftDate')}
+                  label={pt('tours.actions.shiftDateAccessible', {
+                    date: formatCalendarDate(originalDate),
+                    name: tourName ?? '',
+                  })}
                   unstyled
                   showExternalIcon={false}
                   className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -141,14 +162,21 @@ export const TourYearCalendarDialog = ({
     }
   }, [open, currentYear]);
 
-  const occurrenceEntries = tour && scheduling ? calculateTourOccurrenceEntriesForYear(tour, year, scheduling) : [];
+  const occurrenceEntries =
+    tour && scheduling ? calculateTourOccurrenceEntriesForYear(tour, year, scheduling) : [];
   const dates = occurrenceEntries.map((entry) => entry.date);
   const months = Array.from({ length: 12 }, (_, monthIndex) => ({
     monthIndex,
     highlightedDays: new Map(
       occurrenceEntries
         .filter((entry) => Number(entry.date.slice(5, 7)) === monthIndex + 1)
-        .map((entry) => [Number(entry.date.slice(8, 10)), { shifted: entry.shifted, originalDate: entry.originalDate }] as const)
+        .map(
+          (entry) =>
+            [
+              Number(entry.date.slice(8, 10)),
+              { shifted: entry.shifted, originalDate: entry.originalDate },
+            ] as const
+        )
     ),
   }));
 
@@ -159,19 +187,31 @@ export const TourYearCalendarDialog = ({
           <div className="border-b border-border/60 bg-background px-6 py-5">
             <DialogHeader className="space-y-2">
               <DialogTitle>{pt('tours.yearCalendar.title')}</DialogTitle>
-              <DialogDescription>{tour ? pt('tours.yearCalendar.description', { value: tour.name }) : pt('tours.yearCalendar.descriptionFallback')}</DialogDescription>
+              <DialogDescription>
+                {tour
+                  ? pt('tours.yearCalendar.description', { value: tour.name })
+                  : pt('tours.yearCalendar.descriptionFallback')}
+              </DialogDescription>
             </DialogHeader>
           </div>
 
           <div className="flex-1 space-y-6 overflow-y-auto px-6 py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button type="button" variant="secondary" onClick={() => setYear((current) => current - 1)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setYear((current) => current - 1)}
+              >
                 {pt('tours.yearCalendar.actions.previousYear')}
               </Button>
               <Badge className="w-fit self-center px-4 py-1 text-sm sm:self-auto">
                 {pt('tours.yearCalendar.meta.year', { value: year })}
               </Badge>
-              <Button type="button" variant="secondary" onClick={() => setYear((current) => current + 1)}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setYear((current) => current + 1)}
+              >
                 {pt('tours.yearCalendar.actions.nextYear')}
               </Button>
             </div>
@@ -186,6 +226,7 @@ export const TourYearCalendarDialog = ({
                   tourId={tour?.id}
                   search={search}
                   canCreateShift={canCreateShift}
+                  tourName={tour?.name}
                   pt={pt}
                 />
               ))}
@@ -194,7 +235,17 @@ export const TourYearCalendarDialog = ({
             <div className="space-y-2 rounded-2xl border border-border/70 bg-card/50 p-4">
               <p className="text-sm font-medium">{pt('tours.yearCalendar.meta.dateListTitle')}</p>
               <div className="flex flex-wrap gap-2">
-                {dates.length ? dates.map((date) => <Badge key={date} variant="outline">{date}</Badge>) : <p className="text-sm text-muted-foreground">{pt('tours.yearCalendar.meta.noDates')}</p>}
+                {dates.length ? (
+                  dates.map((date) => (
+                    <Badge key={date} variant="outline">
+                      {date}
+                    </Badge>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {pt('tours.yearCalendar.meta.noDates')}
+                  </p>
+                )}
               </div>
             </div>
           </div>

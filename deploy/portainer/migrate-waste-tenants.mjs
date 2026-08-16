@@ -25,6 +25,37 @@ export const wasteTenantMigrations = Object.freeze([
       values: Object.freeze(['public', 'waste_cities', 'postal_code']),
     }),
   }),
+  Object.freeze({
+    id: '20260816_02_tour_date_shift_date_contract',
+    statements: Object.freeze([
+      `DO $$
+      BEGIN
+        IF EXISTS (SELECT 1 FROM public.waste_tour_date_shifts LIMIT 1) THEN
+          RAISE EXCEPTION 'waste_migration_tour_date_shift_data_present';
+        END IF;
+      END $$;`,
+      'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN original_date TYPE DATE USING original_date::date;',
+      'ALTER TABLE public.waste_tour_date_shifts ALTER COLUMN actual_date TYPE DATE USING actual_date::date;',
+      'CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_specific_origin ON public.waste_tour_date_shifts(tour_id, original_date) WHERE has_year;',
+      'CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_annual_origin ON public.waste_tour_date_shifts(tour_id, (EXTRACT(MONTH FROM original_date)), (EXTRACT(DAY FROM original_date))) WHERE NOT has_year;',
+    ]),
+    verification: Object.freeze({
+      sql: `
+        SELECT
+          COUNT(*) FILTER (
+            WHERE table_schema = 'public'
+              AND table_name = 'waste_tour_date_shifts'
+              AND column_name IN ('original_date', 'actual_date')
+              AND data_type = 'date'
+          ) = 2
+          AND to_regclass('public.uq_waste_tour_date_shifts_specific_origin') IS NOT NULL
+          AND to_regclass('public.uq_waste_tour_date_shifts_annual_origin') IS NOT NULL
+          AS satisfied
+        FROM information_schema.columns;
+      `,
+      values: Object.freeze([]),
+    }),
+  }),
 ]);
 
 const required = (name) => {
@@ -56,7 +87,9 @@ export const validateWasteTenantMigrations = (migrations) => {
     if (
       !Array.isArray(migration.statements) ||
       migration.statements.length === 0 ||
-      migration.statements.some((statement) => typeof statement !== 'string' || !statement.trim()) ||
+      migration.statements.some(
+        (statement) => typeof statement !== 'string' || !statement.trim()
+      ) ||
       typeof migration.verification?.sql !== 'string' ||
       !migration.verification.sql.trim() ||
       !Array.isArray(migration.verification.values)
@@ -113,10 +146,9 @@ export const migrateWasteTenantDatabase = async ({
       if (!appliedMigrationIds.has(migration.id)) {
         for (const statement of migration.statements) await client.query(statement);
         await verifyMigration(client, migration);
-        await client.query(
-          `INSERT INTO ${migrationLedgerTable} (migration_id) VALUES ($1);`,
-          [migration.id]
-        );
+        await client.query(`INSERT INTO ${migrationLedgerTable} (migration_id) VALUES ($1);`, [
+          migration.id,
+        ]);
         appliedMigrationCount += 1;
       } else {
         await verifyMigration(client, migration);
@@ -209,7 +241,10 @@ export const runWasteTenantMigrations = async () => {
   const passwordFile = required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE');
   const provisionerPassword = (await readFile(passwordFile, 'utf8')).trim();
   if (!provisionerPassword) throw new Error('waste_migration_provisioner_password_empty');
-  const port = parseDatabasePort(required('POSTGRES_PORT'), 'waste_migration_postgres_port_invalid');
+  const port = parseDatabasePort(
+    required('POSTGRES_PORT'),
+    'waste_migration_postgres_port_invalid'
+  );
   const provisionerPort = parseDatabasePort(
     process.env.WASTE_DATABASE_PROVISIONER_PORT?.trim() || port,
     'waste_migration_provisioner_port_invalid'

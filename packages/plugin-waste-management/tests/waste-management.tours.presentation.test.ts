@@ -371,4 +371,37 @@ describe('waste-management.tours.presentation', () => {
       },
     ]);
   });
+
+  it('uses a year-specific tour shift instead of the annual base rule', () => {
+    const tour = {
+      id: 'tour-override',
+      recurrence: 'yearly',
+      firstDate: '2026-05-01',
+      endDate: '2027-05-01',
+      customDates: [],
+    } as never;
+    const scheduling = {
+      tourDateShifts: [
+        {
+          id: 'annual',
+          tourId: 'tour-override',
+          originalDate: '2024-05-01',
+          actualDate: '2024-05-02',
+          hasYear: false,
+        },
+        {
+          id: 'specific',
+          tourId: 'tour-override',
+          originalDate: '2026-05-01',
+          actualDate: '2026-05-04',
+          hasYear: true,
+        },
+      ],
+      globalDateShifts: [],
+      holidayRules: [],
+    } as never;
+
+    expect(calculateTourOccurrencesForYear(tour, 2026, scheduling)).toEqual(['2026-05-04']);
+    expect(calculateTourOccurrencesForYear(tour, 2027, scheduling)).toEqual(['2027-05-02']);
+  });
 });

@@ -1,4 +1,4 @@
 {
   "prNumber": 1039,
-  "body": "Die Tourenverwaltung und PDF-Ausgabe im Waste-Management wurden erweitert.\n\n- Standorte lassen sich in Tourzuweisungen in einer responsiven Tabelle übersichtlich sortieren und auswählen.\n- Tourbezogene Ausweichtermine können direkt aus passenden Tourkontexten heraus vorbereitet werden.\n- Das Logo für PDF-Ausgaben kann über die gemeinsame Medienauswahl gewählt, hochgeladen, geprüft oder weiterhin als URL eingetragen werden."
+  "body": "Die Tourenverwaltung und PDF-Ausgabe im Waste-Management wurden erweitert.\n\n- Standorte lassen sich in Tourzuweisungen in einer responsiven Tabelle übersichtlich sortieren und auswählen.\n- Tourbezogene Ausweichtermine können aus Tourtabelle, Jahreskalender und Tourbearbeitung sicher in einem neuen Tab mit vorausgefülltem Kontext angelegt werden.\n- Jahresbezogene Ausnahmen überschreiben jährliche Grundregeln konsistent in Studio, Mainserver und öffentlichem Abfallkalender; Kalenderdaten bleiben dabei zeitzonenfreie PostgreSQL-DATE-Werte.\n- Das Logo für PDF-Ausgaben kann über die gemeinsame Medienauswahl gewählt, hochgeladen, geprüft oder weiterhin als URL eingetragen werden."
 }

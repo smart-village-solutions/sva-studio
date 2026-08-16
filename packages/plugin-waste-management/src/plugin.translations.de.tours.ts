@@ -11,6 +11,7 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     createShift: 'Ausweichtermin anlegen',
     createAnotherShift: 'Weitere Verschiebung anlegen',
     shiftDate: 'Diesen Termin verschieben',
+    shiftDateAccessible: 'Termin {{date}} der Tour {{name}} verschieben',
     opensInNewTab: 'Öffnet in neuem Tab',
     openAssignments: 'Zugeordnete Abholorte bearbeiten',
     edit: 'Bearbeiten',
@@ -327,6 +328,8 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       'Alle Abholort-Zuordnungen, Einzeltermine und tourbezogenen Datumsverschiebungen werden nach dem Speichern übernommen. Für die Zuordnungen gilt der Zeitraum der neuen Tour.',
     assignmentIncomplete:
       'Bitte hinterlegen Sie für jede Termin-Ort-Zuordnung sowohl einen Abholort als auch einen Hinweis.',
+    saveSchedulingBeforeShift:
+      'Speichern Sie zuerst die geänderte Terminlogik, bevor Sie einen Ausweichtermin anlegen.',
     deleteSuccess: 'Die Abfall-Tour wurde gelöscht.',
     deletePartialSuccess: '{{count}} von {{total}} Abfall-Touren wurden gelöscht.',
     saveError: 'Die Abfall-Tour konnte nicht gespeichert werden.',

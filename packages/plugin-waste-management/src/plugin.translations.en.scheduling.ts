@@ -98,6 +98,8 @@ export const wasteManagementPluginTranslationsENScheduling =
         createSuccess: 'The tour-related waste shift was created.',
         updateSuccess: 'The tour-related waste shift was updated.',
         saveError: 'The tour-related waste shift could not be saved.',
+        saveConflict:
+          'A shift with the same validity already exists for this tour and origin. Edit the existing entry.',
         saveForbidden: 'Missing permission to save tour-related waste shifts.',
       },
     },
@@ -164,6 +166,13 @@ export const wasteManagementPluginTranslationsENScheduling =
       scopeHint: 'Choose whether this shift applies globally or belongs to a specific tour.',
       scopeGlobal: 'Global shift',
       scopeTour: 'Tour-related shift',
+      contextTitle: 'Linked tour context',
+      contextDescription: 'Tour: {{tour}} · Original date: {{date}}',
+      contextDateUnset: 'not set yet',
+      contextInvalid:
+        'The linked tour or original date is no longer available. Please select the values again.',
+      annualOverrideHint:
+        'In {{year}}, this year-specific exception replaces the existing annual base rule for the same origin.',
     },
     bulkDeleteDialog: {
       title: 'Delete scheduling shifts',

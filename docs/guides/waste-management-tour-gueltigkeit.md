@@ -20,3 +20,13 @@ Die Mehrfachbearbeitung gilt für feste Wiederholungen wie wöchentlich, zweiwö
 ## Verschiebungen nachvollziehen
 
 Die Spalte `Verschiebungen` der Tourentabelle zählt tourspezifische und globale Verschiebungen sowie tatsächlich berechnete Feiertagsverschiebungen. Ist mindestens eine Verschiebung vorhanden, öffnet der Zähler eine Detailansicht mit ursprünglichem und neuem Datum, Quelle und vorhandenem Grund. Zähler und Detailansicht basieren auf derselben chronologisch sortierten Datenmenge.
+
+Benutzer mit der Berechtigung `waste-management.scheduling.manage` können einen tourbezogenen Ausweichtermin direkt an drei Stellen anlegen:
+
+- in einer leeren Verschiebungszelle beziehungsweise aus der Detailansicht vorhandener Verschiebungen,
+- an einem regulären, noch nicht verschobenen Termin im Jahreskalender,
+- in der Terminlogik einer gespeicherten turnusbasierten Tour.
+
+Die Aktion öffnet die vorhandene Erfassungsansicht in einem neuen Browser-Tab. Der Ausgangstab behält dadurch Filter, Kalender, Dialoge und ungespeicherte Formularinhalte. Tour und – beim Einstieg aus dem Jahreskalender – ursprüngliches Datum sind vorausgewählt; das Zieldatum bleibt eine bewusste Eingabe. Weicht die Terminlogik im Tourformular vom gespeicherten Stand ab, muss sie vor dem Anlegen eines Ausweichtermins gespeichert werden.
+
+Eine jahresbezogene Ausnahme ersetzt für denselben Ursprung ausschließlich im konkreten Jahr eine vorhandene jährliche Grundregel. Regeln derselben Spezifität sind pro Tour und Ursprung eindeutig; bei einem Konflikt bleibt der vorhandene Eintrag unverändert.

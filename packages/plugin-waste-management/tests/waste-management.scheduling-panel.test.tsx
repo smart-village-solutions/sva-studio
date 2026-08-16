@@ -73,7 +73,9 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/studio-ui-react', () => ({
   StudioErrorState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
-  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
+  StudioLoadingState: ({ children }: { readonly children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock('../src/use-waste-scheduling-view-model.js', () => ({

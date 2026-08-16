@@ -211,7 +211,7 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE TABLE IF NOT EXISTS ${schema}.waste_email_reminder_outbox (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), subscription_id UUID NOT NULL REFERENCES ${schema}.waste_email_reminder_subscriptions(id) ON DELETE CASCADE, message_kind TEXT NOT NULL, transport_id TEXT NOT NULL, template_key TEXT NOT NULL, send_at TIMESTAMPTZ NOT NULL, dedupe_key TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', payload JSONB NOT NULL, leased_at TIMESTAMPTZ, sent_at TIMESTAMPTZ, attempt_count INTEGER NOT NULL DEFAULT 0, last_error TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), CONSTRAINT waste_email_reminder_outbox_message_kind_check CHECK (message_kind IN ('doi', 'reminder')), CONSTRAINT waste_email_reminder_outbox_status_check CHECK (status IN ('pending', 'processing', 'sent', 'failed', 'cancelled')), CONSTRAINT waste_email_reminder_outbox_dedupe_key_unique UNIQUE (dedupe_key));`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_status_send_at ON ${schema}.waste_email_reminder_outbox (status, send_at);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_email_reminder_outbox_subscription_id ON ${schema}.waste_email_reminder_outbox (subscription_id);`,
-    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, original_date TEXT NOT NULL, actual_date TEXT NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, follow_up_mode TEXT, description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
+    `CREATE TABLE IF NOT EXISTS ${schema}.waste_tour_date_shifts (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), tour_id UUID NOT NULL REFERENCES ${schema}.waste_tours(id) ON DELETE CASCADE, original_date DATE NOT NULL, actual_date DATE NOT NULL, has_year BOOLEAN NOT NULL DEFAULT TRUE, reason_type TEXT, reason_key TEXT, follow_up_mode TEXT, description TEXT, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());`,
     buildWasteTourCascadeConstraintStatement({
       schema,
       schemaName,
@@ -248,6 +248,8 @@ export const applySchemaStatements = (schemaName: string): readonly string[] => 
     `CREATE INDEX IF NOT EXISTS idx_waste_location_tour_pickup_dates_pickup_date ON ${schema}.waste_location_tour_pickup_dates(pickup_date);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tour_date_shifts_tour_id ON ${schema}.waste_tour_date_shifts(tour_id);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_tour_date_shifts_original ON ${schema}.waste_tour_date_shifts(original_date);`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_specific_origin ON ${schema}.waste_tour_date_shifts(tour_id, original_date) WHERE has_year;`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS uq_waste_tour_date_shifts_annual_origin ON ${schema}.waste_tour_date_shifts(tour_id, (EXTRACT(MONTH FROM original_date)), (EXTRACT(DAY FROM original_date))) WHERE NOT has_year;`,
     `CREATE INDEX IF NOT EXISTS idx_waste_global_date_shifts_original ON ${schema}.waste_global_date_shifts(original_date);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_global_date_shifts_has_year ON ${schema}.waste_global_date_shifts(has_year);`,
     `CREATE INDEX IF NOT EXISTS idx_waste_global_date_shifts_tour_ids ON ${schema}.waste_global_date_shifts USING GIN(tour_ids);`,

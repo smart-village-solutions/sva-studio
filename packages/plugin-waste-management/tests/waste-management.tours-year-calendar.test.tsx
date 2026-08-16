@@ -58,14 +58,15 @@ const toursSearch = {
 vi.mock('@sva/studio-ui-react', () => ({
   Badge: ({ children }: { readonly children: React.ReactNode }) => <span>{children}</span>,
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
-  Dialog: ({
-    open,
+  Dialog: ({ open, children }: { readonly open: boolean; readonly children: React.ReactNode }) =>
+    open ? <div data-testid="dialog-root">{children}</div> : null,
+  DialogContent: ({
     children,
+    className,
   }: {
-    readonly open: boolean;
     readonly children: React.ReactNode;
-  }) => (open ? <div data-testid="dialog-root">{children}</div> : null),
-  DialogContent: ({ children, className }: { readonly children: React.ReactNode; readonly className?: string }) => <div className={className}>{children}</div>,
+    readonly className?: string;
+  }) => <div className={className}>{children}</div>,
   DialogDescription: ({ children }: { readonly children: React.ReactNode }) => <p>{children}</p>,
   DialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
@@ -115,21 +116,31 @@ describe('TourYearCalendarDialog', () => {
       expect.anything()
     );
 
-    const highlightedDays = Array.from(container.querySelectorAll('.bg-primary')).map((element) => element.textContent?.trim());
+    const highlightedDays = Array.from(container.querySelectorAll('.bg-primary')).map((element) =>
+      element.textContent?.trim()
+    );
     expect(highlightedDays.some((value) => value.startsWith('15'))).toBe(true);
     expect(container.querySelector('[data-shifted="false"]')?.textContent).toContain('15');
     expect(container.querySelector('[data-shifted="true"]')?.textContent).toContain('2');
     const shiftedDay = container.querySelector('[data-shifted="true"]');
     expect(shiftedDay?.getAttribute('style')).toContain('border-color: #009e8f');
-    expect(shiftedDay?.getAttribute('style')).toContain('background-color: rgba(0, 158, 143, 0.16)');
-    expect(shiftedDay?.getAttribute('title')).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026');
-    const shiftLinks = screen.getAllByRole('link', { name: 'tours.actions.shiftDate' });
+    expect(shiftedDay?.getAttribute('style')).toContain(
+      'background-color: rgba(0, 158, 143, 0.16)'
+    );
+    expect(shiftedDay?.getAttribute('title')).toBe(
+      'tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026'
+    );
+    const shiftLinks = screen.getAllByRole('link', {
+      name: /tours\.actions\.shiftDateAccessible/,
+    });
     expect(shiftLinks).toHaveLength(1);
     expect(shiftLinks[0]?.getAttribute('href')).toBe(
       '/plugins/waste-management?originalDate=2026-01-15'
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'tours.yearCalendar.actions.previousYear' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tours.yearCalendar.actions.previousYear' })
+    );
     expect(screen.getByText('tours.yearCalendar.meta.year:2025')).toBeTruthy();
     expect(screen.getByText('2025-12-30')).toBeTruthy();
 
@@ -142,12 +153,7 @@ describe('TourYearCalendarDialog', () => {
     const onOpenChange = vi.fn();
 
     const { rerender } = render(
-      <TourYearCalendarDialog
-        open
-        tour={null}
-        scheduling={null}
-        onOpenChange={onOpenChange}
-      />
+      <TourYearCalendarDialog open tour={null} scheduling={null} onOpenChange={onOpenChange} />
     );
 
     expect(screen.getByText('tours.yearCalendar.descriptionFallback')).toBeTruthy();
@@ -167,12 +173,7 @@ describe('TourYearCalendarDialog', () => {
     expect(screen.queryByTestId('dialog-root')).toBeNull();
 
     rerender(
-      <TourYearCalendarDialog
-        open
-        tour={null}
-        scheduling={null}
-        onOpenChange={onOpenChange}
-      />
+      <TourYearCalendarDialog open tour={null} scheduling={null} onOpenChange={onOpenChange} />
     );
     expect(screen.getByText('tours.yearCalendar.meta.year:2026')).toBeTruthy();
     expect(calculateTourOccurrenceEntriesForYearMock).not.toHaveBeenCalled();

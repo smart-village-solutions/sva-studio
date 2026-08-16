@@ -22,6 +22,7 @@ export const WasteSchedulingTourFormView = ({
       form={controller.tourShiftForm}
       tours={controller.availableTours}
       saving={controller.saving}
+      message={controller.message}
       onChange={(patch) => controller.setTourShiftForm((current) => ({ ...current, ...patch }))}
       onCancel={() => {
         controller.setDialogOpen(false);

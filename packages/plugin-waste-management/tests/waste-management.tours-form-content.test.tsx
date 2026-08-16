@@ -43,11 +43,20 @@ vi.mock('../src/waste-management.tours-tour-fields.js', () => ({
 }));
 
 vi.mock('../src/waste-management.tour-shift-create-link.js', () => ({
-  WasteTourShiftCreateLink: ({ label }: { readonly label: string }) => (
-    <a href="/plugins/waste-management" target="_blank">
-      {label}
-    </a>
-  ),
+  WasteTourShiftCreateLink: ({
+    label,
+    disabled,
+  }: {
+    readonly label: string;
+    readonly disabled?: boolean;
+  }) =>
+    disabled ? (
+      <span aria-disabled="true">{label}</span>
+    ) : (
+      <a href="/plugins/waste-management" target="_blank">
+        {label}
+      </a>
+    ),
 }));
 
 describe('WasteToursFormContent', () => {
@@ -81,11 +90,7 @@ describe('WasteToursFormContent', () => {
     };
 
     const { rerender } = render(
-      <WasteToursFormContent
-        {...props}
-        showDuplicationHint
-        duplicateFromTourName="Bio Nord"
-      />
+      <WasteToursFormContent {...props} showDuplicationHint duplicateFromTourName="Bio Nord" />
     );
 
     expect(screen.getByText('tours.messages.duplicateHint')).toBeTruthy();
@@ -162,6 +167,13 @@ describe('WasteToursFormContent', () => {
       customRecurrencePresets: [] as const,
       saving: false,
       canManageScheduling: true,
+      persistedTour: {
+        id: 'tour-1',
+        recurrence: 'weekly',
+        customRecurrenceId: undefined,
+        firstDate: '2026-01-01',
+        endDate: '2026-12-31',
+      } as never,
       search: {
         tab: 'tours' as const,
         masterDataTab: 'locations' as const,
@@ -197,5 +209,8 @@ describe('WasteToursFormContent', () => {
       />
     );
     expect(screen.queryByRole('link', { name: 'tours.actions.createShift' })).toBeNull();
+    expect(screen.getByText('tours.actions.createShift').getAttribute('aria-disabled')).toBe(
+      'true'
+    );
   });
 });

@@ -16,6 +16,7 @@ export const clearTourShiftCreateContext = (
   ...search,
   schedulingTourId: undefined,
   schedulingOriginalDate: undefined,
+  schedulingContextInvalid: undefined,
 });
 
 export const toCreateTourShiftSearch = (
@@ -38,6 +39,7 @@ export const toCreateTourShiftSearch = (
   schedulingEntryId: undefined,
   schedulingTourId: context.tourId,
   schedulingOriginalDate: context.originalDate,
+  schedulingContextInvalid: undefined,
 });
 
 export const resolveTourShiftCreatePrefill = (

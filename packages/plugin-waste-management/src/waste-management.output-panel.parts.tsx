@@ -1,5 +1,4 @@
 import {
-  Input,
   StudioSaveButton,
   type StudioSaveStatus,
   StudioField,
@@ -7,10 +6,14 @@ import {
 } from '@sva/studio-ui-react';
 import type { FormEventHandler } from 'react';
 
-type OutputTranslate = (key: string, variables?: Record<string, string | number>) => string;
+import {
+  WasteOutputBrandingMediaField,
+  type WasteOutputTranslate,
+} from './waste-management.output-branding-media.js';
 
 export const WasteOutputConfigurationSection = ({
   brandingAssetUrl,
+  brandingAssetUrlError,
   contactBlock,
   onSubmit,
   saveStatus,
@@ -19,12 +22,13 @@ export const WasteOutputConfigurationSection = ({
   translate,
 }: {
   readonly brandingAssetUrl: string;
+  readonly brandingAssetUrlError?: string;
   readonly contactBlock: string;
   readonly onSubmit: FormEventHandler<HTMLFormElement>;
   readonly saveStatus: StudioSaveStatus;
   readonly setBrandingAssetUrl: (value: string) => void;
   readonly setContactBlock: (value: string) => void;
-  readonly translate: OutputTranslate;
+  readonly translate: WasteOutputTranslate;
 }) => (
   <form className="space-y-4" onSubmit={onSubmit}>
     <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-shell">
@@ -32,19 +36,12 @@ export const WasteOutputConfigurationSection = ({
         <h3 className="text-sm font-semibold">{translate('output.pdf.title')}</h3>
         <p className="text-sm text-muted-foreground">{translate('output.pdf.description')}</p>
       </div>
-      <StudioField
-        id="waste-output-branding-asset-url"
-        label={translate('output.pdf.fields.brandingAssetUrl')}
-        description={translate('output.pdf.fieldHints.brandingAssetUrl')}
-      >
-        <Input
-          id="waste-output-branding-asset-url"
-          type="url"
-          placeholder="https://cdn.example/logo.svg"
-          value={brandingAssetUrl}
-          onChange={(event) => setBrandingAssetUrl(event.target.value)}
-        />
-      </StudioField>
+      <WasteOutputBrandingMediaField
+        error={brandingAssetUrlError}
+        onChange={setBrandingAssetUrl}
+        translate={translate}
+        value={brandingAssetUrl}
+      />
       <StudioField
         id="waste-output-contact-block"
         label={translate('output.pdf.fields.contactBlock')}

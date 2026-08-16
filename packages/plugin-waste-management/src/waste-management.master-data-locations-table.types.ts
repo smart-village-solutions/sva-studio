@@ -39,9 +39,9 @@ export type WasteMasterDataLocationsTableProps = {
   readonly onDeleteLocation: (location: WasteCollectionLocationRecord) => Promise<void>;
   readonly onDeleteLocations: (locationIds: readonly string[]) => Promise<void>;
   readonly onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
+  readonly onOpenEditTour?: (tourId: string) => void;
   readonly getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 };
-
 export type WasteMasterDataLocationsSortField =
   | 'region'
   | 'city'
@@ -59,4 +59,5 @@ export type WasteMasterDataLocationsTableMaps = {
   readonly houseNumbersById: ReadonlyMap<string, WasteHouseNumberRecord>;
   readonly toursById: ReadonlyMap<string, WasteTourRecord>;
   readonly locationTourNamesByLocationId: ReadonlyMap<string, readonly string[]>;
+  readonly locationToursByLocationId: ReadonlyMap<string, readonly WasteTourRecord[]>;
 };

@@ -135,11 +135,14 @@ describe('WasteToursValidityDialog', () => {
     ).toBe(true);
   });
 
-  it('rejects a resulting validity range whose end precedes its start', () => {
+  it('names every tour whose resulting validity end precedes its start', () => {
     render(
       <WasteToursValidityDialog
         open
-        tours={[createTour({ firstDate: '2027-02-01' })]}
+        tours={[
+          createTour({ firstDate: '2027-02-01', name: 'Restmüll Nord' }),
+          createTour({ id: 'tour-2', firstDate: '2027-03-01', name: 'Bio Süd' }),
+        ]}
         saving={false}
         onOpenChange={vi.fn()}
         onSubmit={vi.fn()}
@@ -153,7 +156,14 @@ describe('WasteToursValidityDialog', () => {
       target: { value: '2027-01-31' },
     });
 
-    expect(screen.getByRole('alert').textContent).toBe('tours.bulkValidityDialog.invalidRange');
+    const alert = screen.getByRole('alert');
+    expect(alert.textContent).toContain('tours.bulkValidityDialog.invalidRangeTitle');
+    expect(alert.textContent).toContain(
+      'tours.bulkValidityDialog.invalidRangeItem:Restmüll Nord|2027-02-01|2027-01-31'
+    );
+    expect(alert.textContent).toContain(
+      'tours.bulkValidityDialog.invalidRangeItem:Bio Süd|2027-03-01|2027-01-31'
+    );
     expect(
       (
         screen.getByRole('button', {

@@ -3,6 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteToursViewModel } from './use-waste-tours-view-model.js';
+import { toWasteFractionEditSearch } from './waste-management.cross-link.navigation.js';
 import {
   createDefaultTourForm,
   mapTourWithPickupDatesToForm,
@@ -176,6 +177,12 @@ export const useWasteToursListNavigation = (
   return {
     ...createToursFormNavigation(controller, search, navigate),
     ...createToursPagingNavigation(search, navigate),
+    openEditFraction: (wasteFractionId: string) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toWasteFractionEditSearch(search, wasteFractionId),
+      });
+    },
     setFilters: (
       q: string,
       status: WasteManagementSearchParams['status'],

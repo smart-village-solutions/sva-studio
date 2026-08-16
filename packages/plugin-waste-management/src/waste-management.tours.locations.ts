@@ -50,13 +50,14 @@ export const formatCollectionLocationLabel = (
 export type TourAssignmentLocationOption = Readonly<{
   id: string;
   label: string;
-  active: boolean;
   regionId: string;
   regionName: string;
   cityId: string;
   cityName: string;
   streetId: string;
   streetName: string;
+  houseNumberId: string;
+  houseNumberName: string;
   assignedLinkId?: string;
 }>;
 
@@ -94,7 +95,6 @@ export const resolveTourAssignmentLocationOptions = (
   return data.collectionLocations.map((location) => ({
     id: location.id,
     label: formatCollectionLocationLabel(pt, data, location),
-    active: location.active,
     regionId: location.regionId ?? '',
     regionName: findRegionName(data.regions, location.regionId) ?? '',
     cityId: location.cityId,
@@ -103,6 +103,10 @@ export const resolveTourAssignmentLocationOptions = (
     streetName:
       findStreetName(data.streets, location.streetId) ??
       pt('masterData.collectionLocations.meta.allStreets'),
+    houseNumberId: location.houseNumberId ?? '',
+    houseNumberName:
+      findHouseNumberValue(data.houseNumbers, location.houseNumberId) ??
+      pt('masterData.collectionLocations.meta.allHouseNumbers'),
     assignedLinkId: assignedLinkIdByLocationId.get(location.id),
   }));
 };

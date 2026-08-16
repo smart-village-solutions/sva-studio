@@ -8,6 +8,10 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
   actions: {
     openCreate: 'New tour',
     openCalendar: 'Show annual calendar',
+    createShift: 'Create replacement date',
+    createAnotherShift: 'Create another date shift',
+    shiftDate: 'Shift this date',
+    opensInNewTab: 'Opens in a new tab',
     openAssignments: 'Edit assigned pickup locations',
     edit: 'Edit',
     duplicate: 'Duplicate',
@@ -151,7 +155,9 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     inapplicableTitle: 'Inapplicable tours',
     inapplicableDescription:
       'Custom or on-demand tours do not have a recurrence validity period. Remove these tours from the selection: {{value}}',
-    invalidRange: 'The resulting period would be invalid for at least one tour.',
+    invalidRangeTitle: 'The following tours would have an invalid validity period:',
+    invalidRangeItem:
+      '{{name}}: The validity start {{firstDate}} is after the validity end {{endDate}}.',
     fields: {
       firstMode: 'Valid from',
       firstDate: 'New validity start',
@@ -165,6 +171,20 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     },
     apply: 'Change validity',
     cancel: 'Cancel',
+  },
+  shiftDetails: {
+    open: 'Show {{count}} shifts for {{name}}',
+    title: 'Shifts: {{name}}',
+    description: '{{value}} shifts for this tour.',
+    dateChange: '{{originalDate}} → {{actualDate}}',
+    holidays: 'Holiday: {{value}}',
+    reasonKey: 'Reason key: {{value}}',
+    close: 'Close',
+    sources: {
+      tour: 'Tour-specific shift',
+      global: 'Global shift',
+      holiday: 'Calculated holiday shift',
+    },
   },
   recurrence: {
     weekly: 'Weekly',
@@ -260,7 +280,16 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
       visibleCount: '{{value}} visible',
       hiddenSelectedCount: '{{value}} selected outside the current filter',
       noLocations: 'No collection locations match the current filters.',
-      assigned: 'Already assigned',
+      tableLabel: 'Collection locations for this tour',
+      tableCaption: 'Sortable collection locations for the tour assignment',
+      sortingOrder: 'Sort order',
+      sortingDirection: 'Sort direction',
+      includeRegion: 'Sort by region first',
+      sortOrderWithRegion: 'Region → city → street → house number',
+      sortOrderWithoutRegion: 'City → street → house number',
+      asc: 'Ascending',
+      desc: 'Descending',
+      selectLocation: 'Select collection location {{value}}',
     },
     messages: {
       createSuccess: 'The waste tour assignment was created.',

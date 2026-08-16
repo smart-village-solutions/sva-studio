@@ -122,6 +122,7 @@ export const WasteMasterDataLocationsTableSection = ({
   onDeleteLocation,
   onDeleteLocations,
   onOpenEditLocation,
+  onOpenEditTour,
   getLocationLabel,
 }: Pick<
   WasteMasterDataLocationsWorkspaceProps,
@@ -151,6 +152,7 @@ export const WasteMasterDataLocationsTableSection = ({
   | 'onDeleteLocation'
   | 'onDeleteLocations'
   | 'onOpenEditLocation'
+  | 'onOpenEditTour'
   | 'getLocationLabel'
 > & {
   readonly page: number;
@@ -189,6 +191,7 @@ export const WasteMasterDataLocationsTableSection = ({
     onDeleteLocation={onDeleteLocation}
     onDeleteLocations={onDeleteLocations}
     onOpenEditLocation={onOpenEditLocation}
+    onOpenEditTour={onOpenEditTour}
     getLocationLabel={getLocationLabel}
   />
 );

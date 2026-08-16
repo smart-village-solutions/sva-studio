@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   calculateTourOccurrenceEntriesForYear,
   calculateTourOccurrencesForYear,
-  countHolidayShiftedTourOccurrences,
   formatTourDateRange,
   formatTourRecurrence,
+  resolveTourShiftDetails,
 } from '../src/waste-management.tours.presentation.js';
 
 describe('waste-management.tours.presentation', () => {
@@ -18,9 +18,15 @@ describe('waste-management.tours.presentation', () => {
     expect(formatTourRecurrence(pt, 'yearly')).toBe('tours.recurrence.yearly');
     expect(formatTourRecurrence(pt, 'on-demand')).toBe('tours.recurrence.onDemand');
     expect(formatTourRecurrence(pt, 'custom')).toBe('tours.recurrence.custom');
-    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe('tours.meta.customRecurrenceLabel');
-    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: '2026-04-08' } as never)).toBe('2026-04-01 – 2026-04-08');
-    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: undefined } as never)).toBe('2026-04-01');
+    expect(formatTourRecurrence(pt, undefined, 'Ferienmodus', 10)).toBe(
+      'tours.meta.customRecurrenceLabel'
+    );
+    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: '2026-04-08' } as never)).toBe(
+      '2026-04-01 – 2026-04-08'
+    );
+    expect(formatTourDateRange({ firstDate: '2026-04-01', endDate: undefined } as never)).toBe(
+      '2026-04-01'
+    );
     expect(formatTourDateRange({ firstDate: undefined, endDate: undefined } as never)).toBe('—');
   });
 
@@ -70,7 +76,9 @@ describe('waste-management.tours.presentation', () => {
         } as never,
         2026,
         {
-          tourDateShifts: [{ tourId: 'tour-yearly', originalDate: '2026-06-01', actualDate: '2026-06-03' }],
+          tourDateShifts: [
+            { tourId: 'tour-yearly', originalDate: '2026-06-01', actualDate: '2026-06-03' },
+          ],
           globalDateShifts: [],
         } as never
       )
@@ -184,7 +192,11 @@ describe('waste-management.tours.presentation', () => {
         {
           tourDateShifts: [],
           globalDateShifts: [
-            { originalDate: '2026-01-06', actualDate: '2026-01-08', tourIds: ['tour-targeted-shift'] },
+            {
+              originalDate: '2026-01-06',
+              actualDate: '2026-01-08',
+              tourIds: ['tour-targeted-shift'],
+            },
           ],
         } as never
       )
@@ -267,7 +279,7 @@ describe('waste-management.tours.presentation', () => {
 
   it('counts holiday-driven shifts for a tour across the affected holiday years', () => {
     expect(
-      countHolidayShiftedTourOccurrences(
+      resolveTourShiftDetails(
         {
           id: 'tour-holiday-count',
           recurrence: undefined,
@@ -286,7 +298,77 @@ describe('waste-management.tours.presentation', () => {
             },
           ],
         } as never
+      ).filter((detail) => detail.source === 'holiday')
+    ).toHaveLength(2);
+  });
+
+  it('resolves tour, global, and calculated holiday shifts into one detail list', () => {
+    expect(
+      resolveTourShiftDetails(
+        {
+          id: 'tour-shift-details',
+          recurrence: undefined,
+          firstDate: undefined,
+          customDates: [{ date: '2026-01-08' }, { date: '2026-01-15' }, { date: '2026-01-22' }],
+        } as never,
+        {
+          tourDateShifts: [
+            {
+              id: 'tour-shift-1',
+              tourId: 'tour-shift-details',
+              originalDate: '2026-01-08',
+              actualDate: '2026-01-09',
+              reasonType: 'weather',
+              reasonKey: 'snow',
+              description: 'Schneefall',
+            },
+          ],
+          globalDateShifts: [
+            {
+              id: 'global-shift-1',
+              originalDate: '2026-01-15',
+              actualDate: '2026-01-16',
+              tourIds: [],
+              description: 'Betriebsversammlung',
+            },
+          ],
+          holidayRules: [
+            {
+              id: 'holiday-1',
+              holidayDate: '2026-01-22',
+              holidayName: 'Beispieltag',
+              scope: 'holiday-only',
+              strategy: 'postpone',
+            },
+          ],
+        } as never
       )
-    ).toBe(2);
+    ).toEqual([
+      {
+        id: 'tour-shift-1',
+        source: 'tour',
+        originalDate: '2026-01-08',
+        actualDate: '2026-01-09',
+        reasonType: 'weather',
+        reasonKey: 'snow',
+        description: 'Schneefall',
+      },
+      {
+        id: 'global-shift-1',
+        source: 'global',
+        originalDate: '2026-01-15',
+        actualDate: '2026-01-16',
+        reasonType: undefined,
+        reasonKey: undefined,
+        description: 'Betriebsversammlung',
+      },
+      {
+        id: 'holiday:2026-01-22:2026-01-23',
+        source: 'holiday',
+        originalDate: '2026-01-22',
+        actualDate: '2026-01-23',
+        holidayNames: ['Beispieltag'],
+      },
+    ]);
   });
 });

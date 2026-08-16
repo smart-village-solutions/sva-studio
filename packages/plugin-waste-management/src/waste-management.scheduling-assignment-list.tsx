@@ -48,6 +48,8 @@ const WasteTourAssignmentsTable = ({
   tourLabels,
   locationLabels,
   pt,
+  onOpenLinkedTour,
+  onOpenLinkedLocation,
   onEdit,
   onDeleteRequest,
 }: {
@@ -55,6 +57,8 @@ const WasteTourAssignmentsTable = ({
   readonly tourLabels: ReadonlyMap<string, string>;
   readonly locationLabels: ReadonlyMap<string, string>;
   readonly pt: Translate;
+  readonly onOpenLinkedTour?: (tourId: string) => void;
+  readonly onOpenLinkedLocation?: (collectionLocationId: string) => void;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDeleteRequest: (entry: WasteTourAssignmentRecord) => void;
 }) => (
@@ -84,11 +88,35 @@ const WasteTourAssignmentsTable = ({
             className="border-b border-border/60 align-top text-[14px] last:border-b-0 hover:bg-muted/20"
           >
             <td className="px-3 py-3">{entry.pickupDate}</td>
-            <td className="px-3 py-3">{tourLabels.get(entry.tourId) ?? entry.tourId}</td>
+            <td className="px-3 py-3">
+              {onOpenLinkedTour ? (
+                <button
+                  type="button"
+                  className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  onClick={() => onOpenLinkedTour(entry.tourId)}
+                >
+                  {tourLabels.get(entry.tourId) ?? entry.tourId}
+                </button>
+              ) : (
+                (tourLabels.get(entry.tourId) ?? entry.tourId)
+              )}
+            </td>
             <td className="px-3 py-3">
               <ul>
                 {entry.locationIds.map((id) => (
-                  <li key={id}>{locationLabels.get(id) ?? id}</li>
+                  <li key={id}>
+                    {onOpenLinkedLocation ? (
+                      <button
+                        type="button"
+                        className="text-left underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        onClick={() => onOpenLinkedLocation(id)}
+                      >
+                        {locationLabels.get(id) ?? id}
+                      </button>
+                    ) : (
+                      (locationLabels.get(id) ?? id)
+                    )}
+                  </li>
                 ))}
               </ul>
             </td>
@@ -112,6 +140,8 @@ export const WasteTourExplicitAssignmentsList = ({
   entries,
   tourLabels,
   locationLabels,
+  onOpenLinkedTour,
+  onOpenLinkedLocation,
   onCreate,
   onEdit,
   onDelete,
@@ -119,6 +149,8 @@ export const WasteTourExplicitAssignmentsList = ({
   readonly entries: readonly WasteTourAssignmentRecord[];
   readonly tourLabels: ReadonlyMap<string, string>;
   readonly locationLabels: ReadonlyMap<string, string>;
+  readonly onOpenLinkedTour?: (tourId: string) => void;
+  readonly onOpenLinkedLocation?: (collectionLocationId: string) => void;
   readonly onCreate: () => void;
   readonly onEdit: (entry: WasteTourAssignmentRecord) => void;
   readonly onDelete: (entry: WasteTourAssignmentRecord) => Promise<void>;
@@ -158,6 +190,8 @@ export const WasteTourExplicitAssignmentsList = ({
             entries={sortedEntries}
             tourLabels={tourLabels}
             locationLabels={locationLabels}
+            onOpenLinkedTour={onOpenLinkedTour}
+            onOpenLinkedLocation={onOpenLinkedLocation}
             pt={pt}
             onEdit={onEdit}
             onDeleteRequest={setPendingDeleteEntry}

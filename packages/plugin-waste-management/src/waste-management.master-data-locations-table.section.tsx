@@ -24,6 +24,7 @@ export const WasteMasterDataLocationsTableSection = ({
   onCopyLocation,
   onDeleteLocation,
   onOpenEditLocation,
+  onOpenEditTour,
 }: {
   readonly collectionLocations: WasteMasterDataLocationsTableProps['collectionLocations'];
   readonly allFilteredLocationsSelected: WasteMasterDataLocationsTableProps['allFilteredLocationsSelected'];
@@ -37,6 +38,7 @@ export const WasteMasterDataLocationsTableSection = ({
   readonly onCopyLocation: WasteMasterDataLocationsTableProps['onCopyLocation'];
   readonly onDeleteLocation: WasteMasterDataLocationsTableProps['onDeleteLocation'];
   readonly onOpenEditLocation: WasteMasterDataLocationsTableProps['onOpenEditLocation'];
+  readonly onOpenEditTour: WasteMasterDataLocationsTableProps['onOpenEditTour'];
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const someFilteredLocationsSelected = selectedLocationIds.length > 0 && !allFilteredLocationsSelected;
@@ -68,6 +70,7 @@ export const WasteMasterDataLocationsTableSection = ({
               onCopyLocation={onCopyLocation}
               onDeleteLocation={onDeleteLocation}
               onOpenEditLocation={onOpenEditLocation}
+              onOpenEditTour={onOpenEditTour}
             />
           ))}
         </tbody>

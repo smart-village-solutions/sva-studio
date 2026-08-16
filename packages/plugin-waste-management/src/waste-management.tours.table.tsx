@@ -10,6 +10,7 @@ import {
   type WasteToursSortField,
 } from './waste-management.tours.table.parts.js';
 import { WasteToursTableRow } from './waste-management.tours.table-row.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
 type WasteToursTableProps = {
   readonly tours: readonly WasteTourRecord[];
@@ -32,11 +33,14 @@ type WasteToursTableProps = {
   readonly onToggleSelectAllVisible: (checked: boolean) => void;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 };
@@ -51,11 +55,14 @@ const WasteToursTableBody = ({
   saving,
   onToggleSelectedTour,
   onOpenCalendar,
+  onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
   canDuplicateTour,
+  canManageScheduling,
+  search,
   onToggleTourStatus,
   onRequestDeleteTour,
 }: {
@@ -68,11 +75,14 @@ const WasteToursTableBody = ({
   readonly saving: boolean;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => (
@@ -89,11 +99,14 @@ const WasteToursTableBody = ({
         saving={saving}
         onToggleSelectedTour={onToggleSelectedTour}
         onOpenCalendar={onOpenCalendar}
+        onOpenEditFraction={onOpenEditFraction}
         onOpenEditDialog={onOpenEditDialog}
         onOpenDuplicateDialog={onOpenDuplicateDialog}
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         canDuplicateTour={canDuplicateTour}
+        canManageScheduling={canManageScheduling}
+        search={search}
         onToggleTourStatus={onToggleTourStatus}
         onRequestDeleteTour={onRequestDeleteTour}
       />
@@ -122,11 +135,14 @@ export const WasteToursTable = ({
   onToggleSelectAllVisible,
   onToggleSelectedTour,
   onOpenCalendar,
+  onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
   canDuplicateTour,
+  canManageScheduling,
+  search,
   onToggleTourStatus,
   onRequestDeleteTour,
 }: WasteToursTableProps) => {
@@ -158,11 +174,14 @@ export const WasteToursTable = ({
             saving={saving}
             onToggleSelectedTour={onToggleSelectedTour}
             onOpenCalendar={onOpenCalendar}
+            onOpenEditFraction={onOpenEditFraction}
             onOpenEditDialog={onOpenEditDialog}
             onOpenDuplicateDialog={onOpenDuplicateDialog}
             onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
             onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
             canDuplicateTour={canDuplicateTour}
+            canManageScheduling={canManageScheduling}
+            search={search}
             onToggleTourStatus={onToggleTourStatus}
             onRequestDeleteTour={onRequestDeleteTour}
           />

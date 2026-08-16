@@ -8,6 +8,7 @@ const navigateMock = vi.fn();
 const controllerMock = vi.hoisted(() => ({
   loading: false,
   error: null,
+  availableTours: [] as readonly { readonly id: string }[],
   lastOutcome: 'create-success' as const,
   overview: null as null | {
     holidayRules?: readonly {
@@ -103,6 +104,7 @@ describe('WasteSchedulingPanel', () => {
     controllerMock.setLastOutcome.mockReset();
     controllerMock.loading = false;
     controllerMock.error = null;
+    controllerMock.availableTours = [];
     controllerMock.lastOutcome = 'create-success';
     controllerMock.overview = null;
     controllerMock.tourShiftForm = { id: 'tour-form-1' };
@@ -148,8 +150,52 @@ describe('WasteSchedulingPanel', () => {
         schedulingView: 'list',
         schedulingEntryType: undefined,
         schedulingEntryId: undefined,
+        schedulingTourId: undefined,
+        schedulingOriginalDate: undefined,
       }),
       replace: true,
+    });
+  });
+
+  it('hydrates a contextual create route once the linked tour is available', () => {
+    controllerMock.lastOutcome = null;
+    controllerMock.availableTours = [{ id: 'tour-42' }];
+
+    render(
+      <WasteSchedulingPanel
+        search={{
+          tab: 'scheduling',
+          masterDataTab: 'fractions',
+          fractionsView: 'list',
+          toursView: 'list',
+          locationsView: 'list',
+          schedulingView: 'create',
+          q: '',
+          page: 1,
+          pageSize: 25,
+          status: 'all',
+          tourValidityPeriod: 'all',
+          shiftContext: 'tour',
+          fractionsSortBy: 'name',
+          fractionsSortDirection: 'asc',
+          schedulingEntryType: 'tour-shift',
+          schedulingTourId: 'tour-42',
+          schedulingOriginalDate: '2026-12-24',
+        }}
+      />
+    );
+
+    expect(controllerMock.setTourShiftForm).toHaveBeenCalledTimes(1);
+    const update = controllerMock.setTourShiftForm.mock.calls[0]?.[0];
+    expect(typeof update).toBe('function');
+    if (typeof update !== 'function') {
+      throw new Error('Expected a functional tour-shift form update');
+    }
+    expect(update({ id: 'shift-1', tourId: '', originalDate: '', actualDate: '' })).toEqual({
+      id: 'shift-1',
+      tourId: 'tour-42',
+      originalDate: '2026-12-24',
+      actualDate: '',
     });
   });
 

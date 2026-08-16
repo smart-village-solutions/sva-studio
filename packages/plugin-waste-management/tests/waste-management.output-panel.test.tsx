@@ -1,5 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { publishSessionAccessSnapshot, resetSessionAccessSnapshot } from '@sva/plugin-sdk';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteOutputPanel } from '../src/waste-management.output-panel.js';
@@ -16,7 +17,17 @@ const apiMocks = vi.hoisted(() => ({
   updateWasteManagementSettings: vi.fn(),
 }));
 
-vi.mock('@sva/plugin-sdk', () => ({
+const mediaMocks = vi.hoisted(() => ({
+  getHostMediaAsset: vi.fn(),
+  getHostMediaDelivery: vi.fn(),
+  listHostMediaAssets: vi.fn(),
+  updateHostMediaAsset: vi.fn(),
+  uploadHostMediaFile: vi.fn(),
+}));
+
+vi.mock('@sva/plugin-sdk', async () => ({
+  ...(await vi.importActual<typeof import('@sva/plugin-sdk')>('@sva/plugin-sdk')),
+  ...mediaMocks,
   usePluginTranslation: () => (key: string, variables?: Record<string, string | number>) =>
     variables ? `${key}:${JSON.stringify(variables)}` : key,
 }));
@@ -34,19 +45,20 @@ vi.mock('@sva/studio-ui-react', async () => ({
     id,
     label,
     description,
+    error,
     children,
   }: {
     readonly id: string;
     readonly label: string;
     readonly description?: string;
+    readonly error?: string;
     readonly children: React.ReactNode;
   }) => (
     <>
-      <label htmlFor={id}>
-        <span>{label}</span>
-        {children}
-      </label>
+      <label htmlFor={id}>{label}</label>
+      {children}
       {description ? <span>{description}</span> : null}
+      {error ? <span>{error}</span> : null}
     </>
   ),
   Alert: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
@@ -67,11 +79,52 @@ vi.mock('../src/waste-management.api.js', async () => {
 describe('WasteOutputPanel', () => {
   afterEach(() => {
     cleanup();
+    resetSessionAccessSnapshot();
   });
 
   beforeEach(() => {
     apiMocks.getWasteManagementSettings.mockReset();
     apiMocks.updateWasteManagementSettings.mockReset();
+    Object.values(mediaMocks).forEach((mock) => mock.mockReset());
+    mediaMocks.listHostMediaAssets.mockResolvedValue([
+      {
+        id: 'asset-logo',
+        fileName: 'logo.png',
+        metadata: { title: 'Kommunales Logo' },
+        visibility: 'public',
+        mimeType: 'image/png',
+        previewUrl: 'https://cdn.example/preview-logo.png',
+      },
+    ]);
+    mediaMocks.getHostMediaAsset.mockImplementation(async ({ assetId }: { assetId: string }) => ({
+      id: assetId,
+      instanceId: 'de-musterhausen',
+      storageKey: `public/${assetId}.png`,
+      mediaType: 'image',
+      mimeType: 'image/png',
+      byteSize: 128,
+      visibility: 'public',
+      uploadStatus: 'completed',
+      processingStatus: 'completed',
+      metadata: { title: 'Kommunales Logo', altText: 'Logo' },
+      technical: {},
+      previewUrl: `https://cdn.example/${assetId}-preview.png`,
+    }));
+    mediaMocks.getHostMediaDelivery.mockImplementation(
+      async ({ assetId }: { assetId: string }) => ({
+        deliveryUrl: `https://cdn.example/${assetId}.png`,
+        expiresAt: '2099-01-01T00:00:00.000Z',
+        isPublicUrl: true,
+      })
+    );
+    mediaMocks.updateHostMediaAsset.mockImplementation(async ({ assetId }: { assetId: string }) =>
+      mediaMocks.getHostMediaAsset({ assetId })
+    );
+    mediaMocks.uploadHostMediaFile.mockResolvedValue({
+      assetId: 'asset-uploaded-logo',
+      uploadSessionId: 'upload-1',
+      previewUrl: 'https://cdn.example/asset-uploaded-logo-preview.png',
+    });
 
     apiMocks.getWasteManagementSettings.mockResolvedValue({
       instanceId: 'de-musterhausen',
@@ -305,6 +358,101 @@ describe('WasteOutputPanel', () => {
     );
 
     expect(await screen.findByRole('button', { name: 'output.pdf.actions.saved' })).toBeTruthy();
+  });
+
+  it('selects a public logo from the shared media library and stores its persistent url', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: [
+        'waste-management.settings.manage',
+        'media.read',
+        'media.reference.manage',
+      ],
+      assignedModules: ['waste-management'],
+      roles: [],
+    });
+
+    render(<WasteOutputPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.title' }));
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'output.pdf.mediaPicker.uploadAction',
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true);
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.select' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.useMedia' }));
+
+    await waitFor(() => {
+      expect(
+        (screen.getByLabelText('output.pdf.fields.brandingAssetUrl') as HTMLInputElement).value
+      ).toBe('https://cdn.example/asset-logo.png');
+    });
+    expect(mediaMocks.listHostMediaAssets).toHaveBeenCalledWith(
+      expect.objectContaining({ visibility: 'public' })
+    );
+  });
+
+  it('uploads the pdf logo as public media when media creation is allowed', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: [
+        'waste-management.settings.manage',
+        'media.read',
+        'media.reference.manage',
+        'media.create',
+      ],
+      assignedModules: ['waste-management'],
+      roles: [],
+    });
+
+    render(<WasteOutputPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.title' }));
+    const uploadInput = await screen.findByTestId('media-upload-input');
+    fireEvent.change(uploadInput, {
+      target: { files: [new File(['logo'], 'logo.png', { type: 'image/png' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.useMedia' }));
+
+    await waitFor(() => {
+      expect(mediaMocks.uploadHostMediaFile).toHaveBeenCalledWith(
+        expect.objectContaining({ mediaType: 'image', visibility: 'public' })
+      );
+      expect(
+        (screen.getByLabelText('output.pdf.fields.brandingAssetUrl') as HTMLInputElement).value
+      ).toBe('https://cdn.example/asset-uploaded-logo.png');
+    });
+  });
+
+  it('removes an existing logo and rejects non-persistable manual urls', async () => {
+    render(<WasteOutputPanel />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'output.pdf.mediaPicker.remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'output.pdf.actions.save' }));
+    await waitFor(() => {
+      expect(apiMocks.updateWasteManagementSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ pdfBrandingAssetUrl: undefined })
+      );
+    });
+    const brandingInput = screen.getByLabelText(
+      'output.pdf.fields.brandingAssetUrl'
+    ) as HTMLInputElement;
+    await waitFor(() => {
+      expect(brandingInput.value).toBe('https://cdn.example/logo-next.svg');
+    });
+
+    apiMocks.updateWasteManagementSettings.mockClear();
+    fireEvent.change(brandingInput, {
+      target: { value: 'https://cdn.example/logo.png?token=temporary' },
+    });
+    expect(brandingInput.value).toBe('https://cdn.example/logo.png?token=temporary');
+    fireEvent.submit(brandingInput.closest('form') as HTMLFormElement);
+
+    expect(await screen.findByText('output.pdf.messages.invalidBrandingAssetUrl')).toBeTruthy();
+    expect(apiMocks.updateWasteManagementSettings).not.toHaveBeenCalled();
   });
 
   it('persists the email reminder service card through the waste settings endpoint', async () => {

@@ -14,9 +14,11 @@ import type { WasteManagementSearchParams } from './search-params.js';
 export const WasteToursPanel = ({
   search,
   canDuplicateTour = false,
+  canManageScheduling = false,
 }: {
   readonly search: WasteManagementSearchParams;
   readonly canDuplicateTour?: boolean;
+  readonly canManageScheduling?: boolean;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const navigate = useNavigate();
@@ -33,12 +35,22 @@ export const WasteToursPanel = ({
     return <StudioErrorState>{controller.error}</StudioErrorState>;
   }
 
-  const dialogs = <WasteToursDialogs controller={controller} />;
+  const dialogs = (
+    <WasteToursDialogs
+      controller={controller}
+      search={search}
+      canManageScheduling={canManageScheduling}
+    />
+  );
 
   if (search.toursView !== 'list') {
     return (
       <>
-        <WasteToursFormView controller={controller} search={search} />
+        <WasteToursFormView
+          controller={controller}
+          search={search}
+          canManageScheduling={canManageScheduling}
+        />
         {dialogs}
       </>
     );
@@ -46,7 +58,12 @@ export const WasteToursPanel = ({
 
   return (
     <>
-      <WasteToursListView controller={controller} search={search} canDuplicateTour={canDuplicateTour} />
+      <WasteToursListView
+        controller={controller}
+        search={search}
+        canDuplicateTour={canDuplicateTour}
+        canManageScheduling={canManageScheduling}
+      />
       {dialogs}
     </>
   );

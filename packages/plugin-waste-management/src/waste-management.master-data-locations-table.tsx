@@ -116,6 +116,7 @@ const WasteMasterDataLocationsTableContent = ({
             setPendingDeleteLocation(location);
           }}
           onOpenEditLocation={props.onOpenEditLocation}
+          onOpenEditTour={props.onOpenEditTour}
         />
         {props.collectionLocations.length > 0 ? (
           <WastePanelTableBottomBar

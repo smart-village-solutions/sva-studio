@@ -12,10 +12,46 @@ vi.mock('@sva/plugin-sdk', () => ({
 }));
 
 vi.mock('../src/waste-management.tours.presentation.js', () => ({
-  countHolidayShiftedTourOccurrences: (
+  resolveTourShiftDetails: (
     _tour: unknown,
     schedulingOverview: { holidayRules?: unknown[] } | null
-  ) => (schedulingOverview?.holidayRules?.length ? 2 : 0),
+  ) =>
+    schedulingOverview?.holidayRules?.length
+      ? [
+          {
+            id: 'tour-shift-1',
+            source: 'tour',
+            originalDate: '2025-12-24',
+            actualDate: '2025-12-23',
+            reasonType: 'weather',
+            reasonKey: 'snow',
+            description: 'Schneefall',
+          },
+          {
+            id: 'global-shift-1',
+            source: 'global',
+            originalDate: '2025-12-31',
+            actualDate: '2025-12-30',
+            reasonType: undefined,
+            reasonKey: undefined,
+            description: 'Betriebsversammlung',
+          },
+          {
+            id: 'holiday:2026-01-01:2026-01-02',
+            source: 'holiday',
+            originalDate: '2026-01-01',
+            actualDate: '2026-01-02',
+            holidayNames: ['Neujahrstag'],
+          },
+          {
+            id: 'holiday:2026-01-02:2026-01-03',
+            source: 'holiday',
+            originalDate: '2026-01-02',
+            actualDate: '2026-01-03',
+            holidayNames: ['Neujahrstag'],
+          },
+        ]
+      : [],
   formatTourDateRange: (tour: { id: string }) => `range:${tour.id}`,
   formatTourRecurrence: (_pt: unknown, recurrence: string | undefined) =>
     `recurrence:${recurrence ?? 'none'}`,
@@ -100,6 +136,31 @@ vi.mock('../src/waste-management.tab-panel-actions.js', () => ({
   useWasteTabPanelActions: vi.fn(),
 }));
 
+vi.mock('../src/waste-management.tour-shift-create-link.js', () => ({
+  WasteTourShiftCreateLink: ({ label }: { readonly label: string }) => (
+    <a href="/plugins/waste-management" target="_blank" rel="noopener noreferrer">
+      {label}
+    </a>
+  ),
+}));
+
+const toursSearch = {
+  tab: 'tours' as const,
+  masterDataTab: 'locations' as const,
+  fractionsView: 'list' as const,
+  toursView: 'list' as const,
+  locationsView: 'list' as const,
+  schedulingView: 'list' as const,
+  q: '',
+  page: 1,
+  pageSize: 25,
+  status: 'all' as const,
+  tourValidityPeriod: 'all' as const,
+  shiftContext: 'all' as const,
+  fractionsSortBy: 'name' as const,
+  fractionsSortDirection: 'asc' as const,
+};
+
 describe('WasteToursContent', () => {
   beforeEach(() => {
     resolveTourAssignmentItemsMock.mockReset();
@@ -130,6 +191,7 @@ describe('WasteToursContent', () => {
     const onOpenCreateAssignmentsDialog = vi.fn();
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
+    const onOpenEditFraction = vi.fn();
     const onToggleTourStatus = vi.fn(async () => undefined);
     const tour = {
       id: 'tour-1',
@@ -164,10 +226,13 @@ describe('WasteToursContent', () => {
         onOpenCreateAssignmentsDialog={onOpenCreateAssignmentsDialog}
         onOpenEditAssignmentsDialog={onOpenEditAssignmentsDialog}
         onOpenCalendar={onOpenCalendar}
+        onOpenEditFraction={onOpenEditFraction}
         onToggleTourStatus={onToggleTourStatus}
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour
+        canManageScheduling
+        search={toursSearch}
         saving={false}
         page={1}
         pageSize={25}
@@ -206,11 +271,12 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('recurrence:weekly')).toBeTruthy();
     expect(screen.getByText('Restmüll')).toBeTruthy();
     expect(screen.getByText('Biomüll')).toBeTruthy();
-    expect(screen.getByText('tours.table.noShifts')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'tours.actions.createShift' })).toBeTruthy();
     expect(screen.getByTestId('tour-assignment-count-tour-1').textContent).toBe('2');
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
     expect(screen.getAllByTestId('badge')).toHaveLength(2);
 
+    fireEvent.click(screen.getByRole('button', { name: 'Restmüll' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openAssignments' }));
@@ -222,6 +288,7 @@ describe('WasteToursContent', () => {
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
     expect(onOpenCalendar).toHaveBeenCalledWith(tour);
+    expect(onOpenEditFraction).toHaveBeenCalledWith('fraction-1');
     expect(onOpenEditAssignmentsDialog).toHaveBeenCalledWith(tour, 'link-1');
     expect(onOpenCreateAssignmentsDialog).not.toHaveBeenCalled();
     expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();
@@ -263,6 +330,8 @@ describe('WasteToursContent', () => {
         onDeleteTour={vi.fn(async () => undefined)}
         onDeleteTours={vi.fn(async () => undefined)}
         canDuplicateTour={false}
+        canManageScheduling
+        search={toursSearch}
         saving={false}
         page={1}
         pageSize={25}
@@ -284,7 +353,7 @@ describe('WasteToursContent', () => {
     expect(screen.getByText('tours.table.loadingAssignments')).toBeTruthy();
   });
 
-  it('includes holiday-rule based shifts in the shifts column label', () => {
+  it('opens the exact holiday-rule based shifts from the shifts column', () => {
     resolveTourAssignmentItemsMock.mockReturnValue([]);
 
     render(
@@ -309,6 +378,8 @@ describe('WasteToursContent', () => {
         schedulingOverview={
           { holidayRules: [{ id: 'holiday-1' }], globalDateShifts: [], tourDateShifts: [] } as never
         }
+        canManageScheduling
+        search={toursSearch}
         onOpenCreateDialog={vi.fn()}
         onOpenEditDialog={vi.fn()}
         onOpenDuplicateDialog={vi.fn()}
@@ -337,7 +408,34 @@ describe('WasteToursContent', () => {
       />
     );
 
-    expect(screen.getByText('tours.meta.shiftCount:2')).toBeTruthy();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'tours.shiftDetails.open:4|Restmüll Nord',
+      })
+    );
+
+    expect(screen.getByText('tours.shiftDetails.title:Restmüll Nord')).toBeTruthy();
+    expect(screen.getByText('tours.shiftDetails.sources.tour')).toBeTruthy();
+    expect(screen.getByText('tours.shiftDetails.sources.global')).toBeTruthy();
+    expect(screen.getAllByText('tours.shiftDetails.sources.holiday')).toHaveLength(2);
+    expect(screen.getByText('Schneefall')).toBeTruthy();
+    expect(screen.getByText('scheduling.reasonTypes.weather')).toBeTruthy();
+    expect(screen.getByText('tours.shiftDetails.reasonKey:snow')).toBeTruthy();
+    expect(screen.getByText('Betriebsversammlung')).toBeTruthy();
+    const dateFormatter = new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'short',
+      timeZone: 'UTC',
+    });
+    expect(
+      screen.getByText(
+        `tours.shiftDetails.dateChange:${dateFormatter.format(new Date('2026-01-01T00:00:00Z'))}|${dateFormatter.format(new Date('2026-01-02T00:00:00Z'))}`
+      )
+    ).toBeTruthy();
+    expect(screen.getAllByText('tours.shiftDetails.holidays:Neujahrstag')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'tours.actions.createAnotherShift' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.shiftDetails.close' }));
+    expect(screen.queryByText('tours.shiftDetails.title:Restmüll Nord')).toBeNull();
   });
 
   it('keeps tour filter edits local until the modal applies them', () => {

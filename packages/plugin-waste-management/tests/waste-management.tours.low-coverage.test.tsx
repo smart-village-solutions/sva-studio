@@ -1,9 +1,10 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { WasteToursDialogs } from '../src/waste-management.tours-dialogs-panel.js';
 import { TourAssignmentsDialog } from '../src/waste-management.tours-assignments-dialog.js';
+import { TourAssignmentsTable } from '../src/waste-management.tours-assignments-table.js';
 import { WasteToursFormView } from '../src/waste-management.tours-form-view.js';
 import { WasteToursTableHeader } from '../src/waste-management.tours.table.parts.js';
 import { WasteToursTourFields } from '../src/waste-management.tours-tour-fields.js';
@@ -383,6 +384,8 @@ describe('waste-management tours low coverage views', () => {
               cityName: 'Perleberg',
               streetId: 'street-1',
               streetName: 'Ackerstrasse',
+              houseNumberId: 'house-1',
+              houseNumberName: '10',
               active: true,
               assignedLinkId: 'link-old',
             },
@@ -395,6 +398,8 @@ describe('waste-management tours low coverage views', () => {
               cityName: 'Wittenberge',
               streetId: 'street-2',
               streetName: 'Bahnweg',
+              houseNumberId: '',
+              houseNumberName: 'Alle Hausnummern',
               active: false,
             },
           ] as never
@@ -408,8 +413,6 @@ describe('waste-management tours low coverage views', () => {
     );
 
     expect(screen.getByText('tours.assignments.workspace.selectedCount:{"value":1}')).toBeTruthy();
-    expect(screen.getByText('tours.assignments.workspace.assigned')).toBeTruthy();
-    expect(screen.getByText('filters.status.inactive')).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText('masterData.collectionLocations.fields.regionId'), {
       target: { value: 'region-2' },
@@ -442,6 +445,114 @@ describe('waste-management tours low coverage views', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.assignments.actions.cancel' }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('renders address values with multi-column sorting while keeping selected locations first', () => {
+    render(
+      <TourAssignmentsDialog
+        open
+        mode="edit"
+        form={{ id: 'link-1', tourId: 'tour-1' } as never}
+        tour={{ id: 'tour-1', name: 'Bio.10.A.2' } as never}
+        locations={
+          [
+            {
+              id: 'selected',
+              label: 'Amt Z / C-Ort / Z-Straße / 20',
+              regionId: 'region-z',
+              regionName: 'Amt Z',
+              cityId: 'city-c',
+              cityName: 'C-Ort',
+              streetId: 'street-z',
+              streetName: 'Z-Straße',
+              houseNumberId: 'house-20',
+              houseNumberName: '20',
+              active: true,
+              assignedLinkId: 'link-1',
+            },
+            {
+              id: 'alpha',
+              label: 'Amt Meyenburg / A-Ort / Alle Straßen / Alle Hausnummern',
+              regionId: 'region-m',
+              regionName: 'Amt Meyenburg',
+              cityId: 'city-a',
+              cityName: 'A-Ort',
+              streetId: '',
+              streetName: 'Alle Straßen',
+              houseNumberId: '',
+              houseNumberName: 'Alle Hausnummern',
+              active: true,
+            },
+            {
+              id: 'beta',
+              label: 'Amt A / B-Ort / Bahnhofstraße / 2',
+              regionId: 'region-a',
+              regionName: 'Amt A',
+              cityId: 'city-b',
+              cityName: 'B-Ort',
+              streetId: 'street-b',
+              streetName: 'Bahnhofstraße',
+              houseNumberId: 'house-2',
+              houseNumberName: '2',
+              active: false,
+            },
+          ] as never
+        }
+        saving={false}
+        loading={false}
+        message={null}
+        onOpenChange={vi.fn()}
+        onChange={vi.fn()}
+        onSubmit={vi.fn()}
+      />
+    );
+
+    const table = screen.getByRole('table', {
+      name: 'tours.assignments.workspace.tableLabel',
+    });
+    expect(
+      screen.getByRole('columnheader', { name: /masterData\.locationsWorkspace\.table\.region/ })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: /masterData\.locationsWorkspace\.table\.city/ })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', { name: /masterData\.locationsWorkspace\.table\.street/ })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('columnheader', {
+        name: /masterData\.locationsWorkspace\.table\.houseNumbers/,
+      })
+    ).toBeTruthy();
+    expect(within(table).getByText('Alle Straßen')).toBeTruthy();
+    expect(within(table).getByText('Alle Hausnummern')).toBeTruthy();
+
+    const getRowIds = () =>
+      Array.from(table.querySelectorAll('tbody tr')).map((row) =>
+        row.querySelector('input')?.getAttribute('aria-label')
+      );
+    expect(getRowIds()).toEqual([
+      expect.stringContaining('Amt Z'),
+      expect.stringContaining('A-Ort'),
+      expect.stringContaining('B-Ort'),
+    ]);
+
+    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
+    expect(getRowIds()).toEqual([
+      expect.stringContaining('Amt Z'),
+      expect.stringContaining('Amt A'),
+      expect.stringContaining('A-Ort'),
+    ]);
+
+    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
+      target: { value: 'desc' },
+    });
+
+    expect(getRowIds()).toEqual([
+      expect.stringContaining('Amt Z'),
+      expect.stringContaining('A-Ort'),
+      expect.stringContaining('Amt A'),
+    ]);
   });
 
   it('renders and updates weekly tour field branches for date ranges, fractions, and active state', () => {
@@ -597,8 +708,46 @@ describe('waste-management tours low coverage views', () => {
     fireEvent.submit(form);
 
     expect(onSubmit).toHaveBeenCalledWith(expect.anything(), ['location-1', 'location-2']);
-    expect(screen.getByText('filters.status.inactive')).toBeTruthy();
-    expect(screen.getByText('tours.assignments.workspace.assigned')).toBeTruthy();
+  });
+
+  it('exposes the address hierarchy, optional region, and shared sort direction', () => {
+    const onIncludeRegionInSortingChange = vi.fn();
+    const onSortDirectionChange = vi.fn();
+
+    render(
+      <TourAssignmentsTable
+        locations={
+          [
+            {
+              id: 'location-1',
+              label: 'Rathausplatz',
+              regionName: 'Prignitz',
+              cityName: 'Perleberg',
+              streetName: 'Großer Markt',
+              houseNumberName: '1',
+            },
+          ] as never
+        }
+        selectedLocationIds={[]}
+        allVisibleSelected={false}
+        someVisibleSelected={false}
+        includeRegionInSorting={false}
+        sortDirection="asc"
+        onIncludeRegionInSortingChange={onIncludeRegionInSortingChange}
+        onSortDirectionChange={onSortDirectionChange}
+        onToggleSelectAll={vi.fn()}
+        onToggleLocation={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('tours.assignments.workspace.sortOrderWithoutRegion')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/tours\.assignments\.workspace\.includeRegion/));
+    fireEvent.change(screen.getByLabelText('tours.assignments.workspace.sortingDirection'), {
+      target: { value: 'desc' },
+    });
+
+    expect(onIncludeRegionInSortingChange).toHaveBeenCalledWith(true);
+    expect(onSortDirectionChange).toHaveBeenCalledWith('desc');
   });
 
   it('renders the tours table header controls and forwards select-all plus sort interactions', () => {

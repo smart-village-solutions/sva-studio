@@ -15,7 +15,6 @@ vi.mock('@sva/plugin-sdk', () => ({
 afterEach(() => {
   cleanup();
 });
-
 describe('waste-management master-data location table views', () => {
   it('opens the create menu, reacts to outside interactions, and forwards filter controls', async () => {
     const onOpenCreateCity = vi.fn();
@@ -132,6 +131,7 @@ describe('waste-management master-data location table views', () => {
               houseNumbersById: new Map(),
               toursById: new Map(),
               locationTourNamesByLocationId: new Map(),
+              locationToursByLocationId: new Map(),
             }}
             selectedLocationIds={[]}
             onToggleLocation={vi.fn()}
@@ -160,6 +160,7 @@ describe('waste-management master-data location table views', () => {
   });
 
   it('renders resolved location values without the removed studio PDF column', () => {
+    const onOpenEditTour = vi.fn();
     render(
       <table>
         <tbody>
@@ -180,13 +181,17 @@ describe('waste-management master-data location table views', () => {
               streetsById: new Map([['street-1', { id: 'street-1', name: 'Straße' }]]),
               houseNumbersById: new Map([['house-1', { id: 'house-1', number: '12' }]]),
               toursById: new Map(),
-              locationTourNamesByLocationId: new Map(),
+              locationTourNamesByLocationId: new Map([['location-1', ['Tour Nord']]]),
+              locationToursByLocationId: new Map([
+                ['location-1', [{ id: 'tour-1', name: 'Tour Nord' } as never]],
+              ]),
             }}
             selectedLocationIds={[]}
             onToggleLocation={vi.fn()}
             onCopyLocation={vi.fn()}
             onDeleteLocation={vi.fn(async () => undefined)}
             onOpenEditLocation={vi.fn()}
+            onOpenEditTour={onOpenEditTour}
           />
         </tbody>
       </table>
@@ -196,5 +201,7 @@ describe('waste-management master-data location table views', () => {
     expect(screen.getByText('Stadt')).toBeTruthy();
     expect(screen.getByText('Straße')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tour Nord' }));
+    expect(onOpenEditTour).toHaveBeenCalledWith('tour-1');
   });
 });

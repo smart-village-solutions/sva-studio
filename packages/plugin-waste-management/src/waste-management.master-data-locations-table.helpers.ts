@@ -1,3 +1,5 @@
+import type { WasteTourRecord } from '@sva/plugin-sdk';
+
 import type {
   WasteMasterDataLocationsTableMaps,
   WasteMasterDataLocationsTableProps,
@@ -16,24 +18,37 @@ export const createLocationsTableMaps = ({
 >): WasteMasterDataLocationsTableMaps => {
   const toursById = new Map(availableTours.map((tour) => [tour.id, tour] as const));
   const locationTourNamesByLocationId = new Map<string, string[]>();
+  const locationToursByLocationId = new Map<string, WasteTourRecord[]>();
 
   for (const link of locationTourLinks) {
-    const tourName = toursById.get(link.tourId)?.name;
-    if (!tourName) {
+    const tour = toursById.get(link.tourId);
+    if (!tour) {
       continue;
     }
 
+    const tourName = tour.name;
     const names = locationTourNamesByLocationId.get(link.locationId);
     if (names) {
       names.push(tourName);
-      continue;
+    } else {
+      locationTourNamesByLocationId.set(link.locationId, [tourName]);
     }
-    locationTourNamesByLocationId.set(link.locationId, [tourName]);
+
+    const linkedTours = locationToursByLocationId.get(link.locationId);
+    if (linkedTours) {
+      linkedTours.push(tour);
+    } else {
+      locationToursByLocationId.set(link.locationId, [tour]);
+    }
   }
 
   for (const [locationId, names] of locationTourNamesByLocationId.entries()) {
     names.sort((left, right) => left.localeCompare(right, 'de'));
     locationTourNamesByLocationId.set(locationId, names);
+  }
+
+  for (const linkedTours of locationToursByLocationId.values()) {
+    linkedTours.sort((left, right) => left.name.localeCompare(right.name, 'de'));
   }
 
   return {
@@ -45,5 +60,6 @@ export const createLocationsTableMaps = ({
     ),
     toursById,
     locationTourNamesByLocationId,
+    locationToursByLocationId,
   };
 };

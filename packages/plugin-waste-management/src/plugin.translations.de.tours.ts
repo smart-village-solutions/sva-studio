@@ -8,6 +8,10 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
   actions: {
     openCreate: 'Neue Tour',
     openCalendar: 'Jahreskalender anzeigen',
+    createShift: 'Ausweichtermin anlegen',
+    createAnotherShift: 'Weitere Verschiebung anlegen',
+    shiftDate: 'Diesen Termin verschieben',
+    opensInNewTab: 'Öffnet in neuem Tab',
     openAssignments: 'Zugeordnete Abholorte bearbeiten',
     edit: 'Bearbeiten',
     duplicate: 'Duplizieren',
@@ -153,7 +157,9 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     inapplicableTitle: 'Nicht anwendbare Touren',
     inapplicableDescription:
       'Individuelle oder bedarfsabhängige Touren besitzen keinen turnusbasierten Gültigkeitszeitraum. Entfernen Sie diese Touren aus der Auswahl: {{value}}',
-    invalidRange: 'Der resultierende Zeitraum wäre bei mindestens einer Tour ungültig.',
+    invalidRangeTitle: 'Folgende Touren hätten einen ungültigen Gültigkeitszeitraum:',
+    invalidRangeItem:
+      '{{name}}: Der Gültigkeitsbeginn {{firstDate}} liegt nach dem Gültigkeitsende {{endDate}}.',
     fields: {
       firstMode: 'Gültig ab',
       firstDate: 'Neuer Gültigkeitsbeginn',
@@ -167,6 +173,20 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
     },
     apply: 'Zeitraum ändern',
     cancel: 'Abbrechen',
+  },
+  shiftDetails: {
+    open: '{{count}} Verschiebungen für {{name}} anzeigen',
+    title: 'Verschiebungen: {{name}}',
+    description: '{{value}} Verschiebungen für diese Tour.',
+    dateChange: '{{originalDate}} → {{actualDate}}',
+    holidays: 'Feiertag: {{value}}',
+    reasonKey: 'Grundschlüssel: {{value}}',
+    close: 'Schließen',
+    sources: {
+      tour: 'Tourspezifische Verschiebung',
+      global: 'Globale Verschiebung',
+      holiday: 'Berechnete Feiertagsverschiebung',
+    },
   },
   recurrence: {
     weekly: 'Wöchentlich',
@@ -263,7 +283,16 @@ export const wasteManagementPluginTranslationsDETours = createWasteManagementTou
       visibleCount: '{{value}} sichtbar',
       hiddenSelectedCount: '{{value}} außerhalb des Filters ausgewählt',
       noLocations: 'Keine Abholorte passen auf die aktuellen Filter.',
-      assigned: 'Bereits zugeordnet',
+      tableLabel: 'Abholorte der Tour',
+      tableCaption: 'Sortierbare Abholorte für die Tour-Zuordnung',
+      sortingOrder: 'Sortierreihenfolge',
+      sortingDirection: 'Sortierrichtung',
+      includeRegion: 'Region vorschalten',
+      sortOrderWithRegion: 'Region → Ort → Straße → Hausnummer',
+      sortOrderWithoutRegion: 'Ort → Straße → Hausnummer',
+      asc: 'Aufsteigend',
+      desc: 'Absteigend',
+      selectLocation: 'Abholort {{value}} auswählen',
     },
     messages: {
       createSuccess: 'Die Abfall-Tour-Zuordnung wurde angelegt.',

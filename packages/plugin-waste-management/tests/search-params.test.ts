@@ -45,6 +45,8 @@ describe('waste-management search params', () => {
       endDateTo: undefined,
       schedulingEntryType: undefined,
       schedulingEntryId: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -106,6 +108,8 @@ describe('waste-management search params', () => {
       endDateTo: '2026-12-31',
       schedulingEntryType: 'tour-shift',
       schedulingEntryId: 'tour-shift-1',
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -146,6 +150,8 @@ describe('waste-management search params', () => {
       endDateTo: undefined,
       schedulingEntryType: undefined,
       schedulingEntryId: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -186,6 +192,8 @@ describe('waste-management search params', () => {
       endDateTo: undefined,
       schedulingEntryType: undefined,
       schedulingEntryId: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -226,6 +234,8 @@ describe('waste-management search params', () => {
       endDateTo: undefined,
       schedulingEntryType: undefined,
       schedulingEntryId: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -267,6 +277,8 @@ describe('waste-management search params', () => {
       endDateTo: undefined,
       schedulingEntryType: undefined,
       schedulingEntryId: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -306,6 +318,8 @@ describe('waste-management search params', () => {
       firstDateTo: undefined,
       endDateFrom: undefined,
       endDateTo: undefined,
+      schedulingTourId: undefined,
+      schedulingOriginalDate: undefined,
       tourDateShiftId: undefined,
       globalDateShiftId: undefined,
     });
@@ -338,6 +352,53 @@ describe('waste-management search params', () => {
         firstDateTo: undefined,
         endDateFrom: undefined,
         endDateTo: '2026-12-31',
+      })
+    );
+  });
+
+  it('keeps valid tour-shift creation context only on the matching create route', () => {
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'scheduling',
+        schedulingView: 'create',
+        schedulingEntryType: 'tour-shift',
+        schedulingTourId: '  tour-42  ',
+        schedulingOriginalDate: ' 2026-12-24 ',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        schedulingTourId: 'tour-42',
+        schedulingOriginalDate: '2026-12-24',
+      })
+    );
+
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'scheduling',
+        schedulingView: 'create',
+        schedulingEntryType: 'tour-shift',
+        schedulingTourId: 'tour-42',
+        schedulingOriginalDate: '2026-02-30',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        schedulingTourId: 'tour-42',
+        schedulingOriginalDate: undefined,
+      })
+    );
+
+    expect(
+      normalizeWasteManagementSearchParams({
+        tab: 'tours',
+        schedulingView: 'list',
+        schedulingEntryType: 'tour-shift',
+        schedulingTourId: 'tour-42',
+        schedulingOriginalDate: '2026-12-24',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        schedulingTourId: undefined,
+        schedulingOriginalDate: undefined,
       })
     );
   });

@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
 import {
+  useWasteSchedulingCreateRouteHydration,
   useWasteSchedulingEditRouteHydration,
   useWasteSchedulingSuccessRedirect,
 } from './waste-management.scheduling-panel.effects.js';
@@ -22,6 +23,7 @@ export const WasteSchedulingPanel = ({ search }: { readonly search: WasteManagem
   const navigate = useNavigate();
   const controller = useWasteSchedulingViewModel(pt, search);
   useWasteSchedulingSuccessRedirect({ controller, navigate, search });
+  useWasteSchedulingCreateRouteHydration({ controller, search });
   useWasteSchedulingEditRouteHydration({ controller, navigate, search });
 
   if (controller.loading) {

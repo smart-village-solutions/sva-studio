@@ -5,7 +5,10 @@ import type {
   WasteManagementMasterDataOverview,
   WasteManagementSchedulingOverview,
 } from './waste-management.api.js';
-import type { WasteManagementTourValidityPeriod } from './search-params.js';
+import type {
+  WasteManagementSearchParams,
+  WasteManagementTourValidityPeriod,
+} from './search-params.js';
 import { WastePanelTableTopBar } from './waste-management.table-frame.js';
 import type {
   WasteToursSortDirection,
@@ -67,11 +70,14 @@ export type WasteToursTableViewModel = {
   readonly toggleSelectAllVisible: (checked: boolean) => void;
   readonly toggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly setTourPendingDelete: Dispatch<SetStateAction<WasteTourRecord | null>>;
 };

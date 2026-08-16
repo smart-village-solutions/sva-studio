@@ -1,37 +1,28 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
 
-import type { WasteManagementMasterDataOverview, WasteManagementSchedulingOverview } from './waste-management.api.js';
+import type {
+  WasteManagementMasterDataOverview,
+  WasteManagementSchedulingOverview,
+} from './waste-management.api.js';
 import { resolveTourAssignmentItems } from './waste-management.tours.locations.js';
-import { countHolidayShiftedTourOccurrences, formatTourRecurrence } from './waste-management.tours.presentation.js';
+import {
+  formatTourRecurrence,
+  resolveTourShiftDetails,
+} from './waste-management.tours.presentation.js';
 import {
   WasteToursRowActionsCell,
   WasteToursRowDatesCell,
   WasteToursRowFractionCell,
   WasteToursRowSelectionCell,
+  WasteToursRowShiftCell,
   WasteToursRowStatusCell,
 } from './waste-management.tours.table-row.parts.js';
+import type { WasteManagementSearchParams } from './search-params.js';
 
-const resolveTourShiftCount = (tour: WasteTourRecord, schedulingOverview: WasteManagementSchedulingOverview | null) =>
-  (schedulingOverview?.tourDateShifts ?? []).filter((shift) => shift.tourId === tour.id).length +
-  (schedulingOverview?.globalDateShifts ?? []).filter(
-    (shift) => shift.tourIds == null || shift.tourIds.length === 0 || shift.tourIds.includes(tour.id)
-  ).length +
-  (schedulingOverview ? countHolidayShiftedTourOccurrences(tour, schedulingOverview) : 0);
-
-const WasteToursRowSummaryCell = ({
-  name,
-}: {
-  readonly name: string;
-}) => (
+const WasteToursRowSummaryCell = ({ name }: { readonly name: string }) => (
   <td className="w-[150px] px-3 py-3">
     <p className="font-semibold">{name}</p>
-  </td>
-);
-
-const WasteToursRowShiftCountCell = ({ label }: { readonly label: string }) => (
-  <td className="w-[168px] px-3 py-3">
-    <span className="text-sm text-muted-foreground">{label}</span>
   </td>
 );
 
@@ -67,11 +58,14 @@ export const WasteToursTableRow = ({
   saving,
   onToggleSelectedTour,
   onOpenCalendar,
+  onOpenEditFraction,
   onOpenEditDialog,
   onOpenDuplicateDialog,
   onOpenCreateAssignmentsDialog,
   onOpenEditAssignmentsDialog,
   canDuplicateTour,
+  canManageScheduling,
+  search,
   onToggleTourStatus,
   onRequestDeleteTour,
 }: {
@@ -84,11 +78,14 @@ export const WasteToursTableRow = ({
   readonly saving: boolean;
   readonly onToggleSelectedTour: (tourId: string, checked: boolean) => void;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
+  readonly onOpenEditFraction?: (wasteFractionId: string) => void;
   readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly onOpenCreateAssignmentsDialog: (tour: WasteTourRecord) => void;
   readonly onOpenEditAssignmentsDialog: (tour: WasteTourRecord, linkId: string) => void;
   readonly canDuplicateTour: boolean;
+  readonly canManageScheduling: boolean;
+  readonly search?: WasteManagementSearchParams;
   readonly onToggleTourStatus: (tour: WasteTourRecord, nextActive: boolean) => Promise<void>;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
 }) => {
@@ -100,29 +97,49 @@ export const WasteToursTableRow = ({
     tour.customRecurrenceName,
     tour.customRecurrenceIntervalDays
   );
-  const recurrenceLabel = recurrenceValue === '—' ? pt('tours.table.noRecurrence') : recurrenceValue;
-  const fractionNames = tour.wasteFractionIds
-    .map((fractionId) => fractionsById.get(fractionId))
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
-  const shiftCount = resolveTourShiftCount(tour, schedulingOverview);
+  const recurrenceLabel =
+    recurrenceValue === '—' ? pt('tours.table.noRecurrence') : recurrenceValue;
+  const fractions = tour.wasteFractionIds.flatMap((fractionId) => {
+    const name = fractionsById.get(fractionId);
+    return name ? [{ id: fractionId, name }] : [];
+  });
+  const shiftDetails = resolveTourShiftDetails(tour, schedulingOverview);
   const firstAssignmentId = assignmentItems[0]?.id;
-  const shiftCountLabel = shiftCount > 0 ? pt('tours.meta.shiftCount', { value: shiftCount }) : pt('tours.table.noShifts');
 
   return (
     <tr className="animate-row-hover border-b border-border/60 align-top text-[14px] text-foreground hover:bg-muted/20 last:border-b-0">
-      <WasteToursRowSelectionCell tour={tour} selected={selected} onToggleSelectedTour={onToggleSelectedTour} />
+      <WasteToursRowSelectionCell
+        tour={tour}
+        selected={selected}
+        onToggleSelectedTour={onToggleSelectedTour}
+      />
       <WasteToursRowSummaryCell name={tour.name} />
-      <WasteToursRowFractionCell tourId={tour.id} fractionNames={fractionNames} />
+      <WasteToursRowFractionCell
+        tourId={tour.id}
+        fractionNames={fractions.map((fraction) => fraction.name)}
+        fractionIds={fractions.map((fraction) => fraction.id)}
+        onOpenEditFraction={onOpenEditFraction}
+      />
       <td className="w-[132px] px-3 py-3 text-sm">{recurrenceLabel}</td>
       <WasteToursRowDatesCell firstDate={tour.firstDate} endDate={tour.endDate} />
-      <WasteToursRowShiftCountCell label={shiftCountLabel} />
+      <WasteToursRowShiftCell
+        tourId={tour.id}
+        tourName={tour.name}
+        shiftDetails={shiftDetails}
+        canManageScheduling={canManageScheduling}
+        search={search}
+      />
       <WasteToursRowAssignmentCountCell
         assignmentContextLoading={assignmentContextLoading}
         assignmentCount={assignmentItems.length}
         pt={pt}
         tourId={tour.id}
       />
-      <WasteToursRowStatusCell tour={tour} disabled={assignmentContextLoading || saving} onToggleTourStatus={onToggleTourStatus} />
+      <WasteToursRowStatusCell
+        tour={tour}
+        disabled={assignmentContextLoading || saving}
+        onToggleTourStatus={onToggleTourStatus}
+      />
       <WasteToursRowActionsCell
         tour={tour}
         assignmentId={firstAssignmentId}

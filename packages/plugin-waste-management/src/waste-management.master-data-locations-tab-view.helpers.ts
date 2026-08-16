@@ -2,6 +2,7 @@ import { useNavigate } from '@tanstack/react-router';
 
 import { useWasteMasterDataViewModel } from './use-waste-master-data-view-model.js';
 import { wasteMasterDataFormDefaults, wasteMasterDataFormMappers } from './waste-management.master-data.forms.js';
+import { toWasteTourEditSearch } from './waste-management.cross-link.navigation.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
 type WasteViewModel = ReturnType<typeof useWasteMasterDataViewModel>;
@@ -66,6 +67,12 @@ export const useWasteLocationsTabNavigation = (controller: WasteViewModel, searc
     },
     setTourFilter: (tourId: string) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, tourId: tourId || undefined } });
+    },
+    toEditTour: (tourId: string) => {
+      void navigate({
+        to: '/plugins/waste-management',
+        search: toWasteTourEditSearch(search, tourId),
+      });
     },
     setPage: (page: number) => {
       void navigate({ to: '/plugins/waste-management', search: { ...search, page } });

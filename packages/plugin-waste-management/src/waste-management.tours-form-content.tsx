@@ -1,12 +1,14 @@
 import type { FormEvent } from 'react';
 
 import type { WasteCustomRecurrencePresetRecord, WasteFractionRecord } from '@sva/plugin-sdk';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
 import { Button, StudioPageHeader } from '@sva/studio-ui-react';
 
 import { WasteToursTourFields } from './waste-management.tours-tour-fields.js';
 import type { TourFormState } from './waste-management.tours.types.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import type { WasteManagementSearchParams } from './search-params.js';
+import { WasteTourShiftCreateLink } from './waste-management.tour-shift-create-link.js';
 
 type WasteToursFormContentProps = {
   readonly mode: 'create' | 'edit';
@@ -17,6 +19,8 @@ type WasteToursFormContentProps = {
   readonly showDuplicationHint?: boolean;
   readonly duplicateFromTourName?: string;
   readonly saving: boolean;
+  readonly search?: WasteManagementSearchParams;
+  readonly canManageScheduling?: boolean;
   readonly onChange: (patch: Partial<TourFormState>) => void;
   readonly onCancel: () => void;
   readonly onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
@@ -31,6 +35,8 @@ export const WasteToursFormContent = ({
   showDuplicationHint = false,
   duplicateFromTourName,
   saving,
+  search,
+  canManageScheduling = false,
   onChange,
   onCancel,
   onSubmit,
@@ -41,6 +47,21 @@ export const WasteToursFormContent = ({
     : mode === 'create'
       ? pt('tours.actions.create')
       : pt('tours.actions.save');
+  const schedulingAction =
+    mode === 'edit' &&
+    canManageScheduling &&
+    search &&
+    form.recurrence !== '' &&
+    isWasteTourValidityApplicable({
+      recurrence: form.recurrence,
+      customRecurrenceId: form.customRecurrenceId,
+    }) ? (
+      <WasteTourShiftCreateLink
+        search={search}
+        tourId={form.id}
+        label={pt('tours.actions.createShift')}
+      />
+    ) : null;
 
   const topActions = (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -76,6 +97,7 @@ export const WasteToursFormContent = ({
           customRecurrencePresets={customRecurrencePresets}
           pt={pt}
           onChange={onChange}
+          schedulingAction={schedulingAction}
         />
 
         {showDuplicationHint ? (

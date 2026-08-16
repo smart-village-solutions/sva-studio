@@ -24,6 +24,35 @@ import { ValidityModeField, type ValidityMode } from './waste-management.tours-v
 const createDateOperation = (mode: ValidityMode, value: string): WasteTourValidityDateOperation =>
   mode === 'set' ? { mode, value } : { mode };
 
+type InvalidValidityRange = Readonly<{
+  tourId: string;
+  tourName: string;
+  firstDate: string;
+  endDate: string;
+}>;
+
+const collectInvalidValidityRanges = (
+  tours: readonly WasteTourRecord[],
+  input: WasteTourValidityBulkUpdateInput
+): readonly InvalidValidityRange[] =>
+  tours.filter(isWasteTourValidityApplicable).flatMap((tour) => {
+    if (resolveWasteTourValidityDates(tour, input) !== null) {
+      return [];
+    }
+
+    const firstDate = input.firstDate.mode === 'set' ? input.firstDate.value : tour.firstDate;
+    const endDate =
+      input.endDate.mode === 'set'
+        ? input.endDate.value
+        : input.endDate.mode === 'clear'
+          ? undefined
+          : tour.endDate;
+
+    return firstDate && endDate
+      ? [{ tourId: tour.id, tourName: tour.name, firstDate, endDate }]
+      : [];
+  });
+
 export const buildTourValidityBulkInput = ({
   tours,
   firstMode,
@@ -65,13 +94,7 @@ const useValidityDialogState = (tours: readonly WasteTourRecord[], open: boolean
     () => tours.filter((tour) => !isWasteTourValidityApplicable(tour)),
     [tours]
   );
-  const hasInvalidRange = useMemo(
-    () =>
-      tours
-        .filter(isWasteTourValidityApplicable)
-        .some((tour) => resolveWasteTourValidityDates(tour, input) === null),
-    [input, tours]
-  );
+  const invalidRanges = useMemo(() => collectInvalidValidityRanges(tours, input), [input, tours]);
   const hasChange = firstMode !== 'unchanged' || endMode !== 'unchanged';
   const missingSetDate =
     (firstMode === 'set' && firstDate.length === 0) || (endMode === 'set' && endDate.length === 0);
@@ -87,7 +110,7 @@ const useValidityDialogState = (tours: readonly WasteTourRecord[], open: boolean
     setEndDate,
     input,
     inapplicableTours,
-    hasInvalidRange,
+    invalidRanges,
     hasChange,
     missingSetDate,
   } as const;
@@ -163,7 +186,7 @@ export const WasteToursValidityDialog = ({
     state.inapplicableTours.length === 0 &&
     state.hasChange &&
     !state.missingSetDate &&
-    !state.hasInvalidRange &&
+    state.invalidRanges.length === 0 &&
     !saving;
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -191,10 +214,23 @@ export const WasteToursValidityDialog = ({
 
           <InapplicableToursWarning tours={state.inapplicableTours} />
           <ValidityFields state={state} saving={saving} />
-          {state.hasInvalidRange ? (
-            <p className="text-sm text-destructive" role="alert">
-              {pt('tours.bulkValidityDialog.invalidRange')}
-            </p>
+          {state.invalidRanges.length > 0 ? (
+            <div className="text-sm text-destructive" role="alert">
+              <p className="font-semibold">
+                {pt('tours.bulkValidityDialog.invalidRangeTitle')}
+              </p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {state.invalidRanges.map((range) => (
+                  <li key={range.tourId}>
+                    {pt('tours.bulkValidityDialog.invalidRangeItem', {
+                      name: range.tourName,
+                      firstDate: range.firstDate,
+                      endDate: range.endDate,
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
 
           <DialogFooter>

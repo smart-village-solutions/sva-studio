@@ -5,7 +5,6 @@ import { usePluginTranslation } from '@sva/plugin-sdk';
 import {
   Badge,
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,74 +18,17 @@ import {
 
 import { StatusNotice, type StatusMessage } from './waste-management.page.support.js';
 import { WastePendingSaveButton } from './waste-management.pending-save-button.js';
+import { TourAssignmentsTable } from './waste-management.tours-assignments-table.js';
 import type { LocationTourLinkFormState } from './waste-management.tours.types.js';
 import type { TourAssignmentLocationOption } from './waste-management.tours.locations.js';
 import {
   createTourAssignmentSelectionSummary,
   orderTourAssignmentLocations,
+  type TourAssignmentSortDirection,
 } from './waste-management.tours.view-model.js';
 
 const matchesSearch = (value: string, query: string) =>
   value.toLocaleLowerCase().includes(query.toLocaleLowerCase());
-
-const renderLocationWorkspaceState = (
-  loading: boolean,
-  filteredLocations: readonly TourAssignmentLocationOption[],
-  pt: ReturnType<typeof usePluginTranslation>,
-  selectedLocationIds: readonly string[],
-  toggleSelectedLocation: (locationId: string, checked: boolean) => void
-) => {
-  if (loading) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        {pt('tours.table.loadingAssignments')}
-      </div>
-    );
-  }
-
-  if (filteredLocations.length === 0) {
-    return (
-      <div className="p-4 text-sm text-muted-foreground">
-        {pt('tours.assignments.workspace.noLocations')}
-      </div>
-    );
-  }
-
-  return (
-    <div className="divide-y divide-border/50">
-      {filteredLocations.map((location) => {
-        const selected = selectedLocationIds.includes(location.id);
-        return (
-          <label
-            key={location.id}
-            className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted/20"
-          >
-            <Checkbox
-              checked={selected}
-              onChange={(event) => toggleSelectedLocation(location.id, event.currentTarget.checked)}
-            />
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium">{location.label}</span>
-                {location.assignedLinkId ? (
-                  <Badge>{pt('tours.assignments.workspace.assigned')}</Badge>
-                ) : null}
-                {!location.active ? (
-                  <Badge variant="outline">{pt('filters.status.inactive')}</Badge>
-                ) : null}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {[location.regionName, location.cityName, location.streetName]
-                  .filter((value) => value.length > 0)
-                  .join(' / ')}
-              </p>
-            </div>
-          </label>
-        );
-      })}
-    </div>
-  );
-};
 
 export const TourAssignmentsDialog = ({
   open,
@@ -122,6 +64,8 @@ export const TourAssignmentsDialog = ({
   const [cityFilter, setCityFilter] = useState('');
   const [streetFilter, setStreetFilter] = useState('');
   const [selectedLocationIds, setSelectedLocationIds] = useState<readonly string[]>([]);
+  const [includeRegionInSorting, setIncludeRegionInSorting] = useState(false);
+  const [sortDirection, setSortDirection] = useState<TourAssignmentSortDirection>('asc');
 
   const effectiveTourId = tour?.id ?? form.tourId;
   const assignedLocationIds = useMemo(
@@ -139,6 +83,8 @@ export const TourAssignmentsDialog = ({
     setCityFilter('');
     setStreetFilter('');
     setSelectedLocationIds(assignedLocationIds);
+    setIncludeRegionInSorting(false);
+    setSortDirection('asc');
   }, [assignedLocationIds, effectiveTourId, open]);
 
   useEffect(() => {
@@ -201,16 +147,26 @@ export const TourAssignmentsDialog = ({
         if (!searchQuery.trim()) {
           return true;
         }
-        return [location.label, location.regionName, location.cityName, location.streetName]
-          .filter((value) => value.length > 0)
+        return [
+          location.label,
+          location.regionName,
+          location.cityName,
+          location.streetName,
+          location.houseNumberName,
+        ]
+          .filter((value): value is string => typeof value === 'string' && value.length > 0)
           .some((value) => matchesSearch(value, searchQuery.trim()));
       }),
     [cityFilter, locations, regionFilter, searchQuery, streetFilter]
   );
 
   const orderedFilteredLocations = useMemo(
-    () => orderTourAssignmentLocations(filteredLocations, selectedLocationIds),
-    [filteredLocations, selectedLocationIds]
+    () =>
+      orderTourAssignmentLocations(filteredLocations, selectedLocationIds, {
+        includeRegion: includeRegionInSorting,
+        direction: sortDirection,
+      }),
+    [filteredLocations, includeRegionInSorting, selectedLocationIds, sortDirection]
   );
 
   const visibleLocationIds = orderedFilteredLocations.map((location) => location.id);
@@ -379,19 +335,6 @@ export const TourAssignmentsDialog = ({
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <Checkbox
-                      aria-label={pt(
-                        'masterData.collectionLocations.bulk.actions.selectAllFiltered'
-                      )}
-                      checked={allVisibleSelected}
-                      indeterminate={!allVisibleSelected && someVisibleSelected}
-                      onChange={(event) => toggleSelectAllVisible(event.currentTarget.checked)}
-                    />
-                    <span>
-                      {pt('masterData.collectionLocations.bulk.actions.selectAllFiltered')}
-                    </span>
-                  </label>
                   <Button
                     type="button"
                     variant="secondary"
@@ -408,12 +351,27 @@ export const TourAssignmentsDialog = ({
               </div>
 
               <div className="max-h-[420px] overflow-y-auto rounded-xl border border-border/60">
-                {renderLocationWorkspaceState(
-                  loading,
-                  orderedFilteredLocations,
-                  pt,
-                  selectedLocationIds,
-                  toggleSelectedLocation
+                {loading ? (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    {pt('tours.table.loadingAssignments')}
+                  </div>
+                ) : orderedFilteredLocations.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">
+                    {pt('tours.assignments.workspace.noLocations')}
+                  </div>
+                ) : (
+                  <TourAssignmentsTable
+                    locations={orderedFilteredLocations}
+                    selectedLocationIds={selectedLocationIds}
+                    allVisibleSelected={allVisibleSelected}
+                    someVisibleSelected={someVisibleSelected}
+                    includeRegionInSorting={includeRegionInSorting}
+                    sortDirection={sortDirection}
+                    onIncludeRegionInSortingChange={setIncludeRegionInSorting}
+                    onSortDirectionChange={setSortDirection}
+                    onToggleSelectAll={toggleSelectAllVisible}
+                    onToggleLocation={toggleSelectedLocation}
+                  />
                 )}
               </div>
             </div>

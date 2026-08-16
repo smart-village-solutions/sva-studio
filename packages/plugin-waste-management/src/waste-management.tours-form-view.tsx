@@ -9,9 +9,11 @@ type WasteViewModel = ReturnType<typeof useWasteToursViewModel>;
 export const WasteToursFormView = ({
   controller,
   search,
+  canManageScheduling = false,
 }: {
   readonly controller: WasteViewModel;
   readonly search: WasteManagementSearchParams;
+  readonly canManageScheduling?: boolean;
 }) => {
   const navigate = useNavigate();
   const duplicateSourceTour =
@@ -29,6 +31,8 @@ export const WasteToursFormView = ({
       showDuplicationHint={search.toursView !== 'edit' && Boolean(search.duplicateFromTourId)}
       duplicateFromTourName={duplicateSourceTour?.name}
       saving={controller.saving}
+      search={search}
+      canManageScheduling={canManageScheduling}
       onChange={(patch) => controller.setTourForm((current) => ({ ...current, ...patch }))}
       onCancel={() => {
         controller.setDialogOpen(false);

@@ -1,18 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 
 import { mapGlobalDateShiftToForm, mapTourDateShiftToForm } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.js';
+import {
+  clearTourShiftCreateContext,
+  resolveTourShiftCreatePrefill,
+} from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 
-const clearSchedulingEntryRoute = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'list',
-  schedulingEntryType: undefined,
-  schedulingEntryId: undefined,
-});
+const clearSchedulingEntryRoute = (
+  search: WasteManagementSearchParams
+): WasteManagementSearchParams =>
+  clearTourShiftCreateContext({
+    ...search,
+    schedulingView: 'list',
+    schedulingEntryType: undefined,
+    schedulingEntryId: undefined,
+  });
 
 const navigateToSchedulingList = (
   navigate: ReturnType<typeof useNavigate>,
@@ -97,6 +104,45 @@ export const useWasteSchedulingSuccessRedirect = ({
     controller.setLastOutcome,
     navigate,
     schedulingViewSuccess,
+    search,
+  ]);
+};
+
+export const useWasteSchedulingCreateRouteHydration = ({
+  controller,
+  search,
+}: {
+  readonly controller: WasteViewModel;
+  readonly search: WasteManagementSearchParams;
+}) => {
+  const hydratedContextRef = useRef<string | null>(null);
+  const contextKey = `${search.schedulingTourId ?? ''}:${search.schedulingOriginalDate ?? ''}`;
+
+  useEffect(() => {
+    if (
+      controller.loading ||
+      search.schedulingView !== 'create' ||
+      search.schedulingEntryType !== 'tour-shift'
+    ) {
+      return;
+    }
+
+    if (search.schedulingTourId && controller.availableTours.length === 0) {
+      return;
+    }
+
+    const prefill = resolveTourShiftCreatePrefill(search, controller.availableTours);
+    if (!prefill || hydratedContextRef.current === contextKey) {
+      return;
+    }
+
+    controller.setTourShiftForm((current) => ({ ...current, ...prefill }));
+    hydratedContextRef.current = contextKey;
+  }, [
+    contextKey,
+    controller.availableTours,
+    controller.loading,
+    controller.setTourShiftForm,
     search,
   ]);
 };

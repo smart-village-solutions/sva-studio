@@ -45,6 +45,7 @@ export type WasteMasterDataLocationsWorkspaceProps = {
   readonly onDeleteLocation: (location: WasteCollectionLocationRecord) => Promise<void>;
   readonly onDeleteLocations: (locationIds: readonly string[]) => Promise<void>;
   readonly onOpenEditLocation: (location: WasteCollectionLocationRecord) => void;
+  readonly onOpenEditTour?: (tourId: string) => void;
   readonly onOpenBulkAssignments: () => void;
   readonly getLocationLabel: (location: WasteCollectionLocationRecord) => string;
 };

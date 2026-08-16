@@ -7,6 +7,7 @@ import { useWasteSchedulingViewModel } from './use-waste-scheduling-view-model.j
 import { WasteSchedulingFormContent } from './waste-management.scheduling-form-content.js';
 import { resolveSchedulingEntryTypeFromShiftContext } from './waste-management.scheduling.shared.js';
 import type { WasteManagementSearchParams } from './search-params.js';
+import { clearTourShiftCreateContext } from './waste-management.tour-shift-navigation.js';
 
 type WasteViewModel = ReturnType<typeof useWasteSchedulingViewModel>;
 type WasteSchedulingCreateVariant = 'global-shift' | 'tour-shift';
@@ -21,22 +22,26 @@ const resolveDefaultCreateVariant = (
   return resolveSchedulingEntryTypeFromShiftContext(search.shiftContext, availableTours);
 };
 
-const createSchedulingListSearch = (search: WasteManagementSearchParams): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'list',
-  schedulingEntryType: undefined,
-  schedulingEntryId: undefined,
-});
+const createSchedulingListSearch = (
+  search: WasteManagementSearchParams
+): WasteManagementSearchParams =>
+  clearTourShiftCreateContext({
+    ...search,
+    schedulingView: 'list',
+    schedulingEntryType: undefined,
+    schedulingEntryId: undefined,
+  });
 
 const createSchedulingVariantSearch = (
   search: WasteManagementSearchParams,
   variant: WasteSchedulingCreateVariant,
-): WasteManagementSearchParams => ({
-  ...search,
-  schedulingView: 'create',
-  schedulingEntryType: variant,
-  schedulingEntryId: undefined,
-});
+): WasteManagementSearchParams =>
+  clearTourShiftCreateContext({
+    ...search,
+    schedulingView: 'create',
+    schedulingEntryType: variant,
+    schedulingEntryId: undefined,
+  });
 
 const WasteSchedulingCreateVariantField = ({
   pt,

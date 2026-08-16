@@ -81,6 +81,7 @@ export const WasteMasterDataLocationsTabView = ({
       onDeleteLocation={controller.onDeleteLocation}
       onDeleteLocations={controller.onDeleteLocations}
       onOpenEditLocation={navigation.toEdit}
+      onOpenEditTour={navigation.toEditTour}
       getLocationLabel={controller.getLocationLabel}
     />
   );

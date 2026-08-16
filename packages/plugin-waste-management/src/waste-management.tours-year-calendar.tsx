@@ -1,10 +1,12 @@
 import { Badge, Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@sva/studio-ui-react';
-import { usePluginTranslation } from '@sva/plugin-sdk';
+import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
 import { useEffect, useState } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
 import { calculateTourOccurrenceEntriesForYear } from './waste-management.tours.presentation.js';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
+import type { WasteManagementSearchParams } from './search-params.js';
+import { WasteTourShiftCreateLink } from './waste-management.tour-shift-create-link.js';
 
 const SHIFTED_DATE_COLOR = '#009e8f';
 
@@ -24,11 +26,17 @@ const TourYearCalendarMonth = ({
   monthIndex,
   year,
   highlightedDays,
+  tourId,
+  search,
+  canCreateShift,
   pt,
 }: {
   readonly monthIndex: number;
   readonly year: number;
   readonly highlightedDays: ReadonlyMap<number, { readonly shifted: boolean; readonly originalDate: string | null }>;
+  readonly tourId: string | undefined;
+  readonly search: WasteManagementSearchParams | undefined;
+  readonly canCreateShift: boolean;
   readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
   const first = new Date(year, monthIndex, 1);
@@ -52,6 +60,7 @@ const TourYearCalendarMonth = ({
           const occurrence = highlightedDays.get(day);
           const shifted = occurrence?.shifted ?? false;
           const active = highlightedDays.has(day);
+          const originalDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const shiftedLabel = shifted && occurrence?.originalDate
             ? pt('tours.yearCalendar.meta.shiftedReplacementFor', { value: formatCalendarDate(occurrence.originalDate) })
             : null;
@@ -78,6 +87,19 @@ const TourYearCalendarMonth = ({
               }
             >
               {day}
+              {active && !shifted && canCreateShift && search && tourId ? (
+                <WasteTourShiftCreateLink
+                  search={search}
+                  tourId={tourId}
+                  originalDate={originalDate}
+                  label={pt('tours.actions.shiftDate')}
+                  unstyled
+                  showExternalIcon={false}
+                  className="absolute inset-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <span className="sr-only">{pt('tours.actions.shiftDate')}</span>
+                </WasteTourShiftCreateLink>
+              ) : null}
               {shiftedLabel ? (
                 <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-border/60 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md group-hover:block group-focus-within:block">
                   {shiftedLabel}
@@ -95,16 +117,23 @@ export const TourYearCalendarDialog = ({
   open,
   tour,
   scheduling,
+  search,
+  canManageScheduling = false,
   onOpenChange,
 }: {
   readonly open: boolean;
   readonly tour: WasteTourRecord | null;
   readonly scheduling: WasteManagementSchedulingOverview | null;
+  readonly search?: WasteManagementSearchParams;
+  readonly canManageScheduling?: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
+  const canCreateShift = Boolean(
+    canManageScheduling && tour && isWasteTourValidityApplicable(tour)
+  );
 
   useEffect(() => {
     if (open) {
@@ -154,6 +183,9 @@ export const TourYearCalendarDialog = ({
                   monthIndex={month.monthIndex}
                   year={year}
                   highlightedDays={month.highlightedDays}
+                  tourId={tour?.id}
+                  search={search}
+                  canCreateShift={canCreateShift}
                   pt={pt}
                 />
               ))}

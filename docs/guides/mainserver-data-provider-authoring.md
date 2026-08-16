@@ -30,7 +30,7 @@ Implizite Reads und Hintergrundabgleiche verwenden bei `org_or_personal` persön
 - `automatic` aktiviert exakte `own`- beziehungsweise `organization`-Entscheidungen. Fehlende oder konfliktbehaftete erforderliche Bindungen werden fail-closed abgelehnt und nicht automatisch durch Credential-Sichtbarkeit verbreitert. Vorübergehende Datenbank- oder Identity-Provider-Fehler bei der Bindungsauflösung bleiben als wiederholbare `503`-Antwort erhalten und werden nicht als `403` fehlklassifiziert.
 - `compatibility` ist der Rollback. Scope-gebundene Mutationen verwenden wieder ausschließlich den credential-sichtbaren Kompatibilitätsvertrag; Action, Instanz, Principal-Policy, Pre-Read und Mainserver-Autorisierung bleiben verbindlich.
 
-Die getrackten Development- und Staging-Profile sind nach erfolgreicher Dev-Abnahme auf `automatic` gesetzt. Production verbleibt bis zur erfolgreichen Staging-Abnahme auf `shadow`.
+Die getrackten Development-, Staging- und Production-Profile sind nach erfolgreicher Staging-Abnahme auf `automatic` gesetzt. Der Production-Wert wird erst durch den regulären Same-Digest-Rollout wirksam.
 
 Der kanonische Remote-Promote reicht den Wert aus dem getrackten Umgebungsprofil über `compose.yaml` an den App-Service durch. Fehlt der Wert, bleibt der sichere Runtime-Standard `shadow` aktiv.
 
@@ -53,11 +53,11 @@ fail-closed Zustand.
 2. In der Mainserver-Autorendiagnose Konflikte, Credential-Rotationen, Shadow-Auswertungen, Shadow-Abweichungen und Reconciliation je Instanz prüfen.
 3. Reale Contract-Tests mit persönlichen und organisatorischen Credentials für Create, Same-Credential-Read, Cross-Principal-Update, Status/Visibility und Hard Delete ausführen.
 4. Zusätzlich belegen, ob eine DataProvider-ID genau einem Studio-Principal zugeordnet ist. Geteilte IDs sind ein Stop-Gate für das bestehende Konfliktmodell.
-5. Erst bei erklärten beziehungsweise behobenen Shadow-Abweichungen `automatic` aktivieren. Development und anschließend Staging sind aktiviert; Production folgt erst nach erfolgreicher Staging-Abnahme über den regulären Same-Digest-Rolloutprozess.
+5. Erst bei erklärten beziehungsweise behobenen Shadow-Abweichungen `automatic` aktivieren. Development, Staging und Production folgen in dieser Reihenfolge über den regulären Same-Digest-Rolloutprozess.
 6. Nach Ablauf offener Browser-Sessions den Principal-Vertrag auf `required` stellen.
 
 Bei unerwarteten Scope-Ablehnungen wird ausschließlich `SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility` zurückgeschaltet. Datenbankmigration, automatische Bindungen, Journal und Diagnose bleiben dabei erhalten und werden nicht zurückgerollt.
 
 ## Stabile Identity-ID
 
-Studio vergleicht die stabile ID automatisch mit der aktuellen credential-versionierten Bindung. Gleichheit bestätigt die Bindung; Abweichung erzeugt einen Konflikt und überschreibt keine bestehende Evidenz. Bei `org_only` benötigt der Organisationsscope nur die Organisationsbindung, bei `org_or_personal` persönliche und organisatorische Bindung. Der Kompatibilitätspfad darf erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsnutzung mehr zeigen.
+Studio vergleicht die stabile ID automatisch mit der aktuellen credential-versionierten Bindung. Gleichheit bestätigt die Bindung; Abweichung erzeugt einen Konflikt und überschreibt keine bestehende Evidenz. Für die Organisationssicht müssen die persönliche und die organisatorische Credential-Sicht jeweils konfliktfrei gebunden sein; `content_author_policy` begrenzt den Create-Principal, nicht die erforderlichen Read-Sichten. Der Kompatibilitätspfad darf erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsnutzung mehr zeigen.

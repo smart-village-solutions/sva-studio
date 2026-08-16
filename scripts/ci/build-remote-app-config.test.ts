@@ -26,7 +26,7 @@ describe('remote app config builder', () => {
   it.each([
     ['dev', 'development', 'automatic'],
     ['staging', 'staging', 'automatic'],
-    ['prod', 'production', 'shadow'],
+    ['prod', 'production', 'automatic'],
   ] as const)('materializes the %s deployment environment and resolver mode', (environment, deploymentEnvironment, resolverMode) => {
     const remoteProfile = readFileSync(
       new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),

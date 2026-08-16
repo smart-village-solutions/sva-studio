@@ -103,6 +103,7 @@ describe('waste tenant database provisioning deployment', () => {
   it('ships and invokes the digest-bound versioned Waste migrator after Goose', () => {
     for (const source of [dockerfile, canonicalDockerfile]) {
       expect(source).toContain('migrate-waste-tenants.mjs');
+      expect(source).toContain('waste-tenant-migration-catalog.mjs');
     }
     expect(migrationEntrypoint.indexOf('goosew.sh')).toBeLessThan(
       migrationEntrypoint.indexOf('node "${WASTE_TENANT_MIGRATOR}"')

@@ -2,6 +2,7 @@ import { createWasteMasterDataRepository } from '@sva/data-repositories';
 import { Pool, type PoolClient } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { wasteTenantMigrations } from '../../../../deploy/portainer/waste-tenant-migration-catalog.mjs';
 import { applySchemaStatements } from './waste-management-operations.schema.js';
 import { createSqlExecutor } from './waste-management-operations.shared.js';
 
@@ -57,6 +58,16 @@ describe('Waste tour date shifts against PostgreSQL', () => {
 
   afterAll(async () => {
     await pool.end();
+  });
+
+  it('applies and verifies the versioned tenant migrations against PostgreSQL', async () => {
+    for (const migration of wasteTenantMigrations) {
+      for (const statement of migration.statements) await pool.query(statement);
+      const verification = await pool.query<{ satisfied: boolean }>(migration.verification.sql, [
+        ...migration.verification.values,
+      ]);
+      expect(verification.rows[0]?.satisfied, migration.id).toBe(true);
+    }
   });
 
   it('creates DATE columns and the two exact partial unique indexes', async () => {

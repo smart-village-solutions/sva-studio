@@ -120,7 +120,14 @@ const BrandingPreview = ({
 
 export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFieldProps) => {
   const { error, onChange, translate, value } = props;
-  const { mediaAssets, mediaCapabilities, mediaPicker } = useWasteBrandingMediaController(onChange);
+  const {
+    isMediaLibraryLoading,
+    mediaAssets,
+    mediaCapabilities,
+    mediaLibraryError,
+    mediaPicker,
+    retryMediaLibrary,
+  } = useWasteBrandingMediaController(onChange);
 
   const labels = useMemo(() => createMediaPickerLabels(translate), [translate]);
   const feedback = useMemo(
@@ -153,6 +160,26 @@ export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFie
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
+        {mediaLibraryError ? (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground"
+            role="alert"
+          >
+            <span>{translate('output.pdf.mediaPicker.libraryLoadFailed')}</span>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={isMediaLibraryLoading}
+              onClick={() => void retryMediaLibrary()}
+            >
+              {translate(
+                isMediaLibraryLoading
+                  ? 'output.pdf.mediaPicker.retryingLibrary'
+                  : 'output.pdf.mediaPicker.retryLibrary'
+              )}
+            </Button>
+          </div>
+        ) : null}
         {mediaCapabilities.canSelect ? (
           <Button
             type="button"
@@ -166,8 +193,12 @@ export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFie
         <StudioMediaPickerOverlay
           assets={mediaAssets.map(toMediaPickerSummary)}
           canUpload={mediaCapabilities.canUpload}
-          feedbackMessage={feedback.message}
-          feedbackTone={feedback.tone}
+          feedbackMessage={
+            mediaLibraryError
+              ? translate('output.pdf.mediaPicker.libraryLoadFailed')
+              : feedback.message
+          }
+          feedbackTone={mediaLibraryError ? 'error' : feedback.tone}
           isAssetSelectable={(asset) => asset.visibility === 'public'}
           isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
           isSavingReviewAsset={mediaPicker.isSavingReviewAsset}

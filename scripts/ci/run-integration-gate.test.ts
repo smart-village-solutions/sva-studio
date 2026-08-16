@@ -28,9 +28,9 @@ describe('run-integration-gate', () => {
     ]);
   });
 
-  it('builds a run-many command for the selected projects', () => {
-    expect(buildRunManyIntegrationCommand(['data'])).toBe(
-      'env -u NO_COLOR pnpm nx run-many -t test:integration --projects=data --output-style=stream'
+  it('serializes integration projects that share the Compose database', () => {
+    expect(buildRunManyIntegrationCommand(['data', 'sva-studio-react'])).toBe(
+      'env -u NO_COLOR pnpm nx run-many -t test:integration --projects=data,sva-studio-react --parallel=1 --output-style=stream'
     );
   });
 

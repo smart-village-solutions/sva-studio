@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveEffectiveWasteTourDateShiftsForYear } from './master-data-tour-date-shifts.js';
+import {
+  isValidWasteIsoDateOnly,
+  resolveEffectiveWasteTourDateShiftsForYear,
+} from './master-data-tour-date-shifts.js';
 
 const shift = (id: string, originalDate: string, actualDate: string, hasYear: boolean) => ({
   id,
@@ -11,6 +14,14 @@ const shift = (id: string, originalDate: string, actualDate: string, hasYear: bo
 });
 
 describe('resolveEffectiveWasteTourDateShiftsForYear', () => {
+  it('validates real four-digit Gregorian calendar dates', () => {
+    expect(isValidWasteIsoDateOnly('2024-02-29')).toBe(true);
+    expect(isValidWasteIsoDateOnly('2026-02-29')).toBe(false);
+    expect(isValidWasteIsoDateOnly('2026-02-31')).toBe(false);
+    expect(isValidWasteIsoDateOnly('0000-01-01')).toBe(false);
+    expect(isValidWasteIsoDateOnly('2026-2-01')).toBe(false);
+  });
+
   it('expands an annual rule while preserving its date distance', () => {
     expect(
       resolveEffectiveWasteTourDateShiftsForYear(

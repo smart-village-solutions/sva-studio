@@ -110,7 +110,8 @@ export {
   compactOptionalString, contentMediaUploadPhaseMessageKey, formatDateTimeInEditorTimeZone,
   formatTechnicalDateTimeInEditorTimeZone, findHostMediaReferenceAssetId, fromDatetimeLocalValue,
   getHostMediaAssetPersistentUrl, isSupportedContentMediaUploadFile, readHostMediaAssetCopyright,
-  readHostMediaAssetFileName, readHostMediaAssetTitle, toDatetimeLocalValue, toHostMediaFieldOptions,
+  readHostMediaAssetFileName, readHostMediaAssetTitle, resolveEditorLocale, toDatetimeLocalValue,
+  toHostMediaFieldOptions,
 } from './content-ui-utils.js';
 export { readFieldError } from './form-errors.js';
 export type {

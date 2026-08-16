@@ -167,19 +167,19 @@ Workflow: `.github/workflows/runtime-gates.yml`
 
 ### PR-Workflow-Matrix
 
-| Workflow / Jobname in GitHub | Zweck | Trigger-Modell |
-| --- | --- | --- |
-| `Runtime Gates / Coverage` | No-op für normale PRs, Changed-first plus vollständiger finaler Scope für Coverage-/CI-kritische PRs, voller Lauf für `main`/nightly | alle PRs, `main`, nightly |
-| `Runtime Gates / Complexity` | Repository-weites Komplexitäts-Gate | alle PRs, `main`, nightly |
-| `Quality Gates / A11y` | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main` | alle PRs, `main` |
-| `Runtime Gates / PR Integration` | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat | Pull Requests |
-| `Runtime Gates / Integration` | voller Lauf der allgemeinen echten Integrationsziele | `main`, nightly |
-| `Main Build / App Build` | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests | alle PRs, `main` |
-| `App E2E / App E2E` | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz | alle PRs, nightly, manuell |
-| `monitoring-stack` | Monitoring-spezifische Docker-/Stack-Checks | pfadbasiert |
-| `Schema Diff Gate` | Schema-Diff gegen Staging | pfadbasiert |
-| `Repository Hygiene / File Placement` | Dateiplatzierungs-Regeln | alle PRs und `main` |
-| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade | alle PRs und `main` |
+| Workflow / Jobname in GitHub              | Zweck                                                                                                                                | Trigger-Modell             |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------- |
+| `Runtime Gates / Coverage`                | No-op für normale PRs, Changed-first plus vollständiger finaler Scope für Coverage-/CI-kritische PRs, voller Lauf für `main`/nightly | alle PRs, `main`, nightly  |
+| `Runtime Gates / Complexity`              | Repository-weites Komplexitäts-Gate                                                                                                  | alle PRs, `main`, nightly  |
+| `Quality Gates / A11y`                    | selektiver Accessibility-Check nur für UI-relevante PRs, voller Lauf auf `main`                                                      | alle PRs, `main`           |
+| `Runtime Gates / PR Integration`          | scoped allgemeine echte Integrationsziele ohne Monitoring-Stack-Duplikat                                                             | Pull Requests              |
+| `Runtime Gates / Integration`             | voller Lauf der allgemeinen echten Integrationsziele                                                                                 | `main`, nightly            |
+| `Main Build / App Build`                  | relevanter App-Build für PRs und `main`, inklusive selektivem `verify:runtime-artifact` nur für runtime-kritische Pull Requests      | alle PRs, `main`           |
+| `App E2E / App E2E`                       | Browser-Smoke für App-Routen mit No-op bei Nicht-Relevanz                                                                            | alle PRs, nightly, manuell |
+| `monitoring-stack`                        | Monitoring-spezifische Docker-/Stack-Checks                                                                                          | pfadbasiert                |
+| `Schema Diff Gate`                        | Schema-Diff gegen Staging                                                                                                            | pfadbasiert                |
+| `Repository Hygiene / File Placement`     | Dateiplatzierungs-Regeln                                                                                                             | alle PRs und `main`        |
+| `Repository Hygiene / DB Schema Snapshot` | migrationsbasierter Soll-Ist-Abgleich gegen `studio-db-schema-final.sql` mit No-op außerhalb relevanter Pfade                        | alle PRs und `main`        |
 
 ### Recommended Branch-Protection-Checks
 
@@ -207,7 +207,7 @@ Die wichtigsten Workflows schreiben eine kurze `GITHUB_STEP_SUMMARY` mit Scope, 
 
 ### Echte Integrationsziele
 
-`test:integration` steht nur für echte infra-abhängige Targets. Aktuell gehört dazu im allgemeinen Gate nur `data:test:integration`. Bekannte Platzhalter wie `sva-studio-react`, `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht mehr als grüne Integrationssignale mitgezählt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert über den separaten Workflow `Monitoring Stack` abgesichert.
+`test:integration` steht nur für echte infra-abhängige Targets. Im allgemeinen Gate laufen aktuell `data:test:integration` und `sva-studio-react:test:integration`; beide verwenden denselben lokalen Compose-Postgres und werden deshalb bewusst seriell ausgeführt. Das App-Ziel prüft den PostgreSQL-Vertrag für tourbezogene Ausweichtermine einschließlich `DATE`, partieller Unique-Indizes und konkurrierender Inserts. Bekannte Platzhalter wie `core`, `media`, `studio-module-iam`, `tooling-testing` und die Plugin-Pakete werden dort bewusst nicht als grüne Integrationssignale mitgezählt. `monitoring-client:test:integration` bleibt ein echtes Stack-Signal, wird aber dedupliziert über den separaten Workflow `Monitoring Stack` abgesichert.
 
 ### DB-Snapshot-Gate
 
@@ -307,21 +307,25 @@ Ein Coverage-Pass ohne diese Nachweise ist für den Foundation-Scope nicht ausre
 **Symptom:** `pnpm test:coverage:affected` läuft durch, aber es wird keine Coverage generiert (keine `coverage/coverage-summary.json`).
 
 **Häufige Ursachen:**
+
 - Es gibt tatsächlich keine betroffenen Projekte mit `test:coverage` Target.
 - `origin/main` ist lokal nicht aktuell (falsche `--base` Referenz).
 
 **Vorgehen:**
+
 ```bash
 git fetch origin main
 pnpm test:coverage:affected
 ```
 
 **Debugging:**
+
 ```bash
 pnpm nx affected --target=test:coverage --base=origin/main --head=HEAD --verbose
 ```
 
 Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, prüfe:
+
 - ob die Änderung in einem Nx-Projekt liegt (nicht z. B. nur in nicht-erfassten Ordnern)
 - ob das betroffene Projekt überhaupt ein `test:coverage` Target definiert
 
@@ -332,11 +336,13 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Symptom:** Das Coverage-Gate meldet, dass `coverage-summary.json` fehlt.
 
 **Häufige Ursachen:**
+
 - Coverage ist im Projekt nicht konfiguriert (z. B. `@vitest/coverage-v8` fehlt).
 - `test:coverage` wird ohne Coverage-Flag/Reporter ausgeführt.
 - Es existieren keine Tests (siehe „No tests configured“).
 
 **Vorgehen:**
+
 1. Sicherstellen, dass Coverage-Dependency installiert ist (pro Projekt):
    ```bash
    pnpm --filter <project> add -D @vitest/coverage-v8
@@ -354,6 +360,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Symptom:** Das Gate schlägt fehl, weil eine Metrik im Vergleich zur Baseline um mehr als die erlaubten Prozentpunkte gefallen ist.
 
 **Vorgehen:**
+
 - Primär: Tests ergänzen oder bestehende Tests reparieren, bis die Regression behoben ist.
 - Falls die Baseline bewusst angepasst werden soll (z. B. Refactor mit geänderter Messbasis): Baseline nur nach Team-Entscheid aktualisieren:
   ```bash
@@ -371,6 +378,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Ursache:** Eine in `criticalProjects.<projekt>.hotspotFloors` definierte kritische Datei liegt unter dem Mindestwert für `lines`, `functions` oder `branches`.
 
 **Vorgehen:**
+
 - Tests gezielt für den betroffenen Hotspot ergänzen
 - Falls der Hotspot durch neue Komplexität entstanden ist: Komplexitäts-Review und ggf. neue Refactoring-Aufgabe ergänzen
 - Floors nur anheben oder feiner zuschneiden, nie wegen steigender Komplexität absenken
@@ -384,6 +392,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Ursache:** Das Projekt ist in `tooling/testing/coverage-policy.json` unter `exemptProjects` gelistet.
 
 **Vorgehen:**
+
 - Exemption nur temporär nutzen.
 - Sobald Unit-Tests vorhanden sind:
   1. Projekt aus `exemptProjects` entfernen
@@ -399,6 +408,7 @@ Wenn der PR Änderungen enthält, aber kein Projekt als betroffen erkannt wird, 
 **Häufige Ursache:** Es gibt keine Testdateien im Projekt; je nach Konfiguration kann `--passWithNoTests` den Run trotzdem erfolgreich beenden.
 
 **Vorgehen:**
+
 - Mindestens einen Unit-Test hinzufügen (damit Coverage erzeugt wird).
 - Optional (je nach Governance-Entscheid): `--passWithNoTests` entfernen, damit fehlende Tests früh sichtbar werden.
 

@@ -126,6 +126,7 @@ const {
   deleteWasteTour,
   deleteWasteTourAssignment,
   deleteWasteTourDateShift,
+  createWasteTourDateShift,
   saveWasteTourDateShift,
 } = wasteManagementEntitySavers;
 
@@ -441,7 +442,7 @@ export const wasteManagementHandlers = {
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       createWasteManagementTourDateShiftInternal(nextRequest, ctx, {
         ...sharedWasteManagementDeps,
-        saveWasteTourDateShift,
+        createWasteTourDateShift,
         loadWasteTourDateShiftById,
       })
     ),

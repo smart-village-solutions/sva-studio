@@ -22,6 +22,7 @@ const { createWasteTourDateShiftSchema, updateWasteTourDateShiftSchema } =
   wasteManagementTourSchemas;
 
 const tourDateShiftUniqueConstraints = new Set([
+  'waste_tour_date_shifts_pkey',
   'uq_waste_tour_date_shifts_specific_origin',
   'uq_waste_tour_date_shifts_annual_origin',
 ]);
@@ -118,7 +119,7 @@ export const wasteManagementTourDateShiftHandlers = {
         mapPersistenceError: mapTourDateShiftPersistenceConflict,
       },
       save: () =>
-        requireDeps(deps.saveWasteTourDateShift, 'saveWasteTourDateShift')(
+        requireDeps(deps.createWasteTourDateShift, 'createWasteTourDateShift')(
           instanceId,
           toTourDateShiftInput(parsed.data.id, parsed.data)
         ),

@@ -581,6 +581,25 @@ const openWastePlugin = async (page: Page) => {
   await expect(page.getByRole('heading', { name: 'Abfallkalender' })).toBeVisible();
 };
 
+const establishServerReadableAuthSession = async (context: BrowserContext, page: Page) => {
+  const origin = new URL(page.url()).origin;
+  const response = await context.request.post(
+    new URL('/auth/dev-login?returnTo=%2F', origin).toString(),
+    {
+      headers: {
+        Origin: origin,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      maxRedirects: 0,
+    }
+  );
+
+  // Credential-free suites use the server's Playwright-only dev-auth mode.
+  // When real auth credentials are configured, the endpoint stays disabled
+  // and the persisted Keycloak session already belongs to this context.
+  expect([302, 404]).toContain(response.status());
+};
+
 test.describe('waste management plugin', () => {
   test('opens contextual tour-shift creation in a new tab without losing the tour workflow', async ({
     context,
@@ -631,6 +650,7 @@ test.describe('waste management plugin', () => {
     await expect(createShiftLink).toHaveAttribute('rel', 'noopener noreferrer');
 
     const sourceUrl = page.url();
+    await establishServerReadableAuthSession(context, page);
     const popupPromise = page.waitForEvent('popup');
     await createShiftLink.click();
     const popup = await popupPromise;

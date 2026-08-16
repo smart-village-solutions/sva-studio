@@ -395,6 +395,32 @@ describe('WasteOutputPanel', () => {
     );
   });
 
+  it('shows media library load failures and retries without presenting a false empty state', async () => {
+    mediaMocks.listHostMediaAssets.mockRejectedValueOnce(new Error('media unavailable'));
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      permissionActions: [
+        'waste-management.settings.manage',
+        'media.read',
+        'media.reference.manage',
+      ],
+      assignedModules: ['waste-management'],
+      roles: [],
+    });
+
+    render(<WasteOutputPanel />);
+
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'output.pdf.mediaPicker.libraryLoadFailed'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'output.pdf.mediaPicker.retryLibrary' }));
+
+    await waitFor(() => expect(mediaMocks.listHostMediaAssets).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByText('output.pdf.mediaPicker.libraryLoadFailed')).toBeNull()
+    );
+  });
+
   it('uploads the pdf logo as public media when media creation is allowed', async () => {
     publishSessionAccessSnapshot({
       isResolved: true,

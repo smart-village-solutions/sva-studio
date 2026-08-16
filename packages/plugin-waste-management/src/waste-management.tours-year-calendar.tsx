@@ -7,7 +7,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sva/studio-ui-react';
-import { isWasteTourValidityApplicable, usePluginTranslation } from '@sva/plugin-sdk';
+import {
+  isWasteTourValidityApplicable,
+  resolveEditorLocale,
+  usePluginTranslation,
+} from '@sva/plugin-sdk';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { WasteManagementSchedulingOverview } from './waste-management.api.js';
@@ -27,6 +31,7 @@ const TourYearCalendarMonth = ({
   search,
   canCreateShift,
   tourName,
+  locale,
   pt,
 }: {
   readonly monthIndex: number;
@@ -36,20 +41,26 @@ const TourYearCalendarMonth = ({
   readonly search: WasteManagementSearchParams | undefined;
   readonly canCreateShift: boolean;
   readonly tourName: string | undefined;
+  readonly locale: string;
   readonly pt: ReturnType<typeof usePluginTranslation>;
 }) => {
-  const first = new Date(year, monthIndex, 1);
-  const startWeekday = (first.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const monthLabel = new Intl.DateTimeFormat('de-DE', { month: 'long' }).format(
-    new Date(year, monthIndex, 1)
+  const first = new Date(Date.UTC(year, monthIndex, 1));
+  const startWeekday = (first.getUTCDay() + 6) % 7;
+  const daysInMonth = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  const monthLabel = new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(
+    first
+  );
+  const weekdayLabels = Array.from({ length: 7 }, (_, index) =>
+    new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(
+      new Date(Date.UTC(2026, 0, 5 + index))
+    )
   );
 
   return (
     <section className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4 shadow-sm">
       <h3 className="text-sm font-semibold capitalize tracking-wide">{monthLabel}</h3>
       <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day) => (
+        {weekdayLabels.map((day) => (
           <div key={`${monthIndex}-${day}`}>{day}</div>
         ))}
       </div>
@@ -68,6 +79,7 @@ const TourYearCalendarMonth = ({
             search={search}
             canCreateShift={canCreateShift}
             tourName={tourName}
+            locale={locale}
             pt={pt}
           />
         ))}
@@ -131,6 +143,7 @@ type TourYearCalendarDialogProps = {
 
 export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
   const pt = usePluginTranslation('wasteManagement');
+  const locale = resolveEditorLocale();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const canCreateShift = Boolean(
@@ -192,6 +205,7 @@ export const TourYearCalendarDialog = (props: TourYearCalendarDialogProps) => {
                   search={props.search}
                   canCreateShift={canCreateShift}
                   tourName={props.tour?.name}
+                  locale={locale}
                   pt={pt}
                 />
               ))}

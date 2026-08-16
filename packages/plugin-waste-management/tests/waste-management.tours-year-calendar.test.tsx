@@ -9,6 +9,7 @@ import { TourYearCalendarDialog } from '../src/waste-management.tours-year-calen
 vi.mock('@sva/plugin-sdk', () => ({
   usePluginTranslation: () => (key: string, values?: Record<string, unknown>) =>
     values ? `${key}:${Object.values(values).join('|')}` : key,
+  resolveEditorLocale: () => (document.documentElement.lang === 'en' ? 'en-GB' : 'de-DE'),
   isWasteTourValidityApplicable: (tour: { recurrence?: string; customRecurrenceId?: string }) =>
     Boolean(tour.customRecurrenceId) ||
     ['weekly', 'biweekly', 'fourweekly', 'yearly'].includes(tour.recurrence ?? ''),
@@ -77,6 +78,7 @@ describe('TourYearCalendarDialog', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-05-10T09:00:00.000Z'));
     calculateTourOccurrenceEntriesForYearMock.mockReset();
+    document.documentElement.lang = 'de';
   });
 
   afterEach(() => {
@@ -123,11 +125,16 @@ describe('TourYearCalendarDialog', () => {
     expect(container.querySelector('[data-shifted="false"]')?.textContent).toContain('15');
     expect(container.querySelector('[data-shifted="true"]')?.textContent).toContain('2');
     const shiftedDay = container.querySelector('[data-shifted="true"]');
-    expect(shiftedDay?.getAttribute('style')).toContain('border-color: #009e8f');
-    expect(shiftedDay?.getAttribute('style')).toContain(
-      'background-color: rgba(0, 158, 143, 0.16)'
+    expect(shiftedDay?.getAttribute('style')).toBeNull();
+    expect(shiftedDay?.className).toContain('border-info/60');
+    expect(shiftedDay?.getAttribute('tabindex')).toBe('0');
+    expect(shiftedDay?.getAttribute('aria-describedby')).toBe(
+      shiftedDay?.querySelector('.sr-only')?.id
     );
-    expect(shiftedDay?.getAttribute('title')).toBe(
+    expect(shiftedDay?.querySelector('[aria-hidden="true"]')?.className).toContain(
+      'group-focus:block'
+    );
+    expect(shiftedDay?.querySelector('.sr-only')?.textContent).toBe(
       'tours.yearCalendar.meta.shiftedReplacementFor:01.03.2026'
     );
     const shiftLinks = screen.getAllByRole('link', {
@@ -194,9 +201,31 @@ describe('TourYearCalendarDialog', () => {
       />
     );
 
-    expect(container.querySelector('[data-shifted="true"]')?.getAttribute('title')).toBe(
-      'tours.yearCalendar.meta.shiftedReplacementFor:01.01.2026'
-    );
+    expect(
+      container.querySelector('[data-shifted="true"]')?.querySelector('.sr-only')?.textContent
+    ).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01.01.2026');
     expect(container.querySelector('[data-shifted="false"]')?.getAttribute('title')).toBeNull();
+  });
+
+  it('formats dates, month names, and weekday labels with the active document locale', () => {
+    document.documentElement.lang = 'en';
+    calculateTourOccurrenceEntriesForYearMock.mockReturnValue([
+      { date: '2026-03-02', shifted: true, originalDate: '2026-03-01' },
+    ]);
+
+    const { container } = render(
+      <TourYearCalendarDialog
+        open
+        tour={{ id: 'tour-1', name: 'Residual waste', recurrence: 'weekly' } as never}
+        scheduling={{ globalDateShifts: [], tourDateShifts: [] } as never}
+        onOpenChange={() => undefined}
+      />
+    );
+
+    expect(screen.getByRole('heading', { name: 'March' })).toBeTruthy();
+    expect(screen.getAllByText('Mon').length).toBeGreaterThan(0);
+    expect(
+      container.querySelector('[data-shifted="true"]')?.querySelector('.sr-only')?.textContent
+    ).toBe('tours.yearCalendar.meta.shiftedReplacementFor:01/03/2026');
   });
 });

@@ -9,6 +9,8 @@ const tourId = '10000000-0000-4000-8000-000000000001';
 const firstShiftId = '20000000-0000-4000-8000-000000000001';
 const secondShiftId = '20000000-0000-4000-8000-000000000002';
 const annualShiftId = '20000000-0000-4000-8000-000000000003';
+const annualCollisionFirstId = '20000000-0000-4000-8000-000000000004';
+const annualCollisionSecondId = '20000000-0000-4000-8000-000000000005';
 
 type PgFailure = Error & {
   readonly code?: string;
@@ -106,6 +108,56 @@ describe('Waste tour date shifts against PostgreSQL', () => {
     expect(failure.constraint).toBe('uq_waste_tour_date_shifts_specific_origin');
   });
 
+  it('rejects an insert with an existing id without changing the stored row', async () => {
+    const [existing] = await repository.listWasteTourDateShifts({ hasYear: true });
+    expect(existing).toBeDefined();
+    if (!existing) return;
+
+    await expect(
+      repository.insertWasteTourDateShift({
+        ...buildShift(existing.id, true),
+        originalDate: '2026-10-01',
+        actualDate: '2026-10-02',
+        description: 'must not overwrite',
+      })
+    ).rejects.toMatchObject({ code: '23505', constraint: 'waste_tour_date_shifts_pkey' });
+
+    await expect(repository.getWasteTourDateShiftById(existing.id)).resolves.toMatchObject({
+      originalDate: '2026-12-24',
+      actualDate: '2026-12-23',
+      description: existing.id,
+    });
+  });
+
+  it('allows exactly one concurrent annual insert for the same month and day', async () => {
+    const firstAnnual = {
+      ...buildShift(annualCollisionFirstId, false),
+      originalDate: '2025-11-05',
+      actualDate: '2025-11-06',
+    };
+    const secondAnnual = {
+      ...buildShift(annualCollisionSecondId, false),
+      originalDate: '2027-11-05',
+      actualDate: '2027-11-06',
+    };
+
+    const outcomes = await Promise.allSettled([
+      repository.insertWasteTourDateShift(firstAnnual),
+      repository.insertWasteTourDateShift(secondAnnual),
+    ]);
+    const fulfilled = outcomes.filter((outcome) => outcome.status === 'fulfilled');
+    const rejected = outcomes.filter(
+      (outcome): outcome is PromiseRejectedResult => outcome.status === 'rejected'
+    );
+
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0]?.reason).toMatchObject({
+      code: '23505',
+      constraint: 'uq_waste_tour_date_shifts_annual_origin',
+    });
+  });
+
   it('allows annual and year-specific rules together and updates the existing row', async () => {
     await repository.upsertWasteTourDateShift(buildShift(annualShiftId, false));
     const specificRows = await repository.listWasteTourDateShifts({ hasYear: true });
@@ -122,7 +174,7 @@ describe('Waste tour date shifts against PostgreSQL', () => {
     });
 
     const rows = await repository.listWasteTourDateShifts();
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     expect(rows.find((row) => row.id === existing.id)).toMatchObject({
       actualDate: '2026-12-22',
       description: 'updated own row',
@@ -136,10 +188,10 @@ describe('Waste tour date shifts against PostgreSQL', () => {
       return await clientRepository.listWasteTourDateShifts();
     });
 
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     for (const row of rows) {
-      expect(row.originalDate).toBe('2026-12-24');
-      expect(row.actualDate).toMatch(/^2026-12-2[23]$/u);
+      expect(row.originalDate).toMatch(/^20(?:2[567])-(?:11-05|12-24)$/u);
+      expect(row.actualDate).toMatch(/^20(?:2[567])-(?:11-06|12-2[23])$/u);
       expect(typeof row.originalDate).toBe('string');
       expect(typeof row.actualDate).toBe('string');
       expect(row.originalDate).not.toBeInstanceOf(Date);

@@ -17,12 +17,15 @@ const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/u;
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
 
 const parseIsoDateOnlyUtc = (value: string): Date | null => {
-  if (!isoDatePattern.test(value)) return null;
+  if (!isoDatePattern.test(value) || value.startsWith('0000-')) return null;
   const parsed = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value
     ? null
     : parsed;
 };
+
+export const isValidWasteIsoDateOnly = (value: string): boolean =>
+  parseIsoDateOnlyUtc(value) !== null;
 
 const replaceIsoYear = (value: string, year: number): string | null => {
   const parsed = parseIsoDateOnlyUtc(value);

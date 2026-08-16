@@ -167,7 +167,10 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
   ) => readonly WasteManagementSettingsInterfaceOption[];
   readonly previewWasteLocationTourPickupDateImport?: (input: {
     readonly instanceId: string;
-    readonly sourceFormat: Exclude<WasteManagementImportSourceFormat, 'application/json' | 'application/zip'>;
+    readonly sourceFormat: Exclude<
+      WasteManagementImportSourceFormat,
+      'application/json' | 'application/zip'
+    >;
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
   }) => Promise<WasteLocationTourPickupDateImportPreview>;
@@ -284,6 +287,10 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
     input: WastePdfStaticSettingsWriteInput
   ) => Promise<void>;
   readonly saveWasteTourDateShift?: (
+    instanceId: string,
+    input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
+  ) => Promise<void>;
+  readonly createWasteTourDateShift?: (
     instanceId: string,
     input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
   ) => Promise<void>;

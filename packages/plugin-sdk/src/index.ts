@@ -250,6 +250,7 @@ export {
   alignHostMediaReferencesByOrder,
   formatDateTimeInEditorTimeZone,
   formatTechnicalDateTimeInEditorTimeZone,
+  resolveEditorLocale,
   findHostMediaReferenceAssetId,
   fromDatetimeLocalValue,
   getHostMediaAssetPersistentUrl,

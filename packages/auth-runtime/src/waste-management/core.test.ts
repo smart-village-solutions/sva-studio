@@ -2205,7 +2205,7 @@ describe('waste-management auth runtime handlers', () => {
       updatedAt: '2026-05-09T12:30:00.000Z',
     };
 
-    const saveWasteTourDateShift = vi.fn(async () => undefined);
+    const createWasteTourDateShift = vi.fn(async () => undefined);
     const loadWasteTourDateShiftById = vi.fn(async () => savedShift);
 
     const response = await createWasteManagementTourDateShiftInternal(
@@ -2231,7 +2231,7 @@ describe('waste-management auth runtime handlers', () => {
       actor,
       {
         getRequestId: () => 'req-test',
-        saveWasteTourDateShift,
+        createWasteTourDateShift,
         loadWasteTourDateShiftById,
         resolvePermissions: vi.fn(async () => ({
           ok: true as const,
@@ -2240,7 +2240,7 @@ describe('waste-management auth runtime handlers', () => {
       }
     );
 
-    expect(saveWasteTourDateShift).toHaveBeenCalledWith('tenant-a', {
+    expect(createWasteTourDateShift).toHaveBeenCalledWith('tenant-a', {
       id: 'shift-new',
       tourId: 'tour-1',
       originalDate: '2026-12-24',
@@ -2613,7 +2613,7 @@ describe('waste-management auth runtime handlers', () => {
         url: 'https://studio.test/api/v1/waste-management/tour-date-shifts',
         permission: 'waste-management.scheduling.manage',
         deps: {
-          saveWasteTourDateShift: vi.fn(async () => undefined),
+          createWasteTourDateShift: vi.fn(async () => undefined),
           loadWasteTourDateShiftById: vi.fn(async () => null),
         },
         body: {

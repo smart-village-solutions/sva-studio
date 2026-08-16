@@ -24,7 +24,7 @@ export const filterRunnableIntegrationProjects = (projects: readonly string[]): 
 };
 
 export const buildRunManyIntegrationCommand = (projects: readonly string[]): string =>
-  `env -u NO_COLOR pnpm nx run-many -t test:integration --projects=${projects.join(',')} --output-style=stream`;
+  `env -u NO_COLOR pnpm nx run-many -t test:integration --projects=${projects.join(',')} --parallel=1 --output-style=stream`;
 
 const parseCliOptions = (args: readonly string[]): IntegrationGateOptions => {
   let base = 'origin/main';

@@ -332,6 +332,7 @@ export type {
   WasteTourValidityRecord,
 } from './waste-management-master-data.js';
 export {
+  isValidWasteIsoDateOnly,
   isWasteTourValidityApplicable,
   resolveEffectiveWasteTourDateShiftsForYear,
   resolveWasteTourValidityDates,

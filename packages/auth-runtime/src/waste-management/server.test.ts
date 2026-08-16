@@ -171,6 +171,7 @@ const saverMocks = vi.hoisted(() => ({
   deleteWasteTour: vi.fn(async () => null),
   deleteWasteTourAssignment: vi.fn(async () => null),
   deleteWasteTourDateShift: vi.fn(async () => null),
+  createWasteTourDateShift: vi.fn(async () => null),
   saveWasteTourDateShift: vi.fn(async () => null),
 }));
 
@@ -241,6 +242,7 @@ vi.mock('./server-loaders.js', () => ({
     deleteWasteTour: saverMocks.deleteWasteTour,
     deleteWasteTourAssignment: saverMocks.deleteWasteTourAssignment,
     deleteWasteTourDateShift: saverMocks.deleteWasteTourDateShift,
+    createWasteTourDateShift: saverMocks.createWasteTourDateShift,
     saveWasteTourDateShift: saverMocks.saveWasteTourDateShift,
   },
 }));
@@ -565,7 +567,7 @@ describe('wasteManagementHandlers', () => {
         internal: coreHandlerMocks.createWasteManagementTourDateShiftInternal,
         deps: {
           ...sharedWasteManagementDepsMock,
-          saveWasteTourDateShift: saverMocks.saveWasteTourDateShift,
+          createWasteTourDateShift: saverMocks.createWasteTourDateShift,
           loadWasteTourDateShiftById: loaderMocks.loadWasteTourDateShiftById,
         },
       },

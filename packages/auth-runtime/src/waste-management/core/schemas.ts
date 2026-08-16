@@ -1,5 +1,6 @@
 import {
   isPlausibleEmailAddress,
+  isValidWasteIsoDateOnly,
   wasteManagementMasterDataContract,
   type WasteTourRecurrence,
 } from '@sva/core';
@@ -178,7 +179,7 @@ const wasteTourRecurrenceSchema = z.enum([
 const wasteTourDateSchema = z
   .string()
   .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Ungültiges Datum im Format JJJJ-MM-TT.');
+  .refine(isValidWasteIsoDateOnly, 'Ungültiges Datum im Format JJJJ-MM-TT.');
 
 const wasteCustomRecurrencePresetSchema = z.object({
   id: z.string().trim().min(1),

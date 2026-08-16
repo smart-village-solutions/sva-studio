@@ -82,8 +82,11 @@ const useMediaLibrary = () => {
     [sessionAccess.isResolved, sessionAccess.permissionActions]
   );
   const [assets, setAssets] = useState<readonly HostMediaAssetListItem[]>([]);
+  const [error, setError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const assetsRef = useRef<readonly HostMediaAssetListItem[]>([]);
   const refresh = useCallback(async () => {
+    setIsLoading(true);
     try {
       const nextAssets = await listHostMediaAssets({
         fetch: globalThis.fetch.bind(globalThis),
@@ -91,14 +94,16 @@ const useMediaLibrary = () => {
       });
       assetsRef.current = nextAssets;
       setAssets(nextAssets);
+      setError(false);
       return nextAssets;
     } catch {
-      assetsRef.current = [];
-      setAssets([]);
-      return [];
+      setError(true);
+      return assetsRef.current;
+    } finally {
+      setIsLoading(false);
     }
   }, []);
-  return { assets, assetsRef, capabilities, refresh, setAssets };
+  return { assets, assetsRef, capabilities, error, isLoading, refresh, setAssets, setError };
 };
 
 export const useWasteBrandingMediaController = (onChange: (value: string) => void) => {
@@ -156,6 +161,7 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
       void library.refresh();
     } else {
       library.setAssets([]);
+      library.setError(false);
       library.assetsRef.current = [];
       picker.close();
     }
@@ -164,11 +170,15 @@ export const useWasteBrandingMediaController = (onChange: (value: string) => voi
     library.capabilities.canSelect,
     library.refresh,
     library.setAssets,
+    library.setError,
     picker.close,
   ]);
   return {
     mediaAssets: library.assets,
     mediaCapabilities: library.capabilities,
+    mediaLibraryError: library.error,
+    isMediaLibraryLoading: library.isLoading,
+    retryMediaLibrary: library.refresh,
     mediaPicker: picker,
   };
 };

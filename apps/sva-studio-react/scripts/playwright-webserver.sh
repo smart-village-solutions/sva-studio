@@ -6,13 +6,31 @@ PORT="${1:?port required}"
 
 : "${SVA_PARENT_DOMAIN:=studio.localhost}"
 : "${SVA_PUBLIC_BASE_URL:=http://studio.localhost:${PORT}}"
-: "${SVA_MOCK_AUTH:=false}"
+# Mock auth is only enabled for credential-free browser suites. It lets tests
+# establish a real, server-readable dev session when they exercise full
+# document navigations (for example links that open in a new tab). Suites with
+# configured tenant credentials continue to use their persisted Keycloak
+# session and keep mock auth disabled.
+if [ -z "${SVA_MOCK_AUTH+x}" ]; then
+  if [ -z "${PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME:-}" ] && \
+    [ -z "${PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD:-}" ]; then
+    SVA_MOCK_AUTH=true
+  else
+    SVA_MOCK_AUTH=false
+  fi
+fi
+if [ "$SVA_MOCK_AUTH" = "true" ]; then
+  VITE_MOCK_AUTH=true
+else
+  : "${VITE_MOCK_AUTH:=false}"
+fi
 : "${PLAYWRIGHT_TEST:=true}"
 : "${VITE_PLAYWRIGHT_TEST:=true}"
 
 export SVA_PARENT_DOMAIN
 export SVA_PUBLIC_BASE_URL
 export SVA_MOCK_AUTH
+export VITE_MOCK_AUTH
 export PLAYWRIGHT_TEST
 export VITE_PLAYWRIGHT_TEST
 

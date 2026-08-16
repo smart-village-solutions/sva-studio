@@ -188,6 +188,10 @@ export const wasteMasterDataRepositoryContract = {
     defineRepositoryMethod<(tourId: string) => Promise<readonly WasteTourDateShiftRecord[]>>(),
   getWasteTourDateShiftById:
     defineRepositoryMethod<(id: string) => Promise<WasteTourDateShiftRecord | null>>(),
+  insertWasteTourDateShift:
+    defineRepositoryMethod<
+      (input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) => Promise<void>
+    >(),
   upsertWasteTourDateShift:
     defineRepositoryMethod<
       (input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>) => Promise<void>

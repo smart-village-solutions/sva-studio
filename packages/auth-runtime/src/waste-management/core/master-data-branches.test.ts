@@ -868,7 +868,7 @@ describe('waste-management master-data branch handlers', () => {
         actor,
         {
           ...createDeps('waste-management.scheduling.manage'),
-          saveWasteTourDateShift: vi.fn(async () => {
+          createWasteTourDateShift: vi.fn(async () => {
             throw Object.assign(new Error('duplicate'), {
               code: '23505',
               constraint: 'uq_waste_tour_date_shifts_annual_origin',
@@ -879,6 +879,65 @@ describe('waste-management master-data branch handlers', () => {
 
     expect(response.status).toBe(409);
     await expect(response.json()).resolves.toMatchObject({ error: { code: 'conflict' } });
+  });
+
+  it('maps a tour-date-shift id collision on create to conflict without overwriting it', async () => {
+    const createWasteTourDateShift = vi.fn(async () => {
+      throw Object.assign(new Error('duplicate'), {
+        code: '23505',
+        constraint: 'waste_tour_date_shifts_pkey',
+      });
+    });
+    const response =
+      await wasteManagementTourDateShiftHandlers.createWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'tour-shift-existing',
+            tourId: 'tour-1',
+            originalDate: '2026-05-01',
+            actualDate: '2026-05-02',
+            hasYear: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          createWasteTourDateShift,
+        }
+      );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'conflict' } });
+    expect(createWasteTourDateShift).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects impossible tour-date-shift calendar dates before persistence', async () => {
+    const createWasteTourDateShift = vi.fn(async () => undefined);
+    const response =
+      await wasteManagementTourDateShiftHandlers.createWasteManagementTourDateShiftInternal(
+        new Request('https://studio.test/api/v1/waste-management/tour-date-shifts', {
+          method: 'POST',
+          headers: createHeaders(),
+          body: JSON.stringify({
+            id: 'tour-shift-invalid-date',
+            tourId: 'tour-1',
+            originalDate: '2026-02-31',
+            actualDate: '2026-03-01',
+            hasYear: true,
+          }),
+        }),
+        actor,
+        {
+          ...createDeps('waste-management.scheduling.manage'),
+          createWasteTourDateShift,
+        }
+      );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: 'invalid_request' } });
+    expect(createWasteTourDateShift).not.toHaveBeenCalled();
   });
 
   it('allows a tour-date-shift update of the same persisted record', async () => {
@@ -936,7 +995,7 @@ describe('waste-management master-data branch handlers', () => {
         actor,
         {
           ...createDeps('waste-management.scheduling.manage'),
-          saveWasteTourDateShift: vi.fn(async () => {
+          createWasteTourDateShift: vi.fn(async () => {
             throw Object.assign(new Error('duplicate'), {
               code: '23505',
               constraint: 'some_other_unique_constraint',
@@ -1323,7 +1382,7 @@ describe('waste-management master-data branch handlers', () => {
         }),
       deps: () => ({
         ...createDeps('waste-management.scheduling.manage'),
-        saveWasteTourDateShift: vi.fn(async () => undefined),
+        createWasteTourDateShift: vi.fn(async () => undefined),
         loadWasteTourDateShiftById: vi.fn(async () => null),
       }),
       expectedMessage: 'Der tourbezogene Waste-Ausweichtermin konnte nicht verifiziert werden.',

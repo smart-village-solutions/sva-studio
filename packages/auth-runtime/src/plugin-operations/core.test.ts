@@ -1036,4 +1036,136 @@ describe('plugin operations handlers', () => {
     expect(response.status).toBe(403);
     expect(artifactState.readPluginOperationArtifact).not.toHaveBeenCalled();
   });
+
+  it('rejects invalid artifact paths before actor and repository resolution', async () => {
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request('https://studio.test/api/v1/plugin-operations/jobs/not-a-job/artifacts/not-an-artifact')
+    );
+
+    expect(response.status).toBe(400);
+    expect(artifactState.resolveActorInfo).not.toHaveBeenCalled();
+    expect(repositoryState.withStudioJobRepository).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [undefined, 'missing job'],
+    [{ status: 'failed' }, 'unfinished job'],
+  ])('returns not found for an unavailable artifact job: %s', async (job) => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({ getJobDetail: vi.fn(async () => job) })
+    );
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/22222222-2222-4222-8222-222222222222'
+      )
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it('enforces the current waste export permission', async () => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          status: 'succeeded',
+          pluginId: 'waste-management',
+          actorAccountId: 'account-1',
+        })),
+      })
+    );
+    middlewareState.authorizeInstancePermissionForUser.mockResolvedValue({
+      ok: false,
+      status: 403,
+      error: 'forbidden',
+    });
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/22222222-2222-4222-8222-222222222222'
+      )
+    );
+
+    expect(response.status).toBe(403);
+    expect(artifactState.readPluginOperationArtifact).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [undefined, 'missing artifact'],
+    [
+      {
+        artifactId: '22222222-2222-4222-8222-222222222222',
+        contentType: 'application/json',
+        fileName: 'expired.json',
+        sizeBytes: 2,
+        sha256: 'unused',
+        expiresAt: '2026-05-08T12:02:00.000Z',
+      },
+      'expired artifact',
+    ],
+  ])('returns not found for unavailable result metadata: %s', async (artifact) => {
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          status: 'succeeded',
+          pluginId: 'news',
+          actorAccountId: 'account-1',
+          resultPayload: { artifacts: artifact ? [artifact] : [] },
+        })),
+      })
+    );
+
+    const response = await downloadPluginOperationArtifactHandler(
+      new Request(
+        'https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/22222222-2222-4222-8222-222222222222'
+      )
+    );
+
+    expect(response.status).toBe(404);
+    expect(middlewareState.authorizeInstancePermissionForUser).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'waste-management.export.execute' })
+    );
+  });
+
+  it('rejects corrupt artifact content and maps storage failures', async () => {
+    const artifactId = '22222222-2222-4222-8222-222222222222';
+    repositoryState.withStudioJobRepository.mockImplementation(async (_instanceId, work) =>
+      work({
+        getJobDetail: vi.fn(async () => ({
+          status: 'succeeded',
+          pluginId: 'news',
+          actorAccountId: 'account-1',
+          resultPayload: {
+            artifacts: [{
+              artifactId,
+              contentType: 'application/json',
+              fileName: 'broken.json',
+              sizeBytes: 999,
+              sha256: 'wrong',
+              expiresAt: '2026-05-10T12:02:00.000Z',
+            }],
+          },
+        })),
+      })
+    );
+    artifactState.readPluginOperationArtifact.mockResolvedValueOnce({
+      body: new TextEncoder().encode('{}'),
+      contentType: 'application/json',
+    });
+
+    const corruptResponse = await downloadPluginOperationArtifactHandler(
+      new Request(
+        `https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/${artifactId}`
+      )
+    );
+    expect(corruptResponse.status).toBe(409);
+
+    artifactState.readPluginOperationArtifact.mockRejectedValueOnce(new Error('storage down'));
+    const failedResponse = await downloadPluginOperationArtifactHandler(
+      new Request(
+        `https://studio.test/api/v1/plugin-operations/jobs/11111111-1111-4111-8111-111111111111/artifacts/${artifactId}`
+      )
+    );
+    expect(failedResponse.status).toBe(503);
+  });
 });

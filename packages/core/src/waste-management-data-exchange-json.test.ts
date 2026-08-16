@@ -141,6 +141,54 @@ describe('Waste data exchange JSON', () => {
     ).toMatchObject({ ok: false, issues: [{ code: 'duplicate_record' }] });
   });
 
+  it('rejects malformed, incomplete, and unsupported envelopes deterministically', () => {
+    expect(parseWasteManagementDataExchangeJson('{')).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_envelope', path: '$', message: 'Ungültiges JSON.' }],
+    });
+    expect(parseWasteManagementDataExchangeJson(null)).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_envelope', message: 'JSON-Envelope fehlt.' }],
+    });
+    expect(parseWasteManagementDataExchangeJson({ formatVersion: '1.0.0' })).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_envelope', message: 'JSON-Envelope ist unvollständig.' }],
+    });
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: 'waste-management.unknown',
+        exportedAt,
+        records: [],
+      })
+    ).toMatchObject({ ok: false, issues: [{ code: 'unsupported_profile' }] });
+  });
+
+  it('rejects unsupported serializer profiles, entities, and incomplete required data', () => {
+    expect(() =>
+      serializeWasteManagementDataExchangeJson({
+        profileId: 'waste-management.unknown' as never,
+        exportedAt,
+        records: [],
+      })
+    ).toThrow('unknown_waste_data_profile:waste-management.unknown');
+    expect(() =>
+      serializeWasteManagementDataExchangeJson({
+        profileId: wasteManagementDataProfileIds.fractions,
+        exportedAt,
+        records: [{ entityType: 'unknown' } as never],
+      })
+    ).toThrow('unknown_waste_entity:unknown');
+    expect(() =>
+      serializeWasteManagementDataExchangeJson({
+        profileId: wasteManagementDataProfileIds.fractions,
+        exportedAt,
+        records: [{ entityType: 'fraction', id: 'fraction-1' }],
+      })
+    ).toThrow('invalid_waste_data_exchange:records[0].name');
+  });
+
   it.each(wasteManagementDataProfiles)(
     'roundtrips every offered JSON profile: $profileId',
     (profile) => {

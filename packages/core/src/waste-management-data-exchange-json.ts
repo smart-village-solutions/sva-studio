@@ -162,7 +162,7 @@ export const serializeWasteManagementDataExchangeJson = (input: Readonly<{
     profileId: input.profileId,
     exportedAt: input.exportedAt,
     records: selectTransferableFields(input.profileId, input.records),
-  });
+  }, { applyDefaults: false });
   if (!parsed.ok) throw new Error(`invalid_waste_data_exchange:${parsed.issues[0]?.path ?? '$'}`);
   const records = materializeSerializableRecords(parsed.envelope);
   return `${JSON.stringify({ ...parsed.envelope, records }, null, 2)}\n`;

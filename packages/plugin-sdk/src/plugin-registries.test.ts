@@ -915,6 +915,79 @@ describe('plugin registries', () => {
     ).toThrowError('invalid_plugin_job_type:news.import-articles');
   });
 
+  it('rejects invalid export profile namespaces and required metadata', () => {
+    const profile = {
+      profileId: 'news.article-export',
+      dataProfileId: 'news.articles',
+      jobTypeId: 'news.import-articles',
+      displayName: 'Article export',
+      targetFormats: ['application/json'],
+      schemaVersion: '1',
+      schemaStrategy: 'json-schema',
+      mappingStrategy: 'field-map',
+    } as const;
+
+    expect(() => definePluginExportProfiles('core', [profile])).toThrowError(
+      'reserved_plugin_namespace:core'
+    );
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, profileId: 'invalid' }])
+    ).toThrowError('invalid_plugin_export_profile:invalid');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, profileId: 'events.article-export' }])
+    ).toThrowError('plugin_export_profile_namespace_mismatch:news:events:events.article-export');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, dataProfileId: 'events.articles' }])
+    ).toThrowError('plugin_export_data_profile_namespace_mismatch:news:events.articles');
+    expect(() =>
+      definePluginExportProfiles('news', [{ ...profile, jobTypeId: 'events.export' }])
+    ).toThrowError(
+      'plugin_export_profile_job_type_namespace_mismatch:news:events.export'
+    );
+
+    for (const override of [
+      { displayName: ' ' },
+      { targetFormats: [' '] },
+      { schemaVersion: ' ' },
+      { schemaStrategy: ' ' },
+      { mappingStrategy: ' ' },
+    ]) {
+      expect(() => definePluginExportProfiles('news', [{ ...profile, ...override }])).toThrowError(
+        'invalid_plugin_export_profile:news.article-export'
+      );
+    }
+  });
+
+  it('rejects duplicate export profiles and profiles without a registered job type', () => {
+    expect(() =>
+      createPluginExportProfileRegistry([
+        { ...newsPlugin, exportProfiles: [...(newsPlugin.exportProfiles ?? []), ...(newsPlugin.exportProfiles ?? [])] },
+      ])
+    ).toThrowError('duplicate_plugin_export_profile:news.article-export');
+
+    expect(() =>
+      createPluginExportProfileRegistry([
+        {
+          ...newsPlugin,
+          exportProfiles: definePluginExportProfiles('news', [
+            {
+              profileId: 'news.missing-job-export',
+              dataProfileId: 'news.articles',
+              jobTypeId: 'news.missing-job',
+              displayName: 'Missing job export',
+              targetFormats: ['application/json'],
+              schemaVersion: '1',
+              schemaStrategy: 'json-schema',
+              mappingStrategy: 'field-map',
+            },
+          ]),
+        },
+      ])
+    ).toThrowError(
+      'unknown_plugin_export_profile_job_type:news.missing-job-export:news.missing-job'
+    );
+  });
+
   it('builds the complete build-time registry from plugin and host resources', () => {
     const registry = createBuildTimeRegistry({
       plugins: [newsPlugin],

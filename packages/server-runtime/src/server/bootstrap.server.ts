@@ -33,6 +33,9 @@ let globalSdk: SdkNodeInstance | null = null;
 let globalInitializationResult: OtelInitializationResult = getOtelInitializationResult();
 let otelSdkInitialized = false;
 
+const readDeploymentEnvironment = (): string | undefined =>
+  process.env.SVA_DEPLOYMENT_ENVIRONMENT?.trim() || process.env.NODE_ENV;
+
 const emitObservabilityStatus = (input: {
   result: 'ready' | 'degraded';
   otelStatus: OtelInitializationResult['status'];
@@ -74,7 +77,7 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
     setOtelInitializationResult(globalInitializationResult);
     otelSdkInitialized = true;
     logger.info('OTEL SDK nicht initialisiert', {
-      environment: process.env.NODE_ENV,
+      environment: readDeploymentEnvironment(),
       reason: globalInitializationResult.reason,
       logger_mode: runtimeConfig.mode,
     });
@@ -95,13 +98,13 @@ export const initializeOtelSdk = async (): Promise<OtelInitializationResult> => 
     logger.info('Initialisiere OpenTelemetry SDK', {
       serviceName,
       endpoint,
-      environment: process.env.NODE_ENV,
+      environment: readDeploymentEnvironment(),
       logger_mode: runtimeConfig.mode,
     });
 
     const sdk = (await startOtelSdkFromMonitoring({
       serviceName,
-      environment: process.env.NODE_ENV,
+      environment: readDeploymentEnvironment(),
       otlpEndpoint: endpoint,
     })) as SdkNodeInstance;
 

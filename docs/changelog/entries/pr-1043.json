@@ -1,0 +1,4 @@
+{
+  "prNumber": 1043,
+  "body": "Mainserver-Inhalte verwenden persönliche und organisatorische DataProvider konsistent und rolloutfähig.\n\n- Die organisatorische Inhaltssicht bleibt unabhängig von der Create-Richtlinie und benötigt konfliktfreie persönliche sowie organisatorische Bindungen.\n- Development, Staging und Production erhalten eine eindeutige Deployment-Kennzeichnung für Telemetrie und Betriebsnachweise.\n- Der Production-Cutover bleibt durch einen repräsentativen Staging-Canary und den rollbackfähigen Resolver abgesichert."
+}

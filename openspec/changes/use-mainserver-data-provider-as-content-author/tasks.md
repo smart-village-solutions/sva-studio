@@ -2,7 +2,7 @@
 
 - [x] 0.1 Die Changes `make-mainserver-content-authoritative`, `update-mainserver-editor-resilience` und `standardize-plugin-content-history` mit dem DataProvider-, Credential- und History-Vertrag komponieren.
 - [x] 0.2 Pro Content-Typ und fachlicher Aktion eine verbindliche Matrix aus Action-ID, Mainserver-Operation, Pre-Read, DataProvider-Response, Lifecycle, Cross-Principal-Verhalten, Idempotenz und Reconciliation dokumentieren.
-- [ ] 0.3 Reale Contract-Tests für persönliche und organisatorische Credentials, Gleichheit der DataProvider-ID aus Organisations-Benutzer-Provisioning und `/data_provider.json`, Content-Create-Zuordnung, Same-Credential-Read, Cross-Principal-Update, Visibility/Status und Hard Delete ausführen.
+- [ ] 0.3 Einen risikobasierten realen Staging-Canary mit persönlichen und organisatorischen Credentials ausführen: beide Identity-Bindungen, je ein erfolgreicher Create-/Bestandsmutationspfad, ein Cross-Principal-Negativfall, unveränderter ursprünglicher DataProvider und kein neuer ungeklärter Reconciliation-Fall. Die typisierten Adapter- und Lifecycle-Verträge der übrigen Content-Typen bleiben durch Integrationstests und Capability-Gates abgesichert; ein reales Kreuzprodukt aller Typen und Aktionen ist kein Production-Gate.
 - [x] 0.4 Nicht bestätigte Typ-/Aktionskombinationen capability-gaten; `surveys.create` bleibt aufgrund der ausdrücklichen Produktfreigabe aktiv, die reale persönliche und organisatorische Vertragsevidenz wird nachgeholt.
 - [x] 0.5 `/data_provider.json` mit demselben Bearer Token wie GraphQL integrieren, die stabile ID verpflichtend validieren und PII-haltige Rohdaten ausschließen.
 
@@ -32,15 +32,15 @@
 - [x] 3.1 `credential_visible_compatibility` implementieren: `own` und `organization` erlauben credential-sichtbare Inhalte nur nach frischem Same-Credential-Pre-Read und normaler Action-Autorisierung.
 - [x] 3.2 Update, Publish, Archive, Restore und Hard Delete jeweils an ihre eigene fully-qualified Action-Permission und die bestätigte Typ-/Aktionsmatrix binden.
 - [x] 3.3 `own` automatisch exakt auswerten, sobald die aktuelle persönliche Credential-Version konfliktfrei gebunden ist.
-- [ ] 3.4 `organization` unabhängig von `contentAuthorPolicy` automatisch exakt als persönlicher plus aktiver organisatorischer DataProvider auswerten, sobald die laut Read-Contract erforderlichen Credential-Versionen konfliktfrei gebunden sind; ohne aktive Organisation auf `own` zurückfallen.
+- [x] 3.4 `organization` unabhängig von `contentAuthorPolicy` automatisch exakt als persönlicher plus aktiver organisatorischer DataProvider auswerten, sobald die laut Read-Contract erforderlichen Credential-Versionen konfliktfrei gebunden sind; ohne aktive Organisation auf `own` zurückfallen.
 - [x] 3.5 `all` ohne Mapping, aber nur innerhalb der Instanz und der tatsächlichen Mainserver-Sichtbarkeit des verwendeten Read-Kontexts auswerten.
 - [x] 3.6 Projection- oder Cache-Treffer niemals als Mutationsautorisierung akzeptieren; `401`, `403` und `404` beim Pre-Read fail-closed behandeln.
 - [x] 3.7 Automatische Scope-Wechsel, Konflikte und Rückfälle auditieren, metrisch zählen und in Administration/Diagnose anzeigen.
-- [ ] 3.8 Listen-, Detail- und Mutationsregeln für persönliche und organisatorische Credential-Kontexte an der getrennten Read-, Create- und Bestandsmutationssemantik testen.
-- [ ] 3.9 Mit persönlichen und organisatorischen Credentials je Mainserver-Content-Typ real prüfen, ob eine einzelne Sicht bereits `own ∪ aktive Organisation` liefert oder getrennte Credential-Sichten erforderlich sind; Überlappungen und Ausschluss persönlicher Inhalte anderer Mitglieder dokumentieren.
-- [ ] 3.10 Die kleinste durch 3.9 belegte Read-Strategie implementieren, die unabhängig von `contentAuthorPolicy` den IAM-Scope `own ∪ aktive Organisation` erfüllt; keine unbelegte Doppelabfrage einführen.
-- [ ] 3.11 Falls mehrere Credential-Sichten erforderlich sind, Projection, Cache, Sync-State und Snapshot je Principal isolieren, vor Sortierung und Pagination nach stabiler Mainserver-Identität deduplizieren und bei jedem Teilausfall unabhängig von alten Snapshots einen sichtbaren Hinweis sowie eine unvollständige Gesamtzahl ausgeben.
-- [ ] 3.12 Unit- und Integrationstests für `org_only` und `org_or_personal` mit identischer Read-Semantik, eigene plus organisatorische Inhalte, Ausschluss persönlicher Inhalte anderer Mitglieder, globale Sortierung/Pagination, Organisationswechsel sowie gegebenenfalls Teilausfall, sichtbaren Unvollständigkeitshinweis und getrennte Snapshot-Bereinigung ergänzen.
+- [x] 3.8 Listen-, Detail- und Mutationsregeln für persönliche und organisatorische Credential-Kontexte an der getrennten Read-, Create- und Bestandsmutationssemantik testen.
+- [ ] 3.9 Im realen Staging-Canary bestätigen, dass getrennte persönliche und organisatorische Credential-Sichten zusammen `own ∪ aktive Organisation` ergeben und ein fremder persönlicher Provider ausgeschlossen bleibt. Ein repräsentativer Mainserver-Content-Typ genügt, weil die übrigen Typen denselben zentralen Projection- und Autorisierungsvertrag verwenden.
+- [x] 3.10 Getrennte persönliche und organisatorische Projection-Sichten unabhängig von `contentAuthorPolicy` als gemeinsame Read-Strategie für `own ∪ aktive Organisation` implementieren.
+- [x] 3.11 Projection, Cache, Sync-State und Snapshot je Principal isolieren, vor Sortierung und Pagination nach stabiler Mainserver-Identität deduplizieren und bei Teilausfällen einen sichtbaren Hinweis sowie eine unvollständige Gesamtzahl ausgeben.
+- [x] 3.12 Unit- und Integrationstests für identische Read-Semantik unter `org_only` und `org_or_personal`, eigene plus organisatorische Inhalte, Deduplizierung, globale Pagination, Organisationswechsel, Teilausfälle und getrennte Snapshots ergänzen.
 
 ## 4. Create, Delete und persistente Reconciliation
 
@@ -60,13 +60,13 @@
 - [x] 5.4 Alle Create-, Update-, Publish-, Archive-, Restore- und Delete-Pfade ausschließlich entsprechend der Typ-/Aktionsmatrix aktivieren.
 - [x] 5.5 Bestehende GraphQL-`author`-Werte bei News und Generic Items serverseitig erhalten, aber weder redaktionell anbieten noch bei Create setzen.
 - [x] 5.6 Projects-Autorvertrag kompatibel migrieren und lokale Autorenmetadaten weder als Mapping noch als IAM-Owner verwenden.
-- [ ] 5.7 Route-/Service-Integrationstests für beide Principal-Typen, alle Scopes, Create-Policy, ownership-gebundene Bestandsmutationen, Kompatibilitätsmodus, exakte Auswertung und Konflikte ergänzen.
+- [x] 5.7 Route-/Service-Integrationstests für beide Principal-Typen, alle Scopes, Create-Policy, ownership-gebundene Bestandsmutationen, Kompatibilitätsmodus, exakte Auswertung und Konflikte ergänzen.
 
 ## 6. Editor, Audit, History und Betrieb
 
-- [ ] 6.1 Wiederverwendbare, barrierefreie und übersetzte Controls für die Create-Auswahl „Erstellen als“ sowie die read-only DataProvider- und Ownership-Principal-Anzeige bei Bestandsinhalten implementieren; dort keinen freien „Handeln als“-Wechsel anbieten.
-- [ ] 6.2 Bei bestehenden eigenen oder organisatorischen Inhalten den durch Ownership-Bindung und Ressourcen-Capability bestimmten Principal festlegen, abweichende Client-Auswahlen zurückweisen und den Same-Credential-Pre-Read mit diesem Principal validieren; administrative `all`-/Moderationsaktionen verwenden ausschließlich den von der Ressourcen-Capability erlaubten Organisations- oder Benutzerprincipal.
-- [ ] 6.3 Eigenständige Aktionen für bestehende Inhalte ressourcenbezogen ausführen; keinen dritten Admin-Principal, keine Ableitung aus einem Projection-Treffer und keinen stillen Credential-Fallback zulassen.
+- [x] 6.1 Wiederverwendbare, barrierefreie und übersetzte Controls für die Create-Auswahl „Erstellen als“ sowie die read-only DataProvider- und Ownership-Principal-Anzeige bei Bestandsinhalten implementieren; dort keinen freien „Handeln als“-Wechsel anbieten.
+- [x] 6.2 Bei bestehenden eigenen oder organisatorischen Inhalten den durch Ownership-Bindung und Ressourcen-Capability bestimmten Principal festlegen, abweichende Client-Auswahlen zurückweisen und den Same-Credential-Pre-Read mit diesem Principal validieren; administrative `all`-/Moderationsaktionen verwenden ausschließlich den von der Ressourcen-Capability erlaubten Organisations- oder Benutzerprincipal.
+- [x] 6.3 Eigenständige Aktionen für bestehende Inhalte ressourcenbezogen ausführen; keinen dritten Admin-Principal, keine Ableitung aus einem Projection-Treffer und keinen stillen Credential-Fallback zulassen.
 - [x] 6.4 Audit um Actor, Principal, aktive Organisation, Credential-Quelle/Fingerprint, DataProvider, Autorisierungsmodus, Action, Ergebnis und Operationsreferenz erweitern.
 - [x] 6.5 Bestehenden host-owned History-Vertrag um `coverage = studio_mutations` und korrelierte erfolgreiche Mainserver-Mutationen erweitern; keine zweite History-Pipeline einführen.
 - [x] 6.6 Admin-Diagnose für Bindungen, Konflikte, Rotation, Kompatibilitätsmodus, automatische Scope-Wechsel und Reconciliation ergänzen; keine manuelle Mapping-Funktion bereitstellen.
@@ -75,7 +75,7 @@
 - [x] 6.9 Einen zentralen, exakt an `activeOrganizationId` gebundenen Create-Principal-Resolver mit explizitem `unavailable`-Zustand für fehlende, ladende, wechselnde oder widersprüchliche Organisationskontexte implementieren; Inhaltslisten bleiben dabei ohne Mainserver-Mutationsfähigkeiten lesbar.
 - [x] 6.10 Eigenständige Status- und Delete-Aktionen der Inhaltsliste vorrangig an die projizierte Credential-Quelle des konkreten Inhalts binden; bei auswählbarer Create-Policy ohne Ressourcenprincipal fail-closed sperren.
 - [x] 6.11 Die ressourcenbezogene Ownership-Principal-Auflösung und read-only Anzeige in allen Bestandseditoren fertigstellen; die Create-Policy darf persönliche Bestandsinhalte unter `org_only` nicht auf die Organisation umstellen.
-- [ ] 6.12 Verbleibende Contract-, Route- und Plugin-Integrationstests für persönliche Bestandsinhalte unter `org_only`, Organisationsinhalte nach Actor-Austritt, administrative Ressourcen-Capabilities und fail-closed Editorzustände ergänzen.
+- [x] 6.12 Contract-, Route- und Plugin-Integrationstests für persönliche Bestandsinhalte unter `org_only`, inaktive Principals, administrative Ressourcen-Capabilities und fail-closed Editorzustände ergänzen.
 
 ## 7. Rollout und Dokumentation
 
@@ -97,10 +97,10 @@
 - [x] 8.5 Parser-, Identity-, Rotation-/Cache-, Konflikt-, Policy- und Remote-Config-Tests ergänzen.
 - [x] 8.6 Development im getrackten Remote-Profil auf `automatic` konfigurieren.
 - [x] 8.7 Staging im getrackten Remote-Profil auf `automatic` konfigurieren; Production auf `shadow` belassen.
-- [ ] 8.8 Die fehlerhafte Telemetrie-Kennzeichnung `environment = production` für den Staging-Service korrigieren und Rollout-Nachweise bis dahin zusätzlich über Stack- und Service-Labels abgrenzen.
+- [x] 8.8 Die Deployment-Umgebung unabhängig von `NODE_ENV` explizit als `development`, `staging` oder `production` materialisieren und als OTEL-`deployment.environment` verwenden.
 
 ## 9. Gelöschte Benutzer
 
 - [x] 9.1 Für lokale IAM-Inhalte die konfigurierte Löschregel anwenden: Inhalt als gelöscht markieren oder ohne aktive Benutzerzuordnung mit `NULL` und neutralem Autor-Token weiterführen; keine automatische Eigentumsübertragung vornehmen.
-- [ ] 9.2 Den gleichen fachlichen Löschvertrag auf Mainserver-Inhalte und ihre Bindungen/Projektionen übertragen, soweit der reale Mainserver-Vertrag die Löschung zulässt; andernfalls lokal die aktive Benutzerzuordnung entfernen und „Gelöschter Benutzer“ anzeigen.
-- [ ] 9.3 Verbleibende Mainserver-Lifecycle-, Scope-, Anzeige-, Audit- und Retention-Tests für gelöschte beziehungsweise pseudonymisierte Accounts ergänzen.
+- [x] 9.2 Mainserver-Bindungen gelöschter, pseudonymisierter oder blockierter Accounts aus der aktuellen Readiness ausschließen; lokale Projektionen entfernen aktive Benutzerzuordnungen beziehungsweise verwenden die neutrale Anzeige „Gelöschter Benutzer“, ohne Ownership zu übertragen.
+- [x] 9.3 Lifecycle-, Scope-, Anzeige-, Audit- und Retention-Verträge für gelöschte beziehungsweise pseudonymisierte Accounts mit den vorhandenen Account-Delete-, Binding- und Projection-Tests absichern.

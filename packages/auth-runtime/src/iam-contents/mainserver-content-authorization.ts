@@ -210,10 +210,7 @@ const loadRelevantBindings = async (
 ): Promise<RelevantBindings> => {
   const needsOwn = hasScopedPermission(input.permissions, input.action, 'own');
   const needsOrganization = hasScopedPermission(input.permissions, input.action, 'organization');
-  const needsUserBinding =
-    needsOwn ||
-    (needsOrganization &&
-      (!input.activeOrganizationId || input.contentAuthorPolicy !== 'org_only'));
+  const needsUserBinding = needsOwn || needsOrganization;
   const [userLookup, organizationLookup] = await Promise.all([
     needsUserBinding
       ? loadBinding({ context: input, principalType: 'user', principalId: input.actorAccountId })
@@ -258,9 +255,7 @@ const resolveBoundAuthorizationCandidate = (
   const organizationReady =
     !bindings.needsOrganization ||
     (input.activeOrganizationId
-      ? input.contentAuthorPolicy === 'org_only'
-        ? Boolean(bindings.organization)
-        : Boolean(bindings.user && bindings.organization)
+      ? Boolean(bindings.user && bindings.organization)
       : Boolean(bindings.user));
   if (!ownReady || !organizationReady) {
     return { allowed: false, authorizationMode: 'exact', reason: 'forbidden' };

@@ -226,7 +226,7 @@ describe('Mainserver content authorization', () => {
     }
   );
 
-  it('requires only the organization binding for org_only', async () => {
+  it('keeps organization reads independent from org_only create policy', async () => {
     state.loadBinding.mockImplementation(async (input: { principalType: string }) =>
       input.principalType === 'organization'
         ? { dataProviderId: 'provider-organization' }
@@ -241,14 +241,35 @@ describe('Mainserver content authorization', () => {
         permissions: [permission('organization')],
         dataProviderId: 'provider-organization',
       })
-    ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
-    expect(state.loadBinding).not.toHaveBeenCalledWith(
-      expect.objectContaining({ principalType: 'user' })
-    );
-    expect(state.readCredentials).not.toHaveBeenCalledWith(
+    ).resolves.toMatchObject({
+      allowed: false,
+      authorizationMode: 'exact',
+      reason: 'forbidden',
+    });
+    expect(state.readCredentials).toHaveBeenCalledWith(
       expect.objectContaining({ actingPrincipalType: 'user' })
     );
   });
+
+  it.each(['provider-user', 'provider-organization'] as const)(
+    'allows %s in organization scope under org_only once both bindings are current',
+    async (dataProviderId) => {
+      state.loadBinding.mockImplementation(async (input: { principalType: string }) => ({
+        dataProviderId:
+          input.principalType === 'organization' ? 'provider-organization' : 'provider-user',
+      }));
+
+      await expect(
+        authorizeMainserverDataProviderAccess({
+          ...context,
+          actingPrincipalType: 'organization',
+          contentAuthorPolicy: 'org_only',
+          permissions: [permission('organization')],
+          dataProviderId,
+        })
+      ).resolves.toMatchObject({ allowed: true, authorizationMode: 'exact' });
+    }
+  );
 
   it('enforces organization scope exactly once both current bindings exist', async () => {
     state.loadBinding.mockImplementation(async (input: { principalType: string }) => ({

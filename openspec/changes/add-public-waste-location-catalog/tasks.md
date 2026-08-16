@@ -23,6 +23,6 @@
 
 - [x] 4.1 Öffentlichen API-Vertrag mit Join-Beispiel aus Ortskatalog und Kalenderantwort auf Deutsch dokumentieren.
 - [x] 4.2 `docs/architecture/03-context-and-scope.md`, `docs/architecture/05-building-block-view.md`, `docs/architecture/06-runtime-view.md` und `docs/architecture/08-cross-cutting-concepts.md` um die neue Read-Projektion und ihre Datenminimierungsgrenze ergänzen.
-- [ ] 4.3 Nach Vergabe einer PR-Nummer den zugehörigen Changelog-Eintrag ergänzen.
+- [x] 4.3 Nach Vergabe einer PR-Nummer den zugehörigen Changelog-Eintrag ergänzen.
 - [x] 4.4 Dokumentieren, dass keine Schemaänderung, Datenmigration, künstliche Gemeinde, Quellenversion oder neue Termin-ID eingeführt wurde.
 - [x] 4.5 `pnpm check:file-placement` und die relevanten Dokumentationsgates ausführen.

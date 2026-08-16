@@ -214,6 +214,13 @@ export const handlePublicWasteSelectionRequest = async (input: {
   }
 };
 
+export const handlePublicWasteLocationsRequest = async (input: {
+  readonly repository: Pick<PublicWasteRepository, 'listPublicLocations'>;
+}): Promise<Response> =>
+  jsonResponse({
+    items: await input.repository.listPublicLocations(),
+  });
+
 export const handlePublicWasteCalendarRequest = async (input: {
   readonly repository: Pick<
     PublicWasteRepository,

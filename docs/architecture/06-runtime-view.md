@@ -138,6 +138,8 @@ Fehlerpfad:
 8. Ein passender expliziter Einsatz verdrängt den sonst doppelten berechneten Termin; mehrere explizite Einsätze derselben Tour am selben Tag bleiben anhand ihrer Einsatz-ID getrennt.
 9. Der serverseitige Kalender-Lader verwendet für wiederkehrende Touren und explizite Einsätze dieselben positionsgebundenen Regions-, Orts-, Straßen- und Hausnummerparameter. Nach den Datenbankabfragen normalisiert und verbindet eine I/O-freie Projektion die Ergebnisse im inklusiven Date-only-Fenster vom Jahresanfang des Vorjahres bis ein Jahr nach dem Referenztag.
 10. Webansicht, PDF und iCal konsumieren weiterhin dieselbe Repository-Ausgabe; Jahres- und Fraktionsfilter der Exporte greifen erst danach.
+11. Ein externer Verbraucher kann alle aktiven öffentlich auswählbaren Abholortpfade über `GET /api/public-waste/locations` laden. Die Runtime dedupliziert und sortiert die reine Read-Projektion und liefert die vorhandenen Auswahl-IDs als `calendarQuery`.
+12. Der Verbraucher ruft danach den unveränderten Kalenderendpunkt mit dieser `calendarQuery` und einem Referenztag auf. Eine fehlende Region bleibt im Katalog `municipality: null` und löst weder einen Ersatzwert noch einen Schreibzugriff aus.
 
 Erweiterter Reminder-Pfad:
 

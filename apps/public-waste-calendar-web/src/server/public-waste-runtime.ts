@@ -16,6 +16,7 @@ import { type PublicWasteConfig } from '../lib/public-waste-config.server.js';
 import {
   handlePublicWasteCalendarRequest,
   handlePublicWasteIcalRequest,
+  handlePublicWasteLocationsRequest,
   handlePublicWastePdfRequest,
   handlePublicWasteReminderSignupRequest,
   handlePublicWasteSelectionRequest,
@@ -35,7 +36,11 @@ export const PUBLIC_WASTE_RUNTIME_APP_NAME = 'public-waste-calendar-web';
 
 type PublicWasteRuntimeRepository = Pick<
   PublicWasteRepository,
-  'listSelectionOptions' | 'loadCalendarEntries' | 'loadSelectionSummary' | 'loadReminderOptions'
+  | 'listPublicLocations'
+  | 'listSelectionOptions'
+  | 'loadCalendarEntries'
+  | 'loadSelectionSummary'
+  | 'loadReminderOptions'
 >;
 
 type RepositoryHandle = {
@@ -79,6 +84,7 @@ export type PublicWasteRuntime = {
 };
 
 const publicWasteApiPrefixes = [
+  '/api/public-waste/locations',
   '/api/public-waste/selection',
   '/api/public-waste/calendar',
   '/api/public-waste/pdf',
@@ -385,6 +391,12 @@ const dispatchPublicWasteApiRequest = async (input: {
   readonly loadBrandingImage?: PublicWasteBrandingImageLoader;
   readonly submitReminderSignup?: PublicWasteReminderSignupSubmitter;
 }): Promise<Response> => {
+  if (input.pathname.startsWith('/api/public-waste/locations')) {
+    return handlePublicWasteLocationsRequest({
+      repository: input.repository,
+    });
+  }
+
   if (input.pathname.startsWith('/api/public-waste/selection')) {
     return handlePublicWasteSelectionRequest({
       repository: input.repository,

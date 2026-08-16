@@ -35,6 +35,7 @@ Der aktuelle Repo-Ist-Stand ist kein reines Fundament mehr: Neben Routing, Auth,
 - Hostgeführte Waste-Fassade `/api/v1/waste-management/*`, generische Plugin-Jobpfade und Mainserver-Sync für `wasteTypes`
 - Instanzgebundene Mainserver-Endpunktkonfiguration in der Studio-Datenbank
 - Öffentliche Read-, PDF- und iCal-Pfade der Waste-Web-App mit eigener Node-Runtime
+- Öffentlicher, ausschließlich lesender Waste-Ortskatalog, der bestehende Abholorte ohne Datenänderung mit direkt nutzbaren Kalenderparametern projiziert
 - Öffentliche Write-Pfade der Waste-Web-App ausschließlich für E-Mail-Erinnerungen mit Double-Opt-In, Abmeldung und Waste-eigener Reminder-Outbox
 - `@sva/server-runtime` und `@sva/monitoring-client` für Logging, OTEL und lokale Monitoring-Stacks
 
@@ -71,6 +72,7 @@ Der lokale stdio-MCP-Server ist ein externer Operator-Client der Studio-API. Er 
 - Browser, React-Hooks und UI-Komponenten sprechen nie direkt mit dem externen Mainserver; alle Aufrufe laufen über serverseitige Studio-Bausteine
 - Browser, Plugins und Fachmodule sprechen nie direkt mit MinIO oder S3-kompatiblen Clients; Medienzugriffe laufen über hostseitige Media-Endpunkte und interne Storage-Ports
 - Browser der öffentlichen Abfallkalender-App sprechen weder das Studio-Plugin noch eine Datenbank direkt an; die öffentliche Runtime kapselt Auswahlfluss, Kalenderprojektion, Präferenz-Cookie sowie PDF- und iCal-Exportpfade lokal in `apps/public-waste-calendar-web` und greift mit der eingeschränkten Public-Rolle exakt ihrer kanonischen Tenant-Datenbank zu.
+- Externe Kalenderverbraucher laden über `/api/public-waste/locations` nur aktive, bereits öffentlich auswählbare Adresswerte. Das Mapping `Region -> municipality` und `Ort -> district` bleibt eine lesende Ausgabeprojektion; fehlende Regionen werden sichtbar als unvollständig ausgegeben und weder ergänzt noch persistiert.
 - Keycloak bleibt autoritative Quelle für per-User hinterlegte Mainserver-Credentials. Die Studio-DB hält zusätzlich instanzbezogene Endpunktkonfiguration sowie verschlüsselte organisationsgebundene Credentials, Provisioning-Zustand und DataProvider-Bindung.
 - Organisations-Provisioning verwendet einen realen zweckgebundenen Keycloak-Account, bleibt aber nach dem lokalen Organisations-Commit ein fehlertoleranter Folgeprozess. Der unveränderte Mainserver-Benutzer-Endpunkt und der Mainserver selbst bleiben außerhalb der Repo-Ownership.
 - Externe Dienste werden angebunden, aber nicht hier implementiert

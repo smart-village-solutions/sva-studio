@@ -22,6 +22,7 @@ import {
   getWasteManagementHistoryOverview,
   getWasteManagementImportCatalog,
   getWasteManagementJobDetail,
+  getLatestWasteManagementJob,
   getWasteManagementMasterDataOverview,
   getWasteManagementSchedulingOverview,
   getWasteManagementSettings,
@@ -29,6 +30,7 @@ import {
   startWasteManagementInitialize,
   startWasteManagementImport,
   startWasteManagementMigrations,
+  startWasteManagementPostalCodeEnrichment,
   startWasteManagementHolidaySync,
   startWasteManagementReset,
   startWasteManagementSeed,
@@ -163,6 +165,33 @@ describe('waste-management api client', () => {
       expect.objectContaining({
         credentials: 'include',
       })
+    );
+  });
+
+  it('restores the latest postal-code job through the waste-scoped history facade', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: {
+            audit: { items: [], total: 0 },
+            technical: { items: [], total: 0 },
+            latestPostalCodeJob: {
+              id: 'postal-job-active',
+              jobTypeId: 'waste-management.enrich-postal-codes',
+              status: 'running',
+            },
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      )
+    );
+
+    await expect(
+      getLatestWasteManagementJob('waste-management.enrich-postal-codes')
+    ).resolves.toMatchObject({ id: 'postal-job-active', status: 'running' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/waste-management/history?page=1&pageSize=1',
+      expect.objectContaining({ credentials: 'include' })
     );
   });
 
@@ -1655,18 +1684,20 @@ describe('waste-management api client', () => {
     );
   });
 
-  it('starts initialize, migration, seed, waste-type sync and reset jobs with idempotency keys', async () => {
+  it('starts initialize, migration, seed, sync, postal-code and reset jobs with idempotency keys', async () => {
     fetchMock
       .mockResolvedValueOnce(createJobResponse('waste-management.initialize-data-source'))
       .mockResolvedValueOnce(createJobResponse('waste-management.apply-migrations'))
       .mockResolvedValueOnce(createJobResponse('waste-management.seed-data'))
       .mockResolvedValueOnce(createJobResponse('waste-management.sync-waste-types'))
+      .mockResolvedValueOnce(createJobResponse('waste-management.enrich-postal-codes'))
       .mockResolvedValueOnce(createJobResponse('waste-management.reset-data'));
 
     await startWasteManagementInitialize({ targetSchema: 'wm' });
     await startWasteManagementMigrations({ targetSchema: 'wm', requestedByVersion: '2026.05.0' });
     await startWasteManagementSeed();
     await startWasteManagementSyncWasteTypes();
+    await startWasteManagementPostalCodeEnrichment();
     await startWasteManagementReset({ confirmationToken: 'RESET' });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -1703,6 +1734,14 @@ describe('waste-management api client', () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       5,
+      '/api/v1/waste-management/tools/postal-codes/enrich',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+      })
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      6,
       '/api/v1/waste-management/tools/reset',
       expect.objectContaining({
         method: 'POST',

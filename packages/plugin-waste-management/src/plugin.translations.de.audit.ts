@@ -32,6 +32,7 @@ export const wasteManagementPluginTranslationsDEAudit = {
     "resetStarted": "Zurücksetzen der Abfalldaten gestartet",
     "mainserverSyncStarted": "Abfall-Mainserver-Synchronisierung gestartet",
     "syncWasteTypesStarted": "Synchronisierung der Abfalltypen gestartet",
+    "postalCodeEnrichmentStarted": "Ergänzung fehlender Postleitzahlen gestartet",
     "dataSourceInitialized": "Abfalldatenquelle initialisiert"
   }
 } as const;

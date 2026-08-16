@@ -20,6 +20,9 @@ export type MapGeocodingFeature = Readonly<{
   houseNumber?: string;
   postalCode?: string;
   city?: string;
+  district?: string;
+  county?: string;
+  state?: string;
   country?: string;
   countryCode?: string;
   source: MapGeocodingProvider;

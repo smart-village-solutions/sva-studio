@@ -14,7 +14,19 @@ describe('waste-management.ui-access', () => {
     expect(access.canRunImport).toBe(false);
     expect(access.canRunSeed).toBe(false);
     expect(access.canRunReset).toBe(false);
+    expect(access.canEnrichPostalCodes).toBe(false);
     expect(access.canDuplicateTour).toBe(false);
+  });
+
+  it('allows postal-code enrichment only with master-data management access', () => {
+    const access = deriveWasteManagementUiAccess([
+      'waste-management.read',
+      'waste-management.master-data.manage',
+    ]);
+
+    expect(access.canEnrichPostalCodes).toBe(true);
+    expect(access.canAccessTools).toBe(true);
+    expect(access.visibleTabIds).toContain('tools');
   });
 
   it('maps granular permissions to the matching settings and tools capabilities', () => {
@@ -25,7 +37,15 @@ describe('waste-management.ui-access', () => {
       'waste-management.reset.execute',
     ]);
 
-    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'scheduling', 'output', 'tools', 'settings']);
+    expect(access.visibleTabIds).toEqual([
+      'fractions',
+      'tours',
+      'locations',
+      'scheduling',
+      'output',
+      'tools',
+      'settings',
+    ]);
     expect(access.canAccessSettings).toBe(true);
     expect(access.canAccessTools).toBe(true);
     expect(access.canRunInitialize).toBe(true);
@@ -38,10 +58,8 @@ describe('waste-management.ui-access', () => {
 
   it('shows duplicate action only when user can manage tours and scheduling', () => {
     expect(
-      deriveWasteManagementUiAccess([
-        'waste-management.read',
-        'waste-management.tours.manage',
-      ]).canDuplicateTour
+      deriveWasteManagementUiAccess(['waste-management.read', 'waste-management.tours.manage'])
+        .canDuplicateTour
     ).toBe(false);
 
     expect(
@@ -61,6 +79,12 @@ describe('waste-management.ui-access', () => {
 
     expect(access.canRunMainserverSync).toBe(true);
     expect(access.canAccessTools).toBe(true);
-    expect(access.visibleTabIds).toEqual(['fractions', 'tours', 'locations', 'scheduling', 'tools']);
+    expect(access.visibleTabIds).toEqual([
+      'fractions',
+      'tours',
+      'locations',
+      'scheduling',
+      'tools',
+    ]);
   });
 });

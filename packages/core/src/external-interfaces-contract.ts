@@ -45,6 +45,11 @@ const externalInterfaceRuntimeErrorCodes = [
   'bucket_missing',
   's3_auth_failed',
   's3_endpoint_unreachable',
+  'map_geocoding_provider_unsupported',
+  'map_geocoding_auth_failed',
+  'map_geocoding_rate_limited',
+  'map_geocoding_unreachable',
+  'map_geocoding_provider_error',
   'connection_failed',
 ] as const;
 

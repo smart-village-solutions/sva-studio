@@ -3,7 +3,12 @@ import { useSyncExternalStore } from 'react';
 
 import type { WasteManagementTabId } from './search-params.js';
 
-const readOnlyTabIds = ['fractions', 'tours', 'locations', 'scheduling'] as const satisfies readonly WasteManagementTabId[];
+const readOnlyTabIds = [
+  'fractions',
+  'tours',
+  'locations',
+  'scheduling',
+] as const satisfies readonly WasteManagementTabId[];
 
 export type WasteManagementUiAccess = Readonly<{
   visibleTabIds: readonly WasteManagementTabId[];
@@ -12,6 +17,7 @@ export type WasteManagementUiAccess = Readonly<{
   canDuplicateTour: boolean;
   canRunInitialize: boolean;
   canRunMigrations: boolean;
+  canEnrichPostalCodes: boolean;
   canRunImport: boolean;
   canRunSeed: boolean;
   canRunReset: boolean;
@@ -30,10 +36,17 @@ export const deriveWasteManagementUiAccess = (
   const canRunImport = grantedPermissions.has('waste-management.import.execute');
   const canRunSeed = grantedPermissions.has('waste-management.seed.execute');
   const canRunReset = grantedPermissions.has('waste-management.reset.execute');
+  const canEnrichPostalCodes = grantedPermissions.has('waste-management.master-data.manage');
   const canManageTours = grantedPermissions.has('waste-management.tours.manage');
   const canManageScheduling = grantedPermissions.has('waste-management.scheduling.manage');
   const canAccessTools =
-    canRunInitialize || canRunMigrations || canRunImport || canRunSeed || canRunReset || canManageScheduling;
+    canRunInitialize ||
+    canRunMigrations ||
+    canRunImport ||
+    canRunSeed ||
+    canRunReset ||
+    canEnrichPostalCodes ||
+    canManageScheduling;
   const visibleTabIds: WasteManagementTabId[] = [...readOnlyTabIds];
 
   if (canAccessSettings) {
@@ -59,6 +72,7 @@ export const deriveWasteManagementUiAccess = (
     canDuplicateTour: canManageTours && canManageScheduling,
     canRunInitialize,
     canRunMigrations,
+    canEnrichPostalCodes,
     canRunImport,
     canRunSeed,
     canRunReset,
@@ -68,7 +82,11 @@ export const deriveWasteManagementUiAccess = (
 };
 
 export const useWasteManagementUiAccess = (currentTab?: WasteManagementTabId) => {
-  const sessionAccess = useSyncExternalStore(subscribeSessionAccessSnapshot, readSessionAccessSnapshot, readSessionAccessSnapshot);
+  const sessionAccess = useSyncExternalStore(
+    subscribeSessionAccessSnapshot,
+    readSessionAccessSnapshot,
+    readSessionAccessSnapshot
+  );
 
   return {
     ...deriveWasteManagementUiAccess(

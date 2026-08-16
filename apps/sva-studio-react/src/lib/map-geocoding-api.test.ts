@@ -164,6 +164,9 @@ describe('map-geocoding-api', () => {
               housenumber: '1',
               postcode: '12345',
               city: 'Musterstadt',
+              district: 'Musterbezirk',
+              county: 'Musterkreis',
+              state: 'Musterland',
               country: 'Deutschland',
               country_code: 'de',
             },
@@ -182,6 +185,9 @@ describe('map-geocoding-api', () => {
         houseNumber: '1',
         postalCode: '12345',
         city: 'Musterstadt',
+        district: 'Musterbezirk',
+        county: 'Musterkreis',
+        state: 'Musterland',
         country: 'Deutschland',
         countryCode: 'de',
         source: 'geoapify',
@@ -647,6 +653,11 @@ describe('map-geocoding-api', () => {
     expect(parsePositiveInteger(' 4800 ')).toBe(4800);
     expect(parsePositiveInteger('abc')).toBe(3000);
 
+    const { parsePostalCodeRateLimit } = await import('./map-geocoding-api.operations.js');
+    expect(parsePostalCodeRateLimit(' 90 ')).toBe(90);
+    expect(parsePostalCodeRateLimit('')).toBe(60);
+    expect(parsePostalCodeRateLimit('invalid')).toBe(60);
+
     const error = createClientError('provider_error', {
       statusCode: 503,
       endpoint: 'https://provider.example/geocode',
@@ -785,6 +796,22 @@ describe('map-geocoding-api', () => {
         { query: 'Musterstraße 1' },
       ),
     ).toThrow('invalid_input');
+  });
+
+  it('honors a kill switch enabled after a postal-code resolver was created', async () => {
+    const enabledConfig = await state.getStoredMapGeocodingRuntimeConfig();
+    state.getStoredMapGeocodingRuntimeConfig
+      .mockResolvedValueOnce(enabledConfig)
+      .mockResolvedValueOnce({ ...enabledConfig, killSwitchEnabled: true });
+    const { createMapPostalCodeResolver } = await import('./map-geocoding-api.operations.js');
+    const resolver = await createMapPostalCodeResolver('de-musterhausen');
+
+    expect(resolver.requestBudget).toBe(3_000);
+    await expect(resolver.resolve('Perleberg, Deutschland')).rejects.toMatchObject({
+      code: 'disabled',
+      cause: { category: 'permanent', code: 'disabled' },
+    });
+    expect(state.fetch).not.toHaveBeenCalled();
   });
 
   it('covers operation helpers for provider and validation edge cases', async () => {

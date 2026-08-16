@@ -330,7 +330,7 @@ describe('interfaces app adapter', () => {
     });
   });
 
-  it('upserts map geocoding interfaces without triggering a follow-up healthcheck job', async () => {
+  it('upserts Geoapify interfaces and triggers a follow-up healthcheck', async () => {
     setAuthenticatedUserContext({
       id: 'subject-1',
       instanceId: 'de-musterhausen',
@@ -401,7 +401,10 @@ describe('interfaces app adapter', () => {
       }),
       undefined
     );
-    expect(state.runStoredInterfaceHealthcheck).not.toHaveBeenCalled();
+    expect(state.runStoredInterfaceHealthcheck).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      interfaceId: 'map-1',
+    });
   });
 
   it('rejects malformed authenticated interface list payloads before they reach the UI', async () => {

@@ -183,6 +183,25 @@ describe('waste-management operation handlers', () => {
       expectedCode: 'forbidden',
     },
     {
+      label: 'postal-code enrichment returns forbidden when the master-data permission is missing',
+      handler: wasteManagementOperationHandlers.startWasteManagementEnrichPostalCodesInternal,
+      request: () =>
+        createToolRequest(
+          'https://studio.test/api/v1/waste-management/tools/postal-codes/enrich',
+          {}
+        ),
+      deps: () => ({
+        ...createDeps(),
+        resolvePermissions: vi.fn(async () => ({
+          ok: true as const,
+          permissions: [],
+        })),
+      }),
+      actor,
+      expectedStatus: 403,
+      expectedCode: 'forbidden',
+    },
+    {
       label: 'reset rejects a missing actor instance id',
       handler: wasteManagementOperationHandlers.startWasteManagementResetInternal,
       request: () =>
@@ -381,6 +400,49 @@ describe('waste-management operation handlers', () => {
             operation: 'sync-waste-types',
             keycloakSubject: 'user-1',
             activeOrganizationId: 'org-1',
+          },
+        }),
+      })
+    );
+    expect(response.status).toBe(202);
+  });
+
+  it('creates a tenant-bound postal-code enrichment job payload', async () => {
+    const startPluginOperationJob = vi.fn(
+      async () => new Response(JSON.stringify({ data: { id: 'job-postal-code' } }), { status: 202 })
+    );
+
+    const response =
+      await wasteManagementOperationHandlers.startWasteManagementEnrichPostalCodesInternal(
+        createToolRequest(
+          'https://studio.test/api/v1/waste-management/tools/postal-codes/enrich',
+          {}
+        ),
+        actor,
+        {
+          ...createDeps(),
+          resolvePermissions: vi.fn(async () => ({
+            ok: true as const,
+            permissions: [
+              {
+                action: 'waste-management.master-data.manage',
+                resourceType: 'waste-management',
+              },
+            ],
+          })),
+          startPluginOperationJob,
+        }
+      );
+
+    expect(startPluginOperationJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: 'POST:/api/v1/waste-management/tools/postal-codes/enrich',
+        instanceId: 'tenant-a',
+        rejectWhenActiveJobExists: true,
+        data: expect.objectContaining({
+          jobTypeId: 'waste-management.enrich-postal-codes',
+          input: {
+            operation: 'enrich-postal-codes',
           },
         }),
       })

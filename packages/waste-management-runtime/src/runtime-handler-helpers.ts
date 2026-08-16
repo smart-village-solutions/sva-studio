@@ -10,10 +10,21 @@ import {
   type WasteManagementSyncMainserverJobInput,
   type WasteManagementSyncWasteTypesJobInput,
 } from '@sva/plugin-sdk';
+import type { WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
 
 import { createImportDataHandler } from './runtime-import-handler.js';
 import { createOperationHandler } from './runtime-job-helpers.js';
 import type { WasteManagementOperationRuntime } from './runtime-types.js';
+
+const createEnrichPostalCodesHandler = (runtime: WasteManagementOperationRuntime) =>
+  createOperationHandler<WasteManagementEnrichPostalCodesJobInput>({
+    jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+    expectedOperation: 'enrich-postal-codes',
+    phaseKey: 'waste-management.enrich-postal-codes',
+    useRuntimeManagedProgress: () => true,
+    execute: (runtimeArg, instanceId, payload, progressReporter, context) =>
+      runtimeArg.enrichPostalCodes(instanceId, payload, progressReporter, context),
+  })(runtime);
 
 export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOperationRuntime) => ({
   [wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]:
@@ -31,7 +42,8 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.initializeDataSource,
       expectedOperation: 'initialize-data-source',
       phaseKey: 'waste-management.initialize',
-      execute: (runtimeArg, instanceId, payload) => runtimeArg.initializeDataSource(instanceId, payload),
+      execute: (runtimeArg, instanceId, payload) =>
+        runtimeArg.initializeDataSource(instanceId, payload),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.applyMigrations]:
     createOperationHandler<WasteManagementApplyMigrationsJobInput>({
@@ -71,18 +83,22 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
       phaseKey: 'waste-management.sync-waste-types',
       execute: (runtimeArg, instanceId, payload) => runtimeArg.syncWasteTypes(instanceId, payload),
     })(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes]:
+    createEnrichPostalCodesHandler(runtime),
   [wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders]:
     createOperationHandler<WasteManagementMaterializeEmailRemindersJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
       expectedOperation: 'materialize-email-reminders',
       phaseKey: 'waste-management.materialize-email-reminders',
-      execute: (runtimeArg, instanceId, payload) => runtimeArg.materializeEmailReminders(instanceId, payload),
+      execute: (runtimeArg, instanceId, payload) =>
+        runtimeArg.materializeEmailReminders(instanceId, payload),
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox]:
     createOperationHandler<WasteManagementProcessEmailReminderOutboxJobInput>({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
       expectedOperation: 'process-email-reminder-outbox',
       phaseKey: 'waste-management.process-email-reminder-outbox',
-      execute: (runtimeArg, instanceId, payload) => runtimeArg.processEmailReminderOutbox(instanceId, payload),
+      execute: (runtimeArg, instanceId, payload) =>
+        runtimeArg.processEmailReminderOutbox(instanceId, payload),
     })(runtime),
 });

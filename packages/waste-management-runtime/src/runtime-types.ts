@@ -1,3 +1,4 @@
+import type { StudioJobProgress, WasteManagementEnrichPostalCodesJobInput } from '@sva/core';
 import type {
   WasteManagementApplyMigrationsJobInput,
   WasteManagementImportJobInput,
@@ -18,7 +19,7 @@ export const createProgress = (input: {
   readonly currentStepKey: string;
   readonly currentStepLabel?: string;
   readonly details?: Readonly<Record<string, unknown>>;
-}) => ({
+}): StudioJobProgress => ({
   completedSteps: input.completedSteps,
   totalSteps: input.totalSteps,
   currentPhase: input.currentPhase,
@@ -28,7 +29,7 @@ export const createProgress = (input: {
   lastUpdatedAt: new Date().toISOString(),
 });
 
-export type WasteManagementJobProgress = ReturnType<typeof createProgress>;
+export type WasteManagementJobProgress = StudioJobProgress;
 
 export type WasteManagementOperationRuntime = {
   readonly provisionTenantDatabase: (
@@ -90,6 +91,17 @@ export type WasteManagementOperationRuntime = {
   readonly syncWasteTypes: (
     instanceId: string,
     payload: WasteManagementSyncWasteTypesJobInput
+  ) => Promise<{
+    readonly durationMs: number;
+    readonly details: Record<string, unknown>;
+  }>;
+  readonly enrichPostalCodes: (
+    instanceId: string,
+    payload: WasteManagementEnrichPostalCodesJobInput,
+    progressReporter?: {
+      readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
+    },
+    context?: { readonly previousProgress?: WasteManagementJobProgress }
   ) => Promise<{
     readonly durationMs: number;
     readonly details: Record<string, unknown>;

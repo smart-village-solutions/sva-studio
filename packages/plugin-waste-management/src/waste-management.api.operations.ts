@@ -35,6 +35,7 @@ import type {
 import {
   requestWasteManagementJob,
   requestWasteManagementJobDetail,
+  requestLatestWasteManagementJob,
   requestWasteManagementMutation,
 } from './waste-management.api.shared.js';
 
@@ -221,6 +222,9 @@ export const startWasteManagementMainserverSync = async (
 export const startWasteManagementSyncWasteTypes = async () =>
   requestWasteManagementJob('/api/v1/waste-management/tools/sync-waste-types', {});
 
+export const startWasteManagementPostalCodeEnrichment = async () =>
+  requestWasteManagementJob('/api/v1/waste-management/tools/postal-codes/enrich', {});
+
 export const startWasteManagementReset = async (input: StartWasteManagementResetInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/reset', input);
 
@@ -237,3 +241,5 @@ export const getWasteManagementJobDetail = async (
   jobId: string,
   init?: RequestInit
 ): Promise<StudioJobDetail> => requestWasteManagementJobDetail(jobId, init);
+
+export const getLatestWasteManagementJob = requestLatestWasteManagementJob;

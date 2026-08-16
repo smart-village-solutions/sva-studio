@@ -288,6 +288,7 @@ const studioPluginOperationApiErrorCodes = [
   'csrf_validation_failed',
   'idempotency_key_required',
   'idempotency_key_reuse',
+  'active_job_exists',
   'database_unavailable',
 ] as const;
 

@@ -17,9 +17,15 @@ import {
   type MapGeocodingLogger,
   type MapGeocodingRuntimeConfigWithSecrets,
 } from './map-geocoding-api.shared.js';
-import { executeProviderRequest, getPublicMapGeocodingConfig } from './map-geocoding-api.provider.js';
+import {
+  executeProviderRequest,
+  getPublicMapGeocodingConfig,
+} from './map-geocoding-api.provider.js';
 
-export { executeProviderRequest, getPublicMapGeocodingConfig } from './map-geocoding-api.provider.js';
+export {
+  executeProviderRequest,
+  getPublicMapGeocodingConfig,
+} from './map-geocoding-api.provider.js';
 
 let loggerPromise: Promise<MapGeocodingLogger> | null = null;
 
@@ -33,7 +39,7 @@ type MapGeocodingOperationDiagnostics = {
 
 const getLogger = async (): Promise<MapGeocodingLogger> => {
   loggerPromise ??= import('@sva/server-runtime').then(({ createSdkLogger }) =>
-    createSdkLogger({ component: COMPONENT, level: 'info' }),
+    createSdkLogger({ component: COMPONENT, level: 'info' })
   );
   return loggerPromise;
 };
@@ -45,7 +51,9 @@ const getRequest = async (): Promise<Request> => {
 
 const now = (): number => Date.now();
 
-const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntimeConfigWithSecrets> => {
+const loadRuntimeConfig = async (
+  instanceId: string
+): Promise<MapGeocodingRuntimeConfigWithSecrets> => {
   const { loadStoredMapGeocodingRuntimeConfig } = await import('./instance-interfaces-server.js');
   const config = await loadStoredMapGeocodingRuntimeConfig(instanceId);
   if (!config || !config.enabled || config.killSwitchEnabled) {
@@ -67,6 +75,41 @@ const loadRuntimeConfig = async (instanceId: string): Promise<MapGeocodingRuntim
   };
 };
 
+const classifyPostalCodeResolverError = (error: unknown): unknown => {
+  const code = readMapGeocodingErrorCode(error);
+  if (!['disabled', 'invalid_config', 'invalid_input', 'unauthorized', 'forbidden'].includes(code)) {
+    return error;
+  }
+  return Object.assign(new Error(code, { cause: { category: 'permanent', code } }), { code });
+};
+
+export const createMapPostalCodeResolver = async (instanceId: string) => {
+  try {
+    const config = await loadRuntimeConfig(instanceId);
+    if (!config.geocodeEnabled) throw createClientError('disabled');
+    return {
+      rateLimitPerMinute: parsePostalCodeRateLimit(config.rateLimitPerMinute),
+      ...(config.provider === 'geoapify' ? { requestBudget: 3_000 } : {}),
+      resolve: async (query: string) => {
+        try {
+          const currentConfig = await loadRuntimeConfig(instanceId);
+          if (!currentConfig.geocodeEnabled) throw createClientError('disabled');
+          return await executeProviderRequest({ config: currentConfig, mode: 'geocode', query });
+        } catch (error) {
+          throw classifyPostalCodeResolverError(error);
+        }
+      },
+    };
+  } catch (error) {
+    throw classifyPostalCodeResolverError(error);
+  }
+};
+
+export const parsePostalCodeRateLimit = (value: string): number => {
+  const parsed = Number.parseInt(value.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 60;
+};
+
 const authorizeFirstAllowedAction = async (
   ctx: Parameters<
     Awaited<typeof import('@sva/auth-runtime/server')>['authorizeInstancePermissionForUser']
@@ -81,12 +124,10 @@ const authorizeFirstAllowedAction = async (
     | 'generic-items.read'
     | 'generic-items.create'
     | 'generic-items.update'
-  )[],
+  )[]
 ) => {
   const { authorizeInstancePermissionForUser } = await import('@sva/auth-runtime/server');
-  let lastResult:
-    | Awaited<ReturnType<typeof authorizeInstancePermissionForUser>>
-    | null = null;
+  let lastResult: Awaited<ReturnType<typeof authorizeInstancePermissionForUser>> | null = null;
 
   for (const action of actions) {
     const result = await authorizeInstancePermissionForUser({ ctx, action });
@@ -95,7 +136,9 @@ const authorizeFirstAllowedAction = async (
     }
     lastResult = result;
   }
-  return lastResult ?? { ok: false as const, status: 403, error: 'forbidden', message: 'forbidden' };
+  return (
+    lastResult ?? { ok: false as const, status: 403, error: 'forbidden', message: 'forbidden' }
+  );
 };
 
 const withAuthenticatedMapUser = async <T>(
@@ -111,7 +154,10 @@ const withAuthenticatedMapUser = async <T>(
     | 'generic-items.create'
     | 'generic-items.update'
   )[],
-  run: (ctx: AuthenticatedMapGeocodingContext, diagnostics: MapGeocodingOperationDiagnostics) => Promise<T>,
+  run: (
+    ctx: AuthenticatedMapGeocodingContext,
+    diagnostics: MapGeocodingOperationDiagnostics
+  ) => Promise<T>
 ): Promise<T> => {
   const { withAuthenticatedUser } = await import('@sva/auth-runtime/server');
   const requestStartedAt = now();
@@ -131,15 +177,18 @@ const withAuthenticatedMapUser = async <T>(
       return jsonResponse(authorization.status, { error: authorization.error });
     }
     try {
-      return jsonResponse(200, await run({ sessionId: ctx.sessionId, user: ctx.user }, diagnostics));
+      return jsonResponse(
+        200,
+        await run({ sessionId: ctx.sessionId, user: ctx.user }, diagnostics)
+      );
     } catch (error) {
       return createErrorResponse(readMapGeocodingErrorCode(error));
     }
   });
   if (!response.ok) {
-    const payload = (await response.json().catch(() => null)) as
-      | { error?: string | { code?: string } }
-      | null;
+    const payload = (await response.json().catch(() => null)) as {
+      error?: string | { code?: string };
+    } | null;
     const errorCode =
       typeof payload?.error === 'string'
         ? payload.error
@@ -151,7 +200,12 @@ const withAuthenticatedMapUser = async <T>(
     throw createClientError(errorCode);
   }
   const payload = (await response.json().catch(() => null)) as T | { error?: string } | null;
-  if (payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string') {
+  if (
+    payload &&
+    typeof payload === 'object' &&
+    'error' in payload &&
+    typeof payload.error === 'string'
+  ) {
     throw createClientError(payload.error);
   }
   return payload as T;
@@ -163,14 +217,21 @@ const withGeocodingOperation = async <T>(
   run: (
     ctx: AuthenticatedMapGeocodingContext,
     config: MapGeocodingRuntimeConfigWithSecrets,
-    diagnostics: MapGeocodingOperationDiagnostics,
-  ) => Promise<T>,
+    diagnostics: MapGeocodingOperationDiagnostics
+  ) => Promise<T>
 ): Promise<T> =>
   withAuthenticatedMapUser(
     request,
     operation === 'get_config'
       ? ['poi.read', 'events.read', 'generic-items.read']
-      : ['poi.update', 'poi.create', 'events.update', 'events.create', 'generic-items.update', 'generic-items.create'],
+      : [
+          'poi.update',
+          'poi.create',
+          'events.update',
+          'events.create',
+          'generic-items.update',
+          'generic-items.create',
+        ],
     async (ctx, diagnostics) => {
       const operationStartedAt = now();
       const logger = await getLogger();
@@ -234,21 +295,21 @@ const withGeocodingOperation = async <T>(
         });
         throw error;
       }
-    },
+    }
   );
 export const withCurrentRequestGeocodingOperation = async <T>(
   operation: 'get_config' | 'suggest' | 'geocode' | 'reverse_geocode',
   run: (
     ctx: AuthenticatedMapGeocodingContext,
     config: MapGeocodingRuntimeConfigWithSecrets,
-    diagnostics: MapGeocodingOperationDiagnostics,
-  ) => Promise<T>,
+    diagnostics: MapGeocodingOperationDiagnostics
+  ) => Promise<T>
 ): Promise<T> => withGeocodingOperation(await getRequest(), operation, run);
 
 export const executeSuggestOperation = async (
   config: MapGeocodingRuntimeConfigWithSecrets,
   query: string,
-  diagnostics?: MapGeocodingOperationDiagnostics,
+  diagnostics?: MapGeocodingOperationDiagnostics
 ): Promise<readonly MapGeocodingFeature[]> => {
   if (!config.autocompleteEnabled) throw createClientError('disabled');
   const result = await executeProviderRequest({ config, mode: 'suggest', query, diagnostics });
@@ -259,7 +320,7 @@ export const executeSuggestOperation = async (
 export const executeGeocodeOperation = async (
   config: MapGeocodingRuntimeConfigWithSecrets,
   input: MapGeocodingAddressInput,
-  diagnostics?: MapGeocodingOperationDiagnostics,
+  diagnostics?: MapGeocodingOperationDiagnostics
 ): Promise<MapGeocodingFeature> => {
   if (!config.geocodeEnabled) throw createClientError('disabled');
   const query = compactQuery(input);
@@ -277,13 +338,18 @@ export const executeGeocodeOperation = async (
 export const executeReverseGeocodeOperation = async (
   config: MapGeocodingRuntimeConfigWithSecrets,
   coordinates: MapGeocodingCoordinates,
-  diagnostics?: MapGeocodingOperationDiagnostics,
+  diagnostics?: MapGeocodingOperationDiagnostics
 ): Promise<MapGeocodingFeature> => {
   if (!config.reverseGeocodeEnabled) throw createClientError('disabled');
   if (!Number.isFinite(coordinates.latitude) || !Number.isFinite(coordinates.longitude)) {
     throw createClientError('invalid_input');
   }
-  const result = await executeProviderRequest({ config, mode: 'reverse', coordinates, diagnostics });
+  const result = await executeProviderRequest({
+    config,
+    mode: 'reverse',
+    coordinates,
+    diagnostics,
+  });
   const first = result[0];
   if (!first) {
     throw createClientError('no_result');
@@ -292,17 +358,30 @@ export const executeReverseGeocodeOperation = async (
 };
 
 export const runGetConfigOperation = (request: Request): Promise<MapGeocodingRuntimeConfig> =>
-  withGeocodingOperation(request, 'get_config', async (_ctx, config) => getPublicMapGeocodingConfig(config));
+  withGeocodingOperation(request, 'get_config', async (_ctx, config) =>
+    getPublicMapGeocodingConfig(config)
+  );
 
-export const runSuggestOperation = (request: Request, query: string): Promise<readonly MapGeocodingFeature[]> =>
-  withGeocodingOperation(request, 'suggest', async (_ctx, config, diagnostics) => executeSuggestOperation(config, query, diagnostics));
+export const runSuggestOperation = (
+  request: Request,
+  query: string
+): Promise<readonly MapGeocodingFeature[]> =>
+  withGeocodingOperation(request, 'suggest', async (_ctx, config, diagnostics) =>
+    executeSuggestOperation(config, query, diagnostics)
+  );
 
-export const runGeocodeOperation = (request: Request, input: MapGeocodingAddressInput): Promise<MapGeocodingFeature> =>
-  withGeocodingOperation(request, 'geocode', async (_ctx, config, diagnostics) => executeGeocodeOperation(config, input, diagnostics));
+export const runGeocodeOperation = (
+  request: Request,
+  input: MapGeocodingAddressInput
+): Promise<MapGeocodingFeature> =>
+  withGeocodingOperation(request, 'geocode', async (_ctx, config, diagnostics) =>
+    executeGeocodeOperation(config, input, diagnostics)
+  );
 
 export const runReverseGeocodeOperation = (
   request: Request,
-  coordinates: MapGeocodingCoordinates,
+  coordinates: MapGeocodingCoordinates
 ): Promise<MapGeocodingFeature> =>
   withGeocodingOperation(request, 'reverse_geocode', async (_ctx, config, diagnostics) =>
-    executeReverseGeocodeOperation(config, coordinates, diagnostics));
+    executeReverseGeocodeOperation(config, coordinates, diagnostics)
+  );

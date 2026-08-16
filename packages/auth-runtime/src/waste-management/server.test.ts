@@ -85,6 +85,9 @@ const coreHandlerMocks = vi.hoisted(() => ({
   startWasteManagementSyncWasteTypesInternal: vi.fn(
     async () => new Response('start-sync-waste-types')
   ),
+  startWasteManagementEnrichPostalCodesInternal: vi.fn(
+    async () => new Response('start-enrich-postal-codes')
+  ),
   updateWasteManagementCityInternal: vi.fn(async () => new Response('update-city')),
   updateWasteManagementCollectionLocationInternal: vi.fn(
     async () => new Response('update-location')
@@ -661,6 +664,10 @@ describe('wasteManagementHandlers', () => {
       {
         handlerKey: 'startSyncWasteTypes',
         internal: coreHandlerMocks.startWasteManagementSyncWasteTypesInternal,
+      },
+      {
+        handlerKey: 'startEnrichPostalCodes',
+        internal: coreHandlerMocks.startWasteManagementEnrichPostalCodesInternal,
       },
       {
         handlerKey: 'startReset',

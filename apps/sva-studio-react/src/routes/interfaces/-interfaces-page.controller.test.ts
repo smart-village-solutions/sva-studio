@@ -189,6 +189,9 @@ describe('interfaces page controller helpers', () => {
     expect(translateInterfacesErrorMessage(new Error('secret_unreadable'), 'fallback')).toBe(
       t('interfaces.errors.secretUnreadable')
     );
+    expect(
+      translateInterfacesErrorMessage(new Error('interface_type_not_registered'), 'fallback')
+    ).toBe(t('interfaces.errors.interfaceTypeNotRegistered'));
     expect(translateInterfacesErrorMessage(new Error('custom_error'), 'fallback')).toBe('custom_error');
   });
 

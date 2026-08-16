@@ -123,6 +123,7 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
     readonly requestId?: string;
     readonly scheduledAt: string;
     readonly data: StudioJobStartRequest;
+    readonly rejectWhenActiveJobExists?: boolean;
   }) => Promise<Response>;
   readonly emitAuditEvent?: typeof emitAuthAuditEvent;
   readonly loadWasteAuditOverview?: (

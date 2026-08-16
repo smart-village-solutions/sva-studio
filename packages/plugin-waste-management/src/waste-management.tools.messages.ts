@@ -8,7 +8,7 @@ export const createWasteToolErrorMessage = ({
   error,
   pt,
 }: {
-  readonly action: 'import' | 'migration' | 'seed' | 'reset';
+  readonly action: 'historyDelete' | 'import' | 'migration' | 'postalCode' | 'seed' | 'reset';
   readonly error: unknown;
   readonly pt: Translate;
 }) => {
@@ -23,7 +23,14 @@ export const createWasteToolErrorMessage = ({
   if (action === 'reset' && code === 'invalid_request') {
     return pt('tools.messages.resetValidationError');
   }
-  if (error instanceof WasteManagementApiError && error.message.length > 0 && error.message !== error.code) {
+  if (action === 'historyDelete') {
+    return pt('tools.messages.historyDeleteError');
+  }
+  if (
+    error instanceof WasteManagementApiError &&
+    error.message.length > 0 &&
+    error.message !== error.code
+  ) {
     return pt('tools.messages.jobStartErrorWithReason', { reason: error.message });
   }
   return pt('tools.messages.jobStartError');

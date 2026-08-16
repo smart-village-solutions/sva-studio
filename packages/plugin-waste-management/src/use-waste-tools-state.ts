@@ -8,17 +8,21 @@ import {
 } from './waste-management.api.js';
 import type { StatusMessage } from './waste-management.page.support.js';
 
-export const useWasteImportState = (importCatalog: ReturnType<typeof getWasteManagementImportCatalog>) => {
-  const [importProfileId, setImportProfileId] = useState<StartWasteManagementImportInput['importProfileId'] | ''>(
-    importCatalog[0]?.profileId ?? ''
-  );
-  const [importSourceFormat, setImportSourceFormat] = useState<StartWasteManagementImportInput['sourceFormat']>(
-    importCatalog[0]?.sourceFormats[0] ?? 'text/csv'
-  );
+export const useWasteImportState = (
+  importCatalog: ReturnType<typeof getWasteManagementImportCatalog>
+) => {
+  const [importProfileId, setImportProfileId] = useState<
+    StartWasteManagementImportInput['importProfileId'] | ''
+  >(importCatalog[0]?.profileId ?? '');
+  const [importSourceFormat, setImportSourceFormat] = useState<
+    StartWasteManagementImportInput['sourceFormat']
+  >(importCatalog[0]?.sourceFormats[0] ?? 'text/csv');
   const [importBlobRef, setImportBlobRef] = useState('');
   const [importDryRun, setImportDryRun] = useState(false);
-  const [delimiterOverride, setDelimiterOverride] = useState<StartWasteManagementImportInput['delimiterOverride']>();
-  const [previewResult, setPreviewResult] = useState<PreviewWasteLocationTourPickupDateImportResult | null>(null);
+  const [delimiterOverride, setDelimiterOverride] =
+    useState<StartWasteManagementImportInput['delimiterOverride']>();
+  const [previewResult, setPreviewResult] =
+    useState<PreviewWasteLocationTourPickupDateImportResult | null>(null);
   const [previewReady, setPreviewReady] = useState(false);
 
   useEffect(() => {
@@ -49,7 +53,9 @@ export const useWasteMaintenanceState = () => {
   const [migrationVersion, setMigrationVersion] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
-  const [runningAction, setRunningAction] = useState<'import' | 'migration' | 'seed' | 'reset' | null>(null);
+  const [runningAction, setRunningAction] = useState<
+    'import' | 'migration' | 'postalCode' | 'seed' | 'reset' | null
+  >(null);
   const [message, setMessage] = useState<StatusMessage | null>(null);
   const [lastJob, setLastJob] = useState<StudioJobResponse['data'] | null>(null);
 

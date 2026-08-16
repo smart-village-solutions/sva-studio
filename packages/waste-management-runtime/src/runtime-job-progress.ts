@@ -9,12 +9,14 @@ export const createRuntimeProgressReporter = (
   onProgress: (progress: WasteManagementJobProgress) => void
 ) => ({
   reportProgress: async (progress: WasteManagementJobProgress) => {
+    await context.throwIfCancellationRequested();
     onProgress(progress);
     await context.progressReporter.reportProgress({
       jobId: context.job.id,
       instanceId: context.job.instanceId,
       progress,
     });
+    await context.throwIfCancellationRequested();
   },
 });
 

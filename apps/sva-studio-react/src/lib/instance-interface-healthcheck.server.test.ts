@@ -181,7 +181,12 @@ describe('instance-interface-healthcheck.server', () => {
 
   it.each([
     [undefined, { schemaName: 'waste' }, 'database_url_missing', 'error'],
-    ['postgres://user:secret@localhost/waste', { schemaName: 'waste' }, 'connection_failed', 'error'],
+    [
+      'postgres://user:secret@localhost/waste',
+      { schemaName: 'waste' },
+      'connection_failed',
+      'error',
+    ],
   ])(
     'fails closed for unusable PostgreSQL database urls',
     async (databaseUrl, publicConfig, errorCode, visibleStatus) => {
@@ -730,6 +735,142 @@ describe('instance-interface-healthcheck.server', () => {
         visibleStatus: 'ok',
       })
     );
+  });
+
+  it('validates Geoapify credentials with a minimal geocoding request', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'map-geoapify',
+      instanceId: 'de-test',
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Karte & Geocoding',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://api.geoapify.com/v1/geocode/search',
+      authMode: 'api_key',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        provider: 'geoapify',
+        requestTimeoutMs: 10_000,
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:map-geoapify:{"apiKey":"geoapify-key"}',
+    });
+    state.fetch.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [{ city: 'Berlin' }] }), { status: 200 })
+    );
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+    const result = await runStoredInterfaceHealthcheck({
+      instanceId: 'de-test',
+      interfaceId: 'map-geoapify',
+      fetchImpl: state.fetch,
+    });
+
+    expect(result).toMatchObject({ checkStatus: 'succeeded', visibleStatus: 'ok' });
+    const requestedUrl = new URL(String(state.fetch.mock.calls[0]?.[0]));
+    expect(requestedUrl.origin + requestedUrl.pathname).toBe(
+      'https://api.geoapify.com/v1/geocode/search'
+    );
+    expect(requestedUrl.searchParams.get('apiKey')).toBe('geoapify-key');
+    expect(state.saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith(
+      expect.objectContaining({ checkStatus: 'succeeded', visibleStatus: 'ok' })
+    );
+  });
+
+  it('persists a disabled Geoapify check without contacting the provider when the kill switch is active', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'map-geocoding-1',
+      instanceId: 'de-test',
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Geoapify',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      authMode: 'api_key',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: {
+        provider: 'geoapify',
+        killSwitchEnabled: true,
+      },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:map-geocoding-1:{"apiKey":"geoapify-key"}',
+    });
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+
+    await expect(
+      runStoredInterfaceHealthcheck({
+        instanceId: 'de-test',
+        interfaceId: 'map-geocoding-1',
+        now: () => '2026-08-16T12:00:00.000Z',
+      })
+    ).resolves.toEqual({
+      instanceId: 'de-test',
+      interfaceId: 'map-geocoding-1',
+      checkedAt: '2026-08-16T12:00:00.000Z',
+      checkStatus: 'failed',
+      visibleStatus: 'disabled',
+      errorCode: 'disabled',
+    });
+
+    expect(state.fetch).not.toHaveBeenCalled();
+    expect(state.revealField).not.toHaveBeenCalled();
+    expect(state.saveExternalInterfaceConnectionCheck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        interfaceId: 'map-geocoding-1',
+        visibleStatus: 'disabled',
+        errorCode: 'disabled',
+      })
+    );
+  });
+
+  it('persists a failed Geoapify check when the API key is rejected', async () => {
+    state.loadExternalInterfaceRecordById.mockResolvedValue({
+      id: 'map-geoapify-denied',
+      instanceId: 'de-test',
+      typeKey: 'map_geocoding',
+      ownerKind: 'host',
+      ownerId: 'host',
+      displayName: 'Karte & Geocoding',
+      alias: 'default',
+      enabled: true,
+      isDefault: true,
+      category: 'api',
+      baseUrl: 'https://api.geoapify.com/v1/geocode/search',
+      authMode: 'api_key',
+      statusCheckKind: 'map_geocoding',
+      visibleStatus: 'unknown',
+      publicConfig: { provider: 'geoapify' },
+      secretConfigCiphertext:
+        'iam.instance_external_interfaces.secret_config:map-geoapify-denied:{"apiKey":"invalid"}',
+    });
+    state.fetch.mockResolvedValueOnce(new Response(null, { status: 401 }));
+
+    const { runStoredInterfaceHealthcheck } =
+      await import('./instance-interface-healthcheck.server.js');
+    const result = await runStoredInterfaceHealthcheck({
+      instanceId: 'de-test',
+      interfaceId: 'map-geoapify-denied',
+      fetchImpl: state.fetch,
+    });
+
+    expect(result).toMatchObject({
+      checkStatus: 'failed',
+      visibleStatus: 'error',
+      errorCode: 'map_geocoding_auth_failed',
+    });
+    expect(result).not.toHaveProperty('errorMessage');
   });
 
   it('persists a failed connection check when an s3 bucket is missing', async () => {

@@ -43,7 +43,7 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly statusLabel: string;
     readonly statusTone: string;
     readonly metadata?: readonly { id: string; label: string; value: string }[];
-    readonly emptyState: string;
+    readonly emptyState?: string;
     readonly actions?: React.ReactNode;
   }) => (
     <section>
@@ -51,7 +51,7 @@ vi.mock('@sva/studio-ui-react', () => ({
       <p>{description}</p>
       <p>{statusLabel}</p>
       <p>{statusTone}</p>
-      <p>{emptyState}</p>
+      {emptyState ? <p>{emptyState}</p> : null}
       {metadata?.map((item) => (
         <p key={item.id}>{`${item.label}:${item.value}`}</p>
       ))}
@@ -68,7 +68,7 @@ describe('WasteToolsHistory', () => {
   it('renders empty history and no job action when no job exists yet', () => {
     render(<WasteToolsHistory lastJob={null} technicalHistory={[]} />);
 
-    expect(screen.getAllByText('tools.meta.noJobYet')).toHaveLength(2);
+    expect(screen.getAllByText('tools.meta.noJobYet')).toHaveLength(1);
     expect(screen.getByText('tools.meta.noJobStatus')).toBeTruthy();
     expect(screen.getByText('tone:none')).toBeTruthy();
     expect(screen.getByTestId('empty-state').textContent).toContain('tools.meta.noTechnicalHistory');
@@ -126,6 +126,11 @@ describe('WasteToolsHistory', () => {
       throw new Error('expected first history details button');
     }
     fireEvent.click(firstDetailsButton);
+    expect(
+      screen
+        .getByRole('button', { name: 'tools.meta.historyCloseDetailsAction' })
+        .getAttribute('aria-expanded')
+    ).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDeleteAction' }));
     expect(screen.getByText('overview.meta.jobId:job-7')).toBeTruthy();
     expect(screen.getByText('overview.meta.jobTypeId:waste-management.import-data')).toBeTruthy();
@@ -231,7 +236,9 @@ describe('WasteToolsHistory', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDetailsAction' }));
     expect(screen.queryByText(/overview.meta.jobId:/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'tools.meta.historyDetailsAction' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'tools.meta.historyCloseDetailsAction' })
+    );
 
     rerender(
       <WasteToolsHistory
@@ -270,5 +277,51 @@ describe('WasteToolsHistory', () => {
     );
 
     expect(screen.queryByRole('button', { name: 'tools.meta.historyDeleteAction' })).toBeNull();
+  });
+
+  it('uses the latest persisted technical job after a page reload', () => {
+    render(
+      <WasteToolsHistory
+        lastJob={null}
+        technicalHistory={[
+          {
+            id: 'job:postal-job-1:succeeded',
+            eventType: 'postal-code-enrichment.succeeded',
+            outcome: 'success',
+            occurredAt: '2026-08-14T14:00:00.000Z',
+            source: 'job',
+            jobId: 'postal-job-1',
+            jobTypeId: 'waste-management.enrich-postal-codes',
+          },
+        ] as never}
+      />
+    );
+
+    expect(screen.getByText('tools.meta.lastJobDescription')).toBeTruthy();
+    expect(screen.getByText('tools.meta.jobIdLabel:postal-job-1')).toBeTruthy();
+    expect(screen.getByText('tools.meta.jobStatusLabel:succeeded')).toBeTruthy();
+  });
+
+  it('preserves a cancelled job status after a page reload', () => {
+    render(
+      <WasteToolsHistory
+        lastJob={null}
+        technicalHistory={[
+          {
+            id: 'job:postal-job-2:cancelled',
+            eventType: 'postal-code-enrichment.failed',
+            outcome: 'failure',
+            jobStatus: 'cancelled',
+            occurredAt: '2026-08-14T15:00:00.000Z',
+            source: 'job',
+            jobId: 'postal-job-2',
+            jobTypeId: 'waste-management.enrich-postal-codes',
+          },
+        ] as never}
+      />
+    );
+
+    expect(screen.getByText('tools.meta.jobStatusLabel:cancelled')).toBeTruthy();
+    expect(screen.getByText('tone:cancelled')).toBeTruthy();
   });
 });

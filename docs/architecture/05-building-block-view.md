@@ -140,6 +140,7 @@ Abhängigkeiten des aktuellen Systems.
 - nutzt `@sva/plugin-sdk` für Route, Navigation, Audit-, Import- und Job-Verträge sowie `@sva/studio-ui-react` für generische Confirm-, Status- und Job-UI
 - stößt nach erfolgreichen Fraktionsmutationen asynchron den dedizierten Job `waste-management.sync-waste-types` an und degradiert reine Mainserver-Sync-Fehler bewusst zu einem Retry-Hinweis im Fraktionskontext
 - zeigt für den laufenden CSV-Spezialimport eine fachnahe Live-Fortschrittskarte an, leitet Prozent und Zeilenstand aber weiterhin ausschließlich aus dem generischen Host-Jobvertrag ab
+- bietet unter den eingeklappten erweiterten Systemfunktionen die autorisierte Aktion zur Ergänzung fehlender Orts-Postleitzahlen an; Providerzugriff, Bewertung und Mutation bleiben vollständig hostgeführt
 
 13. Instanz-Registry (`packages/instance-registry`)
 
@@ -175,6 +176,7 @@ Abhängigkeiten des aktuellen Systems.
 
 - `@sva/auth-runtime` publiziert die hostgeführte Waste-Fassade für Settings, Historie, CRUD, Bulk-Flows und technische Tool-Starts
 - derselbe Hostpfad startet auch den dedizierten Job `waste-management.sync-waste-types`; die eigentliche Mainserver-Schreiboperation bleibt dahinter in der Studio-Runtime und `@sva/sva-mainserver`
+- der Job `waste-management.enrich-postal-codes` verwendet die konfigurierte Karten-Geocodierung serverseitig, taktet Provideraufrufe und schreibt ausschließlich weiterhin leere `waste_cities.postal_code`-Felder über ein konditionales Repository-Update
 - `@sva/server-runtime` löst die aktive instanzbezogene Waste-Datenquelle serverseitig auf und kapselt Secret-Nutzung sowie Connection-Checks
 - `@sva/data-repositories` hält sowohl die zentrale Governance-Persistenz der Waste-Datenquelle im Studio-Postgres als auch die hostseitigen Repositories gegen die instanzbezogene `waste_*`-Tabellenfamilie
 - jede Studio-Instanz erhält eine eigene, deterministisch benannte Waste-Datenbank; das pluginverwaltete `postgresql`-Interface enthält tenantgebundene, verschlüsselte Runtime-URLs und bleibt aus der allgemeinen Interface-UI ausgeblendet, während der weiterhin verfügbare Typ `supabase` nicht mehr vom Waste-Modul benötigt wird

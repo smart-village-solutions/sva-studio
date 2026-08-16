@@ -66,7 +66,9 @@ const connectionCheck: ExternalInterfaceConnectionCheckRecord = {
 const createExecutor = (rows: readonly Record<string, unknown>[] = []) => {
   const statements: SqlStatement[] = [];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       return {
         rowCount: rows.length,
@@ -91,6 +93,19 @@ describe('external interface repository (data package coverage)', () => {
     expect(migrationSql).toContain("'map_geocoding'");
   });
 
+  it('restores the pre-existing map geocoding type when repair migration 0081 is rolled back', () => {
+    const currentDir = dirname(fileURLToPath(import.meta.url));
+    const migrationSql = readFileSync(
+      join(currentDir, '../../migrations/0081_iam_external_interface_map_geocoding_repair.sql'),
+      'utf8'
+    );
+    const downSql = migrationSql.split('-- +goose Down')[1];
+
+    expect(downSql).toContain('INSERT INTO iam.external_interface_types');
+    expect(downSql).toContain("'map_geocoding'");
+    expect(downSql).not.toContain('DELETE FROM iam.external_interface_types');
+  });
+
   it('maps interface type and instance rows', async () => {
     const { executor } = createExecutor([
       {
@@ -106,7 +121,9 @@ describe('external interface repository (data package coverage)', () => {
       },
     ]);
 
-    await expect(createExternalInterfaceRepository(executor).listTypeDefinitions()).resolves.toEqual([typeDefinition]);
+    await expect(
+      createExternalInterfaceRepository(executor).listTypeDefinitions()
+    ).resolves.toEqual([typeDefinition]);
 
     const instance = createExecutor([
       {
@@ -135,7 +152,9 @@ describe('external interface repository (data package coverage)', () => {
       },
     ]);
 
-    await expect(createExternalInterfaceRepository(instance.executor).listByInstanceId('tenant-a')).resolves.toEqual([
+    await expect(
+      createExternalInterfaceRepository(instance.executor).listByInstanceId('tenant-a')
+    ).resolves.toEqual([
       {
         ...record,
         lastCheckErrorCode: undefined,
@@ -212,14 +231,16 @@ describe('external interface repository (data package coverage)', () => {
       },
     ]);
 
-    await expect(createExternalInterfaceRepository(executor).listTypeDefinitions()).resolves.toContainEqual(
-      pluginTypeDefinition
-    );
-    await expect(createExternalInterfaceRepository(executor).listByInstanceId('tenant-a')).resolves.toContainEqual(
-      expect.objectContaining(pluginRecord)
-    );
+    await expect(
+      createExternalInterfaceRepository(executor).listTypeDefinitions()
+    ).resolves.toContainEqual(pluginTypeDefinition);
+    await expect(
+      createExternalInterfaceRepository(executor).listByInstanceId('tenant-a')
+    ).resolves.toContainEqual(expect.objectContaining(pluginRecord));
 
-    expect(externalInterfaceStatements.upsertType(pluginTypeDefinition).values).toContain('news.rss');
+    expect(externalInterfaceStatements.upsertType(pluginTypeDefinition).values).toContain(
+      'news.rss'
+    );
     expect(externalInterfaceStatements.upsert(pluginRecord).values).toContain('news.rss');
   });
 
@@ -252,7 +273,10 @@ describe('external interface repository (data package coverage)', () => {
     ]);
 
     await expect(
-      createExternalInterfaceRepository(nullableExecutor.executor).getById('tenant-a', 'interface-2')
+      createExternalInterfaceRepository(nullableExecutor.executor).getById(
+        'tenant-a',
+        'interface-2'
+      )
     ).resolves.toEqual({
       id: 'interface-2',
       instanceId: 'tenant-a',

@@ -26,6 +26,8 @@ const wasteManagementTechnicalEventTypes = [
   'sync.started',
   'sync.succeeded',
   'sync.failed',
+  'postal-code-enrichment.succeeded',
+  'postal-code-enrichment.failed',
 ] as const;
 
 export type WasteManagementDataSourceProvider = (typeof wasteManagementDataSourceProviders)[number];

@@ -16,6 +16,7 @@ describe('waste management contracts job definitions', () => {
       'waste-management.reset-data',
       'waste-management.sync-mainserver',
       'waste-management.sync-waste-types',
+      'waste-management.enrich-postal-codes',
       'waste-management.materialize-email-reminders',
       'waste-management.process-email-reminder-outbox',
     ]);

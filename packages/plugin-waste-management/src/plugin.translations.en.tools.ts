@@ -29,11 +29,13 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
       rulesTitle: 'Important rules',
       confirmTitle: 'Confirm import now',
       resultTitle: 'Import started',
-      resultDescription: 'The import was started as a technical job. You can inspect the details in the history below.',
+      resultDescription:
+        'The import was started as a technical job. You can inspect the details in the history below.',
       newFractionsTitle: 'New waste fractions',
       newToursTitle: 'New tours',
       newLocationsTitle: 'New collection locations',
-      newLocationsSummary: '{{created}} new collection locations will be created, {{reused}} existing ones reused.',
+      newLocationsSummary:
+        '{{created}} new collection locations will be created, {{reused}} existing ones reused.',
       errorTitle: 'Errors',
       errorLine: 'Row {{rowNumber}}, column {{column}}',
       noErrors: 'No errors detected.',
@@ -82,7 +84,29 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
   },
   seed: {
     title: 'Seed',
-    description: 'Populates the waste data source through the generic job capability with the baseline.',
+    description:
+      'Populates the waste data source through the generic job capability with the baseline.',
+  },
+  postalCodes: {
+    title: 'Add missing postal codes',
+    description:
+      'Resolves missing postal codes for cities through the configured geocoder. Existing values and ambiguous results remain unchanged.',
+    progressTitle: 'Adding postal codes',
+    progressSummary: '{{processed}} of {{total}} cities checked.',
+    resultTitle: 'Postal code enrichment result',
+    resultSummary:
+      '{{updated}} added, {{ambiguous}} ambiguous, {{notFound}} not found, {{failed}} failed, and {{skipped}} updated in the meantime.',
+    budgetSummary:
+      'The request budget was reached after {{requests}} of {{budget}} provider requests. {{unprocessed}} cities remain open for a later run.',
+    errorTitle: 'Postal codes could not be added',
+    errors: {
+      geocodingDisabled: 'No active map geocoding interface is configured for this instance.',
+      openInterfaces: 'Configure map geocoding under Interfaces',
+      timeout:
+        'The geocoding service did not respond in time. {{processed}} of {{total}} cities were checked before the interruption, and confirmed postal codes were saved. A new run continues with the remaining cities.',
+      generic:
+        'The process failed. Check the technical history or the configured map geocoding interface, then start it again.',
+    },
   },
   sync: {
     actionLabel: 'Synchronize',
@@ -102,6 +126,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     startImport: 'Start import',
     startMigrations: 'Start migrations',
     startSeed: 'Start seed',
+    startPostalCodeEnrichment: 'Add postal codes',
     startReset: 'Start reset',
     starting: 'Starting…',
     downloadTemplate: 'Download template',
@@ -113,6 +138,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     jobStarted: 'Job {{jobId}} was started.',
     previewReady: 'The import preview is ready.',
     historyDeleteSuccess: 'The history entry was deleted.',
+    historyDeleteError: 'The history entry could not be deleted.',
     jobStartError: 'The waste job could not be started.',
     jobStartErrorWithReason: 'The waste job could not be started: {{reason}}',
     forbidden: 'Missing permission for this waste operation.',
@@ -120,19 +146,21 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     resetValidationError: 'Reset requires a valid confirmation token.',
   },
   meta: {
-    lastJobTitle: 'Last import',
-    lastJobDescription: 'Most recently started waste import with current status.',
+    lastJobTitle: 'Latest process',
+    lastJobDescription: 'Most recently started technical process with its current status.',
     noJobYet: 'No technical waste job has been started yet.',
     noJobStatus: 'No job',
-    historyTitle: 'Past imports',
-    historyDescription: 'Recent technical import events with compact details.',
+    historyTitle: 'Past processes',
+    historyDescription: 'Recent technical processes with compact details.',
     historyDetailsAction: 'Show details',
+    historyCloseDetailsAction: 'Close details',
     historyDeleteAction: 'Delete entry',
     advancedTitle: 'Advanced system functions',
     advancedDescription: 'Technical maintenance functions and deeper details for administrators.',
     technicalDetailsToggle: 'Technical details',
     technicalHistoryTitle: 'Technical events',
-    technicalHistoryDescription: 'Shows the latest technical waste events with distinct outcomes for start, success, and failure.',
+    technicalHistoryDescription:
+      'Shows the latest technical waste events with distinct outcomes for start, success, and failure.',
     noTechnicalHistory: 'No technical waste events yet.',
     jobId: 'Job: {{value}}',
     jobType: 'Type: {{value}}',
@@ -149,6 +177,7 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     phases: {
       'waste-management.import-preparation': 'Preparation in progress',
       'waste-management.import-running': 'Import run in progress',
+      'waste-management.enrich-postal-codes': 'Postal codes are being resolved',
       'waste-management.completed': 'Import is being completed',
     },
     statuses: {
@@ -159,6 +188,8 @@ export const wasteManagementPluginTranslationsENTools = createWasteManagementToo
     steps: {
       'prepare-import': 'Import is being prepared',
       'process-rows': 'Valid rows are being imported',
+      'load-cities': 'Cities without postal codes are being loaded',
+      'resolve-postal-codes': 'Postal codes are being verified and added',
       'complete-operation': 'Import is being completed',
     },
   },

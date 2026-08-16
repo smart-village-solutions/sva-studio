@@ -17,6 +17,7 @@
     }
   },
   "dependencies": {
+    "@sva/core": "workspace:*",
     "@sva/plugin-sdk": "workspace:*",
     "@sva/waste-management-contracts": "workspace:*"
   },

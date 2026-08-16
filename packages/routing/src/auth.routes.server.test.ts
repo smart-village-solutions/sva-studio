@@ -261,6 +261,9 @@ const authServerMocks = vi.hoisted(() => {
       startSeed: vi.fn(async () => response('startWasteManagementSeedHandler')),
       startMainserverSync: vi.fn(async () => response('startWasteManagementMainserverSyncHandler')),
       startSyncWasteTypes: vi.fn(async () => response('startWasteManagementSyncWasteTypesHandler')),
+      startEnrichPostalCodes: vi.fn(async () =>
+        response('startWasteManagementEnrichPostalCodesHandler')
+      ),
       startReset: vi.fn(async () => response('startWasteManagementResetHandler')),
     },
     listContentsHandler: vi.fn(async () => response('listContentsHandler')),
@@ -658,6 +661,9 @@ describe('auth.routes.server', () => {
     const syncWasteTypesHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/sync-waste-types'
     );
+    const enrichPostalCodesHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/postal-codes/enrich'
+    );
     const resetHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/reset');
 
     expect(masterDataHandlers?.GET).toBeDefined();
@@ -939,6 +945,12 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await enrichPostalCodesHandlers.POST?.({
+      request: new Request(
+        'http://localhost/api/v1/waste-management/tools/postal-codes/enrich',
+        { method: 'POST' }
+      ),
+    });
     await resetHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/reset', {
         method: 'POST',
@@ -992,6 +1004,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startSeed).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMainserverSync).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startSyncWasteTypes).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.startEnrichPostalCodes).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startReset).toHaveBeenCalled();
   });
 

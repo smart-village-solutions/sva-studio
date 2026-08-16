@@ -5,7 +5,10 @@ import { WasteToolsAdvancedSection } from './waste-management.tools.advanced-sec
 import { WasteToolsActionsSection } from './waste-management.tools.actions-section.js';
 import { WasteToolsHistory } from './waste-management.tools.history.js';
 import { WasteToolsImportSection } from './waste-management.tools.import-section.js';
-import { createImportSelectionHandlers, WasteToolsInitializeSection } from './waste-management.tools-panel.parts.js';
+import {
+  createImportSelectionHandlers,
+  WasteToolsInitializeSection,
+} from './waste-management.tools-panel.parts.js';
 import type { useWasteToolsViewModel } from './use-waste-tools-view-model.js';
 import type { WasteManagementUiAccess } from './waste-management.ui-access.js';
 
@@ -16,7 +19,9 @@ type WasteToolsPanelBodyProps = {
   readonly message: ReturnType<typeof useWasteToolsViewModel>['message'];
   readonly lastJob: ReturnType<typeof useWasteToolsViewModel>['lastJob'];
   readonly technicalHistory: ReturnType<typeof useWasteToolsViewModel>['technicalHistory'];
-  readonly runDeleteHistoryEntry: ReturnType<typeof useWasteToolsViewModel>['runDeleteHistoryEntry'];
+  readonly runDeleteHistoryEntry: ReturnType<
+    typeof useWasteToolsViewModel
+  >['runDeleteHistoryEntry'];
   readonly importCatalog: ReturnType<typeof useWasteToolsViewModel>['importCatalog'];
   readonly importProfileId: ReturnType<typeof useWasteToolsViewModel>['importProfileId'];
   readonly importSourceFormat: ReturnType<typeof useWasteToolsViewModel>['importSourceFormat'];
@@ -37,6 +42,9 @@ type WasteToolsPanelBodyProps = {
   readonly setMigrationSchema: ReturnType<typeof useWasteToolsViewModel>['setMigrationSchema'];
   readonly setMigrationVersion: ReturnType<typeof useWasteToolsViewModel>['setMigrationVersion'];
   readonly runMigrations: ReturnType<typeof useWasteToolsViewModel>['runMigrations'];
+  readonly runPostalCodeEnrichment: ReturnType<
+    typeof useWasteToolsViewModel
+  >['runPostalCodeEnrichment'];
   readonly runSeed: ReturnType<typeof useWasteToolsViewModel>['runSeed'];
   readonly setResetConfirmOpen: ReturnType<typeof useWasteToolsViewModel>['setResetConfirmOpen'];
 };
@@ -74,6 +82,7 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
     <WasteToolsAdvancedSection
       canRunInitialize={props.access.canRunInitialize}
       canRunMigrations={props.access.canRunMigrations}
+      canEnrichPostalCodes={props.access.canEnrichPostalCodes}
       canRunSeed={props.access.canRunSeed}
       canRunReset={props.access.canRunReset}
       initializeSection={
@@ -86,14 +95,20 @@ export const WasteToolsPanelBody = (props: WasteToolsPanelBodyProps) => (
       actionsSection={
         <WasteToolsActionsSection
           canRunMigrations={props.access.canRunMigrations}
+          canEnrichPostalCodes={props.access.canEnrichPostalCodes}
           canRunSeed={props.access.canRunSeed}
           canRunReset={props.access.canRunReset}
           migrationSchema={props.migrationSchema}
           migrationVersion={props.migrationVersion}
           runningAction={props.runningAction}
+          postalCodeJobActive={
+            props.lastJob?.jobTypeId === 'waste-management.enrich-postal-codes' &&
+            ['queued', 'running', 'retrying'].includes(props.lastJob.status)
+          }
           onMigrationSchemaChange={props.setMigrationSchema}
           onMigrationVersionChange={props.setMigrationVersion}
           onStartMigrations={() => void props.runMigrations()}
+          onStartPostalCodeEnrichment={() => void props.runPostalCodeEnrichment()}
           onStartSeed={() => void props.runSeed()}
           onOpenReset={() => props.setResetConfirmOpen(true)}
         />

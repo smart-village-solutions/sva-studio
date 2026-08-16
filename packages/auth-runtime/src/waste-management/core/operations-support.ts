@@ -9,6 +9,35 @@ import {
 import { queuePluginOperationJob } from '../../plugin-operations/runner.js';
 import { createApiError, toPayloadHash } from '../../shared/request-helpers.js';
 
+const isActivePostalCodeJobConflict = (error: unknown): boolean =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === '23505' &&
+  'constraint' in error &&
+  error.constraint === 'idx_studio_jobs_active_waste_postal_code_enrichment';
+
+const createJobCreationError = (
+  error: unknown,
+  rejectWhenActiveJobExists: boolean | undefined,
+  requestId: string | undefined
+): Response => {
+  if (rejectWhenActiveJobExists === true && isActivePostalCodeJobConflict(error)) {
+    return createApiError(
+      409,
+      'active_job_exists',
+      'Für diese Instanz läuft bereits eine Postleitzahl-Anreicherung.',
+      requestId
+    );
+  }
+  return createApiError(
+    503,
+    'database_unavailable',
+    'Der Waste-Job konnte nicht angelegt werden.',
+    requestId
+  );
+};
+
 export const startPluginOperationJobFromFacade = async (input: {
   readonly instanceId: string;
   readonly actorAccountId: string;
@@ -17,6 +46,7 @@ export const startPluginOperationJobFromFacade = async (input: {
   readonly requestId?: string;
   readonly scheduledAt: string;
   readonly data: StudioJobStartRequest;
+  readonly rejectWhenActiveJobExists?: boolean;
 }): Promise<Response> => {
   const reserved = await reserveIdempotency({
     instanceId: input.instanceId,
@@ -69,7 +99,8 @@ export const startPluginOperationJobFromFacade = async (input: {
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
         executionLane:
-          input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+          input.data.jobTypeId ===
+          wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
             ? 'privileged'
             : 'default',
       });
@@ -86,9 +117,9 @@ export const startPluginOperationJobFromFacade = async (input: {
     }
 
     return complete(createJsonItemResponse(202, job, input.requestId));
-  } catch {
+  } catch (error) {
     return complete(
-      createApiError(503, 'database_unavailable', 'Der Waste-Job konnte nicht angelegt werden.', input.requestId)
+      createJobCreationError(error, input.rejectWhenActiveJobExists, input.requestId)
     );
   }
 };

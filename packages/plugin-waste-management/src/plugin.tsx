@@ -15,13 +15,34 @@ import { WasteManagementPage } from './waste-management.page.js';
 
 export const wasteManagementPermissionDefinitions = definePluginPermissions('waste-management', [
   { id: 'waste-management.read', titleKey: 'wasteManagement.permissions.read.title' },
-  { id: 'waste-management.master-data.manage', titleKey: 'wasteManagement.permissions.masterDataManage.title' },
-  { id: 'waste-management.tours.manage', titleKey: 'wasteManagement.permissions.toursManage.title' },
-  { id: 'waste-management.scheduling.manage', titleKey: 'wasteManagement.permissions.schedulingManage.title' },
-  { id: 'waste-management.import.execute', titleKey: 'wasteManagement.permissions.importExecute.title' },
-  { id: 'waste-management.seed.execute', titleKey: 'wasteManagement.permissions.seedExecute.title' },
-  { id: 'waste-management.reset.execute', titleKey: 'wasteManagement.permissions.resetExecute.title' },
-  { id: 'waste-management.settings.manage', titleKey: 'wasteManagement.permissions.settingsManage.title' },
+  {
+    id: 'waste-management.master-data.manage',
+    titleKey: 'wasteManagement.permissions.masterDataManage.title',
+  },
+  {
+    id: 'waste-management.tours.manage',
+    titleKey: 'wasteManagement.permissions.toursManage.title',
+  },
+  {
+    id: 'waste-management.scheduling.manage',
+    titleKey: 'wasteManagement.permissions.schedulingManage.title',
+  },
+  {
+    id: 'waste-management.import.execute',
+    titleKey: 'wasteManagement.permissions.importExecute.title',
+  },
+  {
+    id: 'waste-management.seed.execute',
+    titleKey: 'wasteManagement.permissions.seedExecute.title',
+  },
+  {
+    id: 'waste-management.reset.execute',
+    titleKey: 'wasteManagement.permissions.resetExecute.title',
+  },
+  {
+    id: 'waste-management.settings.manage',
+    titleKey: 'wasteManagement.permissions.settingsManage.title',
+  },
 ]);
 
 export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('waste-management', [
@@ -154,6 +175,10 @@ export const wasteManagementAuditEventDefinitions = definePluginAuditEvents('was
     titleKey: 'wasteManagement.audit.syncWasteTypesStarted',
   },
   {
+    eventType: 'waste-management.postal-code-enrichment.started',
+    titleKey: 'wasteManagement.audit.postalCodeEnrichmentStarted',
+  },
+  {
     eventType: 'waste-management.datasource.reconfigured',
     titleKey: 'wasteManagement.audit.dataSourceInitialized',
   },
@@ -172,7 +197,8 @@ export const pluginWasteManagement: PluginDefinition = {
         moduleId: 'waste-management',
         actions: { mode: 'allOf', values: ['waste-management.read'] },
       },
-      validateSearch: (search: Record<string, unknown>) => normalizeWasteManagementSearchParams(search),
+      validateSearch: (search: Record<string, unknown>) =>
+        normalizeWasteManagementSearchParams(search),
       component: WasteManagementPage as never,
     },
   ],

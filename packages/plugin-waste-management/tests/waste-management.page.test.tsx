@@ -176,6 +176,7 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     audit: { items: [], total: 0 },
     technical: { items: [], total: 0 },
   })),
+  getLatestWasteManagementJob: vi.fn(async () => null),
   getWasteManagementJobDetail: vi.fn(async () => ({
     id: 'job-sync-1',
     instanceId: 'tenant-a',
@@ -395,6 +396,8 @@ describe('WasteManagementPage', () => {
       audit: { items: [], total: 0 },
       technical: { items: [], total: 0 },
     }));
+    wasteManagementApiMocks.getLatestWasteManagementJob.mockReset();
+    wasteManagementApiMocks.getLatestWasteManagementJob.mockResolvedValue(null);
     wasteManagementApiMocks.getWasteManagementJobDetail.mockReset();
     wasteManagementApiMocks.getWasteManagementJobDetail.mockImplementation(async () => ({
       id: 'job-sync-1',

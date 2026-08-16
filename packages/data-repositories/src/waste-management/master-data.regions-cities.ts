@@ -7,6 +7,7 @@ import type {
 
 import type { SqlExecutor, SqlPrimitive, SqlStatement } from '../iam/repositories/types.js';
 import type { WasteMasterDataRepository } from './master-data.contract.js';
+import { buildCityPostalCodeIfMissingStatement } from './master-data.city-postal-code.js';
 import { buildLikePattern } from './master-data.shared.js';
 
 type WasteRegionRow = {
@@ -206,6 +207,7 @@ export const createWasteRegionCityRepositoryPart = (
   | 'getWasteCityById'
   | 'upsertWasteCity'
   | 'updateWasteCity'
+  | 'updateWasteCityPostalCodeIfMissing'
 > => ({
   async listWasteRegions(filter) {
     const result = await executor.execute<WasteRegionRow>(buildRegionListStatement(filter));
@@ -232,6 +234,10 @@ export const createWasteRegionCityRepositoryPart = (
   async updateWasteCity(id, input) {
     await executor.execute(buildCityUpdateStatement(id, input));
   },
+  async updateWasteCityPostalCodeIfMissing(id, postalCode) {
+    const result = await executor.execute(buildCityPostalCodeIfMissingStatement(id, postalCode));
+    return (result.rowCount ?? 0) > 0;
+  },
 });
 
 export const wasteRegionCityStatements = {
@@ -242,4 +248,5 @@ export const wasteRegionCityStatements = {
   getWasteCityById: buildCitySelectStatement,
   upsertWasteCity: buildCityUpsertStatement,
   updateWasteCity: buildCityUpdateStatement,
+  updateWasteCityPostalCodeIfMissing: buildCityPostalCodeIfMissingStatement,
 } as const;

@@ -19,6 +19,7 @@ import {
 const createContext = (input: {
   readonly jobTypeId: string;
   readonly inputPayload: Record<string, unknown>;
+  readonly progress?: PluginJobHandlerContext['job']['progress'];
 }): PluginJobHandlerContext => ({
   kind: 'job',
   pluginId: 'waste-management',
@@ -30,6 +31,7 @@ const createContext = (input: {
     jobTypeId: input.jobTypeId,
     queueName: 'plugin-operations',
     status: 'running',
+    progress: input.progress,
     inputPayload: input.inputPayload,
     attempts: 1,
     maxAttempts: 3,
@@ -57,7 +59,7 @@ const createContext = (input: {
   },
   abortSignal: new AbortController().signal,
   isCancellationRequested: async () => false,
-  throwIfCancellationRequested: async () => undefined,
+  throwIfCancellationRequested: vi.fn(async () => undefined),
   requestId: 'req-1',
   actorAccountId: 'actor-1',
 });
@@ -143,6 +145,45 @@ describe('waste management runtime handlers', () => {
     expect(Object.keys(directHandlers).sort()).toEqual(Object.keys(exportedHandlers).sort());
     expect(createPluginJobExecutionHandlers).toBe(
       createWasteManagementPluginOperationExecutionHandlers
+    );
+  });
+
+  it('checks cancellation around runtime-managed postal-code progress', async () => {
+    const enrichPostalCodes = vi.fn(async (_instanceId, _payload, progressReporter) => {
+      await progressReporter?.reportProgress({
+        completedSteps: 1,
+        totalSteps: 2,
+        currentPhase: 'waste-management.enrich-postal-codes',
+        currentStepKey: 'resolve-postal-codes',
+      } as never);
+      return { durationMs: 1, details: {} };
+    });
+    const handlers = createWasteManagementPluginOperationExecutionHandlers(
+      createRuntime({ enrichPostalCodes })
+    );
+    const context = createContext({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      inputPayload: { operation: 'enrich-postal-codes' },
+      progress: {
+        completedSteps: 1,
+        totalSteps: 2,
+        details: { providerRequestCount: 17 },
+      },
+    });
+
+    await handlers['waste-management.enrich-postal-codes']?.(context);
+
+    expect(context.throwIfCancellationRequested).toHaveBeenCalledTimes(5);
+    expect(enrichPostalCodes).toHaveBeenCalledWith(
+      'instance-1',
+      { operation: 'enrich-postal-codes' },
+      expect.objectContaining({ reportProgress: expect.any(Function) }),
+      {
+        jobId: 'job-1',
+        previousProgress: expect.objectContaining({
+          details: { providerRequestCount: 17 },
+        }),
+      }
     );
   });
 

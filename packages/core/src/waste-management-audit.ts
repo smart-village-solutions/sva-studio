@@ -1,3 +1,5 @@
+import type { StudioJobDetail, StudioJobStatus } from './plugin-operations-contract.js';
+
 export type WasteManagementAuditOutcome = 'success' | 'failure' | 'denied';
 
 export type WasteManagementAuditRecord = {
@@ -49,12 +51,15 @@ export type WasteManagementTechnicalHistoryRecord = {
     | 'reset.failed'
     | 'sync.started'
     | 'sync.succeeded'
-    | 'sync.failed';
+    | 'sync.failed'
+    | 'postal-code-enrichment.succeeded'
+    | 'postal-code-enrichment.failed';
   readonly outcome: WasteManagementTechnicalHistoryOutcome;
   readonly occurredAt: string;
   readonly source: 'audit' | 'job';
   readonly jobId?: string;
   readonly jobTypeId?: string;
+  readonly jobStatus?: StudioJobStatus;
   readonly requestId?: string;
   readonly traceId?: string;
   readonly message?: string;
@@ -69,4 +74,5 @@ export type WasteManagementTechnicalHistoryOverview = {
 export type WasteManagementHistoryOverview = {
   readonly audit: WasteManagementAuditOverview;
   readonly technical: WasteManagementTechnicalHistoryOverview;
+  readonly latestPostalCodeJob?: StudioJobDetail;
 };

@@ -46,6 +46,7 @@ describe('external-interfaces-contract', () => {
     expect(externalInterfaceContract.isCheckStatus('running')).toBe(false);
     expect(externalInterfaceContract.isRuntimeErrorCode('secret_unreadable')).toBe(true);
     expect(externalInterfaceContract.isRuntimeErrorCode('schema_missing')).toBe(true);
+    expect(externalInterfaceContract.isRuntimeErrorCode('map_geocoding_auth_failed')).toBe(true);
     expect(externalInterfaceContract.isRuntimeErrorCode('unauthorized')).toBe(false);
   });
 

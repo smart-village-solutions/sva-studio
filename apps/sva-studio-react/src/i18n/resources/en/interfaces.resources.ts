@@ -9,9 +9,20 @@ export const interfacesENResources = {
     currentLabel: 'Status',
     lastCheckedLabel: 'Last checked',
     connected: 'Connected',
+    configured: 'Configured',
     error: 'Error',
     disabled: 'Disabled',
     unknown: 'Unknown',
+    healthcheck: {
+      disabled: 'The map and geocoding interface is disabled by its kill switch.',
+      secretMissing: 'The API key for this map and geocoding interface is missing.',
+      mapGeocodingProviderUnsupported:
+        'Automated connection checks currently support Geoapify only.',
+      mapGeocodingAuthFailed: 'The Geoapify API key is invalid or not authorized.',
+      mapGeocodingRateLimited: 'Geoapify rate-limited the connection check.',
+      mapGeocodingUnreachable: 'Geoapify cannot be reached for the connection check.',
+      mapGeocodingProviderError: 'Geoapify could not complete the connection check.',
+    },
   },
   table: {
     ariaLabel: 'Interfaces table',
@@ -105,6 +116,15 @@ export const interfacesENResources = {
       rateLimitPerMinute: 'Rate limit per minute',
     },
     mapGeocoding: {
+      setup: {
+        title: 'Recommended setup with Geoapify',
+        description: 'A Geoapify API key is required for automatic postal code enrichment.',
+        createProject: 'Sign in to Geoapify and create a project',
+        copyApiKey: 'Copy the generated API key and enter it in the API key field below',
+        keepDefaults:
+          'Leave the endpoint fields empty, enable geocoding, and keep the kill switch disabled',
+        openGeoapify: 'Create a Geoapify project and API key',
+      },
       provider: 'Provider',
       providerOptions: {
         custom: 'Custom',
@@ -114,6 +134,9 @@ export const interfacesENResources = {
       geocodeEndpoint: 'Geocode endpoint',
       reverseGeocodeEndpoint: 'Reverse geocode endpoint',
       apiKey: 'API key',
+      apiKeyReplacementPlaceholder: 'Enter a new API key',
+      apiKeyConfiguredStatus: 'An API key is already configured',
+      apiKeyConfiguredHint: 'Leave blank to keep the existing API key',
       requestTimeoutMs: 'Timeout in ms',
       rateLimitPerMinute: 'Rate limit per minute',
       autocompleteEnabled: 'Enable autocomplete',
@@ -173,6 +196,8 @@ export const interfacesENResources = {
       'The selected interface belongs to a different instance and could not be changed.',
     interfaceTypeChangeNotSupported:
       'The type of an existing interface cannot be changed afterwards.',
+    interfaceTypeNotRegistered:
+      'The interface type is not registered in this installation yet. Please run the Studio database migrations and try again.',
     supabaseRequiresWasteManagementModule:
       'Supabase can only be created for instances that have the waste-management module assigned.',
     secretUnreadable:

@@ -1,0 +1,4 @@
+{
+  "prNumber": 983,
+  "body": "Fehlende Postleitzahlen für Abholorte automatisch ergänzen\n\n- Administratoren können fehlende Postleitzahlen in den erweiterten Systemfunktionen des Abfallkalenders automatisch ermitteln und ergänzen.\n- Vorhandene Postleitzahlen bleiben unverändert; unsichere oder nicht gefundene Ergebnisse werden nicht übernommen.\n- Fortschritt, Ergebnis und vergangene Prozesse bleiben auch nach einem Neuladen der Seite nachvollziehbar.\n- Die Einrichtung der benötigten Karten-Geocodierung erklärt die erforderlichen Angaben und zeigt den geprüften Verbindungsstatus an."
+}

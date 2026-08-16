@@ -4,6 +4,8 @@ import {
   type PluginJobTypeDefinition,
 } from '@sva/plugin-sdk';
 
+import { wastePostalCodeJobType } from './job-definitions.postal-code.js';
+
 export { createWasteManagementPluginImportProfiles } from './import-profile-definitions.js';
 
 const pluginNamespace = wasteManagementOperationsContract.pluginId;
@@ -190,6 +192,7 @@ const wasteManagementPluginJobTypes = [
       detailKeys: ['failed-step'],
     },
   },
+  wastePostalCodeJobType,
   {
     jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
     queue: wasteManagementOperationsContract.queueName,

@@ -118,12 +118,15 @@ Fehlerpfad:
 13. Der Waste-CSV-Spezialimport veröffentlicht während des Commit-Pfads blockweise Fortschritt für gültige Zeilen, inklusive fachlicher Phasen `Vorbereitung`, `Importlauf` und `Abschluss`; die Plugin-UI pollt diesen aktiven Fall enger als die generische Historienansicht.
 14. Explizite Tour-Einsätze werden als eigenständige Datensätze mit Datum, optionalem gemeinsamen Hinweis und mindestens einem Abholort gepflegt; mehrere Orte werden atomar über eine Einsatz-Ort-Zuordnung gespeichert.
 15. Die Einsatzpflege verwendet die bestehende Scheduling-Aktion `waste-management.scheduling.manage`; Abfallfraktionen bleiben über die normale Tourzuordnung für Filter, Darstellung und Exporte maßgeblich.
+16. Ein Benutzer mit `waste-management.master-data.manage` kann unter den erweiterten Systemfunktionen den Job `waste-management.enrich-postal-codes` starten. Die Runtime lädt nur Orte mit leerer Postleitzahl, verwendet eingebettete fünfstellige Werte oder bis zu drei deterministische Straßenstichproben und akzeptiert ausschließlich plausible deutsche Konsenstreffer.
+17. Provideraufrufe laufen seriell mit dem instanzbezogenen Rate-Limit. Mehrdeutige, unplausible und fehlende Treffer bleiben offen; unmittelbar vor dem Schreiben verhindert ein konditionales `UPDATE` das Überschreiben einer parallel gepflegten Postleitzahl.
 
 Fehlerpfad:
 
 - Fehlt die Modulfreigabe oder die spezifische `waste-management.*`-Berechtigung, blockiert der Host fail-closed vor der Mutation oder dem Jobstart.
 - Fehlt oder driftet die Waste-Datenquelle einer Instanz, antwortet die Fassade mit technischem Fehlervertrag; Secrets werden nie im Plugin oder Browser aufgelöst.
 - Scheitert nach einer erfolgreichen Fraktionsmutation nur der Mainserver-Sync, bleibt die lokale Änderung bestehen; die UI zeigt stattdessen einen Warning-Hinweis mit Retry über denselben technischen Startpfad.
+- Ist die Geocodierung deaktiviert oder nicht konfiguriert, startet keine fachliche Mutation. Einzelne Providerfehler werden im Jobergebnis gezählt; ein erneuter Lauf bleibt durch die Auswahl leerer Werte und das konditionale Update idempotent.
 - Ein `Newcms`-ähnlicher Direktzugriff auf Supabase-Funktionen, direkte DB-Connections oder mitportierte Runtime-Hooks ist kein zulässiger Alternativpfad.
 
 ### Öffentlicher Abfallkalender: Auswahl, Restore und Detailansicht

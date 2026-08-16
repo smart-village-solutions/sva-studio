@@ -113,7 +113,10 @@ export const createOperationHandler =
       progressReporter?: {
         readonly reportProgress: (progress: WasteManagementJobProgress) => Promise<void> | void;
       },
-      context?: { readonly jobId: string }
+      context?: {
+        readonly jobId: string;
+        readonly previousProgress?: WasteManagementJobProgress;
+      }
     ) => Promise<{
       readonly durationMs: number;
       readonly details: Record<string, unknown>;
@@ -154,7 +157,7 @@ export const createOperationHandler =
       context.job.instanceId,
       payload,
       useRuntimeManagedProgress ? runtimeProgressReporter : undefined,
-      { jobId: context.jobId }
+      { jobId: context.jobId, previousProgress: context.job.progress }
     );
     await context.throwIfCancellationRequested();
     const progress =

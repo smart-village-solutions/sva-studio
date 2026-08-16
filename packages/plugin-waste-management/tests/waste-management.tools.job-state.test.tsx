@@ -5,8 +5,11 @@ import { wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useWasteTrackedJob } from '../src/waste-management.tools.job-state.js';
 
 const getWasteManagementJobDetailMock = vi.hoisted(() => vi.fn());
+const getLatestWasteManagementJobMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../src/waste-management.api.js', () => ({
+  getLatestWasteManagementJob: (...args: Parameters<typeof getLatestWasteManagementJobMock>) =>
+    getLatestWasteManagementJobMock(...args),
   getWasteManagementJobDetail: (...args: Parameters<typeof getWasteManagementJobDetailMock>) =>
     getWasteManagementJobDetailMock(...args),
 }));
@@ -15,6 +18,135 @@ describe('useWasteTrackedJob', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     getWasteManagementJobDetailMock.mockReset();
+    getLatestWasteManagementJobMock.mockReset();
+  });
+
+  it('restores the latest postal-code job after a page reload', async () => {
+    const restoredJob = {
+      id: 'postal-job-1',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'running',
+      progress: { details: { processedCities: 9, totalCities: 298 } },
+    } as never;
+    getLatestWasteManagementJobMock.mockResolvedValue(restoredJob);
+    const setLastJob = vi.fn();
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: null,
+        refreshTechnicalHistory: vi.fn(async () => undefined),
+        restoreJobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getLatestWasteManagementJobMock).toHaveBeenCalledWith(
+      wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(setLastJob).toHaveBeenCalledWith(restoredJob);
+  });
+
+  it('retries restoring the latest postal-code job after a transient failure', async () => {
+    const restoredJob = {
+      id: 'postal-job-retried',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'running',
+    } as never;
+    getLatestWasteManagementJobMock
+      .mockRejectedValueOnce(new Error('temporary outage'))
+      .mockResolvedValueOnce(restoredJob);
+    const setLastJob = vi.fn();
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: null,
+        refreshTechnicalHistory: vi.fn(async () => undefined),
+        restoreJobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    expect(getLatestWasteManagementJobMock).toHaveBeenCalledTimes(2);
+    expect(setLastJob).toHaveBeenCalledWith(restoredJob);
+  });
+
+  it('starts a later retry cycle after the first restore cycle is exhausted', async () => {
+    const restoredJob = {
+      id: 'postal-job-after-outage',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'running',
+    } as never;
+    getLatestWasteManagementJobMock
+      .mockRejectedValueOnce(new Error('outage 1'))
+      .mockRejectedValueOnce(new Error('outage 2'))
+      .mockRejectedValueOnce(new Error('outage 3'))
+      .mockResolvedValueOnce(restoredJob);
+    const setLastJob = vi.fn();
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: null,
+        refreshTechnicalHistory: vi.fn(async () => undefined),
+        restoreJobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(2_000);
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(getLatestWasteManagementJobMock).toHaveBeenCalledTimes(4);
+    expect(setLastJob).toHaveBeenCalledWith(restoredJob);
+  });
+
+  it('restarts restoration after the active effect is cleaned up', async () => {
+    const restoredJob = {
+      id: 'postal-job-strict-mode',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'running',
+    } as never;
+    getLatestWasteManagementJobMock
+      .mockImplementationOnce(() => new Promise(() => undefined))
+      .mockResolvedValueOnce(restoredJob);
+    const setLastJob = vi.fn();
+
+    const { rerender } = renderHook(
+      ({ restoreJobTypeId }) =>
+        useWasteTrackedJob({
+          lastJob: null,
+          refreshTechnicalHistory: vi.fn(async () => undefined),
+          restoreJobTypeId,
+          setLastJob,
+        }),
+      {
+        initialProps: {
+          restoreJobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+        },
+      }
+    );
+
+    rerender({ restoreJobTypeId: 'waste-management.other-job' });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getLatestWasteManagementJobMock).toHaveBeenCalledTimes(2);
+    expect(setLastJob).toHaveBeenCalledWith(restoredJob);
   });
 
   afterEach(() => {
@@ -107,6 +239,44 @@ describe('useWasteTrackedJob', () => {
     });
 
     expect(getWasteManagementJobDetailMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps polling the tracked postal-code job when a newer job exists', async () => {
+    const completedJob = {
+      id: 'postal-job-1',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'succeeded',
+    } as never;
+    getLatestWasteManagementJobMock.mockResolvedValue({
+      id: 'postal-job-2',
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+      status: 'running',
+    });
+    getWasteManagementJobDetailMock.mockResolvedValue(completedJob);
+    const setLastJob = vi.fn();
+
+    renderHook(() =>
+      useWasteTrackedJob({
+        lastJob: {
+          id: 'postal-job-1',
+          jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
+          status: 'running',
+        } as never,
+        refreshTechnicalHistory: vi.fn(async () => undefined),
+        setLastJob,
+      })
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getWasteManagementJobDetailMock).toHaveBeenCalledWith(
+      'postal-job-1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+    expect(getLatestWasteManagementJobMock).not.toHaveBeenCalled();
+    expect(setLastJob).toHaveBeenCalledWith(completedJob);
   });
 
   it('polls active import jobs more frequently for live progress updates', async () => {

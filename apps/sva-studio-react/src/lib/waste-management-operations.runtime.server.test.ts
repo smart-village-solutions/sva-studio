@@ -19,6 +19,7 @@ describe('waste management operations runtime assembly', () => {
       seedData: expect.any(Function),
       syncMainserver: expect.any(Function),
       syncWasteTypes: expect.any(Function),
+      enrichPostalCodes: expect.any(Function),
       materializeEmailReminders: expect.any(Function),
       processEmailReminderOutbox: expect.any(Function),
       resetData: expect.any(Function),

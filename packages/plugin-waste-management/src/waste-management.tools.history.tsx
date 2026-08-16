@@ -1,9 +1,11 @@
 import type { StudioJobResponse, WasteManagementHistoryOverview } from '@sva/plugin-sdk';
 import { usePluginTranslation, wasteManagementOperationsContract } from '@sva/plugin-sdk';
 import { useState } from 'react';
-import { Badge, Button, StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
+import { StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
+import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
+import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
 
 const activeImportStatuses = new Set(['queued', 'running', 'retrying']);
 
@@ -152,26 +154,40 @@ export const WasteToolsHistory = ({
 }) => {
   const pt = usePluginTranslation('wasteManagement');
   const [openEntryId, setOpenEntryId] = useState<string | null>(null);
+  const latestRecordedJob = technicalHistory.find(
+    (item) => item.source === 'job' && item.jobId && item.jobTypeId
+  );
+  const displayedLastJob =
+    lastJob ??
+    (latestRecordedJob
+      ? ({
+          id: latestRecordedJob.jobId,
+          jobTypeId: latestRecordedJob.jobTypeId,
+          status:
+            latestRecordedJob.jobStatus ??
+            (latestRecordedJob.outcome === 'success' ? 'succeeded' : 'failed'),
+        } as StudioJobResponse['data'])
+      : null);
 
   return (
     <div className="space-y-4">
       <StudioJobSummaryCard
         title={pt('tools.meta.lastJobTitle')}
-        description={lastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')}
-        statusLabel={lastJob?.status ?? pt('tools.meta.noJobStatus')}
-        statusTone={toJobStatusTone(lastJob?.status)}
+        description={displayedLastJob ? pt('tools.meta.lastJobDescription') : pt('tools.meta.noJobYet')}
+        statusLabel={displayedLastJob?.status ?? pt('tools.meta.noJobStatus')}
+        statusTone={toJobStatusTone(displayedLastJob?.status)}
         metadata={
-          lastJob
+          displayedLastJob
             ? [
-                { id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: lastJob.id },
-                { id: 'jobTypeId', label: pt('tools.meta.jobTypeLabel'), value: lastJob.jobTypeId },
-                { id: 'jobStatus', label: pt('tools.meta.jobStatusLabel'), value: lastJob.status },
+                { id: 'jobId', label: pt('tools.meta.jobIdLabel'), value: displayedLastJob.id },
+                { id: 'jobTypeId', label: pt('tools.meta.jobTypeLabel'), value: displayedLastJob.jobTypeId },
+                { id: 'jobStatus', label: pt('tools.meta.jobStatusLabel'), value: displayedLastJob.status },
               ]
             : undefined
         }
-        emptyState={pt('tools.meta.noJobYet')}
       />
-      {isActiveImportJob(lastJob) ? <WasteToolsActiveImportProgress job={lastJob} /> : null}
+      {isActiveImportJob(displayedLastJob) ? <WasteToolsActiveImportProgress job={displayedLastJob} /> : null}
+      <WasteToolsPostalCodeStatus job={displayedLastJob} />
       <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.historyTitle')}</h3>
@@ -181,58 +197,15 @@ export const WasteToolsHistory = ({
           <div className="space-y-2">
             {technicalHistory.slice(0, 5).map((item) => {
               const isOpen = openEntryId === item.id;
-              const jobId = item.jobId ?? undefined;
               return (
-                <div key={item.id} className="rounded-xl border border-border/60 bg-muted/10 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{item.eventType}</Badge>
-                        <Badge
-                          variant={
-                            item.outcome === 'success'
-                              ? 'default'
-                              : item.outcome === 'failure'
-                                ? 'destructive'
-                                : 'secondary'
-                          }
-                        >
-                          {pt(`overview.outcome.${item.outcome}`)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {pt('overview.meta.occurredAt', { value: formatUpdatedAt(item.occurredAt) })}
-                      </p>
-                      {item.message ? <p className="text-sm text-foreground">{item.message}</p> : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="tertiary"
-                        onClick={() => setOpenEntryId(isOpen ? null : item.id)}
-                      >
-                        {pt('tools.meta.historyDetailsAction')}
-                      </Button>
-                      {jobId && canDeleteHistoryEntries ? (
-                        <Button
-                          type="button"
-                          variant="tertiary"
-                          onClick={() => onDeleteEntry?.(jobId)}
-                        >
-                          {pt('tools.meta.historyDeleteAction')}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                  {isOpen ? (
-                    <div className="mt-3 space-y-1 border-t border-border/60 pt-3 text-sm text-muted-foreground">
-                      {jobId ? <p>{pt('overview.meta.jobId', { value: jobId })}</p> : null}
-                      {item.jobTypeId ? <p>{pt('overview.meta.jobTypeId', { value: item.jobTypeId })}</p> : null}
-                      {item.requestId ? <p>{pt('overview.meta.requestId', { value: item.requestId })}</p> : null}
-                      {item.errorCode ? <p>{pt('overview.meta.reasonCode', { value: item.errorCode })}</p> : null}
-                    </div>
-                  ) : null}
-                </div>
+                <WasteToolsHistoryEntry
+                  key={item.id}
+                  item={item}
+                  isOpen={isOpen}
+                  canDelete={canDeleteHistoryEntries}
+                  onToggle={() => setOpenEntryId(isOpen ? null : item.id)}
+                  onDelete={onDeleteEntry}
+                />
               );
             })}
           </div>

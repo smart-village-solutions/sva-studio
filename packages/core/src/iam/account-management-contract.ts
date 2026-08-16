@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | 'idempotency_key_required'
   | 'idempotency_key_reuse'
   | 'idempotency_in_progress'
+  | 'active_job_exists'
   | 'keycloak_unavailable'
   | 'tenant_auth_client_secret_missing'
   | 'tenant_admin_client_not_configured'

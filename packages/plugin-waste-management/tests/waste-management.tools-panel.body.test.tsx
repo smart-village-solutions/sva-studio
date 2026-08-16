@@ -50,6 +50,7 @@ describe('WasteToolsPanelBody', () => {
           canRunImport: true,
           canRunInitialize: true,
           canRunMigrations: true,
+          canEnrichPostalCodes: true,
           canRunSeed: true,
           canRunReset: true,
           canDeleteHistoryEntries: false,
@@ -83,6 +84,7 @@ describe('WasteToolsPanelBody', () => {
         setMigrationSchema={vi.fn()}
         setMigrationVersion={vi.fn()}
         runMigrations={vi.fn()}
+        runPostalCodeEnrichment={vi.fn()}
         runSeed={vi.fn()}
         setResetConfirmOpen={vi.fn()}
       />

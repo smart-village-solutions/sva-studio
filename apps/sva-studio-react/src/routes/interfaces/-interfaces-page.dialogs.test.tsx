@@ -200,6 +200,7 @@ describe('interfaces-page dialogs', () => {
     render(
       <InterfaceForm
         draft={createMapGeocodingDraft()}
+        hasStoredMapApiKey={true}
         saveStatus="idle"
         saveErrorMessage={null}
         onChange={onChange}
@@ -207,6 +208,23 @@ describe('interfaces-page dialogs', () => {
         onSubmit={vi.fn()}
       />
     );
+
+    expect(screen.getByText('Empfohlene Einrichtung mit Geoapify')).toBeTruthy();
+    expect(
+      screen.getByText('Leer lassen, um den vorhandenen API-Key beizubehalten')
+    ).toBeTruthy();
+    expect(screen.getByText('Ein API-Key ist bereits hinterlegt')).toBeTruthy();
+    expect(screen.getByLabelText('API-Key').getAttribute('placeholder')).toBe(
+      'Neuen API-Key eingeben'
+    );
+    expect(screen.getByLabelText('API-Key').getAttribute('aria-describedby')).toBe(
+      'map-api-key-hint'
+    );
+    expect(
+      screen
+        .getByRole('link', { name: 'Geoapify-Projekt und API-Key anlegen' })
+        .getAttribute('href')
+    ).toBe('https://myprojects.geoapify.com/');
 
     fireEvent.change(screen.getByLabelText('Style-URL'), {
       target: { value: 'https://tiles.example/styles/editorial' },

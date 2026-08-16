@@ -109,16 +109,16 @@ Lies diese Dateien zu Beginn, um alle Non-Negotiable-Regeln zu kennen.
 
 1. **Worktree pruefen**: Vor jedem Commit `git status` pruefen und fremde oder bereits vorhandene lokale Aenderungen identifizieren
 2. **Änderungen selektiv stagen**: Nur die fuer den Fix relevanten Dateien mit expliziter Dateiliste stagen; niemals pauschal alles stagen
-2. **Commit-Message**: Descriptive, auf Deutsch oder Englisch je nach Repo-Konvention
+3. **Commit-Message**: Descriptive, auf Deutsch oder Englisch je nach Repo-Konvention
    - Format: `fix: <kurze Beschreibung>` oder `test: <kurze Beschreibung>`
    - Kein Sammel-Commit für unzusammenhängende Änderungen
-3. **Vor dem Push eines kleinen Folgefixes im bestehenden PR**:
+4. **Vor dem Push eines kleinen Folgefixes im bestehenden PR**:
    - keine pauschalen breiten `affected`- oder `test:pr`-Läufe wiederholen
    - nur den unmittelbar geänderten Pfad gezielt prüfen, wenn ein schneller aussagekräftiger Test existiert oder ein konkretes Fehlersignal reproduziert werden muss
    - reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine Tests
-   - spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime weiterhin ausführen
+   - spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen, Server-Runtime sowie CI-/Workspace-Tooling weiterhin ausführen; bei Änderungen an `scripts/ci/**`, Root-TypeScript-Skripten oder Workspace-Tooling insbesondere `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper verwenden
    - nach dem Push die GitHub-Gates für den exakten neuen HEAD als führende Gesamtvalidierung abwarten
-4. **Push**: `git push`
+5. **Push**: `git push`
 
 ### Phase 5: Re-Evaluation (Loop)
 

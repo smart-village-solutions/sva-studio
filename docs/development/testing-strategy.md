@@ -66,7 +66,7 @@ Für neue oder grundlegend überarbeitete Studio-Flows gelten zusätzlich die ve
 
 ### Vor initialem oder wesentlich scope-erweiterndem Code-Push
 
-- den affected Scope zuerst messen
+- den affected Scope zuerst mit `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` messen
 - bei kleinem Scope `pnpm test:unit:affected`
 - bei Typänderungen zusätzlich `pnpm test:types:affected`
 - bei PR-relevanten Quality-Gate-, Coverage-, Logging-, Auth-, Routing- oder Build-Änderungen nach Möglichkeit zusätzlich `pnpm test:pr`

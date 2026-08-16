@@ -68,31 +68,44 @@ export const buildPermissionCacheProbePayload = (input: {
 
 const normalizeBaseUrl = (value: string): string => value.trim().replace(/\/$/u, '');
 
-export const parsePermissionCacheMultiReplicaConfig = (
-  env: NodeJS.ProcessEnv
-): PermissionCacheMultiReplicaConfig => {
-  const replicaUrls = (env.IAM_CACHE_REPLICA_URLS ?? '')
-    .split(',')
-    .map(normalizeBaseUrl)
-    .filter(Boolean);
+const parseReplicaUrls = (value: string | undefined): readonly string[] => {
+  const replicaUrls = (value ?? '').split(',').map(normalizeBaseUrl).filter(Boolean);
   if (replicaUrls.length < 2) {
     throw new Error('iam_cache_replica_urls_requires_two_replicas');
   }
+  return replicaUrls;
+};
 
-  const databaseUrl = env.IAM_CACHE_TEST_DATABASE_URL?.trim();
-  const redisUrl = env.IAM_CACHE_TEST_REDIS_URL?.trim();
-  const redisFailureUrl = env.IAM_CACHE_REDIS_FAILURE_URL?.trim();
-  const databaseFailureUrl = env.IAM_CACHE_DATABASE_FAILURE_URL?.trim();
-  if (!databaseUrl || !redisUrl || !redisFailureUrl || !databaseFailureUrl) {
+const readRequiredConfig = <TKey extends string>(
+  env: NodeJS.ProcessEnv,
+  keys: readonly TKey[]
+): Readonly<Record<TKey, string>> => {
+  const values = Object.fromEntries(
+    keys.map((key) => [key, env[key]?.trim() ?? ''])
+  ) as Record<TKey, string>;
+  if (Object.values(values).some((value) => !value)) {
     throw new Error('iam_cache_multi_replica_config_missing');
   }
+  return values;
+};
+
+export const parsePermissionCacheMultiReplicaConfig = (
+  env: NodeJS.ProcessEnv
+): PermissionCacheMultiReplicaConfig => {
+  const replicaUrls = parseReplicaUrls(env.IAM_CACHE_REPLICA_URLS);
+  const required = readRequiredConfig(env, [
+    'IAM_CACHE_TEST_DATABASE_URL',
+    'IAM_CACHE_TEST_REDIS_URL',
+    'IAM_CACHE_REDIS_FAILURE_URL',
+    'IAM_CACHE_DATABASE_FAILURE_URL',
+  ]);
 
   return {
     replicaUrls,
-    redisFailureUrl: normalizeBaseUrl(redisFailureUrl),
-    databaseFailureUrl: normalizeBaseUrl(databaseFailureUrl),
-    databaseUrl,
-    redisUrl,
+    redisFailureUrl: normalizeBaseUrl(required.IAM_CACHE_REDIS_FAILURE_URL),
+    databaseFailureUrl: normalizeBaseUrl(required.IAM_CACHE_DATABASE_FAILURE_URL),
+    databaseUrl: required.IAM_CACHE_TEST_DATABASE_URL,
+    redisUrl: required.IAM_CACHE_TEST_REDIS_URL,
     instanceId: env.IAM_CACHE_TEST_INSTANCE_ID?.trim() || 'de-musterhausen',
     keycloakSubject: env.IAM_CACHE_TEST_KEYCLOAK_SUBJECT?.trim() || 'dev:scoped-access-acceptance',
     measuredRequests: parsePositiveInteger(env.IAM_CACHE_TEST_MEASURED_REQUESTS, 100),

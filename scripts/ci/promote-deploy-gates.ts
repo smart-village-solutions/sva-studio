@@ -34,11 +34,17 @@ interface EvaluateDeployGateOptions {
   safeComposeFiles?: readonly string[];
 }
 const migrationRiskPatterns = [
+  /^Dockerfile$/u,
   /^compose\.yaml$/u,
   /^deploy\/compose\.(?:dev|staging|prod)\.yaml$/u,
   /^packages\/.+\/migrations\//u,
   /(?:^|\/)migrations\//u,
   /^migrate-entrypoint\.sh$/u,
+  /^deploy\/portainer\/migrate-entrypoint\.sh$/u,
+  /^deploy\/portainer\/migrate-waste-tenants\.mjs$/u,
+  /^deploy\/portainer\/Dockerfile$/u,
+  /^deploy\/portainer\/docker-compose\.studio\.yml$/u,
+  /^packages\/server-runtime\/src\/waste\/tenant-database-identifiers\.server\.ts$/u,
   /^packages\/data\/goose\.config\.json$/u,
   /^packages\/data\/scripts\/goosew\.sh$/u,
   /^docs\/development\/studio-db-schema-final\.sql$/u,

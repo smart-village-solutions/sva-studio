@@ -73,6 +73,57 @@ describe('promote-deploy-gates', () => {
     ]);
   });
 
+  it('fails migration assert-none when the versioned Waste tenant migrator changes', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: ['deploy/portainer/migrate-waste-tenants.mjs'],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: ['deploy/portainer/migrate-waste-tenants.mjs'],
+    });
+  });
+
+  it('fails migration assert-none when Waste tenant database-name derivation changes', () => {
+    const file = 'packages/server-runtime/src/waste/tenant-database-identifiers.server.ts';
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [file],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: [file],
+    });
+  });
+
+  it('fails migration assert-none when Waste one-shot deployment artifacts change', () => {
+    const files = [
+      'Dockerfile',
+      'deploy/portainer/Dockerfile',
+      'deploy/portainer/docker-compose.studio.yml',
+    ];
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: files,
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: files,
+    });
+  });
+
   it('treats application changes outside migration artifacts as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

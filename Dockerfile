@@ -127,6 +127,7 @@ COPY --from=build --chown=node:node /workspace/apps/sva-studio-react/.output ./.
 COPY --from=build --chown=node:node /workspace/entrypoint.sh ./entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/migrate-entrypoint.sh ./migrate-entrypoint.sh
+COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
 COPY --from=build --chown=node:node /workspace/otel-bootstrap.mjs ./otel-bootstrap.mjs

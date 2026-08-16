@@ -47,4 +47,23 @@ log "Wende Migrationen an"
 log "Lese finalen Goose-Status"
 "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
 
+case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in
+  true)
+    WASTE_TENANT_MIGRATOR="${WASTE_TENANT_MIGRATOR:-./migrate-waste-tenants.mjs}"
+    if [ ! -f "${WASTE_TENANT_MIGRATOR}" ]; then
+      log "Waste-Tenant-Migrator fehlt: ${WASTE_TENANT_MIGRATOR}"
+      exit 1
+    fi
+    log "Wende ausstehende versionierte Waste-Tenant-Migrationen an"
+    node "${WASTE_TENANT_MIGRATOR}"
+    ;;
+  false|'')
+    log "Waste-Tenant-Migrationen sind für dieses Laufzeitprofil deaktiviert"
+    ;;
+  *)
+    log "Ungültiger Wert für WASTE_TENANT_MIGRATIONS_ENABLED"
+    exit 1
+    ;;
+esac
+
 log "Migrationsjob erfolgreich abgeschlossen"

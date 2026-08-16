@@ -84,6 +84,29 @@ kanonische Basis-URL verwenden. DNS, TLS, `/health/live`,
 `/api/public-waste/selection` und ein realer Kalenderabruf sind anschließend
 getrennt zu prüfen.
 
+Die beiden internen Waste-Felder werden über den regulären, tenantgebundenen
+Settings-Endpunkt umgestellt. Der Helfer liest zuerst die vollständige aktuelle
+Konfiguration, ändert ausschließlich `calendarWebUrl` und
+`emailReminderConfig.publicBaseUrl` und verifiziert beide Werte nach dem
+Schreiben. Instanz-ID, ausgewählte Schnittstelle und vorhandene
+Reminder-Konfiguration werden fail-closed geprüft. Der Session-Cookie wird über
+ein lokales Secret-Kommando bezogen und weder als Argument noch in der Ausgabe
+offengelegt:
+
+```bash
+STUDIO_WASTE_BASE_URL=https://studio.smart-village.app \
+PUBLIC_WASTE_EXPECTED_INSTANCE_ID=bb-prignitz \
+PUBLIC_WASTE_TARGET_BASE_URL=https://prignitz.abfallkalender.pro \
+STUDIO_WASTE_SESSION_COOKIE_COMMAND='["security","find-generic-password","-a","sva-studio-waste","-s","sva-studio-waste-production-cookie","-w"]' \
+pnpm exec tsx scripts/ops/public-waste/studio-settings-domain-cutover.ts
+```
+
+Der Secret-Eintrag enthält den vollständigen `Cookie`-Headerwert einer
+berechtigten, aktiven Studio-Sitzung. Er ist kurzlebig zu halten und nach dem
+Cutover zu entfernen. Direkte Änderungen an
+`iam.instance_external_interfaces.public_config` sind kein zulässiger
+Betriebsweg.
+
 Beispiel:
 
 ```bash
@@ -98,6 +121,7 @@ diese Checks sinnvoll:
 
 ```bash
 pnpm exec vitest run scripts/ops/public-waste/portainer-release.test.ts
+pnpm exec vitest run scripts/ops/public-waste/studio-settings-domain-cutover.test.ts
 pnpm exec tsc -p tsconfig.scripts.json --noEmit
 pnpm nx run public-waste-calendar-web:build
 docker compose --env-file config/runtime/public-waste.vars.example -f deploy/portainer/docker-compose.public-waste.yml config

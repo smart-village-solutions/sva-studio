@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const compose = readFileSync(resolve(import.meta.dirname, 'docker-compose.studio.yml'), 'utf8');
+const genericCompose = readFileSync(resolve(import.meta.dirname, 'docker-compose.yml'), 'utf8');
 const canonicalCompose = readFileSync(resolve(import.meta.dirname, '../../compose.yaml'), 'utf8');
 const entrypoint = readFileSync(resolve(import.meta.dirname, 'provisioner-entrypoint.sh'), 'utf8');
 const migrationEntrypoint = readFileSync(
@@ -28,6 +29,10 @@ const migrateSection = compose.slice(
 const canonicalMigrateSection = canonicalCompose.slice(
   canonicalCompose.indexOf('  migrate:'),
   canonicalCompose.indexOf('  bootstrap:')
+);
+const genericMigrateSection = genericCompose.slice(
+  genericCompose.indexOf('  migrate:'),
+  genericCompose.indexOf('  bootstrap:')
 );
 const servicesSection = compose.slice(compose.indexOf('services:'), compose.indexOf('\nnetworks:'));
 
@@ -86,10 +91,13 @@ describe('waste tenant database provisioning deployment', () => {
 
   it('mounts the Waste provisioner secret into the isolated migration one-shot', () => {
     for (const section of [migrateSection, canonicalMigrateSection]) {
+      expect(section).toContain('WASTE_TENANT_MIGRATIONS_ENABLED');
       expect(section).toContain('WASTE_DATABASE_PROVISIONER_USER');
       expect(section).toContain('/run/secrets/waste_database_provisioner_password');
       expect(section).toContain('waste_database_provisioner_password');
     }
+    expect(genericMigrateSection).not.toContain('WASTE_TENANT_MIGRATIONS_ENABLED');
+    expect(genericMigrateSection).not.toContain('WASTE_DATABASE_PROVISIONER');
   });
 
   it('ships and invokes the digest-bound versioned Waste migrator after Goose', () => {
@@ -99,5 +107,6 @@ describe('waste tenant database provisioning deployment', () => {
     expect(migrationEntrypoint.indexOf('goosew.sh')).toBeLessThan(
       migrationEntrypoint.indexOf('node "${WASTE_TENANT_MIGRATOR}"')
     );
+    expect(migrationEntrypoint).toContain('${WASTE_TENANT_MIGRATIONS_ENABLED:-false}');
   });
 });

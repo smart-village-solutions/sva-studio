@@ -198,6 +198,7 @@ services:
       GOOSE_WRAPPER: packages/data/scripts/goosew.sh
       MIGRATIONS_DIR: packages/data/migrations
       GOOSE_CONFIG_PATH: packages/data/goose.config.json
+      WASTE_TENANT_MIGRATIONS_ENABLED: 'true'
       WASTE_DATABASE_PROVISIONER_USER: '${WASTE_DATABASE_PROVISIONER_USER:-sva_waste_provisioner}'
       WASTE_DATABASE_PROVISIONER_PASSWORD_FILE: '/run/secrets/waste_database_provisioner_password'
       WASTE_DATABASE_PROVISIONER_HOST: '${SVA_STACK_NAME:-studio}_postgres'

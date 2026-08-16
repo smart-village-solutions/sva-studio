@@ -9,6 +9,8 @@
 
 -- Mandantenspezifische Waste-Tabellen sind nicht Teil dieses zentralen IAM-Dumps.
 -- Ihr Provisioning-Schema enthält waste_cities.postal_code für stabile News-Zielschlüssel.
+-- Dazu gehört auch public.sva_waste_schema_migrations: Der Ledger liegt ausschließlich
+-- in jeder externen Waste-Tenant-Datenbank und ist in studio-db-schema.md dokumentiert.
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;

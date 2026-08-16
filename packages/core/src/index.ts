@@ -200,11 +200,13 @@ export type {
 } from './waste-management-contract.js';
 export { wasteManagementOperationsContract } from './waste-management-operations-contract.js';
 export {
-  getWasteManagementDataProfile,
   wasteManagementDataProfileIds,
+} from './waste-management-data-exchange.js';
+export {
+  getWasteManagementDataProfile,
   wasteManagementDataProfiles,
   wasteManagementExcludedDataDomains,
-} from './waste-management-data-exchange.js';
+} from './waste-management-data-profiles.js';
 export {
   parseWasteManagementDataExchangeJson,
   serializeWasteManagementDataExchangeJson,

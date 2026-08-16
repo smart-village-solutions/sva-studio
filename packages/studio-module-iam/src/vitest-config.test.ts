@@ -1,6 +1,12 @@
 import vitestConfig from '../vitest.config';
 
 describe('studio-module-iam vitest coverage config', () => {
+  it('resolves @sva/core from source without requiring a prebuilt workspace package', () => {
+    expect(vitestConfig.resolve?.alias).toMatchObject({
+      '@sva/core': expect.stringContaining('/packages/core/src/index.ts'),
+    });
+  });
+
   it('inherits the shared coverage reporters required by the CI gate', () => {
     expect(vitestConfig.test?.coverage).toMatchObject({
       provider: 'v8',

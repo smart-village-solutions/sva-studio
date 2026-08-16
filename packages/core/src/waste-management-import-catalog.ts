@@ -4,7 +4,7 @@ import {
   type WasteManagementImportProfileId,
   type WasteManagementImportSourceFormat,
 } from './waste-management-operations-contract.js';
-import { wasteManagementDataProfiles } from './waste-management-data-exchange.js';
+import { wasteManagementDataProfiles } from './waste-management-data-profiles.js';
 
 export type WasteManagementImportColumnDefinition = {
   readonly key: string;

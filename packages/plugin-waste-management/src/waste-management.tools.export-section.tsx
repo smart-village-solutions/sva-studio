@@ -17,6 +17,32 @@ const profileTranslationKeys: Readonly<Record<WasteManagementDataProfileId, stri
   'waste-management.portable-einstellungen': 'portableSettings',
 };
 
+const WasteExportProfileSelector = ({
+  profileIds,
+  onToggle,
+}: {
+  readonly profileIds: readonly WasteManagementDataProfileId[];
+  readonly onToggle: (profileId: WasteManagementDataProfileId, checked: boolean) => void;
+}) => {
+  const pt = usePluginTranslation('wasteManagement');
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-sm font-medium">{pt('tools.exports.profilesLabel')}</legend>
+      <div className="grid gap-2 md:grid-cols-2">
+        {wasteManagementDataProfiles.map((profile) => {
+          const id = `waste-export-${profile.profileId}`;
+          return (
+            <label key={profile.profileId} htmlFor={id} className="flex items-start gap-2 rounded-lg border border-border/60 p-3">
+              <Checkbox id={id} checked={profileIds.includes(profile.profileId)} onChange={(event) => onToggle(profile.profileId, event.currentTarget.checked)} />
+              <span className="text-sm">{pt(`tools.exports.profiles.${profileTranslationKeys[profile.profileId]}`)}</span>
+            </label>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+};
+
 export const WasteToolsExportSection = ({
   running,
   onStartExport,
@@ -52,32 +78,7 @@ export const WasteToolsExportSection = ({
         <h3 className="text-sm font-semibold">{pt('tools.exports.title')}</h3>
         <p className="text-sm text-muted-foreground">{pt('tools.exports.description')}</p>
       </div>
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">{pt('tools.exports.profilesLabel')}</legend>
-        <div className="grid gap-2 md:grid-cols-2">
-          {wasteManagementDataProfiles.map((profile) => {
-            const id = `waste-export-${profile.profileId}`;
-            return (
-              <label
-                key={profile.profileId}
-                htmlFor={id}
-                className="flex items-start gap-2 rounded-lg border border-border/60 p-3"
-              >
-                <Checkbox
-                  id={id}
-                  checked={profileIds.includes(profile.profileId)}
-                  onChange={(event) =>
-                    toggleProfile(profile.profileId, event.currentTarget.checked)
-                  }
-                />
-                <span className="text-sm">
-                  {pt(`tools.exports.profiles.${profileTranslationKeys[profile.profileId]}`)}
-                </span>
-              </label>
-            );
-          })}
-        </div>
-      </fieldset>
+      <WasteExportProfileSelector profileIds={profileIds} onToggle={toggleProfile} />
       <label className="block space-y-1 text-sm font-medium">
         <span>{pt('tools.exports.formatLabel')}</span>
         <Select

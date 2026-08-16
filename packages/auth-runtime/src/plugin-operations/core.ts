@@ -18,12 +18,12 @@ import {
 import {
   cancelPluginOperationJobHandler,
   deletePluginOperationJobHandler,
-  downloadPluginOperationArtifactHandler,
   getPluginOperationJobHandler,
   listPluginOperationJobsHandler,
   requireActorInstanceId,
   requireMonitoringAccess,
 } from './core.monitoring.js';
+import { downloadPluginOperationArtifactHandler } from './core.artifacts.js';
 
 export {
   cancelPluginOperationJobHandler,

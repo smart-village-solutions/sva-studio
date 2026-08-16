@@ -27,6 +27,25 @@ const createEnrichPostalCodesHandler = (runtime: WasteManagementOperationRuntime
       runtimeArg.enrichPostalCodes(instanceId, payload, progressReporter, context),
   })(runtime);
 
+const createEmailReminderHandlers = (runtime: WasteManagementOperationRuntime) => ({
+  [wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders]:
+    createOperationHandler<WasteManagementMaterializeEmailRemindersJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
+      expectedOperation: 'materialize-email-reminders',
+      phaseKey: 'waste-management.materialize-email-reminders',
+      execute: (runtimeArg, instanceId, payload) =>
+        runtimeArg.materializeEmailReminders(instanceId, payload),
+    })(runtime),
+  [wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox]:
+    createOperationHandler<WasteManagementProcessEmailReminderOutboxJobInput>({
+      jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
+      expectedOperation: 'process-email-reminder-outbox',
+      phaseKey: 'waste-management.process-email-reminder-outbox',
+      execute: (runtimeArg, instanceId, payload) =>
+        runtimeArg.processEmailReminderOutbox(instanceId, payload),
+    })(runtime),
+});
+
 export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOperationRuntime) => ({
   [wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase]:
     createOperationHandler<WasteManagementProvisionTenantDatabaseJobInput>({
@@ -94,20 +113,5 @@ export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOper
     })(runtime),
   [wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes]:
     createEnrichPostalCodesHandler(runtime),
-  [wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders]:
-    createOperationHandler<WasteManagementMaterializeEmailRemindersJobInput>({
-      jobTypeId: wasteManagementOperationsContract.jobTypeIds.materializeEmailReminders,
-      expectedOperation: 'materialize-email-reminders',
-      phaseKey: 'waste-management.materialize-email-reminders',
-      execute: (runtimeArg, instanceId, payload) =>
-        runtimeArg.materializeEmailReminders(instanceId, payload),
-    })(runtime),
-  [wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox]:
-    createOperationHandler<WasteManagementProcessEmailReminderOutboxJobInput>({
-      jobTypeId: wasteManagementOperationsContract.jobTypeIds.processEmailReminderOutbox,
-      expectedOperation: 'process-email-reminder-outbox',
-      phaseKey: 'waste-management.process-email-reminder-outbox',
-      execute: (runtimeArg, instanceId, payload) =>
-        runtimeArg.processEmailReminderOutbox(instanceId, payload),
-    })(runtime),
+  ...createEmailReminderHandlers(runtime),
 });

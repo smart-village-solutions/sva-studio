@@ -54,23 +54,22 @@ const WasteToolAction = ({
   );
 };
 
-const WasteMigrationsAction = ({
-  schema,
-  version,
-  running,
-  disabled,
-  onSchemaChange,
-  onVersionChange,
-  onStart,
-}: {
-  readonly schema: string;
-  readonly version: string;
-  readonly running: boolean;
-  readonly disabled: boolean;
-  readonly onSchemaChange: (value: string) => void;
-  readonly onVersionChange: (value: string) => void;
-  readonly onStart: () => void;
-}) => {
+const WasteToolsMigrationActions = ({
+  migrationSchema,
+  migrationVersion,
+  runningAction,
+  onMigrationSchemaChange,
+  onMigrationVersionChange,
+  onStartMigrations,
+}: Pick<
+  WasteToolsActionsSectionProps,
+  | 'migrationSchema'
+  | 'migrationVersion'
+  | 'runningAction'
+  | 'onMigrationSchemaChange'
+  | 'onMigrationVersionChange'
+  | 'onStartMigrations'
+>) => {
   const pt = usePluginTranslation('wasteManagement');
   return (
     <div className="space-y-3">
@@ -80,22 +79,14 @@ const WasteMigrationsAction = ({
       </div>
       <StudioFieldGroup>
         <StudioField id="waste-tools-migration-schema" label={pt('tools.migrations.schemaLabel')}>
-          <Input
-            id="waste-tools-migration-schema"
-            value={schema}
-            onChange={(event) => onSchemaChange(event.target.value)}
-          />
+          <Input id="waste-tools-migration-schema" value={migrationSchema} onChange={(event) => onMigrationSchemaChange(event.target.value)} />
         </StudioField>
         <StudioField id="waste-tools-migration-version" label={pt('tools.migrations.versionLabel')}>
-          <Input
-            id="waste-tools-migration-version"
-            value={version}
-            onChange={(event) => onVersionChange(event.target.value)}
-          />
+          <Input id="waste-tools-migration-version" value={migrationVersion} onChange={(event) => onMigrationVersionChange(event.target.value)} />
         </StudioField>
       </StudioFieldGroup>
-      <Button type="button" disabled={disabled} onClick={onStart}>
-        {running ? pt('tools.actions.starting') : pt('tools.actions.startMigrations')}
+      <Button type="button" disabled={runningAction !== null} onClick={onStartMigrations}>
+        {runningAction === 'migration' ? pt('tools.actions.starting') : pt('tools.actions.startMigrations')}
       </Button>
     </div>
   );
@@ -122,14 +113,13 @@ export const WasteToolsActionsSection = ({
   return (
     <>
       {canRunMigrations ? (
-        <WasteMigrationsAction
-          schema={migrationSchema}
-          version={migrationVersion}
-          running={runningAction === 'migration'}
-          disabled={runningAction !== null}
-          onSchemaChange={onMigrationSchemaChange}
-          onVersionChange={onMigrationVersionChange}
-          onStart={onStartMigrations}
+        <WasteToolsMigrationActions
+          migrationSchema={migrationSchema}
+          migrationVersion={migrationVersion}
+          runningAction={runningAction}
+          onMigrationSchemaChange={onMigrationSchemaChange}
+          onMigrationVersionChange={onMigrationVersionChange}
+          onStartMigrations={onStartMigrations}
         />
       ) : null}
 

@@ -6,9 +6,9 @@ import {
 } from './waste-management-data-exchange-json.js';
 import {
   wasteManagementDataProfileIds,
-  wasteManagementDataProfiles,
   type WasteManagementDataFieldValueType,
 } from './waste-management-data-exchange.js';
+import { wasteManagementDataProfiles } from './waste-management-data-profiles.js';
 
 const exportedAt = '2026-08-16T09:00:00.000Z';
 

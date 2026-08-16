@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   wasteManagementDataProfileIds,
+} from './waste-management-data-exchange.js';
+import {
   wasteManagementDataProfiles,
   wasteManagementExcludedDataDomains,
-} from './waste-management-data-exchange.js';
+} from './waste-management-data-profiles.js';
 
 const modelFields = {
   fraction: [

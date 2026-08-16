@@ -6,6 +6,7 @@ import { StudioEmptyState, StudioJobSummaryCard } from '@sva/studio-ui-react';
 import { formatUpdatedAt, toJobStatusTone } from './waste-management.page.support.js';
 import { WasteToolsPostalCodeStatus } from './waste-management.tools.postal-code-status.js';
 import { WasteToolsHistoryEntry } from './waste-management.tools.history-entry.js';
+import { WasteToolsArtifactDownloads } from './waste-management.tools.artifact-downloads.js';
 
 const activeImportStatuses = new Set(['queued', 'running', 'retrying']);
 
@@ -190,28 +191,7 @@ export const WasteToolsHistory = ({
       />
       {isActiveImportJob(displayedLastJob) ? <WasteToolsActiveImportProgress job={displayedLastJob} /> : null}
       <WasteToolsPostalCodeStatus job={displayedLastJob} />
-      {displayedLastJob?.status === 'succeeded' &&
-      displayedLastJob.resultPayload?.artifacts?.length ? (
-        <section className="space-y-2 rounded-xl border border-border/70 bg-background/80 p-4">
-          <h3 className="text-sm font-semibold">{pt('tools.meta.downloadsTitle')}</h3>
-          <div className="flex flex-wrap gap-2">
-            {displayedLastJob.resultPayload.artifacts.map((artifact) => (
-              <a
-                key={artifact.artifactId}
-                className="inline-flex min-h-10 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-muted"
-                href={`/api/v1/plugin-operations/jobs/${encodeURIComponent(displayedLastJob.id)}/artifacts/${encodeURIComponent(artifact.artifactId)}`}
-              >
-                {pt('tools.meta.downloadArtifact', { fileName: artifact.fileName })}
-              </a>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {pt('tools.meta.downloadExpiresAt', {
-              value: formatUpdatedAt(displayedLastJob.resultPayload.artifacts[0].expiresAt),
-            })}
-          </p>
-        </section>
-      ) : null}
+      {displayedLastJob ? <WasteToolsArtifactDownloads job={displayedLastJob} /> : null}
       <div className="space-y-3 rounded-xl border border-border/70 bg-background/80 p-4">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">{pt('tools.meta.historyTitle')}</h3>

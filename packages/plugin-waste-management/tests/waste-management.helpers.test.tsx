@@ -27,7 +27,6 @@ import {
   downloadImportTemplate,
   downloadImportPreviewErrors,
   formatUpdatedAt,
-  readFileAsDataUrl,
   resolveApiErrorCode,
   toJobStatusTone,
   toTechnicalStatusTone,
@@ -255,35 +254,6 @@ describe('waste management helper modules', () => {
     createElementSpy.mockRestore();
     objectUrlSpy.mockRestore();
     revokeSpy.mockRestore();
-  });
-
-  it('reads selected files as data urls', async () => {
-    const file = new File(['region_id\nregion-1\n'], 'catalog.csv', { type: 'text/csv' });
-
-    await expect(readFileAsDataUrl(file)).resolves.toMatch(/^data:text\/csv;base64,/);
-  });
-
-  it('fails closed when the file reader does not return a string result', async () => {
-    const originalFileReader = globalThis.FileReader;
-
-    class InvalidResultFileReader {
-      result: ArrayBuffer | string | null = new ArrayBuffer(8);
-      error: Error | null = null;
-      onerror: (() => void) | null = null;
-      onload: (() => void) | null = null;
-
-      readAsDataURL() {
-        this.onload?.();
-      }
-    }
-
-    vi.stubGlobal('FileReader', InvalidResultFileReader);
-
-    await expect(readFileAsDataUrl(new File(['x'], 'invalid.csv', { type: 'text/csv' }))).rejects.toThrow(
-      'file_read_failed'
-    );
-
-    vi.stubGlobal('FileReader', originalFileReader);
   });
 
   it('covers form defaults, mappers, and select resolution', () => {

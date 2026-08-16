@@ -434,6 +434,18 @@ const mockWasteFacade = async (page: Page, input: {
       return;
     }
 
+    if (method === 'POST' && path === '/api/v1/waste-management/tools/imports/upload') {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: createApiItem({
+          blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
+          sizeBytes: request.postDataBuffer()?.byteLength ?? 0,
+        }),
+      });
+      return;
+    }
+
     if (method === 'POST' && path === '/api/v1/waste-management/tools/imports/preview') {
       await route.fulfill({
         status: 200,

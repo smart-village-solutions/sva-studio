@@ -9,8 +9,8 @@ import type {
 import {
   downloadImportPreviewErrors,
   downloadImportTemplate,
-  readFileAsDataUrl,
 } from './waste-management.page.support.js';
+import { uploadWasteManagementImportSource } from './waste-management.api.js';
 import {
   createImportFileChangeHandler,
   isPreviewRequiredImportProfile,
@@ -91,12 +91,12 @@ export const WasteToolsImportSection = ({
   const previewRequired = isPreviewRequiredImportProfile(selectedImportProfile);
   const reachableStep = getReachableStep({
     hasSelectedProfile: selectedImportProfile !== null,
-    hasReadyFile: importBlobRef.startsWith('data:'),
+    hasReadyFile: importBlobRef.startsWith('plugin-operation-input:'),
     previewRequired,
     previewReady,
     hasImportResult: Boolean(importResultJob?.id),
   });
-  const canContinueFromUpload = importBlobRef.startsWith('data:');
+  const canContinueFromUpload = importBlobRef.startsWith('plugin-operation-input:');
   const previewHasBlockingErrors = previewRequired && (previewResult?.errors.length ?? 0) > 0;
   const canStartImport =
     canContinueFromUpload && (!previewRequired || (previewReady && !previewHasBlockingErrors));
@@ -127,10 +127,10 @@ export const WasteToolsImportSection = ({
     () =>
       createImportFileChangeHandler({
         onImportBlobRefChange,
-        readFileAsDataUrl,
+        uploadFile: (file) => uploadWasteManagementImportSource(file, importSourceFormat),
         onAfterChange: () => setWizardStep('validation'),
       }),
-    [onImportBlobRefChange]
+    [importSourceFormat, onImportBlobRefChange]
   );
   const handleRunPreview = async () => {
     if (await onRunPreview()) setWizardStep('preview');

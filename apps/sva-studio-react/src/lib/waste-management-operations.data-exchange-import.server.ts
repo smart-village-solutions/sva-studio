@@ -132,7 +132,9 @@ export const importCanonicalWasteManagementJson = async (
 ): Promise<OperationSummary> => {
   const startedAt = Date.now();
   if (!input.blobRef) throw new Error('missing_blob_ref');
-  const source = await (input.deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
+  const source = input.deps.readBinarySource
+    ? await input.deps.readBinarySource(input.blobRef)
+    : await defaultReadBinarySource(input.blobRef, input.instanceId);
   const parsed = parseWasteManagementDataExchangeJson(new TextDecoder().decode(source), {
     applyDefaults: false,
   });
@@ -191,7 +193,9 @@ export const importCanonicalWasteManagementPackage = async (
 ): Promise<OperationSummary> => {
   const startedAt = Date.now();
   if (!input.blobRef) throw new Error('missing_blob_ref');
-  const source = await (input.deps.readBinarySource ?? defaultReadBinarySource)(input.blobRef);
+  const source = input.deps.readBinarySource
+    ? await input.deps.readBinarySource(input.blobRef)
+    : await defaultReadBinarySource(input.blobRef, input.instanceId);
   const parsedProfiles = readWasteDataPackage(source);
   const packageSourceIds = collectWasteDataPackageSourceIds(parsedProfiles);
   const portableProfile = parsedProfiles.find(

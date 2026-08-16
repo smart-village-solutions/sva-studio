@@ -5,10 +5,20 @@ import {
   entity,
   excludedTargetTimestamps,
   optional,
+  optionalEnum,
   optionalStructured,
   reference,
   required,
+  requiredEnum,
+  requiredNonEmptyStringArray,
 } from './waste-management-data-profile-builders.js';
+import { wasteManagementMasterDataContract } from './waste-management/master-data-contract.js';
+import {
+  wasteHolidayRuleConfigurationStatuses,
+  wasteHolidayRuleConflictStatuses,
+  wasteHolidayRuleSourceStatuses,
+} from './waste-management/master-data-holiday-rule-status.js';
+import { wasteTourRecurrences } from './waste-management/master-data-tours.js';
 
 export const wasteManagementSchedulingDataProfiles = [
   {
@@ -20,8 +30,8 @@ export const wasteManagementSchedulingDataProfiles = [
     formats: ['application/json'],
     entities: [entity('tour', [
       required('id', 'string'), required('name', 'string'), optional('description', 'string'),
-      reference(required('wasteFractionIds', 'string-array'), 'fraction', true),
-      optional('recurrence', 'string'), reference(optional('customRecurrenceId', 'string'), 'recurrencePreset'),
+      reference(requiredNonEmptyStringArray('wasteFractionIds'), 'fraction', true),
+      optionalEnum('recurrence', wasteTourRecurrences), reference(optional('customRecurrenceId', 'string'), 'recurrencePreset'),
       optional('customRecurrenceName', 'string'), optional('customRecurrenceIntervalDays', 'integer'),
       optional('firstDate', 'date'), optional('endDate', 'date'),
       optionalStructured('customDates', 'custom-tour-dates'),
@@ -53,7 +63,7 @@ export const wasteManagementSchedulingDataProfiles = [
       entity('tourAssignment', [
         required('id', 'string'), reference(required('tourId', 'string'), 'tour'),
         required('pickupDate', 'date'), optional('note', 'string'),
-        reference(required('locationIds', 'string-array'), 'collectionLocation', true),
+        reference(requiredNonEmptyStringArray('locationIds'), 'collectionLocation', true),
         ...excludedTargetTimestamps,
       ]),
       entity('locationTourPickupDate', [{ key: '*', transfer: 'intentionally-excluded', reason: 'legacy-source' }]),
@@ -69,14 +79,14 @@ export const wasteManagementSchedulingDataProfiles = [
     entities: [
       entity('globalDateShift', [
         required('id', 'string'), required('originalDate', 'date'), required('actualDate', 'date'),
-        defaultable('hasYear', 'boolean', true), optional('reasonType', 'string'), optional('reasonKey', 'string'),
+        defaultable('hasYear', 'boolean', true), optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes), optional('reasonKey', 'string'),
         optional('description', 'string'), reference(optional('tourIds', 'string-array'), 'tour', true),
         ...excludedTargetTimestamps,
       ]),
       entity('tourDateShift', [
         required('id', 'string'), reference(required('tourId', 'string'), 'tour'),
         required('originalDate', 'date'), required('actualDate', 'date'), defaultable('hasYear', 'boolean', true),
-        optional('reasonType', 'string'), optional('reasonKey', 'string'), optional('followUpMode', 'string'),
+        optionalEnum('reasonType', wasteManagementMasterDataContract.dateShiftReasonTypes), optional('reasonKey', 'string'), optionalEnum('followUpMode', wasteManagementMasterDataContract.followUpModes),
         optional('description', 'string'), ...excludedTargetTimestamps,
       ]),
     ],
@@ -90,9 +100,12 @@ export const wasteManagementSchedulingDataProfiles = [
     formats: ['application/json'],
     entities: [entity('holidayRule', [
       required('id', 'string'), required('holidayDate', 'date'), required('holidayName', 'string'),
-      required('year', 'integer'), required('stateCode', 'string'), required('sourceStatus', 'string'),
-      required('configurationStatus', 'string'), required('conflictStatus', 'string'),
-      optional('scope', 'string'), optional('strategy', 'string'), ...excludedTargetTimestamps,
+      required('year', 'integer'), requiredEnum('stateCode', wasteManagementMasterDataContract.holidayStateCodes),
+      requiredEnum('sourceStatus', wasteHolidayRuleSourceStatuses),
+      requiredEnum('configurationStatus', wasteHolidayRuleConfigurationStatuses),
+      requiredEnum('conflictStatus', wasteHolidayRuleConflictStatuses),
+      optionalEnum('scope', wasteManagementMasterDataContract.holidayRuleScopes),
+      optionalEnum('strategy', wasteManagementMasterDataContract.holidayRuleStrategies), ...excludedTargetTimestamps,
     ])],
   },
 ] as const satisfies readonly WasteManagementDataProfileDefinition[];

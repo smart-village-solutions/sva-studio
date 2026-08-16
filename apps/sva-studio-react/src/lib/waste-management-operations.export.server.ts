@@ -97,8 +97,10 @@ export const createExportDataOperation =
     )
       ? await loadSelectedWasteInterfaceRecord(deps, instanceId)
       : null;
-    const files = await withWasteClient(deps, instanceId, async ({ repository }) =>
-      Promise.all(
+    const files = await withWasteClient(deps, instanceId, async ({ client, repository }) => {
+      await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+      try {
+        const snapshotFiles = await Promise.all(
         uniqueProfileIds.map(async (profileId) => {
           const profile = getWasteManagementDataProfile(profileId);
           if (profile === undefined) throw new Error(`unknown_waste_data_profile:${profileId}`);
@@ -121,8 +123,14 @@ export const createExportDataOperation =
             dependencies: profile.dependencies,
           };
         })
-      )
-    );
+        );
+        await client.query('COMMIT');
+        return snapshotFiles;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      }
+    });
 
     const manifest = {
       formatVersion: '1.0.0',

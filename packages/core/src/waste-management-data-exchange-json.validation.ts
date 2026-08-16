@@ -87,7 +87,13 @@ const hasExpectedType = (value: unknown, field: WasteManagementIncludedFieldDefi
     case 'string':
       return typeof value === 'string' &&
         (field.allowedValues === undefined || field.allowedValues.includes(value));
-    case 'string-array': return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+    case 'string-array':
+      return Array.isArray(value) &&
+        (field.minItems === undefined || value.length >= field.minItems) &&
+        value.every((entry) =>
+          typeof entry === 'string' &&
+          (field.minItemLength === undefined || entry.length >= field.minItemLength)
+        );
   }
 };
 

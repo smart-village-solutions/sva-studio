@@ -18,6 +18,7 @@ import type {
   WasteTourRecurrence,
 } from '@sva/core';
 import { revealField } from '@sva/auth-runtime/server';
+import { readPluginOperationInput } from '@sva/auth-runtime/server';
 import { resolveWasteDataSource, type ResolvedWasteDataSource } from '@sva/server-runtime';
 import { Pool } from 'pg';
 
@@ -177,7 +178,14 @@ export const parseFollowUpMode = (
   return trimmed;
 };
 
-export const defaultReadBinarySource = async (blobRef: string): Promise<Uint8Array> => {
+export const defaultReadBinarySource = async (
+  blobRef: string,
+  instanceId?: string
+): Promise<Uint8Array> => {
+  if (blobRef.startsWith('plugin-operation-input:')) {
+    if (!instanceId) throw new Error('missing_plugin_operation_input_instance');
+    return (await readPluginOperationInput({ instanceId, blobRef })).body;
+  }
   if (blobRef.startsWith('data:')) {
     const separatorIndex = blobRef.indexOf(',');
     if (separatorIndex < 0) {

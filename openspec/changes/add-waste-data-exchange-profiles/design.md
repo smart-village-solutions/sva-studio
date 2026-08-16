@@ -120,11 +120,13 @@ Der Standardimport legt Datensätze mit stabilen IDs an oder aktualisiert sie. N
 
 Ein Einzelprofil wird atomar geschrieben. Ein Paket wird nach vollständigem Preflight in Abhängigkeitsreihenfolge und innerhalb einer gemeinsamen Transaktion geschrieben, soweit alle Profile dieselbe Waste-Fachdatenbank betreffen. Portable Schnittstelleneinstellungen werden innerhalb dieser Commit-Grenze vor dem Waste-Commit persistiert und bei einem nachfolgenden Commitfehler kompensierend auf ihren vorherigen Stand zurückgesetzt. Teilerfolge sind nicht zulässig.
 
+Mehrprofil-Exporte lesen alle Waste-Profile innerhalb eines schreibgeschützten `REPEATABLE READ`-Snapshots. Pflicht-Referenzlisten besitzen eine Mindestkardinalität von eins und schließen leere IDs aus. Wiederholungen, Verschiebungsgründe, Folgemodi sowie Feiertagsstatus, -land, -scope und -strategie werden im kanonischen Vertrag als geschlossene Wertemengen validiert.
+
 ### Decision: Exporte laufen als hostgeführte, autorisierte Jobs
 
 Waste registriert Exportprofile und einen Export-Job über die generische Plugin-Operations-Plattform. Der Host löst die aktive Instanz serverseitig auf, autorisiert die vollqualifizierte Action `waste-management.export.execute`, erzeugt das Artefakt in einem geschützten Speicher und liefert eine zeitlich begrenzte Downloadreferenz. Das Artefakt oder seine Referenz wird nicht als öffentlicher Feed publiziert.
 
-Import bleibt über `waste-management.import.execute` getrennt autorisiert. Ergebnisartefakte dürfen weder Credentials noch ausgeschlossene E-Mail-Abodaten enthalten. Dateinamen, Jobdetails und Logs enthalten keine personenbezogenen Inhalte oder rohen Fachdaten.
+Import bleibt über `waste-management.import.execute` getrennt autorisiert. Importdateien werden vor Preview oder Jobstart instanzgebunden in den geschützten Objektspeicher geschrieben. Preview und Job akzeptieren ausschließlich eine opake UUID-Referenz; Base64- oder Dateiinhalt darf nicht im JSON-Jobpayload landen. Uploads sind auf 16 MiB begrenzt. Ergebnisartefakte dürfen weder Credentials noch ausgeschlossene E-Mail-Abodaten enthalten. Dateinamen, Jobdetails und Logs enthalten keine personenbezogenen Inhalte oder rohen Fachdaten.
 
 ## Risks / Trade-offs
 

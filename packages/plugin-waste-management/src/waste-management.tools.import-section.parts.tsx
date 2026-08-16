@@ -55,11 +55,11 @@ export const isPreviewRequiredImportProfile = (profile: ImportCatalogEntry | nul
 export const createImportFileChangeHandler =
   ({
     onImportBlobRefChange,
-    readFileAsDataUrl,
+    uploadFile,
     onAfterChange,
   }: {
     readonly onImportBlobRefChange: (value: string) => void;
-    readonly readFileAsDataUrl: (file: File) => Promise<string>;
+    readonly uploadFile: (file: File) => Promise<string>;
     readonly onAfterChange?: () => void;
   }) =>
   (event: ChangeEvent<HTMLInputElement>) => {
@@ -70,7 +70,7 @@ export const createImportFileChangeHandler =
       return;
     }
 
-    void readFileAsDataUrl(file).then(
+    void uploadFile(file).then(
       (value) => {
         onImportBlobRefChange(value);
         onAfterChange?.();
@@ -292,7 +292,9 @@ const WasteToolsUploadFields = ({
         id="waste-tools-import-blob-ref"
         label={pt('tools.imports.blobRefLabel')}
         description={
-          importBlobRef.startsWith('data:') ? pt('tools.imports.wizard.fileReady') : undefined
+          importBlobRef.startsWith('plugin-operation-input:')
+            ? pt('tools.imports.wizard.fileReady')
+            : undefined
         }
       >
         <Input id={fileInputId} type="file" accept={fileAccept} onChange={onImportFileChange} />

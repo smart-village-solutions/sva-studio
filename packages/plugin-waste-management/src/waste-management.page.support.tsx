@@ -140,20 +140,6 @@ export const downloadImportPreviewErrors = (preview: WasteLocationTourPickupDate
   URL.revokeObjectURL(url);
 };
 
-export const readFileAsDataUrl = async (file: File): Promise<string> =>
-  await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(reader.error ?? new Error('file_read_failed'));
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('file_read_failed'));
-        return;
-      }
-      resolve(reader.result);
-    };
-    reader.readAsDataURL(file);
-  });
-
 export const StatusNotice = ({
   message,
   onRetry,

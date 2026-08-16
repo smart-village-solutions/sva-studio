@@ -47,9 +47,18 @@ export type WasteManagementIncludedFieldDefinition =
           readonly structuredShape?: never;
         }
       | {
-          readonly valueType: Exclude<WasteManagementDataFieldValueType, 'object' | 'string'>;
+          readonly valueType: 'string-array';
           readonly allowedValues?: never;
           readonly structuredShape?: never;
+          readonly minItems?: number;
+          readonly minItemLength?: number;
+        }
+      | {
+          readonly valueType: Exclude<WasteManagementDataFieldValueType, 'object' | 'string' | 'string-array'>;
+          readonly allowedValues?: never;
+          readonly structuredShape?: never;
+          readonly minItems?: never;
+          readonly minItemLength?: never;
         }
     );
 

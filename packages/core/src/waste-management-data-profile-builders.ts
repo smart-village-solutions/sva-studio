@@ -30,6 +30,23 @@ export const optionalEnum = (
   input: { kind: 'optional', nullable },
 }) as const;
 
+export const requiredEnum = (key: string, allowedValues: readonly string[]) => ({
+  key,
+  valueType: 'string',
+  allowedValues,
+  transfer: 'included',
+  input: { kind: 'required' },
+}) as const;
+
+export const requiredNonEmptyStringArray = (key: string) => ({
+  key,
+  valueType: 'string-array',
+  minItems: 1,
+  minItemLength: 1,
+  transfer: 'included',
+  input: { kind: 'required' },
+}) as const;
+
 export const defaultable = (
   key: string,
   valueType: ScalarFieldValueType,

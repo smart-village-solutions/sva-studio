@@ -3,6 +3,7 @@ import {
   wasteManagementExportTargetFormats,
   wasteManagementImportProfileIds,
   wasteManagementImportSourceFormats,
+  wasteManagementImportUploadMaxBytes,
   wasteManagementJobTypeIds,
   wasteManagementResetConfirmationToken,
   type WasteManagementCsvDelimiter,
@@ -19,6 +20,7 @@ const wasteManagementOperationsContract = {
   resetConfirmationToken: wasteManagementResetConfirmationToken,
   importProfileIds: wasteManagementImportProfileIds,
   importSourceFormats: wasteManagementImportSourceFormats,
+  importUploadMaxBytes: wasteManagementImportUploadMaxBytes,
   csvDelimiters: wasteManagementCsvDelimiters,
   exportTargetFormats: wasteManagementExportTargetFormats,
   isJobTypeId: (value: string): value is WasteManagementJobTypeId =>

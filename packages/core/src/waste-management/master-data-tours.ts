@@ -1,5 +1,8 @@
-export type WasteTourRecurrence =
-  'weekly' | 'biweekly' | 'fourweekly' | 'yearly' | 'on-demand' | 'custom';
+export const wasteTourRecurrences = [
+  'weekly', 'biweekly', 'fourweekly', 'yearly', 'on-demand', 'custom',
+] as const;
+
+export type WasteTourRecurrence = (typeof wasteTourRecurrences)[number];
 
 export type WasteCustomTourDate = {
   readonly date: string;

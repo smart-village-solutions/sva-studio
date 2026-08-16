@@ -32,7 +32,7 @@ Systemexporte schreiben alle enthaltenen Felder deterministisch aus. Technische 
 
 1. Unter „Datentools“ mit `waste-management.export.execute` ein Profil für JSON oder mehrere Profile für ZIP auswählen.
 2. Den Exportjob starten und nach erfolgreichem Abschluss das geschützte Artefakt herunterladen. Der Download wird erneut gegen Instanz, Actor und Berechtigung geprüft und läuft nach 24 Stunden ab.
-3. In der Zielinstanz mit `waste-management.import.execute` das passende JSON-Profil oder „Waste-Datenpaket“ wählen und die Datei hochladen.
+3. In der Zielinstanz mit `waste-management.import.execute` das passende JSON-Profil oder „Waste-Datenpaket“ wählen und die Datei hochladen. Der Upload wird vor dem Job instanzgebunden im geschützten Objektspeicher abgelegt; Jobdaten enthalten nur eine nicht erratbare Referenz und niemals Datei- oder Base64-Inhalte.
 4. Optional zuerst einen Dry-Run ausführen. Er validiert Vertrag, Version, Pflichtwerte, Defaults und Referenzen und schreibt keine Fachdaten.
 5. Den Import starten. Einzelprofile und Pakete werden ohne fachlichen Teilerfolg geschrieben. Portable Schnittstelleneinstellungen werden vor dem Waste-Datenbank-Commit gespeichert; schlägt der Commit danach fehl, stellt das System die vorherige Schnittstellenkonfiguration wieder her.
 
@@ -40,9 +40,10 @@ Portable Kalender- und Feiertagseinstellungen werden zusätzlich in der ausgewä
 
 ## Paketgrenzen
 
-Ein Export akzeptiert höchstens neun Profile. JSON ist auf genau ein Profil beschränkt. Ein ZIP wird vollständig vor der Mutation validiert und in kanonischer Abhängigkeitsreihenfolge importiert. Für importierte ZIP-Pakete gelten folgende Grenzen:
+Ein Export akzeptiert höchstens neun Profile. JSON ist auf genau ein Profil beschränkt. Mehrprofil-Exporte lesen alle Waste-Daten innerhalb eines schreibgeschützten `REPEATABLE READ`-Snapshots. Ein ZIP wird vollständig vor der Mutation validiert und in kanonischer Abhängigkeitsreihenfolge importiert. Erforderliche Referenzlisten müssen mindestens einen nicht leeren Eintrag enthalten; Enum-Felder werden bereits im Preflight gegen die fachlichen Vertragswerte geprüft. Für Importuploads und importierte ZIP-Pakete gelten folgende Grenzen:
 
 - höchstens 16 MiB komprimierte Paketgröße
+- höchstens 16 MiB Uploadgröße; größere Dateien werden vor dem Speichern abgewiesen
 - höchstens zehn flache, eindeutig benannte Einträge, einschließlich Manifest
 - höchstens 16 MiB unkomprimierte Größe je Eintrag
 - höchstens 64 MiB unkomprimierte Gesamtgröße

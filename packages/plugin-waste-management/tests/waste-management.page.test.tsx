@@ -246,6 +246,9 @@ const wasteManagementApiMocks = vi.hoisted(() => ({
     jobTypeId: 'waste-management.import-data',
     status: 'pending',
   })),
+  uploadWasteManagementImportSource: vi.fn(async () =>
+    'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+  ),
   startWasteManagementSeed: vi.fn(async () => ({
     id: 'job-2',
     jobTypeId: 'waste-management.seed-data',
@@ -594,6 +597,10 @@ describe('WasteManagementPage', () => {
       jobTypeId: 'waste-management.import-data',
       status: 'pending',
     }));
+    wasteManagementApiMocks.uploadWasteManagementImportSource.mockReset();
+    wasteManagementApiMocks.uploadWasteManagementImportSource.mockResolvedValue(
+      'plugin-operation-input:00000000-0000-4000-8000-000000000001'
+    );
     wasteManagementApiMocks.startWasteManagementSeed.mockReset();
     wasteManagementApiMocks.startWasteManagementSeed.mockImplementation(async () => ({
       id: 'job-2',
@@ -833,8 +840,9 @@ describe('WasteManagementPage', () => {
       expect(wasteManagementApiMocks.startWasteManagementImport).toHaveBeenCalledWith({
         importProfileId: 'waste-management.geografie-abholorte',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        blobRef: 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,ZmFrZQ==',
+        blobRef: 'plugin-operation-input:00000000-0000-4000-8000-000000000001',
         dryRun: false,
+        delimiterOverride: undefined,
       });
     });
 

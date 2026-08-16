@@ -42,6 +42,7 @@ const {
   retryWasteTenantProvisioningInternal,
   startWasteManagementInitializeInternal,
   startWasteManagementImportInternal,
+  uploadWasteManagementImportSourceInternal,
   startWasteManagementExportInternal,
   previewWasteManagementLocationTourPickupDateImportInternal,
   startWasteManagementMigrationsInternal,
@@ -511,6 +512,10 @@ export const wasteManagementHandlers = {
   startImport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
       startWasteManagementImportInternal(nextRequest, ctx)
+    ),
+  uploadImportSource: (request: Request): Promise<Response> =>
+    withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>
+      uploadWasteManagementImportSourceInternal(nextRequest, ctx)
     ),
   startExport: (request: Request): Promise<Response> =>
     withAuthenticatedWasteManagementHandler(request, (nextRequest, ctx) =>

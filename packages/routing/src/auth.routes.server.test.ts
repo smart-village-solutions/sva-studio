@@ -255,6 +255,7 @@ const authServerMocks = vi.hoisted(() => {
       updateTourDateShift: vi.fn(async () => response('updateWasteManagementTourDateShiftHandler')),
       startMigrations: vi.fn(async () => response('startWasteManagementMigrationsHandler')),
       startImport: vi.fn(async () => response('startWasteManagementImportHandler')),
+      uploadImportSource: vi.fn(async () => response('uploadWasteManagementImportSourceHandler')),
       startExport: vi.fn(async () => response('startWasteManagementExportHandler')),
       previewLocationTourPickupDateImport: vi.fn(async () =>
         response('previewLocationTourPickupDateImportHandler')
@@ -668,6 +669,9 @@ describe('auth.routes.server', () => {
     const initializeHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/initialize');
     const migrationsHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/migrations');
     const importHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/imports');
+    const importUploadHandlers = resolveAuthHandlers(
+      '/api/v1/waste-management/tools/imports/upload'
+    );
     const exportHandlers = resolveAuthHandlers('/api/v1/waste-management/tools/exports');
     const importPreviewHandlers = resolveAuthHandlers(
       '/api/v1/waste-management/tools/imports/preview'
@@ -943,6 +947,11 @@ describe('auth.routes.server', () => {
         method: 'POST',
       }),
     });
+    await importUploadHandlers.POST?.({
+      request: new Request('http://localhost/api/v1/waste-management/tools/imports/upload', {
+        method: 'POST',
+      }),
+    });
     await exportHandlers.POST?.({
       request: new Request('http://localhost/api/v1/waste-management/tools/exports', {
         method: 'POST',
@@ -1021,6 +1030,7 @@ describe('auth.routes.server', () => {
     expect(authServerMocks.wasteManagementHandlers.startInitialize).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startMigrations).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startImport).toHaveBeenCalled();
+    expect(authServerMocks.wasteManagementHandlers.uploadImportSource).toHaveBeenCalled();
     expect(authServerMocks.wasteManagementHandlers.startExport).toHaveBeenCalled();
     expect(
       authServerMocks.wasteManagementHandlers.previewLocationTourPickupDateImport

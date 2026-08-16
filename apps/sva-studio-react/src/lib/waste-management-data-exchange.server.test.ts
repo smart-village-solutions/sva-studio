@@ -175,7 +175,7 @@ describe('Waste data exchange operations', () => {
   });
 
   it('creates a manifest-backed multi-profile ZIP', async () => {
-    const { deps, storedBodies } = createDeps();
+    const { deps, query, storedBodies } = createDeps();
     await createExportDataOperation(deps)(
       'instance-1',
       {
@@ -202,6 +202,30 @@ describe('Waste data exchange operations', () => {
         profileId: 'waste-management.geografie-abholorte',
         sha256: expect.any(String),
       }),
+    ]);
+    expect(query.mock.calls.map(([statement]) => statement).slice(1)).toEqual([
+      'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
+      'COMMIT',
+    ]);
+  });
+
+  it('rolls back the export snapshot when a profile read fails', async () => {
+    const { deps, query } = createDeps();
+    repository.listWasteTours.mockRejectedValueOnce(new Error('tour_read_failed'));
+
+    await expect(createExportDataOperation(deps)(
+      'instance-1',
+      {
+        operation: 'export-data',
+        profileIds: ['waste-management.fraktionen', 'waste-management.touren'],
+        targetFormat: 'application/zip',
+      },
+      { jobId: 'job-1' }
+    )).rejects.toThrow('tour_read_failed');
+
+    expect(query.mock.calls.map(([statement]) => statement).slice(1)).toEqual([
+      'BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY',
+      'ROLLBACK',
     ]);
   });
 

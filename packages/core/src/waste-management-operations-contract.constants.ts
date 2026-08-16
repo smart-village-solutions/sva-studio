@@ -32,6 +32,8 @@ const wasteManagementImportSourceFormats = [
 
 const wasteManagementExportTargetFormats = ['application/json', 'application/zip'] as const;
 
+const wasteManagementImportUploadMaxBytes = 16 * 1024 * 1024;
+
 const wasteManagementCsvDelimiters = [';', ',', '\t', '|'] as const;
 
 type ValueOf<T> = T[keyof T];
@@ -47,6 +49,7 @@ export {
   wasteManagementExportTargetFormats,
   wasteManagementImportProfileIds,
   wasteManagementImportSourceFormats,
+  wasteManagementImportUploadMaxBytes,
   wasteManagementJobTypeIds,
   wasteManagementResetConfirmationToken,
 };

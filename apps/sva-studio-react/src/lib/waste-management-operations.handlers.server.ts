@@ -140,6 +140,7 @@ export const createImportDataOperation =
       input.importProfileId ===
       wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
         ? await parseLocationTourPickupDateImport(deps, {
+            instanceId,
             sourceFormat: input.sourceFormat,
             blobRef: input.blobRef,
             delimiterOverride: input.delimiterOverride,
@@ -150,6 +151,7 @@ export const createImportDataOperation =
       wasteManagementOperationsContract.importProfileIds.locationTourPickupDates
         ? []
         : await parseImportRows(deps, {
+            instanceId,
             profileId: input.importProfileId,
             sourceFormat: input.sourceFormat,
             blobRef: input.blobRef,

@@ -197,6 +197,9 @@ export const governanceAuthHandlerMap = {
   '/api/v1/waste-management/tools/imports': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startImport),
   },
+  '/api/v1/waste-management/tools/imports/upload': {
+    POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.uploadImportSource),
+  },
   '/api/v1/waste-management/tools/exports': {
     POST: routeHandler(authRuntimeRoutes.wasteManagementHandlers.startExport),
   },

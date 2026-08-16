@@ -7,10 +7,15 @@ import {
   type WasteManagementImportSourceFormat,
 } from '@sva/core';
 import type { createWasteMasterDataRepository } from '@sva/data-repositories';
+import { readPluginOperationInput } from '../plugin-operation-artifacts.server.js';
 
 type WasteRepository = ReturnType<typeof createWasteMasterDataRepository>;
 
-const decodeBlobRef = (blobRef: string): string => {
+const decodeBlobRef = async (instanceId: string, blobRef: string): Promise<string> => {
+  if (blobRef.startsWith('plugin-operation-input:')) {
+    const stored = await readPluginOperationInput({ instanceId, blobRef });
+    return new TextDecoder('utf-8').decode(stored.body);
+  }
   if (!blobRef.startsWith('data:')) {
     throw new Error('unsupported_blob_ref:local_file');
   }
@@ -53,6 +58,7 @@ const loadPlanningSnapshot = async (repository: WasteRepository): Promise<WasteL
 export const previewWasteLocationTourPickupDateImport = async (
   repository: WasteRepository,
   input: {
+    readonly instanceId: string;
     readonly sourceFormat: WasteManagementImportSourceFormat;
     readonly blobRef: string;
     readonly delimiterOverride?: WasteManagementCsvDelimiter;
@@ -63,7 +69,7 @@ export const previewWasteLocationTourPickupDateImport = async (
   }
 
   const parsed = parseWasteLocationTourPickupDateCsv({
-    text: decodeBlobRef(input.blobRef),
+    text: await decodeBlobRef(input.instanceId, input.blobRef),
     delimiterOverride: input.delimiterOverride,
   });
   const plan = planWasteLocationTourPickupDateImport(await loadPlanningSnapshot(repository), {

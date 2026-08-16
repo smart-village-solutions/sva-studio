@@ -209,7 +209,7 @@ describe('Waste data exchange JSON', () => {
     {
       profileId: wasteManagementDataProfileIds.tours,
       record: {
-        entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: [],
+        entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'],
         customDates: {},
       },
       path: 'records[0].customDates',
@@ -242,7 +242,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'tour',
           id: 'tour-1',
           name: 'Tour 1',
-          wasteFractionIds: [],
+          wasteFractionIds: ['fraction-1'],
           customDates: [{ date: '2026-08-16', description: 'Sonderleerung' }],
         }],
       }, { applyDefaults: false })
@@ -284,7 +284,7 @@ describe('Waste data exchange JSON', () => {
       ? wasteManagementDataProfileIds.tours
       : wasteManagementDataProfileIds.fractions;
     const record = isCustomDates
-      ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: [], [field]: value }
+      ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'], [field]: value }
       : { entityType: 'fraction', id: 'fraction-1', name: 'Bio', color: '#00aa00', [field]: value };
 
     expect(
@@ -325,6 +325,52 @@ describe('Waste data exchange JSON', () => {
     });
   });
 
+  it.each([
+    { wasteFractionIds: [] },
+    { wasteFractionIds: [''] },
+  ])('rejects domain-invalid required tour references: %#', (fields) => {
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: wasteManagementDataProfileIds.tours,
+        exportedAt,
+        records: [{ entityType: 'tour', id: 'tour-1', name: 'Tour 1', ...fields }],
+      }, { applyDefaults: false })
+    ).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_field_type', path: 'records[0].wasteFractionIds' }],
+    });
+  });
+
+  it.each([
+    ['recurrence', 'daily'],
+    ['reasonType', 'invalid'],
+    ['followUpMode', 'invalid'],
+  ])('rejects unsupported scheduling enum %s=%s', (field, value) => {
+    const isTour = field === 'recurrence';
+    const record = isTour
+      ? { entityType: 'tour', id: 'tour-1', name: 'Tour 1', wasteFractionIds: ['fraction-1'], [field]: value }
+      : {
+          entityType: 'tourDateShift', id: 'shift-1', tourId: 'tour-1',
+          originalDate: '2026-08-16', actualDate: '2026-08-17', [field]: value,
+        };
+    expect(
+      parseWasteManagementDataExchangeJson({
+        formatVersion: '1.0.0',
+        pluginId: 'waste-management',
+        profileId: isTour
+          ? wasteManagementDataProfileIds.tours
+          : wasteManagementDataProfileIds.dateShifts,
+        exportedAt,
+        records: [record],
+      }, { applyDefaults: false })
+    ).toMatchObject({
+      ok: false,
+      issues: [{ code: 'invalid_field_type', path: `records[0].${field}` }],
+    });
+  });
+
   it.each(wasteManagementDataProfiles)(
     'roundtrips every offered JSON profile: $profileId',
     (profile) => {
@@ -335,7 +381,12 @@ describe('Waste data exchange JSON', () => {
             ['entityType', entity.entityType],
             ...entity.fields.flatMap((field) =>
               field.transfer === 'included' && field.input.kind === 'required'
-                ? [[field.key, exampleValue(field.valueType, field.key)] as const]
+                ? [[
+                    field.key,
+                    field.valueType === 'string' && field.allowedValues?.[0]
+                      ? field.allowedValues[0]
+                      : exampleValue(field.valueType, field.key),
+                  ] as const]
                 : []
             ),
           ]),

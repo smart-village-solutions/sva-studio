@@ -73,6 +73,7 @@ const createCsvDataUrl = (lines: readonly string[]): string =>
 describe('previewWasteLocationTourPickupDateImport', () => {
   it('summarizes existing and created entities for location-based pickup date imports', async () => {
     const preview = await previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
+      instanceId: 'tenant-a',
       sourceFormat: 'text/csv',
       blobRef: createCsvDataUrl([
         'Region;Ort;Straße;Papier;Bioabfall',
@@ -104,6 +105,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
   it('rejects unsupported source formats deterministically', async () => {
     await expect(
       previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
+        instanceId: 'tenant-a',
         sourceFormat: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         blobRef: createCsvDataUrl(['Ort;Papier', 'Perleberg;PPK.7.2']),
       })
@@ -114,6 +116,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
 
   it('parses non-base64 data urls and respects delimiter overrides', async () => {
     const preview = await previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
+      instanceId: 'tenant-a',
       sourceFormat: 'text/csv',
       blobRef: `data:text/csv,${encodeURIComponent('Ort,Papier\nPerleberg,PPK.7.2')}`,
       delimiterOverride: ',',
@@ -132,6 +135,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
   it('rejects unsupported local file blob refs', async () => {
     await expect(
       previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
+        instanceId: 'tenant-a',
         sourceFormat: 'text/csv',
         blobRef: '/tmp/import.csv',
       })
@@ -141,6 +145,7 @@ describe('previewWasteLocationTourPickupDateImport', () => {
   it('rejects malformed data urls without payload separator', async () => {
     await expect(
       previewWasteLocationTourPickupDateImport(createRepositoryMock(), {
+        instanceId: 'tenant-a',
         sourceFormat: 'text/csv',
         blobRef: 'data:text/csv;base64',
       })

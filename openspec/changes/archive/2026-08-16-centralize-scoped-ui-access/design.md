@@ -163,7 +163,7 @@ Das System ruft `pg_notify` innerhalb derselben PostgreSQL-Transaktion wie Daten
 
 Ein Recompute liest Permission-Daten und den zugehörigen Revisionsvektor aus einem konsistenten PostgreSQL-Snapshot. Vor der Veröffentlichung prüft er die aktuelle Revision erneut. Hat sie sich geändert, wird das Ergebnis verworfen und als `stale_write_discarded` metriert; es darf weder in L1 noch als aktueller Redis-Snapshot veröffentlicht werden.
 
-Gleichzeitige Recomputes desselben Instanz-/Benutzer-/Kontext-/Revisions-Keys sollen pro Replikat zusammengeführt und dürfen replikatübergreifend best-effort koordiniert werden. Diese Koordination begrenzt Last, ist aber keine Korrektheitsgrenze: Jeder Kandidat durchläuft unabhängig den Revisions-Recheck, und ein fehlgeschlagener Koordinationspfad darf keinen alten Snapshot freigeben.
+Gleichzeitige Recomputes desselben Instanz-/Benutzer-/Kontext-/Revisions-Keys werden innerhalb des laufenden App-Prozesses zusammengeführt. Diese Zusammenführung begrenzt Last, ist aber keine Korrektheitsgrenze: Jeder Kandidat durchläuft den Revisions-Recheck, und ein fehlgeschlagener Single-flight-Pfad darf keinen alten Snapshot freigeben.
 
 Redis- und L1-Keys enthalten den Revisionsvektor beziehungsweise adressieren einen unveränderlich daran gebundenen Snapshot. Dadurch kann ein verspäteter Recompute für eine alte Revision keinen Snapshot der neuen Revision überschreiben. Sollte die Revision nach dem abschließenden Recheck und vor einem physischen Redis-Write wechseln, kann der alte Payload höchstens unter seinem alten, nicht mehr adressierbaren Revisions-Key verbleiben. Er ist niemals logisch aktuell und läuft über die physische TTL oder asynchrone Bereinigung aus.
 
@@ -188,7 +188,7 @@ Ein manueller Benutzer- oder Instanzreset, eine neue Reset-Action und eine entsp
 - Recompute fehlgeschlagen: `503`, kein alter und kein leerer Snapshot.
 - `NOTIFY` verloren oder Listener verzögert: Authorize bleibt durch den Revisionsread korrekt; nur Eviction und Warm-Path-Effizienz sind betroffen.
 
-Der zusätzliche Revisionsread muss die Grenzen Cache-Hit p95 `< 10 ms`, Cache-Miss p95 `< 80 ms` und Recompute p95 `< 300 ms` einhalten. Die Implementierung muss diese Werte mit mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad nachweisen. Werden sie nicht erreicht, ist die Umsetzung zu optimieren oder die Architektur erneut zu entscheiden; ein Weglassen der autoritativen Revisionsprüfung ist kein zulässiger Performance-Fallback.
+Der zusätzliche Revisionsread wird über den bestehenden endpointnahen Single-Replica-Benchmark beobachtet. Berichte halten Cache-Hit, Cache-Miss und Recompute einschließlich p50/p95/p99 fest, ohne aus einer lokalen Messumgebung neue Abnahmegrenzen abzuleiten. Ein Weglassen der autoritativen Revisionsprüfung ist kein zulässiger Performance-Fallback.
 
 ## Data Flow
 
@@ -219,7 +219,7 @@ IAM-Mutation
        -> userRevision oder instanceRevision monoton erhöhen
   -> Commit
   -> NOTIFY mit Scope + Revision (Beschleuniger)
-       -> L1-Eviction je Replikat
+       -> L1-Eviction im App-Prozess
        -> Redis-Cleanup best effort
   -> optional Browser-Refetch; kein impliziter Session-Widerruf
 
@@ -246,7 +246,7 @@ Authorize / me-permissions
 - PostgreSQL-Schema und Migration für Instanz-/Benutzerrevisionen einführen.
 - Mutationsmatrix transaktional an Revision-Bumps anbinden.
 - L1-/Redis-Keys, Read-Pfad und Recompute-Publish revisionsgebunden machen.
-- `NOTIFY` auf Beschleunigerrolle reduzieren und Multi-Replikat-/Eventverlust-Tests schließen.
+- `NOTIFY` auf die Beschleunigerrolle reduzieren und Eventverlust unabhängig von der Cache-Gültigkeit testen.
 - Revisionsdiagnostik, Metriken und Performance-Nachweis ergänzen; keinen manuellen Reset einführen.
 
 ### Slice 3: Gemeinsamer Scope- und Access-State
@@ -309,7 +309,7 @@ Maximale formale Kontrolle, aber hoher Umbauaufwand und unnötige Einschränkung
 - Modul-Permissions könnten trotz entzogener Modulzuweisung sichtbar bleiben. Gegenmaßnahme: Modulzuweisung bleibt ein explizites zusätzliches Gate und Teil der Snapshot-Generation.
 - Der SDK-Vertrag wird strenger und ist für unvollständige Plugin-Beiträge brechend. Gegenmaßnahme: stufenweise Migration mit deterministischen Diagnosen.
 - Der parallele Guardrail-Change kann dieselben Registry-Dateien berühren. Gegenmaßnahme: Validierungsmechanik dort wiederverwenden und Merge-Reihenfolge vor Implementierungsbeginn festlegen.
-- Der autoritative PostgreSQL-Revisionsread kann die Cache-Hit-Latenz erhöhen. Gegenmaßnahme: schmaler indizierter Read, gebündelte Abfrage des Revisionsvektors und verbindlicher Multi-Replikat-Benchmark ohne Abschwächung der Korrektheit.
+- Der autoritative PostgreSQL-Revisionsread kann die Cache-Hit-Latenz erhöhen. Gegenmaßnahme: schmaler indizierter Read, gebündelte Abfrage des Revisionsvektors und endpointnahe Single-Replica-Beobachtung ohne Abschwächung der Korrektheit.
 - Ein verspäteter Recompute kann physisch einen alten revisionsgebundenen Redis-Key hinterlassen. Gegenmaßnahme: Recheck vor Publish, unveränderliche Revisions-Keys, `stale_write_discarded`-Diagnostik und TTL-/Cleanup-Aufbewahrung ohne logische Adressierbarkeit.
 
 ## Security, Accessibility and Diagnostics

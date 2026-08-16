@@ -231,21 +231,39 @@ describe('resolveEffectivePermissions', () => {
     );
   });
 
-  it('discards stale recomputes and retries against the new revision', async () => {
+  it('discards an in-flight recompute after a revision commit and retries without publishing stale data', async () => {
     const { resolveEffectivePermissions } = await import('./permission-store.js');
+    let committedUserRevision = 7;
+    let releaseOldRecompute: (() => void) | undefined;
+    const oldRecomputeBlocked = new Promise<void>((resolve) => {
+      releaseOldRecompute = resolve;
+    });
 
-    mocks.readPermissionRevisionVector
-      .mockResolvedValueOnce({ instanceRevision: 3, userRevision: 7 })
-      .mockResolvedValueOnce({ instanceRevision: 3, userRevision: 8 })
-      .mockResolvedValueOnce({ instanceRevision: 3, userRevision: 8 });
-    mocks.readPermissionRevisionVectorWithClient
-      .mockResolvedValueOnce({ instanceRevision: 3, userRevision: 8 })
-      .mockResolvedValueOnce({ instanceRevision: 3, userRevision: 8 });
-    mocks.loadPermissionsWithClient.mockResolvedValueOnce([{ action: 'news.update' }]);
+    mocks.readPermissionRevisionVector.mockImplementation(async () => ({
+      instanceRevision: 3,
+      userRevision: committedUserRevision,
+    }));
+    mocks.readPermissionRevisionVectorWithClient.mockImplementation(async () => ({
+      instanceRevision: 3,
+      userRevision: committedUserRevision,
+    }));
+    mocks.loadPermissionsWithClient
+      .mockImplementationOnce(async () => {
+        await oldRecomputeBlocked;
+        return [{ action: 'news.read' }];
+      })
+      .mockResolvedValueOnce([{ action: 'news.update' }]);
 
-    await expect(
-      resolveEffectivePermissions({ instanceId: 'de-test', keycloakSubject: 'kc-user-1' })
-    ).resolves.toEqual({
+    const resolution = resolveEffectivePermissions({
+      instanceId: 'de-test',
+      keycloakSubject: 'kc-user-1',
+    });
+    await vi.waitFor(() => expect(mocks.loadPermissionsWithClient).toHaveBeenCalledTimes(1));
+
+    committedUserRevision = 8;
+    releaseOldRecompute?.();
+
+    await expect(resolution).resolves.toEqual({
       ok: true,
       permissions: [{ action: 'news.update' }],
       cacheStatus: 'miss',
@@ -255,6 +273,19 @@ describe('resolveEffectivePermissions', () => {
     expect(mocks.cacheLogger.info).toHaveBeenCalledWith(
       'Stale permission recompute discarded',
       expect.objectContaining({ operation: 'stale_write_discarded', attempt: 0 })
+    );
+    expect(mocks.loadPermissionsWithClient).toHaveBeenCalledTimes(2);
+    expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledTimes(1);
+    expect(mocks.setRedisPermissionSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({ userRevision: 8 }),
+      [{ action: 'news.update' }]
+    );
+    expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledTimes(1);
+    expect(mocks.permissionSnapshotCache.set).toHaveBeenCalledWith(
+      expect.objectContaining({ userRevision: 8 }),
+      [{ action: 'news.update' }],
+      expect.any(Number),
+      'redis-1'
     );
   });
 

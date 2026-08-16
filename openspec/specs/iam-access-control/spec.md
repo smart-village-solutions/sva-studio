@@ -1,8 +1,11 @@
 # iam-access-control Specification
 
 ## Purpose
+
 Diese Spezifikation beschreibt die technischen und fachlichen Anforderungen an das IAM-Access-Control-Modul. Sie legt fest, wie nach erfolgreicher OIDC-Authentifizierung ein verlässlicher Identity-Kontext bereitgestellt wird, wie RBAC-Basisdaten instanzgebunden persistiert werden und wie die Abgrenzung zu nachgelagerten Autorisierungsentscheidungen in Child C/D erfolgt.
+
 ## Requirements
+
 ### Requirement: Authentifizierter Identity-Kontext als Vorbedingung
 
 Das System MUST nach erfolgreicher OIDC-Authentifizierung einen verlässlichen Identity-Kontext bereitstellen, der in nachgelagerten Child-Changes für RBAC/ABAC verwendet werden kann.
@@ -117,36 +120,37 @@ Das System SHALL Berechtigungen entlang definierter Org-/Geo-Hierarchien vererbe
 
 ### Requirement: Cache-basierte Berechtigungs-Snapshots
 
-Das System SHALL effektive Berechtigungen als Snapshots im Cache pro Benutzer- und Instanzkontext verwalten.
+Das System SHALL effektive Berechtigungen als revisionsgebundene Snapshots im lokalen L1-Cache und in Redis pro Benutzer-, Instanz- und Kontextscope verwalten. Die logische Gültigkeit MUST auf einem PostgreSQL-autoritativ bestätigten Vektor aus `instanceRevision` und `userRevision` beruhen; TTL und physische Aufbewahrung dürfen keine veraltete Entscheidung erlauben.
 
 #### Scenario: Snapshot-Hit
 
-- **WHEN** für den Benutzer-/Instanzkontext ein gültiger Snapshot vorliegt
+- **WHEN** für den Benutzer-/Instanzkontext ein Snapshot mit exakt der aktuellen `instanceRevision` und `userRevision` vorliegt
 - **THEN** wird die Autorisierungsentscheidung auf Basis dieses Snapshots getroffen
-- **AND** die P95-Latenz von `POST /iam/authorize` bleibt unter 50 ms
+- **AND** die P95-Latenz von `POST /iam/authorize` bleibt unter den vereinbarten Cache-Hit-Grenzen
 
-#### Scenario: Snapshot-TTL und Stale-Grenze
+#### Scenario: Logische Gültigkeit und physische Aufbewahrung sind getrennt
 
-- **WHEN** Snapshot-Caching für `authorize` aktiv ist
-- **THEN** beträgt die Snapshot-TTL maximal 300 Sekunden
-- **AND** die maximal tolerierte Dauer potenziell veralteter Entscheidungen beträgt 300 Sekunden
+- **WHEN** die aktuelle PostgreSQL-Revision von der im Snapshot gespeicherten Revision abweicht
+- **THEN** ist der Snapshot sofort logisch ungültig und darf nicht verwendet werden
+- **AND** darf sein physischer Redis-Key bis TTL, Eviction oder asynchroner Bereinigung bestehen bleiben
+- **AND** ist die TTL ausschließlich eine Speichergrenze und keine tolerierte Stale-Dauer
 
 ### Requirement: Event-basierte Invalidierung mit Fallback
 
-Das System SHALL Cache-Einträge bei relevanten Änderungen invalidieren und bei Event-Problemen über Fallback-Mechanismen konsistent bleiben.
+Das System SHALL Cache-Einträge bei relevanten Änderungen revisionsbasiert ungültig machen. PostgreSQL `NOTIFY` SHALL schnelle L1-Eviction und best-effort Redis-Cleanup auslösen, darf aber nicht allein für die Korrektheit verantwortlich sein.
 
 #### Scenario: Rollenänderung invalidiert Snapshot
 
-- **WHEN** Rollen oder relevante Kontextzuordnungen eines Benutzers geändert werden
-- **THEN** wird der zugehörige Cache-Eintrag invalidiert
-- **AND** eine nachfolgende Anfrage berechnet Berechtigungen neu
-- **AND** die End-to-End-Invalidierungslatenz liegt bei P95 <= 2 Sekunden und P99 <= 5 Sekunden
+- **WHEN** Rollen oder relevante Kontextzuordnungen eines Benutzers erfolgreich geändert werden
+- **THEN** wird die passende Benutzer- oder Instanzrevision in derselben Datenbanktransaktion monoton erhöht
+- **AND** eine nachfolgende Anfrage akzeptiert keinen Snapshot der vorherigen Revision
 
-#### Scenario: Eventverlust wird abgefangen
+#### Scenario: Eventverlust wird revisionsbasiert abgefangen
 
-- **WHEN** ein Invalidation-Event ausfällt
-- **THEN** begrenzen TTL und Recompute-Mechanismus die Dauer potenziell veralteter Entscheidungen
-- **AND** Konsistenztests erkennen unzulässige Dauerabweichungen
+- **WHEN** ein Invalidation-Event verloren geht oder verspätet verarbeitet wird
+- **THEN** erkennt der Authorize-Pfad die Revisionsabweichung unabhängig vom Event
+- **AND** wird kein Snapshot der alten Revision als erfolgreicher Cache-Hit verwendet
+- **AND** beeinflusst der Eventverlust ausschließlich Eviction-Latenz und physische Aufbewahrung
 
 ### Requirement: Messbare Performance- und Lastkriterien für ABAC-Authorize
 
@@ -211,13 +215,16 @@ Das System SHALL kritische Rechteänderungen als approval-pflichtige Governance-
 - **AND** ein Denial mit `reason_code` wird erzeugt
 
 ### Requirement: Plattformrollen und Tenant-Admin-Rollen bleiben getrennt
+
 Das System SHALL tenant-lokale Admin-Rollen und globale Plattformrollen in der Instanzverwaltung strikt trennen. `instance_registry_admin` ist eine reine Plattformrolle des Root-Realm. `system_admin` ist die geschützte tenantlokale Vollzugriffs- und Defaultrolle des Tenant-Realm.
 
 #### Scenario: Nur Plattform-Admin darf Keycloak-Provisioning anstossen
+
 - **WHEN** ein Benutzer ohne `instance_registry_admin` im Root-Realm versucht, Instanz-Realm-Grundeinstellungen zu ändern oder ein Keycloak-Provisioning auszulösen
 - **THEN** lehnt das System die Operation ab
 
 #### Scenario: Tenant-Admin-Rechte ersetzen keine Plattformrechte
+
 - **WHEN** ein Benutzer im Tenant-Realm `system_admin` oder andere tenantlokale Verwaltungsrechte besitzt
 - **THEN** darf er dadurch keine Root-Control-Plane- oder Instanzverwaltungsfunktion auslösen
 - **AND** tenantlokale Verwaltungsrechte eskalieren nicht in den Plattform-Scope
@@ -253,29 +260,35 @@ Das System SHALL Self-Approval für kritische Governance-Aktionen verhindern.
 - **AND** der Denial-Code lautet `DENY_SELF_APPROVAL`
 
 ### Requirement: Stabile Rollenidentität für Autorisierung und IdP-Sync
+
 Das System SHALL für Rollen einen stabilen technischen Schlüssel (`role_key`) verwenden, der unabhängig von UI-Anzeigenamen ist und für IAM-Autorisierungsauflösung sowie verbleibende technische Interop- oder Sonderrollenpfade genutzt wird.
 
 #### Scenario: Anzeigename wird geändert
+
 - **WHEN** ein Admin den Anzeigenamen einer Custom-Rolle ändert
 - **THEN** bleibt der technische `role_key` unverändert
 - **AND** bestehende Rollen-Zuweisungen und Berechtigungsauflösungen bleiben gültig
 - **AND** es entsteht keine neue Rolle durch Umbenennung
 
 #### Scenario: Rollenauflösung bleibt IAM-deterministisch
+
 - **WHEN** eine Rollen-Zuweisung für einen Benutzer ausgewertet wird
 - **THEN** nutzt die Access-Control-Auflösung den stabilen `role_key` als Referenz
 - **AND** ist für tenantseitige Fachautorisierung nicht von Keycloak-Display-Metadaten oder einem allgemeinen Realm-Rollenabgleich abhängig
 
 ### Requirement: Managed Scope für externe Rollen
+
 Das System MUST bei Synchronisierung und Reconciliation strikt zwischen technisch verwalteten Sonderrollen, tenantlokalen IAM-Rollen und sonstigen externen Keycloak-Rollen unterscheiden.
 
 #### Scenario: Externe, nicht verwaltete Keycloak-Rolle
+
 - **WHEN** eine Rolle in Keycloak existiert, aber nicht zum technisch verwalteten Sonderrollen-Scope gehört
 - **THEN** wird diese Rolle durch den Standard-Reconcile-Lauf nicht als normative tenantlokale Fachrolle behandelt
 - **AND** sie hat keine automatische Wirkung auf den Studio-Rollenkatalog
 - **AND** der Managed-Scope wird nicht mehr allgemein aus allen studioverwalteten Tenant-Rollen abgeleitet
 
 #### Scenario: Drift innerhalb des technischen Managed Scope
+
 - **WHEN** eine ausdrücklich verwaltete Sonderrolle im zuständigen Realm von ihrem Sollzustand abweicht
 - **THEN** darf der Reconcile-Lauf die Abweichung gemäß Richtlinie korrigieren
 - **AND** die Korrektur wird mit `request_id` und Ergebnisstatus auditierbar protokolliert
@@ -333,6 +346,7 @@ Das System SHALL Gruppen als instanzgebundene IAM-Entität mit normierten Zuordn
 **Datenmodell (normativ):**
 
 Gruppe:
+
 - `id` UUID PK
 - `instance_id` UUID NOT NULL
 - `group_key` TEXT NOT NULL
@@ -346,6 +360,7 @@ Gruppe:
 - Unique-Constraint: `(instance_id, group_key)`
 
 Gruppen-Rollen-Zuordnung:
+
 - `group_id` UUID NOT NULL
 - `role_id` UUID NOT NULL
 - `assigned_at` TIMESTAMP NOT NULL
@@ -353,6 +368,7 @@ Gruppen-Rollen-Zuordnung:
 - PK: `(group_id, role_id)`
 
 Account-Gruppen-Mitgliedschaft:
+
 - `group_id` UUID NOT NULL
 - `account_id` UUID NOT NULL
 - `origin` TEXT NOT NULL mit den erlaubten Werten `manual`, `sync`, `derived`
@@ -363,6 +379,7 @@ Account-Gruppen-Mitgliedschaft:
 - PK: `(group_id, account_id)`
 
 Zusätzliche Constraints:
+
 - `group_id`, `role_id` und `account_id` dürfen nur Datensätze derselben `instance_id` referenzieren
 - Mitgliedschaften mit `valid_until < valid_from` werden abgewiesen
 - soft-gelöschte Gruppen dürfen keine neuen Rollen- oder Account-Zuordnungen erhalten
@@ -512,157 +529,188 @@ Das System SHALL Permission-Snapshots auch bei Änderungen an Hierarchie- und Sc
 
 ### Requirement: Redis-basierte Permission-Snapshots
 
-Das System SHALL effektive Berechtigungen als serialisierte Snapshots in Redis pro Benutzer-, Instanz- und Kontextscope verwalten.
+Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene Snapshots in Redis pro Benutzer-, Instanz- und Kontextscope verwalten. Redis bleibt der primäre Shared-Snapshot-Read-Path nach erfolgreicher Bestätigung der aktuellen PostgreSQL-Revision.
 
-#### Scenario: Snapshot-Key ist normiert und kontextstabil
+#### Scenario: Snapshot-Key ist normiert, revisionsgebunden und kontextstabil
 
 - **WHEN** ein Permission-Snapshot geschrieben oder gelesen wird
-- **THEN** verwendet das System das Key-Schema `perm:v1:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}`
+- **THEN** verwendet das System einen versionierten Key-Raum wie `perm:v2:{instanceId}:{userId}:{orgCtxHash}:{geoCtxHash}:ir{instanceRevision}:ur{userRevision}` oder einen semantisch gleichwertigen unveränderlich revisionsgebundenen Vertrag
 - **AND** `instanceId` trennt Mandanten strikt
 - **AND** `userId` adressiert den effektiven Benutzerkontext
-- **AND** `orgCtxHash` repräsentiert den aktiven Organisationskontext deterministisch, ohne rohe Org-ID im Redis-Key zu duplizieren
-- **AND** `geoCtxHash` repräsentiert den aktiven Geo-Kontext deterministisch
-- **AND** das Präfix `perm:v1` erlaubt eine explizite Schema- und Rollout-Versionierung des Key-Raums
+- **AND** `orgCtxHash` und `geoCtxHash` repräsentieren ihre Kontexte deterministisch ohne rohe Kontextdaten unnötig im Key zu exponieren
+- **AND** ein Write für eine alte Revision kann keinen Snapshot der aktuellen Revision überschreiben
 
 #### Scenario: Cache-Miss schreibt Snapshot nach Redis
 
-- **WHEN** für einen Benutzer-/Kontextscope noch kein gültiger Snapshot in Redis existiert
-- **THEN** werden die effektiven Berechtigungen aus den führenden IAM-Daten berechnet
-- **AND** der resultierende Snapshot wird in Redis gespeichert
+- **WHEN** für den aktuellen Revisions- und Kontextscope kein gültiger Redis-Snapshot existiert
+- **THEN** werden die effektiven Berechtigungen aus einem konsistenten Snapshot der führenden IAM-Daten berechnet
+- **AND** wird die Revision vor dem Publish erneut geprüft
+- **AND** wird nur ein weiterhin aktueller Kandidat revisionsgebunden gespeichert
 
 #### Scenario: Cache-Hit lädt Snapshot aus Redis
 
-- **WHEN** für einen Benutzer-/Kontextscope ein gültiger Snapshot in Redis vorliegt
-- **THEN** wird die Autorisierungsentscheidung auf Basis des Redis-Snapshots getroffen
-- **AND** der Endpunkt benötigt für den Hit-Pfad keine erneute Permission-Berechnung
+- **WHEN** für den Benutzer-/Kontextscope ein integrer Redis-Snapshot mit exakt dem aktuellen Revisionsvektor vorliegt
+- **THEN** wird die Autorisierungsentscheidung auf Basis dieses Redis-Snapshots getroffen
+- **AND** benötigt der Endpunkt keine erneute vollständige Permission-Berechnung
 
 #### Scenario: TTL, Serialisierung und Eviction sind normiert
 
 - **WHEN** ein Snapshot in Redis persistiert wird
-- **THEN** beträgt die Basis-TTL 15 Minuten
-- **AND** ein Recompute-Fenster von 30 Sekunden wird für Rebuild- und Degraded-State-Bewertung berücksichtigt
+- **THEN** beträgt die physische Basis-TTL 15 Minuten
 - **AND** der Snapshot wird als JSON serialisiert
-- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `version` und `hmac`
-- **AND** Redis ist mit der Eviction-Policy `allkeys-lru` zu betreiben
+- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `version`, `binding.instanceRevision`, `binding.userRevision` und `hmac`
+- **AND** darf ein Ablauf-, Recompute- oder Eviction-Fenster keine revisionsveraltete Freigabe erzeugen
+- **AND** bleibt die Redis-Eviction-Policy Teil des Betriebsmodells, nicht der logischen Gültigkeit
 
 ### Requirement: Normierter Lese- und Schreibpfad für Snapshot-Auflösung
 
-Das System SHALL den Snapshot-Pfad für `POST /iam/authorize` und `GET /iam/me/permissions` in definierter Reihenfolge ausführen.
+Das System SHALL den Snapshot-Pfad für `POST /iam/authorize` und `GET /iam/me/permissions` in definierter, revisionssicherer Reihenfolge ausführen.
 
 #### Scenario: Lese- und Schreibpfad läuft deterministisch ab
 
 - **WHEN** eine Autorisierungsentscheidung effektive Rechte benötigt
-- **THEN** prüft das System zuerst den lokalen In-Memory-Snapshot als L1
-- **AND** bei L1-Miss oder stale wird Redis als primärer geteilter Snapshot-Store gelesen
-- **AND** erst bei Redis-Miss oder Integritätsfehler wird ein Recompute gegen die führenden IAM-Daten ausgeführt
-- **AND** ein erfolgreicher Recompute schreibt zuerst den Redis-Snapshot und danach den L1-Snapshot
-- **AND** ein Recompute überschreitet maximal 6 Datenbank-Roundtrips
+- **THEN** liest das System zuerst den aktuellen Revisionsvektor über einen schmalen indizierten PostgreSQL-Pfad
+- **AND** prüft danach einen L1-Snapshot mit exakt diesem Vektor
+- **AND** liest bei L1-Miss Redis unter dem exakt revisionsgebundenen Key
+- **AND** führt erst bei Redis-Miss oder Integritätsfehler einen Recompute gegen die führenden IAM-Daten aus
+- **AND** prüft die Revision vor dem Publish erneut
+- **AND** schreibt einen weiterhin aktuellen Recompute zuerst revisionsgebunden nach Redis und danach in L1
+- **AND** verwirft ein veraltetes Ergebnis mit `stale_write_discarded`, ohne es als aktuellen Snapshot zu veröffentlichen
+- **AND** überschreitet ein Recompute maximal 6 Datenbank-Roundtrips
 
 ### Requirement: Fail-Closed für Redis- und Recompute-Fehler
 
-Das System MUST bei Redis- oder Recompute-Fehlern fail-closed bleiben.
+Das System MUST bei nicht verifizierbarer Revision sowie bei Redis- oder Recompute-Fehlern fail-closed bleiben.
+
+#### Scenario: Aktuelle Revision kann nicht bestätigt werden
+
+- **WHEN** PostgreSQL für den autoritativen Revisionsread nicht erreichbar ist oder keinen belastbaren Revisionsvektor liefert
+- **THEN** antworten `POST /iam/authorize` und `GET /iam/me/permissions` mit HTTP 503
+- **AND** wird weder ein warmer L1-/Redis-Snapshot noch ein künstlich leeres Permission-Set als Erfolg verwendet
 
 #### Scenario: Redis-Lookup oder Snapshot-Write schlägt fehl
 
-- **WHEN** Redis im Autorisierungspfad nicht erreichbar ist oder ein Snapshot-Write nach Recompute fehlschlägt
+- **WHEN** Redis im Autorisierungspfad nicht erreichbar ist oder ein revisionsgebundener Snapshot-Write nach Recompute fehlschlägt
 - **THEN** antworten `POST /iam/authorize` und `GET /iam/me/permissions` mit HTTP 503
-- **AND** es wird kein fachlicher Zugriff aus einem teilweisen oder nur lokal vorhandenen Zustand abgeleitet
+- **AND** wird kein fachlicher Zugriff aus einem teilweisen oder nur lokal vorhandenen Zustand abgeleitet
 
 #### Scenario: Stale Snapshot darf nicht als Fallback dienen
 
-- **WHEN** ein vorhandener Snapshot stale ist und der Recompute scheitert
+- **WHEN** ein vorhandener Snapshot eine alte Revision trägt und der Recompute scheitert
 - **THEN** wird kein leeres oder veraltetes Permission-Set als Notfallantwort ausgeliefert
-- **AND** die Anfrage endet mit HTTP 503
-- **AND** der Fehler wird als technischer Incident geloggt und metriert
+- **AND** endet die Anfrage mit HTTP 503
+- **AND** wird der Fehler als technischer Incident geloggt und metriert
 
 ### Requirement: Ereignisbasierte Invalidierung für Snapshot-Kontexte
 
-Das System SHALL Redis-Snapshots bei relevanten Mutationen gezielt invalidieren.
+Das System SHALL relevante IAM-Mutationen durch monotone PostgreSQL-Revisionen logisch invalidieren und L1-/Redis-Einträge ereignisbasiert best-effort entfernen.
 
-#### Scenario: Rollen- oder Membership-Änderung invalidiert betroffene Snapshots
+#### Scenario: Benutzerbezogene Änderung erhöht gezielte Revision
 
-- **WHEN** Rollen, Gruppen, Memberships, Permissions oder Hierarchiebezüge eines Benutzers geändert werden
-- **THEN** werden die betroffenen Redis-Snapshots invalidiert oder versioniert unbrauchbar gemacht
-- **AND** die nächste Anfrage erzeugt einen Snapshot auf Basis des aktuellen Zustands
+- **WHEN** eine direkte Rollen-, Gruppen-, Membership-, Delegations- oder Organisationszuordnung eines sicher bestimmten Benutzers erfolgreich geändert wird
+- **THEN** wird dessen `userRevision` innerhalb derselben Datenbanktransaktion erhöht
+- **AND** bleiben Snapshots anderer Benutzer logisch gültig, sofern keine instanzweite Abhängigkeit geändert wurde
 
-#### Scenario: Eventverlust wird durch Fallback begrenzt
+#### Scenario: Rollen- oder instanzweite Änderung erhöht vollständige Revision
 
-- **WHEN** ein Invalidation-Event nicht verarbeitet wird
-- **THEN** begrenzen TTL- und Recompute-Regeln die Dauer potenziell veralteter Entscheidungen
-- **AND** ein dokumentierter Fallback-Pfad bleibt aktiv
+- **WHEN** Rollen-Permissions, Permission-Katalog, Rollen-/Gruppendefinitionen mit nicht sicher vollständiger Betroffenenmenge, Org-/Geo-Hierarchie, Modulzuweisung oder instanzweite Einstellungen erfolgreich geändert werden
+- **THEN** wird die `instanceRevision` innerhalb derselben Datenbanktransaktion erhöht
+- **AND** sind alle älteren Snapshots der Instanz logisch ungültig
 
-#### Scenario: Mutationsmatrix normiert Fanout und Scope der Invalidierung
+#### Scenario: Eventverlust beeinflusst Korrektheit nicht
+
+- **WHEN** ein `NOTIFY`-Event nicht verarbeitet wird
+- **THEN** erkennt der Revisionsread trotzdem jeden Snapshot der vorherigen Revision als ungültig
+- **AND** bleiben TTL und Cleanup ausschließlich physische Fallbacks
+
+#### Scenario: Commit definiert die Gültigkeitsgrenze
+
+- **WHEN** eine berechtigungsrelevante Mutation einschließlich Revisions-Bump erfolgreich committet wurde
+- **THEN** sieht jede danach beginnende Revisionsprüfung den erhöhten Vektor
+- **AND** darf keine danach beginnende Autorisierungsanfrage einen Snapshot der vorherigen Revision verwenden
+- **AND** werden bereits laufende Recomputes vor dem Publish erneut gegen die aktuelle Revision geprüft
+
+#### Scenario: Fehlgeschlagene Mutation hinterlässt keinen partiellen Reset
+
+- **WHEN** eine berechtigungsrelevante Mutation vor dem Commit scheitert
+- **THEN** rollen fachliche Änderung, Revisions-Bump und transaktionaler `pg_notify`-Aufruf gemeinsam zurück
+- **AND** wird weder eine neue Revision noch ein Invalidation-Event als erfolgreich bestätigt
+
+#### Scenario: Mutationsmatrix normiert Revision-Scope und Event-Fanout
 
 - **WHEN** relevante IAM-Mutationen auftreten
 - **THEN** gilt folgende Matrix verbindlich:
 
-| Mutation | Event | Invalidation-Scope | Fanout-Regel |
-|----------|-------|--------------------|--------------|
-| Rollen-Permission geändert | `RolePermissionChanged` | gesamte Instanz | sofort, keine Benutzerselektion im Request-Pfad |
-| Direkte Rollenzuweisung geändert | `account_role_assignment_changed` | betroffener Benutzer | gezielt per `keycloakSubject` |
-| Gruppenmitgliedschaft geändert | `GroupMembershipChanged` | betroffener Benutzer | gezielt per `keycloakSubject` |
-| Gruppe gelöscht | `GroupDeleted` | alle betroffenen Benutzer | Batch, betroffene Subjects im Event |
-| Org-Membership oder Org-Kontext geändert | `organization_membership_changed` / Kontextwechsel | betroffener Benutzer | gezielt per `keycloakSubject` |
-| Organisationshierarchie geändert | `OrgHierarchyChanged` | potenziell betroffene Instanz-Snapshots | asynchron, max. 200 Keys pro Batch, 500 ms Delay-Window |
-| Geo-Zuordnung geändert | `GeoAssignmentChanged` | potenziell betroffene Instanz-Snapshots | asynchron, max. 200 Keys pro Batch, 500 ms Delay-Window |
+| Mutation                                                                               | Revision-Scope       | Event / Eviction-Scope                             | Fallback-Regel                                    |
+| -------------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| Rollen-Permission oder Permission-Katalog geändert                                     | gesamte Instanz      | `RolePermissionChanged` / Instanz                  | `instanceRevision` ist führend                    |
+| Direkte Rollenzuweisung geändert                                                       | betroffener Benutzer | `account_role_assignment_changed` / Benutzer       | gezielt per `keycloakSubject`                     |
+| Gruppenmitgliedschaft geändert                                                         | betroffener Benutzer | `GroupMembershipChanged` / Benutzer                | gezielt per `keycloakSubject`                     |
+| Gruppe oder Gruppenrolle mit unklarer vollständiger Betroffenenmenge geändert/gelöscht | gesamte Instanz      | `GroupDeleted` oder entsprechendes Event / Instanz | konservativer Instanz-Bump                        |
+| Org-Membership oder aktiver Org-Kontext geändert                                       | betroffener Benutzer | `organization_membership_changed` / Benutzer       | gezielt per `keycloakSubject`                     |
+| Organisationshierarchie geändert                                                       | gesamte Instanz      | `OrgHierarchyChanged` / Instanz                    | keine Key-Aufzählung für Korrektheit erforderlich |
+| Geo-Zuordnung oder Geo-Hierarchie geändert                                             | gesamte Instanz      | `GeoAssignmentChanged` / Instanz                   | keine Key-Aufzählung für Korrektheit erforderlich |
+| Modulzuweisung oder instanzweite IAM-Einstellung geändert                              | gesamte Instanz      | Instanz-Event / Instanz                            | `instanceRevision` ist führend                    |
 
 ### Requirement: Eventformat und Consumer-Verhalten für Redis-Invalidierung
 
-Das System SHALL den Modul-Eventkontrakt für Snapshot-Invalidierung at-least-once und idempotent konsumieren.
+Das System SHALL den Modul-Eventkontrakt für schnelle Snapshot-Eviction at-least-once und idempotent konsumieren. Eventverarbeitung SHALL keine Voraussetzung für die logische Snapshot-Gültigkeit sein.
 
 #### Scenario: Event-Payload ist normiert
 
-- **WHEN** ein Invalidation-Event publiziert wird
-- **THEN** enthält es mindestens `eventId`, `event`, `instanceId` und den scopespezifischen Payload
-- **AND** user-scoped Events enthalten `keycloakSubject`, sofern eine gezielte Benutzerinvalidierung möglich ist
-- **AND** `GroupDeleted` enthält `affectedAccountIds[]` und, wenn verfügbar, `affectedKeycloakSubjects[]`
+- **WHEN** nach einem erfolgreichen Revisions-Bump ein Invalidation-Event publiziert wird
+- **THEN** enthält es mindestens `eventId`, `event`, `instanceId`, `revisionScope`, `newRevision` und den scopespezifischen Payload
+- **AND** user-scoped Events enthalten `keycloakSubject`
+- **AND** wird `pg_notify` innerhalb derselben PostgreSQL-Transaktion wie Datenänderung und Revisions-Bump aufgerufen
+- **AND** stellt PostgreSQL das Event erst nach erfolgreichem Commit zu
 
 #### Scenario: Consumer verarbeitet Events idempotent
 
-- **WHEN** ein Event mehrfach zugestellt wird
-- **THEN** verarbeitet der Consumer es höchstens einmal pro `eventId`
-- **AND** die Delivery-Semantik bleibt at-least-once
-- **AND** unbekannte oder unvollständige Payloads führen nicht zu stiller Snapshot-Freigabe
+- **WHEN** ein Event mehrfach, verspätet oder in anderer Reihenfolge zugestellt wird
+- **THEN** führt der Consumer nur idempotente L1-Eviction und best-effort Redis-Bereinigung aus
+- **AND** kann ein Event mit kleinerer Revision keine neuere Revision zurücksetzen
+- **AND** führen unbekannte oder unvollständige Payloads nicht zu stiller Snapshot-Freigabe
 
 ### Requirement: Observability- und Alerting-Vertrag für Snapshot-Betrieb
 
-Das System SHALL den Snapshot-Betrieb mit normierten Metriken, Logs und Infrastruktur-Targets absichern.
+Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken, Logs und Infrastruktur-Targets absichern.
 
-#### Scenario: Cache-Metriken und Logs sind vollständig
+#### Scenario: Cache- und Revisionsmetriken sind vollständig
 
-- **WHEN** der Snapshot-Pfad genutzt oder invalidiert wird
-- **THEN** emittiert das System mindestens OTEL-Metriken für Cache-Lookups (`hit`/`miss`), Invalidation-Latenz und Recompute-Aktivität
-- **AND** strukturierte Logs verwenden die Operationen `cache_lookup`, `cache_invalidate`, `cache_invalidate_failed`, `cache_stale_detected`, `cache_store_failed`
-- **AND** Degraded- und Failed-State sind aus Logs und Metriken ableitbar
+- **WHEN** der Snapshot-Pfad gelesen, recomputet, publiziert, zurückgesetzt oder best-effort bereinigt wird
+- **THEN** emittiert das System mindestens OTEL-Metriken für Revision-Read-Latenz/-Fehler, L1-/Redis-Lookups (`hit`/`miss`/`revision_mismatch`), Revisionsscope, Event-Eviction, Recompute-Aktivität und `stale_write_discarded`
+- **AND** strukturierte Logs verwenden für tatsächlich geloggte Lebenszyklusereignisse mindestens `cache_lookup`, `cache_invalidate` und `stale_write_discarded` sowie die Fehleroperationen `revision_read_failed`, `cache_store_failed`, `cache_invalidate_failed` und `integrity_check_failed`
+- **AND** enthalten sie, soweit für das jeweilige Ereignis vorhanden, Revisions-Scope, alte/neue beziehungsweise erwartete/tatsächliche Revision, `instance_id`, Request-ID und Trace-ID, aber keine Tokens, Session-IDs oder PII
 
 #### Scenario: Redis-Exporter ist Bestandteil des Betriebsmodells
 
 - **WHEN** der Monitoring-Stack für die IAM-Autorisierung betrieben wird
 - **THEN** ist `redis-exporter` als Prometheus-Scrape-Target vorgesehen
-- **AND** Alerting korreliert Applikationsmetriken (`sva_iam_cache_*`) mit Redis-Infrastrukturmetriken
+- **AND** korreliert Alerting Applikationsmetriken (`sva_iam_cache_*`) mit Redis- und PostgreSQL-Infrastrukturmetriken
 
 #### Scenario: Lastprofile und Berichtsformat sind verbindlich
 
-- **WHEN** Performance-Nachweise für die Snapshot-Strecke erstellt werden
-- **THEN** enthalten sie mindestens die Lastprofile `N = 100` gleichzeitige Requests für `lokal` und `Slow-4G`
-- **AND** der Bericht dokumentiert Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen, verwendete Endpunkte und Abweichungen
+- **WHEN** Performance-Nachweise für die revisionsbasierte Snapshot-Strecke erstellt werden
+- **THEN** dokumentiert der Bericht Testprofil, Messumgebung, Stichprobenzahl, Parallelität, p50/p95/p99, verwendete Endpunkte und Abweichungen
+- **AND** unterscheidet er revisionsbestätigte Cache-Hits, Cache-Misses und Recomputes anhand der tatsächlich beobachteten Cache-Status
 
 ### Requirement: Endpoint-nahe Performance-Verifikation für Authorize
 
-Das System SHALL die Redis-gestützte Authorize-Strecke endpoint-nah unter Last verifizieren.
+Das System SHALL die revisionsbasierte Redis-gestützte Authorize-Strecke endpoint-nah unter Last verifizieren.
 
 #### Scenario: Lastprofil wird mit Bericht nachgewiesen
 
-- **WHEN** die Redis-gestützte Authorize-Strecke gegen das vereinbarte Lastprofil getestet wird (100 gleichzeitige Requests, lokales Netz)
-- **THEN** werden mindestens Cache-Hit-, Cache-Miss- und Recompute-Szenarien gemessen
-- **AND** die Abnahmegrenzen werden eingehalten: Cache-Hit p95 < 5 ms, Cache-Miss p95 < 80 ms, Recompute p95 < 300 ms
-- **AND** die Ergebnisse werden versioniert als Bericht unter `docs/reports/` mit Pflichtfeldern (Testprofil, Messumgebung, Stichprobenzahl, p50/p95/p99) dokumentiert
+- **WHEN** die Authorize-Strecke in der betriebenen Single-Replica-Topologie endpointnah über den realen PostgreSQL-/Redis-Netzpfad gemessen wird
+- **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss und Recompute beobachtet
+- **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit Testprofil, Messumgebung, Stichprobenzahl, Parallelität und p50/p95/p99 dokumentiert
+- **AND** leitet der lokale Lauf keine neuen produktiven Abnahmegrenzen ab
 
 ### Requirement: API-Erweiterungskontrakt für Autorisierungsendpunkte
 
-Das System SHALL die neuen Felder in `POST /iam/authorize` und `GET /iam/me/permissions` additiv und nicht-brechend ergänzen.
+Das System SHALL die Felder in `POST /iam/authorize` und `GET /iam/me/permissions` additiv und nicht-brechend ergänzen. `GET /iam/me/permissions` MUST den tatsächlich ausgewerteten Tenant-Scope ausweisen und bei nicht belastbarer Auflösung mit einem stabilen Fehler antworten, ohne einen partiell erlaubenden oder veralteten Snapshot auszuliefern.
 
 **Normatives JSON-Beispiel `POST /iam/authorize` Response:**
+
 ```json
 {
   "allowed": true,
@@ -673,6 +721,10 @@ Das System SHALL die neuen Felder in `POST /iam/authorize` und `GET /iam/me/perm
   "resourceId": "article-1",
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
+  "permissionRevision": {
+    "instanceRevision": 42,
+    "userRevision": 7
+  },
   "provenance": {
     "sourceKinds": ["group_role"],
     "inheritedFromGeoUnitId": "geo-bw"
@@ -680,12 +732,14 @@ Das System SHALL die neuen Felder in `POST /iam/authorize` und `GET /iam/me/perm
 }
 ```
 
-Bei Verweigerung enthält `reason` einen maschinenlesbaren Code (z. B. `geo_scope_mismatch`, `hierarchy_restriction`, `instance_scope_mismatch`) und der bestehende Error-Envelope bleibt für echte `4xx/5xx`-Fehler stabil.
+Bei Verweigerung enthält `reason` einen maschinenlesbaren Code, beispielsweise `geo_scope_mismatch`, `hierarchy_restriction` oder `instance_scope_mismatch`. Ein erwartbarer Ressourcen-Denial ist von einem stabilen Stale-, Scope- oder Snapshot-Versionssignal unterscheidbar. Der bestehende Error-Envelope bleibt für echte `4xx/5xx`-Fehler stabil.
 
 **Normatives JSON-Beispiel `GET /iam/me/permissions` Response (Auszug):**
+
 ```json
 {
   "instanceId": "de-musterhausen",
+  "organizationId": "uuid-org",
   "permissions": [
     {
       "action": "content.write",
@@ -704,6 +758,10 @@ Bei Verweigerung enthält `reason` einen maschinenlesbaren Code (z. B. `geo_scop
   ],
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
+  "permissionRevision": {
+    "instanceRevision": 42,
+    "userRevision": 7
+  },
   "provenance": {
     "hasGroupDerivedPermissions": true,
     "hasGeoInheritance": true
@@ -717,27 +775,47 @@ Bei Verweigerung enthält `reason` einen maschinenlesbaren Code (z. B. `geo_scop
 - **THEN** werden diese Werte nur als additive Laufzeitdimension für Snapshot-Key, Provenance und Scope-Auswertung verwendet
 - **AND** ungültige Geo-Parameter werden mit `400 invalid_request` abgewiesen
 
+#### Scenario: Me-Permissions weist den ausgewerteten Organisationskontext aus
+
+- **WHEN** `GET /iam/me/permissions` für eine aktive Organisation aufgerufen wird
+- **THEN** enthält die Antwort die tatsächlich ausgewertete `instanceId` und `organizationId`
+- **AND** bleiben Grants anderer Organisationen für diese Antwort wirkungslos
+
+#### Scenario: Permission-Auflösung ist nicht belastbar
+
+- **WHEN** der Server den aktuellen Permission-Snapshot nicht aus führenden Daten oder einem gültigen Cache auflösen kann
+- **THEN** antwortet er mit einem stabilen Fehlerstatus, insbesondere `503` bei technischer Nichtverfügbarkeit
+- **AND** liefert er weder einen partiell erlaubenden noch einen veralteten Snapshot
+- **AND** darf der UI-Consumer daraus keine Action-Freigabe ableiten
+
+#### Scenario: Response weist den bestätigten Revisionsvektor aus
+
+- **WHEN** `POST /iam/authorize` oder `GET /iam/me/permissions` erfolgreich auf einem revisionsbestätigten Snapshot antwortet
+- **THEN** enthält die Antwort den verwendeten `permissionRevision`-Vektor aus Instanz- und Benutzerrevision
+- **AND** kann ein stabiler Stale-, Scope- oder Versionsfehler erwartete und tatsächliche Revision maschinenlesbar ausweisen
+- **AND** darf der Browser daraus nur einen Refetch, aber weder einen Server-Reset noch einen Session-Widerruf ableiten
+
 #### Scenario: Consumer mit strict-parse erhält unbekannte Felder
 
-- **WHEN** ein Consumer `POST /iam/authorize` aufruft und neue optionale Felder im Response erscheinen
+- **WHEN** ein Consumer `POST /iam/authorize` oder `GET /iam/me/permissions` aufruft und neue optionale Felder im Response erscheinen
 - **THEN** bleiben alle bisherigen Felder unverändert und rückwärtskompatibel
-- **AND** neue optionale Felder sind additive Erweiterungen (kein breaking change)
+- **AND** neue optionale Felder sind additive Erweiterungen
 
 ### Requirement: Integrität von Redis-Permission-Snapshots
 
-Das System MUST Redis-Snapshots gegen unbefugte Manipulation schützen.
+Das System MUST revisionsgebundene Redis-Snapshots gegen unbefugte Manipulation und eine falsche Zuordnung zu Revision oder Kontext schützen.
 
-#### Scenario: Snapshot wird vor dem Schreiben signiert
+#### Scenario: Snapshot wird mitsamt Revision und Kontext signiert
 
 - **WHEN** ein Permission-Snapshot in Redis geschrieben wird
-- **THEN** wird der Payload mit HMAC-SHA-256 signiert; der Schlüssel liegt außerhalb von Redis (z. B. Anwendungs-Secret)
-- **AND** der Snapshot enthält ein `schema_version`-Feld und einen `signed_at`-Zeitstempel
+- **THEN** wird der kanonisch serialisierte Payload einschließlich `schema_version`, `signed_at`, `version`, `binding.instanceRevision`, `binding.userRevision`, Instanz-, Benutzer- und Kontextbindung sowie Permissions mit HMAC-SHA-256 signiert
+- **AND** liegt der Signaturschlüssel außerhalb von Redis
 
-#### Scenario: Signaturprüfung schlägt fehl
+#### Scenario: Integritäts- oder Bindungsprüfung schlägt fehl
 
-- **WHEN** ein aus Redis gelesener Snapshot eine ungültige oder fehlende Signatur aufweist
-- **THEN** wird der Snapshot verworfen und wie ein Cache-Miss behandelt (Recompute)
-- **AND** der Vorfall wird als strukturiertes Log-Event mit `integrity_check_failed: true` protokolliert
+- **WHEN** Signatur, Schema-Version, Revisionsvektor oder Kontextbindung eines gelesenen Redis-Snapshots fehlt oder nicht zum angeforderten Key passt
+- **THEN** wird der Snapshot verworfen und wie ein Cache-Miss behandelt
+- **AND** wird der Vorfall ohne Secrets oder PII als `integrity_check_failed` strukturiert geloggt und metriert
 
 ### Requirement: Strukturierte Logs für Autorisierungsentscheidungen
 
@@ -753,16 +831,16 @@ Das System SHALL alle Autorisierungsentscheidungen mit folgenden Pflichtfeldern 
 
 Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfälle treffen. Die folgende Testmatrix ist normativ:
 
-| Quelle A | Quelle B | Erwartetes Ergebnis | Begründung |
-|----------|----------|---------------------|------------|
-| Rolle: allow | Gruppe: kein passender Grant | allow | passender Rollen-Grant reicht |
-| Gruppe: allow | Geo-Restriktion nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
-| Org-Parent: allow | Org-Child: kein passender Grant | allow | Vererbung greift |
-| Org-Parent: allow | Org-Child: kein Eintrag | allow | Vererbung greift |
-| Geo-Parent: allow | Geo-Child: Scope nicht erfüllt | deny | Scope-Bedingung nicht erfüllt |
-| Geo-Parent: allow | Geo-Child (3. Ebene): Scope nicht erfüllt | deny | 3+-Ebenen denselben Regeln |
-| Rolle: kein passender Grant | Gruppe: allow | allow | passender Gruppen-Grant reicht |
-| permission_key-legacy: kein passender Grant | Strukturiert: allow | allow | strukturiert vor legacy |
+| Quelle A                                    | Quelle B                                  | Erwartetes Ergebnis | Begründung                     |
+| ------------------------------------------- | ----------------------------------------- | ------------------- | ------------------------------ |
+| Rolle: allow                                | Gruppe: kein passender Grant              | allow               | passender Rollen-Grant reicht  |
+| Gruppe: allow                               | Geo-Restriktion nicht erfüllt             | deny                | Scope-Bedingung nicht erfüllt  |
+| Org-Parent: allow                           | Org-Child: kein passender Grant           | allow               | Vererbung greift               |
+| Org-Parent: allow                           | Org-Child: kein Eintrag                   | allow               | Vererbung greift               |
+| Geo-Parent: allow                           | Geo-Child: Scope nicht erfüllt            | deny                | Scope-Bedingung nicht erfüllt  |
+| Geo-Parent: allow                           | Geo-Child (3. Ebene): Scope nicht erfüllt | deny                | 3+-Ebenen denselben Regeln     |
+| Rolle: kein passender Grant                 | Gruppe: allow                             | allow               | passender Gruppen-Grant reicht |
+| permission_key-legacy: kein passender Grant | Strukturiert: allow                       | allow               | strukturiert vor legacy        |
 
 #### Scenario: Dreistufige Geo-Hierarchie mit nicht erfülltem Scope
 
@@ -779,33 +857,32 @@ Das System SHALL deterministische Entscheidungen für alle bekannten Konfliktfä
 
 ### Requirement: Normierte Abnahmematrix für Vererbung, Cache, Invalidierung und Migration
 
-Das System SHALL für Paket 4A eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, Snapshot-Cache, Event-Invalidierung und Mixed-State-Migration in einem gemeinsamen Testset normiert.
+Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, revisionsgebundene L1-/Redis-Snapshots, Event-Eviction und Mixed-State-Migration in einem gemeinsamen Testset normiert.
 
 #### Scenario: Abnahmematrix deckt alle Pflichtkategorien ab
 
-- **WHEN** die technische Abnahme für Paket 4A vorbereitet oder nachgewiesen wird
-- **THEN** enthält die Matrix mindestens Fälle für Org-Vererbung, Geo-Vererbung mit drei oder mehr Ebenen, lokale Restriktionen, Cache-Hit, Cache-Miss, Recompute, Event-Invalidierung, Event-Duplikate, Mixed-State-Migration und Race-Conditions
-- **AND** jeder Fall dokumentiert Ausgangslage, Mutation oder Anfrage, erwarteten Cache-Status und das normative Ergebnis
+- **WHEN** die technische Abnahme vorbereitet oder nachgewiesen wird
+- **THEN** enthält die Matrix mindestens Org-/Geo-Vererbung, Cache-Hit/-Miss, Grant, Revocation, transaktionale Benutzer-/Instanzinvalidierung, verlorene/verspätete/duplizierte Events, parallele Mutationen/Recomputes, Redis-/DB-Ausfälle und Performance
+- **AND** dokumentiert jeder Fall Ausgangslage, Revisionsvektor, Mutation oder Anfrage, erwarteten Cache-Status und normatives Ergebnis
 
-#### Scenario: Paket-4A-Abnahmematrix ist tabellarisch normiert
+#### Scenario: Revisions-Abnahmematrix ist tabellarisch normiert
 
 - **WHEN** die Abnahmematrix erstellt wird
 - **THEN** gilt mindestens folgende Tabelle verbindlich:
 
-| Kategorie | Ausgangslage | Mutation / Anfrage | Erwarteter Cache-Status | Erwartetes Ergebnis |
-|-----------|--------------|--------------------|-------------------------|---------------------|
-| Org-Vererbung | Parent-Org `allow`, Child ohne lokale Regel | `POST /iam/authorize` im Child-Kontext | `miss` oder `recompute` beim Erstlauf | `allow`, Reasoning verweist auf Parent-Vererbung |
-| Org-Restriktion | Parent-Org `allow`, Child-Org erfüllt Scope nicht | `POST /iam/authorize` im Child-Kontext | `hit` oder `miss` zulässig | `deny`, Scope-Bedingung nicht erfüllt |
-| Geo-Vererbung 3 Ebenen | Geo-Parent `allow`, Ebene 2 ohne Regel, Ebene 3 erfüllt Scope nicht | `POST /iam/authorize` auf Ebene 3 | `miss` oder `recompute` beim Erstlauf | `deny`, Denial-Reason für nicht erfüllten Scope |
-| Cache-Hit | Gültiger Snapshot für `{instanceId,userId,orgCtxHash,geoCtxHash}` vorhanden | Wiederholter `POST /iam/authorize` mit identischem Kontext | `hit` | keine zusätzliche Datenbankberechnung erforderlich |
-| Cache-Miss | Kein Snapshot vorhanden | Erstaufruf `GET /iam/me/permissions` | `miss` gefolgt von Write | Snapshot wird berechnet und in Redis persistiert |
-| Recompute nach TTL | Snapshot abgelaufen, Redis erreichbar | `POST /iam/authorize` nach TTL | `recompute` | neue Entscheidung aus führenden Daten, alter Snapshot wird nicht weiterverwendet |
-| Mixed-State-Migration | Rolle enthält legacy `permission_key` und strukturierte Permission mit unterschiedlicher Spezifität | `POST /iam/authorize` | `miss` oder `recompute` | strukturierte Permission gewinnt deterministisch |
-| User-scoped Invalidierung | Gruppenmitgliedschaft eines Benutzers ändert sich | Event `GroupMembershipChanged` | nächster Zugriff `miss` oder `recompute` | alter Snapshot dieses Benutzers ist unbrauchbar |
-| Hierarchische Invalidierung | Org-Hierarchie einer Instanz ändert sich | Event `OrgHierarchyChanged` | betroffene Folgezugriffe `miss` oder `recompute` | betroffene Instanz-Snapshots werden asynchron erneuert |
-| Event-Duplikat | identisches Invalidation-Event wird mehrfach zugestellt | Consumer verarbeitet dieselbe `eventId` erneut | unverändert | keine doppelte Seiteneffekte, Idempotenz bleibt gewahrt |
-| Race-Condition Recompute vs. Mutation | Snapshot-Recompute läuft, während eine Rollen- oder Gruppenmutation committed wird | Mutation direkt vor Snapshot-Write | final `recompute` auf aktuellem Stand oder erneuter `miss` | kein veralteter Snapshot darf als gültiger Endzustand bestehen bleiben |
-| Fail-Closed bei Recompute-Fehler | Snapshot stale, Redis oder Recompute scheitert | `POST /iam/authorize` unter Fehlerlast | `recompute` fehlgeschlagen | HTTP 503, kein stiller Zugriff |
+| Kategorie                              | Ausgangslage                                          | Mutation / Anfrage                              | Erwarteter Cache-Status                  | Erwartetes Ergebnis                               |
+| -------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| Revisionsbestätigter Hit               | eine App-Instanz, L1 und Redis warm, Revision `i1/u1` | wiederholtes `POST /iam/authorize`              | `hit`                                    | identische Entscheidung ohne Permission-Recompute |
+| Benutzer-Grant                         | Benutzer-Snapshot `i1/u1` warm                        | direkte Rolle zuweisen und `u2` committen       | `miss`/`recompute` für Benutzer          | Grant sichtbar, andere Benutzer bleiben gültig    |
+| Benutzer-Revocation                    | Benutzer-Snapshot `i1/u2` warm                        | direkte Rolle entziehen und `u3` committen      | alter Snapshot `revision_mismatch`       | Revocation sofort wirksam                         |
+| Instanzweiter Rollen-Permission-Change | mehrere Benutzer-Snapshots warm                       | Rollen-Permission ändern und `i2` committen     | alle alten Snapshots `revision_mismatch` | vollständiger instanzweiter Recompute bei Bedarf  |
+| Verlorenes Event                       | alte L1-Einträge bleiben physisch                     | Revision wird ohne zugestelltes `NOTIFY` erhöht | `revision_mismatch`                      | keine Stale-Freigabe                              |
+| Verspätetes/dupliziertes Event         | neuere Revision bereits aktiv                         | altes Event trifft ein                          | unverändert                              | neuere Revision bleibt führend                    |
+| Recompute-vs.-Mutation                 | Recompute für `i1/u1` läuft                           | Mutation committet `u2` vor Publish             | `stale_write_discarded`                  | alter Kandidat wird nicht aktuell publiziert      |
+| Physisch alter Redis-Key               | Key für `i1/u1` existiert nach Reset                  | Anfrage liest aktuellen Vektor `i1/u2`          | alter Key unadressierbar                 | TTL/Cleanup entfernt ihn später                   |
+| Redis-Ausfall                          | Revision lesbar, Redis nicht erreichbar               | `POST /iam/authorize`                           | Fehler                                   | HTTP 503, kein L1-Fallback-Erfolg                 |
+| Datenbankausfall                       | L1 und Redis warm                                     | Revisionsread scheitert                         | Fehler                                   | HTTP 503, kein warmer Cache-Hit                   |
+| Mixed-State-Migration                  | v1- und v2-Keys vorhanden                             | Zugriff nach Aktivierung des Revisionsvertrags  | nur v2 revisionsfähig                    | v1 wird nie als aktueller Erfolg verwendet        |
 
 ### Requirement: Wiederverwendbare Autorisierungs- und Prüfdaten für Rechteverwaltung
 
@@ -911,35 +988,43 @@ Das System SHALL die Inhaltsverwaltung über die zentrale IAM-Autorisierung absi
 - **THEN** wertet das System die Rechte im aktiven `instanceId`- und Organisationskontext aus
 
 ### Requirement: Einheitliches Zielformat für autorisierbare Action-IDs
+
 Das IAM-System MUST autorisierbare Action-IDs langfristig in einem einheitlichen fully-qualified Format `<namespace>.<actionName>` behandeln, unabhängig davon, ob die Action aus dem Core oder aus einem Plugin stammt.
 
 #### Scenario: Core-Action verwendet das gemeinsame Zielformat
+
 - **WHEN** ein Client `POST /iam/authorize` für eine interne Action wie `content.read` aufruft
 - **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
 - **AND** sie folgt demselben Formatvertrag wie eine Plugin-Action
 
 #### Scenario: Plugin-Action verwendet das gemeinsame Zielformat
+
 - **WHEN** ein Client `POST /iam/authorize` für eine Plugin-Action wie `news.create` aufruft
 - **THEN** wird die Action als gültige fully-qualified Action-ID akzeptiert
 - **AND** sie folgt demselben Formatvertrag wie eine interne Core-Action
 
 ### Requirement: Namespace-sichere Plugin-Action-Autorisierung
+
 Das IAM-System MUST Plugin-Aktionen in vollständig qualifizierter Form autorisieren und Action-IDs ohne Namespace-Kollaps oder implizites Prefix-Mapping auswerten.
 
 #### Scenario: Authorize nutzt vollständig qualifizierte Action-ID
+
 - **WHEN** ein Client `POST /iam/authorize` für `news.create` aufruft
 - **THEN** wird genau `news.create` gegen die effektiven Berechtigungen ausgewertet
 - **AND** es findet keine implizite Umdeutung auf `create`, `content.create` oder einen anderen Namespace statt
 
 #### Scenario: Fremder Namespace bleibt verboten
+
 - **WHEN** ein Plugin ohne passende Berechtigung eine fremde Action-ID wie `events.publish` ausführen will
 - **THEN** liefert die Autorisierung eine Deny-Entscheidung
 - **AND** die Diagnose bleibt auf die vollständig qualifizierte Action-ID referenzierbar
 
 ### Requirement: Legacy-Kurzformen bleiben eine explizite Übergangsphase
+
 Das IAM-System MUST unqualifizierte Legacy-Action-Strings wie `read`, `write` oder `create` nur als zeitlich begrenzte Übergangsphase behandeln und darf daraus keine implizite Namespace-Zuordnung ableiten.
 
 #### Scenario: Legacy-Kurzform erhält keinen impliziten Namespace
+
 - **WHEN** eine unqualifizierte Legacy-Action wie `read` verarbeitet wird
 - **THEN** wird sie nicht implizit zu `content.read`, `news.read` oder einem anderen fully-qualified Namen umgedeutet
 - **AND** eine zukünftige Verschärfung des Request-Schemas kann diese Legacy-Kurzform vollständig verbieten
@@ -991,18 +1076,21 @@ The system SHALL evaluate authorization for plugin contributions through host-ow
 This requirement applies equally to plugin routes, admin resource actions, server-side request handlers, job handlers, import flows, and integration entry-points.
 
 #### Scenario: Host evaluates plugin route permission
+
 - **GIVEN** a plugin declares a guarded route contribution
 - **WHEN** the host materializes or executes the route
 - **THEN** the host evaluates the permission through the central IAM contract
 - **AND** the plugin receives only the decision result needed to render or continue execution
 
 #### Scenario: Host evaluates plugin job permission
+
 - **GIVEN** a plugin declares a job or import operation that requires a permission
 - **WHEN** a user starts the operation through a host endpoint
 - **THEN** the host resolves authorization before the plugin handler runs
 - **AND** the plugin handler does not evaluate or override the final IAM decision itself
 
 #### Scenario: Plugin attempts custom authorization code path
+
 - **GIVEN** a plugin contribution includes executable authorization logic outside the host contract
 - **WHEN** the host validates or reviews the contribution
 - **THEN** the integration is rejected or documented as an architecture violation
@@ -1013,18 +1101,21 @@ This requirement applies equally to plugin routes, admin resource actions, serve
 The system SHALL authorize Studio-based Keycloak administration separately for platform and tenant scopes and SHALL never use broader credentials as an implicit fallback for a narrower tenant operation.
 
 #### Scenario: Platform admin edits platform identities
+
 - **WHEN** ein Platform-Admin einen Platform-User oder eine Platform-Rolle im Root-Host bearbeitet
 - **THEN** prüft das System Platform-Admin-Rechte
 - **AND** verwendet ausschließlich den Platform-Admin-Keycloak-Client
 - **AND** schreibt ein Audit-Event mit Actor, Scope, Zielobjekt und Ergebnis
 
 #### Scenario: Tenant admin edits tenant identities
+
 - **WHEN** ein Tenant-Admin User, Rollen oder Rollenzuordnungen auf einem Tenant-Host bearbeitet
 - **THEN** prüft das System Tenant-Admin-Rechte für die aktive `instanceId`
 - **AND** verwendet ausschließlich den Tenant-Admin-Keycloak-Client
 - **AND** blockiert Cross-Tenant-Zugriffe
 
 #### Scenario: Tenant Keycloak rights are insufficient
+
 - **WHEN** Keycloak eine Tenant-Operation mit `IDP_FORBIDDEN` verweigert
 - **THEN** gibt das System einen stabilen Diagnosecode zurück
 - **AND** erklärt, welche Keycloak-Rechte oder Realm-/Client-Konfiguration fehlen
@@ -1035,16 +1126,19 @@ The system SHALL authorize Studio-based Keycloak administration separately for p
 Das System SHALL für Keycloak-User, Rollen und Rollenzuordnungen vor jeder Mutation eine Bearbeitbarkeitsentscheidung berechnen.
 
 #### Scenario: Read-only object is visible but protected
+
 - **WHEN** ein Keycloak-Objekt sichtbar, aber nicht Studio-bearbeitbar ist
 - **THEN** zeigt die UI das Objekt mit `read_only`-Status
 - **AND** Server-Mutationen werden mit einem stabilen Diagnosecode blockiert
 
 #### Scenario: Federated user field is protected
+
 - **WHEN** ein User-Feld durch Föderation oder Keycloak-Policy nicht bearbeitbar ist
 - **THEN** deaktiviert die UI das Feld
 - **AND** der Server validiert denselben Zustand vor der Mutation
 
 ### Requirement: Content Core Authorization Primitives
+
 The system SHALL authorize content core operations through host-owned, fully-qualified primitive actions that remain stable across plugin-specific content types.
 
 The primitive action namespace SHALL be `content`. The initial primitive action set SHALL include `content.read`, `content.create`, `content.updateMetadata`, `content.updatePayload`, `content.changeStatus`, `content.publish`, `content.archive`, `content.restore`, `content.readHistory`, `content.manageRevisions`, and `content.delete`.
@@ -1052,63 +1146,74 @@ The primitive action namespace SHALL be `content`. The initial primitive action 
 Authorization requests for content core operations SHALL include the resolved `instanceId`, `contentType`, optional `contentId`, optional `organizationId`, requested primitive action, actor subject, and any host-known ownership scope. Plugins MAY declare domain capabilities that map to these primitives in separate capability-mapping contracts, but plugins SHALL NOT replace or shadow the primitive action names.
 
 #### Scenario: User edits content core metadata
+
 - **GIVEN** a user requests a core content mutation
 - **WHEN** the host evaluates authorization
 - **THEN** the decision uses the stable primitive action for that mutation and the resolved content scope
 - **AND** the decision is evaluated through the central IAM authorization path
 
 #### Scenario: Plugin declares custom core permission
+
 - **GIVEN** a plugin declares a permission that replaces a host-owned core content permission
 - **WHEN** the contribution is validated
 - **THEN** the host rejects the conflicting permission declaration
 
 #### Scenario: Payload update uses primitive action
+
 - **GIVEN** a user updates plugin-specific payload fields for a content item
 - **WHEN** the host evaluates authorization
 - **THEN** the host checks `content.updatePayload` with the resolved content scope
 - **AND** plugin-specific field names are not used as primitive IAM actions
 
 #### Scenario: History access is scoped
+
 - **GIVEN** a user requests the history of a content item
 - **WHEN** the host evaluates authorization
 - **THEN** the host checks `content.readHistory` for the item's `instanceId`, content type, content identifier, and ownership scope
 
 #### Scenario: Authorization lacks resolved content scope
+
 - **GIVEN** a content core mutation cannot resolve `instanceId` or ownership scope deterministically
 - **WHEN** the host prepares the authorization request
 - **THEN** the operation is denied before persistence
 - **AND** diagnostics identify the missing scope input without exposing plugin payload data
 
 ### Requirement: Content Capability Mapping
+
 The system SHALL map domain-level content capabilities such as publish, archive, restore, bulk edit, and manage revisions to stable primitive Studio actions before authorization is evaluated.
 
 The mapping SHALL be host-owned, declarative, and framework-agnostic. Plugins, content types, and UI bindings MAY reference supported capabilities, but SHALL NOT provide executable authorization logic, permission resolvers, or fallback allow/deny decisions.
 
 #### Scenario: Domain capability maps to primitive action
+
 - **GIVEN** a user requests a content publish operation
 - **WHEN** the host evaluates authorization
 - **THEN** the publish capability is resolved to the configured primitive Studio action and checked through the central permission engine
 - **AND** the authorization request uses the resolved primitive action, resource type, actor, and active scope
 
 #### Scenario: Capability has no mapping
+
 - **GIVEN** a content action has no registered capability mapping
 - **WHEN** the host evaluates authorization
 - **THEN** access is denied with the deterministic diagnostic `capability_mapping_missing`
 - **AND** no persistence, status transition, or side effect is executed
 
 #### Scenario: Capability maps to invalid primitive action
+
 - **GIVEN** a capability mapping references an unknown or non-fully-qualified primitive action
 - **WHEN** the host validates the mapping or evaluates an action using it
 - **THEN** access is denied with the deterministic diagnostic `capability_mapping_invalid`
 - **AND** the host does not infer a namespace or substitute another primitive action
 
 #### Scenario: Server remains authoritative
+
 - **GIVEN** the UI rendered a content action as available from the mapping read model
 - **WHEN** the user executes the action
 - **THEN** the server resolves the capability again and evaluates the primitive action through the central permission engine
 - **AND** a stale or manipulated UI state cannot bypass authorization
 
 #### Scenario: Admin action remains out of scope
+
 - **GIVEN** an admin action uses an existing direct primitive Studio action
 - **WHEN** the host evaluates authorization for this P2 change
 - **THEN** the admin action continues to use the existing authorization contract
@@ -1299,20 +1404,24 @@ Das System SHALL Seed- und Reset-Operationen als gesondert autorisierbare Hochri
 - **AND** die Berechtigung bleibt von allgemeinen Schreib- oder Verwaltungsrechten getrennt
 
 ### Requirement: Rollenrechte koennen Assignment-Scopes fuer Datensatzzugriffe tragen
+
 Das System SHALL Rollen-Rechte-Zuordnungen fuer scope-faehige Datensatzrechte mit einem Assignment-Scope `all`, `own` oder `organization` speichern und auswerten.
 
 #### Scenario: Legacy-Rollenpayload bleibt kompatibel
+
 - **WHEN** ein Rollen-Update weiterhin nur `permissionIds` sendet
 - **THEN** interpretiert das System jede dieser Zuordnungen als `accessScope = all`
 - **AND** es schreibt konsistente `role_permissions` ohne Scope-Verlust
 
 #### Scenario: Own-Scope verlangt IAM-Ownership
+
 - **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = own` trifft
 - **THEN** erlaubt das System den Zugriff nur bei passendem `ownerUserId` beziehungsweise technischer `owner_user_id`
 - **AND** `createdByAccountId` oder `creator_account_id` allein begruendet keinen Own-Zugriff
 - **AND** fehlende oder fremde Ownership-Bezuege fuehren fail-closed zu keinem Match
 
 #### Scenario: Organization-Scope folgt IAM-Ownership und aktiver Session-Organisation
+
 - **WHEN** eine Authorize-Anfrage fuer ein scope-faehiges Datensatzrecht auf eine Permission mit `accessScope = organization` trifft
 - **THEN** erlaubt das System den Zugriff fuer Datensaetze mit passendem `ownerUserId` oder passender `ownerOrganizationId` zur aktiven Session-Organisation
 - **AND** Datensaetze ausserhalb dieses Kontexts matchen nicht
@@ -1330,58 +1439,71 @@ Das System SHALL tenantweite Host- und Plugin-Rechte nicht allein deshalb organi
 - **AND** wird im effektiven Permission-Modell kein organisationsbezogener Scope allein aus diesem Kontext abgeleitet
 
 ### Requirement: Plattformrecht instance.registry.manage ist nicht tenantfähig
+
 Das System SHALL das Recht `instance.registry.manage` ausschließlich im Plattform-/Root-Scope auswerten. Tenantlokale Rollen, Gruppen oder Permissions dürfen dieses Recht nicht verleihen.
 
 #### Scenario: Tenant-Rolle kann Instanzverwaltung nicht freischalten
+
 - **WHEN** eine tenantlokale Rolle, Gruppe oder Permission-Zuordnung versucht, `instance.registry.manage` oder einen gleichwertigen Instanzverwaltungszugriff zu modellieren
 - **THEN** behandelt das System diesen Zustand nicht als wirksame tenantlokale Berechtigung
 - **AND** ein tenantseitiger Request auf Root-Control-Plane-Funktionalität bleibt fail-closed verweigert
 
 #### Scenario: Root-Instanzverwaltung bleibt auf Plattformrolle begrenzt
+
 - **WHEN** ein Root-Host-Request eine Instanzverwaltungsoperation ausführt
 - **THEN** entscheidet das System den Zugriff ausschließlich über die Plattformrolle `instance_registry_admin`
 - **AND** tenantlokale Permission-Snapshots oder Gruppenmitgliedschaften werden dafür nicht ausgewertet
 
 ### Requirement: Tenantseitige Modulrechte sind von kanonischen Standardrollen entkoppelt
+
 Das System SHALL tenantseitige modulbezogene Rechte so modellieren, dass sie individuellen Rollen und Gruppen einer Instanz zugeordnet werden können, ohne kanonische Standardrollen als normative Rechtequelle zu verlangen.
 
 #### Scenario: Modulrecht wird einer individuellen Tenant-Rolle zugeordnet
+
 - **WHEN** ein Administrator einer Instanz ein modulbezogenes Recht einer editierbaren Custom-Rolle zuweist
 - **THEN** wird dieses Recht serverseitig wie jede andere tenantlokale Rollen-Permission-Zuordnung persistiert und ausgewertet
 - **AND** es ist dafür keine kanonische Standardrolle wie `editor` oder `app_manager` erforderlich
 
 #### Scenario: Gruppen vermitteln modulbezogene Rechte ohne Standardrollenpflicht
+
 - **WHEN** eine Gruppe tenantlokale Rollen bündelt, die modulbezogene Rechte enthalten
 - **THEN** erhält der Benutzer die entsprechenden Rechte über die Gruppenauflösung
 - **AND** die Wirksamkeit hängt nicht davon ab, ob eine kanonische Standardrolle existiert
 
 ### Requirement: Geschützte Tenant-Sonderrollen bleiben von frei verwaltbaren Rollen unterscheidbar
+
 Das System SHALL tenantlokale geschützte Sonderrollen wie `system_admin` von frei verwaltbaren tenantlokalen Rollen unterscheiden.
 
 #### Scenario: system_admin bleibt gesondert geschützt
+
 - **WHEN** ein Benutzer oder eine Rolle im Tenant-Realm verwaltet wird
 - **THEN** behandelt das System `system_admin` weiterhin als geschützte Sonderrolle
 - **AND** Sonderregeln wie Letztadmin-Schutz oder strengere Verwaltungsprüfungen bleiben erhalten
 - **AND** die geschützte Rolle bündelt direkt alle tenantlokalen Permissions des aktiven Sollzustands
 
 #### Scenario: Individuelle Tenant-Rollen bleiben editierbar
+
 - **WHEN** eine tenantlokale Custom-Rolle ohne Sonderstatus gelesen oder bearbeitet wird
 - **THEN** bleibt sie über die normale Rollenverwaltung editierbar
 - **AND** ihre Rechtebasis kann unabhängig von kanonischen Standardrollen gepflegt werden
 
 ### Requirement: system_admin ist die normative Vollzugriffsrolle im Tenant
+
 Das System SHALL `system_admin` als normative tenantlokale Vollzugriffsrolle behandeln. Die effektive Permission-Menge von `system_admin` MUST mindestens alle tenantlokalen Core-, Verwaltungs- und Modul-Permissions umfassen, die über tenantseitige UI- und API-Gates relevant sind.
 
 #### Scenario: UI-Gate akzeptiert system_admin ohne Nebenartefakte
+
 - **WHEN** ein UI- oder API-Gate auf eine tenantlokale Verwaltungs- oder Modul-Permission prüft
 - **THEN** erhält ein Benutzer mit `system_admin` die Freigabe auch dann, wenn keine zusätzliche Gruppe wie `admins` und keine ergänzende Rolle wie `core_admin` zugewiesen ist
 
 #### Scenario: Komfortgruppen bleiben optional
+
 - **WHEN** eine Tenant-Instanz Gruppen oder Standardrollen als Komfortbündel für Administratoren verwendet
 - **THEN** dürfen diese Artefakte weiterhin Permissions vermitteln
 - **AND** sie sind nicht die normative Quelle dafür, dass ein `system_admin` vollen Zugriff besitzt
 
 ### Requirement: Sessiongebundene serverseitige Authorize-Performance-Ausfuehrung
+
 Das System SHALL einen geschuetzten serverseitigen Performance-Lauf fuer den echten `POST /iam/authorize`-Pfad bereitstellen, der den aktuellen Session-Benutzer als Messsubjekt nutzt.
 
 #### Scenario: Session-Benutzer ist die Messidentitaet
@@ -1496,22 +1618,27 @@ Zulässige Ausnahmen SHALL auf Plattform-, Bootstrap-, Migration- oder Reconcile
 - **AND** der Vorgang wird mit Actor, Scope, Grundklasse und Ergebnis auditiert
 
 ### Requirement: Tenant-Autorisierung wird normativ aus IAM-Rollen, Gruppen und Permissions abgeleitet
+
 Das System SHALL tenantlokale Autorisierungsentscheidungen normativ aus dem IAM-Datenmodell der aktiven Instanz ableiten. Rohrollen aus Keycloak dürfen tenantseitige Fachautorisierung nicht eigenständig begründen.
 
 #### Scenario: Tenant-Gate ignoriert rohe Keycloak-Fachrolle ohne IAM-Wirkung
+
 - **WHEN** ein Benutzer in Keycloak eine historische oder externe Realm-Rolle besitzt, die im tenantlokalen IAM-Modell keiner wirksamen Rolle oder Permission entspricht
 - **THEN** gewährt ein Tenant-UI- oder API-Gate dadurch keinen fachlichen Zugriff
 - **AND** bleibt der Zugriff fail-closed auf die IAM-basierte Autorisierungsentscheidung beschränkt
 
 #### Scenario: IAM-Permission wirkt ohne zusätzliche Keycloak-Fachrolle
+
 - **WHEN** ein Benutzer im Tenant-Realm die erforderliche IAM-Rolle, Gruppenmitgliedschaft oder effektive Permission besitzt
 - **THEN** gewährt das System den vorgesehenen Tenant-Zugriff
 - **AND** verlangt dafür keine zusätzliche fachliche Keycloak-Realm-Rolle außerhalb des normativen Sonderrollenschnitts
 
 ### Requirement: Legacy-Keycloak-Rollen bleiben Diagnose- statt Normierungsquelle
+
 Das System SHALL historische oder externe Keycloak-Rollen für Tenant-Benutzer nur noch als Diagnose-, Drift- oder Interop-Artefakte behandeln, sofern sie nicht zu den ausdrücklich verwalteten Sonderrollen gehören.
 
 #### Scenario: Diagnose zeigt Legacy-Rolle ohne Fachwirkung
+
 - **WHEN** eine Analyse, Permissions-Übersicht oder Reconcile-Ausgabe eine historische Keycloak-Rolle für einen Tenant-Benutzer findet
 - **THEN** kennzeichnet das System diese Rolle als Legacy-, externes oder technisches Artefakt
 - **AND** beschreibt ihre fehlende normative Fachwirkung eindeutig
@@ -1700,3 +1827,61 @@ Das System MUST Definitionen eines zugewiesenen Moduls spätestens bei dessen Ak
 - **AND** bleibt die Permission-Definition erhalten
 - **AND** bleiben manuelle Grants und Custom-Rollen unverändert
 
+### Requirement: UI-Consumer projizieren strukturierte Tenant-Permissions ohne neue IAM-Semantik
+
+Das System SHALL strukturierte effektive Permissions aus `GET /iam/me/permissions` über den framework-agnostischen UI-Decision-Vertrag in `@sva/iam-core` auswerten. Diese Auswertung MUST Scope-, Modul- und vorhandene Ressourceninformationen konservativ kombinieren, darf aber keine Rollen-, Gruppen-, Ownership- oder ABAC-Regeln im Client neu berechnen.
+
+#### Scenario: Strukturierter Scope wird nicht verlustbehaftet abgeflacht
+
+- **WENN** eine effektive Permission auf `own`, `organization`, Geo, `resourceId` oder andere ABAC-Bedingungen begrenzt ist
+- **DANN** bleibt diese Einschränkung im UI-Read-Modell maschinenlesbar erhalten
+- **UND** darf ein Consumer aus dem bloßen Vorkommen der Action-ID keine unbeschränkte Ressourcenfreigabe ableiten
+
+#### Scenario: Modulzuweisung fehlt
+
+- **WENN** eine modulgebundene Action im Permission-Snapshot vorkommt
+- **UND** das zugehörige Modul in der fail-closed Session-Sicht nicht zugewiesen ist
+- **DANN** projiziert der UI-Decision-Vertrag die Anforderung als nicht erlaubt
+- **UND** berechnet er keine alternative Modulfreigabe aus Plugin- oder Katalogmetadaten
+
+#### Scenario: Technische Plattformrolle wird ausgewertet
+
+- **WENN** eine dokumentierte Root-/Control-Plane-Fläche eine technische Plattformrolle verlangt
+- **DANN** verwendet der UI-Decision-Vertrag ausschließlich den diskriminierten Plattform-Scope der validierten Session-Sicht
+- **UND** darf diese Rolle keine tenantgebundene Action freigeben
+
+### Requirement: Datensatzbezogene UI-Capabilities konsumieren fachlich führende Serververträge
+
+Das System MUST für konkrete Ressourcenmutationen mit `own`-, `organization`-, Geo-, Ressourcen- oder vergleichbaren Bedingungen eine Capability aus dem jeweils fachlich führenden serverautoritativen Read- oder Authorize-Vertrag konsumieren. Ein globaler Action-Name, Listen- oder Projection-Treffer SHALL dafür nicht ausreichen. Dieser Change SHALL keinen generischen zweiten Capability-Endpunkt oder konkurrierende Ownership-Semantik einführen.
+
+#### Scenario: Vorhandenes Read-Modell enthält Mutation-Capabilities
+
+- **WENN** eine Detail- oder Listenfläche Mutationscontrols für eine scope-beschränkte Ressource rendern soll
+- **DANN** übernimmt der UI-Decision-Vertrag die konkrete Capability aus dem fachlich führenden serverautoritativen Read-Modell
+- **UND** bleibt die Capability an Ressource, Action, Instanz und gegebenenfalls Organisation gebunden
+
+#### Scenario: Bestehender Authorize-Vertrag ist die führende Quelle
+
+- **WENN** ein Fachbereich eine aktuelle Ressourcenentscheidung über seinen bestehenden Authorize-Pfad liefert
+- **DANN** konsumiert die UI diese Entscheidung, ohne dieselbe Ownership- oder ABAC-Regel im Client nachzubauen
+- **UND** bleibt die Mutation selbst erneut serverseitig autorisiert
+
+#### Scenario: Ressourcen-Capability fehlt
+
+- **WENN** der Client zwar eine passende Action-ID im aktuellen Permission-Snapshot sieht
+- **UND** für eine scope-beschränkte Zielressource keine belastbare Capability besitzt
+- **DANN** bleibt die konkrete Mutation in der UI fail-closed
+- **UND** wird kein generischer Fallback auf `allowed` angenommen
+
+#### Scenario: Mainserver-Inhalt verwendet den führenden DataProvider-Vertrag
+
+- **WENN** eine Mainserver-Ressource mit `own`- oder `organization`-Scope bearbeitet werden soll
+- **DANN** bleibt der Vertrag aus `use-mainserver-data-provider-as-content-author` für DataProvider-Bindung, `MutationPrincipalContext`, Same-Credential-Pre-Read und Mainserver-Autorisierung führend
+- **UND** fügt dieser Change keine konkurrierende Client-Ownership-Entscheidung hinzu
+
+#### Scenario: Berechtigung wird zwischen Anzeige und Mutation entzogen
+
+- **WENN** eine Capability bei der Anzeige noch erlaubt war
+- **UND** die aktuelle serverseitige Autorisierung die Mutation später verweigert
+- **DANN** führt der Server die Mutation nicht aus
+- **UND** invalidiert der Client ohne stabiles Stale-, Scope- oder Versionssignal nur die konkrete Ressourcen-Capability

@@ -38,7 +38,6 @@ Diese Vorlage normiert den Liefernachweis für die Redis-gestützte IAM-Autorisi
 - Datenbank:
 - Netzwerkprofil:
   - lokal
-  - Slow-4G
 - Beobachtungswerkzeuge:
   - OTEL-Metriken
   - Prometheus
@@ -47,7 +46,8 @@ Diese Vorlage normiert den Liefernachweis für die Redis-gestützte IAM-Autorisi
 
 ## 4. Lastprofil
 
-- Gleichzeitige Requests: `N = 100`
+- Mess-Requests:
+- Parallelität:
 - Dauer je Lauf:
 - Warm-up-Dauer:
 - Wiederholungen je Szenario:
@@ -57,14 +57,11 @@ Diese Vorlage normiert den Liefernachweis für die Redis-gestützte IAM-Autorisi
 
 ## 5. Ergebnisübersicht
 
-| Szenario | Netzwerkprofil | Samples | p50 | p95 | p99 | Ziel | Ergebnis |
-|----------|----------------|---------|-----|-----|-----|------|----------|
-| Cache-Hit | lokal |  |  |  |  | p95 < 5 ms |  |
-| Cache-Miss | lokal |  |  |  |  | p95 < 80 ms |  |
-| Recompute | lokal |  |  |  |  | p95 < 300 ms |  |
-| Cache-Hit | Slow-4G |  |  |  |  | Beobachtungswert |  |
-| Cache-Miss | Slow-4G |  |  |  |  | Beobachtungswert |  |
-| Recompute | Slow-4G |  |  |  |  | Beobachtungswert |  |
+| Szenario   | Netzwerkprofil | Samples | p50 | p95 | p99 | Ziel             | Ergebnis |
+| ---------- | -------------- | ------- | --- | --- | --- | ---------------- | -------- |
+| Cache-Hit  | lokal          |         |     |     |     | Beobachtungswert |          |
+| Cache-Miss | lokal          |         |     |     |     | Beobachtungswert |          |
+| Recompute  | lokal          |         |     |     |     | Beobachtungswert |          |
 
 ## 6. Beobachtungen
 

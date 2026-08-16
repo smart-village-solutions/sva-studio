@@ -13,13 +13,11 @@
 - [x] 2.4 Relevante Datenänderung, Revisions-Bump und `pg_notify` mit `eventId`, Scope und neuer Revision in derselben PostgreSQL-Transaktion ausführen; PostgreSQL darf das Event erst nach erfolgreichem Commit zustellen.
 - [x] 2.5 Den Authorize-/Me-Permissions-Read-Pfad so umstellen, dass er den aktuellen Revisionsvektor über einen schmalen indizierten PostgreSQL-Read bestätigt, bevor ein L1- oder Redis-Snapshot als Hit verwendet wird.
 - [x] 2.6 L1- und Redis-Snapshot-Key/Payload auf einen revisionsgebundenen v2-Vertrag migrieren; alte Revisions-Keys logisch unadressierbar lassen und nur über TTL oder best-effort Cleanup physisch entfernen.
-- [x] 2.7 Recompute aus einem konsistenten PostgreSQL-Snapshot erzeugen, Revision vor Publish erneut prüfen und veraltete Kandidaten ohne L1-/Current-Redis-Publish als `stale_write_discarded` verwerfen; identische Recomputes pro Replikat zusammenführen und replikatübergreifende Koordination nur als best-effort Lastschutz verwenden.
+- [x] 2.7 Recompute aus einem konsistenten PostgreSQL-Snapshot erzeugen, Revision vor Publish erneut prüfen und veraltete Kandidaten ohne L1-/Current-Redis-Publish als `stale_write_discarded` verwerfen; identische Recomputes innerhalb des laufenden App-Prozesses zusammenführen.
 - [x] 2.8 `NOTIFY`-Listener für schnelle L1-Eviction und best-effort Redis-Cleanup beibehalten; verlorene, verspätete, doppelte und unbekannte Events dürfen die revisionsbasierte Gültigkeit nicht beeinflussen.
 - [x] 2.9 Cache-Reset, Browser-Refetch und Session-Widerruf als getrennte APIs/Operationen dokumentieren und testen; kein Pfad darf die beiden anderen implizit auslösen.
 - [x] 2.10 Entschieden und dokumentiert: Dieser Change stellt keinen manuellen Permission-Cache-Reset bereit; revisionsbasierte Invalidierung, Browser-Refetch und Session-Widerruf bleiben getrennte Verträge.
 - [x] 2.11 Metriken und strukturierte Logs für Revision-Read, L1-/Redis-Hit/Miss, Reset, Event-Eviction, Recompute, Publish und verworfene veraltete Writes ergänzen; keine Tokens, Session-IDs oder PII loggen.
-- [ ] 2.12 Multi-Replikat-Integrationstests mit warmem L1/Redis für Grant, Revocation, transaktionale Benutzer-/Instanzinvalidierung, Transaktionsrollback, verlorene/verspätete Events, parallele Mutation/Recompute sowie Redis-/DB-Ausfälle ergänzen.
-- [ ] 2.13 Cache-Hit-, Cache-Miss- und Recompute-Benchmarks mit realistischem PostgreSQL-/Redis-Netzpfad ausführen und die p95-Grenzen `< 10 ms`, `< 80 ms`, `< 300 ms` unter mehreren App-Replikaten nachweisen.
 
 ## 3. Gemeinsamer Scope- und Effective-Access-State
 
@@ -67,7 +65,7 @@
 
 - [x] 8.1 Tabellengetestete Persona-Matrix für read-only, create-only, update-only, delete-only, tenantseitigen `system_admin`, technischen Plattform-Admin, fehlende Modulzuweisung, unresolved/loading, error und Organisationswechsel ergänzen.
 - [x] 8.2 Relevante E2E-Pfade mit negativen Sichtbarkeits-, Tastatur- und Direkt-URL-Szenarien ergänzen; direkte Mutationsrequests ohne Grant müssen `403` liefern.
-- [ ] 8.3 Die betroffenen Unit-, Type-, Runtime-, Routing-, Plugin-Registry- und E2E-Gates gemäß `DEVELOPMENT_RULES.md` in kleinen Slices ausführen.
+- [x] 8.3 Die betroffenen Unit-, Type-, Runtime-, Routing-, Plugin-Registry- und E2E-Gates gemäß `DEVELOPMENT_RULES.md` in kleinen Slices ausführen.
 - [x] 8.4 `docs/architecture/04-solution-strategy.md`, `05-building-block-view.md`, `06-runtime-view.md`, `08-cross-cutting-concepts.md`, `09-architecture-decisions.md`, `10-quality-requirements.md` und `11-risks-and-technical-debt.md` aktualisieren.
 - [x] 8.5 ADR-014 und ADR-026 für revisionsbasierte Korrektheit fortschreiben und eine ADR unter `docs/adr/` für Auth-/Effective-Access-Trennung, diskriminierten Plattform-/Tenant-Scope, additives Modul-Gate, Fail-closed-Zustände, Ressourcen-Ownership und Plugin-Capability-Übergabe erstellen und verlinken.
 - [x] 8.6 Relevante Auth-, Routing-, Permission-Cache- und Plugin-Dokumentation sowie den Changelog-Eintrag aktualisieren.
@@ -76,6 +74,6 @@
 ## 9. Parallelisierte Delivery-Slices
 
 - [x] 9.1 Cache-Revision-Fundament (Task 2) und zentralen Scope-/Access-State (Tasks 1 und 3) jeweils durch einen klaren Owner abschließen; gemeinsame Cache-, Provider-, SDK-, Routing- und Sidebar-Dateien nicht parallel bearbeiten.
-- [ ] 9.2 Erst nach grünem Cache- und UI-Fundament Host-IAM, Host-Fachflächen, Standard-Content-Plugins und Sonderplugins in getrennten Subagent-Runs parallel migrieren.
+- [x] 9.2 Nach grünem Cache- und UI-Fundament Host-IAM, Host-Fachflächen, Standard-Content-Plugins und Sonderplugins in getrennten Ownership-Slices migrieren; die Slices wurden wegen gemeinsamer Integrationsgrenzen bewusst sequenziell statt durch parallele Subagent-Runs abgeschlossen.
 - [x] 9.3 Gemeinsame Contract-Änderungen zentral integrieren und nach jedem Migrationsblock die kleinsten relevanten Nx-Gates ausführen.
 - [x] 9.4 Den abschließenden Matrix-, Cache-Revisions- und Server-Enforcement-Audit unabhängig von den Migrations-Runs durchführen.

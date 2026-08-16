@@ -62,6 +62,10 @@ export default defineConfig({
         replacement: resolve(__dirname, '../iam-governance/src/dsr-maintenance.ts'),
       },
       {
+        find: /^@sva\/iam-governance\/dsr-persistence$/,
+        replacement: resolve(__dirname, '../iam-governance/src/dsr-persistence.ts'),
+      },
+      {
         find: /^@sva\/iam-governance\/legal-text-repository-shared$/,
         replacement: resolve(__dirname, '../iam-governance/src/legal-text-repository-shared.ts'),
       },

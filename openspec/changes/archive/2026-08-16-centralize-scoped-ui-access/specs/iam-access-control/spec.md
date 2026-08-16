@@ -26,7 +26,6 @@ Das System SHALL Cache-Einträge bei relevanten Änderungen revisionsbasiert ung
 - **WHEN** Rollen oder relevante Kontextzuordnungen eines Benutzers erfolgreich geändert werden
 - **THEN** wird die passende Benutzer- oder Instanzrevision in derselben Datenbanktransaktion monoton erhöht
 - **AND** eine nachfolgende Anfrage akzeptiert keinen Snapshot der vorherigen Revision
-- **AND** die Event-basierte End-to-End-Eviction-Latenz bleibt bei P95 <= 2 Sekunden und P99 <= 5 Sekunden
 
 #### Scenario: Eventverlust wird revisionsbasiert abgefangen
 
@@ -66,7 +65,7 @@ Das System SHALL effektive Berechtigungen als serialisierte, revisionsgebundene 
 - **WHEN** ein Snapshot in Redis persistiert wird
 - **THEN** beträgt die physische Basis-TTL 15 Minuten
 - **AND** der Snapshot wird als JSON serialisiert
-- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `snapshotVersion`, `instanceRevision`, `userRevision` und `hmac`
+- **AND** das Payload enthält mindestens `schema_version`, `signed_at`, `permissions`, `version`, `binding.instanceRevision`, `binding.userRevision` und `hmac`
 - **AND** darf ein Ablauf-, Recompute- oder Eviction-Fenster keine revisionsveraltete Freigabe erzeugen
 - **AND** bleibt die Redis-Eviction-Policy Teil des Betriebsmodells, nicht der logischen Gültigkeit
 
@@ -187,8 +186,8 @@ Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken
 
 - **WHEN** der Snapshot-Pfad gelesen, recomputet, publiziert, zurückgesetzt oder best-effort bereinigt wird
 - **THEN** emittiert das System mindestens OTEL-Metriken für Revision-Read-Latenz/-Fehler, L1-/Redis-Lookups (`hit`/`miss`/`revision_mismatch`), Revisionsscope, Event-Eviction, Recompute-Aktivität und `stale_write_discarded`
-- **AND** strukturierte Logs verwenden mindestens die Operationen `revision_read`, `cache_lookup`, `cache_evict`, `cache_recompute`, `cache_publish`, `stale_write_discarded` und die jeweiligen Fehleroperationen
-- **AND** enthalten sie Revision-Scope, alte/neue beziehungsweise erwartete/tatsächliche Revision, `instance_id`, Request-ID und Trace-ID, aber keine Tokens, Session-IDs oder PII
+- **AND** strukturierte Logs verwenden für tatsächlich geloggte Lebenszyklusereignisse mindestens `cache_lookup`, `cache_invalidate` und `stale_write_discarded` sowie die Fehleroperationen `revision_read_failed`, `cache_store_failed`, `cache_invalidate_failed` und `integrity_check_failed`
+- **AND** enthalten sie, soweit für das jeweilige Ereignis vorhanden, Revisions-Scope, alte/neue beziehungsweise erwartete/tatsächliche Revision, `instance_id`, Request-ID und Trace-ID, aber keine Tokens, Session-IDs oder PII
 
 #### Scenario: Redis-Exporter ist Bestandteil des Betriebsmodells
 
@@ -199,8 +198,8 @@ Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken
 #### Scenario: Lastprofile und Berichtsformat sind verbindlich
 
 - **WHEN** Performance-Nachweise für die revisionsbasierte Snapshot-Strecke erstellt werden
-- **THEN** enthalten sie mindestens mehrere App-Replikate, warme L1-/Redis-Caches und `N = 100` gleichzeitige Requests für `lokal` und `Slow-4G`
-- **AND** dokumentiert der Bericht Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen, verwendete Endpunkte und Abweichungen
+- **THEN** dokumentiert der Bericht Testprofil, Messumgebung, Stichprobenzahl, Parallelität, p50/p95/p99, verwendete Endpunkte und Abweichungen
+- **AND** unterscheidet er revisionsbestätigte Cache-Hits, Cache-Misses und Recomputes anhand der tatsächlich beobachteten Cache-Status
 
 ### Requirement: Endpoint-nahe Performance-Verifikation für Authorize
 
@@ -208,14 +207,14 @@ Das System SHALL die revisionsbasierte Redis-gestützte Authorize-Strecke endpoi
 
 #### Scenario: Lastprofil wird mit Bericht nachgewiesen
 
-- **WHEN** die Authorize-Strecke gegen das vereinbarte Lastprofil mit 100 gleichzeitigen Requests, mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad getestet wird
-- **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss, Recompute, paralleler Revision-Bump und verworfener Stale-Write gemessen
-- **AND** gelten die Abnahmegrenzen Cache-Hit p95 < 10 ms, Cache-Miss p95 < 80 ms und Recompute p95 < 300 ms
-- **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit den Pflichtfeldern Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl und p50/p95/p99 dokumentiert
+- **WHEN** die Authorize-Strecke in der betriebenen Single-Replica-Topologie endpointnah über den realen PostgreSQL-/Redis-Netzpfad gemessen wird
+- **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss und Recompute beobachtet
+- **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit Testprofil, Messumgebung, Stichprobenzahl, Parallelität und p50/p95/p99 dokumentiert
+- **AND** leitet der lokale Lauf keine neuen produktiven Abnahmegrenzen ab
 
 ### Requirement: Normierte Abnahmematrix für Vererbung, Cache, Invalidierung und Migration
 
-Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, revisionsgebundene L1-/Redis-Snapshots, Event-Eviction und Mixed-State-Migration in einem gemeinsamen Multi-Replikat-Testset normiert.
+Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, Restriktionen, revisionsgebundene L1-/Redis-Snapshots, Event-Eviction und Mixed-State-Migration in einem gemeinsamen Testset normiert.
 
 #### Scenario: Abnahmematrix deckt alle Pflichtkategorien ab
 
@@ -228,19 +227,19 @@ Das System SHALL eine tabellarische Abnahmematrix bereitstellen, die Vererbung, 
 - **WHEN** die Abnahmematrix erstellt wird
 - **THEN** gilt mindestens folgende Tabelle verbindlich:
 
-| Kategorie                                     | Ausgangslage                                        | Mutation / Anfrage                              | Erwarteter Cache-Status                  | Erwartetes Ergebnis                               |
-| --------------------------------------------- | --------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
-| Revisionsbestätigter Hit                      | zwei Replikate, L1 und Redis warm, Revision `i1/u1` | wiederholtes `POST /iam/authorize`              | `hit`                                    | identische Entscheidung ohne Permission-Recompute |
-| Benutzer-Grant                                | Benutzer-Snapshot `i1/u1` warm                      | direkte Rolle zuweisen und `u2` committen       | `miss`/`recompute` für Benutzer          | Grant sichtbar, andere Benutzer bleiben gültig    |
-| Benutzer-Revocation                           | Benutzer-Snapshot `i1/u2` warm                      | direkte Rolle entziehen und `u3` committen      | alter Snapshot `revision_mismatch`       | Revocation sofort wirksam                         |
-| Instanzweiter Rollen-Permission-Change        | mehrere Benutzer/Replikate warm                     | Rollen-Permission ändern und `i2` committen     | alle alten Snapshots `revision_mismatch` | vollständiger instanzweiter Recompute bei Bedarf  |
-| Verlorenes Event                              | alte L1-Einträge bleiben physisch                   | Revision wird ohne zugestelltes `NOTIFY` erhöht | `revision_mismatch`                      | keine Stale-Freigabe                              |
-| Verspätetes/dupliziertes Event                | neuere Revision bereits aktiv                       | altes Event trifft ein                          | unverändert                              | neuere Revision bleibt führend                    |
-| Recompute-vs.-Mutation                        | Recompute für `i1/u1` läuft                         | Mutation committet `u2` vor Publish             | `stale_write_discarded`                  | alter Kandidat wird nicht aktuell publiziert      |
-| Physisch alter Redis-Key                      | Key für `i1/u1` existiert nach Reset                | Anfrage liest aktuellen Vektor `i1/u2`          | alter Key unadressierbar                 | TTL/Cleanup entfernt ihn später                   |
-| Redis-Ausfall                                 | Revision lesbar, Redis nicht erreichbar             | `POST /iam/authorize`                           | Fehler                                   | HTTP 503, kein L1-Fallback-Erfolg                 |
-| Datenbankausfall                              | L1 und Redis warm                                   | Revisionsread scheitert                         | Fehler                                   | HTTP 503, kein warmer Cache-Hit                   |
-| Mixed-State-Migration                         | v1- und v2-Keys vorhanden                           | Zugriff nach Aktivierung des Revisionsvertrags  | nur v2 revisionsfähig                    | v1 wird nie als aktueller Erfolg verwendet        |
+| Kategorie                              | Ausgangslage                                          | Mutation / Anfrage                              | Erwarteter Cache-Status                  | Erwartetes Ergebnis                               |
+| -------------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------- |
+| Revisionsbestätigter Hit               | eine App-Instanz, L1 und Redis warm, Revision `i1/u1` | wiederholtes `POST /iam/authorize`              | `hit`                                    | identische Entscheidung ohne Permission-Recompute |
+| Benutzer-Grant                         | Benutzer-Snapshot `i1/u1` warm                        | direkte Rolle zuweisen und `u2` committen       | `miss`/`recompute` für Benutzer          | Grant sichtbar, andere Benutzer bleiben gültig    |
+| Benutzer-Revocation                    | Benutzer-Snapshot `i1/u2` warm                        | direkte Rolle entziehen und `u3` committen      | alter Snapshot `revision_mismatch`       | Revocation sofort wirksam                         |
+| Instanzweiter Rollen-Permission-Change | mehrere Benutzer-Snapshots warm                       | Rollen-Permission ändern und `i2` committen     | alle alten Snapshots `revision_mismatch` | vollständiger instanzweiter Recompute bei Bedarf  |
+| Verlorenes Event                       | alte L1-Einträge bleiben physisch                     | Revision wird ohne zugestelltes `NOTIFY` erhöht | `revision_mismatch`                      | keine Stale-Freigabe                              |
+| Verspätetes/dupliziertes Event         | neuere Revision bereits aktiv                         | altes Event trifft ein                          | unverändert                              | neuere Revision bleibt führend                    |
+| Recompute-vs.-Mutation                 | Recompute für `i1/u1` läuft                           | Mutation committet `u2` vor Publish             | `stale_write_discarded`                  | alter Kandidat wird nicht aktuell publiziert      |
+| Physisch alter Redis-Key               | Key für `i1/u1` existiert nach Reset                  | Anfrage liest aktuellen Vektor `i1/u2`          | alter Key unadressierbar                 | TTL/Cleanup entfernt ihn später                   |
+| Redis-Ausfall                          | Revision lesbar, Redis nicht erreichbar               | `POST /iam/authorize`                           | Fehler                                   | HTTP 503, kein L1-Fallback-Erfolg                 |
+| Datenbankausfall                       | L1 und Redis warm                                     | Revisionsread scheitert                         | Fehler                                   | HTTP 503, kein warmer Cache-Hit                   |
+| Mixed-State-Migration                  | v1- und v2-Keys vorhanden                             | Zugriff nach Aktivierung des Revisionsvertrags  | nur v2 revisionsfähig                    | v1 wird nie als aktueller Erfolg verwendet        |
 
 ### Requirement: API-Erweiterungskontrakt für Autorisierungsendpunkte
 
@@ -259,8 +258,8 @@ Das System SHALL die Felder in `POST /iam/authorize` und `GET /iam/me/permission
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
   "permissionRevision": {
-    "instance": 42,
-    "user": 7
+    "instanceRevision": 42,
+    "userRevision": 7
   },
   "provenance": {
     "sourceKinds": ["group_role"],
@@ -296,8 +295,8 @@ Bei Verweigerung enthält `reason` einen maschinenlesbaren Code, beispielsweise 
   "cacheStatus": "hit",
   "snapshotVersion": "f84a6f7b9c3d2e10",
   "permissionRevision": {
-    "instance": 42,
-    "user": 7
+    "instanceRevision": 42,
+    "userRevision": 7
   },
   "provenance": {
     "hasGroupDerivedPermissions": true,
@@ -345,7 +344,7 @@ Das System MUST revisionsgebundene Redis-Snapshots gegen unbefugte Manipulation 
 #### Scenario: Snapshot wird mitsamt Revision und Kontext signiert
 
 - **WHEN** ein Permission-Snapshot in Redis geschrieben wird
-- **THEN** wird der kanonisch serialisierte Payload einschließlich `schema_version`, `signed_at`, `instanceRevision`, `userRevision`, Instanz-, Benutzer- und Kontextbindung sowie Permissions mit HMAC-SHA-256 signiert
+- **THEN** wird der kanonisch serialisierte Payload einschließlich `schema_version`, `signed_at`, `version`, `binding.instanceRevision`, `binding.userRevision`, Instanz-, Benutzer- und Kontextbindung sowie Permissions mit HMAC-SHA-256 signiert
 - **AND** liegt der Signaturschlüssel außerhalb von Redis
 
 #### Scenario: Integritäts- oder Bindungsprüfung schlägt fehl

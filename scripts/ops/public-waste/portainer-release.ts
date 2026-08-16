@@ -254,8 +254,23 @@ export const updatePublicWasteReplicas = (stackFileContent: string, replicas: 0 
 };
 
 export const ensurePublicWasteCertificateResolver = (stackFileContent: string): string => {
-  if (/traefik\.http\.routers\.public-waste\.tls\.certresolver=default/u.test(stackFileContent)) {
-    return stackFileContent;
+  const resolverMatches = [
+    ...stackFileContent.matchAll(
+      /^(\s*-\s*)(['"])traefik\.http\.routers\.public-waste\.tls\.certresolver=([^\s'"]+)\2[ \t]*$/gmu
+    ),
+  ];
+  if (resolverMatches.length > 1) {
+    throw new Error('Der Public-Waste-Stack besitzt mehrere TLS-Certificate-Resolver-Labels.');
+  }
+  const resolverMatch = resolverMatches[0];
+  if (resolverMatch?.[1] && resolverMatch[2]) {
+    if (resolverMatch[3] === 'default') {
+      return stackFileContent;
+    }
+    return stackFileContent.replace(
+      resolverMatch[0],
+      `${resolverMatch[1]}${resolverMatch[2]}traefik.http.routers.public-waste.tls.certresolver=default${resolverMatch[2]}`
+    );
   }
   const matches = [
     ...stackFileContent.matchAll(

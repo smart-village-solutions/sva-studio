@@ -65,7 +65,7 @@ describe('waste tenant database provisioning deployment', () => {
     expect(provisionerSection).toContain("SVA_PLUGIN_OPERATION_WORKER_LANE: 'privileged'");
     expect(provisionerSection).toContain('/run/secrets/waste_database_provisioner_password');
     expect(provisionerSection).toContain('.output/server/index.mjs');
-    expect(servicesSection.match(/^  [a-z][a-z0-9-]+:$/gmu)).toEqual([
+    expect(servicesSection.match(/^ {2}[a-z][a-z0-9-]+:$/gmu)).toEqual([
       '  app:',
       '  provisioner:',
       '  migrate:',
@@ -88,16 +88,13 @@ describe('waste tenant database provisioning deployment', () => {
     for (const section of [migrateSection, canonicalMigrateSection]) {
       expect(section).toContain('WASTE_DATABASE_PROVISIONER_USER');
       expect(section).toContain('/run/secrets/waste_database_provisioner_password');
-      expect(section).toContain('waste-schema-statements.json');
       expect(section).toContain('waste_database_provisioner_password');
     }
   });
 
-  it('ships and invokes the digest-bound Waste schema manifest after Goose', () => {
+  it('ships and invokes the digest-bound versioned Waste migrator after Goose', () => {
     for (const source of [dockerfile, canonicalDockerfile]) {
-      expect(source).toContain('render-waste-schema-manifest.ts');
       expect(source).toContain('migrate-waste-tenants.mjs');
-      expect(source).toContain('waste-schema-statements.json');
     }
     expect(migrationEntrypoint.indexOf('goosew.sh')).toBeLessThan(
       migrationEntrypoint.indexOf('node "${WASTE_TENANT_MIGRATOR}"')

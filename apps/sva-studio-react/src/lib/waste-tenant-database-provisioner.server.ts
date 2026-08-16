@@ -19,11 +19,7 @@ import {
 } from '@sva/server-runtime';
 import { Pool } from 'pg';
 
-import {
-  applySchemaStatements,
-  applyWasteSchemaGrantStatements,
-  inspectWasteSchema,
-} from './waste-management-operations.schema.js';
+import { applySchemaStatements, inspectWasteSchema } from './waste-management-operations.schema.js';
 import type { OperationSummary, WasteOperationSqlPool } from './waste-management-operations.types.js';
 
 export { deriveWasteTenantDatabaseNames, type WasteTenantDatabaseNames } from '@sva/server-runtime';
@@ -149,9 +145,37 @@ const migrateAndGrant = async (pool: ProvisioningPool, names: WasteTenantDatabas
     for (const sql of applySchemaStatements('public')) {
       await client.query(sql);
     }
-    for (const sql of applyWasteSchemaGrantStatements('public', names)) {
-      await client.query(sql);
-    }
+    await client.query(
+      `GRANT USAGE ON SCHEMA public TO ${quoteIdentifier(names.appRole)}, ${quoteIdentifier(names.publicAppRole)};`
+    );
+    await client.query(
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${quoteIdentifier(names.publicAppRole)};`
+    );
+    await client.query(
+      `GRANT INSERT, UPDATE, DELETE ON TABLE
+        public.waste_email_reminder_subscriptions,
+        public.waste_email_reminder_subscription_items,
+        public.waste_email_reminder_outbox
+      TO ${quoteIdentifier(names.publicAppRole)};`
+    );
+    await client.query(
+      `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT USAGE, SELECT ON SEQUENCES TO ${quoteIdentifier(names.appRole)};`
+    );
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdentifier(names.ownerRole)} IN SCHEMA public
+       GRANT SELECT ON TABLES TO ${quoteIdentifier(names.publicAppRole)};`
+    );
     return inspectWasteSchema(client, 'public');
   } finally {
     client.release();

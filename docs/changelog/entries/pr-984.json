@@ -1,4 +1,4 @@
 {
   "prNumber": 984,
-  "body": "Abholorte bleiben nach Studio-Aktualisierungen verfügbar\n\n- Bestehende Abfallkalender-Datenbanken werden bei regulären Aktualisierungen automatisch mit dem benötigten Schema abgeglichen.\n- Abfallfraktionen, Touren und Abholorte verwenden dadurch dauerhaft denselben aktuellen Datenstand.\n- Die Aktualisierung stoppt sicher, wenn eine Datenbank nicht eindeutig zugeordnet oder nicht vollständig geprüft werden kann."
+  "body": "Abholorte bleiben nach Studio-Aktualisierungen verfügbar\n\n- Bestehende Abfallkalender-Datenbanken erhalten bei regulären Aktualisierungen ausschließlich ausstehende, versionierte Schemaänderungen.\n- Die erste additive Migration ergänzt die für Abholorte benötigte Postleitzahl, ohne bestehende Fachdaten zu löschen oder zu überschreiben.\n- Jede Datenbankänderung läuft transaktional und wird bei einem Fehler vollständig zurückgerollt."
 }

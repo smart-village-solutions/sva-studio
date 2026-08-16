@@ -1,7 +1,4 @@
-import {
-  quoteIdentifier,
-  requiredWasteTables,
-} from './waste-management-operations.schema-contract.js';
+import { quoteIdentifier, requiredWasteTables } from './waste-management-operations.shared.js';
 import type { SqlClient } from './waste-management-operations.types.js';
 
 export const inspectWasteSchema = async (client: SqlClient, schemaName: string) => {
@@ -33,39 +30,6 @@ UPDATE ${tableReference}
 SET pdf_short_label = ${wasteFractionShortLabelBackfillExpression}
 WHERE pdf_short_label IS NULL OR BTRIM(pdf_short_label) = '';
 `.trim();
-
-export type WasteSchemaRuntimeRoles = Readonly<{
-  ownerRole: string;
-  appRole: string;
-  publicAppRole: string;
-}>;
-
-export const applyWasteSchemaGrantStatements = (
-  schemaName: string,
-  roles: WasteSchemaRuntimeRoles
-): readonly string[] => {
-  const schema = quoteIdentifier(schemaName);
-  const ownerRole = quoteIdentifier(roles.ownerRole);
-  const appRole = quoteIdentifier(roles.appRole);
-  const publicAppRole = quoteIdentifier(roles.publicAppRole);
-  return [
-    `GRANT USAGE ON SCHEMA ${schema} TO ${appRole}, ${publicAppRole};`,
-    `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ${schema} TO ${appRole};`,
-    `GRANT SELECT ON ALL TABLES IN SCHEMA ${schema} TO ${publicAppRole};`,
-    `GRANT INSERT, UPDATE, DELETE ON TABLE
-      ${schema}.waste_email_reminder_subscriptions,
-      ${schema}.waste_email_reminder_subscription_items,
-      ${schema}.waste_email_reminder_outbox
-    TO ${publicAppRole};`,
-    `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA ${schema} TO ${appRole};`,
-    `ALTER DEFAULT PRIVILEGES FOR ROLE ${ownerRole} IN SCHEMA ${schema}
-     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${appRole};`,
-    `ALTER DEFAULT PRIVILEGES FOR ROLE ${ownerRole} IN SCHEMA ${schema}
-     GRANT USAGE, SELECT ON SEQUENCES TO ${appRole};`,
-    `ALTER DEFAULT PRIVILEGES FOR ROLE ${ownerRole} IN SCHEMA ${schema}
-     GRANT SELECT ON TABLES TO ${publicAppRole};`,
-  ];
-};
 
 const buildWasteFractionReminderConfigBackfillStatement = (tableReference: string): string =>
   `

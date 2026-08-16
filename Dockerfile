@@ -36,8 +36,6 @@ RUN pnpm nx run routing:build --skip-nx-cache
 # emits the client bundle for this TanStack Start app, while `vite build`
 # produces client, SSR service bundle and Nitro server output in one pass.
 RUN pnpm nx run sva-studio-react:build --skip-nx-cache
-RUN mkdir -p /workspace/.deploy \
-  && pnpm exec tsx scripts/ci/render-waste-schema-manifest.ts > /workspace/.deploy/waste-schema-statements.json
 # Fix ESM relative imports/exports: add .js extensions to extensionless local paths.
 # Some TypeScript emits extensionless ESM in dist/, which fails under Node ESM in runtime images.
 RUN node -e "\
@@ -130,7 +128,6 @@ COPY --from=build --chown=node:node /workspace/entrypoint.sh ./entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/migrate-entrypoint.sh ./migrate-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
-COPY --from=build --chown=node:node /workspace/.deploy/waste-schema-statements.json ./waste-schema-statements.json
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/candidate-preflight.mjs ./candidate-preflight.mjs
 COPY --from=build --chown=node:node /workspace/otel-bootstrap.mjs ./otel-bootstrap.mjs

@@ -53,7 +53,7 @@ if [ ! -f "${WASTE_TENANT_MIGRATOR}" ]; then
   exit 1
 fi
 
-log "Gleiche registrierte Waste-Tenant-Datenbanken mit dem kanonischen Schema ab"
+log "Wende ausstehende versionierte Waste-Tenant-Migrationen an"
 node "${WASTE_TENANT_MIGRATOR}"
 
 log "Migrationsjob erfolgreich abgeschlossen"

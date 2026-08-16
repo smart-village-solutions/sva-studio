@@ -3,6 +3,29 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const identifierPattern = /^[a-z][a-z0-9_]{0,62}$/u;
+const migrationIdPattern = /^\d{8}_\d{2}_[a-z0-9_]+$/u;
+const migrationLedgerTable = 'public.sva_waste_schema_migrations';
+
+export const wasteTenantMigrations = Object.freeze([
+  Object.freeze({
+    id: '20260816_01_add_waste_city_postal_code',
+    statements: Object.freeze([
+      'ALTER TABLE public.waste_cities ADD COLUMN IF NOT EXISTS postal_code TEXT;',
+    ]),
+    verification: Object.freeze({
+      sql: `
+        SELECT EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = $1
+            AND table_name = $2
+            AND column_name = $3
+        ) AS satisfied;
+      `,
+      values: Object.freeze(['public', 'waste_cities', 'postal_code']),
+    }),
+  }),
+]);
 
 const required = (name) => {
   const value = process.env[name]?.trim();
@@ -15,64 +38,99 @@ const quoteIdentifier = (value) => {
   return `"${value}"`;
 };
 
-const requireStringArray = (value, code) => {
-  if (
-    !Array.isArray(value) ||
-    value.length === 0 ||
-    value.some((entry) => typeof entry !== 'string' || !entry.trim())
-  ) {
-    throw new Error(code);
+export const validateWasteTenantMigrations = (migrations) => {
+  if (!Array.isArray(migrations) || migrations.length === 0) {
+    throw new Error('waste_migration_catalog_empty');
   }
-  return value;
-};
-
-export const parseWasteSchemaManifest = (source) => {
-  const manifest = JSON.parse(source);
-  if (manifest?.version !== 1 || manifest.schemaName !== 'public') {
-    throw new Error('waste_migration_manifest_version_invalid');
-  }
-  const rolePlaceholders = manifest.rolePlaceholders;
-  for (const key of ['ownerRole', 'appRole', 'publicAppRole']) {
-    if (!identifierPattern.test(rolePlaceholders?.[key] ?? '')) {
-      throw new Error('waste_migration_manifest_role_placeholder_invalid');
+  const migrationIds = new Set();
+  for (const migration of migrations) {
+    if (!migrationIdPattern.test(migration?.id ?? '') || migrationIds.has(migration.id)) {
+      throw new Error('waste_migration_catalog_id_invalid');
     }
+    if (
+      !Array.isArray(migration.statements) ||
+      migration.statements.length === 0 ||
+      migration.statements.some((statement) => typeof statement !== 'string' || !statement.trim()) ||
+      typeof migration.verification?.sql !== 'string' ||
+      !migration.verification.sql.trim() ||
+      !Array.isArray(migration.verification.values)
+    ) {
+      throw new Error(`waste_migration_catalog_entry_invalid:${migration.id}`);
+    }
+    migrationIds.add(migration.id);
   }
-  return {
-    ...manifest,
-    grantStatements: requireStringArray(
-      manifest.grantStatements,
-      'waste_migration_manifest_grants_invalid'
-    ),
-    requiredTables: requireStringArray(
-      manifest.requiredTables,
-      'waste_migration_manifest_tables_invalid'
-    ),
-    schemaStatements: requireStringArray(
-      manifest.schemaStatements,
-      'waste_migration_manifest_schema_invalid'
-    ),
-  };
+  return migrations;
 };
 
-export const resolveGrantStatements = (manifest, names) => {
-  const replacements = Object.entries(manifest.rolePlaceholders).map(([key, placeholder]) => [
-    quoteIdentifier(placeholder),
-    quoteIdentifier(names[key]),
-  ]);
-  return manifest.grantStatements.map((statement) =>
-    replacements.reduce(
-      (resolved, [placeholder, role]) => resolved.replaceAll(placeholder, role),
-      statement
-    )
+const verifyMigration = async (client, migration) => {
+  const verification = await client.query(
+    migration.verification.sql,
+    migration.verification.values
   );
+  if (verification.rows[0]?.satisfied !== true) {
+    throw new Error(`waste_migration_verification_failed:${migration.id}`);
+  }
+};
+
+export const migrateWasteTenantDatabase = async ({ client, migrations, ownerRole }) => {
+  let transactionStarted = false;
+  try {
+    await client.query('BEGIN;');
+    transactionStarted = true;
+    await client.query("SET LOCAL lock_timeout = '5s';");
+    await client.query("SET LOCAL statement_timeout = '15min';");
+    await client.query(`SET LOCAL ROLE ${quoteIdentifier(ownerRole)};`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS ${migrationLedgerTable} (
+        migration_id TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    const applied = await client.query(
+      `SELECT migration_id FROM ${migrationLedgerTable} ORDER BY migration_id ASC;`
+    );
+    const appliedMigrationIds = new Set(applied.rows.map((row) => row.migration_id));
+    let appliedMigrationCount = 0;
+
+    for (const migration of migrations) {
+      if (!appliedMigrationIds.has(migration.id)) {
+        for (const statement of migration.statements) await client.query(statement);
+        await verifyMigration(client, migration);
+        await client.query(
+          `INSERT INTO ${migrationLedgerTable} (migration_id) VALUES ($1);`,
+          [migration.id]
+        );
+        appliedMigrationCount += 1;
+      } else {
+        await verifyMigration(client, migration);
+      }
+    }
+
+    await client.query('COMMIT;');
+    transactionStarted = false;
+    return { appliedMigrationCount };
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await client.query('ROLLBACK;');
+      } catch (rollbackError) {
+        throw new AggregateError([error], 'waste_migration_rollback_failed', {
+          cause: rollbackError,
+        });
+      }
+    }
+    throw error;
+  }
 };
 
 export const migrateWasteTenantDatabases = async ({
   adminClient,
   connectTenant,
   deriveNames,
-  manifest,
+  migrations = wasteTenantMigrations,
 }) => {
+  validateWasteTenantMigrations(migrations);
   const inventory = await adminClient.query(
     `
     SELECT instance_id, database_name, status
@@ -83,6 +141,7 @@ export const migrateWasteTenantDatabases = async ({
     [['ready', 'disabled']]
   );
 
+  let appliedMigrationCount = 0;
   let migratedTenantCount = 0;
   for (const row of inventory.rows) {
     const names = deriveNames(row.instance_id);
@@ -91,30 +150,18 @@ export const migrateWasteTenantDatabases = async ({
     }
     const tenantClient = await connectTenant(names.database);
     try {
-      await tenantClient.query("SET lock_timeout = '5s';");
-      await tenantClient.query("SET statement_timeout = '15min';");
-      await tenantClient.query(`SET ROLE ${quoteIdentifier(names.ownerRole)};`);
-      await tenantClient.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC;');
-      await tenantClient.query(`ALTER SCHEMA public OWNER TO ${quoteIdentifier(names.ownerRole)};`);
-      for (const statement of manifest.schemaStatements) await tenantClient.query(statement);
-      for (const statement of resolveGrantStatements(manifest, names))
-        await tenantClient.query(statement);
-      const verification = await tenantClient.query(
-        `SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = ANY($2::text[]);`,
-        [manifest.schemaName, manifest.requiredTables]
-      );
-      if (
-        new Set(verification.rows.map((entry) => entry.table_name)).size !==
-        manifest.requiredTables.length
-      ) {
-        throw new Error('waste_migration_schema_incomplete');
-      }
+      const result = await migrateWasteTenantDatabase({
+        client: tenantClient,
+        migrations,
+        ownerRole: names.ownerRole,
+      });
+      appliedMigrationCount += result.appliedMigrationCount;
       migratedTenantCount += 1;
     } finally {
       await tenantClient.end();
     }
   }
-  return { migratedTenantCount, status: 'ok' };
+  return { appliedMigrationCount, migratedTenantCount, status: 'ok' };
 };
 
 export const isWasteMigrationEntrypoint = (moduleUrl, executablePath) =>
@@ -133,12 +180,6 @@ export const runWasteTenantMigrations = async () => {
   if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
     throw new Error('waste_migration_postgres_port_invalid');
   }
-  const manifest = parseWasteSchemaManifest(
-    await readFile(
-      process.env.WASTE_SCHEMA_MANIFEST_PATH?.trim() || './waste-schema-statements.json',
-      'utf8'
-    )
-  );
   const host = required('POSTGRES_HOST');
   const adminClient = new Client({
     database: required('POSTGRES_DB'),
@@ -163,7 +204,6 @@ export const runWasteTenantMigrations = async () => {
         return client;
       },
       deriveNames: deriveWasteTenantDatabaseNames,
-      manifest,
     });
   } finally {
     await adminClient.end();

@@ -202,7 +202,6 @@ services:
       WASTE_DATABASE_PROVISIONER_PASSWORD_FILE: '/run/secrets/waste_database_provisioner_password'
       WASTE_DATABASE_PROVISIONER_HOST: '${SVA_STACK_NAME:-studio}_postgres'
       WASTE_DATABASE_PROVISIONER_PORT: '5432'
-      WASTE_SCHEMA_MANIFEST_PATH: './waste-schema-statements.json'
     secrets:
       - waste_database_provisioner_password
     labels:

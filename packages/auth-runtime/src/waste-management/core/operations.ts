@@ -37,6 +37,12 @@ const {
   startEnrichPostalCodesSchema,
 } = wasteManagementOperationSchemas;
 
+const withActiveJobConflictPolicy = <T extends object>(
+  request: T,
+  rejectWhenActiveJobExists: boolean | undefined
+): T & { readonly rejectWhenActiveJobExists?: true } =>
+  rejectWhenActiveJobExists === true ? { ...request, rejectWhenActiveJobExists: true } : request;
+
 const requirePreview = (deps: WasteManagementHandlerDeps) => {
   if (!deps.previewWasteLocationTourPickupDateImport) {
     throw new Error('missing_preview_waste_location_tour_pickup_date_import');
@@ -195,20 +201,24 @@ const startToolJob = async (
     normalizedData.targetSchema = boundTargetSchema;
   }
 
-  const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)({
-    instanceId,
-    actorAccountId: actorResolution.actor.actorAccountId,
-    endpoint: input.endpoint,
-    idempotencyKey: idempotency.key,
-    requestId,
-    scheduledAt: new Date().toISOString(),
-    rejectWhenActiveJobExists: input.rejectWhenActiveJobExists === true,
-    data: {
-      pluginId: wasteManagementOperationsContract.pluginId,
-      jobTypeId: input.jobTypeId,
-      input: input.toPayload(normalizedData),
-    },
-  });
+  const response = await (deps.startPluginOperationJob ?? startPluginOperationJobFromFacade)(
+    withActiveJobConflictPolicy(
+      {
+        instanceId,
+        actorAccountId: actorResolution.actor.actorAccountId,
+        endpoint: input.endpoint,
+        idempotencyKey: idempotency.key,
+        requestId,
+        scheduledAt: new Date().toISOString(),
+        data: {
+          pluginId: wasteManagementOperationsContract.pluginId,
+          jobTypeId: input.jobTypeId,
+          input: input.toPayload(normalizedData),
+        },
+      },
+      input.rejectWhenActiveJobExists
+    )
+  );
 
   let resourceId: string | undefined;
   let reasonCode: string | undefined;

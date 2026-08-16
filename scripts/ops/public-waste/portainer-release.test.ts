@@ -1,16 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
-  cutoverPublicWasteStackDomain,
-  ensurePublicWasteCertificateResolver,
   parseWasteWebReleaseTag,
   releasePublicWasteStack,
   setPublicWasteStackMaintenance,
   updatePublicWasteDatabaseUrl,
-  updatePublicWasteDomainEnv,
   updatePublicWasteReplicas,
   updateStackEnv,
 } from './portainer-release.ts';
+import {
+  cutoverPublicWasteStackDomain,
+  ensurePublicWasteCertificateResolver,
+  updatePublicWasteDomainEnv,
+} from './portainer-domain-cutover.ts';
 
 describe('public waste portainer release', () => {
   it('accepts waste-web SemVer tags', () => {
@@ -182,9 +184,7 @@ describe('public waste portainer release', () => {
   it('does not update an already matching stack and still verifies the tenant', async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(
-        Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }])
-      )
+      .mockResolvedValueOnce(Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]))
       .mockResolvedValueOnce(
         Response.json({
           Env: [
@@ -231,9 +231,7 @@ describe('public waste portainer release', () => {
   it('fails closed for a tenant mismatch without updating the matching stack', async () => {
     const fetch = vi
       .fn<typeof globalThis.fetch>()
-      .mockResolvedValueOnce(
-        Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }])
-      )
+      .mockResolvedValueOnce(Response.json([{ Id: 42, Name: 'web-waste-calendar', EndpointId: 7 }]))
       .mockResolvedValueOnce(
         Response.json({
           Env: [

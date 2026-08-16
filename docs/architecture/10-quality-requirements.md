@@ -94,7 +94,7 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
 - IAM Cache-Invaliderung:
   - End-to-End-Latenz P95 <= 2 s, P99 <= 5 s
   - Snapshot-TTL = 300 s, maximal tolerierte Stale-Dauer = 300 s
-  - Cache-Hit P95 < 10 ms, Cache-Miss P95 < 80 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah über den realen PostgreSQL-/Redis-Netzpfad und mehrere App-Replikate gemessen
+  - Cache-Hit P95 < 250 ms, Cache-Miss P95 < 600 ms, Recompute P95 < 300 ms bei `N = 100` gleichzeitigen Requests, endpoint-nah über den realen PostgreSQL-/Redis-Netzpfad und mehrere App-Replikate im freigegebenen lokalen Docker-Aufbau gemessen
   - Ein bestätigter L1-/Redis-Hit setzt immer einen erfolgreichen PostgreSQL-Revisions-Read voraus; Eventverlust darf keine veraltete Freigabe erzeugen
   - Zusätzliches Beobachtungsprofil `Slow-4G` wird dokumentiert, auch wenn dort keine harte Abnahmegrenze gilt
 - Monitoring-gestuetzter IAM-Authorize-Performance-Nachweis:

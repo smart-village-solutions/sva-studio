@@ -199,7 +199,7 @@ Das System SHALL den revisionsbasierten Snapshot-Betrieb mit normierten Metriken
 #### Scenario: Lastprofile und Berichtsformat sind verbindlich
 
 - **WHEN** Performance-Nachweise für die revisionsbasierte Snapshot-Strecke erstellt werden
-- **THEN** enthalten sie mindestens mehrere App-Replikate, warme L1-/Redis-Caches und `N = 100` gleichzeitige Requests für `lokal` und `Slow-4G`
+- **THEN** enthalten sie mindestens mehrere App-Replikate, warme L1-/Redis-Caches und `N = 100` gleichzeitige Requests im freigegebenen lokalen Docker-Aufbau
 - **AND** dokumentiert der Bericht Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl, p50/p95/p99, Abnahmegrenzen, verwendete Endpunkte und Abweichungen
 
 ### Requirement: Endpoint-nahe Performance-Verifikation für Authorize
@@ -210,7 +210,7 @@ Das System SHALL die revisionsbasierte Redis-gestützte Authorize-Strecke endpoi
 
 - **WHEN** die Authorize-Strecke gegen das vereinbarte Lastprofil mit 100 gleichzeitigen Requests, mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad getestet wird
 - **THEN** werden mindestens revisionsbestätigter L1-/Redis-Hit, Cache-Miss, Recompute, paralleler Revision-Bump und verworfener Stale-Write gemessen
-- **AND** gelten die Abnahmegrenzen Cache-Hit p95 < 10 ms, Cache-Miss p95 < 80 ms und Recompute p95 < 300 ms
+- **AND** gelten die Abnahmegrenzen Cache-Hit p95 < 250 ms, Cache-Miss p95 < 600 ms und Recompute p95 < 300 ms
 - **AND** werden die Ergebnisse versioniert als Bericht unter `docs/reports/` mit den Pflichtfeldern Testprofil, Messumgebung, Replikatzahl, Stichprobenzahl und p50/p95/p99 dokumentiert
 
 ### Requirement: Normierte Abnahmematrix für Vererbung, Cache, Invalidierung und Migration

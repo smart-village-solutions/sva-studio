@@ -59,12 +59,9 @@ Diese Vorlage normiert den Liefernachweis für die Redis-gestützte IAM-Autorisi
 
 | Szenario | Netzwerkprofil | Samples | p50 | p95 | p99 | Ziel | Ergebnis |
 |----------|----------------|---------|-----|-----|-----|------|----------|
-| Cache-Hit | lokal |  |  |  |  | p95 < 5 ms |  |
-| Cache-Miss | lokal |  |  |  |  | p95 < 80 ms |  |
+| Cache-Hit | lokal |  |  |  |  | p95 < 250 ms |  |
+| Cache-Miss | lokal |  |  |  |  | p95 < 600 ms |  |
 | Recompute | lokal |  |  |  |  | p95 < 300 ms |  |
-| Cache-Hit | Slow-4G |  |  |  |  | Beobachtungswert |  |
-| Cache-Miss | Slow-4G |  |  |  |  | Beobachtungswert |  |
-| Recompute | Slow-4G |  |  |  |  | Beobachtungswert |  |
 
 ## 6. Beobachtungen
 

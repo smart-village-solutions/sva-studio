@@ -355,6 +355,18 @@
         "cwd": "apps/sva-studio-react",
         "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-authorize-performance.ts"
       }
+    },
+    "test:permission-cache-multi-replica": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "outputs": [
+        "{workspaceRoot}/docs/reports/iam-permission-cache-multi-replica-*.json",
+        "{workspaceRoot}/docs/reports/iam-permission-cache-multi-replica-*.md"
+      ],
+      "options": {
+        "cwd": "apps/sva-studio-react",
+        "command": "bash ../../scripts/ci/run-workspace-node.sh --import tsx ../../scripts/ci/run-iam-permission-cache-multi-replica.ts"
+      }
     }
   }
 }

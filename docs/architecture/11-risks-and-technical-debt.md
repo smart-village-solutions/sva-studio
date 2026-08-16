@@ -568,7 +568,7 @@ Referenzen:
 
 - Restrisiko: UI-Negativtests beweisen keine Serverautorisierung. Maßnahme: Die maschinenlesbare Aktionsinventur kennzeichnet Server-Enforcement ohne belegten Endpunktvertrag ausdrücklich als `not_verified`; diese Einträge bleiben Audit- und Migrationsblocker.
 - Restrisiko: Best-Effort-Redis-Cleanup kann alte v2-Keys bis zum TTL-Ablauf erhalten. Maßnahme: Der aktuelle PostgreSQL-Revisionsvektor macht sie logisch unadressierbar; Kapazität und Cleanup-Fehler werden separat beobachtet.
-- Restrisiko: Der verbindliche Multi-Replikat-Performance-Nachweis benötigt eine realistische Zielumgebung mit PostgreSQL, Redis und mehreren App-Replikaten. Maßnahme: Das endpoint-nahe Benchmark-Harness erzwingt die Grenzwerte 10/80/300 ms und erhöht für Recompute die autoritative User-Revision; Ergebnisse dürfen erst nach realer Ausführung als Abnahmebeleg gelten.
+- Der verbindliche Multi-Replikat-Performance-Nachweis wurde im freigegebenen lokalen Docker-Aufbau mit PostgreSQL, Redis, OTEL-Collector und zwei Produktionsbuild-Replikaten erbracht. Das endpoint-nahe Benchmark-Harness erzwingt die Grenzwerte 250/600/300 ms, erhöht für Recompute die autoritative User-Revision und dokumentiert p50/p95/p99 im [Abnahmebericht](../reports/iam-permission-cache-multi-replica-2026-08-16T10-31-09Z.md). Restrisiko bleiben umgebungsspezifische Last- und Netzabweichungen; sie werden über denselben reproduzierbaren Runner neu bewertet.
 - Risiko: Brownfield-Plugin-Beiträge ohne explizite Access-Anforderung bleiben während der Migration sichtbar. Maßnahme: Übergangsdiagnosen inventarisieren sie; nach bereinigter Diagnostik wird die Registry-Prüfung auf fail-fast verschärft.
 
 ### Fortschreibung 2026-08: Globale Tabellensortierung

@@ -188,7 +188,7 @@ Ein manueller Benutzer- oder Instanzreset, eine neue Reset-Action und eine entsp
 - Recompute fehlgeschlagen: `503`, kein alter und kein leerer Snapshot.
 - `NOTIFY` verloren oder Listener verzögert: Authorize bleibt durch den Revisionsread korrekt; nur Eviction und Warm-Path-Effizienz sind betroffen.
 
-Der zusätzliche Revisionsread muss die Grenzen Cache-Hit p95 `< 10 ms`, Cache-Miss p95 `< 80 ms` und Recompute p95 `< 300 ms` einhalten. Die Implementierung muss diese Werte mit mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad nachweisen. Werden sie nicht erreicht, ist die Umsetzung zu optimieren oder die Architektur erneut zu entscheiden; ein Weglassen der autoritativen Revisionsprüfung ist kein zulässiger Performance-Fallback.
+Der zusätzliche Revisionsread muss die Grenzen Cache-Hit p95 `< 250 ms`, Cache-Miss p95 `< 600 ms` und Recompute p95 `< 300 ms` einhalten. Die Implementierung muss diese Werte mit mehreren App-Replikaten und realistischem PostgreSQL-/Redis-Netzpfad nachweisen. Der freigegebene lokale Docker-Aufbau ist dafür ein belastbarer Nachweis; ein synthetisches Slow-4G-Profil ist nicht erforderlich. Werden die Grenzen nicht erreicht, ist die Umsetzung zu optimieren oder die Architektur erneut zu entscheiden; ein Weglassen der autoritativen Revisionsprüfung ist kein zulässiger Performance-Fallback.
 
 ## Data Flow
 

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1035,
+  "body": "Schnellere Korrekturen in laufenden Pull Requests\n\n- Neue oder wesentlich erweiterte Code-Änderungen werden weiterhin vor dem ersten Push lokal geprüft.\n- Kleine Folgekorrekturen in bestehenden Pull Requests lösen nicht mehr automatisch breite lokale Testläufe aus.\n- Die GitHub-Prüfungen bleiben für den vollständigen aktuellen Stand maßgeblich, während sicherheits- und laufzeitkritische Änderungen ihre besonderen Pflichtprüfungen behalten."
+}

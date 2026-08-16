@@ -1,19 +1,18 @@
 import { contentMediaUploadPhaseMessageKey } from '@sva/plugin-sdk';
 import {
-  Button,
   Input,
   isPersistableContentMediaUrl,
   StudioField,
-  StudioMediaPickerOverlay,
   type StudioMediaPickerErrorCode,
   type StudioMediaPickerOverlayLabels,
 } from '@sva/studio-ui-react';
 import { useMemo } from 'react';
 
+import { useWasteBrandingMediaController } from './waste-management.output-branding-media.logic.js';
 import {
-  toMediaPickerSummary,
-  useWasteBrandingMediaController,
-} from './waste-management.output-branding-media.logic.js';
+  BrandingMediaPickerControls,
+  BrandingPreview,
+} from './waste-management.output-branding-media.views.js';
 
 export type WasteOutputTranslate = (
   key: string,
@@ -97,42 +96,19 @@ type WasteOutputBrandingMediaFieldProps = {
   readonly value: string;
 };
 
-const BrandingPreview = ({
-  onRemove,
-  translate,
-  value,
-}: Readonly<{
-  onRemove: () => void;
-  translate: WasteOutputTranslate;
-  value: string;
-}>) => (
-  <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/10 p-4 sm:flex-row sm:items-center">
-    <img
-      alt={translate('output.pdf.mediaPicker.previewAlt')}
-      className="max-h-24 max-w-64 rounded-lg border border-border/60 bg-background object-contain p-2"
-      src={value}
-    />
-    <Button type="button" variant="secondary" onClick={onRemove}>
-      {translate('output.pdf.mediaPicker.remove')}
-    </Button>
-  </div>
-);
-
 export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFieldProps) => {
   const { error, onChange, translate, value } = props;
-  const {
-    isMediaLibraryLoading,
-    mediaAssets,
-    mediaCapabilities,
-    mediaLibraryError,
-    mediaPicker,
-    retryMediaLibrary,
-  } = useWasteBrandingMediaController(onChange);
+  const controller = useWasteBrandingMediaController(onChange);
 
   const labels = useMemo(() => createMediaPickerLabels(translate), [translate]);
   const feedback = useMemo(
-    () => resolvePickerFeedback(translate, mediaPicker.errorCode, mediaPicker.uploadPhase),
-    [mediaPicker.errorCode, mediaPicker.uploadPhase, translate]
+    () =>
+      resolvePickerFeedback(
+        translate,
+        controller.mediaPicker.errorCode,
+        controller.mediaPicker.uploadPhase
+      ),
+    [controller.mediaPicker.errorCode, controller.mediaPicker.uploadPhase, translate]
   );
   const hasPreview = isPersistableContentMediaUrl(value);
 
@@ -160,68 +136,11 @@ export const WasteOutputBrandingMediaField = (props: WasteOutputBrandingMediaFie
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
-        {mediaLibraryError ? (
-          <div
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-foreground"
-            role="alert"
-          >
-            <span>{translate('output.pdf.mediaPicker.libraryLoadFailed')}</span>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={isMediaLibraryLoading}
-              onClick={() => void retryMediaLibrary()}
-            >
-              {translate(
-                isMediaLibraryLoading
-                  ? 'output.pdf.mediaPicker.retryingLibrary'
-                  : 'output.pdf.mediaPicker.retryLibrary'
-              )}
-            </Button>
-          </div>
-        ) : null}
-        {mediaCapabilities.canSelect ? (
-          <Button
-            type="button"
-            onClick={() =>
-              mediaCapabilities.canUpload ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-            }
-          >
-            {translate('output.pdf.mediaPicker.title')}
-          </Button>
-        ) : null}
-        <StudioMediaPickerOverlay
-          assets={mediaAssets.map(toMediaPickerSummary)}
-          canUpload={mediaCapabilities.canUpload}
-          feedbackMessage={
-            mediaLibraryError
-              ? translate('output.pdf.mediaPicker.libraryLoadFailed')
-              : feedback.message
-          }
-          feedbackTone={mediaLibraryError ? 'error' : feedback.tone}
-          isAssetSelectable={(asset) => asset.visibility === 'public'}
-          isLoadingReviewAsset={mediaPicker.isLoadingReviewAsset}
-          isSavingReviewAsset={mediaPicker.isSavingReviewAsset}
-          isMetadataEditable={mediaCapabilities.canEditAssetMetadata}
+        <BrandingMediaPickerControls
+          controller={controller}
+          feedback={feedback}
           labels={labels}
-          metadataDraft={mediaPicker.metadataDraft}
-          mode={mediaPicker.mode}
-          onAddManual={() => 'branding'}
-          onBackFromReview={mediaPicker.goBackFromReview}
-          onChangeMode={(mode) =>
-            mode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
-          }
-          onClose={mediaPicker.close}
-          onConfirmSelection={() => void mediaPicker.confirmSelection()}
-          onMetadataChange={(key, nextValue) => mediaPicker.updateMetadataField(key, nextValue)}
-          onSearchValueChange={mediaPicker.setSearchValue}
-          onSelectAsset={(asset) => void mediaPicker.selectAsset(asset)}
-          onUploadFile={(file) => void mediaPicker.uploadFile(file)}
-          open={mediaPicker.open}
-          reviewAsset={mediaPicker.reviewAsset}
-          reviewSource={mediaPicker.reviewSource}
-          searchValue={mediaPicker.searchValue}
-          uploadPhase={mediaPicker.uploadPhase}
+          translate={translate}
         />
       </div>
     </StudioField>

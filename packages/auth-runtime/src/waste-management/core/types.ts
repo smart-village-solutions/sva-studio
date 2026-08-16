@@ -41,6 +41,7 @@ import type { emitAuthAuditEvent } from '../../audit-events.js';
 import type { AuthenticatedRequestContext } from '../../middleware.js';
 import type { Session } from '../../types.js';
 import type { WasteCityHandlerDeps } from './city-deps.js';
+import type { WasteTourDateShiftWriter } from './tour-date-shift-deps.js';
 
 export type WasteCustomRecurrencePresetFallback = {
   readonly kind: 'preset' | 'default';
@@ -286,14 +287,8 @@ export type WasteManagementHandlerDeps = WasteCityHandlerDeps & {
     instanceId: string,
     input: WastePdfStaticSettingsWriteInput
   ) => Promise<void>;
-  readonly saveWasteTourDateShift?: (
-    instanceId: string,
-    input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
-  ) => Promise<void>;
-  readonly createWasteTourDateShift?: (
-    instanceId: string,
-    input: Omit<WasteTourDateShiftRecord, 'createdAt' | 'updatedAt'>
-  ) => Promise<void>;
+  readonly saveWasteTourDateShift?: WasteTourDateShiftWriter;
+  readonly createWasteTourDateShift?: WasteTourDateShiftWriter;
   readonly loadWasteTourDateShiftById?: (
     instanceId: string,
     shiftId: string

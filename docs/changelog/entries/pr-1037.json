@@ -1,0 +1,4 @@
+{
+  "prNumber": 1037,
+  "body": "Die Coverage-Prüfung für das POI-Modul verwendet wieder den reproduzierbaren Stand des Hauptbranches.\n\n- Eine veraltete Branch-Coverage-Baseline blockiert dadurch keine unabhängigen Pull Requests mehr.\n- Produktivcode und Testverhalten des POI-Moduls bleiben unverändert."
+}

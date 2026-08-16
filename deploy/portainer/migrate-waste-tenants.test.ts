@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const {
   migrateWasteTenantDatabase,
   migrateWasteTenantDatabases,
+  parseDatabasePort,
   validateWasteTenantMigrations,
   wasteTenantMigrations,
 } = await import('./migrate-waste-tenants.mjs');
@@ -42,6 +43,12 @@ const createTenantClient = ({
 const queriedSql = (client: ReturnType<typeof createTenantClient>) =>
   client.query.mock.calls.map(([sql]) => sql).join('\n');
 
+const createAdminClient = (rows: readonly object[]) => ({
+  query: vi.fn(async (sql: string) => ({
+    rows: sql.includes('SELECT instance_id') ? rows : [],
+  })),
+});
+
 describe('Waste-Tenant-Migration', () => {
   it('contains only the explicit additive postal-code migration', () => {
     expect(validateWasteTenantMigrations(wasteTenantMigrations)).toBe(wasteTenantMigrations);
@@ -63,15 +70,17 @@ describe('Waste-Tenant-Migration', () => {
     ).toThrow('waste_migration_catalog_id_invalid');
   });
 
+  it('accepts only valid PostgreSQL ports', () => {
+    expect(parseDatabasePort('5432', 'invalid_port')).toBe(5432);
+    expect(() => parseDatabasePort('not-a-port', 'invalid_port')).toThrow('invalid_port');
+    expect(() => parseDatabasePort('65536', 'invalid_port')).toThrow('invalid_port');
+  });
+
   it('migrates ready and disabled tenant databases in isolated transactions', async () => {
-    const adminClient = {
-      query: vi.fn().mockResolvedValue({
-        rows: [
-          { database_name: 'alpha_db', instance_id: 'alpha', status: 'ready' },
-          { database_name: 'beta_db', instance_id: 'beta', status: 'disabled' },
-        ],
-      }),
-    };
+    const adminClient = createAdminClient([
+      { database_name: 'alpha_db', instance_id: 'alpha', status: 'ready' },
+      { database_name: 'beta_db', instance_id: 'beta', status: 'disabled' },
+    ]);
     const tenantClients = new Map<string, ReturnType<typeof createTenantClient>>();
     const connectTenant = vi.fn(async (database: string) => {
       const client = createTenantClient();
@@ -92,6 +101,27 @@ describe('Waste-Tenant-Migration', () => {
       expect(queriedSql(client)).not.toContain('ROLLBACK;');
       expect(client.end).toHaveBeenCalledOnce();
     }
+    const adminSql = adminClient.query.mock.calls.map(([sql]) => sql).join('\n');
+    expect(adminSql).toContain('LOCK TABLE iam.instance_waste_provisioning IN SHARE MODE');
+    expect(adminSql).toContain('COMMIT;');
+    expect(adminSql).not.toContain('ROLLBACK;');
+  });
+
+  it('holds the inventory stable and fails before tenant access during provisioning', async () => {
+    const connectTenant = vi.fn();
+    const adminClient = createAdminClient([
+      { database_name: 'alpha_db', instance_id: 'alpha', status: 'provisioning' },
+    ]);
+
+    await expect(
+      migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })
+    ).rejects.toThrow('waste_migration_provisioning_in_progress');
+
+    expect(connectTenant).not.toHaveBeenCalled();
+    const adminSql = adminClient.query.mock.calls.map(([sql]) => sql).join('\n');
+    expect(adminSql).toContain('LOCK TABLE iam.instance_waste_provisioning IN SHARE MODE');
+    expect(adminSql).toContain('ROLLBACK;');
+    expect(adminSql).not.toContain('COMMIT;');
   });
 
   it('verifies but does not reapply an already recorded migration', async () => {
@@ -167,11 +197,9 @@ describe('Waste-Tenant-Migration', () => {
 
   it('fails closed before connecting when the registry database name has drifted', async () => {
     const connectTenant = vi.fn();
-    const adminClient = {
-      query: vi.fn().mockResolvedValue({
-        rows: [{ database_name: 'unexpected_db', instance_id: 'alpha', status: 'ready' }],
-      }),
-    };
+    const adminClient = createAdminClient([
+      { database_name: 'unexpected_db', instance_id: 'alpha', status: 'ready' },
+    ]);
 
     await expect(
       migrateWasteTenantDatabases({ adminClient, connectTenant, deriveNames: namesFor })

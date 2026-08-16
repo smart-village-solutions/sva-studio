@@ -41,6 +41,7 @@ const migrationRiskPatterns = [
   /^migrate-entrypoint\.sh$/u,
   /^deploy\/portainer\/migrate-entrypoint\.sh$/u,
   /^deploy\/portainer\/migrate-waste-tenants\.mjs$/u,
+  /^packages\/server-runtime\/src\/waste\/tenant-database-identifiers\.server\.ts$/u,
   /^packages\/data\/goose\.config\.json$/u,
   /^packages\/data\/scripts\/goosew\.sh$/u,
   /^docs\/development\/studio-db-schema-final\.sql$/u,

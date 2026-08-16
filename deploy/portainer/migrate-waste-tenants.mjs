@@ -33,6 +33,12 @@ const required = (name) => {
   return value;
 };
 
+export const parseDatabasePort = (value, errorCode) => {
+  const port = Number(value);
+  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) throw new Error(errorCode);
+  return port;
+};
+
 const quoteIdentifier = (value) => {
   if (!identifierPattern.test(value)) throw new Error('waste_migration_identifier_invalid');
   return `"${value}"`;
@@ -131,37 +137,52 @@ export const migrateWasteTenantDatabases = async ({
   migrations = wasteTenantMigrations,
 }) => {
   validateWasteTenantMigrations(migrations);
-  const inventory = await adminClient.query(
-    `
-    SELECT instance_id, database_name, status
-    FROM iam.instance_waste_provisioning
-    WHERE status = ANY($1::text[])
-    ORDER BY instance_id ASC;
-  `,
-    [['ready', 'disabled']]
-  );
+  let inventoryLockHeld = false;
+  try {
+    await adminClient.query('BEGIN;');
+    inventoryLockHeld = true;
+    await adminClient.query("SET LOCAL lock_timeout = '30s';");
+    await adminClient.query('LOCK TABLE iam.instance_waste_provisioning IN SHARE MODE;');
+    const inventory = await adminClient.query(
+      `
+      SELECT instance_id, database_name, status
+      FROM iam.instance_waste_provisioning
+      WHERE status = ANY($1::text[])
+      ORDER BY instance_id ASC;
+    `,
+      [['ready', 'disabled', 'provisioning']]
+    );
+    if (inventory.rows.some((row) => row.status === 'provisioning')) {
+      throw new Error('waste_migration_provisioning_in_progress');
+    }
 
-  let appliedMigrationCount = 0;
-  let migratedTenantCount = 0;
-  for (const row of inventory.rows) {
-    const names = deriveNames(row.instance_id);
-    if (row.database_name !== names.database) {
-      throw new Error('waste_migration_registry_database_mismatch');
+    let appliedMigrationCount = 0;
+    let migratedTenantCount = 0;
+    for (const row of inventory.rows) {
+      const names = deriveNames(row.instance_id);
+      if (row.database_name !== names.database) {
+        throw new Error('waste_migration_registry_database_mismatch');
+      }
+      const tenantClient = await connectTenant(names.database);
+      try {
+        const result = await migrateWasteTenantDatabase({
+          client: tenantClient,
+          migrations,
+          ownerRole: names.ownerRole,
+        });
+        appliedMigrationCount += result.appliedMigrationCount;
+        migratedTenantCount += 1;
+      } finally {
+        await tenantClient.end();
+      }
     }
-    const tenantClient = await connectTenant(names.database);
-    try {
-      const result = await migrateWasteTenantDatabase({
-        client: tenantClient,
-        migrations,
-        ownerRole: names.ownerRole,
-      });
-      appliedMigrationCount += result.appliedMigrationCount;
-      migratedTenantCount += 1;
-    } finally {
-      await tenantClient.end();
-    }
+    await adminClient.query('COMMIT;');
+    inventoryLockHeld = false;
+    return { appliedMigrationCount, migratedTenantCount, status: 'ok' };
+  } catch (error) {
+    if (inventoryLockHeld) await adminClient.query('ROLLBACK;');
+    throw error;
   }
-  return { appliedMigrationCount, migratedTenantCount, status: 'ok' };
 };
 
 export const isWasteMigrationEntrypoint = (moduleUrl, executablePath) =>
@@ -176,10 +197,11 @@ export const runWasteTenantMigrations = async () => {
   const passwordFile = required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE');
   const provisionerPassword = (await readFile(passwordFile, 'utf8')).trim();
   if (!provisionerPassword) throw new Error('waste_migration_provisioner_password_empty');
-  const port = Number(required('POSTGRES_PORT'));
-  if (!Number.isSafeInteger(port) || port < 1 || port > 65_535) {
-    throw new Error('waste_migration_postgres_port_invalid');
-  }
+  const port = parseDatabasePort(required('POSTGRES_PORT'), 'waste_migration_postgres_port_invalid');
+  const provisionerPort = parseDatabasePort(
+    process.env.WASTE_DATABASE_PROVISIONER_PORT?.trim() || port,
+    'waste_migration_provisioner_port_invalid'
+  );
   const host = required('POSTGRES_HOST');
   const adminClient = new Client({
     database: required('POSTGRES_DB'),
@@ -197,7 +219,7 @@ export const runWasteTenantMigrations = async () => {
           database,
           host: process.env.WASTE_DATABASE_PROVISIONER_HOST?.trim() || host,
           password: provisionerPassword,
-          port: Number(process.env.WASTE_DATABASE_PROVISIONER_PORT?.trim() || port),
+          port: provisionerPort,
           user: required('WASTE_DATABASE_PROVISIONER_USER'),
         });
         await client.connect();

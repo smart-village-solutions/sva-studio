@@ -88,6 +88,22 @@ describe('promote-deploy-gates', () => {
     });
   });
 
+  it('fails migration assert-none when Waste tenant database-name derivation changes', () => {
+    const file = 'packages/server-runtime/src/waste/tenant-database-identifiers.server.ts';
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: [file],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration).toMatchObject({
+      ok: false,
+      result: 'blocked-risk',
+      riskDetected: true,
+      riskFiles: [file],
+    });
+  });
+
   it('treats application changes outside migration artifacts as safe for assert-none', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',

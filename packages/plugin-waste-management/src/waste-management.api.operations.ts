@@ -1,15 +1,13 @@
-import {
-  createMainserverJsonRequestHeaders,
-  type StudioJobDetail,
-  type WasteGlobalDateShiftRecord,
-  type WasteHolidayRuleRecord,
-  type WasteLocationTourPickupDateRecord,
-  type WasteManagementSettingsRecord,
-  type WasteManagementImportSourceFormat,
-  type WasteTourDateShiftRecord,
-  type WasteTourRecord,
-  type WasteTourValidityBulkUpdateResult,
-  type WasteTourAssignmentRecord,
+import type {
+  StudioJobDetail,
+  WasteGlobalDateShiftRecord,
+  WasteHolidayRuleRecord,
+  WasteLocationTourPickupDateRecord,
+  WasteManagementSettingsRecord,
+  WasteTourDateShiftRecord,
+  WasteTourRecord,
+  WasteTourValidityBulkUpdateResult,
+  WasteTourAssignmentRecord,
 } from '@sva/plugin-sdk';
 
 import type {
@@ -21,7 +19,6 @@ import type {
   PreviewWasteLocationTourPickupDateImportInput,
   PreviewWasteLocationTourPickupDateImportResult,
   StartWasteManagementImportInput,
-  StartWasteManagementExportInput,
   StartWasteManagementMainserverSyncInput,
   StartWasteManagementMigrationsInput,
   StartWasteManagementResetInput,
@@ -39,7 +36,6 @@ import {
   requestWasteManagementJob,
   requestWasteManagementJobDetail,
   requestLatestWasteManagementJob,
-  requestWasteManagementItem,
   requestWasteManagementMutation,
 } from './waste-management.api.shared.js';
 
@@ -209,22 +205,10 @@ export const startWasteManagementMigrations = async (input: StartWasteManagement
 export const startWasteManagementImport = async (input: StartWasteManagementImportInput) =>
   requestWasteManagementJob('/api/v1/waste-management/tools/imports', input);
 
-export const uploadWasteManagementImportSource = async (
-  file: File,
-  sourceFormat: WasteManagementImportSourceFormat
-): Promise<string> => {
-  const headers = createMainserverJsonRequestHeaders({ 'Content-Type': sourceFormat });
-  const result = await requestWasteManagementItem<Readonly<{ blobRef: string; sizeBytes: number }>>(
-    {
-      url: '/api/v1/waste-management/tools/imports/upload',
-      init: { method: 'POST', headers, body: file },
-    }
-  );
-  return result.blobRef;
-};
-
-export const startWasteManagementExport = async (input: StartWasteManagementExportInput) =>
-  requestWasteManagementJob('/api/v1/waste-management/tools/exports', input);
+export {
+  startWasteManagementExport,
+  uploadWasteManagementImportSource,
+} from './waste-management.api.operations.data-exchange.js';
 
 export const previewWasteLocationTourPickupDateImport = async (
   input: PreviewWasteLocationTourPickupDateImportInput

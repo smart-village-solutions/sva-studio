@@ -222,8 +222,8 @@ const invalidCreateAction = 'create';
 
 ### ✅ REQUIRED
 - Bei ausdrücklich angeordneter Schnelliterationsphase dürfen betroffene Unit-, Type-, Lint- und E2E-Tests für einzelne kleinteilige Änderungsblöcke vorübergehend zurückgestellt werden.
-- Diese Ausnahme gilt nur für schnelle Feedback-Schleifen während der Umsetzung und nicht für Commit, Push, PR oder Release.
-- Die ausgesetzten Prüfungen müssen vor Commit, Push oder PR vollständig nachgezogen werden.
+- Diese Ausnahme gilt nur für schnelle Feedback-Schleifen während der Umsetzung und nicht für die lokale Freigabe eines initialen oder wesentlich scope-erweiternden Code-Pushs, eines neuen PRs oder eines Releases.
+- Die ausgesetzten Prüfungen müssen vor dem initialen beziehungsweise wesentlich scope-erweiternden Code-Push oder vor PR-Erstellung vollständig nachgezogen werden. Für kleine Folgefixes in einem bestehenden PR gilt stattdessen die differenzierte Push-Regel aus Abschnitt 5.2.
 - Während einer solchen Phase darf kein grüner Teststand behauptet oder impliziert werden.
 - Die Anweisung zur Schnelliterationsphase muss im Arbeitskontext ausdrücklich vorliegen.
 - Der Verzicht auf Prüfungen muss im Arbeitskontext transparent benannt werden.
@@ -238,7 +238,7 @@ const invalidCreateAction = 'create';
 - Behauptung oder Implizierung eines grünen Teststands während einer aktiven Schnelliterationsphase
 
 **Weiterhin verbindlich:**
-- Vor Commit, Push oder PR gelten wieder alle regulären Gates.
+- Vor einem initialen beziehungsweise wesentlich scope-erweiternden Code-Push, einem neuen PR oder einem Release gelten wieder alle regulären Gates; kleine Folgefixes in einem bestehenden PR folgen Abschnitt 5.2.
 - `pnpm check:server-runtime` bleibt für betroffene serverseitige Packages verpflichtend.
 - Dokumentationspflichten, Architekturpflichten und alle übrigen Non-Negotiable-Regeln bleiben unverändert bestehen.
 
@@ -471,41 +471,48 @@ Komplexitäts-Regeln und Ticket-Workflow: `docs/development/complexity-quality-g
 ## 5.2 Shift-Left Test-Gates (verbindlich)
 
 ### ✅ REQUIRED
-- Tests müssen während der Implementierung in kleinen Schritten ausgeführt werden, nicht erst kurz vor PR-Erstellung.
-- Nach jedem abgeschlossenen Änderungsblock (Feature, Refactoring, Bugfix) sind mindestens die betroffenen Unit-Tests sofort auszuführen.
-- Vor jedem Push muss ein schneller lokaler Gate-Lauf für betroffene Projekte erfolgen.
+- Neue Funktionalität und wesentliche Refactorings müssen während der Implementierung in kleinen Schritten getestet werden, nicht erst kurz vor PR-Erstellung.
+- Nach jedem abgeschlossenen neuen Codeblock oder einer wesentlichen Scope-Erweiterung sind mindestens die betroffenen Unit-Tests auszuführen.
+- Vor dem initialen Push eines neuen Codeblocks oder einer wesentlichen Erweiterung des PR-Scopes muss ein schneller lokaler Gate-Lauf für die betroffenen Projekte erfolgen.
+- Bei kleinen Folgefixes in einem bestehenden PR sind breite lokale `affected`- oder `test:pr`-Läufe vor dem Push nicht erforderlich. Die GitHub-Gates validieren den gesamten exakten HEAD; lokal wird nur der unmittelbar geänderte Pfad getestet, wenn ein schneller aussagekräftiger Test existiert oder ein konkretes lokales beziehungsweise CI-Fehlersignal reproduziert werden muss.
+- Reine Text-, Kommentar- und Dokumentationsänderungen benötigen keine lokalen Tests.
 - Vor dem Commit ist sicherzustellen, dass neue oder geänderte Logik durch Tests abgedeckt ist.
 - Verifikation muss den kleinsten relevanten echten Gate-Pfad bevorzugen, nicht pauschal den größten Lauf.
 - Lokale `affected`-Runs gegen `origin/main` müssen vorab im Scope geprüft werden, wenn der PR-Branch bereits viele Altänderungen enthält.
-- Bei großem affected-Scope sind gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
+- Bei großem affected-Scope sind für initiale oder scope-erweiternde Pushes gezielte Fixblock-Gates zulässig und dem breiten lokalen affected-Lauf vorzuziehen, sofern die Abweichung transparent dokumentiert wird.
 - PR-Unit- und PR-Coverage-Gates führen direkt geänderte Projekte vor transitiv betroffenen Projekten aus; der verbleibende affected Scope bleibt vollständig erhalten.
 - Deterministische Unit-, Snapshot-, Type- und Policy-Fehler werden in PR-Gates nicht automatisch wiederholt. Ein Retry ist nur für einen explizit klassifizierten temporären Infrastrukturfehler zulässig und darf bereits erfolgreiche Targets nicht pauschal erneut ausführen.
 - E2E- und Integrationstargets bleiben ungecacht. Coverage-Caching darf nur targetweise nach einem Contract-Test aktiviert werden, der Fresh Run und Cache Restore einschließlich Gate-Ergebnis als identisch nachweist.
 
 ### ❌ FORBIDDEN
 - „Big-bang“-Validierung erst am Ende der Umsetzung.
-- Mehrere inhaltliche Änderungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
-- Pushes, bei denen bekannte lokale Testfehler ignoriert werden.
+- Mehrere neue Codeblöcke oder wesentliche Scope-Erweiterungen ohne Zwischenlauf der betroffenen Tests zu stapeln.
+- Pushes, bei denen bekannte lokale Testfehler im tatsächlich geänderten oder fachlich betroffenen Pfad ignoriert werden.
 - Pauschale Wiederholung eines vollständigen affected Scopes nach einem deterministischen Testfehler.
 - Wiederherstellung von Pull-Request-erzeugten Nx-Caches in geschützten `main`-, Release- oder Deployment-Kontexten.
 
 ### Process
-1. Implementiere eine kleine, in sich geschlossene Änderung.
-2. Führe sofort zielgerichtete Tests aus (affected, Projekt oder Datei).
-3. Erst bei grünem Zwischenstand mit dem nächsten Änderungsblock weitermachen.
+1. Implementiere einen neuen Codeblock oder eine wesentliche Scope-Erweiterung als kleine, in sich geschlossene Änderung.
+2. Führe dafür zielgerichtete Tests aus (affected, Projekt oder Datei).
+3. Erst bei grünem Zwischenstand mit dem nächsten neuen Codeblock oder der nächsten wesentlichen Scope-Erweiterung weitermachen. Kleine Folgefixes in einem bestehenden PR folgen direkt Schritt 6.
 4. Prüfe vor einem lokalen affected-Unit-Run gegen `origin/main` den Scope:
   - `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main`
-5. Vor Push mindestens den kleinsten relevanten schnellen Gate-Lauf ausführen:
+5. Vor einem initialen Push mit neuem Code oder einer wesentlichen Scope-Erweiterung mindestens den kleinsten relevanten schnellen Gate-Lauf ausführen:
   - bei kleinem affected-Scope: `pnpm nx affected --target=test:unit --base=origin/main`
-  - bei großem affected-Scope: gezielte Package-/Datei-Unit-Tests für den Fixblock und transparente Notiz, dass der breite Lauf der CI oder einem separaten finalen Gate vorbehalten bleibt
+  - bei großem affected-Scope: gezielte Package-/Datei-Unit-Tests für den neuen Codeblock und transparente Notiz, dass der breite Lauf der CI oder einem separaten finalen Gate vorbehalten bleibt
   - zusätzlich bei Bedarf ein gezielter Type-Gate-Pfad oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der Scope handhabbar ist
-6. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
+6. Bei einem kleinen Folgefix in einem bestehenden PR:
+  - keinen breiten lokalen `affected`- oder `test:pr`-Lauf allein wegen des Pushs starten
+  - einen schnellen gezielten Test nur ausführen, wenn er den unmittelbar geänderten Pfad sinnvoll absichert oder ein konkretes Fehlersignal reproduziert
+  - danach die GitHub-Gates des exakten neuen HEAD als führende Gesamtvalidierung auswerten
+  - spezielle Pflicht-Gates für Security, Auth, Datenintegrität, Migrationen und Server-Runtime weiterhin ausführen
+7. Wenn die Änderung Skripte, CI-Wrapper oder Workspace-Tooling betrifft, zusätzlich den Skript-Typecheck ausführen:
   - `pnpm exec tsc -p tsconfig.scripts.json --noEmit`
   - oder den passenden Sammel-Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
-7. Vor PR weiterhin vollständige Qualitätsprüfung gemäß Abschnitt 5 und 5.1.
+8. Vor der ersten PR-Erstellung und vor Merge beziehungsweise Release weiterhin die Qualitätsprüfung gemäß Abschnitt 5 und 5.1 sicherstellen; grüne GitHub-Gates dürfen dabei die breite lokale Wiederholung für kleine Folgefixes ersetzen.
 
 ### Enforcement
-- Reviews können zurückgestellt werden, wenn eine Änderung ohne erkennbaren Shift-left-Testnachweis eingereicht wird.
+- Reviews für neue Funktionalität oder wesentliche Scope-Erweiterungen können zurückgestellt werden, wenn kein angemessener lokaler oder GitHub-basierter Testnachweis erkennbar ist.
 - Wiederholte späte Test-Fails gelten als Prozessabweichung und müssen mit konkreter Gegenmaßnahme im PR dokumentiert werden.
 
 ## 5.2a Robuste Handler-Tests für Auth-, Session- und Permission-Logik (verbindlich)

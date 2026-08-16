@@ -37,25 +37,25 @@
 
 ## Test-Anweisungen
 
-- **Kritisch:** Während der Entwicklung immer Unit- und Type-Tests ausführen – bei Fehlschlägen nicht weitermachen
+- **Kritisch:** Neue Codeblöcke und wesentliche Scope-Erweiterungen während der Entwicklung mit den relevanten Unit- und Type-Tests absichern – bei Fehlschlägen nicht weitermachen. Kleine Folgefixes in bestehenden PRs folgen der differenzierten Push-Regel unten.
 - **Testarten:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`
 - **Test-Runner-Standard:** Repository-interne Testdateien unter `apps/`, `packages/` und `scripts/` laufen einheitlich über Vitest; neue `node:test`-Fragmente oder `node --test`-Scriptpfade sind nicht zulässig
 - **Server-Runtime-Gate:** Für serverseitige Packages zusätzlich `pnpm check:server-runtime` beachten; der Check steckt auch in `pnpm test:types`, soll aber bei Änderungen an `packages/{core,data,monitoring-client,sdk,auth,routing,sva-mainserver}` gezielt früh ausgeführt werden
-- **PR-Standard-Gate (bevorzugt):** Vor PR-Erstellung und vor Push nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab
+- **PR-Standard-Gate (bevorzugt):** Vor dem initialen Push eines neuen oder wesentlich erweiterten Code-Scopes beziehungsweise vor PR-Erstellung nach Möglichkeit `pnpm test:pr` ausführen; dieser Workflow deckt affected Coverage, Coverage-Gate, Complexity-Gate, Integrationstests und den Frontend-Build ab. Für kleine Folgefixes in einem bestehenden PR wird dieser breite Lauf nicht vor jedem Push lokal wiederholt.
 - **Coverage-PR-Gate:** Wenn gezielt Coverage für einen PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
 - **Komplette CI-Suite:** `pnpm test:ci`
 - **ESLint ausführen:** `pnpm lint`
-- **Shift-left (verbindlich):** Nach jedem abgeschlossenen Änderungsblock sofort die betroffenen Tests ausführen (nicht erst am Ende der Umsetzung)
+- **Shift-left (verbindlich):** Neue Funktionalität und wesentliche Refactorings in abgeschlossenen Änderungsblöcken mit betroffenen Tests absichern, nicht erst am Ende der Umsetzung. Kleine Folgefixes in bestehenden PRs benötigen nur dann einen lokalen Test, wenn er schnell und für den konkreten Fix aussagekräftig ist.
 - **Schnelliterationsphase:** Details, Grenzen und Transparenzpflichten stehen kanonisch in [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md); hier nur anwenden, nicht doppelt ausdefinieren
-- **Push-Gate (Mindestanforderung):** Wenn `pnpm test:pr` aus Zeit- oder Ressourcen-Gründen nicht läuft, vor jedem Push mindestens den kleinsten relevanten Gate-Pfad ausführen; `pnpm nx affected --target=test:unit --base=origin/main` ist nur dann der Standard, wenn der gemessene affected-Scope lokal klein und handhabbar ist. Bei Typänderungen zusätzlich den passenden Type-Gate-Pfad ausführen.
+- **Push-Gate nach Push-Art:** Vor dem initialen Push eines neuen Codeblocks oder einer wesentlichen Scope-Erweiterung mindestens den kleinsten relevanten Gate-Pfad ausführen. `pnpm nx affected --target=test:unit --base=origin/main` ist nur dann der Standard, wenn der gemessene affected-Scope lokal klein und handhabbar ist; bei Typänderungen zusätzlich den passenden Type-Gate-Pfad ausführen. Bei kleinen Folgefixes in einem bestehenden PR sind breite lokale `affected`- oder `test:pr`-Läufe vor dem Push nicht erforderlich: GitHub-Gates sind die führende Gesamtvalidierung, lokal genügt ein gezielter Test des unmittelbar geänderten Pfads, sofern er schnell und aussagekräftig ist. Reine Text-/Dokumentationsänderungen benötigen keine Tests.
 - **Arbeitsregel:** Keine weitere Implementierung auf bekannt rotem Teststand
-- **Kleinster echte Gate-Pfad zuerst:** Vor Commit oder Push immer den kleinsten tatsächlich relevanten Gate-Pfad ausführen, nicht reflexartig die Vollsuite. Beispiele:
+- **Kleinster echter Gate-Pfad zuerst:** Für neue Codeblöcke und wesentliche Scope-Erweiterungen den kleinsten tatsächlich relevanten Gate-Pfad ausführen, nicht reflexartig die Vollsuite. Bei kleinen Folgefixes im aktiven PR keine bereits durch GitHub geprüften, unveränderten Bereiche lokal erneut testen. Beispiele:
   - UI-/Hook-Fix: betroffener Unit-Run plus Scope-Prüfung für `pnpm nx affected --target=test:unit --base=origin/main`
   - Typänderung: betroffener Type-Run oder `pnpm nx affected --target=test:types --base=origin/main`, wenn der affected-Scope klein ist
   - Skript-/CI-Datei unter `scripts/ci/` oder Root-TS-Skripten: zusätzlich `pnpm exec tsc -p tsconfig.scripts.json --noEmit` oder den passenden Wrapper wie `NX_BASE=origin/main pnpm test:types:affected`
   - Server-Runtime-relevante Änderung: früh `pnpm check:server-runtime`
-- **Affected-Scope vor breiten Runs messen:** Vor lokalen `affected`-Unit-Runs gegen `origin/main` zuerst `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` ausführen. Wenn der Lauf mehr als 6 Projekte, App-UI-/Routes-Matrizen oder offensichtlich PR-fremde Langläufer zieht, gilt er lokal als breiter PR-Gate-Lauf und nicht als Standard-Shift-left-Run.
-- **Große/langlaufende PR-Branches:** Bei PR-Fixes auf Branches mit großem Alt-Scope den Fixblock gezielt validieren (Package-Targets, `--testFiles`, relevante Type-/Runtime-/Complexity-Gates) und den ausgelassenen breiten affected-Run transparent benennen. Breite affected-Runs gegen `origin/main` nur vor finaler PR-Freigabe, auf explizite Anforderung oder wenn der gemessene Scope klein ist.
+- **Affected-Scope vor breiten Runs messen:** Vor lokalen `affected`-Unit-Runs gegen `origin/main` zuerst `pnpm nx show projects --affected --withTarget=test:unit --base=origin/main` ausführen. Wenn der Lauf mehr als 6 Projekte, App-UI-/Routes-Matrizen oder offensichtlich PR-fremde Langläufer zieht, gilt er lokal als breiter PR-Gate-Lauf und kommt nur für einen initialen oder wesentlich scope-erweiternden Code-Push infrage.
+- **Kleine Folgefixes in bestehenden PRs:** Bei Review-, CI- oder sonstigen kleinen Folgefixes keine breiten lokalen `affected`- oder `test:pr`-Läufe wiederholen. Den unmittelbar geänderten Pfad nur gezielt validieren, wenn ein schneller aussagekräftiger Test existiert oder der Fix ein lokales Fehlersignal adressiert; anschließend die GitHub-Gates für den exakten neuen HEAD auswerten. Sicherheits-, Auth-, Datenintegritäts-, Migrations- und Server-Runtime-Änderungen behalten ihre speziellen Pflicht-Gates.
 - **Timeouts in PR-fremden Tests:** Wenn ein breiter affected-Run in einem nicht direkt geänderten Bereich timeoutet, den Lauf abbrechen und den einzelnen Test separat reproduzieren. Nur wenn der Einzeltest reproduzierbar rot ist oder der Bereich vom Fix betroffen ist, wird er Teil des aktuellen Fixblocks.
 - **Effizienter, zielgerichteter Test-Workflow:**
   1. **Nur affected:** `pnpm nx affected --target=test:unit` (vergleicht mit `main`-Branch)
@@ -71,10 +71,10 @@
 
 ## PR-Anweisungen
 
-- Für die PR-Vorbereitung bevorzugt immer `pnpm test:pr` statt nur einzelner Teilchecks ausführen
+- Für einen initialen oder wesentlich scope-erweiternden Code-Push und die erste PR-Vorbereitung bevorzugt `pnpm test:pr` statt nur einzelner Teilchecks ausführen
 - Wenn nur Coverage/Change-Risk für den PR geprüft werden soll, `pnpm test:coverage:pr` verwenden
-- Vor Commit und Push den kleinsten relevanten Gate-Pfad gemäß Test-Anweisungen ausführen; `pnpm test:pr` ist der bevorzugte breite Lauf vor PR oder bei unsicherem Änderungsbild
-- Bei PR-Fixing und roten CI-Checks ist GitHub die führende Wahrheit: zuerst `gh pr checks <nr>` bzw. die roten Job-Logs prüfen, dann lokal gezielt reproduzieren und nur den kleinsten relevanten Gate-Pfad nachziehen
+- Bei neuen Codeblöcken und wesentlichen Scope-Erweiterungen vor dem initialen Push den kleinsten relevanten Gate-Pfad gemäß Test-Anweisungen ausführen; `pnpm test:pr` ist der bevorzugte breite Lauf vor der ersten PR-Erstellung oder bei unsicherem Änderungsbild
+- Bei kleinen Folgefixes in bestehenden PRs und roten CI-Checks ist GitHub die führende Wahrheit: zuerst `gh pr checks <nr>` beziehungsweise die roten Job-Logs prüfen, lokal nur das konkrete Fehlersignal oder den unmittelbar geänderten Pfad gezielt reproduzieren und keinen breiten Gate-Lauf vor jedem Push wiederholen
 - Nach jedem Push bei aktivem PR-Fixing den Check-Status erneut prüfen und den nächsten Blocker selbstständig ableiten; Commit und Push dabei nie parallel starten
 - Änderungen an den relevanten Stellen testen
 - Bei neuen Features die passende Doku im Verzeichnis `docs/` aktualisieren

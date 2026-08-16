@@ -70,7 +70,7 @@ Das Kommando bildet den blockierenden GitHub-PR-Pfad für lokale Vorprüfung wei
 - i18n für `apps/sva-studio-react` und Plugin-UI läuft bewusst über den vorhandenen Build-Vorcheck `sva-studio-react:check:i18n`; es gibt dafür absichtlich keinen zweiten parallelen PR-Job, um denselben Signaltyp nicht doppelt auszuführen
 - das selektive GitHub-Gate `Quality Gates / A11y` bleibt ein eigener UI-spezifischer Signalpfad; lokal wird es bei UI-relevanten PRs gezielt mit `pnpm test:a11y` vorgeprüft, statt jeden `test:pr`-Lauf pauschal zu verlängern
 
-Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Die lokale New-Code-/Patch-Coverage wird aber jetzt bereits vor dem Push geprüft, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird.
+Nicht Bestandteil von `pnpm test:pr` sind externe Plattform-Auswertungen wie SonarCloud, Codecov oder CodeQL. Beim initialen oder wesentlich scope-erweiternden Code-Push kann die lokale New-Code-/Patch-Coverage vorab geprüft werden, sodass die häufigste Abweichung zwischen lokalem PR-Gate und Sonar früher sichtbar wird. Bei kleinen Folgefixes in einem bestehenden PR übernehmen die GitHub-Gates diese Gesamtvalidierung; ein breiter lokaler Wiederholungslauf ist dafür nicht erforderlich.
 
 ### SonarCloud-Coverage
 

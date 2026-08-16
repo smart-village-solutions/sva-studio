@@ -13,6 +13,17 @@ export const interfacesDEResources = {
     error: 'Fehler',
     disabled: 'Deaktiviert',
     unknown: 'Unbekannt',
+    healthcheck: {
+      disabled: 'Die Karten-/Geocoding-Schnittstelle ist per Kill-Switch deaktiviert.',
+      secretMissing: 'Für diese Karten-/Geocoding-Schnittstelle fehlt der API-Key.',
+      mapGeocodingProviderUnsupported:
+        'Automatische Verbindungsprüfungen werden derzeit nur für Geoapify unterstützt.',
+      mapGeocodingAuthFailed: 'Der Geoapify-API-Key ist ungültig oder nicht berechtigt.',
+      mapGeocodingRateLimited:
+        'Geoapify hat die Verbindungsprüfung wegen zu vieler Anfragen begrenzt.',
+      mapGeocodingUnreachable: 'Geoapify ist für die Verbindungsprüfung nicht erreichbar.',
+      mapGeocodingProviderError: 'Geoapify konnte die Verbindungsprüfung nicht abschließen.',
+    },
   },
   form: {
     sectionTitle: 'Mainserver-Einstellungen',

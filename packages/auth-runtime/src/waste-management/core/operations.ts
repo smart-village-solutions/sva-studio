@@ -131,6 +131,7 @@ const startToolJob = async (
     readonly schema: z.ZodTypeAny;
     readonly jobTypeId: StudioJobStartRequest['jobTypeId'];
     readonly auditActionId: string;
+    readonly rejectWhenActiveJobExists?: boolean;
     readonly toPayload: (data: Record<string, unknown>) => StudioJobStartRequest['input'];
   }
 ): Promise<Response> => {
@@ -201,6 +202,7 @@ const startToolJob = async (
     idempotencyKey: idempotency.key,
     requestId,
     scheduledAt: new Date().toISOString(),
+    ...(input.rejectWhenActiveJobExists ? { rejectWhenActiveJobExists: true } : {}),
     data: {
       pluginId: wasteManagementOperationsContract.pluginId,
       jobTypeId: input.jobTypeId,
@@ -427,6 +429,7 @@ export const wasteManagementOperationHandlers = {
       schema: startEnrichPostalCodesSchema,
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
       auditActionId: 'waste-management.postal-code-enrichment.started',
+      rejectWhenActiveJobExists: true,
       toPayload: () => ({ operation: 'enrich-postal-codes' }),
     }),
   startWasteManagementResetInternal: async (

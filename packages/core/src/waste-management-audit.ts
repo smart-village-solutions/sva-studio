@@ -1,4 +1,4 @@
-import type { StudioJobDetail } from './plugin-operations-contract.js';
+import type { StudioJobDetail, StudioJobStatus } from './plugin-operations-contract.js';
 
 export type WasteManagementAuditOutcome = 'success' | 'failure' | 'denied';
 
@@ -59,6 +59,7 @@ export type WasteManagementTechnicalHistoryRecord = {
   readonly source: 'audit' | 'job';
   readonly jobId?: string;
   readonly jobTypeId?: string;
+  readonly jobStatus?: StudioJobStatus;
   readonly requestId?: string;
   readonly traceId?: string;
   readonly message?: string;

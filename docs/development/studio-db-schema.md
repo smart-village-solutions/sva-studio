@@ -38,13 +38,14 @@ Es kombiniert:
 Der Live-Stand ist derzeit **nicht vollständig identisch** zum aktuellen Repo-Stand.
 
 - Live-DB laut `goose_db_version`: `37`
-- Repo-Migrationen vorhanden bis: `0079_iam_organization_mainserver_provisioning.sql`
+- Repo-Migrationen vorhanden bis: `0082_iam_waste_postal_code_enrichment_active_job_unique.sql`
 
 Konkret fehlen im Live-Dump aktuell mindestens diese Repo-Änderungen aus `0038` bis `0077`:
 
 - auf `iam.role_permissions` die Ownership-/Origin-Felder `grant_origin_kind` und `grant_origin_module_id` samt Check-Constraints und Index `idx_role_permissions_origin_module`
 - auf `iam.role_permissions` das Assignment-Scope-Feld `access_scope` samt Constraint `role_permissions_access_scope_check`
 - die Tabellen `iam.studio_jobs` und `iam.studio_job_events`, das Quellfeld `source` für Host- und Plugin-Jobs sowie die Verknüpfung `iam.data_subject_export_jobs.studio_job_id` aus `0049_studio_jobs_and_dsr_export_worker.sql`
+- der partielle Eindeutigkeitsindex aus `0082`, der pro Instanz höchstens einen aktiven Job zur Postleitzahl-Anreicherung zulässt
 - die additive Datenbereinigung aus `0050_iam_platform_tenant_role_split.sql`, die tenantseitige Legacy-Artefakte für `instance_registry_admin`, `instance.registry.manage` und frühere geschützte Bootstrap-Standardrollen neutralisiert, ohne das relationale Schema zu verändern
 - die additive Permission-Erweiterung aus `0051_iam_permission_gate_backfill.sql` und `0052_iam_experimental_shell_permission.sql`
 - das Upgrade-Follow-up `0053_iam_legacy_standard_role_grant_cleanup.sql`, das historisch geseedete Standard-Grant-Reste auf früheren tenantlokalen Bootstrap-Rollen entfernt, ohne das relationale Schema zu verändern

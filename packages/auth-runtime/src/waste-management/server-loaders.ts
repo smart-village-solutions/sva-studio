@@ -918,6 +918,7 @@ WHERE ${whereClause.clause}
             source: 'job',
             jobId: row.id,
             jobTypeId: row.job_type_id,
+            jobStatus: row.status,
             requestId: row.request_id ?? undefined,
             message: row.latest_event_message ?? row.error_message ?? undefined,
             errorCode: row.error_code ?? undefined,

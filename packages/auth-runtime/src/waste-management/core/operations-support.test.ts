@@ -55,7 +55,10 @@ describe('waste-management operations support', () => {
 
     const replay = await startPluginOperationJobFromFacade(input);
     expect(replay.status).toBe(202);
-    await expect(replay.json()).resolves.toEqual({ data: { id: 'job-replay' }, requestId: 'req-replay' });
+    await expect(replay.json()).resolves.toEqual({
+      data: { id: 'job-replay' },
+      requestId: 'req-replay',
+    });
 
     reserveIdempotencyMock.mockResolvedValueOnce({
       status: 'conflict',
@@ -158,6 +161,34 @@ describe('waste-management operations support', () => {
         status: 'FAILED',
         responseStatus: 503,
       })
+    );
+  });
+
+  it('returns a conflict when the active postal-code job constraint rejects a duplicate', async () => {
+    reserveIdempotencyMock.mockResolvedValueOnce({ status: 'reserved' });
+    createPluginOperationJobMock.mockRejectedValueOnce({
+      code: '23505',
+      constraint: 'idx_studio_jobs_active_waste_postal_code_enrichment',
+    });
+
+    const response = await startPluginOperationJobFromFacade({
+      ...input,
+      rejectWhenActiveJobExists: true,
+      data: {
+        pluginId: 'waste-management',
+        jobTypeId: 'waste-management.enrich-postal-codes',
+        input: { operation: 'enrich-postal-codes' },
+      },
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: 'active_job_exists' },
+      requestId: 'req-test',
+    });
+    expect(queuePluginOperationJobMock).not.toHaveBeenCalled();
+    expect(completeIdempotencyMock).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'FAILED', responseStatus: 409 })
     );
   });
 });

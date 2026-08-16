@@ -163,7 +163,9 @@ export const WasteToolsHistory = ({
       ? ({
           id: latestRecordedJob.jobId,
           jobTypeId: latestRecordedJob.jobTypeId,
-          status: latestRecordedJob.outcome === 'success' ? 'succeeded' : 'failed',
+          status:
+            latestRecordedJob.jobStatus ??
+            (latestRecordedJob.outcome === 'success' ? 'succeeded' : 'failed'),
         } as StudioJobResponse['data'])
       : null);
 

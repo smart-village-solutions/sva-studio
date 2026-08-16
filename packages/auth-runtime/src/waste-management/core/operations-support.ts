@@ -17,6 +17,7 @@ export const startPluginOperationJobFromFacade = async (input: {
   readonly requestId?: string;
   readonly scheduledAt: string;
   readonly data: StudioJobStartRequest;
+  readonly rejectWhenActiveJobExists?: boolean;
 }): Promise<Response> => {
   const reserved = await reserveIdempotency({
     instanceId: input.instanceId,
@@ -69,7 +70,8 @@ export const startPluginOperationJobFromFacade = async (input: {
         queueName: job.queueName,
         maxAttempts: job.maxAttempts,
         executionLane:
-          input.data.jobTypeId === wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
+          input.data.jobTypeId ===
+          wasteManagementOperationsContract.jobTypeIds.provisionTenantDatabase
             ? 'privileged'
             : 'default',
       });
@@ -86,9 +88,32 @@ export const startPluginOperationJobFromFacade = async (input: {
     }
 
     return complete(createJsonItemResponse(202, job, input.requestId));
-  } catch {
+  } catch (error) {
+    const isActiveJobConflict =
+      input.rejectWhenActiveJobExists === true &&
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === '23505' &&
+      'constraint' in error &&
+      error.constraint === 'idx_studio_jobs_active_waste_postal_code_enrichment';
+    if (isActiveJobConflict) {
+      return complete(
+        createApiError(
+          409,
+          'active_job_exists',
+          'Für diese Instanz läuft bereits eine Postleitzahl-Anreicherung.',
+          input.requestId
+        )
+      );
+    }
     return complete(
-      createApiError(503, 'database_unavailable', 'Der Waste-Job konnte nicht angelegt werden.', input.requestId)
+      createApiError(
+        503,
+        'database_unavailable',
+        'Der Waste-Job konnte nicht angelegt werden.',
+        input.requestId
+      )
     );
   }
 };

@@ -19,6 +19,7 @@ import {
 const createContext = (input: {
   readonly jobTypeId: string;
   readonly inputPayload: Record<string, unknown>;
+  readonly progress?: PluginJobHandlerContext['job']['progress'];
 }): PluginJobHandlerContext => ({
   kind: 'job',
   pluginId: 'waste-management',
@@ -30,6 +31,7 @@ const createContext = (input: {
     jobTypeId: input.jobTypeId,
     queueName: 'plugin-operations',
     status: 'running',
+    progress: input.progress,
     inputPayload: input.inputPayload,
     attempts: 1,
     maxAttempts: 3,
@@ -162,11 +164,27 @@ describe('waste management runtime handlers', () => {
     const context = createContext({
       jobTypeId: wasteManagementOperationsContract.jobTypeIds.enrichPostalCodes,
       inputPayload: { operation: 'enrich-postal-codes' },
+      progress: {
+        completedSteps: 1,
+        totalSteps: 2,
+        details: { providerRequestCount: 17 },
+      },
     });
 
     await handlers['waste-management.enrich-postal-codes']?.(context);
 
     expect(context.throwIfCancellationRequested).toHaveBeenCalledTimes(5);
+    expect(enrichPostalCodes).toHaveBeenCalledWith(
+      'instance-1',
+      { operation: 'enrich-postal-codes' },
+      expect.objectContaining({ reportProgress: expect.any(Function) }),
+      {
+        jobId: 'job-1',
+        previousProgress: expect.objectContaining({
+          details: { providerRequestCount: 17 },
+        }),
+      }
+    );
   });
 
   it('delegates every non-import operation to its matching runtime method', async () => {

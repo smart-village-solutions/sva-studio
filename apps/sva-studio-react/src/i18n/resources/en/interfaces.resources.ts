@@ -13,6 +13,16 @@ export const interfacesENResources = {
     error: 'Error',
     disabled: 'Disabled',
     unknown: 'Unknown',
+    healthcheck: {
+      disabled: 'The map and geocoding interface is disabled by its kill switch.',
+      secretMissing: 'The API key for this map and geocoding interface is missing.',
+      mapGeocodingProviderUnsupported:
+        'Automated connection checks currently support Geoapify only.',
+      mapGeocodingAuthFailed: 'The Geoapify API key is invalid or not authorized.',
+      mapGeocodingRateLimited: 'Geoapify rate-limited the connection check.',
+      mapGeocodingUnreachable: 'Geoapify cannot be reached for the connection check.',
+      mapGeocodingProviderError: 'Geoapify could not complete the connection check.',
+    },
   },
   table: {
     ariaLabel: 'Interfaces table',
@@ -108,8 +118,7 @@ export const interfacesENResources = {
     mapGeocoding: {
       setup: {
         title: 'Recommended setup with Geoapify',
-        description:
-          'A Geoapify API key is required for automatic postal code enrichment.',
+        description: 'A Geoapify API key is required for automatic postal code enrichment.',
         createProject: 'Sign in to Geoapify and create a project',
         copyApiKey: 'Copy the generated API key and enter it in the API key field below',
         keepDefaults:

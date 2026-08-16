@@ -1161,6 +1161,43 @@ describe('waste-management server loaders', () => {
           id: 'job:job-postal-codes:succeeded',
           eventType: 'postal-code-enrichment.succeeded',
           outcome: 'success',
+          jobStatus: 'succeeded',
+        }),
+      ])
+    );
+  });
+
+  it('preserves cancelled terminal job status in technical history', async () => {
+    instanceDbQueryMock.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        {
+          id: 'job-cancelled',
+          job_type_id: 'waste-management.enrich-postal-codes',
+          status: 'cancelled',
+          finished_at: '2026-08-14T13:00:00.000Z',
+          updated_at: '2026-08-14T13:00:00.000Z',
+          request_id: 'req-cancelled',
+          latest_event_message: 'cancelled',
+          error_code: 'cancelled',
+          error_message: null,
+          total_count: 1,
+        },
+      ],
+    });
+
+    const historyOverview = await wasteManagementOverviewLoaders.loadWasteHistoryOverview({
+      instanceId: 'tenant-a',
+      page: 1,
+      pageSize: 5,
+    });
+
+    expect(historyOverview.technical.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'job:job-cancelled:cancelled',
+          outcome: 'failure',
+          jobStatus: 'cancelled',
         }),
       ])
     );

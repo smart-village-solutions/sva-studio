@@ -223,12 +223,19 @@ describe('waste postal-code enrichment', () => {
       sleep,
     });
 
+    const reportProgress = vi.fn(async () => undefined);
     await expect(
-      operation('instance-1', { operation: 'enrich-postal-codes' })
+      operation('instance-1', { operation: 'enrich-postal-codes' }, { reportProgress })
     ).rejects.toThrow('provider_timeout');
 
     expect(resolve).toHaveBeenCalledOnce();
     expect(sleep).not.toHaveBeenCalled();
+    expect(reportProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentStepKey: 'resolve-postal-codes',
+        details: expect.objectContaining({ providerRequestCount: 1 }),
+      })
+    );
   });
 
   it('persists confirmed results before forwarding a later provider failure', async () => {
@@ -254,9 +261,9 @@ describe('waste postal-code enrichment', () => {
       sleep: vi.fn(async () => undefined),
     });
 
-    await expect(
-      operation('instance-1', { operation: 'enrich-postal-codes' })
-    ).rejects.toThrow('provider_timeout');
+    await expect(operation('instance-1', { operation: 'enrich-postal-codes' })).rejects.toThrow(
+      'provider_timeout'
+    );
     expect(repository.updateWasteCityPostalCodeIfMissing).toHaveBeenCalledExactlyOnceWith(
       'city-1',
       '19348'
@@ -297,6 +304,52 @@ describe('waste postal-code enrichment', () => {
     expect(resolve).toHaveBeenCalledTimes(2);
     expect(reportProgress).toHaveBeenLastCalledWith(
       expect.objectContaining({ completedSteps: 2, totalSteps: 3 })
+    );
+  });
+
+  it('deducts provider requests persisted by an earlier retry attempt', async () => {
+    repository.listWasteCities.mockResolvedValue([
+      { id: 'city-1', name: 'Erster Ort', regionId: 'region-1' },
+      { id: 'city-2', name: 'Zweiter Ort', regionId: 'region-1' },
+    ]);
+    repository.listWasteStreets.mockResolvedValue([]);
+    const resolve = vi.fn(async () => []);
+    const reportProgress = vi.fn(async () => undefined);
+    const operation = createEnrichPostalCodesOperation({
+      createPostalCodeResolver: vi.fn(async () => ({
+        rateLimitPerMinute: 300,
+        requestBudget: 3,
+        resolve,
+      })),
+      sleep: vi.fn(async () => undefined),
+    });
+
+    await expect(
+      operation(
+        'instance-1',
+        { operation: 'enrich-postal-codes' },
+        { reportProgress },
+        {
+          previousProgress: {
+            completedSteps: 1,
+            totalSteps: 2,
+            details: { providerRequestCount: 2 },
+          },
+        }
+      )
+    ).resolves.toMatchObject({
+      details: {
+        providerRequestCount: 3,
+        requestBudget: 3,
+        budgetExhausted: true,
+        unprocessedCount: 1,
+      },
+    });
+    expect(resolve).toHaveBeenCalledOnce();
+    expect(reportProgress).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: expect.objectContaining({ providerRequestCount: 3 }),
+      })
     );
   });
 });

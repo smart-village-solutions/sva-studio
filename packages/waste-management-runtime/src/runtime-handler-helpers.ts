@@ -22,8 +22,8 @@ const createEnrichPostalCodesHandler = (runtime: WasteManagementOperationRuntime
     expectedOperation: 'enrich-postal-codes',
     phaseKey: 'waste-management.enrich-postal-codes',
     useRuntimeManagedProgress: () => true,
-    execute: (runtimeArg, instanceId, payload, progressReporter) =>
-      runtimeArg.enrichPostalCodes(instanceId, payload, progressReporter),
+    execute: (runtimeArg, instanceId, payload, progressReporter, context) =>
+      runtimeArg.enrichPostalCodes(instanceId, payload, progressReporter, context),
   })(runtime);
 
 export const createWasteRuntimeOperationHandlers = (runtime: WasteManagementOperationRuntime) => ({

@@ -139,8 +139,17 @@ const toConnectionCheckRecord = (
         ? 'not_configured'
         : 'error',
   errorCode: error.code,
-  errorMessage: error.message,
+  ...(record.typeKey === 'map_geocoding' ? {} : { errorMessage: error.message }),
 });
+
+const withoutMapGeocodingErrorMessage = (
+  record: ExternalInterfaceRecord,
+  result: ExternalInterfaceConnectionCheckRecord
+): ExternalInterfaceConnectionCheckRecord => {
+  if (record.typeKey !== 'map_geocoding' || !result.errorMessage) return result;
+  const { errorMessage: _errorMessage, ...stableResult } = result;
+  return stableResult;
+};
 
 const readSupabaseSecrets = (resolvedInterface: ResolvedExternalInterface, instanceId: string) => {
   const databaseUrl = resolvedInterface.secretConfig.databaseUrl?.trim();
@@ -502,7 +511,7 @@ const verifyMapGeocodingConnection = async (
   const provider = resolvedInterface.publicConfig.provider;
   if (provider !== 'geoapify') {
     throw createRuntimeError(
-      'connection_failed',
+      'map_geocoding_provider_unsupported',
       resolvedInterface.instanceId,
       'map_geocoding',
       'Automatische Verbindungsprüfungen werden derzeit nur für Geoapify unterstützt.'
@@ -537,7 +546,7 @@ const verifyMapGeocodingConnection = async (
     });
   } catch {
     throw createRuntimeError(
-      'connection_failed',
+      'map_geocoding_unreachable',
       resolvedInterface.instanceId,
       'map_geocoding',
       'Geoapify ist für die Verbindungsprüfung nicht erreichbar.',
@@ -547,7 +556,11 @@ const verifyMapGeocodingConnection = async (
 
   if (!response.ok) {
     throw createRuntimeError(
-      'connection_failed',
+      response.status === 401 || response.status === 403
+        ? 'map_geocoding_auth_failed'
+        : response.status === 429
+          ? 'map_geocoding_rate_limited'
+          : 'map_geocoding_provider_error',
       resolvedInterface.instanceId,
       'map_geocoding',
       response.status === 401 || response.status === 403
@@ -592,8 +605,9 @@ export const runStoredInterfaceHealthcheck = async (
       ),
       checkedAt
     );
-    await saveExternalInterfaceConnectionCheck(result);
-    return result;
+    const stableResult = withoutMapGeocodingErrorMessage(record, result);
+    await saveExternalInterfaceConnectionCheck(stableResult);
+    return stableResult;
   }
 
   try {
@@ -629,8 +643,9 @@ export const runStoredInterfaceHealthcheck = async (
       },
     });
 
-    await saveExternalInterfaceConnectionCheck(result);
-    return result;
+    const stableResult = withoutMapGeocodingErrorMessage(record, result);
+    await saveExternalInterfaceConnectionCheck(stableResult);
+    return stableResult;
   } catch (error) {
     const runtimeError =
       error instanceof ExternalInterfaceRuntimeError

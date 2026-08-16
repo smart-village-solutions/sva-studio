@@ -822,7 +822,6 @@ describe('instance-interface-healthcheck.server', () => {
       checkStatus: 'failed',
       visibleStatus: 'disabled',
       errorCode: 'disabled',
-      errorMessage: 'Die Karten-/Geocoding-Schnittstelle ist per Kill-Switch deaktiviert.',
     });
 
     expect(state.fetch).not.toHaveBeenCalled();
@@ -869,9 +868,9 @@ describe('instance-interface-healthcheck.server', () => {
     expect(result).toMatchObject({
       checkStatus: 'failed',
       visibleStatus: 'error',
-      errorCode: 'connection_failed',
-      errorMessage: 'Der Geoapify-API-Key wurde abgelehnt.',
+      errorCode: 'map_geocoding_auth_failed',
     });
+    expect(result).not.toHaveProperty('errorMessage');
   });
 
   it('persists a failed connection check when an s3 bucket is missing', async () => {

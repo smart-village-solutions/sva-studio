@@ -3131,6 +3131,13 @@ CREATE UNIQUE INDEX idx_studio_jobs_id_instance ON iam.studio_jobs USING btree (
 
 
 --
+-- Name: idx_studio_jobs_active_waste_postal_code_enrichment; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_studio_jobs_active_waste_postal_code_enrichment ON iam.studio_jobs USING btree (instance_id, job_type_id) WHERE ((job_type_id = 'waste-management.enrich-postal-codes'::text) AND (status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text])));
+
+
+--
 -- Name: idx_studio_jobs_instance_created_at; Type: INDEX; Schema: iam; Owner: -
 --
 

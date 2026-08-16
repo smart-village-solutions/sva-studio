@@ -1,10 +1,6 @@
 import React from 'react';
 
-import {
-  Button,
-  type StudioColumnDef,
-  StudioDataTable,
-} from '@sva/studio-ui-react';
+import { Button, type StudioColumnDef, StudioDataTable } from '@sva/studio-ui-react';
 
 import { ConfirmDialog } from '../../components/ConfirmDialog';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
@@ -40,6 +36,24 @@ const statusTranslationKey: Record<DisplayStatus, string> = {
   error: 'interfaces.status.error',
   disabled: 'interfaces.status.disabled',
   unknown: 'interfaces.status.unknown',
+};
+
+const healthcheckMessageTranslationKeys: Readonly<Record<string, string>> = {
+  disabled: 'interfaces.status.healthcheck.disabled',
+  secret_missing: 'interfaces.status.healthcheck.secretMissing',
+  map_geocoding_provider_unsupported:
+    'interfaces.status.healthcheck.mapGeocodingProviderUnsupported',
+  map_geocoding_auth_failed: 'interfaces.status.healthcheck.mapGeocodingAuthFailed',
+  map_geocoding_rate_limited: 'interfaces.status.healthcheck.mapGeocodingRateLimited',
+  map_geocoding_unreachable: 'interfaces.status.healthcheck.mapGeocodingUnreachable',
+  map_geocoding_provider_error: 'interfaces.status.healthcheck.mapGeocodingProviderError',
+};
+
+const getStatusMessage = (entry: InstanceInterface): string | undefined => {
+  const translationKey = entry.type === 'mapGeocoding' && entry.errorCode
+    ? healthcheckMessageTranslationKeys[entry.errorCode]
+    : undefined;
+  return translationKey ? t(translationKey) : entry.statusMessage;
 };
 
 const getDisplayStatus = (entry: InstanceInterface): DisplayStatus =>
@@ -154,6 +168,7 @@ export const InterfacesPage = () => {
         header: t('interfaces.table.headerStatus'),
         cell: (row) => {
           const displayStatus = getDisplayStatus(row);
+          const statusMessage = getStatusMessage(row);
           return (
             <div className="flex max-w-sm flex-col gap-1">
               <Badge
@@ -162,10 +177,8 @@ export const InterfacesPage = () => {
               >
                 {t(statusTranslationKey[displayStatus])}
               </Badge>
-              {row.statusMessage ? (
-                <span className="text-xs leading-snug text-muted-foreground">
-                  {row.statusMessage}
-                </span>
+              {statusMessage ? (
+                <span className="text-xs leading-snug text-muted-foreground">{statusMessage}</span>
               ) : null}
             </div>
           );

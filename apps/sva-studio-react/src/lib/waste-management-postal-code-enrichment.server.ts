@@ -20,10 +20,7 @@ const normalizePlace = (value: string): string =>
     .trim();
 
 const normalizeRegion = (value: string): string =>
-  normalizePlace(value).replace(
-    /^(?:landkreis|kreis|gemeinde|stadt|amt|verbandsgemeinde)\s+/,
-    ''
-  );
+  normalizePlace(value).replace(/^(?:landkreis|kreis|gemeinde|stadt|amt|verbandsgemeinde)\s+/, '');
 
 const containsNormalizedPhrase = (value: string | undefined, phrase: string): boolean => {
   const normalizedValue = normalizePlace(value ?? '');
@@ -89,14 +86,22 @@ const validPostalCodes = (
 const reportProgress = async (
   reporter: WasteOperationProgressReporter | undefined,
   completedSteps: number,
-  totalSteps: number
+  totalSteps: number,
+  input: {
+    readonly stepKey: 'load-cities' | 'resolve-postal-codes';
+    readonly providerRequestCount: number;
+  }
 ) =>
   reporter?.reportProgress({
     completedSteps,
     totalSteps,
     currentPhase: 'waste-management.enrich-postal-codes',
-    currentStepKey: completedSteps === 0 ? 'load-cities' : 'resolve-postal-codes',
-    details: { processedCities: completedSteps, totalCities: totalSteps },
+    currentStepKey: input.stepKey,
+    details: {
+      processedCities: completedSteps,
+      totalCities: totalSteps,
+      providerRequestCount: input.providerRequestCount,
+    },
     lastUpdatedAt: new Date().toISOString(),
   });
 
@@ -192,14 +197,12 @@ const resolveCityPostalCode = async (input: {
   const consensus = new Set(samplePostalCodes);
   if (ambiguous || consensus.size > 1) return { status: 'ambiguous' };
   const postalCode = [...consensus][0];
-  return postalCode
-    ? { status: 'resolved', postalCode }
-    : { status: 'not-found' };
+  return postalCode ? { status: 'resolved', postalCode } : { status: 'not-found' };
 };
 
 export const createEnrichPostalCodesOperation =
   (deps: WasteOperationRuntimeDeps): WasteManagementOperationRuntime['enrichPostalCodes'] =>
-  async (instanceId, _input, progressReporter) => {
+  async (instanceId, _input, progressReporter, context) => {
     const startedAt = Date.now();
     const { cities, regionsById, streetsByCityId } = await loadCandidates(deps, instanceId);
     const missingCities = cities.filter((city) => !city.postalCode?.trim());
@@ -207,6 +210,12 @@ export const createEnrichPostalCodesOperation =
       missingCities.length > 0 ? await deps.createPostalCodeResolver?.(instanceId) : undefined;
     if (missingCities.length > 0 && !resolver) throw new Error('postal_code_resolver_unavailable');
 
+    const persistedProviderRequestCount =
+      typeof context?.previousProgress?.details?.providerRequestCount === 'number' &&
+      Number.isSafeInteger(context.previousProgress.details.providerRequestCount) &&
+      context.previousProgress.details.providerRequestCount >= 0
+        ? context.previousProgress.details.providerRequestCount
+        : 0;
     const counts = {
       cityCount: cities.length,
       missingCount: missingCities.length,
@@ -216,28 +225,34 @@ export const createEnrichPostalCodesOperation =
       notFoundCount: 0,
       failedCount: 0,
       skippedExistingCount: 0,
-      providerRequestCount: 0,
+      providerRequestCount: persistedProviderRequestCount,
       requestBudget: resolver?.requestBudget ?? null,
       budgetExhausted: false,
       unprocessedCount: 0,
     };
-    await reportProgress(progressReporter, 0, missingCities.length);
+    await reportProgress(progressReporter, 0, missingCities.length, {
+      stepKey: 'load-cities',
+      providerRequestCount: persistedProviderRequestCount,
+    });
 
     const intervalMs = Math.ceil(60_000 / Math.max(1, resolver?.rateLimitPerMinute ?? 1));
     const pendingUpdates: { readonly cityId: string; readonly postalCode: string }[] = [];
     const requestBudget = resolver?.requestBudget ?? Number.POSITIVE_INFINITY;
-    let providerRequestCount = 0;
+    let providerRequestCount = persistedProviderRequestCount;
     let processedCities = 0;
-    const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+    const sleep =
+      deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
     const paceRequest = async () => {
-      await reportProgress(progressReporter, processedCities, missingCities.length);
       if (providerRequestCount >= requestBudget) return false;
       if (providerRequestCount > 0) {
         await sleep(intervalMs);
-        await reportProgress(progressReporter, processedCities, missingCities.length);
       }
       providerRequestCount += 1;
       counts.providerRequestCount = providerRequestCount;
+      await reportProgress(progressReporter, processedCities, missingCities.length, {
+        stepKey: 'resolve-postal-codes',
+        providerRequestCount,
+      });
       return true;
     };
     try {
@@ -266,7 +281,10 @@ export const createEnrichPostalCodesOperation =
           pendingUpdates.push({ cityId: city.id, postalCode });
         }
         if ((index + 1) % 10 === 0 || index + 1 === missingCities.length) {
-          await reportProgress(progressReporter, index + 1, missingCities.length);
+          await reportProgress(progressReporter, index + 1, missingCities.length, {
+            stepKey: 'resolve-postal-codes',
+            providerRequestCount,
+          });
           await persistPostalCodes(deps, instanceId, pendingUpdates.splice(0), counts);
         }
       }
@@ -277,7 +295,9 @@ export const createEnrichPostalCodesOperation =
     await persistPostalCodes(deps, instanceId, pendingUpdates.splice(0), counts);
     await reportCompleted(
       progressReporter,
-      counts.budgetExhausted ? missingCities.length - counts.unprocessedCount : missingCities.length,
+      counts.budgetExhausted
+        ? missingCities.length - counts.unprocessedCount
+        : missingCities.length,
       missingCities.length
     );
 

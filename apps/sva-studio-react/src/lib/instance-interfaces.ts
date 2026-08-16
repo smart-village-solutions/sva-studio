@@ -1,5 +1,4 @@
 import type { MailTransportAuthMode, MailTransportSecurityMode } from '@sva/core';
-import type { SvaMainserverConnectionStatus } from '@sva/sva-mainserver';
 
 export type InstanceInterfaceType =
   'mainserver' | 's3' | 'supabase' | 'postgresql' | 'mailTransport' | 'mapGeocoding';
@@ -65,7 +64,7 @@ type InstanceInterfaceBase = Readonly<{
   enabled: boolean;
   status: InstanceInterfaceStatus;
   statusMessage?: string;
-  errorCode?: SvaMainserverConnectionStatus['errorCode'];
+  errorCode?: string;
   lastCheckedAt?: string;
   createdAt: string;
   updatedAt: string;

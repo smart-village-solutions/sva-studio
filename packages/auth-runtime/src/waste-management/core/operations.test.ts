@@ -438,6 +438,7 @@ describe('waste-management operation handlers', () => {
       expect.objectContaining({
         endpoint: 'POST:/api/v1/waste-management/tools/postal-codes/enrich',
         instanceId: 'tenant-a',
+        rejectWhenActiveJobExists: true,
         data: expect.objectContaining({
           jobTypeId: 'waste-management.enrich-postal-codes',
           input: {

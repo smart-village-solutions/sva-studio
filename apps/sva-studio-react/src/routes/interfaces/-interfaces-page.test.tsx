@@ -552,6 +552,28 @@ describe('InterfacesPage', () => {
     });
   });
 
+  it('translates map-geocoding healthcheck error codes instead of rendering persisted server copy', async () => {
+    state.listInterfaces.mockResolvedValue(
+      createListResponse([
+        {
+          ...mapGeocodingEntry,
+          status: 'error',
+          errorCode: 'map_geocoding_auth_failed',
+          statusMessage: 'Der Geoapify-API-Key wurde abgelehnt.',
+        },
+      ])
+    );
+
+    render(<InterfacesPage />);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText('Der Geoapify-API-Key wurde abgelehnt.')).toHaveLength(0);
+      expect(
+        screen.getAllByText('Der Geoapify-API-Key ist ungültig oder nicht berechtigt.').length
+      ).toBeGreaterThan(0);
+    });
+  });
+
   it('shows a configured status for a stored Geoapify key before a successful healthcheck', async () => {
     state.listInterfaces.mockResolvedValue(createListResponse([mapGeocodingEntry]));
 

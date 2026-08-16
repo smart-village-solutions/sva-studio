@@ -116,7 +116,8 @@ export type WasteManagementOperationRuntime = {
   enrichPostalCodes: (
     instanceId: string,
     input: WasteManagementEnrichPostalCodesJobInput,
-    progressReporter?: WasteOperationProgressReporter
+    progressReporter?: WasteOperationProgressReporter,
+    context?: { readonly previousProgress?: StudioJobProgress }
   ) => Promise<OperationSummary>;
   materializeEmailReminders: (
     instanceId: string,

@@ -301,4 +301,27 @@ describe('WasteToolsHistory', () => {
     expect(screen.getByText('tools.meta.jobIdLabel:postal-job-1')).toBeTruthy();
     expect(screen.getByText('tools.meta.jobStatusLabel:succeeded')).toBeTruthy();
   });
+
+  it('preserves a cancelled job status after a page reload', () => {
+    render(
+      <WasteToolsHistory
+        lastJob={null}
+        technicalHistory={[
+          {
+            id: 'job:postal-job-2:cancelled',
+            eventType: 'postal-code-enrichment.failed',
+            outcome: 'failure',
+            jobStatus: 'cancelled',
+            occurredAt: '2026-08-14T15:00:00.000Z',
+            source: 'job',
+            jobId: 'postal-job-2',
+            jobTypeId: 'waste-management.enrich-postal-codes',
+          },
+        ] as never}
+      />
+    );
+
+    expect(screen.getByText('tools.meta.jobStatusLabel:cancelled')).toBeTruthy();
+    expect(screen.getByText('tone:cancelled')).toBeTruthy();
+  });
 });

@@ -376,6 +376,19 @@ test('modules read permission migration backfills all tenants and grants only sy
   assert.doesNotMatch(sql, /DELETE FROM iam\.role_permissions/);
 });
 
+test('postal-code enrichment jobs are unique per instance while active', () => {
+  const sql = readRepoFile('data/migrations/0082_iam_waste_postal_code_enrichment_active_job_unique.sql');
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+
+  for (const source of [sql, schemaSnapshot]) {
+    expect(source).toMatch(/CREATE UNIQUE INDEX idx_studio_jobs_active_waste_postal_code_enrichment/);
+    expect(source).toMatch(/ON iam\.studio_jobs(?: USING btree)? \(instance_id, job_type_id\)/);
+    expect(source).toMatch(/job_type_id = 'waste-management\.enrich-postal-codes'/);
+    expect(source).toMatch(/'queued'[^\n]*'running'[^\n]*'retrying'/);
+  }
+  expect(sql).toMatch(/DROP INDEX IF EXISTS iam\.idx_studio_jobs_active_waste_postal_code_enrichment/);
+});
+
 test('iam ownership authorization model migration replaces legacy ownership, direct permissions and deny effects', () => {
   const sql = readRepoFile('data/migrations/0061_iam_content_ownership_authorization_model.sql');
 

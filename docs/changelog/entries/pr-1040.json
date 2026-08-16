@@ -1,0 +1,4 @@
+{
+  "prNumber": 1040,
+  "body": "Versionierte Waste-Tenant-Migrationen prüfen ihre PostgreSQL-Indexverträge wieder korrekt\n\n- Die Migration für jährliche Tourverschiebungen erkennt die tatsächlich angelegten partiellen Unique-Indizes zuverlässig.\n- Ein echter PostgreSQL-Integrationstest führt den produktiven Migrationskatalog aus und verhindert eine erneute unbemerkte Blockade des geschützten Rollouts.\n- Der Migrationskatalog bleibt unveränderlich an das jeweilige Studio-Image gebunden."
+}

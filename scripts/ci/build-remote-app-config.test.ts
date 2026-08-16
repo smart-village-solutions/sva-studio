@@ -38,6 +38,17 @@ describe('remote app config builder', () => {
     expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
   });
 
+  it('fails compose interpolation when the deployment environment is missing', () => {
+    const compose = readFileSync(
+      new URL('../../deploy/portainer/docker-compose.studio.yml', import.meta.url),
+      'utf8'
+    );
+
+    expect(compose).toContain(
+      "SVA_DEPLOYMENT_ENVIRONMENT: '${SVA_DEPLOYMENT_ENVIRONMENT:?SVA_DEPLOYMENT_ENVIRONMENT must be set}'"
+    );
+  });
+
   it('merges deterministically while evidence contains references but no secret values', () => {
     const result = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
     expect(result.source.split('\n').filter(Boolean)).toEqual([...result.source.split('\n').filter(Boolean)].sort());

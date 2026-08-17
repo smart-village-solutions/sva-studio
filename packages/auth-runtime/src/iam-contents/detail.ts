@@ -22,7 +22,7 @@ import { loadContentById, loadContentDetail } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
-const createContentNotFoundError = (requestId: string): Response =>
+const createContentNotFoundError = (requestId: string | undefined): Response =>
   createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', requestId);
 
 const loadProjectedMainserverContent = async (

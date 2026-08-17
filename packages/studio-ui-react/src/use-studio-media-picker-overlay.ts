@@ -41,7 +41,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
   const close = React.useCallback(() => {
     if (state.reviewAsset?.localDraft) revokeBrowserObjectUrl(state.reviewAsset.previewUrl);
     state.close();
-  }, [state]);
+  }, [state.close, state.reviewAsset]);
 
   return {
     open: state.open,

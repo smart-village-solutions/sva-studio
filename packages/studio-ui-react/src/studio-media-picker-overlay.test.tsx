@@ -373,6 +373,24 @@ describe('useStudioMediaPickerOverlay', () => {
     revokeObjectUrl.mockRestore();
   });
 
+  it('keeps the close action stable while no local preview changes', () => {
+    const { result, rerender } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        uploadAsset: vi.fn(),
+        loadAsset: vi.fn(),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+    const initialClose = result.current.close;
+
+    act(() => result.current.openLibrary());
+    rerender();
+
+    expect(result.current.close).toBe(initialClose);
+  });
+
   it('rejects unsupported files before starting the upload', async () => {
     const uploadAsset = vi.fn();
 

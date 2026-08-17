@@ -321,7 +321,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
       return;
     }
 
-    const accounts = membershipForm.accounts;
+    const { accounts, isDefaultContext } = membershipForm;
     setMembershipAssignmentPending(true);
     try {
       let firstUnassignedIndex = accounts.length;
@@ -330,7 +330,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
           organizationId,
           {
             accountId: account.value,
-            isDefaultContext: membershipForm.isDefaultContext,
+            isDefaultContext,
           },
           { reload: false }
         );
@@ -661,7 +661,10 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                 aria-readonly={!canUpdateOrganization}
                 onSubmit={(event) => void onAssignMembership(event)}
               >
-                <fieldset className="contents" disabled={!canUpdateOrganization}>
+                <fieldset
+                  className="contents"
+                  disabled={!canUpdateOrganization || membershipAssignmentPending}
+                >
                   <div className="grid gap-1 text-sm text-foreground">
                     <SearchableMultiSelect
                       id="membership-account"
@@ -669,7 +672,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                       values={membershipForm.accounts.map((account) => account.value)}
                       placeholder={t('admin.organizations.membershipsDialog.accountPlaceholder')}
                       selectedCountText={t('admin.organizations.membershipsDialog.selectedCount', {
-                        count: String(membershipForm.accounts.length),
+                        count: membershipForm.accounts.length,
                       })}
                       searchPlaceholder={t(
                         'admin.organizations.membershipsDialog.searchPlaceholder'

@@ -186,6 +186,7 @@ export const SearchableMultiSelect = ({
     values,
   });
   const listboxId = `${id}-listbox`;
+  const labelId = `${id}-label`;
   return (
     <div
       ref={state.rootRef}
@@ -196,12 +197,12 @@ export const SearchableMultiSelect = ({
         }
       }}
     >
-      <label htmlFor={id}>{label}</label>
+      <span id={labelId}>{label}</span>
       <SearchableMultiSelectTrigger
         close={state.close}
         disabled={disabled}
         id={id}
-        label={label}
+        labelId={labelId}
         listboxId={listboxId}
         open={state.open}
         placeholder={placeholder}

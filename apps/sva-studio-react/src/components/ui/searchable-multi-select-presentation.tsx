@@ -10,7 +10,7 @@ export const SearchableMultiSelectTrigger = ({
   close,
   disabled,
   id,
-  label,
+  labelId,
   listboxId,
   open,
   placeholder,
@@ -22,7 +22,7 @@ export const SearchableMultiSelectTrigger = ({
   close: () => void;
   disabled: boolean;
   id: string;
-  label: string;
+  labelId: string;
   listboxId: string;
   open: boolean;
   placeholder: string;
@@ -40,7 +40,7 @@ export const SearchableMultiSelectTrigger = ({
       'h-10 w-full justify-between px-3 text-sm font-normal',
       valueCount ? undefined : 'text-muted-foreground'
     )}
-    aria-label={label}
+    aria-labelledby={labelId}
     aria-expanded={open}
     aria-haspopup="listbox"
     aria-controls={open ? listboxId : undefined}

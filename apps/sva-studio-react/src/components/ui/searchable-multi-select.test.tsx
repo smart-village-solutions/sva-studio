@@ -29,7 +29,9 @@ describe('SearchableMultiSelect', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
+    const trigger = screen.getByRole('button', { name: 'Accounts' });
+    expect(trigger.getAttribute('aria-labelledby')).toBe('accounts-label');
+    fireEvent.click(trigger);
     expect(screen.getByRole('listbox').getAttribute('aria-multiselectable')).toBe('true');
     expect(screen.getByRole('option', { name: 'Ada Lovelace' }).getAttribute('aria-selected')).toBe(
       'true'

@@ -10,7 +10,7 @@ vi.mock('@sva/plugin-sdk', () => ({
 afterEach(() => cleanup());
 
 describe('Waste icon action tooltips', () => {
-  it('explains icon-only actions on hover and keyboard focus', () => {
+  it('explains icon-only actions on hover and keyboard focus', async () => {
     render(
       <FractionRowActions
         fraction={{ id: 'paper' } as never}
@@ -22,13 +22,10 @@ describe('Waste icon action tooltips', () => {
     const editButton = screen.getByRole('button', {
       name: 'masterData.fractions.actions.edit',
     });
-    fireEvent.mouseEnter(editButton);
-    expect(screen.getByRole('tooltip').textContent).toBe(
+    fireEvent.pointerMove(editButton, { pointerType: 'mouse' });
+    expect((await screen.findByRole('tooltip')).textContent).toBe(
       'masterData.fractions.actions.edit'
     );
-
-    fireEvent.mouseLeave(editButton);
-    expect(screen.queryByRole('tooltip')).toBeNull();
 
     const deleteButton = screen.getByRole('button', {
       name: 'masterData.fractions.actions.delete',

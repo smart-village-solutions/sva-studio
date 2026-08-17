@@ -153,6 +153,18 @@ Typische Spaltenarten sind:
 
 Die Spaltenüberschriften konkreter Seiten, zum Beispiel `Titel`, `Zugeordnete Rollen`, `Status`, `Version`, `Autor` oder `Zuletzt bearbeitet`, sind Beispiele. Sie dürfen nur übernommen werden, wenn sie zur jeweiligen Ressource passen.
 
+#### Interaktionsmuster in Tabellenzellen
+
+Tabellen unterscheiden drei gemeinsame Muster. Sie werden aus `@sva/studio-ui-react` bezogen und nicht mit lokalen Klassenkombinationen nachgebaut:
+
+- `StudioTableActionButton` stellt eine kompakte Zeilenaktion als Icon mit zugänglichem Namen und Tooltip bei Hover und Tastaturfokus dar. Der Tooltip wird außerhalb abschneidender Tabellencontainer positioniert. In mobilen Karten erhält eine nicht selbsterklärende Aktion eine sichtbare Beschriftung. Destruktive Aktionen verwenden die destruktive Tonalität; fachlich komplexe Aktionen dürfen weiterhin beschriftete Buttons bleiben.
+- `StudioTableValueAction` kennzeichnet anklickbare Informationen wie Titel, Bezeichnungen, Zuordnungszahlen oder Verschiebungen. Der Ruhezustand verwendet Aktionsfarbe und mindestens mittlere Schriftstärke; Hover und Tastaturfokus ergänzen eine Unterstreichung, aber keine Hintergrundfläche. Navigation bleibt ein echter Link, Dialog- und lokale Aktionen bleiben Buttons. Reiner Zelltext erhält weder Aktionsfarbe noch diese Hervorhebung.
+- `StudioStatusBadge` ist ausschließlich für beschriftete Zustände vorgesehen. Ein änderbarer Status besitzt zusätzlich eine sichtbare Bearbeitungsaffordance und liegt in einem zugänglichen Dialog-Trigger. Der Dialog schließt erst nach erfolgreicher Mutation; bei einem Fehler bleibt er mit verständlicher Fehlermeldung geöffnet.
+
+Die primäre Zeilenidentität übernimmt nach Möglichkeit die Öffnen- oder Bearbeiten-Navigation. Eine zusätzliche Icon-Aktion mit demselben Ziel wird nicht angeboten. Zahlen in anklickbaren Informationszellen verwenden tabellarische Ziffern. Farbe darf Interaktivität oder Status nie als einziges Merkmal vermitteln.
+
+Alle Body-Zellen verwenden dasselbe vertikale Padding und sind oben ausgerichtet. Dadurch beginnen kurze und mehrzeilige Inhalte an einer stabilen Leselinie. Buttons, Badges und Checkboxen bleiben nur innerhalb ihrer eigenen mindestens 44 × 44 Pixel großen Trefferfläche zentriert. Tabellenköpfe dürfen innerhalb ihrer festen Höhe mittig ausgerichtet sein.
+
 ### Aktionen
 
 - Die Hauptinteraktion einer Zeile oder Karte führt zur Detailseite.

@@ -162,6 +162,8 @@ type WasteToursDeleteDialogsProps = {
   readonly onCancelStatusChange: () => void;
   readonly onCancelBulk: () => void;
   readonly onConfirmStatusChange: () => Promise<void>;
+  readonly statusChangePending: boolean;
+  readonly statusChangeError: string | null;
   readonly onDeleteTour: (tour: WasteTourRecord) => Promise<void>;
   readonly onDeleteTours: (tourIds: readonly string[]) => Promise<void>;
   readonly onAfterBulkDelete: () => void;
@@ -176,6 +178,8 @@ export const WasteToursDeleteDialogs = ({
   onCancelStatusChange,
   onCancelBulk,
   onConfirmStatusChange,
+  statusChangePending,
+  statusChangeError,
   onDeleteTour,
   onDeleteTours,
   onAfterBulkDelete,
@@ -195,10 +199,18 @@ export const WasteToursDeleteDialogs = ({
         confirmLabel={pt('tours.statusDialog.confirm')}
         cancelLabel={pt('tours.statusDialog.cancel')}
         onCancel={onCancelStatusChange}
+        confirmDisabled={statusChangePending}
+        cancelDisabled={statusChangePending}
         onConfirm={() => {
           void onConfirmStatusChange();
         }}
-      />
+      >
+        {statusChangeError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {statusChangeError}
+          </p>
+        ) : null}
+      </StudioConfirmDialog>
       <StudioConfirmDialog
         open={tourPendingDelete !== null}
         title={pt('tours.deleteDialog.title')}

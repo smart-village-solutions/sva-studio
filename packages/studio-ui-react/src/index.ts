@@ -117,6 +117,16 @@ export {
   type StudioDataTableSortingLabels,
 } from './studio-data-table.js';
 export {
+  StudioStatusBadge,
+  StudioTableActionButton,
+  StudioTableValueAction,
+  type StudioStatusBadgeProps,
+  type StudioStatusTone,
+  type StudioTableActionButtonProps,
+  type StudioTableActionTone,
+  type StudioTableValueActionProps,
+} from './studio-table-interactions.js';
+export {
   StudioListPageTemplate,
   StudioDetailPageTemplate,
   StudioEmptyState,

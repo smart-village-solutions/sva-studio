@@ -128,12 +128,19 @@ describe('ContentStatusDialog', () => {
         onUpdated={onUpdated}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Status von Rathausmeldung ändern' }));
+    const statusTrigger = screen.getByRole('button', {
+      name: 'Status von Rathausmeldung ändern',
+    });
+    expect(statusTrigger.className).toContain('min-h-11');
+    expect(statusTrigger.className).toContain('min-w-11');
+    fireEvent.click(statusTrigger);
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf' }));
 
     expect(screen.getByRole('button', { name: 'Entwurf' }).hasAttribute('disabled')).toBe(true);
     expect(screen.getByRole('button', { name: 'Abbrechen' }).hasAttribute('disabled')).toBe(true);
     expect(statusMutation.update).toHaveBeenCalledWith(item, 'draft', 'organization');
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+    expect(screen.getByRole('dialog')).toBeTruthy();
 
     resolveMutation?.();
     await waitFor(() => expect(onUpdated).toHaveBeenCalledOnce());
@@ -149,7 +156,11 @@ describe('ContentStatusDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Status von Rathausmeldung ändern' }));
     fireEvent.click(screen.getByRole('button', { name: 'Entwurf' }));
 
-    expect(await screen.findByText('Der Status konnte nicht geändert werden.')).toBeTruthy();
+    expect(
+      await screen.findByText(
+        'Der Status konnte nicht geändert werden. Bitte versuchen Sie es erneut.'
+      )
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Entwurf' }).hasAttribute('disabled')).toBe(false);
     expect(screen.getByRole('button', { name: 'Abbrechen' }).hasAttribute('disabled')).toBe(false);
   });

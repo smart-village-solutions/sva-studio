@@ -34,7 +34,9 @@ export const contentENResources = {
     create: 'New content',
     createNow: 'Create content',
     edit: 'Edit',
+    editTitle: 'Edit {{title}}',
     openReadOnly: 'Read only',
+    openReadOnlyTitle: 'Open {{title}} read-only',
     blocked: 'Blocked',
     save: 'Save changes',
     cancel: 'Cancel',
@@ -62,7 +64,7 @@ export const contentENResources = {
     title: 'Change status',
     description: 'Choose the new status for “{{title}}”.',
     current: 'Current',
-    error: 'The status could not be changed.',
+    error: 'The status could not be changed. Please try again.',
   },
   table: {
     caption: 'Table of managed content items',

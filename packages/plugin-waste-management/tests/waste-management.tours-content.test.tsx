@@ -1,5 +1,5 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveTourAssignmentItemsMock = vi.hoisted(() => vi.fn());
@@ -79,6 +79,55 @@ vi.mock('@sva/studio-ui-react', () => ({
     </span>
   ),
   Button: (props: React.ComponentProps<'button'>) => <button {...props} />,
+  StudioTableValueAction: ({
+    asChild,
+    children,
+    emphasis,
+    numeric,
+    ...props
+  }: React.ComponentProps<'button'> & {
+    readonly asChild?: boolean;
+    readonly emphasis?: string;
+    readonly numeric?: boolean;
+  }) => {
+    void emphasis;
+    void numeric;
+    return asChild && React.isValidElement(children) ? (
+      React.cloneElement(children as React.ReactElement<Record<string, unknown>>, props)
+    ) : (
+      <button {...props}>{children}</button>
+    );
+  },
+  StudioTableActionButton: ({
+    label,
+    icon,
+    tone,
+    ...props
+  }: React.ComponentProps<'button'> & {
+    readonly label: string;
+    readonly icon: React.ReactNode;
+    readonly tone?: string;
+  }) => {
+    void tone;
+    return (
+      <button aria-label={label} {...props}>
+        {icon}
+      </button>
+    );
+  },
+  StudioStatusBadge: ({
+    children,
+    editable,
+    tone,
+  }: {
+    readonly children: React.ReactNode;
+    readonly editable?: boolean;
+    readonly tone?: string;
+  }) => {
+    void editable;
+    void tone;
+    return <span data-testid="status-badge">{children}</span>;
+  },
   Checkbox: ({
     indeterminate,
     ...props
@@ -105,6 +154,9 @@ vi.mock('@sva/studio-ui-react', () => ({
     cancelLabel,
     onConfirm,
     onCancel,
+    children,
+    confirmDisabled,
+    cancelDisabled,
   }: {
     readonly open: boolean;
     readonly title: string;
@@ -113,15 +165,19 @@ vi.mock('@sva/studio-ui-react', () => ({
     readonly cancelLabel: string;
     readonly onConfirm: () => void;
     readonly onCancel: () => void;
+    readonly children?: React.ReactNode;
+    readonly confirmDisabled?: boolean;
+    readonly cancelDisabled?: boolean;
   }) =>
     open ? (
       <div>
         <p>{title}</p>
         <p>{description}</p>
-        <button type="button" onClick={onConfirm}>
+        {children}
+        <button type="button" disabled={confirmDisabled} onClick={onConfirm}>
           {confirmLabel}
         </button>
-        <button type="button" onClick={onCancel}>
+        <button type="button" disabled={cancelDisabled} onClick={onCancel}>
           {cancelLabel}
         </button>
       </div>
@@ -181,7 +237,7 @@ describe('WasteToursContent', () => {
     cleanup();
   });
 
-  it('renders the tours overview as a table with row actions and assignment context', () => {
+  it('renders the tours overview as a table with row actions and assignment context', async () => {
     resolveTourAssignmentItemsMock.mockReturnValue([
       {
         id: 'link-1',
@@ -203,7 +259,10 @@ describe('WasteToursContent', () => {
     const onOpenEditAssignmentsDialog = vi.fn();
     const onOpenCalendar = vi.fn();
     const onOpenEditFraction = vi.fn();
-    const onToggleTourStatus = vi.fn(async () => undefined);
+    const onToggleTourStatus = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(undefined);
     const tour = {
       id: 'tour-1',
       name: 'Restmüll Nord',
@@ -290,10 +349,11 @@ describe('WasteToursContent', () => {
     ).toBeTruthy();
     expect(screen.getByTestId('tour-assignment-count-tour-1').textContent).toBe('2');
     expect(screen.queryByText('tours.meta.count:1')).toBeNull();
-    expect(screen.getAllByTestId('badge')).toHaveLength(2);
+    expect(screen.getByTestId('status-badge')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Restmüll' }));
-    fireEvent.click(screen.getByRole('button', { name: 'tours.actions.edit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Restmüll Nord' }));
+    expect(screen.queryByRole('button', { name: 'tours.actions.edit' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.duplicate' }));
     expect(screen.queryByRole('button', { name: 'tours.actions.openAssignments' })).toBeNull();
     fireEvent.click(
@@ -302,9 +362,12 @@ describe('WasteToursContent', () => {
       })
     );
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
-    fireEvent.click(
-      screen.getByRole('switch', { name: 'tours.actions.deactivateStatus:Restmüll Nord' })
-    );
+    const statusButton = screen.getByRole('button', {
+      name: 'tours.actions.deactivateStatus:Restmüll Nord',
+    });
+    expect(statusButton.className).toContain('min-h-11');
+    expect(statusButton.className).toContain('min-w-11');
+    fireEvent.click(statusButton);
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);
@@ -316,6 +379,14 @@ describe('WasteToursContent', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'tours.statusDialog.confirm' }));
     expect(onToggleTourStatus).toHaveBeenCalledWith(tour, false);
+    expect((await screen.findByRole('alert')).textContent).toContain('tours.statusDialog.error');
+    expect(screen.getByText('tours.statusDialog.deactivateTitle')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'tours.statusDialog.confirm' }));
+    await waitFor(() =>
+      expect(screen.queryByText('tours.statusDialog.deactivateTitle')).toBeNull()
+    );
+    expect(onToggleTourStatus).toHaveBeenCalledTimes(2);
   });
 
   it('renders a loading hint while the assignment context is still loading', () => {

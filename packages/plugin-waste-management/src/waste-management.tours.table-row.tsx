@@ -1,6 +1,6 @@
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Button } from '@sva/studio-ui-react';
+import { StudioTableValueAction } from '@sva/studio-ui-react';
 
 import type {
   WasteManagementMasterDataOverview,
@@ -21,9 +21,17 @@ import {
 import { WasteToursRowShiftCell } from './waste-management.tours.table-row-shift.js';
 import type { WasteManagementSearchParams } from './search-params.js';
 
-const WasteToursRowSummaryCell = ({ name }: { readonly name: string }) => (
+const WasteToursRowSummaryCell = ({
+  tour,
+  onOpenEditDialog,
+}: {
+  readonly tour: WasteTourRecord;
+  readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
+}) => (
   <td className="w-[150px] px-3 py-3">
-    <p className="font-semibold">{name}</p>
+    <StudioTableValueAction emphasis="primary" onClick={() => onOpenEditDialog(tour)}>
+      {tour.name}
+    </StudioTableValueAction>
   </td>
 );
 
@@ -48,11 +56,9 @@ const WasteToursRowAssignmentCountCell = ({
     {assignmentContextLoading ? (
       <span className="text-sm text-muted-foreground">{pt('tours.table.loadingAssignments')}</span>
     ) : (
-      <Button
+      <StudioTableValueAction
         type="button"
-        variant="tertiary"
-        size="sm"
-        className="h-auto p-0 text-sm font-medium underline-offset-4 hover:underline"
+        numeric
         aria-label={pt('tours.actions.openAssignmentsAccessible', {
           name: tour.name,
           count: assignmentCount,
@@ -67,7 +73,7 @@ const WasteToursRowAssignmentCountCell = ({
         }}
       >
         {assignmentCount}
-      </Button>
+      </StudioTableValueAction>
     )}
   </td>
 );
@@ -120,7 +126,7 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
         selected={props.selected}
         onToggleSelectedTour={props.onToggleSelectedTour}
       />
-      <WasteToursRowSummaryCell name={tour.name} />
+      <WasteToursRowSummaryCell tour={tour} onOpenEditDialog={props.onOpenEditDialog} />
       <WasteToursRowFractionCell
         tourId={tour.id}
         fractionNames={fractions.map((fraction) => fraction.name)}
@@ -153,7 +159,6 @@ export const WasteToursTableRow = (props: WasteToursTableRowProps) => {
       <WasteToursRowActionsCell
         tour={tour}
         onOpenCalendar={props.onOpenCalendar}
-        onOpenEditDialog={props.onOpenEditDialog}
         onOpenDuplicateDialog={props.onOpenDuplicateDialog}
         canDuplicateTour={props.canDuplicateTour}
         onRequestDeleteTour={props.onRequestDeleteTour}

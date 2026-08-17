@@ -17,6 +17,7 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.21",
+    "@radix-ui/react-tooltip": "^1.2.16",
     "@tanstack/react-table": "^9.1.2",
     "@tiptap/extension-link": "^3.27.1",
     "@tiptap/react": "^3.27.1",

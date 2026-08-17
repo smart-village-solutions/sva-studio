@@ -409,7 +409,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
         sortable: true,
         sortLabel: t('admin.roles.detail.permissions.table.columns.assignment'),
         sortValue: (permission) => (permission.isAssigned ? '0' : '1'),
-        className: 'align-middle',
       },
       {
         id: 'detail',
@@ -484,7 +483,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               sortable: true,
               sortLabel: t('admin.roles.detail.permissions.table.columns.technicalKey'),
               sortValue: (permission) => permission.permissionKey.toLowerCase(),
-              className: 'align-middle',
             },
           ] satisfies readonly StudioColumnDef<RolePermissionTableRow>[])
         : []),

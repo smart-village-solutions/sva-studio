@@ -9,6 +9,7 @@ import {
   provisionInstanceAuthArtifactsViaProvisioner,
   readKeycloakAccessError,
   readKeycloakState,
+  readKeycloakStateViaTenantAdmin,
   readKeycloakStateViaProvisioner,
 } from './provisioning-auth-state.js';
 
@@ -31,6 +32,7 @@ const createInstanceKeycloakReaders = (
 };
 
 const defaultReaders = createInstanceKeycloakReaders(readKeycloakState);
+const tenantAdminReaders = createInstanceKeycloakReaders(readKeycloakStateViaTenantAdmin);
 const provisionerReaders = createInstanceKeycloakReaders(readKeycloakStateViaProvisioner);
 
 export const getInstanceKeycloakPreflight = defaultReaders.getInstanceKeycloakPreflight;
@@ -38,4 +40,5 @@ export const getInstanceKeycloakPreflightViaProvisioner = provisionerReaders.get
 export const getInstanceKeycloakPlan = defaultReaders.getInstanceKeycloakPlan;
 export const getInstanceKeycloakPlanViaProvisioner = provisionerReaders.getInstanceKeycloakPlan;
 export const getInstanceKeycloakStatus = defaultReaders.getInstanceKeycloakStatus;
+export const getInstanceKeycloakStatusViaTenantAdmin = tenantAdminReaders.getInstanceKeycloakStatus;
 export const getInstanceKeycloakStatusViaProvisioner = provisionerReaders.getInstanceKeycloakStatus;

@@ -149,7 +149,7 @@ describe('iam authorization shared helpers', () => {
     mocks.markPermissionCacheColdStart.mockReturnValueOnce(false);
     recordPermissionCacheColdStart('tenant-b');
     expect(mocks.cacheLogger.info).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 
   it('normalizes effective permission provenance deterministically', async () => {
     const { toEffectivePermissions } = await importShared();

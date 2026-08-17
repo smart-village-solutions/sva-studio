@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   },
   loadInstanceById: vi.fn(),
   getKeycloakAdminClientConfigFromEnv: vi.fn(),
+  getKeycloakTenantAdminClientConfigFromEnv: vi.fn(),
   resolveTenantAdminClientSecret: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock('../keycloak-admin-client.js', () => ({
     }
   },
   getKeycloakAdminClientConfigFromEnv: state.getKeycloakAdminClientConfigFromEnv,
+  getKeycloakTenantAdminClientConfigFromEnv: state.getKeycloakTenantAdminClientConfigFromEnv,
 }));
 
 vi.mock('../config-tenant-secret.js', () => ({
@@ -41,6 +43,12 @@ describe('iam account management shared runtime logging', () => {
     state.logger.warn.mockReset();
     state.loadInstanceById.mockReset();
     state.getKeycloakAdminClientConfigFromEnv.mockReset();
+    state.getKeycloakTenantAdminClientConfigFromEnv.mockReset();
+    state.getKeycloakTenantAdminClientConfigFromEnv.mockImplementation((input) => ({
+      baseUrl: process.env.KEYCLOAK_ADMIN_BASE_URL ?? process.env.KEYCLOAK_PROVISIONER_BASE_URL,
+      ...input,
+      adminRealm: input.realm,
+    }));
     state.resolveTenantAdminClientSecret.mockReset();
     process.env.KEYCLOAK_ADMIN_BASE_URL = 'https://keycloak.example.test';
     delete process.env.KEYCLOAK_PROVISIONER_BASE_URL;

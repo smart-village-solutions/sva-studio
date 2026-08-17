@@ -13,6 +13,7 @@ import { notifyPermissionInvalidation } from '../iam-account-management/shared-a
 import {
   getInstanceKeycloakPlanViaProvisioner,
   getInstanceKeycloakPreflightViaProvisioner,
+  getInstanceKeycloakStatusViaTenantAdmin,
   getInstanceKeycloakStatusViaProvisioner,
   provisionInstanceAuthArtifactsViaProvisioner,
 } from './provisioning-auth.js';
@@ -34,6 +35,9 @@ const getWorkerKeycloakPlan = async (input: Parameters<typeof getInstanceKeycloa
 
 const getWorkerKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaProvisioner>[0]) =>
   getInstanceKeycloakStatusViaProvisioner(input);
+
+const getTenantAuditKeycloakStatus = async (input: Parameters<typeof getInstanceKeycloakStatusViaTenantAdmin>[0]) =>
+  getInstanceKeycloakStatusViaTenantAdmin(input);
 
 const probePasswordSetupEmailCapability = async (input: {
   instanceId: string;
@@ -185,8 +189,7 @@ const registryRuntime = createInstanceRegistryRuntime({
     revealSecret: revealField,
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
-    readKeycloakStateViaProvisioner,
-    getKeycloakStatus: getWorkerKeycloakStatus,
+    getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },
   provisioningWorkerServiceDeps: {

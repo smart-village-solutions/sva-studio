@@ -1699,6 +1699,14 @@ const requireEnv = (key: string): string => {
   return value;
 };
 
+const requireTrimmedEnv = (key: string): string => {
+  const value = process.env[key]?.trim();
+  if (!value) {
+    throw new Error(`Missing required env: ${key}`);
+  }
+  return value;
+};
+
 const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {
   const envKey = `KEYCLOAK_PROVISIONER_${key}`;
   const value = process.env[envKey];
@@ -1709,11 +1717,25 @@ const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIE
 };
 
 export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK_ADMIN_REALM')): KeycloakAdminClientConfig => ({
-  baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
+  baseUrl: requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm,
   adminRealm: requireEnv('KEYCLOAK_ADMIN_REALM'),
   clientId: requireEnv('KEYCLOAK_ADMIN_CLIENT_ID'),
   clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
+});
+
+export const getKeycloakTenantAdminClientConfigFromEnv = (input: {
+  readonly realm: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+}): KeycloakAdminClientConfig => ({
+  baseUrl: process.env.KEYCLOAK_ADMIN_BASE_URL?.trim()
+    || process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim()
+    || requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
+  realm: input.realm,
+  adminRealm: input.realm,
+  clientId: input.clientId,
+  clientSecret: input.clientSecret,
 });
 
 const readProvisionerEnv = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {

@@ -1,3 +1,7 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 describe('schema guard helpers', () => {
@@ -123,5 +127,32 @@ describe('schema guard helpers', () => {
       '/legacy/migrations'
     );
     expect(resolveIamMigrationsDirectory({})).toBe('packages/data/migrations');
+  });
+
+  it('reads and caches the expected migration head per resolved directory', async () => {
+    const { resolveExpectedGooseMigrationFromDirectory } = await import('./schema-guard.js');
+    const migrationsDirectory = mkdtempSync(resolve(tmpdir(), 'sva-schema-guard-migrations-'));
+
+    try {
+      writeFileSync(resolve(migrationsDirectory, '0001_initial.sql'), '-- migration', 'utf8');
+      writeFileSync(resolve(migrationsDirectory, '0002_latest.sql'), '-- migration', 'utf8');
+
+      expect(resolveExpectedGooseMigrationFromDirectory(migrationsDirectory)).toEqual({
+        fileName: '0002_latest.sql',
+        version: 2,
+      });
+
+      writeFileSync(
+        resolve(migrationsDirectory, '0003_added_after_read.sql'),
+        '-- migration',
+        'utf8'
+      );
+      expect(resolveExpectedGooseMigrationFromDirectory(migrationsDirectory)).toEqual({
+        fileName: '0002_latest.sql',
+        version: 2,
+      });
+    } finally {
+      rmSync(migrationsDirectory, { force: true, recursive: true });
+    }
   });
 });

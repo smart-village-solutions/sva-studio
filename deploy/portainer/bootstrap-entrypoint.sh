@@ -97,6 +97,7 @@ $bootstrap$;`,
   `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
   `GRANT CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, CREATE ON SCHEMA public TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT SELECT (version_id, is_applied) ON TABLE public.goose_db_version TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
@@ -107,159 +108,6 @@ if ((process.env.SVA_BOOTSTRAP_RECONCILE_APP_ROLE ?? 'true').trim().toLowerCase(
   statements.push(...roleStatements);
 }
 
-if ((process.env.SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD ?? 'true').trim().toLowerCase() !== 'false') {
-  statements.push(`DO $schema_guard$
-DECLARE
-  failures text[];
-BEGIN
-  SELECT ARRAY_REMOVE(ARRAY[
-    CASE WHEN checks.groups_exists THEN NULL ELSE 'groups_exists' END,
-    CASE WHEN checks.group_roles_exists THEN NULL ELSE 'group_roles_exists' END,
-    CASE WHEN checks.account_groups_exists THEN NULL ELSE 'account_groups_exists' END,
-    CASE WHEN checks.activity_logs_exists THEN NULL ELSE 'activity_logs_exists' END,
-    CASE WHEN checks.platform_activity_logs_exists THEN NULL ELSE 'platform_activity_logs_exists' END,
-    CASE WHEN checks.accounts_instance_id_column_exists THEN NULL ELSE 'accounts_instance_id_column_exists' END,
-    CASE WHEN checks.accounts_username_ciphertext_column_exists THEN NULL ELSE 'accounts_username_ciphertext_column_exists' END,
-    CASE WHEN checks.accounts_avatar_url_column_exists THEN NULL ELSE 'accounts_avatar_url_column_exists' END,
-    CASE WHEN checks.accounts_preferred_language_column_exists THEN NULL ELSE 'accounts_preferred_language_column_exists' END,
-    CASE WHEN checks.accounts_timezone_column_exists THEN NULL ELSE 'accounts_timezone_column_exists' END,
-    CASE WHEN checks.accounts_notes_column_exists THEN NULL ELSE 'accounts_notes_column_exists' END,
-    CASE WHEN checks.account_groups_origin_column_exists THEN NULL ELSE 'account_groups_origin_column_exists' END,
-    CASE WHEN checks.instance_hostnames_exists THEN NULL ELSE 'instance_hostnames_exists' END,
-    CASE WHEN checks.instance_hostnames_rls_disabled THEN NULL ELSE 'instance_hostnames_rls_disabled' END,
-    CASE WHEN checks.instances_primary_hostname_column_exists THEN NULL ELSE 'instances_primary_hostname_column_exists' END,
-    CASE WHEN checks.instances_rls_disabled THEN NULL ELSE 'instances_rls_disabled' END,
-    CASE WHEN checks.instances_auth_realm_column_exists THEN NULL ELSE 'instances_auth_realm_column_exists' END,
-    CASE WHEN checks.instances_auth_client_id_column_exists THEN NULL ELSE 'instances_auth_client_id_column_exists' END,
-    CASE WHEN checks.instances_auth_issuer_url_column_exists THEN NULL ELSE 'instances_auth_issuer_url_column_exists' END,
-    CASE WHEN checks.instances_auth_client_secret_ciphertext_column_exists THEN NULL ELSE 'instances_auth_client_secret_ciphertext_column_exists' END,
-    CASE WHEN checks.instances_tenant_admin_username_column_exists THEN NULL ELSE 'instances_tenant_admin_username_column_exists' END,
-    CASE WHEN checks.instances_tenant_admin_email_column_exists THEN NULL ELSE 'instances_tenant_admin_email_column_exists' END,
-    CASE WHEN checks.instances_tenant_admin_first_name_column_exists THEN NULL ELSE 'instances_tenant_admin_first_name_column_exists' END,
-    CASE WHEN checks.instances_tenant_admin_last_name_column_exists THEN NULL ELSE 'instances_tenant_admin_last_name_column_exists' END,
-    CASE WHEN checks.idx_accounts_kc_subject_instance_exists THEN NULL ELSE 'idx_accounts_kc_subject_instance_exists' END,
-    CASE WHEN checks.accounts_isolation_policy_matches THEN NULL ELSE 'accounts_isolation_policy_matches' END,
-    CASE WHEN checks.instance_memberships_isolation_policy_matches THEN NULL ELSE 'instance_memberships_isolation_policy_matches' END
-  ], NULL)
-  INTO failures
-  FROM (
-    SELECT
-      to_regclass('iam.groups') IS NOT NULL AS groups_exists,
-      to_regclass('iam.group_roles') IS NOT NULL AS group_roles_exists,
-      to_regclass('iam.account_groups') IS NOT NULL AS account_groups_exists,
-      to_regclass('iam.activity_logs') IS NOT NULL AS activity_logs_exists,
-      to_regclass('iam.platform_activity_logs') IS NOT NULL AS platform_activity_logs_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'instance_id'
-      ) AS accounts_instance_id_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'username_ciphertext'
-      ) AS accounts_username_ciphertext_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'avatar_url'
-      ) AS accounts_avatar_url_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'preferred_language'
-      ) AS accounts_preferred_language_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'timezone'
-      ) AS accounts_timezone_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'accounts' AND column_name = 'notes'
-      ) AS accounts_notes_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'account_groups' AND column_name = 'origin'
-      ) AS account_groups_origin_column_exists,
-      to_regclass('iam.instance_hostnames') IS NOT NULL AS instance_hostnames_exists,
-      EXISTS (
-        SELECT 1
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'iam'
-          AND c.relname = 'instance_hostnames'
-          AND c.relrowsecurity = false
-          AND c.relforcerowsecurity = false
-      ) AS instance_hostnames_rls_disabled,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'primary_hostname'
-      ) AS instances_primary_hostname_column_exists,
-      EXISTS (
-        SELECT 1
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE n.nspname = 'iam'
-          AND c.relname = 'instances'
-          AND c.relrowsecurity = false
-          AND c.relforcerowsecurity = false
-      ) AS instances_rls_disabled,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'auth_realm'
-      ) AS instances_auth_realm_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'auth_client_id'
-      ) AS instances_auth_client_id_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'auth_issuer_url'
-      ) AS instances_auth_issuer_url_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'auth_client_secret_ciphertext'
-      ) AS instances_auth_client_secret_ciphertext_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'tenant_admin_username'
-      ) AS instances_tenant_admin_username_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'tenant_admin_email'
-      ) AS instances_tenant_admin_email_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'tenant_admin_first_name'
-      ) AS instances_tenant_admin_first_name_column_exists,
-      EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'iam' AND table_name = 'instances' AND column_name = 'tenant_admin_last_name'
-      ) AS instances_tenant_admin_last_name_column_exists,
-      EXISTS (
-        SELECT 1 FROM pg_indexes
-        WHERE schemaname = 'iam' AND tablename = 'accounts' AND indexname = 'idx_accounts_kc_subject_instance'
-      ) AS idx_accounts_kc_subject_instance_exists,
-      EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'iam'
-          AND tablename = 'accounts'
-          AND policyname = 'accounts_isolation_policy'
-          AND COALESCE(qual, '') LIKE '%instance_id = iam.current_instance_id()%'
-          AND COALESCE(with_check, '') LIKE '%instance_id = iam.current_instance_id()%'
-      ) AS accounts_isolation_policy_matches,
-      EXISTS (
-        SELECT 1 FROM pg_policies
-        WHERE schemaname = 'iam'
-          AND tablename = 'instance_memberships'
-          AND policyname = 'instance_memberships_isolation_policy'
-          AND COALESCE(qual, '') LIKE '%instance_id = iam.current_instance_id()%'
-          AND COALESCE(with_check, '') LIKE '%instance_id = iam.current_instance_id()%'
-      ) AS instance_memberships_isolation_policy_matches
-  ) checks;
-
-  IF COALESCE(array_length(failures, 1), 0) > 0 THEN
-    RAISE EXCEPTION 'schema_guard_failed:%', array_to_string(failures, ',');
-  END IF;
-END
-$schema_guard$;`);
-}
 
 if (
   (process.env.SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE ?? 'true').trim().toLowerCase() !== 'false' &&
@@ -482,5 +330,18 @@ PGPASSWORD="${POSTGRES_PASSWORD}" psql \
   -U "${POSTGRES_USER}" \
   -d "${POSTGRES_DB}" \
   -f "${tmp_sql}"
+
+case "${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD}" in
+  true)
+    echo "[bootstrap-entrypoint] verifying IAM database readiness"
+    node ./verify-iam-schema.mjs
+    ;;
+  false|'')
+    ;;
+  *)
+    echo "[bootstrap-entrypoint] invalid SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD value" >&2
+    exit 1
+    ;;
+esac
 
 echo "[bootstrap-entrypoint] bootstrap completed"

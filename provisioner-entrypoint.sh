@@ -18,6 +18,9 @@ require_env KEYCLOAK_PROVISIONER_REALM
 require_env KEYCLOAK_PROVISIONER_CLIENT_ID
 require_env KEYCLOAK_PROVISIONER_CLIENT_SECRET
 
+printf '[provisioner-entrypoint] verifying IAM database readiness\n' >&2
+node ./verify-iam-schema.mjs
+
 if [ "${SVA_PLUGIN_OPERATION_WORKER_LANE:-default}" = "privileged" ]; then
   require_env WASTE_DATABASE_PROVISIONER_USER
   require_env WASTE_DATABASE_PROVISIONER_PASSWORD_FILE

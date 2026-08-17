@@ -56,6 +56,7 @@ export default defineConfig({
       '../../deploy/backup-agent/agent.test.ts',
       '../../deploy/backup-agent-stack.test.ts',
       '../../deploy/portainer/migrate-waste-tenants.test.ts',
+      '../../deploy/portainer/iam-schema-readiness-deployment.test.ts',
       '../../deploy/portainer/waste-provisioner-deployment.test.ts',
     ],
     exclude: ['coverage/**', 'node_modules/**'],

@@ -131,9 +131,11 @@ describe('LocaleProvider', () => {
     expect(screen.getByText('4 Zeichen')).toBeTruthy();
     expect(screen.getByText('Kategorien')).toBeTruthy();
     expect(screen.getByText('Kategorie suchen oder auswählen')).toBeTruthy();
-    expect(screen.getAllByText('Wählen Sie keine, eine oder mehrere Kategorien aus.')).toHaveLength(
-      1
-    );
+    expect(
+      screen.getAllByText(
+        'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.'
+      )
+    ).toHaveLength(1);
     expect(screen.getByText('Schreibkontext & Metadaten')).toBeTruthy();
     expect(
       screen.getByText(

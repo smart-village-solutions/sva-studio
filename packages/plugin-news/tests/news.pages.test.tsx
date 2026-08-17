@@ -251,7 +251,11 @@ const openHistoryTab = async () => {
 
 const waitForCategoryControls = async () => {
   await waitFor(() => {
-    expect(screen.getByLabelText('Kategorien suchen').hasAttribute('disabled')).toBe(false);
+    expect(
+      screen
+        .getByRole('button', { name: 'Kategorie suchen oder auswählen' })
+        .hasAttribute('disabled')
+    ).toBe(false);
     expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
   });
 };
@@ -417,7 +421,8 @@ describe('News editor pages', () => {
         'news.targeting.globalConfirm.loadError':
           'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?',
         'news.fields.categories': 'Kategorien',
-        'news.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'news.fields.categoriesHelp':
+          'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
         'news.fields.categoriesSearch': 'Kategorien suchen',
         'news.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'news.fields.sourceUrl': 'Quell-URL',
@@ -780,13 +785,11 @@ describe('News editor pages', () => {
     expect(screen.queryByLabelText('Schlagwörter')).toBeNull();
     fireEvent.change(screen.getByLabelText('Bereich auswählen'), { target: { value: 'basis' } });
     await waitForCategoryControls();
-    const categoryInput = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(categoryInput, { target: { value: 'Allgemein' } });
-    fireEvent.blur(categoryInput);
-    expect(screen.getByText('Allgemein')).toBeTruthy();
-    fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
-    fireEvent.blur(categoryInput);
-    expect(screen.getByText('Rathaus')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    fireEvent.click(screen.getByLabelText('Allgemein'));
+    expect(screen.getByRole('button', { name: 'Kategorie Allgemein entfernen' })).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('Rathaus'));
+    expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     await openReleaseTab();
     fireEvent.click(screen.getByRole('checkbox', { name: /Push-Benachrichtigung senden/ }));
     fireEvent.change(screen.getByLabelText('Zeitpunkt der Veröffentlichung'), {

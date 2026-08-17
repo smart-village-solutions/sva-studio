@@ -81,6 +81,12 @@ Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host sch
 | ----------------------------------- | ----------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/mainserver/categories` | `categories.read` | `categories`         | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
 
+Die Content-Editoren für Veranstaltungen, News, POIs und generische Inhalte verwenden diese Liste als
+abschließenden Auswahlkatalog. Redakteurinnen und Redakteure können eine oder mehrere vorhandene Kategorien
+durchsuchen, auswählen und wieder entfernen, aber keine Freitext-Kategorie anlegen. Bereits gespeicherte
+Kategorien, die der Mainserver nicht mehr liefert, bleiben beim Bearbeiten sichtbar und entfernbar, damit ein
+anderweitiger Speichervorgang keine Daten unbemerkt löscht; neu auswählen lassen sie sich nicht.
+
 Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
 
 Das News-`payload` ist kein zweites Inhaltsmodell: redaktionelle Inhalte werden weiterhin über dedizierte Mainserver-Felder und `contentBlocks` geschrieben. Für technische Metadaten wird es jedoch verlustfrei durchgereicht. Der News-Editor ersetzt ausschließlich `wasteLocationKeys` oder entfernt diesen Schlüssel bei globaler Zustellung; unbekannte Payload-Felder bleiben erhalten. Ein Zielschlüssel besteht aus `{ street, zip, city }`, wobei `street` bei konkreten Adressen die Hausnummer enthält. Fehlen bei alten News `contentBlocks`, leitet der Adapter aus vorhandenen Payload-Werten keinen neuen redaktionellen Textbestand ab.

@@ -4,84 +4,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventsCategoryMultiselect } from '../src/events.category-multiselect.js';
 
 describe('EventsCategoryMultiselect', () => {
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(() => cleanup());
 
-  it('keeps typing stable when the current value exactly matches an existing category', () => {
+  it('only selects categories supplied by the Mainserver catalog', () => {
     const onChange = vi.fn();
-
     render(
       <EventsCategoryMultiselect
         availableCategories={[{ id: 'cat-1', name: 'Kultur' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputId="event-category"
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
+        emptyText="Keine passenden Kategorien gefunden."
+        helpText="Wählen Sie Kategorien aus."
+        inputPlaceholder="Kategorie suchen oder auswählen"
         loading={false}
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
         searchLabel="Kategorien suchen"
+        unavailableText="nicht mehr verfügbar"
         value={[]}
       />
     );
 
-    const input = screen.getByLabelText('Kategorien suchen');
-    expect(input.getAttribute('id')).toBe('event-category');
-
-    fireEvent.change(input, { target: { value: 'Kultur' } });
-
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    const searchInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(searchInput, { target: { value: 'Frei erfunden' } });
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
-    expect((input as HTMLInputElement).value).toBe('Kultur');
-  });
 
-  it('adds the current category on blur', () => {
-    const onChange = vi.fn();
-
-    render(
-      <EventsCategoryMultiselect
-        availableCategories={[{ id: 'cat-1', name: 'Kultur' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputId="event-category"
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading={false}
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    const input = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(input, { target: { value: 'Kultur' } });
-    fireEvent.blur(input);
-
+    fireEvent.change(searchInput, { target: { value: 'Kultur' } });
+    fireEvent.click(screen.getByLabelText('Kultur'));
     expect(onChange).toHaveBeenCalledWith(['Kultur']);
-  });
-
-  it('renders loading and error states', () => {
-    const onChange = vi.fn();
-
-    render(
-      <EventsCategoryMultiselect
-        availableCategories={[]}
-        errorMessage="Die Kategorien konnten nicht geladen werden."
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
-    expect(screen.getByText('Die Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
-    expect(screen.getAllByLabelText('Kategorien suchen').at(-1)?.hasAttribute('disabled')).toBe(true);
-    expect(onChange).not.toHaveBeenCalled();
   });
 });

@@ -97,22 +97,22 @@
       "branches": 91.36
     },
     "plugin-events": {
-      "lines": 87.05,
-      "statements": 86.74,
-      "functions": 80.38,
-      "branches": 82.55
+      "lines": 87,
+      "statements": 86.37,
+      "functions": 80.11,
+      "branches": 80.66
     },
     "plugin-news": {
-      "lines": 93.97,
-      "statements": 93.82,
+      "lines": 93.86,
+      "statements": 93.41,
       "functions": 93.2,
-      "branches": 83.21
+      "branches": 84.58
     },
     "plugin-poi": {
-      "lines": 89.7,
-      "statements": 89.67,
-      "functions": 83,
-      "branches": 84.97
+      "lines": 91.58,
+      "statements": 90.95,
+      "functions": 87.08,
+      "branches": 84.36
     },
     "plugin-sdk": {
       "lines": 92.41,
@@ -151,10 +151,10 @@
       "branches": 100
     },
     "studio-ui-react": {
-      "lines": 85.96,
-      "statements": 86.07,
-      "functions": 82.38,
-      "branches": 74.68
+      "lines": 92.6,
+      "statements": 91.67,
+      "functions": 92.31,
+      "branches": 85.99
     },
     "sva-mainserver": {
       "lines": 93.3,

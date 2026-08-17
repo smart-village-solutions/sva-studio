@@ -1,16 +1,16 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PoiCategoryMultiselect } from '../src/poi.category-multiselect.js';
+import { GenericItemsCategoryMultiselect } from '../src/generic-items.category-multiselect.js';
 
-describe('PoiCategoryMultiselect', () => {
+describe('GenericItemsCategoryMultiselect', () => {
   afterEach(() => cleanup());
 
   it('only selects categories supplied by the Mainserver catalog', () => {
     const onChange = vi.fn();
     render(
-      <PoiCategoryMultiselect
-        availableCategories={[{ id: 'cat-1', name: 'Verwaltung' }]}
+      <GenericItemsCategoryMultiselect
+        availableCategories={[{ id: 'cat-1', name: 'Mobilität' }]}
         emptyText="Keine passenden Kategorien gefunden."
         helpText="Wählen Sie Kategorien aus."
         inputPlaceholder="Kategorie suchen oder auswählen"
@@ -30,8 +30,8 @@ describe('PoiCategoryMultiselect', () => {
     fireEvent.keyDown(searchInput, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
 
-    fireEvent.change(searchInput, { target: { value: 'Verwaltung' } });
-    fireEvent.click(screen.getByLabelText('Verwaltung'));
-    expect(onChange).toHaveBeenCalledWith(['Verwaltung']);
+    fireEvent.change(searchInput, { target: { value: 'Mobilität' } });
+    fireEvent.click(screen.getByLabelText('Mobilität'));
+    expect(onChange).toHaveBeenCalledWith(['Mobilität']);
   });
 });

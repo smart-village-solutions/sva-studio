@@ -38,6 +38,8 @@ export const genericItemsDetailLabelEntries = translationEntries([
   ['categoriesHelp', 'fields.categoriesHelp'],
   ['categoriesSearch', 'fields.categoriesSearch'],
   ['categoriesSearchPlaceholder', 'fields.categoriesSearchPlaceholder'],
+  ['categoriesEmpty', 'fields.categoriesEmpty'],
+  ['categoryUnavailable', 'fields.categoryUnavailable'],
   ['contacts', 'fields.contacts'],
   ['contactsHelp', 'fields.contactsHelp'],
   ['webUrls', 'fields.webUrls'],

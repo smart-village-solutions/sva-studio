@@ -87,6 +87,11 @@ export {
 } from './media-intake-panel.js';
 export { Select } from './select.js';
 export {
+  SearchableMultiSelect,
+  type SearchableMultiSelectOption,
+  type SearchableMultiSelectProps,
+} from './searchable-multi-select.js';
+export {
   StudioFormSummaryErrors,
   getStudioFieldError,
   getStudioFormFieldProps,

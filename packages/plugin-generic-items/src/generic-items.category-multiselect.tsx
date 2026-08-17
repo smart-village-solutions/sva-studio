@@ -1,11 +1,11 @@
-import * as React from 'react';
-import { Badge, Input } from '@sva/studio-ui-react';
+import { SearchableMultiSelect } from '@sva/studio-ui-react';
 
 import type { GenericItemCategoryOption } from './generic-items.api-types.js';
 
 export type GenericItemsCategoryMultiselectProps = Readonly<{
   availableCategories: readonly GenericItemCategoryOption[];
   disabled?: boolean;
+  emptyText: string;
   errorMessage?: string;
   helpText: string;
   inputId?: string;
@@ -15,202 +15,45 @@ export type GenericItemsCategoryMultiselectProps = Readonly<{
   onChange: (value: string[]) => void;
   removeLabel: (name: string) => string;
   searchLabel: string;
+  unavailableText: string;
   value: string[];
 }>;
-
-const normalizeName = (value: string) => value.trim();
-
-const dedupeCategoryNames = (values: readonly string[]) =>
-  Array.from(new Set(values.map(normalizeName).filter((entry) => entry.length > 0)));
-
-const buildSuggestionNames = (availableCategories: readonly GenericItemCategoryOption[], normalizedValue: readonly string[]) =>
-  availableCategories
-    .map((category) => category.name.trim())
-    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
-
-const filterSuggestionNames = (suggestionNames: readonly string[], draftValue: string) => {
-  const normalizedDraftValue = draftValue.trim().toLocaleLowerCase();
-  if (normalizedDraftValue.length === 0) {
-    return suggestionNames;
-  }
-
-  return suggestionNames.filter((name) => name.toLocaleLowerCase().includes(normalizedDraftValue));
-};
-
-const useGenericItemsCategorySelection = ({
-  availableCategories,
-  onChange,
-  value,
-}: Readonly<{
-  availableCategories: readonly GenericItemCategoryOption[];
-  onChange: (value: string[]) => void;
-  value: string[];
-}>) => {
-  const [draftValue, setDraftValue] = React.useState('');
-  const normalizedValue = dedupeCategoryNames(value);
-  const suggestionNames = React.useMemo(() => buildSuggestionNames(availableCategories, normalizedValue), [availableCategories, normalizedValue]);
-  const filteredSuggestionNames = React.useMemo(() => filterSuggestionNames(suggestionNames, draftValue), [draftValue, suggestionNames]);
-
-  const addCategory = React.useCallback(() => {
-    const nextName = normalizeName(draftValue);
-    if (nextName.length === 0) {
-      return;
-    }
-
-    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
-    if (nextValue.length === normalizedValue.length) {
-      setDraftValue('');
-      return;
-    }
-
-    onChange(nextValue);
-    setDraftValue('');
-  }, [draftValue, normalizedValue, onChange]);
-
-  const removeCategory = React.useCallback(
-    (categoryName: string) => {
-      onChange(normalizedValue.filter((entry) => entry !== categoryName));
-    },
-    [normalizedValue, onChange]
-  );
-
-  return {
-    addCategory,
-    draftValue,
-    filteredSuggestionNames,
-    normalizedValue,
-    removeCategory,
-    setDraftValue,
-  };
-};
-
-const GenericItemsCategoryInput = ({
-  addCategory,
-  datalistId,
-  disabled,
-  draftValue,
-  errorMessage,
-  helpText,
-  inputId,
-  inputPlaceholder,
-  loading,
-  loadingText,
-  searchLabel,
-  setDraftValue,
-  suggestionNames,
-}: Readonly<{
-  addCategory: () => void;
-  datalistId: string;
-  disabled: boolean;
-  draftValue: string;
-  errorMessage?: string;
-  helpText: string;
-  inputId?: string;
-  inputPlaceholder: string;
-  loading: boolean;
-  loadingText: string;
-  searchLabel: string;
-  setDraftValue: (value: string) => void;
-  suggestionNames: readonly string[];
-}>) => (
-  <div className="space-y-2">
-    <Input
-      id={inputId}
-      aria-label={searchLabel}
-      list={datalistId}
-      disabled={disabled || loading}
-      placeholder={inputPlaceholder}
-      value={draftValue}
-      onChange={(event) => setDraftValue(event.currentTarget.value)}
-      onBlur={addCategory}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          addCategory();
-        }
-      }}
-    />
-    <datalist id={datalistId}>
-      {suggestionNames.map((name) => (
-        <option key={name} value={name} />
-      ))}
-    </datalist>
-    <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
-    {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-  </div>
-);
-
-const GenericItemsSelectedCategories = ({
-  disabled,
-  removeCategory,
-  removeLabel,
-  value,
-}: Readonly<{
-  disabled: boolean;
-  removeCategory: (categoryName: string) => void;
-  removeLabel: (name: string) => string;
-  value: readonly string[];
-}>) =>
-  value.length > 0 ? (
-    <div className="flex flex-wrap gap-2">
-      {value.map((name) => (
-        <Badge key={name} variant="outline" className="flex items-center gap-2 px-3 py-1">
-          <span>{name}</span>
-          <button
-            type="button"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-            aria-label={removeLabel(name)}
-            disabled={disabled}
-            onClick={() => removeCategory(name)}
-          >
-            x
-          </button>
-        </Badge>
-      ))}
-    </div>
-  ) : null;
 
 export function GenericItemsCategoryMultiselect({
   availableCategories,
   disabled = false,
+  emptyText,
   errorMessage,
   helpText,
-  inputId,
+  inputId = 'generic-item-category',
   inputPlaceholder,
   loading,
   loadingText,
   onChange,
   removeLabel,
   searchLabel,
+  unavailableText,
   value,
 }: GenericItemsCategoryMultiselectProps) {
-  const datalistId = React.useId();
-  const { addCategory, draftValue, filteredSuggestionNames, normalizedValue, removeCategory, setDraftValue } =
-    useGenericItemsCategorySelection({ availableCategories, onChange, value });
-
   return (
-    <div className="space-y-3">
-      <GenericItemsCategoryInput
-        addCategory={addCategory}
-        datalistId={datalistId}
-        disabled={disabled}
-        draftValue={draftValue}
-        errorMessage={errorMessage}
-        helpText={helpText}
-        inputId={inputId}
-        inputPlaceholder={inputPlaceholder}
-        loading={loading}
-        loadingText={loadingText}
-        searchLabel={searchLabel}
-        setDraftValue={setDraftValue}
-        suggestionNames={filteredSuggestionNames}
-      />
-      <GenericItemsSelectedCategories
-        disabled={disabled}
-        removeCategory={removeCategory}
-        removeLabel={removeLabel}
-        value={normalizedValue}
-      />
-    </div>
+    <SearchableMultiSelect
+      disabled={disabled}
+      emptyText={emptyText}
+      errorMessage={errorMessage}
+      helpText={helpText}
+      id={inputId}
+      loading={loading}
+      loadingText={loadingText}
+      onValueChange={onChange}
+      options={availableCategories.map((category) => ({
+        label: category.name,
+        value: category.name,
+      }))}
+      placeholder={inputPlaceholder}
+      removeLabel={removeLabel}
+      searchLabel={searchLabel}
+      unavailableText={unavailableText}
+      value={value}
+    />
   );
 }

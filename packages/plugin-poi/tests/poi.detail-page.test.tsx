@@ -241,7 +241,8 @@ describe('PoiDetailPage', () => {
         'poi.cards.advanced.payload.description': 'Payload und Zusatzfelder',
         'poi.fields.name': 'Name',
         'poi.fields.categories': 'Kategorien',
-        'poi.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'poi.fields.categoriesHelp':
+          'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
         'poi.fields.categoriesSearch': 'Kategorien suchen',
         'poi.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'poi.fields.operatorName': 'Name des Betreibers',
@@ -621,9 +622,8 @@ describe('PoiDetailPage', () => {
     render(<PoiDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    const categoryInput = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(categoryInput, { target: { value: 'Verwaltung' } });
-    fireEvent.blur(categoryInput);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    fireEvent.click(screen.getByLabelText('Verwaltung'));
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
     await waitFor(() => {

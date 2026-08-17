@@ -713,80 +713,134 @@ Das System MUST für POI-Write-Validierung, Geocoding-Operationen, Reverse-Geoco
 
 ### Requirement: Mainserver-Projektion trennt Quellkontext von IAM-Ownership
 
-Das System SHALL Mainserver-Quellkontext, DataProvider und externe Organisationswerte in der Studio-Projektion getrennt von kanonischer IAM-Ownership führen.
+Das System SHALL Mainserver-Quellkontext, DataProvider, Credential-Kontext und externe Organisationswerte getrennt von kanonischer IAM-Ownership führen. Der DataProvider SHALL als unveränderliche ursprüngliche Inhaber- und Autorenidentität geführt werden. `ownerUserId` und `ownerOrganizationId` SHALL ausschließlich aus konfliktfreien automatischen Principal-Bindungen abgeleitet werden.
 
-Ein Mainserver-DataProvider SHALL als externe Veröffentlichungsidentität behandelt werden, an der die verwendeten API-Credentials hängen. `ownerOrganizationId` SHALL nur gesetzt werden, wenn ein expliziter Studio-IAM-Owner bestimmt ist. Externe Mainserver-Organisationswerte, Credential-Kontext, DataProvider oder aktive Abfrageorganisationen SHALL nicht automatisch als IAM-Owner materialisiert werden.
+Credential-Kontext, aktive Abfrageorganisation, freie Autorenwerte, externe Organisationsfelder oder der aktuelle Actor SHALL keine konkurrierende Ownership begründen. Im Modus `credential_visible_compatibility` SHALL die Projektion keine erfundene Owner-Zuordnung persistieren.
 
 #### Scenario: Externe Organisation wird als Quellmetadatum projiziert
 
 - **GIVEN** ein Mainserver-Datensatz enthält eine externe Organisation oder einen DataProvider
-- **WHEN** Studio den Datensatz in die Inhaltsliste projiziert
-- **THEN** speichert die Projektion diesen Wert als Quell- oder Integrationsmetadatum
-- **AND** setzt `ownerOrganizationId` nicht allein aufgrund dieses externen Werts
+- **WHEN** Studio ihn in die Inhaltsliste projiziert
+- **THEN** speichert die Projektion diese Werte als Quellmetadaten
+- **AND** setzt keinen IAM-Owner allein aufgrund externer Werte
 
-#### Scenario: DataProvider wird explizit auf Studio-Organisation gemappt
+#### Scenario: DataProvider ist automatisch einem Account zugeordnet
 
-- **GIVEN** ein Mainserver-Datensatz enthält DataProvider `dp-1`
-- **AND** Studio besitzt eine explizite Zuordnung von `dp-1` zu Studio-Organisation `org-1`
+- **GIVEN** ein Mainserver-Datensatz enthält DataProvider `dp-user-1`
+- **AND** eine konfliktfreie automatische Bindung ordnet ihn Account `account-1` zu
 - **WHEN** Studio den Datensatz projiziert
-- **THEN** setzt die Projektion `sourceDataProviderId` auf `dp-1`
-- **AND** setzt `ownerOrganizationId` auf `org-1`
-- **AND** dokumentiert die Ownership-Herleitung als explizites DataProvider-Mapping
+- **THEN** setzt es `sourceDataProviderId = dp-user-1`
+- **AND** leitet `ownerUserId = account-1` als rekonstruierbare IAM-Projektion ab
+- **AND** setzt keine Organisationsownership aus dem aktiven Kontext
 
-#### Scenario: Persönlicher Credential-Fallback erzeugt keine Organisationsownership
+#### Scenario: DataProvider ist automatisch einer Organisation zugeordnet
 
-- **GIVEN** ein Mainserver-Datensatz wurde über User-Fallback-Credentials erzeugt
-- **AND** der resultierende DataProvider ist nicht explizit einer Studio-Organisation zugeordnet
+- **GIVEN** ein Mainserver-Datensatz enthält DataProvider `dp-org-1`
+- **AND** eine konfliktfreie automatische Bindung ordnet ihn Organisation `org-1` zu
 - **WHEN** Studio den Datensatz projiziert
-- **THEN** setzt die Projektion keine Organisationsownership aus dem aktiven Organisationskontext
-- **AND** setzt höchstens eine explizit herleitbare User-Ownership
+- **THEN** setzt es `sourceDataProviderId = dp-org-1`
+- **AND** leitet `ownerOrganizationId = org-1` als rekonstruierbare IAM-Projektion ab
 
-#### Scenario: Expliziter IAM-Owner ist vorhanden
+#### Scenario: Kompatibilitätsmodus erfindet keinen Owner
 
-- **GIVEN** ein Mainserver-Datensatz ist einem kanonischen Studio-IAM-Owner explizit zugeordnet
+- **GIVEN** die für den Scope erforderliche automatische Bindung fehlt oder ist konfliktbehaftet
 - **WHEN** Studio den Datensatz projiziert
-- **THEN** setzt die Projektion `ownerUserId` oder `ownerOrganizationId` aus dieser kanonischen Zuordnung
-- **AND** Sichtbarkeitsentscheidungen verwenden danach die normale IAM-Authorization-Engine
+- **THEN** persistiert es DataProvider und Credential-Kontext als Quellmetadaten
+- **AND** setzt keinen Owner aus Actor, aktiver Organisation oder Credential-Quelle
+- **AND** kennzeichnet die Scope-Auswertung als `credential_visible_compatibility`
 
-#### Scenario: Ownerloser Mainserver-Datensatz bleibt fail-closed
+#### Scenario: Mutationsprincipal weicht vom ursprünglichen Inhaber ab
 
-- **GIVEN** ein Mainserver-Datensatz besitzt keinen kanonischen Studio-IAM-Owner
-- **WHEN** ein Benutzer mit nur `own`- oder `organization`-Scope die Inhaltsliste lädt
-- **THEN** ist der Datensatz nicht aufgrund externer Organisationsmetadaten sichtbar
-- **AND** Sichtbarkeit erfordert eine passende globale Berechtigung oder eine spätere explizite Ownership-Zuordnung
+- **GIVEN** ein Inhalt besitzt einen DataProvider
+- **AND** ein anderer zulässiger Principal führt eine bestätigte Mutation aus
+- **WHEN** Studio die Projektion aktualisiert
+- **THEN** bleibt die Ownership vom Content-DataProvider abgeleitet
+- **AND** dokumentiert `credentialSource` getrennt den Mutationsprincipal
+
+#### Scenario: Ownerloser Mainserver-Datensatz ist im exakten Modus eingeschränkt
+
+- **GIVEN** ein Mainserver-Datensatz besitzt keinen konfliktfrei zugeordneten DataProvider
+- **AND** der relevante Scope ist exakt
+- **WHEN** ein Benutzer nur `own` oder `organization` besitzt
+- **THEN** matcht der Datensatz nicht
+- **AND** Zugriff erfordert `all` oder einen Scope im ausdrücklich aktiven Kompatibilitätsmodus
 
 ### Requirement: Mainserver-Mutationen verwenden expliziten Organisations- oder Benutzerkontext
 
-Das System SHALL schreibende Mainserver-Mutationen für Benutzer mit mehreren Organisationsmitgliedschaften in einem expliziten Mutationskontext ausführen. Eine Mutation SHALL entweder im Modus `organization` mit validierter `activeOrganizationId` oder im Modus `user` mit persönlicher Credential-Quelle laufen.
+Das System SHALL schreibende Mainserver-Mutationen in einem expliziten Principal-Kontext ausführen. Eine Mutation SHALL entweder mit `actingPrincipalType = organization` und validierter aktiver Organisation oder mit `actingPrincipalType = user` und authentifiziertem Account laufen. Die Auswahl SHALL die Credential-Quelle bestimmen. Listenfilter, DataProvider, externe Organisationswerte, andere Memberships oder frühere UI-Auswahlen SHALL die aktive Organisation nicht ersetzen.
 
-Listenfilter, Mainserver-DataProvider, externe Organisationswerte oder vorherige UI-Auswahlen SHALL die aktive Organisation nicht implizit ersetzen.
+Beim Create SHALL `contentAuthorPolicy` die zulässige Wahl begrenzen. Bei bestehenden eigenen oder organisatorischen Inhalten SHALL die konfliktfreie DataProvider-Bindung zusammen mit der Ressourcen-Capability den Principal festlegen. Ein Same-Credential-Pre-Read SHALL die aktuelle Verfügbarkeit und den Content-DataProvider liefern. Update, Veröffentlichung, Archivierung und Wiederherstellung SHALL den DataProvider gemäß bestätigter Typ-/Aktionsmatrix erhalten. Hard Delete SHALL den Provider aus dem Preimage auditieren und keinen Post-Read verlangen.
 
-#### Scenario: Benutzer legt Datensatz im Namen einer aktiven Organisation an
+#### Scenario: Benutzer erstellt Datensatz im Namen der aktiven Organisation
 
-- **GIVEN** ein Benutzer ist Mitglied in Organisation `org-1` und `org-2`
-- **AND** die Session enthält `activeOrganizationId = org-2`
-- **AND** Organisation `org-2` besitzt vollständige Mainserver-Credentials
-- **WHEN** der Benutzer einen Mainserver-gestützten Inhalt im Organisationsmodus anlegt
-- **THEN** verwendet das System ausschließlich die Credentials von `org-2`
-- **AND** setzt `ownerOrganizationId` auf `org-2`
-- **AND** speichert den resultierenden Mainserver-DataProvider als externe Quellidentität
+- **GIVEN** die Session enthält eine validierte aktive Organisation
+- **AND** deren Credentials sind vollständig
+- **WHEN** der Benutzer mit `actingPrincipalType = organization` erstellt
+- **THEN** verwendet Studio ausschließlich deren Credentials
+- **AND** bestätigt der zurückgelieferte DataProvider ausschließlich die vorab per Identity-Endpunkt verifizierte Bindung dieser Credential-Version
+- **AND** berücksichtigt Studio keine andere Membership
 
 #### Scenario: Aktive Organisation fehlt bei Organisationsmutation
 
-- **GIVEN** ein Benutzer ist Mitglied in mehreren Organisationen
-- **AND** die Mutation verlangt Organisationsmodus
-- **AND** der Request enthält keine validierte `activeOrganizationId`
+- **GIVEN** der Request verwendet `actingPrincipalType = organization`
+- **AND** die Session enthält keine validierte aktive Organisation
 - **WHEN** die Mutation ausgeführt werden soll
-- **THEN** weist das System die Mutation vor dem Mainserver-Aufruf ab
-- **AND** es errät keine Organisation aus DataProvider, Listenfilter oder früherer Auswahl
+- **THEN** weist Studio sie vor dem Mainserver-Aufruf ab
+- **AND** errät keine Organisation aus DataProvider, Memberships oder früherer Auswahl
 
-#### Scenario: Persönliche Mutation bleibt persönlich
+#### Scenario: Persönlicher Create bleibt persönlich
 
-- **GIVEN** ein Benutzer ist Mitglied in mehreren Organisationen
-- **AND** die Mutation läuft explizit im Modus `user`
-- **WHEN** das System User-Fallback-Credentials verwendet
-- **THEN** setzt das System keine Organisationsownership aus einer aktiven oder früher aktiven Organisation
-- **AND** speichert `credentialSource = user` oder eine äquivalente Credential-Herkunft
+- **GIVEN** persönliches Handeln ist zulässig
+- **WHEN** ein Benutzer mit `actingPrincipalType = user` erstellt
+- **THEN** verwendet Studio ausschließlich seine persönlichen Credentials
+- **AND** bestätigt der zurückgelieferte DataProvider ausschließlich die vorab per Identity-Endpunkt verifizierte persönliche Bindung
+- **AND** setzt Studio keine Organisationsownership
+
+#### Scenario: Persönlicher Bestandsinhalt verwendet den persönlichen Principal
+
+- **GIVEN** ein bestehender Inhalt ist konfliktfrei an den persönlichen DataProvider des aktuellen Benutzers gebunden
+- **AND** die aktive Organisation erzwingt bei Creates `content_author_policy = 'org_only'`
+- **WHEN** der Benutzer den Inhalt mit passender Ressourcen-Capability mutiert
+- **THEN** verwendet Studio `actingPrincipalType = user`
+- **AND** ändert oder überträgt es die Ownership nicht
+
+#### Scenario: Organisationsinhalt verwendet den Organisationsprincipal
+
+- **GIVEN** ein bestehender Inhalt ist konfliktfrei an den DataProvider der aktiven Organisation gebunden
+- **WHEN** ein berechtigtes Mitglied den Inhalt mutiert
+- **THEN** verwendet Studio `actingPrincipalType = organization`
+- **AND** bleibt der tatsächliche Benutzer als Actor im Audit erhalten
+
+#### Scenario: Bestehende Mutation verwendet Same-Credential-Pre-Read
+
+- **GIVEN** ein Benutzer möchte einen bestehenden Inhalt aktualisieren
+- **WHEN** Studio die Mutation autorisiert
+- **THEN** liest es den Inhalt unmittelbar mit dem gebundenen Write-Credential
+- **AND** verwendet DataProvider und Verfügbarkeit dieses Reads für die Scope-Entscheidung
+- **AND** führt bei fehlendem Zugriff keinen Write aus
+
+#### Scenario: Update erhält bestehenden DataProvider
+
+- **GIVEN** Pre-Read liefert DataProvider `dp-original`
+- **AND** die Typ-/Aktionsmatrix bestätigt Immutabilität für dieses Update
+- **WHEN** Studio den Write mit einem zulässigen Principal ausführt
+- **THEN** erwartet es weiterhin `dp-original`
+- **AND** behandelt eine Abweichung als `reconciliation_required`
+
+#### Scenario: Hard Delete verwendet Preimage statt Post-Read
+
+- **GIVEN** Pre-Read liefert DataProvider `dp-original`
+- **AND** der Benutzer besitzt die separate Delete-Permission
+- **WHEN** der Mainserver den Hard Delete bestätigt
+- **THEN** finalisiert Studio den Tombstone mit `dp-original`
+- **AND** interpretiert einen fehlenden Post-Delete-Datensatz nicht als Integritätsverletzung
+
+#### Scenario: Persönliche Mutation dokumentiert Credential-Herkunft
+
+- **GIVEN** eine Mutation läuft mit `actingPrincipalType = user`
+- **WHEN** Studio Projection, Journal und Audit nachzieht
+- **THEN** speichert es `credentialSource = user` oder eine äquivalente Herkunft
+- **AND** setzt keine synthetische Organisationsownership
 
 ### Requirement: Typed Survey GraphQL Adapters
 
@@ -1246,4 +1300,25 @@ Das System MUST die kontrollierten FeaturedProject-Felder auf die festgelegten G
 - **WHEN** eine Projekte-Mutation das nur lesbare Feld `Published` enthält
 - **THEN** weist der Host die Mutation vor dem Mainserver-Aufruf ab
 - **AND** leitet er `visible`, `publishedAt` und das ausgegebene Feld `Published` ausschließlich aus dem host-owned Lifecycle ab
+
+### Requirement: V2-Mutationen binden den geladenen Sessionkontext
+
+Das System MUST bei V2-Updates und -Deletes einen nicht autorisierenden Kontext-Bindungswert aus einem aktuellen Detail-Read verlangen und ihn vor dem Provider-Write gegen den authentifizierten Session- und Organisationskontext prüfen. Ein Client ohne vorhandenen Bindungswert MUST das Detail vor der Mutation erneut laden und MUST fail-closed abbrechen, wenn der Read keinen Bindungswert liefert. Requests ohne Vertragsversion dürfen nur im konfigurierten Legacy-Übergang ohne diesen Wert verarbeitet werden.
+
+#### Scenario: V2-Update ohne Kontextbindung wird abgelehnt
+
+- **GIVEN** ein Client sendet Vertragsversion 2
+- **WHEN** er ein bestehendes Mainserver-Objekt ohne Kontext-Bindungswert aktualisiert
+- **THEN** beginnt kein Provider-Write
+- **AND** Studio antwortet mit einem deterministischen Context-Binding-Fehler
+
+### Requirement: Projektionsscopes isolieren explizite Principals
+
+Das System SHALL gezielte Mutation-Refreshes nach `user` und `organization` im Projektionsscope isolieren. Ein automatischer Full-Refresh SHALL nur seinen eigenen Scope ersetzen oder löschen und SHALL keine Zeilen eines expliziten anderen Principal-Scopes entfernen. Listenreads SHALL die für den aktuellen Account und die aktive Organisation zulässigen Principal-Scopes berücksichtigen.
+
+#### Scenario: Persönlicher Full-Refresh erhält organisatorische Mutationsprojektion
+
+- **GIVEN** ein `org_or_personal`-Kontext enthält eine durch eine Organisationsmutation aktualisierte Projektionszeile
+- **WHEN** ein impliziter Full-Refresh mit persönlichen Credentials läuft
+- **THEN** bleibt die organisatorische Projektionszeile erhalten
 

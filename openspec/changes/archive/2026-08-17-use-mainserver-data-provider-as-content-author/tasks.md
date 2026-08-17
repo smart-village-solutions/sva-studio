@@ -85,9 +85,9 @@
 - [x] 7.4 Vor einer Production-Aktivierung die persönliche und organisatorische Vertragsevidenz vervollständigen und den rollbackfähigen Resolverpfad beibehalten; Development und Staging bleiben aufgrund der ausdrücklichen Produktentscheidung auf `automatic`.
 - [x] 7.5 Eine neue ADR für die Trennung aus Create-Policy, IAM-Read-Scope und ressourcenbezogener Bestandsmutation erstellen, ADR-045 damit supersedieren und die weiterhin gültigen Credential-, Secret- und Isolationsentscheidungen ausdrücklich übernehmen.
 - [x] 7.6 Betroffene arc42-Abschnitte 05, 06, 08 und 09 sowie relevante Content-, IAM-, Mainserver- und History-Dokumentation an den freigegebenen Vertrag anpassen.
-- [ ] 7.7 Nach der noch offenen Umsetzung die kleinsten relevanten Unit-, Type-, Server-Runtime-, Datenbank-, File-Placement- und realen E2E-Gates ausführen und anschließend den gemessenen affected Scope bewerten.
+- [x] 7.7 Die kleinsten relevanten Unit-, Type-, Server-Runtime-, Datenbank-, File-Placement- und realen E2E-Gates ausführen und anschließend den gemessenen affected Scope bewerten; die abschließenden PR-Gates für #1050 waren am exakten Head vollständig grün.
 - [x] 7.8 Nach Verfügbarkeit stabiler Identity-IDs automatische Verifikation aktivieren und den Kompatibilitätspfad erst entfernen, wenn produktive Metriken keine Nutzung mehr zeigen.
-- [ ] 7.9 Den autoritativen Production-Config-Builder mit Legacy-Secret-Bridge über Dev, Staging und Production ausrollen und den effektiven Resolverwert `automatic` live bestätigen.
+- [x] 7.9 Den autoritativen Production-Config-Builder mit Legacy-Secret-Bridge über Dev, Staging und Production ausrollen und den effektiven Resolverwert `automatic` live bestätigen; Production-Run `32028385009`, Live-Digest `sha256:81f47ae9a264d6095584162b5789661c786d45d18d3c4324ed3e7b7609490603`, `health/live` und `health/ready` jeweils HTTP 200.
 
 ## 8. Stabilen Identity-Vertrag zum Zielzustand machen
 

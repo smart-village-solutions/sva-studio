@@ -1,4 +1,5 @@
 import { Slot } from '@radix-ui/react-slot';
+import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
@@ -71,9 +72,7 @@ const resolveButtonTooltip = ({
     return tooltip;
   }
 
-  return asChild
-    ? (child?.props.title ?? child?.props['aria-label'])
-    : (title ?? label);
+  return asChild ? (child?.props.title ?? child?.props['aria-label']) : (title ?? label);
 };
 
 const enhanceSlottedButtonChild = ({
@@ -99,47 +98,59 @@ const enhanceSlottedButtonChild = ({
   });
 };
 
+const TooltipTrigger = React.forwardRef<
+  HTMLElement,
+  React.HTMLAttributes<HTMLElement> & {
+    readonly existingDescription?: string;
+  }
+>(({ children, existingDescription, ...props }, ref) => {
+  const tooltipDescription = props['aria-describedby'];
+  const description = [existingDescription, tooltipDescription].filter(Boolean).join(' ');
+
+  return (
+    <Slot ref={ref} {...props} aria-describedby={description || undefined}>
+      {React.isValidElement<React.HTMLAttributes<HTMLElement>>(children)
+        ? React.cloneElement(children, { 'aria-describedby': description || undefined })
+        : children}
+    </Slot>
+  );
+});
+TooltipTrigger.displayName = 'TooltipTrigger';
+
 const IconButtonTooltip = ({
   label,
   children,
 }: {
   readonly label: string;
-  readonly children: React.ReactNode;
+  readonly children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;
 }) => {
   const [open, setOpen] = React.useState(false);
-  const tooltipId = React.useId();
-  const triggerChild = React.isValidElement<{ 'aria-describedby'?: string }>(children)
-    ? React.cloneElement(children, {
-        'aria-describedby':
-          [children.props['aria-describedby'], open ? tooltipId : undefined]
-            .filter(Boolean)
-            .join(' ') || undefined,
-      })
-    : children;
 
   return (
-    <span
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocusCapture={() => setOpen(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setOpen(false);
-        }
-      }}
-    >
-      {triggerChild}
-      {open ? (
-        <span
-          id={tooltipId}
-          role="tooltip"
-          className="pointer-events-none absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-md"
-        >
-          {label}
-        </span>
-      ) : null}
-    </span>
+    <TooltipPrimitive.Provider delayDuration={0} skipDelayDuration={300}>
+      <TooltipPrimitive.Root open={open} onOpenChange={setOpen}>
+        <TooltipPrimitive.Trigger asChild>
+          <TooltipTrigger
+            existingDescription={children.props['aria-describedby']}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+          >
+            {children}
+          </TooltipTrigger>
+        </TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Portal>
+          <TooltipPrimitive.Content
+            side="top"
+            sideOffset={6}
+            collisionPadding={8}
+            className="z-50 max-w-64 rounded-md border border-border bg-popover px-2 py-1 text-center text-xs font-medium text-popover-foreground shadow-md"
+          >
+            {label}
+            <TooltipPrimitive.Arrow className="fill-popover" />
+          </TooltipPrimitive.Content>
+        </TooltipPrimitive.Portal>
+      </TooltipPrimitive.Root>
+    </TooltipPrimitive.Provider>
   );
 };
 

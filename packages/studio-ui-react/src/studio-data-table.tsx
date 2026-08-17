@@ -19,6 +19,7 @@ import {
 import { Button, type ButtonProps } from './button.js';
 import { Checkbox } from './checkbox.js';
 import { Select } from './select.js';
+import { StudioTableLayoutProvider } from './studio-table-layout-context.js';
 import { cn } from './utils.js';
 
 export type StudioDataTableLabels = Readonly<{
@@ -542,95 +543,99 @@ export function StudioDataTable<TData extends RowData>({
       {toolbarContent}
 
       <div className={isCompact ? 'hidden' : 'overflow-x-auto'}>
-        <table className="min-w-full border-collapse" aria-label={ariaLabel}>
-          {caption ? <caption className="sr-only">{caption}</caption> : null}
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  const meta = header.column.columnDef.meta as
-                    { headerClassName?: string } | undefined;
+        <StudioTableLayoutProvider layout="wide">
+          <table className="min-w-full border-collapse" aria-label={ariaLabel}>
+            {caption ? <caption className="sr-only">{caption}</caption> : null}
+            <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const meta = header.column.columnDef.meta as
+                      { headerClassName?: string } | undefined;
 
-                  return (
-                    <th
-                      key={header.id}
-                      scope="col"
-                      className={cn('px-3 py-3', meta?.headerClassName)}
-                      aria-sort={
-                        header.column.getCanSort()
-                          ? getAriaSort(header.column.getIsSorted())
-                          : undefined
-                      }
-                    >
-                      {renderHeaderCellContent(header)}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className="border-t border-border text-sm text-foreground transition-colors duration-150 hover:bg-muted/40"
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const meta = cell.column.columnDef.meta as { className?: string } | undefined;
-                  return (
-                    <td key={cell.id} className={cn('px-3 py-3 align-top', meta?.className)}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    return (
+                      <th
+                        key={header.id}
+                        scope="col"
+                        className={cn('px-3 py-3', meta?.headerClassName)}
+                        aria-sort={
+                          header.column.getCanSort()
+                            ? getAriaSort(header.column.getIsSorted())
+                            : undefined
+                        }
+                      >
+                        {renderHeaderCellContent(header)}
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-t border-border text-sm text-foreground transition-colors duration-150 hover:bg-muted/40"
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const meta = cell.column.columnDef.meta as { className?: string } | undefined;
+                    return (
+                      <td key={cell.id} className={cn('px-3 py-3 align-top', meta?.className)}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </StudioTableLayoutProvider>
       </div>
 
       <div className={isCompact ? 'space-y-3 p-3' : 'hidden'}>
-        {mobileSortingControls}
-        {table.getRowModel().rows.map((row) => (
-          <article
-            key={row.id}
-            className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
-          >
-            {selectionMode === 'multiple' ? (
-              <div className="mb-3 flex justify-end">
-                <Checkbox
-                  aria-label={(labels.selectMobileRow ?? labels.selectRow)({
-                    label: ariaLabel,
-                    rowId: row.id,
-                  })}
-                  checked={row.getIsSelected()}
-                  disabled={!row.getCanSelect()}
-                  ref={undefined}
-                  onChange={(event) => row.toggleSelected(event.target.checked)}
-                />
+        <StudioTableLayoutProvider layout="compact">
+          {mobileSortingControls}
+          {table.getRowModel().rows.map((row) => (
+            <article
+              key={row.id}
+              className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
+            >
+              {selectionMode === 'multiple' ? (
+                <div className="mb-3 flex justify-end">
+                  <Checkbox
+                    aria-label={(labels.selectMobileRow ?? labels.selectRow)({
+                      label: ariaLabel,
+                      rowId: row.id,
+                    })}
+                    checked={row.getIsSelected()}
+                    disabled={!row.getCanSelect()}
+                    ref={undefined}
+                    onChange={(event) => row.toggleSelected(event.target.checked)}
+                  />
+                </div>
+              ) : null}
+              <div className="space-y-3">
+                {row.getVisibleCells().map((cell) => {
+                  if (cell.column.id === '__select__') {
+                    return null;
+                  }
+
+                  const meta = cell.column.columnDef.meta as
+                    { mobileClassName?: string; mobileLabel?: React.ReactNode } | undefined;
+
+                  return (
+                    <div key={cell.id} className={cn('grid gap-1', meta?.mobileClassName)}>
+                      <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                        {meta?.mobileLabel}
+                      </span>
+                      <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
+                    </div>
+                  );
+                })}
               </div>
-            ) : null}
-            <div className="space-y-3">
-              {row.getVisibleCells().map((cell) => {
-                if (cell.column.id === '__select__') {
-                  return null;
-                }
-
-                const meta = cell.column.columnDef.meta as
-                  { mobileClassName?: string; mobileLabel?: React.ReactNode } | undefined;
-
-                return (
-                  <div key={cell.id} className={cn('grid gap-1', meta?.mobileClassName)}>
-                    <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                      {meta?.mobileLabel}
-                    </span>
-                    <div>{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </article>
-        ))}
+            </article>
+          ))}
+        </StudioTableLayoutProvider>
       </div>
 
       {footerContent}

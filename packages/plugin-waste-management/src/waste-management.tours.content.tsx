@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-
 import { StatusNotice } from './waste-management.page.support.js';
 import { useWasteTabPanelActions } from './waste-management.tab-panel-actions.js';
 import {
@@ -8,21 +7,12 @@ import {
   type WasteToursFilterViewModel,
   type WasteToursTableViewModel,
 } from './waste-management.tours.content.body.js';
-import {
-  WasteToursDeleteDialogs,
-  useWasteToursSelectionState,
-} from './waste-management.tours.content.parts.js';
-import {
-  applyWasteToursFilters,
-  resetWasteToursFilters,
-  updateWasteToursSorting,
-} from './waste-management.tours.content.helpers.js';
+import { WasteToursDeleteDialogs, useWasteToursSelectionState } from './waste-management.tours.content.parts.js';
+import { applyWasteToursFilters, resetWasteToursFilters, updateWasteToursSorting } from './waste-management.tours.content.helpers.js';
 import type { WasteToursContentProps } from './waste-management.tours.view-model.js';
 import { WasteToursBulkValidityDialog } from './waste-management.tours-bulk-validity.js';
 import { useWasteToursContentSorting } from './waste-management.tours.content.sorting.js';
-
 export { WasteToursEmptyState } from './waste-management.tours.empty-state.js';
-
 export const WasteToursContent = (props: WasteToursContentProps) => {
   const {
     assignmentContextLoading,
@@ -70,6 +60,8 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     readonly tour: (typeof tours)[number];
     readonly nextActive: boolean;
   } | null>(null);
+  const [statusChangePending, setStatusChangePending] = useState(false);
+  const [statusChangeError, setStatusChangeError] = useState<string | null>(null);
   const {
     selectedTourIds,
     setSelectedTourIds,
@@ -116,9 +108,7 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     endDateFrom,
     endDateTo,
   });
-
   useWasteTabPanelActions(null);
-
   const filters: WasteToursFilterViewModel = {
     filterDialogOpen,
     query,
@@ -199,12 +189,12 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
     canManageScheduling,
     search,
     onToggleTourStatus: (tour, nextActive) => {
+      setStatusChangeError(null);
       setTourPendingStatusChange({ tour, nextActive });
       return Promise.resolve();
     },
     setTourPendingDelete,
   };
-
   return (
     <div className="space-y-4">
       <StatusNotice message={message} />
@@ -234,18 +224,27 @@ export const WasteToursContent = (props: WasteToursContentProps) => {
         bulkDeleteOpen={bulkDeleteOpen}
         selectedTourIds={selectedTourIds}
         onCancelSingle={() => setTourPendingDelete(null)}
-        onCancelStatusChange={() => setTourPendingStatusChange(null)}
+        onCancelStatusChange={() => {
+          setStatusChangeError(null);
+          setTourPendingStatusChange(null);
+        }}
         onCancelBulk={() => setBulkDeleteOpen(false)}
         onDeleteTour={onDeleteTour}
         onConfirmStatusChange={() => {
           if (!tourPendingStatusChange) {
             return Promise.resolve();
           }
-
+          setStatusChangePending(true);
+          setStatusChangeError(null);
           return Promise.resolve(
             onToggleTourStatus(tourPendingStatusChange.tour, tourPendingStatusChange.nextActive)
-          ).finally(() => setTourPendingStatusChange(null));
+          )
+            .then(() => setTourPendingStatusChange(null))
+            .catch(() => setStatusChangeError(pt('tours.statusDialog.error')))
+            .finally(() => setStatusChangePending(false));
         }}
+        statusChangePending={statusChangePending}
+        statusChangeError={statusChangeError}
         onDeleteTours={onDeleteTours}
         onAfterBulkDelete={() => {
           setSelectedTourIds([]);

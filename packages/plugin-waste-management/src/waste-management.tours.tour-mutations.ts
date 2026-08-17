@@ -1,6 +1,5 @@
 import { startTransition, type FormEvent } from 'react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
-
 import {
   createWasteManagementTour,
   createWasteManagementLocationTourPickupDate,
@@ -168,6 +167,7 @@ const createToggleTourStatusHandler =
             ? pt('tours.messages.saveForbidden')
             : pt('tours.messages.saveError'),
       });
+      throw saveError;
     } finally {
       state.setSaving(false);
     }

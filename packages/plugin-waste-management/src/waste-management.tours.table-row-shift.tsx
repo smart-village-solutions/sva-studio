@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  StudioTableValueAction,
 } from '@sva/studio-ui-react';
 import { useState } from 'react';
 
@@ -63,14 +64,16 @@ export const WasteToursRowShiftCell = ({
     return (
       <td className="w-[168px] px-3 py-3">
         {canManageScheduling && search ? (
-          <WasteTourShiftCreateLink
-            search={search}
-            tourId={tourId}
-            label={pt('tours.actions.createShiftShort')}
-            accessibleLabel={pt('tours.actions.createShiftAccessible', { name: tourName })}
-            variant="tertiary"
-            className="h-auto min-w-0 p-0 text-sm font-medium underline underline-offset-4"
-          />
+          <StudioTableValueAction asChild>
+            <WasteTourShiftCreateLink
+              search={search}
+              tourId={tourId}
+              label={pt('tours.actions.createShiftShort')}
+              accessibleLabel={pt('tours.actions.createShiftAccessible', { name: tourName })}
+              unstyled
+              showExternalIcon={false}
+            />
+          </StudioTableValueAction>
         ) : (
           <span className="text-sm text-muted-foreground">{pt('tours.table.noShifts')}</span>
         )}
@@ -79,16 +82,13 @@ export const WasteToursRowShiftCell = ({
   }
   return (
     <td className="w-[168px] px-3 py-3">
-      <Button
+      <StudioTableValueAction
         type="button"
-        variant="tertiary"
-        size="sm"
-        className="h-auto p-0 text-sm font-medium underline underline-offset-4"
         aria-label={pt('tours.shiftDetails.open', { count, name: tourName })}
         onClick={() => setOpen(true)}
       >
         {pt('tours.meta.shiftCount', { value: count })}
-      </Button>
+      </StudioTableValueAction>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="min-w-0 max-w-lg">
           <DialogHeader>

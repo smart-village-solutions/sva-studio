@@ -385,10 +385,10 @@ describe('ContentListPage', () => {
     expect(
       screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })
     ).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe(
+    expect(screen.getAllByRole('link', { name: 'Startseite' })[0]?.getAttribute('href')).toBe(
       '/admin/news/content-1'
     );
-    expect(screen.getAllByRole('link', { name: 'Nur lesen' })[0]?.getAttribute('href')).toBe(
+    expect(screen.getAllByRole('link', { name: 'Archiv' })[0]?.getAttribute('href')).toBe(
       '/admin/poi/content-2'
     );
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThanOrEqual(2);
@@ -676,9 +676,9 @@ describe('ContentListPage', () => {
 
     render(<ContentListPage />);
 
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]?.getAttribute('href')).toBe(
-      '/admin/news/news%2Fwith%3F%23slug'
-    );
+    expect(
+      screen.getAllByRole('link', { name: 'Reservierte Zeichen' })[0]?.getAttribute('href')
+    ).toBe('/admin/news/news%2Fwith%3F%23slug');
   });
 
   it('shows loading, empty and error states', () => {
@@ -907,11 +907,8 @@ describe('ContentListPage', () => {
     expect(
       (screen.getByRole('button', { name: 'Neuer Inhalt' }) as HTMLButtonElement).disabled
     ).toBe(true);
-    expect(
-      screen
-        .getAllByRole('button', { name: 'Gesperrt' })
-        .every((button) => (button as HTMLButtonElement).disabled)
-    ).toBe(true);
+    expect(screen.queryByRole('link', { name: 'Bedingungen' })).toBeNull();
+    expect(screen.getAllByText('Bedingungen').length).toBeGreaterThan(0);
   });
 
   it('keeps Mainserver row mutations disabled without a resolved author context', () => {
@@ -955,7 +952,7 @@ describe('ContentListPage', () => {
     expect(
       (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
     ).toBe(true);
-    expect(screen.getAllByRole('link', { name: 'Bearbeiten' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Kontextlos lesbar' }).length).toBeGreaterThan(0);
   });
 
   it('hydrates host list controls from route search state and updates canonical params', () => {

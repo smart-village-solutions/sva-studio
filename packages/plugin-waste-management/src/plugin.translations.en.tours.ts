@@ -130,6 +130,8 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     noShifts: 'No shifts',
     noAssignments: 'No assignments',
     noCustomDates: 'No custom dates',
+    active: 'Active',
+    inactive: 'Inactive',
   },
   deleteDialog: {
     title: 'Delete tour',
@@ -144,6 +146,7 @@ export const wasteManagementPluginTranslationsENTours = createWasteManagementTou
     deactivateDescription: 'The tour {{value}} will be deactivated.',
     confirm: 'Confirm',
     cancel: 'Cancel',
+    error: 'The status could not be changed. Please try again.',
   },
   bulkDeleteDialog: {
     title: 'Delete tours',

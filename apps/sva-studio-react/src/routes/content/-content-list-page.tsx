@@ -12,7 +12,7 @@ import { deleteNews } from '@sva/plugin-news';
 import { deletePoi } from '@sva/plugin-poi';
 import { deleteProject } from '@sva/plugin-projects';
 import { deleteSurvey } from '@sva/plugin-surveys';
-import { IconEdit, IconEye, IconTrash, IconXboxX } from '@tabler/icons-react';
+import { IconTrash } from '@tabler/icons-react';
 import {
   Button,
   type MainserverPrincipalControlModel,
@@ -21,6 +21,8 @@ import {
   type StudioColumnDef,
   StudioDataTable,
   StudioListPageTemplate,
+  StudioTableActionButton,
+  StudioTableValueAction,
 } from '@sva/studio-ui-react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import React from 'react';
@@ -301,16 +303,6 @@ const updateRouteState = (
   });
 };
 
-const resolveRowActionLabel = (access: IamContentAccessSummary): string => {
-  if (access.canUpdate) {
-    return t('content.actions.edit');
-  }
-  if (access.canRead) {
-    return t('content.actions.openReadOnly');
-  }
-  return t('content.actions.blocked');
-};
-
 const deriveDeleteAction = (contentType: string): string | null => {
   const namespace = contentType.split('.')[0]?.trim();
   return namespace ? `${namespace}.delete` : null;
@@ -404,43 +396,36 @@ const buildBulkActionLabel = (
   actionLabelKey: 'content.actions.archive' | 'content.actions.delete'
 ): string => `${t(actionLabelKey)} (${t('content.bulk.scope.explicitIds')})`;
 
-const resolveRowActionIcon = (access: IamContentAccessSummary): React.ReactNode => {
-  if (access.canUpdate) {
-    return <IconEdit aria-hidden="true" className="h-4 w-4" />;
-  }
-  if (access.canRead) {
-    return <IconEye aria-hidden="true" className="h-4 w-4" />;
-  }
-  return <IconXboxX aria-hidden="true" className="h-4 w-4 text-destructive" />;
+const resolveEffectiveRowAccess = (
+  item: RegisteredContentRow,
+  listError: IamHttpError | null,
+  enabledMainserverMutationActions: readonly string[]
+): IamContentAccessSummary => {
+  const access = resolveRowAccess(item.access, listError);
+  return canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
+    ? access
+    : { ...access, canUpdate: false };
 };
 
 const ContentRowActions = ({
   item,
-  listError,
   permissionActions,
   enabledMainserverMutationActions,
   mutationPrincipalAvailable,
   onDelete,
 }: Readonly<{
   item: RegisteredContentRow;
-  listError: IamHttpError | null;
   permissionActions: readonly string[] | undefined;
   enabledMainserverMutationActions: readonly string[];
   mutationPrincipalAvailable: boolean;
   onDelete: (item: RegisteredContentRow) => Promise<void>;
 }>) => {
-  const resolvedAccess = resolveRowAccess(item.access, listError);
-  const access = canUpdateMainserverItem(item.contentType, enabledMainserverMutationActions)
-    ? resolvedAccess
-    : { ...resolvedAccess, canUpdate: false };
-  const actionLabel = resolveRowActionLabel(access);
   const canDelete =
     canDeleteMainserverItem(
       item.contentType,
       permissionActions,
       enabledMainserverMutationActions
     ) && mutationPrincipalAvailable;
-  const actionIcon = resolveRowActionIcon(access);
 
   const handleDelete = () => {
     if (!canDelete || !window.confirm(t('content.actions.deleteConfirm'))) {
@@ -451,43 +436,13 @@ const ContentRowActions = ({
   };
 
   return (
-    <>
-      {access.canRead ? (
-        <Button
-          asChild
-          type="button"
-          variant="tertiary"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground"
-        >
-          <Link to={item.editPath} aria-label={actionLabel}>
-            {actionIcon}
-          </Link>
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="tertiary"
-          size="sm"
-          className="h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-destructive"
-          aria-label={actionLabel}
-          disabled
-        >
-          {actionIcon}
-        </Button>
-      )}
-      <Button
-        type="button"
-        variant="destructive"
-        size="sm"
-        className="h-8 w-8 rounded-md px-0"
-        aria-label={t('content.actions.delete')}
-        disabled={!canDelete}
-        onClick={handleDelete}
-      >
-        <IconTrash aria-hidden="true" className="h-4 w-4" />
-      </Button>
-    </>
+    <StudioTableActionButton
+      label={t('content.actions.delete')}
+      icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
+      tone="destructive"
+      disabled={!canDelete}
+      onClick={handleDelete}
+    />
   );
 };
 
@@ -770,17 +725,32 @@ export const ContentListPage = ({
       {
         id: 'title',
         header: t('content.table.headerTitle'),
-        cell: (item) => (
-          <span className="flex min-w-0 flex-col">
+        cell: (item) => {
+          const access = resolveEffectiveRowAccess(
+            item,
+            contentsApi.error,
+            enabledMainserverMutationActions
+          );
+          const title = access.canRead ? (
+            <StudioTableValueAction asChild emphasis="primary">
+              <Link to={item.editPath}>{item.title}</Link>
+            </StudioTableValueAction>
+          ) : (
             <span className="font-medium text-foreground">{item.title}</span>
-            <span
-              className="max-w-64 truncate font-mono text-xs text-muted-foreground"
-              title={item.id}
-            >
-              {item.id}
+          );
+
+          return (
+            <span className="flex min-w-0 flex-col">
+              {title}
+              <span
+                className="max-w-64 truncate font-mono text-xs text-muted-foreground"
+                title={item.id}
+              >
+                {item.id}
+              </span>
             </span>
-          </span>
-        ),
+          );
+        },
         sortable: true,
         sortLabel: t('content.table.headerTitle'),
         sortValue: (item) => item.title.toLowerCase(),
@@ -999,7 +969,6 @@ export const ContentListPage = ({
           rowActions={(item) => (
             <ContentRowActions
               item={item}
-              listError={contentsApi.error}
               permissionActions={effectivePermissionActions}
               enabledMainserverMutationActions={enabledMainserverMutationActions}
               mutationPrincipalAvailable={

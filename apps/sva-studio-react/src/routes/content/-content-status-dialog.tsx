@@ -2,11 +2,12 @@ import type { IamContentListItem, IamContentStatus } from '@sva/core';
 import {
   Button,
   type MainserverPrincipalType,
+  StudioStatusBadge,
+  type StudioStatusTone,
 } from '@sva/studio-ui-react';
 import React from 'react';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
-import { Badge } from '../../components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -22,22 +23,13 @@ import {
   updateMainserverContentStatus,
 } from '../../lib/content-status-mutation';
 
-const statusVariantByValue = {
-  draft: 'outline',
-  in_review: 'secondary',
-  approved: 'default',
-  published: 'default',
-  archived: 'destructive',
-} as const;
-
-const statusClassNameByValue = {
-  draft: 'border-slate-400 bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200',
-  in_review: 'border-amber-400 bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200',
-  approved: 'border-sky-400 bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-200',
-  published:
-    'border-emerald-500 bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200',
-  archived: 'border-rose-400 bg-rose-100 text-rose-900 dark:bg-rose-950 dark:text-rose-200',
-} as const;
+const statusToneByValue: Readonly<Record<IamContentStatus, StudioStatusTone>> = {
+  draft: 'neutral',
+  in_review: 'warning',
+  approved: 'info',
+  published: 'success',
+  archived: 'danger',
+};
 
 const statusLabelKeyByValue = {
   draft: 'content.status.draft',
@@ -47,10 +39,16 @@ const statusLabelKeyByValue = {
   archived: 'content.status.archived',
 } as const;
 
-export const ContentStatusBadge = ({ status }: { readonly status: IamContentStatus }) => (
-  <Badge variant={statusVariantByValue[status]} className={statusClassNameByValue[status]}>
+export const ContentStatusBadge = ({
+  status,
+  editable = false,
+}: {
+  readonly status: IamContentStatus;
+  readonly editable?: boolean;
+}) => (
+  <StudioStatusBadge tone={statusToneByValue[status]} editable={editable}>
     {t(statusLabelKeyByValue[status])}
-  </Badge>
+  </StudioStatusBadge>
 );
 
 type ContentStatusDialogProps = Readonly<{
@@ -103,7 +101,7 @@ export const ContentStatusDialog = ({
           className="rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t('content.statusDialog.open', { title: item.title })}
         >
-          <ContentStatusBadge status={item.status} />
+          <ContentStatusBadge status={item.status} editable />
         </button>
       </DialogTrigger>
       <DialogContent className="max-w-md">

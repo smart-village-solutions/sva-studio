@@ -1,0 +1,4 @@
+{
+  "prNumber": 1045,
+  "body": "Die Mainserver-Daten einer Organisation können jetzt auch im bereits bereiten Zustand erneut geprüft werden.\n\n- Sind die technischen Zugangsdaten bereits aktuell, wird kein unnötiger Keycloak-Schreibzugriff mehr ausgeführt.\n- Nach erfolgreicher Prüfung bestätigt die Organisationsdetailseite verständlich den aktuellen Stand."
+}

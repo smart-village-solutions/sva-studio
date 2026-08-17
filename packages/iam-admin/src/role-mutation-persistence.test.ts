@@ -149,6 +149,8 @@ describe('role mutation persistence', () => {
 
     expect(queries[0]?.text).toContain('pg_advisory_xact_lock');
     expect(queries[1]?.text).toContain('FROM iam.roles');
+    expect(queries[1]?.text).toContain('left(role_key, length($2) + 1)');
+    expect(queries[1]?.text).not.toContain('LIKE');
     expect(queries[2]?.values.slice(1, 5)).toEqual(['editor_3', 'editor_3', 'Editor', 'editor_3']);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,

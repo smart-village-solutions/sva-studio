@@ -259,6 +259,7 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="general" />);
 
+    expect((screen.getByLabelText('Beschreibung') as HTMLTextAreaElement).disabled).toBe(false);
     fireEvent.change(screen.getByLabelText('Anzeigename'), { target: { value: 'Changed name' } });
     fireEvent.change(screen.getByLabelText('Beschreibung'), {
       target: { value: 'Changed description' },

@@ -424,7 +424,7 @@ ORDER BY a.keycloak_subject ASC
 SELECT role_key
 FROM iam.roles
 WHERE instance_id = $1
-  AND (role_key = $2 OR role_key LIKE $2 || '\\_%' ESCAPE '\\');
+  AND (role_key = $2 OR left(role_key, length($2) + 1) = $2 || '_');
 `,
           [input.actor.instanceId, input.roleKey]
         );

@@ -949,7 +949,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   <Textarea
                     id="role-detail-description"
                     value={editForm.description}
-                    disabled={isReadOnly || !isGeneralDirty}
+                    disabled={isReadOnly}
                     onChange={(event) =>
                       updateEditForm((current) => ({ ...current, description: event.target.value }))
                     }

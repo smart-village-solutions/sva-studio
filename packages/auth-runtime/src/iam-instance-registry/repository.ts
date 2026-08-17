@@ -189,7 +189,6 @@ const registryRuntime = createInstanceRegistryRuntime({
     revealSecret: revealField,
     loadWasteDataSourceRecord,
     saveWasteDataSourceRecord,
-    readKeycloakStateViaProvisioner,
     getKeycloakStatus: getTenantAuditKeycloakStatus,
     probeTenantIamAccess,
   },

@@ -215,6 +215,10 @@ describe('iam instance registry repository wiring', () => {
     expect(runtimeConfig?.serviceDeps.getKeycloakStatus).not.toBe(
       runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus
     );
+    expect(runtimeConfig?.serviceDeps).not.toHaveProperty('readKeycloakStateViaProvisioner');
+    expect(runtimeConfig?.provisioningWorkerServiceDeps).toEqual(
+      expect.objectContaining({ readKeycloakStateViaProvisioner: expect.any(Function) })
+    );
 
     const keycloakInput = { instanceId: 'demo' };
     await runtimeConfig?.serviceDeps.getKeycloakStatus(keycloakInput);

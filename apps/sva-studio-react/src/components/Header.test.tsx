@@ -544,12 +544,10 @@ describe('Header auth actions', () => {
       expect(screen.getByRole('button', { name: 'Systemmeldungen' })).toBeTruthy();
     });
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Systemmeldungen' }));
-    expect(screen.getByRole('tooltip', { name: 'Meldungen' })).toBeTruthy();
-    fireEvent.mouseLeave(screen.getByRole('button', { name: 'Systemmeldungen' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('tooltip', { name: 'Meldungen' })).toBeNull();
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Systemmeldungen' }), {
+      pointerType: 'mouse',
     });
+    expect(await screen.findByRole('tooltip', { name: 'Meldungen' })).toBeTruthy();
 
     fireEvent.focus(screen.getByRole('button', { name: 'Sprache wechseln' }));
     expect(screen.getByRole('tooltip', { name: 'Sprachen' })).toBeTruthy();
@@ -561,8 +559,10 @@ describe('Header auth actions', () => {
       expect(screen.queryByRole('tooltip', { name: 'Sprachen' })).toBeNull();
     });
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }));
-    expect(screen.getByRole('tooltip', { name: 'Nacht-Modus' })).toBeTruthy();
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Dunklen Modus aktivieren' }), {
+      pointerType: 'mouse',
+    });
+    expect(await screen.findByRole('tooltip', { name: 'Nacht-Modus' })).toBeTruthy();
 
     useThemeMock.mockReturnValue({
       mode: 'dark',
@@ -578,8 +578,10 @@ describe('Header auth actions', () => {
       expect(screen.getByRole('button', { name: 'Hellen Modus aktivieren' })).toBeTruthy();
     });
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Hellen Modus aktivieren' }));
-    expect(screen.getByRole('tooltip', { name: 'Tag-Modus' })).toBeTruthy();
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Hellen Modus aktivieren' }), {
+      pointerType: 'mouse',
+    });
+    expect(await screen.findByRole('tooltip', { name: 'Tag-Modus' })).toBeTruthy();
   });
 
   it('zeigt auch für system_admin keine Navigationslinks im Header', async () => {

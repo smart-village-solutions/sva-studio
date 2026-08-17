@@ -1,0 +1,4 @@
+{
+  "prNumber": 1048,
+  "body": "Die Production-Konfiguration kann den bereits vorhandenen Schalter für OpenTelemetry jetzt sicher in den versionierten Rolloutvertrag übernehmen.\n\n- Der Schalter ist ausdrücklich als nicht-sensitive boolesche Einstellung klassifiziert.\n- Dev, Staging und Production verwenden dafür konsistent den Wert `false`.\n- Ungültige Werte stoppen weiterhin vor Änderungen an einer Umgebung."
+}

@@ -35,6 +35,7 @@ describe('remote app config builder', () => {
     const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
 
     expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
+    expect(result.source).toContain('ENABLE_OTEL=false\n');
     expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
   });
 

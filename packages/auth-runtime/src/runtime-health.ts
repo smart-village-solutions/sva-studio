@@ -6,6 +6,11 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
 } from './iam-account-management/shared.js';
+import {
+  resolveExpectedGooseMigrationFromDirectory,
+  runIamDatabaseReadiness,
+  summarizeSchemaGuardFailures,
+} from './iam-account-management/schema-guard.js';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
 import {
@@ -27,13 +32,42 @@ const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): 
 const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
   const pool = resolvePool();
   if (!pool) {
-    return { ready: false, error: 'IAM database not configured', reasonCode: 'database_not_configured' };
+    return {
+      ready: false,
+      error: 'IAM database not configured',
+      reasonCode: 'database_not_configured',
+    };
+  }
+
+  let expectedMigration: ReturnType<typeof resolveExpectedGooseMigrationFromDirectory>;
+  try {
+    expectedMigration = resolveExpectedGooseMigrationFromDirectory();
+  } catch {
+    return {
+      ready: false,
+      error: 'IAM migration metadata is invalid',
+      reasonCode: 'migration_metadata_invalid',
+    };
   }
 
   try {
     const client = await pool.connect();
     try {
-      await client.query('SELECT 1;');
+      const readiness = await runIamDatabaseReadiness(client, expectedMigration);
+      if (!readiness.migration.ok) {
+        return {
+          ready: false,
+          error: `Datenbankmigration ${readiness.migration.appliedVersion ?? 'none'} liegt hinter ${readiness.migration.expectedMigration}.`,
+          reasonCode: 'migration_drift',
+        };
+      }
+      if (!readiness.schema.ok) {
+        return {
+          ready: false,
+          error: `Kritische IAM-Schema-Drift: ${summarizeSchemaGuardFailures(readiness.schema) ?? 'unknown'}`,
+          reasonCode: 'schema_drift',
+        };
+      }
       return { ready: true };
     } finally {
       client.release();
@@ -111,7 +145,9 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
       `SELECT id, primary_hostname, auth_realm, auth_client_id FROM iam.instances WHERE status = 'active' ORDER BY id`
     );
 
-    const invalidConfigInstanceIds = result.rows.filter(hasMissingTenantLoginConfig).map((row: ActiveInstanceLoginRow) => row.id);
+    const invalidConfigInstanceIds = result.rows
+      .filter(hasMissingTenantLoginConfig)
+      .map((row: ActiveInstanceLoginRow) => row.id);
 
     const secretCandidateIds = result.rows
       .map((row: ActiveInstanceLoginRow) => row.id)
@@ -125,8 +161,9 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
     );
 
     const invalidSecretInstanceIds = secretChecks
-      .filter(({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
-        !isValidTenantSecretState(secret)
+      .filter(
+        ({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
+          !isValidTenantSecretState(secret)
       )
       .map(({ instanceId }: { instanceId: string }) => instanceId);
 

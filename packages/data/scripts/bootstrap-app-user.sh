@@ -62,6 +62,7 @@ CREATE ROLE :"app_user" LOGIN PASSWORD :'app_password' NOSUPERUSER NOCREATEDB NO
 GRANT CONNECT ON DATABASE :"postgres_db" TO :"app_user";
 GRANT CREATE ON DATABASE :"postgres_db" TO :"app_user";
 GRANT USAGE, CREATE ON SCHEMA public TO :"app_user";
+GRANT SELECT (version_id, is_applied) ON TABLE public.goose_db_version TO :"app_user";
 GRANT iam_app TO :"app_user";
 GRANT USAGE ON SCHEMA iam TO :"app_user";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO :"app_user";

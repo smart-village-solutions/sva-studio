@@ -1,0 +1,4 @@
+{
+  "prNumber": 1055,
+  "body": "Studio erkennt unvollständige Datenbankaktualisierungen vor dem Start zuverlässiger\n\n- Migrationen und kritische IAM-Datenbankstrukturen werden gemeinsam geprüft.\n- Unterschiedliche Fehlerursachen werden gezielt als Migrations- oder Schemaabweichung ausgewiesen."
+}

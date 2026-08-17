@@ -27,7 +27,12 @@ const schemaGuardDoctorCheck = (deps: RuntimeDoctorDbCheckDeps, report: SchemaGu
 
 const buildSchemaGuardCheck = (deps: RuntimeDoctorDbCheckDeps, runtimeProfile: RuntimeProfile, env: NodeJS.ProcessEnv): DoctorCheck => {
   if (shouldUseJobBasedRemoteDbAssertions(runtimeProfile, env, deps)) {
-    return deps.toDoctorCheck('schema-guard', 'ok', 'schema_guard_verified_by_job', 'Kritische IAM-Schema-Pruefungen werden fuer Remote-Profile im dedizierten Bootstrap-Job ausgefuehrt.');
+    return deps.toDoctorCheck(
+      'schema-guard',
+      'skipped',
+      'schema_guard_delegated_to_job_and_readiness',
+      'Der Doctor fragt Remote-Datenbanken nicht direkt ab; One-shot-Exit und laufende App-Readiness liefern den autoritativen Nachweis.'
+    );
   }
   try {
     return schemaGuardDoctorCheck(deps, runSchemaGuard(deps, runtimeProfile, env));

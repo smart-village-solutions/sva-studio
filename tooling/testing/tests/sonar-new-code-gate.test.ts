@@ -45,6 +45,16 @@ async function loadRunSonarNewCodeGate(): Promise<RunSonarNewCodeGate> {
   return module.runSonarNewCodeGate;
 }
 
+async function loadResolveSonarHeadRef(): Promise<(environment?: NodeJS.ProcessEnv) => string> {
+  const moduleUrl = pathToFileURL(
+    path.resolve(testDir, '../../../scripts/ci/sonar-new-code-gate.ts')
+  ).href;
+  const module = (await import(moduleUrl)) as {
+    resolveSonarHeadRef: (environment?: NodeJS.ProcessEnv) => string;
+  };
+  return module.resolveSonarHeadRef;
+}
+
 function createTempWorkspace(): string {
   const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sonar-new-code-gate-'));
   createdDirs.push(rootDir);
@@ -108,9 +118,14 @@ function writePolicy(rootDir: string, overrides: Record<string, unknown> = {}): 
   );
 }
 
-function writeSonarProjectProperties(rootDir: string, coverageExclusions: readonly string[] = []): void {
+function writeSonarProjectProperties(
+  rootDir: string,
+  coverageExclusions: readonly string[] = []
+): void {
   const contents =
-    coverageExclusions.length > 0 ? `sonar.coverage.exclusions=${coverageExclusions.join(',')}\n` : '\n';
+    coverageExclusions.length > 0
+      ? `sonar.coverage.exclusions=${coverageExclusions.join(',')}\n`
+      : '\n';
   fs.writeFileSync(path.join(rootDir, 'sonar-project.properties'), contents);
 }
 
@@ -135,7 +150,9 @@ function writeLcov(
     'TN:',
     `SF:${sourcePath}`,
     ...(entries.da ?? []).map(([line, hits]) => `DA:${line},${hits}`),
-    ...(entries.brda ?? []).map(([line, block, branch, taken]) => `BRDA:${line},${block},${branch},${taken}`),
+    ...(entries.brda ?? []).map(
+      ([line, block, branch, taken]) => `BRDA:${line},${block},${branch},${taken}`
+    ),
     'end_of_record',
     '',
   ].join('\n');
@@ -149,16 +166,42 @@ afterEach(() => {
 });
 
 describe('sonar new code gate', () => {
+  it('resolves the actual PR head without relying on the synthetic checkout HEAD', async () => {
+    const resolveSonarHeadRef = await loadResolveSonarHeadRef();
+    const rootDir = createTempWorkspace();
+    const eventPath = path.join(rootDir, 'event.json');
+    fs.writeFileSync(
+      eventPath,
+      JSON.stringify({ pull_request: { head: { sha: 'pull-request-head' } } })
+    );
+
+    expect(resolveSonarHeadRef({ GITHUB_EVENT_PATH: eventPath })).toBe('pull-request-head');
+    expect(resolveSonarHeadRef({ GITHUB_EVENT_PATH: eventPath, NX_HEAD: 'configured-head' })).toBe(
+      'configured-head'
+    );
+    expect(resolveSonarHeadRef({ GITHUB_EVENT_PATH: path.join(rootDir, 'missing.json') })).toBe(
+      'HEAD'
+    );
+  });
+
   it('fails when changed branches are only partially covered', async () => {
     const runSonarNewCodeGate = await loadRunSonarNewCodeGate();
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export function value(flag: boolean): number {\n  return flag ? 1 : 0;\n}\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export function value(flag: boolean): number {\n  return flag ? 1 : 0;\n}\n'
+    );
     commitAll(rootDir, 'base');
     runGit(rootDir, ['checkout', '-b', 'feature/test']);
 
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export function value(flag: boolean): number {\n  return flag ? 2 : 0;\n}\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export function value(flag: boolean): number {\n  return flag ? 2 : 0;\n}\n'
+    );
     writeLcov(rootDir, 'packages/server-runtime', 'src/index.ts', {
       da: [[2, 1]],
       brda: [
@@ -196,7 +239,9 @@ describe('sonar new code gate', () => {
         },
       },
     });
-    writeSonarProjectProperties(rootDir, ['apps/sva-studio-react/src/routes/__debug/phase1-test/**']);
+    writeSonarProjectProperties(rootDir, [
+      'apps/sva-studio-react/src/routes/__debug/phase1-test/**',
+    ]);
     writeSourceFile(
       rootDir,
       'apps/sva-studio-react/src/routes/__debug/phase1-test/-index.ts',
@@ -229,11 +274,19 @@ describe('sonar new code gate', () => {
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export function value(flag: boolean): number {\n  return flag ? 1 : 0;\n}\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export function value(flag: boolean): number {\n  return flag ? 1 : 0;\n}\n'
+    );
     commitAll(rootDir, 'base');
     runGit(rootDir, ['checkout', '-b', 'feature/test']);
 
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export function value(flag: boolean): number {\n  return flag ? 2 : 0;\n}\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export function value(flag: boolean): number {\n  return flag ? 2 : 0;\n}\n'
+    );
     writeLcov(rootDir, 'packages/server-runtime', 'src/index.ts', {
       da: [[2, 1]],
       brda: [
@@ -264,7 +317,11 @@ describe('sonar new code gate', () => {
     commitAll(rootDir, 'base');
     runGit(rootDir, ['checkout', '-b', 'feature/test']);
 
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export const one = 2;\nexport const two = 2;\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export const one = 2;\nexport const two = 2;\n'
+    );
     writeLcov(rootDir, 'packages/server-runtime', 'src/index.ts', {
       da: [
         [1, 0],
@@ -291,11 +348,19 @@ describe('sonar new code gate', () => {
     const rootDir = createTempWorkspace();
     initGitRepo(rootDir);
     writePolicy(rootDir);
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export type Demo = {\n  readonly value: string;\n};\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export type Demo = {\n  readonly value: string;\n};\n'
+    );
     commitAll(rootDir, 'base');
     runGit(rootDir, ['checkout', '-b', 'feature/test']);
 
-    writeSourceFile(rootDir, 'packages/server-runtime/src/index.ts', 'export type Demo = {\n  readonly value: string;\n  readonly status: string;\n};\n');
+    writeSourceFile(
+      rootDir,
+      'packages/server-runtime/src/index.ts',
+      'export type Demo = {\n  readonly value: string;\n  readonly status: string;\n};\n'
+    );
     commitAll(rootDir, 'change');
 
     const result = runSonarNewCodeGate({

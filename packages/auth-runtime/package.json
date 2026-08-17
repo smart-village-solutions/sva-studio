@@ -23,6 +23,10 @@
       "types": "./dist/runtime-health.d.ts",
       "default": "./dist/runtime-health.js"
     },
+    "./schema-guard": {
+      "types": "./dist/iam-account-management/schema-guard.d.ts",
+      "default": "./dist/iam-account-management/schema-guard.js"
+    },
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"

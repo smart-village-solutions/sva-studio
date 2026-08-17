@@ -10,10 +10,14 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(testDir, '../../..');
 const bootstrapEntrypointPath = resolve(rootDir, 'deploy/portainer/bootstrap-entrypoint.sh');
 
-const renderBootstrapSql = (envOverrides: NodeJS.ProcessEnv = {}) => {
+const renderBootstrapSql = (
+  envOverrides: NodeJS.ProcessEnv = {},
+  useDefaultSchemaGuard = false
+) => {
   const tempDir = mkdtempSync(resolve(tmpdir(), 'sva-bootstrap-entrypoint-test-'));
   const fakeBinDir = resolve(tempDir, 'bin');
   const outputSqlPath = resolve(tempDir, 'bootstrap.sql');
+  const fakeNodePath = resolve(fakeBinDir, 'node');
   const fakePsqlPath = resolve(fakeBinDir, 'psql');
 
   try {
@@ -39,12 +43,27 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
       'utf8'
     );
     chmodSync(fakePsqlPath, 0o755);
+    writeFileSync(
+      fakeNodePath,
+      `#!/usr/bin/env bash
+if [ "\${1:-}" = "./verify-iam-schema.mjs" ]; then
+  printf '[test-verifier] invoked\\n'
+  exit 0
+fi
+exec "${process.execPath}" "$@"
+`,
+      'utf8'
+    );
+    chmodSync(fakeNodePath, 0o755);
+
+    const environment = { ...process.env };
+    delete environment.SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD;
 
     const result = spawnSync('bash', [bootstrapEntrypointPath], {
       cwd: rootDir,
       encoding: 'utf8',
       env: {
-        ...process.env,
+        ...environment,
         ...envOverrides,
         APP_DB_PASSWORD: 'app-password',
         OUTPUT_SQL_PATH: outputSqlPath,
@@ -53,11 +72,15 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
         POSTGRES_PASSWORD: 'postgres-password',
         POSTGRES_USER: 'sva',
         SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
+        ...(useDefaultSchemaGuard ? {} : { SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: 'false' }),
         SVA_PARENT_DOMAIN: 'studio.smart-village.app',
       },
     });
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
+    if (useDefaultSchemaGuard) {
+      expect(result.stdout).toContain('[test-verifier] invoked');
+    }
     return readFileSync(outputSqlPath, 'utf8');
   } finally {
     rmSync(tempDir, { force: true, recursive: true });
@@ -65,6 +88,10 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
 };
 
 describe('bootstrap-entrypoint', () => {
+  it('runs the schema guard by default when no override is configured', () => {
+    renderBootstrapSql({}, true);
+  });
+
   it('grants the runtime database and schema privileges required by the job worker', () => {
     const sql = renderBootstrapSql();
 

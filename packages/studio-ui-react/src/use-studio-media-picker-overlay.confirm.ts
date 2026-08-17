@@ -79,7 +79,9 @@ export const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPicker
         title: metadataDraft.title,
         metadata: {
           ...reviewAsset.metadata,
-          ...Object.fromEntries(editableMetadataFields.map((key) => [key, metadataDraft[key]])),
+          ...Object.fromEntries(
+            editableMetadataFields.map((key) => [key, metadataDraft[key].trim()])
+          ),
         },
       } as TAssetDetail;
       onAccept(updatedAsset);

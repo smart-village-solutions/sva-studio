@@ -18,6 +18,7 @@ export const resolveContentMediaUsageDrafts = (
     if (!resolution) throw new Error(`Missing media draft resolution for ${usage.localDraft.id}.`);
     const persistableUsage = { ...usage };
     delete persistableUsage.localDraft;
+    delete persistableUsage.previewUrl;
     return {
       ...persistableUsage,
       assetId: resolution.assetId,

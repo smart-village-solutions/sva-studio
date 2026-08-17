@@ -347,6 +347,35 @@ describe('useStudioMediaPickerOverlay', () => {
     );
   });
 
+  it('normalizes editable metadata before accepting a local draft', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-trim');
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const onAccept = vi.fn();
+    const { result, unmount } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        editableMetadataFields: ['altText'],
+        onAccept,
+        isSupportedUploadFile: () => true,
+        createLocalAsset: createLocalStudioMediaPickerAsset,
+        loadAsset: vi.fn(),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.uploadFile(new File(['binary'], 'hero.jpg', { type: 'image/jpeg' }));
+    });
+    act(() => result.current.updateMetadataField('altText', '  Local alt text  '));
+    await act(async () => result.current.confirmSelection());
+
+    expect(onAccept).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: expect.objectContaining({ altText: 'Local alt text' }) })
+    );
+    unmount();
+    createObjectUrl.mockRestore();
+    revokeObjectUrl.mockRestore();
+  });
+
   it('revokes an unaccepted local preview exactly once when the overlay closes', async () => {
     const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-close');
     const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);

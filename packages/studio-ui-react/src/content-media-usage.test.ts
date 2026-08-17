@@ -6,6 +6,7 @@ import {
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
+  revokeBrowserObjectUrl,
 } from './content-media-usage.js';
 import {
   contentMediaUsagesToLocalDrafts,
@@ -92,6 +93,7 @@ describe('content media usage', () => {
       ...createManualContentMediaUsage(),
       uiId: 'draft-ui',
       persistentUrl: '',
+      previewUrl: 'blob:local-preview',
       localDraft: { id: 'draft-1', file },
     };
 
@@ -104,8 +106,7 @@ describe('content media usage', () => {
         sortOrder: 0,
       },
     ]);
-    expect(
-      resolveContentMediaUsageDrafts(
+    const [resolved] = resolveContentMediaUsageDrafts(
         [draft],
         [
           {
@@ -114,13 +115,19 @@ describe('content media usage', () => {
             persistentUrl: 'https://media.test/asset-1.jpg',
           },
         ]
-      )
-    ).toEqual([
-      expect.objectContaining({
-        assetId: 'asset-1',
-        persistentUrl: 'https://media.test/asset-1.jpg',
-        referenceStatus: 'pending',
-      }),
-    ]);
+      );
+    expect(resolved).toEqual(expect.objectContaining({
+      assetId: 'asset-1',
+      persistentUrl: 'https://media.test/asset-1.jpg',
+      referenceStatus: 'pending',
+    }));
+    expect(resolved).not.toHaveProperty('localDraft');
+    expect(resolved).not.toHaveProperty('previewUrl');
+  });
+
+  it('skips object url cleanup when the runtime does not provide it', () => {
+    vi.stubGlobal('URL', undefined);
+
+    expect(() => revokeBrowserObjectUrl('blob:ssr-preview')).not.toThrow();
   });
 });

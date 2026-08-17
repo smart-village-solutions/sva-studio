@@ -26,7 +26,9 @@ export type NewsDetailContentTabProps = Readonly<{
   onAddManualMedia: () => string;
   mediaUsages?: readonly ContentMediaUsage[];
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
-  canSelectMedia?: boolean; canUploadMedia?: boolean; mediaEditingDisabled?: boolean;
+  canSelectMedia?: boolean;
+  canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;

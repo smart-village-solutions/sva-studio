@@ -1,14 +1,26 @@
 :root {
+  color-scheme: light;
   --sva-kern2-background: #f6f8fb;
   --sva-kern2-background-strong: #eaf0f8;
-  --sva-kern2-surface: rgba(255, 255, 255, 0.94);
-  --sva-kern2-surface-border: rgba(210, 220, 232, 0.92);
+  --sva-kern2-surface: #ffffff;
+  --sva-kern2-surface-border: #7a8796;
   --sva-kern2-text: #1b2738;
   --sva-kern2-text-muted: #526072;
   --sva-kern2-primary: #005a9e;
   --sva-kern2-primary-hover: #004b84;
   --sva-kern2-primary-soft: rgba(0, 90, 158, 0.1);
+  --sva-kern2-button-background: #005a9e;
+  --sva-kern2-button-background-hover: #004b84;
+  --sva-kern2-button-text: #ffffff;
+  --sva-kern2-input-background: #ffffff;
+  --sva-kern2-input-text: #1b2738;
+  --sva-kern2-input-placeholder: #526072;
+  --sva-kern2-input-border-hover: #005a9e;
+  --sva-kern2-focus: #005a9e;
   --sva-kern2-danger: #b00020;
+  --sva-kern2-danger-background: #fff1f2;
+  --sva-kern2-success: #127a60;
+  --sva-kern2-success-background: #effaf6;
   --sva-kern2-shadow: 0 24px 64px rgba(38, 47, 56, 0.12);
   --sva-kern2-shadow-soft: 0 6px 18px rgba(38, 47, 56, 0.08);
   --sva-kern2-radius-card: 12px;
@@ -19,13 +31,22 @@
   --pf-v5-global--focus-color--100: var(--sva-kern2-primary);
 }
 
+body#keycloak-bg,
 body.kcBodyClass {
   margin: 0;
   min-height: 100vh;
   color: var(--sva-kern2-text);
   font-family:
-    "Fira Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
-    "Cantarell", "Helvetica Neue", sans-serif;
+    'Fira Sans',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Roboto',
+    'Oxygen',
+    'Ubuntu',
+    'Cantarell',
+    'Helvetica Neue',
+    sans-serif;
   background:
     radial-gradient(circle at top left, rgba(0, 90, 158, 0.16), transparent 34%),
     radial-gradient(circle at bottom right, rgba(0, 90, 158, 0.08), transparent 26%),
@@ -56,7 +77,7 @@ body.kcBodyClass {
   font-weight: 700;
   letter-spacing: -0.04em;
   text-transform: none;
-  content: "SVA Studio";
+  content: 'SVA Studio';
 }
 
 .pf-v5-c-login__main,
@@ -105,8 +126,8 @@ textarea.kcInputClass {
   min-height: 3rem;
   border: 1px solid var(--sva-kern2-surface-border);
   border-radius: var(--sva-kern2-radius-input);
-  background: rgba(255, 255, 255, 0.96);
-  color: var(--sva-kern2-text);
+  background: var(--sva-kern2-input-background);
+  color: var(--sva-kern2-input-text);
   box-shadow: none;
   transition:
     border-color 120ms ease,
@@ -114,11 +135,35 @@ textarea.kcInputClass {
     background-color 120ms ease;
 }
 
+.pf-v5-c-form-control > input,
+.pf-v5-c-form-control > select,
+.pf-v5-c-form-control > textarea {
+  background: transparent;
+  color: var(--sva-kern2-input-text);
+  caret-color: var(--sva-kern2-input-text);
+  -webkit-text-fill-color: var(--sva-kern2-input-text);
+}
+
+.pf-v5-c-form-control > input::placeholder,
+.pf-v5-c-form-control > textarea::placeholder {
+  color: var(--sva-kern2-input-placeholder);
+  opacity: 1;
+}
+
+.pf-v5-c-form-control > input:autofill,
+.pf-v5-c-form-control > input:-webkit-autofill,
+.pf-v5-c-form-control > input:-webkit-autofill:hover {
+  color: var(--sva-kern2-input-text);
+  caret-color: var(--sva-kern2-input-text);
+  -webkit-text-fill-color: var(--sva-kern2-input-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--sva-kern2-input-background) inset;
+}
+
 .pf-v5-c-form-control:hover,
 input.kcInputClass:hover,
 select.kcSelectClass:hover,
 textarea.kcInputClass:hover {
-  border-color: rgba(0, 90, 158, 0.42);
+  border-color: var(--sva-kern2-input-border-hover);
 }
 
 .pf-v5-c-form-control:focus,
@@ -130,19 +175,52 @@ select.kcSelectClass:focus-visible,
 textarea.kcInputClass:focus,
 textarea.kcInputClass:focus-visible {
   border-color: var(--sva-kern2-primary);
-  box-shadow: 0 0 0 3px rgba(0, 90, 158, 0.14);
-  outline: none;
+  box-shadow: none;
+  outline: 3px solid var(--sva-kern2-focus);
+  outline-offset: 2px;
+}
+
+.pf-v5-c-form-control:focus-within {
+  border-color: var(--sva-kern2-primary);
+  outline: 3px solid var(--sva-kern2-focus);
+  outline-offset: 2px;
+}
+
+.pf-v5-c-form-control > input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--sva-kern2-input-background) inset;
+}
+
+.pf-v5-c-button.pf-m-control,
+button[data-password-toggle] {
+  border-color: var(--sva-kern2-surface-border);
+  background: var(--sva-kern2-input-background);
+  color: var(--sva-kern2-input-text);
+}
+
+.pf-v5-c-button.pf-m-control:hover,
+.pf-v5-c-button.pf-m-control:focus-visible,
+button[data-password-toggle]:hover,
+button[data-password-toggle]:focus-visible {
+  border-color: var(--sva-kern2-primary);
+  background: var(--sva-kern2-primary-soft);
+  color: var(--sva-kern2-primary);
+}
+
+.pf-v5-c-button.pf-m-control:focus-visible,
+button[data-password-toggle]:focus-visible {
+  outline: 3px solid var(--sva-kern2-focus);
+  outline-offset: 2px;
 }
 
 .pf-v5-c-button.pf-m-primary,
-input[type="submit"].pf-v5-c-button,
-input[type="submit"].kcButtonClass,
+input[type='submit'].pf-v5-c-button,
+input[type='submit'].kcButtonClass,
 button.kcButtonClass.kcButtonPrimaryClass {
   min-height: 3rem;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--sva-kern2-primary) 0%, #0e73b8 100%);
-  color: #ffffff;
+  background: var(--sva-kern2-button-background);
+  color: var(--sva-kern2-button-text);
   font-weight: 700;
   letter-spacing: 0.01em;
   box-shadow: 0 14px 30px rgba(0, 90, 158, 0.2);
@@ -154,12 +232,20 @@ button.kcButtonClass.kcButtonPrimaryClass {
 
 .pf-v5-c-button.pf-m-primary:hover,
 .pf-v5-c-button.pf-m-primary:focus-visible,
-input[type="submit"].pf-v5-c-button:hover,
-input[type="submit"].kcButtonClass:hover,
+input[type='submit'].pf-v5-c-button:hover,
+input[type='submit'].kcButtonClass:hover,
 button.kcButtonClass.kcButtonPrimaryClass:hover {
   transform: translateY(-1px);
-  background: linear-gradient(135deg, var(--sva-kern2-primary-hover) 0%, var(--sva-kern2-primary) 100%);
+  background: var(--sva-kern2-button-background-hover);
   box-shadow: 0 18px 36px rgba(0, 90, 158, 0.26);
+}
+
+.pf-v5-c-button.pf-m-primary:focus-visible,
+input[type='submit'].pf-v5-c-button:focus-visible,
+input[type='submit'].kcButtonClass:focus-visible,
+button.kcButtonClass.kcButtonPrimaryClass:focus-visible {
+  outline: 3px solid var(--sva-kern2-focus);
+  outline-offset: 2px;
 }
 
 .pf-v5-c-button.pf-m-link,
@@ -190,16 +276,16 @@ a:hover,
 
 .pf-v5-c-alert.pf-m-danger,
 .alert-error {
-  border-color: rgba(176, 0, 32, 0.2);
-  background: rgba(176, 0, 32, 0.08);
+  border-color: var(--sva-kern2-danger);
+  background: var(--sva-kern2-danger-background);
   color: var(--sva-kern2-danger);
 }
 
 .pf-v5-c-alert.pf-m-success,
 .alert-success {
-  border-color: rgba(18, 122, 96, 0.2);
-  background: rgba(18, 122, 96, 0.08);
-  color: #127a60;
+  border-color: var(--sva-kern2-success);
+  background: var(--sva-kern2-success-background);
+  color: var(--sva-kern2-success);
 }
 
 #kc-social-providers,
@@ -243,5 +329,48 @@ a:hover,
     border-radius: 0;
     box-shadow: var(--sva-kern2-shadow-soft);
     backdrop-filter: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --sva-kern2-background: #121314;
+    --sva-kern2-background-strong: #1a1c1f;
+    --sva-kern2-surface: #1b1e22;
+    --sva-kern2-surface-border: #6d7886;
+    --sva-kern2-text: #f4f6f8;
+    --sva-kern2-text-muted: #c1c8d0;
+    --sva-kern2-primary: #67b7df;
+    --sva-kern2-primary-hover: #8dd4f4;
+    --sva-kern2-primary-soft: rgba(103, 183, 223, 0.16);
+    --sva-kern2-button-background: #0b6fa4;
+    --sva-kern2-button-background-hover: #075b87;
+    --sva-kern2-button-text: #ffffff;
+    --sva-kern2-input-background: #202328;
+    --sva-kern2-input-text: #f4f6f8;
+    --sva-kern2-input-placeholder: #c1c8d0;
+    --sva-kern2-input-border-hover: #67b7df;
+    --sva-kern2-focus: #70c7ef;
+    --sva-kern2-danger: #ffb4ab;
+    --sva-kern2-danger-background: #3f2022;
+    --sva-kern2-success: #a9e6d3;
+    --sva-kern2-success-background: #19352d;
+    --sva-kern2-shadow: 0 24px 64px rgba(0, 0, 0, 0.36);
+    --sva-kern2-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.28);
+    --pf-v5-global--primary-color--100: var(--sva-kern2-primary);
+    --pf-v5-global--primary-color--200: var(--sva-kern2-primary-hover);
+  }
+
+  body#keycloak-bg,
+  body.kcBodyClass {
+    background:
+      radial-gradient(circle at top left, rgba(41, 122, 160, 0.22), transparent 34%),
+      radial-gradient(circle at bottom right, rgba(30, 215, 166, 0.08), transparent 26%),
+      linear-gradient(
+        180deg,
+        var(--sva-kern2-background-strong) 0%,
+        var(--sva-kern2-background) 100%
+      );
   }
 }

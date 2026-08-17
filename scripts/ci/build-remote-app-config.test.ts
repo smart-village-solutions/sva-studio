@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig } from './build-remote-app-config.ts';
+import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig, selectProtectedOverrides } from './build-remote-app-config.ts';
 import { remoteConfigContract } from './remote-config-contract.ts';
 import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
 
@@ -86,6 +86,21 @@ describe('remote app config builder', () => {
     expect(compareRemoteConfigShadow('prod', changedSecrets, candidate)).toMatchObject({ equivalent: true });
     expect(compareRemoteConfigShadow('prod', candidate.source.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=other'), candidate)).toMatchObject({ equivalent: false, configValueMismatches: ['SVA_STACK_NAME'] });
     expect(compareRemoteConfigShadow('prod', candidate.source.replace('external_secret_v1', 'external_secret_v2'), candidate)).toMatchObject({ equivalent: false, secretReferenceMismatches: ['WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME'] });
+  });
+
+  it('uses only protected legacy values when explicit overrides are not configured', () => {
+    const legacySource = `${profile.replace('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow', 'SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility')}\n${overrides}`;
+    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
+    const result = buildRemoteAppConfig({ environment: 'prod', profile, overrides: protectedOverrides });
+
+    expect(protectedOverrides).toBe(overrides);
+    expect(result.source).toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow\n');
+    expect(result.source).not.toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility\n');
+    expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
+  });
+
+  it('prefers the explicit protected override bundle over legacy values', () => {
+    expect(selectProtectedOverrides('prod', `${profile}\n${overrides}`, 'APP_DB_PASSWORD=explicit-secret')).toBe('APP_DB_PASSWORD=explicit-secret');
   });
 
   it('forbids local files without reading or disclosing their contents', () => {

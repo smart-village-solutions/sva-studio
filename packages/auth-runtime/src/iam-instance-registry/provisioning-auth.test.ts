@@ -145,7 +145,11 @@ describe('iam-instance-registry provisioning auth wiring', () => {
       authClientId: 'sva-studio',
       authClientSecretConfigured: true,
       tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: false },
+      tenantAdminClientSecret: 'stale-tenant-secret',
     })).rejects.toThrow('Tenant admin client credentials are not configured');
+
+    expect(state.getKeycloakTenantAdminClientConfigFromEnv).not.toHaveBeenCalled();
+    expect(state.createReadKeycloakState).not.toHaveBeenCalled();
   });
 
   it('builds default, tenant-admin, and provisioner readers from the matching state readers', async () => {

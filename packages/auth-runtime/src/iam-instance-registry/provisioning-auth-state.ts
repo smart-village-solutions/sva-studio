@@ -39,8 +39,9 @@ export const readKeycloakState = adminAdapters.readKeycloakState;
 export const readKeycloakStateViaProvisioner = provisionerAdapters.readKeycloakState;
 export const readKeycloakStateViaTenantAdmin = async (input: KeycloakProvisioningInput) => {
   const clientId = input.tenantAdminClient?.clientId;
+  const secretConfigured = input.tenantAdminClient?.secretConfigured === true;
   const clientSecret = input.tenantAdminClientSecret;
-  if (!clientId || !clientSecret) {
+  if (!clientId || !secretConfigured || !clientSecret) {
     throw new KeycloakAdminUnavailableError('Tenant admin client credentials are not configured');
   }
 

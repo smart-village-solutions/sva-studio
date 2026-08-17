@@ -114,7 +114,7 @@ test.describe('news plugin', () => {
     const categoryTrigger = page.locator('#news-category');
     await expect(categoryTrigger).toBeEnabled();
     await categoryTrigger.click();
-    const categorySearch = page.getByRole('combobox', {
+    const categorySearch = page.getByRole('textbox', {
       name: /Kategorien suchen|Search categories|news\.fields\.categoriesSearch/,
     });
     await categorySearch.fill('Allgemein');

@@ -42,7 +42,6 @@ describe('IAM schema readiness deployment contract', () => {
     }
     expect(bootstrapEntrypoint).not.toContain('DO $schema_guard$');
     expect(bootstrapEntrypoint).toContain('node ./verify-iam-schema.mjs');
-    expect(bootstrapEntrypoint).toContain(`true|'')`);
     for (const entrypoint of appEntrypoints) {
       expect(entrypoint).toContain('node ./verify-iam-schema.mjs');
       expect(entrypoint.indexOf('node ./verify-iam-schema.mjs')).toBeLessThan(

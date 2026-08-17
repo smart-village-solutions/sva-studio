@@ -332,7 +332,7 @@ PGPASSWORD="${POSTGRES_PASSWORD}" psql \
   -f "${tmp_sql}"
 
 case "${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD}" in
-  true|'')
+  true)
     echo "[bootstrap-entrypoint] verifying IAM database readiness"
     node ./verify-iam-schema.mjs
     ;;

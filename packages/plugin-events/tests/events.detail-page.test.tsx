@@ -522,64 +522,7 @@ describe('EventsDetailPage', () => {
     );
   });
 
-  it('uses the upload response url when the refreshed asset still has no preview url', async () => {
-    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
-      assetId: 'asset-uploaded',
-      previewUrl: 'https://example.com/uploaded.jpg',
-      fileName: 'uploaded.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-    } as never);
-    vi.mocked(listHostMediaAssets)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        {
-          id: 'asset-uploaded',
-          fileName: 'uploaded.jpg',
-          mimeType: 'image/jpeg',
-          previewUrl: '',
-          visibility: 'public',
-        },
-      ] as never);
-    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
-      id: 'asset-uploaded',
-      instanceId: 'de-test',
-      storageKey: 'de-test/originals/uploaded.jpg',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      previewUrl: '',
-      visibility: 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
-      metadata: {
-        title: 'uploaded.jpg',
-        altText: '',
-        description: '',
-        copyright: '',
-        license: '',
-      },
-    } as never);
-    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
-      id: 'asset-uploaded',
-      instanceId: 'de-test',
-      storageKey: 'de-test/originals/uploaded.jpg',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      previewUrl: '',
-      visibility: 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
-      metadata: {
-        title: 'uploaded.jpg',
-        altText: '',
-        description: '',
-        copyright: '',
-        license: '',
-      },
-    } as never);
-
+  it('keeps a selected upload local until the event is saved', async () => {
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Inhalt' }));
@@ -591,9 +534,12 @@ describe('EventsDetailPage', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('https://example.com/uploaded-event.jpg')).toBeTruthy();
-    });
+    await waitFor(() =>
+      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+    );
+    expect((screen.getByLabelText('Medien-URL') as HTMLInputElement).value).toBe('');
+    expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(getHostMediaAsset)).not.toHaveBeenCalled();
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });
 

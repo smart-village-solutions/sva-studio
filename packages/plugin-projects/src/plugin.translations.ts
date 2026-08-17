@@ -100,6 +100,11 @@ const de = {
       deleteDescription: 'Das Projekt wird im Studio als gelöscht markiert.',
       mediaReferencePartialFailure:
         'Das Projekt wurde gespeichert, aber die Medienreferenzen konnten nicht gespeichert werden.',
+      mediaSaveUploading: 'Bilder werden hochgeladen.',
+      mediaSaveContent: 'Inhalt wird gespeichert.',
+      mediaSaveLinking: 'Medien werden verknüpft.',
+      mediaSaveCleanup: 'Nicht gespeicherte Bilder werden bereinigt.',
+      mediaSaveOutcomeUnknown: 'Das Speicherergebnis wird geprüft.',
     },
     media: {
       add: 'Medium hinzufügen',
@@ -215,6 +220,11 @@ const en = {
       ...de.projects.messages,
       saveError: 'Project could not be saved.',
       saveErrorWithReason: 'Project could not be saved: {{reason}}',
+      mediaSaveUploading: 'Uploading images.',
+      mediaSaveContent: 'Saving content.',
+      mediaSaveLinking: 'Linking media.',
+      mediaSaveCleanup: 'Cleaning up unsaved images.',
+      mediaSaveOutcomeUnknown: 'Checking the save outcome.',
     },
     media: {
       ...de.projects.media,

@@ -3,6 +3,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
+  contentMediaSavePhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   alignHostMediaReferencesByOrder,
@@ -21,7 +22,6 @@ import {
   resolveStandardContentAccessCapabilities,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
@@ -30,7 +30,9 @@ import {
   Button,
   addStudioCreatedSaveFeedback,
   contentMediaUsageToReference,
+  contentMediaUsagesToLocalDrafts,
   contentMediaUsagesToMainserver,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
@@ -38,6 +40,8 @@ import {
   MainserverDeviationSummary,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
+  revokeContentMediaUsageObjectUrls,
+  resolveContentMediaUsageDrafts,
   resolveMainserverPrincipalOptions,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
@@ -313,6 +317,7 @@ export function EventsDetailPage({
   });
   const { reset } = methods;
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const initialSaveFeedbackShownRef = React.useRef(false);
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
@@ -447,6 +452,7 @@ export function EventsDetailPage({
 
   const isAssetSelectable = React.useCallback(
     (asset: EventsMediaPickerAsset) => {
+      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
       if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
       if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
@@ -474,8 +480,12 @@ export function EventsDetailPage({
 
   const mediaPicker = useStudioMediaPickerOverlay<EventsMediaPickerAsset>({
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
-      const persistentUrl = asset.persistentUrl;
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -491,26 +501,29 @@ export function EventsDetailPage({
       const currentMedia = methods.getValues('content.mediaContents') ?? [];
       methods.setValue(
         'content.mediaContents',
-        [
-          ...currentMedia,
-          {
-            ...createDefaultMediaContent(),
-            captionText: nextMedia.captionText ?? '',
-            copyright: nextMedia.copyright ?? '',
-            contentType: nextMedia.contentType ?? '',
-            sourceUrl: {
-              url: persistentUrl,
-              description: nextMedia.sourceUrl?.description ?? '',
-            },
-          },
-        ],
+        asset.localDraft
+          ? currentMedia
+          : [
+              ...currentMedia,
+              {
+                ...createDefaultMediaContent(),
+                captionText: nextMedia.captionText ?? '',
+                copyright: nextMedia.copyright ?? '',
+                contentType: nextMedia.contentType ?? '',
+                sourceUrl: {
+                  url: persistentUrl,
+                  description: nextMedia.sourceUrl?.description ?? '',
+                },
+              },
+            ],
         { shouldDirty: true }
       );
       setMediaUsages((current) => [
         ...current,
         {
           uiId: `event-asset-${asset.id}-${current.length}`,
-          assetId: asset.id,
+          assetId: asset.localDraft ? undefined : asset.id,
+          localDraft: asset.localDraft,
           persistentUrl,
           previewUrl: asset.previewUrl ?? undefined,
           altText: asset.metadata.altText || asset.fileName,
@@ -535,17 +548,7 @@ export function EventsDetailPage({
     },
     canAcceptAsset: isAssetSelectable,
     isSupportedUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [detail, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
@@ -760,7 +763,7 @@ export function EventsDetailPage({
       content: {
         ...values.content,
         mediaContents: contentMediaUsagesToMainserver(
-          mediaUsages
+          mediaUsages.filter((usage) => !usage.localDraft)
         ) as EventsDetailFormValues['content']['mediaContents'],
       },
     };
@@ -814,6 +817,7 @@ export function EventsDetailPage({
     }
 
     const operationId = saveFeedback.beginSaving();
+    setMediaSavePhaseKey(null);
     try {
       const deviationFormPaths: Readonly<
         Record<string, Parameters<typeof methods.getFieldState>[0]>
@@ -853,16 +857,34 @@ export function EventsDetailPage({
         saveFeedback.reset();
         return;
       }
-      const saveContent = () =>
-        mode === 'create'
-          ? createEvent(payload, actingPrincipalType)
-          : updateEvent(
-              contentId as string,
-              omitDeviatedMainserverFields(payload, deviations, {
-                retainedFieldGroups: correctedDegradedFields,
-              }),
-              actingPrincipalType
-            );
+      const saveContent = (
+        draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+        mediaSaveContext?: Readonly<{ operationId: string }>
+      ) => {
+        const resolvedPayload = mapEventsDetailFormValuesToInput({
+          ...values,
+          content: {
+            ...values.content,
+            mediaContents: contentMediaUsagesToMainserver(
+              resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+            ) as EventsDetailFormValues['content']['mediaContents'],
+          },
+        });
+        const mutationOptions = mediaSaveContext
+          ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+          : undefined;
+        if (mode === 'create') {
+          return mutationOptions
+            ? createEvent(resolvedPayload, actingPrincipalType, mutationOptions)
+            : createEvent(resolvedPayload, actingPrincipalType);
+        }
+        const mutation = omitDeviatedMainserverFields(resolvedPayload, deviations, {
+          retainedFieldGroups: correctedDegradedFields,
+        });
+        return mutationOptions
+          ? updateEvent(contentId as string, mutation, actingPrincipalType, mutationOptions)
+          : updateEvent(contentId as string, mutation, actingPrincipalType);
+      };
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
@@ -873,21 +895,31 @@ export function EventsDetailPage({
               const reference = contentMediaUsageToReference(usage);
               return reference ? [reference] : [];
             }),
+            drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+            onPhaseChange: (phase) => setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
           })
-        : { status: 'complete' as const, saved: await saveContent() };
+        : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
       const saved = result.saved;
+      const savedMediaUsages = result.resolutions?.length
+        ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+        : mediaUsages;
+      if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
       if (result.status === 'reference_failed') {
         setRetryReferenceSync(() => result.retryReferenceSync);
-        setMediaUsages((current) =>
-          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
+        setMediaUsages(
+          savedMediaUsages.map((usage) =>
+            usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
+          )
         );
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         saveFeedback.markFailed(operationId);
         return;
       }
       setRetryReferenceSync(null);
-      setMediaUsages((current) =>
-        current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+      setMediaUsages(
+        savedMediaUsages.map((usage) =>
+          usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+        )
       );
       setStatus(null);
       saveFeedback.markSaved(operationId);
@@ -936,7 +968,7 @@ export function EventsDetailPage({
               status={saveFeedback.status}
               labels={{
                 idle: pt('actions.save'),
-                saving: pt('actions.saving'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
                 saved: pt('actions.saved'),
               }}
             />
@@ -1134,7 +1166,9 @@ export function EventsDetailPage({
                         }}
                         canSelectMedia={canSelectMedia}
                         canUploadMedia={canUploadMedia}
-                        mediaEditingDisabled={!mediaReferencesReady}
+                        mediaEditingDisabled={
+                          !mediaReferencesReady || saveFeedback.status === 'saving'
+                        }
                         onLoadAssetSnapshot={async (usage) => {
                           if (!usage.assetId) throw new Error('asset_unavailable');
                           const [detail, delivery] = await Promise.all([

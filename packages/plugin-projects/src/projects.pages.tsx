@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   alignHostMediaReferencesByOrder,
+  contentMediaSavePhaseMessageKey,
   fetchIamContentHistory,
   formatDateTimeInEditorTimeZone,
   getHostMediaAsset,
@@ -16,7 +17,6 @@ import {
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
@@ -26,13 +26,17 @@ import {
   Button,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
+  contentMediaUsagesToLocalDrafts,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
   Input,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
+  revokeContentMediaUsageObjectUrls,
   resolveMainserverPrincipalOptions,
+  resolveContentMediaUsageDrafts,
   RichTextHtmlEditor,
   Select,
   StudioConfirmDialog,
@@ -116,6 +120,7 @@ function ProjectImages({
   onChange,
   canSelectMedia,
   canUploadMedia,
+  mediaEditingDisabled,
   onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,
@@ -126,6 +131,7 @@ function ProjectImages({
   onChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
+  mediaEditingDisabled: boolean;
   onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
@@ -141,6 +147,7 @@ function ProjectImages({
   return (
     <StudioDetailCard title={pt('fields.images')}>
       <ContentMediaUsageBlock
+        disabled={mediaEditingDisabled}
         usages={usages}
         onChange={change}
         showHeader={false}
@@ -287,6 +294,7 @@ function ProjectEditor({
     resolver: zodResolver(projectFormSchema),
   });
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (form.formState.isDirty) {
       saveFeedback.markDirty();
@@ -385,42 +393,43 @@ function ProjectEditor({
 
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
-      const next = [
-        ...mediaUsages,
-        projectAssetToMediaUsage({
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const usage = {
+        ...projectAssetToMediaUsage({
           assetId: asset.id,
-          persistentUrl: asset.persistentUrl,
+          persistentUrl: asset.localDraft ? '' : (asset.persistentUrl ?? ''),
           previewUrl: asset.previewUrl,
           metadata: { ...asset.metadata, fileName: asset.fileName },
           sortOrder: mediaUsages.length,
         }),
-      ];
+        assetId: asset.localDraft ? undefined : asset.id,
+        localDraft: asset.localDraft,
+      };
+      const next = [...mediaUsages, usage];
       setMediaUsages(next);
-      form.setValue('images', [...projectMediaUsagesToImages(next)], {
-        shouldDirty: true,
-        shouldValidate: true,
-      });
+      form.setValue(
+        'images',
+        [...projectMediaUsagesToImages(next.filter((entry) => !entry.localDraft))],
+        {
+          shouldDirty: true,
+          shouldValidate: true,
+        }
+      );
       setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
     canAcceptAsset: (asset) =>
       Boolean(
-        asset.persistentUrl &&
-        isPersistableContentMediaUrl(asset.persistentUrl) &&
+        (asset.localDraft ||
+          (asset.persistentUrl && isPersistableContentMediaUrl(asset.persistentUrl))) &&
         mediaUsages.every((usage) => usage.assetId !== asset.id)
       ),
     isSupportedUploadFile: (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        visibility: 'public',
-        mediaType: 'image',
-      });
-      await refreshMediaAssets();
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [asset, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
@@ -528,15 +537,30 @@ function ProjectEditor({
       }
       setMutationError(undefined);
       const operationId = saveFeedback.beginSaving();
+      setMediaSavePhaseKey(null);
       try {
-        const input = normalizeProjectInput({
-          ...values,
-          images: values.images.map((image, position) => ({ ...image, position })),
-        });
-        const saveContent = () =>
-          mode === 'create'
-            ? createProject(input, actingPrincipalType)
+        const saveContent = (
+          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+          mediaSaveContext?: Readonly<{ operationId: string }>
+        ) => {
+          const input = normalizeProjectInput({
+            ...values,
+            images: projectMediaUsagesToImages(
+              resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+            ).map((image, position) => ({ ...image, position })),
+          });
+          const mutationOptions = mediaSaveContext
+            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+            : undefined;
+          if (mode === 'create') {
+            return mutationOptions
+              ? createProject(input, actingPrincipalType, mutationOptions)
+              : createProject(input, actingPrincipalType);
+          }
+          return mutationOptions
+            ? updateProject(contentId as string, input, actingPrincipalType, mutationOptions)
             : updateProject(contentId as string, input, actingPrincipalType);
+        };
         const result = requiresReferenceSync
           ? await saveContentWithHostMediaReferences({
               fetch: globalThis.fetch.bind(globalThis),
@@ -547,13 +571,20 @@ function ProjectEditor({
                 const reference = contentMediaUsageToReference(usage);
                 return reference ? [reference] : [];
               }),
+              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+              onPhaseChange: (phase) =>
+                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
-          : { status: 'complete' as const, saved: await saveContent() };
+          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
+        const savedMediaUsages = result.resolutions?.length
+          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+          : mediaUsages;
+        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
           setRetryCreatedContentId(mode === 'create' ? result.saved.id : null);
-          setMediaUsages((current) =>
-            current.map((usage) =>
+          setMediaUsages(
+            savedMediaUsages.map((usage) =>
               usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
             )
           );
@@ -565,8 +596,8 @@ function ProjectEditor({
         setRetryCreatedContentId(null);
         saveFeedback.markSaved(operationId);
         if (requiresReferenceSync) {
-          setMediaUsages((current) =>
-            current.map((usage) =>
+          setMediaUsages(
+            savedMediaUsages.map((usage) =>
               usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
             )
           );
@@ -692,6 +723,7 @@ function ProjectEditor({
             }}
             canSelectMedia={canSelectMedia}
             canUploadMedia={canUploadMedia}
+            mediaEditingDisabled={saveFeedback.status === 'saving'}
             onAddManualMedia={addManualMedia}
             onOpenMediaPicker={(pickerMode) =>
               pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
@@ -838,7 +870,7 @@ function ProjectEditor({
             disabled={Boolean(retryReferenceSync)}
             labels={{
               idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-              saving: pt('actions.saving'),
+              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
               saved: pt('actions.saved'),
             }}
           />

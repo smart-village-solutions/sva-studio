@@ -1,6 +1,7 @@
 import { requestJson, type FetchLike } from './http-client.js';
 
 export type HostMediaUploadVisibility = 'public' | 'protected';
+export type HostMediaUploadContext = 'library' | 'content-save';
 
 export type InitializeHostMediaUploadInput = Readonly<{
   mediaType?: 'image';
@@ -8,6 +9,9 @@ export type InitializeHostMediaUploadInput = Readonly<{
   byteSize: number;
   visibility?: HostMediaUploadVisibility;
   instanceId?: string;
+  uploadContext?: HostMediaUploadContext;
+  contentSaveOperationId?: string;
+  draftId?: string;
 }>;
 
 export type InitializeHostMediaUploadResult = Readonly<{
@@ -102,6 +106,9 @@ export const uploadHostMediaFile = async (input: {
   readonly visibility?: HostMediaUploadVisibility;
   readonly mediaType?: 'image';
   readonly instanceId?: string;
+  readonly uploadContext?: HostMediaUploadContext;
+  readonly contentSaveOperationId?: string;
+  readonly draftId?: string;
 }): Promise<UploadHostMediaFileResult> => {
   const initialized = await initializeHostMediaUpload({
     fetch: input.fetch,
@@ -111,6 +118,9 @@ export const uploadHostMediaFile = async (input: {
       byteSize: input.file.size,
       visibility: input.visibility,
       instanceId: input.instanceId,
+      uploadContext: input.uploadContext,
+      contentSaveOperationId: input.contentSaveOperationId,
+      draftId: input.draftId,
     },
   });
 

@@ -1,5 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
-import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
 import type {
   PoiCategoryOption,
@@ -42,14 +42,22 @@ export const getPoiDetail = async (
 
 export const createPoi = async (
   input: PoiFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<PoiContentItem> => poiClient.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<PoiContentItem> =>
+  mutationOptions
+    ? poiClient.create(input, actingPrincipalType, mutationOptions)
+    : poiClient.create(input, actingPrincipalType);
 
 export const updatePoi = async (
   contentId: string,
   input: PoiFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<PoiContentItem> => poiClient.update(contentId, input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<PoiContentItem> =>
+  mutationOptions
+    ? poiClient.update(contentId, input, actingPrincipalType, mutationOptions)
+    : poiClient.update(contentId, input, actingPrincipalType);
 
 export const deletePoi = async (
   contentId: string,

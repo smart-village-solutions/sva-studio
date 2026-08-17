@@ -51,6 +51,15 @@ Dieser Abschnitt beschreibt kritische Laufzeitszenarien und Interaktionen.
 7. Der Editor speichert zuerst den Fachinhalt und erhält dadurch die stabile Ziel-ID. Erst danach ersetzt er die Referenzliste idempotent.
 8. Scheitert nur der Referenzschritt, bleibt der Fachinhalt gespeichert. Die UI weist den Teilfehler aus und wiederholt ausschließlich das Referenz-Replacement.
 
+Für Uploads aus Content-Editoren gilt ergänzend:
+
+1. Die Dateiauswahl erzeugt ausschließlich einen lokalen `File`-Entwurf und eine `blob:`-Vorschau; es erfolgt noch kein Netzwerkzugriff und kein Eintrag in der Medienbibliothek.
+2. Beim Speichern eröffnet der gemeinsame SDK-Orchestrator eine Content-Save-Operation und lädt die weiterhin ausgewählten Entwürfe als benutzergebundene `provisional`-Assets hoch.
+3. Nach Auflösung dauerhafter Delivery-URLs baut das Plugin seinen Fachpayload neu und schreibt den Mainserver-Inhalt.
+4. Nach bestätigtem Fach-Write markiert der Host die stabile Ziel-ID. Der Commit ersetzt die vollständige Referenzliste und aktiviert die verwendeten Assets atomar; ein Commit-Retry schreibt den Fachinhalt nicht erneut.
+5. Vor Beginn des Fach-Writes sowie nach eindeutigem fachlichem 4xx-Fehler verwirft der Host die Operation ohne `media.delete`-Recht. Bei technisch unklarem Write-Ausgang bleibt der Upload verborgen und wird nicht voreilig gelöscht.
+6. Der explizite Upload unter `/admin/media` behält den unmittelbaren Lifecycle `initialize -> signed PUT -> complete`.
+
 ### Generischer Studio-Jobstart und Statusabruf
 
 1. Ein Host- oder Fachclient ruft `POST /api/v1/plugin-operations/jobs` mit Plugin-ID, Jobtyp, optionalem Importprofil und fachlichem Input auf.

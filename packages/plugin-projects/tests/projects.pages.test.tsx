@@ -402,29 +402,7 @@ describe('projects pages', () => {
     expect(await screen.findByText('media.refreshTitle')).toBeTruthy();
   });
 
-  it('uploads and accepts a supported image through the overlay', async () => {
-    state.upload.mockResolvedValue({
-      assetId: 'uploaded-1',
-      previewUrl: 'https://example.test/upload-preview.jpg',
-    });
-    state.getAsset.mockResolvedValue({
-      id: 'uploaded-1',
-      storageKey: 'media/upload.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {},
-    });
-    state.updateAsset.mockResolvedValue({
-      id: 'uploaded-1',
-      storageKey: 'media/upload.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {},
-    });
-    state.getDelivery.mockResolvedValue({
-      deliveryUrl: 'https://example.test/upload.jpg',
-      isPublicUrl: true,
-    });
+  it('accepts a supported image locally without uploading it', async () => {
     const { ProjectsCreatePage } = await import('../src/projects.pages.js');
     render(<ProjectsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content' }));
@@ -436,10 +414,10 @@ describe('projects pages', () => {
     await waitFor(() => expect(useMedia.hasAttribute('disabled')).toBe(false));
     fireEvent.click(useMedia);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1);
-    expect(state.upload).toHaveBeenCalledWith(
-      expect.objectContaining({ visibility: 'public', mediaType: 'image' })
-    );
+    expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/);
+    expect((screen.getByLabelText('fields.imageUrl') as HTMLInputElement).value).toBe('');
+    expect(state.upload).not.toHaveBeenCalled();
+    expect(state.getAsset).not.toHaveBeenCalled();
   });
 
   it('hides library and upload entry points without media permissions while retaining manual URLs', async () => {
@@ -488,9 +466,7 @@ describe('projects pages', () => {
     };
     const { ProjectsEditPage } = await import('../src/projects.pages.js');
     const { rerender } = render(
-      <ProjectsEditPage
-        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
-      />
+      <ProjectsEditPage principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }} />
     );
 
     expect(await screen.findByDisplayValue('Brückenbau')).toBeTruthy();
@@ -512,9 +488,7 @@ describe('projects pages', () => {
 
     state.getDetail.mockRejectedValueOnce(new Error('forbidden'));
     rerender(
-      <ProjectsEditPage
-        principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }}
-      />
+      <ProjectsEditPage principalControl={{ kind: 'fixed', value: 'user', label: 'Persönlich' }} />
     );
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'actions.update' })).toBeNull();

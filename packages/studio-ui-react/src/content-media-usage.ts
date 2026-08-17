@@ -11,6 +11,10 @@ export type ContentMediaUsage = Readonly<{
   assetId?: string;
   persistentUrl: string;
   previewUrl?: string;
+  localDraft?: Readonly<{
+    id: string;
+    file: File;
+  }>;
   altText: string;
   caption: string;
   credit: string;
@@ -23,6 +27,30 @@ export type ContentMediaUsage = Readonly<{
 }>;
 
 export type ContentMediaUsagePatch = Partial<Omit<ContentMediaUsage, 'uiId'>>;
+
+const revokedObjectUrls = new Set<string>();
+const maxRememberedRevokedObjectUrls = 256;
+
+export const revokeBrowserObjectUrl = (value: string | null | undefined): void => {
+  if (
+    !value?.startsWith('blob:') ||
+    typeof URL === 'undefined' ||
+    typeof URL.revokeObjectURL !== 'function' ||
+    revokedObjectUrls.has(value)
+  ) return;
+  if (revokedObjectUrls.size >= maxRememberedRevokedObjectUrls) {
+    const oldest = revokedObjectUrls.values().next().value;
+    if (oldest !== undefined) revokedObjectUrls.delete(oldest);
+  }
+  revokedObjectUrls.add(value);
+  URL.revokeObjectURL(value);
+};
+
+export const revokeContentMediaUsageObjectUrls = (
+  usages: readonly Pick<ContentMediaUsage, 'previewUrl'>[]
+): void => {
+  usages.forEach((usage) => revokeBrowserObjectUrl(usage.previewUrl));
+};
 
 export const createContentMediaUiId = (): string => {
   if (typeof globalThis.crypto?.randomUUID !== 'function') {
@@ -96,7 +124,9 @@ export const isPersistableContentMediaUrl = (value: string): boolean => {
   try {
     const url = new URL(value);
     if (url.protocol !== 'https:' || url.username || url.password) return false;
-    return [...url.searchParams.keys()].every((key) => sensitiveMediaUrlQueryKeys.has(key.toLowerCase()) === false);
+    return [...url.searchParams.keys()].every(
+      (key) => sensitiveMediaUrlQueryKeys.has(key.toLowerCase()) === false
+    );
   } catch {
     return false;
   }

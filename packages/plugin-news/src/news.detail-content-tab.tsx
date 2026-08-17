@@ -11,7 +11,6 @@ import {
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
-
 import { NewsDetailCard } from './news.detail-card.js';
 import {
   collectSummaryErrors,
@@ -21,7 +20,6 @@ import {
   translateFieldError,
 } from './news.detail-content-tab.helpers.js';
 import type { NewsDetailFormValues } from './news.types.js';
-
 export type NewsDetailContentTabProps = Readonly<{
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onAddManualMedia: () => string;
@@ -29,10 +27,10 @@ export type NewsDetailContentTabProps = Readonly<{
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
-
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   title: string;
@@ -138,8 +136,7 @@ type NewsContentMediaSectionProps = Readonly<{
   mediaField: ContentFieldBindings;
   mediaUsages: readonly ContentMediaUsage[];
   onChange: (usages: readonly ContentMediaUsage[]) => void;
-  canSelectMedia: boolean;
-  canUploadMedia: boolean;
+  canSelectMedia: boolean; canUploadMedia: boolean; mediaEditingDisabled: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onAddManualMedia: () => string;
@@ -152,6 +149,7 @@ function NewsContentMediaSection({
   onChange,
   canSelectMedia,
   canUploadMedia,
+  mediaEditingDisabled,
   onLoadAssetSnapshot,
   onAddManualMedia,
   onOpenMediaPicker,
@@ -163,6 +161,7 @@ function NewsContentMediaSection({
     >
       <div id={mediaField.id}>
         <ContentMediaUsageBlock
+          disabled={mediaEditingDisabled}
           usages={mediaUsages}
           onChange={onChange}
           onAddManual={onAddManualMedia}
@@ -235,6 +234,7 @@ export function NewsDetailContentTab({
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
   canUploadMedia = true,
+  mediaEditingDisabled = false,
   onLoadAssetSnapshot,
 }: NewsDetailContentTabProps) {
   const {
@@ -302,8 +302,8 @@ export function NewsDetailContentTab({
         mediaField={mediaField}
         mediaUsages={resolvedUsages}
         onChange={changeMedia}
-        canSelectMedia={canSelectMedia}
-        canUploadMedia={canUploadMedia}
+        canSelectMedia={canSelectMedia} canUploadMedia={canUploadMedia}
+        mediaEditingDisabled={mediaEditingDisabled}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
         onAddManualMedia={onAddManualMedia}
         onOpenMediaPicker={onOpenMediaPicker}

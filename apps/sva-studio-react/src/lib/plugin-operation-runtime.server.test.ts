@@ -10,6 +10,9 @@ const registerStudioJobExecutionHandlersMock = vi.fn();
 
 vi.mock('@sva/auth-runtime/server', () => ({
   dsrExportStudioJobRegistration: { jobTypeId: 'studio.dsr-export' },
+  mediaContentSaveRecoveryStudioJobRegistration: {
+    jobTypeId: 'media.content-save-recovery',
+  },
   protectField: vi.fn((value: string) => value),
   registerPluginOperationExecutionHandlers: registerPluginOperationExecutionHandlersMock,
   registerStudioJobExecutionHandlers: registerStudioJobExecutionHandlersMock,
@@ -112,13 +115,17 @@ describe('plugin operation runtime registration', () => {
     ]);
     expect(registerStudioJobExecutionHandlersMock).toHaveBeenCalledWith([
       expect.objectContaining({ jobTypeId: 'studio.dsr-export' }),
+      expect.objectContaining({ jobTypeId: 'media.content-save-recovery' }),
     ]);
     expect(registerPluginOperationExecutionHandlersMock).toHaveBeenCalledWith(handlers);
   }, 30000);
 
   it('keeps the server runtime decoupled from the browser plugin snapshot module', async () => {
     const currentFilePath = fileURLToPath(import.meta.url);
-    const source = readFileSync(resolve(dirname(currentFilePath), 'plugin-operation-runtime.server.ts'), 'utf8');
+    const source = readFileSync(
+      resolve(dirname(currentFilePath), 'plugin-operation-runtime.server.ts'),
+      'utf8'
+    );
 
     expect(source).not.toContain("from './plugins.js'");
   });
@@ -201,7 +208,12 @@ describe('plugin operation runtime registration', () => {
     const mod = await import('./plugin-operation-runtime.server');
 
     const handlers = await mod.createPluginOperationExecutionHandlersFromSnapshot({
-      pluginSources: [createJobPluginSource({ pluginId: 'waste-management', runtimeRequirement: 'waste-management.operations' })],
+      pluginSources: [
+        createJobPluginSource({
+          pluginId: 'waste-management',
+          runtimeRequirement: 'waste-management.operations',
+        }),
+      ],
       runtimeFactories: {
         'waste-management.operations': () => ({}),
       },
@@ -282,10 +294,17 @@ describe('plugin operation runtime registration', () => {
 
     await expect(
       mod.createPluginOperationExecutionHandlersFromSnapshot({
-        pluginSources: [createJobPluginSource({ pluginId: 'custom-waste-plugin', runtimeRequirement: 'custom.runtime' })],
+        pluginSources: [
+          createJobPluginSource({
+            pluginId: 'custom-waste-plugin',
+            runtimeRequirement: 'custom.runtime',
+          }),
+        ],
         runtimeFactories: {},
       })
-    ).rejects.toThrowError('plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime');
+    ).rejects.toThrowError(
+      'plugin_job_runtime_provider_missing:custom-waste-plugin:custom.runtime'
+    );
   });
 
   it('does not apply the host-owned waste runtime factory to unrelated plugins with the same runtime requirement', async () => {
@@ -316,10 +335,10 @@ describe('plugin operation runtime registration', () => {
         pluginSources: [
           {
             ...createJobPluginSource({
-            pluginId: 'installed-custom-plugin',
-            runtimeRequirement: 'custom.runtime',
-            sourceType: 'installed-distribution',
-          }),
+              pluginId: 'installed-custom-plugin',
+              runtimeRequirement: 'custom.runtime',
+              sourceType: 'installed-distribution',
+            }),
             sourceRef: '@acme/plugin-custom',
           },
         ],

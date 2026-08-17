@@ -28,6 +28,7 @@ type GenericItemsDetailTabsProps = Readonly<{
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>;
 
@@ -44,6 +45,7 @@ const createGenericItemsDetailTabs = ({
   onChangeMediaUsages,
   canSelectMedia,
   canUploadMedia,
+  mediaEditingDisabled,
   onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps): readonly StudioDetailTabDefinition<GenericItemsDetailTabId>[] => [
   {
@@ -76,6 +78,7 @@ const createGenericItemsDetailTabs = ({
         onChangeMediaUsages={onChangeMediaUsages}
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
+        mediaEditingDisabled={mediaEditingDisabled}
         onLoadAssetSnapshot={onLoadAssetSnapshot}
       />
     ),
@@ -113,6 +116,7 @@ export const GenericItemsDetailTabs = ({
   onChangeMediaUsages,
   canSelectMedia,
   canUploadMedia,
+  mediaEditingDisabled,
   onLoadAssetSnapshot,
 }: GenericItemsDetailTabsProps) => {
   const tabs = createGenericItemsDetailTabs({
@@ -130,6 +134,7 @@ export const GenericItemsDetailTabs = ({
     onChangeMediaUsages,
     canSelectMedia,
     canUploadMedia,
+    mediaEditingDisabled,
     onLoadAssetSnapshot,
   });
 

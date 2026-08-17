@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import { FormProvider, useForm } from 'react-hook-form';
 import {
   contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
+  contentMediaSavePhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
@@ -19,7 +20,6 @@ import {
   subscribeSessionAccessSnapshot,
   alignHostMediaReferencesByOrder,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetDetail,
 } from '@sva/plugin-sdk';
@@ -35,11 +35,15 @@ import {
   StudioMediaPickerOverlay,
   StudioSaveButton,
   contentMediaUsageToReference,
+  contentMediaUsagesToLocalDrafts,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
+  revokeContentMediaUsageObjectUrls,
   resolveMainserverPrincipalOptions,
+  resolveContentMediaUsageDrafts,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
   type MainserverPrincipalControlModel,
@@ -287,6 +291,7 @@ export function GenericItemsDetailPage({
     defaultValues: createDefaultGenericItemsDetailFormValues(),
   });
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (methods.formState.isDirty) {
       saveFeedback.markDirty();
@@ -416,6 +421,7 @@ export function GenericItemsDetailPage({
   });
   const isAssetSelectable = React.useCallback(
     (asset: GenericItemsMediaPickerAsset) => {
+      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
       if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
       if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
@@ -442,8 +448,12 @@ export function GenericItemsDetailPage({
 
   const mediaPicker = useStudioMediaPickerOverlay<GenericItemsMediaPickerAsset>({
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
-      const persistentUrl = asset.persistentUrl;
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -459,26 +469,29 @@ export function GenericItemsDetailPage({
       const currentMedia = methods.getValues('mediaContents') ?? [];
       methods.setValue(
         'mediaContents',
-        [
-          ...currentMedia,
-          {
-            ...createEmptyMediaContent(),
-            captionText: nextMedia.captionText ?? '',
-            copyright: nextMedia.copyright ?? '',
-            contentType: nextMedia.contentType ?? '',
-            sourceUrl: {
-              url: persistentUrl,
-              description: nextMedia.sourceUrl?.description ?? '',
-            },
-          },
-        ],
+        asset.localDraft
+          ? currentMedia
+          : [
+              ...currentMedia,
+              {
+                ...createEmptyMediaContent(),
+                captionText: nextMedia.captionText ?? '',
+                copyright: nextMedia.copyright ?? '',
+                contentType: nextMedia.contentType ?? '',
+                sourceUrl: {
+                  url: persistentUrl,
+                  description: nextMedia.sourceUrl?.description ?? '',
+                },
+              },
+            ],
         { shouldDirty: true }
       );
       setMediaUsages((current) => [
         ...current,
         {
           uiId: `generic-item-asset-${asset.id}-${current.length}`,
-          assetId: asset.id,
+          assetId: asset.localDraft ? undefined : asset.id,
+          localDraft: asset.localDraft,
           persistentUrl,
           previewUrl: asset.previewUrl ?? undefined,
           altText: asset.metadata.altText || asset.fileName,
@@ -503,17 +516,7 @@ export function GenericItemsDetailPage({
     },
     canAcceptAsset: isAssetSelectable,
     isSupportedUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [detail, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
@@ -557,11 +560,9 @@ export function GenericItemsDetailPage({
       additionalData: { contentType: '', width: '', height: '' },
     };
     const nextUsages = [...mediaUsages, usage];
-    methods.setValue(
-      'mediaContents',
-      genericItemMediaUsagesToFormValues(nextUsages),
-      { shouldDirty: true }
-    );
+    methods.setValue('mediaContents', genericItemMediaUsagesToFormValues(nextUsages), {
+      shouldDirty: true,
+    });
     setMediaUsages(nextUsages);
     setRequiresReferenceSync(
       (current) => current || nextUsages.some((entry) => Boolean(entry.assetId))
@@ -580,15 +581,30 @@ export function GenericItemsDetailPage({
       if (!canSave) return;
       setStatus(null);
       const operationId = saveFeedback.beginSaving();
+      setMediaSavePhaseKey(null);
       try {
-        const input = {
-          ...mapGenericItemsDetailFormValuesToInput(values),
-          mediaContents: genericItemMediaUsagesToContents(mediaUsages),
-        };
-        const saveContent = () =>
-          mode === 'create'
-            ? createGenericItem(input, actingPrincipalType)
+        const saveContent = (
+          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+          mediaSaveContext?: Readonly<{ operationId: string }>
+        ) => {
+          const input = {
+            ...mapGenericItemsDetailFormValuesToInput(values),
+            mediaContents: genericItemMediaUsagesToContents(
+              resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+            ),
+          };
+          const mutationOptions = mediaSaveContext
+            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+            : undefined;
+          if (mode === 'create') {
+            return mutationOptions
+              ? createGenericItem(input, actingPrincipalType, mutationOptions)
+              : createGenericItem(input, actingPrincipalType);
+          }
+          return mutationOptions
+            ? updateGenericItem(contentId ?? '', input, actingPrincipalType, mutationOptions)
             : updateGenericItem(contentId ?? '', input, actingPrincipalType);
+        };
         const result = requiresReferenceSync
           ? await saveContentWithHostMediaReferences({
               fetch: globalThis.fetch.bind(globalThis),
@@ -599,12 +615,19 @@ export function GenericItemsDetailPage({
                 const reference = contentMediaUsageToReference(usage);
                 return reference ? [reference] : [];
               }),
+              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+              onPhaseChange: (phase) =>
+                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
-          : { status: 'complete' as const, saved: await saveContent() };
+          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
+        const savedMediaUsages = result.resolutions?.length
+          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+          : mediaUsages;
+        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
-          setMediaUsages((current) =>
-            current.map((usage) =>
+          setMediaUsages(
+            savedMediaUsages.map((usage) =>
               usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
             )
           );
@@ -612,8 +635,10 @@ export function GenericItemsDetailPage({
           saveFeedback.markFailed(operationId);
           return;
         }
-        setMediaUsages((current) =>
-          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+        setMediaUsages(
+          savedMediaUsages.map((usage) =>
+            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+          )
         );
         setStatus(null);
         saveFeedback.markSaved(operationId);
@@ -651,7 +676,7 @@ export function GenericItemsDetailPage({
               onClick={() => void onSubmit()}
               labels={{
                 idle: mode === 'create' ? pt('actions.create') : pt('actions.update'),
-                saving: pt('actions.saving'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
                 saved: pt('actions.saved'),
               }}
             />
@@ -779,6 +804,7 @@ export function GenericItemsDetailPage({
           }}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
+          mediaEditingDisabled={saveFeedback.status === 'saving'}
           onLoadAssetSnapshot={async (usage) => {
             if (!usage.assetId) throw new Error('asset_unavailable');
             const [detail, delivery] = await Promise.all([

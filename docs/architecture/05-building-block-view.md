@@ -725,9 +725,11 @@ Neu hinzugekommene Bausteine im Change `add-iam-organization-management-hierarch
 1. `packages/studio-ui-react/src/content-media-usage*.ts(x)`
    - definiert den kontrollierten Bildblock, barrierefreie Reihenfolgeaktionen, sichtbare Referenzzustände und den feldweisen Metadatenabgleich.
 2. `packages/plugin-sdk/src/media-picker-client.ts`, `content-ui-utils.ts`, `content-media-persistence.ts`
-   - liefert browser-sichere Asset-/Delivery-/Referenzverträge, gemeinsam verwendete Upload-Phasen-, MIME- und Asset-Darstellungslogik sowie die Sequenz „Fachinhalt zuerst, Referenzen danach“ mit isoliertem Retry.
+   - liefert browser-sichere Asset-/Delivery-/Referenzverträge, gemeinsam verwendete Upload-Phasen-, MIME- und Asset-Darstellungslogik sowie den Save-Orchestrator für lokale Entwürfe, provisorische Uploads, fachlichen Write und atomare Aktivierung.
 3. POI, News, Events, Generic Items, Projects und Cockpit Cards
    - behalten ihre Mainserver- beziehungsweise Fachmodelle als führenden Snapshot und übersetzen ausschließlich am Pluginrand in `ContentMediaUsage`; `gallery_item` und der normalisierte Listenindex bilden die geordnete Hostreferenz. Fachliche Content-Type-Fallbacks bleiben pluginlokal, während abgelöste Upload-, Picker-, Listen- und Preview-Implementierungen entfernt werden.
+4. `@sva/auth-runtime` und `@sva/data-repositories`
+   - führen benutzer- und instanzgebundene Content-Save-Operationen. `provisional`-Assets bleiben aus Listen ausgeschlossen; erst der Commit ersetzt Referenzen und aktiviert die verwendeten Assets in einem Datenbankstatement.
 
 ## Zentraler Backup-Agent
 

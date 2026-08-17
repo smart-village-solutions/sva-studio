@@ -112,6 +112,7 @@ export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> 
       queueName: input.queueName,
       maxAttempts: input.maxAttempts,
       jobKey: `studio-job:${input.jobId}`,
+      ...(input.runAt ? { runAt: input.runAt } : {}),
     }
   );
 };

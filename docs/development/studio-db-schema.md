@@ -252,11 +252,16 @@ Kernmodell für hochgeladene und referenzierte Medien:
 - `iam.media_upload_sessions`
 - `iam.media_storage_usage`
 - `iam.media_storage_quotas`
+- `iam.media_content_save_operations`
+- `iam.media_content_save_operation_references`
 
 Kernidee:
 
 - Assets, Varianten, Upload-Sessions und Referenzen sind getrennt modelliert.
 - Speicherverbrauch und Limits werden relational pro Instanz geführt.
+- Content-Editoren halten neu gewählte Dateien zunächst ausschließlich als lokale Browser-Entwürfe. Erst beim fachlichen Speichern werden sie einer benutzergebundenen `media_content_save_operation` zugeordnet und als `provisional` hochgeladen.
+- Provisorische Assets sind nicht Teil der Medienbibliothek. Nach erfolgreichem Content-Write ersetzt ein atomarer Commit die Zielreferenzen und aktiviert die zugehörigen Assets; bei einem eindeutig fehlgeschlagenen Write werden die provisorischen Objekte über denselben Operationskontext entfernt.
+- `provisional_operation_id`, `provisional_owner_subject`, `provisional_draft_id` und `provisional_expires_at` begrenzen Zugriff, Idempotenz und spätere Reconciliation. Unklare Write-Ausgänge werden nicht durch voreiliges Löschen verschleiert.
 
 ### 8. Technische Hilfs- und Betriebsdaten
 

@@ -1,4 +1,8 @@
-import { loadMainserverMutationJournal } from '@sva/auth-runtime/server';
+import {
+  loadMainserverMutationJournal,
+  markMediaContentSaveFromMainserverMutation,
+} from '@sva/auth-runtime/server';
+import { CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER } from '@sva/plugin-sdk';
 import { readMainserverMutationFollowUpContext } from '@sva/sva-mainserver/server';
 import { createSdkLogger } from '@sva/server-runtime';
 
@@ -37,6 +41,8 @@ const shouldRefreshProjectionForRequest = (request: Request, response: Response)
   request.method !== 'GET' &&
   request.method !== 'HEAD' &&
   request.method !== 'OPTIONS';
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 const parseMutationOperation = (request: Request): MainserverProjectionMutationOperation | null =>
   request.method === 'POST'
@@ -121,6 +127,36 @@ export const refreshProjectionAfterMainserverMutation = async (
       }
     );
     return;
+  }
+
+  const mediaSaveOperationId = request.headers.get(CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER)?.trim();
+  if (mediaSaveOperationId && uuidPattern.test(mediaSaveOperationId) && entityId) {
+    try {
+      const result = await markMediaContentSaveFromMainserverMutation({
+        instanceId: followUpContext.instanceId,
+        actorSubject: followUpContext.keycloakSubject,
+        operationId: mediaSaveOperationId,
+        targetType: contentType,
+        targetId: entityId,
+      });
+      if (result !== 'marked') {
+        logger.warn('Mainserver mutation could not advance the bound media save operation', {
+          instanceId: followUpContext.instanceId,
+          contentType,
+          entityId,
+          mediaSaveOperationId,
+          reason: result,
+        });
+      }
+    } catch (error) {
+      logger.warn('Mainserver mutation media save correlation failed', {
+        instanceId: followUpContext.instanceId,
+        contentType,
+        entityId,
+        mediaSaveOperationId,
+        error: error instanceof Error ? error.name : 'unknown_error',
+      });
+    }
   }
 
   try {

@@ -11,7 +11,6 @@ import {
   mainserverContentMediaToUsages,
   type ContentMediaUsage,
 } from '@sva/studio-ui-react';
-
 import { NewsDetailCard } from './news.detail-card.js';
 import {
   collectSummaryErrors,
@@ -32,7 +31,6 @@ export type NewsDetailContentTabProps = Readonly<{
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
 }>;
-
 type NewsContentTextSectionProps = Readonly<{
   pt: NewsDetailContentTabProps['pt'];
   title: string;

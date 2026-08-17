@@ -58,7 +58,6 @@ export const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPicker
 
   return React.useCallback(async () => {
     if (!reviewAsset) return;
-
     actions.setErrorCode(null);
     if (canAcceptAsset && !canAcceptAsset(reviewAsset)) {
       actions.setErrorCode('asset_unavailable');

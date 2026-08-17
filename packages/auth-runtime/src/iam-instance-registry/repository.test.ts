@@ -11,6 +11,8 @@ const createInstanceRegistryRuntimeMock = vi.fn(() => ({
 }));
 const resolveIdentityProviderForInstanceMock = vi.fn();
 const resolveAuthConfigForInstanceMock = vi.fn();
+const getInstanceKeycloakStatusViaTenantAdminMock = vi.fn();
+const getInstanceKeycloakStatusViaProvisionerMock = vi.fn();
 const studioModuleIamRegistryMock = new Map([
   [
     'news',
@@ -116,9 +118,10 @@ vi.mock('../runtime-secrets.js', () => ({
 }));
 
 vi.mock('./provisioning-auth.js', () => ({
+  getInstanceKeycloakStatusViaTenantAdmin: getInstanceKeycloakStatusViaTenantAdminMock,
   getInstanceKeycloakPlanViaProvisioner: vi.fn(),
   getInstanceKeycloakPreflightViaProvisioner: vi.fn(),
-  getInstanceKeycloakStatusViaProvisioner: vi.fn(),
+  getInstanceKeycloakStatusViaProvisioner: getInstanceKeycloakStatusViaProvisionerMock,
   provisionInstanceAuthArtifactsViaProvisioner: vi.fn(),
 }));
 
@@ -208,6 +211,16 @@ describe('iam instance registry repository wiring', () => {
         }),
       })
     );
+
+    expect(runtimeConfig?.serviceDeps.getKeycloakStatus).not.toBe(
+      runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus
+    );
+
+    const keycloakInput = { instanceId: 'demo' };
+    await runtimeConfig?.serviceDeps.getKeycloakStatus(keycloakInput);
+    await runtimeConfig?.provisioningWorkerServiceDeps.getKeycloakStatus(keycloakInput);
+    expect(getInstanceKeycloakStatusViaTenantAdminMock).toHaveBeenCalledWith(keycloakInput);
+    expect(getInstanceKeycloakStatusViaProvisionerMock).toHaveBeenCalledWith(keycloakInput);
   }, 15_000);
 
   it('reports blocked tenant IAM access instead of throwing when the tenant admin client is missing', async () => {

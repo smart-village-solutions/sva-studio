@@ -9,6 +9,10 @@ const state = vi.hoisted(() => ({
     readKeycloakState: vi.fn(async () => ({ factory, kind: 'state' })),
     provisionInstanceAuthArtifacts: vi.fn(async () => ({ factory, kind: 'provision' })),
   })),
+  createReadKeycloakState: vi.fn((factory) => vi.fn(async (input) => ({
+    client: factory(input.authRealm),
+    kind: 'tenant-state',
+  }))),
   createInstanceKeycloakPreflightReader: vi.fn((readState, readError) => ({
     kind: 'preflight',
     readState,
@@ -44,11 +48,13 @@ const state = vi.hoisted(() => ({
   KeycloakAdminUnavailableError: class extends Error {},
   getKeycloakAdminClientConfigFromEnv: vi.fn(() => ({ realm: 'admin' })),
   getKeycloakProvisionerClientConfigFromEnv: vi.fn(() => ({ realm: 'provisioner' })),
+  getKeycloakTenantAdminClientConfigFromEnv: vi.fn((input) => ({ ...input, adminRealm: input.realm })),
 }));
 
 vi.mock('@sva/instance-registry/provisioning-auth-state', () => ({
   createKeycloakProvisioningAdapters: state.createKeycloakProvisioningAdapters,
   createKeycloakProvisioningClientFactory: state.createKeycloakProvisioningClientFactory,
+  createReadKeycloakState: state.createReadKeycloakState,
 }));
 
 vi.mock('@sva/instance-registry/provisioning-auth', () => ({
@@ -63,6 +69,7 @@ vi.mock('../keycloak-admin-client.js', () => ({
   KeycloakAdminUnavailableError: state.KeycloakAdminUnavailableError,
   getKeycloakAdminClientConfigFromEnv: state.getKeycloakAdminClientConfigFromEnv,
   getKeycloakProvisionerClientConfigFromEnv: state.getKeycloakProvisionerClientConfigFromEnv,
+  getKeycloakTenantAdminClientConfigFromEnv: state.getKeycloakTenantAdminClientConfigFromEnv,
 }));
 
 describe('iam-instance-registry provisioning auth wiring', () => {
@@ -100,20 +107,58 @@ describe('iam-instance-registry provisioning auth wiring', () => {
     expect(state.createKeycloakProvisioningAdapters).toHaveBeenCalledTimes(2);
     expect(subject.readKeycloakState).toBeDefined();
     expect(subject.readKeycloakStateViaProvisioner).toBeDefined();
+    expect(subject.readKeycloakStateViaTenantAdmin).toBeDefined();
     expect(subject.provisionInstanceAuthArtifacts).toBeDefined();
     expect(subject.provisionInstanceAuthArtifactsViaProvisioner).toBeDefined();
   });
 
-  it('builds default and provisioner readers from the matching state readers', async () => {
+  it('reads audit state with the tenant-local admin credentials from the registry input', async () => {
+    const subject = await import('./provisioning-auth-state.js');
+
+    await subject.readKeycloakStateViaTenantAdmin({
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: true },
+      tenantAdminClientSecret: 'tenant-secret',
+    });
+
+    expect(state.getKeycloakTenantAdminClientConfigFromEnv).toHaveBeenCalledWith({
+      realm: 'demo',
+      clientId: 'sva-studio-admin',
+      clientSecret: 'tenant-secret',
+    });
+    expect(state.createReadKeycloakState).toHaveBeenCalledOnce();
+  });
+
+  it('fails closed when tenant-admin credentials are incomplete', async () => {
+    const subject = await import('./provisioning-auth-state.js');
+
+    await expect(subject.readKeycloakStateViaTenantAdmin({
+      instanceId: 'demo',
+      primaryHostname: 'demo.studio.example',
+      realmMode: 'existing',
+      authRealm: 'demo',
+      authClientId: 'sva-studio',
+      authClientSecretConfigured: true,
+      tenantAdminClient: { clientId: 'sva-studio-admin', secretConfigured: false },
+    })).rejects.toThrow('Tenant admin client credentials are not configured');
+  });
+
+  it('builds default, tenant-admin, and provisioner readers from the matching state readers', async () => {
     const subject = await import('./provisioning-auth.js');
 
-    expect(state.createInstanceKeycloakPreflightReader).toHaveBeenCalledTimes(2);
-    expect(state.createInstanceKeycloakPlanReader).toHaveBeenCalledTimes(2);
-    expect(state.createInstanceKeycloakStatusReader).toHaveBeenCalledTimes(2);
+    expect(state.createInstanceKeycloakPreflightReader).toHaveBeenCalledTimes(3);
+    expect(state.createInstanceKeycloakPlanReader).toHaveBeenCalledTimes(3);
+    expect(state.createInstanceKeycloakStatusReader).toHaveBeenCalledTimes(3);
 
     expect(subject.getInstanceKeycloakPreflight.kind).toBe('preflight');
     expect(subject.getInstanceKeycloakPlan.kind).toBe('plan');
     expect(subject.getInstanceKeycloakStatus.kind).toBe('status');
+    expect(subject.getInstanceKeycloakStatusViaTenantAdmin.kind).toBe('status');
     expect(subject.getInstanceKeycloakPreflightViaProvisioner.kind).toBe('preflight');
     expect(subject.getInstanceKeycloakPlanViaProvisioner.kind).toBe('plan');
     expect(subject.getInstanceKeycloakStatusViaProvisioner.kind).toBe('status');

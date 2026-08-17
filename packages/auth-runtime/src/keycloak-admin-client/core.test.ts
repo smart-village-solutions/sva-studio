@@ -278,6 +278,29 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('builds tenant-admin config for the tenant realm without using platform credentials', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://keycloak.example');
+    vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'platform');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'platform-client');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'platform-secret');
+
+    const { getKeycloakTenantAdminClientConfigFromEnv } = await import('./core.js');
+
+    expect(
+      getKeycloakTenantAdminClientConfigFromEnv({
+        realm: 'demo',
+        clientId: 'sva-studio-admin',
+        clientSecret: 'tenant-secret',
+      })
+    ).toEqual({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      adminRealm: 'demo',
+      clientId: 'sva-studio-admin',
+      clientSecret: 'tenant-secret',
+    });
+  });
+
   it('synchronizes managed realm roles while preserving built-ins and unmanaged roles', async () => {
     const fetchImpl = vi
       .fn()

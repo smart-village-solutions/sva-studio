@@ -1716,6 +1716,20 @@ export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK
   clientSecret: getKeycloakAdminClientSecret() ?? requireEnv('KEYCLOAK_ADMIN_CLIENT_SECRET'),
 });
 
+export const getKeycloakTenantAdminClientConfigFromEnv = (input: {
+  readonly realm: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+}): KeycloakAdminClientConfig => ({
+  baseUrl: process.env.KEYCLOAK_ADMIN_BASE_URL?.trim()
+    || process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim()
+    || requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
+  realm: input.realm,
+  adminRealm: input.realm,
+  clientId: input.clientId,
+  clientSecret: input.clientSecret,
+});
+
 const readProvisionerEnv = (key: 'BASE_URL' | 'REALM' | 'CLIENT_ID' | 'CLIENT_SECRET'): string => {
   if (process.env.SVA_RUNTIME_PROFILE?.trim() === 'local-keycloak') {
     return requireProvisionerEnvForLocalKeycloak(key);

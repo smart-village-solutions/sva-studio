@@ -267,9 +267,12 @@ Der operative Studio-Instanz-Audit ergänzt den Provisioning-Nachweis, ersetzt
 aber weder Preflight noch Plan oder Ausführung. Sein Keycloak-Pfad arbeitet in
 zwei festen Schritten:
 
-1. Die Erhebung authentisiert den vorhandenen Provisioner-/Admin-Client über
-   eine kurzlebige `kcadm`-Konfiguration und liest Realm, Login-Client,
-   Tenant-Admin-Client, Rollen und Serviceaccount-Zustand in fester Reihenfolge.
+1. Die Erhebung authentisiert den in der Registry hinterlegten
+   Tenant-Admin-Client direkt in seinem Tenant-Realm und liest Realm,
+   Login-Client, Tenant-Admin-Client, Rollen und Serviceaccount-Zustand in
+   fester Reihenfolge. Die globale Provisioner-Identität bleibt dem separaten
+   Provisioning-Worker vorbehalten und wird nicht in den Web-Request-Pfad
+   eingebunden.
 2. Eine reine Bewertung leitet aus dem typisierten Snapshot die bestehenden
    vierzehn Check-Ergebnisse ab. Check-IDs, Titel, Zusammenfassungen, Details
    und Fail-/Warn-/Skip-Semantik sind ein stabiler Betriebsvertrag.
@@ -277,8 +280,8 @@ zwei festen Schritten:
 Der Pfad ist ausschließlich lesend. Ein fehlendes Realm beendet die Erhebung
 fail-closed mit dem einzelnen Realm-Befund. Secret-Werte dienen nur dem
 kurzlebigen Gleichheitsvergleich; Bericht, Fehler und Logs enthalten weiterhin
-nur `tenant secret compared` oder `secret missing`. Die temporäre
-`kcadm`-Konfiguration wird auch bei Fehlern entfernt.
+nur `tenant secret compared` oder `secret missing`. Die Tenant-Credentials
+werden ausschließlich für den kurzlebigen Live-Read verwendet.
 
 ## Referenzen
 

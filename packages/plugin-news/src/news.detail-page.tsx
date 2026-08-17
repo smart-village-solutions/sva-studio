@@ -439,6 +439,13 @@ export const NewsDetailPage = ({
           resolveContentVisibilityAction(loadedItem.visible ?? true, publicationMode !== 'draft'),
           resourceAccess
         );
+  const canSendPushNotification =
+    sessionAccess.isResolved &&
+    sessionAccess.assignedModules.includes('news') &&
+    sessionAccess.permissionActions.includes('news.pushNotification') &&
+    (mode === 'create' ||
+      (sessionAccess.unscopedPermissionActions?.includes('news.pushNotification') ?? false) ||
+      resourceAccess['news.pushNotification'] === true);
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
@@ -1081,6 +1088,7 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailSettingsTab
           loadedItem={loadedItem}
+          canSendPushNotification={canSendPushNotification}
           mode={mode}
           pt={pt}
           wasteOverview={wasteOverview}

@@ -294,7 +294,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
         newsId: 'news-1',
       })
     );
-    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(4);
+    expect(state.authorizeMainserverDataProviderAccess).toHaveBeenCalledTimes(5);
     await expect(response?.json()).resolves.toEqual({
       data: {
         id: 'news-1',
@@ -304,6 +304,7 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       meta: {
         access: {
           'news.delete': true,
+          'news.pushNotification': true,
           'news.update': true,
           'content.changeStatus': true,
           'content.publish': true,
@@ -457,6 +458,44 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
     expect(rejected?.status).toBe(400);
     expect(state.createSvaMainserverNews).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects push on create before calling the Mainserver when the dedicated permission is missing', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.reserveIdempotency.mockResolvedValue({ status: 'reserved' });
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Push-Benachrichtigungen.',
+        permissionDenial: {
+          required_permissions: ['news.pushNotification'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        },
+      });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': 'idem-push-denied' },
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'forbidden',
+      details: { required_permissions: ['news.pushNotification'] },
+    });
+    expect(state.createSvaMainserverNews).not.toHaveBeenCalled();
   });
 
   it('rejects waste targets on create without waste-management read permission', async () => {
@@ -1067,6 +1106,43 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       })
     );
     expect(state.updateSvaMainserverNews.mock.calls[0]?.[0]?.news).not.toHaveProperty('author');
+  });
+
+  it('rejects push on update before reading or writing Mainserver data when permission is missing', async () => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser
+      .mockResolvedValueOnce({
+        ok: true,
+        actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+        permissions: [],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+        error: 'forbidden',
+        message: 'Keine Berechtigung für Push-Benachrichtigungen.',
+        permissionDenial: {
+          required_permissions: ['news.pushNotification'],
+          requirement_mode: 'allOf',
+          denial_reason: 'permission_missing',
+        },
+      });
+
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(newsInput),
+      })
+    );
+
+    expect(response?.status).toBe(403);
+    await expect(response?.json()).resolves.toMatchObject({
+      error: 'forbidden',
+      details: { required_permissions: ['news.pushNotification'] },
+    });
+    expect(state.getSvaMainserverNews).not.toHaveBeenCalled();
+    expect(state.updateSvaMainserverNews).not.toHaveBeenCalled();
   });
 
   it('deletes news via mainserver hard delete', async () => {

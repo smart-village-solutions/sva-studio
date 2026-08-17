@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { isReservedPluginNamespace, parseNamespacedPluginIdentifier } from './plugin-identifiers.js';
+import {
+  isReservedPluginNamespace,
+  parseNamespacedPluginIdentifier,
+} from './plugin-identifiers.js';
 
 describe('plugin identifiers', () => {
   it('detects reserved plugin namespaces without narrowing casts', () => {
@@ -14,5 +17,9 @@ describe('plugin identifiers', () => {
       name: 'publish',
     });
     expect(parseNamespacedPluginIdentifier('News.publish')).toBeUndefined();
+    expect(parseNamespacedPluginIdentifier('news.pushNotification')).toEqual({
+      namespace: 'news',
+      name: 'pushNotification',
+    });
   });
 });

@@ -88,26 +88,32 @@ export const bulkReprovisionMainserverSchema = z.object({
   userIds: uniqueUuidArray(50).min(1),
 });
 
-export const createRoleSchema = z.object({
-  roleName: z
-    .string()
-    .trim()
-    .min(3)
-    .max(64)
-    .regex(/^[a-z0-9_]+$/),
-  displayName: z.string().trim().min(1).max(120).optional(),
-  description: z.string().trim().max(500).optional(),
-  permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).default([]),
-  permissionAssignments: z
-    .array(rolePermissionAssignmentSchema)
-    .max(100)
-    .refine(
-      (value) => new Set(value.map((entry) => entry.permissionId)).size === value.length,
-      'Berechtigungen müssen eindeutig sein.'
-    )
-    .optional(),
-  roleLevel: z.number().int().min(0).max(100).default(0),
-});
+export const createRoleSchema = z
+  .object({
+    roleName: z
+      .string()
+      .trim()
+      .min(3)
+      .max(64)
+      .regex(/^[a-z0-9_]+$/)
+      .optional(),
+    displayName: z.string().trim().min(1).max(120).optional(),
+    description: z.string().trim().max(500).optional(),
+    permissionIds: z.array(uuidLikeString('Ungültige ID.')).max(100).default([]),
+    permissionAssignments: z
+      .array(rolePermissionAssignmentSchema)
+      .max(100)
+      .refine(
+        (value) => new Set(value.map((entry) => entry.permissionId)).size === value.length,
+        'Berechtigungen müssen eindeutig sein.'
+      )
+      .optional(),
+    roleLevel: z.number().int().min(0).max(100).default(0),
+  })
+  .refine((value) => value.roleName !== undefined || value.displayName !== undefined, {
+    message: 'Anzeigename ist erforderlich, wenn kein technischer Rollenschlüssel angegeben ist.',
+    path: ['displayName'],
+  });
 
 export const updateRoleSchema = z
   .object({

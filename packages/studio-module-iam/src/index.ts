@@ -69,7 +69,26 @@ const categoriesModuleIamContract = createStandardContentContract(
   'categories',
   'plugins.categories.description'
 );
-const newsModuleIamContract = createStandardContentContract('news', 'plugins.news.description');
+const standardNewsModuleIamContract = createStandardContentContract(
+  'news',
+  'plugins.news.description'
+);
+const newsModuleIamContract: StudioModuleIamContract = {
+  ...standardNewsModuleIamContract,
+  permissionIds: [...standardNewsModuleIamContract.permissionIds, 'news.pushNotification'],
+  tenantBootstrapRoles: [
+    {
+      roleName: 'system_admin',
+      permissionIds: [...standardNewsModuleIamContract.permissionIds, 'news.pushNotification'],
+    },
+  ],
+  systemRoles: [
+    {
+      roleName: 'system_admin',
+      permissionIds: [...standardNewsModuleIamContract.permissionIds, 'news.pushNotification'],
+    },
+  ],
+};
 const eventsModuleIamContract = createStandardContentContract(
   'events',
   'plugins.events.description'

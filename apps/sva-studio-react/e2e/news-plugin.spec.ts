@@ -134,6 +134,14 @@ test.describe('news plugin', () => {
     await page.getByLabel(/Bildunterschrift|news\.fields\.mediaCaption/).fill('Titelbild');
     await openNewsDetailTab(page, /Einstellungen|news\.tabs\.settings/);
     await page.getByRole('radio', { name: /Entwurf|news\.publicationModes\.draft/ }).click();
+    const pushCheckbox = page.getByRole('checkbox', {
+      name: /Push-Benachrichtigung senden|news\.fields\.pushNotification/,
+    });
+    await expect(pushCheckbox).toBeVisible();
+    await pushCheckbox.check();
+    page.once('dialog', async (dialog) => {
+      await dialog.accept();
+    });
     await page
       .getByRole('button', { name: /Speichern|news\.actions\.save/ })
       .last()
@@ -142,6 +150,7 @@ test.describe('news plugin', () => {
     expect(createdBody).toMatchObject({
       title: 'Erste News',
       sourceUrl: { url: 'https://example.com/news/source', description: 'Quellseite' },
+      pushNotification: true,
     });
     expect(createdBody).not.toHaveProperty('author');
     expect(createdBody?.categories).toEqual([{ name: 'Allgemein' }, { name: 'Kultur' }]);
@@ -216,6 +225,47 @@ test.describe('news plugin', () => {
     await expect(
       page.getByRole('tab', { selected: true, name: /Einstellungen|news\.tabs\.settings/ })
     ).toBeVisible();
+  });
+
+  test('rejects a direct push request without the dedicated permission', async ({ page }) => {
+    await page.route('**/api/v1/mainserver/news', async (route) => {
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: body.pushNotification === true ? 403 : 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            code: 'forbidden',
+            details: { required_permissions: ['news.pushNotification'] },
+          },
+        }),
+      });
+    });
+
+    await page.goto('/');
+    const response = await page.evaluate(async () => {
+      const result = await fetch('/api/v1/mainserver/news', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Idempotency-Key': 'news-push-without-permission',
+        },
+        body: JSON.stringify({ title: 'Direkter Push', pushNotification: true }),
+      });
+      return { status: result.status, body: await result.json() };
+    });
+
+    expect(response).toEqual({
+      status: 403,
+      body: {
+        error: {
+          code: 'forbidden',
+          details: { required_permissions: ['news.pushNotification'] },
+        },
+      },
+    });
   });
 
   test('loads the content overview via paginated IAM requests without browser-side mainserver list scans', async ({

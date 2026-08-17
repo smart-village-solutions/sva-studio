@@ -15,7 +15,10 @@ describe('iam seed plan', () => {
   });
 
   it('keeps the canonical permission catalog in sync with the seed integration expectations', () => {
-    expect(iamSeedPlan.permissions.length).toBe(59);
+    expect(iamSeedPlan.permissions.length).toBe(60);
+    expect(iamSeedPlan.permissions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'news.pushNotification' })])
+    );
   });
 
   it('uses unique role slugs and keycloak subjects', () => {
@@ -64,25 +67,45 @@ describe('iam seed plan', () => {
   });
 
   it('derives stable resource types from permission keys', () => {
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'instance.registry.manage')?.resourceType).toBe(
-      'instance'
-    );
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')?.resourceType).toBe('content');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType).toBe('media');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType).toBe('news');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')?.resourceType).toBe('categories');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType).toBe('app');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType).toBe('cockpit');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'modules.read')?.resourceType).toBe('modules');
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')?.resourceType).toBe(
-      'experimental'
-    );
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')?.resourceType).toBe(
-      'iam'
-    );
-    expect(iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')?.resourceType).toBe(
-      'iam'
-    );
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'instance.registry.manage')
+        ?.resourceType
+    ).toBe('instance');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'content.publish')
+        ?.resourceType
+    ).toBe('content');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'media.read')?.resourceType
+    ).toBe('media');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'news.update')?.resourceType
+    ).toBe('news');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'categories.read')
+        ?.resourceType
+    ).toBe('categories');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'app.read')?.resourceType
+    ).toBe('app');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'cockpit.read')?.resourceType
+    ).toBe('cockpit');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'modules.read')?.resourceType
+    ).toBe('modules');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'experimental.read')
+        ?.resourceType
+    ).toBe('experimental');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.governance.export')
+        ?.resourceType
+    ).toBe('iam');
+    expect(
+      iamSeedPlan.permissions.find((permission) => permission.key === 'iam.accounts.delete')
+        ?.resourceType
+    ).toBe('iam');
   });
 
   it('throws for unknown persona keys', () => {
@@ -90,8 +113,8 @@ describe('iam seed plan', () => {
   });
 
   it('fails clearly when a catalog permission has no stable fixture ID', () => {
-    expect(() => resolveFixturePermissionId(new Map(), 'iam.user.read' as PermissionKey)).toThrowError(
-      /Missing fixture permission ID: iam\.user\.read/
-    );
+    expect(() =>
+      resolveFixturePermissionId(new Map(), 'iam.user.read' as PermissionKey)
+    ).toThrowError(/Missing fixture permission ID: iam\.user\.read/);
   });
 });

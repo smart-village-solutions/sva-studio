@@ -10,7 +10,11 @@ const permissionIdFixtures = [
     'iam.accounts.delete',
     'Delete tenant accounts physically',
   ],
-  ['40111111-1111-1111-1111-111111111169', 'modules.read', 'Show the modules overview in the Studio'],
+  [
+    '40111111-1111-1111-1111-111111111169',
+    'modules.read',
+    'Show the modules overview in the Studio',
+  ],
   ['40111111-1111-1111-1111-111111111111', 'iam.user.read', 'Read account data'],
   ['40111111-1111-1111-1111-111111111112', 'iam.user.write', 'Modify account data'],
   ['40111111-1111-1111-1111-111111111113', 'iam.role.read', 'Read role assignments'],
@@ -104,6 +108,11 @@ const permissionIdFixtures = [
   ['40111111-1111-1111-1111-111111111132', 'news.create', 'Create news plugin content'],
   ['40111111-1111-1111-1111-111111111133', 'news.update', 'Update news plugin content'],
   ['40111111-1111-1111-1111-111111111134', 'news.delete', 'Delete news plugin content'],
+  [
+    '40111111-1111-1111-1111-111111111170',
+    'news.pushNotification',
+    'Send push notifications for news content',
+  ],
   ['40111111-1111-1111-1111-111111111135', 'events.read', 'Read events plugin content'],
   ['40111111-1111-1111-1111-111111111136', 'events.create', 'Create events plugin content'],
   ['40111111-1111-1111-1111-111111111137', 'events.update', 'Update events plugin content'],
@@ -212,7 +221,7 @@ export const iamSeedPlan: IamSeedPlan & { readonly seedFiles: typeof iamSeedFile
   ],
   personas,
   permissions: fixturePermissionCatalog.map((definition) => ({
-      id: resolveFixturePermissionId(fixturePermissionIds, definition.key),
+    id: resolveFixturePermissionId(fixturePermissionIds, definition.key),
     key: definition.key,
     action: definition.key,
     resourceType: definition.resourceType,

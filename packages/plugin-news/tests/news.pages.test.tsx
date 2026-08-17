@@ -283,8 +283,20 @@ describe('News editor pages', () => {
     publishSessionAccessSnapshot({
       isResolved: true,
       assignedModules: ['news'],
-      permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
-      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      permissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
+      unscopedPermissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
       roles: [],
     });
     vi.mocked(saveContentWithHostMediaReferences).mockImplementation(async (input) => ({
@@ -842,6 +854,21 @@ describe('News editor pages', () => {
     expect(createNews).not.toHaveBeenCalled();
   });
 
+  it('hides the push option when news.pushNotification is not granted', async () => {
+    publishSessionAccessSnapshot({
+      isResolved: true,
+      assignedModules: ['news'],
+      permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      roles: [],
+    });
+
+    render(<NewsCreatePage />);
+    await openSettingsTab();
+
+    expect(screen.queryByRole('checkbox', { name: /Push-Benachrichtigung senden/ })).toBeNull();
+  });
+
   it('names unavailable collection locations when Waste targeting loading fails', async () => {
     publishSessionAccessSnapshot({
       isResolved: true,
@@ -851,9 +878,16 @@ describe('News editor pages', () => {
         'news.create',
         'news.update',
         'news.delete',
+        'news.pushNotification',
         'waste-management.read',
       ],
-      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
       roles: [],
     });
     const confirmSpy = stubConfirm(false);
@@ -887,9 +921,16 @@ describe('News editor pages', () => {
         'news.create',
         'news.update',
         'news.delete',
+        'news.pushNotification',
         'waste-management.read',
       ],
-      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
       roles: [],
     });
     vi.mocked(loadNewsWasteMasterData).mockResolvedValueOnce({

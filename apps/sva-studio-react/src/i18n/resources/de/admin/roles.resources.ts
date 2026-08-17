@@ -61,6 +61,20 @@ export const rolesAdminDEResources = {
     delete: 'Löschen',
     configure: 'Konfigurieren',
     export: 'Exportieren',
+    manage: 'Verwalten',
+    execute: 'Ausführen',
+    moderate: 'Moderieren',
+    pushNotification: 'Push-Benachrichtigung senden',
+  },
+  permissionScopes: {
+    all: 'Alle Inhalte im Mandanten',
+    own: 'Nur eigene Inhalte',
+    organization: 'Inhalte der eigenen Organisation',
+  },
+  permissionDescriptions: {
+    contentPublish: 'Entwürfe veröffentlichen und damit sichtbar machen.',
+    contentChangeStatus: 'Redaktionellen Status ändern, ohne Inhalte zu veröffentlichen.',
+    newsPushNotification: 'Beim Speichern einer Nachricht eine Push-Benachrichtigung versenden.',
   },
   permissionResources: {
     content: 'Inhalte',
@@ -84,7 +98,8 @@ export const rolesAdminDEResources = {
   },
   createDialog: {
     title: 'Neue Rolle erstellen',
-    description: 'Benutzerdefinierte Rollen können später weiter angepasst werden.',
+    description:
+      'Benutzerdefinierte Rollen können später weiter angepasst werden. Der technische Schlüssel wird automatisch erzeugt.',
     keyLabel: 'Technischer Rollenschlüssel',
     keyHint: 'Mindestens 3 Zeichen, nur Kleinbuchstaben, Ziffern und Unterstriche.',
     nameLabel: 'Anzeigename',
@@ -203,6 +218,7 @@ export const rolesAdminDEResources = {
       notAssigned: 'Nicht zugeordnet',
       actionLabel: 'Aktion: {{value}}',
       toggleAssignment: 'Recht umschalten: {{permission}}',
+      selectScope: 'Geltungsbereich für {{permission}}',
       actions: {
         assign: 'Zuweisen',
         remove: 'Entfernen',
@@ -262,7 +278,7 @@ export const rolesAdminDEResources = {
       subtitle:
         'Diese Ansicht beschreibt ausschließlich den Abgleich der Studio-Rollenmetadaten mit Keycloak.',
       metadataOnlyHint:
-        'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.',
+        'Berechtigungen, Zuweisungen und interne Schutzmerkmale werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.',
       externalHint:
         'Diese Rolle wird extern verwaltet. Der angezeigte Status beschreibt nur den bekannten Keycloak-Bezug, nicht lokale Berechtigungszuordnungen.',
       metadataStatus: 'Keycloak-Metadatenstatus',
@@ -276,7 +292,7 @@ export const rolesAdminDEResources = {
       localChangeItems: {
         permissions: 'Berechtigungen der Rolle',
         assignments: 'Benutzerzuweisungen zur Rolle',
-        roleLevel: 'Lokale Rollenlevel für Studio-interne Freigabelogik',
+        roleLevel: 'Interne Schutzmerkmale für bestehende Rollenverträge',
       },
       actionsTitle: 'Synchronisierungsaktionen',
       actionsBody:

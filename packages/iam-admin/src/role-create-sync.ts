@@ -21,6 +21,7 @@ export type PreparedRoleCreate<TPayload extends CreateRolePayloadShape> = {
   readonly externalRoleName: string;
   readonly idempotencyKey: string;
   readonly roleKey: string;
+  readonly generateUniqueRoleKey: boolean;
 };
 
 const persistPreparedRole = async <
@@ -35,6 +36,7 @@ const persistPreparedRole = async <
   deps.persistCreatedRole({
     actor: input.actor,
     roleKey: input.roleKey,
+    generateUniqueRoleKey: input.generateUniqueRoleKey,
     displayName: input.displayName,
     externalRoleName: input.externalRoleName,
     description: input.data.description ?? undefined,
@@ -79,21 +81,27 @@ export const reserveCreateRoleIdempotency = async <
   }
 ): Promise<Response | null> => {
   const { actor } = input;
-  const idempotencyReservation = await deps.reserveIdempotency(
-    {
-      actorAccountId: actor.actorAccountId,
-      endpoint: CREATE_ROLE_ENDPOINT,
-      idempotencyKey: input.idempotencyKey,
-      instanceId: actor.instanceId,
-      payloadHash: deps.toPayloadHash(input.rawBody),
-    }
-  );
+  const idempotencyReservation = await deps.reserveIdempotency({
+    actorAccountId: actor.actorAccountId,
+    endpoint: CREATE_ROLE_ENDPOINT,
+    idempotencyKey: input.idempotencyKey,
+    instanceId: actor.instanceId,
+    payloadHash: deps.toPayloadHash(input.rawBody),
+  });
 
   switch (idempotencyReservation.status) {
     case 'conflict':
-      return deps.createApiError(409, 'idempotency_key_reuse', idempotencyReservation.message, actor.requestId);
+      return deps.createApiError(
+        409,
+        'idempotency_key_reuse',
+        idempotencyReservation.message,
+        actor.requestId
+      );
     case 'replay':
-      return deps.jsonResponse(idempotencyReservation.responseStatus, idempotencyReservation.responseBody);
+      return deps.jsonResponse(
+        idempotencyReservation.responseStatus,
+        idempotencyReservation.responseBody
+      );
     case 'reserved':
       return null;
   }
@@ -124,7 +132,10 @@ export const syncTechnicalRoleCreate = async <
   deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>,
   input: PreparedRoleCreate<TPayload>
 ): Promise<Response> => {
-  const identityProvider = await deps.requireRoleIdentityProvider(input.actor.instanceId, input.actor.requestId);
+  const identityProvider = await deps.requireRoleIdentityProvider(
+    input.actor.instanceId,
+    input.actor.requestId
+  );
   if (identityProvider instanceof Response) {
     return failCreateRoleUnavailable(deps, input);
   }

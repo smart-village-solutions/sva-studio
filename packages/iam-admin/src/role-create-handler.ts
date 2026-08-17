@@ -2,7 +2,13 @@ import type { IamRolePermissionAssignmentScope } from '@sva/iam-core';
 import { createMutationWorkflow } from '@sva/server-runtime';
 
 import { isTenantTechnicalKeycloakRole } from './role-governance.js';
-import { persistLocalRoleCreate, reserveCreateRoleIdempotency, syncTechnicalRoleCreate, type PreparedRoleCreate } from './role-create-sync.js';
+import { createRoleKeyBase } from './role-key.js';
+import {
+  persistLocalRoleCreate,
+  reserveCreateRoleIdempotency,
+  syncTechnicalRoleCreate,
+  type PreparedRoleCreate,
+} from './role-create-sync.js';
 import type { IdempotencyReserveResult } from './types.js';
 
 export type CreateRoleAuthenticatedRequestContext = {
@@ -22,7 +28,7 @@ export type CreateRoleActor = {
 };
 
 export type CreateRolePayloadShape = {
-  readonly roleName: string;
+  readonly roleName?: string;
   readonly displayName?: string;
   readonly description?: string | null;
   readonly roleLevel: number;
@@ -45,8 +51,7 @@ export type CreateRoleIdentityProvider<TAttributes = unknown> = {
 };
 
 export type ParsedCreateRoleBody<TPayload extends CreateRolePayloadShape> =
-  | { readonly ok: true; readonly data: TPayload; readonly rawBody: string }
-  | { readonly ok: false };
+  { readonly ok: true; readonly data: TPayload; readonly rawBody: string } | { readonly ok: false };
 
 type ParsedCreateRoleSuccess<TPayload extends CreateRolePayloadShape> = Extract<
   ParsedCreateRoleBody<TPayload>,
@@ -56,7 +61,8 @@ type ParsedCreateRoleSuccess<TPayload extends CreateRolePayloadShape> = Extract<
 export type CreateRoleHandlerDeps<
   TPayload extends CreateRolePayloadShape = CreateRolePayloadShape,
   TAttributes = unknown,
-  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes> = CreateRoleIdentityProvider<TAttributes>,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes> =
+    CreateRoleIdentityProvider<TAttributes>,
   TRole = unknown,
 > = {
   readonly asApiItem: (data: unknown, requestId?: string) => unknown;
@@ -81,7 +87,12 @@ export type CreateRoleHandlerDeps<
   }) => Promise<void>;
   readonly createApiError: (
     status: number,
-    code: 'conflict' | 'idempotency_key_reuse' | 'internal_error' | 'invalid_request' | 'keycloak_unavailable',
+    code:
+      | 'conflict'
+      | 'idempotency_key_reuse'
+      | 'internal_error'
+      | 'invalid_request'
+      | 'keycloak_unavailable',
     message: string,
     requestId?: string,
     details?: Readonly<Record<string, unknown>>
@@ -101,6 +112,7 @@ export type CreateRoleHandlerDeps<
   readonly persistCreatedRole: (input: {
     readonly actor: CreateRoleActor;
     readonly roleKey: string;
+    readonly generateUniqueRoleKey?: boolean;
     readonly displayName: string;
     readonly externalRoleName: string;
     readonly description?: string;
@@ -142,7 +154,7 @@ export type CreateRoleHandlerDeps<
     readonly permissionAssignments?: readonly {
       readonly permissionId: string;
       readonly accessScope?: IamRolePermissionAssignmentScope;
-  }[];
+    }[];
   }) => Promise<Response | null>;
 };
 
@@ -157,7 +169,9 @@ const parseCreateRoleRequest = async <
   actor: CreateRoleActor
 ): Promise<ParsedCreateRoleSuccess<TPayload> | Response> => {
   const parsed = await deps.parseCreateRoleBody(request);
-  return parsed.ok ? parsed : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
+  return parsed.ok
+    ? parsed
+    : deps.createApiError(400, 'invalid_request', 'Ungültiger Payload.', actor.requestId);
 };
 
 const validateCreateRolePermissions = async <
@@ -176,15 +190,14 @@ const validateCreateRolePermissions = async <
     permissionAssignments: data.permissionAssignments,
   }) ?? null;
 
-export const createCreateRoleHandlerInternal =
-  <
-    TPayload extends CreateRolePayloadShape,
-    TAttributes,
-    TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
-    TRole,
-  >(
-    deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>
-  ) =>
+export const createCreateRoleHandlerInternal = <
+  TPayload extends CreateRolePayloadShape,
+  TAttributes,
+  TIdentityProvider extends CreateRoleIdentityProvider<TAttributes>,
+  TRole,
+>(
+  deps: CreateRoleHandlerDeps<TPayload, TAttributes, TIdentityProvider, TRole>
+) =>
   createMutationWorkflow<
     CreateRoleAuthenticatedRequestContext,
     {
@@ -204,7 +217,9 @@ export const createCreateRoleHandlerInternal =
     authorize: async () => ({}),
     idempotency: ({ request, actor }) => {
       const idempotencyKey = deps.requireIdempotencyKey(request, actor.requestId);
-      return 'error' in idempotencyKey ? idempotencyKey.error : { idempotencyKey: idempotencyKey.key };
+      return 'error' in idempotencyKey
+        ? idempotencyKey.error
+        : { idempotencyKey: idempotencyKey.key };
     },
     parse: async ({ request, actor }) => {
       const parsed = await parseCreateRoleRequest(deps, request, actor);
@@ -212,7 +227,11 @@ export const createCreateRoleHandlerInternal =
         return parsed;
       }
 
-      const permissionValidationResponse = await validateCreateRolePermissions(deps, actor, parsed.data);
+      const permissionValidationResponse = await validateCreateRolePermissions(
+        deps,
+        actor,
+        parsed.data
+      );
       return permissionValidationResponse ?? parsed;
     },
     execute: async ({ actor, idempotencyKey, input: parsed }) => {
@@ -225,8 +244,9 @@ export const createCreateRoleHandlerInternal =
         return reservedResponse;
       }
 
-      const roleKey = parsed.data.roleName;
-      const displayName = parsed.data.displayName?.trim() || roleKey;
+      const explicitRoleKey = parsed.data.roleName;
+      const displayName = parsed.data.displayName?.trim() || explicitRoleKey || '';
+      const roleKey = explicitRoleKey ?? createRoleKeyBase(displayName);
       const externalRoleName = roleKey;
       const preparedCreate = {
         actor,
@@ -235,13 +255,22 @@ export const createCreateRoleHandlerInternal =
         externalRoleName,
         idempotencyKey,
         roleKey,
+        generateUniqueRoleKey: explicitRoleKey === undefined,
       } satisfies PreparedRoleCreate<TPayload>;
 
-      return isTenantTechnicalKeycloakRole({ role_key: roleKey, external_role_name: externalRoleName })
+      return isTenantTechnicalKeycloakRole({
+        role_key: roleKey,
+        external_role_name: externalRoleName,
+      })
         ? syncTechnicalRoleCreate(deps, preparedCreate)
         : persistLocalRoleCreate(deps, preparedCreate);
     },
     mapError: (_error, state) =>
-      deps.createApiError(500, 'internal_error', 'Rolle konnte nicht angelegt werden.', state.actor?.requestId),
+      deps.createApiError(
+        500,
+        'internal_error',
+        'Rolle konnte nicht angelegt werden.',
+        state.actor?.requestId
+      ),
     respond: (response) => response,
   });

@@ -193,6 +193,10 @@ describe('RoleDetailPage', () => {
     render(<RoleDetailPage roleId="role-2" activeTab="general" />);
 
     expect(screen.getByRole('heading', { name: 'Editor' })).toBeTruthy();
+    expect(screen.queryByText('Technischer Rollenschlüssel')).toBeNull();
+    expect(screen.queryByText(/Rollenlevel/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Technische Details anzeigen' }));
+    expect(screen.getByText('Technischer Rollenschlüssel')).toBeTruthy();
     expect(await screen.findByRole('button', { name: 'Gespeichert' })).toBeTruthy();
     await waitFor(() => {
       expect(navigateMock).toHaveBeenCalledWith({
@@ -209,7 +213,6 @@ describe('RoleDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Beschreibung'), {
       target: { value: 'Updated description' },
     });
-    fireEvent.change(screen.getByLabelText('Rollenlevel'), { target: { value: '33' } });
     fireEvent.submit(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).closest('form')!
     );
@@ -218,7 +221,6 @@ describe('RoleDetailPage', () => {
       expect(updateRole).toHaveBeenCalledWith('role-2', {
         displayName: 'Content Editor',
         description: 'Updated description',
-        roleLevel: 33,
       });
     });
   });
@@ -261,7 +263,6 @@ describe('RoleDetailPage', () => {
     fireEvent.change(screen.getByLabelText('Beschreibung'), {
       target: { value: 'Changed description' },
     });
-    fireEvent.change(screen.getByLabelText('Rollenlevel'), { target: { value: '42' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Änderungen zurücksetzen' }));
 
@@ -270,7 +271,7 @@ describe('RoleDetailPage', () => {
       expect((screen.getByLabelText('Beschreibung') as HTMLTextAreaElement).value).toBe(
         'Editorial role'
       );
-      expect((screen.getByLabelText('Rollenlevel') as HTMLInputElement).value).toBe('20');
+      expect(screen.queryByLabelText('Rollenlevel')).toBeNull();
     });
   });
 
@@ -313,8 +314,14 @@ describe('RoleDetailPage', () => {
     expect(screen.getByRole('tab', { name: 'Berechtigungen' }).getAttribute('aria-selected')).toBe(
       'true'
     );
+    const scopeOptions = screen.getAllByRole('combobox', {
+      name: /Geltungsbereich/,
+    })[0]?.textContent;
+    expect(scopeOptions).toContain('Alle Inhalte im Mandanten');
+    expect(scopeOptions).toContain('Nur eigene Inhalte');
+    expect(scopeOptions).toContain('Inhalte der eigenen Organisation');
 
-    fireEvent.click(screen.getAllByLabelText(/Lesen/)[0]!);
+    fireEvent.click(screen.getAllByLabelText(/Inhalte anzeigen/)[0]!);
     const saveButtons = screen.getAllByRole('button', { name: 'Rechte speichern' });
     expect(saveButtons).toHaveLength(2);
     fireEvent.click(saveButtons[1]!);
@@ -345,7 +352,7 @@ describe('RoleDetailPage', () => {
           roleLevel: 20,
           memberCount: 3,
           syncState: 'synced',
-          permissions: [{ id: 'perm-3', permissionKey: 'iam.configure', description: null }],
+          permissions: [],
         },
       ],
       isLoading: false,
@@ -363,6 +370,7 @@ describe('RoleDetailPage', () => {
 
     render(<RoleDetailPage roleId="role-2" activeTab="permissions" />);
 
+    fireEvent.click(screen.getAllByLabelText(/Konfigurieren IAM/)[0]!);
     fireEvent.click(screen.getAllByRole('button', { name: 'Rechte speichern' })[1]!);
 
     await waitFor(() => {
@@ -592,6 +600,12 @@ describe('RoleDetailPage', () => {
     ).toBeNull();
     expect(
       screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
+    ).toBe(true);
+    fireEvent.change(screen.getByLabelText('Anzeigename'), {
+      target: { value: 'Legacy Editor' },
+    });
+    expect(
+      screen.getByRole('button', { name: 'Allgemeine Daten speichern' }).hasAttribute('disabled')
     ).toBe(false);
   });
 
@@ -770,7 +784,7 @@ describe('RoleDetailPage', () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        'Berechtigungen, Zuweisungen und lokale Rollenlevel werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.'
+        'Berechtigungen, Zuweisungen und interne Schutzmerkmale werden im Studio gespeichert und verändern diesen Keycloak-Status nicht.'
       )
     ).toBeTruthy();
     expect(screen.getByText('Keycloak-Metadatenstatus')).toBeTruthy();

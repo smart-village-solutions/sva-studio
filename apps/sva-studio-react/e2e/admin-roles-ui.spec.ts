@@ -1,13 +1,20 @@
 import { expect, test } from '@playwright/test';
 
 import { registerAccountAdminAuthRoute } from './account-admin-ui.helpers';
-import { gotoHomeAsAuthenticatedUser, navigateClientSide, registerSharedIamRoutes } from './studio-shell.helpers';
+import {
+  gotoHomeAsAuthenticatedUser,
+  navigateClientSide,
+  registerSharedIamRoutes,
+} from './studio-shell.helpers';
 
 test.beforeEach(async ({ page }) => {
   await registerSharedIamRoutes(page);
 });
 
 test('role create page opens and submits successfully', async ({ page }) => {
+  test.slow();
+
+  let createdPayload: Record<string, unknown> | undefined;
   const roles = [
     {
       id: 'role-1',
@@ -40,6 +47,8 @@ test('role create page opens and submits successfully', async ({ page }) => {
       return;
     }
 
+    createdPayload = route.request().postDataJSON() as Record<string, unknown>;
+
     roles.push({
       id: 'role-new',
       roleKey: 'team_lead',
@@ -48,7 +57,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
       managedBy: 'studio',
       description: 'Team lead',
       isSystemRole: false,
-      roleLevel: 42,
+      roleLevel: 0,
       memberCount: 0,
       syncState: 'pending',
       permissions: [],
@@ -66,7 +75,7 @@ test('role create page opens and submits successfully', async ({ page }) => {
           managedBy: 'studio',
           description: 'Team lead',
           isSystemRole: false,
-          roleLevel: 42,
+          roleLevel: 0,
           memberCount: 0,
           syncState: 'pending',
           permissions: [],
@@ -78,23 +87,32 @@ test('role create page opens and submits successfully', async ({ page }) => {
   await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
-  await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({
+    timeout: 10000,
+  });
 
   await page.getByRole('link', { name: 'Rolle anlegen' }).click();
 
   await expect(page).toHaveURL(/\/admin\/roles\/new$/);
   await expect(page.getByRole('heading', { name: 'Neue Rolle erstellen' })).toBeVisible();
 
-  const roleKeyInput = page.getByLabel('Technischer Rollenschlüssel');
-  await roleKeyInput.fill('Team Lead');
-  await expect(roleKeyInput).toHaveValue('Team Lead');
-
   await page.getByLabel('Anzeigename').fill('Team Lead');
   await page.getByLabel('Beschreibung').fill('Verantwortlich für Teamkoordination');
-  await page.getByLabel('Rollenlevel').fill('42');
+  await expect(page.getByLabel('Technischer Rollenschlüssel')).toHaveCount(0);
+  await expect(page.getByLabel('Rollenlevel')).toHaveCount(0);
   await page.getByRole('button', { name: 'Rolle anlegen' }).click();
 
   await expect(page).toHaveURL(/\/admin\/roles\/role-new\?tab=general$/);
+  expect(createdPayload).toMatchObject({
+    displayName: 'Team Lead',
+    description: 'Verantwortlich für Teamkoordination',
+    permissionIds: [],
+  });
+  expect(createdPayload).not.toHaveProperty('roleName');
+  expect(createdPayload).not.toHaveProperty('roleLevel');
+  await expect(page.getByText('Technischer Rollenschlüssel')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Technische Details anzeigen' }).click();
+  await expect(page.getByText('Technischer Rollenschlüssel')).toBeVisible();
 });
 
 test('tenant role list hides the root-only instance_registry_admin role', async ({ page }) => {
@@ -140,7 +158,9 @@ test('tenant role list hides the root-only instance_registry_admin role', async 
   await gotoHomeAsAuthenticatedUser(page, 'Admin One');
   await navigateClientSide(page, '/admin/roles');
 
-  await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole('heading', { name: 'Rollenverwaltung' })).toBeVisible({
+    timeout: 10000,
+  });
   await expect(page.getByRole('table')).toContainText('editor');
   await expect(page.getByRole('table')).not.toContainText('instance_registry_admin');
 });

@@ -186,7 +186,7 @@ gleichzeitig beeinflussen.
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` in der IAM-Datenbank abgegrenzt; Keycloak spiegelt tenantseitig nur die technische Sonderrolle `system_admin`
 - Keycloak bleibt von direkten Nutzerrechten fachlich entkoppelt; diese Konfiguration ist ausschließlich Studio-intern und wird nicht in den IdP gespiegelt
-- `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
+- `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name. Bei normalen Rollenanlagen erzeugt der Server `role_key` deterministisch aus dem Anzeigenamen und löst Kollisionen instanzweit mit einem längensicheren numerischen Suffix auf; explizite Schlüssel bleiben ausschließlich ein Legacy-API-Vertrag.
 - Rohe Keycloak-Rollen aus `realm_access` werden separat als `keycloakRoles` geführt; tenantseitige Fachautorisierung nutzt ausschließlich IAM-Rollen, Gruppen und Permissions. Nur der technische Tenant-Schnitt `system_admin` bleibt Keycloak-relevant.
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)
 - Keycloak-Provisioning-Runs nutzen denselben kanonischen Header `Idempotency-Key`, aber einen plattformweiten Run-Scope aus (`instance_id`, `mutation`, `idempotency_key`); der gespeicherte Payload-Fingerprint basiert nur auf stabilen Request-Eingaben, nicht auf aus aktuellem Instanzzustand abgeleiteten Reconcile-Intents.
@@ -221,7 +221,7 @@ gleichzeitig beeinflussen.
 - Registry-Mutationen halten ihre SQL-Parameterlisten explizit positionsstabil. Für Auth- und Tenant-Admin-Secrets bleiben Keep-Flag und Ciphertext getrennte Werte, sodass `undefined`, explizites Löschen und Ersetzen ohne impliziten Secret-Default unterscheidbar sind.
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
 - Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
-- `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als Kompatibilitätsfeld sichtbar, ist aber kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
+- `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als internes Kompatibilitäts- und Schutzfeld erhalten, wird in der normalen Rollen-UI jedoch nicht angezeigt oder bearbeitet. Neue Custom-Rollen erhalten serverseitig `0`; Updates ohne Feld bewahren den gespeicherten Wert. Das Feld ist kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
 
 ### Logging und Observability
 
@@ -344,6 +344,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Das Versenden einer News-Push-Benachrichtigung ist mit `news.pushNotification` von `news.create`, `news.update`, `content.publish` und `content.changeStatus` getrennt. UI und Server werten dieses Recht eigenständig aus; bei `pushNotification = true` erfolgt die zusätzliche Prüfung vor jedem Mainserver-Aufruf.
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Technische Entflechtung ist für serverseitige Integrationspfade verbindlich: öffentliche Host-Fassaden bleiben stabil, während Transport-, Cache- und Fachlogik in getrennten internen Modulen liegen und nicht wieder in Sammeldateien zusammengeführt werden
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes

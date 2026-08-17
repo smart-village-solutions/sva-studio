@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
-import { createCreateRoleHandlerInternal, type CreateRoleHandlerDeps } from './role-create-handler.js';
+import {
+  createJsonResponse,
+  createTestDepsBuilder,
+  dbWriteFailedErrorBody,
+} from '../test-support/handler-test-helpers.js';
+import {
+  createCreateRoleHandlerInternal,
+  type CreateRoleHandlerDeps,
+  type CreateRolePayloadShape,
+} from './role-create-handler.js';
 
 const actor = {
   instanceId: 'de-musterhausen',
@@ -19,7 +27,7 @@ const ctx = {
   },
 };
 
-const payload = {
+const payload: CreateRolePayloadShape = {
   roleName: 'editor',
   displayName: 'Editor',
   description: 'Can edit content',
@@ -40,41 +48,59 @@ const identityProvider = {
 };
 
 const createDeps = createTestDepsBuilder<
-  CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>
+  CreateRoleHandlerDeps<CreateRolePayloadShape, typeof identityProvider, typeof roleItem>
 >(() => ({
-    asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
-    buildRoleAttributes: vi.fn((input) => ({ managedBy: 'studio', ...input })),
-    buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage }) =>
-      createJsonResponse(503, { error: { code: 'keycloak_unavailable', message: fallbackMessage }, requestId })
-    ),
-    completeIdempotency: vi.fn(async () => undefined),
-    createApiError: vi.fn((status, code, message, requestId, details) =>
-      createJsonResponse(status, { error: { code, message, ...(details ? { details } : {}) }, requestId })
-    ),
-    iamRoleSyncCounter: {
-      add: vi.fn(),
-    },
-    iamUserOperationsCounter: {
-      add: vi.fn(),
-    },
-    jsonResponse: vi.fn(createJsonResponse),
-    logger: {
-      error: vi.fn(),
-    },
-    mapRoleSyncErrorCode: vi.fn(() => 'IDP_UNAVAILABLE'),
-    parseCreateRoleBody: vi.fn(async () => ({ ok: true, data: payload, rawBody: JSON.stringify(payload) })),
-    persistCreatedRole: vi.fn(async () => roleItem),
-    requireIdempotencyKey: vi.fn(() => ({ key: 'idem-role-1' })),
-    requireRoleIdentityProvider: vi.fn(async () => identityProvider),
-    reserveIdempotency: vi.fn(async () => ({ status: 'reserved' })),
-    resolveRoleMutationActor: vi.fn(async () => ({ actor })),
-    sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
-    toPayloadHash: vi.fn(() => 'payload-hash-1'),
-    trackKeycloakCall: vi.fn(async (_operation, work) => work()),
-    validateRequestedPermissions: vi.fn(async () => null),
-  })) satisfies CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>;
+  asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
+  buildRoleAttributes: vi.fn((input) => ({ managedBy: 'studio', ...input })),
+  buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage }) =>
+    createJsonResponse(503, {
+      error: { code: 'keycloak_unavailable', message: fallbackMessage },
+      requestId,
+    })
+  ),
+  completeIdempotency: vi.fn(async () => undefined),
+  createApiError: vi.fn((status, code, message, requestId, details) =>
+    createJsonResponse(status, {
+      error: { code, message, ...(details ? { details } : {}) },
+      requestId,
+    })
+  ),
+  iamRoleSyncCounter: {
+    add: vi.fn(),
+  },
+  iamUserOperationsCounter: {
+    add: vi.fn(),
+  },
+  jsonResponse: vi.fn(createJsonResponse),
+  logger: {
+    error: vi.fn(),
+  },
+  mapRoleSyncErrorCode: vi.fn(() => 'IDP_UNAVAILABLE'),
+  parseCreateRoleBody: vi.fn(async () => ({
+    ok: true,
+    data: payload,
+    rawBody: JSON.stringify(payload),
+  })),
+  persistCreatedRole: vi.fn(async () => roleItem),
+  requireIdempotencyKey: vi.fn(() => ({ key: 'idem-role-1' })),
+  requireRoleIdentityProvider: vi.fn(async () => identityProvider),
+  reserveIdempotency: vi.fn(async () => ({ status: 'reserved' })),
+  resolveRoleMutationActor: vi.fn(async () => ({ actor })),
+  sanitizeRoleErrorMessage: vi.fn((error) =>
+    error instanceof Error ? error.message : String(error)
+  ),
+  toPayloadHash: vi.fn(() => 'payload-hash-1'),
+  trackKeycloakCall: vi.fn(async (_operation, work) => work()),
+  validateRequestedPermissions: vi.fn(async () => null),
+})) satisfies CreateRoleHandlerDeps<
+  CreateRolePayloadShape,
+  typeof identityProvider,
+  typeof roleItem
+>;
 
-const runCreateRoleRequest = async (deps: CreateRoleHandlerDeps<typeof payload, typeof identityProvider, typeof roleItem>) => {
+const runCreateRoleRequest = async (
+  deps: CreateRoleHandlerDeps<CreateRolePayloadShape, typeof identityProvider, typeof roleItem>
+) => {
   const handler = createCreateRoleHandlerInternal(deps);
   return handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
 };
@@ -90,7 +116,10 @@ describe('createCreateRoleHandlerInternal', () => {
     const deps = createDeps();
     const handler = createCreateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }),
+      ctx
+    );
 
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toMatchObject({
@@ -102,6 +131,7 @@ describe('createCreateRoleHandlerInternal', () => {
     expect(deps.persistCreatedRole).toHaveBeenCalledWith({
       actor,
       roleKey: 'editor',
+      generateUniqueRoleKey: false,
       displayName: 'Editor',
       externalRoleName: 'editor',
       description: 'Can edit content',
@@ -119,10 +149,45 @@ describe('createCreateRoleHandlerInternal', () => {
     });
   });
 
+  it('derives a unique local role key request from the display name', async () => {
+    const generatedPayload: CreateRolePayloadShape = {
+      displayName: 'Redaktion & Öffentlichkeit',
+      roleLevel: 0,
+      permissionIds: [],
+    };
+    const deps = createDeps({
+      parseCreateRoleBody: vi.fn(async () => ({
+        ok: true,
+        data: generatedPayload,
+        rawBody: JSON.stringify(generatedPayload),
+      })),
+    });
+
+    const response = await runCreateRoleRequest(deps);
+
+    expect(response.status).toBe(201);
+    expect(deps.persistCreatedRole).toHaveBeenCalledWith({
+      actor,
+      roleKey: 'redaktion_oeffentlichkeit',
+      generateUniqueRoleKey: true,
+      displayName: 'Redaktion & Öffentlichkeit',
+      externalRoleName: 'redaktion_oeffentlichkeit',
+      description: undefined,
+      roleLevel: 0,
+      permissionIds: [],
+      permissionAssignments: undefined,
+    });
+    expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
+  });
+
   it('returns replayed idempotency responses without creating a role', async () => {
     const replayBody = { data: { id: 'existing-role' } };
     const deps = createDeps({
-      reserveIdempotency: vi.fn(async () => ({ status: 'replay', responseStatus: 201, responseBody: replayBody })),
+      reserveIdempotency: vi.fn(async () => ({
+        status: 'replay',
+        responseStatus: 201,
+        responseBody: replayBody,
+      })),
     });
     const response = await runCreateRoleRequest(deps);
 
@@ -133,7 +198,9 @@ describe('createCreateRoleHandlerInternal', () => {
 
   it('does not require an identity provider for local tenant roles', async () => {
     const deps = createDeps({
-      requireRoleIdentityProvider: vi.fn(async () => createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })),
+      requireRoleIdentityProvider: vi.fn(async () =>
+        createJsonResponse(409, { error: { code: 'tenant_admin_client_not_configured' } })
+      ),
     });
     const response = await runCreateRoleRequest(deps);
 
@@ -151,7 +218,10 @@ describe('createCreateRoleHandlerInternal', () => {
 
   it('returns invalid_request before idempotency when tenant permissions are not manageable', async () => {
     const invalidResponse = createJsonResponse(400, {
-      error: { code: 'invalid_request', message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.' },
+      error: {
+        code: 'invalid_request',
+        message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
+      },
       requestId: 'req-create-role',
     });
     const deps = createDeps({
@@ -159,7 +229,10 @@ describe('createCreateRoleHandlerInternal', () => {
     });
     const handler = createCreateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }),
+      ctx
+    );
 
     expect(response).toBe(invalidResponse);
     expect(deps.reserveIdempotency).not.toHaveBeenCalled();
@@ -175,10 +248,15 @@ describe('createCreateRoleHandlerInternal', () => {
     });
     const handler = createCreateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles', { method: 'POST' }),
+      ctx
+    );
 
     expect(response.status).toBe(409);
-    await expect(response.json()).resolves.toMatchObject(dbWriteFailedErrorBody('conflict', 'req-create-role'));
+    await expect(response.json()).resolves.toMatchObject(
+      dbWriteFailedErrorBody('conflict', 'req-create-role')
+    );
     expect(identityProvider.provider.createRole).not.toHaveBeenCalled();
     expect(identityProvider.provider.deleteRole).not.toHaveBeenCalled();
     expect(deps.logger.error).toHaveBeenCalledWith(

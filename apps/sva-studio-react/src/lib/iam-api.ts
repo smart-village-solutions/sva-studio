@@ -134,7 +134,7 @@ export type BulkReprovisionMainserverUsersResult = Readonly<{
 }>;
 
 export type CreateRolePayload = {
-  readonly roleName: string;
+  readonly roleName?: string;
   readonly displayName?: string;
   readonly description?: string;
   readonly roleLevel?: number;

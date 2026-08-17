@@ -21,6 +21,7 @@ Graphile Worker ist eine austauschbare interne Runner-Implementierung. Der HTTP-
 - Decision: Der Runner verwendet einen eigenen Pool aus `STUDIO_JOB_WORKER_DATABASE_URL` oder den abgeleiteten Worker-Zugangsdaten und fällt in produktionsnahen Profilen nicht auf `IAM_DATABASE_URL` zurück.
 - Decision: App und Provisioner dürfen denselben Worker-Principal verwenden, bleiben aber über die bestehende Default-/Privileged-Lane fachlich getrennt. Ein separater Worker-Service ist für diesen Fix nicht erforderlich.
 - Decision: Bootstrap legt beziehungsweise rotiert den Worker-Login idempotent an, entzieht überbreite Datenbank-DDL-Rechte des App-Principals und prüft die erwarteten Grants.
+- Decision: Der Promote-Workflow bezieht das Worker-Passwort aus dem eigenständigen GitHub-Environment-Secret `STUDIO_JOB_WORKER_DB_PASSWORD` und injiziert es erst in die temporäre Rollout-Konfiguration; das bestehende `APP_CONFIG`-Bundle muss dafür nicht ersetzt werden.
 - Decision: Weil Graphile Worker seine internen Tabellen mit Row-Level Security schützt, erhält der dedizierte Worker ausschließlich schema-lokale Policies auf den RLS-aktivierten Graphile-Tabellen; ein globales `BYPASSRLS`-Attribut bleibt ausgeschlossen.
 - Alternatives considered: Weiterhin Runtime-Migration mit `sva_app`; verworfen wegen überbreiter Rechte und requestgekoppeltem DDL. Separater Worker-Service; fachlich sauber, aber für die Principal-Trennung nicht erforderlich und mit zusätzlicher Betriebsownership verbunden.
 

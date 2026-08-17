@@ -523,6 +523,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
       POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \
       APP_DB_USER=sva_app \
       APP_DB_PASSWORD="${APP_DB_PASSWORD}" \
+      SVA_PLUGIN_OPERATION_WORKER_ENABLED=false \
       REDIS_PASSWORD="${REDIS_PASSWORD}" \
       IAM_DATABASE_URL="postgres://sva_app:${APP_DB_PASSWORD}@127.0.0.1:${POSTGRES_PORT}/sva_studio" \
       REDIS_URL="redis://:${REDIS_PASSWORD}@127.0.0.1:${REDIS_PORT}" \

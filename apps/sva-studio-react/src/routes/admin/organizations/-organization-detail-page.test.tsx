@@ -81,6 +81,15 @@ const organizationFixture = {
   ],
 };
 
+const readyOrganizationFixture = {
+  ...organizationFixture,
+  mainserverProvisioning: {
+    ...organizationFixture.mainserverProvisioning,
+    status: 'ready' as const,
+    lastErrorCode: undefined,
+  },
+};
+
 const createState = (overrides: Record<string, unknown> = {}) => ({
   organizations: [
     organizationFixture,
@@ -427,7 +436,7 @@ describe('OrganizationDetailPage', () => {
   });
 
   it('shows the secret-free provisioning state and starts an explicit retry', async () => {
-    const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
+    const provisionMainserver = vi.fn().mockResolvedValue(readyOrganizationFixture);
     useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
 
     render(<OrganizationDetailPage organizationId="org-1" />);
@@ -436,6 +445,38 @@ describe('OrganizationDetailPage', () => {
     expect(screen.getByText('technical-account-1')).toBeTruthy();
     expect(screen.getByText('Letzter sicherer Fehlercode: missing_credentials')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
+    expect(
+      await screen.findByText('Die Mainserver-Daten wurden geprüft und sind aktuell.')
+    ).toBeTruthy();
+  });
+
+  it('does not confirm a failed Mainserver provisioning result as current', async () => {
+    const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
+    expect(
+      screen.queryByText('Die Mainserver-Daten wurden geprüft und sind aktuell.')
+    ).toBeNull();
+  });
+
+  it('allows an authorized user to refresh an already ready Mainserver access', async () => {
+    const provisionMainserver = vi.fn().mockResolvedValue(readyOrganizationFixture);
+    useOrganizationsMock.mockReturnValue(
+      createState({ selectedOrganization: readyOrganizationFixture, provisionMainserver })
+    );
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
 
     await waitFor(() => {
       expect(provisionMainserver).toHaveBeenCalledWith('org-1');

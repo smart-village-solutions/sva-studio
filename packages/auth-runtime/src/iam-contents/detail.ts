@@ -22,10 +22,14 @@ import { loadContentById, loadContentDetail } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
+const createContentNotFoundError = (requestId: string | undefined): Response =>
+  createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', requestId);
+
 const loadProjectedMainserverContent = async (
   actor: ResolvedContentActor['actor'],
   contentType: string,
-  sourceEntityId: string
+  sourceEntityId: string,
+  allowGlobalMutationFallback = true
 ): Promise<IamContentListItem | undefined> => {
   const projectionInput = {
     instanceId: actor.instanceId,
@@ -37,6 +41,7 @@ const loadProjectedMainserverContent = async (
   let candidates = await loadMainserverContentProjectionCandidates(projectionInput);
   if (
     candidates.length !== 1 &&
+    allowGlobalMutationFallback &&
     (await hasGlobalContentMutationPermission(actor, contentType))
   ) {
     candidates = await loadMainserverContentProjectionCandidates({
@@ -46,6 +51,16 @@ const loadProjectedMainserverContent = async (
   }
   return candidates.length === 1 ? candidates[0] : undefined;
 };
+
+const readMainserverPrincipalMetadata = (projection: IamContentListItem | undefined) =>
+  projection
+    ? {
+        credentialSource: projection.credentialSource,
+        sourceDataProviderId: projection.sourceDataProviderId,
+        sourceDataProviderName: projection.sourceDataProviderName,
+        authorizationMode: projection.authorizationMode,
+      }
+    : {};
 
 export const getContentInternal = async (
   request: Request,
@@ -68,6 +83,7 @@ export const getContentInternal = async (
     const contentType = new URL(request.url).searchParams.get('contentType')?.trim();
     let item: IamContentListItem | undefined;
     let projectedItem = false;
+    let principalProjection: IamContentListItem | undefined;
     if (contentType) {
       const reference = await loadExternalContentReferenceBySourceEntity({
         instanceId: actorResolution.actor.instanceId,
@@ -76,7 +92,10 @@ export const getContentInternal = async (
         sourceEntityId: contentId,
       });
       if (reference) {
-        item = await loadContentById(actorResolution.actor.instanceId, reference.contentId);
+        [item, principalProjection] = await Promise.all([
+          loadContentById(actorResolution.actor.instanceId, reference.contentId),
+          loadProjectedMainserverContent(actorResolution.actor, contentType, contentId, false),
+        ]);
       } else {
         item = await loadProjectedMainserverContent(
           actorResolution.actor,
@@ -92,12 +111,7 @@ export const getContentInternal = async (
       item = await loadContentById(actorResolution.actor.instanceId, contentId);
     }
     if (!item) {
-      return createApiError(
-        404,
-        'not_found',
-        'Inhalt wurde nicht gefunden.',
-        actorResolution.actor.requestId
-      );
+      return createContentNotFoundError(actorResolution.actor.requestId);
     }
 
     const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
@@ -111,15 +125,19 @@ export const getContentInternal = async (
     ]);
     return detail
       ? new Response(
-          JSON.stringify(asApiItem({ ...detail, access }, actorResolution.actor.requestId)),
+          JSON.stringify(
+            asApiItem(
+              {
+                ...detail,
+                ...readMainserverPrincipalMetadata(principalProjection),
+                access,
+              },
+              actorResolution.actor.requestId
+            )
+          ),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
-      : createApiError(
-          404,
-          'not_found',
-          'Inhalt wurde nicht gefunden.',
-          actorResolution.actor.requestId
-        );
+      : createContentNotFoundError(actorResolution.actor.requestId);
   } catch (error) {
     logger.error('Content detail query failed', {
       operation: 'content_detail',

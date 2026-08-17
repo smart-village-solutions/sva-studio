@@ -279,7 +279,31 @@ describe('organization mainserver credentials', () => {
     });
     expect(query).toHaveBeenCalledWith(
       expect.stringContaining("provisioning_status NOT IN ('provisioning', 'ready')"),
-      expect.arrayContaining(['operation-2', 300])
+      expect.arrayContaining(['operation-2', 300, false])
+    );
+  });
+
+  it('allows an explicit refresh of a ready organization with a new operation reference', async () => {
+    const query = vi.fn<QueryClient['query']>().mockResolvedValue({ rows: [] } as never);
+
+    await reserveOrganizationMainserverProvisioning({ query } as unknown as QueryClient, {
+      instanceId: 'de-musterhausen',
+      organizationId: '11111111-1111-1111-8111-111111111111',
+      operationReference: 'operation-refresh',
+      actorAccountId: '22222222-2222-4222-8222-222222222222',
+      leaseSeconds: 300,
+      allowReadyRefresh: true,
+    });
+
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining("provisioning_status = 'ready'"),
+      expect.arrayContaining(['operation-refresh', 300, true])
+    );
+    expect(query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('operation_reference IS DISTINCT FROM EXCLUDED.operation_reference'),
+      expect.any(Array)
     );
   });
 

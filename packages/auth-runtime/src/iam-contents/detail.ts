@@ -22,6 +22,9 @@ import { loadContentById, loadContentDetail } from './repository.js';
 
 const logger = createSdkLogger({ component: 'iam-contents', level: 'info' });
 
+const createContentNotFoundError = (requestId: string): Response =>
+  createApiError(404, 'not_found', 'Inhalt wurde nicht gefunden.', requestId);
+
 const loadProjectedMainserverContent = async (
   actor: ResolvedContentActor['actor'],
   contentType: string,
@@ -108,12 +111,7 @@ export const getContentInternal = async (
       item = await loadContentById(actorResolution.actor.instanceId, contentId);
     }
     if (!item) {
-      return createApiError(
-        404,
-        'not_found',
-        'Inhalt wurde nicht gefunden.',
-        actorResolution.actor.requestId
-      );
+      return createContentNotFoundError(actorResolution.actor.requestId);
     }
 
     const authorizationError = await authorizeReadableContentItem(actorResolution.actor, item);
@@ -139,12 +137,7 @@ export const getContentInternal = async (
           ),
           { status: 200, headers: { 'Content-Type': 'application/json' } }
         )
-      : createApiError(
-          404,
-          'not_found',
-          'Inhalt wurde nicht gefunden.',
-          actorResolution.actor.requestId
-        );
+      : createContentNotFoundError(actorResolution.actor.requestId);
   } catch (error) {
     logger.error('Content detail query failed', {
       operation: 'content_detail',

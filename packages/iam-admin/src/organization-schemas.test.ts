@@ -21,6 +21,23 @@ describe('organization-schemas', () => {
     });
   });
 
+  it.each(['association', 'institution'] as const)(
+    'accepts the %s organization type on create and update',
+    (organizationType) => {
+      expect(
+        createOrganizationSchema.parse({
+          organizationKey: `test-${organizationType}`,
+          displayName: `Test ${organizationType}`,
+          organizationType,
+        })
+      ).toMatchObject({ organizationType });
+
+      expect(updateOrganizationSchema.parse({ organizationType })).toMatchObject({
+        organizationType,
+      });
+    }
+  );
+
   it('requires at least one field on update and accepts explicit parent removal', () => {
     expect(() => updateOrganizationSchema.parse({})).toThrow('at_least_one_field_required');
 

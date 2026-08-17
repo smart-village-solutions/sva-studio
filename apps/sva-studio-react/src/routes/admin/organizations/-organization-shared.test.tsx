@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   createOrganizationFormValues,
   getOrganizationParentOptions,
+  getOrganizationTypeTranslationKey,
+  organizationTypeOptions,
   suggestOrganizationKey,
   toOrganizationMutationPayload,
 } from './-organization-shared';
@@ -54,6 +56,16 @@ describe('organization shared helpers', () => {
       mainserverApplicationSecret: '',
       mainserverApplicationSecretSet: false,
     });
+  });
+
+  it('provides association and institution as localized organization types', () => {
+    expect(organizationTypeOptions).toEqual(expect.arrayContaining(['association', 'institution']));
+    expect(getOrganizationTypeTranslationKey('association')).toBe(
+      'admin.organizations.types.association'
+    );
+    expect(getOrganizationTypeTranslationKey('institution')).toBe(
+      'admin.organizations.types.institution'
+    );
   });
 
   it('suggests a normalized organization key from the display name', () => {

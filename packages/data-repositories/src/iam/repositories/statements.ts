@@ -28,7 +28,7 @@ SET
     organizationKey: string;
     displayName: string;
     metadata: string;
-    organizationType: 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+    organizationType: 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'association' | 'institution' | 'other';
     contentAuthorPolicy: 'org_only' | 'org_or_personal';
     parentOrganizationId?: IamUuid;
     hierarchyPath: readonly IamUuid[];

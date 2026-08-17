@@ -95,6 +95,12 @@ describe('organization query helpers', () => {
       readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=agency'))
     ).toBe('agency');
     expect(
+      readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=association'))
+    ).toBe('association');
+    expect(
+      readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=institution'))
+    ).toBe('institution');
+    expect(
       readOrganizationTypeFilter(new Request('http://localhost/api?organizationType=invalid'))
     ).toBe('invalid');
     expect(escapeIlikePattern('100%_ok\\test')).toBe('100\\%\\_ok\\\\test');

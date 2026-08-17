@@ -301,6 +301,27 @@ describe('Keycloak admin client', () => {
     });
   });
 
+  it('normalizes the tenant-admin base URL fallback and rejects blank configuration', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '   ');
+    vi.stubEnv('KEYCLOAK_PROVISIONER_BASE_URL', '  https://provisioner-keycloak.example  ');
+
+    const { getKeycloakTenantAdminClientConfigFromEnv } = await import('./core.js');
+    const input = {
+      realm: 'demo',
+      clientId: 'sva-studio-admin',
+      clientSecret: 'tenant-secret',
+    };
+
+    expect(getKeycloakTenantAdminClientConfigFromEnv(input).baseUrl).toBe(
+      'https://provisioner-keycloak.example'
+    );
+
+    vi.stubEnv('KEYCLOAK_PROVISIONER_BASE_URL', '   ');
+    expect(() => getKeycloakTenantAdminClientConfigFromEnv(input)).toThrow(
+      'Missing required env: KEYCLOAK_ADMIN_BASE_URL'
+    );
+  });
+
   it('synchronizes managed realm roles while preserving built-ins and unmanaged roles', async () => {
     const fetchImpl = vi
       .fn()

@@ -204,43 +204,6 @@ const parseNewsPayload = (value: unknown): SvaMainserverNewsPayload | undefined 
   return uniqueKeys.size > 0 ? { wasteLocationKeys: [...uniqueKeys.values()] } : {};
 };
 
-const getVisibleTextLength = (value: string): number => {
-  let inTag = false;
-  let previousWasWhitespace = true;
-  let visibleLength = 0;
-
-  for (const character of value) {
-    if (character === '<') {
-      inTag = true;
-      continue;
-    }
-
-    if (character === '>' && inTag) {
-      inTag = false;
-      previousWasWhitespace = true;
-      continue;
-    }
-
-    if (inTag) {
-      continue;
-    }
-
-    if (/\s/u.test(character)) {
-      previousWasWhitespace = true;
-      continue;
-    }
-
-    if (previousWasWhitespace && visibleLength > 0) {
-      visibleLength += 1;
-    }
-
-    visibleLength += 1;
-    previousWasWhitespace = false;
-  }
-
-  return visibleLength;
-};
-
 const parseContentBlockMediaContents = (
   value: unknown
 ):
@@ -283,13 +246,6 @@ const parseContentBlockMediaContents = (
 
   return mediaContents;
 };
-
-const hasValidContentBlocks = (
-  blocks: readonly NonNullable<SvaMainserverNewsInput['contentBlocks']>[number][]
-) =>
-  blocks.length > 0 &&
-  blocks.some((block) => block.body && getVisibleTextLength(block.body) > 0) &&
-  blocks.every((block) => (block.body?.length ?? 0) <= 50_000);
 
 const withoutEditorialAuthor = (news: SvaMainserverNewsInput): SvaMainserverNewsInput => {
   const { author, ...newsWithoutAuthor } = news;
@@ -402,11 +358,7 @@ const parseContentBlocks = (
   value: unknown
 ): SvaMainserverNewsInput['contentBlocks'] | undefined | Response => {
   if (value === undefined || value === null) {
-    return errorJson(
-      400,
-      'invalid_request',
-      'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.'
-    );
+    return undefined;
   }
   if (!Array.isArray(value)) {
     return errorJson(400, 'invalid_request', 'ContentBlocks müssen als Liste gesendet werden.');
@@ -416,6 +368,17 @@ const parseContentBlocks = (
   for (const block of value) {
     if (!isRecord(block)) {
       return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
+    }
+    if (
+      (block.title !== undefined && block.title !== null && typeof block.title !== 'string') ||
+      (block.intro !== undefined && block.intro !== null && typeof block.intro !== 'string') ||
+      (block.body !== undefined && block.body !== null && typeof block.body !== 'string')
+    ) {
+      return errorJson(
+        400,
+        'invalid_request',
+        'Titel, Einleitung und Inhalt eines ContentBlocks müssen Strings sein.'
+      );
     }
     const mediaContents = parseContentBlockMediaContents(block.mediaContents);
     if (mediaContents instanceof Response) {
@@ -428,12 +391,8 @@ const parseContentBlocks = (
       ...(mediaContents.length > 0 ? { mediaContents } : {}),
     });
   }
-  if (!hasValidContentBlocks(blocks)) {
-    return errorJson(
-      400,
-      'invalid_request',
-      'Mindestens ein Inhaltsblock benötigt Inhalt und darf maximal 50.000 Zeichen haben.'
-    );
+  if (blocks.some((block) => (block.body?.length ?? 0) > 50_000)) {
+    return errorJson(400, 'invalid_request', 'Inhaltsblöcke dürfen maximal 50.000 Zeichen haben.');
   }
   return blocks;
 };

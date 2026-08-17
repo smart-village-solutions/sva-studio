@@ -47,9 +47,11 @@ const errorMetadata = (error) => {
 };
 
 try {
-  const expectedMigration = resolveExpectedGooseMigrationFromDirectory(
-    process.env.MIGRATIONS_DIR?.trim() || process.env.SVA_MIGRATIONS_DIR?.trim()
-  );
+  const migrationsDirectory =
+    process.env.MIGRATIONS_DIR?.trim() || process.env.SVA_MIGRATIONS_DIR?.trim();
+  const expectedMigration = migrationsDirectory
+    ? resolveExpectedGooseMigrationFromDirectory(migrationsDirectory)
+    : resolveExpectedGooseMigrationFromDirectory();
   const readiness = await runIamDatabaseReadinessForConnection(
     buildClientConfig(),
     expectedMigration

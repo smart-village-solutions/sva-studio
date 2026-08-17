@@ -69,4 +69,10 @@ describe('IAM schema readiness deployment contract', () => {
       'MIGRATIONS_DIR="${WORKSPACE_ROOT}/packages/data/migrations"'
     );
   });
+
+  it('retains the schema guard default when no migration directory is configured', () => {
+    expect(verifier).toMatch(
+      /migrationsDirectory\s*\?\s*resolveExpectedGooseMigrationFromDirectory\(migrationsDirectory\)\s*:\s*resolveExpectedGooseMigrationFromDirectory\(\)/
+    );
+  });
 });

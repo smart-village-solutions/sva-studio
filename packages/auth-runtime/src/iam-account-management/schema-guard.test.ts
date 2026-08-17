@@ -112,6 +112,50 @@ describe('schema guard helpers', () => {
       },
       schema: { ok: true },
     });
+
+    const numericVersion = evaluateIamDatabaseReadiness(
+      { ...schemaRow, current_migration_version: 83 },
+      expectedMigration
+    );
+    expect(numericVersion.migration).toMatchObject({ appliedVersion: 83, ok: true });
+
+    const missingVersion = evaluateIamDatabaseReadiness(schemaRow, expectedMigration);
+    expect(missingVersion.migration).toMatchObject({
+      appliedVersion: null,
+      ok: false,
+      reasonCode: 'migration_drift',
+    });
+  });
+
+  it('rejects missing, malformed, and duplicate Goose migration versions', async () => {
+    const { resolveExpectedGooseMigration } = await import('./schema-guard.js');
+
+    expect(() => resolveExpectedGooseMigration(['README.md'])).toThrow('Keine Goose-Migrationen');
+    expect(() => resolveExpectedGooseMigration(['latest.sql'])).toThrow(
+      'keinen gueltigen numerischen Versionspraefix'
+    );
+    expect(() => resolveExpectedGooseMigration(['0001_initial.sql', '0001_repeated.sql'])).toThrow(
+      'Goose-Migrationsversion 1 ist nicht eindeutig'
+    );
+  });
+
+  it('runs the combined database readiness query through the query client', async () => {
+    const { buildIamDatabaseReadinessSql, runIamDatabaseReadiness } =
+      await import('./schema-guard.js');
+    const query = vi.fn(async () => ({
+      rows: [{ current_migration_version: '2', groups_exists: true }],
+    }));
+
+    const report = await runIamDatabaseReadiness({ query } as never, {
+      fileName: '0002_latest.sql',
+      version: 2,
+    });
+
+    expect(query).toHaveBeenCalledWith(buildIamDatabaseReadinessSql());
+    expect(report.migration).toMatchObject({ appliedVersion: 2, ok: true });
+    expect(report.schema.checks.find((check) => check.schemaObject === 'iam.groups')?.ok).toBe(
+      true
+    );
   });
 
   it('uses the established migration directory variable before the SVA fallback', async () => {

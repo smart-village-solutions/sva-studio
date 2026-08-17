@@ -255,7 +255,8 @@ export type HealthReadyResponse = {
 
 export type RuntimeDependencyStatus = 'ready' | 'degraded' | 'not_ready' | 'unknown';
 
-export type RuntimeDependencyKey = 'authorizationCache' | 'database' | 'keycloak' | 'redis';
+export type RuntimeDependencyKey =
+  'authorizationCache' | 'database' | 'jobWorker' | 'keycloak' | 'redis';
 
 export type RuntimeDependencyHealth = {
   readonly reasonCode?: string;

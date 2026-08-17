@@ -16,15 +16,16 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 - Backup, Migration, Bootstrap, Postconditions und Verifikation sind fail-closed: Ein Fehler blockiert alle nachfolgenden mutierenden Phasen.
 - Secrets kommen ausschließlich aus dem jeweiligen GitHub-Environment. Sie werden weder in Workflow-Inputs noch in Logs, Reports oder Dokumentation geschrieben.
 - `REDIS_SNAPSHOT_HMAC_SECRET` liegt je Umgebung als eigenständiges GitHub-Environment-Secret vor, wird vor jeder Mutation auf Mindeststärke geprüft und ausschließlich beim Stack-Render an die App übergeben. Es ist nicht Bestandteil von `APP_CONFIG` und darf nicht zwischen Dev, Staging und Production wiederverwendet werden.
+- `STUDIO_JOB_WORKER_DB_PASSWORD` liegt je Umgebung als eigenständiger geheimer Remote-Konfigurationswert vor. Der Bootstrap verwendet ihn für den dedizierten Principal `sva_job_worker`; App und Provisioner benötigen ihn ausschließlich für ihre jeweilige Worker-Lane. Er darf nicht mit `APP_DB_PASSWORD` oder `POSTGRES_PASSWORD` identisch sein.
 - Direkte Portainer-Änderungen, Docker-Service-Updates, rohe `quantum-cli stacks deploy/update`-Aufrufe und `env:release:studio:local` sind kein regulärer Rolloutpfad.
 
 ## Umgebungsvertrag
 
-| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
-| --- | --- | --- | --- | --- | --- |
-| Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
-| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
-| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
+| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
+| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
+| Dev        | `studio-dev`     | `https://studio-dev.smart-village.app`     | automatisch nach erfolgreichem Build auf `main`                   | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup                |
+| Staging    | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
+| Production | `studio`         | `https://studio.smart-village.app`         | manuell über `Promote`, geschützt durch das Environment `prod`    | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
 
 ## Explizite Tenant-Hostfreigabe
 
@@ -83,7 +84,7 @@ Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren 
 9. Runtime-Smoke für Root-Host, alle expliziten Tenant-Hosts, deren konkrete TLS-Zertifikate und einen unbekannten Host sowie den Live-Digest verifizieren.
 10. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
 
-Der Studio-Migrations-One-shot aktiviert diesen Schritt explizit mit `WASTE_TENANT_MIGRATIONS_ENABLED=true`; generische Runtime-Profile bleiben unabhängig von Waste-Secrets. Er wendet zuerst die versionierten Goose-Migrationen auf `sva_studio` an. Danach liest er mit dem zentralen Migrationsprincipal das vollständige Registry-Inventar aller `ready`- und `disabled`-Waste-Tenant-Datenbanken und wendet je Datenbank ausschließlich noch nicht protokollierte, im Zielimage versionierte Waste-Migrationen an. Datenbanknamen werden erneut aus der Instanz-ID abgeleitet und müssen exakt mit der Registry übereinstimmen. Jede Tenant-Datenbank führt ihren Stand in `public.sva_waste_schema_migrations`; die ausstehenden SQL-Schritte, ihre Verifikation und der Ledger-Eintrag laufen gemeinsam in einer Transaktion nach transaktionslokalem Wechsel in die jeweilige Owner-Rolle.
+Der Studio-Migrations-One-shot wendet zuerst die versionierten Goose-Migrationen auf `sva_studio` an, aktualisiert anschließend das interne `graphile_worker`-Schema mit demselben privilegierten Migrationsprincipal und verarbeitet danach bei aktiviertem `WASTE_TENANT_MIGRATIONS_ENABLED=true` die Waste-Tenant-Migrationen. Erst nach erfolgreichem Abschluss des gesamten Migrations-One-shots reconciliert der separate Bootstrap die getrennten Rechte für `sva_app` und `sva_job_worker`; die laufende App führt keine Graphile-Migrationen aus. Der Waste-Schritt liest das vollständige Registry-Inventar aller `ready`- und `disabled`-Waste-Tenant-Datenbanken und wendet je Datenbank ausschließlich noch nicht protokollierte, im Zielimage versionierte Waste-Migrationen an. Datenbanknamen werden erneut aus der Instanz-ID abgeleitet und müssen exakt mit der Registry übereinstimmen. Jede Tenant-Datenbank führt ihren Stand in `public.sva_waste_schema_migrations`; die ausstehenden SQL-Schritte, ihre Verifikation und der Ledger-Eintrag laufen gemeinsam in einer Transaktion nach transaktionslokalem Wechsel in die jeweilige Owner-Rolle.
 
 Der Schema-Builder für neue Waste-Tenants wird nicht auf Bestandsdatenbanken wiederholt. Destruktive Änderungen benötigen eine eigene Migration mit Preflight und expliziter Freigabe. Namensdrift, ein nicht lesbares Provisioner-Secret, SQL-Fehler oder eine fehlgeschlagene Verifikation rollen die aktuelle Tenant-Transaktion zurück und beenden den One-shot rot, bevor Bootstrap oder App-Deploy beginnen. Bereits erfolgreich migrierte andere Tenant-Datenbanken bleiben committed und werden bei einem Wiederanlauf anhand ihres Ledgers übersprungen und erneut verifiziert.
 

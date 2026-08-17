@@ -47,6 +47,7 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
         ...process.env,
         ...envOverrides,
         APP_DB_PASSWORD: 'app-password',
+        STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
         OUTPUT_SQL_PATH: outputSqlPath,
         PATH: `${fakeBinDir}:${process.env.PATH ?? ''}`,
         POSTGRES_DB: 'sva_studio',
@@ -65,12 +66,45 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
 };
 
 describe('bootstrap-entrypoint', () => {
-  it('grants the runtime database and schema privileges required by the job worker', () => {
+  it('separates enqueue-only app privileges from worker execution privileges', () => {
     const sql = renderBootstrapSql();
 
     expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app";');
-    expect(sql).toContain('GRANT CREATE ON DATABASE "sva_studio" TO "sva_app";');
-    expect(sql).toContain('GRANT USAGE, CREATE ON SCHEMA public TO "sva_app";');
+    expect(sql).toContain('REVOKE CREATE ON DATABASE "sva_studio" FROM "sva_app";');
+    expect(sql).toContain('REVOKE CREATE ON SCHEMA public FROM "sva_app";');
+    expect(sql).toContain(
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
+    );
+    expect(sql).toContain(
+      'GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text) TO "sva_app";'
+    );
+    expect(sql).not.toContain(
+      'GRANT EXECUTE ON FUNCTION graphile_worker.add_job(text, json, text, timestamptz, integer, text, integer, text[], text) TO "sva_app";'
+    );
+    expect(sql).toContain('SET LOCAL ROLE "sva_app";');
+    expect(sql).toContain("'studio-job:bootstrap-contract'");
+    expect(sql).toContain('ROLLBACK;');
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA graphile_worker TO "sva_job_worker";'
+    );
+    expect(sql).toContain(
+      'CREATE POLICY sva_job_worker_access ON graphile_worker.%I TO %I USING (true) WITH CHECK (true)'
+    );
+    expect(sql).toContain('worker_functions_complete');
+    expect(sql).toContain('worker_sequences_complete');
+    expect(sql).toContain('worker_policies_complete');
+    expect(sql).not.toContain('BYPASSRLS');
+  });
+
+  it('reconciles worker privileges when app-role reconciliation is disabled', () => {
+    const sql = renderBootstrapSql({ SVA_BOOTSTRAP_RECONCILE_APP_ROLE: 'false' });
+
+    expect(sql).not.toContain('GRANT iam_app TO "sva_app";');
+    expect(sql).toContain('ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER');
+    expect(sql).toContain(
+      'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA graphile_worker TO "sva_job_worker";'
+    );
+    expect(sql).toContain('worker_policies_complete');
   });
 
   it('backfills tenant_admin_client_id in bootstrap instance reconciliation SQL', () => {

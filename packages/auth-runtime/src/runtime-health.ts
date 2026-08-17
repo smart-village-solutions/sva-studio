@@ -8,6 +8,7 @@ import {
 } from './iam-account-management/shared.js';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
+import { getStudioJobWorkerHealth } from './plugin-operations/runner-worker.js';
 import {
   createHealthDiagnostics,
   createHealthErrors,
@@ -27,7 +28,11 @@ const withHealthRequestContext = <T>(request: Request, work: () => Promise<T>): 
 const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
   const pool = resolvePool();
   if (!pool) {
-    return { ready: false, error: 'IAM database not configured', reasonCode: 'database_not_configured' };
+    return {
+      ready: false,
+      error: 'IAM database not configured',
+      reasonCode: 'database_not_configured',
+    };
   }
 
   try {
@@ -111,7 +116,9 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
       `SELECT id, primary_hostname, auth_realm, auth_client_id FROM iam.instances WHERE status = 'active' ORDER BY id`
     );
 
-    const invalidConfigInstanceIds = result.rows.filter(hasMissingTenantLoginConfig).map((row: ActiveInstanceLoginRow) => row.id);
+    const invalidConfigInstanceIds = result.rows
+      .filter(hasMissingTenantLoginConfig)
+      .map((row: ActiveInstanceLoginRow) => row.id);
 
     const secretCandidateIds = result.rows
       .map((row: ActiveInstanceLoginRow) => row.id)
@@ -125,8 +132,9 @@ const checkTenantLoginContract = async (): Promise<TenantLoginContractCheck> => 
     );
 
     const invalidSecretInstanceIds = secretChecks
-      .filter(({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
-        !isValidTenantSecretState(secret)
+      .filter(
+        ({ secret }: { secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>> }) =>
+          !isValidTenantSecretState(secret)
       )
       .map(({ instanceId }: { instanceId: string }) => instanceId);
 
@@ -164,13 +172,21 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
       checkTenantLoginContract(),
     ]);
     const authorizationCache = getPermissionCacheHealth();
+    const jobWorker = getStudioJobWorkerHealth();
     const ready =
       database.ready &&
       redis.ready &&
       keycloak.ready &&
       tenantLoginContract.ready &&
+      jobWorker.ready &&
       authorizationCache.status !== 'failed';
-    const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
+    const services = createRuntimeHealthServices(
+      database,
+      redis,
+      keycloak,
+      authorizationCache,
+      jobWorker
+    );
 
     return jsonResponse(ready ? 200 : 503, {
       status: ready ? 'ready' : 'not_ready',
@@ -191,9 +207,10 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
           redis,
           keycloak,
           tenantLoginContract,
-          authorizationCache
+          authorizationCache,
+          jobWorker
         ),
-        errors: createHealthErrors(database, redis, keycloak, tenantLoginContract),
+        errors: createHealthErrors(database, redis, keycloak, tenantLoginContract, jobWorker),
         services,
       },
       ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),

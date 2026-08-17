@@ -113,8 +113,8 @@ describe('postgres app user bootstrap', () => {
     const executedSql = state.FakeClient.instances[0]?.queryImpl.mock.calls.map(([sql]) => sql) ?? [];
     expect(executedSql).toContainEqual(expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD'));
     expect(executedSql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app"');
-    expect(executedSql).toContain('GRANT CREATE ON DATABASE "sva_studio" TO "sva_app"');
-    expect(executedSql).toContain('GRANT USAGE, CREATE ON SCHEMA public TO "sva_app"');
+    expect(executedSql).toContain('REVOKE CREATE ON DATABASE "sva_studio" FROM "sva_app"');
+    expect(executedSql).toContain('REVOKE CREATE ON SCHEMA public FROM "sva_app"');
     expect(state.logger.info).toHaveBeenCalledWith(
       'Bootstrapped studio app DB role',
       expect.objectContaining({

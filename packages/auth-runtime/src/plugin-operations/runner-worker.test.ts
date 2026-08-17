@@ -1,10 +1,10 @@
+import type { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  runMigrations: vi.fn(),
-  run: vi.fn(),
+  runTaskList: vi.fn(),
   resolvePool: vi.fn(),
-  bootstrapStudioAppDbUserIfNeeded: vi.fn(),
+  resolveStudioJobWorkerPool: vi.fn(),
   createStudioJobTaskList: vi.fn(),
   getRegisteredStudioJobExecutionRegistry: vi.fn(),
   logger: {
@@ -13,16 +13,12 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('graphile-worker', () => ({
-  runMigrations: state.runMigrations,
-  run: state.run,
+  runTaskList: state.runTaskList,
 }));
 
 vi.mock('../db.js', () => ({
   resolvePool: state.resolvePool,
-}));
-
-vi.mock('../postgres-app-user-bootstrap.js', () => ({
-  bootstrapStudioAppDbUserIfNeeded: state.bootstrapStudioAppDbUserIfNeeded,
+  resolveStudioJobWorkerPool: state.resolveStudioJobWorkerPool,
 }));
 
 vi.mock('./runner-registry.js', () => ({
@@ -41,21 +37,32 @@ describe('plugin operation runner worker', () => {
     vi.resetModules();
     vi.clearAllMocks();
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY;
-    state.resolvePool.mockReturnValue({ id: 'pool-1' });
-    state.bootstrapStudioAppDbUserIfNeeded.mockResolvedValue(false);
+    state.resolvePool.mockReturnValue({ query: vi.fn(async () => undefined) });
+    state.resolveStudioJobWorkerPool.mockReturnValue({ id: 'worker-pool-1' });
     state.createStudioJobTaskList.mockReturnValue({ studio_job_execute: vi.fn() });
-    state.runMigrations.mockResolvedValue(undefined);
-    state.run.mockResolvedValue({
-      addJob: vi.fn(async () => undefined),
-      stop: vi.fn(async () => undefined),
+    state.runTaskList.mockImplementation((options: { events: EventEmitter }) => {
+      queueMicrotask(() => {
+        options.events.emit('pool:listen:success', {});
+        options.events.emit('worker:getJob:empty', {});
+      });
+      return {
+        gracefulShutdown: vi.fn(async () => undefined),
+        promise: Promise.resolve(),
+      };
     });
   });
 
   it('starts the worker, clamps concurrency, queues jobs, and stops cleanly', async () => {
     process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY = '99';
-    const { ensureStudioJobWorkerStarted, queueStudioJob, stopStudioJobWorker } = await import('./runner-worker.js');
+    const {
+      ensureStudioJobWorkerStarted,
+      getStudioJobWorkerHealth,
+      queueStudioJob,
+      stopStudioJobWorker,
+    } = await import('./runner-worker.js');
 
     await ensureStudioJobWorkerStarted();
+    expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
     await queueStudioJob({
       instanceId: 'tenant-a',
       jobId: 'job-1',
@@ -63,29 +70,31 @@ describe('plugin operation runner worker', () => {
       maxAttempts: 5,
     });
     await stopStudioJobWorker();
+    expect(getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'studio_job_worker_stopped',
+      status: 'stopped',
+    });
 
-    expect(state.run).toHaveBeenCalledWith(
+    expect(state.runTaskList).toHaveBeenCalledWith(
       expect.objectContaining({
-        pgPool: { id: 'pool-1' },
         concurrency: 16,
         noHandleSignals: true,
-        taskList: { studio_job_execute: expect.any(Function) },
-      })
+      }),
+      { studio_job_execute: expect.any(Function) },
+      { id: 'worker-pool-1' }
     );
-    const runner = await state.run.mock.results[0]?.value;
-    expect(runner.addJob).toHaveBeenCalledWith(
-      'studio_job_execute',
-      {
-        instanceId: 'tenant-a',
-        jobId: 'job-1',
-      },
-      {
-        queueName: 'plugin-operations',
-        maxAttempts: 5,
-        jobKey: 'studio-job:job-1',
-      }
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      [
+        'studio_job_execute',
+        JSON.stringify({ instanceId: 'tenant-a', jobId: 'job-1' }),
+        'plugin-operations',
+        5,
+        'studio-job:job-1',
+      ]
     );
-    expect(runner.stop).toHaveBeenCalledTimes(1);
+    expect(state.runTaskList.mock.results[0]?.value.gracefulShutdown).toHaveBeenCalledTimes(1);
   });
 
   it('runs privileged jobs on a dedicated task identifier that the default worker cannot claim', async () => {
@@ -112,13 +121,11 @@ describe('plugin operation runner worker', () => {
       state.getRegisteredStudioJobExecutionRegistry,
       'studio_job_execute_privileged'
     );
-    const privilegedRunner = await state.run.mock.results[0]?.value;
-    const defaultRunner = await state.run.mock.results[1]?.value;
-    expect(privilegedRunner.stop).toHaveBeenCalledOnce();
-    expect(defaultRunner.addJob).toHaveBeenCalledWith(
-      'studio_job_execute_privileged',
-      { instanceId: 'tenant-a', jobId: 'job-privileged' },
-      expect.objectContaining({ queueName: 'waste-provisioning' })
+    const privilegedRunner = state.runTaskList.mock.results[0]?.value;
+    expect(privilegedRunner.gracefulShutdown).toHaveBeenCalledOnce();
+    expect(state.resolvePool.mock.results[0]?.value.query).toHaveBeenCalledWith(
+      expect.stringContaining('graphile_worker.sva_enqueue_job'),
+      expect.arrayContaining(['studio_job_execute_privileged', 'waste-provisioning'])
     );
   });
 
@@ -127,25 +134,37 @@ describe('plugin operation runner worker', () => {
     const { ensureStudioJobWorkerStarted } = await import('./runner-worker.js');
 
     await ensureStudioJobWorkerStarted();
-    expect(state.run).toHaveBeenCalledWith(expect.objectContaining({ concurrency: 1 }));
+    expect(state.runTaskList).toHaveBeenCalledWith(
+      expect.objectContaining({ concurrency: 1 }),
+      expect.any(Object),
+      expect.any(Object)
+    );
 
     await (await import('./runner-worker.js')).stopStudioJobWorker();
     vi.resetModules();
-    state.resolvePool.mockReturnValue(null);
+    state.resolveStudioJobWorkerPool.mockReturnValue(null);
 
-    await expect((await import('./runner-worker.js')).ensureStudioJobWorkerStarted()).rejects.toThrow(
-      'studio_job_worker_database_unavailable'
-    );
+    await expect(
+      (await import('./runner-worker.js')).ensureStudioJobWorkerStarted()
+    ).rejects.toThrow('studio_job_worker_database_unavailable');
   });
 
-  it('resets startup state and logs when worker startup fails without bootstrap recovery', async () => {
-    state.runMigrations.mockRejectedValue(new Error('boom'));
-    const { ensureStudioJobWorkerStarted } = await import('./runner-worker.js');
+  it('resets startup state and logs when worker startup fails', async () => {
+    state.runTaskList.mockImplementation(() => {
+      throw new Error('boom');
+    });
+    const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
 
     await expect(ensureStudioJobWorkerStarted()).rejects.toThrow('boom');
+    expect(getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'studio_job_worker_start_failed',
+      status: 'failed',
+    });
     await expect(ensureStudioJobWorkerStarted()).rejects.toThrow('boom');
 
-    expect(state.runMigrations).toHaveBeenCalledTimes(2);
+    expect(state.runTaskList).toHaveBeenCalledTimes(2);
     expect(state.logger.error).toHaveBeenCalledWith(
       'Studio-Job-Worker konnte nicht gestartet werden',
       expect.objectContaining({
@@ -155,8 +174,101 @@ describe('plugin operation runner worker', () => {
     );
   });
 
+  it('logs asynchronous worker failures and allows a clean restart', async () => {
+    let rejectWorker!: (error: Error) => void;
+    state.runTaskList.mockReturnValueOnce({
+      gracefulShutdown: vi.fn(async () => undefined),
+      promise: new Promise<void>((_resolve, reject) => {
+        rejectWorker = reject;
+      }),
+    });
+    const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
+
+    await ensureStudioJobWorkerStarted();
+    rejectWorker(new Error('connection lost'));
+    await vi.waitFor(() => {
+      expect(state.logger.error).toHaveBeenCalledWith(
+        'Studio-Job-Worker wurde unerwartet beendet',
+        expect.objectContaining({
+          operation: 'studio_job_worker_runtime_failed',
+          error: 'connection lost',
+        })
+      );
+    });
+    expect(getStudioJobWorkerHealth()).toEqual({
+      ready: false,
+      reasonCode: 'studio_job_worker_runtime_failed',
+      status: 'failed',
+    });
+    await ensureStudioJobWorkerStarted();
+
+    expect(state.runTaskList).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks internal claim failures not ready and recovers after a successful poll', async () => {
+    const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
+
+    await ensureStudioJobWorkerStarted();
+    const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    events.emit('worker:getJob:error', { error: new Error('permission denied') });
+
+    expect(getStudioJobWorkerHealth()).toMatchObject({
+      ready: false,
+      reasonCode: 'studio_job_worker_claim_failed',
+      status: 'failed',
+    });
+
+    events.emit('pool:listen:success', {});
+    expect(getStudioJobWorkerHealth()).toMatchObject({
+      ready: false,
+      reasonCode: 'studio_job_worker_claim_failed',
+      status: 'failed',
+    });
+
+    events.emit('worker:getJob:empty', {});
+    expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+  });
+
+  it('retires a fatally failed worker so a later ensure starts a new pool', async () => {
+    const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
+
+    await ensureStudioJobWorkerStarted();
+    const events = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    events.emit('worker:fatalError', { error: new Error('worker crashed') });
+
+    expect(getStudioJobWorkerHealth()).toMatchObject({
+      ready: false,
+      reasonCode: 'studio_job_worker_runtime_failed',
+      status: 'failed',
+    });
+    events.emit('job:start', {});
+    expect(getStudioJobWorkerHealth()).toMatchObject({
+      ready: false,
+      reasonCode: 'studio_job_worker_runtime_failed',
+      status: 'failed',
+    });
+    await vi.waitFor(() => {
+      expect(state.runTaskList.mock.results[0]?.value.gracefulShutdown).toHaveBeenCalledOnce();
+    });
+
+    await vi.waitFor(async () => {
+      await ensureStudioJobWorkerStarted();
+      expect(state.runTaskList).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('returns early when stop is called before the worker was started', async () => {
     const { stopStudioJobWorker } = await import('./runner-worker.js');
     await expect(stopStudioJobWorker()).resolves.toBeUndefined();
+  });
+
+  it('treats an explicitly disabled worker as ready', async () => {
+    process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED = 'false';
+    const { getStudioJobWorkerHealth } = await import('./runner-worker.js');
+
+    expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'disabled' });
   });
 });

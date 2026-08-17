@@ -109,8 +109,8 @@ const runBootstrap = async (): Promise<boolean> => {
         );
       }
       await client.query(`GRANT CONNECT ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
-      await client.query(`GRANT CREATE ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
-      await client.query(`GRANT USAGE, CREATE ON SCHEMA public TO ${quotedAppDbUser}`);
+      await client.query(`REVOKE CREATE ON DATABASE ${quotedPostgresDb} FROM ${quotedAppDbUser}`);
+      await client.query(`REVOKE CREATE ON SCHEMA public FROM ${quotedAppDbUser}`);
       await client.query(`GRANT iam_app TO ${quotedAppDbUser}`);
       await client.query(`GRANT USAGE ON SCHEMA iam TO ${quotedAppDbUser}`);
       await client.query(

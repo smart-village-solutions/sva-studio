@@ -63,6 +63,7 @@ gleichzeitig beeinflussen.
 
 - Hostseitige Hintergrundprozesse folgen einem runner-agnostischen Plattformvertrag mit zentralem Jobdatensatz im Studio-Postgres.
 - Eine erste interne Worker-Implementierung wird bevorzugt mit Graphile Worker umgesetzt, bleibt aber ausdrücklich hinter der Host-Runtime verborgen.
+- Graphile-Schemaänderungen laufen ausschließlich im privilegierten Promote-Migrations-One-shot. `sva_app` besitzt nur `EXECUTE` auf den eingabevalidierenden `SECURITY DEFINER`-Wrapper `sva_enqueue_job` mit festem `search_path`; direkte Graphile-Funktionen und Queue-Tabellen bleiben gesperrt. `sva_job_worker` besitzt die für Claim, Retry, Heartbeat und Abschluss nötigen Schema-Rechte sowie ausschließlich schema-lokale Policies für Graphiles RLS-aktivierte Tabellen, aber kein globales `BYPASSRLS`. Kein App- oder Worker-Start führt Migrationen aus.
 - Der kanonische Jobdatensatz unterscheidet explizit zwischen `source = 'plugin' | 'host'`; Plugin-Operationen und Host-Fachjobs teilen sich dieselbe Lifecycle- und Progress-Infrastruktur.
 - Job-Starts, Actor-Kontext, Mandantenbezug, Korrelation, Status, Retry-Metadaten und Fehlerabbildung müssen im Hostvertrag explizit modelliert werden; ad-hoc Hintergrundjobs ohne gemeinsamen Orchestrierungsvertrag sind nicht der Zielpfad.
 - Fachliche Worker erhalten einen Host-Context mit `job`, `progressReporter`, `abortSignal`, `logger`, `requestId` und `actorAccountId`; sie kennen weder Graphile-Helper noch direkte Repository-Fabriken.
@@ -235,6 +236,7 @@ gleichzeitig beeinflussen.
 - Der Server-Entry-Diagnosevertrag ist env-gesteuert: `SVA_SERVER_ENTRY_DEBUG=true` aktiviert strukturierte Logs für Request-Eingang, Auth-Dispatch, Delegation an TanStack Start und Antwortstatus, ohne Secrets oder Tokeninhalte zu protokollieren
 - Für produktionsnahe Remote-Profile ist `app-db-principal` ein eigener Diagnosevertrag: `/health/ready` muss `db`, `redis` und `keycloak` aus Sicht des laufenden `APP_DB_USER` als bereit ausweisen
 - Derselbe Readiness-Vertrag umfasst für aktive Tenant-Instanzen zusätzlich vollständige Login-Grunddaten (`primary_hostname`, `auth_realm`, `auth_client_id`) und ein lesbares tenant-spezifisches `auth_client_secret`; globale Plattform-Secrets sind dafür kein zulässiger Ersatz
+- Für Runtimes mit aktivierter Studio-Job-Worker-Lane ist `jobWorker` eine verpflichtende Readiness-Abhängigkeit. Start- und Laufzeitfehler werden über sichere Reason-Codes sowie Error-Logs sichtbar; explizit deaktivierte Lanes bleiben readiness-neutral.
 - Die Studio-Root-Shell rendert in allen Environments einen sichtbaren Runtime-Health-Indikator auf Basis des bestehenden IAM-Readiness-Endpunkts; die UI zeigt nur sichere Statuszustände und `reason_code`s, keine rohen Provider- oder Stack-Details
 - Label-Whitelist und PII-Blockliste in OTEL/Promtail
 - IAM-Authorize/Cache-Logs nutzen strukturierte Operations (`cache_lookup`, `cache_invalidate`, `cache_stale_detected`, `cache_invalidate_failed`)

@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
     recomputePerMinute: 0,
     status: 'ready' as const,
   })),
+  getStudioJobWorkerHealth: vi.fn(() => ({ ready: true, status: 'running' as const })),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -50,6 +51,10 @@ vi.mock('./iam-authorization/shared.js', () => ({
   getPermissionCacheHealth: state.getPermissionCacheHealth,
 }));
 
+vi.mock('./plugin-operations/runner-worker.js', () => ({
+  getStudioJobWorkerHealth: state.getStudioJobWorkerHealth,
+}));
+
 const createReadyPool = () => ({
   connect: vi.fn(async () => ({
     query: vi.fn(async (sql: string) => {
@@ -82,7 +87,9 @@ describe('auth-runtime health handlers', () => {
       secret: 'tenant-secret',
     });
     state.isKeycloakIdentityProvider.mockReturnValue(true);
-    state.trackKeycloakCall.mockImplementation(async (_operation: string, work: () => Promise<unknown>) => work());
+    state.trackKeycloakCall.mockImplementation(
+      async (_operation: string, work: () => Promise<unknown>) => work()
+    );
     state.getPermissionCacheHealth.mockReturnValue({
       coldStart: false,
       consecutiveRedisFailures: 0,
@@ -90,6 +97,7 @@ describe('auth-runtime health handlers', () => {
       recomputePerMinute: 0,
       status: 'ready',
     });
+    state.getStudioJobWorkerHealth.mockReturnValue({ ready: true, status: 'running' });
   });
 
   it('returns live status without dependency checks', async () => {
@@ -131,14 +139,48 @@ describe('auth-runtime health handlers', () => {
             status: 'ready',
           },
           database: { status: 'ready' },
+          jobWorker: { status: 'ready' },
           keycloak: { status: 'ready' },
           redis: { status: 'ready' },
         },
       },
     });
-    expect(state.trackKeycloakCall).toHaveBeenCalledWith('readiness_list_roles', expect.any(Function));
+    expect(state.trackKeycloakCall).toHaveBeenCalledWith(
+      'readiness_list_roles',
+      expect.any(Function)
+    );
     expect(state.resolveTenantAuthClientSecret).not.toHaveBeenCalled();
     expect(state.getPermissionCacheHealth).toHaveBeenCalled();
+  });
+
+  it('returns not_ready when the configured job worker failed', async () => {
+    state.getStudioJobWorkerHealth.mockReturnValue({
+      ready: false,
+      reasonCode: 'studio_job_worker_runtime_failed',
+      status: 'failed',
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        diagnostics: {
+          jobWorker: { reason_code: 'studio_job_worker_runtime_failed' },
+        },
+        errors: {
+          jobWorker: 'Studio job worker is not running.',
+        },
+        services: {
+          jobWorker: {
+            reasonCode: 'studio_job_worker_runtime_failed',
+            status: 'not_ready',
+          },
+        },
+      },
+    });
   });
 
   it('returns not_ready when dependencies fail', async () => {

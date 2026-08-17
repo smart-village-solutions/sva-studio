@@ -6,6 +6,7 @@ required_vars=(
   POSTGRES_USER
   POSTGRES_PASSWORD
   APP_DB_PASSWORD
+  STUDIO_JOB_WORKER_DB_PASSWORD
 )
 
 for key in "${required_vars[@]}"; do
@@ -18,6 +19,7 @@ done
 export POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export APP_DB_USER="${APP_DB_USER:-sva_app}"
+export STUDIO_JOB_WORKER_DB_USER="${STUDIO_JOB_WORKER_DB_USER:-sva_job_worker}"
 export SVA_ALLOWED_INSTANCE_IDS="${SVA_ALLOWED_INSTANCE_IDS:-}"
 export SVA_PARENT_DOMAIN="${SVA_PARENT_DOMAIN:-}"
 export SVA_BOOTSTRAP_RECONCILE_APP_ROLE="${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-true}"
@@ -57,6 +59,8 @@ const [{ resolvesSystemAdminGrant }, { studioPermissionCatalog }] = await Promis
 
 const appDbPassword = process.env.APP_DB_PASSWORD?.trim() ?? '';
 const appDbUser = process.env.APP_DB_USER?.trim() || 'sva_app';
+const workerDbPassword = process.env.STUDIO_JOB_WORKER_DB_PASSWORD?.trim() ?? '';
+const workerDbUser = process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker';
 const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
   .split(',')
   .map((entry) => entry.trim())
@@ -71,11 +75,14 @@ const expectedHostnames = instanceIds.map((instanceId) => ({
 if (!appDbPassword) {
   throw new Error('APP_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
 }
+if (!workerDbPassword) {
+  throw new Error('STUDIO_JOB_WORKER_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
+}
 
 const sqlLiteral = (value) => `'${String(value).replace(/'/gu, "''")}'`;
 const sqlIdentifier = (value) => `"${String(value).replace(/"/gu, '""')}"`;
 
-const roleStatements = [
+const appRoleStatements = [
   `DO $bootstrap$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(appDbUser)}) THEN
@@ -95,17 +102,87 @@ END
 $bootstrap$;`,
   `GRANT iam_app TO ${sqlIdentifier(appDbUser)};`,
   `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
-  `GRANT CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
-  `GRANT USAGE, CREATE ON SCHEMA public TO ${sqlIdentifier(appDbUser)};`,
+  `REVOKE CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE CREATE ON SCHEMA public FROM PUBLIC;`,
+  `REVOKE CREATE ON SCHEMA public FROM ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
 ];
 
+const workerRoleStatements = [
+  `DO $worker_role$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(workerDbUser)}) THEN
+    EXECUTE format(
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      ${sqlLiteral(workerDbUser)},
+      ${sqlLiteral(workerDbPassword)}
+    );
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      ${sqlLiteral(workerDbUser)},
+      ${sqlLiteral(workerDbPassword)}
+    );
+  END IF;
+END
+$worker_role$;`,
+  `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(workerDbUser)};`,
+  `REVOKE ALL ON SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL TABLES IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL TABLES IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text) TO ${sqlIdentifier(appDbUser)};`,
+  `BEGIN;
+SET LOCAL ROLE ${sqlIdentifier(appDbUser)};
+SELECT graphile_worker.sva_enqueue_job(
+  'studio_job_execute',
+  '{"instanceId":"bootstrap-contract","jobId":"bootstrap-contract"}'::json,
+  'plugin-operations',
+  1,
+  'studio-job:bootstrap-contract'
+);
+ROLLBACK;`,
+  `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `DO $worker_policies$
+DECLARE
+  table_record record;
+BEGIN
+  FOR table_record IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'graphile_worker'
+      AND c.relkind IN ('r', 'p')
+      AND c.relrowsecurity = true
+  LOOP
+    EXECUTE format(
+      'DROP POLICY IF EXISTS sva_job_worker_access ON graphile_worker.%I',
+      table_record.relname
+    );
+    EXECUTE format(
+      'CREATE POLICY sva_job_worker_access ON graphile_worker.%I TO %I USING (true) WITH CHECK (true)',
+      table_record.relname,
+      ${sqlLiteral(workerDbUser)}
+    );
+  END LOOP;
+END
+$worker_policies$;`,
+];
+
 const statements = [];
 if ((process.env.SVA_BOOTSTRAP_RECONCILE_APP_ROLE ?? 'true').trim().toLowerCase() !== 'false') {
-  statements.push(...roleStatements);
+  statements.push(...appRoleStatements);
 }
+statements.push(...workerRoleStatements);
 
 if ((process.env.SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD ?? 'true').trim().toLowerCase() !== 'false') {
   statements.push(`DO $schema_guard$
@@ -139,7 +216,15 @@ BEGIN
     CASE WHEN checks.instances_tenant_admin_last_name_column_exists THEN NULL ELSE 'instances_tenant_admin_last_name_column_exists' END,
     CASE WHEN checks.idx_accounts_kc_subject_instance_exists THEN NULL ELSE 'idx_accounts_kc_subject_instance_exists' END,
     CASE WHEN checks.accounts_isolation_policy_matches THEN NULL ELSE 'accounts_isolation_policy_matches' END,
-    CASE WHEN checks.instance_memberships_isolation_policy_matches THEN NULL ELSE 'instance_memberships_isolation_policy_matches' END
+    CASE WHEN checks.instance_memberships_isolation_policy_matches THEN NULL ELSE 'instance_memberships_isolation_policy_matches' END,
+    CASE WHEN checks.graphile_schema_exists THEN NULL ELSE 'graphile_schema_exists' END,
+    CASE WHEN checks.worker_role_exists THEN NULL ELSE 'worker_role_exists' END,
+    CASE WHEN checks.app_can_enqueue THEN NULL ELSE 'app_can_enqueue' END,
+    CASE WHEN checks.app_cannot_create THEN NULL ELSE 'app_cannot_create' END,
+    CASE WHEN checks.worker_can_process THEN NULL ELSE 'worker_can_process' END,
+    CASE WHEN checks.worker_functions_complete THEN NULL ELSE 'worker_functions_complete' END,
+    CASE WHEN checks.worker_sequences_complete THEN NULL ELSE 'worker_sequences_complete' END,
+    CASE WHEN checks.worker_policies_complete THEN NULL ELSE 'worker_policies_complete' END
   ], NULL)
   INTO failures
   FROM (
@@ -251,7 +336,65 @@ BEGIN
           AND policyname = 'instance_memberships_isolation_policy'
           AND COALESCE(qual, '') LIKE '%instance_id = iam.current_instance_id()%'
           AND COALESCE(with_check, '') LIKE '%instance_id = iam.current_instance_id()%'
-      ) AS instance_memberships_isolation_policy_matches
+      ) AS instance_memberships_isolation_policy_matches,
+      to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
+      EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(workerDbUser)}) AS worker_role_exists,
+      has_function_privilege(
+        ${sqlLiteral(appDbUser)},
+        'graphile_worker.sva_enqueue_job(text,json,text,integer,text)',
+        'EXECUTE'
+      ) AS app_can_enqueue,
+      NOT has_database_privilege(
+        ${sqlLiteral(appDbUser)},
+        current_database(),
+        'CREATE'
+      ) AND NOT has_schema_privilege(
+        ${sqlLiteral(appDbUser)},
+        'public',
+        'CREATE'
+      ) AS app_cannot_create,
+      has_table_privilege(
+        ${sqlLiteral(workerDbUser)},
+        'graphile_worker._private_jobs',
+        'SELECT,INSERT,UPDATE,DELETE'
+      ) AND has_schema_privilege(
+        ${sqlLiteral(workerDbUser)},
+        'graphile_worker',
+        'USAGE'
+      ) AS worker_can_process,
+      NOT EXISTS (
+        SELECT 1
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'graphile_worker'
+          AND NOT has_function_privilege(${sqlLiteral(workerDbUser)}, p.oid, 'EXECUTE')
+      ) AS worker_functions_complete,
+      NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'graphile_worker'
+          AND c.relkind = 'S'
+          AND NOT has_sequence_privilege(${sqlLiteral(workerDbUser)}, c.oid, 'USAGE,SELECT,UPDATE')
+      ) AS worker_sequences_complete,
+      NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = 'graphile_worker'
+          AND c.relkind IN ('r', 'p')
+          AND c.relrowsecurity = true
+          AND NOT EXISTS (
+            SELECT 1
+            FROM pg_policies p
+            WHERE p.schemaname = 'graphile_worker'
+              AND p.tablename = c.relname
+              AND p.policyname = 'sva_job_worker_access'
+              AND ${sqlLiteral(workerDbUser)} = ANY(p.roles)
+              AND COALESCE(p.qual, '') IN ('true', '(true)')
+              AND COALESCE(p.with_check, '') IN ('true', '(true)')
+          )
+      ) AS worker_policies_complete
   ) checks;
 
   IF COALESCE(array_length(failures, 1), 0) > 0 THEN

@@ -29,8 +29,9 @@ export type RuntimeHealthDbClient = {
   release(): void;
 };
 
-export const toDependencyStatus = (check: RuntimeDependencyCheck): RuntimeDependencyHealth['status'] =>
-  check.ready ? 'ready' : 'not_ready';
+export const toDependencyStatus = (
+  check: RuntimeDependencyCheck
+): RuntimeDependencyHealth['status'] => (check.ready ? 'ready' : 'not_ready');
 
 export const toAuthorizationCacheServiceStatus = (
   status: ReturnType<typeof getPermissionCacheHealth>['status']
@@ -41,7 +42,8 @@ export const hasMissingTenantLoginConfig = (row: ActiveInstanceLoginRow): boolea
 
 export const isValidTenantSecretState = (
   secret: Awaited<ReturnType<typeof resolveTenantAuthClientSecret>>
-): boolean => secret.source === 'tenant' && secret.configured && secret.readable && Boolean(secret.secret);
+): boolean =>
+  secret.source === 'tenant' && secret.configured && secret.readable && Boolean(secret.secret);
 
 export const resolveTenantLoginContractReasonCode = (
   invalidConfigInstanceIds: readonly string[],
@@ -58,7 +60,8 @@ export const createHealthDiagnostics = (
   redis: RuntimeDependencyCheck,
   keycloak: RuntimeDependencyCheck,
   tenantLoginContract: TenantLoginContractCheck,
-  authorizationCache: ReturnType<typeof getPermissionCacheHealth>
+  authorizationCache: ReturnType<typeof getPermissionCacheHealth>,
+  jobWorker: RuntimeDependencyCheck
 ): RuntimeHealthResponse['checks']['diagnostics'] => ({
   ...(database.ready ? {} : { db: { reason_code: database.reasonCode } }),
   ...(redis.ready ? {} : { redis: { reason_code: redis.reasonCode } }),
@@ -79,18 +82,21 @@ export const createHealthDiagnostics = (
   ...(authorizationCache.status === 'failed'
     ? { authorizationCache: { reason_code: 'authorization_cache_failed' } }
     : {}),
+  ...(jobWorker.ready ? {} : { jobWorker: { reason_code: jobWorker.reasonCode } }),
 });
 
 export const createHealthErrors = (
   database: RuntimeDependencyCheck,
   redis: RuntimeDependencyCheck,
   keycloak: RuntimeDependencyCheck,
-  tenantLoginContract: TenantLoginContractCheck
+  tenantLoginContract: TenantLoginContractCheck,
+  jobWorker: RuntimeDependencyCheck
 ): RuntimeHealthResponse['checks']['errors'] => ({
   ...(tenantLoginContract.ready ? {} : { auth: resolveTenantAuthError(tenantLoginContract) }),
   ...(database.ready ? {} : { db: database.error }),
   ...(redis.ready ? {} : { redis: redis.error }),
   ...(keycloak.ready ? {} : { keycloak: keycloak.error }),
+  ...(jobWorker.ready ? {} : { jobWorker: 'Studio job worker is not running.' }),
 });
 
 const resolveTenantAuthError = (tenantLoginContract: TenantLoginContractCheck): string =>
@@ -106,7 +112,8 @@ export const createRuntimeHealthServices = (
   database: RuntimeDependencyCheck,
   redis: RuntimeDependencyCheck,
   keycloak: RuntimeDependencyCheck,
-  authorizationCache: ReturnType<typeof getPermissionCacheHealth>
+  authorizationCache: ReturnType<typeof getPermissionCacheHealth>,
+  jobWorker: RuntimeDependencyCheck
 ): RuntimeHealthResponse['checks']['services'] => ({
   authorizationCache: {
     reasonCode:
@@ -118,6 +125,7 @@ export const createRuntimeHealthServices = (
     status: toAuthorizationCacheServiceStatus(authorizationCache.status),
   },
   database: { reasonCode: database.reasonCode, status: toDependencyStatus(database) },
+  jobWorker: { reasonCode: jobWorker.reasonCode, status: toDependencyStatus(jobWorker) },
   keycloak: { reasonCode: keycloak.reasonCode, status: toDependencyStatus(keycloak) },
   redis: { reasonCode: redis.reasonCode, status: toDependencyStatus(redis) },
 });

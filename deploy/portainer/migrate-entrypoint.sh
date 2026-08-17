@@ -47,6 +47,14 @@ log "Wende Migrationen an"
 log "Lese finalen Goose-Status"
 "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
 
+GRAPHILE_WORKER_MIGRATOR="${GRAPHILE_WORKER_MIGRATOR:-./migrate-graphile-worker.mjs}"
+if [ ! -f "${GRAPHILE_WORKER_MIGRATOR}" ]; then
+  log "Graphile-Worker-Migrator fehlt: ${GRAPHILE_WORKER_MIGRATOR}"
+  exit 1
+fi
+log "Wende Graphile-Worker-Migrationen mit dem privilegierten Migrationsbenutzer an"
+node "${GRAPHILE_WORKER_MIGRATOR}"
+
 case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in
   true)
     WASTE_TENANT_MIGRATOR="${WASTE_TENANT_MIGRATOR:-./migrate-waste-tenants.mjs}"

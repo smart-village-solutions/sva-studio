@@ -102,6 +102,22 @@ describe('remote app config builder', () => {
     expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
   });
 
+  it('retains legacy connection secrets while dropping legacy operational config', () => {
+    const protectedConnections = overrides
+      .replace('IAM_DATABASE_URL=sensitive-IAM_DATABASE_URL', 'IAM_DATABASE_URL=postgres://protected')
+      .replace('REDIS_URL=sensitive-REDIS_URL', 'REDIS_URL=redis://protected');
+    const legacyProfile = profile
+      .replace('QUANTUM_ENDPOINT=value', 'QUANTUM_ENDPOINT=sva')
+      .replace('SVA_PUBLIC_HOST=value', 'SVA_PUBLIC_HOST=studio.smart-village.app');
+    const legacySource = `${legacyProfile}\n${protectedConnections}`;
+    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
+
+    expect(protectedOverrides).toContain('IAM_DATABASE_URL=postgres://protected');
+    expect(protectedOverrides).toContain('REDIS_URL=redis://protected');
+    expect(protectedOverrides).not.toContain('QUANTUM_ENDPOINT');
+    expect(protectedOverrides).not.toContain('SVA_PUBLIC_HOST');
+  });
+
   it('prefers the explicit protected override bundle over legacy values', () => {
     expect(selectProtectedOverrides('prod', `${profile}\n${overrides}`, 'APP_DB_PASSWORD=explicit-secret')).toBe('APP_DB_PASSWORD=explicit-secret');
   });

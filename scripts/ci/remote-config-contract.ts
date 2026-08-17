@@ -24,7 +24,9 @@ const configKeys = [
   'SVA_DEPLOY_REVISION', 'SVA_IMAGE_DIGEST', 'SVA_IMAGE_REF', 'SVA_IMAGE_TAG',
   'SVA_MAINSERVER_CLIENT_ID', 'SVA_MAINSERVER_GRAPHQL_URL', 'SVA_MAINSERVER_OAUTH_TOKEN_URL',
   'SVA_MAINSERVER_SCOPE_RESOLVER_MODE', 'SVA_MONITORING_CONFIG_INIT_IMAGE_TAG',
-  'SVA_MONITORING_REGISTRY',
+  'SVA_MONITORING_REGISTRY', 'QUANTUM_ENDPOINT', 'QUANTUM_ENDPOINT_ID', 'SVA_IMAGE_REPOSITORY',
+  'SVA_MAINSERVER_REQUIRED', 'SVA_MIGRATION_STATUS_REQUIRED', 'SVA_PUBLIC_HOST',
+  'SVA_QUANTUM_NO_PRE_PULL', 'SVA_REGISTRY', 'SVA_TENANT_REALM_OVERRIDES',
 ] as const;
 
 const secretValueKeys = [
@@ -33,7 +35,7 @@ const secretValueKeys = [
   'SVA_AUTH_CLIENT_SECRET', 'SVA_AUTH_STATE_SECRET',
   'KEYCLOAK_OPERATOR_PASSWORD', 'RESTORE_IAM_SMOKE_PASSWORD', 'RESTORE_PROD_POSTGRES_PASSWORD',
   'RESTORE_PROD_SIGNING_KEY', 'RESTORE_STAGING_POSTGRES_PASSWORD', 'RESTORE_STAGING_SIGNING_KEY',
-  'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'SVA_MAINSERVER_CLIENT_SECRET',
+  'IAM_DATABASE_URL', 'REDIS_URL', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY', 'SVA_MAINSERVER_CLIENT_SECRET',
 ] as const;
 
 export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContract>> = {
@@ -41,7 +43,11 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
   ENABLE_OTEL: { kind: 'config', type: 'boolean' },
+  QUANTUM_ENDPOINT_ID: { kind: 'config', type: 'integer' },
   SVA_ENABLE_MONITORING: { kind: 'config', type: 'boolean' },
+  SVA_MAINSERVER_REQUIRED: { kind: 'config', type: 'boolean' },
+  SVA_MIGRATION_STATUS_REQUIRED: { kind: 'config', type: 'boolean' },
+  SVA_QUANTUM_NO_PRE_PULL: { kind: 'config', type: 'boolean' },
   SVA_STUDIO_MCP_ENABLED: { kind: 'config', required: true, type: 'boolean' },
   SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: { kind: 'config', required: true, type: 'integer' },
   SVA_PUBLIC_BASE_URL: { kind: 'config', required: true, type: 'url' },

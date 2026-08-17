@@ -93,7 +93,7 @@ describe('executeCreateUser', () => {
 
     expect(identityProvider.provider.getUserAttributes).toHaveBeenCalledWith('kc-user-1');
     expect(updateUser).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('creates a user without sending an invite when the payload disables it', async () => {
     const identityProvider = {

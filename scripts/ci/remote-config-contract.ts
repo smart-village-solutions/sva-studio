@@ -9,7 +9,7 @@ type RemoteConfigKeyContract = Readonly<{
 }>;
 
 const configKeys = [
-  'APP_DB_USER', 'IAM_ADMIN_ENABLED', 'IAM_BULK_ENABLED', 'IAM_CSRF_ALLOWED_ORIGINS',
+  'APP_DB_USER', 'ENABLE_OTEL', 'IAM_ADMIN_ENABLED', 'IAM_BULK_ENABLED', 'IAM_CSRF_ALLOWED_ORIGINS',
   'IAM_DEBUG_PROFILE_ERRORS', 'IAM_PII_ACTIVE_KEY_ID', 'IAM_UI_ENABLED',
   'KEYCLOAK_ADMIN_BASE_URL', 'KEYCLOAK_ADMIN_CLIENT_ID', 'KEYCLOAK_ADMIN_REALM',
   'KEYCLOAK_PROVISIONER_BASE_URL', 'KEYCLOAK_PROVISIONER_CLIENT_ID', 'KEYCLOAK_PROVISIONER_REALM',
@@ -40,6 +40,7 @@ export const remoteConfigContract: Readonly<Record<string, RemoteConfigKeyContra
   ...Object.fromEntries(configKeys.map((key) => [key, { kind: 'config' as const }])),
   ...Object.fromEntries(secretValueKeys.map((key) => [key, { kind: 'secret-value' as const }])),
   WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME: { kind: 'secret-reference', required: true },
+  ENABLE_OTEL: { kind: 'config', type: 'boolean' },
   SVA_ENABLE_MONITORING: { kind: 'config', type: 'boolean' },
   SVA_STUDIO_MCP_ENABLED: { kind: 'config', required: true, type: 'boolean' },
   SVA_KEYCLOAK_PROVISIONER_POLL_INTERVAL_MS: { kind: 'config', required: true, type: 'integer' },

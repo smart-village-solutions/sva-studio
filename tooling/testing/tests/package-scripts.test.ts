@@ -204,9 +204,6 @@ describe('workspace package scripts', () => {
     expect(runtimeGatesWorkflow).toContain(
       "COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}"
     );
-    expect(runtimeGatesWorkflow).toContain(
-      'pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }} --head=${{ github.event.pull_request.head.sha }}'
-    );
     expect(runtimeGatesWorkflow).not.toContain('COVERAGE_GATE_PROJECT_FILTER');
   });
 

@@ -89,7 +89,7 @@ jobs:
         env:
           COVERAGE_GATE_REQUIRE_SUMMARIES: ${{ steps.scope.outputs.coverage_mode == 'full' && '1' || '0' }}
         run: |
-          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }} --head=${{ github.event.pull_request.head.sha }}
+          pnpm sonar-new-code-gate --base=${{ github.event.pull_request.base.sha }}
           pnpm coverage-gate
 
       - name: Run full coverage on main/schedule

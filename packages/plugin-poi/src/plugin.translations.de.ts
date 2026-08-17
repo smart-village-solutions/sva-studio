@@ -1,21 +1,18 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 
+const poiEditorTranslations = {
+  createTitle: 'Ort anlegen',
+  createDescription: 'Erstellen Sie einen neuen Ort.',
+  editTitle: 'Ort bearbeiten',
+  editDescription: 'Aktualisieren oder löschen Sie den Ort.',
+};
+
 export const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
-  detail: {
-    createTitle: 'Ort anlegen',
-    createDescription: 'Erstellen Sie einen neuen Ort.',
-    editTitle: 'Ort bearbeiten',
-    editDescription: 'Aktualisieren oder löschen Sie den Ort.',
-  },
-  editor: {
-    createTitle: 'Ort anlegen',
-    createDescription: 'Erstellen Sie einen neuen Ort.',
-    editTitle: 'Ort bearbeiten',
-    editDescription: 'Aktualisieren oder löschen Sie den Ort.',
-  },
+  detail: poiEditorTranslations,
+  editor: poiEditorTranslations,
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',

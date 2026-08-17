@@ -496,6 +496,35 @@ describe('useOrganizations', () => {
     ]);
   });
 
+  it('can defer membership reloads for a batch assignment', async () => {
+    listOrganizationsMock.mockResolvedValue({
+      data: [createOrganizationListItem()],
+      pagination: { page: 1, pageSize: 25, total: 1 },
+    });
+    assignOrganizationMembershipMock.mockResolvedValue({
+      data: createOrganizationDetail(),
+    });
+    const { result } = renderHook(() => useOrganizations());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await act(async () => {
+      await expect(
+        result.current.assignMembership(
+          'org-1',
+          { accountId: 'account-1', isDefaultContext: false },
+          { reload: false }
+        )
+      ).resolves.toMatchObject({ id: 'org-1' });
+    });
+
+    expect(assignOrganizationMembershipMock).toHaveBeenCalledWith('org-1', {
+      accountId: 'account-1',
+      isDefaultContext: false,
+    });
+    expect(listOrganizationsMock).toHaveBeenCalledTimes(1);
+    expect(getOrganizationMock).not.toHaveBeenCalled();
+  });
+
   it.each([
     { status: 401, code: 'unauthorized', message: 'Unauthorized' },
     { status: 403, code: 'forbidden', message: 'Forbidden' },

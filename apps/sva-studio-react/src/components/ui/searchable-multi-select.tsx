@@ -1,10 +1,11 @@
 import * as React from 'react';
 
-import { cn } from '@/lib/utils';
-
-import { Button } from '@sva/studio-ui-react';
-import { Input } from './input';
 import { filterSearchableSelectOptions } from './searchable-select';
+import {
+  SearchableMultiSelectPopover,
+  SearchableMultiSelectTrigger,
+  SearchableMultiSelectValues,
+} from './searchable-multi-select-presentation';
 import type { SearchableSelectOption } from './searchable-select-option-list';
 
 type SearchableMultiSelectBaseProps = {
@@ -35,22 +36,16 @@ type UncontrolledSearchProps = {
 type SearchableMultiSelectProps = SearchableMultiSelectBaseProps &
   (ControlledSearchProps | UncontrolledSearchProps);
 
-export const SearchableMultiSelect = ({
-  id,
-  label,
-  values,
-  placeholder,
-  selectedCountText,
-  searchPlaceholder,
-  emptyText,
-  options,
-  selectedOptions,
-  removeValueLabel,
-  disabled = false,
-  searchValue,
+const useSearchableMultiSelectState = ({
   onSearchValueChange,
   onValuesChange,
-}: SearchableMultiSelectProps) => {
+  options,
+  searchValue,
+  values,
+}: Pick<
+  SearchableMultiSelectProps,
+  'onSearchValueChange' | 'onValuesChange' | 'options' | 'searchValue' | 'values'
+>) => {
   const [open, setOpen] = React.useState(false);
   const [internalSearchValue, setInternalSearchValue] = React.useState('');
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -63,7 +58,6 @@ export const SearchableMultiSelect = ({
     [effectiveSearchValue, options]
   );
   const selectedValues = React.useMemo(() => new Set(values), [values]);
-  const listboxId = `${id}-listbox`;
 
   const setSearch = React.useCallback(
     (value: string) => {
@@ -123,146 +117,122 @@ export const SearchableMultiSelect = ({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [close, open]);
 
-  const onSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close(true);
-      return;
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const option = filteredOptions[activeIndex];
-      if (option) {
-        toggleValue(option.value);
+  const onSearchKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+        return;
       }
-      return;
-    }
-    if (event.key === 'ArrowDown' && filteredOptions.length) {
-      event.preventDefault();
-      setActiveIndex((current) => Math.min(current + 1, filteredOptions.length - 1));
-      return;
-    }
-    if (event.key === 'ArrowUp' && filteredOptions.length) {
-      event.preventDefault();
-      setActiveIndex((current) => Math.max(current - 1, 0));
-    }
-  };
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        const option = filteredOptions[activeIndex];
+        if (option) {
+          toggleValue(option.value);
+        }
+        return;
+      }
+      if (event.key === 'ArrowDown' && filteredOptions.length) {
+        event.preventDefault();
+        setActiveIndex((current) => Math.min(current + 1, filteredOptions.length - 1));
+        return;
+      }
+      if (event.key === 'ArrowUp' && filteredOptions.length) {
+        event.preventDefault();
+        setActiveIndex((current) => Math.max(current - 1, 0));
+      }
+    },
+    [activeIndex, close, filteredOptions, toggleValue]
+  );
 
+  return {
+    activeIndex,
+    close,
+    effectiveSearchValue,
+    filteredOptions,
+    inputRef,
+    onSearchKeyDown,
+    open,
+    rootRef,
+    selectedValues,
+    setOpen,
+    setSearch,
+    toggleValue,
+    triggerRef,
+  };
+};
+
+export const SearchableMultiSelect = ({
+  id,
+  label,
+  values,
+  placeholder,
+  selectedCountText,
+  searchPlaceholder,
+  emptyText,
+  options,
+  selectedOptions,
+  removeValueLabel,
+  disabled = false,
+  searchValue,
+  onSearchValueChange,
+  onValuesChange,
+}: SearchableMultiSelectProps) => {
+  const state = useSearchableMultiSelectState({
+    onSearchValueChange,
+    onValuesChange,
+    options,
+    searchValue,
+    values,
+  });
+  const listboxId = `${id}-listbox`;
   return (
     <div
-      ref={rootRef}
+      ref={state.rootRef}
       className="relative grid gap-1 text-sm text-foreground"
       onBlurCapture={(event) => {
-        if (!rootRef.current?.contains(event.relatedTarget as Node | null)) {
-          close();
+        if (!state.rootRef.current?.contains(event.relatedTarget as Node | null)) {
+          state.close();
         }
       }}
     >
       <label htmlFor={id}>{label}</label>
-      <Button
-        ref={triggerRef}
-        id={id}
-        type="button"
-        variant="secondary"
-        className={cn(
-          'h-10 w-full justify-between px-3 text-sm font-normal',
-          values.length ? undefined : 'text-muted-foreground'
-        )}
-        aria-label={label}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        aria-controls={open ? listboxId : undefined}
+      <SearchableMultiSelectTrigger
+        close={state.close}
         disabled={disabled}
-        onClick={() => (open ? close() : setOpen(true))}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            setOpen(true);
-          }
-        }}
-      >
-        <span className="truncate">{values.length ? selectedCountText : placeholder}</span>
-        <span aria-hidden="true" className="text-xs text-muted-foreground">
-          {open ? '▲' : '▼'}
-        </span>
-      </Button>
-
-      {selectedOptions.length ? (
-        <ul className="mt-1 flex flex-wrap gap-2" aria-label={selectedCountText}>
-          {selectedOptions.map((option) => (
-            <li key={option.value}>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="h-auto max-w-full gap-2 rounded-full py-1"
-                aria-label={removeValueLabel(option.label)}
-                disabled={disabled}
-                onClick={() => toggleValue(option.value)}
-              >
-                <span className="truncate">{option.label}</span>
-                <span aria-hidden="true">×</span>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-
-      {open ? (
-        <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2 shadow-shell">
-          <Input
-            ref={inputRef}
-            id={`${id}-search-input`}
-            value={effectiveSearchValue}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={onSearchKeyDown}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded="true"
-            aria-controls={listboxId}
-            aria-activedescendant={
-              filteredOptions[activeIndex] ? `${id}-option-${activeIndex}` : undefined
-            }
-          />
-          <ul
-            id={listboxId}
-            role="listbox"
-            aria-label={label}
-            aria-multiselectable="true"
-            className="mt-2 max-h-60 space-y-1 overflow-y-auto"
-          >
-            {filteredOptions.length ? (
-              filteredOptions.map((option, index) => {
-                const selected = selectedValues.has(option.value);
-                return (
-                  <li key={option.value} role="presentation">
-                    <button
-                      id={`${id}-option-${index}`}
-                      type="button"
-                      role="option"
-                      aria-selected={selected}
-                      className={cn(
-                        'w-full rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-                        index === activeIndex || selected
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'text-foreground'
-                      )}
-                      onClick={() => toggleValue(option.value)}
-                    >
-                      {option.label}
-                    </button>
-                  </li>
-                );
-              })
-            ) : (
-              <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">
-                {emptyText}
-              </li>
-            )}
-          </ul>
-        </div>
+        id={id}
+        label={label}
+        listboxId={listboxId}
+        open={state.open}
+        placeholder={placeholder}
+        selectedCountText={selectedCountText}
+        setOpen={state.setOpen}
+        triggerRef={state.triggerRef}
+        valueCount={values.length}
+      />
+      <SearchableMultiSelectValues
+        disabled={disabled}
+        options={selectedOptions}
+        removeValueLabel={removeValueLabel}
+        selectedCountText={selectedCountText}
+        toggleValue={state.toggleValue}
+      />
+      {state.open ? (
+        <SearchableMultiSelectPopover
+          activeIndex={state.activeIndex}
+          emptyText={emptyText}
+          filteredOptions={state.filteredOptions}
+          id={id}
+          inputRef={state.inputRef}
+          label={label}
+          listboxId={listboxId}
+          onSearchKeyDown={state.onSearchKeyDown}
+          searchPlaceholder={searchPlaceholder}
+          searchValue={state.effectiveSearchValue}
+          selectedValues={state.selectedValues}
+          setSearch={state.setSearch}
+          toggleValue={state.toggleValue}
+        />
       ) : null}
     </div>
   );

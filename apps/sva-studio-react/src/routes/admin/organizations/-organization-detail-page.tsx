@@ -324,21 +324,32 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     const accounts = membershipForm.accounts;
     setMembershipAssignmentPending(true);
     try {
+      let firstUnassignedIndex = accounts.length;
       for (const [index, account] of accounts.entries()) {
-        const success = await organizationsApi.assignMembership(organizationId, {
-          accountId: account.value,
-          isDefaultContext: membershipForm.isDefaultContext,
-        });
+        const success = await organizationsApi.assignMembership(
+          organizationId,
+          {
+            accountId: account.value,
+            isDefaultContext: membershipForm.isDefaultContext,
+          },
+          { reload: false }
+        );
         if (!success) {
-          setMembershipForm((current) => ({
-            ...current,
-            accounts: accounts.slice(index),
-          }));
-          return;
+          firstUnassignedIndex = index;
+          break;
         }
       }
 
-      setMembershipForm(DEFAULT_MEMBERSHIP_FORM);
+      await Promise.all([
+        organizationsApi.refetch(),
+        organizationsApi.loadOrganization(organizationId, { preserveMutationError: true }),
+      ]);
+      const remainingAccounts = accounts.slice(firstUnassignedIndex);
+      setMembershipForm(
+        remainingAccounts.length
+          ? { ...membershipForm, accounts: remainingAccounts }
+          : DEFAULT_MEMBERSHIP_FORM
+      );
       setMembershipSearch('');
     } finally {
       setMembershipAssignmentPending(false);

@@ -313,14 +313,24 @@ describe('OrganizationDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mitglieder zuweisen' }));
 
     await waitFor(() => {
-      expect(assignMembership).toHaveBeenNthCalledWith(1, 'org-1', {
-        accountId: 'user-101',
-        isDefaultContext: true,
-      });
-      expect(assignMembership).toHaveBeenNthCalledWith(2, 'org-1', {
-        accountId: 'user-102',
-        isDefaultContext: true,
-      });
+      expect(assignMembership).toHaveBeenNthCalledWith(
+        1,
+        'org-1',
+        {
+          accountId: 'user-101',
+          isDefaultContext: true,
+        },
+        { reload: false }
+      );
+      expect(assignMembership).toHaveBeenNthCalledWith(
+        2,
+        'org-1',
+        {
+          accountId: 'user-102',
+          isDefaultContext: true,
+        },
+        { reload: false }
+      );
     });
 
     fireEvent.click(document.getElementById('membership-default-user-1') as HTMLInputElement);
@@ -349,7 +359,11 @@ describe('OrganizationDetailPage', () => {
 
   it('keeps failed and unattempted accounts selected after a partial assignment failure', async () => {
     const assignMembership = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-    useOrganizationsMock.mockReturnValue(createState({ assignMembership }));
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockReturnValue(
+      createState({ assignMembership, loadOrganization, refetch })
+    );
     listUsersMock.mockResolvedValue({
       data: [
         {
@@ -390,14 +404,26 @@ describe('OrganizationDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mitglieder zuweisen' }));
 
     await waitFor(() => expect(assignMembership).toHaveBeenCalledTimes(2));
-    expect(assignMembership).toHaveBeenNthCalledWith(1, 'org-1', {
-      accountId: 'user-2',
-      isDefaultContext: false,
-    });
-    expect(assignMembership).toHaveBeenNthCalledWith(2, 'org-1', {
-      accountId: 'user-3',
-      isDefaultContext: false,
-    });
+    expect(assignMembership).toHaveBeenNthCalledWith(
+      1,
+      'org-1',
+      {
+        accountId: 'user-2',
+        isDefaultContext: false,
+      },
+      { reload: false }
+    );
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(loadOrganization).toHaveBeenCalledTimes(2);
+    expect(assignMembership).toHaveBeenNthCalledWith(
+      2,
+      'org-1',
+      {
+        accountId: 'user-3',
+        isDefaultContext: false,
+      },
+      { reload: false }
+    );
     expect(
       screen.queryByRole('button', {
         name: 'Account Eins <eins@example.org> aus Auswahl entfernen',

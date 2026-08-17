@@ -5,6 +5,7 @@ import type { ManagedRoleRow } from './types.js';
 import { getManagedPermissionMetadata, isRootOnlyPermissionKey } from './managed-permissions.js';
 import { isProtectedTenantRole, isRootOnlyRole } from './role-governance.js';
 import { loadRoleById, loadRoleListItemById } from './role-query.js';
+import { createRoleKeyCandidate } from './role-key.js';
 import type { QueryClient } from './query-client.js';
 
 export type RoleMutationPersistenceActor = {
@@ -49,7 +50,9 @@ const normalizeRolePermissionAssignments = (
   }));
 };
 
-const hasDuplicatePermissionIds = (assignments: readonly StoredRolePermissionAssignment[]): boolean => {
+const hasDuplicatePermissionIds = (
+  assignments: readonly StoredRolePermissionAssignment[]
+): boolean => {
   const uniquePermissionIds = new Set(assignments.map((assignment) => assignment.permissionId));
   return uniquePermissionIds.size !== assignments.length;
 };
@@ -102,7 +105,10 @@ const normalizeAssignmentsForPersistence = async (
 
   return assignments.map((assignment) => ({
     permissionId: assignment.permissionId,
-    accessScope: normalizeStoredAccessScope(assignment.accessScope, permissionKeyById.get(assignment.permissionId)),
+    accessScope: normalizeStoredAccessScope(
+      assignment.accessScope,
+      permissionKeyById.get(assignment.permissionId)
+    ),
   }));
 };
 
@@ -202,6 +208,7 @@ export type RoleMutationPersistence = {
   readonly persistCreatedRole: (input: {
     readonly actor: RoleMutationPersistenceActor;
     readonly roleKey: string;
+    readonly generateUniqueRoleKey?: boolean;
     readonly displayName: string;
     readonly externalRoleName: string;
     readonly description?: string;
@@ -329,11 +336,14 @@ ORDER BY a.keycloak_subject ASC
       readonly roleId: string;
     }
   ) => {
-    await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
+    await client.query(
+      'DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;',
+      [input.instanceId, input.roleId]
+    );
+    await client.query('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid;', [
       input.instanceId,
       input.roleId,
     ]);
-    await client.query('DELETE FROM iam.roles WHERE instance_id = $1 AND id = $2::uuid;', [input.instanceId, input.roleId]);
   };
 
   const validateRequestedPermissions = async (input: {
@@ -342,7 +352,10 @@ ORDER BY a.keycloak_subject ASC
     readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
   }): Promise<Response | null> =>
     deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
-      const assignments = normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments);
+      const assignments = normalizeRolePermissionAssignments(
+        input.permissionIds,
+        input.permissionAssignments
+      );
       if (assignments.length === 0) {
         return null;
       }
@@ -392,6 +405,7 @@ ORDER BY a.keycloak_subject ASC
   const persistCreatedRole = async (input: {
     readonly actor: RoleMutationPersistenceActor;
     readonly roleKey: string;
+    readonly generateUniqueRoleKey?: boolean;
     readonly displayName: string;
     readonly externalRoleName: string;
     readonly description?: string;
@@ -400,6 +414,28 @@ ORDER BY a.keycloak_subject ASC
     readonly permissionAssignments?: readonly RolePermissionAssignmentInput[];
   }) =>
     deps.withInstanceScopedDb(input.actor.instanceId, async (client) => {
+      let roleKey = input.roleKey;
+      if (input.generateUniqueRoleKey) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0));', [
+          `iam.role-key:${input.actor.instanceId}:${input.roleKey}`,
+        ]);
+        const existingKeys = await client.query<{ readonly role_key: string }>(
+          `
+SELECT role_key
+FROM iam.roles
+WHERE instance_id = $1
+  AND (role_key = $2 OR left(role_key, length($2) + 1) = $2 || '_');
+`,
+          [input.actor.instanceId, input.roleKey]
+        );
+        const occupiedKeys = new Set(existingKeys.rows.map((row) => row.role_key));
+        let sequence = 1;
+        while (occupiedKeys.has(createRoleKeyCandidate(input.roleKey, sequence))) {
+          sequence += 1;
+        }
+        roleKey = createRoleKeyCandidate(input.roleKey, sequence);
+      }
+
       const inserted = await client.query<{ readonly id: string }>(
         `
 INSERT INTO iam.roles (
@@ -421,10 +457,10 @@ RETURNING id;
 `,
         [
           input.actor.instanceId,
-          input.roleKey,
-          input.roleKey,
+          roleKey,
+          roleKey,
           input.displayName,
-          input.externalRoleName,
+          input.generateUniqueRoleKey ? roleKey : input.externalRoleName,
           input.description ?? null,
           input.roleLevel,
         ]
@@ -464,8 +500,8 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         eventType: 'role.sync_started',
         operation: 'create',
         result: 'success',
-        roleKey: input.roleKey,
-        externalRoleName: input.externalRoleName,
+        roleKey,
+        externalRoleName: input.generateUniqueRoleKey ? roleKey : input.externalRoleName,
         requestId: input.actor.requestId,
         traceId: input.actor.traceId,
       });
@@ -477,7 +513,7 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         result: 'success',
         payload: {
           role_id: roleId,
-          role_key: input.roleKey,
+          role_key: roleKey,
           display_name: input.displayName,
         },
         requestId: input.actor.requestId,
@@ -491,8 +527,8 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
         eventType: 'role.sync_succeeded',
         operation: 'create',
         result: 'success',
-        roleKey: input.roleKey,
-        externalRoleName: input.externalRoleName,
+        roleKey,
+        externalRoleName: input.generateUniqueRoleKey ? roleKey : input.externalRoleName,
         requestId: input.actor.requestId,
         traceId: input.actor.traceId,
       });
@@ -525,7 +561,12 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       return deps.createApiError(404, 'not_found', 'Rolle nicht gefunden.', actor.requestId);
     }
     if ((existing.is_system_role && isProtectedTenantRole(existing)) || isRootOnlyRole(existing)) {
-      return deps.createApiError(409, 'conflict', 'System-Rollen können nicht geändert werden.', actor.requestId);
+      return deps.createApiError(
+        409,
+        'conflict',
+        'System-Rollen können nicht geändert werden.',
+        actor.requestId
+      );
     }
     if (existing.managed_by !== 'studio') {
       return deps.createApiError(
@@ -601,7 +642,13 @@ SET
 WHERE instance_id = $1
   AND id = $2::uuid;
 `,
-        [input.actor.instanceId, input.roleId, input.displayName, input.description ?? null, input.roleLevel]
+        [
+          input.actor.instanceId,
+          input.roleId,
+          input.displayName,
+          input.description ?? null,
+          input.roleLevel,
+        ]
       );
 
       if (input.permissionIds || input.permissionAssignments) {
@@ -610,10 +657,10 @@ WHERE instance_id = $1
           input.actor.instanceId,
           normalizeRolePermissionAssignments(input.permissionIds, input.permissionAssignments)
         );
-        await client.query('DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;', [
-          input.actor.instanceId,
-          input.roleId,
-        ]);
+        await client.query(
+          'DELETE FROM iam.role_permissions WHERE instance_id = $1 AND role_id = $2::uuid;',
+          [input.actor.instanceId, input.roleId]
+        );
         if (permissionAssignments.length > 0) {
           await client.query(
             `
@@ -684,7 +731,12 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
       return deps.createApiError(404, 'not_found', 'Rolle nicht gefunden.', actor.requestId);
     }
     if ((existing.is_system_role && isProtectedTenantRole(existing)) || isRootOnlyRole(existing)) {
-      return deps.createApiError(409, 'conflict', 'System-Rollen können nicht gelöscht werden.', actor.requestId);
+      return deps.createApiError(
+        409,
+        'conflict',
+        'System-Rollen können nicht gelöscht werden.',
+        actor.requestId
+      );
     }
     if (existing.managed_by !== 'studio') {
       return deps.createApiError(
@@ -764,8 +816,13 @@ ON CONFLICT (instance_id, role_id, permission_id) DO NOTHING;
 
   return {
     deleteRoleFromDatabase,
-    listDirectRoleAssignmentSubjects: async (input: { readonly instanceId: string; readonly roleId: string }) =>
-      deps.withInstanceScopedDb(input.instanceId, (client) => listDirectRoleAssignmentSubjects(client, input)),
+    listDirectRoleAssignmentSubjects: async (input: {
+      readonly instanceId: string;
+      readonly roleId: string;
+    }) =>
+      deps.withInstanceScopedDb(input.instanceId, (client) =>
+        listDirectRoleAssignmentSubjects(client, input)
+      ),
     markDeleteRoleSyncState,
     markRoleSyncState,
     persistCreatedRole,

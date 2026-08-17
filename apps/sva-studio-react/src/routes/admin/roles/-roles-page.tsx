@@ -126,9 +126,6 @@ export const RolesPage = () => {
                   {t(editabilityLabelKey[editability])}
                 </Badge>
               </div>
-              <span className="block text-xs text-muted-foreground">
-                {t('admin.roles.messages.roleLevel', { value: role.roleLevel })}
-              </span>
             </div>
           );
         },

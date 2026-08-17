@@ -61,6 +61,20 @@ export const rolesAdminENResources = {
     delete: 'Delete',
     configure: 'Configure',
     export: 'Export',
+    manage: 'Manage',
+    execute: 'Execute',
+    moderate: 'Moderate',
+    pushNotification: 'Send push notification',
+  },
+  permissionScopes: {
+    all: 'All tenant content',
+    own: 'Own content only',
+    organization: 'Content of the own organization',
+  },
+  permissionDescriptions: {
+    contentPublish: 'Publish drafts and make them visible.',
+    contentChangeStatus: 'Change editorial status without publishing content.',
+    newsPushNotification: 'Send a push notification when saving a news entry.',
   },
   permissionResources: {
     content: 'Content',
@@ -84,7 +98,7 @@ export const rolesAdminENResources = {
   },
   createDialog: {
     title: 'Create role',
-    description: 'Custom roles can be refined later.',
+    description: 'Custom roles can be refined later. The technical key is generated automatically.',
     keyLabel: 'Technical role key',
     keyHint: 'At least 3 characters, only lowercase letters, digits, and underscores.',
     nameLabel: 'Display name',
@@ -202,6 +216,7 @@ export const rolesAdminENResources = {
       notAssigned: 'Not assigned',
       actionLabel: 'Action: {{value}}',
       toggleAssignment: 'Toggle permission: {{permission}}',
+      selectScope: 'Scope for {{permission}}',
       actions: {
         assign: 'Assign',
         remove: 'Remove',
@@ -260,7 +275,7 @@ export const rolesAdminENResources = {
       title: 'Keycloak metadata synchronization',
       subtitle: 'This view only describes how Studio role metadata is synchronized with Keycloak.',
       metadataOnlyHint:
-        'Permissions, assignments, and local role levels are stored in Studio and do not change this Keycloak status.',
+        'Permissions, assignments, and internal protection attributes are stored in Studio and do not change this Keycloak status.',
       externalHint:
         'This role is managed externally. The shown status only describes the known Keycloak relation, not local permission assignments.',
       metadataStatus: 'Keycloak metadata status',
@@ -274,7 +289,7 @@ export const rolesAdminENResources = {
       localChangeItems: {
         permissions: 'Role permissions',
         assignments: 'User assignments for the role',
-        roleLevel: 'Local role levels for Studio-internal release logic',
+        roleLevel: 'Internal protection attributes for existing role contracts',
       },
       actionsTitle: 'Synchronization actions',
       actionsBody:

@@ -8,6 +8,13 @@ const newsTranslationsDe = createNewsLocaleTranslations({
   navigation: {
     title: 'Nachrichten',
   },
+  permissions: {
+    read: 'Nachrichten lesen',
+    create: 'Nachrichten anlegen',
+    update: 'Nachrichten bearbeiten',
+    delete: 'Nachrichten löschen',
+    pushNotification: 'Push-Benachrichtigungen senden',
+  },
   list: {
     title: 'Nachrichten',
     description: 'Verwalten Sie Nachrichten über das Plugin.',
@@ -325,6 +332,7 @@ const newsTranslationsDe = createNewsLocaleTranslations({
     back: 'Zurück zur Liste',
     edit: 'Bearbeiten',
     delete: 'Löschen',
+    pushNotification: 'Push-Benachrichtigung senden',
     addContentBlock: 'Inhaltsblock hinzufügen',
     addImage: 'Aus Mediathek auswählen',
     uploadMedia: 'Medium hochladen',
@@ -460,6 +468,13 @@ const newsTranslationsDe = createNewsLocaleTranslations({
 const newsTranslationsEn = createNewsLocaleTranslations({
   navigation: {
     title: 'News',
+  },
+  permissions: {
+    read: 'Read news',
+    create: 'Create news',
+    update: 'Edit news',
+    delete: 'Delete news',
+    pushNotification: 'Send push notifications',
   },
   list: {
     title: 'News',
@@ -770,6 +785,7 @@ const newsTranslationsEn = createNewsLocaleTranslations({
     back: 'Back to list',
     edit: 'Edit',
     delete: 'Delete',
+    pushNotification: 'Send push notification',
     addContentBlock: 'Add content block',
     addImage: 'Select from library',
     uploadMedia: 'Upload media',

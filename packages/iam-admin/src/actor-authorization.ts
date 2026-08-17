@@ -33,12 +33,19 @@ SELECT EXISTS (
 ) AS has_role;
 `;
 
-const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] =>
-  [...new Set(roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? [])];
+const normalizeRoleNames = (roleNames: readonly string[] | undefined): readonly string[] => [
+  ...new Set(
+    roleNames?.map((roleName) => roleName.trim()).filter((roleName) => roleName.length > 0) ?? []
+  ),
+];
 
 export const resolveActorMaxRoleLevel = async (
   client: QueryClient,
-  input: { readonly instanceId: string; readonly keycloakSubject: string; readonly sessionRoleNames?: readonly string[] }
+  input: {
+    readonly instanceId: string;
+    readonly keycloakSubject: string;
+    readonly sessionRoleNames?: readonly string[];
+  }
 ): Promise<number> => {
   const row = await client.query<{ readonly max_role_level: number }>(
     `
@@ -92,16 +99,21 @@ export const ensureActorCanManageTarget = (input: {
     return { ok: true };
   }
 
-  const targetMaxRoleLevel = input.targetRoles.reduce((maxLevel, role) => Math.max(maxLevel, role.roleLevel), 0);
+  const targetMaxRoleLevel = input.targetRoles.reduce(
+    (maxLevel, role) => Math.max(maxLevel, role.roleLevel),
+    0
+  );
   if (targetMaxRoleLevel > input.actorMaxRoleLevel) {
     return {
       ok: false,
       code: 'forbidden',
-      message: 'Zielnutzer überschreitet die eigene Berechtigungsstufe.',
+      message: 'Das Zielkonto ist durch eine höher privilegierte Rolle geschützt.',
     };
   }
 
-  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY);
+  const targetHasSystemAdmin = input.targetRoles.some(
+    (role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY
+  );
   const actorIsSystemAdmin = hasSystemAdminRole(input.actorRoles);
   if (targetHasSystemAdmin && !actorIsSystemAdmin) {
     return {
@@ -120,7 +132,9 @@ export const ensureDeleteTargetIsAllowed = (input: {
     readonly roleLevel: number;
   }[];
 }): { ok: true } | { ok: false; code: 'system_admin_delete_protection'; message: string } => {
-  const targetHasSystemAdmin = input.targetRoles.some((role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY);
+  const targetHasSystemAdmin = input.targetRoles.some(
+    (role) => role.roleKey === SYSTEM_ADMIN_ROLE_KEY
+  );
   if (targetHasSystemAdmin) {
     return {
       ok: false,
@@ -132,7 +146,10 @@ export const ensureDeleteTargetIsAllowed = (input: {
   return { ok: true };
 };
 
-export const resolveSystemAdminCount = async (client: QueryClient, instanceId: string): Promise<number> => {
+export const resolveSystemAdminCount = async (
+  client: QueryClient,
+  instanceId: string
+): Promise<number> => {
   const result = await client.query<{ readonly admin_count: number }>(
     `
 SELECT COUNT(DISTINCT a.id)::int AS admin_count
@@ -164,16 +181,26 @@ export const ensureTenantManageableRoleAssignments = async (input: {
   readonly client: QueryClient;
   readonly instanceId: string;
   readonly roleIds: readonly string[];
-}): Promise<{ ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }> => {
+}): Promise<
+  { ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }
+> => {
   const roles = await resolveRolesByIds(input.client, {
     instanceId: input.instanceId,
     roleIds: input.roleIds,
   });
   if (roles.length !== input.roleIds.length) {
-    return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle existiert nicht.' };
+    return {
+      ok: false,
+      code: 'invalid_request',
+      message: 'Mindestens eine Rolle existiert nicht.',
+    };
   }
   if (roles.some((role) => isRootOnlyRole(role))) {
-    return { ok: false, code: 'invalid_request', message: 'Mindestens eine Rolle ist im Tenant nicht verwaltbar.' };
+    return {
+      ok: false,
+      code: 'invalid_request',
+      message: 'Mindestens eine Rolle ist im Tenant nicht verwaltbar.',
+    };
   }
 
   return { ok: true, roles };
@@ -185,7 +212,9 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
   readonly actorSubject: string;
   readonly actorRoles?: readonly string[];
   readonly roleIds: readonly string[];
-}): Promise<{ ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }> => {
+}): Promise<
+  { ok: true; roles: readonly IamRoleRow[] } | { ok: false; code: ApiErrorCode; message: string }
+> => {
   const manageableRoles = await ensureTenantManageableRoleAssignments({
     client: input.client,
     instanceId: input.instanceId,
@@ -209,7 +238,7 @@ export const ensureRoleAssignmentWithinActorLevel = async (input: {
     return {
       ok: false,
       code: 'forbidden',
-      message: 'Rollenzuweisung überschreitet die eigene Berechtigungsstufe.',
+      message: 'Die ausgewählte Rolle ist für dieses Konto nicht zuweisbar.',
     };
   }
 

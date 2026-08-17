@@ -48,26 +48,18 @@ describe('RoleCreatePage', () => {
 
     render(<RoleCreatePage />);
 
-    fireEvent.change(screen.getByLabelText('Technischer Rollenschlüssel'), {
-      target: { value: ' Team Lead ' },
-    });
     fireEvent.change(screen.getByLabelText('Anzeigename'), {
       target: { value: ' Team Lead ' },
     });
     fireEvent.change(screen.getByLabelText('Beschreibung'), {
       target: { value: ' Verantwortlich für Teamkoordination ' },
     });
-    fireEvent.change(screen.getByLabelText('Rollenlevel'), {
-      target: { value: '42' },
-    });
     fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
 
     await waitFor(() => {
       expect(createRoleMock).toHaveBeenCalledWith({
-        roleName: 'team_lead',
         displayName: 'Team Lead',
         description: 'Verantwortlich für Teamkoordination',
-        roleLevel: 42,
         permissionIds: [],
       });
     });
@@ -91,7 +83,7 @@ describe('RoleCreatePage', () => {
 
     render(<RoleCreatePage />);
 
-    fireEvent.change(screen.getByLabelText('Technischer Rollenschlüssel'), {
+    fireEvent.change(screen.getByLabelText('Anzeigename'), {
       target: { value: 'Support' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
@@ -105,21 +97,11 @@ describe('RoleCreatePage', () => {
     expect(navigateMock).not.toHaveBeenCalled();
   });
 
-  it('validates the role key before sending the request', async () => {
+  it('hides technical key and role level inputs from the normal creation form', () => {
     render(<RoleCreatePage />);
 
-    fireEvent.change(screen.getByLabelText('Technischer Rollenschlüssel'), {
-      target: { value: 'AB' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Rolle anlegen' }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain(
-        'Der Rollenschlüssel muss 3 bis 64 Zeichen lang sein und darf nur Kleinbuchstaben, Ziffern und Unterstriche enthalten.'
-      );
-    });
-
+    expect(screen.queryByLabelText('Technischer Rollenschlüssel')).toBeNull();
+    expect(screen.queryByLabelText('Rollenlevel')).toBeNull();
     expect(createRoleMock).not.toHaveBeenCalled();
-    expect(navigateMock).not.toHaveBeenCalled();
   });
 });

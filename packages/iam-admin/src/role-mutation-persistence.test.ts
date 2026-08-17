@@ -30,10 +30,14 @@ const mutableRole: MutableRole = {
 const roleListRow = {
   ...mutableRole,
   member_count: 3,
-  permission_rows: [{ id: 'permission-1', permission_key: 'content.updatePayload', description: 'Update content' }],
+  permission_rows: [
+    { id: 'permission-1', permission_key: 'content.updatePayload', description: 'Update content' },
+  ],
 };
 
-type QueuedQueryResult = readonly Record<string, unknown>[] | { readonly rows: readonly Record<string, unknown>[]; readonly rowCount?: number };
+type QueuedQueryResult =
+  | readonly Record<string, unknown>[]
+  | { readonly rows: readonly Record<string, unknown>[]; readonly rowCount?: number };
 
 const createClient = (queuedResults: readonly QueuedQueryResult[] = []) => {
   const queue = [...queuedResults];
@@ -55,15 +59,21 @@ const createClient = (queuedResults: readonly QueuedQueryResult[] = []) => {
 };
 
 const createDeps = (client: QueryClient) => ({
-  createApiError: vi.fn((status: number, code: 'conflict' | 'invalid_request' | 'not_found', message: string, requestId?: string) =>
-    Response.json({ error: { code, message }, requestId }, { status })
+  createApiError: vi.fn(
+    (
+      status: number,
+      code: 'conflict' | 'invalid_request' | 'not_found',
+      message: string,
+      requestId?: string
+    ) => Response.json({ error: { code, message }, requestId }, { status })
   ),
   emitActivityLog: vi.fn(async () => undefined),
   emitRoleAuditEvent: vi.fn(async () => undefined),
   notifyPermissionInvalidation: vi.fn(async () => undefined),
   setRoleSyncState: vi.fn(async () => undefined),
-  withInstanceScopedDb: vi.fn(async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) =>
-    work(client)
+  withInstanceScopedDb: vi.fn(
+    async (_instanceId: string, work: (queryClient: QueryClient) => Promise<unknown>) =>
+      work(client)
   ),
 });
 
@@ -99,12 +109,128 @@ describe('role mutation persistence', () => {
     expect(deps.emitRoleAuditEvent).toHaveBeenCalledTimes(2);
     expect(deps.emitActivityLog).toHaveBeenCalledWith(
       client,
-      expect.objectContaining({ eventType: 'role.created', payload: expect.objectContaining({ role_key: 'editor' }) })
+      expect.objectContaining({
+        eventType: 'role.created',
+        payload: expect.objectContaining({ role_key: 'editor' }),
+      })
     );
     expect(deps.notifyPermissionInvalidation).toHaveBeenCalledWith(
       client,
       expect.objectContaining({ trigger: 'role_created' })
     );
+  });
+
+  it('serializes generated role keys and uses the smallest available suffix', async () => {
+    const generatedRoleRow = {
+      ...roleListRow,
+      role_key: 'editor_3',
+      role_name: 'editor_3',
+      external_role_name: 'editor_3',
+    };
+    const { client, queries } = createClient([
+      [],
+      [{ role_key: 'editor' }, { role_key: 'editor_2' }],
+      [{ id: roleId }],
+      [generatedRoleRow],
+    ]);
+    const deps = createDeps(client);
+
+    await expect(
+      createRoleMutationPersistence(deps).persistCreatedRole({
+        actor,
+        roleKey: 'editor',
+        generateUniqueRoleKey: true,
+        displayName: 'Editor',
+        externalRoleName: 'editor',
+        roleLevel: 0,
+        permissionIds: [],
+      })
+    ).resolves.toMatchObject({ roleKey: 'editor_3' });
+
+    expect(queries[0]?.text).toContain('pg_advisory_xact_lock');
+    expect(queries[1]?.text).toContain('FROM iam.roles');
+    expect(queries[1]?.text).toContain('left(role_key, length($2) + 1)');
+    expect(queries[1]?.text).not.toContain('LIKE');
+    expect(queries[2]?.values.slice(1, 5)).toEqual(['editor_3', 'editor_3', 'Editor', 'editor_3']);
+    expect(deps.emitActivityLog).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({ payload: expect.objectContaining({ role_key: 'editor_3' }) })
+    );
+  });
+
+  it('allocates distinct generated keys for parallel role creates', async () => {
+    const storedRoles = new Map<string, typeof roleListRow>();
+    let nextRoleId = 1;
+    let transactionQueue = Promise.resolve();
+    const deps = createDeps(createClient().client);
+
+    deps.withInstanceScopedDb = vi.fn(async (_instanceId, work) => {
+      const previousTransaction = transactionQueue;
+      let releaseTransaction = () => undefined;
+      transactionQueue = new Promise<void>((resolve) => {
+        releaseTransaction = resolve;
+      });
+      await previousTransaction;
+
+      const client: QueryClient = {
+        async query<Row = unknown>(text: string, values: readonly unknown[] = []) {
+          if (text.includes('pg_advisory_xact_lock')) {
+            return { rowCount: 1, rows: [] as Row[] };
+          }
+          if (text.includes('SELECT role_key')) {
+            return {
+              rowCount: storedRoles.size,
+              rows: [...storedRoles.values()].map(({ role_key }) => ({ role_key })) as Row[],
+            };
+          }
+          if (text.includes('INSERT INTO iam.roles')) {
+            const id = `00000000-0000-4000-8000-${String(nextRoleId).padStart(12, '0')}`;
+            nextRoleId += 1;
+            const roleKey = String(values[1]);
+            storedRoles.set(id, {
+              ...roleListRow,
+              id,
+              role_key: roleKey,
+              role_name: roleKey,
+              display_name: String(values[3]),
+              external_role_name: roleKey,
+              role_level: Number(values[6]),
+              member_count: 0,
+              permission_rows: [],
+            });
+            return { rowCount: 1, rows: [{ id }] as Row[] };
+          }
+
+          const storedRole = storedRoles.get(String(values[1]));
+          return {
+            rowCount: storedRole ? 1 : 0,
+            rows: (storedRole ? [storedRole] : []) as Row[],
+          };
+        },
+      };
+
+      try {
+        return await work(client);
+      } finally {
+        releaseTransaction();
+      }
+    });
+
+    const persistence = createRoleMutationPersistence(deps);
+    const createRole = () =>
+      persistence.persistCreatedRole({
+        actor,
+        roleKey: 'redaktion',
+        generateUniqueRoleKey: true,
+        displayName: 'Redaktion',
+        externalRoleName: 'redaktion',
+        roleLevel: 0,
+        permissionIds: [],
+      });
+
+    const createdRoles = await Promise.all([createRole(), createRole()]);
+
+    expect(createdRoles.map((role) => role.roleKey)).toEqual(['redaktion', 'redaktion_2']);
   });
 
   it('resolves mutable role conflicts as API responses', async () => {
@@ -115,20 +241,32 @@ describe('role mutation persistence', () => {
 
     const system = createDeps(
       createClient([
-        [{ ...mutableRole, role_key: 'system_admin', role_name: 'system_admin', external_role_name: 'system_admin', is_system_role: true }],
+        [
+          {
+            ...mutableRole,
+            role_key: 'system_admin',
+            role_name: 'system_admin',
+            external_role_name: 'system_admin',
+            is_system_role: true,
+          },
+        ],
       ]).client
     );
     await expect(
       createRoleMutationPersistence(system).resolveMutableRole(actor, roleId)
     ).resolves.toMatchObject({ status: 409 });
 
-    const external = createDeps(createClient([[{ ...mutableRole, managed_by: 'external' }]]).client);
+    const external = createDeps(
+      createClient([[{ ...mutableRole, managed_by: 'external' }]]).client
+    );
     await expect(
       createRoleMutationPersistence(external).resolveMutableRole(actor, roleId)
     ).resolves.toMatchObject({ status: 409 });
 
     const editable = createDeps(createClient([[mutableRole]]).client);
-    await expect(createRoleMutationPersistence(editable).resolveMutableRole(actor, roleId)).resolves.toEqual(mutableRole);
+    await expect(
+      createRoleMutationPersistence(editable).resolveMutableRole(actor, roleId)
+    ).resolves.toEqual(mutableRole);
 
     const editableLegacyBootstrapRole = {
       ...mutableRole,
@@ -164,7 +302,11 @@ describe('role mutation persistence', () => {
     );
     expect(deps.emitRoleAuditEvent).toHaveBeenCalledWith(
       client,
-      expect.objectContaining({ eventType: 'role.sync_failed', operation: 'retry', result: 'failure' })
+      expect.objectContaining({
+        eventType: 'role.sync_failed',
+        operation: 'retry',
+        result: 'failure',
+      })
     );
   });
 
@@ -296,7 +438,9 @@ describe('role mutation persistence', () => {
       [],
     ]);
     const deps = createDeps(client);
-    await expect(createRoleMutationPersistence(deps).resolveDeletableRole(actor, roleId)).resolves.toEqual(mutableRole);
+    await expect(
+      createRoleMutationPersistence(deps).resolveDeletableRole(actor, roleId)
+    ).resolves.toEqual(mutableRole);
 
     await createRoleMutationPersistence(deps).deleteRoleFromDatabase({
       actor,
@@ -346,7 +490,11 @@ describe('role mutation persistence', () => {
     );
     expect(deps.emitRoleAuditEvent).toHaveBeenCalledWith(
       client,
-      expect.objectContaining({ operation: 'delete', result: 'failure', errorCode: 'IDP_FORBIDDEN' })
+      expect.objectContaining({
+        operation: 'delete',
+        result: 'failure',
+        errorCode: 'IDP_FORBIDDEN',
+      })
     );
   });
 });

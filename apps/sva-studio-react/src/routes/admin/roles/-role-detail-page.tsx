@@ -38,8 +38,14 @@ import { isIamAccessAllowed, useIamResourceAccess } from '../../../hooks/use-iam
 import { t } from '../../../i18n';
 import type { TranslationKey } from '../../../i18n/translate';
 import { isTenantRoleReadOnly, isTenantRoleVisible } from '../../../lib/iam-role-governance';
+import { resolvePermissionTitle } from '../../../lib/permission-labels';
 import { IamRuntimeDiagnosticDetails } from '../-iam-runtime-diagnostic-details';
 import { roleErrorMessage, roleStatusLabel, roleTypeLabel } from './-roles-shared';
+import {
+  areRoleGeneralDraftsEqual,
+  areRolePermissionDraftsEqual,
+  normalizeRoleGeneralDraft,
+} from './-role-dirty-state';
 
 type RoleDetailTab = 'general' | 'permissions' | 'assignments' | 'sync';
 type PermissionAccessScope = 'all' | 'own' | 'organization';
@@ -72,7 +78,23 @@ const ROLE_PERMISSION_ACTION_LABELS = {
   delete: 'admin.roles.permissionActions.delete',
   configure: 'admin.roles.permissionActions.configure',
   export: 'admin.roles.permissionActions.export',
+  manage: 'admin.roles.permissionActions.manage',
+  execute: 'admin.roles.permissionActions.execute',
+  moderate: 'admin.roles.permissionActions.moderate',
+  pushnotification: 'admin.roles.permissionActions.pushNotification',
 } as const;
+
+const ROLE_PERMISSION_DESCRIPTION_LABELS: Readonly<Record<string, TranslationKey>> = {
+  'content.publish': 'admin.roles.permissionDescriptions.contentPublish',
+  'content.changeStatus': 'admin.roles.permissionDescriptions.contentChangeStatus',
+  'news.pushNotification': 'admin.roles.permissionDescriptions.newsPushNotification',
+};
+
+const ROLE_PERMISSION_SCOPE_LABELS: Record<PermissionAccessScope, TranslationKey> = {
+  all: 'admin.roles.permissionScopes.all',
+  own: 'admin.roles.permissionScopes.own',
+  organization: 'admin.roles.permissionScopes.organization',
+};
 
 const ROLE_PERMISSION_RESOURCE_LABELS = {
   content: 'admin.roles.permissionResources.content',
@@ -278,7 +300,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
   const [editForm, setEditForm] = React.useState({
     displayName: '',
     description: '',
-    roleLevel: '10',
   });
   const [permissionDraft, setPermissionDraft] = React.useState<string[]>([]);
   const [permissionScopeDraft, setPermissionScopeDraft] = React.useState<
@@ -325,7 +346,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     setEditForm({
       displayName: role.roleName,
       description: role.description ?? '',
-      roleLevel: String(role.roleLevel),
     });
     setPermissionDraft(
       sortPermissionIdsByCatalog(
@@ -344,11 +364,13 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
           id: permission.id,
           permissionKey: permission.permissionKey,
           description:
-            permission.description?.trim() ||
+            (ROLE_PERMISSION_DESCRIPTION_LABELS[permission.permissionKey]
+              ? t(ROLE_PERMISSION_DESCRIPTION_LABELS[permission.permissionKey])
+              : permission.description?.trim()) ||
             t('admin.roles.detail.permissions.permissionDescriptionFallback'),
           resourceLabel: summary.resourceLabel,
           actionLabel: summary.actionLabel,
-          detailLabel: summary.detailLabel,
+          detailLabel: resolvePermissionTitle(permission.permissionKey) ?? summary.detailLabel,
           isAssigned: permissionDraft.includes(permission.id),
           isScopeAssignable: permission.isScopeAssignable ?? false,
           supportedAccessScopes: normalizeSupportedAccessScopes(
@@ -447,6 +469,9 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             <Select
               value={permission.accessScope}
               disabled={isReadOnly}
+              aria-label={t('admin.roles.detail.permissions.selectScope', {
+                permission: permission.detailLabel,
+              })}
               onChange={(event) => {
                 permissionsSaveFeedback.markDirty();
                 setPermissionScopeDraft((current) => ({
@@ -457,13 +482,15 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             >
               {permission.supportedAccessScopes.map((scope) => (
                 <option key={scope} value={scope}>
-                  {humanizePermissionSegment(scope)}
+                  {t(ROLE_PERMISSION_SCOPE_LABELS[scope])}
                 </option>
               ))}
             </Select>
           ) : (
             <span className="text-sm text-muted-foreground">
-              {permission.isAssigned ? humanizePermissionSegment(permission.accessScope) : '-'}
+              {permission.isAssigned
+                ? t(ROLE_PERMISSION_SCOPE_LABELS[permission.accessScope])
+                : '-'}
             </span>
           ),
         sortable: true,
@@ -594,7 +621,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     const updated = await rolesApi.updateRole(role.id, {
       displayName: editForm.displayName.trim(),
       description: editForm.description.trim() || undefined,
-      roleLevel: Number(editForm.roleLevel),
     });
     (updated ? metaSaveFeedback.markSaved : metaSaveFeedback.markFailed)(operationId);
   };
@@ -623,7 +649,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
       return;
     }
 
-    permissionsSaveFeedback.markDirty();
     setPermissionDraft(
       sortPermissionIdsByCatalog(
         role.permissions.map((permission) => permission.id),
@@ -723,12 +748,34 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
     );
   }
 
+  const generalDraft = normalizeRoleGeneralDraft(editForm);
+  const storedGeneralDraft = normalizeRoleGeneralDraft({
+    displayName: role.roleName,
+    description: role.description,
+  });
+  const isGeneralDirty = !areRoleGeneralDraftsEqual(generalDraft, storedGeneralDraft);
+  const currentPermissionAssignments = sortPermissionAssignmentsByCatalog(
+    permissionDraft,
+    permissionScopeDraft,
+    permissionsApi.permissions
+  );
+  const storedPermissionAssignments = sortPermissionAssignmentsByCatalog(
+    role.permissions.map((permission) => permission.id),
+    buildPermissionScopeDraft(role, permissionsApi.permissions),
+    permissionsApi.permissions
+  );
+  const arePermissionsDirty = !areRolePermissionDraftsEqual(
+    currentPermissionAssignments,
+    storedPermissionAssignments
+  );
+
   const savePermissionsAction = (
     <StudioSaveButton
       type="button"
       status={permissionsSaveFeedback.status}
       disabled={
         isReadOnly ||
+        !arePermissionsDirty ||
         permissionsApi.isLoading ||
         Boolean(permissionsApi.error) ||
         permissionsSaveFeedback.status === 'saving'
@@ -816,19 +863,11 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             </div>
           </CardHeader>
           <CardContent>
-            <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <DetailMetaItem
-                label={t('admin.roles.editDialog.keyLabel')}
-                value={<code>{role.roleKey}</code>}
-              />
-              <DetailMetaItem
-                label={t('admin.roles.detail.general.externalRoleName')}
-                value={<code>{role.externalRoleName}</code>}
-              />
+            <dl className="grid gap-4 md:grid-cols-2">
               <DetailMetaItem label={t('admin.roles.detail.sync.source')} value={role.managedBy} />
               <DetailMetaItem
-                label={t('admin.roles.editDialog.levelLabel')}
-                value={String(role.roleLevel)}
+                label={t('admin.roles.detail.tabs.sync')}
+                value={roleStatusLabel(role.syncState)}
               />
             </dl>
           </CardContent>
@@ -893,21 +932,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                 onSubmit={onSaveGeneral}
               >
                 <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="role-detail-key">{t('admin.roles.editDialog.keyLabel')}</Label>
-                  <Input id="role-detail-key" value={role.roleKey} disabled className="bg-muted" />
-                </div>
-                <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="role-detail-external">
-                    {t('admin.roles.detail.general.externalRoleName')}
-                  </Label>
-                  <Input
-                    id="role-detail-external"
-                    value={role.externalRoleName}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
-                <div className="grid gap-2 text-sm text-foreground">
                   <Label htmlFor="role-detail-name">{t('admin.roles.editDialog.nameLabel')}</Label>
                   <Input
                     id="role-detail-name"
@@ -915,22 +939,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                     disabled={isReadOnly}
                     onChange={(event) =>
                       updateEditForm((current) => ({ ...current, displayName: event.target.value }))
-                    }
-                  />
-                </div>
-                <div className="grid gap-2 text-sm text-foreground">
-                  <Label htmlFor="role-detail-level">
-                    {t('admin.roles.editDialog.levelLabel')}
-                  </Label>
-                  <Input
-                    id="role-detail-level"
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={editForm.roleLevel}
-                    disabled={isReadOnly}
-                    onChange={(event) =>
-                      updateEditForm((current) => ({ ...current, roleLevel: event.target.value }))
                     }
                   />
                 </div>
@@ -957,7 +965,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                       setEditForm({
                         displayName: role.roleName,
                         description: role.description ?? '',
-                        roleLevel: String(role.roleLevel),
                       });
                     }}
                   >
@@ -966,13 +973,37 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
                   <StudioSaveButton
                     type="submit"
                     status={metaSaveFeedback.status}
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || !isGeneralDirty}
                     labels={{
                       idle: t('admin.roles.detail.general.save'),
                       saving: t('admin.roles.detail.general.saving'),
                       saved: t('account.actions.saved'),
                     }}
                   />
+                </div>
+                <div className="md:col-span-2">
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    aria-expanded={showTechnicalDetails}
+                    onClick={() => setShowTechnicalDetails((current) => !current)}
+                  >
+                    {showTechnicalDetails
+                      ? t('admin.roles.detail.permissions.hideTechnicalDetails')
+                      : t('admin.roles.detail.permissions.showTechnicalDetails')}
+                  </Button>
+                  {showTechnicalDetails ? (
+                    <dl className="mt-3 grid gap-4 rounded-lg border border-border p-4 md:grid-cols-2">
+                      <DetailMetaItem
+                        label={t('admin.roles.editDialog.keyLabel')}
+                        value={<code>{role.roleKey}</code>}
+                      />
+                      <DetailMetaItem
+                        label={t('admin.roles.detail.general.externalRoleName')}
+                        value={<code>{role.externalRoleName}</code>}
+                      />
+                    </dl>
+                  ) : null}
                 </div>
               </form>
             </CardContent>
@@ -1144,7 +1175,7 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
             <Button
               type="button"
               variant="secondary"
-              disabled={isReadOnly}
+              disabled={isReadOnly || !arePermissionsDirty}
               onClick={resetPermissionDraft}
             >
               {t('admin.roles.workspace.resetPermissions')}
@@ -1360,7 +1391,6 @@ export const RoleDetailPage = ({ roleId, activeTab }: RoleDetailPageProps) => {
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
                 <li>{t('admin.roles.detail.sync.localChangeItems.permissions')}</li>
                 <li>{t('admin.roles.detail.sync.localChangeItems.assignments')}</li>
-                <li>{t('admin.roles.detail.sync.localChangeItems.roleLevel')}</li>
               </ul>
               <div className="space-y-2">
                 <h3 className="text-sm font-semibold text-foreground">

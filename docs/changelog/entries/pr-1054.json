@@ -1,0 +1,4 @@
+{
+  "prNumber": 1054,
+  "body": "Die Rollenverwaltung ist einfacher und verständlicher geworden.\n\n- Neue Rollen benötigen nur noch einen Anzeigenamen und optional eine Beschreibung; der technische Schlüssel wird automatisch erzeugt.\n- Speicheraktionen reagieren auf tatsächliche Änderungen, und Rechte sowie Geltungsbereiche sind fachlich beschriftet.\n- Das Versenden von Push-Benachrichtigungen für News kann als eigenes Recht vergeben werden."
+}

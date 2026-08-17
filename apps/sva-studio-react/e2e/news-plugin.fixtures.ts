@@ -45,7 +45,13 @@ export const authenticatedUser = {
     instanceId: 'de-musterhausen',
     assignedModules: ['news'],
     roles: ['editor'],
-    permissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+    permissionActions: [
+      'news.read',
+      'news.create',
+      'news.update',
+      'news.delete',
+      'news.pushNotification',
+    ],
   },
 };
 export const permissionPayload = {
@@ -55,6 +61,7 @@ export const permissionPayload = {
     { action: 'news.create', resourceType: 'news' },
     { action: 'news.update', resourceType: 'news' },
     { action: 'news.delete', resourceType: 'news' },
+    { action: 'news.pushNotification', resourceType: 'news' },
   ],
   subject: { actorUserId: 'kc-editor-1', effectiveUserId: 'kc-editor-1', isImpersonating: false },
   evaluatedAt: '2026-04-13T12:00:00.000Z',

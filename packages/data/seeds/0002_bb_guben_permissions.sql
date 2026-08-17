@@ -200,6 +200,7 @@ VALUES
   ('64111111-1111-1111-1111-111111111132', 'bb-guben', 'news.create', 'news.create', 'news', NULL, '{}'::jsonb, 'Create news plugin content'),
   ('64111111-1111-1111-1111-111111111133', 'bb-guben', 'news.update', 'news.update', 'news', NULL, '{}'::jsonb, 'Update news plugin content'),
   ('64111111-1111-1111-1111-111111111134', 'bb-guben', 'news.delete', 'news.delete', 'news', NULL, '{}'::jsonb, 'Delete news plugin content'),
+  ('64111111-1111-1111-1111-111111111170', 'bb-guben', 'news.pushNotification', 'news.pushNotification', 'news', NULL, '{}'::jsonb, 'Send push notifications for news content'),
   ('64111111-1111-1111-1111-111111111135', 'bb-guben', 'events.read', 'events.read', 'events', NULL, '{}'::jsonb, 'Read events plugin content'),
   ('64111111-1111-1111-1111-111111111136', 'bb-guben', 'events.create', 'events.create', 'events', NULL, '{}'::jsonb, 'Create events plugin content'),
   ('64111111-1111-1111-1111-111111111137', 'bb-guben', 'events.update', 'events.update', 'events', NULL, '{}'::jsonb, 'Update events plugin content'),
@@ -275,7 +276,7 @@ SELECT 'bb-guben', roles.id, permissions.id
 FROM (
   VALUES
     ('system_admin', 'media.read'), ('system_admin', 'media.create'), ('system_admin', 'media.update'), ('system_admin', 'media.reference.manage'), ('system_admin', 'media.delete'), ('system_admin', 'media.deliver.protected'),
-    ('system_admin', 'news.read'), ('system_admin', 'news.create'), ('system_admin', 'news.update'), ('system_admin', 'news.delete'),
+    ('system_admin', 'news.read'), ('system_admin', 'news.create'), ('system_admin', 'news.update'), ('system_admin', 'news.delete'), ('system_admin', 'news.pushNotification'),
     ('system_admin', 'events.read'), ('system_admin', 'events.create'), ('system_admin', 'events.update'), ('system_admin', 'events.delete'),
     ('system_admin', 'poi.read'), ('system_admin', 'poi.create'), ('system_admin', 'poi.update'), ('system_admin', 'poi.delete'),
     ('system_admin', 'categories.read'), ('system_admin', 'categories.create'), ('system_admin', 'categories.update'), ('system_admin', 'categories.delete')

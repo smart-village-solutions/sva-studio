@@ -10,7 +10,9 @@ import {
 } from './actor-authorization.js';
 import type { QueryClient } from './query-client.js';
 
-const createClient = (handler: (text: string, values?: readonly unknown[]) => unknown): QueryClient => ({
+const createClient = (
+  handler: (text: string, values?: readonly unknown[]) => unknown
+): QueryClient => ({
   query: vi.fn(async (text, values) => handler(text, values) as never),
 });
 
@@ -85,7 +87,7 @@ describe('actor-authorization', () => {
     ).toEqual({
       ok: false,
       code: 'forbidden',
-      message: 'Zielnutzer überschreitet die eigene Berechtigungsstufe.',
+      message: 'Das Zielkonto ist durch eine höher privilegierte Rolle geschützt.',
     });
   });
 
@@ -144,11 +146,16 @@ describe('actor-authorization', () => {
     });
 
     await expect(resolveSystemAdminCount(client, 'inst-1')).resolves.toBe(2);
-    await expect(isSystemAdminAccount(client, { instanceId: 'inst-1', accountId: 'account-1' })).resolves.toBe(true);
+    await expect(
+      isSystemAdminAccount(client, { instanceId: 'inst-1', accountId: 'account-1' })
+    ).resolves.toBe(true);
   });
 
   it('rejects role assignment when one target role is missing', async () => {
-    const client = createClient(() => ({ rowCount: 1, rows: [{ id: 'role-1', role_key: 'editor', role_level: 10 }] }));
+    const client = createClient(() => ({
+      rowCount: 1,
+      rows: [{ id: 'role-1', role_key: 'editor', role_level: 10 }],
+    }));
 
     await expect(
       ensureRoleAssignmentWithinActorLevel({
@@ -202,7 +209,7 @@ describe('actor-authorization', () => {
     ).resolves.toEqual({
       ok: false,
       code: 'forbidden',
-      message: 'Rollenzuweisung überschreitet die eigene Berechtigungsstufe.',
+      message: 'Die ausgewählte Rolle ist für dieses Konto nicht zuweisbar.',
     });
   });
 

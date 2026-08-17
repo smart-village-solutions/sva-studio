@@ -653,7 +653,12 @@ type NewsCreateActorInfo = {
 const emitNewsAuditEvent = async (input: {
   readonly ctx: AuthenticatedRequestContext;
   readonly instanceId: string;
-  readonly actionId: 'news.create' | 'news.update' | 'news.delete' | 'news.visibility.update';
+  readonly actionId:
+    | 'news.create'
+    | 'news.update'
+    | 'news.delete'
+    | 'news.pushNotification'
+    | 'news.visibility.update';
   readonly result: 'success' | 'failure';
   readonly newsId?: string;
   readonly reasonCode?: string;
@@ -780,7 +785,13 @@ const handleItemRead = async (
   const access = resourceActor
     ? await resolveMainserverResourceAccess({
         actor: resourceActor,
-        actions: ['news.update', 'news.delete', 'content.publish', 'content.changeStatus'],
+        actions: [
+          'news.update',
+          'news.delete',
+          'news.pushNotification',
+          'content.publish',
+          'content.changeStatus',
+        ],
         contentType: NEWS_CONTENT_TYPE,
         item: data,
       })
@@ -856,6 +867,10 @@ const handleCollectionCreate = async (
     },
     parse: async ({ parsed }) => parsed,
     execute: async ({ context, actor, actorInfo, idempotencyKey, input: parsed }) => {
+      if (parsed.news.pushNotification === true) {
+        const pushAuthorization = await authorizeOrResponse(context, 'news.pushNotification');
+        if (isResponse(pushAuthorization)) return pushAuthorization;
+      }
       try {
         const principalAuthorization = await authorizeMainserverCreateForPrincipal({
           actor,
@@ -877,6 +892,15 @@ const handleCollectionCreate = async (
           result: 'success',
           newsId: data.id,
         });
+        if (parsed.news.pushNotification === true) {
+          await emitNewsAuditEvent({
+            ctx: context,
+            instanceId: actor.instanceId,
+            actionId: 'news.pushNotification',
+            result: 'success',
+            newsId: data.id,
+          });
+        }
         const bindingResult = await recordCreatedMainserverDataProvider({
           actor,
           created: data,
@@ -937,6 +961,15 @@ const handleCollectionCreate = async (
           result: 'failure',
           reasonCode: error instanceof SvaMainserverError ? error.code : 'internal_error',
         });
+        if (parsed.news.pushNotification === true) {
+          await emitNewsAuditEvent({
+            ctx: context,
+            instanceId: actor.instanceId,
+            actionId: 'news.pushNotification',
+            result: 'failure',
+            reasonCode: error instanceof SvaMainserverError ? error.code : 'internal_error',
+          });
+        }
         await completeNewsCreateIdempotency({
           actorAccountId: actorInfo.actorAccountId,
           instanceId: actorInfo.instanceId,
@@ -984,6 +1017,14 @@ const handleItemUpdate = async (
       await parseAuthorizedNewsInput(inputRequest, ctx, { allowPushNotification: true }),
     execute: async (actor, parsed) => {
       let response: Response;
+      if (parsed.news.pushNotification === true) {
+        const pushAuthorization = await authorizeOrResponse(
+          ctx,
+          'news.pushNotification',
+          route.newsId
+        );
+        if (isResponse(pushAuthorization)) return pushAuthorization;
+      }
       try {
         const existing = await getSvaMainserverNews({ ...actor, newsId: route.newsId });
         const providerAuthorization = await authorizeMainserverExistingContent({
@@ -1025,6 +1066,16 @@ const handleItemUpdate = async (
           newsId: route.newsId,
           reasonCode: error instanceof SvaMainserverError ? error.code : 'internal_error',
         });
+        if (parsed.news.pushNotification === true) {
+          await emitNewsAuditEvent({
+            ctx,
+            instanceId: actor.instanceId,
+            actionId: 'news.pushNotification',
+            result: 'failure',
+            newsId: route.newsId,
+            reasonCode: error instanceof SvaMainserverError ? error.code : 'internal_error',
+          });
+        }
         throw error;
       }
       await emitNewsAuditEvent({
@@ -1034,6 +1085,15 @@ const handleItemUpdate = async (
         result: 'success',
         newsId: route.newsId,
       });
+      if (parsed.news.pushNotification === true) {
+        await emitNewsAuditEvent({
+          ctx,
+          instanceId: actor.instanceId,
+          actionId: 'news.pushNotification',
+          result: 'success',
+          newsId: route.newsId,
+        });
+      }
       logSuccess('mainserver_news_update', route.newsId);
       return response;
     },

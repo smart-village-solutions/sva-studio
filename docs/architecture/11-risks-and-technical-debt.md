@@ -329,6 +329,13 @@ Schulden auf IST-Basis.
 - `roleLevel` bleibt in Rollen-, User- und Audit-Verträgen als Kompatibilitätsfeld sichtbar.
   - Impact: mittel bis hoch (Reviewer können Hierarchie-Logik weiterhin fälschlich als normative Autorisierungsquelle lesen)
   - Maßnahme: separaten Folgechange für den kontrollierten Rückbau von `roleLevel` vorbereiten.
+
+### Fortschreibung 2026-08: `roleLevel` in der Rollen-UI ausgeblendet
+
+- Die normale Rollenliste, Anlage und Bearbeitung zeigen `roleLevel` nicht mehr; neue Custom-Rollen starten serverseitig mit `0` und bestehende Werte bleiben bei UI-Updates unverändert.
+- Diese UI-Ausblendung ist ausdrücklich kein vollständiger Rückbau: Persistenz-, Read-Model-, Zielkonten- und Legacy-API-Verträge verwenden das Feld weiterhin als internes Schutz- und Kompatibilitätsmerkmal.
+- Risiko: Eine spätere Entfernung ohne getrennte Migration könnte bestehende Schutzgrenzen bei Rollen- und Kontenzuweisungen abschwächen.
+- Maßnahme: Vollständigen Rückbau separat mit Ersatzmodell, Datenmigration, Audit-Vertrag und Negativtests spezifizieren; keine schrittweise Entfernung einzelner Backend-Prüfungen.
 - Historische Altrollen wie `app_manager`, `designer`, `editor` oder `moderator` können in Bestandsinstanzen noch sichtbar sein, obwohl sie nicht mehr zum Sollmodell gehören.
   - Impact: mittel (Operatorsicht und UI können historische Altartefakte noch mit aktiv verwalteten Tenant-Rollen verwechseln)
   - Maßnahme: Read-Model, Runbooks und Cleanup-Migrationen markieren den Altstatus explizit; neue Seeds oder Default-Verträge dürfen diese Rollen nicht wieder einführen.

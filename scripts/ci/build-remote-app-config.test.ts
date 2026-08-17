@@ -73,6 +73,7 @@ describe('remote app config builder', () => {
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'SVA_RUNTIME_PROFILE=studio\nSVA_RUNTIME_PROFILE=other')).toThrow(PromoteContractError);
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'UNKNOWN=value')).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => parseRemoteConfigLayer('prod', 'legacy', 'UNKNOWN_TWO=value\nUNKNOWN_ONE=value')).toThrow(/UNKNOWN_ONE, UNKNOWN_TWO/u);
+    expect(() => parseRemoteConfigLayer('prod', 'legacy', 'toString=value')).toThrow(/toString/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: overrides.replace('external_secret_v1', 'not a reference') })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: `${overrides}\nSVA_STACK_NAME=secret-layer` })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: `${profile}\nAPP_DB_PASSWORD=committed-secret`, overrides })).toThrow(/PROMOTE_CONFIG_SOURCE_FORBIDDEN/u);

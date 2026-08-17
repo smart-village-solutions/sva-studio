@@ -174,6 +174,30 @@ export const mockSharedShellRequests = async (page: Page) => {
       body: JSON.stringify({ data: [] }),
     })
   );
+  await page.route('**/api/v1/mainserver/categories', async (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ name: 'Kultur' }, { name: 'Verwaltung' }],
+      }),
+    })
+  );
+};
+
+export const selectExistingCategory = async (
+  page: Page,
+  triggerId: 'event-category' | 'poi-category',
+  categoryName: 'Kultur' | 'Verwaltung'
+) => {
+  const trigger = page.locator(`#${triggerId}`);
+  await expect(trigger).toBeEnabled();
+  await trigger.click();
+  await page
+    .getByRole('combobox', { name: /Kategorien suchen|Search categories|categoriesSearch/ })
+    .fill(categoryName);
+  await page.getByRole('checkbox', { name: categoryName }).check();
+  await expect(trigger).toContainText(categoryName);
 };
 
 export const expectNoSeriousAccessibilityViolations = async (page: Page) => {

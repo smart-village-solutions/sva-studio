@@ -111,15 +111,17 @@ test.describe('news plugin', () => {
     await expect(
       page.getByRole('textbox', { name: /Erstellen als|news\.principal\.createAs/ })
     ).toHaveValue('Editor One');
+    const categoryTrigger = page.locator('#news-category');
+    await expect(categoryTrigger).toBeEnabled();
+    await categoryTrigger.click();
     const categorySearch = page.getByRole('combobox', {
-      name: /Kategorien suchen|news\.fields\.categoriesSearch/,
+      name: /Kategorien suchen|Search categories|news\.fields\.categoriesSearch/,
     });
     await categorySearch.fill('Allgemein');
-    await categorySearch.blur();
-    await expect(page.getByText('Allgemein')).toBeVisible();
+    await page.getByRole('checkbox', { name: 'Allgemein' }).check();
     await categorySearch.fill('Kultur');
-    await categorySearch.blur();
-    await expect(page.getByText('Kultur')).toBeVisible();
+    await page.getByRole('checkbox', { name: 'Kultur' }).check();
+    await expect(categoryTrigger).toContainText('Allgemein, Kultur');
     await openNewsDetailTab(page, /Inhalte|news\.tabs\.content/);
     await page.locator('#news-content-intro').fill('Kurztext');
     await page.locator('#news-content-body').fill('<p>Inhalt</p>');

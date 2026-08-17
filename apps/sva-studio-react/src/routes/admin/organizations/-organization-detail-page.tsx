@@ -384,7 +384,10 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     setProvisioningPending(true);
     try {
       const result = await organizationsApi.provisionMainserver(organizationId);
-      setProvisioningConfirmed(result !== null);
+      setProvisioningConfirmed(
+        result?.mainserverProvisioning.status === 'ready' &&
+          !result.mainserverProvisioning.lastErrorCode
+      );
     } finally {
       setProvisioningPending(false);
     }

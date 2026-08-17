@@ -35,6 +35,8 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     categoriesHelp: 'Select none, one, or multiple categories.',
     categoriesSearch: 'Search categories',
     categoriesSearchPlaceholder: 'Search or select a category',
+    categoriesEmpty: 'No matching categories found.',
+    categoryUnavailable: 'no longer available',
     street: 'Street',
     zip: 'ZIP',
     city: 'City',

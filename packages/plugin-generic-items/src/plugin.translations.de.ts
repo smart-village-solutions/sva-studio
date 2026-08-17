@@ -48,6 +48,8 @@ export const genericItemsTranslationsDe = {
       categoriesHelp: 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
       categoriesSearch: 'Kategorien suchen',
       categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
+      categoriesEmpty: 'Keine passenden Kategorien gefunden.',
+      categoryUnavailable: 'nicht mehr verfügbar',
       contacts: 'Kontakte',
       contactsHelp: 'Ansprechpartner mit Namen, E-Mail und Telefon als bearbeitbare Liste.',
       webUrls: 'Web-Links',

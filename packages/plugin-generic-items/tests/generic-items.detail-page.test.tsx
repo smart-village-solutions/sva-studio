@@ -388,12 +388,12 @@ describe('GenericItemsDetailPage', () => {
 
     fireEvent.change(screen.getByLabelText('Titel'), { target: { value: 'Freier Eintrag' } });
     fireEvent.change(screen.getByLabelText('Generic-Type'), { target: { value: 'faq' } });
-    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    const categoryTrigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
     await waitFor(() => {
-      expect(categoryInput.hasAttribute('disabled')).toBe(false);
+      expect(categoryTrigger.hasAttribute('disabled')).toBe(false);
     });
-    fireEvent.change(categoryInput, { target: { value: 'Rathaus' } });
-    fireEvent.blur(categoryInput);
+    fireEvent.click(categoryTrigger);
+    fireEvent.click(screen.getByLabelText('Rathaus'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' })).toBeTruthy();
     });

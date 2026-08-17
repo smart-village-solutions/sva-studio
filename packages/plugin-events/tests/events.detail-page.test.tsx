@@ -554,12 +554,12 @@ describe('EventsDetailPage', () => {
     render(<EventsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Titel'), { target: { value: 'Neues Event' } });
-    const categoryInput = screen.getByLabelText('Kategorien suchen');
+    const categoryTrigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
     await waitFor(() => {
-      expect(categoryInput.hasAttribute('disabled')).toBe(false);
+      expect(categoryTrigger.hasAttribute('disabled')).toBe(false);
     });
-    fireEvent.change(categoryInput, { target: { value: 'Kultur' } });
-    fireEvent.blur(categoryInput);
+    fireEvent.click(categoryTrigger);
+    fireEvent.click(screen.getByLabelText('Kultur'));
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Kategorie Kultur entfernen' })).toBeTruthy();
     });

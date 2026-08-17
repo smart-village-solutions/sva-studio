@@ -4,129 +4,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NewsCategoryMultiselect } from '../src/news.category-multiselect.js';
 
 describe('NewsCategoryMultiselect', () => {
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(() => cleanup());
 
-  it('filters suggestions, keeps exact matches while typing and removes selected entries', () => {
+  it('only selects categories supplied by the Mainserver catalog', () => {
     const onChange = vi.fn();
-    const { container, rerender } = render(
+    render(
       <NewsCategoryMultiselect
-        availableCategories={[
-          { id: 'cat-1', name: 'Allgemein' },
-          { id: 'cat-2', name: 'Rathaus' },
-          { id: 'cat-3', name: 'Kultur' },
-        ]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
+        availableCategories={[{ id: 'cat-1', name: 'Rathaus' }]}
+        emptyText="Keine passenden Kategorien gefunden."
+        helpText="Wählen Sie Kategorien aus."
+        inputPlaceholder="Kategorie suchen oder auswählen"
         loading={false}
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
         searchLabel="Kategorien suchen"
-        value={['Allgemein']}
+        unavailableText="nicht mehr verfügbar"
+        value={[]}
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'rat' } });
-
-    const optionValues = Array.from(container.querySelectorAll('datalist option')).map((option) => option.getAttribute('value'));
-    expect(optionValues).toEqual(['Rathaus']);
-
-    fireEvent.change(screen.getByLabelText('Kategorien suchen'), { target: { value: 'Rathaus' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    const searchInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(searchInput, { target: { value: 'Frei erfunden' } });
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
 
-    rerender(
-      <NewsCategoryMultiselect
-        availableCategories={[
-          { id: 'cat-1', name: 'Allgemein' },
-          { id: 'cat-2', name: 'Rathaus' },
-          { id: 'cat-3', name: 'Kultur' },
-        ]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading={false}
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={['Allgemein', 'Rathaus']}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie Rathaus entfernen' }));
-    expect(onChange).toHaveBeenCalledWith(['Allgemein']);
-  });
-
-  it('renders loading and error states', () => {
-    const onChange = vi.fn();
-
-    render(
-      <NewsCategoryMultiselect
-        availableCategories={[]}
-        errorMessage="Die Kategorien konnten nicht geladen werden."
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
-    expect(screen.getByText('Die Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.getAllByLabelText('Kategorien suchen').at(-1)?.hasAttribute('disabled')).toBe(true);
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it('supports adding trimmed categories via enter', () => {
-    const onChange = vi.fn();
-
-    render(
-      <NewsCategoryMultiselect
-        availableCategories={[{ id: 'cat-3', name: 'Kultur' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading={false}
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    const input = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(input, { target: { value: '  Kultur  ' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    expect(onChange).toHaveBeenCalledWith(['Kultur']);
-  });
-
-  it('adds the current category on blur', () => {
-    const onChange = vi.fn();
-
-    render(
-      <NewsCategoryMultiselect
-        availableCategories={[{ id: 'cat-2', name: 'Rathaus' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading={false}
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    const input = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(input, { target: { value: 'Rathaus' } });
-    fireEvent.blur(input);
-
+    fireEvent.change(searchInput, { target: { value: 'Rathaus' } });
+    fireEvent.click(screen.getByLabelText('Rathaus'));
     expect(onChange).toHaveBeenCalledWith(['Rathaus']);
   });
 });

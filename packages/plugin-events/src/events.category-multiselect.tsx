@@ -1,11 +1,11 @@
-import * as React from 'react';
-import { Badge, Input } from '@sva/studio-ui-react';
+import { SearchableMultiSelect } from '@sva/studio-ui-react';
 
 import type { EventCategoryOption } from './events.types.js';
 
 export type EventsCategoryMultiselectProps = Readonly<{
   availableCategories: readonly EventCategoryOption[];
   disabled?: boolean;
+  emptyText: string;
   errorMessage?: string;
   helpText: string;
   inputId?: string;
@@ -15,110 +15,45 @@ export type EventsCategoryMultiselectProps = Readonly<{
   onChange: (value: string[]) => void;
   removeLabel: (name: string) => string;
   searchLabel: string;
+  unavailableText: string;
   value: string[];
 }>;
-
-const normalizeName = (value: string) => value.trim();
-
-const dedupeCategoryNames = (values: readonly string[]) =>
-  Array.from(new Set(values.map(normalizeName).filter((entry) => entry.length > 0)));
 
 export function EventsCategoryMultiselect({
   availableCategories,
   disabled = false,
+  emptyText,
   errorMessage,
   helpText,
-  inputId,
+  inputId = 'event-category',
   inputPlaceholder,
   loading,
   loadingText,
   onChange,
   removeLabel,
   searchLabel,
+  unavailableText,
   value,
 }: EventsCategoryMultiselectProps) {
-  const [draftValue, setDraftValue] = React.useState('');
-  const normalizedValue = dedupeCategoryNames(value);
-  const datalistId = React.useId();
-
-  const suggestionNames = availableCategories
-    .map((category) => category.name.trim())
-    .filter((name) => name.length > 0 && normalizedValue.includes(name) === false);
-
-  const filteredSuggestionNames =
-    draftValue.trim().length === 0
-      ? suggestionNames
-      : suggestionNames.filter((name) => name.toLocaleLowerCase().includes(draftValue.trim().toLocaleLowerCase()));
-
-  const addCategory = React.useCallback(() => {
-    const nextName = normalizeName(draftValue);
-    if (nextName.length === 0) {
-      return;
-    }
-
-    const nextValue = dedupeCategoryNames([...normalizedValue, nextName]);
-    if (nextValue.length === normalizedValue.length) {
-      setDraftValue('');
-      return;
-    }
-
-    onChange(nextValue);
-    setDraftValue('');
-  }, [draftValue, normalizedValue, onChange]);
-
-  const removeCategory = React.useCallback(
-    (categoryName: string) => {
-      onChange(normalizedValue.filter((entry) => entry !== categoryName));
-    },
-    [normalizedValue, onChange]
-  );
-
   return (
-    <div className="space-y-3">
-      <div className="space-y-2">
-        <Input
-          id={inputId}
-          aria-label={searchLabel}
-          list={datalistId}
-          disabled={disabled || loading}
-          placeholder={inputPlaceholder}
-          value={draftValue}
-          onChange={(event) => setDraftValue(event.currentTarget.value)}
-          onBlur={() => addCategory()}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              addCategory();
-            }
-          }}
-        />
-        <datalist id={datalistId}>
-          {filteredSuggestionNames.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
-        <p className="text-sm text-foreground">{loading ? loadingText : helpText}</p>
-        {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
-      </div>
-
-      {normalizedValue.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {normalizedValue.map((name) => (
-            <Badge key={name} variant="outline" className="flex items-center gap-2 px-3 py-1">
-              <span>{name}</span>
-              <button
-                type="button"
-                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-                aria-label={removeLabel(name)}
-                disabled={disabled}
-                onClick={() => removeCategory(name)}
-              >
-                x
-              </button>
-            </Badge>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <SearchableMultiSelect
+      disabled={disabled}
+      emptyText={emptyText}
+      errorMessage={errorMessage}
+      helpText={helpText}
+      id={inputId}
+      loading={loading}
+      loadingText={loadingText}
+      onValueChange={onChange}
+      options={availableCategories.map((category) => ({
+        label: category.name,
+        value: category.name,
+      }))}
+      placeholder={inputPlaceholder}
+      removeLabel={removeLabel}
+      searchLabel={searchLabel}
+      unavailableText={unavailableText}
+      value={value}
+    />
   );
 }

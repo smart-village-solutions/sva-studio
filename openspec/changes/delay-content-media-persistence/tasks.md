@@ -73,5 +73,5 @@
 - [x] 8.3 `docs/architecture/08-cross-cutting-concepts.md` um Asset-Sichtbarkeit, Berechtigungen, Audit, Object-URL-Grenze und Cross-System-Konsistenz aktualisieren.
 - [x] 8.4 `docs/architecture/09-architecture-decisions.md` um die Entscheidung für provisorische Assets und Saga statt clientseitigem Delete ergänzen.
 - [x] 8.5 `docs/guides/plugin-development.md` um den verbindlichen lokalen Draft-/Save-Vertrag ergänzen; Plugin-eigene Upload-Lebenszyklen ausdrücklich ausschließen.
-- [ ] 8.6 `pnpm check:file-placement`, `pnpm check:server-runtime`, relevante Nx-Unit-/Type-/ESLint-Targets und DB-/E2E-Integrationspfade grün ausführen.
+- [x] 8.6 `pnpm check:file-placement`, `pnpm check:server-runtime`, relevante Nx-Unit-/Type-/ESLint-Targets und DB-/E2E-Integrationspfade grün ausführen.
 - [x] 8.7 Vor einem initialen Code-Push den affected Scope messen; bei handhabbarem Scope die affected Gates, andernfalls den gemäß `DEVELOPMENT_RULES.md` passenden vollständigen PR-Gate-Pfad ausführen.

@@ -46,7 +46,11 @@ describe('SearchableMultiSelect', () => {
     render(<SearchableMultiSelect {...defaultProps} onValueChange={onValueChange} />);
 
     const trigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
+    expect(trigger.getAttribute('aria-haspopup')).toBe('dialog');
     fireEvent.click(trigger);
+    expect(
+      screen.getByRole('dialog', { name: 'Kategorie suchen oder auswählen' })
+    ).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Kultur'));
 
     expect(screen.getByLabelText('Mobilität')).toBeTruthy();

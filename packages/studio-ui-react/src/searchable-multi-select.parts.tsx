@@ -41,7 +41,7 @@ export function SearchableMultiSelectTrigger({
       className="h-10 w-full justify-between px-3 text-sm font-normal"
       aria-controls={open ? `${id}-options` : undefined}
       aria-expanded={open}
-      aria-haspopup="true"
+      aria-haspopup="dialog"
       disabled={disabled}
       onClick={onToggle}
     >
@@ -72,6 +72,8 @@ export function SearchableMultiSelectOptions(props: OptionsProps) {
   return (
     <div
       id={`${props.id}-options`}
+      role="dialog"
+      aria-label={props.placeholder}
       className="absolute left-0 right-0 z-20 mt-2 rounded-lg border border-border bg-popover p-2 shadow-shell"
     >
       <Input

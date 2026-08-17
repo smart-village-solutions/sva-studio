@@ -8,6 +8,7 @@ export type NewsCategoryMultiselectProps = Readonly<{
   emptyText: string;
   errorMessage?: string;
   helpText: string;
+  inputId?: string;
   inputPlaceholder: string;
   loading: boolean;
   loadingText: string;
@@ -24,6 +25,7 @@ export function NewsCategoryMultiselect({
   emptyText,
   errorMessage,
   helpText,
+  inputId = 'news-category',
   inputPlaceholder,
   loading,
   loadingText,
@@ -39,7 +41,7 @@ export function NewsCategoryMultiselect({
       emptyText={emptyText}
       errorMessage={errorMessage}
       helpText={helpText}
-      id="news-category"
+      id={inputId}
       loading={loading}
       loadingText={loadingText}
       onValueChange={onChange}

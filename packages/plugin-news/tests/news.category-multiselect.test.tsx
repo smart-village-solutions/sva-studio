@@ -13,6 +13,7 @@ describe('NewsCategoryMultiselect', () => {
         availableCategories={[{ id: 'cat-1', name: 'Rathaus' }]}
         emptyText="Keine passenden Kategorien gefunden."
         helpText="Wählen Sie Kategorien aus."
+        inputId="news-category-test"
         inputPlaceholder="Kategorie suchen oder auswählen"
         loading={false}
         loadingText="Kategorien werden geladen."
@@ -24,7 +25,9 @@ describe('NewsCategoryMultiselect', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    const trigger = screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' });
+    expect(trigger.id).toBe('news-category-test');
+    fireEvent.click(trigger);
     const searchInput = screen.getByLabelText('Kategorien suchen');
     fireEvent.change(searchInput, { target: { value: 'Frei erfunden' } });
     fireEvent.keyDown(searchInput, { key: 'Enter' });

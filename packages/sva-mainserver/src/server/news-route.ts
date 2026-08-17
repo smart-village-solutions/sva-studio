@@ -369,6 +369,17 @@ const parseContentBlocks = (
     if (!isRecord(block)) {
       return errorJson(400, 'invalid_request', 'ContentBlocks müssen Objekte sein.');
     }
+    if (
+      (block.title !== undefined && block.title !== null && typeof block.title !== 'string') ||
+      (block.intro !== undefined && block.intro !== null && typeof block.intro !== 'string') ||
+      (block.body !== undefined && block.body !== null && typeof block.body !== 'string')
+    ) {
+      return errorJson(
+        400,
+        'invalid_request',
+        'Titel, Einleitung und Inhalt eines ContentBlocks müssen Strings sein.'
+      );
+    }
     const mediaContents = parseContentBlockMediaContents(block.mediaContents);
     if (mediaContents instanceof Response) {
       return mediaContents;

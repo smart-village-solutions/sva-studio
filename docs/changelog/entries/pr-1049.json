@@ -1,0 +1,4 @@
+{
+  "prNumber": 1049,
+  "body": "Der bestehende OpenTelemetry-Dienstname ist jetzt Bestandteil des sicheren, versionierten Rolloutvertrags.\n\n- Dev, Staging und Production verwenden konsistent den Dienstnamen `sva-studio`.\n- Falls ein altes Konfigurationsbundle weitere unbekannte Schlüssel enthält, werden deren Namen gemeinsam gemeldet.\n- Werte oder andere sensible Eigenschaften werden dabei weiterhin nicht ausgegeben."
+}

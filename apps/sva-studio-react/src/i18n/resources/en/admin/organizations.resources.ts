@@ -10,7 +10,9 @@ export const organizationsAdminENResources = {
     attempts: 'Attempts',
     notAvailable: 'Not assigned yet',
     retry: 'Provision Mainserver access',
+    refresh: 'Refresh Mainserver data',
     running: 'Provisioning in progress…',
+    current: 'The Mainserver data was checked and is up to date.',
     error: 'Last safe error code: {{code}}',
     status: {
       not_provisioned: 'Not provisioned',

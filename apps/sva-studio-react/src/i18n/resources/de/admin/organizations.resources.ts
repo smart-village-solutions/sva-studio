@@ -11,7 +11,9 @@ export const organizationsAdminDEResources = {
     attempts: 'Versuche',
     notAvailable: 'Noch nicht zugeordnet',
     retry: 'Mainserver-Zugang provisionieren',
+    refresh: 'Mainserver-Daten aktualisieren',
     running: 'Provisionierung läuft …',
+    current: 'Die Mainserver-Daten wurden geprüft und sind aktuell.',
     error: 'Letzter sicherer Fehlercode: {{code}}',
     status: {
       not_provisioned: 'Nicht provisioniert',

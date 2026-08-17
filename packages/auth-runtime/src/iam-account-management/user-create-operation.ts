@@ -15,6 +15,7 @@ import {
   type CreateUserActorInfo,
 } from './user-create-invitation.js';
 import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
+import type { IdentityUserAttributes } from '../keycloak-user-attributes.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
@@ -90,6 +91,28 @@ const syncUserRolesIfNeeded = async (input: {
   );
 };
 
+const haveEqualIdentityAttributes = (
+  current: IdentityUserAttributes | null | undefined,
+  expected: IdentityUserAttributes
+): boolean => {
+  const currentAttributes = current ?? {};
+  const currentKeys = Object.keys(currentAttributes);
+  const expectedKeys = Object.keys(expected);
+  if (currentKeys.length !== expectedKeys.length) {
+    return false;
+  }
+
+  return currentKeys.every((key) => {
+    const currentValues = currentAttributes[key];
+    const expectedValues = expected[key];
+    return (
+      expectedValues !== undefined &&
+      currentValues.length === expectedValues.length &&
+      currentValues.every((value, index) => value === expectedValues[index])
+    );
+  });
+};
+
 export const persistProvisionedMainserverCredentials = async (input: {
   identityProvider: IdentityProviderResolution;
   keycloakSubject: string;
@@ -103,6 +126,10 @@ export const persistProvisionedMainserverCredentials = async (input: {
     mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
     mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
   });
+
+  if (haveEqualIdentityAttributes(existingAttributes, nextAttributes)) {
+    return;
+  }
 
   await trackKeycloakCall('update_user', () =>
     input.identityProvider.provider.updateUser(input.keycloakSubject, {

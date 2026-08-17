@@ -373,6 +373,6 @@ Operativ relevante Zustände:
 - `failed`: der Upstream-Aufruf ist sicher fehlgeschlagen und kann wiederholt werden;
 - `reconciliation_required`: Lost Response, lokale Teilpersistenz oder Binding-Konflikt müssen zuerst vervollständigt beziehungsweise geprüft werden.
 
-Bei `verification_required` oder `reconciliation_required` verifiziert ein Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
+Bei `verification_required`, `reconciliation_required` oder `ready` verifiziert ein expliziter Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Stimmen die bereits am technischen Account gespeicherten Attribute exakt mit den verifizierten Credentials überein, entfällt der redundante Keycloak-Write; die Oberfläche bestätigt den aktuellen Stand. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
 
 Logs und Audit enthalten nur Instanz, Organisation, technische IDs, Trigger, Operationsreferenz, Phase, Ergebnis und sicheren Fehlercode. Application-Secret, Token und rohe Mainserver-Antworten dürfen dort nicht erscheinen.

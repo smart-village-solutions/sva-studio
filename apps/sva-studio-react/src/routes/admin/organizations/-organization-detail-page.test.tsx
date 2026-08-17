@@ -440,6 +440,31 @@ describe('OrganizationDetailPage', () => {
     await waitFor(() => {
       expect(provisionMainserver).toHaveBeenCalledWith('org-1');
     });
+    expect(
+      await screen.findByText('Die Mainserver-Daten wurden geprüft und sind aktuell.')
+    ).toBeTruthy();
+  });
+
+  it('allows an authorized user to refresh an already ready Mainserver access', async () => {
+    const readyOrganization = {
+      ...organizationFixture,
+      mainserverProvisioning: {
+        ...organizationFixture.mainserverProvisioning,
+        status: 'ready' as const,
+        lastErrorCode: undefined,
+      },
+    };
+    const provisionMainserver = vi.fn().mockResolvedValue(readyOrganization);
+    useOrganizationsMock.mockReturnValue(
+      createState({ selectedOrganization: readyOrganization, provisionMainserver })
+    );
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
   });
 
   it('loads parent options across multiple organization pages for reassignment', async () => {

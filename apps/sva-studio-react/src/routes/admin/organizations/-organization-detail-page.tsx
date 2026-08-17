@@ -130,6 +130,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
   >({});
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [provisioningPending, setProvisioningPending] = React.useState(false);
+  const [provisioningConfirmed, setProvisioningConfirmed] = React.useState(false);
   const [formValues, setFormValues] = React.useState(createOrganizationFormValues);
   const saveFeedback = useStudioSaveFeedback();
   const initialSaveFeedbackShownRef = React.useRef(false);
@@ -193,6 +194,7 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     setMembershipForm(DEFAULT_MEMBERSHIP_FORM);
     setMembershipSearch('');
     setDebouncedMembershipSearch('');
+    setProvisioningConfirmed(false);
   }, [organizationId]);
 
   const selectedOrganization =
@@ -378,9 +380,11 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
     if (!canUpdateOrganization || provisioningPending) {
       return;
     }
+    setProvisioningConfirmed(false);
     setProvisioningPending(true);
     try {
-      await organizationsApi.provisionMainserver(organizationId);
+      const result = await organizationsApi.provisionMainserver(organizationId);
+      setProvisioningConfirmed(result !== null);
     } finally {
       setProvisioningPending(false);
     }
@@ -586,8 +590,14 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   </AlertDescription>
                 </Alert>
               ) : null}
-              {canUpdateOrganization &&
-              selectedOrganization.mainserverProvisioning.status !== 'ready' ? (
+              {provisioningConfirmed ? (
+                <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
+                  <AlertDescription>
+                    {t('admin.organizations.mainserverProvisioning.current')}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+              {canUpdateOrganization ? (
                 <Button
                   type="button"
                   onClick={() => void onProvisionMainserver()}
@@ -599,7 +609,9 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
                   {provisioningPending ||
                   selectedOrganization.mainserverProvisioning.operationInProgress
                     ? t('admin.organizations.mainserverProvisioning.running')
-                    : t('admin.organizations.mainserverProvisioning.retry')}
+                    : selectedOrganization.mainserverProvisioning.status === 'ready'
+                      ? t('admin.organizations.mainserverProvisioning.refresh')
+                      : t('admin.organizations.mainserverProvisioning.retry')}
                 </Button>
               ) : null}
             </Card>

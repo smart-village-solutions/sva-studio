@@ -1,0 +1,4 @@
+{
+  "prNumber": 1056,
+  "body": "Bilder werden erst gemeinsam mit dem Inhalt gespeichert\n\n- Neu ausgewählte Bilder bleiben bis zum Speichern im Editor und erscheinen nach einem Abbruch nicht ungewollt in der Medienbibliothek.\n- Während des Speicherns zeigt der Editor verständlich an, ob Bilder vorbereitet, Inhalte gespeichert oder Verknüpfungen abgeschlossen werden.\n- Unterbrochene Speichervorgänge lassen sich sicher wiederholen, ohne Bilder doppelt anzulegen."
+}

@@ -38,4 +38,4 @@
 - [x] 5.2 `docs/architecture/11-risks-and-technical-debt.md` fortschreiben: UI-Ausblendung ist kein vollständiger `roleLevel`-Rückbau
 - [x] 5.3 Relevante IAM-, Rollen- und News-Administrationsdokumentation auf automatische Schlüssel, Rechtebegriffe und Push-Vergabe aktualisieren
 - [x] 5.4 OpenSpec strikt validieren sowie File-Placement-, i18n-, Changelog- und die kleinsten relevanten Nx-Gates ausführen
-- [ ] 5.5 Issue #626 anhand der umgesetzten und nachgewiesenen Akzeptanzfälle aktualisieren; Vorlagen und vollständigen `roleLevel`-Rückbau nicht als Bestandteil dieses Changes darstellen
+- [x] 5.5 Issue #626 anhand der umgesetzten und nachgewiesenen Akzeptanzfälle aktualisieren; Vorlagen und vollständigen `roleLevel`-Rückbau nicht als Bestandteil dieses Changes darstellen

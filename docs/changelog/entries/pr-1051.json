@@ -1,0 +1,4 @@
+{
+  "prNumber": 1051,
+  "body": "Die Mainserver-DataProvider-Umstellung ist nach dem erfolgreichen Production-Cutover abgeschlossen.\n\n- Production verwendet den automatischen Principal-Resolver.\n- Der freigegebene Digest ist über Dev, Staging und Production verifiziert.\n- Die umgesetzten Anforderungen sind jetzt Bestandteil der kanonischen OpenSpec-Spezifikationen."
+}

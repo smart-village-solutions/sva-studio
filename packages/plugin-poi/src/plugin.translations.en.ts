@@ -32,7 +32,7 @@ export const poiTranslationsEn = createPoiLocaleTranslations({
     active: 'Active',
     categoryName: 'Category',
     categories: 'Categories',
-    categoriesHelp: 'Select none, one, or multiple categories.',
+    categoriesHelp: 'If needed, select one or more existing categories.',
     categoriesSearch: 'Search categories',
     categoriesSearchPlaceholder: 'Search or select a category',
     categoriesEmpty: 'No matching categories found.',

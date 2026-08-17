@@ -192,7 +192,8 @@ describe('GenericItemsDetailPage', () => {
         'genericItems.fields.publishedAtHelp': 'Veröffentlichungshilfe',
         'genericItems.fields.categoryName': 'Primärkategorie',
         'genericItems.fields.categories': 'Kategorien',
-        'genericItems.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'genericItems.fields.categoriesHelp':
+          'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
         'genericItems.fields.categoriesSearch': 'Kategorien suchen',
         'genericItems.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'genericItems.fields.contacts': 'Kontakte',

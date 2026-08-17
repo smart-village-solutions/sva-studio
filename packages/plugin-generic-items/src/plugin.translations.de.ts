@@ -45,7 +45,7 @@ export const genericItemsTranslationsDe = {
       body: 'Inhalt',
       categoryName: 'Primärkategorie',
       categories: 'Kategorien',
-      categoriesHelp: 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+      categoriesHelp: 'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
       categoriesSearch: 'Kategorien suchen',
       categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
       categoriesEmpty: 'Keine passenden Kategorien gefunden.',

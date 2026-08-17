@@ -421,7 +421,8 @@ describe('News editor pages', () => {
         'news.targeting.globalConfirm.loadError':
           'Die Abholorte konnten nicht geladen werden. Push-Benachrichtigung wirklich an alle Geräte senden?',
         'news.fields.categories': 'Kategorien',
-        'news.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'news.fields.categoriesHelp':
+          'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
         'news.fields.categoriesSearch': 'Kategorien suchen',
         'news.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'news.fields.sourceUrl': 'Quell-URL',

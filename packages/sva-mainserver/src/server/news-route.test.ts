@@ -978,6 +978,48 @@ describe('dispatchSvaMainserverNewsRequest', () => {
     );
   });
 
+  it.each([
+    ['without content blocks', undefined],
+    ['with null content blocks', null],
+    ['with an empty content block list', []],
+    [
+      'with a content block without visible body text',
+      [{ title: 'Nur Struktur', body: '<p><br></p>' }],
+    ],
+  ])('accepts news %s', async (_description, contentBlocks) => {
+    state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
+    state.validateCsrf.mockReturnValue(null);
+    state.authorizeContentPrimitiveForUser.mockResolvedValue({
+      ok: true,
+      actor: { instanceId: 'de-musterhausen', keycloakSubject: 'subject-1' },
+      permissions: [],
+    });
+    state.updateSvaMainserverNews.mockResolvedValue({ id: 'news-1' });
+
+    const body = {
+      title: 'Nachricht ohne Inhalt',
+      publishedAt: '2026-04-14T09:30:00.000Z',
+      ...(contentBlocks !== undefined ? { contentBlocks } : {}),
+    };
+    const response = await dispatchSvaMainserverNewsRequest(
+      createRequest('https://studio.test/api/v1/mainserver/news/news-1', {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      })
+    );
+
+    expect(response?.status).toBe(200);
+    expect(state.updateSvaMainserverNews).toHaveBeenCalledTimes(1);
+    const updateInput = state.updateSvaMainserverNews.mock.calls[0]?.[0] as {
+      news: Record<string, unknown>;
+    };
+    if (contentBlocks === undefined || contentBlocks === null) {
+      expect(updateInput.news).not.toHaveProperty('contentBlocks');
+    } else {
+      expect(updateInput.news.contentBlocks).toEqual(contentBlocks);
+    }
+  });
+
   it('rejects invalid full-model shapes before GraphQL', async () => {
     state.withAuthenticatedUser.mockImplementation((_request, handler) => handler(ctx));
     state.validateCsrf.mockReturnValue(null);
@@ -1001,11 +1043,8 @@ describe('dispatchSvaMainserverNewsRequest', () => {
       { ...updateNewsInput, address: 'Markt 1' },
       { ...updateNewsInput, address: { geoLocation: '52,13' } },
       { ...updateNewsInput, address: { geoLocation: { latitude: 100, longitude: 13 } } },
-      { ...updateNewsInput, contentBlocks: undefined },
       { ...updateNewsInput, contentBlocks: 'Body' },
-      { ...updateNewsInput, contentBlocks: [] },
       { ...updateNewsInput, contentBlocks: [null] },
-      { ...updateNewsInput, contentBlocks: [{ body: '<p><br></p>' }] },
       { ...updateNewsInput, contentBlocks: [{ body: 'x'.repeat(50_001) }] },
       { ...updateNewsInput, contentBlocks: [{ mediaContents: 'Bild' }] },
       { ...updateNewsInput, contentBlocks: [{ mediaContents: [null] }] },

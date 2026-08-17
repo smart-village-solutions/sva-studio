@@ -278,6 +278,22 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('normalizes the admin base URL and rejects blank configuration', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '  https://keycloak.example  ');
+    vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'master');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'studio');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'secret-from-env');
+
+    const { getKeycloakAdminClientConfigFromEnv } = await import('./core.js');
+
+    expect(getKeycloakAdminClientConfigFromEnv().baseUrl).toBe('https://keycloak.example');
+
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '   ');
+    expect(() => getKeycloakAdminClientConfigFromEnv()).toThrow(
+      'Missing required env: KEYCLOAK_ADMIN_BASE_URL'
+    );
+  });
+
   it('builds tenant-admin config for the tenant realm without using platform credentials', async () => {
     vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://keycloak.example');
     vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'platform');

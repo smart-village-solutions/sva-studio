@@ -1717,7 +1717,7 @@ const requireProvisionerEnvForLocalKeycloak = (key: 'BASE_URL' | 'REALM' | 'CLIE
 };
 
 export const getKeycloakAdminClientConfigFromEnv = (realm = requireEnv('KEYCLOAK_ADMIN_REALM')): KeycloakAdminClientConfig => ({
-  baseUrl: requireEnv('KEYCLOAK_ADMIN_BASE_URL'),
+  baseUrl: requireTrimmedEnv('KEYCLOAK_ADMIN_BASE_URL'),
   realm,
   adminRealm: requireEnv('KEYCLOAK_ADMIN_REALM'),
   clientId: requireEnv('KEYCLOAK_ADMIN_CLIENT_ID'),

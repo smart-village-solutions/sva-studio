@@ -3,6 +3,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-li
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  createLocalStudioMediaPickerAsset,
   StudioMediaPickerOverlay,
   type StudioMediaPickerAssetDetail,
   useStudioMediaPickerOverlay,
@@ -344,6 +345,32 @@ describe('useStudioMediaPickerOverlay', () => {
         previewUrl: 'https://cdn.example.test/uploaded.jpg',
       })
     );
+  });
+
+  it('revokes an unaccepted local preview exactly once when the overlay closes', async () => {
+    const createObjectUrl = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:local-close');
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const { result, unmount } = renderHook(() =>
+      useStudioMediaPickerOverlay({
+        onAccept: vi.fn(),
+        isSupportedUploadFile: () => true,
+        createLocalAsset: createLocalStudioMediaPickerAsset,
+        loadAsset: vi.fn(),
+        saveAssetMetadata: vi.fn(),
+      })
+    );
+
+    await act(async () => {
+      await result.current.uploadFile(new File(['binary'], 'hero.jpg', { type: 'image/jpeg' }));
+    });
+    act(() => result.current.close());
+    unmount();
+
+    expect(createObjectUrl).toHaveBeenCalledOnce();
+    expect(revokeObjectUrl).toHaveBeenCalledOnce();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:local-close');
+    createObjectUrl.mockRestore();
+    revokeObjectUrl.mockRestore();
   });
 
   it('rejects unsupported files before starting the upload', async () => {

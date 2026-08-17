@@ -351,9 +351,11 @@ Plugins mit Host-Medienreferenzen deklarieren Rollen, Medientypen und optional P
 
 - Ein typsicherer Adapter übersetzt das Fachmodell in `ContentMediaUsage` und zurück. Nicht im gemeinsamen Block bearbeitete sowie unbekannte Felder müssen den Roundtrip unverändert überstehen.
 - `uiId` bleibt bei Umsortierung stabil; `assetId` ist optional. Manuelle URLs erzeugen keine erfundene Assetreferenz.
-- `persistentUrl` ist die fachlich speicherbare HTTPS-URL, `previewUrl` bleibt transient. Presigned oder ablaufende URLs dürfen nicht persistiert werden.
+- `persistentUrl` ist die fachlich speicherbare HTTPS-URL, `previewUrl` bleibt transient. Presigned, `blob:`- oder ablaufende URLs dürfen nicht persistiert werden.
 - Die gemeinsame Rolle lautet `gallery_item`; `sortOrder` wird nach jeder Änderung lückenlos aus der sichtbaren Reihenfolge abgeleitet.
-- Zuerst wird der Fachinhalt gespeichert, danach werden Referenzen für dessen stabile `targetId` ersetzt. Ein Retry nach Teilfehler wiederholt nur den Referenzschritt.
+- Neu ausgewählte Dateien werden als `localDraft` in `ContentMediaUsage` gehalten. Das Plugin darf bei Auswahl weder `uploadHostMediaFile` aufrufen noch ein technisches Asset erfinden.
+- Beim Speichern übergibt das Plugin `contentMediaUsagesToLocalDrafts(...)` an `saveContentWithHostMediaReferences(...)` und baut seinen Fachpayload im `saveContent(draftResolutions)`-Callback mit `resolveContentMediaUsageDrafts(...)` neu. Nur so gelangen finale HTTPS-URLs in den Fachvertrag.
+- Ein Retry nach bestätigtem Fach-Write wiederholt nur Markierung und Commit der Content-Save-Operation. Plugins implementieren weder eigenen Cleanup noch einen Aufruf von `media.delete`.
 - Die UI zeigt fehlende, zusätzliche oder nicht auflösbare Referenzen an, verändert sie beim Laden aber nicht stillschweigend.
 
 Beispielhaft verwendet:

@@ -46,7 +46,9 @@ gleichzeitig beeinflussen.
 - Asset-Metadaten und Inhaltsmetadaten besitzen getrennte Ownership: Eine Übernahme erzeugt einen Snapshot; spätere Asset-Änderungen überschreiben redaktionell abweichende Felder nur nach expliziter feldweiser Auswahl.
 - `previewUrl` ist ausschließlich transient. Fachmodelle dürfen nur eine nachweislich persistierbare HTTPS-Delivery-URL speichern; URLs mit Ablauf- oder Signaturparametern werden fail-closed abgewiesen.
 - Medienaktionen werden abgestuft: Auswahl benötigt `media.read` und `media.reference.manage`, Upload zusätzlich `media.create`, Asset-Metadatenänderung `media.update`. Ohne `media.update` bleibt der Review lesbar und übernehmbar.
-- Mainserver-Snapshot und Hostreferenz bilden eine kontrollierte Cross-System-Konsistenz: Snapshot zuerst, idempotentes Referenz-Replacement danach, sichtbarer Teilfehler und isolierter Retry.
+- Mainserver-Snapshot und Hostreferenz bilden eine kontrollierte Cross-System-Konsistenz: Neue Dateien bleiben bis zur Save-Aktion lokale Entwürfe, werden dann als unsichtbare `provisional`-Assets hochgeladen und erst nach bestätigtem Fach-Write gemeinsam mit dem Referenz-Replacement aktiviert.
+- Content-Save-Operationen sind an Instanz und Actor gebunden. Sie benötigen `media.create` und `media.reference.manage`, nicht jedoch `media.delete`; der Bibliotheksupload bleibt ein eigener unmittelbarer Flow.
+- Ein eindeutiger Fachfehler erlaubt kontrolliertes Abandon. Ein unklarer Netzwerk-/Upstream-Ausgang darf keine möglicherweise bereits referenzierte Datei löschen; Commit-Retry wiederholt ausschließlich Hostschritte nach dem Fach-Write.
 - Upload, Metadatenänderung, Bildbearbeitung, Delivery und Löschblockierung werden auditierbar verarbeitet.
 - Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
 - i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.

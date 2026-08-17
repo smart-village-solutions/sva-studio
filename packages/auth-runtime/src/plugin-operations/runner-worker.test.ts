@@ -53,7 +53,8 @@ describe('plugin operation runner worker', () => {
 
   it('starts the worker, clamps concurrency, queues jobs, and stops cleanly', async () => {
     process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY = '99';
-    const { ensureStudioJobWorkerStarted, queueStudioJob, stopStudioJobWorker } = await import('./runner-worker.js');
+    const { ensureStudioJobWorkerStarted, queueStudioJob, stopStudioJobWorker } =
+      await import('./runner-worker.js');
 
     await ensureStudioJobWorkerStarted();
     await queueStudioJob({
@@ -61,6 +62,7 @@ describe('plugin operation runner worker', () => {
       jobId: 'job-1',
       queueName: 'plugin-operations',
       maxAttempts: 5,
+      runAt: new Date('2026-05-01T10:00:00.000Z'),
     });
     await stopStudioJobWorker();
 
@@ -83,6 +85,7 @@ describe('plugin operation runner worker', () => {
         queueName: 'plugin-operations',
         maxAttempts: 5,
         jobKey: 'studio-job:job-1',
+        runAt: new Date('2026-05-01T10:00:00.000Z'),
       }
     );
     expect(runner.stop).toHaveBeenCalledTimes(1);
@@ -133,9 +136,9 @@ describe('plugin operation runner worker', () => {
     vi.resetModules();
     state.resolvePool.mockReturnValue(null);
 
-    await expect((await import('./runner-worker.js')).ensureStudioJobWorkerStarted()).rejects.toThrow(
-      'studio_job_worker_database_unavailable'
-    );
+    await expect(
+      (await import('./runner-worker.js')).ensureStudioJobWorkerStarted()
+    ).rejects.toThrow('studio_job_worker_database_unavailable');
   });
 
   it('resets startup state and logs when worker startup fails without bootstrap recovery', async () => {

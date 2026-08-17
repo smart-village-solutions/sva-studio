@@ -1,5 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
-import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
 import type {
   GenericItemCockpitCardInput,
@@ -44,13 +44,21 @@ export const getCockpitCardDetail = (
 ) => client.getDetail(id, actingPrincipalType);
 export const createCockpitCard = (
   input: GenericItemCockpitCardInput,
-  actingPrincipalType: MainserverActingPrincipalType
-) => client.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+) =>
+  mutationOptions
+    ? client.create(input, actingPrincipalType, mutationOptions)
+    : client.create(input, actingPrincipalType);
 export const updateCockpitCard = (
   id: string,
   input: GenericItemCockpitCardInput,
-  actingPrincipalType: MainserverActingPrincipalType
-) => client.update(id, input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+) =>
+  mutationOptions
+    ? client.update(id, input, actingPrincipalType, mutationOptions)
+    : client.update(id, input, actingPrincipalType);
 export const deleteCockpitCard = (id: string, actingPrincipalType: MainserverActingPrincipalType) =>
   client.remove(id, actingPrincipalType);
 

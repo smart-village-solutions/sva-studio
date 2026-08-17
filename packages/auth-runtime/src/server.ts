@@ -92,6 +92,15 @@ export { resolveEffectivePermissions } from './iam-authorization/permission-stor
 export { withMediaRepository, withMediaService } from './iam-media/index.js';
 export { completeMediaUploadHandler } from './iam-media/core.js';
 export {
+  cleanupMediaContentSaveOperation,
+  mediaContentSaveRecoveryStudioJobRegistration,
+  scheduleMediaContentSaveRecovery,
+} from './iam-media/content-save-recovery.js';
+export {
+  markMediaContentSaveFromMainserverMutation,
+  type MarkMediaContentSaveFromMainserverResult,
+} from './iam-media/content-save-correlation.js';
+export {
   authorizeMediaPrimitiveForUser,
   type MediaPrimitiveAuthorizationResource,
   type MediaPrimitiveAuthorizationResult,

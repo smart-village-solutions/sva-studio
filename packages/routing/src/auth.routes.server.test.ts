@@ -277,6 +277,27 @@ const authServerMocks = vi.hoisted(() => {
     listMediaHandler: vi.fn(async () => response('listMediaHandler')),
     registerBucketMediaHandler: vi.fn(async () => response('registerBucketMediaHandler')),
     listMediaReferencesHandler: vi.fn(async () => response('listMediaReferencesHandler')),
+    createMediaContentSaveOperationHandler: vi.fn(async () =>
+      response('createMediaContentSaveOperationHandler')
+    ),
+    replaceMediaContentSaveOperationReferencesHandler: vi.fn(async () =>
+      response('replaceMediaContentSaveOperationReferencesHandler')
+    ),
+    markMediaContentSaveOperationContentSavedHandler: vi.fn(async () =>
+      response('markMediaContentSaveOperationContentSavedHandler')
+    ),
+    markMediaContentSaveOperationSavingContentHandler: vi.fn(async () =>
+      response('markMediaContentSaveOperationSavingContentHandler')
+    ),
+    markMediaContentSaveOperationOutcomeUnknownHandler: vi.fn(async () =>
+      response('markMediaContentSaveOperationOutcomeUnknownHandler')
+    ),
+    commitMediaContentSaveOperationHandler: vi.fn(async () =>
+      response('commitMediaContentSaveOperationHandler')
+    ),
+    abandonMediaContentSaveOperationHandler: vi.fn(async () =>
+      response('abandonMediaContentSaveOperationHandler')
+    ),
     initializeMediaUploadHandler: vi.fn(async () => response('initializeMediaUploadHandler')),
     completeMediaUploadHandler: vi.fn(async () => response('completeMediaUploadHandler')),
     getMediaHandler: vi.fn(async () => response('getMediaHandler')),

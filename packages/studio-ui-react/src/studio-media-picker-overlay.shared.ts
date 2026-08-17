@@ -31,6 +31,10 @@ export type StudioMediaPickerAssetDetail = StudioMediaPickerAssetSummary &
   Readonly<{
     metadata: StudioMediaPickerMetadataDraft;
     persistentUrl?: string | null;
+    localDraft?: Readonly<{
+      id: string;
+      file: File;
+    }>;
   }>;
 
 export type StudioMediaPickerOverlayLabels = Readonly<{

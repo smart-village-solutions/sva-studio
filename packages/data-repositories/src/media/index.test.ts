@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SqlExecutionResult, SqlExecutor, SqlStatement } from '../iam/repositories/types.js';
-import { createMediaRepository } from './index.js';
+import { createMediaRepository, mediaStatements } from './index.js';
 
 const assetRow = {
   id: 'asset-1',
@@ -73,7 +73,9 @@ const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unkn
   const statements: SqlStatement[] = [];
   const queue = [...queuedRows];
   const executor: SqlExecutor = {
-    async execute<TRow = Record<string, unknown>>(statement: SqlStatement): Promise<SqlExecutionResult<TRow>> {
+    async execute<TRow = Record<string, unknown>>(
+      statement: SqlStatement
+    ): Promise<SqlExecutionResult<TRow>> {
       statements.push(statement);
       const rows = queue.shift() ?? [];
       return {
@@ -106,8 +108,47 @@ describe('media repository', () => {
     });
 
     expect(statements[0]?.text.includes('INSERT INTO iam.media_assets')).toBe(true);
-    expect(statements[0]?.values.slice(0, 4)).toEqual(['asset-1', 'tenant-a', 'tenant-a/originals/asset-1.jpg', 'image']);
+    expect(statements[0]?.values.slice(0, 4)).toEqual([
+      'asset-1',
+      'tenant-a',
+      'tenant-a/originals/asset-1.jpg',
+      'image',
+    ]);
     expect(statements[0]?.values[9]).toBe(JSON.stringify({ title: 'Rathaus' }));
+    expect(statements[0]?.values[11]).toBe('active');
+  });
+
+  it('persists provisional ownership and keeps provisional assets out of library queries', async () => {
+    const { executor, statements } = createQueuedExecutor([[], []]);
+    const repository = createMediaRepository(executor);
+    await repository.upsertAsset({
+      id: 'asset-draft',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-draft.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 10,
+      visibility: 'public',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      lifecycleStatus: 'provisional',
+      provisionalOperationId: '00000000-0000-4000-8000-000000000001',
+      provisionalOwnerSubject: 'user-1',
+      provisionalDraftId: '00000000-0000-4000-8000-000000000002',
+      provisionalExpiresAt: '2026-08-18T00:00:00.000Z',
+      metadata: {},
+      technical: {},
+    });
+    await repository.listAssets({ instanceId: 'tenant-a' });
+
+    expect(statements[0]?.values.slice(11)).toEqual([
+      'provisional',
+      '00000000-0000-4000-8000-000000000001',
+      'user-1',
+      '00000000-0000-4000-8000-000000000002',
+      '2026-08-18T00:00:00.000Z',
+    ]);
+    expect(statements[1]?.text).toContain("lifecycle_status = 'active'");
   });
 
   it('maps asset lookups and filtered asset listings', async () => {
@@ -156,7 +197,9 @@ describe('media repository', () => {
     ]);
     const repository = createMediaRepository(executor);
 
-    await expect(repository.listAssets({ instanceId: 'tenant-a', search: '   ', visibility: '   ' })).resolves.toEqual([
+    await expect(
+      repository.listAssets({ instanceId: 'tenant-a', search: '   ', visibility: '   ' })
+    ).resolves.toEqual([
       {
         id: 'asset-1',
         instanceId: 'tenant-a',
@@ -225,7 +268,13 @@ describe('media repository', () => {
   });
 
   it('replaces target references and exposes usage impact', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [], [], [referenceRow], [referenceRow]]);
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [],
+      [],
+      [referenceRow],
+      [referenceRow],
+    ]);
     const repository = createMediaRepository(executor);
 
     await repository.replaceReferences({
@@ -286,7 +335,16 @@ describe('media repository', () => {
   });
 
   it('persists variants and upload sessions and reads storage usage', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [variantRow], [], [], [uploadSessionRow], [], [], [storageUsageRow]]);
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [variantRow],
+      [],
+      [],
+      [uploadSessionRow],
+      [],
+      [],
+      [storageUsageRow],
+    ]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertVariant('tenant-a', {
@@ -303,7 +361,12 @@ describe('media repository', () => {
 
     expect(statements[0]?.text.includes('INSERT INTO iam.media_variants')).toBe(true);
     expect(statements[0]?.text).toContain('ON CONFLICT (asset_id, variant_key) DO UPDATE');
-    expect(statements[0]?.values.slice(0, 4)).toEqual(['variant-1', 'tenant-a', 'asset-1', 'teaser-landscape']);
+    expect(statements[0]?.values.slice(0, 4)).toEqual([
+      'variant-1',
+      'tenant-a',
+      'asset-1',
+      'teaser-landscape',
+    ]);
 
     await expect(repository.listVariantsByAssetId('tenant-a', 'asset-1')).resolves.toEqual([
       {
@@ -338,7 +401,12 @@ describe('media repository', () => {
     });
 
     expect(statements[3]?.text.includes('INSERT INTO iam.media_upload_sessions')).toBe(true);
-    expect(statements[3]?.values.slice(0, 4)).toEqual(['upload-1', 'tenant-a', 'asset-1', 'tenant-a/uploads/upload-1.bin']);
+    expect(statements[3]?.values.slice(0, 4)).toEqual([
+      'upload-1',
+      'tenant-a',
+      'asset-1',
+      'tenant-a/uploads/upload-1.bin',
+    ]);
 
     await expect(repository.getUploadSessionById('tenant-a', 'upload-1')).resolves.toEqual({
       id: 'upload-1',
@@ -369,7 +437,9 @@ describe('media repository', () => {
     });
 
     expect(statements[6]?.text).toContain('VALUES ($1, $2, $3)');
-    expect(statements[6]?.text).toContain('GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0)');
+    expect(statements[6]?.text).toContain(
+      'GREATEST(iam.media_storage_usage.total_bytes + EXCLUDED.total_bytes, 0)'
+    );
     expect(statements[6]?.values).toEqual(['tenant-a', -512, -1]);
 
     await expect(repository.getStorageUsage('tenant-a')).resolves.toEqual({
@@ -451,7 +521,12 @@ describe('media repository', () => {
   });
 
   it('persists storage quotas and evaluates hard quota violations against current usage', async () => {
-    const { executor, statements } = createQueuedExecutor([[], [storageQuotaRow], [storageQuotaRow], [storageUsageRow]]);
+    const { executor, statements } = createQueuedExecutor([
+      [],
+      [storageQuotaRow],
+      [storageQuotaRow],
+      [storageUsageRow],
+    ]);
     const repository = createMediaRepository(executor);
 
     await repository.upsertStorageQuota({
@@ -510,5 +585,64 @@ describe('media repository', () => {
 
     expect(statements[0]?.text.includes('DELETE FROM iam.media_assets')).toBe(true);
     expect(statements[0]?.values).toEqual(['tenant-a', 'asset-1']);
+  });
+
+  it('makes content-save creation and draft upload lookup idempotent', () => {
+    const createStatement = mediaStatements.createContentSaveOperation({
+      id: '00000000-0000-4000-8000-000000000001',
+      instanceId: 'tenant-a',
+      actorSubject: 'actor-1',
+      targetType: 'news.article',
+      status: 'preparing',
+      expiresAt: '2026-08-18T10:00:00.000Z',
+    });
+    const draftLookup = mediaStatements.getProvisionalAssetByDraft({
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+      actorSubject: 'actor-1',
+      draftId: '00000000-0000-4000-8000-000000000002',
+    });
+
+    expect(createStatement.text).toContain('ON CONFLICT (id) DO UPDATE');
+    expect(createStatement.text).toContain('actor_subject = EXCLUDED.actor_subject');
+    expect(draftLookup.text).toContain("lifecycle_status = 'provisional'");
+    expect(draftLookup.text).toContain('provisional_owner_subject = $4');
+    expect(draftLookup.values).toEqual([
+      'tenant-a',
+      '00000000-0000-4000-8000-000000000001',
+      '00000000-0000-4000-8000-000000000002',
+      'actor-1',
+    ]);
+  });
+
+  it('claims only expired safe states and preserves unknown or confirmed outcomes', () => {
+    const statement = mediaStatements.claimContentSaveOperationRecovery({
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+      leaseOwner: 'job-1',
+      leaseExpiresAt: '2026-08-18T10:05:00.000Z',
+      now: '2026-08-18T10:00:00.000Z',
+    });
+
+    expect(statement.text).toContain("status IN ('preparing', 'uploading', 'abandon_pending')");
+    expect(statement.text).toContain("status = 'saving_content'");
+    expect(statement.text).toContain("status = 'reconciliation_required'");
+    expect(statement.text).not.toContain("status IN ('content_saved'");
+    expect(statement.text).toContain('lease_expires_at <= $5::timestamptz');
+  });
+
+  it('finalizes cleanup and quota correction in one actor-bound transaction statement', () => {
+    const statement = mediaStatements.finalizeContentSaveOperationCleanup({
+      instanceId: 'tenant-a',
+      operationId: '00000000-0000-4000-8000-000000000001',
+      actorSubject: 'actor-1',
+    });
+
+    expect(statement.text).toContain('FOR UPDATE');
+    expect(statement.text).toContain('actor_subject = $3');
+    expect(statement.text).toContain('DELETE FROM iam.media_assets');
+    expect(statement.text).toContain('DELETE FROM iam.media_content_save_operation_references');
+    expect(statement.text).toContain('UPDATE iam.media_storage_usage');
+    expect(statement.text).toContain('GREATEST(0, usage.total_bytes');
   });
 });

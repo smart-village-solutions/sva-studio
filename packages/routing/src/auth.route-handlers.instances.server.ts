@@ -32,13 +32,17 @@ export const instanceAuthHandlerMap = {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.planInstanceKeycloakProvisioning),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/execute': {
-    POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.executeInstanceKeycloakProvisioning),
+    POST: routeHandler(
+      authRuntimeRoutes.instanceRegistryHandlers.executeInstanceKeycloakProvisioning
+    ),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/rotate-secret': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.rotateInstanceSecret),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/runs/$runId': {
-    GET: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun),
+    GET: routeHandler(
+      authRuntimeRoutes.instanceRegistryHandlers.getInstanceKeycloakProvisioningRun
+    ),
   },
   '/api/v1/iam/instances/$instanceId/keycloak/reconcile': {
     POST: routeHandler(authRuntimeRoutes.instanceRegistryHandlers.reconcileInstanceKeycloak),
@@ -92,6 +96,27 @@ export const instanceAuthHandlerMap = {
   '/api/v1/iam/media/references': {
     GET: routeHandler(authRuntimeRoutes.listMediaReferencesHandler),
     PUT: routeHandler(authRuntimeRoutes.replaceMediaReferencesHandler),
+  },
+  '/api/v1/iam/media/content-save-operations': {
+    POST: routeHandler(authRuntimeRoutes.createMediaContentSaveOperationHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/references': {
+    PUT: routeHandler(authRuntimeRoutes.replaceMediaContentSaveOperationReferencesHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/content-saved': {
+    POST: routeHandler(authRuntimeRoutes.markMediaContentSaveOperationContentSavedHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/saving-content': {
+    POST: routeHandler(authRuntimeRoutes.markMediaContentSaveOperationSavingContentHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/outcome-unknown': {
+    POST: routeHandler(authRuntimeRoutes.markMediaContentSaveOperationOutcomeUnknownHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/commit': {
+    POST: routeHandler(authRuntimeRoutes.commitMediaContentSaveOperationHandler),
+  },
+  '/api/v1/iam/media/content-save-operations/$operationId/abandon': {
+    POST: routeHandler(authRuntimeRoutes.abandonMediaContentSaveOperationHandler),
   },
   '/api/v1/iam/media/upload-sessions': {
     POST: routeHandler(authRuntimeRoutes.initializeMediaUploadHandler),

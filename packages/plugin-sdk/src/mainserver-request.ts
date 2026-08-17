@@ -15,6 +15,7 @@ export const MAINSERVER_CONTRACT_VERSION_HEADER = 'X-SVA-Mainserver-Contract-Ver
 export const MAINSERVER_CONTRACT_VERSION = '2';
 export const MAINSERVER_CONTEXT_BINDING_HEADER = 'X-SVA-Context-Binding';
 export const MAINSERVER_OPERATION_ID_HEADER = 'X-SVA-Operation-Id';
+export const CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER = 'X-SVA-Content-Media-Save-Operation-Id';
 
 export type MainserverResponseMeta = Readonly<{
   url: string;
@@ -84,7 +85,7 @@ export const createMainserverJsonRequestHeaders = (headers?: HeadersInit): Heade
 export const createMainserverMutationHeaders = (
   actingPrincipalType: MainserverActingPrincipalType,
   headers?: HeadersInit,
-  operationId = globalThis.crypto.randomUUID()
+  operationId: string = globalThis.crypto.randomUUID()
 ): Headers => {
   const result = createMainserverJsonRequestHeaders(headers);
   result.set(MAINSERVER_ACTING_PRINCIPAL_HEADER, actingPrincipalType);
@@ -234,6 +235,13 @@ const assertMainserverResponseOk = async <TError extends Error>(
   }
   const { code, message, permissionDenial } = await parseMainserverErrorResponse(response, signal);
   const error = resolveMainserverErrorFactory(errorFactory)(code, message, permissionDenial);
+  if (!('httpStatus' in error)) {
+    Object.defineProperty(error, 'httpStatus', {
+      configurable: true,
+      enumerable: false,
+      value: response.status,
+    });
+  }
   if (permissionDenial && !('permissionDenial' in error)) {
     Object.defineProperty(error, 'permissionDenial', {
       configurable: true,

@@ -3,6 +3,7 @@ import {
   createMainserverJsonRequestHeaders,
   requestMainserverJson,
   type MainserverActingPrincipalType,
+  type MainserverMutationOptions,
 } from '@sva/plugin-sdk';
 
 import { mapNewsDetailFormValuesToMutation } from './news.detail-form.js';
@@ -102,14 +103,22 @@ export const getNewsDetail = async (
 
 export const createNews = async (
   input: NewsFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<NewsContentItem> => newsClient.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<NewsContentItem> =>
+  mutationOptions
+    ? newsClient.create(input, actingPrincipalType, mutationOptions)
+    : newsClient.create(input, actingPrincipalType);
 
 export const updateNews = async (
   contentId: string,
   input: NewsFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<NewsContentItem> => newsClient.update(contentId, input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<NewsContentItem> =>
+  mutationOptions
+    ? newsClient.update(contentId, input, actingPrincipalType, mutationOptions)
+    : newsClient.update(contentId, input, actingPrincipalType);
 
 export const deleteNews = async (
   contentId: string,
@@ -148,6 +157,7 @@ export const saveNewsEditorItem = async (
     readonly actingPrincipalType?: MainserverActingPrincipalType;
     readonly canWriteWasteTargets?: boolean;
     readonly now?: () => string;
+    readonly mutationOptions?: MainserverMutationOptions;
   },
   dependencies?: {
     readonly createNews?: typeof createNews;
@@ -167,9 +177,19 @@ export const saveNewsEditorItem = async (
     ),
     visible,
   } satisfies NewsFormInput;
+  const actingPrincipalType = input.actingPrincipalType ?? 'user';
   const saved = input.contentId
-    ? await operations.updateNews(input.contentId, mutation, input.actingPrincipalType ?? 'user')
-    : await operations.createNews(mutation, input.actingPrincipalType ?? 'user');
+    ? input.mutationOptions
+      ? await operations.updateNews(
+          input.contentId,
+          mutation,
+          actingPrincipalType,
+          input.mutationOptions
+        )
+      : await operations.updateNews(input.contentId, mutation, actingPrincipalType)
+    : input.mutationOptions
+      ? await operations.createNews(mutation, actingPrincipalType, input.mutationOptions)
+      : await operations.createNews(mutation, actingPrincipalType);
 
   return {
     ...saved,

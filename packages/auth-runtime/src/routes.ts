@@ -65,6 +65,13 @@ export type AuthRoutePath =
   | '/api/v1/iam/media'
   | '/api/v1/iam/media/register'
   | '/api/v1/iam/media/references'
+  | '/api/v1/iam/media/content-save-operations'
+  | '/api/v1/iam/media/content-save-operations/$operationId/references'
+  | '/api/v1/iam/media/content-save-operations/$operationId/content-saved'
+  | '/api/v1/iam/media/content-save-operations/$operationId/saving-content'
+  | '/api/v1/iam/media/content-save-operations/$operationId/outcome-unknown'
+  | '/api/v1/iam/media/content-save-operations/$operationId/commit'
+  | '/api/v1/iam/media/content-save-operations/$operationId/abandon'
   | '/api/v1/iam/media/upload-sessions'
   | '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete'
   | '/api/v1/iam/media/$assetId'
@@ -210,6 +217,13 @@ export const authRoutePaths = [
   '/api/v1/iam/media',
   '/api/v1/iam/media/register',
   '/api/v1/iam/media/references',
+  '/api/v1/iam/media/content-save-operations',
+  '/api/v1/iam/media/content-save-operations/$operationId/references',
+  '/api/v1/iam/media/content-save-operations/$operationId/content-saved',
+  '/api/v1/iam/media/content-save-operations/$operationId/saving-content',
+  '/api/v1/iam/media/content-save-operations/$operationId/outcome-unknown',
+  '/api/v1/iam/media/content-save-operations/$operationId/commit',
+  '/api/v1/iam/media/content-save-operations/$operationId/abandon',
   '/api/v1/iam/media/upload-sessions',
   '/api/v1/iam/media/upload-sessions/$uploadSessionId/complete',
   '/api/v1/iam/media/$assetId',

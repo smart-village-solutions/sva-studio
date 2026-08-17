@@ -7,6 +7,10 @@ import {
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
 } from './content-media-usage.js';
+import {
+  contentMediaUsagesToLocalDrafts,
+  resolveContentMediaUsageDrafts,
+} from './content-media-drafts.js';
 
 describe('content media usage', () => {
   afterEach(() => {
@@ -80,5 +84,43 @@ describe('content media usage', () => {
       role: 'gallery_item',
       sortOrder: 2,
     });
+  });
+
+  it('keeps local files out of references until the save operation resolves them', () => {
+    const file = new File(['image'], 'draft.jpg', { type: 'image/jpeg' });
+    const draft = {
+      ...createManualContentMediaUsage(),
+      uiId: 'draft-ui',
+      persistentUrl: '',
+      localDraft: { id: 'draft-1', file },
+    };
+
+    expect(contentMediaUsageToReference(draft)).toBeNull();
+    expect(contentMediaUsagesToLocalDrafts([draft])).toEqual([
+      {
+        draftId: 'draft-1',
+        file,
+        role: 'gallery_item',
+        sortOrder: 0,
+      },
+    ]);
+    expect(
+      resolveContentMediaUsageDrafts(
+        [draft],
+        [
+          {
+            draftId: 'draft-1',
+            assetId: 'asset-1',
+            persistentUrl: 'https://media.test/asset-1.jpg',
+          },
+        ]
+      )
+    ).toEqual([
+      expect.objectContaining({
+        assetId: 'asset-1',
+        persistentUrl: 'https://media.test/asset-1.jpg',
+        referenceStatus: 'pending',
+      }),
+    ]);
   });
 });

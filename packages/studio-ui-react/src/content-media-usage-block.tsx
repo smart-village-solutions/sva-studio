@@ -10,6 +10,7 @@ import type {
 import { ContentMediaUsageItem } from './content-media-usage-item.js';
 import {
   useContentMediaMetadataRefresh,
+  useContentMediaUsageObjectUrlCleanup,
   useContentMediaUsageListActions,
 } from './use-content-media-usage-block.js';
 
@@ -76,6 +77,7 @@ export type ContentMediaUsageBlockProps = Readonly<{
     update: (patch: ContentMediaUsagePatch) => void;
   }) => React.ReactNode;
   showHeader?: boolean;
+  disabled?: boolean;
 }>;
 
 type ContentMediaUsageItemsProps = Readonly<{
@@ -148,6 +150,7 @@ const ContentMediaUsageItems = ({
 );
 
 export const ContentMediaUsageBlock = ({
+  disabled = false,
   errors = {},
   labels,
   onAddManual,
@@ -160,6 +163,7 @@ export const ContentMediaUsageBlock = ({
   showHeader = true,
   usages,
 }: ContentMediaUsageBlockProps) => {
+  useContentMediaUsageObjectUrlCleanup(usages);
   const { add, announcement, move, remove, update } = useContentMediaUsageListActions({
     announcements: labels.announcements,
     onAddManual,
@@ -173,51 +177,52 @@ export const ContentMediaUsageBlock = ({
 
   return (
     <section
-      className="space-y-4"
       aria-labelledby={showHeader ? 'content-media-block-title' : undefined}
       aria-label={showHeader ? undefined : labels.title}
     >
-      <ContentMediaUsageBlockHeader labels={labels} showHeader={showHeader} />
-      <p className="sr-only" aria-live="polite">
-        {announcement}
-      </p>
-      {usages.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
-          {labels.empty}
+      <fieldset disabled={disabled} aria-busy={disabled} className="min-w-0 space-y-4 border-0 p-0">
+        <ContentMediaUsageBlockHeader labels={labels} showHeader={showHeader} />
+        <p className="sr-only" aria-live="polite">
+          {announcement}
         </p>
-      ) : null}
-      <ContentMediaUsageItems
-        usages={usages}
-        labels={labels}
-        supportedFields={supportedFields}
-        errors={errors}
-        canRefresh={Boolean(onLoadAssetSnapshot)}
-        refreshingUiId={refreshingUiId}
-        refreshErrorUiId={refreshErrorUiId}
-        renderAdditionalFields={renderAdditionalFields}
-        update={update}
-        move={move}
-        remove={remove}
-        refresh={refresh}
-      />
-      <div>
-        <Button id="content-media-add" type="button" onClick={add}>
-          {labels.actions.add}
-        </Button>
-      </div>
-      {diffState ? (
-        <ContentMediaMetadataDialog
-          asset={diffState.asset}
-          usage={diffState.usage}
+        {usages.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-4 py-8 text-sm text-muted-foreground">
+            {labels.empty}
+          </p>
+        ) : null}
+        <ContentMediaUsageItems
+          usages={usages}
           labels={labels}
           supportedFields={supportedFields}
-          onClose={() => setDiffState(null)}
-          onApply={(patch) => {
-            const index = usages.findIndex((usage) => usage.uiId === diffState.usage.uiId);
-            if (index >= 0) update(index, patch);
-          }}
+          errors={errors}
+          canRefresh={Boolean(onLoadAssetSnapshot)}
+          refreshingUiId={refreshingUiId}
+          refreshErrorUiId={refreshErrorUiId}
+          renderAdditionalFields={renderAdditionalFields}
+          update={update}
+          move={move}
+          remove={remove}
+          refresh={refresh}
         />
-      ) : null}
+        <div>
+          <Button id="content-media-add" type="button" onClick={add}>
+            {labels.actions.add}
+          </Button>
+        </div>
+        {diffState ? (
+          <ContentMediaMetadataDialog
+            asset={diffState.asset}
+            usage={diffState.usage}
+            labels={labels}
+            supportedFields={supportedFields}
+            onClose={() => setDiffState(null)}
+            onApply={(patch) => {
+              const index = usages.findIndex((usage) => usage.uiId === diffState.usage.uiId);
+              if (index >= 0) update(index, patch);
+            }}
+          />
+        ) : null}
+      </fieldset>
     </section>
   );
 };

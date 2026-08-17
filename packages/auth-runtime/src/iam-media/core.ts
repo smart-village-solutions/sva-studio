@@ -37,16 +37,56 @@ import {
   type MediaPrimitiveAuthorizationResult,
 } from './server-authorization.js';
 import { createMediaUploadProcessingService } from './processing.js';
+import { scheduleMediaContentSaveRecovery } from './content-save-recovery.js';
 import { mergeMediaListingPage } from './listing-merge.js';
 import type { MediaStorageObjectSummary } from './storage-port.js';
 import { z } from 'zod';
 
-const uploadInitializationSchema = z.object({
+const uploadInitializationSchema = z
+  .object({
+    instanceId: z.string().trim().min(1).optional(),
+    mediaType: z.literal('image').default('image'),
+    mimeType: z.string().trim().min(1),
+    byteSize: z.number().int().positive(),
+    visibility: z.enum(['public', 'protected']).default('public'),
+    uploadContext: z.enum(['library', 'content-save']).default('library'),
+    contentSaveOperationId: z.string().uuid().optional(),
+    draftId: z.string().uuid().optional(),
+  })
+  .refine(
+    ({ uploadContext, contentSaveOperationId, draftId }) =>
+      uploadContext === 'content-save'
+        ? Boolean(contentSaveOperationId) && Boolean(draftId)
+        : !contentSaveOperationId && !draftId,
+    'Content-Save-Uploads benötigen Operations- und Draft-ID; Library-Uploads dürfen sie nicht enthalten.'
+  );
+
+const contentSaveOperationCreateSchema = z.object({
+  operationId: z.string().uuid(),
   instanceId: z.string().trim().min(1).optional(),
-  mediaType: z.literal('image').default('image'),
-  mimeType: z.string().trim().min(1),
-  byteSize: z.number().int().positive(),
-  visibility: z.enum(['public', 'protected']).default('public'),
+  targetType: z.string().trim().min(1).max(128),
+});
+
+const contentSaveOperationReferencesSchema = z.object({
+  instanceId: z.string().trim().min(1).optional(),
+  references: z.array(
+    z.object({
+      id: z.string().uuid().optional(),
+      assetId: z.string().uuid(),
+      role: z.string().trim().min(1),
+      sortOrder: z.number().int().nonnegative().optional(),
+    })
+  ),
+});
+
+const contentSaveOperationContentSavedSchema = z.object({
+  instanceId: z.string().trim().min(1).optional(),
+  targetId: z.string().trim().min(1),
+});
+
+const contentSaveOperationCommandSchema = z.object({
+  instanceId: z.string().trim().min(1).optional(),
+  errorCode: z.string().trim().min(1).max(128).optional(),
 });
 
 const registerBucketMediaSchema = z.object({
@@ -157,6 +197,13 @@ const readUploadSessionId = (request: Request): string | Response => {
     : createApiError(400, 'invalid_request', 'Upload-Session-ID fehlt im Pfad.');
 };
 
+const readContentSaveOperationId = (request: Request): string | Response => {
+  const operationId = readPathSegment(request, 5);
+  return operationId
+    ? operationId
+    : createApiError(400, 'invalid_request', 'Content-Save-Operation-ID fehlt im Pfad.');
+};
+
 const getRequestId = (): string | undefined => getWorkspaceContext().requestId;
 
 type ScopedMediaInstanceResult =
@@ -237,6 +284,7 @@ type MediaHttpHandlerDeps = {
   readonly createId: () => string;
   readonly now: () => string;
   readonly emitAuditEvent: typeof emitAuthAuditEvent;
+  readonly scheduleContentSaveRecovery?: typeof scheduleMediaContentSaveRecovery;
 };
 
 type MediaAuditResult = 'success' | 'failure' | 'denied';
@@ -303,6 +351,12 @@ const asMediaAsset = (
     processingStatus: asMediaProcessingStatus(asset.processingStatus),
   };
 };
+
+const canAccessMediaAsset = (
+  asset: NonNullable<Awaited<ReturnType<MediaService['getAssetById']>>>,
+  actorSubject: string
+): boolean =>
+  asset.lifecycleStatus !== 'provisional' || asset.provisionalOwnerSubject === actorSubject;
 
 const asMediaReferences = (
   references: readonly Awaited<ReturnType<MediaService['listReferencesByAssetId']>>[number][]
@@ -682,7 +736,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const asset = await deps.withMediaService(instanceId, (service) =>
       service.getAssetById(instanceId, assetId)
     );
-    if (!asset) {
+    if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
       await emitMediaAuditEvent({
         deps,
         ctx,
@@ -779,6 +833,118 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
       return mapAuthorizationFailure(authorization);
     }
 
+    const contentSaveOperationId = parsed.data.contentSaveOperationId;
+    if (contentSaveOperationId) {
+      const draftId = parsed.data.draftId;
+      if (!draftId) {
+        return createApiError(
+          400,
+          'invalid_request',
+          'Eine Content-Speicheroperation benötigt eine Draft-ID.',
+          getRequestId()
+        );
+      }
+      const operation = await deps.withMediaService(instanceId, (service) =>
+        service.getContentSaveOperation({
+          instanceId,
+          operationId: contentSaveOperationId,
+          actorSubject: ctx.user.id,
+        })
+      );
+      if (!operation || !['preparing', 'uploading'].includes(operation.status)) {
+        return createApiError(
+          409,
+          'conflict',
+          'Die Content-Speicheroperation ist nicht mehr für Uploads geöffnet.',
+          getRequestId(),
+          { reason: 'content_save_operation_not_open' }
+        );
+      }
+
+      const existingAsset = await deps.withMediaService(instanceId, (service) =>
+        service.getProvisionalAssetByDraft({
+          instanceId,
+          operationId: contentSaveOperationId,
+          draftId,
+          actorSubject: ctx.user.id,
+        })
+      );
+      if (existingAsset) {
+        if (
+          existingAsset.mimeType !== parsed.data.mimeType ||
+          existingAsset.byteSize !== parsed.data.byteSize ||
+          existingAsset.visibility !== parsed.data.visibility ||
+          existingAsset.mediaType !== parsed.data.mediaType
+        ) {
+          return createApiError(
+            409,
+            'conflict',
+            'Die Draft-ID wurde bereits für eine andere Datei verwendet.',
+            getRequestId(),
+            { reason: 'content_save_draft_reuse' }
+          );
+        }
+        const existingSession = await deps.withMediaService(instanceId, (service) =>
+          service.getUploadSessionByAssetId(instanceId, existingAsset.id)
+        );
+        if (!existingSession) {
+          return createApiError(
+            409,
+            'conflict',
+            'Die Upload-Session des Medienentwurfs fehlt.',
+            getRequestId(),
+            { reason: 'content_save_upload_session_missing' }
+          );
+        }
+
+        return withMediaStorageGuard(
+          async () => {
+            const storagePort = await resolveMediaStoragePort(deps, instanceId);
+            const upload = await storagePort.prepareUpload({
+              instanceId,
+              assetId: existingAsset.id,
+              uploadSessionId: existingSession.id,
+              mediaType: parsed.data.mediaType,
+              mimeType: parsed.data.mimeType,
+              byteSize: parsed.data.byteSize,
+            });
+            await deps.withMediaService(instanceId, (service) =>
+              service.upsertUploadSession({
+                ...existingSession,
+                storageKey: upload.storageKey,
+                status: 'pending',
+                expiresAt: upload.expiresAt,
+              })
+            );
+            return jsonResponse(
+              200,
+              asApiItem(
+                {
+                  assetId: existingAsset.id,
+                  uploadSessionId: existingSession.id,
+                  uploadUrl: upload.uploadUrl,
+                  method: upload.method,
+                  headers: upload.headers ?? {},
+                  expiresAt: upload.expiresAt,
+                  status: 'pending',
+                  initializedAt: deps.now(),
+                },
+                getRequestId()
+              )
+            );
+          },
+          {
+            deps,
+            ctx,
+            instanceId,
+            actionId: 'media.uploadInitializeRetry',
+            resourceType: 'media_asset',
+            resourceId: existingAsset.id,
+          }
+        );
+      }
+    }
+
     const quotaCheck = await deps.withMediaService(instanceId, (service) =>
       service.wouldExceedStorageQuota(
         instanceId,
@@ -833,6 +999,13 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
             visibility: parsed.data.visibility,
             uploadStatus: 'pending',
             processingStatus: 'pending',
+            lifecycleStatus: contentSaveOperationId ? 'provisional' : 'active',
+            provisionalOperationId: contentSaveOperationId,
+            provisionalOwnerSubject: contentSaveOperationId ? ctx.user.id : undefined,
+            provisionalDraftId: parsed.data.draftId,
+            provisionalExpiresAt: contentSaveOperationId
+              ? new Date(Date.parse(deps.now()) + 24 * 60 * 60 * 1000).toISOString()
+              : undefined,
             metadata: {},
             technical: {},
           });
@@ -1075,7 +1248,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     const asset = await deps.withMediaService(instanceId, (service) =>
       service.getAssetById(instanceId, assetId)
     );
-    if (!asset) {
+    if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
       await emitMediaAuditEvent({
         deps,
         ctx,
@@ -1150,16 +1323,23 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     return withMediaStorageGuard(
       async () => {
         const storagePort = await resolveMediaStoragePort(deps, instanceId);
-        const result = await deps.withMediaService(instanceId, async (service) =>
-          createMediaUploadProcessingService({
+        const result = await deps.withMediaService(instanceId, async (service) => {
+          const uploadSession = await service.getUploadSessionById(instanceId, uploadSessionId);
+          if (uploadSession) {
+            const asset = await service.getAssetById(instanceId, uploadSession.assetId);
+            if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
+              return { ok: false, status: 404, errorCode: 'asset_not_found' } as const;
+            }
+          }
+          return createMediaUploadProcessingService({
             service,
             storagePort,
             createId: deps.createId,
           }).completeUpload({
             instanceId,
             uploadSessionId,
-          })
-        );
+          });
+        });
 
         if (!result.ok) {
           await emitMediaAuditEvent({
@@ -1196,7 +1376,10 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
           deps,
           ctx,
           instanceId,
-          actionId: 'media.uploadComplete',
+          actionId:
+            result.asset.lifecycleStatus === 'provisional'
+              ? 'media.contentDraftUploaded'
+              : 'media.uploadComplete',
           result: 'success',
           reasonCode: 'variants_generated',
           resourceType: 'media_asset',
@@ -1222,6 +1405,472 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         actionId: 'media.uploadComplete',
         resourceType: 'media_upload_session',
         resourceId: uploadSessionId,
+      }
+    );
+  },
+
+  async createContentSaveOperation(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationCreateSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const referenceAuthorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: parsed.data.targetType },
+    });
+    if (!referenceAuthorization.ok) {
+      return mapAuthorizationFailure(referenceAuthorization);
+    }
+    const expiresAt = new Date(Date.parse(deps.now()) + 24 * 60 * 60 * 1000).toISOString();
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.createContentSaveOperation({
+        id: parsed.data.operationId,
+        instanceId,
+        actorSubject: ctx.user.id,
+        targetType: parsed.data.targetType,
+        status: 'preparing',
+        expiresAt,
+      })
+    );
+    if (deps.scheduleContentSaveRecovery) {
+      try {
+        await deps.scheduleContentSaveRecovery({
+          instanceId,
+          operationId: operation.id,
+          actorSubject: ctx.user.id,
+          expiresAt: operation.expiresAt,
+          requestId: getRequestId(),
+        });
+      } catch {
+        await deps.withMediaService(instanceId, async (service) => {
+          await service.markContentSaveOperationAbandonPending({
+            instanceId,
+            operationId: operation.id,
+            actorSubject: ctx.user.id,
+            errorCode: 'recovery_schedule_failed',
+          });
+          await service.finalizeContentSaveOperationCleanup({
+            instanceId,
+            operationId: operation.id,
+            actorSubject: ctx.user.id,
+          });
+        });
+        return createApiError(
+          503,
+          'internal_error',
+          'Die Medien-Speicheroperation konnte nicht sicher vorbereitet werden.',
+          getRequestId(),
+          { reason: 'content_save_recovery_unavailable' }
+        );
+      }
+    }
+    await emitMediaAuditEvent({
+      deps,
+      ctx,
+      instanceId,
+      actionId: 'media.contentDraftStarted',
+      result: 'success',
+      resourceType: 'media_content_save_operation',
+      resourceId: operation.id,
+    });
+    return jsonResponse(201, asApiItem(operation, getRequestId()));
+  },
+
+  async replaceContentSaveOperationReferences(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationReferencesSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.getContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (!operation) {
+      return createApiError(
+        404,
+        'not_found',
+        'Content-Speicheroperation nicht gefunden.',
+        getRequestId()
+      );
+    }
+    const authorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: operation.targetType, targetId: operation.targetId },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const references = parsed.data.references.map((reference) => ({
+      ...reference,
+      id: reference.id ?? deps.createId(),
+    }));
+    const successful = await deps.withMediaService(instanceId, (service) =>
+      service.replaceContentSaveOperationReferences({
+        instanceId,
+        operationId,
+        actorSubject: ctx.user.id,
+        references,
+      })
+    );
+    if (!successful) {
+      return createApiError(
+        409,
+        'conflict',
+        'Die Referenzen konnten der Speicheroperation nicht zugeordnet werden.',
+        getRequestId(),
+        { reason: 'content_save_operation_reference_rejected' }
+      );
+    }
+    return jsonResponse(200, asApiItem({ operationId, references }, getRequestId()));
+  },
+
+  async markContentSaveOperationContentSaved(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationContentSavedSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.getContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (!operation) {
+      return createApiError(
+        404,
+        'not_found',
+        'Content-Speicheroperation nicht gefunden.',
+        getRequestId()
+      );
+    }
+    const authorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: operation.targetType, targetId: parsed.data.targetId },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const successful = await deps.withMediaService(instanceId, (service) =>
+      service.markContentSaveOperationContentSaved({
+        instanceId,
+        operationId,
+        actorSubject: ctx.user.id,
+        targetId: parsed.data.targetId,
+      })
+    );
+    return successful
+      ? jsonResponse(
+          200,
+          asApiItem({ operationId, targetId: parsed.data.targetId }, getRequestId())
+        )
+      : createApiError(
+          409,
+          'conflict',
+          'Content-Speicheroperation hat einen ungültigen Zustand.',
+          getRequestId()
+        );
+  },
+
+  async markContentSaveOperationSavingContent(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationCommandSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.getContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (!operation) {
+      return createApiError(
+        404,
+        'not_found',
+        'Content-Speicheroperation nicht gefunden.',
+        getRequestId()
+      );
+    }
+    const authorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: operation.targetType, targetId: operation.targetId },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const successful = await deps.withMediaService(instanceId, (service) =>
+      service.markContentSaveOperationSavingContent({
+        instanceId,
+        operationId,
+        actorSubject: ctx.user.id,
+      })
+    );
+    return successful
+      ? jsonResponse(200, asApiItem({ operationId, status: 'saving_content' }, getRequestId()))
+      : createApiError(
+          409,
+          'conflict',
+          'Content-Speicheroperation kann nicht gestartet werden.',
+          getRequestId()
+        );
+  },
+
+  async markContentSaveOperationOutcomeUnknown(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationCommandSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.getContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (!operation) {
+      return createApiError(
+        404,
+        'not_found',
+        'Content-Speicheroperation nicht gefunden.',
+        getRequestId()
+      );
+    }
+    const authorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: operation.targetType, targetId: operation.targetId },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const successful = await deps.withMediaService(instanceId, (service) =>
+      service.markContentSaveOperationOutcomeUnknown({
+        instanceId,
+        operationId,
+        actorSubject: ctx.user.id,
+        errorCode: parsed.data.errorCode ?? 'content_save_outcome_unknown',
+      })
+    );
+    if (successful) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.contentDraftReconciliationRequired',
+        result: 'failure',
+        reasonCode: parsed.data.errorCode ?? 'content_save_outcome_unknown',
+        resourceType: 'media_content_save_operation',
+        resourceId: operationId,
+      });
+    }
+    return successful
+      ? jsonResponse(200, asApiItem({ operationId, status: 'outcome_unknown' }, getRequestId()))
+      : createApiError(
+          409,
+          'conflict',
+          'Content-Speicheroperation kann nicht als unklar markiert werden.',
+          getRequestId()
+        );
+  },
+
+  async commitContentSaveOperation(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationCommandSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const operation = await deps.withMediaService(instanceId, (service) =>
+      service.getContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (!operation) {
+      return createApiError(
+        404,
+        'not_found',
+        'Content-Speicheroperation nicht gefunden.',
+        getRequestId()
+      );
+    }
+    const authorization = await deps.authorizeAction({
+      ctx,
+      instanceId,
+      action: 'media.reference.manage',
+      resource: { targetType: operation.targetType, targetId: operation.targetId },
+    });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const successful = await deps.withMediaService(instanceId, (service) =>
+      service.commitContentSaveOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+    );
+    if (successful) {
+      await emitMediaAuditEvent({
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.contentDraftCommitted',
+        result: 'success',
+        resourceType: 'media_content_save_operation',
+        resourceId: operationId,
+      });
+    }
+    return successful
+      ? jsonResponse(200, asApiItem({ operationId, status: 'committed' }, getRequestId()))
+      : createApiError(
+          409,
+          'conflict',
+          'Content-Speicheroperation kann nicht aktiviert werden.',
+          getRequestId()
+        );
+  },
+
+  async abandonContentSaveOperation(
+    request: Request,
+    ctx: AuthenticatedRequestContext
+  ): Promise<Response> {
+    const parsed = await parseRequestBody(request, contentSaveOperationCommandSchema);
+    if (!parsed.ok) {
+      return createApiError(400, 'invalid_request', parsed.message, getRequestId());
+    }
+    const operationId = readContentSaveOperationId(request);
+    if (operationId instanceof Response) {
+      return operationId;
+    }
+    const instanceScope = resolveBodyScopedInstanceId(parsed.data.instanceId, ctx.user.instanceId);
+    if (!instanceScope.ok) {
+      return instanceScope.response;
+    }
+    const { instanceId } = instanceScope;
+    const authorization = await deps.authorizeAction({ ctx, instanceId, action: 'media.create' });
+    if (!authorization.ok) {
+      return mapAuthorizationFailure(authorization);
+    }
+    const marked = await deps.withMediaService(instanceId, (service) =>
+      service.markContentSaveOperationAbandonPending({
+        instanceId,
+        operationId,
+        actorSubject: ctx.user.id,
+        errorCode: parsed.data.errorCode,
+      })
+    );
+    if (!marked) {
+      return createApiError(
+        409,
+        'conflict',
+        'Content-Speicheroperation kann nicht verworfen werden.',
+        getRequestId()
+      );
+    }
+    return withMediaStorageGuard(
+      async () => {
+        const storagePort = await resolveMediaStoragePort(deps, instanceId);
+        const assets = await deps.withMediaService(instanceId, (service) =>
+          service.listAssetsByOperation({ instanceId, operationId, actorSubject: ctx.user.id })
+        );
+        for (const asset of assets) {
+          const variants = await deps.withMediaService(instanceId, (service) =>
+            service.listVariantsByAssetId(instanceId, asset.id)
+          );
+          await storagePort.deleteObject({ instanceId, storageKey: asset.storageKey });
+          for (const variant of variants) {
+            await storagePort.deleteObject({ instanceId, storageKey: variant.storageKey });
+          }
+        }
+        const finalized = await deps.withMediaService(instanceId, (service) =>
+          service.finalizeContentSaveOperationCleanup({
+            instanceId,
+            operationId,
+            actorSubject: ctx.user.id,
+          })
+        );
+        if (!finalized) {
+          throw new Error('media_content_save_cleanup_not_finalized');
+        }
+        await emitMediaAuditEvent({
+          deps,
+          ctx,
+          instanceId,
+          actionId: 'media.contentDraftAbandoned',
+          result: 'success',
+          resourceType: 'media_content_save_operation',
+          resourceId: operationId,
+        });
+        return jsonResponse(200, asApiItem({ operationId, status: 'abandoned' }, getRequestId()));
+      },
+      {
+        deps,
+        ctx,
+        instanceId,
+        actionId: 'media.contentDraftCleanupFailed',
+        resourceType: 'media_content_save_operation',
+        resourceId: operationId,
       }
     );
   },
@@ -1265,7 +1914,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
     await deps.withMediaService(instanceId, async (service) => {
       for (const reference of parsed.data.references) {
         const asset = await service.getAssetById(instanceId, reference.assetId);
-        if (!asset) {
+        if (!asset || asset.lifecycleStatus === 'provisional') {
           missingAssetIds.push(reference.assetId);
         }
       }
@@ -1406,7 +2055,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         const asset = await deps.withMediaService(instanceId, (service) =>
           service.getAssetById(instanceId, assetId)
         );
-        if (!asset) {
+        if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
           await emitMediaAuditEvent({
             deps,
             ctx,
@@ -1528,7 +2177,7 @@ export const createMediaHttpHandlers = (deps: MediaHttpHandlerDeps) => ({
         const asset = await deps.withMediaService(instanceId, (service) =>
           service.getAssetById(instanceId, assetId)
         );
-        if (!asset) {
+        if (!asset || !canAccessMediaAsset(asset, ctx.user.id)) {
           await emitMediaAuditEvent({
             deps,
             ctx,
@@ -1639,6 +2288,7 @@ const mediaHttpHandlers = createMediaHttpHandlers({
   createId: () => randomUUID(),
   now: () => new Date().toISOString(),
   emitAuditEvent: emitAuthAuditEvent,
+  scheduleContentSaveRecovery: scheduleMediaContentSaveRecovery,
 });
 
 const withMediaRequest = async (
@@ -1666,6 +2316,36 @@ export const updateMediaHandler = async (request: Request): Promise<Response> =>
 
 export const completeMediaUploadHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.completeUpload);
+
+export const createMediaContentSaveOperationHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.createContentSaveOperation);
+
+export const replaceMediaContentSaveOperationReferencesHandler = async (
+  request: Request
+): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.replaceContentSaveOperationReferences);
+
+export const markMediaContentSaveOperationContentSavedHandler = async (
+  request: Request
+): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.markContentSaveOperationContentSaved);
+
+export const markMediaContentSaveOperationSavingContentHandler = async (
+  request: Request
+): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.markContentSaveOperationSavingContent);
+
+export const markMediaContentSaveOperationOutcomeUnknownHandler = async (
+  request: Request
+): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.markContentSaveOperationOutcomeUnknown);
+
+export const commitMediaContentSaveOperationHandler = async (request: Request): Promise<Response> =>
+  withMediaRequest(request, mediaHttpHandlers.commitContentSaveOperation);
+
+export const abandonMediaContentSaveOperationHandler = async (
+  request: Request
+): Promise<Response> => withMediaRequest(request, mediaHttpHandlers.abandonContentSaveOperation);
 
 export const replaceMediaReferencesHandler = async (request: Request): Promise<Response> =>
   withMediaRequest(request, mediaHttpHandlers.replaceReferences);

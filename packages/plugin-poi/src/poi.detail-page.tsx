@@ -3,6 +3,7 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import {
   contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
+  contentMediaSavePhaseMessageKey,
   getHostMediaAsset,
   getHostMediaDelivery,
   getHostMediaAssetFileName,
@@ -21,7 +22,6 @@ import {
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
@@ -29,6 +29,8 @@ import {
 import {
   addStudioCreatedSaveFeedback,
   Button,
+  contentMediaUsagesToLocalDrafts,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   hasStudioCreatedSaveFeedback,
   isPersistableContentMediaUrl,
@@ -40,7 +42,9 @@ import {
   MainserverDeviationSummary,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
+  revokeContentMediaUsageObjectUrls,
   resolveMainserverPrincipalOptions,
+  resolveContentMediaUsageDrafts,
   StudioMediaPickerOverlay,
   StudioSaveButton,
   Tabs,
@@ -258,6 +262,7 @@ export function PoiDetailPage({
   });
   const { reset } = methods;
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   const initialSaveFeedbackShownRef = React.useRef(false);
   const [loading, setLoading] = React.useState(mode === 'edit');
   const [status, setStatus] = React.useState<StatusMessage | null>(null);
@@ -363,6 +368,7 @@ export function PoiDetailPage({
 
   const isAssetSelectable = React.useCallback(
     (asset: PoiMediaPickerAsset) => {
+      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
       if (!asset.persistentUrl) {
         return mediaUsages.every((usage) => usage.assetId !== asset.id);
       }
@@ -380,36 +386,37 @@ export function PoiDetailPage({
 
   const mediaPicker = useStudioMediaPickerOverlay<PoiMediaPickerAsset>({
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
-      const usage = poiAssetToUsage({
-        assetId: asset.id,
-        persistentUrl: asset.persistentUrl,
-        previewUrl: asset.previewUrl,
-        metadata: { ...asset.metadata, fileName: asset.fileName },
-        sortOrder: mediaUsages.length,
-      });
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const usage = {
+        ...poiAssetToUsage({
+          assetId: asset.id,
+          persistentUrl: asset.localDraft ? '' : (asset.persistentUrl ?? ''),
+          previewUrl: asset.previewUrl,
+          metadata: { ...asset.metadata, fileName: asset.fileName },
+          sortOrder: mediaUsages.length,
+        }),
+        assetId: asset.localDraft ? undefined : asset.id,
+        localDraft: asset.localDraft,
+      };
       const nextUsages = [...mediaUsages, usage];
       setRequiresReferenceSync(true);
       setMediaUsages(nextUsages);
-      methods.setValue('content.mediaContents', poiMediaUsagesToContents(nextUsages), {
-        shouldDirty: true,
-      });
+      methods.setValue(
+        'content.mediaContents',
+        poiMediaUsagesToContents(nextUsages.filter((entry) => !entry.localDraft)),
+        {
+          shouldDirty: true,
+        }
+      );
       void refreshMediaAssets();
     },
     canAcceptAsset: isAssetSelectable,
     isSupportedUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-        instanceId,
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [detail, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId, instanceId }),
@@ -726,6 +733,7 @@ export function PoiDetailPage({
     }
 
     const operationId = saveFeedback.beginSaving();
+    setMediaSavePhaseKey(null);
     try {
       const deviationFormPaths: Readonly<
         Record<string, Parameters<typeof methods.getFieldState>[0]>
@@ -769,16 +777,37 @@ export function PoiDetailPage({
         saveFeedback.reset();
         return;
       }
-      const saveContent = () =>
-        mode === 'create'
-          ? createPoi(mutation, actingPrincipalType)
-          : updatePoi(
-              contentId as string,
-              omitDeviatedMainserverFields(mutation, deviations, {
-                retainedFieldGroups: correctedDegradedFields,
-              }),
-              actingPrincipalType
-            );
+      const saveContent = (
+        draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+        mediaSaveContext?: Readonly<{ operationId: string }>
+      ) => {
+        const resolvedMutation = mapPoiDetailFormValuesToInput(
+          {
+            ...values,
+            content: {
+              ...values.content,
+              mediaContents: poiMediaUsagesToContents(
+                resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+              ),
+            },
+          },
+          payload
+        );
+        const mutationOptions = mediaSaveContext
+          ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+          : undefined;
+        if (mode === 'create') {
+          return mutationOptions
+            ? createPoi(resolvedMutation, actingPrincipalType, mutationOptions)
+            : createPoi(resolvedMutation, actingPrincipalType);
+        }
+        const mutation = omitDeviatedMainserverFields(resolvedMutation, deviations, {
+          retainedFieldGroups: correctedDegradedFields,
+        });
+        return mutationOptions
+          ? updatePoi(contentId as string, mutation, actingPrincipalType, mutationOptions)
+          : updatePoi(contentId as string, mutation, actingPrincipalType);
+      };
       const result = requiresReferenceSync
         ? await saveContentWithHostMediaReferences({
             fetch: globalThis.fetch.bind(globalThis),
@@ -791,21 +820,31 @@ export function PoiDetailPage({
                 ? [{ assetId: usage.assetId, role: 'gallery_item', sortOrder: usage.sortOrder }]
                 : []
             ),
+            drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+            onPhaseChange: (phase) => setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
           })
-        : { status: 'complete' as const, saved: await saveContent() };
+        : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
       const saved = result.saved;
+      const savedMediaUsages = result.resolutions?.length
+        ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+        : mediaUsages;
+      if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
       if (result.status === 'reference_failed') {
         setRetryReferenceSync(() => result.retryReferenceSync);
-        setMediaUsages((current) =>
-          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage))
+        setMediaUsages(
+          savedMediaUsages.map((usage) =>
+            usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
+          )
         );
         setStatus({ kind: 'error', text: pt('messages.mediaReferencePartialFailure') });
         saveFeedback.markFailed(operationId);
         return;
       }
       setRetryReferenceSync(null);
-      setMediaUsages((current) =>
-        current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+      setMediaUsages(
+        savedMediaUsages.map((usage) =>
+          usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+        )
       );
       setStatus(null);
       saveFeedback.markSaved(operationId);
@@ -854,7 +893,7 @@ export function PoiDetailPage({
       <PoiDetailContentTab
         canSelectMedia={canSelectMedia}
         canUploadMedia={canUploadMedia}
-        mediaEditingDisabled={!mediaReferencesReady}
+        mediaEditingDisabled={!mediaReferencesReady || saveFeedback.status === 'saving'}
         mediaUsages={mediaUsages}
         onAddManualMedia={addManualMedia}
         onChangeMediaUsages={(usages) => {
@@ -912,7 +951,7 @@ export function PoiDetailPage({
               status={saveFeedback.status}
               labels={{
                 idle: pt('actions.save'),
-                saving: pt('actions.saving'),
+                saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
                 saved: pt('actions.saved'),
               }}
             />

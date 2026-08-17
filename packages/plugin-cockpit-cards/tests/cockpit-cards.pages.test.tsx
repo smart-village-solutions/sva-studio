@@ -290,22 +290,7 @@ describe('cockpit cards pages', () => {
     expect(await screen.findByText('media.refreshTitle')).toBeTruthy();
   });
 
-  it('uploads and accepts a supported image through the overlay', async () => {
-    state.upload.mockResolvedValue({
-      assetId: 'uploaded-1',
-      previewUrl: 'https://example.test/upload-preview.jpg',
-    });
-    state.getAsset.mockResolvedValue({
-      id: 'uploaded-1',
-      fileName: 'upload.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-      metadata: {},
-    });
-    state.getDelivery.mockResolvedValue({
-      deliveryUrl: 'https://example.test/upload.jpg',
-      isPublicUrl: true,
-    });
+  it('accepts a supported image locally without uploading it', async () => {
     const { CockpitCardsCreatePage } = await import('../src/cockpit-cards.pages.js');
     render(<CockpitCardsCreatePage />);
     fireEvent.click(screen.getByRole('tab', { name: 'tabs.content.label' }));
@@ -316,11 +301,11 @@ describe('cockpit cards pages', () => {
     await screen.findByLabelText('media.altText');
     fireEvent.click(screen.getByRole('button', { name: 'media.use' }));
     await waitFor(() =>
-      expect(screen.getByDisplayValue('https://example.test/upload.jpg')).toBeTruthy()
+      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
     );
-    expect(state.upload).toHaveBeenCalledWith(
-      expect.objectContaining({ visibility: 'public', mediaType: 'image' })
-    );
+    expect((screen.getByLabelText('fields.imageUrl') as HTMLInputElement).value).toBe('');
+    expect(state.upload).not.toHaveBeenCalled();
+    expect(state.getAsset).not.toHaveBeenCalled();
   });
 
   it('creates a card with the complete normalized payload', async () => {

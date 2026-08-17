@@ -116,6 +116,9 @@ export const pluginCockpitCardsTranslations = {
         imagePreviewEmpty: 'Bildvorschau erscheint nach Eingabe einer URL.',
         mediaReferencePartialFailure:
           'Die Kachel wurde gespeichert, aber ihre Medienreferenzen konnten nicht vollständig gespeichert werden.',
+        mediaSaveUploading: 'Bilder werden hochgeladen.', mediaSaveContent: 'Inhalt wird gespeichert.',
+        mediaSaveLinking: 'Medien werden verknüpft.', mediaSaveCleanup: 'Nicht gespeicherte Bilder werden bereinigt.',
+        mediaSaveOutcomeUnknown: 'Das Speicherergebnis wird geprüft.',
       },
       validation: {
         summaryTitle: 'Bitte prüfe folgende Felder:',
@@ -237,6 +240,9 @@ export const pluginCockpitCardsTranslations = {
         imagePreviewEmpty: 'The image preview appears after entering a URL.',
         mediaReferencePartialFailure:
           'The cockpit card was saved, but its media references could not be saved completely.',
+        mediaSaveUploading: 'Uploading images.', mediaSaveContent: 'Saving content.',
+        mediaSaveLinking: 'Linking media.', mediaSaveCleanup: 'Cleaning up unsaved images.',
+        mediaSaveOutcomeUnknown: 'Checking the save outcome.',
       },
       validation: {
         summaryTitle: 'Please check the following fields:',

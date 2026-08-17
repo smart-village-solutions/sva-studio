@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   alignHostMediaReferencesByOrder,
+  contentMediaSavePhaseMessageKey,
   fetchIamContentHistory,
   formatDateTimeInEditorTimeZone,
   getHostMediaAsset,
@@ -16,7 +17,6 @@ import {
   saveContentWithHostMediaReferences,
   subscribeSessionAccessSnapshot,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   usePluginTranslation,
   type HostMediaAssetListItem,
   type HostMediaAssetDetail,
@@ -29,9 +29,12 @@ import {
   Input,
   MainserverPrincipalControl,
   removeStudioSaveFeedback,
+  revokeContentMediaUsageObjectUrls,
   Select,
   ContentMediaUsageBlock,
   contentMediaUsageToReference,
+  contentMediaUsagesToLocalDrafts,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   StudioDataTable,
@@ -54,6 +57,7 @@ import {
   useStudioMediaPickerOverlay,
   useStudioSaveFeedback,
   resolveMainserverPrincipalOptions,
+  resolveContentMediaUsageDrafts,
   type ContentMediaUsage,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerOverlayLabels,
@@ -133,6 +137,7 @@ function ContentFields({
   onMediaUsagesChange,
   canSelectMedia,
   canUploadMedia,
+  mediaEditingDisabled,
   onAddManualMedia,
   onOpenMediaPicker,
   onLoadAssetSnapshot,
@@ -143,6 +148,7 @@ function ContentFields({
   onMediaUsagesChange: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia: boolean;
   canUploadMedia: boolean;
+  mediaEditingDisabled: boolean;
   onAddManualMedia: () => string;
   onOpenMediaPicker: (mode: 'library' | 'upload') => void;
   onLoadAssetSnapshot: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
@@ -165,6 +171,7 @@ function ContentFields({
       </StudioDetailCard>
       <StudioDetailCard title={pt('fields.images')}>
         <ContentMediaUsageBlock
+          disabled={mediaEditingDisabled}
           usages={mediaUsages}
           onChange={changeUsages}
           onAddManual={onAddManualMedia}
@@ -250,6 +257,7 @@ function Editor({
     }
   }, [form, link]);
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   React.useEffect(() => {
     if (form.formState.isDirty) {
       saveFeedback.markDirty();
@@ -376,11 +384,17 @@ function Editor({
   const mediaPicker = useStudioMediaPickerOverlay<StudioMediaPickerAssetDetail>({
     editableMetadataFields: cockpitCardMetadataFields,
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
       const usage: ContentMediaUsage = {
         uiId: `cockpit-card-asset-${asset.id}-${mediaUsages.length}`,
-        assetId: asset.id,
-        persistentUrl: asset.persistentUrl,
+        assetId: asset.localDraft ? undefined : asset.id,
+        localDraft: asset.localDraft,
+        persistentUrl,
         previewUrl: asset.previewUrl ?? undefined,
         altText: asset.metadata.altText || asset.fileName,
         caption: asset.metadata.description || asset.title,
@@ -390,7 +404,7 @@ function Editor({
         sortOrder: mediaUsages.length,
         referenceStatus: 'pending',
         assetSnapshot: toContentMediaAssetSnapshot({
-          persistentUrl: asset.persistentUrl,
+          persistentUrl,
           altText: asset.metadata.altText || asset.fileName,
           caption: asset.metadata.description || asset.title,
           credit: asset.metadata.copyright,
@@ -399,27 +413,22 @@ function Editor({
       };
       const next = [...mediaUsages, usage];
       setMediaUsages(next);
-      form.setValue('images', [...cockpitCardUsagesToMedia(next)], { shouldDirty: true });
+      form.setValue(
+        'images',
+        [...cockpitCardUsagesToMedia(next.filter((entry) => !entry.localDraft))],
+        { shouldDirty: true }
+      );
       setRequiresReferenceSync(true);
       void refreshMediaAssets();
     },
     canAcceptAsset: (asset) =>
       Boolean(
-        asset.persistentUrl &&
-        isPersistableContentMediaUrl(asset.persistentUrl) &&
+        (asset.localDraft ||
+          (asset.persistentUrl && isPersistableContentMediaUrl(asset.persistentUrl))) &&
         !mediaUsages.some((usage) => usage.assetId === asset.id)
       ),
     isSupportedUploadFile: (file) => ['image/jpeg', 'image/png', 'image/webp'].includes(file.type),
-    uploadAsset: async (file) => {
-      const result = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        visibility: 'public',
-        mediaType: 'image',
-      });
-      await refreshMediaAssets();
-      return { assetId: result.assetId, previewUrl: result.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [asset, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
@@ -548,15 +557,35 @@ function Editor({
       if (!canSave) return;
       setMutationError(null);
       const operationId = saveFeedback.beginSaving();
+      setMediaSavePhaseKey(null);
       try {
-        const input = mapCockpitCardFormValuesToGenericItemInput(
-          { ...values, images: [...cockpitCardUsagesToMedia(mediaUsages)] },
-          loadedItem ?? undefined
-        );
-        const saveContent = () =>
-          mode === 'create'
-            ? createCockpitCard(input, actingPrincipalType)
+        const saveContent = (
+          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+          mediaSaveContext?: Readonly<{ operationId: string }>
+        ) => {
+          const input = mapCockpitCardFormValuesToGenericItemInput(
+            {
+              ...values,
+              images: [
+                ...cockpitCardUsagesToMedia(
+                  resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
+                ),
+              ],
+            },
+            loadedItem ?? undefined
+          );
+          const mutationOptions = mediaSaveContext
+            ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+            : undefined;
+          if (mode === 'create') {
+            return mutationOptions
+              ? createCockpitCard(input, actingPrincipalType, mutationOptions)
+              : createCockpitCard(input, actingPrincipalType);
+          }
+          return mutationOptions
+            ? updateCockpitCard(contentId as string, input, actingPrincipalType, mutationOptions)
             : updateCockpitCard(contentId as string, input, actingPrincipalType);
+        };
         const result = requiresReferenceSync
           ? await saveContentWithHostMediaReferences({
               fetch: globalThis.fetch.bind(globalThis),
@@ -567,12 +596,19 @@ function Editor({
                 const reference = contentMediaUsageToReference(usage);
                 return reference ? [reference] : [];
               }),
+              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+              onPhaseChange: (phase) =>
+                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
-          : { status: 'complete' as const, saved: await saveContent() };
+          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
+        const savedMediaUsages = result.resolutions?.length
+          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+          : mediaUsages;
+        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
-          setMediaUsages((current) =>
-            current.map((usage) =>
+          setMediaUsages(
+            savedMediaUsages.map((usage) =>
               usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
             )
           );
@@ -581,6 +617,11 @@ function Editor({
           return;
         }
         setRetryReferenceSync(null);
+        setMediaUsages(
+          savedMediaUsages.map((usage) =>
+            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+          )
+        );
         saveFeedback.markSaved(operationId);
         if (mode === 'create')
           await navigate({
@@ -693,6 +734,7 @@ function Editor({
           onMediaUsagesChange={setMediaUsages}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
+          mediaEditingDisabled={saveFeedback.status === 'saving'}
           onAddManualMedia={addManualMedia}
           onOpenMediaPicker={(pickerMode) =>
             pickerMode === 'upload' ? mediaPicker.openUpload() : mediaPicker.openLibrary()
@@ -843,7 +885,7 @@ function Editor({
             disabled={deletePending}
             labels={{
               idle: pt(mode === 'create' ? 'actions.create' : 'actions.update'),
-              saving: pt('actions.saving'),
+              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
               saved: pt('actions.saved'),
             }}
           />

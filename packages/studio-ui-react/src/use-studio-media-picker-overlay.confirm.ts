@@ -42,9 +42,7 @@ const toMetadataUpdate = (
     fields.map((key) => [key, draft[key].trim() || null])
   ) as StudioMediaPickerMetadataUpdate;
 
-export const useConfirmSelectionAction = <
-  TAssetDetail extends StudioMediaPickerAssetDetail,
->(
+export const useConfirmSelectionAction = <TAssetDetail extends StudioMediaPickerAssetDetail>(
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   reviewAsset: TAssetDetail | null,
   metadataDraft: StudioMediaPickerMetadataDraft,
@@ -71,6 +69,20 @@ export const useConfirmSelectionAction = <
       metadataDraftsMatch(metadataDraft, createMetadataDraft(reviewAsset), editableMetadataFields)
     ) {
       onAccept(reviewAsset);
+      actions.close();
+      return;
+    }
+
+    if (reviewAsset.localDraft) {
+      const updatedAsset = {
+        ...reviewAsset,
+        title: metadataDraft.title,
+        metadata: {
+          ...reviewAsset.metadata,
+          ...Object.fromEntries(editableMetadataFields.map((key) => [key, metadataDraft[key]])),
+        },
+      } as TAssetDetail;
+      onAccept(updatedAsset);
       actions.close();
       return;
     }

@@ -1184,28 +1184,33 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('uploads media files and assigns the uploaded image to created poi items', async () => {
+  it('uploads local media only while saving and assigns the resolved image to the created poi', async () => {
     const uploadedFile = new File(['image-bytes'], 'upload-rathaus.webp', { type: 'image/webp' });
 
-    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
-      assetId: 'asset-uploaded',
-      uploadSessionId: 'upload-session-1',
-    } as never);
-    vi.mocked(listHostMediaAssets)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        {
-          id: 'asset-uploaded',
-          fileName: 'upload-rathaus.webp',
-          mimeType: 'image/webp',
-          previewUrl: 'https://cdn.example.test/upload-rathaus.webp',
-          metadata: { title: 'Upload Rathaus', copyright: 'Stadt Musterhausen' },
-        },
-      ] as never);
     vi.mocked(createPoi).mockResolvedValueOnce({
       id: 'poi-created',
       name: 'Neuer POI',
     } as never);
+    vi.mocked(saveContentWithHostMediaReferences).mockImplementationOnce(async (input) => {
+      expect(input.drafts).toHaveLength(1);
+      expect(input.drafts?.[0]).toMatchObject({
+        file: uploadedFile,
+        role: 'gallery_item',
+        sortOrder: 0,
+      });
+      const draftId = input.drafts?.[0]?.draftId;
+      if (!draftId) throw new Error('missing test draft');
+      return {
+        status: 'complete',
+        saved: await input.saveContent([
+          {
+            draftId,
+            assetId: 'asset-uploaded',
+            persistentUrl: 'https://cdn.example.test/upload-rathaus.webp',
+          },
+        ]),
+      };
+    });
 
     render(<PoiDetailPage mode="create" instanceId="de-musterhausen" />);
 
@@ -1216,22 +1221,15 @@ describe('PoiDetailPage', () => {
       target: { files: [uploadedFile] },
     });
 
-    await waitFor(() => {
-      expect(vi.mocked(uploadHostMediaFile)).toHaveBeenCalledWith({
-        fetch: expect.any(Function),
-        file: uploadedFile,
-        mediaType: 'image',
-        visibility: 'public',
-        instanceId: 'de-musterhausen',
-      });
-      expect(screen.getByRole('button', { name: 'Medium übernehmen' })).toBeTruthy();
-    });
+    await screen.findByRole('button', { name: 'Medium übernehmen' });
+    expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(getHostMediaAsset)).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Medium übernehmen' }));
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('https://cdn.example.test/upload-rathaus.webp')).toBeTruthy();
-    });
+    await waitFor(() =>
+      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+    );
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Speichern' })[1]!);
 
@@ -1240,8 +1238,7 @@ describe('PoiDetailPage', () => {
         expect.objectContaining({
           mediaContents: [
             expect.objectContaining({
-              captionText: 'Upload Rathaus',
-              copyright: 'Stadt Musterhausen',
+              captionText: 'upload-rathaus.webp',
               contentType: 'image',
               sourceUrl: {
                 url: 'https://cdn.example.test/upload-rathaus.webp',
@@ -1255,33 +1252,8 @@ describe('PoiDetailPage', () => {
     });
   });
 
-  it('keeps poi mediaContents unchanged when media upload fails', async () => {
-    const failedFile = new File(['image-bytes'], 'broken-rathaus.png', { type: 'image/png' });
-
-    vi.mocked(uploadHostMediaFile).mockRejectedValueOnce(new Error('upload boom'));
-
-    render(<PoiDetailPage mode="create" />);
-
-    fireEvent.change(await screen.findByLabelText('Name'), { target: { value: 'Neuer POI' } });
-    switchSection('content');
-    fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
-    fireEvent.change(screen.getByTestId('media-upload-input'), { target: { files: [failedFile] } });
-
-    await waitFor(() => {
-      expect(screen.getByText('Das Medium konnte nicht hochgeladen werden.')).toBeTruthy();
-    });
-
-    expect(screen.queryByDisplayValue('broken-rathaus.png')).toBeNull();
-  });
-
-  it('shows an upload error when the uploaded media asset is missing after refresh', async () => {
-    const uploadedFile = new File(['image-bytes'], 'missing-rathaus.webp', { type: 'image/webp' });
-
-    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
-      assetId: 'asset-missing',
-      uploadSessionId: 'upload-session-1',
-    } as never);
-    vi.mocked(getHostMediaAsset).mockRejectedValueOnce(new Error('missing asset'));
+  it('rejects unsupported local media before creating a draft', async () => {
+    const unsupportedFile = new File(['document'], 'rathaus.pdf', { type: 'application/pdf' });
 
     render(<PoiDetailPage mode="create" />);
 
@@ -1289,14 +1261,15 @@ describe('PoiDetailPage', () => {
     switchSection('content');
     fireEvent.click(screen.getByRole('button', { name: 'Medium hinzufügen' }));
     fireEvent.change(screen.getByTestId('media-upload-input'), {
-      target: { files: [uploadedFile] },
+      target: { files: [unsupportedFile] },
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Das Medium konnte nicht geladen werden.')).toBeTruthy();
+      expect(screen.getByText('Nur JPG, PNG und WebP können hochgeladen werden.')).toBeTruthy();
     });
 
-    expect(screen.queryByDisplayValue('missing-rathaus.webp')).toBeNull();
+    expect(screen.queryByDisplayValue('rathaus.pdf')).toBeNull();
+    expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
   });
 
   it('shows translated fallback errors when loading or saving fails unexpectedly', async () => {

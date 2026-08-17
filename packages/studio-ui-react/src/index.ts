@@ -21,9 +21,14 @@ export {
   type ContentMediaUsageBlockProps,
 } from './content-media-usage-block.js';
 export {
+  contentMediaUsagesToLocalDrafts,
+  resolveContentMediaUsageDrafts,
+} from './content-media-drafts.js';
+export {
   contentMediaUsageToReference,
   createContentMediaUiId,
   createManualContentMediaUsage,
+  revokeContentMediaUsageObjectUrls,
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
   normalizeContentMediaUsageOrder,
@@ -184,6 +189,7 @@ export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 export {
   StudioMediaPickerOverlay,
   useStudioMediaPickerOverlay,
+  createLocalStudioMediaPickerAsset,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,

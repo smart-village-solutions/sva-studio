@@ -3,7 +3,7 @@ import {
   createMainserverCrudClient,
   requestMainserverJson,
 } from '@sva/plugin-sdk';
-import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
 import type {
   EventCategoryOption,
@@ -50,14 +50,22 @@ export const getEventDetail = async (
 
 export const createEvent = async (
   input: EventFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<EventContentItem> => eventsClient.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<EventContentItem> =>
+  mutationOptions
+    ? eventsClient.create(input, actingPrincipalType, mutationOptions)
+    : eventsClient.create(input, actingPrincipalType);
 
 export const updateEvent = async (
   contentId: string,
   input: EventFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<EventContentItem> => eventsClient.update(contentId, input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<EventContentItem> =>
+  mutationOptions
+    ? eventsClient.update(contentId, input, actingPrincipalType, mutationOptions)
+    : eventsClient.update(contentId, input, actingPrincipalType);
 
 export const deleteEvent = async (
   contentId: string,

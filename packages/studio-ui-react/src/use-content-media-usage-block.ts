@@ -6,7 +6,7 @@ import type {
   ContentMediaUsage,
   ContentMediaUsagePatch,
 } from './content-media-usage.js';
-import { moveContentMediaUsage } from './content-media-usage.js';
+import { moveContentMediaUsage, revokeContentMediaUsageObjectUrls } from './content-media-usage.js';
 
 type UsageListActionsInput = Readonly<{
   usages: readonly ContentMediaUsage[];
@@ -44,6 +44,8 @@ export const useContentMediaUsageListActions = ({
     );
   };
   const remove = (index: number) => {
+    const removed = usages[index];
+    if (removed?.localDraft) revokeContentMediaUsageObjectUrls([removed]);
     onChange(
       usages
         .filter((_, currentIndex) => currentIndex !== index)
@@ -70,6 +72,16 @@ export const useContentMediaUsageListActions = ({
   };
 
   return { add, announcement, move, remove, update };
+};
+
+export const useContentMediaUsageObjectUrlCleanup = (usages: readonly ContentMediaUsage[]) => {
+  const usagesRef = React.useRef(usages);
+  usagesRef.current = usages;
+  React.useEffect(
+    () => () =>
+      revokeContentMediaUsageObjectUrls(usagesRef.current.filter((usage) => usage.localDraft)),
+    []
+  );
 };
 
 type MetadataRefreshInput = Readonly<{

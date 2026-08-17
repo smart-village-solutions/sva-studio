@@ -1,3 +1,6 @@
+import * as React from 'react';
+
+import { revokeBrowserObjectUrl } from './content-media-usage.js';
 import type { StudioMediaPickerAssetDetail } from './studio-media-picker-overlay.shared.js';
 import {
   type StudioMediaPickerOverlayOptions,
@@ -7,6 +10,7 @@ import { useStudioMediaPickerOverlayState } from './use-studio-media-picker-over
 
 export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPickerAssetDetail>({
   canAcceptAsset,
+  createLocalAsset,
   editableMetadataFields,
   isSupportedUploadFile,
   loadAsset,
@@ -17,6 +21,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
   const state = useStudioMediaPickerOverlayState();
   const actions = useStudioMediaPickerOverlayActions<TAssetDetail>(state, {
     canAcceptAsset,
+    createLocalAsset,
     editableMetadataFields,
     isSupportedUploadFile,
     loadAsset,
@@ -24,6 +29,19 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     saveAssetMetadata,
     uploadAsset,
   });
+  const reviewAssetRef = React.useRef(state.reviewAsset);
+  reviewAssetRef.current = state.reviewAsset;
+  React.useEffect(
+    () => () => {
+      const reviewAsset = reviewAssetRef.current;
+      if (reviewAsset?.localDraft) revokeBrowserObjectUrl(reviewAsset.previewUrl);
+    },
+    []
+  );
+  const close = React.useCallback(() => {
+    if (state.reviewAsset?.localDraft) revokeBrowserObjectUrl(state.reviewAsset.previewUrl);
+    state.close();
+  }, [state]);
 
   return {
     open: state.open,
@@ -37,7 +55,7 @@ export const useStudioMediaPickerOverlay = <TAssetDetail extends StudioMediaPick
     metadataDraft: state.metadataDraft,
     isLoadingReviewAsset: state.isLoadingReviewAsset,
     isSavingReviewAsset: state.isSavingReviewAsset,
-    close: state.close,
+    close,
     openLibrary: state.openLibrary,
     openUpload: state.openUpload,
     selectAsset: actions.selectAsset,

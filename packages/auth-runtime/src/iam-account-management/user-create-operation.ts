@@ -15,7 +15,7 @@ import {
   type CreateUserActorInfo,
 } from './user-create-invitation.js';
 import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
-import type { IdentityUserAttributes } from '../keycloak-user-attributes.js';
+import { haveEqualIdentityAttributes } from '../identity-attributes.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
@@ -89,28 +89,6 @@ const syncUserRolesIfNeeded = async (input: {
   await trackKeycloakCall('sync_roles', () =>
     input.identityProvider.provider.syncRoles(input.keycloakSubject, [...technicalRoleNames])
   );
-};
-
-const haveEqualIdentityAttributes = (
-  current: IdentityUserAttributes | null | undefined,
-  expected: IdentityUserAttributes
-): boolean => {
-  const currentAttributes = current ?? {};
-  const currentKeys = Object.keys(currentAttributes);
-  const expectedKeys = Object.keys(expected);
-  if (currentKeys.length !== expectedKeys.length) {
-    return false;
-  }
-
-  return currentKeys.every((key) => {
-    const currentValues = currentAttributes[key];
-    const expectedValues = expected[key];
-    return (
-      expectedValues !== undefined &&
-      currentValues.length === expectedValues.length &&
-      currentValues.every((value, index) => value === expectedValues[index])
-    );
-  });
 };
 
 export const persistProvisionedMainserverCredentials = async (input: {

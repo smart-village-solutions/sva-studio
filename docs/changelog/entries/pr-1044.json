@@ -1,0 +1,4 @@
+{
+  "prNumber": 1044,
+  "body": "Der exakte DataProvider-Scope-Resolver wird nach erfolgreicher Staging-Abnahme auch in Production aktiviert.\n\n- Persönliche und organisatorische Mainserver-Inhalte bleiben an ihre konfliktfrei bestätigten Credential-Sichten gebunden.\n- Der dokumentierte Kompatibilitätsmodus bleibt als schneller Rollback bei unerwarteten Scope-Ablehnungen verfügbar."
+}

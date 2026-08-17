@@ -61,6 +61,22 @@ describe('Studio table interactions', () => {
     );
   });
 
+  it('preserves content supplied by an asChild action', () => {
+    render(
+      <StudioTableActionButton
+        asChild
+        label="Kalender öffnen"
+        icon={<span aria-hidden="true">Ersatz-Icon</span>}
+      >
+        <a href="/calendar">Eigener Linkinhalt</a>
+      </StudioTableActionButton>
+    );
+
+    const link = screen.getByRole('link', { name: 'Kalender öffnen' });
+    expect(link.textContent).toBe('Eigener Linkinhalt');
+    expect(screen.queryByText('Ersatz-Icon')).toBeNull();
+  });
+
   it('renders value actions as buttons or real links without a hover background', () => {
     const onClick = vi.fn();
     const { rerender } = render(

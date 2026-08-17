@@ -124,17 +124,11 @@ const IconButtonTooltip = ({
   readonly label: string;
   readonly children: React.ReactElement<React.HTMLAttributes<HTMLElement>>;
 }) => {
-  const [open, setOpen] = React.useState(false);
-
   return (
     <TooltipPrimitive.Provider delayDuration={0} skipDelayDuration={300}>
-      <TooltipPrimitive.Root open={open} onOpenChange={setOpen}>
+      <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>
-          <TooltipTrigger
-            existingDescription={children.props['aria-describedby']}
-            onMouseEnter={() => setOpen(true)}
-            onMouseLeave={() => setOpen(false)}
-          >
+          <TooltipTrigger existingDescription={children.props['aria-describedby']}>
             {children}
           </TooltipTrigger>
         </TooltipPrimitive.Trigger>

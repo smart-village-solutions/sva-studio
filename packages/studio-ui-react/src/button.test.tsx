@@ -8,7 +8,7 @@ describe('Button', () => {
     cleanup();
   });
 
-  it('shows a hover tooltip for icon buttons using the aria-label', () => {
+  it('shows a hover tooltip for icon buttons using the aria-label', async () => {
     render(
       <Button type="button" size="icon" aria-label="Suche">
         <span aria-hidden="true">S</span>
@@ -17,9 +17,11 @@ describe('Button', () => {
 
     expect(screen.queryByRole('tooltip')).toBeNull();
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Suche' }));
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Suche' }), {
+      pointerType: 'mouse',
+    });
 
-    expect(screen.getByRole('tooltip').textContent).toContain('Suche');
+    expect((await screen.findByRole('tooltip')).textContent).toContain('Suche');
   });
 
   it('shows a hover tooltip for icon links rendered via asChild using the child title', () => {
@@ -39,7 +41,7 @@ describe('Button', () => {
     expect(link.getAttribute('title')).toBeNull();
   });
 
-  it('shows a hover tooltip for icon-only table action buttons that use size sm', () => {
+  it('shows a hover tooltip for icon-only table action buttons that use size sm', async () => {
     render(
       <Button
         type="button"
@@ -52,9 +54,11 @@ describe('Button', () => {
       </Button>
     );
 
-    fireEvent.mouseEnter(screen.getByRole('button', { name: 'Bearbeiten' }));
+    fireEvent.pointerMove(screen.getByRole('button', { name: 'Bearbeiten' }), {
+      pointerType: 'mouse',
+    });
 
-    expect(screen.getByRole('tooltip').textContent).toContain('Bearbeiten');
+    expect((await screen.findByRole('tooltip')).textContent).toContain('Bearbeiten');
   });
 
   it('shows an associated tooltip when an icon button receives keyboard focus', () => {
@@ -69,6 +73,9 @@ describe('Button', () => {
 
     const tooltip = screen.getByRole('tooltip');
     expect(button.getAttribute('aria-describedby')).toBe(tooltip.id);
+
+    fireEvent.pointerLeave(button);
+    expect(screen.getByRole('tooltip')).toBeTruthy();
 
     fireEvent.blur(button);
     expect(screen.queryByRole('tooltip')).toBeNull();

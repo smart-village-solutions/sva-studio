@@ -46,7 +46,9 @@ export const StudioTableActionButton = React.forwardRef<
       </>
     );
     const slottedChild =
-      asChild && React.isValidElement<{ children?: React.ReactNode }>(children)
+      asChild &&
+      React.isValidElement<{ children?: React.ReactNode }>(children) &&
+      children.props.children == null
         ? React.cloneElement(children, undefined, content)
         : children;
 

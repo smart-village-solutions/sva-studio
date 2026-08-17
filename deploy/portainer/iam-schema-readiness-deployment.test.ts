@@ -22,6 +22,7 @@ describe('IAM schema readiness deployment contract', () => {
   ];
   const dockerfiles = [readRepoFile('Dockerfile'), readRepoFile('deploy/portainer/Dockerfile')];
   const localBootstrap = readRepoFile('packages/data/scripts/bootstrap-app-user.sh');
+  const runtimeArtifactVerifier = readRepoFile('scripts/ci/verify-runtime-artifact.sh');
   const verifier = readRepoFile('deploy/portainer/verify-iam-schema.mjs');
 
   it('ships one canonical verifier in both runtime images', () => {
@@ -62,5 +63,11 @@ describe('IAM schema readiness deployment contract', () => {
       );
       expect(bootstrap).not.toContain('GRANT SELECT ON TABLE public.goose_db_version');
     }
+  });
+
+  it('provides the migration directory when verifying the final app artifact', () => {
+    expect(runtimeArtifactVerifier).toContain(
+      'MIGRATIONS_DIR="${WORKSPACE_ROOT}/packages/data/migrations"'
+    );
   });
 });

@@ -1022,7 +1022,18 @@ BEGIN
   ) THEN
     ALTER TABLE iam.organizations
       ADD CONSTRAINT organizations_type_chk
-      CHECK (organization_type IN ('county', 'municipality', 'district', 'company', 'agency', 'other'));
+      CHECK (
+        organization_type IN (
+          'county',
+          'municipality',
+          'district',
+          'company',
+          'agency',
+          'association',
+          'institution',
+          'other'
+        )
+      );
   END IF;
 
   IF NOT EXISTS (

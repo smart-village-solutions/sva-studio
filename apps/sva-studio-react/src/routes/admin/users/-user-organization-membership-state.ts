@@ -6,21 +6,18 @@ import type { useUser } from '../../../hooks/use-user';
 type UserDetail = ReturnType<typeof useUser>['user'];
 
 type OrganizationMembershipDraft = {
-  readonly visibility: 'internal' | 'external';
   readonly isDefaultContext: boolean;
 };
 
 type OrganizationAssignment = {
   readonly organizationId: string;
   readonly organizationLabel: string;
-  readonly visibility: 'internal' | 'external';
   readonly isDefaultContext: boolean;
 };
 
 const DEFAULT_ORGANIZATION_ASSIGNMENT: OrganizationAssignment = {
   organizationId: '',
   organizationLabel: '',
-  visibility: 'internal',
   isDefaultContext: false,
 };
 
@@ -29,7 +26,6 @@ const buildOrganizationMembershipDrafts = (user: UserDetail) =>
     (user?.organizationMemberships ?? []).map((membership) => [
       membership.organizationId,
       {
-        visibility: membership.visibility,
         isDefaultContext: membership.isDefaultContext,
       } satisfies OrganizationMembershipDraft,
     ])
@@ -50,13 +46,14 @@ const mergeOrganizationMembershipDraft = (
 ) => ({
   ...current,
   [organizationId]: {
-    visibility: patch.visibility ?? current[organizationId]?.visibility ?? 'internal',
     isDefaultContext: patch.isDefaultContext ?? current[organizationId]?.isDefaultContext ?? false,
   },
 });
 
-const formatOrganizationAssignmentLabel = (organization: { displayName: string; organizationKey: string }) =>
-  `${organization.displayName} (${organization.organizationKey})`;
+const formatOrganizationAssignmentLabel = (organization: {
+  displayName: string;
+  organizationKey: string;
+}) => `${organization.displayName} (${organization.organizationKey})`;
 
 export const useUserOrganizationMembershipState = (input: {
   readonly userId: string;
@@ -81,20 +78,28 @@ export const useUserOrganizationMembershipState = (input: {
     organizationsApi.setSearch('');
   }, [input.userId]);
 
-  const assignedOrganizationIds = React.useMemo(() => buildAssignedOrganizationIds(input.user), [input.user]);
+  const assignedOrganizationIds = React.useMemo(
+    () => buildAssignedOrganizationIds(input.user),
+    [input.user]
+  );
   const availableOrganizations = React.useMemo(
     () => filterAvailableOrganizations(organizationsApi.organizations, assignedOrganizationIds),
     [assignedOrganizationIds, organizationsApi.organizations]
   );
 
   const selectedAssignableOrganization = React.useMemo(
-    () => availableOrganizations.find((organization) => organization.id === organizationAssignment.organizationId) ?? null,
+    () =>
+      availableOrganizations.find(
+        (organization) => organization.id === organizationAssignment.organizationId
+      ) ?? null,
     [availableOrganizations, organizationAssignment.organizationId]
   );
 
   const updateOrganizationMembershipDraft = React.useCallback(
     (organizationId: string, patch: Partial<OrganizationMembershipDraft>) => {
-      setOrganizationMembershipDrafts((current) => mergeOrganizationMembershipDraft(current, organizationId, patch));
+      setOrganizationMembershipDrafts((current) =>
+        mergeOrganizationMembershipDraft(current, organizationId, patch)
+      );
     },
     []
   );
@@ -109,11 +114,15 @@ export const useUserOrganizationMembershipState = (input: {
 
   const selectOrganizationAssignment = React.useCallback(
     (organizationId: string) => {
-      const selectedOrganization = availableOrganizations.find((organization) => organization.id === organizationId);
+      const selectedOrganization = availableOrganizations.find(
+        (organization) => organization.id === organizationId
+      );
       setOrganizationAssignment((current) => ({
         ...current,
         organizationId,
-        organizationLabel: selectedOrganization ? formatOrganizationAssignmentLabel(selectedOrganization) : current.organizationLabel,
+        organizationLabel: selectedOrganization
+          ? formatOrganizationAssignmentLabel(selectedOrganization)
+          : current.organizationLabel,
       }));
     },
     [availableOrganizations]
@@ -126,7 +135,6 @@ export const useUserOrganizationMembershipState = (input: {
 
     const updated = await organizationsApi.assignMembership(organizationAssignment.organizationId, {
       accountId: input.userId,
-      visibility: organizationAssignment.visibility,
       isDefaultContext: organizationAssignment.isDefaultContext,
     });
     if (!updated) {

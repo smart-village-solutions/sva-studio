@@ -787,32 +787,25 @@ describe('UserEditPage', () => {
       'Stadtwerke (stadtwerke)'
     );
 
-    fireEvent.change(screen.getByLabelText('Sichtbarkeit für neue Mitgliedschaft'), {
-      target: { value: 'external' },
-    });
+    expect(screen.queryByText(/Sichtbarkeit/)).toBeNull();
     fireEvent.click(screen.getByLabelText('Als Default-Kontext setzen'));
     fireEvent.click(screen.getByRole('button', { name: 'Organisation zuweisen' }));
 
     await waitFor(() => {
       expect(assignMembership).toHaveBeenCalledWith('org-2', {
         accountId: 'user-1',
-        visibility: 'external',
         isDefaultContext: true,
       });
       expect(refetch).toHaveBeenCalled();
     });
     expect(setSearch).toHaveBeenLastCalledWith('');
 
-    fireEvent.change(screen.getByLabelText('Sichtbarkeit für Musterstadt'), {
-      target: { value: 'external' },
-    });
     fireEvent.click(
       screen.getByRole('button', { name: 'Mitgliedschaft für Musterstadt aktualisieren' })
     );
 
     await waitFor(() => {
       expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {
-        visibility: 'external',
         isDefaultContext: true,
       });
     });

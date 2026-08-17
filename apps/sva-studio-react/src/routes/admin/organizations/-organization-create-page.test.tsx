@@ -97,7 +97,7 @@ describe('OrganizationCreatePage', () => {
     fireEvent.change(
       screen.getByLabelText('Organisationstyp', { selector: '#organization-type' }),
       {
-        target: { value: 'county' },
+        target: { value: 'association' },
       }
     );
     fireEvent.change(
@@ -118,7 +118,7 @@ describe('OrganizationCreatePage', () => {
       expect(createOrganization).toHaveBeenCalledWith({
         organizationKey: 'landkreis-beta',
         displayName: 'Landkreis Beta',
-        organizationType: 'county',
+        organizationType: 'association',
         parentOrganizationId: 'parent-1',
         contentAuthorPolicy: 'org_or_personal',
       });
@@ -128,6 +128,18 @@ describe('OrganizationCreatePage', () => {
       params: { organizationId: 'org-2' },
       state: expect.any(Function),
     });
+  });
+
+  it('offers association and institution as organization types', () => {
+    useOrganizationsMock.mockReturnValue(createState());
+
+    render(<OrganizationCreatePage />);
+
+    expect(screen.getByRole('option', { name: 'Verein' })).toHaveProperty('value', 'association');
+    expect(screen.getByRole('option', { name: 'Institution' })).toHaveProperty(
+      'value',
+      'institution'
+    );
   });
 
   it('generates a suffixed technical key when the base key already exists', async () => {

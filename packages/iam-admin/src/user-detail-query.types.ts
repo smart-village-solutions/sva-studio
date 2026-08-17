@@ -28,7 +28,15 @@ export type UserDetailOrganizationMembershipRow = {
   organization_id: string;
   organization_key: string;
   display_name: string;
-  organization_type: 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+  organization_type:
+    | 'county'
+    | 'municipality'
+    | 'district'
+    | 'company'
+    | 'agency'
+    | 'association'
+    | 'institution'
+    | 'other';
   is_active: boolean;
   membership_visibility: 'internal' | 'external';
   is_default_context: boolean;

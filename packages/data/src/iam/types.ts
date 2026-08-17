@@ -6,7 +6,14 @@ export type PersonaKey = 'system_admin';
 type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
 export type OrganizationType =
-  'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+  | 'county'
+  | 'municipality'
+  | 'district'
+  | 'company'
+  | 'agency'
+  | 'association'
+  | 'institution'
+  | 'other';
 export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
 export type OrganizationMembershipVisibility = 'internal' | 'external';
 export type GroupType = 'role_bundle';

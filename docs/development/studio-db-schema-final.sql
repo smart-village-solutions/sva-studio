@@ -1624,7 +1624,7 @@ CREATE TABLE iam.organizations (
     CONSTRAINT organizations_content_author_policy_chk CHECK ((content_author_policy = ANY (ARRAY['org_only'::text, 'org_or_personal'::text]))),
     CONSTRAINT organizations_depth_nonnegative_chk CHECK ((depth >= 0)),
     CONSTRAINT organizations_parent_not_self_chk CHECK (((parent_organization_id IS NULL) OR (parent_organization_id <> id))),
-    CONSTRAINT organizations_type_chk CHECK ((organization_type = ANY (ARRAY['county'::text, 'municipality'::text, 'district'::text, 'company'::text, 'agency'::text, 'other'::text])))
+    CONSTRAINT organizations_type_chk CHECK ((organization_type = ANY (ARRAY['county'::text, 'municipality'::text, 'district'::text, 'company'::text, 'agency'::text, 'association'::text, 'institution'::text, 'other'::text])))
 );
 
 

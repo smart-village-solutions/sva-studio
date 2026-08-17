@@ -335,6 +335,32 @@ Promotion folgt dem regulären Same-Digest-Rolloutprozess.
 
 Global kann der Pfad erst entfernt werden, wenn alle aktiven Credentials automatisch verifiziert werden können, die Principal-zu-DataProvider-Kardinalität bestätigt ist und produktive Metriken keine unerklärten Shadow-Differenzen oder Kompatibilitätsentscheidungen mehr zeigen.
 
+### Übergang des Production-Config-Builders
+
+Der Production-Cutover verwendet weiterhin den regulären `Promote`-Workflow und führt
+keine direkte Stack- oder Datenbankmutation aus. Das getrackte Profil
+`config/runtime/remote/prod.vars` ist die einzige autoritative Quelle für
+nicht-sensitive Konfiguration und setzt den Resolver auf `automatic`.
+
+Solange das geschützte Environment noch kein vollständiges
+`PROMOTE_CONFIG_OVERRIDES` besitzt, darf der Config-Builder ausschließlich die anhand
+des zentralen Remote-Config-Vertrags als `secret-value` oder `secret-reference`
+klassifizierten Werte aus dem bestehenden `APP_CONFIG` übernehmen. Nicht-sensitive
+Legacy-Werte dürfen das getrackte Profil weder ergänzen noch überschreiben. Unbekannte,
+fehlende, leere oder falsch klassifizierte Werte brechen vor Backup, Bootstrap und
+Deployment fail-closed ab. Weder Secretwerte noch Hashes oder Längen werden ausgegeben.
+
+Der Übergang wird in Dev und Staging mit demselben Builderpfad geprüft, bevor das
+geschützte Production-Environment auf `PROMOTE_CONFIG_BUILDER_MODE=authoritative`
+wechselt. Danach wird ein unveränderlicher Digest regulär nach Staging und Production
+promotet. Erfolgsnachweise sind verifizierte Backups, Bootstrap/Postconditions,
+Runtime-Smoke, Digest-Gleichheit und der live gelesene Resolverwert `automatic`.
+
+Rollback bedeutet ausschließlich, das Production-Environment wieder auf den
+Buildermodus `shadow` und den Resolver auf `compatibility` zu setzen und denselben
+geschützten Promote-Pfad erneut auszuführen. Bindungen, Journal und Auditdaten bleiben
+erhalten.
+
 ## Rebaseline und aktueller Delivery-Stand
 
 Der Change wurde am 12. August 2026 erneut gegen Implementierung, Tests, getrackte

@@ -83,6 +83,14 @@ export const compareRemoteConfigShadow = (environment: RemoteEnvironment, legacy
   return { equivalent: missing.length === 0 && additional.length === 0 && configValueMismatches.length === 0 && secretReferenceMismatches.length === 0, missing, additional, configValueMismatches, secretReferenceMismatches };
 };
 
+export const selectProtectedOverrides = (environment: RemoteEnvironment, legacySource: string, explicitOverrides?: string): string => {
+  if (explicitOverrides?.trim()) return explicitOverrides;
+  return [...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values]
+    .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+};
+
 export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.ProcessEnv = process.env): number => {
   const environment = args[args.indexOf('--environment') + 1] as RemoteEnvironment | undefined;
   const profilePath = args[args.indexOf('--profile') + 1];
@@ -95,13 +103,8 @@ export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.Pro
     assertRemoteSource(environment, overrideSourceName);
     const legacySource = env.APP_CONFIG ?? '';
     const explicitOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim() ? env.PROMOTE_CONFIG_OVERRIDES : undefined;
-    const shadowOverrides = shadow && explicitOverrides === undefined
-      ? [...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values]
-          .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
-          .map(([key, value]) => `${key}=${value}`)
-          .join('\n')
-      : undefined;
-    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: explicitOverrides ?? shadowOverrides ?? '' });
+    const protectedOverrides = selectProtectedOverrides(environment, legacySource, explicitOverrides);
+    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: protectedOverrides });
     if (shadow) {
       const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
       process.stdout.write(`${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`);

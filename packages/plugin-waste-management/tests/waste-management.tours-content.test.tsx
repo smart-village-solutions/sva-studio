@@ -362,9 +362,12 @@ describe('WasteToursContent', () => {
       })
     );
     fireEvent.click(screen.getByRole('button', { name: 'tours.actions.openCalendar' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'tours.actions.deactivateStatus:Restmüll Nord' })
-    );
+    const statusButton = screen.getByRole('button', {
+      name: 'tours.actions.deactivateStatus:Restmüll Nord',
+    });
+    expect(statusButton.className).toContain('min-h-11');
+    expect(statusButton.className).toContain('min-w-11');
+    fireEvent.click(statusButton);
 
     expect(onOpenEditDialog).toHaveBeenCalledWith(tour);
     expect(onOpenDuplicateDialog).toHaveBeenCalledWith(tour);

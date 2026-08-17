@@ -733,7 +733,17 @@ export const ContentListPage = ({
           );
           const title = access.canRead ? (
             <StudioTableValueAction asChild emphasis="primary">
-              <Link to={item.editPath}>{item.title}</Link>
+              <Link
+                to={item.editPath}
+                aria-label={t(
+                  access.canUpdate
+                    ? 'content.actions.editTitle'
+                    : 'content.actions.openReadOnlyTitle',
+                  { title: item.title }
+                )}
+              >
+                {item.title}
+              </Link>
             </StudioTableValueAction>
           ) : (
             <span className="font-medium text-foreground">{item.title}</span>

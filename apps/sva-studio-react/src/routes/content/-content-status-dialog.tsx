@@ -69,6 +69,12 @@ export const ContentStatusDialog = ({
   const [error, setError] = React.useState(false);
   const supportedStatuses = getSupportedQuickStatuses(item.contentType);
   const interactive = canUpdate && supportedStatuses.length > 0;
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && pendingStatus !== null) {
+      return;
+    }
+    setOpen(nextOpen);
+  };
 
   if (!interactive) {
     return <ContentStatusBadge status={item.status} />;
@@ -94,11 +100,11 @@ export const ContentStatusDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <button
           type="button"
-          className="rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           aria-label={t('content.statusDialog.open', { title: item.title })}
         >
           <ContentStatusBadge status={item.status} editable />

@@ -118,7 +118,7 @@ export const WasteToursRowStatusCell = ({
               : pt('tours.actions.activateStatus', { value: tour.name })
           }
           disabled={disabled}
-          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           onClick={() => {
             void onToggleTourStatus(tour, !tour.active);
           }}

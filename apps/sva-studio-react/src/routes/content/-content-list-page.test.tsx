@@ -385,10 +385,10 @@ describe('ContentListPage', () => {
     expect(
       screen.getAllByRole('checkbox', { name: 'Inhalte: Zeile content-1 auswählen' })
     ).toHaveLength(2);
-    expect(screen.getAllByRole('link', { name: 'Startseite' })[0]?.getAttribute('href')).toBe(
-      '/admin/news/content-1'
-    );
-    expect(screen.getAllByRole('link', { name: 'Archiv' })[0]?.getAttribute('href')).toBe(
+    expect(
+      screen.getAllByRole('link', { name: 'Startseite bearbeiten' })[0]?.getAttribute('href')
+    ).toBe('/admin/news/content-1');
+    expect(screen.getAllByRole('link', { name: 'Archiv nur lesen' })[0]?.getAttribute('href')).toBe(
       '/admin/poi/content-2'
     );
     expect(screen.getAllByRole('button', { name: 'Löschen' }).length).toBeGreaterThanOrEqual(2);
@@ -403,6 +403,8 @@ describe('ContentListPage', () => {
       name: 'Status von Startseite ändern',
     })[0] as HTMLElement;
     expect(statusButton).toBeTruthy();
+    expect(statusButton.className).toContain('min-h-11');
+    expect(statusButton.className).toContain('min-w-11');
     expect(screen.queryByRole('button', { name: 'Status von Archiv ändern' })).toBeNull();
 
     fireEvent.click(statusButton);
@@ -677,7 +679,9 @@ describe('ContentListPage', () => {
     render(<ContentListPage />);
 
     expect(
-      screen.getAllByRole('link', { name: 'Reservierte Zeichen' })[0]?.getAttribute('href')
+      screen
+        .getAllByRole('link', { name: 'Reservierte Zeichen bearbeiten' })[0]
+        ?.getAttribute('href')
     ).toBe('/admin/news/news%2Fwith%3F%23slug');
   });
 
@@ -952,7 +956,9 @@ describe('ContentListPage', () => {
     expect(
       (screen.getAllByRole('button', { name: 'Löschen' })[0] as HTMLButtonElement).disabled
     ).toBe(true);
-    expect(screen.getAllByRole('link', { name: 'Kontextlos lesbar' }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('link', { name: 'Kontextlos lesbar bearbeiten' }).length
+    ).toBeGreaterThan(0);
   });
 
   it('hydrates host list controls from route search state and updates canonical params', () => {

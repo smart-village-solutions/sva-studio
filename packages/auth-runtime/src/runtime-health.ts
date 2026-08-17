@@ -39,10 +39,20 @@ const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
     };
   }
 
+  let expectedMigration: ReturnType<typeof resolveExpectedGooseMigrationFromDirectory>;
+  try {
+    expectedMigration = resolveExpectedGooseMigrationFromDirectory();
+  } catch {
+    return {
+      ready: false,
+      error: 'IAM migration metadata is invalid',
+      reasonCode: 'migration_metadata_invalid',
+    };
+  }
+
   try {
     const client = await pool.connect();
     try {
-      const expectedMigration = resolveExpectedGooseMigrationFromDirectory();
       const readiness = await runIamDatabaseReadiness(client, expectedMigration);
       if (!readiness.migration.ok) {
         return {

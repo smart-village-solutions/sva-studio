@@ -109,4 +109,19 @@ describe('schema guard helpers', () => {
       schema: { ok: true },
     });
   });
+
+  it('uses the established migration directory variable before the SVA fallback', async () => {
+    const { resolveIamMigrationsDirectory } = await import('./schema-guard.js');
+
+    expect(
+      resolveIamMigrationsDirectory({
+        MIGRATIONS_DIR: '/runtime/migrations',
+        SVA_MIGRATIONS_DIR: '/legacy/migrations',
+      })
+    ).toBe('/runtime/migrations');
+    expect(resolveIamMigrationsDirectory({ SVA_MIGRATIONS_DIR: '/legacy/migrations' })).toBe(
+      '/legacy/migrations'
+    );
+    expect(resolveIamMigrationsDirectory({})).toBe('packages/data/migrations');
+  });
 });

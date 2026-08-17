@@ -1,4 +1,5 @@
 import { readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { Client, type ClientConfig } from 'pg';
 
 import type { QueryClient } from '../db.js';
@@ -538,6 +539,8 @@ SELECT
 `;
 
 const GOOSE_MIGRATION_FILE_PATTERN = /^(\d+)_.*\.sql$/u;
+const DEFAULT_MIGRATIONS_DIRECTORY = 'packages/data/migrations';
+const expectedMigrationByDirectory = new Map<string, ExpectedGooseMigration>();
 
 export const resolveExpectedGooseMigration = (
   fileNames: readonly string[]
@@ -569,14 +572,30 @@ export const resolveExpectedGooseMigration = (
   return expected;
 };
 
+export const resolveIamMigrationsDirectory = (
+  environment: NodeJS.ProcessEnv = process.env
+): string =>
+  environment.MIGRATIONS_DIR?.trim() ||
+  environment.SVA_MIGRATIONS_DIR?.trim() ||
+  DEFAULT_MIGRATIONS_DIRECTORY;
+
 export const resolveExpectedGooseMigrationFromDirectory = (
-  migrationsDirectory = process.env.SVA_MIGRATIONS_DIR?.trim() || 'packages/data/migrations'
-): ExpectedGooseMigration =>
-  resolveExpectedGooseMigration(
-    readdirSync(migrationsDirectory, { withFileTypes: true })
+  migrationsDirectory = resolveIamMigrationsDirectory()
+): ExpectedGooseMigration => {
+  const resolvedMigrationsDirectory = resolve(migrationsDirectory);
+  const cachedMigration = expectedMigrationByDirectory.get(resolvedMigrationsDirectory);
+  if (cachedMigration) {
+    return cachedMigration;
+  }
+
+  const expectedMigration = resolveExpectedGooseMigration(
+    readdirSync(resolvedMigrationsDirectory, { withFileTypes: true })
       .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
   );
+  expectedMigrationByDirectory.set(resolvedMigrationsDirectory, expectedMigration);
+  return expectedMigration;
+};
 
 export const buildIamDatabaseReadinessSql = (): string => {
   const schemaGuardSql = CRITICAL_IAM_SCHEMA_GUARD_SQL.trim().replace(/;$/u, '');

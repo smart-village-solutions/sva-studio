@@ -255,6 +255,32 @@ describe('auth-runtime health handlers', () => {
     });
   });
 
+  it('returns migration_metadata_invalid without running the database readiness query', async () => {
+    state.resolveExpectedGooseMigrationFromDirectory.mockImplementationOnce(() => {
+      throw new Error('migration directory is missing');
+    });
+    const pool = createReadyPool();
+    state.resolvePool.mockReturnValue(pool);
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        db: false,
+        errors: { db: 'IAM migration metadata is invalid' },
+        diagnostics: { db: { reason_code: 'migration_metadata_invalid' } },
+        services: {
+          database: { reasonCode: 'migration_metadata_invalid', status: 'not_ready' },
+        },
+      },
+    });
+    expect(pool.connect).toHaveBeenCalledOnce();
+    expect(state.runIamDatabaseReadiness).not.toHaveBeenCalled();
+  });
+
   it('returns schema_drift when a critical IAM object is missing', async () => {
     state.runIamDatabaseReadiness.mockResolvedValueOnce({
       migration: {

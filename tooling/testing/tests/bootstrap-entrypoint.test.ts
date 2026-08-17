@@ -53,6 +53,7 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
         POSTGRES_PASSWORD: 'postgres-password',
         POSTGRES_USER: 'sva',
         SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
+        SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: 'false',
         SVA_PARENT_DOMAIN: 'studio.smart-village.app',
       },
     });

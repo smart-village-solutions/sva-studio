@@ -14,7 +14,7 @@ const requiredEnvironmentValue = (name) => {
 const parsePort = (value) => {
   const port = Number.parseInt(value, 10);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error('POSTGRES_PORT ist ungueltig.');
+    throw new Error('POSTGRES_PORT ist ungültig.');
   }
   return port;
 };
@@ -25,6 +25,8 @@ const buildClientConfig = () => {
     return { connectionString };
   }
 
+  // One-shot migration, bootstrap and provisioning jobs intentionally use the
+  // database owner here. The app path always supplies IAM_DATABASE_URL for sva_app.
   return {
     database: requiredEnvironmentValue('POSTGRES_DB'),
     host: process.env.POSTGRES_HOST?.trim() || 'postgres',

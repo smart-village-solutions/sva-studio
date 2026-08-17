@@ -47,7 +47,7 @@ log "Wende Migrationen an"
 log "Lese finalen Goose-Status"
 "${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
 
-log "Pruefe Migrationsstand und kritische IAM-Schemaobjekte"
+log "Prüfe Migrationsstand und kritische IAM-Schemaobjekte"
 node ./verify-iam-schema.mjs
 
 case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in

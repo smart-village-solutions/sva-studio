@@ -49,6 +49,10 @@ describe('schema guard helpers', () => {
       'sva_app',
       'sva_job_worker',
     ]);
+    expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('to_regrole($2)'), [
+      'sva_app',
+      'sva_job_worker',
+    ]);
     expect(postgresState.end).toHaveBeenCalledOnce();
 
     postgresState.query.mockResolvedValueOnce({ rows: [{ app_can_enqueue: false }] });

@@ -46,9 +46,12 @@ export type GraphileWorkerReadinessReport = {
 };
 
 const GRAPHILE_WORKER_READINESS_SQL = `
+WITH worker_principal AS (
+  SELECT to_regrole($2) AS role_oid
+)
 SELECT
   to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
-  EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $2) AS worker_role_exists,
+  worker_principal.role_oid IS NOT NULL AS worker_role_exists,
   COALESCE(has_function_privilege(
     $1,
     to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
@@ -57,27 +60,30 @@ SELECT
   NOT has_database_privilege($1, current_database(), 'CREATE')
     AND NOT has_schema_privilege($1, 'public', 'CREATE') AS app_cannot_create,
   COALESCE(has_table_privilege(
-    $2,
+    worker_principal.role_oid,
     to_regclass('graphile_worker._private_jobs'),
     'SELECT,INSERT,UPDATE,DELETE'
   ), false)
-    AND has_schema_privilege($2, 'graphile_worker', 'USAGE') AS worker_can_process,
-  NOT EXISTS (
+    AND COALESCE(
+      has_schema_privilege(worker_principal.role_oid, 'graphile_worker', 'USAGE'),
+      false
+    ) AS worker_can_process,
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'graphile_worker'
-      AND NOT has_function_privilege($2, p.oid, 'EXECUTE')
+      AND NOT has_function_privilege(worker_principal.role_oid, p.oid, 'EXECUTE')
   ) AS worker_functions_complete,
-  NOT EXISTS (
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_sequences sequence
     WHERE sequence.schemaname = 'graphile_worker'
       AND NOT has_sequence_privilege(
-        $2,
+        worker_principal.role_oid,
         format('%I.%I', sequence.schemaname, sequence.sequencename),
         'USAGE,SELECT,UPDATE'
       )
   ) AS worker_sequences_complete,
-  NOT EXISTS (
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM pg_class c
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname = 'graphile_worker'
@@ -92,7 +98,8 @@ SELECT
           AND COALESCE(policy.qual, '') IN ('true', '(true)')
           AND COALESCE(policy.with_check, '') IN ('true', '(true)')
       )
-  ) AS worker_policies_complete;
+  ) AS worker_policies_complete
+FROM worker_principal;
 `;
 
 const GRAPHILE_WORKER_READINESS_FIELDS = [

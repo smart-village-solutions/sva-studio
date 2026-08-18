@@ -113,7 +113,7 @@ const startContractDatabase = (): string => {
   return port;
 };
 
-const migrateAndBootstrap = (port: string): void => {
+const migrateGraphileWorker = (port: string): void => {
   psql(
     'postgres',
     adminPassword,
@@ -140,6 +140,9 @@ const migrateAndBootstrap = (port: string): void => {
   ) {
     throw new Error('graphile_contract_public_enqueue_was_allowed_after_migration');
   }
+};
+
+const bootstrapWorkerRole = (port: string): void => {
   run('bash', ['deploy/portainer/bootstrap-entrypoint.sh'], {
     APP_DB_PASSWORD: appPassword,
     APP_DB_USER: 'sva_app',
@@ -154,6 +157,49 @@ const migrateAndBootstrap = (port: string): void => {
     SVA_BOOTSTRAP_ENABLE_INSTANCE_RECONCILE: 'false',
     SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: 'false',
   });
+};
+
+const runCanonicalWorkerReadiness = async (
+  port: string,
+  appDbUser: string,
+  workerDbUser: string
+): Promise<{ failedChecks: readonly string[]; ok: boolean }> => {
+  const schemaGuardModule = (await import(
+    pathToFileURL(resolve('packages/auth-runtime/dist/iam-account-management/schema-guard.js')).href
+  )) as {
+    runGraphileWorkerReadinessForConnection(
+      config: Record<string, unknown>,
+      appDbUser: string,
+      workerDbUser: string
+    ): Promise<{ failedChecks: readonly string[]; ok: boolean }>;
+  };
+  return schemaGuardModule.runGraphileWorkerReadinessForConnection(
+    {
+      database,
+      host: '127.0.0.1',
+      password: adminPassword,
+      port: Number.parseInt(port, 10),
+      user: 'postgres',
+    },
+    appDbUser,
+    workerDbUser
+  );
+};
+
+const assertMissingWorkerRoleReadiness = async (port: string): Promise<void> => {
+  const report = await runCanonicalWorkerReadiness(port, 'postgres', 'missing_worker_role');
+  const expectedFailures = [
+    'worker_role_exists',
+    'worker_can_process',
+    'worker_functions_complete',
+    'worker_sequences_complete',
+    'worker_policies_complete',
+  ];
+  if (report.ok || expectedFailures.some((check) => !report.failedChecks.includes(check))) {
+    throw new Error(
+      `graphile_contract_missing_worker_role_not_reported:${report.failedChecks.join(',')}`
+    );
+  }
 };
 
 const enqueueContractJob = (port: string): void => {
@@ -180,27 +226,7 @@ const enqueueContractJob = (port: string): void => {
 };
 
 const assertCanonicalWorkerReadiness = async (port: string): Promise<void> => {
-  const schemaGuardModule = (await import(
-    pathToFileURL(resolve('packages/auth-runtime/dist/iam-account-management/schema-guard.js')).href
-  )) as {
-    runGraphileWorkerReadinessForConnection(
-      config: Record<string, unknown>,
-      appDbUser: string,
-      workerDbUser: string
-    ): Promise<{ failedChecks: readonly string[]; ok: boolean }>;
-  };
-  const { runGraphileWorkerReadinessForConnection } = schemaGuardModule;
-  const report = await runGraphileWorkerReadinessForConnection(
-    {
-      database,
-      host: '127.0.0.1',
-      password: adminPassword,
-      port: Number.parseInt(port, 10),
-      user: 'postgres',
-    },
-    'sva_app',
-    'sva_job_worker'
-  );
+  const report = await runCanonicalWorkerReadiness(port, 'sva_app', 'sva_job_worker');
   if (!report.ok) {
     throw new Error(`graphile_contract_readiness_failed:${report.failedChecks.join(',')}`);
   }
@@ -281,7 +307,9 @@ const main = async (): Promise<void> => {
   let workerPool: ContractPool | undefined;
   try {
     const port = startContractDatabase();
-    migrateAndBootstrap(port);
+    migrateGraphileWorker(port);
+    await assertMissingWorkerRoleReadiness(port);
+    bootstrapWorkerRole(port);
     await assertCanonicalWorkerReadiness(port);
     enqueueContractJob(port);
     ({ pool: workerPool, runner } = await processContractJob(port));

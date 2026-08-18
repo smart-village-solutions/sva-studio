@@ -16,8 +16,13 @@ type OneShotResult = Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>
 
 type OneShotEvidenceResult = Pick<
   OneShotResult,
-  'durationMs' | 'exitCode' | 'jobServiceName' | 'jobStackName' | 'state' | 'taskId'
+  'durationMs' | 'exitCode' | 'jobStackName' | 'state' | 'taskId'
 >;
+
+const safeRuntimeIdentifier = (value: string | undefined) =>
+  value && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value) ? value : undefined;
+
+const terminalJobStates = new Set(['complete', 'failed', 'orphaned', 'rejected', 'remove', 'shutdown']);
 
 const rootDir = resolve(import.meta.dirname, '../..');
 
@@ -46,17 +51,6 @@ export const parseArgs = (args: readonly string[]) => {
   if (kind !== 'candidate' && kind !== 'migration' && kind !== 'bootstrap') throw new Error('Ungültiger --kind.');
   if (environment !== 'dev' && environment !== 'staging' && environment !== 'prod') throw new Error('Ungültiges --environment.');
   return { environment, kind } as { environment: PromoteEnvironment; kind: JobKind };
-};
-
-const redact = (value: string | undefined) => {
-  const appConfig = process.env.APP_CONFIG?.trim();
-  const withoutAppConfig = appConfig ? (value ?? '').replaceAll(appConfig, '[REDACTED]') : (value ?? '');
-  return withoutAppConfig
-    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)")[^"]*(")/giu, '$1[REDACTED]$2')
-    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)')[^']*(')/giu, '$1[REDACTED]$2')
-    .replace(/(\bpassword\s+')[^']*(')/giu, '$1[REDACTED]$2')
-    .replace(/((?:password|token|secret|authorization)\s*[=:]\s*)[^\s]+/giu, '$1[REDACTED]')
-    .slice(-8_000);
 };
 
 const runOneShot = (
@@ -95,12 +89,16 @@ export const buildOneShotEvidence = ({
   environment,
   job: result
     ? {
-      durationMs: result.durationMs,
-      exitCode: result.exitCode,
-      jobServiceName: result.jobServiceName,
-      jobStackName: result.jobStackName,
-      state: result.state,
-      taskId: result.taskId,
+      durationMs: Number.isSafeInteger(result.durationMs) && result.durationMs >= 0
+        ? result.durationMs
+        : undefined,
+      exitCode: result.exitCode === null || Number.isSafeInteger(result.exitCode)
+        ? result.exitCode
+        : undefined,
+      jobServiceName: kind === 'migration' ? 'migrate' as const : kind,
+      jobStackName: safeRuntimeIdentifier(result.jobStackName),
+      state: terminalJobStates.has(result.state) ? result.state : undefined,
+      taskId: safeRuntimeIdentifier(result.taskId),
     }
     : undefined,
   kind,
@@ -169,8 +167,8 @@ const main = async () => {
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
-    console.error(error instanceof Error ? redact(error.message) : redact(String(error)));
+  main().catch(() => {
+    console.error('PROMOTE_ONE_SHOT_FAILED: Siehe kanonische Promote-Evidenz und Job-Annotation.');
     process.exitCode = 1;
   });
 }

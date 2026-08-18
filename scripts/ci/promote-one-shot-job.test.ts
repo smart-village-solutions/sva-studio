@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { buildOneShotEvidence, parseArgs } from './promote-one-shot-job.ts';
@@ -24,10 +27,10 @@ describe('promote one-shot job', () => {
         durationMs: 123,
         exitCode: 1,
         jobServiceName: 'migrate',
-        jobStackName: 'studio-staging-migrate-gha-1-1',
+        jobStackName: sentinel,
         logTail: sentinel,
-        state: 'failed',
-        taskId: 'task-1',
+        state: sentinel,
+        taskId: sentinel,
       } as Parameters<typeof buildOneShotEvidence>[0]['result'] & { logTail: string },
     });
 
@@ -36,4 +39,14 @@ describe('promote one-shot job', () => {
     expect(evidence).not.toHaveProperty('error');
     expect(evidence.job).not.toHaveProperty('logTail');
   });
+
+  it.each(['person@example.test', 'https://internal.example.test/jobs/1', 'first line\nsecond line'])(
+    'does not echo invalid CLI input to stderr: %s',
+    (sentinel) => {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', resolve(import.meta.dirname, 'promote-one-shot-job.ts'), '--kind', sentinel, '--environment', 'staging'], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('PROMOTE_ONE_SHOT_FAILED');
+      expect(result.stderr).not.toContain(sentinel);
+    },
+  );
 });

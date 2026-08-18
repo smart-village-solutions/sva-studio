@@ -2,6 +2,7 @@
 
 import {
   buildPromoteFailure,
+  normalizePromoteEnvironment,
   parsePromoteFailure,
   writePromoteFailureRecord,
   type PromoteEnvironment,
@@ -21,16 +22,17 @@ export const recordPromoteFailure = (input: {
 };
 
 const [, , code, environment, phase] = process.argv;
+const normalizedEnvironment: PromoteEnvironment = normalizePromoteEnvironment(environment);
 try {
   recordPromoteFailure({
     code: code as PromoteErrorCode,
-    environment: environment as PromoteEnvironment,
+    environment: normalizedEnvironment,
     phase: phase as PromotePhase,
   });
 } catch {
   recordPromoteFailure({
     code: 'PROMOTE_INTERNAL_ERROR',
-    environment: environment === 'prod' ? 'prod' : environment === 'staging' ? 'staging' : 'dev',
+    environment: normalizedEnvironment,
     phase: 'evidence',
   });
   process.exitCode = 2;

@@ -155,6 +155,11 @@ describe('Promote workflow contract', () => {
     expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
       workflow.indexOf('bind executor source to promoted change head')
     );
+    expect(workflow.indexOf('setup pnpm workspace for promoted source')).toBeGreaterThan(
+      workflow.indexOf('bind executor source to promoted change head')
+    );
+    expect(workflow).toContain('PROMOTE_PARITY_DIGEST_MISMATCH');
+    expect(workflow).toContain('PROMOTE_LIVE_DIGEST_MISMATCH');
     expect(workflow).toContain('PROMOTE_SOURCE_CONTRACT_INVALID');
     expect(workflow).toContain('PROMOTE_INPUT_INVALID');
     expect(workflow).not.toContain(`printf '{"code":"PROMOTE_`);
@@ -173,6 +178,13 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('PROMOTE_GATE_WASTE_BACKUP_REQUEST');
     expect(workflow).toContain('PROMOTE_GATE_WASTE_BACKUP');
     expect(workflow).toContain('PROMOTE_GATE_POSTCONDITIONS');
+    expect(workflow).toContain('PROMOTE_GATE_POLICY_EVALUATION');
+    expect(workflow).toContain('PROMOTE_GATE_TARGET');
+    expect(workflow).toContain('PROMOTE_GATE_PREVIOUS_LIVE');
+    expect(workflow).toContain('PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD');
+    expect(workflow).toContain('PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD');
+    expect(workflow).toContain('steps.candidate_job.conclusion');
+    expect(workflow).toContain('steps.backup_capabilities.conclusion');
     expect(workflow).not.toContain('path: ${{ runner.temp }}/promote-*.json');
     expect(workflow).toContain("PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce'");
     expect(workflow).toContain('PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts');

@@ -47,13 +47,6 @@ export const buildBackupObjectKey = ({
 
 export const buildBackupDiagnosticObjectKey = (objectKey: string) => `${objectKey}.diagnostic.ndjson`;
 
-export const redactBackupError = (value: string, sensitiveValues: readonly string[]) =>
-  sensitiveValues
-    .filter((sensitiveValue) => sensitiveValue.trim().length > 0)
-    .reduce((redacted, sensitiveValue) => redacted.replaceAll(sensitiveValue, '[REDACTED]'), value)
-    .replace(/((?:password|token|secret)\s*[=:]\s*|authorization\s*[=:]\s*(?:bearer\s+)?)[^\s]+/giu, '$1[REDACTED]')
-    .slice(-8_000);
-
 export const buildQuantumBackupDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
   'stacks',
   'deploy',
@@ -142,33 +135,42 @@ export const buildBackupComposeDocument = (
 });
 
 export const buildBackupEvidence = ({
-  bucket,
-  diagnosticObjectKey,
   environment,
   objectKey,
   status,
   task,
 }: {
-  bucket: string;
-  diagnosticObjectKey: string;
   environment: PromoteEnvironment;
   objectKey: string;
   status: 'failed' | 'ok' | 'timed_out';
   task?: MigrationJobTaskSnapshot | null;
-}) => ({
-  bucket,
-  diagnosticObjectKey,
-  environment,
-  objectKey,
-  status,
-  task: task
-    ? {
-      exitCode: task.exitCode,
-      state: task.state,
-      taskId: task.taskId,
-    }
-    : undefined,
-});
+}) => {
+  if (!new RegExp(`^${environment}/[0-9TZ-]+/[a-f0-9]{6,128}/[0-9]+-[0-9]+\\.dump$`, 'u').test(objectKey)) {
+    throw new Error('Der Backup-Objektschlüssel verletzt den Evidence-Vertrag.');
+  }
+  const safeTaskId = task?.taskId && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(task.taskId)
+    ? task.taskId
+    : undefined;
+  const safeState = task?.state && ['complete', 'failed', 'orphaned', 'rejected', 'remove', 'shutdown'].includes(task.state)
+    ? task.state
+    : undefined;
+  return {
+    bucket: backupBucketFor(environment),
+    diagnosticObjectKey: buildBackupDiagnosticObjectKey(objectKey),
+    environment,
+    objectKey,
+    status,
+    task: task
+      ? {
+        exitCode: task.exitCode === null || Number.isSafeInteger(task.exitCode)
+          ? task.exitCode
+          : undefined,
+        state: safeState,
+        taskId: safeTaskId,
+      }
+      : undefined,
+  };
+};
 
 class BackupJobFailure extends Error {
   constructor(
@@ -256,13 +258,11 @@ const main = async () => {
       jobStack,
       quantumEndpoint,
     });
-    writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ bucket, diagnosticObjectKey, environment, objectKey, status: 'ok', task }), null, 2)}\n`);
+    writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({ environment, objectKey, status: 'ok', task }), null, 2)}\n`);
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_diagnostic_object=${diagnosticObjectKey}\nbackup_evidence_path=${resultPath}\n`);
   } catch (error) {
     const failedJob = error instanceof BackupJobFailure ? error : undefined;
     writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({
-      bucket,
-      diagnosticObjectKey,
       environment,
       objectKey,
       status: failedJob?.timedOut ? 'timed_out' : 'failed',
@@ -276,12 +276,8 @@ const main = async () => {
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
-    console.error(redactBackupError(error instanceof Error ? error.message : String(error), [
-      process.env.APP_CONFIG ?? '',
-      process.env.S3_ACCESS_KEY_ID ?? '',
-      process.env.S3_SECRET_ACCESS_KEY ?? '',
-    ]));
+  main().catch(() => {
+    console.error('PROMOTE_BACKUP_JOB_FAILED: Siehe kanonische Promote-Evidenz und Job-Annotation.');
     process.exitCode = 1;
   });
 }

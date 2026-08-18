@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-export type PromoteEnvironment = 'dev' | 'staging' | 'prod';
+export type PromoteEnvironment = 'dev' | 'staging' | 'prod' | 'invalid';
 
 export type PromotePhase =
   | 'input-validation'
@@ -181,7 +181,7 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
   },
 };
 
-const promoteEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod'];
+const promoteEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod', 'invalid'];
 const promotePhases: readonly PromotePhase[] = [
   'input-validation',
   'source-contract',
@@ -204,6 +204,9 @@ const promotePhases: readonly PromotePhase[] = [
 
 const isPromoteEnvironment = (value: unknown): value is PromoteEnvironment =>
   typeof value === 'string' && promoteEnvironments.includes(value as PromoteEnvironment);
+
+export const normalizePromoteEnvironment = (value: unknown): PromoteEnvironment =>
+  isPromoteEnvironment(value) && value !== 'invalid' ? value : 'invalid';
 
 const isPromotePhase = (value: unknown): value is PromotePhase =>
   typeof value === 'string' && promotePhases.includes(value as PromotePhase);

@@ -12,9 +12,12 @@ import {
   writePromoteEvidenceFromEnvironment,
 } from './promote-evidence.ts';
 import {
+  buildPromoteFailure,
   PromoteContractError,
   redactPromoteFailure,
+  writePromoteFailureRecord,
 } from './promote-result.ts';
+import { validateBackupAgentCapabilities } from './verify-backup-agent-capabilities.ts';
 
 const sha = 'a'.repeat(40);
 const otherSha = 'b'.repeat(40);
@@ -258,6 +261,83 @@ describe('promote evidence contract', () => {
       };
       expect(evidence.git).toMatchObject({ baseSha: null, headSha: null });
       expect(evidence.terminalFailure.code).toBe('PROMOTE_SOURCE_CONTRACT_INVALID');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('normalizes an invalid workflow-call environment without losing terminal evidence', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-invalid-environment-'));
+    const failurePath = join(directory, 'failure.json');
+    try {
+      writePromoteFailureRecord(
+        buildPromoteFailure({
+          code: 'PROMOTE_INPUT_INVALID',
+          environment: 'invalid',
+          phase: 'input-validation',
+        }),
+        failurePath
+      );
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '790',
+        GITHUB_RUN_ATTEMPT: '1',
+        PROMOTE_ENVIRONMENT: 'person@example.test',
+        PROMOTE_JOB_STATUS: 'failure',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_GATE_INPUT: 'failure',
+        PROMOTE_FAILURE_PATH: failurePath,
+      });
+      const serialized = readFileSync(outputPath, 'utf8');
+      expect(JSON.parse(serialized)).toMatchObject({
+        environment: 'invalid',
+        terminalFailure: { code: 'PROMOTE_INPUT_INVALID', environment: 'invalid' },
+      });
+      expect(serialized).not.toContain('person@example.test');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('round-trips the live backup capability contract into final evidence', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-capability-roundtrip-'));
+    try {
+      const capabilities = validateBackupAgentCapabilities(
+        'staging',
+        {
+          protocolVersions: [2],
+          agentRevision: `registry.example/backup@${digest}`,
+          databaseTargets: ['studio', 'waste'],
+          resultFields: [
+            'bytes',
+            'database',
+            'deployImageDigest',
+            'environment',
+            'objectKey',
+            'requestId',
+            'sha256',
+            'status',
+            'steps',
+          ],
+          wasteInventory: true,
+        },
+        true
+      );
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '791',
+        GITHUB_RUN_ATTEMPT: '1',
+        PROMOTE_ENVIRONMENT: 'staging',
+        PROMOTE_JOB_STATUS: 'success',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_BACKUP_AGENT: JSON.stringify(capabilities),
+        PROMOTE_GATE_BACKUP_CAPABILITIES: 'success',
+      });
+      expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
+        backupAgent: { resultFields: expect.arrayContaining(['deployImageDigest', 'objectKey', 'requestId']) },
+      });
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }

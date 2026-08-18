@@ -3,6 +3,7 @@ import { dirname, relative, resolve } from 'node:path';
 
 import {
   buildPromoteFailure,
+  normalizePromoteEnvironment,
   parsePromoteFailure,
   type PromoteEnvironment,
   type PromoteFailure,
@@ -12,15 +13,22 @@ import {
 export type PromoteGateStatus = 'passed' | 'failed' | 'cancelled' | 'skipped';
 export type PromoteEvidenceStatus = 'passed' | 'failed' | 'cancelled';
 export type PromoteGateName =
+  | 'workspace-setup'
   | 'input-validation'
   | 'permission-snapshot-secret'
+  | 'source-preparation'
   | 'source-contract'
+  | 'registry-login'
   | 'image-contract'
   | 'config-build'
+  | 'change-policy-evaluation'
   | 'migration-bootstrap-policy'
+  | 'deployment-tooling'
+  | 'target-resolution'
   | 'readiness'
   | 'candidate-preflight'
   | 'staging-parity'
+  | 'previous-live-capture'
   | 'backup-capabilities'
   | 'studio-backup-request'
   | 'waste-backup-request'
@@ -32,7 +40,11 @@ export type PromoteGateName =
   | 'postconditions'
   | 'deploy'
   | 'runtime-smoke'
-  | 'digest-verification';
+  | 'digest-verification'
+  | 'staging-parity-evidence'
+  | 'staging-parity-upload'
+  | 'one-shot-evidence-upload'
+  | 'config-cleanup';
 
 export type PromoteGateEvidence = Readonly<{
   gate: PromoteGateName;
@@ -102,18 +114,22 @@ const digestPattern = /sha256:[0-9a-f]{64}/u;
 const revisionPattern = /^[0-9a-f]{64}$/u;
 const gitRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 const safeReferencePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/u;
-const safeFieldPattern = /^[a-z][a-z0-9_-]{0,63}$/u;
+const safeFieldPattern = /^[a-z][A-Za-z0-9_-]{0,63}$/u;
 const imageRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|sha256:[0-9a-f]{64}|[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$/u;
 const backupAgentRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|[A-Za-z0-9._/-]+@sha256:[0-9a-f]{64})$/u;
 const gateStatuses: readonly PromoteGateStatus[] = ['passed', 'failed', 'cancelled', 'skipped'];
 const evidenceStatuses: readonly PromoteEvidenceStatus[] = ['passed', 'failed', 'cancelled'];
-const evidenceEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod'];
+const evidenceEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod', 'invalid'];
 const gateNames: readonly PromoteGateName[] = [
-  'input-validation', 'permission-snapshot-secret', 'source-contract', 'image-contract',
-  'config-build', 'migration-bootstrap-policy', 'readiness', 'candidate-preflight',
-  'staging-parity', 'backup-capabilities', 'studio-backup-request', 'waste-backup-request',
+  'workspace-setup', 'input-validation', 'permission-snapshot-secret', 'source-preparation', 'source-contract',
+  'registry-login', 'image-contract', 'config-build', 'change-policy-evaluation',
+  'migration-bootstrap-policy',
+  'deployment-tooling', 'target-resolution', 'readiness', 'previous-live-capture',
+  'candidate-preflight', 'staging-parity', 'backup-capabilities', 'studio-backup-request', 'waste-backup-request',
   'temporary-backup', 'studio-backup-verification', 'waste-backup-verification', 'migration',
   'bootstrap', 'postconditions', 'deploy', 'runtime-smoke', 'digest-verification',
+  'staging-parity-evidence', 'staging-parity-upload', 'one-shot-evidence-upload',
+  'config-cleanup',
 ];
 const evidencePhases: readonly PromotePhase[] = [
   'input-validation', 'source-contract', 'image-contract', 'config-build', 'static-preflight',
@@ -390,13 +406,20 @@ const required = (value: string | undefined, label: string): string => {
 };
 
 const gateEnvironmentKeys: readonly Readonly<{ gate: PromoteGateName; phase: PromotePhase; key: string }>[] = [
+  { gate: 'workspace-setup', phase: 'source-contract', key: 'PROMOTE_GATE_WORKSPACE_SETUP' },
   { gate: 'input-validation', phase: 'input-validation', key: 'PROMOTE_GATE_INPUT' },
   { gate: 'permission-snapshot-secret', phase: 'input-validation', key: 'PROMOTE_GATE_PERMISSION_SECRET' },
+  { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
+  { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
   { gate: 'config-build', phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
+  { gate: 'change-policy-evaluation', phase: 'static-preflight', key: 'PROMOTE_GATE_POLICY_EVALUATION' },
   { gate: 'migration-bootstrap-policy', phase: 'static-preflight', key: 'PROMOTE_GATE_STATIC_PREFLIGHT' },
+  { gate: 'deployment-tooling', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOYMENT_TOOLING' },
+  { gate: 'target-resolution', phase: 'deploy', key: 'PROMOTE_GATE_TARGET' },
   { gate: 'readiness', phase: 'static-preflight', key: 'PROMOTE_GATE_READINESS' },
+  { gate: 'previous-live-capture', phase: 'digest-verification', key: 'PROMOTE_GATE_PREVIOUS_LIVE' },
   { gate: 'candidate-preflight', phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT' },
   { gate: 'staging-parity', phase: 'staging-parity', key: 'PROMOTE_GATE_STAGING_PARITY' },
   { gate: 'backup-capabilities', phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES' },
@@ -411,6 +434,10 @@ const gateEnvironmentKeys: readonly Readonly<{ gate: PromoteGateName; phase: Pro
   { gate: 'deploy', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOY' },
   { gate: 'runtime-smoke', phase: 'external-smoke', key: 'PROMOTE_GATE_EXTERNAL_SMOKE' },
   { gate: 'digest-verification', phase: 'digest-verification', key: 'PROMOTE_GATE_DIGEST_VERIFICATION' },
+  { gate: 'staging-parity-evidence', phase: 'evidence', key: 'PROMOTE_GATE_STAGING_EVIDENCE' },
+  { gate: 'staging-parity-upload', phase: 'evidence', key: 'PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD' },
+  { gate: 'one-shot-evidence-upload', phase: 'evidence', key: 'PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD' },
+  { gate: 'config-cleanup', phase: 'evidence', key: 'PROMOTE_GATE_CONFIG_CLEANUP' },
 ];
 
 export const writePromoteEvidenceFromEnvironment = (
@@ -419,12 +446,7 @@ export const writePromoteEvidenceFromEnvironment = (
   const runnerTemp = required(env.RUNNER_TEMP, 'RUNNER_TEMP');
   const runId = required(env.GITHUB_RUN_ID, 'GITHUB_RUN_ID');
   const attempt = Number(required(env.GITHUB_RUN_ATTEMPT, 'GITHUB_RUN_ATTEMPT'));
-  const environment = required(
-    env.PROMOTE_ENVIRONMENT,
-    'PROMOTE_ENVIRONMENT'
-  ) as PromoteEnvironment;
-  if (!['dev', 'staging', 'prod'].includes(environment))
-    throw new Error('PROMOTE_ENVIRONMENT ist ungültig.');
+  const environment = normalizePromoteEnvironment(env.PROMOTE_ENVIRONMENT);
   const evidence = buildPromoteEvidence({
     runId,
     runAttempt: attempt,

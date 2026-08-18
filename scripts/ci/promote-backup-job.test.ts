@@ -1,3 +1,6 @@
+import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -7,7 +10,6 @@ import {
   buildBackupDiagnosticObjectKey,
   buildBackupEvidence,
   buildBackupObjectKey,
-  redactBackupError,
 } from './promote-backup-job.ts';
 
 describe('promote backup job', () => {
@@ -30,17 +32,6 @@ describe('promote backup job', () => {
     expect(buildBackupDiagnosticObjectKey('staging/example.dump')).toBe('staging/example.dump.diagnostic.ndjson');
   });
 
-  it('redacts backup credentials from propagated errors', () => {
-    expect(redactBackupError(
-      'Upload to https://fileserver.smart-village.app failed for access-key/secret-key',
-      ['access-key', 'secret-key'],
-    )).toBe('Upload to https://fileserver.smart-village.app failed for [REDACTED]/[REDACTED]');
-  });
-
-  it('redacts bearer tokens in propagated authorization headers', () => {
-    expect(redactBackupError('Authorization: Bearer sensitive-token', [])).toBe('Authorization: Bearer [REDACTED]');
-  });
-
   it.each([
     'person@example.test',
     'https://internal.example.test/jobs/1',
@@ -48,27 +39,48 @@ describe('promote backup job', () => {
     'secret-key=should-not-leak',
   ])('writes allowlisted failure evidence without free diagnostics: %s', (sentinel) => {
     const evidence = buildBackupEvidence({
-      bucket: 'studio-db-backup-staging',
-      diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
       environment: 'staging',
       error: sentinel,
       logTail: sentinel,
       logs: sentinel,
-      objectKey: 'staging/example.dump',
+      objectKey: `staging/2026-08-18T10-00-00-000Z/${'a'.repeat(64)}/123-1.dump`,
       status: 'failed',
-      task: { exitCode: 1, message: sentinel, state: 'complete', taskId: 'task-1' },
+      task: { exitCode: 1, message: sentinel, state: sentinel, taskId: sentinel },
     } as Parameters<typeof buildBackupEvidence>[0] & { error: string; logTail: string; logs: string });
 
     expect(evidence).toEqual({
       bucket: 'studio-db-backup-staging',
-      diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
+      diagnosticObjectKey: `staging/2026-08-18T10-00-00-000Z/${'a'.repeat(64)}/123-1.dump.diagnostic.ndjson`,
       environment: 'staging',
-      objectKey: 'staging/example.dump',
+      objectKey: `staging/2026-08-18T10-00-00-000Z/${'a'.repeat(64)}/123-1.dump`,
       status: 'failed',
-      task: { exitCode: 1, state: 'complete', taskId: 'task-1' },
+      task: { exitCode: 1 },
     });
     expect(JSON.stringify(evidence)).not.toContain(sentinel);
   });
+
+  it.each([
+    'person@example.test',
+    'https://internal.example.test/jobs/1',
+    'first line\nsecond line',
+    'secret-key=should-not-leak',
+  ])('rejects unsafe backup object keys: %s', (sentinel) => {
+    expect(() => buildBackupEvidence({
+      environment: 'staging',
+      objectKey: sentinel,
+      status: 'failed',
+    })).toThrow('Evidence-Vertrag');
+  });
+
+  it.each(['person@example.test', 'https://internal.example.test/jobs/1', 'first line\nsecond line'])(
+    'does not echo invalid CLI input to stderr: %s',
+    (sentinel) => {
+      const result = spawnSync(process.execPath, ['--import', 'tsx', resolve(import.meta.dirname, 'promote-backup-job.ts'), sentinel], { encoding: 'utf8' });
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain('PROMOTE_BACKUP_JOB_FAILED');
+      expect(result.stderr).not.toContain(sentinel);
+    },
+  );
 
   it('renders an isolated job with upload, download and archive validation', () => {
     const document = buildBackupComposeDocument({ environment: { POSTGRES_PORT: '5432' }, image: 'example@sha256:test' }, {

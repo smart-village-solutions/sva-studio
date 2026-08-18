@@ -111,9 +111,6 @@ jobs:
           cp scripts/ci/record-promote-failure.ts "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts"
           cp scripts/ci/write-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
 
-      - name: setup pnpm workspace
-        uses: ./.github/actions/setup-pnpm-workspace
-
       - name: validate inputs
         id: input_validation
         env:
@@ -195,6 +192,7 @@ jobs:
           fi
 
       - name: fetch main reference
+        id: source_preparation
         run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
 
       - name: bind executor source to promoted change head
@@ -219,7 +217,12 @@ jobs:
             echo "head_sha=${head}"
           } >> "${GITHUB_OUTPUT}"
 
+      - name: setup pnpm workspace for promoted source
+        id: workspace_setup
+        uses: ./.github/actions/setup-pnpm-workspace
+
       - name: Login to GHCR
+        id: registry_login
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -295,14 +298,17 @@ jobs:
           bootstrap_executor_configured=true
 
           echo "Evaluating deploy gates against ${BASE_REF}..${HEAD_REF}"
-          pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
+          if ! pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
             --base "${BASE_REF}" \
             --head "${HEAD_REF}" \
             --environment "${ENVIRONMENT}" \
             --migration-mode "${MIGRATION_MODE}" \
             --bootstrap-mode "${BOOTSTRAP_MODE}" \
             --migration-executor-configured "${migration_executor_configured}" \
-            --bootstrap-executor-configured "${bootstrap_executor_configured}"
+            --bootstrap-executor-configured "${bootstrap_executor_configured}"; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${ENVIRONMENT}" static-preflight
+            exit 1
+          fi
 
       - name: enforce migration and bootstrap gates
         id: migration_enforcement
@@ -331,6 +337,7 @@ jobs:
           fi
 
       - name: setup quantum-cli
+        id: deployment_tooling
         uses: hostwithquantum/setup-quantum-cli@v2.0.0
         with:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
@@ -338,7 +345,11 @@ jobs:
 
       - name: resolve deployment target
         id: target
-        run: pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${{ inputs.environment }}" deploy
+            exit 1
+          fi
 
       - name: verify pre-mutation production readiness
         id: readiness
@@ -353,7 +364,11 @@ jobs:
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" digest-verification
+            exit 1
+          fi
 
       - name: require successful staging parity for production mutation
         id: staging_parity
@@ -363,7 +378,11 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
-        run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts
+        run: |
+          if ! pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_PARITY_DIGEST_MISMATCH "${{ inputs.environment }}" staging-parity
+            exit 1
+          fi
 
       - name: verify live backup agent capabilities
         id: backup_capabilities
@@ -557,9 +576,14 @@ jobs:
         id: digest_verification
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH "${{ inputs.environment }}" digest-verification
+            exit 1
+          fi
 
       - name: write staging parity evidence
+        id: staging_evidence
         if: ${{ inputs.environment == 'staging' && success() }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
@@ -567,6 +591,7 @@ jobs:
         run: pnpm exec tsx scripts/ci/write-staging-promote-evidence.ts
 
       - name: upload staging parity evidence
+        id: staging_evidence_upload
         if: ${{ inputs.environment == 'staging' && success() }}
         uses: actions/upload-artifact@v4
         with:
@@ -575,6 +600,7 @@ jobs:
           retention-days: 14
 
       - name: upload redacted one-shot evidence
+        id: one_shot_evidence_upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -588,6 +614,7 @@ jobs:
           retention-days: 14
 
       - name: remove selected remote config
+        id: config_cleanup
         if: always()
         run: rm -f "${RUNNER_TEMP}/candidate-app-config.vars" "${RUNNER_TEMP}/promote-app-config.vars"
 
@@ -607,16 +634,23 @@ jobs:
           PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
           PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}
+          PROMOTE_GATE_WORKSPACE_SETUP: ${{ steps.workspace_setup.outcome }}
           PROMOTE_GATE_INPUT: ${{ steps.input_validation.outcome }}
           PROMOTE_GATE_PERMISSION_SECRET: ${{ steps.permission_snapshot_secret.outcome }}
+          PROMOTE_GATE_SOURCE_PREPARATION: ${{ steps.source_preparation.outcome }}
           PROMOTE_GATE_SOURCE: ${{ steps.source_contract.outcome }}
+          PROMOTE_GATE_REGISTRY_LOGIN: ${{ steps.registry_login.outcome }}
           PROMOTE_GATE_IMAGE: ${{ steps.image_contract.outcome }}
           PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
+          PROMOTE_GATE_POLICY_EVALUATION: ${{ steps.gate_eval.outcome }}
           PROMOTE_GATE_STATIC_PREFLIGHT: ${{ steps.migration_enforcement.outcome }}
+          PROMOTE_GATE_DEPLOYMENT_TOOLING: ${{ steps.deployment_tooling.outcome }}
+          PROMOTE_GATE_TARGET: ${{ steps.target.outcome }}
           PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
-          PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
+          PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.conclusion }}
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}
-          PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.conclusion }}
           PROMOTE_GATE_BACKUP_REQUEST: ${{ steps.backup_job.outcome }}
           PROMOTE_GATE_WASTE_BACKUP_REQUEST: ${{ steps.waste_backup_job.outcome }}
           PROMOTE_GATE_BACKUP_FALLBACK: ${{ steps.backup_fallback_job.outcome }}
@@ -628,6 +662,10 @@ jobs:
           PROMOTE_GATE_DEPLOY: ${{ steps.deploy.outcome }}
           PROMOTE_GATE_EXTERNAL_SMOKE: ${{ steps.runtime_smoke.outcome }}
           PROMOTE_GATE_DIGEST_VERIFICATION: ${{ steps.digest_verification.outcome }}
+          PROMOTE_GATE_STAGING_EVIDENCE: ${{ steps.staging_evidence.outcome }}
+          PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD: ${{ steps.staging_evidence_upload.outcome }}
+          PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD: ${{ steps.one_shot_evidence_upload.outcome }}
+          PROMOTE_GATE_CONFIG_CLEANUP: ${{ steps.config_cleanup.outcome }}
         run: node "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
 
       - name: upload redacted promote evidence

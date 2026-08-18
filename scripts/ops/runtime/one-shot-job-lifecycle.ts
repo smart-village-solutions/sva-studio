@@ -117,6 +117,16 @@ export const classifyOneShotDiagnostic = (
   return matchedRule?.code ?? 'ONESHOT_UNKNOWN_TASK_FAILURE';
 };
 
+export const selectOneShotDiagnostic = (
+  remoteLogTail: string,
+  snapshotLogTail: string,
+  fallback: string
+) =>
+  remoteLogTail &&
+  !remoteLogTail.startsWith('Remote-Logs konnten nicht über Portainer gelesen werden:')
+    ? remoteLogTail
+    : snapshotLogTail || fallback;
+
 export class OneShotJobError extends Error {
   readonly evidence: OneShotFailureEvidence;
 
@@ -155,6 +165,7 @@ export const withOneShotCleanupFailure = (error: unknown): OneShotJobError =>
     : new OneShotJobError(
         {
           cleanupFailed: true,
+          diagnosticCode: 'ONESHOT_UNKNOWN_TASK_FAILURE',
           failureKind: 'cleanup-failed',
           jobServiceName: 'migrate',
           jobStackName: 'unknown',

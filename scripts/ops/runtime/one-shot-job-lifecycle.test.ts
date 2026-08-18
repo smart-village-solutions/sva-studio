@@ -4,6 +4,7 @@ import {
   buildSuccessfulOneShotResult,
   classifyOneShotDiagnostic,
   createOneShotJobError,
+  selectOneShotDiagnostic,
   withOneShotCleanupFailure,
 } from './one-shot-job-lifecycle.ts';
 
@@ -78,5 +79,21 @@ describe('one-shot job lifecycle', () => {
       taskId: 'task-2',
     });
     expect(JSON.stringify(cleanupFailure.evidence)).not.toMatch(/person@|https:/u);
+  });
+
+  it('prefers snapshot diagnostics when the remote log lookup only returned an error', () => {
+    expect(
+      selectOneShotDiagnostic(
+        'Remote-Logs konnten nicht über Portainer gelesen werden: interne URL',
+        'Running bootstrap SQL',
+        'Bootstrap failed'
+      )
+    ).toBe('Running bootstrap SQL');
+  });
+
+  it('adds a stable diagnostic code to an unknown cleanup failure', () => {
+    expect(withOneShotCleanupFailure(new Error('restricted')).evidence.diagnosticCode).toBe(
+      'ONESHOT_UNKNOWN_TASK_FAILURE'
+    );
   });
 });

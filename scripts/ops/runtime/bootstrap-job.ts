@@ -11,6 +11,7 @@ import { spawnBackground, wait, withoutDebugEnv } from './process.ts';
 import {
   buildSuccessfulOneShotResult,
   createOneShotJobError,
+  selectOneShotDiagnostic,
   withOneShotCleanupFailure,
 } from './one-shot-job-lifecycle.ts';
 
@@ -327,7 +328,7 @@ export const runBootstrapJobAgainstAcceptance = async (
           serviceId: task?.serviceId,
         });
         throw createOneShotJobError({
-          diagnostic: containerLogTail || logTail || 'Bootstrap failed',
+          diagnostic: selectOneShotDiagnostic(containerLogTail, logTail, 'Bootstrap failed'),
           failureKind: 'task-failed',
           jobServiceName,
           jobStackName: quantumProject.jobStackName,

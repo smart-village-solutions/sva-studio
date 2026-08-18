@@ -1,9 +1,9 @@
 import {
   normalizeIamTab,
-  normalizeOrganizationDetailTab,
   normalizeRoleDetailTab,
   type AppRouteBindings as BaseAppRouteBindings,
 } from '@sva/routing';
+import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
 import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import {

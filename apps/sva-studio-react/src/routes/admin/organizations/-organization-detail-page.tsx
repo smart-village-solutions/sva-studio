@@ -8,7 +8,7 @@ import {
   StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
-import type { OrganizationDetailRouteTab } from '@sva/routing';
+import type { OrganizationDetailRouteTab } from '@sva/routing/route-search';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamUserListItem } from '@sva/core';
 import React from 'react';

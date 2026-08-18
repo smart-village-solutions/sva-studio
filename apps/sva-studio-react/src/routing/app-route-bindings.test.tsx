@@ -40,8 +40,11 @@ vi.mock('@tanstack/react-router', () => ({
 
 vi.mock('@sva/routing', () => ({
   normalizeIamTab: routeState.normalizeIamTab,
-  normalizeOrganizationDetailTab: routeState.normalizeOrganizationDetailTab,
   normalizeRoleDetailTab: routeState.normalizeRoleDetailTab,
+}));
+
+vi.mock('@sva/routing/route-search', () => ({
+  normalizeOrganizationDetailTab: routeState.normalizeOrganizationDetailTab,
 }));
 
 vi.mock('../i18n', () => ({

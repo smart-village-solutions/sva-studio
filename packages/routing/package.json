@@ -15,6 +15,10 @@
       "types": "./dist/index.server.d.ts",
       "default": "./dist/index.server.js"
     },
+    "./route-search": {
+      "types": "./dist/route-search.d.ts",
+      "default": "./dist/route-search.js"
+    },
     "./auth": {
       "types": "./dist/auth.routes.d.ts",
       "default": "./dist/auth.routes.js"

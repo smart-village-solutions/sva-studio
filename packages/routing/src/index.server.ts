@@ -12,10 +12,5 @@ export {
 } from './auth.routes.server.js';
 export { getServerRouteFactories } from './app.routes.server.js';
 export type { AppRouteBindings, AppRouteFactory } from './app.routes.shared.js';
-export {
-  normalizeIamTab,
-  normalizeOrganizationDetailTab,
-  normalizeRoleDetailTab,
-  type OrganizationDetailRouteTab,
-} from './route-search.js';
+export { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
 export { routePaths, uiRoutePaths, type UiRoutePathKey } from './route-paths.js';

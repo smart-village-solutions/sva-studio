@@ -160,6 +160,7 @@ const gateEnvironmentKeys: readonly Readonly<{
   },
   { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
+  { gate: 'deployment-base', phase: 'source-contract', key: 'PROMOTE_GATE_DEPLOYMENT_BASE' },
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
   {
@@ -214,6 +215,11 @@ const gateEnvironmentKeys: readonly Readonly<{
   { gate: 'bootstrap', phase: 'bootstrap', key: 'PROMOTE_GATE_BOOTSTRAP' },
   { gate: 'postconditions', phase: 'postconditions', key: 'PROMOTE_GATE_POSTCONDITIONS' },
   { gate: 'deploy', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOY' },
+  {
+    gate: 'swarm-convergence',
+    phase: 'swarm-convergence',
+    key: 'PROMOTE_GATE_SWARM_CONVERGENCE',
+  },
   { gate: 'runtime-smoke', phase: 'external-smoke', key: 'PROMOTE_GATE_EXTERNAL_SMOKE' },
   {
     gate: 'digest-verification',

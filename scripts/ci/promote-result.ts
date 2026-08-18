@@ -44,6 +44,9 @@ export type PromoteErrorCode =
   | 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE'
   | 'PROMOTE_PARITY_DIGEST_MISMATCH'
   | 'PROMOTE_BACKUP_AGENT_INCOMPATIBLE'
+  | 'PROMOTE_CANDIDATE_JOB_FAILED'
+  | 'PROMOTE_MIGRATION_FAILED'
+  | 'PROMOTE_BOOTSTRAP_FAILED'
   | 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT'
   | 'PROMOTE_SMOKE_REALM_MISMATCH'
   | 'PROMOTE_SMOKE_CALLBACK_MISMATCH'
@@ -166,6 +169,21 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
     summary: 'Der laufende Backup-Agent erfüllt den erforderlichen Consumer-Vertrag nicht.',
     retryable: false,
     nextAction: 'Zuerst einen kompatiblen Backup-Agenten ausrollen und live nachweisen.',
+  },
+  PROMOTE_CANDIDATE_JOB_FAILED: {
+    summary: 'Der isolierte Candidate-Job hat seinen terminalen Vertrag nicht erfüllt.',
+    retryable: false,
+    nextAction: 'Candidate-Task-Evidenz prüfen und Zielkonfiguration korrigieren.',
+  },
+  PROMOTE_MIGRATION_FAILED: {
+    summary: 'Der isolierte Migrationsjob ist terminal fehlgeschlagen.',
+    retryable: false,
+    nextAction: 'Task und Exit-Code prüfen; vor dem Retry den Datenbankstand feststellen.',
+  },
+  PROMOTE_BOOTSTRAP_FAILED: {
+    summary: 'Der isolierte Bootstrap-Job ist terminal fehlgeschlagen.',
+    retryable: false,
+    nextAction: 'Task-Zustand und Exit-Code prüfen und den Bootstrap-Vertrag korrigieren.',
   },
   PROMOTE_SWARM_CONVERGENCE_TIMEOUT: {
     summary: 'Der Swarm-Service hat den erwarteten terminalen Zustand nicht erreicht.',

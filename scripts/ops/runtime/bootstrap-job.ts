@@ -2,21 +2,25 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
+import { getMigrationJobTerminalState, readQuantumTaskSnapshot } from './migration-job.ts';
+import { spawnBackground, wait, withoutDebugEnv } from './process.ts';
 import {
-  collectQuantumTaskSnapshots,
-  extractQuantumJsonPayload,
-  getMigrationJobTerminalState,
-  selectLatestMigrationTask,
-  type MigrationJobTaskSnapshot,
-} from './migration-job.ts';
-import { filterRemoteOutputLines, spawnBackground, summarizeProcessOutput, wait, withoutDebugEnv } from './process.ts';
+  buildSuccessfulOneShotResult,
+  createOneShotJobError,
+  withOneShotCleanupFailure,
+} from './one-shot-job-lifecycle.ts';
 
-type RunCapture = (rootDir: string, commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => string;
+type RunCapture = (
+  rootDir: string,
+  commandName: string,
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv
+) => string;
 type RunCaptureDetailed = (
   rootDir: string,
   commandName: string,
   args: readonly string[],
-  env?: NodeJS.ProcessEnv,
+  env?: NodeJS.ProcessEnv
 ) => {
   error?: Error;
   output: readonly (string | Buffer | null)[];
@@ -26,7 +30,12 @@ type RunCaptureDetailed = (
   stderr: string;
   stdout: string;
 };
-type Run = (rootDir: string, commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => void;
+type Run = (
+  rootDir: string,
+  commandName: string,
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv
+) => void;
 type CommandExists = (rootDir: string, commandName: string) => boolean;
 
 type BootstrapJobDeps = {
@@ -77,9 +86,7 @@ export type RunBootstrapJobInput = RemoteComposeInput & {
 };
 
 const normalizeRenderedComposeForQuantum = (value: string) =>
-  value
-    .replace(/^name:\s.*\n/imu, '')
-    .replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
+  value.replace(/^name:\s.*\n/imu, '').replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
 
 const normalizeQuantumComposeValue = (value: JsonValue, parentKey?: string): JsonValue => {
   if (Array.isArray(value)) {
@@ -107,7 +114,11 @@ const normalizeQuantumComposeValue = (value: JsonValue, parentKey?: string): Jso
   return Object.fromEntries(normalizedEntries) as JsonValue;
 };
 
-const toTemporaryJobStackName = (sourceStackName: string, serviceName: string, reportId: string) => {
+const toTemporaryJobStackName = (
+  sourceStackName: string,
+  serviceName: string,
+  reportId: string
+) => {
   const sanitizedReportId = reportId
     .toLowerCase()
     .replace(/[^a-z0-9]+/gu, '-')
@@ -123,11 +134,15 @@ export const buildBootstrapJobComposeDocument = (
     jobStackName: string;
     sourceStackName: string;
     targetReplicas: number;
-  },
+  }
 ): ComposeDocument => {
   const { name: _stackName, ...composeWithoutName } = renderedCompose;
   const bootstrapService = renderedCompose.services?.bootstrap;
-  if (!bootstrapService || typeof bootstrapService !== 'object' || Array.isArray(bootstrapService)) {
+  if (
+    !bootstrapService ||
+    typeof bootstrapService !== 'object' ||
+    Array.isArray(bootstrapService)
+  ) {
     throw new Error('Render-Compose enthaelt keinen dedizierten bootstrap-Service.');
   }
 
@@ -138,14 +153,16 @@ export const buildBootstrapJobComposeDocument = (
         ...(bootstrapService as Record<string, JsonValue>),
         networks: ['internal'],
         deploy: {
-          ...(((bootstrapService as Record<string, JsonValue>).deploy as Record<string, JsonValue> | undefined) ?? {}),
+          ...(((bootstrapService as Record<string, JsonValue>).deploy as
+            Record<string, JsonValue> | undefined) ?? {}),
           replicas: input.targetReplicas,
           restart_policy: {
             condition: 'none',
           },
         },
         environment: {
-          ...((((bootstrapService as Record<string, JsonValue>).environment as Record<string, JsonValue> | undefined) ?? {})),
+          ...(((bootstrapService as Record<string, JsonValue>).environment as
+            Record<string, JsonValue> | undefined) ?? {}),
           POSTGRES_HOST: `${input.sourceStackName}_postgres`,
           SVA_BOOTSTRAP_JOB_STACK: input.jobStackName,
           SVA_BOOTSTRAP_TARGET_STACK: input.sourceStackName,
@@ -164,7 +181,7 @@ export const buildBootstrapJobComposeDocument = (
 const createQuantumProject = (
   deps: Pick<BootstrapJobDeps, 'rootDir' | 'runCapture' | 'runCaptureDetailed'>,
   env: NodeJS.ProcessEnv,
-  input: RunBootstrapJobInput,
+  input: RunBootstrapJobInput
 ) => {
   const jobStackName = toTemporaryJobStackName(input.sourceStackName, 'bootstrap', input.reportId);
   const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
@@ -172,15 +189,21 @@ const createQuantumProject = (
     deps.runCapture(
       deps.rootDir,
       'docker',
-      ['compose', ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]), 'config', '--format', 'json'],
+      [
+        'compose',
+        ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]),
+        'config',
+        '--format',
+        'json',
+      ],
       {
         ...env,
         SVA_BOOTSTRAP_REPLICAS: '1',
         SVA_BOOTSTRAP_JOB_STACK: jobStackName,
         SVA_BOOTSTRAP_TARGET_STACK: input.sourceStackName,
         SVA_STACK_NAME: input.sourceStackName,
-      },
-    ),
+      }
+    )
   ) as ComposeDocument;
   const jobCompose = buildBootstrapJobComposeDocument(renderedComposeDocument, {
     internalNetworkName: input.internalNetworkName,
@@ -189,7 +212,9 @@ const createQuantumProject = (
     targetReplicas: 1,
   });
   const renderedComposeJson = JSON.stringify(jobCompose, null, 2);
-  const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-bootstrap-`));
+  const projectDir = mkdtempSync(
+    resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-bootstrap-`)
+  );
   const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.json');
 
   writeFileSync(renderedComposePath, `${renderedComposeJson}\n`, 'utf8');
@@ -204,16 +229,11 @@ const createQuantumProject = (
   };
 };
 
-export const buildQuantumDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
-  'stacks',
-  'deploy',
-  '-f',
-  composePath,
-  '--stack',
-  stackName,
-  '--endpoint',
-  endpoint,
-];
+export const buildQuantumDeployArgs = (
+  endpoint: string,
+  stackName: string,
+  composePath: string
+) => ['stacks', 'deploy', '-f', composePath, '--stack', stackName, '--endpoint', endpoint];
 
 const buildQuantumRemoveArgs = (endpoint: string, stackName: string) => [
   'stacks',
@@ -225,57 +245,24 @@ const buildQuantumRemoveArgs = (endpoint: string, stackName: string) => [
   stackName,
 ];
 
-const readQuantumTaskSnapshot = (
-  deps: Pick<BootstrapJobDeps, 'rootDir' | 'runCaptureDetailed'>,
-  env: NodeJS.ProcessEnv,
-  endpoint: string,
-  stackName: string,
-  serviceName: string,
-): {
-  logTail: string;
-  task: MigrationJobTaskSnapshot | null;
-} => {
-  const result = deps.runCaptureDetailed(
-    deps.rootDir,
-    'quantum-cli',
-    ['ps', '--endpoint', endpoint, '--stack', stackName, '--service', serviceName, '--all', '-o', 'json'],
-    withoutDebugEnv(env),
-  );
-
-  const combined = filterRemoteOutputLines(`${result.stdout ?? ''}\n${result.stderr ?? ''}`);
-  const jsonPayload = extractQuantumJsonPayload(combined);
-  if (!jsonPayload) {
-    return {
-      logTail: summarizeProcessOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}`),
-      task: null,
-    };
-  }
-
-  const parsed = JSON.parse(jsonPayload) as unknown;
-  return {
-    logTail: summarizeProcessOutput(`${result.stdout ?? ''}\n${result.stderr ?? ''}`),
-    task: selectLatestMigrationTask(collectQuantumTaskSnapshots(parsed)),
-  };
-};
-
 const removeQuantumStack = (
   deps: Pick<BootstrapJobDeps, 'rootDir' | 'run'>,
   env: NodeJS.ProcessEnv,
   endpoint: string,
-  stackName: string,
+  stackName: string
 ) => {
   deps.run(
     deps.rootDir,
     'quantum-cli',
     buildQuantumRemoveArgs(endpoint, stackName),
-    withoutDebugEnv(env),
+    withoutDebugEnv(env)
   );
 };
 
 export const runBootstrapJobAgainstAcceptance = async (
   deps: BootstrapJobDeps,
   env: NodeJS.ProcessEnv,
-  input: RunBootstrapJobInput,
+  input: RunBootstrapJobInput
 ): Promise<BootstrapJobResult> => {
   const quantumProject = createQuantumProject(deps, env, input);
   const startedAt = new Date().toISOString();
@@ -293,8 +280,12 @@ export const runBootstrapJobAgainstAcceptance = async (
     deps.run(
       deps.rootDir,
       'quantum-cli',
-      buildQuantumDeployArgs(input.quantumEndpoint, quantumProject.jobStackName, quantumProject.renderedComposePath),
-      withoutDebugEnv(env),
+      buildQuantumDeployArgs(
+        input.quantumEndpoint,
+        quantumProject.jobStackName,
+        quantumProject.renderedComposePath
+      ),
+      withoutDebugEnv(env)
     );
 
     for (;;) {
@@ -303,12 +294,12 @@ export const runBootstrapJobAgainstAcceptance = async (
         env,
         input.quantumEndpoint,
         quantumProject.jobStackName,
-        jobServiceName,
+        jobServiceName
       );
       const terminalState = getMigrationJobTerminalState(task);
 
       if (terminalState === 'succeeded') {
-        return {
+        return buildSuccessfulOneShotResult({
           cleanup: async () => {
             try {
               removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
@@ -316,44 +307,33 @@ export const runBootstrapJobAgainstAcceptance = async (
               quantumProject.cleanup();
             }
           },
-          completedAt: new Date().toISOString(),
           durationMs: Date.now() - startTime,
-          exitCode: task?.exitCode,
           jobServiceName,
           jobStackName: quantumProject.jobStackName,
           logTail,
           startedAt,
-          state: task?.state ?? 'complete',
-          taskId: task?.taskId,
-          taskMessage: task?.message,
-        };
+          task,
+        });
       }
 
       if (terminalState === 'failed') {
-        throw new Error(
-          [
-            `Swarm-Bootstrap-Job ${quantumProject.jobStackName}/${jobServiceName} ist fehlgeschlagen.`,
-            task?.state ? `state=${task.state}` : null,
-            typeof task?.exitCode === 'number' ? `exitCode=${String(task.exitCode)}` : null,
-            task?.message ? `message=${task.message}` : null,
-            logTail ? `details:\n${logTail}` : null,
-          ]
-            .filter((entry): entry is string => Boolean(entry))
-            .join('\n'),
-        );
+        throw createOneShotJobError({
+          diagnostic: logTail || 'Bootstrap failed',
+          failureKind: 'task-failed',
+          jobServiceName,
+          jobStackName: quantumProject.jobStackName,
+          task,
+        });
       }
 
       if (Date.now() - startTime > timeoutMs) {
-        throw new Error(
-          [
-            `Swarm-Bootstrap-Job ${quantumProject.jobStackName}/${jobServiceName} hat das Timeout von ${timeoutMs} ms erreicht.`,
-            task?.state ? `state=${task.state}` : null,
-            task?.message ? `message=${task.message}` : null,
-            logTail ? `details:\n${logTail}` : null,
-          ]
-            .filter((entry): entry is string => Boolean(entry))
-            .join('\n'),
-        );
+        throw createOneShotJobError({
+          diagnostic: logTail || 'Bootstrap timeout',
+          failureKind: 'timeout',
+          jobServiceName,
+          jobStackName: quantumProject.jobStackName,
+          task,
+        });
       }
 
       await deps.wait(pollIntervalMs);
@@ -367,10 +347,7 @@ export const runBootstrapJobAgainstAcceptance = async (
     }
     quantumProject.cleanup();
     if (cleanupError) {
-      throw new Error(
-        `Swarm-Bootstrap-Job ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
-        { cause: error },
-      );
+      throw withOneShotCleanupFailure(error);
     }
     throw error;
   }

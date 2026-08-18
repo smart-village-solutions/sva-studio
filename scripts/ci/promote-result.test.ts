@@ -54,6 +54,17 @@ const sentinelValues = [
 
 describe('promote evidence contract', () => {
   it.each([
+    ['PROMOTE_CANDIDATE_JOB_FAILED', 'candidate-preflight'],
+    ['PROMOTE_MIGRATION_FAILED', 'migration'],
+    ['PROMOTE_BOOTSTRAP_FAILED', 'bootstrap'],
+  ] as const)('defines the stable %s one-shot contract', (code, phase) => {
+    expect(buildPromoteFailure({ code, environment: 'staging', phase })).toMatchObject({
+      code,
+      phase,
+      retryable: false,
+    });
+  });
+  it.each([
     ['PROMOTE_MAIN_E2E_NOT_READY', true],
     ['PROMOTE_MAIN_E2E_REJECTED', false],
     ['PROMOTE_MAIN_E2E_LOOKUP_FAILED', true],

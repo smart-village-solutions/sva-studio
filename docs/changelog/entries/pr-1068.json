@@ -1,0 +1,4 @@
+{
+  "prNumber": 1068,
+  "body": "Rollouts nach Dev und Staging werden sicherer und nachvollziehbarer.\n\n- Migrationen und Bootstrap-Aufgaben werden gegen die tatsächlich laufende Anwendungsversion geprüft.\n- Fehlgeschlagene Einmalaufgaben behalten einen redigierten technischen Nachweis, auch wenn temporäre Ressourcen bereinigt werden.\n- Externe Erreichbarkeitsprüfungen beginnen erst, wenn alle Swarm-Dienste ihren erwarteten Zustand erreicht haben."
+}

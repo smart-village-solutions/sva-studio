@@ -13,6 +13,7 @@
 - **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `c639dcf48e5afb04e08eb3bcccd39789b2d7c978`; Gates und Scope sind im kanonischen Checkpoint von `accelerate-pr-failure-feedback` dokumentiert.
 - **A2 – Staging-Consumer:** `implementation-complete, activation pending`; integrierter Implementierungs-HEAD: `b536b613f2874370e282cfec89279387cfb88f00` (Merge von `origin/main` `5652f4a1ea6d4225d8d4f5c5d6385feb17c20e42`); der Consumer erweitert den H1-Vertrag um die separat blockierbare Phase `main-e2e-evidence` und eine strikt geparste allowlistete Main-E2E-Referenz, persistiert keine freie Diagnose und kann v2-Staging-Parität an Attestation plus Source-SHA binden. Ohne explizites `MAIN_E2E_GATE=shadow|enforce` bleibt der Schritt deaktiviert; Disabled und Shadow akzeptieren weiterhin die bestehende Legacy-Parität, erst Enforce verlangt v2. Die Main-Integration erhält zusätzlich die Worker-Datenbank-Secret-, Injection- und Readiness-Verträge und bindet beide Worker-Secret-Schritte an denselben H1-Evidenzvertrag. Gates: `tooling-testing:test:unit` mit fünf expliziten E2E-/Promote-/Workflow-Vertragstestdateien (119 Tests), fünf expliziten Worker-/Readiness-Vertragstestdateien (26 Tests) und dem isolierten Repro zweier PR-fremder Timeout-Dateien (19 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, Prettier-Check, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün. `pnpm test:pr` wurde im Coverage-Teil nach zwei nicht reproduzierbaren 5-Sekunden-Lasttimeouts abgebrochen; 90 `tooling-testing`-Dateien und 827 Tests waren dort bereits grün, der isolierte Repro war anschließend 19 von 19 grün. Der Gesamtgate-Lauf wird nicht als grün behauptet.
 - **A3 – Shadow und Aktivierung:** `ready`; Basis-HEAD: `b536b613f2874370e282cfec89279387cfb88f00`; nächster Block: ausschließlich `accelerate-pr-failure-feedback` 7.3 mit expliziter Shadow-Aktivierung, dokumentierter Kettenparität und anschließender blockierender Aktivierung; keine Aktivierung wurde in A2 vorgenommen.
+- **H2 – Laufzeitkonvergenz und Recovery-Evidenz:** `implementation-complete, rollout pending`; Implementierungs-HEAD: `1f9e719aa750329e10f086c9668ae1501226880a`; die Diff-Risikoanalyse bindet sich an die OCI-Revision des tatsächlich laufenden Images, One-shot-Fehler behalten trotz Cleanup ausschließlich allowlistete Task-Evidenz und der externe HTTP-Smoke beginnt erst nach terminaler Swarm-Konvergenz. Gates: `tooling-testing:test:unit` mit acht expliziten Promote-, One-shot-, Swarm- und Smoke-Vertragstestdateien (105 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint --skipNxCache`, Full-Tree-Complexity-Gate, Prettier-/YAML-Check, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün. Nächster Block: Review und Veröffentlichung dieses Implementierungsstands; keine Environment-Aktivierung und kein Staging-/Production-Rollout wurden vorgenommen.
 
 Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dessen exakten HEAD, die tatsächlich ausgeführten Gates, beide strikten OpenSpec-Validierungen und den explizit freigegebenen Folgeblock enthalten. `pending` oder `blocked` ist kein Implementierungsnachweis.
 
@@ -46,13 +47,13 @@ Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dess
 
 ## 4. Swarm-Konvergenz und externer Smoke
 
-- [ ] 4.1 Nach dem Deploy auf erfolgreichen terminalen Swarm-Service- und Task-Zustand warten.
-- [ ] 4.2 Erst danach externes HTTP-Warmup für Root-, Health-, IAM- und Tenant-Probes starten.
+- [x] 4.1 Nach dem Deploy auf erfolgreichen terminalen Swarm-Service- und Task-Zustand warten.
+- [x] 4.2 Erst danach externes HTTP-Warmup für Root-, Health-, IAM- und Tenant-Probes starten.
 - [x] 4.3 Ausschließlich 404, 502, 503, 504, Timeout und Gateway als retryfähige Infrastrukturzustände klassifizieren.
 - [x] 4.4 Realm-, Callback-, Tenant-Scope-, Secret-, Digest- und Unknown-Host-Fehler sofort blockierend halten.
 - [x] 4.5 Production-Readiness am Ende ausschließlich mit HTTP 200 bestehen lassen.
 - [x] 4.6 Retryversuche aggregiert loggen und terminale Fehler mit stabilen Codes und konkreter nächster Aktion ausgeben.
-- [ ] 4.7 Tests für vollständige Router-Lücke mit späterem Erfolg, dauerhaften 404, Swarm-Timeout, Readiness 503, falsches Realm, falschen Callback und offenen Unknown Host ergänzen.
+- [x] 4.7 Tests für vollständige Router-Lücke mit späterem Erfolg, dauerhaften 404, Swarm-Timeout, Readiness 503, falsches Realm, falschen Callback und offenen Unknown Host ergänzen.
 
 ## 5. Evidenz und minimaler Recovery-Vertrag
 

@@ -117,6 +117,19 @@ Ein App-Rollback verwendet den vorherigen Digest zusammen mit der zugehörigen v
 - Breite HTTP-Retries melden dauerhafte Infrastrukturfehler später. Das Warmup bleibt begrenzt; fachliche Vertragsfehler brechen sofort ab.
 - Der neue Builder kann selbst fehlerhaft sein. Redigierte Äquivalenz, Dev und Staging müssen deshalb vor der Production-Aktivierung denselben erwarteten Rendervertrag nachweisen.
 
+## Change-Grenze und Wiederaufnahme
+
+`harden-studio-promote-contract` besitzt das generische Promote-Fundament: Phasen, Fehlercodes, Redaction, Annotation, Step-Summary, JSON-Evidenz und die garantierte Platzierung read-only arbeitender Gates vor der ersten Remote-Mutation. Der Change implementiert keine App-E2E-Trigger, keine E2E-Scope-Logik und keine E2E-spezifische Staging-Entscheidung. Diese fachliche Erweiterung gehört ausschließlich zu `accelerate-pr-failure-feedback`.
+
+Die gemeinsame Umsetzung folgt zwingend dieser Reihenfolge:
+
+1. **H1 – Promote-Evidenzfundament:** In diesem Change werden die Tasks 5.1, 5.2, 5.3 und 5.5 samt kleinstem relevanten Gate aus 7.6 abgeschlossen. Die vorhandene Pre-Mutation-Platzierung aus 2.1 bleibt der Integrationspunkt.
+2. **A1 – Main-E2E-Producer:** Erst nach dem H1-Checkpoint implementiert `accelerate-pr-failure-feedback` seine Tasks 5.1 bis 5.4 ohne Änderung an `promote.yml`.
+3. **A2 – Staging-Consumer:** Erst wenn der Producer auf dem gemeinsamen Branchstand verfügbar ist, implementiert `accelerate-pr-failure-feedback` die Tasks 6.1 und 6.2 durch Wiederverwendung des H1-Vertrags.
+4. **A3 – Shadow und Aktivierung:** Der blockierende Staging-Preflight folgt ausschließlich über Task 7.3 des Accelerate-Changes. Die übrigen Live-/Konvergenzaufgaben dieses Changes bleiben davon unabhängig und dürfen A1 nicht unnötig blockieren.
+
+Für jede Wiederaufnahme gelten `tasks.md`, der aktuelle Git-Diff und nachgewiesene Testergebnisse gemeinsam als Wahrheit. Ein Task wird erst nach vollständigem Code-, Test- und gegebenenfalls Dokumentationsnachweis abgehakt. Teilweise Arbeit bleibt unchecked. Nach jedem abgeschlossenen Block werden exakter HEAD, ausgeführte Gates, beide strikten OpenSpec-Validierungen und der nächste freigegebene Block festgehalten. Ein neuer Lauf beginnt mit dem ersten unchecked Task des aktiven Blocks und vergleicht vorhandene Änderungen gegen dessen vollständige Akzeptanzbeschreibung, statt frühere Sitzungsannahmen zu übernehmen.
+
 ## Migration Plan
 
 1. Config-Schema, getrackte nicht-sensitive Remote-Profile, Builder, Redaction und Fehlercodes implementieren.

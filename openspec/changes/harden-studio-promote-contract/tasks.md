@@ -1,3 +1,21 @@
+## 0. Gemeinsamer Start- und Wiederaufnahmevertrag
+
+- [x] 0.1 In einem separaten Worktree vom aktuellen `origin/main` beide genehmigten OpenSpec-Changes bereitstellen, `git status`, Base-SHA und Worktree-Inventar prüfen und `openspec validate harden-studio-promote-contract --strict` sowie `openspec validate accelerate-pr-failure-feedback --strict` erfolgreich ausführen.
+- [x] 0.2 Vor neuer Implementierung die vorhandenen `[x]`- und `[ ]`-Einträge dieses Changes read-only gegen den aktuellen Code, Tests und gegebenenfalls Live-Evidenz abgleichen; nur nachgewiesen falsche Taskzustände korrigieren und keine historische Checkbox als Beweis behandeln.
+- [x] 0.3 Als ersten lieferbaren Block ausschließlich das generische Promote-Evidenzfundament aus 5.1, 5.2, 5.3 und 5.5 implementieren beziehungsweise vervollständigen; keine App-E2E-Trigger, keine E2E-Scope-Logik und keine E2E-spezifische Promote-Entscheidung hinzufügen.
+- [ ] 0.4 H1 erst abschließen, wenn 5.1, 5.2, 5.3, 5.5 und der kleinste relevante Gate-Pfad aus 7.6 grün sind, beide OpenSpecs strikt validieren und exakter HEAD, Gates sowie der freigegebene nächste Block `accelerate-pr-failure-feedback` 5.1 bis 5.4 im kanonischen Checkpoint-Protokoll dieses Changes dokumentiert sind.
+
+**Wiederaufnahme:** Es ist immer nur ein Block aktiv. Ein teilweise bearbeiteter Task bleibt unchecked. Nach einer Unterbrechung zuerst `git status`, aktuellen Diff, HEAD und beide OpenSpec-Validierungen prüfen; dann beim ersten unchecked Task des aktiven Blocks fortsetzen und vorhandene Änderungen gegen dessen vollständigen Text verifizieren.
+
+### Kanonisches Checkpoint-Protokoll
+
+- **H1 – Promote-Evidenzfundament:** `pending`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+- **A1 – Main-E2E-Producer:** `blocked by H1`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+- **A2 – Staging-Consumer:** `blocked by A1`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+- **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+
+Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dessen exakten HEAD, die tatsächlich ausgeführten Gates, beide strikten OpenSpec-Validierungen und den explizit freigegebenen Folgeblock enthalten. `pending` oder `blocked` ist kein Implementierungsnachweis.
+
 ## 1. Config-Vertrag, Fehlercodes und Shadow-Modus
 
 - [x] 1.1 Getrackte nicht-sensitive Remote-Profile für Dev, Staging und Production sowie eine typsichere Schlüsselklassifikation anlegen.
@@ -38,11 +56,11 @@
 
 ## 5. Evidenz und minimaler Recovery-Vertrag
 
-- [ ] 5.1 Redigierte Evidenz für vorherigen und neuen Digest, Git-Grenzen, nicht-sensitive Config-Revision, externe Secret-Referenzen, Agent-Vertrag und Gate-Ergebnisse ergänzen.
-- [ ] 5.2 GitHub-Annotation, Step-Summary und JSON-Artefakt auf denselben Fehlercodevertrag ausrichten.
-- [ ] 5.3 Secret-Werte, Hashes, Wertlängen, Environment-Dumps, unredigierte Remote-Logs und PII durch Tests aus allen Evidenzpfaden ausschließen.
+- [x] 5.1 Redigierte Evidenz für vorherigen und neuen Digest, Git-Grenzen, nicht-sensitive Config-Revision, externe Secret-Referenzen, Agent-Vertrag und Gate-Ergebnisse ergänzen.
+- [x] 5.2 GitHub-Annotation, Step-Summary und JSON-Artefakt auf denselben Fehlercodevertrag ausrichten.
+- [x] 5.3 Secret-Werte, Hashes, Wertlängen, Environment-Dumps, unredigierte Remote-Logs und PII durch Tests aus allen Evidenzpfaden ausschließen.
 - [ ] 5.4 App-Rollback-Vertrag auf vorherigen Digest plus versionierte nicht-sensitive Config-Revision begrenzen; inkompatible Secret-Rotation als separaten Planungsfall dokumentieren.
-- [ ] 5.5 Unbekannte interne Fehler redigiert als `PROMOTE_INTERNAL_ERROR` erfassen.
+- [x] 5.5 Unbekannte interne Fehler redigiert als `PROMOTE_INTERNAL_ERROR` erfassen.
 
 ## 6. Gestufte Aktivierung
 

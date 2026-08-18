@@ -43,17 +43,25 @@ describe('Promote workflow contract', () => {
       "trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT"
     );
     expect(
-      workflow.match(/cp "\$\{RUNNER_TEMP\}\/promote-app-config\.vars" config\/runtime\/base\.vars/gu)
+      workflow.match(
+        /cp "\$\{RUNNER_TEMP\}\/promote-app-config\.vars" config\/runtime\/base\.vars/gu
+      )
     ).toHaveLength(2);
-    expect(workflow).toContain('PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}');
-    expect(workflow).toContain("continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}");
+    expect(workflow).toContain(
+      'PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}'
+    );
+    expect(workflow).toContain(
+      "continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}"
+    );
     expect(
       workflow.match(/SVA_STACK_NAME: \$\{\{ steps\.target\.outputs\.stack_name \}\}/gu)
     ).toHaveLength(2);
     expect(
       workflow.match(/SVA_PUBLIC_BASE_URL: \$\{\{ steps\.target\.outputs\.public_base_url \}\}/gu)
     ).toHaveLength(3);
-    expect(workflow).toContain('pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"');
+    expect(workflow).toContain(
+      'pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"'
+    );
     expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
     expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');
     expect(workflow).toContain('QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}');
@@ -90,9 +98,7 @@ describe('Promote workflow contract', () => {
 
   it('runs backups before every staging or production deployment and blocks production mutations behind parity', () => {
     expect(workflow).toContain("inputs.environment == 'staging' || inputs.environment == 'prod'");
-    expect(workflow).toContain(
-      "if: ${{ inputs.environment == 'prod' }}"
-    );
+    expect(workflow).toContain("if: ${{ inputs.environment == 'prod' }}");
     expect(workflow).toContain('require successful staging parity for production mutation');
     expect(
       workflow.indexOf('require successful staging parity for production mutation')
@@ -129,8 +135,42 @@ describe('Promote workflow contract', () => {
   });
 
   it('verifies runtime health and the live digest after every environment deploy', () => {
-    expect(workflow).toMatch(/- name: verify deployed runtime\n\s+env:/u);
-    expect(workflow).toMatch(/- name: verify deployed runtime image digest\n\s+env:/u);
+    expect(workflow).toMatch(/- name: verify deployed runtime\n\s+id: runtime_smoke\n\s+env:/u);
+    expect(workflow).toMatch(
+      /- name: verify deployed runtime image digest\n\s+id: digest_verification\n\s+env:/u
+    );
+  });
+
+  it('publishes one redacted promote evidence contract after every terminal outcome', () => {
+    const writer = workflow.indexOf('write redacted promote evidence');
+    const upload = workflow.indexOf('upload redacted promote evidence');
+
+    expect(writer).toBeGreaterThan(workflow.indexOf('- name: deploy'));
+    expect(upload).toBeGreaterThan(writer);
+    expect(workflow).toContain('run: pnpm exec tsx scripts/ci/write-promote-evidence.ts');
+    expect(workflow).toContain(
+      'PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json'
+    );
+    expect(workflow).toContain('PROMOTE_JOB_STATUS: ${{ job.status }}');
+    expect(workflow).toContain('PROMOTE_BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}');
+    expect(workflow).toContain('PROMOTE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}');
+    expect(workflow).toContain(
+      'PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}'
+    );
+    expect(workflow).toContain(
+      'name: promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}'
+    );
+    expect(workflow).toContain(
+      'path: ${{ runner.temp }}/promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}.json'
+    );
+    expect(workflow).toContain('if-no-files-found: error');
+    expect(workflow).not.toContain('echo "## Promote summary"');
   });
 
   it('offers a staging-only backup drill without application mutation', () => {

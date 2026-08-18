@@ -1,42 +1,49 @@
 ## ADDED Requirements
 
-### Requirement: PR-E2E meldet bestätigte Fehler früh
+### Requirement: Vollständiges App-E2E läuft außerhalb des PR-Gates
 
-Das System SHALL App-E2E-Läufe in Pull Requests nach dem ersten gemäß Retry-Policy bestätigten Testfehler beenden, während Main- und Nightly-Läufe weiterhin die vollständige Fehlermatrix erfassen.
+Das System SHALL den vollständigen App-E2E-Lauf aus dem Pull-Request-Gate entfernen und ihn genau einmal pro Push auf `main` ausführen. Es SHALL keine separate kleine, zielgerichtete oder affected-basierte PR-E2E-Suite bereitstellen.
 
-#### Scenario: PR-E2E-Test scheitert auch im Retry
+#### Scenario: Pull Request wird geprüft
 
-- **GIVEN** ein App-E2E-Test darf gemäß Policy einmal wiederholt werden
-- **WHEN** derselbe Test im Retry erneut fehlschlägt
-- **THEN** beendet der betroffene PR-E2E-Shard weitere Szenarien mit `maxFailures: 1`
-- **AND** der erforderliche E2E-Status wird für den exakten Head-SHA rot
-- **AND** Trace, Screenshot und Fehlerartefakte des bestätigten Fehlers bleiben verfügbar
+- **WHEN** ein Pull Request erstellt oder aktualisiert wird
+- **THEN** startet der GitHub-PR-Pfad keinen App-E2E-Lauf
+- **AND** führt `pnpm test:pr` kein App-E2E-Target aus
+- **AND** bleiben Unit-, Type-, Lint-, Coverage-, Integrations-, Build-, Security- und Complexity-Gates davon unberührt
 
-#### Scenario: Nightly- oder Main-E2E enthält Fehler
+#### Scenario: Commit wird nach Main gepusht
 
-- **WHEN** derselbe Lauf auf `main` oder im Nightly-Kontext ausgeführt wird
-- **THEN** ist kein PR-spezifisches `maxFailures` aktiv
-- **AND** alle geplanten Szenarien werden zur vollständigen Diagnose ausgeführt
+- **WHEN** ein Commit durch Push auf `main` landet
+- **THEN** startet genau ein kanonischer vollständiger App-E2E-Lauf für dieses Head-SHA
+- **AND** führt der Lauf den vollständigen bestehenden Szenario-Scope ohne PR-spezifische Auswahlheuristik aus
+- **AND** bleibt E2E ungecacht
 
-### Requirement: Parallele App-E2E-Shards sind vollständig und isoliert
+#### Scenario: Nightly oder manueller Diagnoselauf wird ausgeführt
 
-Das System SHALL eine parallele App-E2E-Ausführung ausschließlich über disjunkte GitHub-Jobs mit jeweils eigenem App-/SSR-Server ermöglichen und über einen fail-closed Aggregator absichern.
+- **WHEN** App-E2E zeitgesteuert oder manuell ausgeführt wird
+- **THEN** darf der Lauf den vollständigen Szenario-Scope diagnostizieren
+- **AND** ist sein Ergebnis nicht als Release-Evidenz für einen regulären Staging-Promote zulässig
 
-#### Scenario: E2E-Suite wird aufgeteilt
+### Requirement: Main-E2E-Evidenz ist exakt an den Commit gebunden
 
-- **WHEN** ein PR-E2E-Plan mehrere Shards erzeugt
-- **THEN** besitzt jeder Shard einen eigenen Runner und einen eigenen App-/SSR-Prozess
-- **AND** kein Test ist mehreren Shards zugeordnet
-- **AND** unbekannte Tests landen in einem konservativen Rest-Shard
+Das System SHALL für jeden kanonischen Main-E2E-Lauf eine maschinenlesbare, redigierte Evidenz erzeugen, die den geprüften Quellstand eindeutig identifiziert, ohne den lokalen Playwright-Lauf als Prüfung des Containerartefakts darzustellen.
 
-#### Scenario: Direkt betroffenes E2E-Szenario existiert
+#### Scenario: Main-E2E-Lauf endet terminal
 
-- **WHEN** eine stabile Ownership-Zuordnung ein Szenario direkt mit den PR-Änderungen verbindet
-- **THEN** startet dieses Szenario in einem priorisierten Shard
-- **AND** alle übrigen relevanten Szenarien bleiben Teil des finalen PR-E2E-Scopes
+- **WHEN** der kanonische App-E2E-Lauf für einen Main-Push endet
+- **THEN** enthält seine Evidenz mindestens Workflow, `push`-Event, `main`-Ref, Head-SHA, Run-ID, Attempt und terminales Ergebnis
+- **AND** enthält sie keine Secrets, vollständigen Environment-Dumps oder personenbezogenen Daten
+- **AND** bezeichnet sie den lokalen App-/Service-Stack als Prüfgegenstand
 
-#### Scenario: Shard fehlt oder ist nicht auswertbar
+#### Scenario: Deterministischer E2E-Fehler tritt auf
 
-- **WHEN** ein erwarteter Shard abbricht oder kein gültiges Ergebnis für den Head-SHA liefert
-- **THEN** schlägt der E2E-Aggregator fail-closed fehl
-- **AND** der bestehende erforderliche App-E2E-Check bleibt rot oder ausstehend statt fälschlich grün zu werden
+- **WHEN** ein App-E2E-Szenario für den Main-Commit deterministisch fehlschlägt
+- **THEN** bleibt die Evidenz für dieses Head-SHA rot
+- **AND** wird der Fehler nicht durch einen automatischen Erfolgs-Retry in releasefähige Evidenz umgewandelt
+- **AND** bleiben Trace, Screenshot und Fehlerartefakte für die Diagnose verfügbar
+
+#### Scenario: Infrastrukturfehler wird erneut ausgeführt
+
+- **WHEN** ein dokumentierter temporärer Infrastrukturfehler eine manuelle Wiederholung rechtfertigt
+- **THEN** bleibt die Wiederholung als weiterer Attempt desselben kanonischen Runs nachvollziehbar
+- **AND** darf nur ein terminal erfolgreicher Attempt für exakt dasselbe Head-SHA als Release-Evidenz dienen

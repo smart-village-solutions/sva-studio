@@ -76,6 +76,12 @@ export const organizationsAdminDEResources = {
     backToList: 'Zur Organisationsliste',
     notFound: 'Die angeforderte Organisation wurde nicht gefunden.',
   },
+  tabs: {
+    ariaLabel: 'Bereiche der Organisationsbearbeitung',
+    mobileLabel: 'Bearbeitungsbereich auswählen',
+    organization: 'Organisation',
+    memberships: 'Mitgliedschaften',
+  },
   sections: {
     overviewTitle: 'Übersicht',
     overviewDescription: 'Status, Hierarchie und Kennzahlen der aktuellen Organisation.',

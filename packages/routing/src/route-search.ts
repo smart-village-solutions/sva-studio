@@ -1,4 +1,5 @@
 export type IamRouteTab = 'rights' | 'governance' | 'dsr' | 'deletion-rules';
+export type OrganizationDetailRouteTab = 'organization' | 'memberships';
 export type RoleDetailRouteTab = 'general' | 'permissions' | 'assignments' | 'sync';
 
 export const normalizeIamTab = (value: unknown): IamRouteTab => {
@@ -16,3 +17,6 @@ export const normalizeRoleDetailTab = (value: unknown): RoleDetailRouteTab => {
 
   return 'general';
 };
+
+export const normalizeOrganizationDetailTab = (value: unknown): OrganizationDetailRouteTab =>
+  value === 'memberships' ? 'memberships' : 'organization';

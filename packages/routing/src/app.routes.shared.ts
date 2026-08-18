@@ -15,7 +15,11 @@ import {
 import { type RoutingDiagnosticsHook } from './diagnostics.js';
 export { mapPluginGuardToAccountGuard } from './plugin-guard-mapping.js';
 import type { RouteGuardContext } from './protected.routes.js';
-import { normalizeIamTab, normalizeRoleDetailTab } from './route-search.js';
+import {
+  normalizeIamTab,
+  normalizeOrganizationDetailTab,
+  normalizeRoleDetailTab,
+} from './route-search.js';
 import { uiRoutePaths } from './route-paths.js';
 import { enforceUiRouteAccessRequirements } from './ui-route-access.js';
 
@@ -92,6 +96,9 @@ const uiRouteDefinitions: readonly UiRouteDefinition[] = [
     binding: 'adminOrganizationDetail',
     path: uiRoutePaths.adminOrganizationDetail,
     guard: 'adminOrganizationDetail',
+    validateSearch: (search: Record<string, unknown>) => ({
+      tab: normalizeOrganizationDetailTab(search.tab),
+    }),
   },
   { binding: 'adminInstances', path: uiRoutePaths.adminInstances, guard: 'adminInstances' },
   {

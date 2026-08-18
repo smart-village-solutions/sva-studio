@@ -68,7 +68,11 @@ import {
 } from './app.routes';
 import { getServerRouteFactories } from './app.routes.server';
 import { createUiRouteFactories, getAdminDetailRoutePath } from './app.routes.shared';
-import { normalizeIamTab, normalizeRoleDetailTab } from './route-search';
+import {
+  normalizeIamTab,
+  normalizeOrganizationDetailTab,
+  normalizeRoleDetailTab,
+} from './route-search';
 
 type RouteOptionsUnderTest = {
   path?: string;
@@ -373,6 +377,13 @@ describe('app.routes', () => {
       readRouteOptions(routeMap.get('/admin/roles/$roleId')).validateSearch?.({ tab: 'bogus' })
     ).toEqual({
       tab: 'general',
+    });
+    expect(
+      readRouteOptions(routeMap.get('/admin/organizations/$organizationId')).validateSearch?.({
+        tab: 'memberships',
+      })
+    ).toEqual({
+      tab: 'memberships',
     });
     expect(
       readRouteOptions(routeMap.get('/plugins/waste-management')).validateSearch?.({
@@ -1083,11 +1094,14 @@ describe('app.routes', () => {
     expect(mapPluginGuardToAccountGuard(undefined)).toBeNull();
   });
 
-  it('normalizes IAM and role detail tabs to canonical search values', () => {
+  it('normalizes IAM, organization, and role detail tabs to canonical search values', () => {
     expect(normalizeIamTab('governance')).toBe('governance');
     expect(normalizeIamTab('dsr')).toBe('dsr');
     expect(normalizeIamTab('deletion-rules')).toBe('deletion-rules');
     expect(normalizeIamTab('anything-else')).toBe('rights');
+
+    expect(normalizeOrganizationDetailTab('memberships')).toBe('memberships');
+    expect(normalizeOrganizationDetailTab('anything-else')).toBe('organization');
 
     expect(normalizeRoleDetailTab('permissions')).toBe('permissions');
     expect(normalizeRoleDetailTab('assignments')).toBe('assignments');

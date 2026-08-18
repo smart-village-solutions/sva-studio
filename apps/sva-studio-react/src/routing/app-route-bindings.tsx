@@ -1,5 +1,6 @@
 import {
   normalizeIamTab,
+  normalizeOrganizationDetailTab,
   normalizeRoleDetailTab,
   type AppRouteBindings as BaseAppRouteBindings,
 } from '@sva/routing';
@@ -539,8 +540,16 @@ const LazyOrganizationDetailPage = React.lazy(async () => {
 
 const OrganizationDetailRoutePage = () => {
   const params = useParams({ strict: false });
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
   return renderLazyPage(LazyOrganizationDetailPage, {
     organizationId: readStringParam(params.organizationId),
+    activeTab: normalizeOrganizationDetailTab(search.tab),
+    onTabChange: (tab) =>
+      void navigate({
+        search: { tab } as never,
+        replace: true,
+      }),
   });
 };
 

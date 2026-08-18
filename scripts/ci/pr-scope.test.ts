@@ -7,10 +7,7 @@ import {
   type PrScopeDecision,
 } from './pr-scope.ts';
 
-const expectDecision = (
-  decision: PrScopeDecision,
-  expected: Partial<PrScopeDecision>
-): void => {
+const expectDecision = (decision: PrScopeDecision, expected: Partial<PrScopeDecision>): void => {
   expect(decision).toMatchObject(expected);
 };
 
@@ -29,7 +26,6 @@ describe('pr-scope', () => {
       qualityGateMode: 'skip',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
     });
   });
 
@@ -44,12 +40,11 @@ describe('pr-scope', () => {
       qualityGateMode: 'affected',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       appBuildMode: 'affected',
     });
   });
 
-  it('classifies plugin waste-management tsx changes as app-build and e2e relevant', () => {
+  it('classifies plugin waste-management tsx changes as app-build and accessibility relevant', () => {
     const decision = classifyPrScope([
       'packages/plugin-waste-management/src/waste-management.page.tsx',
     ]);
@@ -60,12 +55,11 @@ describe('pr-scope', () => {
       coverageMode: 'skip',
       integrationMode: 'skip',
       a11yMode: 'affected',
-      e2eMode: 'affected',
       appBuildMode: 'affected',
     });
   });
 
-  it('classifies plugin ui ts changes as app-build and e2e relevant', () => {
+  it('classifies plugin ui ts changes as app-build relevant', () => {
     const decision = classifyPrScope([
       'packages/plugin-waste-management/src/waste-management.scheduling.table-entries.ts',
     ]);
@@ -76,52 +70,42 @@ describe('pr-scope', () => {
       coverageMode: 'skip',
       integrationMode: 'skip',
       a11yMode: 'skip',
-      e2eMode: 'affected',
       appBuildMode: 'affected',
     });
   });
 
   it('classifies plugin translation changes as app-build relevant', () => {
-    const decision = classifyPrScope([
-      'packages/plugin-news/src/plugin.translations.ts',
-    ]);
+    const decision = classifyPrScope(['packages/plugin-news/src/plugin.translations.ts']);
 
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       appBuildMode: 'affected',
     });
   });
 
-  it('keeps faq translation-only changes out of the e2e gate', () => {
-    const decision = classifyPrScope([
-      'packages/plugin-faq/src/plugin.translations.ts',
-    ]);
+  it('classifies faq translation-only changes as app-build relevant', () => {
+    const decision = classifyPrScope(['packages/plugin-faq/src/plugin.translations.ts']);
 
     expectDecision(decision, {
       codeRelevant: true,
       qualityGateMode: 'affected',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       appBuildMode: 'affected',
     });
   });
 
   it('keeps docs-only pull requests as full no-op', () => {
-    const decision = classifyPrScope([
-      'docs/development/testing-coverage.md',
-    ]);
+    const decision = classifyPrScope(['docs/development/testing-coverage.md']);
 
     expectDecision(decision, {
       codeRelevant: false,
       qualityGateMode: 'skip',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       appBuildMode: 'skip',
     });
   });
@@ -134,12 +118,11 @@ describe('pr-scope', () => {
       qualityGateMode: 'full',
       coverageMode: 'full',
       integrationMode: 'skip',
-      e2eMode: 'skip',
     });
     expect(decision.escalationReasons).toContain('pnpm-lock.yaml');
   });
 
-  it('runs affected integration and e2e gates for app and routing changes', () => {
+  it('runs affected integration gates for app and routing changes', () => {
     const decision = classifyPrScope([
       'apps/sva-studio-react/src/routes/index.tsx',
       'packages/routing/src/auth.routes.ts',
@@ -151,15 +134,12 @@ describe('pr-scope', () => {
       coverageMode: 'skip',
       integrationMode: 'affected',
       a11yMode: 'affected',
-      e2eMode: 'affected',
       appBuildMode: 'affected',
     });
   });
 
   it('keeps backend-only changes out of the a11y gate', () => {
-    const decision = classifyPrScope([
-      'packages/auth-runtime/src/db.ts',
-    ]);
+    const decision = classifyPrScope(['packages/auth-runtime/src/db.ts']);
 
     expectDecision(decision, {
       codeRelevant: true,
@@ -167,7 +147,6 @@ describe('pr-scope', () => {
       coverageMode: 'skip',
       integrationMode: 'affected',
       a11yMode: 'skip',
-      e2eMode: 'affected',
       appBuildMode: 'skip',
     });
   });
@@ -186,9 +165,7 @@ describe('pr-scope', () => {
   });
 
   it('keeps ordinary ui-only app changes out of runtime artifact verification', () => {
-    const decision = classifyPrScope([
-      'apps/sva-studio-react/src/routes/index.tsx',
-    ]);
+    const decision = classifyPrScope(['apps/sva-studio-react/src/routes/index.tsx']);
 
     expectDecision(decision, {
       codeRelevant: true,
@@ -198,9 +175,7 @@ describe('pr-scope', () => {
   });
 
   it('escalates runtime artifact verification for runtime verify tooling changes', () => {
-    const decision = classifyPrScope([
-      'scripts/ci/verify-runtime-artifact.sh',
-    ]);
+    const decision = classifyPrScope(['scripts/ci/verify-runtime-artifact.sh']);
 
     expectDecision(decision, {
       codeRelevant: true,
@@ -217,7 +192,6 @@ describe('pr-scope', () => {
       qualityGateMode: 'full',
       coverageMode: 'full',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       appBuildMode: 'full',
     });
   });
@@ -230,7 +204,6 @@ describe('pr-scope', () => {
       qualityGateMode: 'affected',
       coverageMode: 'full',
       integrationMode: 'full',
-      e2eMode: 'skip',
       appBuildMode: 'full',
     });
   });
@@ -255,7 +228,6 @@ describe('pr-scope', () => {
       qualityGateMode: 'affected',
       coverageMode: 'full',
       integrationMode: 'full',
-      e2eMode: 'skip',
       appBuildMode: 'full',
     });
     expect(decision.escalationReasons).toEqual([]);
@@ -269,7 +241,6 @@ describe('pr-scope', () => {
       qualityGateMode: 'affected',
       coverageMode: 'affected',
       integrationMode: 'full',
-      e2eMode: 'full',
       appBuildMode: 'full',
     });
     expect(decision.escalationReasons).toEqual([]);
@@ -313,19 +284,23 @@ describe('pr-scope', () => {
     process.env.GITHUB_BASE_REF = 'main';
 
     try {
-      const changedFiles = resolveChangedFiles('3bf9958ef86bbbe2b841f9ab7c46ec8614d78580', 'HEAD', (args) => {
-        const diffRange = args.at(-1);
+      const changedFiles = resolveChangedFiles(
+        '3bf9958ef86bbbe2b841f9ab7c46ec8614d78580',
+        'HEAD',
+        (args) => {
+          const diffRange = args.at(-1);
 
-        if (diffRange === '3bf9958ef86bbbe2b841f9ab7c46ec8614d78580...HEAD') {
-          throw new Error(
-            "fatal: could not read Username for 'https://github.com': No such device or address\n" +
-              'fatal: could not fetch c24de8f97e2c4fe0da0bc39c85ad66b253fc0528 from promisor remote'
-          );
+          if (diffRange === '3bf9958ef86bbbe2b841f9ab7c46ec8614d78580...HEAD') {
+            throw new Error(
+              "fatal: could not read Username for 'https://github.com': No such device or address\n" +
+                'fatal: could not fetch c24de8f97e2c4fe0da0bc39c85ad66b253fc0528 from promisor remote'
+            );
+          }
+
+          expect(diffRange).toBe('origin/main...HEAD');
+          return 'apps/sva-studio-react/src/routes/index.tsx\n';
         }
-
-        expect(diffRange).toBe('origin/main...HEAD');
-        return 'apps/sva-studio-react/src/routes/index.tsx\n';
-      });
+      );
 
       expect(changedFiles).toEqual(['apps/sva-studio-react/src/routes/index.tsx']);
     } finally {

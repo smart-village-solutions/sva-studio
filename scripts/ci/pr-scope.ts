@@ -8,7 +8,6 @@ export interface PrScopeDecision {
   qualityGateMode: GateMode;
   coverageMode: GateMode;
   integrationMode: GateMode;
-  e2eMode: GateMode;
   a11yMode: GateMode;
   runtimeVerifyMode: GateMode;
   appBuildMode: GateMode;
@@ -39,9 +38,7 @@ const coverageFullEscalationPatterns = [
   /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
 ];
 
-const coverageAffectedPatterns = [
-  /^scripts\/ci\//u,
-];
+const coverageAffectedPatterns = [/^scripts\/ci\//u];
 
 const integrationRelevantPatterns = [
   /^apps\/sva-studio-react\//u,
@@ -52,7 +49,7 @@ const integrationEscalationPatterns = [
   /^apps\/sva-studio-react\/(?:package\.json|playwright\.config\.ts|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^packages\/(?:auth-runtime|core|data|data-repositories|instance-registry|routing|server-runtime|sva-mainserver)\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
   /^scripts\/ci\//u,
-  /^\.github\/workflows\/(?:app-e2e|runtime-gates|quality-gates)\.yml$/u,
+  /^\.github\/workflows\/(?:runtime-gates|quality-gates)\.yml$/u,
 ];
 
 const pluginUiBuildRelevantPatterns = [
@@ -71,29 +68,6 @@ const pluginUiA11yRelevantPatterns = [
   /^packages\/plugin-poi\/src\/.*\.tsx$/u,
   /^packages\/plugin-projects\/src\/.*\.tsx$/u,
   /^packages\/plugin-waste-management\/src\/.*\.tsx$/u,
-];
-
-const pluginUiE2eRelevantPatterns = [
-  /^packages\/plugin-news\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-events\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-faq\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-poi\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-projects\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-  /^packages\/plugin-waste-management\/src\/(?!index\.ts$|plugin\.translations(?:\.|$)).*\.(?:ts|tsx)$/u,
-];
-
-const e2eRelevantPatterns = [
-  /^apps\/sva-studio-react\//u,
-  /^packages\/(?:auth-runtime|routing|server-runtime|sva-mainserver|studio-ui-react)\//u,
-  ...pluginUiE2eRelevantPatterns,
-];
-
-const e2eEscalationPatterns = [
-  /^apps\/sva-studio-react\/playwright\.config\.ts$/u,
-  /^apps\/sva-studio-react\/package\.json$/u,
-  /^packages\/(?:auth-runtime|routing|server-runtime|sva-mainserver|studio-ui-react)\/(?:package\.json|vite\.config\.ts|vitest\.config\.ts)$/u,
-  /^scripts\/ci\//u,
-  /^\.github\/workflows\/app-e2e\.yml$/u,
 ];
 
 const a11yRelevantPatterns = [
@@ -146,7 +120,9 @@ export const isNonCodeRelevantPath = (filePath: string): boolean =>
   matchesAnyPattern(filePath, nonCodeRelevantPatterns);
 
 export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecision => {
-  const normalizedFiles = [...new Set(changedFiles.map((file) => file.trim()).filter(Boolean))].sort();
+  const normalizedFiles = [
+    ...new Set(changedFiles.map((file) => file.trim()).filter(Boolean)),
+  ].sort();
   const codeRelevantFiles = normalizedFiles.filter((file) => !isNonCodeRelevantPath(file));
   const escalationReasons = codeRelevantFiles.filter((file) =>
     matchesAnyPattern(file, qualityEscalationPatterns)
@@ -159,7 +135,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
       qualityGateMode: 'skip',
       coverageMode: 'skip',
       integrationMode: 'skip',
-      e2eMode: 'skip',
       a11yMode: 'skip',
       runtimeVerifyMode: 'skip',
       appBuildMode: 'skip',
@@ -180,11 +155,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
   )
     ? 'full'
     : codeRelevantFiles.some((file) => matchesAnyPattern(file, integrationRelevantPatterns))
-      ? 'affected'
-      : 'skip';
-  const e2eMode: GateMode = codeRelevantFiles.some((file) => matchesAnyPattern(file, e2eEscalationPatterns))
-    ? 'full'
-    : codeRelevantFiles.some((file) => matchesAnyPattern(file, e2eRelevantPatterns))
       ? 'affected'
       : 'skip';
   const a11yMode: GateMode = codeRelevantFiles.some((file) =>
@@ -215,7 +185,6 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
     qualityGateMode,
     coverageMode,
     integrationMode,
-    e2eMode,
     a11yMode,
     runtimeVerifyMode,
     appBuildMode,
@@ -226,11 +195,10 @@ export const classifyPrScope = (changedFiles: readonly string[]): PrScopeDecisio
 export const resolveChangedFiles = (
   base: string,
   head = 'HEAD',
-  runGitCommand: (
-    args: readonly string[],
-    options?: { encoding: BufferEncoding }
-  ) => string = (args, options) =>
-    execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
+  runGitCommand: (args: readonly string[], options?: { encoding: BufferEncoding }) => string = (
+    args,
+    options
+  ) => execFileSync('git', [...args], { encoding: options?.encoding ?? 'utf8' }).trim()
 ): string[] => {
   const runDiff = (range: string): string =>
     runGitCommand(['diff', '--name-only', '--diff-filter=ACDMR', range], {

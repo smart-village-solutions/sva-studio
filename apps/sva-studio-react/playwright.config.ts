@@ -34,7 +34,9 @@ const applyRuntimeProfileEnv = (profile: string): void => {
   }
 };
 
-const runtimeProfile = process.env.PLAYWRIGHT_RUNTIME_PROFILE ?? (process.env.CI === 'true' ? undefined : 'local-keycloak');
+const runtimeProfile =
+  process.env.PLAYWRIGHT_RUNTIME_PROFILE ??
+  (process.env.CI === 'true' ? undefined : 'local-keycloak');
 if (runtimeProfile) {
   applyRuntimeProfileEnv(runtimeProfile);
 }
@@ -55,12 +57,14 @@ export default defineConfig({
   // The dev SSR server is a single shared process; concurrent cold navigations
   // can abort requests during Nitro startup and make the suite flaky.
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
-  // PRs stop after the first failure that remains red after Playwright's retry.
-  // Main/nightly leave the value at 0 and retain exhaustive diagnostics.
+  retries: process.env.CI && process.env.APP_E2E_ALLOW_RETRY === 'true' ? 1 : 0,
+  // Canonical main evidence never retries. Scheduled and manually dispatched
+  // diagnostic runs may retry once without becoming release evidence.
   maxFailures: resolvePlaywrightMaxFailures(process.env),
   outputDir: './test-results',
-  reporter: process.env.CI ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['list']] : 'list',
+  reporter: process.env.CI
+    ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['list']]
+    : 'list',
   globalSetup: './e2e/global-setup.ts',
   projects: [
     {
@@ -92,6 +96,7 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
   },
   webServer: {
     // Start Vite directly to avoid nested Nx instability during Playwright startup.

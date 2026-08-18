@@ -125,12 +125,6 @@ const runAppBuildGate = (mode: GateMode, durations: DurationEntry[]): void => {
   }
 };
 
-const runE2EGate = (mode: GateMode, durations: DurationEntry[]): void => {
-  if (mode !== 'skip') {
-    recordDuration(durations, 'app-e2e', runCommand('pnpm test:e2e'));
-  }
-};
-
 export const formatDurationSummary = (durations: readonly DurationEntry[]): string =>
   durations.map((entry) => `- ${entry.label}: ${(entry.durationMs / 1000).toFixed(2)}s`).join('\n');
 
@@ -186,8 +180,6 @@ export const runPrGate = (args: readonly string[]): number => {
   runIntegrationStage(options.base, decision.integrationMode, durations);
   runOpsGate(durations);
   runAppBuildGate(decision.appBuildMode, durations);
-  runE2EGate(decision.e2eMode, durations);
-
   console.log('\nPR gate summary:');
   console.log(formatDurationSummary(durations));
 

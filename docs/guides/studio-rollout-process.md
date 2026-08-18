@@ -21,11 +21,12 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 
 ## Umgebungsvertrag
 
-| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
-| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
-| Dev        | `studio-dev`     | `https://studio-dev.smart-village.app`     | automatisch nach erfolgreichem Build auf `main`                   | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup                |
-| Staging    | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
-| Production | `studio`         | `https://studio.smart-village.app`         | manuell über `Promote`, geschützt durch das Environment `prod`    | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
+<!-- prettier-ignore -->
+| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
+| --- | --- | --- | --- | --- | --- |
+| Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
+| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
+| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
 
 ## Explizite Tenant-Hostfreigabe
 
@@ -122,7 +123,7 @@ Der isolierte Candidate-One-shot läuft mit dem Zielimage vor Backup, Migration,
 
 Vor dem ersten Agent-Auftrag fragt der Workflow den geschützten read-only Capability-Endpunkt ab. Protokollversion 2, Agent-Revision, benötigte Ergebnisfelder sowie Studio- und gegebenenfalls Waste-Unterstützung müssen live vorhanden sein. Bis zum nachgewiesenen Producer-Rollout bleibt der Schritt beobachtend; erst `BACKUP_CAPABILITY_GATE=enforce` im geschützten Environment aktiviert ihn blockierend.
 
-Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Swarm-Konvergenz und HTTP-Warmup sind deshalb getrennte Gates: Zuerst pollt `Promote` ausschließlich allowlistete Service-, Replica-, Update- und Task-Zustände. Erst wenn alle gewünschten Replicas laufen und kein Update mehr aktiv oder pausiert ist, beginnt der Runtime-Smoke mit standardmäßig bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden. Deshalb gilt:
+Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Die bisherige HTTP-Warmup-Grenze von bis zu fünf Minuten reicht dafür nicht immer aus. Swarm-Konvergenz und HTTP-Warmup sind deshalb getrennte Gates: Zuerst pollt `Promote` ausschließlich allowlistete Service-, Replica-, Update- und Task-Zustände. Erst wenn alle gewünschten Replicas laufen und kein Update mehr aktiv oder pausiert ist, beginnt der Runtime-Smoke mit standardmäßig bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
 2. Zuerst Service-Update und Tasks innerhalb des eigenen Swarm-Zeitfensters prüfen; `PROMOTE_SWARM_CONVERGENCE_TIMEOUT` beziehungsweise `PROMOTE_INTERNAL_ERROR` verhindert jeden externen Smoke.

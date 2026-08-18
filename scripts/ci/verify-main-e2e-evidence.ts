@@ -214,7 +214,26 @@ const required = (value: string | undefined): string => {
   return value;
 };
 
-const createCliDependencies = (repo: string, token: string): MainE2EVerifierDependencies => {
+export const buildWorkflowRunsPath = (
+  repo: string,
+  expectedHeadSha: string,
+  page: number
+): string => {
+  const query = new URLSearchParams({
+    branch: 'main',
+    event: 'push',
+    head_sha: expectedHeadSha,
+    per_page: '100',
+    page: String(page),
+  });
+  return `repos/${repo}/actions/workflows/app-e2e.yml/runs?${query.toString()}`;
+};
+
+const createCliDependencies = (
+  repo: string,
+  token: string,
+  expectedHeadSha: string
+): MainE2EVerifierDependencies => {
   const apiJson = <T>(path: string): T =>
     JSON.parse(
       execFileSync('gh', ['api', path], {
@@ -223,10 +242,7 @@ const createCliDependencies = (repo: string, token: string): MainE2EVerifierDepe
       })
     ) as T;
   return {
-    readWorkflowRuns: (page) =>
-      apiJson(
-        `repos/${repo}/actions/workflows/app-e2e.yml/runs?branch=main&per_page=100&page=${page}`
-      ),
+    readWorkflowRuns: (page) => apiJson(buildWorkflowRunsPath(repo, expectedHeadSha, page)),
     readWorkflowRun: (runId) => apiJson(`repos/${repo}/actions/runs/${runId}`),
     readRunArtifacts: (runId, page) =>
       apiJson(`repos/${repo}/actions/runs/${runId}/artifacts?per_page=100&page=${page}`),
@@ -262,13 +278,19 @@ export const runMainE2EPreflight = (
   stderr: Pick<NodeJS.WriteStream, 'write'> = process.stderr,
   dependenciesFactory: (
     repo: string,
-    token: string
+    token: string,
+    expectedHeadSha: string
   ) => MainE2EVerifierDependencies = createCliDependencies
 ): AppE2EEvidence | null => {
   try {
+    const expectedHeadSha = required(env.EXPECTED_CHANGE_HEAD);
     const evidence = verifyMainE2EEvidence(
-      required(env.EXPECTED_CHANGE_HEAD),
-      dependenciesFactory(required(env.GITHUB_REPOSITORY), required(env.GITHUB_TOKEN))
+      expectedHeadSha,
+      dependenciesFactory(
+        required(env.GITHUB_REPOSITORY),
+        required(env.GITHUB_TOKEN),
+        expectedHeadSha
+      )
     );
     if (env.GITHUB_OUTPUT)
       appendFileSync(env.GITHUB_OUTPUT, `e2e_attestation=${JSON.stringify(evidence)}\n`, 'utf8');

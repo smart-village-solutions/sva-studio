@@ -5,17 +5,23 @@ import { pathToFileURL } from 'node:url';
 
 import { parseAppE2EEvidence, type AppE2EEvidence } from './app-e2e-evidence.ts';
 
-export type StagingPromoteEvidence = Readonly<{
-  schemaVersion: 1;
+type StagingPromoteEvidenceBase = Readonly<{
   completedAt: string;
   digest: string;
   environment: 'staging';
   mutation: 'completed' | 'not-run';
   postflight: 'passed';
-  sourceSha: string;
-  mainE2E: AppE2EEvidence | null;
   workflowRunId: string;
 }>;
+
+export type LegacyStagingPromoteEvidence = StagingPromoteEvidenceBase;
+export type AttestedStagingPromoteEvidence = StagingPromoteEvidenceBase &
+  Readonly<{
+    schemaVersion: 2;
+    sourceSha: string;
+    mainE2E: AppE2EEvidence;
+  }>;
+export type StagingPromoteEvidence = LegacyStagingPromoteEvidence | AttestedStagingPromoteEvidence;
 
 const shaPattern = /^[0-9a-f]{40}$/u;
 const digestPattern = /^sha256:[0-9a-f]{64}$/u;
@@ -46,25 +52,29 @@ export const buildStagingPromoteEvidence = (
   }
   const sourceSha = required(env.CHANGE_HEAD_SHA, 'CHANGE_HEAD_SHA');
   if (!shaPattern.test(sourceSha)) throw new Error('CHANGE_HEAD_SHA ist ungültig.');
+  const requestedGateMode = env.MAIN_E2E_GATE_MODE?.trim();
+  const gateMode =
+    requestedGateMode === 'shadow' || requestedGateMode === 'enforce'
+      ? requestedGateMode
+      : 'disabled';
 
   const serializedMainE2E = env.MAIN_E2E_ATTESTATION;
   const parsedMainE2E = parseMainE2E(serializedMainE2E);
-  const mainE2E = promoteMode === 'standard' ? parsedMainE2E : null;
   if (promoteMode === 'recovery' && serializedMainE2E?.trim()) {
     throw new Error('Recovery-Staging darf keine MAIN_E2E_ATTESTATION übernehmen.');
   }
-  if (serializedMainE2E?.trim() && !mainE2E) {
+  if (serializedMainE2E?.trim() && !parsedMainE2E) {
     throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
   }
-  if (promoteMode === 'standard' && !mainE2E) {
-    throw new Error('Standard-Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
+  if (promoteMode === 'standard' && gateMode === 'enforce' && !parsedMainE2E) {
+    throw new Error('Enforced Standard-Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
   }
   if (
-    mainE2E &&
-    (mainE2E.evidenceClass !== 'canonical-main' ||
-      mainE2E.result !== 'success' ||
-      mainE2E.testOutcome !== 'success' ||
-      mainE2E.headSha !== sourceSha)
+    parsedMainE2E &&
+    (parsedMainE2E.evidenceClass !== 'canonical-main' ||
+      parsedMainE2E.result !== 'success' ||
+      parsedMainE2E.testOutcome !== 'success' ||
+      parsedMainE2E.headSha !== sourceSha)
   ) {
     throw new Error('MAIN_E2E_ATTESTATION passt nicht zum erfolgreichen Main-Push.');
   }
@@ -81,17 +91,16 @@ export const buildStagingPromoteEvidence = (
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(completedAt))
     throw new Error('completedAt ist ungültig.');
 
-  return {
-    schemaVersion: 1,
+  const base: StagingPromoteEvidenceBase = {
     completedAt,
     digest,
     environment: 'staging',
     mutation: stagingMutation === 'true' ? 'completed' : 'not-run',
     postflight: 'passed',
-    sourceSha,
-    mainE2E: promoteMode === 'standard' ? mainE2E : null,
     workflowRunId,
   };
+  if (promoteMode !== 'standard' || gateMode === 'disabled' || !parsedMainE2E) return base;
+  return { ...base, schemaVersion: 2, sourceSha, mainE2E: parsedMainE2E };
 };
 
 const main = () => {

@@ -109,10 +109,17 @@ describe('Promote workflow contract', () => {
       'PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}'
     );
     expect(workflow).toContain(
-      "PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}"
+      'PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}'
     );
     expect(workflow).toContain(
-      "inputs.promote_mode == 'recovery' || steps.main_e2e_evidence.outputs.e2e_attestation != ''"
+      "PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}"
+    );
+    expect(workflow).toContain("MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}");
+    expect(workflow).toMatch(
+      /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
+    );
+    expect(workflow).toMatch(
+      /- name: upload staging parity evidence\n\s+id: staging_evidence_upload\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
     );
   });
 

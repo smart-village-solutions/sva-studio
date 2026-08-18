@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 
+import { parseAppE2EEvidence } from './app-e2e-evidence.ts';
 import {
   buildPromoteFailure,
   normalizePromoteEnvironment,
@@ -63,6 +64,14 @@ export type PromoteBackupAgentEvidence = Readonly<{
   wasteInventory: boolean;
 }>;
 
+export type PromoteMainE2EReference = Readonly<{
+  run: Readonly<{ id: string; attempt: number }>;
+  headSha: string;
+  result: 'success';
+  testOutcome: 'success';
+  evidenceClass: 'canonical-main';
+}>;
+
 export type PromoteEvidence = Readonly<{
   schemaVersion: 1;
   run: Readonly<{ id: string; attempt: number }>;
@@ -84,6 +93,7 @@ export type PromoteEvidence = Readonly<{
     externalSecretReferences: readonly string[];
   }>;
   backupAgent: PromoteBackupAgentEvidence | null;
+  mainE2E: PromoteMainE2EReference | null;
   gates: readonly PromoteGateEvidence[];
   terminalFailure: PromoteFailure | null;
 }>;
@@ -103,6 +113,7 @@ export type BuildPromoteEvidenceInput = Readonly<{
   configRevision?: string | null;
   externalSecretReferences?: readonly string[];
   backupAgent?: PromoteBackupAgentEvidence | null;
+  mainE2EReference?: unknown;
   gates: readonly Readonly<{
     gate: PromoteGateName;
     phase: PromotePhase;
@@ -261,6 +272,30 @@ const normalizeBackupAgent = (
   };
 };
 
+const normalizeMainE2EReference = (
+  value: unknown,
+  expectedHeadSha: string | null | undefined,
+  gatePassed: boolean
+): PromoteMainE2EReference | null => {
+  if (!gatePassed || !expectedHeadSha?.trim() || !shaPattern.test(expectedHeadSha)) return null;
+  const evidence = parseAppE2EEvidence(value);
+  if (
+    !evidence ||
+    evidence.headSha !== expectedHeadSha ||
+    evidence.result !== 'success' ||
+    evidence.testOutcome !== 'success' ||
+    evidence.evidenceClass !== 'canonical-main'
+  )
+    return null;
+  return {
+    run: { id: evidence.run.id, attempt: evidence.run.attempt },
+    headSha: evidence.headSha,
+    result: 'success',
+    testOutcome: 'success',
+    evidenceClass: 'canonical-main',
+  };
+};
+
 export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteEvidence => {
   if (!Number.isSafeInteger(input.runAttempt) || input.runAttempt < 1)
     throw new Error('Run-Attempt ist ungültig.');
@@ -334,6 +369,11 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       ].sort(),
     },
     backupAgent: normalizeBackupAgent(input.backupAgent),
+    mainE2E: normalizeMainE2EReference(
+      input.mainE2EReference,
+      input.headSha,
+      gates.some((gate) => gate.gate === 'main-e2e-evidence' && gate.status === 'passed')
+    ),
     gates: gatesWithFailure,
     terminalFailure,
   };
@@ -371,6 +411,16 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     ['config_revision', evidence.config.revision ?? 'not-evaluated'],
     ['external_secret_references', evidence.config.externalSecretReferences.join(', ') || 'none'],
     ['backup_agent_revision', evidence.backupAgent?.agentRevision ?? 'not-evaluated'],
+    [
+      'main_e2e_run',
+      evidence.mainE2E
+        ? `${evidence.mainE2E.run.id}/${evidence.mainE2E.run.attempt}`
+        : 'not-evaluated',
+    ],
+    ['main_e2e_head_sha', evidence.mainE2E?.headSha ?? 'not-evaluated'],
+    ['main_e2e_result', evidence.mainE2E?.result ?? 'not-evaluated'],
+    ['main_e2e_test_outcome', evidence.mainE2E?.testOutcome ?? 'not-evaluated'],
+    ['main_e2e_evidence_class', evidence.mainE2E?.evidenceClass ?? 'not-evaluated'],
     ['terminal_code', evidence.terminalFailure?.code ?? 'none'],
   ];
   return [
@@ -423,6 +473,15 @@ export const writePromoteEvidence = (
 const parseJson = <T>(value: string | undefined, fallback: T): T => {
   if (!value?.trim()) return fallback;
   return JSON.parse(value) as T;
+};
+
+const parseMainE2EReference = (value: string | undefined): unknown => {
+  if (!value?.trim()) return null;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return null;
+  }
 };
 
 const readRecordedFailure = (path: string | undefined): PromoteFailure | null => {
@@ -553,6 +612,7 @@ export const writePromoteEvidenceFromEnvironment = (
     configRevision: env.PROMOTE_CONFIG_REVISION,
     externalSecretReferences: parseJson<readonly string[]>(env.PROMOTE_SECRET_REFERENCES, []),
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
+    mainE2EReference: parseMainE2EReference(env.PROMOTE_MAIN_E2E_REFERENCE),
     gates: gateEnvironmentKeys.map(({ gate, phase, key, blockingKey }) => ({
       gate,
       phase,

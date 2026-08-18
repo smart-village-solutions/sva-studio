@@ -32,7 +32,7 @@ const mainE2E = buildAppE2EEvidence({
   testOutcome: 'success',
 });
 const stagingPromoteEvidence = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   completedAt: '2026-08-18T12:00:00.000Z',
   digest: targetDigest,
   environment: 'staging',
@@ -40,6 +40,14 @@ const stagingPromoteEvidence = {
   mutation: 'completed',
   postflight: 'passed',
   sourceSha,
+  workflowRunId: '456',
+};
+const legacyStagingPromoteEvidence = {
+  completedAt: '2026-08-18T12:00:00.000Z',
+  digest: targetDigest,
+  environment: 'staging',
+  mutation: 'completed',
+  postflight: 'passed',
   workflowRunId: '456',
 };
 
@@ -91,49 +99,67 @@ describe('staging parity evidence', () => {
   });
 
   it('accepts only strict successful staging evidence bound to digest and source SHA', () => {
-    expect(matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha)).toBe(
-      true
-    );
+    expect(
+      matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha, 'enforce')
+    ).toBe(true);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, mutation: 'not-run' },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(true);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, digest: 'sha256:other' },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, environment: 'prod' },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, postflight: 'failed' },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
   });
 
-  it('rejects legacy, recovery, foreign-source, and non-canonical staging evidence', () => {
+  it('enforce rejects legacy, foreign-source, and non-canonical staging evidence', () => {
+    expect(
+      matchesSuccessfulStagingEvidence(
+        legacyStagingPromoteEvidence,
+        targetDigest,
+        sourceSha,
+        'enforce'
+      )
+    ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, mainE2E: null },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
     expect(
-      matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, 'b'.repeat(40))
+      matchesSuccessfulStagingEvidence(
+        stagingPromoteEvidence,
+        targetDigest,
+        'b'.repeat(40),
+        'enforce'
+      )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
@@ -142,14 +168,16 @@ describe('staging parity evidence', () => {
           mainE2E: { ...mainE2E, evidenceClass: 'diagnostic' },
         },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, unexpected: true },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
     expect(
@@ -161,12 +189,13 @@ describe('staging parity evidence', () => {
           postflight: 'passed',
         },
         targetDigest,
-        sourceSha
+        sourceSha,
+        'enforce'
       )
     ).toBe(false);
   });
 
-  it('writes canonical A1 evidence for standard staging and null for recovery', () => {
+  it('keeps legacy parity in disabled and invalid shadow modes, but writes v2 when observed', () => {
     const baseEnv = {
       CHANGE_HEAD_SHA: sourceSha,
       DEPLOY_IMAGE_DIGEST: targetDigest,
@@ -177,22 +206,58 @@ describe('staging parity evidence', () => {
       {
         ...baseEnv,
         MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
+        MAIN_E2E_GATE_MODE: 'shadow',
         PROMOTE_MODE: 'standard',
       },
       '2026-08-18T12:00:00.000Z'
     );
+    const disabled = buildStagingPromoteEvidence(
+      { ...baseEnv, MAIN_E2E_GATE_MODE: 'disabled', PROMOTE_MODE: 'standard' },
+      '2026-08-18T12:00:00.000Z'
+    );
+    const shadowInvalid = buildStagingPromoteEvidence(
+      { ...baseEnv, MAIN_E2E_GATE_MODE: 'shadow', PROMOTE_MODE: 'standard' },
+      '2026-08-18T12:00:00.000Z'
+    );
+
+    expect(standard).toMatchObject({ sourceSha, mainE2E, schemaVersion: 2 });
+    expect(disabled).toEqual(legacyStagingPromoteEvidence);
+    expect(shadowInvalid).toEqual(legacyStagingPromoteEvidence);
+    expect(matchesSuccessfulStagingEvidence(disabled, targetDigest, sourceSha, 'disabled')).toBe(
+      true
+    );
+    expect(matchesSuccessfulStagingEvidence(shadowInvalid, targetDigest, sourceSha, 'shadow')).toBe(
+      true
+    );
+    expect(
+      matchesSuccessfulStagingEvidence(shadowInvalid, targetDigest, sourceSha, 'enforce')
+    ).toBe(false);
+  });
+
+  it('keeps recovery legacy before activation and never accepts it in enforce mode', () => {
+    const baseEnv = {
+      CHANGE_HEAD_SHA: sourceSha,
+      DEPLOY_IMAGE_DIGEST: targetDigest,
+      GITHUB_RUN_ID: '456',
+      MAIN_E2E_GATE_MODE: 'shadow',
+      STAGING_MUTATION: 'true',
+    };
     const recovery = buildStagingPromoteEvidence(
       { ...baseEnv, PROMOTE_MODE: 'recovery' },
       '2026-08-18T12:00:00.000Z'
     );
-
-    expect(standard).toMatchObject({ sourceSha, mainE2E, schemaVersion: 1 });
-    expect(recovery).toMatchObject({ sourceSha, mainE2E: null, schemaVersion: 1 });
-    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha)).toBe(false);
+    expect(recovery).toEqual(legacyStagingPromoteEvidence);
+    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha, 'shadow')).toBe(
+      true
+    );
+    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha, 'enforce')).toBe(
+      false
+    );
     expect(() =>
       buildStagingPromoteEvidence({
         ...baseEnv,
         MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
+        MAIN_E2E_GATE_MODE: 'shadow',
         PROMOTE_MODE: 'recovery',
       })
     ).toThrow(/Recovery-Staging/u);
@@ -203,6 +268,7 @@ describe('staging parity evidence', () => {
       CHANGE_HEAD_SHA: sourceSha,
       DEPLOY_IMAGE_DIGEST: targetDigest,
       GITHUB_RUN_ID: '456',
+      MAIN_E2E_GATE_MODE: 'enforce',
       PROMOTE_MODE: 'standard',
       STAGING_MUTATION: 'false',
     };

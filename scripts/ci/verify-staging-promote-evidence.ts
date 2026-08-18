@@ -42,27 +42,34 @@ const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
 export const matchesSuccessfulStagingEvidence = (
   evidence: unknown,
   targetDigest: string,
-  expectedSourceSha: string
+  expectedSourceSha: string,
+  mainE2EGateMode: 'disabled' | 'shadow' | 'enforce'
 ) => {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
-  if (
-    !hasExactKeys(evidence, [
-      'completedAt',
-      'digest',
-      'environment',
-      'mainE2E',
-      'mutation',
-      'postflight',
-      'schemaVersion',
-      'sourceSha',
-      'workflowRunId',
-    ])
-  )
-    return false;
+  const legacyKeys = [
+    'completedAt',
+    'digest',
+    'environment',
+    'mutation',
+    'postflight',
+    'workflowRunId',
+  ] as const;
+  const attestedKeys = [
+    'completedAt',
+    'digest',
+    'environment',
+    'mainE2E',
+    'mutation',
+    'postflight',
+    'schemaVersion',
+    'sourceSha',
+    'workflowRunId',
+  ] as const;
+  const legacy = hasExactKeys(evidence, legacyKeys);
+  const attested = hasExactKeys(evidence, attestedKeys);
+  if (!legacy && !attested) return false;
   const candidate = evidence as StagingEvidence;
-  const mainE2E = parseAppE2EEvidence(candidate.mainE2E);
-  return (
-    candidate.schemaVersion === 1 &&
+  const commonValid =
     typeof candidate.completedAt === 'string' &&
     completedAtPattern.test(candidate.completedAt) &&
     typeof candidate.workflowRunId === 'string' &&
@@ -70,7 +77,12 @@ export const matchesSuccessfulStagingEvidence = (
     candidate.environment === 'staging' &&
     (candidate.mutation === 'completed' || candidate.mutation === 'not-run') &&
     candidate.postflight === 'passed' &&
-    candidate.digest === targetDigest &&
+    candidate.digest === targetDigest;
+  if (!commonValid) return false;
+  if (legacy) return mainE2EGateMode !== 'enforce';
+  const mainE2E = parseAppE2EEvidence(candidate.mainE2E);
+  return (
+    candidate.schemaVersion === 2 &&
     candidate.sourceSha === expectedSourceSha &&
     mainE2E?.evidenceClass === 'canonical-main' &&
     mainE2E.result === 'success' &&
@@ -153,6 +165,11 @@ const main = () => {
     evidenceKind === 'promote'
       ? required(process.env.EXPECTED_CHANGE_HEAD, 'EXPECTED_CHANGE_HEAD')
       : undefined;
+  const requestedMainE2EGateMode = process.env.MAIN_E2E_GATE_MODE?.trim();
+  const mainE2EGateMode =
+    requestedMainE2EGateMode === 'shadow' || requestedMainE2EGateMode === 'enforce'
+      ? requestedMainE2EGateMode
+      : 'disabled';
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
   const api = (path: string) =>
     execFileSync('gh', ['api', path], {
@@ -201,7 +218,12 @@ const main = () => {
         ) as StagingEvidence;
         if (
           expectedSourceSha &&
-          matchesSuccessfulStagingEvidence(evidence, targetDigest, expectedSourceSha)
+          matchesSuccessfulStagingEvidence(
+            evidence,
+            targetDigest,
+            expectedSourceSha,
+            mainE2EGateMode
+          )
         )
           return;
         continue;

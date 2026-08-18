@@ -23,6 +23,24 @@ const sha = 'a'.repeat(40);
 const otherSha = 'b'.repeat(40);
 const digest = `sha256:${'c'.repeat(64)}`;
 const configRevision = 'd'.repeat(64);
+const mainE2EAttestation = {
+  schemaVersion: 1,
+  workflow: 'App E2E',
+  event: 'push',
+  ref: 'refs/heads/main',
+  branch: 'main',
+  headSha: otherSha,
+  run: { id: '987654', attempt: 2 },
+  result: 'success',
+  testOutcome: 'success',
+  evidenceClass: 'canonical-main',
+  subject: {
+    kind: 'local-app-service-stack',
+    app: 'sva-studio-react',
+    services: ['redis', 'loki', 'otel-collector', 'promtail'],
+    containerArtifactVerified: false,
+  },
+} as const;
 
 const sentinelValues = [
   'top-secret-value',
@@ -174,9 +192,11 @@ describe('promote evidence contract', () => {
         'image',
         'config',
         'backupAgent',
+        'mainE2E',
         'gates',
         'terminalFailure',
       ]);
+      expect(persisted.mainE2E).toBeNull();
       expect(readFileSync(summaryPath, 'utf8')).toContain('## Promote-Evidenz');
       expect(stdout).toEqual([]);
     } finally {
@@ -350,12 +370,22 @@ describe('promote evidence contract', () => {
         PROMOTE_JOB_STATUS: 'success',
         PROMOTE_BASE_REF: 'origin/main',
         PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_HEAD_SHA: otherSha,
         PROMOTE_BACKUP_AGENT: JSON.stringify(capabilities),
+        PROMOTE_MAIN_E2E_REFERENCE: JSON.stringify(mainE2EAttestation),
+        PROMOTE_GATE_MAIN_E2E_EVIDENCE: 'success',
         PROMOTE_GATE_BACKUP_CAPABILITIES: 'success',
       });
       expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
         backupAgent: {
           resultFields: expect.arrayContaining(['deployImageDigest', 'objectKey', 'requestId']),
+        },
+        mainE2E: {
+          run: { id: '987654', attempt: 2 },
+          headSha: otherSha,
+          result: 'success',
+          testOutcome: 'success',
+          evidenceClass: 'canonical-main',
         },
       });
     } finally {
@@ -404,11 +434,14 @@ describe('promote evidence contract', () => {
         PROMOTE_JOB_STATUS: 'success',
         PROMOTE_BASE_REF: 'origin/main',
         PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_HEAD_SHA: otherSha,
+        PROMOTE_MAIN_E2E_REFERENCE: JSON.stringify(mainE2EAttestation),
         PROMOTE_GATE_MAIN_E2E_EVIDENCE: 'failure',
         PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: 'false',
       });
       const evidence = JSON.parse(readFileSync(outputPath, 'utf8')) as {
         gates: Array<{ gate: string; status: string; blocking: boolean }>;
+        mainE2E: unknown;
         terminalFailure: unknown;
       };
       expect(evidence.gates.find((gate) => gate.gate === 'main-e2e-evidence')).toEqual({
@@ -417,6 +450,7 @@ describe('promote evidence contract', () => {
         status: 'failed',
         blocking: false,
       });
+      expect(evidence.mainE2E).toBeNull();
       expect(evidence.terminalFailure).toBeNull();
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -448,6 +482,85 @@ describe('promote evidence contract', () => {
     });
     expect(evidence.terminalFailure).toEqual(failure);
     expect(evidence.gates[0]?.failure).toBe(evidence.terminalFailure);
+  });
+
+  it('keeps a valid Main-E2E reference when a later gate fails', () => {
+    const failure = buildPromoteFailure({
+      code: 'PROMOTE_LIVE_DIGEST_MISMATCH',
+      environment: 'staging',
+      phase: 'digest-verification',
+    });
+    const evidence = buildPromoteEvidence({
+      runId: '795',
+      runAttempt: 1,
+      environment: 'staging',
+      status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'main',
+      headSha: otherSha,
+      mainE2EReference: mainE2EAttestation,
+      gates: [
+        {
+          gate: 'main-e2e-evidence',
+          phase: 'main-e2e-evidence',
+          status: 'passed',
+        },
+        {
+          gate: 'digest-verification',
+          phase: 'digest-verification',
+          status: 'failed',
+        },
+      ],
+      recordedFailure: failure,
+    });
+
+    expect(evidence.mainE2E).toEqual({
+      run: { id: '987654', attempt: 2 },
+      headSha: otherSha,
+      result: 'success',
+      testOutcome: 'success',
+      evidenceClass: 'canonical-main',
+    });
+    expect(evidence.terminalFailure).toEqual(failure);
+    const summary = renderPromoteSummary(evidence);
+    expect(summary).toContain('| main_e2e_run | 987654/2 |');
+    expect(summary).toContain(`| main_e2e_head_sha | ${otherSha} |`);
+    expect(summary).toContain('| main_e2e_result | success |');
+    expect(summary).toContain('| main_e2e_test_outcome | success |');
+    expect(summary).toContain('| main_e2e_evidence_class | canonical-main |');
+  });
+
+  it('drops invalid Main-E2E output without leaking untrusted fields', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-invalid-main-e2e-'));
+    const summaryPath = join(directory, 'summary.md');
+    try {
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '796',
+        GITHUB_RUN_ATTEMPT: '1',
+        GITHUB_STEP_SUMMARY: summaryPath,
+        PROMOTE_ENVIRONMENT: 'staging',
+        PROMOTE_JOB_STATUS: 'success',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'main',
+        PROMOTE_HEAD_SHA: otherSha,
+        PROMOTE_MAIN_E2E_REFERENCE: JSON.stringify({
+          ...mainE2EAttestation,
+          run: { id: 'not-a-run', attempt: 2 },
+          privateValue: 'top-secret-value',
+        }),
+        PROMOTE_GATE_MAIN_E2E_EVIDENCE: 'success',
+      });
+      const serialized = readFileSync(outputPath, 'utf8');
+      const summary = readFileSync(summaryPath, 'utf8');
+
+      expect(JSON.parse(serialized)).toMatchObject({ mainE2E: null });
+      expect(summary).toContain('| main_e2e_run | not-evaluated |');
+      expect(serialized).not.toContain('top-secret-value');
+      expect(summary).not.toContain('top-secret-value');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('makes the same failed gate terminal when enforcement is enabled', () => {

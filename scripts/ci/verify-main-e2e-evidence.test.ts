@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildAppE2EEvidence } from './app-e2e-evidence.ts';
 import { PromoteContractError } from './promote-result.ts';
 import {
+  buildWorkflowRunsPath,
   runMainE2EPreflight,
   selectCanonicalMainRun,
   selectEvidenceArtifact,
@@ -72,6 +73,12 @@ const failureCode = (operation: () => unknown): string => {
 };
 
 describe('canonical Main App E2E preflight', () => {
+  it('server-filters the workflow run lookup by canonical event, branch, and exact SHA', () => {
+    expect(buildWorkflowRunsPath('example/repo', headSha, 2)).toBe(
+      `repos/example/repo/actions/workflows/app-e2e.yml/runs?branch=main&event=push&head_sha=${headSha}&per_page=100&page=2`
+    );
+  });
+
   it('accepts one terminal successful canonical run and its exact allowlisted evidence', () => {
     expect(verifyMainE2EEvidence(headSha, dependencies())).toEqual(evidence);
   });

@@ -143,7 +143,9 @@ export const buildOneShotEvidence = ({
             ? ('ok-after-failure' as const)
             : ('attempted-after-failure' as const),
     environment,
-    failure: failedJob ? { kind: failedJob.failureKind } : undefined,
+    failure: failedJob
+      ? { diagnosticCode: failedJob.diagnosticCode, kind: failedJob.failureKind }
+      : undefined,
     job: job
       ? {
           durationMs:

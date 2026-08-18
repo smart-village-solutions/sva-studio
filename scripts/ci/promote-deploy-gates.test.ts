@@ -55,10 +55,7 @@ describe('promote-deploy-gates', () => {
   it('fails migration assert-none when the deployed Goose runner changes', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',
-      changedFiles: [
-        'packages/data/goose.config.json',
-        'packages/data/scripts/goosew.sh',
-      ],
+      changedFiles: ['packages/data/goose.config.json', 'packages/data/scripts/goosew.sh'],
       migrationMode: 'assert-none',
     });
 
@@ -176,6 +173,43 @@ describe('promote-deploy-gates', () => {
     expect(result.bootstrap.ok).toBe(false);
   });
 
+  it('treats the Graphile worker migrator as migration risk', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: ['deploy/portainer/migrate-graphile-worker.mjs'],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration.riskFiles).toEqual(['deploy/portainer/migrate-graphile-worker.mjs']);
+    expect(result.migration.ok).toBe(false);
+  });
+
+  it.each([
+    'packages/auth-runtime/package.json',
+    'packages/auth-runtime/src/plugin-operations/runner-worker.ts',
+    'pnpm-lock.yaml',
+  ])('treats Graphile runtime contract changes in %s as migration risk', (changedFile) => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'run',
+      changedFiles: [changedFile],
+      migrationMode: 'assert-none',
+    });
+
+    expect(result.migration.riskFiles).toEqual([changedFile]);
+    expect(result.migration.ok).toBe(false);
+  });
+
+  it('treats Graphile lockfile changes as bootstrap risk', () => {
+    const result = evaluatePromoteDeployGates({
+      bootstrapMode: 'assert-none',
+      changedFiles: ['pnpm-lock.yaml'],
+      migrationMode: 'run',
+    });
+
+    expect(result.bootstrap.riskFiles).toEqual(['pnpm-lock.yaml']);
+    expect(result.bootstrap.ok).toBe(false);
+  });
+
   it('treats compose contract changes as migration and bootstrap risk', () => {
     const result = evaluatePromoteDeployGates({
       bootstrapMode: 'assert-none',
@@ -202,18 +236,26 @@ describe('promote-deploy-gates', () => {
   });
 
   it('recognizes only label-list changes as Traefik-only compose diffs', () => {
-    expect(isTraefikOnlyComposeDiff("-        - 'traefik.http.routers.app.tls=true'\n+        - 'traefik.http.routers.app.tls.certresolver=default'\n")).toBe(true);
+    expect(
+      isTraefikOnlyComposeDiff(
+        "-        - 'traefik.http.routers.app.tls=true'\n+        - 'traefik.http.routers.app.tls.certresolver=default'\n"
+      )
+    ).toBe(true);
     expect(isTraefikOnlyComposeDiff('+  postgres:\n+    image: postgres:16-alpine\n')).toBe(false);
   });
 
   it('recognizes only the fixed Dev MCP service-token configuration as safe', () => {
-    expect(isDevMcpOnlyComposeDiff([
-      '+    environment:',
-      '+      SVA_STUDIO_MCP_ENABLED: "true"',
-      '+      SVA_STUDIO_MCP_ISSUER: "https://keycloak.smart-village.app/realms/studio-dev"',
-      '+      SVA_STUDIO_MCP_AUDIENCE: "sva-studio-mcp"',
-      '+      SVA_STUDIO_MCP_CLIENT_ID: "sva-studio-mcp"',
-    ].join('\n'))).toBe(true);
+    expect(
+      isDevMcpOnlyComposeDiff(
+        [
+          '+    environment:',
+          '+      SVA_STUDIO_MCP_ENABLED: "true"',
+          '+      SVA_STUDIO_MCP_ISSUER: "https://keycloak.smart-village.app/realms/studio-dev"',
+          '+      SVA_STUDIO_MCP_AUDIENCE: "sva-studio-mcp"',
+          '+      SVA_STUDIO_MCP_CLIENT_ID: "sva-studio-mcp"',
+        ].join('\n')
+      )
+    ).toBe(true);
     expect(isDevMcpOnlyComposeDiff('+      SVA_STUDIO_MCP_ENABLED: "false"')).toBe(false);
   });
 
@@ -263,7 +305,11 @@ describe('promote-deploy-gates', () => {
       mode: 'auto',
     });
 
-    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required', shouldRun: false });
+    expect(result).toMatchObject({
+      ok: false,
+      result: 'blocked-safe-run-required',
+      shouldRun: false,
+    });
   });
 
   it('rejects automatic mode outside Dev even when no job would be required', () => {
@@ -275,7 +321,11 @@ describe('promote-deploy-gates', () => {
       mode: 'auto',
     });
 
-    expect(result).toMatchObject({ ok: false, result: 'blocked-safe-run-required', shouldRun: false });
+    expect(result).toMatchObject({
+      ok: false,
+      result: 'blocked-safe-run-required',
+      shouldRun: false,
+    });
   });
 
   it('authorizes bootstrap run mode when a hardened executor is wired by the workflow', () => {
@@ -296,35 +346,42 @@ describe('promote-deploy-gates', () => {
     expect(result.message).toContain('Exit-Code-Evidenz');
   });
 
-  it.each(['migration', 'bootstrap'] as const)('authorizes production %s run for the workflow-level parity gate', (kind) => {
-    const result = evaluateDeployGate({
-      changedFiles: [],
-      environment: 'prod',
-      executorConfigured: true,
-      kind,
-      mode: 'run',
-    });
+  it.each(['migration', 'bootstrap'] as const)(
+    'authorizes production %s run for the workflow-level parity gate',
+    (kind) => {
+      const result = evaluateDeployGate({
+        changedFiles: [],
+        environment: 'prod',
+        executorConfigured: true,
+        kind,
+        mode: 'run',
+      });
 
-    expect(result).toMatchObject({ ok: true, result: 'asserted-clean', shouldRun: true });
-  });
+      expect(result).toMatchObject({ ok: true, result: 'asserted-clean', shouldRun: true });
+    }
+  );
 
   it('authorizes a wired staging migration executor', () => {
-    expect(evaluateDeployGate({
-      changedFiles: ['packages/data/migrations/0010_add_role.sql'],
-      environment: 'staging',
-      executorConfigured: true,
-      kind: 'migration',
-      mode: 'run',
-    })).toMatchObject({ ok: true, result: 'asserted-clean' });
+    expect(
+      evaluateDeployGate({
+        changedFiles: ['packages/data/migrations/0010_add_role.sql'],
+        environment: 'staging',
+        executorConfigured: true,
+        kind: 'migration',
+        mode: 'run',
+      })
+    ).toMatchObject({ ok: true, result: 'asserted-clean' });
   });
 
   it('keeps run mode fail-closed when the environment is missing', () => {
-    expect(evaluateDeployGate({
-      changedFiles: [],
-      executorConfigured: true,
-      kind: 'migration',
-      mode: 'run',
-    })).toMatchObject({ ok: false, result: 'blocked-safe-run-required' });
+    expect(
+      evaluateDeployGate({
+        changedFiles: [],
+        executorConfigured: true,
+        kind: 'migration',
+        mode: 'run',
+      })
+    ).toMatchObject({ ok: false, result: 'blocked-safe-run-required' });
   });
 
   it('formats risk summaries deterministically', () => {

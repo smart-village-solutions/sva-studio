@@ -42,4 +42,11 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).toContain('if [ "${#trimmed_secret}" -lt 32 ]');
     expect(workflow.indexOf('validate permission snapshot secret')).toBeLessThan(workflow.indexOf('capture previous live app digest'));
   });
+
+  it('injects the worker password as a dedicated environment secret', () => {
+    expect(workflow.match(/STUDIO_JOB_WORKER_DB_PASSWORD: \$\{\{ secrets\.STUDIO_JOB_WORKER_DB_PASSWORD \}\}/gu)).toHaveLength(2);
+    expect(workflow).toContain('STUDIO_JOB_WORKER_DB_PASSWORD fehlt oder ist zu kurz.');
+    expect(workflow).toContain('scripts/ci/inject-worker-database-secret.ts');
+    expect(workflow.indexOf('inject worker database secret')).toBeLessThan(workflow.indexOf('evaluate migration and bootstrap gates'));
+  });
 });

@@ -442,6 +442,7 @@ test('runtime artifact verification runs workspace node helper via bash', () => 
   expect(script).toMatch(/bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
   assert.match(script, /KEYCLOAK_PORT="\$\{KEYCLOAK_PORT\}" bash "\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
   assert.doesNotMatch(script, /(^|[^[:alnum:]_])"\$\{WORKSPACE_ROOT\}\/scripts\/ci\/run-workspace-node\.sh" <<'NODE'/);
+  expect(script).toContain('SVA_PLUGIN_OPERATION_WORKER_ENABLED=false');
 });
 
 test('runtime artifact checks avoid stale images and dev JSX false positives', () => {

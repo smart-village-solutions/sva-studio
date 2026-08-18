@@ -13,11 +13,12 @@ describe('run-integration-gate', () => {
     expect(
       filterRunnableIntegrationProjects([
         'sva-studio-react',
+        'auth-runtime',
         'data',
         'plugin-news',
         'monitoring-client',
       ])
-    ).toEqual(['data', 'sva-studio-react']);
+    ).toEqual(['auth-runtime', 'data', 'sva-studio-react']);
   });
 
   it('parses newline-separated nx project output', () => {
@@ -29,13 +30,13 @@ describe('run-integration-gate', () => {
   });
 
   it('serializes integration projects that share the Compose database', () => {
-    expect(buildRunManyIntegrationCommand(['data', 'sva-studio-react'])).toBe(
-      'env -u NO_COLOR pnpm nx run-many -t test:integration --projects=data,sva-studio-react --parallel=1 --output-style=stream'
+    expect(buildRunManyIntegrationCommand(['auth-runtime', 'data', 'sva-studio-react'])).toBe(
+      'env -u NO_COLOR pnpm nx run-many -t test:integration --projects=auth-runtime,data,sva-studio-react --parallel=1 --output-style=stream'
     );
   });
 
   it('documents the split between general and monitoring-specific integration projects', () => {
-    expect(GENERAL_INTEGRATION_PROJECTS).toEqual(['data', 'sva-studio-react']);
+    expect(GENERAL_INTEGRATION_PROJECTS).toEqual(['auth-runtime', 'data', 'sva-studio-react']);
     expect(MONITORING_STACK_PROJECTS).toEqual(['monitoring-client']);
   });
 });

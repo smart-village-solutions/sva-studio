@@ -358,6 +358,7 @@ describe('iam-api organization helpers', () => {
     expect(health.checks.services).toEqual({
       authorizationCache: { status: 'unknown' },
       database: { status: 'ready' },
+      jobWorker: { status: 'unknown' },
       keycloak: { status: 'not_ready' },
       redis: { status: 'ready' },
     });
@@ -367,6 +368,72 @@ describe('iam-api organization helpers', () => {
       consecutiveRedisFailures: 0,
       recomputePerMinute: 0,
       status: 'empty',
+    });
+  });
+
+  it('preserves structured worker health from a not-ready response', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        createJsonResponse(
+          {
+            checks: {
+              authorizationCache: {
+                coldStart: false,
+                consecutiveRedisFailures: 0,
+                recomputePerMinute: 0,
+                status: 'ready',
+              },
+              auth: {},
+              db: true,
+              diagnostics: {
+                jobWorker: { reason_code: 'studio_job_worker_claim_failed' },
+              },
+              errors: { jobWorker: 'Studio job worker is not running.' },
+              keycloak: true,
+              redis: true,
+              services: {
+                authorizationCache: { status: 'ready' },
+                database: { status: 'ready' },
+                jobWorker: {
+                  reasonCode: 'studio_job_worker_claim_failed',
+                  status: 'not_ready',
+                },
+                keycloak: { status: 'ready' },
+                redis: { status: 'ready' },
+              },
+            },
+            path: '/api/v1/iam/health/ready',
+            status: 'not_ready',
+            timestamp: '2026-08-17T10:00:00.000Z',
+          },
+          { status: 503 }
+        )
+      )
+    );
+
+    await expect(getRuntimeHealth()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        services: {
+          jobWorker: {
+            reasonCode: 'studio_job_worker_claim_failed',
+            status: 'not_ready',
+          },
+        },
+      },
+    });
+  });
+
+  it('rejects unrelated json error payloads returned with status 503', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(createJsonResponse({ error: 'unavailable' }, { status: 503 }))
+    );
+
+    await expect(getRuntimeHealth()).rejects.toMatchObject({
+      code: 'invalid_runtime_health_response',
+      status: 503,
     });
   });
 

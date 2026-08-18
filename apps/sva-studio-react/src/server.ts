@@ -9,6 +9,15 @@ import {
   readServerFunctionResponseBodyForDiagnostics,
   resolveServerFunctionBranchDecision,
 } from './lib/server-function-request-diagnostics.server';
+import {
+  logPluginWorkerBootstrapFailure,
+  type PluginWorkerBootstrapLogger,
+} from './lib/plugin-worker-bootstrap-logging.server';
+import type {
+  RequestContextSdk,
+  RouteDispatchDescriptor,
+  ServerTransportComponent,
+} from './lib/server-entry-types';
 
 const startFetch = createStartHandler(defaultStreamHandler);
 const diagnosticsEnabled = (process.env.NODE_ENV ?? 'development') === 'development';
@@ -18,67 +27,42 @@ const studioJobWorkerEnabled = process.env.SVA_PLUGIN_OPERATION_WORKER_ENABLED !
 const studioJobWorkerLane =
   process.env.SVA_PLUGIN_OPERATION_WORKER_LANE === 'privileged' ? 'privileged' : 'default';
 
-type WorkspaceContext = { readonly requestId?: string | null };
-type ServerTransportLogger = { info: (message: string, meta: Record<string, unknown>) => void };
-
-type ServerTransportComponent = 'server-entry-transport' | 'server-function-transport';
-type RouteDispatcher = (request: Request) => Promise<Response | null>;
-type RouteDispatchDescriptor = {
-  readonly label: string;
-  readonly getDispatcher: () => Promise<RouteDispatcher>;
-};
-
-type RequestContextSdk = {
-  createSdkLogger: (options: {
-    readonly component: string;
-    readonly level: 'info';
-    readonly enableConsole: boolean;
-    readonly enableOtel: boolean;
-  }) => ServerTransportLogger;
-  getWorkspaceContext: () => WorkspaceContext;
-  withRequestContext: <T>(
-    input: {
-      readonly request: Request;
-      readonly fallbackWorkspaceId: string;
-    },
-    callback: () => Promise<T>
-  ) => Promise<T>;
-};
-
 let sdkPromise: Promise<RequestContextSdk> | null = null;
-const loggerPromises = new Map<ServerTransportComponent, Promise<ServerTransportLogger>>();
-let dispatchAuthRouteRequestPromise: Promise<typeof import('@sva/routing/server')['dispatchAuthRouteRequest']> | null = null;
+const loggerPromises = new Map<ServerTransportComponent, Promise<PluginWorkerBootstrapLogger>>();
+let dispatchAuthRouteRequestPromise: Promise<
+  (typeof import('@sva/routing/server'))['dispatchAuthRouteRequest']
+> | null = null;
 let ensureStudioJobWorkerStartedPromise: Promise<() => Promise<void>> | null = null;
-let registerStudioPluginOperationHandlersPromise:
-  | Promise<typeof import('./lib/plugin-operation-runtime.server')['registerStudioPluginOperationHandlers']>
-  | null = null;
-let dispatchMainserverNewsRequestPromise:
-  | Promise<typeof import('./lib/mainserver-news-api.server')['dispatchMainserverNewsRequest']>
-  | null = null;
-let dispatchMainserverEventsRequestPromise:
-  | Promise<typeof import('./lib/mainserver-events-api.server')['dispatchMainserverEventsRequest']>
-  | null = null;
-let dispatchMainserverPoiRequestPromise:
-  | Promise<typeof import('./lib/mainserver-poi-api.server')['dispatchMainserverPoiRequest']>
-  | null = null;
-let dispatchMainserverSurveysRequestPromise:
-  | Promise<typeof import('./lib/mainserver-surveys-api.server')['dispatchMainserverSurveysRequest']>
-  | null = null;
-let dispatchMainserverGenericItemsRequestPromise:
-  | Promise<typeof import('./lib/mainserver-generic-items-api.server')['dispatchMainserverGenericItemsRequest']>
-  | null = null;
-let dispatchMainserverMetadataRequestPromise:
-  | Promise<typeof import('./lib/mainserver-metadata-api.server')['dispatchMainserverMetadataRequest']>
-  | null = null;
-let dispatchAggregatedContentListRequestPromise:
-  | Promise<typeof import('./lib/iam-content-list-api.server')['dispatchAggregatedContentListRequest']>
-  | null = null;
-let dispatchMapGeocodingRequestPromise:
-  | Promise<typeof import('./lib/map-geocoding-api.server')['dispatchMapGeocodingRequest']>
-  | null = null;
-let dispatchStudioChangelogRequestPromise:
-  | Promise<typeof import('./lib/studio-changelog-api.server')['dispatchStudioChangelogRequest']>
-  | null = null;
+let registerStudioPluginOperationHandlersPromise: Promise<
+  (typeof import('./lib/plugin-operation-runtime.server'))['registerStudioPluginOperationHandlers']
+> | null = null;
+let dispatchMainserverNewsRequestPromise: Promise<
+  (typeof import('./lib/mainserver-news-api.server'))['dispatchMainserverNewsRequest']
+> | null = null;
+let dispatchMainserverEventsRequestPromise: Promise<
+  (typeof import('./lib/mainserver-events-api.server'))['dispatchMainserverEventsRequest']
+> | null = null;
+let dispatchMainserverPoiRequestPromise: Promise<
+  (typeof import('./lib/mainserver-poi-api.server'))['dispatchMainserverPoiRequest']
+> | null = null;
+let dispatchMainserverSurveysRequestPromise: Promise<
+  (typeof import('./lib/mainserver-surveys-api.server'))['dispatchMainserverSurveysRequest']
+> | null = null;
+let dispatchMainserverGenericItemsRequestPromise: Promise<
+  (typeof import('./lib/mainserver-generic-items-api.server'))['dispatchMainserverGenericItemsRequest']
+> | null = null;
+let dispatchMainserverMetadataRequestPromise: Promise<
+  (typeof import('./lib/mainserver-metadata-api.server'))['dispatchMainserverMetadataRequest']
+> | null = null;
+let dispatchAggregatedContentListRequestPromise: Promise<
+  (typeof import('./lib/iam-content-list-api.server'))['dispatchAggregatedContentListRequest']
+> | null = null;
+let dispatchMapGeocodingRequestPromise: Promise<
+  (typeof import('./lib/map-geocoding-api.server'))['dispatchMapGeocodingRequest']
+> | null = null;
+let dispatchStudioChangelogRequestPromise: Promise<
+  (typeof import('./lib/studio-changelog-api.server'))['dispatchStudioChangelogRequest']
+> | null = null;
 let pluginOperationHandlerRegistrationPromise: Promise<void> | null = null;
 let pluginOperationWorkerBootstrapPromise: Promise<void> | null = null;
 const getSdk = async (): Promise<RequestContextSdk> => {
@@ -87,25 +71,28 @@ const getSdk = async (): Promise<RequestContextSdk> => {
 };
 
 const getDispatchAuthRouteRequest = async () => {
-  dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then((mod) => mod.dispatchAuthRouteRequest);
+  dispatchAuthRouteRequestPromise ??= import('@sva/routing/server').then(
+    (mod) => mod.dispatchAuthRouteRequest
+  );
   return dispatchAuthRouteRequestPromise;
 };
 const getEnsureStudioJobWorkerStarted = async () => {
-  ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then(
-    (mod) =>
-      studioJobWorkerLane === 'privileged'
-        ? mod.ensurePrivilegedStudioJobWorkerStarted
-        : mod.ensureStudioJobWorkerStarted
+  ensureStudioJobWorkerStartedPromise ??= import('@sva/auth-runtime/server').then((mod) =>
+    studioJobWorkerLane === 'privileged'
+      ? mod.ensurePrivilegedStudioJobWorkerStarted
+      : mod.ensureStudioJobWorkerStarted
   );
   return ensureStudioJobWorkerStartedPromise;
 };
 const getRegisterStudioPluginOperationHandlers = async () => {
   if (devRuntimeRefreshEnabled) {
-    return (await import('./lib/plugin-operation-runtime.server')).registerStudioPluginOperationHandlers;
+    return (await import('./lib/plugin-operation-runtime.server'))
+      .registerStudioPluginOperationHandlers;
   }
-  registerStudioPluginOperationHandlersPromise ??= import('./lib/plugin-operation-runtime.server').then(
-    (mod) => mod.registerStudioPluginOperationHandlers
-  );
+  registerStudioPluginOperationHandlersPromise ??=
+    import('./lib/plugin-operation-runtime.server').then(
+      (mod) => mod.registerStudioPluginOperationHandlers
+    );
   return registerStudioPluginOperationHandlersPromise;
 };
 const getDispatchMainserverNewsRequest = async () => {
@@ -133,9 +120,10 @@ const getDispatchMainserverSurveysRequest = async () => {
   return dispatchMainserverSurveysRequestPromise;
 };
 const getDispatchMainserverGenericItemsRequest = async () => {
-  dispatchMainserverGenericItemsRequestPromise ??= import('./lib/mainserver-generic-items-api.server').then(
-    (mod) => mod.dispatchMainserverGenericItemsRequest
-  );
+  dispatchMainserverGenericItemsRequestPromise ??=
+    import('./lib/mainserver-generic-items-api.server').then(
+      (mod) => mod.dispatchMainserverGenericItemsRequest
+    );
   return dispatchMainserverGenericItemsRequestPromise;
 };
 const getDispatchMainserverMetadataRequest = async () => {
@@ -198,12 +186,8 @@ const ensurePluginOperationHandlersRegistered = async (): Promise<void> => {
   await pluginOperationHandlerRegistrationPromise;
 };
 
-const logPluginWorkerBootstrapFailure = async (error: unknown): Promise<void> => {
-  (await getLogger('server-entry-transport')).info('Plugin worker bootstrap failed', {
-    operation: 'plugin_operation_worker_bootstrap',
-    error: error instanceof Error ? error.message : String(error),
-  });
-};
+const reportPluginWorkerBootstrapFailure = async (error: unknown): Promise<void> =>
+  logPluginWorkerBootstrapFailure(await getLogger('server-entry-transport'), error);
 
 const startPluginOperationWorkerInBackground = (): void => {
   if (!studioJobWorkerEnabled) {
@@ -212,7 +196,9 @@ const startPluginOperationWorkerInBackground = (): void => {
 
   if (pluginOperationWorkerBootstrapPromise) {
     if (devRuntimeRefreshEnabled) {
-      void ensurePluginOperationHandlersRegistered().catch((error) => logPluginWorkerBootstrapFailure(error));
+      void ensurePluginOperationHandlersRegistered().catch((error) =>
+        reportPluginWorkerBootstrapFailure(error)
+      );
     }
 
     return;
@@ -224,13 +210,16 @@ const startPluginOperationWorkerInBackground = (): void => {
       const startWorker = await getEnsureStudioJobWorkerStarted();
       await startWorker();
     } catch (error) {
+      await reportPluginWorkerBootstrapFailure(error);
+    } finally {
       pluginOperationWorkerBootstrapPromise = null;
-      await logPluginWorkerBootstrapFailure(error);
     }
   })();
 };
 
-const getLogger = async (component: ServerTransportComponent): Promise<ServerTransportLogger> => {
+const getLogger = async (
+  component: ServerTransportComponent
+): Promise<PluginWorkerBootstrapLogger> => {
   let loggerPromise = loggerPromises.get(component);
   if (!loggerPromise) {
     loggerPromise = getSdk().then((sdk) =>

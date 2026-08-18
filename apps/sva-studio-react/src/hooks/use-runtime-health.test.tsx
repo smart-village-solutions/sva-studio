@@ -13,7 +13,8 @@ const browserLoggerState = vi.hoisted(() => ({
 
 vi.mock('../lib/iam-api', () => ({
   asIamError: (error: unknown) => error,
-  getRuntimeHealth: (...args: Parameters<typeof getRuntimeHealthMock>) => getRuntimeHealthMock(...args),
+  getRuntimeHealth: (...args: Parameters<typeof getRuntimeHealthMock>) =>
+    getRuntimeHealthMock(...args),
 }));
 
 vi.mock('@sva/monitoring-client/logging', () => ({
@@ -71,6 +72,7 @@ describe('useRuntimeHealth', () => {
         services: {
           authorizationCache: { status: 'ready' },
           database: { status: 'ready' },
+          jobWorker: { status: 'ready' },
           keycloak: { status: 'ready' },
           redis: { status: 'ready' },
         },
@@ -107,6 +109,7 @@ describe('useRuntimeHealth', () => {
           services: {
             authorizationCache: { status: 'ready' },
             database: { status: 'ready' },
+            jobWorker: { status: 'ready' },
             keycloak: { status: 'ready' },
             redis: { status: 'ready' },
           },
@@ -141,7 +144,8 @@ describe('useRuntimeHealth', () => {
   });
 
   it('deduplicates overlapping runtime health reloads', async () => {
-    let resolveRequest: ((value: Awaited<ReturnType<typeof getRuntimeHealthMock>>) => void) | undefined;
+    let resolveRequest:
+      ((value: Awaited<ReturnType<typeof getRuntimeHealthMock>>) => void) | undefined;
     getRuntimeHealthMock.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -177,6 +181,7 @@ describe('useRuntimeHealth', () => {
           services: {
             authorizationCache: { status: 'ready' },
             database: { status: 'ready' },
+            jobWorker: { status: 'ready' },
             keycloak: { status: 'ready' },
             redis: { status: 'ready' },
           },

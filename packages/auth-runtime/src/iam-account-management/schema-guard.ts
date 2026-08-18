@@ -40,6 +40,79 @@ export type IamDatabaseReadinessReport = {
   readonly schema: SchemaGuardReport;
 };
 
+export type GraphileWorkerReadinessReport = {
+  readonly failedChecks: readonly string[];
+  readonly ok: boolean;
+};
+
+const GRAPHILE_WORKER_READINESS_SQL = `
+WITH worker_principal AS (
+  SELECT to_regrole($2) AS role_oid
+)
+SELECT
+  to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
+  worker_principal.role_oid IS NOT NULL AS worker_role_exists,
+  COALESCE(has_function_privilege(
+    $1,
+    to_regprocedure('graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)'),
+    'EXECUTE'
+  ), false) AS app_can_enqueue,
+  NOT has_database_privilege($1, current_database(), 'CREATE')
+    AND NOT has_schema_privilege($1, 'public', 'CREATE') AS app_cannot_create,
+  COALESCE(has_table_privilege(
+    worker_principal.role_oid,
+    to_regclass('graphile_worker._private_jobs'),
+    'SELECT,INSERT,UPDATE,DELETE'
+  ), false)
+    AND COALESCE(
+      has_schema_privilege(worker_principal.role_oid, 'graphile_worker', 'USAGE'),
+      false
+    ) AS worker_can_process,
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'graphile_worker'
+      AND NOT has_function_privilege(worker_principal.role_oid, p.oid, 'EXECUTE')
+  ) AS worker_functions_complete,
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM pg_sequences sequence
+    WHERE sequence.schemaname = 'graphile_worker'
+      AND NOT has_sequence_privilege(
+        worker_principal.role_oid,
+        format('%I.%I', sequence.schemaname, sequence.sequencename),
+        'USAGE,SELECT,UPDATE'
+      )
+  ) AS worker_sequences_complete,
+  worker_principal.role_oid IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'graphile_worker'
+      AND c.relkind IN ('r', 'p')
+      AND c.relrowsecurity = true
+      AND NOT EXISTS (
+        SELECT 1 FROM pg_policies policy
+        WHERE policy.schemaname = 'graphile_worker'
+          AND policy.tablename = c.relname
+          AND policy.policyname = 'sva_job_worker_access'
+          AND $2 = ANY(policy.roles)
+          AND COALESCE(policy.qual, '') IN ('true', '(true)')
+          AND COALESCE(policy.with_check, '') IN ('true', '(true)')
+      )
+  ) AS worker_policies_complete
+FROM worker_principal;
+`;
+
+const GRAPHILE_WORKER_READINESS_FIELDS = [
+  'graphile_schema_exists',
+  'worker_role_exists',
+  'app_can_enqueue',
+  'app_cannot_create',
+  'worker_can_process',
+  'worker_functions_complete',
+  'worker_sequences_complete',
+  'worker_policies_complete',
+] as const;
+
 type SchemaGuardRow = {
   account_groups_exists: boolean;
   account_groups_origin_column_exists: boolean;
@@ -688,6 +761,26 @@ export const runIamDatabaseReadinessForConnection = async (
   try {
     await client.connect();
     return await runIamDatabaseReadiness(client as QueryClient, expectedMigration);
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+};
+
+export const runGraphileWorkerReadinessForConnection = async (
+  config: ClientConfig,
+  appDbUser: string,
+  workerDbUser: string
+): Promise<GraphileWorkerReadinessReport> => {
+  const client = new Client(config);
+  try {
+    await client.connect();
+    const result = await client.query<Record<string, unknown>>(GRAPHILE_WORKER_READINESS_SQL, [
+      appDbUser,
+      workerDbUser,
+    ]);
+    const row = result.rows[0] ?? {};
+    const failedChecks = GRAPHILE_WORKER_READINESS_FIELDS.filter((field) => !toBoolean(row[field]));
+    return { failedChecks, ok: failedChecks.length === 0 };
   } finally {
     await client.end().catch(() => undefined);
   }

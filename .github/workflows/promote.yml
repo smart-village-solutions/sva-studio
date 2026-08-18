@@ -163,6 +163,16 @@ jobs:
             exit 1
           fi
 
+      - name: validate worker database secret
+        env:
+          STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ "${#STUDIO_JOB_WORKER_DB_PASSWORD}" -lt 32 ]; then
+            echo "::error::STUDIO_JOB_WORKER_DB_PASSWORD fehlt oder ist zu kurz." >&2
+            exit 1
+          fi
+
       - name: checkout
         uses: actions/checkout@v7
         with:
@@ -240,6 +250,15 @@ jobs:
               ;;
           esac
           echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+
+      - name: inject worker database secret
+        env:
+          STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          pnpm exec tsx scripts/ci/inject-worker-database-secret.ts \
+            --input "${RUNNER_TEMP}/promote-app-config.vars"
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval

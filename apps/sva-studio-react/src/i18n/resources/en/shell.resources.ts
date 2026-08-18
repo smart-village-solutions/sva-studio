@@ -29,6 +29,7 @@ export const shellENResources = {
     services: {
       authorizationCache: 'Authorization cache',
       database: 'Postgres',
+      jobWorker: 'Job worker',
       keycloak: 'Keycloak',
       redis: 'Redis',
     },
@@ -45,6 +46,10 @@ export const shellENResources = {
       databaseNotConfigured: 'Database is not configured.',
       keycloakAdminNotConfigured: 'Keycloak admin client is missing.',
       keycloakDependencyFailed: 'Keycloak is unreachable.',
+      jobWorkerNotStarted: 'Job worker has not started yet.',
+      jobWorkerRuntimeFailed: 'Job worker stopped unexpectedly.',
+      jobWorkerStartFailed: 'Job worker could not be started.',
+      jobWorkerStopped: 'Job worker is stopped.',
       ok: 'No issues detected.',
       redisPingFailed: 'Redis is unreachable.',
       schemaDrift: 'IAM schema is outdated.',

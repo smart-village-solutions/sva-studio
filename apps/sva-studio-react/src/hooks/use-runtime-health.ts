@@ -1,4 +1,8 @@
-import type { RuntimeDependencyHealth, RuntimeDependencyKey, RuntimeHealthResponse } from '@sva/iam-core';
+import type {
+  RuntimeDependencyHealth,
+  RuntimeDependencyKey,
+  RuntimeHealthResponse,
+} from '@sva/iam-core';
 import React from 'react';
 
 import { asIamError, getRuntimeHealth, type IamHttpError } from '../lib/iam-api';
@@ -12,7 +16,13 @@ import {
 
 const runtimeHealthLogger = createOperationLogger('runtime-health-hook', 'debug');
 
-const runtimeHealthServiceKeys: readonly RuntimeDependencyKey[] = ['database', 'redis', 'keycloak', 'authorizationCache'];
+const runtimeHealthServiceKeys: readonly RuntimeDependencyKey[] = [
+  'database',
+  'redis',
+  'keycloak',
+  'jobWorker',
+  'authorizationCache',
+];
 
 const createUnknownServices = (): RuntimeHealthResponse['checks']['services'] =>
   Object.fromEntries(
@@ -113,9 +123,14 @@ export const useRuntimeHealth = () => {
           },
           isLoading: false,
         }));
-        logBrowserOperationFailure(runtimeHealthLogger, 'studio_runtime_health_failed', resolvedError, {
-          operation: 'get_runtime_health',
-        });
+        logBrowserOperationFailure(
+          runtimeHealthLogger,
+          'studio_runtime_health_failed',
+          resolvedError,
+          {
+            operation: 'get_runtime_health',
+          }
+        );
       } finally {
         abortControllersRef.current.delete(controller);
       }

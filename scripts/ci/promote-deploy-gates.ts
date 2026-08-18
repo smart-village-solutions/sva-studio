@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { pathToFileURL } from 'node:url';
-import { parsePromoteDeployGateCliOptions, type PromoteDeployGateCliOptions } from './promote-deploy-gates-cli.ts';
+import {
+  parsePromoteDeployGateCliOptions,
+  type PromoteDeployGateCliOptions,
+} from './promote-deploy-gates-cli.ts';
 import { evaluateEnvironmentRunGate, type PromoteEnvironment } from './promote-environment-gate.ts';
 import { emitPromoteDeployGateOutputs } from './promote-deploy-gate-output.ts';
 import { resolveChangedFiles } from './pr-scope.ts';
@@ -41,7 +44,11 @@ const migrationRiskPatterns = [
   /(?:^|\/)migrations\//u,
   /^migrate-entrypoint\.sh$/u,
   /^deploy\/portainer\/migrate-entrypoint\.sh$/u,
+  /^deploy\/portainer\/migrate-graphile-worker\.mjs$/u,
   /^deploy\/portainer\/migrate-waste-tenants\.mjs$/u,
+  /^packages\/auth-runtime\/package\.json$/u,
+  /^packages\/auth-runtime\/src\/plugin-operations\/runner-worker\.ts$/u,
+  /^pnpm-lock\.yaml$/u,
   /^deploy\/portainer\/Dockerfile$/u,
   /^deploy\/portainer\/docker-compose\.studio\.yml$/u,
   /^packages\/server-runtime\/src\/waste\/tenant-database-identifiers\.server\.ts$/u,
@@ -59,6 +66,7 @@ const bootstrapRiskPatterns = [
   /^packages\/iam-[^/]+\//u,
   /^packages\/instance-registry\//u,
   /^packages\/auth-runtime\//u,
+  /^pnpm-lock\.yaml$/u,
   /^deploy\/keycloak\//u,
   /^config\/runtime\//u,
   /^scripts\/ops\/runtime\/bootstrap-job\.ts$/u,
@@ -72,10 +80,14 @@ export const formatRiskSummary = (riskFiles: readonly string[]): string =>
 export const findRiskFiles = (
   kind: DeployGateKind,
   changedFiles: readonly string[],
-  safeComposeFiles: readonly string[] = [],
+  safeComposeFiles: readonly string[] = []
 ): string[] => {
   const patterns = kind === 'migration' ? migrationRiskPatterns : bootstrapRiskPatterns;
-  return uniqueSorted(changedFiles.filter((filePath) => !safeComposeFiles.includes(filePath) && matchesAnyPattern(filePath, patterns)));
+  return uniqueSorted(
+    changedFiles.filter(
+      (filePath) => !safeComposeFiles.includes(filePath) && matchesAnyPattern(filePath, patterns)
+    )
+  );
 };
 export const evaluateDeployGate = ({
   changedFiles,

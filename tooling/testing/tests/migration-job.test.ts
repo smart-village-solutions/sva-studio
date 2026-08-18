@@ -10,7 +10,18 @@ import {
   runMigrationJobAgainstAcceptance,
   selectLatestMigrationTask,
 } from '../../../scripts/ops/runtime/migration-job.ts';
-import { OneShotJobError } from '../../../scripts/ops/runtime/one-shot-job-lifecycle.ts';
+
+type OneShotFailure = Error & {
+  cause?: unknown;
+  evidence: Readonly<{
+    exitCode?: number | null;
+    failureKind: string;
+    jobServiceName: string;
+    jobStackName: string;
+    state?: string;
+    taskId?: string;
+  }>;
+};
 
 describe('migration-job runtime helpers', () => {
   afterEach(() => {
@@ -438,9 +449,11 @@ describe('migration-job runtime helpers', () => {
       }
     ).catch((error: unknown) => error);
 
-    expect(failure).toBeInstanceOf(OneShotJobError);
-    expect((failure as OneShotJobError).message).not.toContain('goose failed');
-    expect((failure as OneShotJobError).evidence).toMatchObject({
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).toMatchObject({ name: 'OneShotJobError' });
+    const oneShotFailure = failure as OneShotFailure;
+    expect(oneShotFailure.message).not.toContain('goose failed');
+    expect(oneShotFailure.evidence).toMatchObject({
       exitCode: 1,
       failureKind: 'task-failed',
       jobServiceName: 'migrate',
@@ -448,8 +461,8 @@ describe('migration-job runtime helpers', () => {
       state: 'failed',
       taskId: 'task-1',
     });
-    expect((failure as OneShotJobError).cause).toBeInstanceOf(Error);
-    expect(((failure as OneShotJobError).cause as Error).message).toContain('goose failed');
+    expect(oneShotFailure.cause).toBeInstanceOf(Error);
+    expect((oneShotFailure.cause as Error).message).toContain('goose failed');
 
     expect(
       runCalls.some(
@@ -524,8 +537,9 @@ describe('migration-job runtime helpers', () => {
       }
     ).catch((error: unknown) => error);
 
-    expect(failure).toBeInstanceOf(OneShotJobError);
-    expect((failure as OneShotJobError).evidence).toMatchObject({
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).toMatchObject({ name: 'OneShotJobError' });
+    expect((failure as OneShotFailure).evidence).toMatchObject({
       failureKind: 'task-failed',
       jobServiceName: 'migrate',
       jobStackName: 'studio-migrate-20260407',

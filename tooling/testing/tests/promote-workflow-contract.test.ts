@@ -138,17 +138,44 @@ describe('Promote workflow contract', () => {
     const upload = workflow.indexOf('upload redacted promote evidence');
     expect(writer).toBeGreaterThan(workflow.indexOf('- name: deploy'));
     expect(upload).toBeGreaterThan(writer);
-    expect(workflow).toContain('run: pnpm exec tsx scripts/ci/write-promote-evidence.ts');
+    expect(workflow).toMatch(
+      /- name: write redacted promote evidence\n(?:.*\n){0,3}\s+if: always\(\)/u
+    );
+    expect(workflow).toMatch(
+      /- name: upload redacted promote evidence\n\s+if: always\(\)/u
+    );
+    expect(workflow).toContain(
+      'run: node "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"'
+    );
+    expect(workflow).toContain('ref: ${{ github.workflow_sha }}');
+    expect(workflow).toContain('node-version-file: .nvmrc');
+    expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
+      workflow.indexOf('validate inputs')
+    );
+    expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
+      workflow.indexOf('bind executor source to promoted change head')
+    );
+    expect(workflow).toContain('PROMOTE_SOURCE_CONTRACT_INVALID');
+    expect(workflow).toContain('PROMOTE_INPUT_INVALID');
+    expect(workflow).not.toContain(`printf '{"code":"PROMOTE_`);
     expect(workflow).toContain('PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json');
     expect(workflow).toContain('PROMOTE_JOB_STATUS: ${{ job.status }}');
     expect(workflow).toContain('PROMOTE_BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}');
     expect(workflow).toContain('PROMOTE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}');
+    expect(workflow).toContain('PROMOTE_BASE_REF: ${{ inputs.change_base }}');
+    expect(workflow).toContain('PROMOTE_HEAD_REF: ${{ inputs.change_head }}');
     expect(workflow).toContain('PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}');
     expect(workflow).toContain('PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}');
     expect(workflow).toContain('PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}');
     expect(workflow).toContain('name: promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}');
     expect(workflow).toContain('path: ${{ runner.temp }}/promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}.json');
     expect(workflow).toContain('if-no-files-found: error');
+    expect(workflow).toContain('PROMOTE_GATE_WASTE_BACKUP_REQUEST');
+    expect(workflow).toContain('PROMOTE_GATE_WASTE_BACKUP');
+    expect(workflow).toContain('PROMOTE_GATE_POSTCONDITIONS');
+    expect(workflow).not.toContain('path: ${{ runner.temp }}/promote-*.json');
+    expect(workflow).toContain("PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce'");
+    expect(workflow).toContain('PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts');
     expect(workflow).not.toContain('echo "## Promote summary"');
   });
 

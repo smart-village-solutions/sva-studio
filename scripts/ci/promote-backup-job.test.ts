@@ -41,26 +41,33 @@ describe('promote backup job', () => {
     expect(redactBackupError('Authorization: Bearer sensitive-token', [])).toBe('Authorization: Bearer [REDACTED]');
   });
 
-  it('writes safe failure evidence with the terminal task and log tail', () => {
-    expect(buildBackupEvidence({
+  it.each([
+    'person@example.test',
+    'https://internal.example.test/jobs/1',
+    'first line\nsecond line',
+    'secret-key=should-not-leak',
+  ])('writes allowlisted failure evidence without free diagnostics: %s', (sentinel) => {
+    const evidence = buildBackupEvidence({
       bucket: 'studio-db-backup-staging',
       diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
       environment: 'staging',
-      error: 'Backup failed',
-      logTail: 'backup.step=minio_upload_dump state=failed exit_code=1',
+      error: sentinel,
+      logTail: sentinel,
+      logs: sentinel,
       objectKey: 'staging/example.dump',
       status: 'failed',
-      task: { exitCode: 1, state: 'complete', taskId: 'task-1' },
-    })).toEqual({
+      task: { exitCode: 1, message: sentinel, state: 'complete', taskId: 'task-1' },
+    } as Parameters<typeof buildBackupEvidence>[0] & { error: string; logTail: string; logs: string });
+
+    expect(evidence).toEqual({
       bucket: 'studio-db-backup-staging',
       diagnosticObjectKey: 'staging/example.dump.diagnostic.ndjson',
       environment: 'staging',
-      error: 'Backup failed',
-      logTail: 'backup.step=minio_upload_dump state=failed exit_code=1',
       objectKey: 'staging/example.dump',
       status: 'failed',
       task: { exitCode: 1, state: 'complete', taskId: 'task-1' },
     });
+    expect(JSON.stringify(evidence)).not.toContain(sentinel);
   });
 
   it('renders an isolated job with upload, download and archive validation', () => {

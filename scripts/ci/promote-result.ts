@@ -4,6 +4,9 @@ import { dirname } from 'node:path';
 export type PromoteEnvironment = 'dev' | 'staging' | 'prod';
 
 export type PromotePhase =
+  | 'input-validation'
+  | 'source-contract'
+  | 'image-contract'
   | 'config-build'
   | 'static-preflight'
   | 'candidate-preflight'
@@ -12,6 +15,7 @@ export type PromotePhase =
   | 'backup'
   | 'migration'
   | 'bootstrap'
+  | 'postconditions'
   | 'deploy'
   | 'swarm-convergence'
   | 'external-smoke'
@@ -19,6 +23,11 @@ export type PromotePhase =
   | 'evidence';
 
 export type PromoteErrorCode =
+  | 'PROMOTE_INPUT_INVALID'
+  | 'PROMOTE_SOURCE_CONTRACT_INVALID'
+  | 'PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID'
+  | 'PROMOTE_IMAGE_CONTRACT_INVALID'
+  | 'PROMOTE_DEPLOY_GATES_REJECTED'
   | 'PROMOTE_CONFIG_SOURCE_FORBIDDEN'
   | 'PROMOTE_CONFIG_INVALID'
   | 'PROMOTE_CONFIG_REQUIRED_KEY_MISSING'
@@ -52,6 +61,31 @@ type PromoteFailureDefinition = Readonly<
 >;
 
 const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailureDefinition>> = {
+  PROMOTE_INPUT_INVALID: {
+    summary: 'Die Promote-Eingaben verletzen den Workflow-Vertrag.',
+    retryable: false,
+    nextAction: 'Die Eingaben anhand des Promote-Vertrags korrigieren.',
+  },
+  PROMOTE_SOURCE_CONTRACT_INVALID: {
+    summary: 'Die angeforderte Git-Grenze konnte nicht sicher gebunden werden.',
+    retryable: false,
+    nextAction: 'Base- und Head-Ref sowie ihre Ancestor-Beziehung prüfen.',
+  },
+  PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID: {
+    summary: 'Das geschützte Permission-Snapshot-Secret erfüllt den Vertrag nicht.',
+    retryable: false,
+    nextAction: 'Das Environment-Secret mit ausreichender Entropie bereitstellen.',
+  },
+  PROMOTE_IMAGE_CONTRACT_INVALID: {
+    summary: 'Image-Referenz und Git-Revision erfüllen den Promote-Vertrag nicht.',
+    retryable: false,
+    nextAction: 'Image-Digest, Revision und angeforderte Git-Grenze prüfen.',
+  },
+  PROMOTE_DEPLOY_GATES_REJECTED: {
+    summary: 'Migration- oder Bootstrap-Policy hat die Promotion abgelehnt.',
+    retryable: false,
+    nextAction: 'Änderungsumfang und explizite Migration- beziehungsweise Bootstrap-Modi prüfen.',
+  },
   PROMOTE_CONFIG_SOURCE_FORBIDDEN: {
     summary: 'Eine unzulässige Remote-Konfigurationsquelle wurde abgelehnt.',
     retryable: false,
@@ -149,6 +183,9 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
 
 const promoteEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod'];
 const promotePhases: readonly PromotePhase[] = [
+  'input-validation',
+  'source-contract',
+  'image-contract',
   'config-build',
   'static-preflight',
   'candidate-preflight',
@@ -157,6 +194,7 @@ const promotePhases: readonly PromotePhase[] = [
   'backup',
   'migration',
   'bootstrap',
+  'postconditions',
   'deploy',
   'swarm-convergence',
   'external-smoke',

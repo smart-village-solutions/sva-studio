@@ -11,8 +11,31 @@ import {
 
 export type PromoteGateStatus = 'passed' | 'failed' | 'cancelled' | 'skipped';
 export type PromoteEvidenceStatus = 'passed' | 'failed' | 'cancelled';
+export type PromoteGateName =
+  | 'input-validation'
+  | 'permission-snapshot-secret'
+  | 'source-contract'
+  | 'image-contract'
+  | 'config-build'
+  | 'migration-bootstrap-policy'
+  | 'readiness'
+  | 'candidate-preflight'
+  | 'staging-parity'
+  | 'backup-capabilities'
+  | 'studio-backup-request'
+  | 'waste-backup-request'
+  | 'temporary-backup'
+  | 'studio-backup-verification'
+  | 'waste-backup-verification'
+  | 'migration'
+  | 'bootstrap'
+  | 'postconditions'
+  | 'deploy'
+  | 'runtime-smoke'
+  | 'digest-verification';
 
 export type PromoteGateEvidence = Readonly<{
+  gate: PromoteGateName;
   phase: PromotePhase;
   status: PromoteGateStatus;
   failure?: PromoteFailure;
@@ -31,7 +54,12 @@ export type PromoteEvidence = Readonly<{
   run: Readonly<{ id: string; attempt: number }>;
   environment: PromoteEnvironment;
   status: PromoteEvidenceStatus;
-  git: Readonly<{ baseSha: string; headSha: string }>;
+  git: Readonly<{
+    baseRef: string;
+    headRef: string;
+    baseSha: string | null;
+    headSha: string | null;
+  }>;
   image: Readonly<{
     previousDigest: string | null;
     targetDigest: string | null;
@@ -51,28 +79,83 @@ export type BuildPromoteEvidenceInput = Readonly<{
   runAttempt: number;
   environment: PromoteEnvironment;
   status: PromoteEvidenceStatus;
-  baseSha: string;
-  headSha: string;
+  baseRef: string;
+  headRef: string;
+  baseSha?: string | null;
+  headSha?: string | null;
   previousImage?: string | null;
   targetImage?: string | null;
   imageRevision?: string | null;
   configRevision?: string | null;
   externalSecretReferences?: readonly string[];
   backupAgent?: PromoteBackupAgentEvidence | null;
-  gates: readonly Readonly<{ phase: PromotePhase; status: PromoteGateStatus }>[];
+  gates: readonly Readonly<{
+    gate: PromoteGateName;
+    phase: PromotePhase;
+    status: PromoteGateStatus;
+  }>[];
   recordedFailure?: PromoteFailure | null;
 }>;
 
 const shaPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 const digestPattern = /sha256:[0-9a-f]{64}/u;
 const revisionPattern = /^[0-9a-f]{64}$/u;
-const safeIdentifierPattern = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,255}$/u;
+const gitRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 const safeReferencePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/u;
+const safeFieldPattern = /^[a-z][a-z0-9_-]{0,63}$/u;
+const imageRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|sha256:[0-9a-f]{64}|[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$/u;
+const backupAgentRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|[A-Za-z0-9._/-]+@sha256:[0-9a-f]{64})$/u;
 const gateStatuses: readonly PromoteGateStatus[] = ['passed', 'failed', 'cancelled', 'skipped'];
+const evidenceStatuses: readonly PromoteEvidenceStatus[] = ['passed', 'failed', 'cancelled'];
+const evidenceEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod'];
+const gateNames: readonly PromoteGateName[] = [
+  'input-validation', 'permission-snapshot-secret', 'source-contract', 'image-contract',
+  'config-build', 'migration-bootstrap-policy', 'readiness', 'candidate-preflight',
+  'staging-parity', 'backup-capabilities', 'studio-backup-request', 'waste-backup-request',
+  'temporary-backup', 'studio-backup-verification', 'waste-backup-verification', 'migration',
+  'bootstrap', 'postconditions', 'deploy', 'runtime-smoke', 'digest-verification',
+];
+const evidencePhases: readonly PromotePhase[] = [
+  'input-validation', 'source-contract', 'image-contract', 'config-build', 'static-preflight',
+  'candidate-preflight', 'staging-parity', 'backup-capabilities', 'backup', 'migration',
+  'bootstrap', 'postconditions', 'deploy', 'swarm-convergence', 'external-smoke',
+  'digest-verification', 'evidence',
+];
 
-const assertSafeIdentifier = (value: string, label: string): string => {
-  if (!safeIdentifierPattern.test(value))
+const assertGitRef = (value: string, label: string): string => {
+  if (!gitRefPattern.test(value) || value.includes('..') || value.includes('@{'))
     throw new Error(`${label} verletzt den redigierten Evidenzvertrag.`);
+  return value;
+};
+
+const normalizeWorkflowRef = (value: string | undefined): string => {
+  if (!value?.trim()) return 'invalid-ref';
+  try {
+    return assertGitRef(value, 'Git-Ref');
+  } catch {
+    return 'invalid-ref';
+  }
+};
+
+const assertRunId = (value: string): string => {
+  if (!/^\d+$/u.test(value)) throw new Error('Run-ID verletzt den Evidenzvertrag.');
+  return value;
+};
+
+const assertSafeField = (value: string, label: string): string => {
+  if (!safeFieldPattern.test(value)) throw new Error(`${label} verletzt den Evidenzvertrag.`);
+  return value;
+};
+
+const assertImageRevision = (value: string): string => {
+  if (!imageRevisionPattern.test(value))
+    throw new Error('Image-Revision verletzt den Evidenzvertrag.');
+  return value;
+};
+
+const assertBackupAgentRevision = (value: string): string => {
+  if (!backupAgentRevisionPattern.test(value))
+    throw new Error('Agent-Revision verletzt den Evidenzvertrag.');
   return value;
 };
 
@@ -107,15 +190,15 @@ const normalizeBackupAgent = (
   )
     throw new Error('Backup-Agent-Evidenz ist ungültig.');
   return {
-    agentRevision: assertSafeIdentifier(value.agentRevision, 'Agent-Revision'),
+    agentRevision: assertBackupAgentRevision(value.agentRevision),
     protocolVersions: [...value.protocolVersions].sort((left, right) => left - right),
     databaseTargets: [
       ...new Set(
-        value.databaseTargets.map((target) => assertSafeIdentifier(target, 'Datenbankziel'))
+        value.databaseTargets.map((target) => assertSafeField(target, 'Datenbankziel'))
       ),
     ].sort(),
     resultFields: [
-      ...new Set(value.resultFields.map((field) => assertSafeIdentifier(field, 'Ergebnisfeld'))),
+      ...new Set(value.resultFields.map((field) => assertSafeField(field, 'Ergebnisfeld'))),
     ].sort(),
     wasteInventory: value.wasteInventory === true,
   };
@@ -124,18 +207,24 @@ const normalizeBackupAgent = (
 export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteEvidence => {
   if (!Number.isSafeInteger(input.runAttempt) || input.runAttempt < 1)
     throw new Error('Run-Attempt ist ungültig.');
+  if (!evidenceEnvironments.includes(input.environment))
+    throw new Error('Environment ist ungültig.');
+  if (!evidenceStatuses.includes(input.status)) throw new Error('Evidenzstatus ist ungültig.');
   const gates = input.gates.map((gate): PromoteGateEvidence => {
     if (!gateStatuses.includes(gate.status)) throw new Error('Gate-Status ist ungültig.');
-    return { phase: gate.phase, status: gate.status };
+    if (!gateNames.includes(gate.gate)) throw new Error('Gate-Name ist ungültig.');
+    if (!evidencePhases.includes(gate.phase)) throw new Error('Gate-Phase ist ungültig.');
+    return { gate: gate.gate, phase: gate.phase, status: gate.status };
   });
   const firstFailedPhase = gates.find(
     (gate) => gate.status === 'failed' || gate.status === 'cancelled'
   )?.phase;
+  const canonicalRecordedFailure = parsePromoteFailure(input.recordedFailure);
   const recordedFailure =
-    input.recordedFailure &&
-    input.recordedFailure.environment === input.environment &&
-    (!firstFailedPhase || input.recordedFailure.phase === firstFailedPhase)
-      ? input.recordedFailure
+    canonicalRecordedFailure &&
+    canonicalRecordedFailure.environment === input.environment &&
+    (!firstFailedPhase || canonicalRecordedFailure.phase === firstFailedPhase)
+      ? canonicalRecordedFailure
       : null;
   const terminalFailure =
     input.status === 'passed'
@@ -155,18 +244,20 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
 
   return {
     schemaVersion: 1,
-    run: { id: assertSafeIdentifier(input.runId, 'Run-ID'), attempt: input.runAttempt },
+    run: { id: assertRunId(input.runId), attempt: input.runAttempt },
     environment: input.environment,
     status: input.status,
     git: {
-      baseSha: assertSha(input.baseSha, 'Base-SHA'),
-      headSha: assertSha(input.headSha, 'Head-SHA'),
+      baseRef: assertGitRef(input.baseRef, 'Base-Ref'),
+      headRef: assertGitRef(input.headRef, 'Head-Ref'),
+      baseSha: input.baseSha?.trim() ? assertSha(input.baseSha, 'Base-SHA') : null,
+      headSha: input.headSha?.trim() ? assertSha(input.headSha, 'Head-SHA') : null,
     },
     image: {
       previousDigest: normalizeDigest(input.previousImage),
       targetDigest: normalizeDigest(input.targetImage),
       revision: input.imageRevision?.trim()
-        ? assertSafeIdentifier(input.imageRevision, 'Image-Revision')
+        ? assertImageRevision(input.imageRevision)
         : null,
     },
     config: {
@@ -209,8 +300,10 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     ['status', evidence.status],
     ['environment', evidence.environment],
     ['run', `${evidence.run.id}/${evidence.run.attempt}`],
-    ['base_sha', evidence.git.baseSha],
-    ['head_sha', evidence.git.headSha],
+    ['base_ref', evidence.git.baseRef],
+    ['head_ref', evidence.git.headRef],
+    ['base_sha', evidence.git.baseSha ?? 'not-resolved'],
+    ['head_sha', evidence.git.headSha ?? 'not-resolved'],
     ['previous_digest', evidence.image.previousDigest ?? 'not-captured'],
     ['target_digest', evidence.image.targetDigest ?? 'not-evaluated'],
     ['image_revision', evidence.image.revision ?? 'not-evaluated'],
@@ -231,7 +324,7 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     '| Phase | Status | Fehlercode |',
     '| --- | --- | --- |',
     ...evidence.gates.map(
-      (gate) => `| ${gate.phase} | ${gate.status} | ${gate.failure?.code ?? 'none'} |`
+      (gate) => `| ${gate.gate} (${gate.phase}) | ${gate.status} | ${gate.failure?.code ?? 'none'} |`
     ),
     ...(evidence.terminalFailure
       ? [
@@ -296,21 +389,28 @@ const required = (value: string | undefined, label: string): string => {
   return value;
 };
 
-const gateEnvironmentKeys: readonly Readonly<{ phase: PromotePhase; key: string }>[] = [
-  { phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
-  { phase: 'static-preflight', key: 'PROMOTE_GATE_STATIC_PREFLIGHT' },
-  { phase: 'static-preflight', key: 'PROMOTE_GATE_READINESS' },
-  { phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT' },
-  { phase: 'staging-parity', key: 'PROMOTE_GATE_STAGING_PARITY' },
-  { phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES' },
-  { phase: 'backup', key: 'PROMOTE_GATE_BACKUP_REQUEST' },
-  { phase: 'backup', key: 'PROMOTE_GATE_BACKUP_FALLBACK' },
-  { phase: 'backup', key: 'PROMOTE_GATE_BACKUP' },
-  { phase: 'migration', key: 'PROMOTE_GATE_MIGRATION' },
-  { phase: 'bootstrap', key: 'PROMOTE_GATE_BOOTSTRAP' },
-  { phase: 'deploy', key: 'PROMOTE_GATE_DEPLOY' },
-  { phase: 'external-smoke', key: 'PROMOTE_GATE_EXTERNAL_SMOKE' },
-  { phase: 'digest-verification', key: 'PROMOTE_GATE_DIGEST_VERIFICATION' },
+const gateEnvironmentKeys: readonly Readonly<{ gate: PromoteGateName; phase: PromotePhase; key: string }>[] = [
+  { gate: 'input-validation', phase: 'input-validation', key: 'PROMOTE_GATE_INPUT' },
+  { gate: 'permission-snapshot-secret', phase: 'input-validation', key: 'PROMOTE_GATE_PERMISSION_SECRET' },
+  { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
+  { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
+  { gate: 'config-build', phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
+  { gate: 'migration-bootstrap-policy', phase: 'static-preflight', key: 'PROMOTE_GATE_STATIC_PREFLIGHT' },
+  { gate: 'readiness', phase: 'static-preflight', key: 'PROMOTE_GATE_READINESS' },
+  { gate: 'candidate-preflight', phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT' },
+  { gate: 'staging-parity', phase: 'staging-parity', key: 'PROMOTE_GATE_STAGING_PARITY' },
+  { gate: 'backup-capabilities', phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES' },
+  { gate: 'studio-backup-request', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_REQUEST' },
+  { gate: 'waste-backup-request', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP_REQUEST' },
+  { gate: 'temporary-backup', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_FALLBACK' },
+  { gate: 'studio-backup-verification', phase: 'backup', key: 'PROMOTE_GATE_BACKUP' },
+  { gate: 'waste-backup-verification', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP' },
+  { gate: 'migration', phase: 'migration', key: 'PROMOTE_GATE_MIGRATION' },
+  { gate: 'bootstrap', phase: 'bootstrap', key: 'PROMOTE_GATE_BOOTSTRAP' },
+  { gate: 'postconditions', phase: 'postconditions', key: 'PROMOTE_GATE_POSTCONDITIONS' },
+  { gate: 'deploy', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOY' },
+  { gate: 'runtime-smoke', phase: 'external-smoke', key: 'PROMOTE_GATE_EXTERNAL_SMOKE' },
+  { gate: 'digest-verification', phase: 'digest-verification', key: 'PROMOTE_GATE_DIGEST_VERIFICATION' },
 ];
 
 export const writePromoteEvidenceFromEnvironment = (
@@ -330,15 +430,18 @@ export const writePromoteEvidenceFromEnvironment = (
     runAttempt: attempt,
     environment,
     status: normalizeWorkflowStatus(env.PROMOTE_JOB_STATUS),
-    baseSha: required(env.PROMOTE_BASE_SHA, 'PROMOTE_BASE_SHA'),
-    headSha: required(env.PROMOTE_HEAD_SHA, 'PROMOTE_HEAD_SHA'),
+    baseRef: normalizeWorkflowRef(env.PROMOTE_BASE_REF),
+    headRef: normalizeWorkflowRef(env.PROMOTE_HEAD_REF),
+    baseSha: env.PROMOTE_BASE_SHA,
+    headSha: env.PROMOTE_HEAD_SHA,
     previousImage: env.PROMOTE_PREVIOUS_IMAGE,
     targetImage: env.PROMOTE_TARGET_IMAGE,
     imageRevision: env.PROMOTE_IMAGE_REVISION,
     configRevision: env.PROMOTE_CONFIG_REVISION,
     externalSecretReferences: parseJson<readonly string[]>(env.PROMOTE_SECRET_REFERENCES, []),
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
-    gates: gateEnvironmentKeys.map(({ phase, key }) => ({
+    gates: gateEnvironmentKeys.map(({ gate, phase, key }) => ({
+      gate,
       phase,
       status: normalizeGateStatus(env[key]),
     })),

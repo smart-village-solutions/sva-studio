@@ -7,7 +7,6 @@ import { commandExists, run, runCapture, runCaptureDetailed, wait, withoutDebugE
 import {
   collectQuantumTaskSnapshots,
   getMigrationJobTerminalState,
-  readRemoteJobLogTail,
   selectLatestMigrationTask,
   type MigrationJobTaskSnapshot,
 } from '../ops/runtime/migration-job.ts';
@@ -146,8 +145,6 @@ export const buildBackupEvidence = ({
   bucket,
   diagnosticObjectKey,
   environment,
-  error,
-  logTail,
   objectKey,
   status,
   task,
@@ -155,8 +152,6 @@ export const buildBackupEvidence = ({
   bucket: string;
   diagnosticObjectKey: string;
   environment: PromoteEnvironment;
-  error?: string;
-  logTail?: string;
   objectKey: string;
   status: 'failed' | 'ok' | 'timed_out';
   task?: MigrationJobTaskSnapshot | null;
@@ -164,8 +159,6 @@ export const buildBackupEvidence = ({
   bucket,
   diagnosticObjectKey,
   environment,
-  error,
-  logTail,
   objectKey,
   status,
   task: task
@@ -239,11 +232,6 @@ const main = async () => {
   const composePath = resolve(projectDir, 'docker-compose.json');
   const jobStack = `${sourceStack}-backup-gha-${runId}-${attempt}`.replace(/[^a-zA-Z0-9_.-]/gu, '-');
   const env = { ...process.env };
-  const sensitiveValues = [
-    process.env.APP_CONFIG ?? '',
-    process.env.S3_ACCESS_KEY_ID ?? '',
-    process.env.S3_SECRET_ACCESS_KEY ?? '',
-  ];
 
   required(process.env.S3_ACCESS_KEY_ID, 'S3_ACCESS_KEY_ID');
   required(process.env.S3_SECRET_ACCESS_KEY, 'S3_SECRET_ACCESS_KEY');
@@ -272,22 +260,10 @@ const main = async () => {
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_bucket=${bucket}\nbackup_object=${objectKey}\nbackup_diagnostic_object=${diagnosticObjectKey}\nbackup_evidence_path=${resultPath}\n`);
   } catch (error) {
     const failedJob = error instanceof BackupJobFailure ? error : undefined;
-    const remoteLogTail = await readRemoteJobLogTail(
-      { commandExists, rootDir, runCapture },
-      env,
-      {
-        containerId: failedJob?.task?.containerId,
-        quantumEndpoint,
-        serviceId: failedJob?.task?.serviceId,
-      },
-    );
-    const errorText = redactBackupError(error instanceof Error ? error.message : String(error), sensitiveValues);
     writeFileSync(resultPath, `${JSON.stringify(buildBackupEvidence({
       bucket,
       diagnosticObjectKey,
       environment,
-      error: errorText,
-      logTail: redactBackupError(remoteLogTail, sensitiveValues),
       objectKey,
       status: failedJob?.timedOut ? 'timed_out' : 'failed',
       task: failedJob?.task,

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -13,7 +13,6 @@ import {
 } from './promote-evidence.ts';
 import {
   PromoteContractError,
-  parsePromoteFailure,
   redactPromoteFailure,
 } from './promote-result.ts';
 
@@ -54,6 +53,8 @@ describe('promote evidence contract', () => {
       runAttempt: 2,
       environment: 'prod',
       status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
       baseSha: sha,
       headSha: otherSha,
       previousImage: `registry.example/studio@${digest}`,
@@ -69,8 +70,8 @@ describe('promote evidence contract', () => {
         wasteInventory: false,
         secretHash: 'secret-hash-sentinel',
       } as never,
-      gates: [{ phase: 'config-build', status: 'failed' }],
-      recordedFailure: parsePromoteFailure(untrustedFailure),
+      gates: [{ gate: 'config-build', phase: 'config-build', status: 'failed' }],
+      recordedFailure: untrustedFailure,
     });
     const json = JSON.stringify(evidence);
     const summary = renderPromoteSummary(evidence);
@@ -99,9 +100,11 @@ describe('promote evidence contract', () => {
       runAttempt: 1,
       environment: 'staging',
       status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
       baseSha: sha,
       headSha: otherSha,
-      gates: [{ phase: 'deploy', status: 'failed' }],
+      gates: [{ gate: 'deploy', phase: 'deploy', status: 'failed' }],
       recordedFailure: failure,
     });
     const surfaces = [
@@ -128,12 +131,14 @@ describe('promote evidence contract', () => {
         runAttempt: 1,
         environment: 'dev',
         status: 'passed',
+        baseRef: 'origin/main',
+        headRef: 'feature/promote',
         baseSha: sha,
         headSha: otherSha,
         targetImage: digest,
         imageRevision: configRevision,
         configRevision,
-        gates: [{ phase: 'deploy', status: 'passed' }],
+        gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
       });
       writePromoteEvidence(evidence, {
         outputPath,
@@ -172,11 +177,13 @@ describe('promote evidence contract', () => {
       runAttempt: 1,
       environment: 'dev',
       status: 'passed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
       baseSha: sha,
       headSha: otherSha,
       targetImage: 'not-pinned',
       imageRevision: 'latest',
-      gates: [{ phase: 'deploy', status: 'passed' }],
+      gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
     });
 
     expect(evidence.image).toEqual({ previousDigest: null, targetDigest: null, revision: 'latest' });
@@ -195,6 +202,8 @@ describe('promote evidence contract', () => {
         GITHUB_OUTPUT: githubOutput,
         PROMOTE_ENVIRONMENT: 'staging',
         PROMOTE_JOB_STATUS: 'success',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'feature/promote',
         PROMOTE_BASE_SHA: sha,
         PROMOTE_HEAD_SHA: otherSha,
         PROMOTE_TARGET_IMAGE: digest,
@@ -216,5 +225,91 @@ describe('promote evidence contract', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
+  });
+
+  it('writes evidence when source resolution failed before a SHA was available', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-source-failure-'));
+    const failurePath = join(directory, 'failure.json');
+    try {
+      const failure = {
+        code: 'PROMOTE_SOURCE_CONTRACT_INVALID',
+        environment: 'prod',
+        phase: 'source-contract',
+      } as const;
+      const canonical = redactPromoteFailure(new PromoteContractError(failure as never), {
+        environment: 'prod',
+        phase: 'source-contract',
+      });
+      writeFileSync(failurePath, JSON.stringify(canonical));
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '789',
+        GITHUB_RUN_ATTEMPT: '1',
+        PROMOTE_ENVIRONMENT: 'prod',
+        PROMOTE_JOB_STATUS: 'failure',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'missing/head',
+        PROMOTE_GATE_SOURCE: 'failure',
+        PROMOTE_FAILURE_PATH: failurePath,
+      });
+      const evidence = JSON.parse(readFileSync(outputPath, 'utf8')) as {
+        git: { baseSha: null; headSha: null };
+        terminalFailure: { code: string };
+      };
+      expect(evidence.git).toMatchObject({ baseSha: null, headSha: null });
+      expect(evidence.terminalFailure.code).toBe('PROMOTE_SOURCE_CONTRACT_INVALID');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each([
+    ['run id', { runId: 'person@example.test' }],
+    ['base ref', { baseRef: 'https://person@example.test/repo' }],
+    ['head ref', { headRef: 'feature/person@example.test' }],
+    ['base sha', { baseSha: 'person@example.test' }],
+    ['head sha', { headSha: 'person@example.test' }],
+    ['image revision', { imageRevision: 'person@example.test' }],
+    ['config revision', { configRevision: 'person@example.test' }],
+    ['agent revision', { backupAgent: { agentRevision: 'person@example.test', protocolVersions: [2], databaseTargets: ['studio'], resultFields: ['status'], wasteInventory: false } }],
+    ['database target', { backupAgent: { agentRevision: 'f'.repeat(40), protocolVersions: [2], databaseTargets: ['person@example.test'], resultFields: ['status'], wasteInventory: false } }],
+    ['result field', { backupAgent: { agentRevision: 'f'.repeat(40), protocolVersions: [2], databaseTargets: ['studio'], resultFields: ['person@example.test'], wasteInventory: false } }],
+    ['secret reference', { externalSecretReferences: ['person@example.test'] }],
+    ['environment', { environment: 'person@example.test' }],
+    ['status', { status: 'person@example.test' }],
+    ['gate name', { gates: [{ gate: 'person@example.test', phase: 'deploy', status: 'passed' }] }],
+    ['gate phase', { gates: [{ gate: 'deploy', phase: 'person@example.test', status: 'passed' }] }],
+    ['gate status', { gates: [{ gate: 'deploy', phase: 'deploy', status: 'person@example.test' }] }],
+  ])('rejects PII in the allowlisted %s field', (_label, override) => {
+    expect(() =>
+      buildPromoteEvidence(({
+        runId: '123',
+        runAttempt: 1,
+        environment: 'prod',
+        status: 'passed',
+        baseRef: 'origin/main',
+        headRef: 'feature/promote',
+        baseSha: sha,
+        headSha: otherSha,
+        gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
+        ...override,
+      }) as never)
+    ).toThrow();
+  });
+
+  it('strips arbitrary registry prefixes from published digest fields', () => {
+    const evidence = buildPromoteEvidence({
+      runId: '123',
+      runAttempt: 1,
+      environment: 'prod',
+      status: 'passed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
+      previousImage: `person@example.test/private@${digest}`,
+      targetImage: `https://person@example.test/private@${digest}`,
+      gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
+    });
+    expect(evidence.image).toMatchObject({ previousDigest: digest, targetDigest: digest });
+    expect(JSON.stringify(evidence)).not.toContain('person@example.test');
   });
 });

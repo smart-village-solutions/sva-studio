@@ -28,6 +28,8 @@ export default defineConfig({
       '../../scripts/ci/pr-review-intake.test.ts',
       '../../scripts/ci/promote-deploy-gates.test.ts',
       '../../scripts/ci/promote-image-contract.test.ts',
+      '../../scripts/ci/promote-one-shot-job.test.ts',
+      '../../scripts/ci/promote-backup-job.test.ts',
       '../../scripts/ci/promote-result.test.ts',
       '../../scripts/ci/verify-staging-promote-evidence.test.ts',
       '../../scripts/ci/backup-agent-contract.test.ts',

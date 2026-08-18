@@ -14,6 +14,11 @@ type JobKind = 'bootstrap' | 'candidate' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 type OneShotResult = Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>>;
 
+type OneShotEvidenceResult = Pick<
+  OneShotResult,
+  'durationMs' | 'exitCode' | 'jobServiceName' | 'jobStackName' | 'state' | 'taskId'
+>;
+
 const rootDir = resolve(import.meta.dirname, '../..');
 
 const resolveComposeSourceRoot = (value: string | undefined): string => {
@@ -73,6 +78,35 @@ const throwTerminalFailure = (failure: unknown, cleanupError: unknown) => {
   if (failure) throw failure;
 };
 
+export const buildOneShotEvidence = ({
+  cleanupError,
+  environment,
+  failure,
+  kind,
+  result,
+}: {
+  cleanupError?: unknown;
+  environment: PromoteEnvironment;
+  failure?: unknown;
+  kind: JobKind;
+  result?: OneShotEvidenceResult;
+}) => ({
+  cleanup: cleanupError ? 'error' as const : result ? 'ok' as const : 'attempted-after-failure' as const,
+  environment,
+  job: result
+    ? {
+      durationMs: result.durationMs,
+      exitCode: result.exitCode,
+      jobServiceName: result.jobServiceName,
+      jobStackName: result.jobStackName,
+      state: result.state,
+      taskId: result.taskId,
+    }
+    : undefined,
+  kind,
+  status: failure ? 'failed' as const : cleanupError ? 'cleanup_failed' as const : 'ok' as const,
+});
+
 const main = async () => {
   const { environment, kind } = parseArgs(process.argv.slice(2));
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
@@ -127,13 +161,7 @@ const main = async () => {
         cleanupError = error;
       }
     }
-    const evidence = {
-      cleanup: cleanupError ? 'error' : result ? 'ok' : 'attempted-after-failure',
-      environment,
-      error: failure instanceof Error ? redact(failure.message) : failure ? redact(String(failure)) : undefined,
-      job: result ? { durationMs: result.durationMs, exitCode: result.exitCode, jobServiceName: result.jobServiceName, jobStackName: result.jobStackName, logTail: redact(result.logTail), state: result.state, taskId: result.taskId } : undefined,
-      kind,
-    };
+    const evidence = buildOneShotEvidence({ cleanupError, environment, failure, kind, result });
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
   }

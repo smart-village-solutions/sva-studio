@@ -69,6 +69,25 @@ const storageQuotaRow = {
   updated_at: '2026-04-29T10:10:00.000Z',
 };
 
+const contentSaveOperationRow = {
+  id: '00000000-0000-4000-8000-000000000001',
+  instance_id: 'tenant-a',
+  actor_subject: 'actor-1',
+  target_type: 'news.article',
+  target_id: null,
+  status: 'preparing',
+  error_code: null,
+  expires_at: '2026-08-18T10:00:00.000Z',
+  created_at: '2026-08-18T09:00:00.000Z',
+  updated_at: null,
+};
+
+const contentSaveIdentity = {
+  instanceId: 'tenant-a',
+  operationId: contentSaveOperationRow.id,
+  actorSubject: 'actor-1',
+};
+
 const createQueuedExecutor = (queuedRows: readonly (readonly Record<string, unknown>[])[]) => {
   const statements: SqlStatement[] = [];
   const queue = [...queuedRows];
@@ -613,6 +632,128 @@ describe('media repository', () => {
       '00000000-0000-4000-8000-000000000002',
       'actor-1',
     ]);
+  });
+
+  it('executes and maps every content-save lifecycle repository transition', async () => {
+    const { executor, statements } = createQueuedExecutor([
+      [contentSaveOperationRow],
+      [contentSaveOperationRow],
+      [],
+      [{ successful: true }],
+      [{ successful: false }],
+      [{}],
+      [],
+      [{}],
+      [{ successful: true }],
+      [{ successful: false }],
+      [{}],
+      [],
+      [{ ...contentSaveOperationRow, status: 'abandon_pending', error_code: 'save_failed' }],
+      [],
+      [{ successful: true }],
+      [{ successful: false }],
+    ]);
+    const repository = createMediaRepository(executor);
+
+    await expect(
+      repository.createContentSaveOperation({
+        id: contentSaveOperationRow.id,
+        instanceId: 'tenant-a',
+        actorSubject: 'actor-1',
+        targetType: 'news.article',
+        status: 'preparing',
+        expiresAt: contentSaveOperationRow.expires_at,
+      })
+    ).resolves.toEqual({
+      id: contentSaveOperationRow.id,
+      instanceId: 'tenant-a',
+      actorSubject: 'actor-1',
+      targetType: 'news.article',
+      status: 'preparing',
+      expiresAt: contentSaveOperationRow.expires_at,
+      createdAt: contentSaveOperationRow.created_at,
+      updatedAt: undefined,
+    });
+    await expect(repository.getContentSaveOperation(contentSaveIdentity)).resolves.toEqual(
+      expect.objectContaining({ id: contentSaveOperationRow.id, status: 'preparing' })
+    );
+    await expect(repository.getContentSaveOperation(contentSaveIdentity)).resolves.toBeNull();
+    await expect(
+      repository.replaceContentSaveOperationReferences({
+        ...contentSaveIdentity,
+        references: [{ id: 'ref-1', assetId: 'asset-1', role: 'teaser', sortOrder: 0 }],
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.replaceContentSaveOperationReferences({ ...contentSaveIdentity, references: [] })
+    ).resolves.toBe(false);
+    await expect(
+      repository.markContentSaveOperationContentSaved({
+        ...contentSaveIdentity,
+        targetId: 'news-1',
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.markContentSaveOperationSavingContent(contentSaveIdentity)
+    ).resolves.toBe(false);
+    await expect(
+      repository.markContentSaveOperationOutcomeUnknown({
+        ...contentSaveIdentity,
+        errorCode: 'timeout',
+      })
+    ).resolves.toBe(true);
+    await expect(repository.commitContentSaveOperation(contentSaveIdentity)).resolves.toBe(true);
+    await expect(repository.commitContentSaveOperation(contentSaveIdentity)).resolves.toBe(false);
+    await expect(
+      repository.markContentSaveOperationAbandonPending({
+        ...contentSaveIdentity,
+        errorCode: 'cancelled',
+      })
+    ).resolves.toBe(true);
+    await expect(
+      repository.finalizeContentSaveOperationAbandoned(contentSaveIdentity)
+    ).resolves.toBe(false);
+    await expect(
+      repository.claimContentSaveOperationRecovery({
+        instanceId: 'tenant-a',
+        operationId: contentSaveOperationRow.id,
+        leaseOwner: 'recovery-1',
+        leaseExpiresAt: '2026-08-18T10:05:00.000Z',
+        now: '2026-08-18T10:00:00.000Z',
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({ status: 'abandon_pending', errorCode: 'save_failed' })
+    );
+    await expect(
+      repository.claimContentSaveOperationRecovery({
+        instanceId: 'tenant-a',
+        operationId: contentSaveOperationRow.id,
+        leaseOwner: 'recovery-1',
+        leaseExpiresAt: '2026-08-18T10:05:00.000Z',
+        now: '2026-08-18T10:00:00.000Z',
+      })
+    ).resolves.toBeNull();
+    await expect(repository.finalizeContentSaveOperationCleanup(contentSaveIdentity)).resolves.toBe(
+      true
+    );
+    await expect(repository.finalizeContentSaveOperationCleanup(contentSaveIdentity)).resolves.toBe(
+      false
+    );
+
+    expect(statements).toHaveLength(16);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.media_content_save_operations');
+    expect(statements[3]?.text).toContain(
+      'DELETE FROM iam.media_content_save_operation_references'
+    );
+    expect(statements[3]?.values.slice(0, 3)).toEqual([
+      contentSaveOperationRow.id,
+      'tenant-a',
+      'actor-1',
+    ]);
+    expect(statements[5]?.text).toContain("status = 'content_saved'");
+    expect(statements[8]?.text).toContain('INSERT INTO iam.media_references');
+    expect(statements[12]?.text).toContain("status = 'reconciliation_required'");
+    expect(statements[14]?.text).toContain('DELETE FROM iam.media_assets');
   });
 
   it('claims only expired safe states and preserves unknown or confirmed outcomes', () => {

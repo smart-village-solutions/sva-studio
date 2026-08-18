@@ -1,3 +1,7 @@
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AcceptanceProbeResult, DoctorReport } from '../runtime-env.shared.ts';
@@ -53,11 +57,56 @@ describe('smoke helpers', () => {
     });
 
     await expect(ops.waitForRemoteSmokeWarmup({}, { runner, runtimeProfile: 'studio' }))
-      .rejects.toThrow('PROMOTE_INTERNAL_ERROR: public-home: Erwartet HTTP 200, erhalten 404.');
+      .rejects.toThrow('PROMOTE_INTERNAL_ERROR: Ein unerwarteter interner Fehler hat das Promote-Gate beendet.');
 
     expect(runner).toHaveBeenCalledTimes(50);
     expect(wait).toHaveBeenCalledTimes(49);
     expect(wait.mock.calls).toEqual(Array.from({ length: 49 }, () => [10_000]));
+  });
+
+  it.each([
+    ['PROMOTE_READINESS_NOT_READY', 'public-ready', 'person@example.test'],
+    ['PROMOTE_SMOKE_REALM_MISMATCH', 'public-auth-login-tenant', 'Tenant-Realm stimmt nicht: https://internal.example.test/realm'],
+    ['PROMOTE_SMOKE_CALLBACK_MISMATCH', 'public-auth-login-tenant', 'Tenant-Redirect-URI stimmt nicht: first line\nsecond line'],
+    ['PROMOTE_INTERNAL_ERROR', 'public-home', 'secret-key=should-not-leak'],
+  ] as const)('records canonical %s evidence without probe diagnostics', async (code, name, message) => {
+    const directory = mkdtempSync(join(tmpdir(), 'runtime-smoke-failure-'));
+    const failurePath = join(directory, 'failure.json');
+    const ops = createRuntimeSmokeOps({
+      buildSwarmAppTaskProbe: () => createProbe({ scope: 'internal' }),
+      buildSwarmServicePresenceProbe: () => createProbe({ scope: 'internal' }),
+      doctorRuntime: async () => createDoctorReport({}),
+      isExpectedOidcRedirect: () => true,
+      parseRuntimeProfile: (value) => value,
+      resolveTenantRuntimeTargets: async () => ({ source: 'registry', targets: [] }),
+      runHttpProbe: async (input) => createProbe({ name: input.name, target: input.target }),
+      selectSmokeTenantTargets: (_runtimeProfile, tenantTargets) => tenantTargets,
+      shouldUseStudioReleaseBlockingTenantScope: () => true,
+      wait: async () => undefined,
+    });
+    try {
+      let thrown: unknown;
+      try {
+        await ops.waitForRemoteSmokeWarmup({
+          PROMOTE_FAILURE_PATH: failurePath,
+          SVA_STACK_NAME: 'studio-staging',
+        }, {
+          maxAttempts: 1,
+          runner: async () => [createProbe({ message, name, status: 'error' })],
+          runtimeProfile: 'studio',
+        });
+      } catch (error) {
+        thrown = error;
+      }
+      const serialized = readFileSync(failurePath, 'utf8');
+      expect(thrown).toBeInstanceOf(Error);
+      expect((thrown as Error).message).toContain(code);
+      expect((thrown as Error).message).not.toContain(message);
+      expect(JSON.parse(serialized)).toMatchObject({ code, environment: 'staging', phase: 'external-smoke' });
+      expect(serialized).not.toContain(message);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
   });
 
   it.each([
@@ -188,7 +237,7 @@ describe('smoke helpers', () => {
       wait: async () => undefined,
     });
     const nonBlockingFailure = createProbe({
-      message: 'fetch failed',
+      message: 'person@example.test https://internal.example.test first line\nsecond line',
       name: 'public-ingress-https-bb-ahrensfelde.studio.smart-village.app',
       status: 'error',
     });
@@ -201,7 +250,9 @@ describe('smoke helpers', () => {
       runner: async () => [nonBlockingFailure],
       runtimeProfile: 'studio',
     })).resolves.toEqual([nonBlockingFailure]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining(nonBlockingFailure.name));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('PROMOTE_SMOKE_NON_BLOCKING_FAILURE'));
+    expect(warn.mock.calls.flat().join('\n')).not.toContain(nonBlockingFailure.name);
+    expect(warn.mock.calls.flat().join('\n')).not.toContain(nonBlockingFailure.message);
     warn.mockRestore();
   });
 
@@ -231,7 +282,7 @@ describe('smoke helpers', () => {
       maxAttempts: 1,
       runner: async () => [blockingFailure],
       runtimeProfile: 'studio',
-    })).rejects.toThrow(name);
+    })).rejects.toThrow('PROMOTE_INTERNAL_ERROR');
   });
 
   it('returns no ingress contract for an invalid base URL', () => {

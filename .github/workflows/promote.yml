@@ -565,12 +565,17 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
+          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars "${RUNNER_TEMP}/runtime-smoke.stderr"' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           mkdir -p config/runtime
           cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
-          pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
+          if ! pnpm exec tsx scripts/ops/runtime-env.ts smoke studio 2>"${RUNNER_TEMP}/runtime-smoke.stderr"; then
+            if [ ! -s "${PROMOTE_FAILURE_PATH}" ]; then
+              node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" external-smoke
+            fi
+            exit 1
+          fi
 
       - name: verify deployed runtime image digest
         id: digest_verification
@@ -648,9 +653,11 @@ jobs:
           PROMOTE_GATE_TARGET: ${{ steps.target.outcome }}
           PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
           PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
-          PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.conclusion }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}
-          PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.conclusion }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' }}
           PROMOTE_GATE_BACKUP_REQUEST: ${{ steps.backup_job.outcome }}
           PROMOTE_GATE_WASTE_BACKUP_REQUEST: ${{ steps.waste_backup_job.outcome }}
           PROMOTE_GATE_BACKUP_FALLBACK: ${{ steps.backup_fallback_job.outcome }}

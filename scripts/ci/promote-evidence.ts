@@ -50,6 +50,7 @@ export type PromoteGateEvidence = Readonly<{
   gate: PromoteGateName;
   phase: PromotePhase;
   status: PromoteGateStatus;
+  blocking: boolean;
   failure?: PromoteFailure;
 }>;
 
@@ -105,6 +106,7 @@ export type BuildPromoteEvidenceInput = Readonly<{
     gate: PromoteGateName;
     phase: PromotePhase;
     status: PromoteGateStatus;
+    blocking?: boolean;
   }>[];
   recordedFailure?: PromoteFailure | null;
 }>;
@@ -230,10 +232,15 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
     if (!gateStatuses.includes(gate.status)) throw new Error('Gate-Status ist ungültig.');
     if (!gateNames.includes(gate.gate)) throw new Error('Gate-Name ist ungültig.');
     if (!evidencePhases.includes(gate.phase)) throw new Error('Gate-Phase ist ungültig.');
-    return { gate: gate.gate, phase: gate.phase, status: gate.status };
+    return {
+      gate: gate.gate,
+      phase: gate.phase,
+      status: gate.status,
+      blocking: gate.blocking !== false,
+    };
   });
   const firstFailedPhase = gates.find(
-    (gate) => gate.status === 'failed' || gate.status === 'cancelled'
+    (gate) => gate.blocking && (gate.status === 'failed' || gate.status === 'cancelled')
   )?.phase;
   const canonicalRecordedFailure = parsePromoteFailure(input.recordedFailure);
   const recordedFailure =
@@ -253,6 +260,7 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
         }));
   const gatesWithFailure = gates.map((gate) =>
     gate.phase === terminalFailure?.phase &&
+    gate.blocking &&
     (gate.status === 'failed' || gate.status === 'cancelled')
       ? { ...gate, failure: terminalFailure }
       : gate
@@ -337,10 +345,10 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     '',
     '### Gate-Ergebnisse',
     '',
-    '| Phase | Status | Fehlercode |',
-    '| --- | --- | --- |',
+    '| Phase | Status | Blockierend | Fehlercode |',
+    '| --- | --- | --- | --- |',
     ...evidence.gates.map(
-      (gate) => `| ${gate.gate} (${gate.phase}) | ${gate.status} | ${gate.failure?.code ?? 'none'} |`
+      (gate) => `| ${gate.gate} (${gate.phase}) | ${gate.status} | ${gate.blocking ? 'ja' : 'nein'} | ${gate.failure?.code ?? 'none'} |`
     ),
     ...(evidence.terminalFailure
       ? [
@@ -405,7 +413,12 @@ const required = (value: string | undefined, label: string): string => {
   return value;
 };
 
-const gateEnvironmentKeys: readonly Readonly<{ gate: PromoteGateName; phase: PromotePhase; key: string }>[] = [
+const gateEnvironmentKeys: readonly Readonly<{
+  gate: PromoteGateName;
+  phase: PromotePhase;
+  key: string;
+  blockingKey?: string;
+}>[] = [
   { gate: 'workspace-setup', phase: 'source-contract', key: 'PROMOTE_GATE_WORKSPACE_SETUP' },
   { gate: 'input-validation', phase: 'input-validation', key: 'PROMOTE_GATE_INPUT' },
   { gate: 'permission-snapshot-secret', phase: 'input-validation', key: 'PROMOTE_GATE_PERMISSION_SECRET' },
@@ -420,9 +433,9 @@ const gateEnvironmentKeys: readonly Readonly<{ gate: PromoteGateName; phase: Pro
   { gate: 'target-resolution', phase: 'deploy', key: 'PROMOTE_GATE_TARGET' },
   { gate: 'readiness', phase: 'static-preflight', key: 'PROMOTE_GATE_READINESS' },
   { gate: 'previous-live-capture', phase: 'digest-verification', key: 'PROMOTE_GATE_PREVIOUS_LIVE' },
-  { gate: 'candidate-preflight', phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT' },
+  { gate: 'candidate-preflight', phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT', blockingKey: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING' },
   { gate: 'staging-parity', phase: 'staging-parity', key: 'PROMOTE_GATE_STAGING_PARITY' },
-  { gate: 'backup-capabilities', phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES' },
+  { gate: 'backup-capabilities', phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES', blockingKey: 'PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING' },
   { gate: 'studio-backup-request', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_REQUEST' },
   { gate: 'waste-backup-request', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP_REQUEST' },
   { gate: 'temporary-backup', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_FALLBACK' },
@@ -462,10 +475,11 @@ export const writePromoteEvidenceFromEnvironment = (
     configRevision: env.PROMOTE_CONFIG_REVISION,
     externalSecretReferences: parseJson<readonly string[]>(env.PROMOTE_SECRET_REFERENCES, []),
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
-    gates: gateEnvironmentKeys.map(({ gate, phase, key }) => ({
+    gates: gateEnvironmentKeys.map(({ gate, phase, key, blockingKey }) => ({
       gate,
       phase,
       status: normalizeGateStatus(env[key]),
+      blocking: blockingKey ? env[blockingKey] === 'true' : true,
     })),
     recordedFailure: readRecordedFailure(env.PROMOTE_FAILURE_PATH),
   });

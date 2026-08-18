@@ -343,6 +343,90 @@ describe('promote evidence contract', () => {
     }
   });
 
+  it('keeps an observed shadow failure honest without making it terminal', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-shadow-gate-'));
+    try {
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '792',
+        GITHUB_RUN_ATTEMPT: '1',
+        PROMOTE_ENVIRONMENT: 'staging',
+        PROMOTE_JOB_STATUS: 'success',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_GATE_CANDIDATE_PREFLIGHT: 'failure',
+        PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: 'false',
+      });
+      const evidence = JSON.parse(readFileSync(outputPath, 'utf8')) as {
+        gates: Array<{ gate: string; status: string; blocking: boolean; failure?: unknown }>;
+        terminalFailure: unknown;
+      };
+      expect(evidence.gates.find((gate) => gate.gate === 'candidate-preflight')).toEqual({
+        gate: 'candidate-preflight',
+        phase: 'candidate-preflight',
+        status: 'failed',
+        blocking: false,
+      });
+      expect(evidence.terminalFailure).toBeNull();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('makes the same failed gate terminal when enforcement is enabled', () => {
+    const failure = buildPromoteFailure({
+      code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID',
+      environment: 'staging',
+      phase: 'candidate-preflight',
+    });
+    const evidence = buildPromoteEvidence({
+      runId: '793',
+      runAttempt: 1,
+      environment: 'staging',
+      status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
+      gates: [{
+        gate: 'candidate-preflight',
+        phase: 'candidate-preflight',
+        status: 'failed',
+        blocking: true,
+      }],
+      recordedFailure: failure,
+    });
+    expect(evidence.gates[0]).toMatchObject({ status: 'failed', blocking: true, failure });
+    expect(evidence.terminalFailure).toEqual(failure);
+  });
+
+  it.each([
+    'PROMOTE_SMOKE_REALM_MISMATCH',
+    'PROMOTE_SMOKE_CALLBACK_MISMATCH',
+    'PROMOTE_READINESS_NOT_READY',
+    'PROMOTE_INTERNAL_ERROR',
+  ] as const)('keeps %s identical and redacted across smoke evidence surfaces', (code) => {
+    const failure = buildPromoteFailure({ code, environment: 'prod', phase: 'external-smoke' });
+    const evidence = buildPromoteEvidence({
+      runId: '794',
+      runAttempt: 1,
+      environment: 'prod',
+      status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
+      gates: [{ gate: 'runtime-smoke', phase: 'external-smoke', status: 'failed' }],
+      recordedFailure: { ...failure, summary: sentinelValues.join('\n'), logs: sentinelValues } as never,
+    });
+    const surfaces = [
+      JSON.stringify(evidence),
+      renderPromoteSummary(evidence),
+      renderPromoteAnnotation(evidence) ?? '',
+    ];
+    expect(evidence.terminalFailure?.code).toBe(code);
+    for (const surface of surfaces) {
+      expect(surface).toContain(code);
+      for (const sentinel of sentinelValues) expect(surface).not.toContain(sentinel);
+    }
+  });
+
   it.each([
     ['run id', { runId: 'person@example.test' }],
     ['base ref', { baseRef: 'https://person@example.test/repo' }],

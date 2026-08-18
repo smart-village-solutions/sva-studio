@@ -160,6 +160,8 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toContain('PROMOTE_PARITY_DIGEST_MISMATCH');
     expect(workflow).toContain('PROMOTE_LIVE_DIGEST_MISMATCH');
+    expect(workflow).toContain('runtime-env.ts smoke studio 2>"${RUNNER_TEMP}/runtime-smoke.stderr"');
+    expect(workflow).toContain('PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" external-smoke');
     expect(workflow).toContain('PROMOTE_SOURCE_CONTRACT_INVALID');
     expect(workflow).toContain('PROMOTE_INPUT_INVALID');
     expect(workflow).not.toContain(`printf '{"code":"PROMOTE_`);
@@ -183,8 +185,10 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('PROMOTE_GATE_PREVIOUS_LIVE');
     expect(workflow).toContain('PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD');
     expect(workflow).toContain('PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD');
-    expect(workflow).toContain('steps.candidate_job.conclusion');
-    expect(workflow).toContain('steps.backup_capabilities.conclusion');
+    expect(workflow).toContain('PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}');
+    expect(workflow).toContain("PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}");
+    expect(workflow).toContain('PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}');
+    expect(workflow).toContain("PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' }}");
     expect(workflow).not.toContain('path: ${{ runner.temp }}/promote-*.json');
     expect(workflow).toContain("PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce'");
     expect(workflow).toContain('PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts');

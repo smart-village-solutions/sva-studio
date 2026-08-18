@@ -1,4 +1,5 @@
 import type { AcceptanceProbeResult, DoctorReport, RemoteRuntimeProfile, RuntimeProfile, TenantRuntimeTargetResolution } from '../runtime-env.shared.ts';
+import { buildPromoteFailure, PromoteContractError, writePromoteFailureRecord, type PromoteErrorCode, type PromoteEnvironment } from '../../ci/promote-result.ts';
 import { deriveInternalVerifyMaxAttempts, shouldRetryExternalSmoke, shouldRetryInternalVerifyAttempt, summarizeExternalSmokeAttempt } from './smoke-retry.ts';
 import { resolveStudioIngressContract } from './tenant-ingress-hosts.ts';
 
@@ -32,6 +33,31 @@ type ExternalSmokeWarmupOptions = {
 
 const defaultExternalSmokeMaxAttempts = 50;
 const defaultExternalSmokeRetryDelayMs = 10_000;
+
+export const resolveRuntimeSmokePromoteEnvironment = (env: NodeJS.ProcessEnv): PromoteEnvironment => {
+  const stackName = env.SVA_STACK_NAME?.trim();
+  if (stackName === 'studio') return 'prod';
+  if (stackName === 'studio-staging') return 'staging';
+  if (stackName === 'studio-dev') return 'dev';
+  try {
+    const hostname = new URL(env.SVA_PUBLIC_BASE_URL ?? '').hostname;
+    if (hostname === 'studio.smart-village.app') return 'prod';
+    if (hostname === 'studio-staging.smart-village.app') return 'staging';
+    if (hostname === 'studio-dev.smart-village.app') return 'dev';
+  } catch {
+    // Unknown or malformed targets remain explicitly invalid in redacted evidence.
+  }
+  return 'invalid';
+};
+
+export const classifyRuntimeSmokeFailure = (probe: AcceptanceProbeResult): PromoteErrorCode =>
+  probe.name === 'public-ready'
+    ? 'PROMOTE_READINESS_NOT_READY'
+    : probe.message.includes('Realm stimmt nicht') || probe.message.includes('erwarteten Realm')
+      ? 'PROMOTE_SMOKE_REALM_MISMATCH'
+      : probe.message.includes('Redirect-URI') || probe.message.includes('Rückkehr-Host')
+        ? 'PROMOTE_SMOKE_CALLBACK_MISMATCH'
+        : 'PROMOTE_INTERNAL_ERROR';
 
 const parsePositiveInteger = (value: number | string | undefined): number | undefined => {
   const parsed = Number(value);
@@ -206,7 +232,7 @@ export const reportNonBlockingSmokeFailures = (
 ) => {
   for (const probe of probes) {
     if (probe.status !== 'error' || isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope)) continue;
-    console.warn(`[runtime-env] Nicht blockierender Smoke-Fehler: ${probe.name}: ${probe.message}`);
+    console.warn('[runtime-env] PROMOTE_SMOKE_NON_BLOCKING_FAILURE: Eine nicht blockierende Smoke-Prüfung ist fehlgeschlagen.');
   }
 };
 
@@ -227,14 +253,13 @@ const waitForRemoteSmokeWarmup = async (deps: RuntimeSmokeDeps, env: NodeJS.Proc
     (probe) => probe.status === 'error' && isBlockingSmokeProbe(probe, usesReleaseBlockingTenantScope),
   );
   if (failingProbe) {
-    const code = failingProbe.name === 'public-ready'
-      ? 'PROMOTE_READINESS_NOT_READY'
-      : failingProbe.message.includes('Realm stimmt nicht') || failingProbe.message.includes('erwarteten Realm')
-        ? 'PROMOTE_SMOKE_REALM_MISMATCH'
-        : failingProbe.message.includes('Redirect-URI') || failingProbe.message.includes('Rückkehr-Host')
-          ? 'PROMOTE_SMOKE_CALLBACK_MISMATCH'
-          : 'PROMOTE_INTERNAL_ERROR';
-    throw new Error(`${code}: ${failingProbe.name}: ${failingProbe.message}`);
+    const failure = buildPromoteFailure({
+      code: classifyRuntimeSmokeFailure(failingProbe),
+      environment: resolveRuntimeSmokePromoteEnvironment(env),
+      phase: 'external-smoke',
+    });
+    writePromoteFailureRecord(failure, env.PROMOTE_FAILURE_PATH);
+    throw new PromoteContractError(failure);
   }
   return probes;
 };

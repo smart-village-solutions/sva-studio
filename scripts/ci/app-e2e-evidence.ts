@@ -10,17 +10,13 @@ export type AppE2EEvidence = Readonly<{
   headSha: string;
   run: Readonly<{ id: string; attempt: number }>;
   result: 'success' | 'failure' | 'cancelled';
-  failureClass: 'none' | 'test' | 'infrastructure-setup' | 'cancelled';
+  testOutcome: 'success' | 'failure' | 'cancelled' | 'not-run';
   evidenceClass: 'canonical-main' | 'diagnostic';
   subject: Readonly<{
     kind: 'local-app-service-stack';
     app: 'sva-studio-react';
     services: readonly ['redis', 'loki', 'otel-collector', 'promtail'];
     containerArtifactVerified: false;
-  }>;
-  rerunPolicy: Readonly<{
-    automaticSuccessRetry: false;
-    allowed: 'manual-infrastructure-only';
   }>;
 }>;
 
@@ -56,14 +52,14 @@ export const buildAppE2EEvidence = (input: {
 
   const canonicalMain =
     input.event === 'push' && input.ref === 'refs/heads/main' && input.branch === 'main';
-  const failureClass =
-    input.result === 'success'
-      ? 'none'
-      : input.result === 'cancelled'
-        ? 'cancelled'
-        : input.testOutcome === 'failure'
-          ? 'test'
-          : 'infrastructure-setup';
+  const testOutcome =
+    input.testOutcome === '' || input.testOutcome === 'skipped'
+      ? 'not-run'
+      : (input.testOutcome as AppE2EEvidence['testOutcome']);
+  if (input.result === 'success' && testOutcome !== 'success')
+    throw new Error('Erfolgreiches Job-Ergebnis ohne erfolgreichen E2E-Test.');
+  if (input.result === 'failure' && testOutcome === 'cancelled')
+    throw new Error('Fehlgeschlagenes Job-Ergebnis mit abgebrochenem E2E-Test.');
   return {
     schemaVersion: 1,
     workflow: 'App E2E',
@@ -73,7 +69,7 @@ export const buildAppE2EEvidence = (input: {
     headSha: input.headSha,
     run: { id: input.runId, attempt: input.runAttempt },
     result: input.result as AppE2EEvidence['result'],
-    failureClass,
+    testOutcome,
     evidenceClass: canonicalMain ? 'canonical-main' : 'diagnostic',
     subject: {
       kind: 'local-app-service-stack',
@@ -81,7 +77,6 @@ export const buildAppE2EEvidence = (input: {
       services: ['redis', 'loki', 'otel-collector', 'promtail'],
       containerArtifactVerified: false,
     },
-    rerunPolicy: { automaticSuccessRetry: false, allowed: 'manual-infrastructure-only' },
   };
 };
 
@@ -110,7 +105,7 @@ export const writeAppE2EEvidenceFromEnvironment = (
   if (env.GITHUB_STEP_SUMMARY) {
     appendFileSync(
       env.GITHUB_STEP_SUMMARY,
-      `## App E2E\n\n- Ergebnis: ${evidence.result}\n- Fehlerklasse: ${evidence.failureClass}\n- Evidenzklasse: ${evidence.evidenceClass}\n- Head-SHA: ${evidence.headSha}\n- Prüfgegenstand: lokaler App-/Service-Stack (kein Container-Artefakt verifiziert)\n- Run/Attempt: ${evidence.run.id}/${evidence.run.attempt}\n`,
+      `## App E2E\n\n- Ergebnis: ${evidence.result}\n- E2E-Test-Step: ${evidence.testOutcome}\n- Evidenzklasse: ${evidence.evidenceClass}\n- Head-SHA: ${evidence.headSha}\n- Prüfgegenstand: lokaler App-/Service-Stack (kein Container-Artefakt verifiziert)\n- Run/Attempt: ${evidence.run.id}/${evidence.run.attempt}\n`,
       'utf8'
     );
   }

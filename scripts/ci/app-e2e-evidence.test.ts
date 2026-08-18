@@ -24,11 +24,10 @@ describe('App E2E evidence', () => {
     const evidence = buildAppE2EEvidence(canonicalInput);
     expect(evidence).toMatchObject({
       evidenceClass: 'canonical-main',
-      failureClass: 'none',
       headSha: sha,
       result: 'success',
+      testOutcome: 'success',
       subject: { kind: 'local-app-service-stack', containerArtifactVerified: false },
-      rerunPolicy: { automaticSuccessRetry: false },
     });
   });
 
@@ -56,26 +55,35 @@ describe('App E2E evidence', () => {
       result: 'failure',
       testOutcome: 'failure',
     });
-    expect(evidence).toMatchObject({ result: 'failure', failureClass: 'test' });
+    expect(evidence).toMatchObject({ result: 'failure', testOutcome: 'failure' });
   });
 
-  it('classifies a failure before test execution as infrastructure setup', () => {
+  it.each(['', 'skipped'])(
+    'records a terminal failure with raw outcome %j only as test not run',
+    (testOutcome) => {
+      const evidence = buildAppE2EEvidence({
+        ...canonicalInput,
+        result: 'failure',
+        testOutcome,
+      });
+      expect(evidence).toMatchObject({ result: 'failure', testOutcome: 'not-run' });
+    }
+  );
+
+  it('preserves a successful test step when a later workflow step fails', () => {
     const evidence = buildAppE2EEvidence({
       ...canonicalInput,
       result: 'failure',
-      testOutcome: '',
+      testOutcome: 'success',
     });
-    expect(evidence).toMatchObject({
-      result: 'failure',
-      failureClass: 'infrastructure-setup',
-    });
+    expect(evidence).toMatchObject({ result: 'failure', testOutcome: 'success' });
   });
 
   it('retains run identity and distinguishes a manual rerun attempt', () => {
     const first = buildAppE2EEvidence({
       ...canonicalInput,
       result: 'failure',
-      testOutcome: 'failure',
+      testOutcome: '',
     });
     const rerun = buildAppE2EEvidence({ ...canonicalInput, runAttempt: 2 });
     expect(first.run).toEqual({ id: '123', attempt: 1 });
@@ -108,10 +116,9 @@ describe('App E2E evidence', () => {
         'headSha',
         'run',
         'result',
-        'failureClass',
+        'testOutcome',
         'evidenceClass',
         'subject',
-        'rerunPolicy',
       ]);
       expect(serialized).not.toMatch(
         /person@example\.test|internal\.example|remote-log|secret-key|SECRET_VALUE/u
@@ -129,5 +136,22 @@ describe('App E2E evidence', () => {
     { testOutcome: 'unexpected' },
   ])('rejects invalid or unsafe evidence input', (override) => {
     expect(() => buildAppE2EEvidence({ ...canonicalInput, ...override })).toThrow();
+  });
+
+  it.each(['failure', 'cancelled', 'skipped', ''])(
+    'rejects success with non-successful raw test outcome %j',
+    (testOutcome) => {
+      expect(() => buildAppE2EEvidence({ ...canonicalInput, testOutcome })).toThrow();
+    }
+  );
+
+  it('rejects a failure result paired with a cancelled test step', () => {
+    expect(() =>
+      buildAppE2EEvidence({
+        ...canonicalInput,
+        result: 'failure',
+        testOutcome: 'cancelled',
+      })
+    ).toThrow();
   });
 });

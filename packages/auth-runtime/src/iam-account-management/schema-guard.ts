@@ -45,7 +45,7 @@ export type GraphileWorkerReadinessReport = {
   readonly ok: boolean;
 };
 
-export const GRAPHILE_WORKER_READINESS_SQL = `
+const GRAPHILE_WORKER_READINESS_SQL = `
 SELECT
   to_regnamespace('graphile_worker') IS NOT NULL AS graphile_schema_exists,
   EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $2) AS worker_role_exists,

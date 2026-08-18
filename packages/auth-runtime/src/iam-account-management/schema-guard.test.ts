@@ -2,18 +2,59 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const postgresState = vi.hoisted(() => ({
+  connect: vi.fn(),
+  end: vi.fn(),
+  query: vi.fn(),
+}));
+
+vi.mock('pg', () => ({
+  Client: class {
+    connect = postgresState.connect;
+    end = postgresState.end;
+    query = postgresState.query;
+  },
+}));
 
 describe('schema guard helpers', () => {
-  it('defines the canonical Graphile worker privilege checks', async () => {
-    const { GRAPHILE_WORKER_READINESS_SQL } = await import('./schema-guard.js');
+  beforeEach(() => {
+    vi.clearAllMocks();
+    postgresState.connect.mockResolvedValue(undefined);
+    postgresState.end.mockResolvedValue(undefined);
+  });
 
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('app_can_enqueue');
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('app_cannot_create');
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_can_process');
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_functions_complete');
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_sequences_complete');
-    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_policies_complete');
+  it('reports canonical Graphile worker readiness and failed checks', async () => {
+    const { runGraphileWorkerReadinessForConnection } = await import('./schema-guard.js');
+    postgresState.query.mockResolvedValueOnce({
+      rows: [
+        {
+          app_can_enqueue: true,
+          app_cannot_create: true,
+          graphile_schema_exists: true,
+          worker_can_process: true,
+          worker_functions_complete: true,
+          worker_policies_complete: true,
+          worker_role_exists: true,
+          worker_sequences_complete: true,
+        },
+      ],
+    });
+
+    await expect(
+      runGraphileWorkerReadinessForConnection({}, 'sva_app', 'sva_job_worker')
+    ).resolves.toEqual({ failedChecks: [], ok: true });
+    expect(postgresState.query).toHaveBeenCalledWith(expect.stringContaining('app_can_enqueue'), [
+      'sva_app',
+      'sva_job_worker',
+    ]);
+    expect(postgresState.end).toHaveBeenCalledOnce();
+
+    postgresState.query.mockResolvedValueOnce({ rows: [{ app_can_enqueue: false }] });
+    const failed = await runGraphileWorkerReadinessForConnection({}, 'sva_app', 'sva_job_worker');
+    expect(failed.ok).toBe(false);
+    expect(failed.failedChecks).toContain('app_can_enqueue');
   });
 
   it('evaluates required checks from boolean-like rows and summarizes failures', async () => {

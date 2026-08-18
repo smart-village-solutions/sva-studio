@@ -37,6 +37,7 @@ describe('plugin operation runner worker', () => {
     vi.resetModules();
     vi.clearAllMocks();
     delete process.env.SVA_PLUGIN_OPERATION_WORKER_CONCURRENCY;
+    delete process.env.SVA_PLUGIN_OPERATION_WORKER_LANE;
     state.resolvePool.mockReturnValue({ query: vi.fn(async () => undefined) });
     state.resolveStudioJobWorkerPool.mockReturnValue({ id: 'worker-pool-1' });
     state.createStudioJobTaskList.mockReturnValue({ studio_job_execute: vi.fn() });
@@ -129,6 +130,53 @@ describe('plugin operation runner worker', () => {
       expect.stringContaining('graphile_worker.sva_enqueue_job'),
       expect.arrayContaining(['studio_job_execute_privileged', 'waste-provisioning'])
     );
+  });
+
+  it('reports privileged worker startup and asynchronous runtime failures', async () => {
+    process.env.SVA_PLUGIN_OPERATION_WORKER_LANE = 'privileged';
+    state.runTaskList.mockImplementationOnce(() => {
+      throw new Error('privileged startup failed');
+    });
+    const { ensurePrivilegedStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
+
+    await expect(ensurePrivilegedStudioJobWorkerStarted()).rejects.toThrow(
+      'privileged startup failed'
+    );
+    expect(getStudioJobWorkerHealth()).toMatchObject({
+      ready: false,
+      reasonCode: 'privileged_studio_job_worker_start_failed',
+      status: 'failed',
+    });
+    expect(state.logger.error).toHaveBeenCalledWith(
+      'Privilegierter Studio-Job-Worker konnte nicht gestartet werden',
+      expect.objectContaining({ operation: 'privileged_studio_job_worker_start_failed' })
+    );
+
+    let rejectWorker!: (error: Error) => void;
+    state.runTaskList.mockReturnValueOnce({
+      gracefulShutdown: vi.fn(async () => undefined),
+      promise: new Promise<void>((_resolve, reject) => {
+        rejectWorker = reject;
+      }),
+    });
+    await ensurePrivilegedStudioJobWorkerStarted();
+    rejectWorker(new Error('privileged connection lost'));
+
+    await vi.waitFor(() => {
+      expect(getStudioJobWorkerHealth()).toMatchObject({
+        reasonCode: 'privileged_studio_job_worker_runtime_failed',
+        status: 'failed',
+      });
+    });
+
+    await ensurePrivilegedStudioJobWorkerStarted();
+    const restartedRunner = state.runTaskList.mock.results[2]?.value;
+    const events = state.runTaskList.mock.calls[2]?.[0].events as EventEmitter;
+    events.emit('worker:fatalError', { error: new Error('privileged worker crashed') });
+    await vi.waitFor(() => {
+      expect(restartedRunner.gracefulShutdown).toHaveBeenCalledOnce();
+    });
   });
 
   it('falls back to concurrency 1 for missing or invalid env values and rejects missing pools', async () => {
@@ -279,7 +327,9 @@ describe('plugin operation runner worker', () => {
     await vi.waitFor(() => expect(getStudioJobWorkerHealth().status).toBe('failed'));
 
     await ensureStudioJobWorkerStarted();
-    await vi.waitFor(() => expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' }));
+    await vi.waitFor(() =>
+      expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' })
+    );
     oldEvents.emit('worker:fatalError', { error: new Error('late old failure') });
 
     expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });

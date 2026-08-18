@@ -10,6 +10,7 @@ import {
   runMigrationJobAgainstAcceptance,
   selectLatestMigrationTask,
 } from '../../../scripts/ops/runtime/migration-job.ts';
+import { OneShotJobError } from '../../../scripts/ops/runtime/one-shot-job-lifecycle.ts';
 
 describe('migration-job runtime helpers', () => {
   afterEach(() => {
@@ -50,7 +51,7 @@ describe('migration-job runtime helpers', () => {
         jobStackName: 'studio-migrate-20260407',
         sourceStackName: 'studio',
         targetReplicas: 1,
-      },
+      }
     );
 
     expect(result).toEqual({
@@ -112,7 +113,7 @@ describe('migration-job runtime helpers', () => {
         jobStackName: 'studio',
         sourceStackName: 'studio',
         targetReplicas: 0,
-      },
+      }
     );
 
     expect(result).toEqual({
@@ -213,14 +214,14 @@ describe('migration-job runtime helpers', () => {
         exitCode: 23,
         state: 'complete',
         taskId: 'failed-complete',
-      }),
+      })
     ).toBe('failed');
 
     expect(
       getMigrationJobTerminalState({
         state: 'rejected',
         taskId: 'rejected',
-      }),
+      })
     ).toBe('failed');
   });
 
@@ -233,7 +234,7 @@ describe('migration-job runtime helpers', () => {
         '    "studio": []',
         '  }',
         '}',
-      ]),
+      ])
     ).toBe('{\n  "stacks": {\n    "studio": []\n  }\n}');
   });
 
@@ -263,7 +264,7 @@ describe('migration-job runtime helpers', () => {
             },
           ],
         },
-      }),
+      })
     ).toEqual([
       {
         createdAt: '2026-04-07T18:05:00.000000000Z',
@@ -296,13 +297,13 @@ describe('migration-job runtime helpers', () => {
           containerId: 'container-1',
           quantumEndpoint: 'sva',
           serviceId: 'service-1',
-        },
-      ),
+        }
+      )
     ).resolves.toBe('line-a\nline-b');
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://quantum.example/api/endpoints/7/docker/containers/container-1/logs?stdout=1&stderr=1&tail=200',
-      expect.objectContaining({ headers: { 'X-API-Key': 'key-1' } }),
+      expect.objectContaining({ headers: { 'X-API-Key': 'key-1' } })
     );
 
     vi.unstubAllGlobals();
@@ -330,8 +331,8 @@ describe('migration-job runtime helpers', () => {
           containerId: 'container-1',
           quantumEndpoint: 'sva',
           serviceId: 'service-1',
-        },
-      ),
+        }
+      )
     ).resolves.toBe('service-log');
 
     vi.unstubAllGlobals();
@@ -345,11 +346,14 @@ describe('migration-job runtime helpers', () => {
           runCapture: () => '',
         },
         { PORTAINER_ENDPOINT_ID: '7', QUANTUM_API_KEY: '' },
-        { quantumEndpoint: 'sva', resourcePath: 'services/service-1/logs' },
-      ),
+        { quantumEndpoint: 'sva', resourcePath: 'services/service-1/logs' }
+      )
     ).rejects.toThrow('QUANTUM_API_KEY fehlt');
 
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('denied', { status: 403 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('denied', { status: 403 }))
+    );
     await expect(
       fetchPortainerDockerText(
         {
@@ -357,14 +361,17 @@ describe('migration-job runtime helpers', () => {
           runCapture: () => '',
         },
         { PORTAINER_ENDPOINT_ID: '7', QUANTUM_API_KEY: 'key-1' },
-        { quantumEndpoint: 'sva', resourcePath: 'services/service-1/logs' },
-      ),
+        { quantumEndpoint: 'sva', resourcePath: 'services/service-1/logs' }
+      )
     ).rejects.toThrow('antwortet mit 403');
     vi.unstubAllGlobals();
   });
 
-  it('includes container logs and task snapshots in failed migration job errors', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('goose failed', { status: 200 })));
+  it('keeps failed migration diagnostics internal and exposes only allowlisted task evidence', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('goose failed', { status: 200 }))
+    );
     const runCalls: string[] = [];
     const deps = {
       commandExists: () => true,
@@ -414,35 +421,49 @@ describe('migration-job runtime helpers', () => {
       wait: async () => undefined,
     };
 
-    await expect(
-      runMigrationJobAgainstAcceptance(
-        deps,
-        {
-          PORTAINER_ENDPOINT_ID: '7',
-          QUANTUM_API_KEY: 'key-1',
-          SVA_MIGRATION_JOB_STACK_NAME: 'studio-migrate-20260407',
-        },
-        {
-          internalNetworkName: 'studio_default',
-          quantumEndpoint: 'sva',
-          remoteComposeFile: 'docker-compose.yml',
-          reportId: '20260407',
-          runtimeProfile: 'studio',
-          sourceStackName: 'studio',
-        },
-      ),
-    ).rejects.toThrow(/containerLogs:\ngoose failed[\s\S]*taskSnapshot:/u);
+    const failure = await runMigrationJobAgainstAcceptance(
+      deps,
+      {
+        PORTAINER_ENDPOINT_ID: '7',
+        QUANTUM_API_KEY: 'key-1',
+        SVA_MIGRATION_JOB_STACK_NAME: 'studio-migrate-20260407',
+      },
+      {
+        internalNetworkName: 'studio_default',
+        quantumEndpoint: 'sva',
+        remoteComposeFile: 'docker-compose.yml',
+        reportId: '20260407',
+        runtimeProfile: 'studio',
+        sourceStackName: 'studio',
+      }
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(OneShotJobError);
+    expect((failure as OneShotJobError).message).not.toContain('goose failed');
+    expect((failure as OneShotJobError).evidence).toMatchObject({
+      exitCode: 1,
+      failureKind: 'task-failed',
+      jobServiceName: 'migrate',
+      jobStackName: 'studio-migrate-20260407',
+      state: 'failed',
+      taskId: 'task-1',
+    });
+    expect((failure as OneShotJobError).cause).toBeInstanceOf(Error);
+    expect(((failure as OneShotJobError).cause as Error).message).toContain('goose failed');
 
     expect(
       runCalls.some(
-        (call) => call.includes('stacks remove') && call.includes('--stack studio-migrate-20260407'),
-      ),
+        (call) => call.includes('stacks remove') && call.includes('--stack studio-migrate-20260407')
+      )
     ).toBe(true);
     vi.unstubAllGlobals();
   });
 
   it('keeps failed migration job stacks when the diagnostic flag is set', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200 })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('', { status: 200 }))
+    );
     const runCalls: string[] = [];
     const deps = {
       commandExists: () => true,
@@ -466,45 +487,51 @@ describe('migration-job runtime helpers', () => {
         signal: null,
         status: 0,
         stderr: '',
-        stdout:
-          JSON.stringify({
-            stacks: {
-              'studio-migrate-20260407': [
-                {
-                  tasks: [
-                    {
-                      ID: 'task-1',
-                      Status: { ContainerStatus: { ExitCode: 1 }, State: 'failed' },
-                    },
-                  ],
-                },
-              ],
-            },
-          }),
+        stdout: JSON.stringify({
+          stacks: {
+            'studio-migrate-20260407': [
+              {
+                tasks: [
+                  {
+                    ID: 'task-1',
+                    Status: { ContainerStatus: { ExitCode: 1 }, State: 'failed' },
+                  },
+                ],
+              },
+            ],
+          },
+        }),
       }),
       spawnBackground: (() => ({ kill: () => undefined, pid: 1 })) as never,
       wait: async () => undefined,
     };
 
-    await expect(
-      runMigrationJobAgainstAcceptance(
-        deps,
-        {
-          PORTAINER_ENDPOINT_ID: '7',
-          QUANTUM_API_KEY: 'key-1',
-          SVA_MIGRATION_JOB_KEEP_FAILED_STACK: 'true',
-          SVA_MIGRATION_JOB_STACK_NAME: 'studio-migrate-20260407',
-        },
-        {
-          internalNetworkName: 'studio_default',
-          quantumEndpoint: 'sva',
-          remoteComposeFile: 'docker-compose.yml',
-          reportId: '20260407',
-          runtimeProfile: 'studio',
-          sourceStackName: 'studio',
-        },
-      ),
-    ).rejects.toThrow('ist fehlgeschlagen');
+    const failure = await runMigrationJobAgainstAcceptance(
+      deps,
+      {
+        PORTAINER_ENDPOINT_ID: '7',
+        QUANTUM_API_KEY: 'key-1',
+        SVA_MIGRATION_JOB_KEEP_FAILED_STACK: 'true',
+        SVA_MIGRATION_JOB_STACK_NAME: 'studio-migrate-20260407',
+      },
+      {
+        internalNetworkName: 'studio_default',
+        quantumEndpoint: 'sva',
+        remoteComposeFile: 'docker-compose.yml',
+        reportId: '20260407',
+        runtimeProfile: 'studio',
+        sourceStackName: 'studio',
+      }
+    ).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(OneShotJobError);
+    expect((failure as OneShotJobError).evidence).toMatchObject({
+      failureKind: 'task-failed',
+      jobServiceName: 'migrate',
+      jobStackName: 'studio-migrate-20260407',
+      state: 'failed',
+      taskId: 'task-1',
+    });
 
     expect(runCalls.some((call) => call.includes('rm studio-migrate-20260407'))).toBe(false);
     vi.unstubAllGlobals();

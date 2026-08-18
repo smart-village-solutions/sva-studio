@@ -83,14 +83,15 @@ const assertSha = (value: string, label: string): string => {
 
 const normalizeDigest = (value: string | null | undefined): string | null => {
   if (!value?.trim()) return null;
+  if (value === 'not-pinned' || value === 'not-evaluated') return null;
   const match = value.match(digestPattern);
   if (!match) throw new Error('Image-Digest verletzt den Evidenzvertrag.');
   return match[0];
 };
 
-const normalizeRevision = (value: string | null | undefined, label: string): string | null => {
+const normalizeConfigRevision = (value: string | null | undefined): string | null => {
   if (!value?.trim()) return null;
-  if (!revisionPattern.test(value)) throw new Error(`${label} verletzt den Evidenzvertrag.`);
+  if (!revisionPattern.test(value)) throw new Error('Config-Revision verletzt den Evidenzvertrag.');
   return value;
 };
 
@@ -164,10 +165,12 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
     image: {
       previousDigest: normalizeDigest(input.previousImage),
       targetDigest: normalizeDigest(input.targetImage),
-      revision: normalizeRevision(input.imageRevision, 'Image-Revision'),
+      revision: input.imageRevision?.trim()
+        ? assertSafeIdentifier(input.imageRevision, 'Image-Revision')
+        : null,
     },
     config: {
-      revision: normalizeRevision(input.configRevision, 'Config-Revision'),
+      revision: normalizeConfigRevision(input.configRevision),
       externalSecretReferences: [
         ...new Set(
           (input.externalSecretReferences ?? []).map((reference) => {

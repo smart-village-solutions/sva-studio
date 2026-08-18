@@ -166,6 +166,22 @@ describe('promote evidence contract', () => {
     }
   });
 
+  it('represents mutable Dev images without inventing an immutable digest', () => {
+    const evidence = buildPromoteEvidence({
+      runId: '7',
+      runAttempt: 1,
+      environment: 'dev',
+      status: 'passed',
+      baseSha: sha,
+      headSha: otherSha,
+      targetImage: 'not-pinned',
+      imageRevision: 'latest',
+      gates: [{ phase: 'deploy', status: 'passed' }],
+    });
+
+    expect(evidence.image).toEqual({ previousDigest: null, targetDigest: null, revision: 'latest' });
+  });
+
   it('builds the final workflow artifact from allowlisted step outputs', () => {
     const directory = mkdtempSync(join(tmpdir(), 'promote-workflow-evidence-'));
     const summaryPath = join(directory, 'summary.md');

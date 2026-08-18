@@ -11,7 +11,7 @@
 ### Kanonisches Checkpoint-Protokoll
 
 - **H1 – Promote-Evidenzfundament:** `inherited`; gemeinsamer Basis-HEAD: `197952faf95028ba2010937eaee18171f5f717a8`; der dort dokumentierte H1-Vertrag ist verfügbar.
-- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `1defbf039ba10f89da75ea1f4b3e8f60092002c3`; Gates: `tooling-testing:test:unit` mit sechs expliziten Workflow-, PR-Gate-, Scope- und Evidenz-Testdateien (71 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run sva-studio-react:test:types`, `pnpm nx run tooling-testing:lint`, Prettier-Check, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün; `.github/workflows/promote.yml` ist gegenüber dem gemeinsamen Basis-HEAD unverändert.
+- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `c639dcf48e5afb04e08eb3bcccd39789b2d7c978`; Gates: `tooling-testing:test:unit` mit sechs expliziten Workflow-, PR-Gate-, Scope- und Evidenz-Testdateien (71 Tests), Review-Nachlauf für Workflow- und Evidenzvertrag (23 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run sva-studio-react:test:types`, `pnpm nx run tooling-testing:lint`, Prettier-Check, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün; `.github/workflows/promote.yml` ist gegenüber dem gemeinsamen Basis-HEAD unverändert.
 - **A2 – Staging-Consumer:** `ready`; HEAD: keiner; Gates: keine; nächster Block: ausschließlich 6.1 und 6.2, unter Wiederverwendung des H1-Vertrags.
 - **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
 

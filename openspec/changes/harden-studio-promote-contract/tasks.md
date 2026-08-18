@@ -10,7 +10,7 @@
 ### Kanonisches Checkpoint-Protokoll
 
 - **H1 – Promote-Evidenzfundament:** `completed`; Implementierungs-HEAD: `1bf51738b5060e95dcdf7d75ddb5deeea0e39a69`; Gates: `tooling-testing:test:unit` mit zehn expliziten Promote- und Smoke-Vertragstestdateien (176 Tests), zusätzlicher gezielter Smoke-Nachlauf (25 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün; nächster Block: `accelerate-pr-failure-feedback` 5.1 bis 5.4 freigegeben.
-- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `1defbf039ba10f89da75ea1f4b3e8f60092002c3`; Gates und Scope sind im kanonischen Checkpoint von `accelerate-pr-failure-feedback` dokumentiert.
+- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `c639dcf48e5afb04e08eb3bcccd39789b2d7c978`; Gates und Scope sind im kanonischen Checkpoint von `accelerate-pr-failure-feedback` dokumentiert.
 - **A2 – Staging-Consumer:** `ready`; HEAD: keiner; Gates: keine; nächster Block: ausschließlich `accelerate-pr-failure-feedback` 6.1 und 6.2 unter Wiederverwendung des H1-Vertrags.
 - **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
 

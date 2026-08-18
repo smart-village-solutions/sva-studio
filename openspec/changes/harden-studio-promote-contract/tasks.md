@@ -3,14 +3,14 @@
 - [x] 0.1 In einem separaten Worktree vom aktuellen `origin/main` beide genehmigten OpenSpec-Changes bereitstellen, `git status`, Base-SHA und Worktree-Inventar prüfen und `openspec validate harden-studio-promote-contract --strict` sowie `openspec validate accelerate-pr-failure-feedback --strict` erfolgreich ausführen.
 - [x] 0.2 Vor neuer Implementierung die vorhandenen `[x]`- und `[ ]`-Einträge dieses Changes read-only gegen den aktuellen Code, Tests und gegebenenfalls Live-Evidenz abgleichen; nur nachgewiesen falsche Taskzustände korrigieren und keine historische Checkbox als Beweis behandeln.
 - [x] 0.3 Als ersten lieferbaren Block ausschließlich das generische Promote-Evidenzfundament aus 5.1, 5.2, 5.3 und 5.5 implementieren beziehungsweise vervollständigen; keine App-E2E-Trigger, keine E2E-Scope-Logik und keine E2E-spezifische Promote-Entscheidung hinzufügen.
-- [ ] 0.4 H1 erst abschließen, wenn 5.1, 5.2, 5.3, 5.5 und der kleinste relevante Gate-Pfad aus 7.6 grün sind, beide OpenSpecs strikt validieren und exakter HEAD, Gates sowie der freigegebene nächste Block `accelerate-pr-failure-feedback` 5.1 bis 5.4 im kanonischen Checkpoint-Protokoll dieses Changes dokumentiert sind.
+- [x] 0.4 H1 erst abschließen, wenn 5.1, 5.2, 5.3, 5.5 und der kleinste relevante Gate-Pfad aus 7.6 grün sind, beide OpenSpecs strikt validieren und exakter HEAD, Gates sowie der freigegebene nächste Block `accelerate-pr-failure-feedback` 5.1 bis 5.4 im kanonischen Checkpoint-Protokoll dieses Changes dokumentiert sind.
 
 **Wiederaufnahme:** Es ist immer nur ein Block aktiv. Ein teilweise bearbeiteter Task bleibt unchecked. Nach einer Unterbrechung zuerst `git status`, aktuellen Diff, HEAD und beide OpenSpec-Validierungen prüfen; dann beim ersten unchecked Task des aktiven Blocks fortsetzen und vorhandene Änderungen gegen dessen vollständigen Text verifizieren.
 
 ### Kanonisches Checkpoint-Protokoll
 
-- **H1 – Promote-Evidenzfundament:** `pending`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
-- **A1 – Main-E2E-Producer:** `blocked by H1`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+- **H1 – Promote-Evidenzfundament:** `completed`; HEAD: `5200d10988b5ae8dfc7e0dad38b727cfade41e8b`; Gates: `tooling-testing:test:unit` mit den fünf expliziten Promote-Vertragstestdateien (31 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, `pnpm check:file-placement`, Prettier- und Diff-Check sowie beide strikten OpenSpec-Validierungen grün; nächster Block: `accelerate-pr-failure-feedback` 5.1 bis 5.4 freigegeben.
+- **A1 – Main-E2E-Producer:** `ready`; HEAD: keiner; Gates: keine; nächster Block: ausschließlich `accelerate-pr-failure-feedback` 5.1 bis 5.4.
 - **A2 – Staging-Consumer:** `blocked by A1`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
 - **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
 

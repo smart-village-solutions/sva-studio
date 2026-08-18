@@ -159,20 +159,10 @@ const bootstrapWorkerRole = (port: string): void => {
   });
 };
 
-const runCanonicalWorkerReadiness = async (
-  port: string,
-  appDbUser: string,
-  workerDbUser: string
-): Promise<{ failedChecks: readonly string[]; ok: boolean }> => {
+const runWorkerReadiness = async (port: string, appDbUser: string, workerDbUser: string) => {
   const schemaGuardModule = (await import(
     pathToFileURL(resolve('packages/auth-runtime/dist/iam-account-management/schema-guard.js')).href
-  )) as {
-    runGraphileWorkerReadinessForConnection(
-      config: Record<string, unknown>,
-      appDbUser: string,
-      workerDbUser: string
-    ): Promise<{ failedChecks: readonly string[]; ok: boolean }>;
-  };
+  )) as typeof import('../../packages/auth-runtime/src/iam-account-management/schema-guard.js');
   return schemaGuardModule.runGraphileWorkerReadinessForConnection(
     {
       database,
@@ -187,14 +177,11 @@ const runCanonicalWorkerReadiness = async (
 };
 
 const assertMissingWorkerRoleReadiness = async (port: string): Promise<void> => {
-  const report = await runCanonicalWorkerReadiness(port, 'postgres', 'missing_worker_role');
-  const expectedFailures = [
-    'worker_role_exists',
-    'worker_can_process',
-    'worker_functions_complete',
-    'worker_sequences_complete',
-    'worker_policies_complete',
-  ];
+  const report = await runWorkerReadiness(port, 'postgres', 'missing_worker_role');
+  const expectedFailures =
+    'worker_role_exists,worker_can_process,worker_functions_complete,worker_sequences_complete,worker_policies_complete'.split(
+      ','
+    );
   if (report.ok || expectedFailures.some((check) => !report.failedChecks.includes(check))) {
     throw new Error(
       `graphile_contract_missing_worker_role_not_reported:${report.failedChecks.join(',')}`
@@ -226,7 +213,7 @@ const enqueueContractJob = (port: string): void => {
 };
 
 const assertCanonicalWorkerReadiness = async (port: string): Promise<void> => {
-  const report = await runCanonicalWorkerReadiness(port, 'sva_app', 'sva_job_worker');
+  const report = await runWorkerReadiness(port, 'sva_app', 'sva_job_worker');
   if (!report.ok) {
     throw new Error(`graphile_contract_readiness_failed:${report.failedChecks.join(',')}`);
   }

@@ -70,6 +70,7 @@ describe('promote one-shot job', () => {
 
   it('preserves only allowlisted terminal task evidence after a failed migration cleanup', () => {
     const failure = new OneShotJobError({
+      diagnosticCode: 'MIGRATION_GOOSE_FAILED',
       exitCode: 1,
       failureKind: 'task-failed',
       jobServiceName: 'migrate',
@@ -79,7 +80,7 @@ describe('promote one-shot job', () => {
     });
 
     expect(buildOneShotEvidence({ environment: 'dev', failure, kind: 'migration' })).toMatchObject({
-      failure: { kind: 'task-failed' },
+      failure: { diagnosticCode: 'MIGRATION_GOOSE_FAILED', kind: 'task-failed' },
       job: {
         exitCode: 1,
         jobServiceName: 'migrate',

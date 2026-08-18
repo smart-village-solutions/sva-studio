@@ -13,6 +13,7 @@ import { fetchPortainerDockerText } from './remote-portainer.ts';
 import {
   buildSuccessfulOneShotResult,
   createOneShotJobError,
+  selectOneShotDiagnostic,
   withOneShotCleanupFailure,
 } from './one-shot-job-lifecycle.ts';
 
@@ -644,7 +645,7 @@ export const runMigrationJobAgainstAcceptance = async (
           serviceId: task?.serviceId,
         });
         throw createOneShotJobError({
-          diagnostic: containerLogTail || logTail || `${jobLabel} failed`,
+          diagnostic: selectOneShotDiagnostic(containerLogTail, logTail, `${jobLabel} failed`),
           failureKind: 'task-failed',
           jobServiceName,
           jobStackName: quantumProject.jobStackName,

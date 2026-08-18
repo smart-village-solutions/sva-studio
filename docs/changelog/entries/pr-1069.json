@@ -1,0 +1,4 @@
+{
+  "prNumber": 1069,
+  "body": "Fehlgeschlagene isolierte Deployment-Jobs liefern nun einen sicheren, stabilen Diagnosecode. Freie Remote-Logs und sensible Details bleiben weiterhin aus den veröffentlichten Nachweisen ausgeschlossen."
+}

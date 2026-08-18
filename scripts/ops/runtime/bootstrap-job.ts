@@ -2,11 +2,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { getMigrationJobTerminalState, readQuantumTaskSnapshot } from './migration-job.ts';
+import {
+  getMigrationJobTerminalState,
+  readQuantumTaskSnapshot,
+  readRemoteJobLogTail,
+} from './migration-job.ts';
 import { spawnBackground, wait, withoutDebugEnv } from './process.ts';
 import {
   buildSuccessfulOneShotResult,
   createOneShotJobError,
+  selectOneShotDiagnostic,
   withOneShotCleanupFailure,
 } from './one-shot-job-lifecycle.ts';
 
@@ -317,8 +322,13 @@ export const runBootstrapJobAgainstAcceptance = async (
       }
 
       if (terminalState === 'failed') {
+        const containerLogTail = await readRemoteJobLogTail(deps, env, {
+          containerId: task?.containerId,
+          quantumEndpoint: input.quantumEndpoint,
+          serviceId: task?.serviceId,
+        });
         throw createOneShotJobError({
-          diagnostic: logTail || 'Bootstrap failed',
+          diagnostic: selectOneShotDiagnostic(containerLogTail, logTail, 'Bootstrap failed'),
           failureKind: 'task-failed',
           jobServiceName,
           jobStackName: quantumProject.jobStackName,

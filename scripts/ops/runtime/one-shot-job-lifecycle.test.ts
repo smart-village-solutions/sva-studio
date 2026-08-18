@@ -2,11 +2,40 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildSuccessfulOneShotResult,
+  classifyOneShotDiagnostic,
   createOneShotJobError,
+  selectOneShotDiagnostic,
   withOneShotCleanupFailure,
 } from './one-shot-job-lifecycle.ts';
 
 describe('one-shot job lifecycle', () => {
+  it.each([
+    [
+      '{"code":"PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH"}',
+      'candidate',
+      'CANDIDATE_TENANT_SCOPE_MISMATCH',
+    ],
+    ['[migrate-entrypoint] Wende Migrationen an', 'migrate', 'MIGRATION_GOOSE_FAILED'],
+    [
+      '[migrate-entrypoint] Wende Graphile-Worker-Migrationen mit dem privilegierten Migrationsbenutzer an',
+      'migrate',
+      'MIGRATION_GRAPHILE_WORKER_FAILED',
+    ],
+    [
+      '[bootstrap-entrypoint] running bootstrap SQL against database',
+      'bootstrap',
+      'BOOTSTRAP_SQL_FAILED',
+    ],
+    ['psql: error: connection refused', 'bootstrap', 'ONESHOT_DATABASE_CONNECTION_FAILED'],
+    [
+      'ERROR: relation graphile_worker.jobs does not exist',
+      'bootstrap',
+      'ONESHOT_DATABASE_SCHEMA_MISSING',
+    ],
+  ] as const)('maps a remote diagnostic to a stable code', (diagnostic, service, expected) => {
+    expect(classifyOneShotDiagnostic(diagnostic, service)).toBe(expected);
+  });
+
   it('builds the shared successful migration and bootstrap result contract', () => {
     const cleanup = vi.fn(async () => undefined);
     const result = buildSuccessfulOneShotResult({
@@ -41,6 +70,7 @@ describe('one-shot job lifecycle', () => {
 
     expect(cleanupFailure.evidence).toEqual({
       cleanupFailed: true,
+      diagnosticCode: 'ONESHOT_UNKNOWN_TASK_FAILURE',
       exitCode: 1,
       failureKind: 'task-failed',
       jobServiceName: 'migrate',
@@ -49,5 +79,21 @@ describe('one-shot job lifecycle', () => {
       taskId: 'task-2',
     });
     expect(JSON.stringify(cleanupFailure.evidence)).not.toMatch(/person@|https:/u);
+  });
+
+  it('prefers snapshot diagnostics when the remote log lookup only returned an error', () => {
+    expect(
+      selectOneShotDiagnostic(
+        'Remote-Logs konnten nicht über Portainer gelesen werden: interne URL',
+        'Running bootstrap SQL',
+        'Bootstrap failed'
+      )
+    ).toBe('Running bootstrap SQL');
+  });
+
+  it('adds a stable diagnostic code to an unknown cleanup failure', () => {
+    expect(withOneShotCleanupFailure(new Error('restricted')).evidence.diagnosticCode).toBe(
+      'ONESHOT_UNKNOWN_TASK_FAILURE'
+    );
   });
 });

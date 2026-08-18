@@ -112,6 +112,7 @@ const config = defineConfig({
       // Workspace package subpath exports direkt auf Source files mappen (für Dev-SSR)
       '@sva/routing/server': resolveAppPath('../../packages/routing/src/index.server.ts'),
       '@sva/routing/auth': resolveAppPath('../../packages/routing/src/auth.routes.ts'),
+      '@sva/routing/route-search': resolveAppPath('../../packages/routing/src/route-search.ts'),
       '@sva/routing': resolveAppPath('../../packages/routing/src/index.ts'),
       '@sva/auth-runtime/server': resolveAppPath('../../packages/auth-runtime/src/server.ts'),
       '@sva/auth-runtime/routes': resolveAppPath('../../packages/auth-runtime/src/routes.ts'),

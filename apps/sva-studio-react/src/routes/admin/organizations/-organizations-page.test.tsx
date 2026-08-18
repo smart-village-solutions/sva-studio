@@ -21,10 +21,14 @@ vi.mock('../../../hooks/use-iam-resource-access', () => ({
 vi.mock('@tanstack/react-router', () => ({
   Link: ({
     to,
+    search,
     children,
     ...props
-  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { to: string }) => (
-    <a href={to} {...props}>
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & {
+    to: string;
+    search?: Readonly<Record<string, string>>;
+  }) => (
+    <a href={search?.tab ? `${to}?tab=${search.tab}` : to} {...props}>
       {children}
     </a>
   ),
@@ -106,11 +110,11 @@ describe('OrganizationsPage', () => {
       '/admin/organizations/new'
     );
     expect(screen.getAllByRole('link', { name: 'Bearbeiten' })[0]!.getAttribute('href')).toBe(
-      '/admin/organizations/$organizationId'
+      '/admin/organizations/$organizationId?tab=organization'
     );
     expect(
       screen.getAllByRole('link', { name: 'Mitglieder verwalten' })[0]!.getAttribute('href')
-    ).toBe('/admin/organizations/$organizationId');
+    ).toBe('/admin/organizations/$organizationId?tab=memberships');
     expect(screen.getByText('1 Organisationen gefunden.')).toBeTruthy();
   });
 
@@ -122,7 +126,9 @@ describe('OrganizationsPage', () => {
 
     expect(screen.queryByRole('button', { name: 'Typ' })).toBeNull();
     expect(
-      screen.getAllByText('Landkreis Alpha').every((element) => !element.parentElement?.hasAttribute('style'))
+      screen
+        .getAllByText('Landkreis Alpha')
+        .every((element) => !element.parentElement?.hasAttribute('style'))
     ).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Organisation' }));
     expect(state.setSorting).toHaveBeenCalledWith('displayName', 'desc');
@@ -252,8 +258,8 @@ describe('OrganizationsPage', () => {
 
     expect(screen.queryByRole('link', { name: 'Organisation anlegen' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Löschen' })).toBeNull();
-    expect(
-      screen.getAllByRole('switch').every((control) => control.hasAttribute('disabled'))
-    ).toBe(true);
+    expect(screen.getAllByRole('switch').every((control) => control.hasAttribute('disabled'))).toBe(
+      true
+    );
   });
 });

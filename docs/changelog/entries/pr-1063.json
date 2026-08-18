@@ -1,0 +1,4 @@
+{
+  "prNumber": 1063,
+  "body": "Die Qualitätsprüfung für gespeicherte Medieninhalte ist wieder stabil.\n\n- Alle Zustandsübergänge beim Speichern, Wiederherstellen und Verwerfen von Medienentwürfen werden durch Repository-Tests abgesichert.\n- Fehlende Datenbankergebnisse werden weiterhin kontrolliert und ohne unbeabsichtigte Freigabe behandelt.\n- Unabhängige Pull Requests werden nicht mehr durch die abgesunkene Media-Repository-Coverage blockiert."
+}

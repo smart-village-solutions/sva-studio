@@ -3,10 +3,12 @@ import {
   hasStudioCreatedSaveFeedback,
   removeStudioSaveFeedback,
   StudioDetailPageTemplate,
+  StudioDetailTabs,
   StudioPersistentFormError,
   StudioSaveButton,
   useStudioSaveFeedback,
 } from '@sva/studio-ui-react';
+import type { OrganizationDetailRouteTab } from '@sva/routing/route-search';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
 import type { IamUserListItem } from '@sva/core';
 import React from 'react';
@@ -71,6 +73,8 @@ export const sortMembershipUsersByLabel = (
 
 type OrganizationDetailPageProps = {
   readonly organizationId: string;
+  readonly activeTab: OrganizationDetailRouteTab;
+  readonly onTabChange: (tab: OrganizationDetailRouteTab) => void;
 };
 
 type OrganizationMembershipDraft = {
@@ -104,7 +108,11 @@ const buildMembershipDrafts = (
     ])
   );
 
-export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPageProps) => {
+export const OrganizationDetailPage = ({
+  organizationId,
+  activeTab,
+  onTabChange,
+}: OrganizationDetailPageProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const organizationsApi = useOrganizations();
@@ -454,411 +462,448 @@ export const OrganizationDetailPage = ({ organizationId }: OrganizationDetailPag
         ) : null}
 
         {selectedOrganization ? (
-          <>
-            <Card className="space-y-4 p-5">
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-foreground">
-                  {t('admin.organizations.sections.overviewTitle')}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {t('admin.organizations.sections.overviewDescription')}
-                </p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.form.keyLabel')}
-                  </p>
-                  <p className="text-sm text-foreground">{selectedOrganization.organizationKey}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.table.headerStatus')}
-                  </p>
-                  <Badge className="rounded-full" variant="outline">
-                    {selectedOrganization.isActive
-                      ? t('admin.organizations.filters.statusActive')
-                      : t('admin.organizations.filters.statusInactive')}
-                  </Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.table.headerType')}
-                  </p>
-                  <p className="text-sm text-foreground">
-                    {t(getOrganizationTypeTranslationKey(selectedOrganization.organizationType))}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.table.headerParent')}
-                  </p>
-                  <p className="text-sm text-foreground">
-                    {selectedOrganization.parentDisplayName ??
-                      t('admin.organizations.messages.root')}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.table.headerChildren')}
-                  </p>
-                  <p className="text-sm text-foreground">{selectedOrganization.childCount}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.table.headerMembers')}
-                  </p>
-                  <p className="text-sm text-foreground">{selectedOrganization.membershipCount}</p>
-                </div>
-                <div className="space-y-1 xl:col-span-2">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.messages.hierarchyPath', { value: '' }).replace(
-                      ': ',
-                      ''
-                    )}
-                  </p>
-                  <p className="text-sm text-foreground">
-                    {(selectedOrganization.hierarchyPath ?? []).join(' > ') ||
-                      t('admin.organizations.messages.root')}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.messages.metadataCount', { value: '' }).replace(
-                      ': ',
-                      ''
-                    )}
-                  </p>
-                  <p className="text-sm text-foreground">
-                    {Object.keys(selectedOrganization.metadata ?? {}).length}
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="space-y-4 p-5">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {t('admin.organizations.mainserverProvisioning.title')}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {t('admin.organizations.mainserverProvisioning.description')}
-                  </p>
-                </div>
-                <Badge className="w-fit rounded-full" variant="outline">
-                  {t(
-                    getMainserverProvisioningStatusKey(
-                      selectedOrganization.mainserverProvisioning.status
-                    )
-                  )}
-                </Badge>
-              </div>
-              <div className="grid gap-3 text-sm md:grid-cols-2">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.mainserverProvisioning.account')}
-                  </p>
-                  <p className="text-foreground">
-                    {selectedOrganization.mainserverProvisioning.technicalAccountId ??
-                      t('admin.organizations.mainserverProvisioning.notAvailable')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {t('admin.organizations.mainserverProvisioning.attempts')}
-                  </p>
-                  <p className="text-foreground">
-                    {selectedOrganization.mainserverProvisioning.attemptCount}
-                  </p>
-                </div>
-              </div>
-              {selectedOrganization.mainserverProvisioning.lastErrorCode ? (
-                <Alert className="border-warning/40 bg-warning/10">
-                  <AlertDescription>
-                    {t('admin.organizations.mainserverProvisioning.error', {
-                      code: selectedOrganization.mainserverProvisioning.lastErrorCode,
-                    })}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              {provisioningConfirmed ? (
-                <Alert className="border-primary/40 bg-primary/10 text-primary" role="status">
-                  <AlertDescription>
-                    {t('admin.organizations.mainserverProvisioning.current')}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              {canUpdateOrganization ? (
-                <Button
-                  type="button"
-                  onClick={() => void onProvisionMainserver()}
-                  disabled={
-                    provisioningPending ||
-                    selectedOrganization.mainserverProvisioning.operationInProgress
-                  }
-                >
-                  {provisioningPending ||
-                  selectedOrganization.mainserverProvisioning.operationInProgress
-                    ? t('admin.organizations.mainserverProvisioning.running')
-                    : selectedOrganization.mainserverProvisioning.status === 'ready'
-                      ? t('admin.organizations.mainserverProvisioning.refresh')
-                      : t('admin.organizations.mainserverProvisioning.retry')}
-                </Button>
-              ) : null}
-            </Card>
-
-            <Card className="space-y-4 p-5">
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-foreground">
-                  {t('admin.organizations.sections.baseDataTitle')}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {t('admin.organizations.sections.baseDataDescription')}
-                </p>
-              </div>
-              <OrganizationForm
-                excludeOrganizationId={organizationId}
-                organizations={parentOrganizations}
-                onSubmit={(event) => void onSubmitOrganization(event)}
-                setFormValues={updateFormValues}
-                submitAction={
-                  <StudioSaveButton
-                    type="submit"
-                    status={saveFeedback.status}
-                    labels={{
-                      idle: t('admin.organizations.actions.save'),
-                      saving: t('account.actions.saving'),
-                      saved: t('account.actions.saved'),
-                    }}
-                  />
-                }
-                formValues={formValues}
-                readOnly={!canUpdateOrganization}
-              />
-            </Card>
-
-            <Card className="space-y-4 p-5">
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-foreground">
-                  {t('admin.organizations.sections.membershipsTitle')}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {t('admin.organizations.sections.membershipsDescription')}
-                </p>
-              </div>
-              <Card className="bg-background p-3 text-sm text-foreground shadow-none">
-                <p className="font-semibold">{selectedOrganization.displayName}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {t('admin.organizations.membershipsDialog.description', {
-                    name: selectedOrganization.displayName,
-                  })}
-                </p>
-              </Card>
-
-              <form
-                className="grid gap-3"
-                aria-readonly={!canUpdateOrganization}
-                onSubmit={(event) => void onAssignMembership(event)}
-              >
-                <fieldset
-                  className="contents"
-                  disabled={!canUpdateOrganization || membershipAssignmentPending}
-                >
-                  <div className="grid gap-1 text-sm text-foreground">
-                    <SearchableMultiSelect
-                      id="membership-account"
-                      label={t('admin.organizations.membershipsDialog.accountLabel')}
-                      values={membershipForm.accounts.map((account) => account.value)}
-                      placeholder={t('admin.organizations.membershipsDialog.accountPlaceholder')}
-                      selectedCountText={t('admin.organizations.membershipsDialog.selectedCount', {
-                        count: membershipForm.accounts.length,
-                      })}
-                      searchPlaceholder={t(
-                        'admin.organizations.membershipsDialog.searchPlaceholder'
-                      )}
-                      emptyText={t('admin.organizations.membershipsDialog.emptySelection')}
-                      options={availableMembershipUsers.map((user) => ({
-                        value: user.id,
-                        label: formatMembershipUserLabel(user),
-                        keywords: membershipUserKeywords(user),
-                      }))}
-                      selectedOptions={membershipForm.accounts}
-                      removeValueLabel={(label) =>
-                        t('admin.organizations.membershipsDialog.removeSelectionLabel', {
-                          name: label,
-                        })
-                      }
-                      searchValue={membershipSearch}
-                      onSearchValueChange={setMembershipSearch}
-                      onValuesChange={(accountIds) =>
-                        setMembershipForm((current) => ({
-                          ...current,
-                          accounts: accountIds.flatMap((accountId) => {
-                            const selectedAccount = current.accounts.find(
-                              (account) => account.value === accountId
-                            );
-                            if (selectedAccount) {
-                              return [selectedAccount];
-                            }
-                            const selectedUser = availableMembershipUsers.find(
-                              (user) => user.id === accountId
-                            );
-                            return selectedUser
-                              ? [
-                                  {
-                                    value: accountId,
-                                    label: formatMembershipUserLabel(selectedUser),
-                                  },
-                                ]
-                              : [];
-                          }),
-                        }))
-                      }
-                      disabled={membershipUsersLoading || membershipAssignmentPending}
-                    />
-                    {membershipUsersLoading ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t('admin.organizations.membershipsDialog.loading')}
-                      </p>
-                    ) : null}
-                    {membershipUsersError ? (
-                      <p className="text-xs text-destructive">
-                        {organizationErrorMessage(membershipUsersError)}
-                      </p>
-                    ) : null}
-                    {!membershipUsersLoading && !membershipUsersError ? (
-                      <p className="text-xs text-muted-foreground">
-                        {visibleMembershipUsers.length > 0
-                          ? t('admin.organizations.membershipsDialog.availableCount', {
-                              count: String(visibleMembershipUsers.length),
-                            })
-                          : t('admin.organizations.membershipsDialog.emptySelection')}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="grid gap-4">
-                    <Label
-                      htmlFor="membership-default"
-                      className="flex items-center gap-2 text-sm text-foreground"
-                    >
-                      <Checkbox
-                        id="membership-default"
-                        checked={membershipForm.isDefaultContext}
-                        onChange={(event) =>
-                          setMembershipForm((current) => ({
-                            ...current,
-                            isDefaultContext: event.target.checked,
-                          }))
-                        }
-                      />
-                      <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
-                    </Label>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      type="submit"
-                      disabled={!membershipForm.accounts.length || membershipAssignmentPending}
-                    >
-                      {t('admin.organizations.actions.assignMembership')}
-                    </Button>
-                  </div>
-                </fieldset>
-              </form>
-
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-foreground">
-                  {t('admin.organizations.membershipsDialog.membersTitle')}
-                </h3>
-                {selectedOrganization.memberships.length ? (
-                  <ul className="space-y-2">
-                    {selectedOrganization.memberships.map((membership) => (
-                      <li
-                        key={membership.accountId}
-                        className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
-                      >
-                        <div>
-                          <p className="font-medium">{membership.displayName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {membership.email ?? membership.keycloakSubject}
+          <StudioDetailTabs
+            ariaLabel={t('admin.organizations.tabs.ariaLabel')}
+            mobileSelectLabel={t('admin.organizations.tabs.mobileLabel')}
+            value={activeTab}
+            onValueChange={onTabChange}
+            tabs={[
+              {
+                id: 'organization',
+                label: t('admin.organizations.tabs.organization'),
+                icon: 'basis',
+                description: t('admin.organizations.editDialog.description'),
+                panel: (
+                  <div className="space-y-4">
+                    <Card className="space-y-4 p-5">
+                      <div className="space-y-1">
+                        <h2 className="text-lg font-semibold text-foreground">
+                          {t('admin.organizations.sections.overviewTitle')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {t('admin.organizations.sections.overviewDescription')}
+                        </p>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.form.keyLabel')}
                           </p>
-                          <p className="text-xs text-muted-foreground">
-                            {t('admin.organizations.membershipsDialog.createdAt', {
-                              value: membership.createdAt,
-                            })}
+                          <p className="text-sm text-foreground">
+                            {selectedOrganization.organizationKey}
                           </p>
                         </div>
-                        <div className="mt-3 grid gap-4 md:grid-cols-[auto_auto] md:items-end">
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.table.headerStatus')}
+                          </p>
+                          <Badge className="rounded-full" variant="outline">
+                            {selectedOrganization.isActive
+                              ? t('admin.organizations.filters.statusActive')
+                              : t('admin.organizations.filters.statusInactive')}
+                          </Badge>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.table.headerType')}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {t(
+                              getOrganizationTypeTranslationKey(
+                                selectedOrganization.organizationType
+                              )
+                            )}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.table.headerParent')}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {selectedOrganization.parentDisplayName ??
+                              t('admin.organizations.messages.root')}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.table.headerChildren')}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {selectedOrganization.childCount}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.table.headerMembers')}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {selectedOrganization.membershipCount}
+                          </p>
+                        </div>
+                        <div className="space-y-1 xl:col-span-2">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.messages.hierarchyPath', { value: '' }).replace(
+                              ': ',
+                              ''
+                            )}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {(selectedOrganization.hierarchyPath ?? []).join(' > ') ||
+                              t('admin.organizations.messages.root')}
+                          </p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.messages.metadataCount', { value: '' }).replace(
+                              ': ',
+                              ''
+                            )}
+                          </p>
+                          <p className="text-sm text-foreground">
+                            {Object.keys(selectedOrganization.metadata ?? {}).length}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+
+                    <Card className="space-y-4 p-5">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="space-y-1">
+                          <h2 className="text-lg font-semibold text-foreground">
+                            {t('admin.organizations.mainserverProvisioning.title')}
+                          </h2>
+                          <p className="text-sm text-muted-foreground">
+                            {t('admin.organizations.mainserverProvisioning.description')}
+                          </p>
+                        </div>
+                        <Badge className="w-fit rounded-full" variant="outline">
+                          {t(
+                            getMainserverProvisioningStatusKey(
+                              selectedOrganization.mainserverProvisioning.status
+                            )
+                          )}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-3 text-sm md:grid-cols-2">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.mainserverProvisioning.account')}
+                          </p>
+                          <p className="text-foreground">
+                            {selectedOrganization.mainserverProvisioning.technicalAccountId ??
+                              t('admin.organizations.mainserverProvisioning.notAvailable')}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                            {t('admin.organizations.mainserverProvisioning.attempts')}
+                          </p>
+                          <p className="text-foreground">
+                            {selectedOrganization.mainserverProvisioning.attemptCount}
+                          </p>
+                        </div>
+                      </div>
+                      {selectedOrganization.mainserverProvisioning.lastErrorCode ? (
+                        <Alert className="border-warning/40 bg-warning/10">
+                          <AlertDescription>
+                            {t('admin.organizations.mainserverProvisioning.error', {
+                              code: selectedOrganization.mainserverProvisioning.lastErrorCode,
+                            })}
+                          </AlertDescription>
+                        </Alert>
+                      ) : null}
+                      {provisioningConfirmed ? (
+                        <Alert
+                          className="border-primary/40 bg-primary/10 text-primary"
+                          role="status"
+                        >
+                          <AlertDescription>
+                            {t('admin.organizations.mainserverProvisioning.current')}
+                          </AlertDescription>
+                        </Alert>
+                      ) : null}
+                      {canUpdateOrganization ? (
+                        <Button
+                          type="button"
+                          onClick={() => void onProvisionMainserver()}
+                          disabled={
+                            provisioningPending ||
+                            selectedOrganization.mainserverProvisioning.operationInProgress
+                          }
+                        >
+                          {provisioningPending ||
+                          selectedOrganization.mainserverProvisioning.operationInProgress
+                            ? t('admin.organizations.mainserverProvisioning.running')
+                            : selectedOrganization.mainserverProvisioning.status === 'ready'
+                              ? t('admin.organizations.mainserverProvisioning.refresh')
+                              : t('admin.organizations.mainserverProvisioning.retry')}
+                        </Button>
+                      ) : null}
+                    </Card>
+
+                    <Card className="space-y-4 p-5">
+                      <div className="space-y-1">
+                        <h2 className="text-lg font-semibold text-foreground">
+                          {t('admin.organizations.sections.baseDataTitle')}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                          {t('admin.organizations.sections.baseDataDescription')}
+                        </p>
+                      </div>
+                      <OrganizationForm
+                        excludeOrganizationId={organizationId}
+                        organizations={parentOrganizations}
+                        onSubmit={(event) => void onSubmitOrganization(event)}
+                        setFormValues={updateFormValues}
+                        submitAction={
+                          <StudioSaveButton
+                            type="submit"
+                            status={saveFeedback.status}
+                            labels={{
+                              idle: t('admin.organizations.actions.save'),
+                              saving: t('account.actions.saving'),
+                              saved: t('account.actions.saved'),
+                            }}
+                          />
+                        }
+                        formValues={formValues}
+                        readOnly={!canUpdateOrganization}
+                      />
+                    </Card>
+                  </div>
+                ),
+              },
+              {
+                id: 'memberships',
+                label: t('admin.organizations.tabs.memberships'),
+                icon: 'settings',
+                description: t('admin.organizations.sections.membershipsDescription'),
+                panel: (
+                  <Card className="space-y-4 p-5">
+                    <Card className="bg-background p-3 text-sm text-foreground shadow-none">
+                      <p className="font-semibold">{selectedOrganization.displayName}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {t('admin.organizations.membershipsDialog.description', {
+                          name: selectedOrganization.displayName,
+                        })}
+                      </p>
+                    </Card>
+
+                    <form
+                      className="grid gap-3"
+                      aria-readonly={!canUpdateOrganization}
+                      onSubmit={(event) => void onAssignMembership(event)}
+                    >
+                      <fieldset
+                        className="contents"
+                        disabled={!canUpdateOrganization || membershipAssignmentPending}
+                      >
+                        <div className="grid gap-1 text-sm text-foreground">
+                          <SearchableMultiSelect
+                            id="membership-account"
+                            label={t('admin.organizations.membershipsDialog.accountLabel')}
+                            values={membershipForm.accounts.map((account) => account.value)}
+                            placeholder={t(
+                              'admin.organizations.membershipsDialog.accountPlaceholder'
+                            )}
+                            selectedCountText={t(
+                              'admin.organizations.membershipsDialog.selectedCount',
+                              {
+                                count: membershipForm.accounts.length,
+                              }
+                            )}
+                            searchPlaceholder={t(
+                              'admin.organizations.membershipsDialog.searchPlaceholder'
+                            )}
+                            emptyText={t('admin.organizations.membershipsDialog.emptySelection')}
+                            options={availableMembershipUsers.map((user) => ({
+                              value: user.id,
+                              label: formatMembershipUserLabel(user),
+                              keywords: membershipUserKeywords(user),
+                            }))}
+                            selectedOptions={membershipForm.accounts}
+                            removeValueLabel={(label) =>
+                              t('admin.organizations.membershipsDialog.removeSelectionLabel', {
+                                name: label,
+                              })
+                            }
+                            searchValue={membershipSearch}
+                            onSearchValueChange={setMembershipSearch}
+                            onValuesChange={(accountIds) =>
+                              setMembershipForm((current) => ({
+                                ...current,
+                                accounts: accountIds.flatMap((accountId) => {
+                                  const selectedAccount = current.accounts.find(
+                                    (account) => account.value === accountId
+                                  );
+                                  if (selectedAccount) {
+                                    return [selectedAccount];
+                                  }
+                                  const selectedUser = availableMembershipUsers.find(
+                                    (user) => user.id === accountId
+                                  );
+                                  return selectedUser
+                                    ? [
+                                        {
+                                          value: accountId,
+                                          label: formatMembershipUserLabel(selectedUser),
+                                        },
+                                      ]
+                                    : [];
+                                }),
+                              }))
+                            }
+                            disabled={membershipUsersLoading || membershipAssignmentPending}
+                          />
+                          {membershipUsersLoading ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t('admin.organizations.membershipsDialog.loading')}
+                            </p>
+                          ) : null}
+                          {membershipUsersError ? (
+                            <p className="text-xs text-destructive">
+                              {organizationErrorMessage(membershipUsersError)}
+                            </p>
+                          ) : null}
+                          {!membershipUsersLoading && !membershipUsersError ? (
+                            <p className="text-xs text-muted-foreground">
+                              {visibleMembershipUsers.length > 0
+                                ? t('admin.organizations.membershipsDialog.availableCount', {
+                                    count: String(visibleMembershipUsers.length),
+                                  })
+                                : t('admin.organizations.membershipsDialog.emptySelection')}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="grid gap-4">
                           <Label
-                            htmlFor={`membership-default-${membership.accountId}`}
+                            htmlFor="membership-default"
                             className="flex items-center gap-2 text-sm text-foreground"
                           >
                             <Checkbox
-                              id={`membership-default-${membership.accountId}`}
-                              disabled={!canUpdateOrganization}
-                              checked={
-                                membershipDrafts[membership.accountId]?.isDefaultContext ??
-                                membership.isDefaultContext
-                              }
+                              id="membership-default"
+                              checked={membershipForm.isDefaultContext}
                               onChange={(event) =>
-                                updateMembershipDraft(membership.accountId, {
+                                setMembershipForm((current) => ({
+                                  ...current,
                                   isDefaultContext: event.target.checked,
-                                })
+                                }))
                               }
                             />
                             <span>{t('admin.organizations.membershipsDialog.defaultLabel')}</span>
                           </Label>
-                          <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                            {membership.isDefaultContext ? (
-                              <Badge
-                                className="rounded-full border-primary/40 bg-primary/10 text-primary"
-                                variant="outline"
-                              >
-                                {t('admin.organizations.membershipsDialog.defaultBadge')}
-                              </Badge>
-                            ) : null}
-                            {canUpdateOrganization ? (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  aria-label={t(
-                                    'admin.organizations.membershipsDialog.saveMembershipLabel',
-                                    { name: membership.displayName }
-                                  )}
-                                  onClick={() => void saveMembership(membership.accountId)}
-                                >
-                                  {t('admin.organizations.actions.save')}
-                                </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="destructive"
-                                  onClick={() =>
-                                    void organizationsApi.removeMembership(
-                                      organizationId,
-                                      membership.accountId
-                                    )
-                                  }
-                                >
-                                  {t('admin.organizations.actions.removeMembership')}
-                                </Button>
-                              </>
-                            ) : null}
-                          </div>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t('admin.organizations.membershipsDialog.empty')}
-                  </p>
-                )}
-              </div>
-            </Card>
-          </>
+                        <div className="flex justify-end">
+                          <Button
+                            type="submit"
+                            disabled={
+                              !membershipForm.accounts.length || membershipAssignmentPending
+                            }
+                          >
+                            {t('admin.organizations.actions.assignMembership')}
+                          </Button>
+                        </div>
+                      </fieldset>
+                    </form>
+
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {t('admin.organizations.membershipsDialog.membersTitle')}
+                      </h3>
+                      {selectedOrganization.memberships.length ? (
+                        <ul className="space-y-2">
+                          {selectedOrganization.memberships.map((membership) => (
+                            <li
+                              key={membership.accountId}
+                              className="rounded-lg border border-border bg-card p-3 text-sm text-foreground shadow-shell"
+                            >
+                              <div>
+                                <p className="font-medium">{membership.displayName}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {membership.email ?? membership.keycloakSubject}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {t('admin.organizations.membershipsDialog.createdAt', {
+                                    value: membership.createdAt,
+                                  })}
+                                </p>
+                              </div>
+                              <div className="mt-3 grid gap-4 md:grid-cols-[auto_auto] md:items-end">
+                                <Label
+                                  htmlFor={`membership-default-${membership.accountId}`}
+                                  className="flex items-center gap-2 text-sm text-foreground"
+                                >
+                                  <Checkbox
+                                    id={`membership-default-${membership.accountId}`}
+                                    disabled={!canUpdateOrganization}
+                                    checked={
+                                      membershipDrafts[membership.accountId]?.isDefaultContext ??
+                                      membership.isDefaultContext
+                                    }
+                                    onChange={(event) =>
+                                      updateMembershipDraft(membership.accountId, {
+                                        isDefaultContext: event.target.checked,
+                                      })
+                                    }
+                                  />
+                                  <span>
+                                    {t('admin.organizations.membershipsDialog.defaultLabel')}
+                                  </span>
+                                </Label>
+                                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                                  {membership.isDefaultContext ? (
+                                    <Badge
+                                      className="rounded-full border-primary/40 bg-primary/10 text-primary"
+                                      variant="outline"
+                                    >
+                                      {t('admin.organizations.membershipsDialog.defaultBadge')}
+                                    </Badge>
+                                  ) : null}
+                                  {canUpdateOrganization ? (
+                                    <>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        aria-label={t(
+                                          'admin.organizations.membershipsDialog.saveMembershipLabel',
+                                          { name: membership.displayName }
+                                        )}
+                                        onClick={() => void saveMembership(membership.accountId)}
+                                      >
+                                        {t('admin.organizations.actions.save')}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="destructive"
+                                        onClick={() =>
+                                          void organizationsApi.removeMembership(
+                                            organizationId,
+                                            membership.accountId
+                                          )
+                                        }
+                                      >
+                                        {t('admin.organizations.actions.removeMembership')}
+                                      </Button>
+                                    </>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {t('admin.organizations.membershipsDialog.empty')}
+                        </p>
+                      )}
+                    </div>
+                  </Card>
+                ),
+              },
+            ]}
+          />
         ) : null}
 
         {organizationsApi.mutationError && selectedOrganization ? (

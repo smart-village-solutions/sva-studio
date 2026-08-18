@@ -3,6 +3,7 @@ import {
   normalizeRoleDetailTab,
   type AppRouteBindings as BaseAppRouteBindings,
 } from '@sva/routing';
+import { normalizeOrganizationDetailTab } from '@sva/routing/route-search';
 import { resolveUserDisplayName, type IamOrganizationContextOption } from '@sva/core';
 import { CategoriesPage } from '@sva/plugin-categories';
 import {
@@ -539,8 +540,16 @@ const LazyOrganizationDetailPage = React.lazy(async () => {
 
 const OrganizationDetailRoutePage = () => {
   const params = useParams({ strict: false });
+  const search = useSearch({ strict: false });
+  const navigate = useNavigate();
   return renderLazyPage(LazyOrganizationDetailPage, {
     organizationId: readStringParam(params.organizationId),
+    activeTab: normalizeOrganizationDetailTab(search.tab),
+    onTabChange: (tab) =>
+      void navigate({
+        search: { tab } as never,
+        replace: true,
+      }),
   });
 };
 

@@ -25,6 +25,9 @@ export const sharedVitestConfig = defineConfig({
       '@sva/routing/auth': fileURLToPath(
         new URL('../../packages/routing/src/auth.routes.ts', import.meta.url)
       ),
+      '@sva/routing/route-search': fileURLToPath(
+        new URL('../../packages/routing/src/route-search.ts', import.meta.url)
+      ),
       '@sva/routing': fileURLToPath(
         new URL('../../packages/routing/src/index.ts', import.meta.url)
       ),

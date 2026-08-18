@@ -50,6 +50,7 @@
       ],
       "@sva/plugin-sdk": ["../../packages/plugin-sdk/src/index.ts"],
       "@sva/routing": ["../../packages/routing/src/index.ts"],
+      "@sva/routing/route-search": ["../../packages/routing/src/route-search.ts"],
       "@sva/routing/server": ["../../packages/routing/src/index.server.ts"],
       "@sva/mail-runtime": ["../../packages/mail-runtime/src/index.ts"],
       "@sva/studio-module-iam": ["../../packages/studio-module-iam/src/index.ts"],

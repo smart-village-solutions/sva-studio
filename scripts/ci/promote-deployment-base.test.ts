@@ -26,6 +26,21 @@ describe('promote deployment base', () => {
     });
   });
 
+  it('accepts the expected repository when Swarm preserves a tag before the digest', () => {
+    expect(
+      resolveEffectiveDeploymentBase({
+        declaredBase,
+        environment: 'staging',
+        head,
+        liveImage: 'ghcr.io/smart-village-solutions/sva-studio:main@sha256:' + 'e'.repeat(64),
+        inspection: {
+          image: { config: { Labels: { 'org.opencontainers.image.revision': liveRevision } } },
+        },
+        isAncestor: () => true,
+      })
+    ).toMatchObject({ effectiveBase: liveRevision, source: 'live-image' });
+  });
+
   it('fails closed when the deployed image has no trustworthy revision', () => {
     expect(() =>
       resolveEffectiveDeploymentBase({

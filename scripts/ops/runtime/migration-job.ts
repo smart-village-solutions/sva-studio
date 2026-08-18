@@ -567,7 +567,7 @@ export const readRemoteJobLogTail = async (
   }
 
   return errors.length > 0
-    ? `Remote-Logs konnten nicht ueber Portainer gelesen werden: ${errors.join('; ')}`
+    ? `Remote-Logs konnten nicht über Portainer gelesen werden: ${errors.join('; ')}`
     : '';
 };
 

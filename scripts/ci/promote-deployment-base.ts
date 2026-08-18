@@ -7,7 +7,8 @@ import { inspectRegistryImage, type RegistryImageInspection } from './promote-im
 import type { PromoteEnvironment } from './promote-target.ts';
 
 const commitShaPattern = /^[a-f0-9]{40}$/u;
-const liveImagePattern = /^ghcr\.io\/smart-village-solutions\/sva-studio@sha256:[a-f0-9]{64}$/u;
+const liveImagePattern =
+  /^ghcr\.io\/smart-village-solutions\/sva-studio(?::[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})?@sha256:[a-f0-9]{64}$/u;
 
 export const resolveEffectiveDeploymentBase = (
   input: Readonly<{

@@ -1,4 +1,5 @@
 export type OneShotFailureKind = 'cleanup-failed' | 'task-failed' | 'timeout';
+type OneShotServiceName = 'bootstrap' | 'candidate' | 'migrate';
 
 export type OneShotDiagnosticCode =
   | 'BOOTSTRAP_IAM_SCHEMA_GUARD_FAILED'
@@ -25,74 +26,95 @@ export type OneShotFailureEvidence = Readonly<{
   diagnosticCode?: OneShotDiagnosticCode;
   exitCode?: number | null;
   failureKind: OneShotFailureKind;
-  jobServiceName: 'bootstrap' | 'candidate' | 'migrate';
+  jobServiceName: OneShotServiceName;
   jobStackName: string;
   state?: string;
   taskId?: string;
 }>;
 
+const diagnosticRules: readonly Readonly<{
+  code: OneShotDiagnosticCode;
+  pattern: RegExp;
+  service?: OneShotServiceName;
+}>[] = [
+  {
+    code: 'CANDIDATE_TENANT_SECRET_UNREADABLE',
+    pattern: /promote_preflight_tenant_secret_unreadable/iu,
+  },
+  {
+    code: 'CANDIDATE_TENANT_SCOPE_MISMATCH',
+    pattern: /promote_preflight_tenant_scope_mismatch/iu,
+  },
+  {
+    code: 'CANDIDATE_SECRET_REFERENCE_MISSING',
+    pattern: /promote_preflight_secret_reference_missing/iu,
+  },
+  { code: 'CANDIDATE_CONFIG_INVALID', pattern: /promote_preflight_config_invalid/iu },
+  { code: 'ONESHOT_DATABASE_AUTH_FAILED', pattern: /password authentication failed/iu },
+  {
+    code: 'ONESHOT_DATABASE_CONNECTION_FAILED',
+    pattern: /connection refused|could not connect|connection timed out/iu,
+  },
+  { code: 'ONESHOT_DATABASE_PERMISSION_DENIED', pattern: /permission denied/iu },
+  {
+    code: 'ONESHOT_DATABASE_SCHEMA_MISSING',
+    pattern: /(?:relation|schema|function).*does not exist/iu,
+  },
+  {
+    code: 'ONESHOT_REQUIRED_CONFIG_MISSING',
+    pattern: /pflichtvariable fehlt|missing required environment variable/iu,
+  },
+  {
+    code: 'MIGRATION_GRAPHILE_WORKER_FAILED',
+    pattern: /wende graphile-worker-migrationen/iu,
+    service: 'migrate',
+  },
+  {
+    code: 'MIGRATION_IAM_SCHEMA_GUARD_FAILED',
+    pattern: /prüfe migrationsstand und kritische iam-schemaobjekte/iu,
+    service: 'migrate',
+  },
+  {
+    code: 'MIGRATION_WASTE_TENANT_FAILED',
+    pattern: /wende ausstehende versionierte waste-tenant-migrationen/iu,
+    service: 'migrate',
+  },
+  {
+    code: 'MIGRATION_GOOSE_FAILED',
+    pattern: /wende migrationen an/iu,
+    service: 'migrate',
+  },
+  {
+    code: 'MIGRATION_RUNTIME_ARTIFACT_MISSING',
+    pattern: /goose-wrapper nicht gefunden|migrationsverzeichnis fehlt|migrator fehlt/iu,
+    service: 'migrate',
+  },
+  {
+    code: 'BOOTSTRAP_IAM_SCHEMA_GUARD_FAILED',
+    pattern: /verifying iam database readiness/iu,
+    service: 'bootstrap',
+  },
+  {
+    code: 'BOOTSTRAP_RUNTIME_ARTIFACT_MISSING',
+    pattern: /bootstrap-package nicht gefunden|cannot find module/iu,
+    service: 'bootstrap',
+  },
+  {
+    code: 'BOOTSTRAP_SQL_FAILED',
+    pattern: /running bootstrap sql/iu,
+    service: 'bootstrap',
+  },
+];
+
 export const classifyOneShotDiagnostic = (
   diagnostic: string | undefined,
   jobServiceName: OneShotFailureEvidence['jobServiceName']
 ): OneShotDiagnosticCode => {
-  const normalized = diagnostic?.toLowerCase() ?? '';
-
-  if (normalized.includes('promote_preflight_tenant_secret_unreadable'))
-    return 'CANDIDATE_TENANT_SECRET_UNREADABLE';
-  if (normalized.includes('promote_preflight_tenant_scope_mismatch'))
-    return 'CANDIDATE_TENANT_SCOPE_MISMATCH';
-  if (normalized.includes('promote_preflight_secret_reference_missing'))
-    return 'CANDIDATE_SECRET_REFERENCE_MISSING';
-  if (normalized.includes('promote_preflight_config_invalid')) return 'CANDIDATE_CONFIG_INVALID';
-  if (normalized.includes('password authentication failed')) return 'ONESHOT_DATABASE_AUTH_FAILED';
-  if (
-    normalized.includes('connection refused') ||
-    normalized.includes('could not connect') ||
-    normalized.includes('connection timed out')
-  )
-    return 'ONESHOT_DATABASE_CONNECTION_FAILED';
-  if (normalized.includes('permission denied')) return 'ONESHOT_DATABASE_PERMISSION_DENIED';
-  if (
-    normalized.includes('does not exist') &&
-    (normalized.includes('relation') ||
-      normalized.includes('schema') ||
-      normalized.includes('function'))
-  )
-    return 'ONESHOT_DATABASE_SCHEMA_MISSING';
-  if (
-    normalized.includes('pflichtvariable fehlt') ||
-    normalized.includes('missing required environment variable')
-  )
-    return 'ONESHOT_REQUIRED_CONFIG_MISSING';
-
-  if (jobServiceName === 'migrate') {
-    if (normalized.includes('wende graphile-worker-migrationen'))
-      return 'MIGRATION_GRAPHILE_WORKER_FAILED';
-    if (normalized.includes('prüfe migrationsstand und kritische iam-schemaobjekte'))
-      return 'MIGRATION_IAM_SCHEMA_GUARD_FAILED';
-    if (normalized.includes('wende ausstehende versionierte waste-tenant-migrationen'))
-      return 'MIGRATION_WASTE_TENANT_FAILED';
-    if (normalized.includes('wende migrationen an')) return 'MIGRATION_GOOSE_FAILED';
-    if (
-      normalized.includes('goose-wrapper nicht gefunden') ||
-      normalized.includes('migrationsverzeichnis fehlt') ||
-      normalized.includes('migrator fehlt')
-    )
-      return 'MIGRATION_RUNTIME_ARTIFACT_MISSING';
-  }
-
-  if (jobServiceName === 'bootstrap') {
-    if (normalized.includes('verifying iam database readiness'))
-      return 'BOOTSTRAP_IAM_SCHEMA_GUARD_FAILED';
-    if (
-      normalized.includes('bootstrap-package nicht gefunden') ||
-      normalized.includes('cannot find module')
-    )
-      return 'BOOTSTRAP_RUNTIME_ARTIFACT_MISSING';
-    if (normalized.includes('running bootstrap sql')) return 'BOOTSTRAP_SQL_FAILED';
-  }
-
-  return 'ONESHOT_UNKNOWN_TASK_FAILURE';
+  const matchedRule = diagnosticRules.find(
+    (rule) =>
+      (!rule.service || rule.service === jobServiceName) && rule.pattern.test(diagnostic ?? '')
+  );
+  return matchedRule?.code ?? 'ONESHOT_UNKNOWN_TASK_FAILURE';
 };
 
 export class OneShotJobError extends Error {

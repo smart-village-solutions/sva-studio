@@ -14,11 +14,8 @@ type Props = Readonly<{
   selectedFractions: readonly string[];
   calendarReminderOptions?: PublicWasteCalendarResponse['calendarReminderOptions'];
   reminderSignup?: PublicWasteCalendarResponse['reminderSignup'];
-  pdfYear: number;
   pdfRunning: boolean;
   pdfError: string | null;
-  yearOptions: readonly number[];
-  setPdfYear: (year: number) => void;
   downloadPdf: () => Promise<void>;
 }>;
 type State = ReturnType<typeof usePublicWasteActionState>;
@@ -90,20 +87,6 @@ const CalendarAction = ({
 
 const PdfAction = ({ props }: { props: Props }) => (
   <div className="action-panel-body">
-    <label className="action-field">
-      <span>Jahr</span>
-      <select
-        aria-label="PDF-Jahr"
-        value={props.pdfYear}
-        onChange={(event) => props.setPdfYear(Number.parseInt(event.target.value, 10))}
-      >
-        {props.yearOptions.map((year) => (
-          <option key={year} value={year}>
-            {year}
-          </option>
-        ))}
-      </select>
-    </label>
     {props.pdfError ? (
       <p className="action-warning" role="alert">
         {props.pdfError}

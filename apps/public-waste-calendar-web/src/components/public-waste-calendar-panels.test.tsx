@@ -66,7 +66,7 @@ describe('PublicWasteCalendarPanels', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Monat' }));
 
     expect(screen.getByRole('heading', { name: 'Mai 2026' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 19.05.2026' }));
     expect(onActivateEntry).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'pickup-1',
@@ -145,11 +145,11 @@ describe('PublicWasteCalendarPanels', () => {
       />
     );
 
-    const buttons = screen.getAllByRole('button', { name: /Termin .* am 2026-05-/ });
+    const buttons = screen.getAllByRole('button', { name: /Termin .* am \d{2}\.05\.2026/ });
     expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
-      'Termin Bioabfall am 2026-05-19',
-      'Termin Papier am 2026-05-21',
-      'Termin Restmüll am 2026-05-12',
+      'Termin Bioabfall am 19.05.2026',
+      'Termin Papier am 21.05.2026',
+      'Termin Restmüll am 12.05.2026',
     ]);
     expect(screen.getByRole('heading', { name: 'Vergangene Termine' })).toBeTruthy();
   });

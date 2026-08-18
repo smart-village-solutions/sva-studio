@@ -11,6 +11,13 @@ export const parseDateOnlyUtc = (value: string): Date => new Date(`${value}T00:0
 
 export const formatDateOnlyUtc = (value: Date): string => value.toISOString().slice(0, 10);
 
+export const formatDateOnlyGerman = (value: string): string => {
+  const normalized = normalizeDateOnly(value);
+  return normalized
+    ? `${normalized.slice(8, 10)}.${normalized.slice(5, 7)}.${normalized.slice(0, 4)}`
+    : value;
+};
+
 export const addYearsUtc = (value: string, years: number): string => {
   const date = parseDateOnlyUtc(value);
   date.setUTCFullYear(date.getUTCFullYear() + years);

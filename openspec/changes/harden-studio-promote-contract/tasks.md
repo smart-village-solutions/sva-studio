@@ -9,7 +9,7 @@
 
 ### Kanonisches Checkpoint-Protokoll
 
-- **H1 – Promote-Evidenzfundament:** `completed`; HEAD: `5200d10988b5ae8dfc7e0dad38b727cfade41e8b`; Gates: `tooling-testing:test:unit` mit den fünf expliziten Promote-Vertragstestdateien (31 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, `pnpm check:file-placement`, Prettier- und Diff-Check sowie beide strikten OpenSpec-Validierungen grün; nächster Block: `accelerate-pr-failure-feedback` 5.1 bis 5.4 freigegeben.
+- **H1 – Promote-Evidenzfundament:** `completed`; HEAD: `23c120e10b6779dce4a8bb96ea35ba3777e9aa64`; Gates: `tooling-testing:test:unit` mit den fünf expliziten Promote-Vertragstestdateien (31 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, `pnpm check:file-placement`, Prettier- und Diff-Check sowie beide strikten OpenSpec-Validierungen grün; nächster Block: `accelerate-pr-failure-feedback` 5.1 bis 5.4 freigegeben.
 - **A1 – Main-E2E-Producer:** `ready`; HEAD: keiner; Gates: keine; nächster Block: ausschließlich `accelerate-pr-failure-feedback` 5.1 bis 5.4.
 - **A2 – Staging-Consumer:** `blocked by A1`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
 - **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.

@@ -561,12 +561,12 @@ Fehlerpfad:
 
 ### Szenario 3b: Prod-naher Studio-Deploy mit Drift-Gates
 
-1. GitHub Actions `Promote` bindet Zielumgebung, Git-Änderungsbereich und Image-Digest aneinander.
+1. GitHub Actions `Promote` bindet Zielumgebung, Image-Digest und `change_head` aneinander und ersetzt die deklarierte Git-Basis für Risikoprüfungen durch die OCI-Revision des tatsächlich live konfigurierten App-Images.
 2. Der Workflow liest den Live-Stack und vergleicht Soll-/Ist-Drift für `app`.
 3. Bei Migration oder Bootstrap fordert er für Staging oder Production vor jeder Datenmutation ein umgebungsgebundenes Backup an und verifiziert das Dump-Objekt unabhängig.
 4. Für Production muss derselbe Digest zuvor einen abgeschlossenen mutierenden Staging-Pfad bestanden haben.
 5. Erst danach folgen Migration, Bootstrap, Postconditions und der Live-Rollout.
-6. Runtime-Smoke, aktive Tenant-Logins und Live-Digest bestätigen den Zustand erneut aus Sicht der laufenden App.
+6. Ein eigenes Swarm-Gate bestätigt zuerst terminale Service-Updates und alle gewünschten Replicas; erst danach bestätigen Runtime-Smoke, aktive Tenant-Logins und Live-Digest den Zustand aus Sicht der laufenden App.
 
 Fehlerpfad:
 

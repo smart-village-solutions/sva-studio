@@ -63,7 +63,7 @@ GitHub Actions führt die regulären Prüfungen aus. Für eine unabhängige Inci
 | TLS                       | gültiges Einzelzertifikat für jeden expliziten Host                    |
 | unbekannter Tenant-Host   | kein Tenant-Inhalt und kein tenant-spezifischer Login                  |
 
-Ein Swarm-Service darf nach einem Update bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren. Vor Ablauf dieses Fensters wird kein zusätzlicher mutierender Reparaturversuch gestartet. Bleibt ein Fehler danach bestehen, gilt der Rollout als fehlgeschlagen.
+Ein Swarm-Service muss vor der ersten Erreichbarkeitsprüfung das eigene Konvergenzgate bestehen. `Promote` bewertet dafür die gewünschten und laufenden Replicas, den Update-Zustand und den neuesten Task-Zustand aller aktiven Stack-Services. Ein pausiertes Update oder ein fehlgeschlagener Task beendet das Gate; ein weiter laufendes Update wird nur innerhalb des begrenzten Swarm-Zeitfensters gepollt. Erst danach folgen die maximal 50 HTTP-Erreichbarkeitsprüfungen im Abstand von zehn Sekunden. Vor Abschluss beider getrennten Fenster wird kein zusätzlicher mutierender Reparaturversuch gestartet.
 
 ## Backup-Agent
 

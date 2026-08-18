@@ -152,3 +152,15 @@ Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte ni
 - **THEN** verwendet der kontrollierte Pfad den vorherigen Digest und dessen versionierte nicht-sensitive Config-Revision
 - **AND** setzt er Rückwärtskompatibilität des geschützten Override-Bundles voraus
 - **AND** verlangt für eine inkompatible Secret-Rotation einen separat geprüften Rollback- oder Recovery-Plan
+
+#### Scenario: Eine Zwischen-Promotion ist fehlgeschlagen
+
+- **WHEN** ein neuer Main-Push folgt, obwohl der vorherige Zielstand nicht erfolgreich live gegangen ist
+- **THEN** leitet der Workflow die effektive Diff-Basis aus der OCI-Revision des tatsächlich live konfigurierten App-Images ab
+- **AND** darf der reine Git-Push-Vorgänger keine Migrations- oder Bootstrap-Risiken aus dem Prüfbereich entfernen
+
+#### Scenario: Ein One-shot schlägt vor dem Cleanup fehl
+
+- **WHEN** Candidate, Migration oder Bootstrap einen terminalen Taskfehler oder Timeout meldet
+- **THEN** persistiert der Workflow vor beziehungsweise trotz Stack-Bereinigung Jobart, allowlistete Failure-Klasse, Task-ID, Zustand und Exit-Code
+- **AND** persistiert er weder Task-Message noch Remote-Logs, SQL-Text, URL, PII oder Secret-Werte

@@ -28,6 +28,7 @@ describe('Promote workflow contract', () => {
       'run bootstrap one-shot job',
       'run one-shot postconditions',
       '- name: deploy',
+      'wait for terminal Swarm convergence',
       'verify deployed runtime',
       'verify deployed runtime image digest',
     ];
@@ -194,9 +195,23 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toContain('migration_should_run');
     expect(workflow).toContain('bootstrap_should_run');
+    expect(workflow).toContain('CHANGE_BASE: ${{ steps.deployment_base.outputs.base_sha }}');
+    expect(workflow.indexOf('capture previous live app digest')).toBeLessThan(
+      workflow.indexOf('evaluate migration and bootstrap gates')
+    );
+    expect(workflow).toContain('scripts/ci/promote-deployment-base.ts');
   });
 
   it('verifies runtime health and the live digest after every environment deploy', () => {
+    const convergence = workflow.indexOf('wait for terminal Swarm convergence');
+    expect(convergence).toBeGreaterThan(workflow.indexOf('- name: deploy'));
+    expect(convergence).toBeLessThan(workflow.indexOf('verify deployed runtime'));
+    expect(workflow).toContain(
+      'run: pnpm exec tsx scripts/ci/verify-swarm-convergence.ts "${{ inputs.environment }}"'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_GATE_SWARM_CONVERGENCE: ${{ steps.swarm_convergence.outcome }}'
+    );
     expect(workflow).toMatch(/- name: verify deployed runtime\n\s+id: runtime_smoke\n\s+env:/u);
     expect(workflow).toMatch(
       /- name: verify deployed runtime image digest\n\s+id: digest_verification\n\s+env:/u
@@ -261,9 +276,13 @@ describe('Promote workflow contract', () => {
       workflow.indexOf('checkout workflow controller revision')
     );
     expect(workflow).toContain('PROMOTE_JOB_STATUS: ${{ job.status }}');
-    expect(workflow).toContain('PROMOTE_BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}');
+    expect(workflow).toContain(
+      'PROMOTE_BASE_SHA: ${{ steps.deployment_base.outputs.base_sha || steps.source_contract.outputs.base_sha }}'
+    );
     expect(workflow).toContain('PROMOTE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}');
-    expect(workflow).toContain('PROMOTE_BASE_REF: ${{ inputs.change_base }}');
+    expect(workflow).toContain(
+      'PROMOTE_BASE_REF: ${{ steps.deployment_base.outputs.base_sha || inputs.change_base }}'
+    );
     expect(workflow).toContain('PROMOTE_HEAD_REF: ${{ inputs.change_head }}');
     expect(workflow).toContain(
       'PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}'

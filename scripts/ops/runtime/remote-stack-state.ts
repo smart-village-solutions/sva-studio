@@ -19,6 +19,9 @@ type PortainerService = {
       };
     };
   };
+  UpdateStatus?: {
+    State?: string;
+  };
 };
 
 type PortainerTask = {
@@ -57,6 +60,7 @@ export type RemoteStackServiceSnapshot = {
   runningReplicas: number;
   shortName: string;
   tasks: readonly RemoteStackTaskSnapshot[];
+  updateState?: string;
 };
 
 export type RemoteStackSnapshot = {
@@ -70,7 +74,7 @@ const toShortServiceName = (stackName: string, serviceName: string) =>
 
 const isRunningTask = (task: RemoteStackTaskSnapshot) =>
   (task.state?.trim().toLowerCase() ?? '') === 'running' &&
-  ((task.desiredState?.trim().toLowerCase() ?? 'running') === 'running');
+  (task.desiredState?.trim().toLowerCase() ?? 'running') === 'running';
 
 const resolveDesiredReplicas = (service: PortainerService, runningReplicas: number) => {
   const desiredTasks = service.ServiceStatus?.DesiredTasks;
@@ -105,7 +109,7 @@ export const inspectRemoteStack = async (
   input: {
     quantumEndpoint: string;
     stackName: string;
-  },
+  }
 ): Promise<RemoteStackSnapshot> => {
   const [services, tasks] = await Promise.all([
     fetchPortainerDockerJson<PortainerService[]>(deps, env, {
@@ -119,7 +123,7 @@ export const inspectRemoteStack = async (
   ]);
 
   const stackServices = services.filter(
-    (service) => service.Spec?.Labels?.['com.docker.stack.namespace'] === input.stackName,
+    (service) => service.Spec?.Labels?.['com.docker.stack.namespace'] === input.stackName
   );
 
   return {
@@ -150,6 +154,7 @@ export const inspectRemoteStack = async (
           runningReplicas,
           shortName: toShortServiceName(input.stackName, serviceName),
           tasks: serviceTasks,
+          updateState: service.UpdateStatus?.State,
         };
       })
       .sort((left, right) => left.name.localeCompare(right.name)),
@@ -161,7 +166,7 @@ export const formatRemoteStackSnapshot = (snapshot: RemoteStackSnapshot) => {
 
   for (const service of snapshot.services) {
     lines.push(
-      `  ■ service ${service.shortName} ──────────────────────────────────────────────── replicated ${service.runningReplicas}/${service.desiredReplicas}`,
+      `  ■ service ${service.shortName} ──────────────────────────────────────────────── replicated ${service.runningReplicas}/${service.desiredReplicas}`
     );
     lines.push('    STATUS   ID       SLOT UPDATED              IMAGE');
     if (service.tasks.length === 0) {

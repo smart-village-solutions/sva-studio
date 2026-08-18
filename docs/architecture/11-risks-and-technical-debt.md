@@ -215,7 +215,7 @@ Schulden auf IST-Basis.
 
 - Impact: hoch
 - Wahrscheinlichkeit: mittel
-- Maßnahme: `Promote` stoppt vor dem App-Deploy bei fehlgeschlagenem Backup, Migration, Bootstrap-Phase, Postcondition oder Verifikation und hält redigierte Evidenz sowie den vorherigen App-Digest fest. Datenbankmigrationen werden bewusst nicht automatisch zurückgerollt; nicht rückwärtskompatible Änderungen erfordern einen separaten Restore-Plan.
+- Maßnahme: `Promote` stoppt vor dem App-Deploy bei fehlgeschlagenem Backup, Migration, Bootstrap-Phase, Postcondition oder Verifikation und hält auch bei bereinigten fehlgeschlagenen One-shots redigierte Task-/Exit-Code-Evidenz sowie den vorherigen App-Digest fest. Die effektive Diff-Basis stammt aus der OCI-Revision des tatsächlich live konfigurierten Images. Datenbankmigrationen werden bewusst nicht automatisch zurückgerollt; nicht rückwärtskompatible Änderungen erfordern einen separaten Restore-Plan.
 
 35. Offener Live-Triage-Befund für IAM-Diagnostik
 

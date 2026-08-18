@@ -2,17 +2,33 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
-import { filterRemoteOutputLines, spawnBackground, summarizeProcessOutput, wait, withoutDebugEnv } from './process.ts';
+import {
+  filterRemoteOutputLines,
+  spawnBackground,
+  summarizeProcessOutput,
+  wait,
+  withoutDebugEnv,
+} from './process.ts';
 import { fetchPortainerDockerText } from './remote-portainer.ts';
+import {
+  buildSuccessfulOneShotResult,
+  createOneShotJobError,
+  withOneShotCleanupFailure,
+} from './one-shot-job-lifecycle.ts';
 
 export { fetchPortainerDockerText } from './remote-portainer.ts';
 
-type RunCapture = (rootDir: string, commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => string;
+type RunCapture = (
+  rootDir: string,
+  commandName: string,
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv
+) => string;
 type RunCaptureDetailed = (
   rootDir: string,
   commandName: string,
   args: readonly string[],
-  env?: NodeJS.ProcessEnv,
+  env?: NodeJS.ProcessEnv
 ) => {
   error?: Error;
   output: readonly (string | Buffer | null)[];
@@ -22,7 +38,12 @@ type RunCaptureDetailed = (
   stderr: string;
   stdout: string;
 };
-type Run = (rootDir: string, commandName: string, args: readonly string[], env?: NodeJS.ProcessEnv) => void;
+type Run = (
+  rootDir: string,
+  commandName: string,
+  args: readonly string[],
+  env?: NodeJS.ProcessEnv
+) => void;
 type CommandExists = (rootDir: string, commandName: string) => boolean;
 
 type MigrationJobDeps = {
@@ -100,7 +121,8 @@ const coerceTaskSnapshot = (value: unknown): MigrationJobTaskSnapshot | null => 
   const containerStatus = (status.ContainerStatus ?? {}) as Record<string, unknown>;
 
   const snapshot = {
-    containerId: typeof containerStatus.ContainerID === 'string' ? containerStatus.ContainerID : undefined,
+    containerId:
+      typeof containerStatus.ContainerID === 'string' ? containerStatus.ContainerID : undefined,
     createdAt: typeof candidate.CreatedAt === 'string' ? candidate.CreatedAt : undefined,
     desiredState: typeof candidate.DesiredState === 'string' ? candidate.DesiredState : undefined,
     exitCode:
@@ -155,9 +177,11 @@ export const selectLatestMigrationTask = (value: unknown): MigrationJobTaskSnaps
         typeof candidate.updatedAt === 'string'
       ) {
         return {
-          containerId: typeof candidate.containerId === 'string' ? candidate.containerId : undefined,
+          containerId:
+            typeof candidate.containerId === 'string' ? candidate.containerId : undefined,
           createdAt: typeof candidate.createdAt === 'string' ? candidate.createdAt : undefined,
-          desiredState: typeof candidate.desiredState === 'string' ? candidate.desiredState : undefined,
+          desiredState:
+            typeof candidate.desiredState === 'string' ? candidate.desiredState : undefined,
           exitCode: typeof candidate.exitCode === 'number' ? candidate.exitCode : undefined,
           message: typeof candidate.message === 'string' ? candidate.message : undefined,
           nodeId: typeof candidate.nodeId === 'string' ? candidate.nodeId : undefined,
@@ -175,15 +199,17 @@ export const selectLatestMigrationTask = (value: unknown): MigrationJobTaskSnaps
     return null;
   }
 
-  return snapshots.sort((left, right) => {
-    const leftTs = Date.parse(left.updatedAt ?? left.createdAt ?? '') || 0;
-    const rightTs = Date.parse(right.updatedAt ?? right.createdAt ?? '') || 0;
-    return rightTs - leftTs;
-  })[0] ?? null;
+  return (
+    snapshots.sort((left, right) => {
+      const leftTs = Date.parse(left.updatedAt ?? left.createdAt ?? '') || 0;
+      const rightTs = Date.parse(right.updatedAt ?? right.createdAt ?? '') || 0;
+      return rightTs - leftTs;
+    })[0] ?? null
+  );
 };
 
 export const getMigrationJobTerminalState = (
-  task: MigrationJobTaskSnapshot | null,
+  task: MigrationJobTaskSnapshot | null
 ): MigrationTaskTerminalState | null => {
   if (!task) {
     return null;
@@ -200,7 +226,21 @@ export const getMigrationJobTerminalState = (
     return 'failed';
   }
 
-  if (typeof exitCode === 'number' && exitCode !== 0 && ['new', 'allocated', 'pending', 'assigned', 'accepted', 'preparing', 'ready', 'starting', 'running'].includes(state)) {
+  if (
+    typeof exitCode === 'number' &&
+    exitCode !== 0 &&
+    [
+      'new',
+      'allocated',
+      'pending',
+      'assigned',
+      'accepted',
+      'preparing',
+      'ready',
+      'starting',
+      'running',
+    ].includes(state)
+  ) {
     return 'failed';
   }
 
@@ -208,9 +248,7 @@ export const getMigrationJobTerminalState = (
 };
 
 const normalizeRenderedComposeForQuantum = (value: string) =>
-  value
-    .replace(/^name:\s.*\n/imu, '')
-    .replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
+  value.replace(/^name:\s.*\n/imu, '').replace(/^(\s*cpus:\s*)([0-9.]+)$/gmu, '$1"$2"');
 
 export const extractQuantumJsonPayload = (lines: readonly string[]) => {
   const startIndex = lines.findIndex((entry) => entry.startsWith('[') || entry.startsWith('{'));
@@ -224,7 +262,9 @@ export const extractQuantumJsonPayload = (lines: readonly string[]) => {
 
 export const collectQuantumTaskSnapshots = (value: unknown): MigrationJobTaskSnapshot[] => {
   if (Array.isArray(value)) {
-    return value.map(coerceTaskSnapshot).filter((entry): entry is MigrationJobTaskSnapshot => entry !== null);
+    return value
+      .map(coerceTaskSnapshot)
+      .filter((entry): entry is MigrationJobTaskSnapshot => entry !== null);
   }
 
   if (!value || typeof value !== 'object') {
@@ -233,7 +273,9 @@ export const collectQuantumTaskSnapshots = (value: unknown): MigrationJobTaskSna
 
   const candidate = value as Record<string, unknown>;
   if (Array.isArray(candidate.tasks)) {
-    return candidate.tasks.map(coerceTaskSnapshot).filter((entry): entry is MigrationJobTaskSnapshot => entry !== null);
+    return candidate.tasks
+      .map(coerceTaskSnapshot)
+      .filter((entry): entry is MigrationJobTaskSnapshot => entry !== null);
   }
 
   const stacks = candidate.stacks;
@@ -280,7 +322,11 @@ const normalizeQuantumComposeValue = (value: JsonValue, parentKey?: string): Jso
   return Object.fromEntries(normalizedEntries) as JsonValue;
 };
 
-const toTemporaryJobStackName = (sourceStackName: string, serviceName: string, reportId: string) => {
+const toTemporaryJobStackName = (
+  sourceStackName: string,
+  serviceName: string,
+  reportId: string
+) => {
   const sanitizedReportId = reportId
     .toLowerCase()
     .replace(/[^a-z0-9]+/gu, '-')
@@ -297,7 +343,7 @@ export const buildMigrationJobComposeDocument = (
     sourceStackName: string;
     targetReplicas: number;
     jobServiceName?: 'candidate' | 'migrate';
-  },
+  }
 ): ComposeDocument => {
   const { name: _stackName, ...composeWithoutName } = renderedCompose;
   const jobServiceName = input.jobServiceName ?? 'migrate';
@@ -313,19 +359,23 @@ export const buildMigrationJobComposeDocument = (
         ...(jobService as Record<string, JsonValue>),
         networks: ['internal'],
         deploy: {
-          ...(((jobService as Record<string, JsonValue>).deploy as Record<string, JsonValue> | undefined) ?? {}),
+          ...(((jobService as Record<string, JsonValue>).deploy as
+            Record<string, JsonValue> | undefined) ?? {}),
           replicas: input.targetReplicas,
           restart_policy: {
             condition: 'none',
           },
         },
         environment: {
-          ...((((jobService as Record<string, JsonValue>).environment as Record<string, JsonValue> | undefined) ?? {})),
+          ...(((jobService as Record<string, JsonValue>).environment as
+            Record<string, JsonValue> | undefined) ?? {}),
           POSTGRES_HOST: `${input.sourceStackName}_postgres`,
-          ...(jobServiceName === 'migrate' ? {
-            SVA_MIGRATION_JOB_STACK: input.jobStackName,
-            SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
-          } : {}),
+          ...(jobServiceName === 'migrate'
+            ? {
+                SVA_MIGRATION_JOB_STACK: input.jobStackName,
+                SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
+              }
+            : {}),
         },
       },
     },
@@ -342,24 +392,34 @@ export const buildMigrationJobComposeDocument = (
 const createQuantumProject = (
   deps: Pick<MigrationJobDeps, 'rootDir' | 'runCapture' | 'runCaptureDetailed'>,
   env: NodeJS.ProcessEnv,
-  input: RunMigrationJobInput,
+  input: RunMigrationJobInput
 ) => {
   const jobServiceName = input.jobServiceName ?? 'migrate';
-  const jobStackName = toTemporaryJobStackName(input.sourceStackName, jobServiceName, input.reportId);
+  const jobStackName = toTemporaryJobStackName(
+    input.sourceStackName,
+    jobServiceName,
+    input.reportId
+  );
   const remoteComposeFiles = input.remoteComposeFiles ?? [input.remoteComposeFile];
   const renderedComposeDocument = JSON.parse(
     deps.runCapture(
       deps.rootDir,
       'docker',
-      ['compose', ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]), 'config', '--format', 'json'],
+      [
+        'compose',
+        ...remoteComposeFiles.flatMap((filePath) => ['-f', resolve(deps.rootDir, filePath)]),
+        'config',
+        '--format',
+        'json',
+      ],
       {
         ...env,
         ...(jobServiceName === 'migrate' ? { SVA_MIGRATE_REPLICAS: '1' } : {}),
         SVA_MIGRATION_JOB_STACK: jobStackName,
         SVA_MIGRATION_TARGET_STACK: input.sourceStackName,
         SVA_STACK_NAME: input.sourceStackName,
-      },
-    ),
+      }
+    )
   ) as ComposeDocument;
   const jobCompose = buildMigrationJobComposeDocument(renderedComposeDocument, {
     internalNetworkName: input.internalNetworkName,
@@ -369,7 +429,9 @@ const createQuantumProject = (
     jobServiceName,
   });
   const renderedComposeJson = JSON.stringify(jobCompose, null, 2);
-  const projectDir = mkdtempSync(resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-${jobServiceName}-`));
+  const projectDir = mkdtempSync(
+    resolve(tmpdir(), `sva-studio-${input.runtimeProfile}-${jobServiceName}-`)
+  );
   const renderedComposePath = resolve(projectDir, 'docker-compose.rendered.json');
 
   writeFileSync(renderedComposePath, `${renderedComposeJson}\n`, 'utf8');
@@ -384,16 +446,11 @@ const createQuantumProject = (
   };
 };
 
-export const buildQuantumDeployArgs = (endpoint: string, stackName: string, composePath: string) => [
-  'stacks',
-  'deploy',
-  '-f',
-  composePath,
-  '--stack',
-  stackName,
-  '--endpoint',
-  endpoint,
-];
+export const buildQuantumDeployArgs = (
+  endpoint: string,
+  stackName: string,
+  composePath: string
+) => ['stacks', 'deploy', '-f', composePath, '--stack', stackName, '--endpoint', endpoint];
 
 const buildQuantumRemoveArgs = (endpoint: string, stackName: string) => [
   'stacks',
@@ -405,18 +462,29 @@ const buildQuantumRemoveArgs = (endpoint: string, stackName: string) => [
   stackName,
 ];
 
-const readQuantumTaskSnapshot = (
+export const readQuantumTaskSnapshot = (
   deps: Pick<MigrationJobDeps, 'rootDir' | 'runCaptureDetailed'>,
   env: NodeJS.ProcessEnv,
   endpoint: string,
   stackName: string,
-  serviceName: string,
+  serviceName: string
 ) => {
   const result = deps.runCaptureDetailed(
     deps.rootDir,
     'quantum-cli',
-    ['ps', '--endpoint', endpoint, '--stack', stackName, '--service', serviceName, '--all', '-o', 'json'],
-    withoutDebugEnv(env),
+    [
+      'ps',
+      '--endpoint',
+      endpoint,
+      '--stack',
+      stackName,
+      '--service',
+      serviceName,
+      '--all',
+      '-o',
+      'json',
+    ],
+    withoutDebugEnv(env)
   );
 
   const combined = filterRemoteOutputLines(`${result.stdout ?? ''}\n${result.stderr ?? ''}`);
@@ -439,17 +507,18 @@ const removeQuantumStack = (
   deps: Pick<MigrationJobDeps, 'rootDir' | 'run'>,
   env: NodeJS.ProcessEnv,
   endpoint: string,
-  stackName: string,
+  stackName: string
 ) => {
   deps.run(
     deps.rootDir,
     'quantum-cli',
     buildQuantumRemoveArgs(endpoint, stackName),
-    withoutDebugEnv(env),
+    withoutDebugEnv(env)
   );
 };
 
-const isTruthyEnvValue = (value: string | undefined) => ['1', 'true', 'yes', 'on'].includes(value?.trim().toLowerCase() ?? '');
+const isTruthyEnvValue = (value: string | undefined) =>
+  ['1', 'true', 'yes', 'on'].includes(value?.trim().toLowerCase() ?? '');
 
 export const readRemoteJobLogTail = async (
   deps: Pick<MigrationJobDeps, 'commandExists' | 'rootDir' | 'runCapture'>,
@@ -458,7 +527,7 @@ export const readRemoteJobLogTail = async (
     containerId: string | undefined;
     quantumEndpoint: string;
     serviceId: string | undefined;
-  },
+  }
 ) => {
   const portainerDeps = {
     commandExists: (commandName: string) => deps.commandExists(deps.rootDir, commandName),
@@ -497,20 +566,30 @@ export const readRemoteJobLogTail = async (
     }
   }
 
-  return errors.length > 0 ? `Remote-Logs konnten nicht ueber Portainer gelesen werden: ${errors.join('; ')}` : '';
+  return errors.length > 0
+    ? `Remote-Logs konnten nicht ueber Portainer gelesen werden: ${errors.join('; ')}`
+    : '';
 };
 
 export const runMigrationJobAgainstAcceptance = async (
   deps: MigrationJobDeps,
   env: NodeJS.ProcessEnv,
-  input: RunMigrationJobInput,
+  input: RunMigrationJobInput
 ): Promise<MigrationJobResult> => {
   const quantumProject = createQuantumProject(deps, env, input);
   const startedAt = new Date().toISOString();
   const jobServiceName = input.jobServiceName ?? 'migrate';
   const jobLabel = jobServiceName === 'candidate' ? 'Candidate-Preflight' : 'Migrationsjob';
-  const timeoutMs = Number(jobServiceName === 'candidate' ? env.SVA_CANDIDATE_JOB_TIMEOUT_MS ?? '180000' : env.SVA_MIGRATION_JOB_TIMEOUT_MS ?? '300000');
-  const pollIntervalMs = Number(jobServiceName === 'candidate' ? env.SVA_CANDIDATE_JOB_POLL_INTERVAL_MS ?? '2000' : env.SVA_MIGRATION_JOB_POLL_INTERVAL_MS ?? '2000');
+  const timeoutMs = Number(
+    jobServiceName === 'candidate'
+      ? (env.SVA_CANDIDATE_JOB_TIMEOUT_MS ?? '180000')
+      : (env.SVA_MIGRATION_JOB_TIMEOUT_MS ?? '300000')
+  );
+  const pollIntervalMs = Number(
+    jobServiceName === 'candidate'
+      ? (env.SVA_CANDIDATE_JOB_POLL_INTERVAL_MS ?? '2000')
+      : (env.SVA_MIGRATION_JOB_POLL_INTERVAL_MS ?? '2000')
+  );
   const startTime = Date.now();
 
   if (!deps.commandExists(deps.rootDir, 'quantum-cli')) {
@@ -522,8 +601,12 @@ export const runMigrationJobAgainstAcceptance = async (
     deps.run(
       deps.rootDir,
       'quantum-cli',
-      buildQuantumDeployArgs(input.quantumEndpoint, quantumProject.jobStackName, quantumProject.renderedComposePath),
-      withoutDebugEnv(env),
+      buildQuantumDeployArgs(
+        input.quantumEndpoint,
+        quantumProject.jobStackName,
+        quantumProject.renderedComposePath
+      ),
+      withoutDebugEnv(env)
     );
 
     for (;;) {
@@ -532,12 +615,12 @@ export const runMigrationJobAgainstAcceptance = async (
         env,
         input.quantumEndpoint,
         quantumProject.jobStackName,
-        jobServiceName,
+        jobServiceName
       );
       const terminalState = getMigrationJobTerminalState(task);
 
       if (terminalState === 'succeeded') {
-        return {
+        return buildSuccessfulOneShotResult({
           cleanup: async () => {
             try {
               removeQuantumStack(deps, env, input.quantumEndpoint, quantumProject.jobStackName);
@@ -545,17 +628,13 @@ export const runMigrationJobAgainstAcceptance = async (
               quantumProject.cleanup();
             }
           },
-          completedAt: new Date().toISOString(),
           durationMs: Date.now() - startTime,
-          exitCode: task?.exitCode,
           jobServiceName,
           jobStackName: quantumProject.jobStackName,
           logTail,
           startedAt,
-          state: task?.state ?? 'complete',
-          taskId: task?.taskId,
-          taskMessage: task?.message,
-        };
+          task,
+        });
       }
 
       if (terminalState === 'failed') {
@@ -564,31 +643,23 @@ export const runMigrationJobAgainstAcceptance = async (
           quantumEndpoint: input.quantumEndpoint,
           serviceId: task?.serviceId,
         });
-        throw new Error(
-          [
-            `Swarm-${jobLabel} ${quantumProject.jobStackName}/${jobServiceName} ist fehlgeschlagen.`,
-            task?.state ? `state=${task.state}` : null,
-            typeof task?.exitCode === 'number' ? `exitCode=${String(task.exitCode)}` : null,
-            task?.message ? `message=${task.message}` : null,
-            containerLogTail ? `containerLogs:\n${containerLogTail}` : null,
-            logTail ? `taskSnapshot:\n${logTail}` : null,
-          ]
-            .filter((entry): entry is string => Boolean(entry))
-            .join('\n'),
-        );
+        throw createOneShotJobError({
+          diagnostic: containerLogTail || logTail || `${jobLabel} failed`,
+          failureKind: 'task-failed',
+          jobServiceName,
+          jobStackName: quantumProject.jobStackName,
+          task,
+        });
       }
 
       if (Date.now() - startTime > timeoutMs) {
-        throw new Error(
-          [
-            `Swarm-${jobLabel} ${quantumProject.jobStackName}/${jobServiceName} hat das Timeout von ${timeoutMs} ms erreicht.`,
-            task?.state ? `state=${task.state}` : null,
-            task?.message ? `message=${task.message}` : null,
-            logTail ? `details:\n${logTail}` : null,
-          ]
-            .filter((entry): entry is string => Boolean(entry))
-            .join('\n'),
-        );
+        throw createOneShotJobError({
+          diagnostic: logTail || `${jobLabel} timeout`,
+          failureKind: 'timeout',
+          jobServiceName,
+          jobStackName: quantumProject.jobStackName,
+          task,
+        });
       }
 
       await deps.wait(pollIntervalMs);
@@ -604,10 +675,7 @@ export const runMigrationJobAgainstAcceptance = async (
     }
     quantumProject.cleanup();
     if (cleanupError) {
-      throw new Error(
-        `Swarm-${jobLabel} ist fehlgeschlagen und der temporäre Stack konnte nicht bereinigt werden: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
-        { cause: error },
-      );
+      throw withOneShotCleanupFailure(error);
     }
     throw error;
   }

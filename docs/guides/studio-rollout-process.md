@@ -21,11 +21,11 @@ Dieses Dokument ist die einzige normative Bedienanleitung für reguläre Studio-
 
 ## Umgebungsvertrag
 
-| Umgebung | Stack | Root-URL | Auslösung | Modi | Backup |
-| --- | --- | --- | --- | --- | --- |
-| Dev | `studio-dev` | `https://studio-dev.smart-village.app` | automatisch nach erfolgreichem Build auf `main` | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup |
-| Staging | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
-| Production | `studio` | `https://studio.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `prod` | `assert-none` oder `run` | vor jedem Deployment verpflichtend |
+| Umgebung   | Stack            | Root-URL                                   | Auslösung                                                         | Modi                                         | Backup                             |
+| ---------- | ---------------- | ------------------------------------------ | ----------------------------------------------------------------- | -------------------------------------------- | ---------------------------------- |
+| Dev        | `studio-dev`     | `https://studio-dev.smart-village.app`     | automatisch nach erfolgreichem Build auf `main`                   | `migration_mode=auto`, `bootstrap_mode=auto` | kein Promote-Backup                |
+| Staging    | `studio-staging` | `https://studio-staging.smart-village.app` | manuell über `Promote`, geschützt durch das Environment `staging` | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
+| Production | `studio`         | `https://studio.smart-village.app`         | manuell über `Promote`, geschützt durch das Environment `prod`    | `assert-none` oder `run`                     | vor jedem Deployment verpflichtend |
 
 ## Explizite Tenant-Hostfreigabe
 
@@ -54,7 +54,7 @@ Ein Push nach `main` startet [Build](../../.github/workflows/build.yml):
 2. Genau ein App-Image für `linux/amd64` bauen und nach GHCR pushen.
 3. Imagevertrag und OCI-Revision binden.
 4. `Promote` für `dev` mit dem vom Build ausgegebenen SHA-256-Digest und beiden Modi `auto` aufrufen.
-5. Migration und Bootstrap anhand des konkreten Commit-Diffs unabhängig bewerten.
+5. Die OCI-Revision des tatsächlich live konfigurierten App-Images als effektive Deploy-Basis auflösen und Migration sowie Bootstrap anhand dieses vollständigen Diffs unabhängig bewerten. `github.event.before` bleibt nur die deklarierte Aufrufgrenze und darf eine ausgefallene Zwischen-Promotion nicht aus dem Risikobereich entfernen.
 6. Erforderliche One-shot-Jobs vor dem App-Deploy ausführen.
 7. Nur nach erfolgreichen Gates den Stack `studio-dev` aktualisieren.
 
@@ -74,15 +74,16 @@ Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:
 Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren Postconditions werden übersprungen:
 
 1. Inputs, Git-Bindung, Image-Digest und OCI-Revision validieren.
-2. Vorherigen Live-Digest erfassen.
+2. Vorherigen Live-Digest und dessen OCI-Revision erfassen; nur diese Revision ist die effektive Basis der Diff-Gates.
 3. Signierten Backup-Auftrag an den Staging-Agenten senden; bei aktiviertem Waste-Backup anschließend einen zweiten Auftrag mit `database: "waste"` ausführen. Der Agent entdeckt das vollständige Tenant-Inventar selbst und schreibt ein Manifest mit tenantgenauen Dump-Referenzen.
 4. Terminales Ergebnis aus MinIO abwarten und das Dump-Objekt unabhängig per S3-`HEAD` verifizieren.
 5. Migration ausführen, falls angefordert.
 6. Bootstrap ausführen, falls angefordert.
 7. Postconditions gegen Datenbank und aktuellen Runtime-Vertrag prüfen.
 8. App-Stack `studio-staging` aktualisieren.
-9. Runtime-Smoke für Root-Host, alle expliziten Tenant-Hosts, deren konkrete TLS-Zertifikate und einen unbekannten Host sowie den Live-Digest verifizieren.
-10. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
+9. Swarm-Service-Updates und alle Services mit gewünschten Replicas terminal auswerten. Pausierte Updates oder fehlgeschlagene Tasks blockieren vor HTTP.
+10. Erst nach erfolgreicher Swarm-Konvergenz den Runtime-Smoke für Root-Host, alle expliziten Tenant-Hosts, deren konkrete TLS-Zertifikate und einen unbekannten Host sowie den Live-Digest verifizieren.
+11. Redigierte Staging-Paritätsevidenz für genau diesen Digest schreiben.
 
 Migration und Bootstrap führen im jeweiligen One-shot denselben IAM-Datenbank-Verifier aus, den auch Container-Boot und `health/ready` verwenden. Der Verifier vergleicht den höchsten angewendeten Goose-Ledgerstand mit dem im Zielimage enthaltenen Migrations-Head und prüft anschließend die kritischen Tabellen, Spalten, Indizes und RLS-Verträge. `migration_drift` und `schema_drift` bleiben getrennte, maschinenlesbare Fehlerursachen; beide blockieren den nächsten Rolloutschritt. Ein neuerer Datenbankstand als der Image-Head wird akzeptiert, damit ein App-Rollback nach einer vorwärtskompatiblen Migration möglich bleibt.
 
@@ -121,13 +122,15 @@ Der isolierte Candidate-One-shot läuft mit dem Zielimage vor Backup, Migration,
 
 Vor dem ersten Agent-Auftrag fragt der Workflow den geschützten read-only Capability-Endpunkt ab. Protokollversion 2, Agent-Revision, benötigte Ergebnisfelder sowie Studio- und gegebenenfalls Waste-Unterstützung müssen live vorhanden sein. Bis zum nachgewiesenen Producer-Rollout bleibt der Schritt beobachtend; erst `BACKUP_CAPABILITY_GATE=enforce` im geschützten Environment aktiviert ihn blockierend.
 
-Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Die bisherige Warmup-Grenze von bis zu fünf Minuten reicht dafür nicht immer aus. Der Runtime-Smoke prüft die Erreichbarkeit deshalb standardmäßig bis zu 50-mal im Abstand von zehn Sekunden. Deshalb gilt:
+Docker-Swarm-Dienste dürfen nach einem Update längere Zeit benötigen, bis alle Probes stabil sind. Swarm-Konvergenz und HTTP-Warmup sind deshalb getrennte Gates: Zuerst pollt `Promote` ausschließlich allowlistete Service-, Replica-, Update- und Task-Zustände. Erst wenn alle gewünschten Replicas laufen und kein Update mehr aktiv oder pausiert ist, beginnt der Runtime-Smoke mit standardmäßig bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden. Deshalb gilt:
 
 1. Ein unmittelbar nach dem Deploy fehlschlagender Smoke wird nicht durch weitere Mutationen „repariert“.
-2. Zuerst Service-Update und Tasks prüfen und bis zum Abschluss der maximal 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden konvergieren lassen.
+2. Zuerst Service-Update und Tasks innerhalb des eigenen Swarm-Zeitfensters prüfen; `PROMOTE_SWARM_CONVERGENCE_TIMEOUT` beziehungsweise `PROMOTE_INTERNAL_ERROR` verhindert jeden externen Smoke.
 3. In Production danach `health/live`, `health/ready`, den Release-Blocking-Tenant-Login-Redirect (`de-studio-sandbox`) und den Live-Digest erneut prüfen. Weitere Tenant-Redirects bleiben operativ überwacht, blockieren aber nicht. Staging verwendet den allgemeinen Runtime-Smoke ohne verpflichtenden Tenant-Scope.
 4. Bleibt ein Fehler bestehen, ist der Rollout rot und wird diagnostiziert oder auf den vorherigen Digest zurückgeführt.
 5. Ein Workflow-Retry ist erst nach dokumentierter Ursache beziehungsweise bestätigtem reinen Konvergenzfehler zulässig.
+
+Fehlgeschlagene Migration-, Bootstrap- und Candidate-One-shots werden weiterhin terminal bereinigt. Vor dem Cleanup wird jedoch eine redigierte Evidenz mit Jobart, Failure-Klasse, Stack-/Task-ID, Terminalzustand und Exit-Code geschrieben. Freie Task-Messages, Container-Logs, SQL-Text, URLs, PII und Secret-Werte bleiben ausgeschlossen. Bei einer fehlgeschlagenen Migration muss vor jedem Retry zunächst der bereits erreichte Datenbank- und Ledgerstand festgestellt werden.
 
 Ein regulärer Production-Rollout ist nur erfolgreich, wenn der GitHub-Workflow grün ist, der erwartete Digest live läuft, `live` und `ready` HTTP 200 liefern und der Release-Blocking-Tenant-Smoke für `de-studio-sandbox` bestanden ist. Weitere Tenant-Smokes sind operative Signale und keine Release-Blocker.
 

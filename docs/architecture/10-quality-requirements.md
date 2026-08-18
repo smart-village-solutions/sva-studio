@@ -62,13 +62,13 @@ Dieser Abschnitt beschreibt messbare Qualitätsziele auf aktuellem Stand.
   - Vitest-Characterization sichert ohne echte Zugangsdaten den CLI-Exitcode, den redigierten Konfigurationsfehlerbericht und die feste Reihenfolge der Pflichtprüfungen; fachliche Phasen bleiben einzeln typisiert und der Einstieg bleibt eine explizite Orchestrierung
 - Produktionsnahe Release-Validierung:
   - Der einzige Main-Workflow `Build` muss `verify:runtime-artifact` ausführen, genau ein App-Image für `linux/amd64` veröffentlichen und dessen Digest an Dev übergeben.
-  - `Promote` muss Git-Änderungsbereich, Executor-Revision, Image-Digest, OCI-Revision und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
+  - `Promote` muss den Git-Änderungsbereich von der OCI-Revision des tatsächlich live konfigurierten Images bis `change_head`, Executor-Revision, Image-Digest und die unabhängigen Migration-/Bootstrap-Gates vor jeder Mutation prüfen.
   - Staging und Production dürfen nur `assert-none` oder `run` verwenden; `auto` bleibt auf den automatischen Dev-Promote begrenzt.
   - Vor jeder Staging-/Production-Migration oder jedem Bootstrap muss das umgebungsgebundene PostgreSQL-Backup erfolgreich und das MinIO-Objekt unabhängig verifiziert sein.
   - Bei aktiviertem Waste-Backup muss das Registry-Inventar vollständig verarbeitet sein; jeder `ready`- oder `disabled`-Tenant erhält ein verifiziertes Dump-Artefakt und tenantgenaue Evidenz.
   - Ein Waste-Restore muss vor jeder Mutation Instanz-ID, Registry-Datenbank und abgeleitete Drill-Datenbank nachweisen; ein fremdes Objektpräfix wird fail-closed abgelehnt.
   - Mutierende Production-Läufe müssen Environment-Freigabe und erfolgreiche mutierende Staging-Parität exakt desselben Digests nachweisen; ein Wartungsfenster-Verweis ist nicht erforderlich.
-  - Migration, Bootstrap, Postconditions, App-Deploy, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
+  - Migration, Bootstrap, Postconditions, App-Deploy, terminale Swarm-Konvergenz, Runtime-Smoke und Digest-Prüfung müssen fail-closed in dieser Reihenfolge laufen.
   - Öffentliche Smoke-Probes gegen `/health/live`, `/health/ready`, Root-Login und alle aktiven Tenant-Logins dürfen nach bis zu 50 Erreichbarkeitsprüfungen im Abstand von zehn Sekunden keinen stabilen Fehler liefern.
   - GitHub-Step-Summary und Action-Artefakte müssen Digest, Stack, Phasenstatus, Backup-Referenz, Jobstatus und Verifikation redigiert dokumentieren; Secrets, `.env`, `APP_CONFIG`, PII und unredigierte Remote-Logs bleiben ausgeschlossen.
   - Lokale `artifacts/runtime/deployments/`-Reports und `env:feedback:studio` gehören ausschließlich zum genehmigten Incident-Recovery-Pfad.

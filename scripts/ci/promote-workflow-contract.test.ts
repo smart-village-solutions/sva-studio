@@ -70,4 +70,19 @@ describe('promote workflow hardening contract', () => {
       workflow.indexOf('evaluate migration and bootstrap gates')
     );
   });
+
+  it('binds risk evaluation to the actual live image revision and separates Swarm from HTTP', () => {
+    expect(workflow).toContain('bind deploy gates to actual live revision');
+    expect(workflow).toContain(
+      '--live-image "${{ steps.previous_live_image.outputs.previous_live_image }}"'
+    );
+    expect(workflow).toContain('CHANGE_BASE: ${{ steps.deployment_base.outputs.base_sha }}');
+    expect(workflow.indexOf('wait for terminal Swarm convergence')).toBeGreaterThan(
+      workflow.indexOf('- name: deploy')
+    );
+    expect(workflow.indexOf('wait for terminal Swarm convergence')).toBeLessThan(
+      workflow.indexOf('verify deployed runtime')
+    );
+    expect(workflow).toContain('${{ runner.temp }}/promote-swarm-convergence-*.json');
+  });
 });

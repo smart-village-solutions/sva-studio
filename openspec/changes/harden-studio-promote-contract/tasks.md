@@ -46,13 +46,13 @@ Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dess
 
 ## 4. Swarm-Konvergenz und externer Smoke
 
-- [ ] 4.1 Nach dem Deploy auf erfolgreichen terminalen Swarm-Service- und Task-Zustand warten.
-- [ ] 4.2 Erst danach externes HTTP-Warmup für Root-, Health-, IAM- und Tenant-Probes starten.
+- [x] 4.1 Nach dem Deploy auf erfolgreichen terminalen Swarm-Service- und Task-Zustand warten.
+- [x] 4.2 Erst danach externes HTTP-Warmup für Root-, Health-, IAM- und Tenant-Probes starten.
 - [x] 4.3 Ausschließlich 404, 502, 503, 504, Timeout und Gateway als retryfähige Infrastrukturzustände klassifizieren.
 - [x] 4.4 Realm-, Callback-, Tenant-Scope-, Secret-, Digest- und Unknown-Host-Fehler sofort blockierend halten.
 - [x] 4.5 Production-Readiness am Ende ausschließlich mit HTTP 200 bestehen lassen.
 - [x] 4.6 Retryversuche aggregiert loggen und terminale Fehler mit stabilen Codes und konkreter nächster Aktion ausgeben.
-- [ ] 4.7 Tests für vollständige Router-Lücke mit späterem Erfolg, dauerhaften 404, Swarm-Timeout, Readiness 503, falsches Realm, falschen Callback und offenen Unknown Host ergänzen.
+- [x] 4.7 Tests für vollständige Router-Lücke mit späterem Erfolg, dauerhaften 404, Swarm-Timeout, Readiness 503, falsches Realm, falschen Callback und offenen Unknown Host ergänzen.
 
 ## 5. Evidenz und minimaler Recovery-Vertrag
 

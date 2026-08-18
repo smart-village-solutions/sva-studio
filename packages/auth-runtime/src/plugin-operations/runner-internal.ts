@@ -26,7 +26,10 @@ export type PluginOperationExecutionRegistration = {
 };
 
 export type StudioJobExecutionRegistry = ReadonlyMap<string, StudioJobExecutionRegistration>;
-export type PluginOperationExecutionRegistry = ReadonlyMap<string, PluginOperationExecutionRegistration>;
+export type PluginOperationExecutionRegistry = ReadonlyMap<
+  string,
+  PluginOperationExecutionRegistration
+>;
 
 export type QueueStudioJobInput = {
   readonly instanceId: string;
@@ -34,6 +37,7 @@ export type QueueStudioJobInput = {
   readonly queueName: string;
   readonly maxAttempts: number;
   readonly executionLane?: 'default' | 'privileged';
+  readonly runAt?: Date;
 };
 
 export const adaptPluginOperationExecutionHandler = (
@@ -48,7 +52,8 @@ export const adaptPluginOperationExecutionHandler = (
   };
 };
 
-export const toRegistryKey = (source: StudioJobSource, jobTypeId: string): string => `${source}:${jobTypeId}`;
+export const toRegistryKey = (source: StudioJobSource, jobTypeId: string): string =>
+  `${source}:${jobTypeId}`;
 
 export const toStudioJobTaskList = (
   executeTask: graphileWorker.Task,

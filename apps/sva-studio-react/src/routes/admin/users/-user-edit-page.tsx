@@ -749,8 +749,8 @@ export const UserEditPage = ({
               </p>
             </div>
 
-            <div className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-2">
-              <div className="md:col-span-2">
+            <div className="grid gap-3 rounded-lg border border-border bg-background p-3">
+              <div>
                 <SearchableSelect
                   id="user-organization-select"
                   label={t('admin.users.edit.organizations.selectLabel')}
@@ -764,28 +764,6 @@ export const UserEditPage = ({
                   onSearchValueChange={setOrganizationSearchValue}
                   onValueChange={selectOrganizationAssignment}
                 />
-              </div>
-              <div className="grid gap-1 text-sm text-foreground">
-                <Label htmlFor="user-organization-visibility">
-                  {t('admin.users.edit.organizations.assignVisibilityLabel')}
-                </Label>
-                <Select
-                  id="user-organization-visibility"
-                  value={organizationAssignment.visibility}
-                  onChange={(event) =>
-                    setOrganizationAssignment((current) => ({
-                      ...current,
-                      visibility: event.target.value as 'internal' | 'external',
-                    }))
-                  }
-                >
-                  <option value="internal">
-                    {t('admin.users.edit.organizations.visibility.internal')}
-                  </option>
-                  <option value="external">
-                    {t('admin.users.edit.organizations.visibility.external')}
-                  </option>
-                </Select>
               </div>
               <Label
                 htmlFor="user-organization-default"
@@ -803,7 +781,7 @@ export const UserEditPage = ({
                 />
                 <span>{t('admin.users.edit.organizations.assignDefaultLabel')}</span>
               </Label>
-              <div className="md:col-span-2 flex justify-end">
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   onClick={() => void assignOrganizationMembership()}
@@ -818,16 +796,15 @@ export const UserEditPage = ({
               <ul className="grid gap-3">
                 {userApi.user.organizationMemberships.map((membership) => {
                   const draft = organizationMembershipDrafts[membership.organizationId] ?? {
-                    visibility: membership.visibility,
                     isDefaultContext: membership.isDefaultContext,
                   };
 
                   return (
                     <li
                       key={membership.organizationId}
-                      className="grid gap-3 rounded-lg border border-border bg-background p-3 md:grid-cols-2"
+                      className="grid gap-3 rounded-lg border border-border bg-background p-3"
                     >
-                      <div className="space-y-1 md:col-span-2">
+                      <div className="space-y-1">
                         <p className="font-medium text-foreground">{membership.displayName}</p>
                         <p className="text-xs text-muted-foreground">
                           {membership.organizationKey}
@@ -837,29 +814,6 @@ export const UserEditPage = ({
                             value: formatDateTime(membership.createdAt),
                           })}
                         </p>
-                      </div>
-                      <div className="grid gap-1 text-sm text-foreground">
-                        <Label htmlFor={`organization-visibility-${membership.organizationId}`}>
-                          {t('admin.users.edit.organizations.membershipVisibilityLabel', {
-                            name: membership.displayName,
-                          })}
-                        </Label>
-                        <Select
-                          id={`organization-visibility-${membership.organizationId}`}
-                          value={draft.visibility}
-                          onChange={(event) =>
-                            updateOrganizationMembershipDraft(membership.organizationId, {
-                              visibility: event.target.value as 'internal' | 'external',
-                            })
-                          }
-                        >
-                          <option value="internal">
-                            {t('admin.users.edit.organizations.visibility.internal')}
-                          </option>
-                          <option value="external">
-                            {t('admin.users.edit.organizations.visibility.external')}
-                          </option>
-                        </Select>
                       </div>
                       <Label
                         htmlFor={`organization-default-${membership.organizationId}`}
@@ -876,7 +830,7 @@ export const UserEditPage = ({
                         />
                         <span>{t('admin.users.edit.organizations.defaultContextLabel')}</span>
                       </Label>
-                      <div className="md:col-span-2 flex flex-wrap justify-end gap-3">
+                      <div className="flex flex-wrap justify-end gap-3">
                         <Button
                           type="button"
                           variant="secondary"

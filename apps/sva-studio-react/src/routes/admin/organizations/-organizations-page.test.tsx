@@ -161,13 +161,13 @@ describe('OrganizationsPage', () => {
     render(<OrganizationsPage />);
 
     fireEvent.change(screen.getByLabelText('Suche'), { target: { value: 'Alpha' } });
-    fireEvent.change(screen.getByLabelText('Typ'), { target: { value: 'county' } });
+    fireEvent.change(screen.getByLabelText('Typ'), { target: { value: 'institution' } });
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'active' } });
     fireEvent.click(screen.getByRole('button', { name: 'Zurück' }));
     fireEvent.click(screen.getByRole('button', { name: 'Weiter' }));
 
     expect(setSearch).toHaveBeenCalledWith('Alpha');
-    expect(setOrganizationType).toHaveBeenCalledWith('county');
+    expect(setOrganizationType).toHaveBeenCalledWith('institution');
     expect(setStatus).toHaveBeenCalledWith('active');
     expect(setPage).toHaveBeenNthCalledWith(1, 1);
     expect(setPage).toHaveBeenNthCalledWith(2, 3);

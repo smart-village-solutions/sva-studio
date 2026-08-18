@@ -107,11 +107,23 @@ describe('@sva/studio-module-iam', () => {
       moduleId: 'news',
       namespace: 'news',
       ownerPluginId: 'news',
-      permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      permissionIds: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
       tenantBootstrapRoles: [
         {
           roleName: 'system_admin',
-          permissionIds: ['news.read', 'news.create', 'news.update', 'news.delete'],
+          permissionIds: [
+            'news.read',
+            'news.create',
+            'news.update',
+            'news.delete',
+            'news.pushNotification',
+          ],
         },
       ],
     });

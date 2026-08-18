@@ -21,9 +21,14 @@ export {
   type ContentMediaUsageBlockProps,
 } from './content-media-usage-block.js';
 export {
+  contentMediaUsagesToLocalDrafts,
+  resolveContentMediaUsageDrafts,
+} from './content-media-drafts.js';
+export {
   contentMediaUsageToReference,
   createContentMediaUiId,
   createManualContentMediaUsage,
+  revokeContentMediaUsageObjectUrls,
   isPersistableContentMediaUrl,
   moveContentMediaUsage,
   normalizeContentMediaUsageOrder,
@@ -82,6 +87,11 @@ export {
 } from './media-intake-panel.js';
 export { Select } from './select.js';
 export {
+  SearchableMultiSelect,
+  type SearchableMultiSelectOption,
+  type SearchableMultiSelectProps,
+} from './searchable-multi-select.js';
+export {
   StudioFormSummaryErrors,
   getStudioFieldError,
   getStudioFormFieldProps,
@@ -116,6 +126,16 @@ export {
   type StudioDataTableSorting,
   type StudioDataTableSortingLabels,
 } from './studio-data-table.js';
+export {
+  StudioStatusBadge,
+  StudioTableActionButton,
+  StudioTableValueAction,
+  type StudioStatusBadgeProps,
+  type StudioStatusTone,
+  type StudioTableActionButtonProps,
+  type StudioTableActionTone,
+  type StudioTableValueActionProps,
+} from './studio-table-interactions.js';
 export {
   StudioListPageTemplate,
   StudioDetailPageTemplate,
@@ -174,6 +194,7 @@ export { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs.js';
 export {
   StudioMediaPickerOverlay,
   useStudioMediaPickerOverlay,
+  createLocalStudioMediaPickerAsset,
   type StudioMediaPickerAssetDetail,
   type StudioMediaPickerAssetSummary,
   type StudioMediaPickerErrorCode,

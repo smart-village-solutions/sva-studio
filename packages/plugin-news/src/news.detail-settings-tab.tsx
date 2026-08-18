@@ -26,6 +26,7 @@ type ScheduledPublicationFieldState = Readonly<{
 
 export type NewsDetailSettingsTabProps = Readonly<{
   loadedItem: NewsContentItem | null;
+  canSendPushNotification?: boolean;
   mode: 'create' | 'edit';
   pt: (key: string, variables?: Readonly<Record<string, string | number>>) => string;
   scheduledPublicationField: ScheduledPublicationFieldState;
@@ -71,6 +72,7 @@ const formatMetadataDate = (value?: string) => {
 function NewsPushNotificationCard({
   control,
   loadedItem,
+  canSendPushNotification,
   pt,
   wasteOverview,
   wasteTargetingAvailability,
@@ -78,6 +80,7 @@ function NewsPushNotificationCard({
 }: Readonly<{
   control: NewsDetailSettingsFormControl;
   loadedItem: NewsContentItem | null;
+  canSendPushNotification: boolean;
   pt: NewsDetailSettingsTabProps['pt'];
   wasteOverview: WasteManagementMasterDataOverview | null;
   wasteTargetingAvailability: WasteTargetingAvailability;
@@ -95,7 +98,7 @@ function NewsPushNotificationCard({
             {formatMetadataDate(loadedItem.pushNotificationsSentAt)}
           </dd>
         </dl>
-      ) : (
+      ) : canSendPushNotification ? (
         <label
           htmlFor="news-push-notification-enabled"
           className="flex items-start gap-3 rounded-xl border border-border/60 p-4 text-sm"
@@ -122,8 +125,8 @@ function NewsPushNotificationCard({
             </span>
           </span>
         </label>
-      )}
-      {wasteTargetingAvailability !== 'forbidden' ? (
+      ) : null}
+      {canSendPushNotification && wasteTargetingAvailability !== 'forbidden' ? (
         <NewsDetailTargetingSection
           overview={wasteOverview}
           pt={pt}
@@ -245,6 +248,7 @@ function NewsPublicationCard({
 
 export function NewsDetailSettingsTab({
   loadedItem,
+  canSendPushNotification = false,
   mode,
   pt,
   scheduledPublicationField,
@@ -270,14 +274,17 @@ export function NewsDetailSettingsTab({
   return (
     <div className="space-y-6">
       <StudioFormSummaryErrors errors={summaryErrors} title={pt('messages.validationSummary')} />
-      <NewsPushNotificationCard
-        control={control}
-        loadedItem={loadedItem}
-        pt={pt}
-        wasteOverview={wasteOverview}
-        wasteTargetingAvailability={wasteTargetingAvailability}
-        onLoadWasteOverview={onLoadWasteOverview}
-      />
+      {canSendPushNotification || loadedItem?.pushNotificationsSentAt ? (
+        <NewsPushNotificationCard
+          control={control}
+          loadedItem={loadedItem}
+          canSendPushNotification={canSendPushNotification}
+          pt={pt}
+          wasteOverview={wasteOverview}
+          wasteTargetingAvailability={wasteTargetingAvailability}
+          onLoadWasteOverview={onLoadWasteOverview}
+        />
+      ) : null}
       <NewsPublicationCard
         control={control}
         loadedItem={loadedItem}

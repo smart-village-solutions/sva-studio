@@ -1,8 +1,12 @@
-import { IconCalendarMonth, IconCopy, IconEdit, IconTrash } from '@tabler/icons-react';
+import { IconCalendarMonth, IconCopy, IconTrash } from '@tabler/icons-react';
 import type { WasteTourRecord } from '@sva/plugin-sdk';
 import { usePluginTranslation } from '@sva/plugin-sdk';
-import { Badge, Button, Checkbox, cn } from '@sva/studio-ui-react';
-import type { ReactNode } from 'react';
+import {
+  Checkbox,
+  StudioStatusBadge,
+  StudioTableActionButton,
+  StudioTableValueAction,
+} from '@sva/studio-ui-react';
 
 export const formatTourDisplayDate = (value: string) => {
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -10,33 +14,6 @@ export const formatTourDisplayDate = (value: string) => {
     ? value
     : new Intl.DateTimeFormat(undefined, { dateStyle: 'short', timeZone: 'UTC' }).format(parsed);
 };
-
-const RowActionButton = ({
-  ariaLabel,
-  children,
-  destructive = false,
-  onClick,
-}: {
-  readonly ariaLabel: string;
-  readonly children: ReactNode;
-  readonly destructive?: boolean;
-  readonly onClick: () => void;
-}) => (
-  <Button
-    type="button"
-    variant="tertiary"
-    size="sm"
-    className={cn(
-      'h-8 w-8 rounded-md px-0 text-muted-foreground hover:text-foreground',
-      destructive ? 'hover:text-destructive' : null
-    )}
-    aria-label={ariaLabel}
-    tooltip={ariaLabel}
-    onClick={onClick}
-  >
-    {children}
-  </Button>
-);
 
 export const WasteToursRowSelectionCell = ({
   tour,
@@ -77,23 +54,15 @@ export const WasteToursRowFractionCell = ({
         {fractionNames.map((fractionName, index) => {
           const fractionId = fractionIds?.[index];
           return (
-            <Badge
-              key={`${tourId}-${fractionId ?? fractionName}`}
-              variant="outline"
-              className="rounded-md border-[#E9E7E1] bg-[#F3F1EC] px-2.5 py-1 text-xs font-medium text-[#6B7C8F]"
-            >
+            <span key={`${tourId}-${fractionId ?? fractionName}`} className="text-sm">
               {fractionId && onOpenEditFraction ? (
-                <button
-                  type="button"
-                  className="font-medium underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  onClick={() => onOpenEditFraction(fractionId)}
-                >
+                <StudioTableValueAction onClick={() => onOpenEditFraction(fractionId)}>
                   {fractionName}
-                </button>
+                </StudioTableValueAction>
               ) : (
                 fractionName
               )}
-            </Badge>
+            </span>
           );
         })}
       </div>
@@ -140,34 +109,23 @@ export const WasteToursRowStatusCell = ({
 
   return (
     <td className="w-[92px] px-3 py-3">
-      <div className="flex items-center justify-center">
+      <div className="flex items-start justify-center">
         <button
           type="button"
-          role="switch"
-          aria-checked={tour.active}
           aria-label={
             tour.active
               ? pt('tours.actions.deactivateStatus', { value: tour.name })
               : pt('tours.actions.activateStatus', { value: tour.name })
           }
           disabled={disabled}
-          className={cn(
-            'relative inline-flex h-[18px] w-8 shrink-0 items-center rounded-full border border-transparent transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-            'disabled:cursor-not-allowed disabled:opacity-60',
-            tour.active ? 'bg-primary' : 'bg-muted'
-          )}
+          className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-action-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           onClick={() => {
             void onToggleTourStatus(tour, !tour.active);
           }}
         >
-          <span
-            aria-hidden="true"
-            className={cn(
-              'pointer-events-none inline-block h-[14px] w-[14px] rounded-full bg-background shadow-sm transition-transform',
-              tour.active ? 'translate-x-[16px]' : 'translate-x-0.5'
-            )}
-          />
+          <StudioStatusBadge editable tone={tour.active ? 'success' : 'neutral'}>
+            {tour.active ? pt('tours.table.active') : pt('tours.table.inactive')}
+          </StudioStatusBadge>
         </button>
       </div>
     </td>
@@ -177,14 +135,12 @@ export const WasteToursRowStatusCell = ({
 export const WasteToursRowActionsCell = ({
   tour,
   onOpenCalendar,
-  onOpenEditDialog,
   onOpenDuplicateDialog,
   canDuplicateTour,
   onRequestDeleteTour,
 }: {
   readonly tour: WasteTourRecord;
   readonly onOpenCalendar: (tour: WasteTourRecord) => void;
-  readonly onOpenEditDialog: (tour: WasteTourRecord) => void;
   readonly onOpenDuplicateDialog: (tour: WasteTourRecord) => void;
   readonly canDuplicateTour: boolean;
   readonly onRequestDeleteTour: (tour: WasteTourRecord) => void;
@@ -194,33 +150,24 @@ export const WasteToursRowActionsCell = ({
   return (
     <td className="px-3 py-3">
       <div className="flex justify-end gap-1.5">
-        <RowActionButton
-          ariaLabel={pt('tours.actions.openCalendar')}
+        <StudioTableActionButton
+          label={pt('tours.actions.openCalendar')}
+          icon={<IconCalendarMonth aria-hidden="true" className="h-4 w-4" />}
           onClick={() => onOpenCalendar(tour)}
-        >
-          <IconCalendarMonth aria-hidden="true" className="h-4 w-4" />
-        </RowActionButton>
-        <RowActionButton
-          ariaLabel={pt('tours.actions.edit')}
-          onClick={() => onOpenEditDialog(tour)}
-        >
-          <IconEdit aria-hidden="true" className="h-4 w-4" />
-        </RowActionButton>
+        />
         {canDuplicateTour ? (
-          <RowActionButton
-            ariaLabel={pt('tours.actions.duplicate')}
+          <StudioTableActionButton
+            label={pt('tours.actions.duplicate')}
+            icon={<IconCopy aria-hidden="true" className="h-4 w-4" />}
             onClick={() => onOpenDuplicateDialog(tour)}
-          >
-            <IconCopy aria-hidden="true" className="h-4 w-4" />
-          </RowActionButton>
+          />
         ) : null}
-        <RowActionButton
-          ariaLabel={pt('tours.actions.delete')}
-          destructive
+        <StudioTableActionButton
+          label={pt('tours.actions.delete')}
+          icon={<IconTrash aria-hidden="true" className="h-4 w-4" />}
+          tone="destructive"
           onClick={() => onRequestDeleteTour(tour)}
-        >
-          <IconTrash aria-hidden="true" className="h-4 w-4 text-destructive" />
-        </RowActionButton>
+        />
       </div>
     </td>
   );

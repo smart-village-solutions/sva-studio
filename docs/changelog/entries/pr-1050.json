@@ -1,0 +1,4 @@
+{
+  "prNumber": 1050,
+  "body": "Der Production-Rollout kann das verbleibende historische Konfigurationsbundle jetzt sicher ablösen.\n\n- Datenbank- und Redis-Verbindungswerte bleiben geschützt erhalten.\n- Veraltete nicht-sensitive Hilfswerte werden kontrolliert entfernt.\n- Unbekannte Schlüssel stoppen weiterhin vor jeder Remote-Mutation."
+}

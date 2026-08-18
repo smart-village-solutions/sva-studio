@@ -9,8 +9,10 @@ Das Theme orientiert sich an der bestehenden KERN-2-nahen Studio-Shell:
 - Fira Sans als Primärschrift
 - KERN-nahe Blau-Grau-Palette
 - reduzierte Radien
-- helle Glas-/Panel-Flächen mit klarer Fokus- und Hover-Sprache
-- fester Light-Default ohne Dark-Mode-Fallback über Browser- oder Betriebssystem-Präferenzen
+- kontrastreiche Panel-Flächen mit klarer Fokus- und Hover-Sprache
+- automatische Light-/Dark-Auswahl über die Browser- und Betriebssystem-Präferenz `prefers-color-scheme`
+
+Light ist der Fallback, wenn ein Browser keine Farbschema-Präferenz bereitstellt. Das Theme wird als einzelnes Login-Theme ausgeliefert; separate Realm-Themes für Light und Dark sind nicht erforderlich.
 
 Das Theme erweitert bewusst `keycloak.v2`, statt komplette Keycloak-Templates zu forken.
 Dadurch bleibt der Upgrade-Aufwand gegenüber einem vollständigen Login-Template-Override kleiner.
@@ -81,6 +83,8 @@ Das Theme folgt folgenden Regeln:
 - keine vollständige Neustrukturierung des Keycloak-Login-Markups
 - visuelle Anpassung primär über CSS
 - Fokus auf Login, Eingabefelder, Buttons, Alerts und Footer
+- explizite Farben für Autofill, Platzhalter, Fokusindikatoren und den Passwort-Schalter in beiden Modi
+- Textkontrast von mindestens 4,5:1 und Kontrast relevanter UI-Grenzen von mindestens 3:1
 - keine projektspezifischen Geheimnisse, URLs oder tenant-spezifischen Texte im Theme selbst
 
 ## Tenant-Nutzung

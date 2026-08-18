@@ -224,7 +224,8 @@ describe('PoiListPage', () => {
         'poi.fields.active': 'Aktiv',
         'poi.fields.categoryName': 'Kategorie',
         'poi.fields.categories': 'Kategorien',
-        'poi.fields.categoriesHelp': 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+        'poi.fields.categoriesHelp':
+          'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
         'poi.fields.categoriesSearch': 'Kategorien suchen',
         'poi.fields.categoriesSearchPlaceholder': 'Kategorie suchen oder auswählen',
         'poi.fields.street': 'Straße',
@@ -370,9 +371,8 @@ describe('PoiListPage', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Rathaus' } });
-    const categoryInput = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(categoryInput, { target: { value: 'Verwaltung' } });
-    fireEvent.blur(categoryInput);
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    fireEvent.click(screen.getByLabelText('Verwaltung'));
     switchSection('content');
     fireEvent.change(screen.getByLabelText('Beschreibung', { selector: 'textarea' }), {
       target: { value: 'Bürgerservice vor Ort' },

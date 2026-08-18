@@ -62,6 +62,39 @@ describe('executeCreateUser', () => {
     state.provisionMainserverUserCredentials.mockResolvedValue(null);
   });
 
+  it('skips the Keycloak write when the Mainserver attributes are already current', async () => {
+    const updateUser = vi.fn(async () => undefined);
+    const identityProvider = {
+      provider: {
+        getUserAttributes: vi.fn(async () => ({
+          locale: ['de'],
+          mainserverUserApplicationId: ['mainserver-app-1'],
+          mainserverUserApplicationSecret: ['mainserver-secret-1'],
+        })),
+        updateUser,
+      },
+      realm: 'tenant-realm',
+      source: 'instance' as const,
+      clientId: 'tenant-admin',
+      adminRealm: 'tenant-realm',
+      executionMode: 'tenant_admin' as const,
+    };
+
+    const { persistProvisionedMainserverCredentials } = await import('./user-create-operation.js');
+    await persistProvisionedMainserverCredentials({
+      identityProvider,
+      keycloakSubject: 'kc-user-1',
+      credentials: {
+        dataProviderId: '4711',
+        mainserverUserApplicationId: 'mainserver-app-1',
+        mainserverUserApplicationSecret: 'mainserver-secret-1',
+      },
+    });
+
+    expect(identityProvider.provider.getUserAttributes).toHaveBeenCalledWith('kc-user-1');
+    expect(updateUser).not.toHaveBeenCalled();
+  }, 15_000);
+
   it('creates a user without sending an invite when the payload disables it', async () => {
     const identityProvider = {
       provider: {

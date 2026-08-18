@@ -5,7 +5,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
-import { assertCoveragePolicy, findCoverageArtifacts, readJson, type CoveragePolicy } from './coverage-gate.ts';
+import {
+  assertCoveragePolicy,
+  findCoverageArtifacts,
+  readJson,
+  type CoveragePolicy,
+} from './coverage-gate.ts';
 import { isSonarCoverageExcludedPath, readSonarCoverageExclusions } from './sonar-paths.ts';
 
 interface RunSonarNewCodeGateOptions {
@@ -53,6 +58,36 @@ export interface RunSonarNewCodeGateResult {
 const defaultTargetPct = 85;
 const gitDiffMaxBuffer = 32 * 1024 * 1024;
 
+type GitHubPullRequestEvent = {
+  pull_request?: {
+    head?: {
+      sha?: unknown;
+    };
+  };
+};
+
+export const resolveSonarHeadRef = (environment: NodeJS.ProcessEnv = process.env): string => {
+  const configuredHead = environment.NX_HEAD?.trim();
+  if (configuredHead) {
+    return configuredHead;
+  }
+
+  const eventPath = environment.GITHUB_EVENT_PATH?.trim();
+  if (eventPath) {
+    try {
+      const event = readJson<GitHubPullRequestEvent>(eventPath);
+      const pullRequestHead = event.pull_request?.head?.sha;
+      if (typeof pullRequestHead === 'string' && pullRequestHead.trim()) {
+        return pullRequestHead.trim();
+      }
+    } catch {
+      // Local and non-PR runs intentionally fall back to the checked-out HEAD.
+    }
+  }
+
+  return 'HEAD';
+};
+
 function loadPolicy(rootDir: string): CoveragePolicy {
   const policyPath = path.join(rootDir, 'tooling/testing/coverage-policy.json');
   const policy = readJson<unknown>(policyPath);
@@ -67,7 +102,7 @@ function normalizeRelativePath(rootDir: string, filePath: string): string {
 function resolveProjectRoots(rootDir: string, policy: CoveragePolicy): string[] {
   const exemptProjects = new Set(policy.exemptProjects ?? []);
   const newCodeExemptProjects = new Set(
-    ((policy as CoveragePolicy & { newCodeExemptProjects?: string[] }).newCodeExemptProjects ?? [])
+    (policy as CoveragePolicy & { newCodeExemptProjects?: string[] }).newCodeExemptProjects ?? []
   );
   const projectNames = Object.keys(policy.perProjectFloors ?? {}).filter(
     (projectName) => !exemptProjects.has(projectName) && !newCodeExemptProjects.has(projectName)
@@ -89,7 +124,11 @@ function resolveProjectRoots(rootDir: string, policy: CoveragePolicy): string[] 
   return roots.sort();
 }
 
-function resolveLcovSourcePath(rootDir: string, projectRoot: string, sourceFilePath: string): string {
+function resolveLcovSourcePath(
+  rootDir: string,
+  projectRoot: string,
+  sourceFilePath: string
+): string {
   const absoluteFilePath = path.isAbsolute(sourceFilePath)
     ? sourceFilePath
     : path.join(projectRoot, sourceFilePath);
@@ -148,13 +187,27 @@ function isCoverableSourceFile(filePath: string): boolean {
   return !/(\.test|\.spec|\.config)\.(ts|tsx|js|jsx)$/.test(filePath);
 }
 
-function listChangedFiles(rootDir: string, baseRef: string, headRef: string, projectRoots: string[]): ChangedFile[] {
+function listChangedFiles(
+  rootDir: string,
+  baseRef: string,
+  headRef: string,
+  projectRoots: string[]
+): ChangedFile[] {
   if (projectRoots.length === 0) {
     return [];
   }
 
-  const relativeRoots = projectRoots.map((projectRoot) => normalizeRelativePath(rootDir, projectRoot));
-  const diffArgs = ['diff', '--unified=0', '--diff-filter=AM', `${baseRef}...${headRef}`, '--', ...relativeRoots];
+  const relativeRoots = projectRoots.map((projectRoot) =>
+    normalizeRelativePath(rootDir, projectRoot)
+  );
+  const diffArgs = [
+    'diff',
+    '--unified=0',
+    '--diff-filter=AM',
+    `${baseRef}...${headRef}`,
+    '--',
+    ...relativeRoots,
+  ];
   const result = spawnSync('git', diffArgs, {
     cwd: rootDir,
     encoding: 'utf8',
@@ -349,7 +402,9 @@ function readSourceLines(rootDir: string, filePath: string): string[] {
 
 function parseLcovCoverage(rootDir: string): Map<string, FileCoverage> {
   const workspaceRoots = [path.join(rootDir, 'apps'), path.join(rootDir, 'packages')];
-  const lcovFiles = workspaceRoots.flatMap((workspaceRoot) => findCoverageArtifacts(workspaceRoot, 'lcov.info'));
+  const lcovFiles = workspaceRoots.flatMap((workspaceRoot) =>
+    findCoverageArtifacts(workspaceRoot, 'lcov.info')
+  );
   const coverageByFile = new Map<string, FileCoverage>();
 
   for (const lcovPath of lcovFiles) {
@@ -415,10 +470,12 @@ function parseLcovCoverage(rootDir: string): Map<string, FileCoverage> {
   return coverageByFile;
 }
 
-export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): RunSonarNewCodeGateResult {
+export function runSonarNewCodeGate(
+  options: RunSonarNewCodeGateOptions = {}
+): RunSonarNewCodeGateResult {
   const rootDir = path.resolve(options.rootDir ?? process.cwd());
   const baseRef = options.baseRef ?? 'origin/main';
-  const headRef = options.headRef ?? 'HEAD';
+  const headRef = options.headRef ?? resolveSonarHeadRef();
   const targetPct = options.targetPct ?? defaultTargetPct;
   const policy = loadPolicy(rootDir);
   const sonarCoverageExclusions = readSonarCoverageExclusions(rootDir);
@@ -438,7 +495,8 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
   for (const changedFile of changedFiles) {
     const sourceLines = readSourceLines(rootDir, changedFile.path);
     const fileCoverage = coverageByFile.get(changedFile.path);
-    const ignoreFileWithoutCoverage = !fileCoverage && isLikelyNonExecutableFile(changedFile.path, sourceLines);
+    const ignoreFileWithoutCoverage =
+      !fileCoverage && isLikelyNonExecutableFile(changedFile.path, sourceLines);
     let fileCovered = 0;
     let fileMissed = 0;
     let fileCoveredBranches = 0;
@@ -461,7 +519,8 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
         }
       }
 
-      const instrumentedBranches = fileCoverage?.instrumentedBranchesByLine.get(changedLineNumber) ?? 0;
+      const instrumentedBranches =
+        fileCoverage?.instrumentedBranchesByLine.get(changedLineNumber) ?? 0;
       if (instrumentedBranches > 0) {
         const coveredBranchCount = fileCoverage?.coveredBranchesByLine.get(changedLineNumber) ?? 0;
         coveredBranches += coveredBranchCount;
@@ -471,7 +530,12 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
       }
     }
 
-    if (fileCovered === 0 && fileMissed === 0 && fileCoveredBranches === 0 && fileMissedBranches === 0) {
+    if (
+      fileCovered === 0 &&
+      fileMissed === 0 &&
+      fileCoveredBranches === 0 &&
+      fileMissedBranches === 0
+    ) {
       ignoredFiles += 1;
       continue;
     }
@@ -489,7 +553,10 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
 
   const coveredUnits = coveredLines + coveredBranches;
   const missedUnits = missedLines + missedBranches;
-  const coveragePct = coveredUnits + missedUnits === 0 ? 100 : Number(((coveredUnits / (coveredUnits + missedUnits)) * 100).toFixed(2));
+  const coveragePct =
+    coveredUnits + missedUnits === 0
+      ? 100
+      : Number(((coveredUnits / (coveredUnits + missedUnits)) * 100).toFixed(2));
 
   return {
     passed: coveragePct >= targetPct,
@@ -506,7 +573,8 @@ export function runSonarNewCodeGate(options: RunSonarNewCodeGateOptions = {}): R
     uncoveredFiles: uncoveredFiles
       .sort(
         (left, right) =>
-          right.missed + right.missedBranches - (left.missed + left.missedBranches) || left.path.localeCompare(right.path)
+          right.missed + right.missedBranches - (left.missed + left.missedBranches) ||
+          left.path.localeCompare(right.path)
       )
       .slice(0, 10),
   };

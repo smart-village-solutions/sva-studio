@@ -464,6 +464,14 @@ Zuordnung:
   - kapselt MinIO über einen internen S3-kompatiblen Storage-Port
   - hält Plugins auf rollenbasierte Picker- und Referenzverträge ohne Storage-Artefakte
 
+### Fortschreibung 2026-08: Verzögerter Content-Medienlebenszyklus
+
+- ADR-039 wird für Content-Editoren durch eine hostgeführte Saga konkretisiert:
+  - Dateiauswahl bleibt ein lokaler Browser-Entwurf; der Bibliotheksupload bleibt unverändert unmittelbar.
+  - Der Host persistiert Uploads während des Fach-Saves zunächst als benutzergebundene, unsichtbare `provisional`-Assets.
+  - Ein Studio-Commit aktiviert Assets und ersetzt Referenzen atomar. Ein kontrolliertes Abandon übernimmt Cleanup und benötigt kein allgemeines Löschrecht.
+  - Bei einem unklaren Mainserver-Ausgang hat Datenintegrität Vorrang vor sofortigem Cleanup; die Operation bleibt für Retry beziehungsweise Reconciliation erhalten.
+
 Zuordnung:
 
 - Abschnitt 03/04/05/06/07/08/09/10/11: ADR-039

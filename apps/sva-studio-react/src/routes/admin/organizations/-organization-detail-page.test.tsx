@@ -81,6 +81,15 @@ const organizationFixture = {
   ],
 };
 
+const readyOrganizationFixture = {
+  ...organizationFixture,
+  mainserverProvisioning: {
+    ...organizationFixture.mainserverProvisioning,
+    status: 'ready' as const,
+    lastErrorCode: undefined,
+  },
+};
+
 const createState = (overrides: Record<string, unknown> = {}) => ({
   organizations: [
     organizationFixture,
@@ -174,22 +183,32 @@ describe('OrganizationDetailPage', () => {
       status: 'active' as const,
       roles: [],
     }));
-    const secondPageUser = {
-      id: 'user-101',
-      keycloakSubject: 'kc-user-101',
-      displayName: 'Zoe Zebra',
-      email: 'zoe@example.org',
-      status: 'active' as const,
-      roles: [],
-    };
+    const searchedUsers = [
+      {
+        id: 'user-101',
+        keycloakSubject: 'kc-user-101',
+        displayName: 'Zoe Zebra',
+        email: 'zoe@example.org',
+        status: 'active' as const,
+        roles: [],
+      },
+      {
+        id: 'user-102',
+        keycloakSubject: 'kc-user-102',
+        displayName: 'Zoe Zimmer',
+        email: 'zimmer@example.org',
+        status: 'active' as const,
+        roles: [],
+      },
+    ];
     listUsersMock
       .mockResolvedValueOnce({
         data: firstPageUsers,
         pagination: { page: 1, pageSize: 100, total: 100 },
       })
       .mockResolvedValueOnce({
-        data: [secondPageUser],
-        pagination: { page: 1, pageSize: 100, total: 1 },
+        data: searchedUsers,
+        pagination: { page: 1, pageSize: 100, total: 2 },
       });
 
     render(<OrganizationDetailPage organizationId="org-1" />);
@@ -270,7 +289,7 @@ describe('OrganizationDetailPage', () => {
     });
 
     expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
     fireEvent.change(screen.getByPlaceholderText('Nach Name, E-Mail oder Kennung suchen'), {
       target: { value: 'zoe' },
     });
@@ -287,32 +306,33 @@ describe('OrganizationDetailPage', () => {
     });
 
     fireEvent.click(screen.getByRole('option', { name: 'Zoe Zebra <zoe@example.org>' }));
-    expect(screen.getByRole('button', { name: 'Account' }).textContent).toContain(
-      'Zoe Zebra <zoe@example.org>'
-    );
-    fireEvent.change(
-      screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility' }),
-      {
-        target: { value: 'external' },
-      }
-    );
+    fireEvent.click(screen.getByRole('option', { name: 'Zoe Zimmer <zimmer@example.org>' }));
+    expect(screen.getByRole('button', { name: 'Accounts' }).textContent).toContain('2 ausgewählt');
+    expect(screen.queryByText('Sichtbarkeit')).toBeNull();
     fireEvent.click(document.getElementById('membership-default') as HTMLInputElement);
-    fireEvent.click(screen.getByRole('button', { name: 'Mitglied zuweisen' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mitglieder zuweisen' }));
 
     await waitFor(() => {
-      expect(assignMembership).toHaveBeenCalledWith('org-1', {
-        accountId: 'user-101',
-        visibility: 'external',
-        isDefaultContext: true,
-      });
+      expect(assignMembership).toHaveBeenNthCalledWith(
+        1,
+        'org-1',
+        {
+          accountId: 'user-101',
+          isDefaultContext: true,
+        },
+        { reload: false }
+      );
+      expect(assignMembership).toHaveBeenNthCalledWith(
+        2,
+        'org-1',
+        {
+          accountId: 'user-102',
+          isDefaultContext: true,
+        },
+        { reload: false }
+      );
     });
 
-    fireEvent.change(
-      screen.getByLabelText('Sichtbarkeit', { selector: '#membership-visibility-user-1' }),
-      {
-        target: { value: 'external' },
-      }
-    );
     fireEvent.click(document.getElementById('membership-default-user-1') as HTMLInputElement);
     fireEvent.click(
       screen.getByRole('button', { name: 'Mitgliedschaft für Anna Admin speichern' })
@@ -320,7 +340,6 @@ describe('OrganizationDetailPage', () => {
 
     await waitFor(() => {
       expect(updateMembership).toHaveBeenCalledWith('org-1', 'user-1', {
-        visibility: 'external',
         isDefaultContext: false,
       });
     });
@@ -337,6 +356,86 @@ describe('OrganizationDetailPage', () => {
       expect(deleteOrganization).toHaveBeenCalledWith('org-1');
     });
   }, 15_000);
+
+  it('keeps failed and unattempted accounts selected after a partial assignment failure', async () => {
+    const assignMembership = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    const refetch = vi.fn().mockResolvedValue(undefined);
+    const loadOrganization = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockReturnValue(
+      createState({ assignMembership, loadOrganization, refetch })
+    );
+    listUsersMock.mockResolvedValue({
+      data: [
+        {
+          id: 'user-2',
+          keycloakSubject: 'kc-user-2',
+          displayName: 'Account Eins',
+          email: 'eins@example.org',
+          status: 'active',
+          roles: [],
+        },
+        {
+          id: 'user-3',
+          keycloakSubject: 'kc-user-3',
+          displayName: 'Account Zwei',
+          email: 'zwei@example.org',
+          status: 'active',
+          roles: [],
+        },
+        {
+          id: 'user-4',
+          keycloakSubject: 'kc-user-4',
+          displayName: 'Account Drei',
+          email: 'drei@example.org',
+          status: 'active',
+          roles: [],
+        },
+      ],
+      pagination: { page: 1, pageSize: 100, total: 3 },
+    });
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+
+    await waitFor(() => expect(listUsersMock).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Account Eins <eins@example.org>' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Account Zwei <zwei@example.org>' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Account Drei <drei@example.org>' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Mitglieder zuweisen' }));
+
+    await waitFor(() => expect(assignMembership).toHaveBeenCalledTimes(2));
+    expect(assignMembership).toHaveBeenNthCalledWith(
+      1,
+      'org-1',
+      {
+        accountId: 'user-2',
+        isDefaultContext: false,
+      },
+      { reload: false }
+    );
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(loadOrganization).toHaveBeenCalledTimes(2);
+    expect(assignMembership).toHaveBeenNthCalledWith(
+      2,
+      'org-1',
+      {
+        accountId: 'user-3',
+        isDefaultContext: false,
+      },
+      { reload: false }
+    );
+    expect(
+      screen.queryByRole('button', {
+        name: 'Account Eins <eins@example.org> aus Auswahl entfernen',
+      })
+    ).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Account Zwei <zwei@example.org> aus Auswahl entfernen' })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Account Drei <drei@example.org> aus Auswahl entfernen' })
+    ).toBeTruthy();
+  });
 
   it('allows deleting inactive leaf organizations from the detail page', async () => {
     const deleteOrganization = vi.fn().mockResolvedValue(true);
@@ -427,7 +526,7 @@ describe('OrganizationDetailPage', () => {
   });
 
   it('shows the secret-free provisioning state and starts an explicit retry', async () => {
-    const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
+    const provisionMainserver = vi.fn().mockResolvedValue(readyOrganizationFixture);
     useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
 
     render(<OrganizationDetailPage organizationId="org-1" />);
@@ -436,6 +535,36 @@ describe('OrganizationDetailPage', () => {
     expect(screen.getByText('technical-account-1')).toBeTruthy();
     expect(screen.getByText('Letzter sicherer Fehlercode: missing_credentials')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
+    expect(
+      await screen.findByText('Die Mainserver-Daten wurden geprüft und sind aktuell.')
+    ).toBeTruthy();
+  });
+
+  it('does not confirm a failed Mainserver provisioning result as current', async () => {
+    const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
+    useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
+
+    await waitFor(() => {
+      expect(provisionMainserver).toHaveBeenCalledWith('org-1');
+    });
+    expect(screen.queryByText('Die Mainserver-Daten wurden geprüft und sind aktuell.')).toBeNull();
+  });
+
+  it('allows an authorized user to refresh an already ready Mainserver access', async () => {
+    const provisionMainserver = vi.fn().mockResolvedValue(readyOrganizationFixture);
+    useOrganizationsMock.mockReturnValue(
+      createState({ selectedOrganization: readyOrganizationFixture, provisionMainserver })
+    );
+
+    render(<OrganizationDetailPage organizationId="org-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
 
     await waitFor(() => {
       expect(provisionMainserver).toHaveBeenCalledWith('org-1');

@@ -130,6 +130,7 @@ export const reserveOrganizationMainserverProvisioning = async (
     readonly operationReference: string;
     readonly actorAccountId: string;
     readonly leaseSeconds: number;
+    readonly allowReadyRefresh?: boolean;
   }
 ): Promise<OrganizationMainserverProvisioningReservation> => {
   const result = await client.query<OrganizationMainserverCredentialRow>(
@@ -171,6 +172,11 @@ SET
   updated_at = NOW()
 WHERE iam.organization_mainserver_credentials.provisioning_status NOT IN ('provisioning', 'ready')
    OR (
+     $6::boolean
+     AND iam.organization_mainserver_credentials.provisioning_status = 'ready'
+     AND iam.organization_mainserver_credentials.operation_reference IS DISTINCT FROM EXCLUDED.operation_reference
+   )
+   OR (
      iam.organization_mainserver_credentials.provisioning_status = 'provisioning'
      AND iam.organization_mainserver_credentials.lease_expires_at <= NOW()
    )
@@ -194,6 +200,7 @@ RETURNING
       input.operationReference,
       input.leaseSeconds,
       input.actorAccountId,
+      input.allowReadyRefresh === true,
     ]
   );
   const reserved = result.rows[0];

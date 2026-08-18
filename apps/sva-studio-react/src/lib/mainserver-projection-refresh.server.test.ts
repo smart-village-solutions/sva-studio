@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
   loadMainserverMutationJournal: vi.fn(),
+  markMediaContentSaveFromMainserverMutation: vi.fn(),
   readMainserverMutationFollowUpContext: vi.fn(),
   refreshProjectedContentsForMainserverMutation: vi.fn(),
   loggerWarn: vi.fn(),
@@ -9,6 +10,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('@sva/auth-runtime/server', () => ({
   loadMainserverMutationJournal: state.loadMainserverMutationJournal,
+  markMediaContentSaveFromMainserverMutation: state.markMediaContentSaveFromMainserverMutation,
 }));
 
 vi.mock('@sva/sva-mainserver/server', () => ({
@@ -31,6 +33,8 @@ import { refreshProjectionAfterMainserverMutation } from './mainserver-projectio
 describe('mainserver projection refresh', () => {
   beforeEach(() => {
     state.loadMainserverMutationJournal.mockReset();
+    state.markMediaContentSaveFromMainserverMutation.mockReset();
+    state.markMediaContentSaveFromMainserverMutation.mockResolvedValue('marked');
     state.readMainserverMutationFollowUpContext.mockReset();
     state.refreshProjectedContentsForMainserverMutation.mockReset();
     state.loggerWarn.mockReset();
@@ -74,6 +78,42 @@ describe('mainserver projection refresh', () => {
       operation: 'create',
       entityId: 'news-1',
     });
+  });
+
+  it('correlates a successful provider mutation with its media save operation', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: {
+          'x-sva-content-media-save-operation-id': '00000000-0000-4000-8000-000000000001',
+        },
+      }),
+      Response.json({ data: { id: 'news-1' } }),
+      'news.article'
+    );
+
+    expect(state.markMediaContentSaveFromMainserverMutation).toHaveBeenCalledWith({
+      instanceId: 'de-musterhausen',
+      actorSubject: 'kc-user-1',
+      operationId: '00000000-0000-4000-8000-000000000001',
+      targetType: 'news.article',
+      targetId: 'news-1',
+    });
+  });
+
+  it('does not correlate failed provider mutations with media save operations', async () => {
+    await refreshProjectionAfterMainserverMutation(
+      new Request('https://studio.test/api/v1/mainserver/news', {
+        method: 'POST',
+        headers: {
+          'x-sva-content-media-save-operation-id': '00000000-0000-4000-8000-000000000001',
+        },
+      }),
+      Response.json({ error: 'failed' }, { status: 503 }),
+      'news.article'
+    );
+
+    expect(state.markMediaContentSaveFromMainserverMutation).not.toHaveBeenCalled();
   });
 
   it('uses the immutable mainserver operation id as the history correlation reference', async () => {

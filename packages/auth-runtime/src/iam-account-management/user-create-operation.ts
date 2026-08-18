@@ -15,6 +15,7 @@ import {
   type CreateUserActorInfo,
 } from './user-create-invitation.js';
 import { buildMainserverIdentityAttributes } from '../mainserver-credentials.js';
+import { haveEqualIdentityAttributes } from '../identity-attributes.js';
 import type { CreateUserPayload } from './user-create-persistence.js';
 import { persistCreatedUser } from './user-create-persistence.js';
 import { maskEmail } from './user-mapping.js';
@@ -103,6 +104,10 @@ export const persistProvisionedMainserverCredentials = async (input: {
     mainserverUserApplicationId: input.credentials.mainserverUserApplicationId,
     mainserverUserApplicationSecret: input.credentials.mainserverUserApplicationSecret,
   });
+
+  if (haveEqualIdentityAttributes(existingAttributes, nextAttributes)) {
+    return;
+  }
 
   await trackKeycloakCall('update_user', () =>
     input.identityProvider.provider.updateUser(input.keycloakSubject, {

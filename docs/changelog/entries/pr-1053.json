@@ -1,0 +1,4 @@
+{
+  "prNumber": 1053,
+  "body": "Die Keycloak-Anmeldung passt sich jetzt automatisch an das helle oder dunkle Farbschema des verwendeten Geräts an.\n\n- E-Mail-Adresse und Passwort bleiben auch bei automatisch ausgefüllten Feldern gut lesbar.\n- Eingabefelder, Hinweise, Meldungen und Bedienelemente bieten in beiden Darstellungen klare Kontraste.\n- Deutlich sichtbare Fokusrahmen erleichtern die Bedienung mit der Tastatur."
+}

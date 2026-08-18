@@ -1,12 +1,19 @@
 export type IamUuid = string;
 export type IamInstanceId = string;
 
-export type PersonaKey =
-  | 'system_admin';
+export type PersonaKey = 'system_admin';
 
 type PersonaScope = 'instance' | 'org';
 export type MfaPolicy = 'required' | 'recommended' | 'optional';
-export type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+export type OrganizationType =
+  | 'county'
+  | 'municipality'
+  | 'district'
+  | 'company'
+  | 'agency'
+  | 'association'
+  | 'institution'
+  | 'other';
 export type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
 export type OrganizationMembershipVisibility = 'internal' | 'external';
 export type GroupType = 'role_bundle';
@@ -58,6 +65,7 @@ export type PermissionKey =
   | 'news.create'
   | 'news.update'
   | 'news.delete'
+  | 'news.pushNotification'
   | 'events.read'
   | 'events.create'
   | 'events.update'

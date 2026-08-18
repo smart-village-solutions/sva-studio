@@ -6,6 +6,11 @@ import {
   resolveIdentityProvider,
   trackKeycloakCall,
 } from './iam-account-management/shared.js';
+import {
+  resolveExpectedGooseMigrationFromDirectory,
+  runIamDatabaseReadiness,
+  summarizeSchemaGuardFailures,
+} from './iam-account-management/schema-guard.js';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
 import { getStudioJobWorkerHealth } from './plugin-operations/runner-worker.js';
@@ -35,10 +40,35 @@ const checkDatabase = async (): Promise<RuntimeDependencyCheck> => {
     };
   }
 
+  let expectedMigration: ReturnType<typeof resolveExpectedGooseMigrationFromDirectory>;
+  try {
+    expectedMigration = resolveExpectedGooseMigrationFromDirectory();
+  } catch {
+    return {
+      ready: false,
+      error: 'IAM migration metadata is invalid',
+      reasonCode: 'migration_metadata_invalid',
+    };
+  }
+
   try {
     const client = await pool.connect();
     try {
-      await client.query('SELECT 1;');
+      const readiness = await runIamDatabaseReadiness(client, expectedMigration);
+      if (!readiness.migration.ok) {
+        return {
+          ready: false,
+          error: `Datenbankmigration ${readiness.migration.appliedVersion ?? 'none'} liegt hinter ${readiness.migration.expectedMigration}.`,
+          reasonCode: 'migration_drift',
+        };
+      }
+      if (!readiness.schema.ok) {
+        return {
+          ready: false,
+          error: `Kritische IAM-Schema-Drift: ${summarizeSchemaGuardFailures(readiness.schema) ?? 'unknown'}`,
+          reasonCode: 'schema_drift',
+        };
+      }
       return { ready: true };
     } finally {
       client.release();

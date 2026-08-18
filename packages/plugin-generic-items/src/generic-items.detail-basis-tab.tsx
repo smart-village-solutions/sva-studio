@@ -40,6 +40,7 @@ const GenericItemsCategoriesField = ({
         render={({ field }) => (
           <GenericItemsCategoryMultiselect
             availableCategories={availableCategories}
+            emptyText={labels.categoriesEmpty}
             errorMessage={categoryOptionsError ?? undefined}
             loading={categoryOptionsLoading}
             helpText={labels.categoriesHelp}
@@ -47,6 +48,7 @@ const GenericItemsCategoriesField = ({
             inputPlaceholder={labels.categoriesSearchPlaceholder}
             loadingText={labels.categoryOptionsLoading}
             searchLabel={labels.categoriesSearch}
+            unavailableText={labels.categoryUnavailable}
             removeLabel={(name) => labels.removeCategory.replace('{{name}}', name)}
             value={field.value}
             onChange={field.onChange}

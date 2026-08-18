@@ -35,7 +35,9 @@ export const contentDEResources = {
     create: 'Neuer Inhalt',
     createNow: 'Inhalt anlegen',
     edit: 'Bearbeiten',
+    editTitle: '{{title}} bearbeiten',
     openReadOnly: 'Nur lesen',
+    openReadOnlyTitle: '{{title}} nur lesen',
     blocked: 'Gesperrt',
     save: 'Änderungen speichern',
     cancel: 'Abbrechen',
@@ -63,7 +65,7 @@ export const contentDEResources = {
     title: 'Status ändern',
     description: 'Wählen Sie den neuen Status für „{{title}}“.',
     current: 'Aktuell',
-    error: 'Der Status konnte nicht geändert werden.',
+    error: 'Der Status konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
   },
   table: {
     caption: 'Tabelle der verwalteten Inhalte',

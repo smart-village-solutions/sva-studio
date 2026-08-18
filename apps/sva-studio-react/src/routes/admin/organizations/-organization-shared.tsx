@@ -38,6 +38,8 @@ const ORGANIZATION_TYPE_KEYS = {
   district: 'admin.organizations.types.district',
   company: 'admin.organizations.types.company',
   agency: 'admin.organizations.types.agency',
+  association: 'admin.organizations.types.association',
+  institution: 'admin.organizations.types.institution',
   other: 'admin.organizations.types.other',
 } satisfies Record<IamOrganizationType, TranslationKey>;
 

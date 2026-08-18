@@ -102,15 +102,21 @@ describe('createWasteToursTourMutationHandlers', () => {
       'tour-1',
       expect.objectContaining({
         name: 'Schadstoffmobil',
-        customDates: [{ date: '2027-01-01', description: undefined }, { date: '2027-01-02', description: undefined }],
+        customDates: [
+          { date: '2027-01-01', description: undefined },
+          { date: '2027-01-02', description: undefined },
+        ],
       })
     );
-    expect(apiMocks.updateWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-existing', {
-      locationId: 'location-1',
-      tourId: 'tour-1',
-      pickupDate: '2027-01-01',
-      note: '09:00 bis 10:00 Uhr',
-    });
+    expect(apiMocks.updateWasteManagementLocationTourPickupDate).toHaveBeenCalledWith(
+      'pickup-existing',
+      {
+        locationId: 'location-1',
+        tourId: 'tour-1',
+        pickupDate: '2027-01-01',
+        note: '09:00 bis 10:00 Uhr',
+      }
+    );
     expect(apiMocks.createWasteManagementLocationTourPickupDate).toHaveBeenCalledWith({
       id: 'pickup-new',
       locationId: 'location-2',
@@ -118,7 +124,9 @@ describe('createWasteToursTourMutationHandlers', () => {
       pickupDate: '2027-01-02',
       note: '11:00 bis 12:00 Uhr',
     });
-    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-deleted');
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith(
+      'pickup-deleted'
+    );
     expect(loadOverview).toHaveBeenCalledWith(true);
   });
 
@@ -149,8 +157,12 @@ describe('createWasteToursTourMutationHandlers', () => {
     expect(apiMocks.createWasteManagementLocationTourPickupDate).not.toHaveBeenCalled();
     expect(apiMocks.updateWasteManagementLocationTourPickupDate).not.toHaveBeenCalled();
     expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledTimes(2);
-    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-existing');
-    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith('pickup-deleted');
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith(
+      'pickup-existing'
+    );
+    expect(apiMocks.deleteWasteManagementLocationTourPickupDate).toHaveBeenCalledWith(
+      'pickup-deleted'
+    );
   });
 
   it('blocks saving when an assignment misses location or note', async () => {
@@ -242,11 +254,41 @@ describe('createWasteToursTourMutationHandlers', () => {
     });
   });
 
+  it('rejects a failed status update so the confirmation dialog can stay open', async () => {
+    const state = createState();
+    const loadOverview = vi.fn().mockResolvedValue(undefined);
+    const error = new Error('network');
+    apiMocks.updateWasteManagementTour.mockRejectedValue(error);
+    const mutations = createWasteToursTourMutationHandlers({ state, pt, loadOverview });
+
+    await expect(
+      mutations.onToggleTourStatus(
+        {
+          id: 'tour-1',
+          name: 'Restmüll',
+          wasteFractionIds: [],
+          active: true,
+          recurrence: 'custom',
+          customDates: [],
+        } as never,
+        false
+      )
+    ).rejects.toBe(error);
+
+    expect(state.setMessage).toHaveBeenCalledWith({
+      kind: 'error',
+      text: 'tours.messages.saveError',
+    });
+    expect(loadOverview).not.toHaveBeenCalled();
+  });
+
   it('reports partial bulk delete success and maps delete failures', async () => {
     const partialState = createState();
     const partialLoadOverview = vi.fn().mockResolvedValue(undefined);
     apiMocks.deleteWasteManagementTour.mockReset();
-    apiMocks.deleteWasteManagementTour.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('forbidden'));
+    apiMocks.deleteWasteManagementTour
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('forbidden'));
 
     const partialMutations = createWasteToursTourMutationHandlers({
       state: partialState,

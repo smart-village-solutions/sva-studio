@@ -68,6 +68,7 @@ describe('plugin operation runner worker', () => {
       jobId: 'job-1',
       queueName: 'plugin-operations',
       maxAttempts: 5,
+      runAt: new Date('2026-05-01T10:00:00.000Z'),
     });
     await stopStudioJobWorker();
     expect(getStudioJobWorkerHealth()).toEqual({
@@ -92,6 +93,7 @@ describe('plugin operation runner worker', () => {
         'plugin-operations',
         5,
         'studio-job:job-1',
+        new Date('2026-05-01T10:00:00.000Z'),
       ]
     );
     expect(state.runTaskList.mock.results[0]?.value.gracefulShutdown).toHaveBeenCalledTimes(1);
@@ -258,6 +260,31 @@ describe('plugin operation runner worker', () => {
       await ensureStudioJobWorkerStarted();
       expect(state.runTaskList).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it('ignores delayed failures from a replaced worker pool', async () => {
+    let rejectOldWorker!: (error: Error) => void;
+    state.runTaskList.mockReturnValueOnce({
+      gracefulShutdown: vi.fn(async () => undefined),
+      promise: new Promise<void>((_resolve, reject) => {
+        rejectOldWorker = reject;
+      }),
+    });
+    const { ensureStudioJobWorkerStarted, getStudioJobWorkerHealth } =
+      await import('./runner-worker.js');
+
+    await ensureStudioJobWorkerStarted();
+    const oldEvents = state.runTaskList.mock.calls[0]?.[0].events as EventEmitter;
+    rejectOldWorker(new Error('old connection lost'));
+    await vi.waitFor(() => expect(getStudioJobWorkerHealth().status).toBe('failed'));
+
+    await ensureStudioJobWorkerStarted();
+    await vi.waitFor(() => expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' }));
+    oldEvents.emit('worker:fatalError', { error: new Error('late old failure') });
+
+    expect(getStudioJobWorkerHealth()).toEqual({ ready: true, status: 'running' });
+    await ensureStudioJobWorkerStarted();
+    expect(state.runTaskList).toHaveBeenCalledTimes(2);
   });
 
   it('returns early when stop is called before the worker was started', async () => {

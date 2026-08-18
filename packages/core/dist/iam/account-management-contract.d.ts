@@ -288,7 +288,7 @@ export type IamPendingLegalTextItem = {
     readonly publishedAt?: string;
     readonly targets: IamLegalTextTargeting;
 };
-export type IamOrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+export type IamOrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'association' | 'institution' | 'other';
 export type IamContentAuthorPolicy = 'org_only' | 'org_or_personal';
 export type IamOrganizationMembershipVisibility = 'internal' | 'external';
 export type IamOrganizationListItem = {

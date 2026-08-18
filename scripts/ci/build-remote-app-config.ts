@@ -26,6 +26,7 @@ const assertRemoteSource = (environment: RemoteEnvironment, sourcePath: string) 
 
 export const parseRemoteConfigLayer = (environment: RemoteEnvironment, name: string, source: string): ParsedLayer => {
   const values = new Map<string, string>();
+  const unknownKeys = new Set<string>();
   source.split(/\r?\n/u).forEach((line, index) => {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith('#')) return;
@@ -33,9 +34,13 @@ export const parseRemoteConfigLayer = (environment: RemoteEnvironment, name: str
     const key = separator > 0 ? line.slice(0, separator).trim() : '';
     if (!keyPattern.test(key)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Ungueltiger Eintrag in ${name}, Zeile ${index + 1}.`, 'Nur KEY=VALUE-Eintraege mit gueltigen Umgebungsvariablennamen verwenden.');
     if (values.has(key)) fail(environment, 'PROMOTE_CONFIG_INVALID', `Doppelter Schluessel ${key} in ${name}.`, 'Jeden Schluessel pro Config-Schicht genau einmal definieren.');
-    if (!remoteConfigContract[key]) fail(environment, 'PROMOTE_CONFIG_INVALID', `Unbekannter Remote-Config-Schluessel ${key}.`, 'Schluessel klassifizieren oder aus dem Remote-Bundle entfernen.');
+    if (!Object.hasOwn(remoteConfigContract, key)) {
+      unknownKeys.add(key);
+      return;
+    }
     values.set(key, line.slice(separator + 1).trim());
   });
+  if (unknownKeys.size > 0) fail(environment, 'PROMOTE_CONFIG_INVALID', `Unbekannte Remote-Config-Schluessel: ${[...unknownKeys].sort().join(', ')}.`, 'Schluessel klassifizieren oder aus dem Remote-Bundle entfernen.');
   return { name, values };
 };
 
@@ -83,6 +88,14 @@ export const compareRemoteConfigShadow = (environment: RemoteEnvironment, legacy
   return { equivalent: missing.length === 0 && additional.length === 0 && configValueMismatches.length === 0 && secretReferenceMismatches.length === 0, missing, additional, configValueMismatches, secretReferenceMismatches };
 };
 
+export const selectProtectedOverrides = (environment: RemoteEnvironment, legacySource: string, explicitOverrides?: string): string => {
+  if (explicitOverrides?.trim()) return explicitOverrides;
+  return [...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values]
+    .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+};
+
 export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.ProcessEnv = process.env): number => {
   const environment = args[args.indexOf('--environment') + 1] as RemoteEnvironment | undefined;
   const profilePath = args[args.indexOf('--profile') + 1];
@@ -95,13 +108,8 @@ export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.Pro
     assertRemoteSource(environment, overrideSourceName);
     const legacySource = env.APP_CONFIG ?? '';
     const explicitOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim() ? env.PROMOTE_CONFIG_OVERRIDES : undefined;
-    const shadowOverrides = shadow && explicitOverrides === undefined
-      ? [...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values]
-          .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
-          .map(([key, value]) => `${key}=${value}`)
-          .join('\n')
-      : undefined;
-    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: explicitOverrides ?? shadowOverrides ?? '' });
+    const protectedOverrides = selectProtectedOverrides(environment, legacySource, explicitOverrides);
+    const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: protectedOverrides });
     if (shadow) {
       const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
       process.stdout.write(`${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`);

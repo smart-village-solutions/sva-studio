@@ -558,6 +558,70 @@ describe('content core authorization', () => {
     expect(loadContentByIdMock).toHaveBeenCalledWith('instance-1', 'local-content-1');
   });
 
+  it('adds the exact Mainserver principal to externally referenced local content', async () => {
+    const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
+    const projection = item('9084', '11111111-1111-4111-8111-111111111111');
+    projection.credentialSource = 'organization';
+    projection.sourceDataProviderId = '578';
+    projection.sourceDataProviderName = 'Example Organization';
+    projection.authorizationMode = 'exact';
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
+      contentId: 'local-content-1',
+    });
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentDetailMock.mockResolvedValue(content);
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([projection]);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/9084?contentType=news.article'),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(loadMainserverContentProjectionCandidatesMock).toHaveBeenCalledWith({
+      instanceId: 'instance-1',
+      contentType: 'news.article',
+      sourceEntityId: '9084',
+      actorAccountId: 'account-1',
+      activeOrganizationId: '11111111-1111-4111-8111-111111111111',
+    });
+    await expect(readJson(response)).resolves.toMatchObject({
+      data: {
+        id: 'local-content-1',
+        credentialSource: 'organization',
+        sourceDataProviderId: '578',
+        sourceDataProviderName: 'Example Organization',
+        authorizationMode: 'exact',
+      },
+    });
+  });
+
+  it('keeps externally referenced local content fail-closed for ambiguous principals', async () => {
+    const content = item('local-content-1', '11111111-1111-4111-8111-111111111111');
+    const organization = item('9084', '11111111-1111-4111-8111-111111111111');
+    organization.credentialSource = 'organization';
+    const user = { ...organization, credentialSource: 'user' as const };
+    loadExternalContentReferenceBySourceEntityMock.mockResolvedValue({
+      contentId: 'local-content-1',
+    });
+    loadContentByIdMock.mockResolvedValue(content);
+    loadContentDetailMock.mockResolvedValue(content);
+    loadMainserverContentProjectionCandidatesMock.mockResolvedValue([organization, user]);
+    authorizeContentActionMock.mockResolvedValue(null);
+
+    const response = await getContentInternal(
+      new Request('https://studio.test/api/v1/iam/contents/9084?contentType=news.article'),
+      ctx
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({ data: { id: 'local-content-1' } });
+    expect(body.data).not.toHaveProperty('credentialSource');
+    expect(resolveContentAuthorizationPermissionsMock).not.toHaveBeenCalled();
+  });
+
   it('resolves an unbound native Mainserver id from an exact principal projection', async () => {
     const projection = item('upstream-faq-1', '11111111-1111-4111-8111-111111111111');
     projection.contentType = 'faq.faq';

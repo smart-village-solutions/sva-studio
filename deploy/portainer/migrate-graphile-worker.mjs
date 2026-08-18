@@ -42,12 +42,15 @@ try {
     REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM PUBLIC;
     REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM PUBLIC;
 
+    DROP FUNCTION IF EXISTS graphile_worker.sva_enqueue_job(text, json, text, integer, text);
+
     CREATE OR REPLACE FUNCTION graphile_worker.sva_enqueue_job(
       identifier text,
       payload json,
       queue_name text,
       max_attempts integer,
-      job_key text
+      job_key text,
+      run_at timestamptz DEFAULT NULL
     ) RETURNS void
       LANGUAGE plpgsql
       SECURITY DEFINER
@@ -75,12 +78,13 @@ try {
         payload => payload,
         queue_name => queue_name,
         max_attempts => max_attempts,
-        job_key => job_key
+        job_key => job_key,
+        run_at => COALESCE(run_at, now())
       );
     END
     $enqueue$;
 
-    REVOKE ALL ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text) FROM PUBLIC;
+    REVOKE ALL ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) FROM PUBLIC;
 
     DO $ownership$
     DECLARE

@@ -1,8 +1,4 @@
-import type {
-  IamOrganizationDetail,
-  IamOrganizationListItem,
-  IamOrganizationType,
-} from '@sva/core';
+import type { IamOrganizationDetail, IamOrganizationListItem } from '@sva/core';
 import React from 'react';
 
 import {
@@ -17,12 +13,6 @@ import {
   removeOrganizationMembership,
   updateOrganizationMembership,
   updateOrganization,
-  type AssignOrganizationMembershipPayload,
-  type CreateOrganizationPayload,
-  type UpdateOrganizationMembershipPayload,
-  type UpdateOrganizationPayload,
-  type OrganizationSortDirection,
-  type OrganizationSortField,
 } from '../lib/iam-api';
 import {
   createOperationLogger,
@@ -32,62 +22,7 @@ import {
 } from '../lib/browser-operation-logging';
 import { useAuth } from '../providers/auth-provider';
 import { requestEffectiveAccessInvalidation } from '../providers/effective-access-invalidation';
-
-type OrganizationStatusFilter = 'active' | 'inactive' | 'all';
-
-type OrganizationFilters = {
-  readonly page: number;
-  readonly pageSize: number;
-  readonly search: string;
-  readonly organizationType: IamOrganizationType | 'all';
-  readonly status: OrganizationStatusFilter;
-  readonly sortBy: OrganizationSortField;
-  readonly sortDirection: OrganizationSortDirection;
-};
-
-type UseOrganizationsResult = {
-  readonly organizations: readonly IamOrganizationListItem[];
-  readonly total: number;
-  readonly page: number;
-  readonly pageSize: number;
-  readonly isLoading: boolean;
-  readonly error: IamHttpError | null;
-  readonly mutationError: IamHttpError | null;
-  readonly selectedOrganization: IamOrganizationDetail | null;
-  readonly detailLoading: boolean;
-  readonly filters: OrganizationFilters;
-  readonly setSearch: (value: string) => void;
-  readonly setOrganizationType: (value: OrganizationFilters['organizationType']) => void;
-  readonly setStatus: (value: OrganizationStatusFilter) => void;
-  readonly setSorting: (sortBy: OrganizationSortField, sortDirection: OrganizationSortDirection) => void;
-  readonly setPage: (value: number) => void;
-  readonly refetch: () => Promise<void>;
-  readonly loadOrganization: (organizationId: string) => Promise<IamOrganizationDetail | null>;
-  readonly clearSelectedOrganization: () => void;
-  readonly clearMutationError: () => void;
-  readonly createOrganization: (
-    payload: CreateOrganizationPayload
-  ) => Promise<IamOrganizationDetail | null>;
-  readonly updateOrganization: (
-    organizationId: string,
-    payload: UpdateOrganizationPayload
-  ) => Promise<IamOrganizationDetail | null>;
-  readonly deleteOrganization: (organizationId: string) => Promise<boolean>;
-  readonly provisionMainserver: (organizationId: string) => Promise<IamOrganizationDetail | null>;
-  readonly assignMembership: (
-    organizationId: string,
-    payload: AssignOrganizationMembershipPayload
-  ) => Promise<IamOrganizationDetail | null>;
-  readonly updateMembership: (
-    organizationId: string,
-    accountId: string,
-    payload: UpdateOrganizationMembershipPayload
-  ) => Promise<IamOrganizationDetail | null>;
-  readonly removeMembership: (
-    organizationId: string,
-    accountId: string
-  ) => Promise<IamOrganizationDetail | null>;
-};
+import type { OrganizationFilters, UseOrganizationsResult } from './use-organizations.types';
 
 const DEFAULT_FILTERS: OrganizationFilters = {
   page: 1,
@@ -102,8 +37,17 @@ const DEFAULT_FILTERS: OrganizationFilters = {
 const organizationsLogger = createOperationLogger('organizations-hook', 'debug');
 const SESSION_REFRESHED_EVENT = 'session_refreshed_after_401';
 
-const getOrganizationMutationOperation = (organizationId?: string) =>
-  organizationId ? 'organization_mutation_with_detail_reload' : 'organization_mutation';
+const getOrganizationMutationOperation = (options?: {
+  organizationId?: string;
+  reload?: boolean;
+}) => {
+  if (options?.reload === false) {
+    return 'organization_mutation_with_deferred_reload';
+  }
+  return options?.organizationId
+    ? 'organization_mutation_with_detail_reload'
+    : 'organization_mutation';
+};
 
 export const useOrganizations = (
   initial?: Partial<OrganizationFilters>
@@ -240,14 +184,16 @@ export const useOrganizations = (
   }, [loadOrganizations]);
 
   const loadOrganization = React.useCallback(
-    async (organizationId: string) => {
+    async (organizationId: string, options?: { readonly preserveMutationError?: boolean }) => {
       const requestId = ++detailRequestIdRef.current;
       logBrowserOperationStart(organizationsLogger, 'organization_detail_load_started', {
         operation: 'get_organization',
         organization_id: organizationId,
       });
       setDetailLoading(true);
-      setMutationError(null);
+      if (!options?.preserveMutationError) {
+        setMutationError(null);
+      }
       try {
         const response = await getOrganization(organizationId);
         if (requestId !== detailRequestIdRef.current) {
@@ -296,10 +242,10 @@ export const useOrganizations = (
   const mutate = React.useCallback(
     async <T>(
       action: () => Promise<{ data: T }>,
-      options?: { organizationId?: string }
+      options?: { organizationId?: string; reload?: boolean }
     ): Promise<T | null> => {
       setMutationError(null);
-      const operation = getOrganizationMutationOperation(options?.organizationId);
+      const operation = getOrganizationMutationOperation(options);
       logBrowserOperationStart(organizationsLogger, 'organization_mutation_started', {
         operation,
         organization_id: options?.organizationId,
@@ -309,13 +255,15 @@ export const useOrganizations = (
         const previousTotal = totalRef.current;
         const result = await action();
         requestEffectiveAccessInvalidation();
-        const reloaded = await loadOrganizations({ preserveStateOnError: true });
-        if (!reloaded) {
-          setOrganizations(previousOrganizations);
-          setTotal(previousTotal);
-        }
-        if (options?.organizationId) {
-          await loadOrganization(options.organizationId);
+        if (options?.reload !== false) {
+          const reloaded = await loadOrganizations({ preserveStateOnError: true });
+          if (!reloaded) {
+            setOrganizations(previousOrganizations);
+            setTotal(previousTotal);
+          }
+          if (options?.organizationId) {
+            await loadOrganization(options.organizationId);
+          }
         }
         logBrowserOperationSuccess(organizationsLogger, 'organization_mutation_succeeded', {
           operation,
@@ -383,8 +331,11 @@ export const useOrganizations = (
     },
     provisionMainserver: async (organizationId) =>
       mutate(() => provisionOrganizationMainserver(organizationId), { organizationId }),
-    assignMembership: async (organizationId, payload) =>
-      mutate(() => assignOrganizationMembership(organizationId, payload), { organizationId }),
+    assignMembership: async (organizationId, payload, options) =>
+      mutate(() => assignOrganizationMembership(organizationId, payload), {
+        organizationId,
+        reload: options?.reload ?? true,
+      }),
     updateMembership: async (organizationId, accountId, payload) =>
       mutate(() => updateOrganizationMembership(organizationId, accountId, payload), {
         organizationId,

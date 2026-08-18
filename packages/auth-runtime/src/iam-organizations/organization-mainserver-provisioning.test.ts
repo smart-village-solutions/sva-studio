@@ -254,6 +254,10 @@ describe('organization Mainserver provisioning', () => {
     await expect(provisionOrganizationMainserver(actorInput)).resolves.toMatchObject({
       outcome: 'ready',
     });
+    expect(state.reserveOrganizationMainserverProvisioning).toHaveBeenCalledWith(
+      state.client,
+      expect.objectContaining({ allowReadyRefresh: true })
+    );
     expect(state.resolveIdentityProviderForInstance).not.toHaveBeenCalled();
     expect(state.provisionMainserverUserCredentials).not.toHaveBeenCalled();
   });

@@ -108,12 +108,14 @@ export function NewsDetailBasisTab({
             render={({ field }) => (
               <NewsCategoryMultiselect
                 availableCategories={availableCategories}
+                emptyText={pt('fields.categoriesEmpty')}
                 errorMessage={categoryOptionsError ?? undefined}
                 loading={categoryOptionsLoading}
                 helpText={pt('fields.categoriesHelp')}
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
+                unavailableText={pt('fields.categoryUnavailable')}
                 removeLabel={(name) => pt('actions.removeCategory', { name })}
                 value={field.value}
                 onChange={field.onChange}

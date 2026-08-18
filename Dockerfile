@@ -128,6 +128,7 @@ COPY --from=build --chown=node:node /workspace/entrypoint.sh ./entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/bootstrap-entrypoint.sh ./bootstrap-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/migrate-entrypoint.sh ./migrate-entrypoint.sh
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-graphile-worker.mjs ./migrate-graphile-worker.mjs
+COPY --from=build --chown=node:node /workspace/deploy/portainer/verify-iam-schema.mjs ./verify-iam-schema.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/migrate-waste-tenants.mjs ./migrate-waste-tenants.mjs
 COPY --from=build --chown=node:node /workspace/deploy/portainer/waste-tenant-migration-catalog.mjs ./waste-tenant-migration-catalog.mjs
 COPY --from=build --chown=node:node /workspace/provisioner-entrypoint.sh ./provisioner-entrypoint.sh

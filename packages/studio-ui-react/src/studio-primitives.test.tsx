@@ -494,6 +494,9 @@ describe('studio-ui-react primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Archivieren' }));
 
     expect(screen.getAllByText('Alpha')).toHaveLength(2);
+    expect(screen.getAllByRole('cell').every((cell) => cell.className.includes('align-top'))).toBe(
+      true
+    );
     expect(onBulk).toHaveBeenCalledWith([{ id: 'a', title: 'Alpha' }]);
   });
 

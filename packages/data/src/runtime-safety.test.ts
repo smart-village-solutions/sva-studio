@@ -389,6 +389,23 @@ test('postal-code enrichment jobs are unique per instance while active', () => {
   expect(sql).toMatch(/DROP INDEX IF EXISTS iam\.idx_studio_jobs_active_waste_postal_code_enrichment/);
 });
 
+test('organization type migration and schema snapshot support associations and institutions', () => {
+  const sql = readRepoFile(
+    'data/migrations/0084_iam_organization_types_association_institution.sql'
+  );
+  const schemaSnapshot = readRepoFile('../docs/development/studio-db-schema-final.sql');
+  const upSql = sql.split('-- +goose Down')[0] ?? '';
+  const downSql = sql.split('-- +goose Down')[1] ?? '';
+
+  for (const source of [upSql, schemaSnapshot]) {
+    expect(source).toContain("'association'");
+    expect(source).toContain("'institution'");
+  }
+
+  expect(downSql).not.toContain("'association'");
+  expect(downSql).not.toContain("'institution'");
+});
+
 test('iam ownership authorization model migration replaces legacy ownership, direct permissions and deny effects', () => {
   const sql = readRepoFile('data/migrations/0061_iam_content_ownership_authorization_model.sql');
 

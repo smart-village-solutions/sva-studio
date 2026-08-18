@@ -4,6 +4,7 @@ import type { IdentityProviderPort } from '../identity-provider-port.js';
 import {
   KeycloakAdminClient,
   getKeycloakAdminClientConfigFromEnv,
+  getKeycloakTenantAdminClientConfigFromEnv,
 } from '../keycloak-admin-client.js';
 import { loadInstanceById } from '@sva/data-repositories/server';
 import { getIamDatabaseUrl } from '../runtime-secrets.js';
@@ -56,14 +57,6 @@ export const resolveIdentityProvider = () => {
   }
 
   return identityProviderCache;
-};
-
-const requireTenantAdminBaseUrl = (): string => {
-  const baseUrl = process.env.KEYCLOAK_ADMIN_BASE_URL?.trim() || process.env.KEYCLOAK_PROVISIONER_BASE_URL?.trim();
-  if (!baseUrl) {
-    throw new Error('Missing required env: KEYCLOAK_ADMIN_BASE_URL');
-  }
-  return baseUrl;
 };
 
 const createIdentityProviderResolution = (
@@ -165,13 +158,11 @@ const resolveTenantAdminIdentityProvider = async (
     }
 
     const resolution = createIdentityProviderResolution(
-      {
-        baseUrl: requireTenantAdminBaseUrl(),
+      getKeycloakTenantAdminClientConfigFromEnv({
         realm: instance.authRealm,
-        adminRealm: instance.authRealm,
         clientId: resolvedClientId,
         clientSecret: resolvedSecret,
-      },
+      }),
       'instance',
       executionMode
     );

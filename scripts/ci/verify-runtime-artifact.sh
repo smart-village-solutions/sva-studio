@@ -518,6 +518,7 @@ if [ "${VERIFY_STATUS}" = "ok" ]; then
       SVA_MAINSERVER_CLIENT_SECRET=verify-mainserver-secret \
       SVA_MAINSERVER_REQUIRED=false \
       SVA_MIGRATION_STATUS_REQUIRED=false \
+      MIGRATIONS_DIR="${WORKSPACE_ROOT}/packages/data/migrations" \
       POSTGRES_DB=sva_studio \
       POSTGRES_USER=sva \
       POSTGRES_PASSWORD="${POSTGRES_PASSWORD}" \

@@ -6,7 +6,7 @@ type PersonaKey =
 
 type PersonaScope = 'instance' | 'org';
 type MfaPolicy = 'required' | 'recommended' | 'optional';
-type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+type OrganizationType = 'county' | 'municipality' | 'district' | 'company' | 'agency' | 'association' | 'institution' | 'other';
 type ContentAuthorPolicy = 'org_only' | 'org_or_personal';
 type OrganizationMembershipVisibility = 'internal' | 'external';
 type GroupType = 'role_bundle';

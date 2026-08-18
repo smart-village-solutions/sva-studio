@@ -1,0 +1,4 @@
+{
+  "prNumber": 1052,
+  "body": "Tabellenaktionen und anklickbare Informationen sind im Studio jetzt einheitlich gestaltet.\n\n- Touren- und Inhaltstabellen unterscheiden klar zwischen anklickbaren Informationen, Status und eigenständigen Aktionen.\n- Statusänderungen verwenden beschriftete Badges und bleiben bei Fehlern zur erneuten Ausführung geöffnet.\n- Tabellenzellen sind bei unterschiedlich hohen Inhalten einheitlich oben ausgerichtet.\n- Mobile Tabellenkarten zeigen verständliche Beschriftungen für ihre Aktionen."
+}

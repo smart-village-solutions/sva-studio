@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { revokeBrowserObjectUrl } from './content-media-usage.js';
 import {
   createMetadataDraft,
   type StudioMediaPickerAssetDetail,
@@ -24,7 +25,12 @@ export type StudioMediaPickerOverlayOptions<TAssetDetail extends StudioMediaPick
   Readonly<{
     onAccept: (asset: TAssetDetail) => void;
     isSupportedUploadFile: (file: File) => boolean;
-    uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>;
+    uploadAsset?: (file: File) => Promise<StudioMediaPickerUploadAssetResult>;
+    createLocalAsset?: (input: {
+      readonly file: File;
+      readonly draftId: string;
+      readonly previewUrl: string;
+    }) => TAssetDetail;
     loadAsset: (assetId: string) => Promise<TAssetDetail>;
     saveAssetMetadata: (
       assetId: string,
@@ -81,7 +87,8 @@ const useReviewAssetLoader = <TAssetDetail extends StudioMediaPickerAssetDetail>
 const useUploadFileAction = (
   state: ReturnType<typeof useStudioMediaPickerOverlayState>,
   isSupportedUploadFile: (file: File) => boolean,
-  uploadAsset: (file: File) => Promise<StudioMediaPickerUploadAssetResult>,
+  uploadAsset: ((file: File) => Promise<StudioMediaPickerUploadAssetResult>) | undefined,
+  createLocalAsset: StudioMediaPickerOverlayOptions<StudioMediaPickerAssetDetail>['createLocalAsset'],
   loadReviewAsset: (
     assetId: string,
     source: StudioMediaPickerReviewSource,
@@ -102,6 +109,26 @@ const useUploadFileAction = (
       actions.setErrorCode(null);
 
       try {
+        if (createLocalAsset) {
+          if (state.reviewAsset?.localDraft) {
+            revokeBrowserObjectUrl(state.reviewAsset.previewUrl);
+          }
+          const previewUrl = URL.createObjectURL(file);
+          const localAsset = createLocalAsset({
+            file,
+            draftId: globalThis.crypto.randomUUID(),
+            previewUrl,
+          });
+          actions.setReviewAsset(localAsset);
+          actions.setMetadataDraft(createMetadataDraft(localAsset));
+          actions.setReviewSource('upload');
+          actions.setMode('review');
+          actions.setUploadPhase('success');
+          return;
+        }
+        if (!uploadAsset) {
+          throw new TypeError('No media upload strategy configured.');
+        }
         actions.setUploadPhase('uploading');
         const uploaded = await uploadAsset(file);
         actions.setUploadPhase('finalizing');
@@ -116,7 +143,14 @@ const useUploadFileAction = (
         actions.setErrorCode('upload_failed');
       }
     },
-    [actions, isSupportedUploadFile, loadReviewAsset, uploadAsset]
+    [
+      actions,
+      createLocalAsset,
+      isSupportedUploadFile,
+      loadReviewAsset,
+      state.reviewAsset,
+      uploadAsset,
+    ]
   );
 };
 
@@ -128,6 +162,7 @@ export const useStudioMediaPickerOverlayActions = <
 ) => {
   const {
     canAcceptAsset,
+    createLocalAsset,
     editableMetadataFields,
     isSupportedUploadFile,
     loadAsset,
@@ -150,6 +185,7 @@ export const useStudioMediaPickerOverlayActions = <
     state,
     isSupportedUploadFile,
     uploadAsset,
+    createLocalAsset,
     loadReviewAsset
   );
 

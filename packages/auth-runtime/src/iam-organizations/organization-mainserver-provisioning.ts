@@ -213,6 +213,7 @@ export const provisionOrganizationMainserver = async (
       operationReference,
       actorAccountId: input.actorAccountId,
       leaseSeconds: ORGANIZATION_PROVISIONING_LEASE_SECONDS,
+      allowReadyRefresh: input.trigger === 'explicit_retry',
     })
   );
   const reservedOutcome = await returnReservedOutcome(

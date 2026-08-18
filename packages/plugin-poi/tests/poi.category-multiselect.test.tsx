@@ -4,84 +4,34 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PoiCategoryMultiselect } from '../src/poi.category-multiselect.js';
 
 describe('PoiCategoryMultiselect', () => {
-  afterEach(() => {
-    cleanup();
-  });
+  afterEach(() => cleanup());
 
-  it('keeps exact matches in the input while typing through the stable input id', () => {
+  it('only selects categories supplied by the Mainserver catalog', () => {
     const onChange = vi.fn();
-
     render(
       <PoiCategoryMultiselect
         availableCategories={[{ id: 'cat-1', name: 'Verwaltung' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputId="poi-category"
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
+        emptyText="Keine passenden Kategorien gefunden."
+        helpText="Wählen Sie Kategorien aus."
+        inputPlaceholder="Kategorie suchen oder auswählen"
         loading={false}
         loadingText="Kategorien werden geladen."
         onChange={onChange}
         removeLabel={(name) => `Kategorie ${name} entfernen`}
         searchLabel="Kategorien suchen"
+        unavailableText="nicht mehr verfügbar"
         value={[]}
       />
     );
 
-    const input = screen.getByLabelText('Kategorien suchen');
-    expect(input.getAttribute('id')).toBe('poi-category');
-
-    fireEvent.change(input, { target: { value: 'Verwaltung' } });
-
+    fireEvent.click(screen.getByRole('button', { name: 'Kategorie suchen oder auswählen' }));
+    const searchInput = screen.getByLabelText('Kategorien suchen');
+    fireEvent.change(searchInput, { target: { value: 'Frei erfunden' } });
+    fireEvent.keyDown(searchInput, { key: 'Enter' });
     expect(onChange).not.toHaveBeenCalled();
-    expect((input as HTMLInputElement).value).toBe('Verwaltung');
-  });
 
-  it('adds the current category on blur', () => {
-    const onChange = vi.fn();
-
-    render(
-      <PoiCategoryMultiselect
-        availableCategories={[{ id: 'cat-1', name: 'Verwaltung' }]}
-        helpText="Waehlen Sie Kategorien aus."
-        inputId="poi-category"
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading={false}
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    const input = screen.getByLabelText('Kategorien suchen');
-    fireEvent.change(input, { target: { value: 'Verwaltung' } });
-    fireEvent.blur(input);
-
+    fireEvent.change(searchInput, { target: { value: 'Verwaltung' } });
+    fireEvent.click(screen.getByLabelText('Verwaltung'));
     expect(onChange).toHaveBeenCalledWith(['Verwaltung']);
-  });
-
-  it('renders loading and error states', () => {
-    const onChange = vi.fn();
-
-    render(
-      <PoiCategoryMultiselect
-        availableCategories={[]}
-        errorMessage="Die Kategorien konnten nicht geladen werden."
-        helpText="Waehlen Sie Kategorien aus."
-        inputPlaceholder="Kategorie suchen oder auswaehlen"
-        loading
-        loadingText="Kategorien werden geladen."
-        onChange={onChange}
-        removeLabel={(name) => `Kategorie ${name} entfernen`}
-        searchLabel="Kategorien suchen"
-        value={[]}
-      />
-    );
-
-    expect(screen.getByText('Kategorien werden geladen.')).toBeTruthy();
-    expect(screen.getByText('Die Kategorien konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Kategorie hinzufügen' })).toBeNull();
-    expect(screen.getAllByLabelText('Kategorien suchen').at(-1)?.hasAttribute('disabled')).toBe(true);
-    expect(onChange).not.toHaveBeenCalled();
   });
 });

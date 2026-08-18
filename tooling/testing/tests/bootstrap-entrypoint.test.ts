@@ -10,10 +10,14 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(testDir, '../../..');
 const bootstrapEntrypointPath = resolve(rootDir, 'deploy/portainer/bootstrap-entrypoint.sh');
 
-const renderBootstrapSql = (envOverrides: NodeJS.ProcessEnv = {}) => {
+const renderBootstrapSql = (
+  envOverrides: NodeJS.ProcessEnv = {},
+  useDefaultSchemaGuard = false
+) => {
   const tempDir = mkdtempSync(resolve(tmpdir(), 'sva-bootstrap-entrypoint-test-'));
   const fakeBinDir = resolve(tempDir, 'bin');
   const outputSqlPath = resolve(tempDir, 'bootstrap.sql');
+  const fakeNodePath = resolve(fakeBinDir, 'node');
   const fakePsqlPath = resolve(fakeBinDir, 'psql');
 
   try {
@@ -39,12 +43,27 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
       'utf8'
     );
     chmodSync(fakePsqlPath, 0o755);
+    writeFileSync(
+      fakeNodePath,
+      `#!/usr/bin/env bash
+if [ "\${1:-}" = "./verify-iam-schema.mjs" ]; then
+  printf '[test-verifier] invoked\\n'
+  exit 0
+fi
+exec "${process.execPath}" "$@"
+`,
+      'utf8'
+    );
+    chmodSync(fakeNodePath, 0o755);
+
+    const environment = { ...process.env };
+    delete environment.SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD;
 
     const result = spawnSync('bash', [bootstrapEntrypointPath], {
       cwd: rootDir,
       encoding: 'utf8',
       env: {
-        ...process.env,
+        ...environment,
         ...envOverrides,
         APP_DB_PASSWORD: 'app-password',
         STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
@@ -54,11 +73,15 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
         POSTGRES_PASSWORD: 'postgres-password',
         POSTGRES_USER: 'sva',
         SVA_ALLOWED_INSTANCE_IDS: 'bb-guben,de-musterhausen',
+        ...(useDefaultSchemaGuard ? {} : { SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD: 'false' }),
         SVA_PARENT_DOMAIN: 'studio.smart-village.app',
       },
     });
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
+    if (useDefaultSchemaGuard) {
+      expect(result.stdout).toContain('[test-verifier] invoked');
+    }
     return readFileSync(outputSqlPath, 'utf8');
   } finally {
     rmSync(tempDir, { force: true, recursive: true });
@@ -66,8 +89,12 @@ cp "$sql_file" "$OUTPUT_SQL_PATH"
 };
 
 describe('bootstrap-entrypoint', () => {
+  it('runs the schema guard by default when no override is configured', () => {
+    renderBootstrapSql({}, true);
+  });
+
   it('separates enqueue-only app privileges from worker execution privileges', () => {
-    const sql = renderBootstrapSql();
+    const sql = renderBootstrapSql({}, true);
 
     expect(sql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app";');
     expect(sql).toContain('REVOKE CREATE ON DATABASE "sva_studio" FROM "sva_app";');
@@ -76,7 +103,7 @@ describe('bootstrap-entrypoint', () => {
       'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
     );
     expect(sql).toContain(
-      'GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text) TO "sva_app";'
+      'GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO "sva_app";'
     );
     expect(sql).not.toContain(
       'GRANT EXECUTE ON FUNCTION graphile_worker.add_job(text, json, text, timestamptz, integer, text, integer, text[], text) TO "sva_app";'
@@ -97,7 +124,7 @@ describe('bootstrap-entrypoint', () => {
   });
 
   it('reconciles worker privileges when app-role reconciliation is disabled', () => {
-    const sql = renderBootstrapSql({ SVA_BOOTSTRAP_RECONCILE_APP_ROLE: 'false' });
+    const sql = renderBootstrapSql({ SVA_BOOTSTRAP_RECONCILE_APP_ROLE: 'false' }, true);
 
     expect(sql).not.toContain('GRANT iam_app TO "sva_app";');
     expect(sql).toContain('ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER');

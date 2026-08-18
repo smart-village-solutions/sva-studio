@@ -259,6 +259,9 @@ if [ -z "${IAM_DATABASE_URL:-}" ] && [ -n "${APP_DB_PASSWORD:-}" ]; then
   export IAM_DATABASE_URL="postgres://${APP_DB_USER:-sva_app}:${db_password_encoded}@postgres:5432/${POSTGRES_DB:-sva_studio}"
 fi
 
+echo "[entrypoint] verifying IAM database readiness" >&2
+node ./verify-iam-schema.mjs
+
 if [ -z "${REDIS_URL:-}" ]; then
   export REDIS_URL="redis://redis:6379"
 fi

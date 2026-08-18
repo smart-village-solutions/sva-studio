@@ -93,6 +93,7 @@ export function PoiDetailBasisTab({
             render={({ field }) => (
               <PoiCategoryMultiselect
                 availableCategories={availableCategories}
+                emptyText={pt('fields.categoriesEmpty')}
                 errorMessage={categoryOptionsError ?? undefined}
                 loading={categoryOptionsLoading}
                 helpText={pt('fields.categoriesHelp')}
@@ -100,6 +101,7 @@ export function PoiDetailBasisTab({
                 inputPlaceholder={pt('fields.categoriesSearchPlaceholder')}
                 loadingText={pt('messages.categoryOptionsLoading')}
                 searchLabel={pt('fields.categoriesSearch')}
+                unavailableText={pt('fields.categoryUnavailable')}
                 removeLabel={(name) => pt('actions.removeCategory').replace('{{name}}', name)}
                 value={field.value}
                 onChange={field.onChange}

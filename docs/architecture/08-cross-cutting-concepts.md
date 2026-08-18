@@ -46,7 +46,9 @@ gleichzeitig beeinflussen.
 - Asset-Metadaten und Inhaltsmetadaten besitzen getrennte Ownership: Eine Übernahme erzeugt einen Snapshot; spätere Asset-Änderungen überschreiben redaktionell abweichende Felder nur nach expliziter feldweiser Auswahl.
 - `previewUrl` ist ausschließlich transient. Fachmodelle dürfen nur eine nachweislich persistierbare HTTPS-Delivery-URL speichern; URLs mit Ablauf- oder Signaturparametern werden fail-closed abgewiesen.
 - Medienaktionen werden abgestuft: Auswahl benötigt `media.read` und `media.reference.manage`, Upload zusätzlich `media.create`, Asset-Metadatenänderung `media.update`. Ohne `media.update` bleibt der Review lesbar und übernehmbar.
-- Mainserver-Snapshot und Hostreferenz bilden eine kontrollierte Cross-System-Konsistenz: Snapshot zuerst, idempotentes Referenz-Replacement danach, sichtbarer Teilfehler und isolierter Retry.
+- Mainserver-Snapshot und Hostreferenz bilden eine kontrollierte Cross-System-Konsistenz: Neue Dateien bleiben bis zur Save-Aktion lokale Entwürfe, werden dann als unsichtbare `provisional`-Assets hochgeladen und erst nach bestätigtem Fach-Write gemeinsam mit dem Referenz-Replacement aktiviert.
+- Content-Save-Operationen sind an Instanz und Actor gebunden. Sie benötigen `media.create` und `media.reference.manage`, nicht jedoch `media.delete`; der Bibliotheksupload bleibt ein eigener unmittelbarer Flow.
+- Ein eindeutiger Fachfehler erlaubt kontrolliertes Abandon. Ein unklarer Netzwerk-/Upstream-Ausgang darf keine möglicherweise bereits referenzierte Datei löschen; Commit-Retry wiederholt ausschließlich Hostschritte nach dem Fach-Write.
 - Upload, Metadatenänderung, Bildbearbeitung, Delivery und Löschblockierung werden auditierbar verarbeitet.
 - Löschungen bleiben fail-closed bei aktiven Referenzen oder unvollständigem Upload-/Processing-Zustand.
 - i18n für Medienrollen und Fehlerzustände folgt denselben Dot-Notation-Regeln wie übrige Host- und Plugin-Oberflächen.
@@ -187,7 +189,7 @@ gleichzeitig beeinflussen.
 - Der Root-Host ist ein expliziter Plattform-Scope und keine Pseudo-Instanz in `iam.instances`
 - Studio-verwaltete Rollen werden über `managed_by = 'studio'` und `instance_id` in der IAM-Datenbank abgegrenzt; Keycloak spiegelt tenantseitig nur die technische Sonderrolle `system_admin`
 - Keycloak bleibt von direkten Nutzerrechten fachlich entkoppelt; diese Konfiguration ist ausschließlich Studio-intern und wird nicht in den IdP gespiegelt
-- `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name
+- `role_key` ist die stabile technische Identität, `display_name` der editierbare UI-Name. Bei normalen Rollenanlagen erzeugt der Server `role_key` deterministisch aus dem Anzeigenamen und löst Kollisionen instanzweit mit einem längensicheren numerischen Suffix auf; explizite Schlüssel bleiben ausschließlich ein Legacy-API-Vertrag.
 - Rohe Keycloak-Rollen aus `realm_access` werden separat als `keycloakRoles` geführt; tenantseitige Fachautorisierung nutzt ausschließlich IAM-Rollen, Gruppen und Permissions. Nur der technische Tenant-Schnitt `system_admin` bleibt Keycloak-relevant.
 - Idempotency-Schlüssel für mutierende IAM-Endpoints sind mandantenspezifisch gescoped: (`instance_id`, `actor_account_id`, `endpoint`, `idempotency_key`)
 - Keycloak-Provisioning-Runs nutzen denselben kanonischen Header `Idempotency-Key`, aber einen plattformweiten Run-Scope aus (`instance_id`, `mutation`, `idempotency_key`); der gespeicherte Payload-Fingerprint basiert nur auf stabilen Request-Eingaben, nicht auf aus aktuellem Instanzzustand abgeleiteten Reconcile-Intents.
@@ -222,7 +224,7 @@ gleichzeitig beeinflussen.
 - Registry-Mutationen halten ihre SQL-Parameterlisten explizit positionsstabil. Für Auth- und Tenant-Admin-Secrets bleiben Keep-Flag und Ciphertext getrennte Werte, sodass `undefined`, explizites Löschen und Ersetzen ohne impliziten Secret-Default unterscheidbar sind.
 - Registry-Lookups verwenden einen kurzen In-Process-L1-Cache mit expliziter Invalidation, aber ohne Stale-Serve-Strategie
 - Tenant-gebundene Requests arbeiten fail-closed, wenn der Session-User keinen gültigen `instanceId`-Kontext mehr trägt. Neue Login-Sessions erhalten diesen Kontext bereits beim Callback aus dem Auth-Scope; Middleware-Hydration bleibt nur Absicherung für alte oder beschädigte Sessions.
-- `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als Kompatibilitätsfeld sichtbar, ist aber kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
+- `roleLevel` bleibt in Admin-Read-Models und Mutationsverträgen als internes Kompatibilitäts- und Schutzfeld erhalten, wird in der normalen Rollen-UI jedoch nicht angezeigt oder bearbeitet. Neue Custom-Rollen erhalten serverseitig `0`; Updates ohne Feld bewahren den gespeicherten Wert. Das Feld ist kein Ersatz für die Root-/Tenant-Scope-Trennung und keine normative Quelle neuer Governance-Entscheidungen.
 
 ### Logging und Observability
 
@@ -256,7 +258,7 @@ gleichzeitig beeinflussen.
 - Widerspricht ein vorhandener OIDC-Claim `instanceId` dem Host-/Realm-Scope, wird der Callback mit `tenant_scope_conflict` fail-closed protokolliert und nicht als tenant-lose Session fortgesetzt.
 - Tenant-Admin-Fehler dürfen zusätzlich `execution_mode`, `auth_realm` und `provider_source` tragen, damit Realm- oder Control-Plane-Drift ohne Rohfehler analysierbar bleibt
 - Auth-, Resolver- und Audit-Fehler protokollieren redigiert nur `error_type`, `reason_code`, `dependency`, `scope_kind` und Korrelationsfelder; rohe Provider-/DB-Fehltexte bleiben außerhalb des Standard-Logs
-- IAM-Readiness und Diagnosepfade exponieren Schema-Drift bewusst knapp (`schema_drift`, `missing_table`, `missing_column`) statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
+- IAM-Readiness und Diagnosepfade exponieren Datenbankdrift bewusst knapp: `migration_drift` bezeichnet einen hinter dem Image-Head liegenden Goose-Ledger, `schema_drift` ein fehlendes kritisches Objekt; Objektbefunde bleiben auf Codes wie `missing_table` oder `missing_column` begrenzt, statt rohe SQL-, Redis- oder Provider-Fehler an UI oder Browser weiterzugeben
 - Runtime-Doctor und Deploy-Report ergänzen den fachlichen Schema-Guard um die verwendete `goose`-Version sowie Metadaten des dedizierten Swarm-Migrations- und Bootstrap-Jobs, ohne Secrets oder Roh-SQL nach außen zu exponieren
 - Keycloak-User-Sync loggt übersprungene Benutzer nur begrenzt, auf Debug-Level und ohne Klartext-PII; Summary-Logs enthalten `auth_realm`, `provider_source`, `execution_mode`, `skipped_count` und `sample_instance_ids`
 - Die Profilreparatur beim tenantlokalen Keycloak-Import folgt deterministisch `Quellwert -> instanz- und subjectgebundener lokaler Seed -> syntaktisch gültiger Username nur als E-Mail`. Die reine Entscheidung ist von Lookup, Provider-Mutation, Savepoint, IAM-Persistenz und Reporting getrennt; ein verbleibend unvollständiges Profil wird ohne Persistenz als `manual_review` behandelt.
@@ -332,6 +334,7 @@ gleichzeitig beeinflussen.
 - Der produktionsnahe Releasevertrag klassifiziert Fehler verbindlich in `config`, `image`, `migration`, `bootstrap`, `startup`, `health`, `ingress` und `dependency`; spätere Phasen dürfen frühere Resultate nicht überschreiben
 - Die Promote-Modi `run` arbeiten fail-closed: Ohne Environment-Freigabe, erforderliche Staging-Parität, erfolgreiches Backup und bestandene Postconditions startet kein App-Deploy
 - Die Promote-Modi `run` arbeiten zusätzlich fail-closed auf Basis dedizierter Swarm-Jobs: Ohne erfolgreiches Backup, erfolgreichen Exit-Code von `migrate` und `bootstrap`, Post-Migration-Assertions und Schema-Guard startet kein App-Rollout
+- Der gemeinsame IAM-Datenbank-Verifier läuft nach Goose, nach dem Bootstrap und vor dem App-Prozess; `health/ready` wertet denselben Vertrag mit dem App-Principal erneut aus. Der erwartete Stand wird aus dem Migrationsverzeichnis des unveränderlichen Images bestimmt, während der App-Principal nur die benötigten Spalten `version_id` und `is_applied` des Goose-Ledgers lesen darf.
 - Reguläre Studio-Releases arbeiten fail-closed auf dem vom Build erzeugten beziehungsweise in Staging aufgelösten `SVA_IMAGE_DIGEST`; Production akzeptiert nur einen expliziten Digest
 - Production-Parität erfordert für mutierende Läufe erfolgreiche mutierende Staging-Evidenz exakt desselben Digests; lokale Root-/Tenant-/OIDC-Smokes sind nur zusätzliche Recovery-Evidenz
 - Der Live-Rollout-Render validiert vor dem intern gekapselten `quantum-cli stacks deploy`, dass `app` die Netzwerke `internal` und `public` sowie die benötigten Traefik-Labels weiterhin enthält; fehlende Einträge blockieren den Rollout fail-fast
@@ -346,6 +349,7 @@ gleichzeitig beeinflussen.
 - DSR-Resilienz über asynchrones Export-Statusmodell (`queued|processing|completed|failed`)
 - Restore-Sanitization nach Backup-Restore stellt DSGVO-konforme Nachbereinigung sicher
 - Mainserver-Delegation arbeitet fail-closed: ohne lokalen Rollencheck, Instanzkontext, Konfiguration oder gültige Credentials wird kein Upstream-Call ausgeführt
+- Das Versenden einer News-Push-Benachrichtigung ist mit `news.pushNotification` von `news.create`, `news.update`, `content.publish` und `content.changeStatus` getrennt. UI und Server werten dieses Recht eigenständig aus; bei `pushNotification = true` erfolgt die zusätzliche Prüfung vor jedem Mainserver-Aufruf.
 - Pagination gegen den Mainserver arbeitet ebenfalls fail-closed: ungültige `page`-/`pageSize`-Eingaben werden auf den kanonischen Vertrag normalisiert, und ohne belastbaren Nachweis für weitere sichtbare Einträge wird `hasNextPage` nicht optimistisch gesetzt
 - Technische Entflechtung ist für serverseitige Integrationspfade verbindlich: öffentliche Host-Fassaden bleiben stabil, während Transport-, Cache- und Fachlogik in getrennten internen Modulen liegen und nicht wieder in Sammeldateien zusammengeführt werden
 - Der IAM-Acceptance-Runner arbeitet ebenfalls fail-closed: fehlende Env, fehlende Testbenutzer, nicht bereite Dependencies oder unvollständige Laufzeitnachweise beenden den Lauf mit dokumentierten Fehlercodes
@@ -686,7 +690,7 @@ Referenzen:
 
 ## Backup-Sicherheitsvertrag
 
-Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret außerhalb von `APP_CONFIG` geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
+Der Promote-Vertrag trennt getrackte nicht-sensitive Remote-Profile von geschützten Override-Werten. Lokale `*.local.vars` sind keine Deployment-Quelle. Im autoritativen Buildermodus stammen nicht-sensitive Werte ausschließlich aus dem getrackten Profil. Solange ein geschütztes `PROMOTE_CONFIG_OVERRIDES` noch nicht vollständig migriert ist, darf der Builder ersatzweise ausschließlich zentral als `secret-value` oder `secret-reference` klassifizierte Werte aus dem bestehenden `APP_CONFIG` übernehmen; unbekannte oder falsch klassifizierte Legacy-Schlüssel stoppen vor jeder Remote-Mutation. Das umgebungsspezifische `REDIS_SNAPSHOT_HMAC_SECRET` wird als eigenständiges geschütztes GitHub-Environment-Secret außerhalb von `APP_CONFIG` geführt, vor jeder Mutation validiert und nur beim Stack-Render an die App gebunden. Strukturierte Promote-Fehler enthalten Phase, stabilen `PROMOTE_*`-Code, Retryklassifikation und nächste Aktion; GitHub-Annotation, Summary und JSON-Evidenz dürfen weder Secret-Werte noch deren Hashes oder Längen, vollständige Environment-Dumps, PII oder unredigierte Remote-Logs enthalten.
 
 Der Backup-Agent kombiniert GitHub-OIDC mit umgebungsspezifischen HMAC-Signaturen. OIDC ist auf Repository, Environment und freigegebene Workflows auf `main` gebunden. Requests sind höchstens zehn Minuten gültig und über ihre persistierte Request-ID vor Replay geschützt. HTTP-Antworten und terminale Fehler enthalten nur stabile Fehlercodes; Credentials, Connection-Strings, Datenbankinhalte und Shell-Traces werden nicht ausgegeben.
 

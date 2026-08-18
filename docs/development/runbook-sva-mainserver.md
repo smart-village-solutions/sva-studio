@@ -81,6 +81,12 @@ Die Kategorien-Fassade ist kein News-spezifischer Spezialfall mehr. Der Host sch
 | ----------------------------------- | ----------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GET /api/v1/mainserver/categories` | `categories.read` | `categories`         | Liefert die aktuell hostseitig validierte flache Kategorienliste mit optionalem `parent`-Kontext für die read-only Kategorienseite und für Editor-Auswahllisten. |
 
+Die Content-Editoren für Veranstaltungen, News, POIs und generische Inhalte verwenden diese Liste als
+abschließenden Auswahlkatalog. Redakteurinnen und Redakteure können eine oder mehrere vorhandene Kategorien
+durchsuchen, auswählen und wieder entfernen, aber keine Freitext-Kategorie anlegen. Bereits gespeicherte
+Kategorien, die der Mainserver nicht mehr liefert, bleiben beim Bearbeiten sichtbar und entfernbar, damit ein
+anderweitiger Speichervorgang keine Daten unbemerkt löscht; neu auswählen lassen sie sich nicht.
+
 Lokale Altinhalte mit `contentType = news.article` oder dem Legacy-Typ `news` werden nicht migriert und nicht mehr produktiv angezeigt. Falls solche Datensätze noch in der IAM-Content-Tabelle vorhanden sind, dienen sie nur noch als Altquelle für manuelle Analyse oder einen späteren operatorgeführten Export.
 
 Das News-`payload` ist kein zweites Inhaltsmodell: redaktionelle Inhalte werden weiterhin über dedizierte Mainserver-Felder und `contentBlocks` geschrieben. Für technische Metadaten wird es jedoch verlustfrei durchgereicht. Der News-Editor ersetzt ausschließlich `wasteLocationKeys` oder entfernt diesen Schlüssel bei globaler Zustellung; unbekannte Payload-Felder bleiben erhalten. Ein Zielschlüssel besteht aus `{ street, zip, city }`, wobei `street` bei konkreten Adressen die Hausnummer enthält. Fehlen bei alten News `contentBlocks`, leitet der Adapter aus vorhandenen Payload-Werten keinen neuen redaktionellen Textbestand ab.
@@ -373,6 +379,6 @@ Operativ relevante Zustände:
 - `failed`: der Upstream-Aufruf ist sicher fehlgeschlagen und kann wiederholt werden;
 - `reconciliation_required`: Lost Response, lokale Teilpersistenz oder Binding-Konflikt müssen zuerst vervollständigt beziehungsweise geprüft werden.
 
-Bei `verification_required` oder `reconciliation_required` verifiziert ein Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
+Bei `verification_required`, `reconciliation_required` oder `ready` verifiziert ein expliziter Retry zuerst die vorhandenen Organisations-Credentials über `/data_provider.json`. Stimmen die bereits am technischen Account gespeicherten Attribute exakt mit den verifizierten Credentials überein, entfällt der redundante Keycloak-Write; die Oberfläche bestätigt den aktuellen Stand. Eine bestehende DataProvider-Bindung wird bei Abweichung nie überschrieben. Während einer aktiven Lease ist der Hard Delete des zugeordneten Accounts blockiert; danach bleiben gültige Organisations-Credentials und Bindungen trotz gelöster Accountreferenz erhalten.
 
 Logs und Audit enthalten nur Instanz, Organisation, technische IDs, Trigger, Operationsreferenz, Phase, Ergebnis und sicheren Fehlercode. Application-Secret, Token und rohe Mainserver-Antworten dürfen dort nicht erscheinen.

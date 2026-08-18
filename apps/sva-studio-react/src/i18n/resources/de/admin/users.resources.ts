@@ -183,18 +183,12 @@ export const usersAdminDEResources = {
       searchPlaceholder: 'Nach Organisationsname oder Schlüssel filtern',
       selectLabel: 'Organisation auswählen',
       selectPlaceholder: 'Organisation für neue Zuordnung auswählen',
-      assignVisibilityLabel: 'Sichtbarkeit für neue Mitgliedschaft',
       assignDefaultLabel: 'Als Default-Kontext setzen',
       defaultContextLabel: 'Default-Kontext',
-      membershipVisibilityLabel: 'Sichtbarkeit für {{name}}',
       createdAt: 'Zugeordnet am {{value}}',
       assignAction: 'Organisation zuweisen',
       updateAction: 'Mitgliedschaft für {{name}} aktualisieren',
       removeAction: '{{name}} entfernen',
-      visibility: {
-        internal: 'Intern',
-        external: 'Extern',
-      },
     },
     historyCategory: {
       iam: 'IAM',

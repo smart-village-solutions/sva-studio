@@ -2,17 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict vrUsirKanUawtuGJ7woAFFsbqVNkKvWIan5RnScya9euCdT5KUPa8oJHuoEkNMW
+\restrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
-
--- Mandantenspezifische Waste-Tabellen sind nicht Teil dieses zentralen IAM-Dumps.
--- Ihr Provisioning-Schema enthält waste_cities.postal_code für stabile News-Zielschlüssel.
--- Dazu gehört auch public.sva_waste_schema_migrations: Der Ledger liegt ausschließlich
--- in jeder externen Waste-Tenant-Datenbank und ist in studio-db-schema.md dokumentiert.
--- Ebenso extern bleiben waste_tour_date_shifts mit DATE-Fachwerten und den partiellen
--- Unique-Indizes für jahresbezogene beziehungsweise jährliche Ursprungsregeln.
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -1449,10 +1442,55 @@ CREATE TABLE iam.media_assets (
     technical jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    lifecycle_status text DEFAULT 'active'::text NOT NULL,
+    provisional_operation_id uuid,
+    provisional_owner_subject text,
+    provisional_draft_id uuid,
+    provisional_expires_at timestamp with time zone,
+    CONSTRAINT media_assets_lifecycle_status_chk CHECK ((lifecycle_status = ANY (ARRAY['provisional'::text, 'active'::text]))),
     CONSTRAINT media_assets_media_type_chk CHECK ((media_type = 'image'::text)),
     CONSTRAINT media_assets_processing_status_chk CHECK ((processing_status = ANY (ARRAY['pending'::text, 'ready'::text, 'failed'::text]))),
+    CONSTRAINT media_assets_provisional_ownership_chk CHECK ((((lifecycle_status = 'active'::text) AND (provisional_operation_id IS NULL) AND (provisional_owner_subject IS NULL) AND (provisional_draft_id IS NULL) AND (provisional_expires_at IS NULL)) OR ((lifecycle_status = 'provisional'::text) AND (provisional_operation_id IS NOT NULL) AND (provisional_owner_subject IS NOT NULL) AND (provisional_draft_id IS NOT NULL) AND (provisional_expires_at IS NOT NULL)))),
     CONSTRAINT media_assets_upload_status_chk CHECK ((upload_status = ANY (ARRAY['pending'::text, 'validated'::text, 'processed'::text, 'failed'::text, 'blocked'::text]))),
     CONSTRAINT media_assets_visibility_chk CHECK ((visibility = ANY (ARRAY['public'::text, 'protected'::text])))
+);
+
+
+--
+-- Name: media_content_save_operation_references; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.media_content_save_operation_references (
+    id uuid NOT NULL,
+    instance_id text NOT NULL,
+    operation_id uuid NOT NULL,
+    asset_id uuid NOT NULL,
+    role text NOT NULL,
+    sort_order integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT media_content_save_operation_references_sort_order_chk CHECK (((sort_order IS NULL) OR (sort_order >= 0)))
+);
+
+
+--
+-- Name: media_content_save_operations; Type: TABLE; Schema: iam; Owner: -
+--
+
+CREATE TABLE iam.media_content_save_operations (
+    id uuid NOT NULL,
+    instance_id text NOT NULL,
+    actor_subject text NOT NULL,
+    target_type text NOT NULL,
+    target_id text,
+    status text DEFAULT 'preparing'::text NOT NULL,
+    error_code text,
+    expires_at timestamp with time zone NOT NULL,
+    lease_owner text,
+    lease_expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT media_content_save_operations_status_chk CHECK ((status = ANY (ARRAY['preparing'::text, 'uploading'::text, 'saving_content'::text, 'content_saved'::text, 'committed'::text, 'abandon_pending'::text, 'abandoned'::text, 'outcome_unknown'::text, 'reconciliation_required'::text]))),
+    CONSTRAINT media_content_save_operations_target_chk CHECK ((((status = ANY (ARRAY['content_saved'::text, 'committed'::text])) AND (target_id IS NOT NULL)) OR (status <> ALL (ARRAY['content_saved'::text, 'committed'::text]))))
 );
 
 
@@ -1586,7 +1624,7 @@ CREATE TABLE iam.organizations (
     CONSTRAINT organizations_content_author_policy_chk CHECK ((content_author_policy = ANY (ARRAY['org_only'::text, 'org_or_personal'::text]))),
     CONSTRAINT organizations_depth_nonnegative_chk CHECK ((depth >= 0)),
     CONSTRAINT organizations_parent_not_self_chk CHECK (((parent_organization_id IS NULL) OR (parent_organization_id <> id))),
-    CONSTRAINT organizations_type_chk CHECK ((organization_type = ANY (ARRAY['county'::text, 'municipality'::text, 'district'::text, 'company'::text, 'agency'::text, 'other'::text])))
+    CONSTRAINT organizations_type_chk CHECK ((organization_type = ANY (ARRAY['county'::text, 'municipality'::text, 'district'::text, 'company'::text, 'agency'::text, 'association'::text, 'institution'::text, 'other'::text])))
 );
 
 
@@ -2365,6 +2403,22 @@ ALTER TABLE ONLY iam.media_assets
 
 
 --
+-- Name: media_content_save_operation_references media_content_save_operation_references_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operation_references
+    ADD CONSTRAINT media_content_save_operation_references_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: media_content_save_operations media_content_save_operations_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operations
+    ADD CONSTRAINT media_content_save_operations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: media_references media_references_pkey; Type: CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -3000,6 +3054,48 @@ CREATE INDEX idx_media_assets_instance_visibility_updated_at ON iam.media_assets
 
 
 --
+-- Name: idx_media_assets_provisional_draft; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_media_assets_provisional_draft ON iam.media_assets USING btree (instance_id, provisional_operation_id, provisional_draft_id) WHERE (lifecycle_status = 'provisional'::text);
+
+
+--
+-- Name: idx_media_assets_provisional_expiry; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_assets_provisional_expiry ON iam.media_assets USING btree (provisional_expires_at, updated_at) WHERE (lifecycle_status = 'provisional'::text);
+
+
+--
+-- Name: idx_media_content_save_operation_reference_position; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_media_content_save_operation_reference_position ON iam.media_content_save_operation_references USING btree (operation_id, role, sort_order) NULLS NOT DISTINCT;
+
+
+--
+-- Name: idx_media_content_save_operation_references_asset; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_content_save_operation_references_asset ON iam.media_content_save_operation_references USING btree (instance_id, asset_id);
+
+
+--
+-- Name: idx_media_content_save_operations_instance_status; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_content_save_operations_instance_status ON iam.media_content_save_operations USING btree (instance_id, status, updated_at);
+
+
+--
+-- Name: idx_media_content_save_operations_recovery; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE INDEX idx_media_content_save_operations_recovery ON iam.media_content_save_operations USING btree (expires_at, updated_at) WHERE (status = ANY (ARRAY['preparing'::text, 'uploading'::text, 'saving_content'::text, 'abandon_pending'::text]));
+
+
+--
 -- Name: idx_media_references_asset_id; Type: INDEX; Schema: iam; Owner: -
 --
 
@@ -3126,17 +3222,17 @@ CREATE INDEX idx_studio_job_events_job_created_at ON iam.studio_job_events USING
 
 
 --
--- Name: idx_studio_jobs_id_instance; Type: INDEX; Schema: iam; Owner: -
---
-
-CREATE UNIQUE INDEX idx_studio_jobs_id_instance ON iam.studio_jobs USING btree (id, instance_id);
-
-
---
 -- Name: idx_studio_jobs_active_waste_postal_code_enrichment; Type: INDEX; Schema: iam; Owner: -
 --
 
 CREATE UNIQUE INDEX idx_studio_jobs_active_waste_postal_code_enrichment ON iam.studio_jobs USING btree (instance_id, job_type_id) WHERE ((job_type_id = 'waste-management.enrich-postal-codes'::text) AND (status = ANY (ARRAY['queued'::text, 'running'::text, 'retrying'::text])));
+
+
+--
+-- Name: idx_studio_jobs_id_instance; Type: INDEX; Schema: iam; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_studio_jobs_id_instance ON iam.studio_jobs USING btree (id, instance_id);
 
 
 --
@@ -4075,6 +4171,46 @@ ALTER TABLE ONLY iam.media_assets
 
 
 --
+-- Name: media_assets media_assets_provisional_operation_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_assets
+    ADD CONSTRAINT media_assets_provisional_operation_id_fkey FOREIGN KEY (provisional_operation_id) REFERENCES iam.media_content_save_operations(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: media_content_save_operation_references media_content_save_operation_references_asset_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operation_references
+    ADD CONSTRAINT media_content_save_operation_references_asset_id_fkey FOREIGN KEY (asset_id) REFERENCES iam.media_assets(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: media_content_save_operation_references media_content_save_operation_references_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operation_references
+    ADD CONSTRAINT media_content_save_operation_references_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_content_save_operation_references media_content_save_operation_references_operation_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operation_references
+    ADD CONSTRAINT media_content_save_operation_references_operation_id_fkey FOREIGN KEY (operation_id) REFERENCES iam.media_content_save_operations(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_content_save_operations media_content_save_operations_instance_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
+--
+
+ALTER TABLE ONLY iam.media_content_save_operations
+    ADD CONSTRAINT media_content_save_operations_instance_id_fkey FOREIGN KEY (instance_id) REFERENCES iam.instances(id) ON DELETE CASCADE;
+
+
+--
 -- Name: media_references media_references_asset_id_fkey; Type: FK CONSTRAINT; Schema: iam; Owner: -
 --
 
@@ -4687,4 +4823,4 @@ CREATE POLICY roles_isolation_policy ON iam.roles USING ((instance_id = iam.curr
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vrUsirKanUawtuGJ7woAFFsbqVNkKvWIan5RnScya9euCdT5KUPa8oJHuoEkNMW
+\unrestrict a6pcZv047R1ijqVkcXgaInH7kse8w6qcOb4bkLKvZ47wVFMhVUR2FqDOhwnl3BG

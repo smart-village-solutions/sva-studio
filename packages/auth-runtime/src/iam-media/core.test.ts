@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMediaHttpHandlers } from './core.js';
 import { MediaStorageObjectNotFoundError, MediaStorageUnavailableError } from './storage-port.js';
 
-const allowAuthorization = vi.fn(async () => ({ ok: true } as const));
+const allowAuthorization = vi.fn(async () => ({ ok: true }) as const);
 const emitAuditEvent = vi.fn(async () => undefined);
 
 const createContext = (...args: [instanceId?: string]) =>
@@ -36,6 +36,15 @@ const createService = () => ({
         }
   ),
   getAssetByStorageKey: vi.fn(async () => null),
+  getProvisionalAssetByDraft: vi.fn(async () => null),
+  getContentSaveOperation: vi.fn(async () => null),
+  createContentSaveOperation: vi.fn(async (input) => input),
+  replaceContentSaveOperationReferences: vi.fn(async () => true),
+  markContentSaveOperationContentSaved: vi.fn(async () => true),
+  commitContentSaveOperation: vi.fn(async () => true),
+  markContentSaveOperationAbandonPending: vi.fn(async () => true),
+  finalizeContentSaveOperationAbandoned: vi.fn(async () => true),
+  listAssetsByOperation: vi.fn(async () => []),
   getUsageImpact: vi.fn(async (_instanceId: string, assetId: string) => ({
     assetId,
     totalReferences: 1,
@@ -50,6 +59,7 @@ const createService = () => ({
     byteSize: 1234,
     status: 'pending',
   })),
+  getUploadSessionByAssetId: vi.fn(async () => null),
   getStorageUsage: vi.fn(async () => null),
   listVariantsByAssetId: vi.fn(async () => [
     {
@@ -204,7 +214,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=1&visibility=public'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&page=1&pageSize=1&visibility=public'
+      ),
       createContext()
     );
 
@@ -498,7 +510,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices&page=1&pageSize=10'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices&page=1&pageSize=10'
+      ),
       createContext()
     );
 
@@ -558,9 +572,7 @@ describe('media http handlers', () => {
         updatedAt: '2026-06-11T07:00:00.000Z',
       },
     ] as const;
-    service.listAssets = vi.fn(async ({ search }) =>
-      search ? [] : [...registeredAssets]
-    );
+    service.listAssets = vi.fn(async ({ search }) => (search ? [] : [...registeredAssets]));
     service.countAssets = vi.fn(async () => 2);
 
     const storagePort = {
@@ -585,7 +597,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices/2026&page=1&pageSize=10'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&search=invoices/2026&page=1&pageSize=10'
+      ),
       createContext()
     );
 
@@ -669,7 +683,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'
+      ),
       createContext()
     );
 
@@ -734,7 +750,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=public&page=1&pageSize=10'
+      ),
       createContext()
     );
 
@@ -781,7 +799,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listMedia(
-      new Request('http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=secret&page=1&pageSize=10'),
+      new Request(
+        'http://localhost/api/v1/iam/media?instanceId=tenant-a&visibility=secret&page=1&pageSize=10'
+      ),
       createContext()
     );
 
@@ -892,6 +912,270 @@ describe('media http handlers', () => {
     });
     expect(service.upsertAsset).toHaveBeenCalled();
     expect(service.upsertUploadSession).toHaveBeenCalled();
+  });
+
+  it('binds content-editor uploads to an owned provisional save operation', async () => {
+    const service = createService();
+    service.getContentSaveOperation = vi.fn(async () => ({
+      id: '00000000-0000-4000-8000-000000000001',
+      instanceId: 'tenant-a',
+      actorSubject: 'kc-user-1',
+      targetType: 'news',
+      status: 'preparing',
+      expiresAt: '2026-04-30T19:00:00.000Z',
+    }));
+    const storagePort = {
+      prepareUpload: vi.fn(async () => ({
+        uploadUrl: 'https://uploads.example.test/put',
+        method: 'PUT' as const,
+        storageKey: 'tenant-a/originals/asset-1',
+        expiresAt: '2026-04-29T20:00:00.000Z',
+      })),
+      resolveDelivery: vi.fn(),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort,
+      authorizeAction: allowAuthorization,
+      createId: vi.fn().mockReturnValueOnce('asset-1').mockReturnValueOnce('upload-1'),
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 200,
+          visibility: 'public',
+          uploadContext: 'content-save',
+          contentSaveOperationId: '00000000-0000-4000-8000-000000000001',
+          draftId: '00000000-0000-4000-8000-000000000002',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(201);
+    expect(service.upsertAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lifecycleStatus: 'provisional',
+        provisionalOperationId: '00000000-0000-4000-8000-000000000001',
+        provisionalOwnerSubject: 'kc-user-1',
+        provisionalDraftId: '00000000-0000-4000-8000-000000000002',
+      })
+    );
+  });
+
+  it('returns the same provisional asset and upload session when initialization is retried', async () => {
+    const service = createService();
+    service.getContentSaveOperation = vi.fn(async () => ({
+      id: '00000000-0000-4000-8000-000000000001',
+      instanceId: 'tenant-a',
+      actorSubject: 'kc-user-1',
+      targetType: 'news',
+      status: 'uploading',
+      expiresAt: '2026-04-30T19:00:00.000Z',
+    }));
+    service.getProvisionalAssetByDraft = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 200,
+      visibility: 'public',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      lifecycleStatus: 'provisional',
+      metadata: {},
+      technical: {},
+    }));
+    service.getUploadSessionByAssetId = vi.fn(async () => ({
+      id: 'upload-1',
+      instanceId: 'tenant-a',
+      assetId: 'asset-1',
+      storageKey: 'tenant-a/originals/asset-1',
+      mimeType: 'image/jpeg',
+      byteSize: 200,
+      status: 'pending',
+    }));
+    const storagePort = {
+      prepareUpload: vi.fn(async () => ({
+        uploadUrl: 'https://uploads.example.test/put-retry',
+        method: 'PUT' as const,
+        storageKey: 'tenant-a/originals/asset-1',
+        expiresAt: '2026-04-29T20:00:00.000Z',
+      })),
+      resolveDelivery: vi.fn(),
+    };
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort,
+      authorizeAction: allowAuthorization,
+      createId: vi.fn(),
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.initializeUpload(
+      new Request('http://localhost/api/v1/iam/media/upload-sessions', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          mediaType: 'image',
+          mimeType: 'image/jpeg',
+          byteSize: 200,
+          visibility: 'public',
+          uploadContext: 'content-save',
+          contentSaveOperationId: '00000000-0000-4000-8000-000000000001',
+          draftId: '00000000-0000-4000-8000-000000000002',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { assetId: 'asset-1', uploadSessionId: 'upload-1' },
+    });
+    expect(service.upsertAsset).not.toHaveBeenCalled();
+    expect(service.wouldExceedStorageQuota).not.toHaveBeenCalled();
+    expect(service.upsertUploadSession).toHaveBeenCalledOnce();
+  });
+
+  it('requires reference management before opening a content save operation', async () => {
+    const service = createService();
+    const authorizeAction = vi.fn(async ({ action }: { action: string }) =>
+      action === 'media.reference.manage'
+        ? ({
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'Keine Berechtigung für diese Medienoperation.',
+          } as const)
+        : ({ ok: true } as const)
+    );
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction,
+      createId: () => '00000000-0000-4000-8000-000000000001',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.createContentSaveOperation(
+      new Request('http://localhost/api/v1/iam/media/content-save-operations', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          targetType: 'news.article',
+          operationId: '00000000-0000-4000-8000-000000000001',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(403);
+    expect(authorizeAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'media.reference.manage' })
+    );
+    expect(service.createContentSaveOperation).not.toHaveBeenCalled();
+  });
+
+  it('creates a client-idempotent content save operation with persistent recovery', async () => {
+    const service = createService();
+    service.createContentSaveOperation = vi.fn(async (input) => ({
+      ...input,
+      createdAt: '2026-04-29T19:00:00.000Z',
+      updatedAt: '2026-04-29T19:00:00.000Z',
+    }));
+    const scheduleContentSaveRecovery = vi.fn(async () => undefined);
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'unused',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+      scheduleContentSaveRecovery,
+    });
+
+    const response = await handlers.createContentSaveOperation(
+      new Request('http://localhost/api/v1/iam/media/content-save-operations', {
+        method: 'POST',
+        body: JSON.stringify({
+          instanceId: 'tenant-a',
+          targetType: 'news.article',
+          operationId: '00000000-0000-4000-8000-000000000001',
+        }),
+      }),
+      createContext()
+    );
+
+    expect(response.status).toBe(201);
+    expect(service.createContentSaveOperation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: '00000000-0000-4000-8000-000000000001',
+        instanceId: 'tenant-a',
+        actorSubject: 'kc-user-1',
+        targetType: 'news.article',
+        status: 'preparing',
+      })
+    );
+    expect(scheduleContentSaveRecovery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        instanceId: 'tenant-a',
+        operationId: '00000000-0000-4000-8000-000000000001',
+        actorSubject: 'kc-user-1',
+        expiresAt: '2026-04-30T19:00:00.000Z',
+      })
+    );
+  });
+
+  it('does not complete a provisional upload owned by another actor', async () => {
+    const service = createService();
+    service.getAssetById = vi.fn(async () => ({
+      id: 'asset-1',
+      instanceId: 'tenant-a',
+      storageKey: 'tenant-a/originals/asset-1.jpg',
+      mediaType: 'image',
+      mimeType: 'image/jpeg',
+      byteSize: 1234,
+      visibility: 'public',
+      uploadStatus: 'pending',
+      processingStatus: 'pending',
+      lifecycleStatus: 'provisional' as const,
+      provisionalOperationId: '00000000-0000-4000-8000-000000000001',
+      provisionalOwnerSubject: 'another-user',
+      provisionalDraftId: '00000000-0000-4000-8000-000000000002',
+      provisionalExpiresAt: '2026-04-30T19:00:00.000Z',
+      metadata: {},
+      technical: {},
+    }));
+    const handlers = createMediaHttpHandlers({
+      withMediaService: async (_instanceId, work) => work(service as never),
+      storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
+      authorizeAction: allowAuthorization,
+      createId: () => 'unused',
+      now: () => '2026-04-29T19:00:00.000Z',
+      emitAuditEvent,
+    });
+
+    const response = await handlers.completeUpload(
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        { method: 'POST' }
+      ),
+      createContext()
+    );
+
+    expect(response.status).toBe(404);
+    expect(service.upsertAsset).not.toHaveBeenCalled();
   });
 
   it('registers an existing bucket object as a managed media asset', async () => {
@@ -1306,7 +1590,7 @@ describe('media http handlers', () => {
         expiresAt: '2026-04-29T20:00:00.000Z',
       })),
     };
-    const authorizeAction = vi.fn(async () => ({ ok: true } as const));
+    const authorizeAction = vi.fn(async () => ({ ok: true }) as const);
 
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
@@ -1424,17 +1708,16 @@ describe('media http handlers', () => {
 
   it('replaces references for a target and rejects missing media permissions', async () => {
     const service = createService();
-    const authorizeAction = vi
-      .fn(async ({ action }: { action: string }) =>
-        action === 'media.reference.manage'
-          ? ({
-              ok: false,
-              status: 403,
-              error: 'forbidden',
-              message: 'Keine Berechtigung für diese Medienoperation.',
-            } as const)
-          : ({ ok: true } as const)
-      );
+    const authorizeAction = vi.fn(async ({ action }: { action: string }) =>
+      action === 'media.reference.manage'
+        ? ({
+            ok: false,
+            status: 403,
+            error: 'forbidden',
+            message: 'Keine Berechtigung für diese Medienoperation.',
+          } as const)
+        : ({ ok: true } as const)
+    );
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
       storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
@@ -1511,7 +1794,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listReferences(
-      new Request('http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=poi-1'),
+      new Request(
+        'http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=poi-1'
+      ),
       createContext()
     );
 
@@ -1536,14 +1821,15 @@ describe('media http handlers', () => {
       resolveDelivery: vi.fn(),
       readObject: vi.fn(async () => ({
         body: await import('sharp').then((module) =>
-          module.default({
-            create: {
-              width: 1200,
-              height: 800,
-              channels: 3,
-              background: { r: 20, g: 20, b: 20 },
-            },
-          })
+          module
+            .default({
+              create: {
+                width: 1200,
+                height: 800,
+                channels: 3,
+                background: { r: 20, g: 20, b: 20 },
+              },
+            })
             .jpeg()
             .toBuffer()
         ),
@@ -1565,9 +1851,12 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.completeUpload(
-      new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a', {
-        method: 'POST',
-      }),
+      new Request(
+        'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+        {
+          method: 'POST',
+        }
+      ),
       createContext()
     );
 
@@ -1576,7 +1865,7 @@ describe('media http handlers', () => {
 
   it('passes the resolved request instance into media reference authorization when no session instance is active', async () => {
     const service = createService();
-    const authorizeAction = vi.fn(async () => ({ ok: true } as const));
+    const authorizeAction = vi.fn(async () => ({ ok: true }) as const);
     const handlers = createMediaHttpHandlers({
       withMediaService: async (_instanceId, work) => work(service as never),
       storagePort: { prepareUpload: vi.fn(), resolveDelivery: vi.fn() } as never,
@@ -1587,7 +1876,9 @@ describe('media http handlers', () => {
     });
 
     const response = await handlers.listReferences(
-      new Request('http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=1517831'),
+      new Request(
+        'http://localhost/api/v1/iam/media/references?instanceId=tenant-a&targetType=poi&targetId=1517831'
+      ),
       createContext(undefined)
     );
 
@@ -1614,14 +1905,15 @@ describe('media http handlers', () => {
       resolveDelivery: vi.fn(),
       readObject: vi.fn(async () => ({
         body: await import('sharp').then((module) =>
-          module.default({
-            create: {
-              width: 1200,
-              height: 800,
-              channels: 3,
-              background: { r: 20, g: 20, b: 20 },
-            },
-          })
+          module
+            .default({
+              create: {
+                width: 1200,
+                height: 800,
+                channels: 3,
+                background: { r: 20, g: 20, b: 20 },
+              },
+            })
             .jpeg()
             .toBuffer()
         ),
@@ -1645,9 +1937,12 @@ describe('media http handlers', () => {
 
     await expect(
       handlers.completeUpload(
-        new Request('http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a', {
-          method: 'POST',
-        }),
+        new Request(
+          'http://localhost/api/v1/iam/media/upload-sessions/upload-1/complete?instanceId=tenant-a',
+          {
+            method: 'POST',
+          }
+        ),
         createContext()
       )
     ).rejects.toThrow('s3_write_failed');

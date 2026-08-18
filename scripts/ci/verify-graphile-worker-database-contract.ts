@@ -1,7 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { resolve } from 'node:path';
 
 const containerName = `sva-graphile-contract-${process.pid}`;
 const adminPassword = 'contract-admin-password';
@@ -9,9 +7,8 @@ const appPassword = 'contract-app-password';
 const workerPassword = 'contract-worker-password';
 const publicProbePassword = 'contract-public-probe-password';
 const database = 'sva_studio';
-const requireFromAuthRuntime = createRequire(
-  realpathSync(resolve('apps/sva-studio-react/node_modules/@sva/auth-runtime/package.json'))
-);
+const workspaceRequire = createRequire(import.meta.url);
+const requireFromAuthRuntime = createRequire(workspaceRequire.resolve('@sva/auth-runtime'));
 interface ContractPool {
   end(): Promise<void>;
 }
@@ -121,7 +118,8 @@ const migrateAndBootstrap = (port: string): void => {
     port,
     `CREATE ROLE iam_app NOLOGIN;
      CREATE ROLE contract_public_probe LOGIN PASSWORD '${publicProbePassword}';
-     CREATE SCHEMA iam;`
+     CREATE SCHEMA iam;
+     CREATE TABLE public.goose_db_version (version_id bigint NOT NULL, is_applied boolean NOT NULL);`
   );
   run('node', ['deploy/portainer/migrate-graphile-worker.mjs'], {
     POSTGRES_DB: database,
@@ -166,7 +164,8 @@ const enqueueContractJob = (port: string): void => {
       '{"instanceId":"contract","jobId":"contract-job"}'::json,
       'plugin-operations',
       5,
-      'studio-job:contract-job'
+      'studio-job:contract-job',
+      NULL
     );`
   );
   const queuedCount = psql(

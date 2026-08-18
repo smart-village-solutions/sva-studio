@@ -106,7 +106,10 @@ export {
 export { instanceRegistryHandlers } from './iam-instance-registry/server.js';
 export { wasteManagementHandlers } from './waste-management/server.js';
 export {
+  abandonMediaContentSaveOperationHandler,
+  commitMediaContentSaveOperationHandler,
   completeMediaUploadHandler,
+  createMediaContentSaveOperationHandler,
   deleteMediaHandler,
   getMediaDeliveryHandler,
   getMediaHandler,
@@ -115,6 +118,10 @@ export {
   registerBucketMediaHandler,
   listMediaReferencesHandler,
   listMediaHandler,
+  markMediaContentSaveOperationContentSavedHandler,
+  markMediaContentSaveOperationSavingContentHandler,
+  markMediaContentSaveOperationOutcomeUnknownHandler,
+  replaceMediaContentSaveOperationReferencesHandler,
   replaceMediaReferencesHandler,
   updateMediaHandler,
 } from './iam-media/core.js';

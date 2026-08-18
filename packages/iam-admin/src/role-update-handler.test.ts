@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createJsonResponse, createTestDepsBuilder, dbWriteFailedErrorBody } from '../test-support/handler-test-helpers.js';
-import { createUpdateRoleHandlerInternal, type UpdateRoleHandlerDeps } from './role-update-handler.js';
+import {
+  createJsonResponse,
+  createTestDepsBuilder,
+  dbWriteFailedErrorBody,
+} from '../test-support/handler-test-helpers.js';
+import {
+  createUpdateRoleHandlerInternal,
+  type UpdateRoleHandlerDeps,
+  type UpdateRolePayloadShape,
+} from './role-update-handler.js';
 import {
   persistLocalRoleUpdate,
   redirectRoleSyncRetryToReconcile,
@@ -25,7 +33,7 @@ const ctx = {
   },
 };
 
-const payload = {
+const payload: UpdateRolePayloadShape = {
   displayName: 'Editor Plus',
   description: 'Can edit more content',
   roleLevel: 25,
@@ -75,39 +83,51 @@ const createDeps = createTestDepsBuilder<
     typeof roleItem
   >
 >(() => ({
-    asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
-    buildRoleAttributes: vi.fn(buildAttributes),
-    buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage, roleId }) =>
-      createJsonResponse(503, { error: { code: 'keycloak_unavailable', message: fallbackMessage, roleId }, requestId })
-    ),
-    createApiError: vi.fn((status, code, message, requestId, details) =>
-      createJsonResponse(status, { error: { code, message, ...(details ? { details } : {}) }, requestId })
-    ),
-    iamRoleSyncCounter: {
-      add: vi.fn(),
-    },
-    jsonResponse: vi.fn(createJsonResponse),
-    logger: {
-      error: vi.fn(),
-    },
-    mapRoleSyncErrorCode: vi.fn(() => 'IDP_UNAVAILABLE'),
-    markRoleSyncState: vi.fn(async () => undefined),
-    parseUpdateRoleBody: vi.fn(async () => ({ ok: true, data: payload, rawBody: JSON.stringify(payload) })),
-    persistUpdatedRole: vi.fn(async () => roleItem),
-    requireRoleId: vi.fn(() => 'role-1'),
-    requireRoleIdentityProvider: vi.fn(async () => identityProvider),
-    resolveMutableRole: vi.fn(async () => existingRole),
-    resolveRoleMutationActor: vi.fn(async () => ({ actor })),
-    sanitizeRoleErrorMessage: vi.fn((error) => (error instanceof Error ? error.message : String(error))),
-    trackKeycloakCall: vi.fn(async (_operation, work) => work()),
-    validateRequestedPermissions: vi.fn(async () => null),
-  })) satisfies UpdateRoleHandlerDeps<
-    typeof payload,
-    ReturnType<typeof buildAttributes>,
-    typeof identityProvider,
-    typeof existingRole,
-    typeof roleItem
-  >;
+  asApiItem: vi.fn((data, requestId) => ({ data, ...(requestId ? { requestId } : {}) })),
+  buildRoleAttributes: vi.fn(buildAttributes),
+  buildRoleSyncFailure: vi.fn(({ requestId, fallbackMessage, roleId }) =>
+    createJsonResponse(503, {
+      error: { code: 'keycloak_unavailable', message: fallbackMessage, roleId },
+      requestId,
+    })
+  ),
+  createApiError: vi.fn((status, code, message, requestId, details) =>
+    createJsonResponse(status, {
+      error: { code, message, ...(details ? { details } : {}) },
+      requestId,
+    })
+  ),
+  iamRoleSyncCounter: {
+    add: vi.fn(),
+  },
+  jsonResponse: vi.fn(createJsonResponse),
+  logger: {
+    error: vi.fn(),
+  },
+  mapRoleSyncErrorCode: vi.fn(() => 'IDP_UNAVAILABLE'),
+  markRoleSyncState: vi.fn(async () => undefined),
+  parseUpdateRoleBody: vi.fn(async () => ({
+    ok: true,
+    data: payload,
+    rawBody: JSON.stringify(payload),
+  })),
+  persistUpdatedRole: vi.fn(async () => roleItem),
+  requireRoleId: vi.fn(() => 'role-1'),
+  requireRoleIdentityProvider: vi.fn(async () => identityProvider),
+  resolveMutableRole: vi.fn(async () => existingRole),
+  resolveRoleMutationActor: vi.fn(async () => ({ actor })),
+  sanitizeRoleErrorMessage: vi.fn((error) =>
+    error instanceof Error ? error.message : String(error)
+  ),
+  trackKeycloakCall: vi.fn(async (_operation, work) => work()),
+  validateRequestedPermissions: vi.fn(async () => null),
+})) satisfies UpdateRoleHandlerDeps<
+  typeof payload,
+  ReturnType<typeof buildAttributes>,
+  typeof identityProvider,
+  typeof existingRole,
+  typeof roleItem
+>;
 
 const preparedRetryUpdate = {
   actor,
@@ -122,7 +142,13 @@ const preparedRetryUpdate = {
 } satisfies PreparedRoleUpdate<typeof payload, typeof existingRole>;
 
 const expectRetrySyncFailureMarked = (
-  deps: UpdateRoleHandlerDeps<typeof payload, ReturnType<typeof buildAttributes>, typeof identityProvider, typeof existingRole, typeof roleItem>,
+  deps: UpdateRoleHandlerDeps<
+    typeof payload,
+    ReturnType<typeof buildAttributes>,
+    typeof identityProvider,
+    typeof existingRole,
+    typeof roleItem
+  >,
   errorCode: 'COMPENSATION_FAILED' | 'DB_WRITE_FAILED'
 ) => {
   expect(deps.markRoleSyncState).toHaveBeenLastCalledWith(
@@ -139,7 +165,11 @@ const expectRetrySyncFailureMarked = (
   });
 };
 
-function buildAttributes(input: { readonly instanceId: string; readonly roleKey: string; readonly displayName: string }) {
+function buildAttributes(input: {
+  readonly instanceId: string;
+  readonly roleKey: string;
+  readonly displayName: string;
+}) {
   return { managedBy: 'studio' as const, ...input };
 }
 
@@ -153,7 +183,10 @@ describe('createUpdateRoleHandlerInternal', () => {
     const deps = createDeps();
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -176,6 +209,30 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
   });
 
+  it('preserves the stored role level when the UI omits it', async () => {
+    const metadataOnlyPayload: UpdateRolePayloadShape = {
+      displayName: 'Editor Plus',
+      description: 'Can edit more content',
+    };
+    const deps = createDeps({
+      parseUpdateRoleBody: vi.fn(async () => ({
+        ok: true,
+        data: metadataOnlyPayload,
+        rawBody: JSON.stringify(metadataOnlyPayload),
+      })),
+    });
+
+    const response = await createUpdateRoleHandlerInternal(deps)(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.persistUpdatedRole).toHaveBeenCalledWith(
+      expect.objectContaining({ roleLevel: existingRole.role_level })
+    );
+  });
+
   it('updates technical roles in Keycloak by canonical role key when legacy aliases exist', async () => {
     const deps = createDeps({
       resolveMutableRole: vi.fn(async () => ({
@@ -185,7 +242,10 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response.status).toBe(200);
     expect(identityProvider.provider.updateRole).toHaveBeenCalledWith(
@@ -206,11 +266,18 @@ describe('createUpdateRoleHandlerInternal', () => {
   it('rejects retry sync for non-technical tenant roles', async () => {
     const keycloakError = new Error('keycloak down');
     const deps = createDeps({
-      parseUpdateRoleBody: vi.fn(async () => ({ ok: true, data: { ...payload, retrySync: true }, rawBody: '{}' })),
+      parseUpdateRoleBody: vi.fn(async () => ({
+        ok: true,
+        data: { ...payload, retrySync: true },
+        rawBody: '{}',
+      })),
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
@@ -236,10 +303,15 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject(dbWriteFailedErrorBody('internal_error', 'req-update-role'));
+    await expect(response.json()).resolves.toMatchObject(
+      dbWriteFailedErrorBody('internal_error', 'req-update-role')
+    );
     expect(identityProvider.provider.updateRole).not.toHaveBeenCalled();
     expect(deps.logger.error).toHaveBeenCalledWith(
       'Role update database write failed',
@@ -258,7 +330,10 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response).toBe(guardResponse);
     expect(deps.parseUpdateRoleBody).not.toHaveBeenCalled();
@@ -267,7 +342,10 @@ describe('createUpdateRoleHandlerInternal', () => {
 
   it('returns invalid_request before Keycloak when tenant permissions are not manageable', async () => {
     const invalidResponse = createJsonResponse(400, {
-      error: { code: 'invalid_request', message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.' },
+      error: {
+        code: 'invalid_request',
+        message: 'Mindestens eine Berechtigung ist im Tenant nicht verwaltbar.',
+      },
       requestId: 'req-update-role',
     });
     const deps = createDeps({
@@ -275,7 +353,10 @@ describe('createUpdateRoleHandlerInternal', () => {
     });
     const handler = createUpdateRoleHandlerInternal(deps);
 
-    const response = await handler(new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }), ctx);
+    const response = await handler(
+      new Request('http://localhost/api/v1/iam/roles/role-1', { method: 'PATCH' }),
+      ctx
+    );
 
     expect(response).toBe(invalidResponse);
     expect(deps.requireRoleIdentityProvider).not.toHaveBeenCalled();
@@ -358,7 +439,9 @@ describe('createUpdateRoleHandlerInternal', () => {
   });
 
   it('returns the identity-provider response before any sync work starts', async () => {
-    const unavailableResponse = createJsonResponse(503, { error: { code: 'keycloak_unavailable' } });
+    const unavailableResponse = createJsonResponse(503, {
+      error: { code: 'keycloak_unavailable' },
+    });
     const deps = createDeps({
       requireRoleIdentityProvider: vi.fn(async () => unavailableResponse),
     });

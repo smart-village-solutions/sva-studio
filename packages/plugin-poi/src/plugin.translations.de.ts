@@ -1,21 +1,18 @@
 import { createPoiLocaleTranslations } from './plugin.translations.shared.js';
 import { poiMessagesDe } from './plugin.translations.de.messages.js';
 
+const poiEditorTranslations = {
+  createTitle: 'Ort anlegen',
+  createDescription: 'Erstellen Sie einen neuen Ort.',
+  editTitle: 'Ort bearbeiten',
+  editDescription: 'Aktualisieren oder löschen Sie den Ort.',
+};
+
 export const poiTranslationsDe = createPoiLocaleTranslations({
   navigation: { title: 'Orte' },
   list: { title: 'Orte', description: 'Orte aus dem Mainserver bearbeiten.' },
-  detail: {
-    createTitle: 'Ort anlegen',
-    createDescription: 'Erstellen Sie einen neuen Ort.',
-    editTitle: 'Ort bearbeiten',
-    editDescription: 'Aktualisieren oder löschen Sie den Ort.',
-  },
-  editor: {
-    createTitle: 'Ort anlegen',
-    createDescription: 'Erstellen Sie einen neuen Ort.',
-    editTitle: 'Ort bearbeiten',
-    editDescription: 'Aktualisieren oder löschen Sie den Ort.',
-  },
+  detail: poiEditorTranslations,
+  editor: poiEditorTranslations,
   principal: {
     createAs: 'Erstellen als',
     actAs: 'Handeln als',
@@ -32,9 +29,11 @@ export const poiTranslationsDe = createPoiLocaleTranslations({
     active: 'Aktiv',
     categoryName: 'Kategorie',
     categories: 'Kategorien',
-    categoriesHelp: 'Wählen Sie keine, eine oder mehrere Kategorien aus.',
+    categoriesHelp: 'Wählen Sie bei Bedarf eine oder mehrere bestehende Kategorien aus.',
     categoriesSearch: 'Kategorien suchen',
     categoriesSearchPlaceholder: 'Kategorie suchen oder auswählen',
+    categoriesEmpty: 'Keine passenden Kategorien gefunden.',
+    categoryUnavailable: 'nicht mehr verfügbar',
     street: 'Straße',
     zip: 'PLZ',
     city: 'Ort',

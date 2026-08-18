@@ -1,5 +1,5 @@
 import { createMainserverCrudClient, createMainserverJsonRequestHeaders } from '@sva/plugin-sdk';
-import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
 import type {
   ProjectContentItem,
@@ -46,14 +46,22 @@ export const getProjectDetail = (
 
 export const createProject = (
   input: ProjectFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<ProjectContentItem> => projectsClient.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<ProjectContentItem> =>
+  mutationOptions
+    ? projectsClient.create(input, actingPrincipalType, mutationOptions)
+    : projectsClient.create(input, actingPrincipalType);
 
 export const updateProject = (
   contentId: string,
   input: ProjectFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<ProjectContentItem> => projectsClient.update(contentId, input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<ProjectContentItem> =>
+  mutationOptions
+    ? projectsClient.update(contentId, input, actingPrincipalType, mutationOptions)
+    : projectsClient.update(contentId, input, actingPrincipalType);
 
 export const deleteProject = (
   contentId: string,

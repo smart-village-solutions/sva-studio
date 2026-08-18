@@ -142,28 +142,32 @@ export const ensureStudioJobWorkerStarted = async (): Promise<void> => {
     status: 'starting',
   };
   try {
-    runner = observeWorkerFailure(
+    let startedRunner: graphileWorker.WorkerPool | null = null;
+    startedRunner = observeWorkerFailure(
       createGraphileWorkerRunner(
         studioJobTaskIdentifier,
         'studio_job_worker',
         (health) => {
-          runnerHealth = health;
+          if (runner === null || runner === startedRunner) runnerHealth = health;
         },
         () =>
-          retireFatalWorker(runner, 'studio_job_worker_fatal_shutdown_failed', (failedRunner) => {
+          retireFatalWorker(startedRunner, 'studio_job_worker_fatal_shutdown_failed', (failedRunner) => {
             if (runner === failedRunner) runner = null;
           })
       ),
       'studio_job_worker_runtime_failed',
       () => {
-        runner = null;
-        runnerHealth = {
-          ready: false,
-          reasonCode: 'studio_job_worker_runtime_failed',
-          status: 'failed',
-        };
+        if (runner === startedRunner) {
+          runner = null;
+          runnerHealth = {
+            ready: false,
+            reasonCode: 'studio_job_worker_runtime_failed',
+            status: 'failed',
+          };
+        }
       }
     );
+    runner = startedRunner;
   } catch (error) {
     runnerHealth = {
       ready: false,
@@ -186,16 +190,19 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (): Promise<void> =>
     status: 'starting',
   };
   try {
-    privilegedRunner = observeWorkerFailure(
+    let startedRunner: graphileWorker.WorkerPool | null = null;
+    startedRunner = observeWorkerFailure(
       createGraphileWorkerRunner(
         privilegedStudioJobTaskIdentifier,
         'privileged_studio_job_worker',
         (health) => {
-          privilegedRunnerHealth = health;
+          if (privilegedRunner === null || privilegedRunner === startedRunner) {
+            privilegedRunnerHealth = health;
+          }
         },
         () =>
           retireFatalWorker(
-            privilegedRunner,
+            startedRunner,
             'privileged_studio_job_worker_fatal_shutdown_failed',
             (failedRunner) => {
               if (privilegedRunner === failedRunner) privilegedRunner = null;
@@ -204,14 +211,17 @@ export const ensurePrivilegedStudioJobWorkerStarted = async (): Promise<void> =>
       ),
       'privileged_studio_job_worker_runtime_failed',
       () => {
-        privilegedRunner = null;
-        privilegedRunnerHealth = {
-          ready: false,
-          reasonCode: 'privileged_studio_job_worker_runtime_failed',
-          status: 'failed',
-        };
+        if (privilegedRunner === startedRunner) {
+          privilegedRunner = null;
+          privilegedRunnerHealth = {
+            ready: false,
+            reasonCode: 'privileged_studio_job_worker_runtime_failed',
+            status: 'failed',
+          };
+        }
       }
     );
+    privilegedRunner = startedRunner;
   } catch (error) {
     privilegedRunnerHealth = {
       ready: false,
@@ -248,7 +258,8 @@ export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> 
       payload => $2::json,
       queue_name => $3::text,
       max_attempts => $4::int,
-      job_key => $5::text
+      job_key => $5::text,
+      run_at => $6::timestamptz
     )`,
     [
       input.executionLane === 'privileged'
@@ -258,6 +269,7 @@ export const queueStudioJob = async (input: QueueStudioJobInput): Promise<void> 
       input.queueName,
       input.maxAttempts,
       `studio-job:${input.jobId}`,
+      input.runAt ?? null,
     ]
   );
 };

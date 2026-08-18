@@ -30,6 +30,7 @@ export const GenericItemsDetailContentTab = ({
   onChangeMediaUsages = () => undefined,
   canSelectMedia = true,
   canUploadMedia = true,
+  mediaEditingDisabled = false,
   onLoadAssetSnapshot,
 }: Readonly<{
   labels: Record<string, string>;
@@ -39,6 +40,7 @@ export const GenericItemsDetailContentTab = ({
   onChangeMediaUsages?: (usages: readonly ContentMediaUsage[]) => void;
   canSelectMedia?: boolean;
   canUploadMedia?: boolean;
+  mediaEditingDisabled?: boolean;
   onLoadAssetSnapshot?: React.ComponentProps<typeof ContentMediaUsageBlock>['onLoadAssetSnapshot'];
 }>) => {
   const { control, setValue } = useFormContext<GenericItemsDetailFormValues>();
@@ -439,6 +441,7 @@ export const GenericItemsDetailContentTab = ({
       <GenericItemsDetailCard title={labels.linksMediaTitle} description={labels.linksMediaDescription}>
         <div className="space-y-5">
           <ContentMediaUsageBlock
+            disabled={mediaEditingDisabled}
             usages={resolvedMediaUsages}
             onChange={changeMediaUsages}
             onAddManual={onAddManualMedia}

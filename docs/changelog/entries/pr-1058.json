@@ -1,0 +1,4 @@
+{
+  "prNumber": 1058,
+  "body": "Der Instanz-Audit kann den Keycloak-Status von Tenant-Instanzen wieder zuverlässig live prüfen.\n\n- Für die Prüfung werden die hinterlegten Tenant-Admin-Zugangsdaten der jeweiligen Instanz verwendet.\n- Provisionierungszugriffe bleiben weiterhin technisch getrennt.\n- Fehlen erforderliche Zugangsdaten, meldet der Audit den Zustand eindeutig, ohne auf unpassende Plattform-Zugangsdaten auszuweichen."
+}

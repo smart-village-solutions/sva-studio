@@ -132,6 +132,7 @@ export type {
   MainserverActingPrincipalType,
   MainserverErrorFactory,
   MainserverListQuery,
+  MainserverMutationOptions,
 } from './mainserver-client.js';
 export {
   omitDeviatedMainserverFields,
@@ -143,6 +144,7 @@ export {
   createMainserverCrudClient,
   createMainserverJsonRequestHeaders,
   createMainserverMutationHeaders,
+  CONTENT_MEDIA_SAVE_OPERATION_ID_HEADER,
   MainserverApiError,
   requestMainserverJson,
 } from './mainserver-client.js';
@@ -301,10 +303,7 @@ export type {
   UiAccessScope,
   UiResourceCapability,
 } from '@sva/iam-core';
-export type {
-  PluginTranslationResolver,
-  PluginTranslationVariables,
-} from './plugin-translations.js';
+export type { PluginTranslationResolver, PluginTranslationVariables } from './plugin-translations.js';
 export {
   registerPluginTranslationResolver,
   translatePluginKey,

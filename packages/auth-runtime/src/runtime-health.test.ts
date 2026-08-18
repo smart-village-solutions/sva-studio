@@ -16,6 +16,20 @@ const state = vi.hoisted(() => ({
     status: 'ready' as const,
   })),
   getStudioJobWorkerHealth: vi.fn(() => ({ ready: true, status: 'running' as const })),
+  resolveExpectedGooseMigrationFromDirectory: vi.fn(() => ({
+    fileName: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+    version: 82,
+  })),
+  runIamDatabaseReadiness: vi.fn(async () => ({
+    migration: {
+      appliedVersion: 82,
+      expectedMigration: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+      expectedVersion: 82,
+      ok: true,
+    },
+    ok: true,
+    schema: { checks: [], ok: true },
+  })),
 }));
 
 vi.mock('@sva/server-runtime', () => ({
@@ -53,6 +67,18 @@ vi.mock('./iam-authorization/shared.js', () => ({
 
 vi.mock('./plugin-operations/runner-worker.js', () => ({
   getStudioJobWorkerHealth: state.getStudioJobWorkerHealth,
+}));
+
+vi.mock('./iam-account-management/schema-guard.js', () => ({
+  resolveExpectedGooseMigrationFromDirectory: state.resolveExpectedGooseMigrationFromDirectory,
+  runIamDatabaseReadiness: state.runIamDatabaseReadiness,
+  summarizeSchemaGuardFailures: (report: {
+    checks: Array<{ ok: boolean; schemaObject: string }>;
+  }) =>
+    report.checks
+      .filter((check) => !check.ok)
+      .map((check) => `missing_table:${check.schemaObject}`)
+      .join(', '),
 }));
 
 const createReadyPool = () => ({
@@ -98,6 +124,20 @@ describe('auth-runtime health handlers', () => {
       status: 'ready',
     });
     state.getStudioJobWorkerHealth.mockReturnValue({ ready: true, status: 'running' });
+    state.resolveExpectedGooseMigrationFromDirectory.mockReturnValue({
+      fileName: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+      version: 82,
+    });
+    state.runIamDatabaseReadiness.mockResolvedValue({
+      migration: {
+        appliedVersion: 82,
+        expectedMigration: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+        expectedVersion: 82,
+        ok: true,
+      },
+      ok: true,
+      schema: { checks: [], ok: true },
+    });
   });
 
   it('returns live status without dependency checks', async () => {
@@ -218,6 +258,101 @@ describe('auth-runtime health handlers', () => {
           database: { reasonCode: 'database_not_configured', status: 'not_ready' },
           keycloak: { reasonCode: 'keycloak_admin_not_configured', status: 'not_ready' },
           redis: { reasonCode: 'redis_ping_failed', status: 'not_ready' },
+        },
+      },
+    });
+  });
+
+  it('returns migration_drift when the database is behind the image migration head', async () => {
+    state.runIamDatabaseReadiness.mockResolvedValueOnce({
+      migration: {
+        appliedVersion: 81,
+        expectedMigration: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+        expectedVersion: 82,
+        ok: false,
+        reasonCode: 'migration_drift',
+      },
+      ok: false,
+      schema: { checks: [], ok: true },
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        db: false,
+        diagnostics: { db: { reason_code: 'migration_drift' } },
+        services: {
+          database: { reasonCode: 'migration_drift', status: 'not_ready' },
+        },
+      },
+    });
+  });
+
+  it('returns migration_metadata_invalid without running the database readiness query', async () => {
+    state.resolveExpectedGooseMigrationFromDirectory.mockImplementationOnce(() => {
+      throw new Error('migration directory is missing');
+    });
+    const pool = createReadyPool();
+    state.resolvePool.mockReturnValue(pool);
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        db: false,
+        errors: { db: 'IAM migration metadata is invalid' },
+        diagnostics: { db: { reason_code: 'migration_metadata_invalid' } },
+        services: {
+          database: { reasonCode: 'migration_metadata_invalid', status: 'not_ready' },
+        },
+      },
+    });
+    expect(pool.connect).toHaveBeenCalledOnce();
+    expect(state.runIamDatabaseReadiness).not.toHaveBeenCalled();
+  });
+
+  it('returns schema_drift when a critical IAM object is missing', async () => {
+    state.runIamDatabaseReadiness.mockResolvedValueOnce({
+      migration: {
+        appliedVersion: 82,
+        expectedMigration: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
+        expectedVersion: 82,
+        ok: true,
+      },
+      ok: false,
+      schema: {
+        checks: [
+          {
+            expectedMigration: '0065_iam_instance_waste_data_sources.sql',
+            kind: 'table',
+            message: 'Kritische IAM-Tabelle fehlt.',
+            ok: false,
+            reasonCode: 'missing_table',
+            schemaObject: 'iam.instance_waste_data_sources',
+          },
+        ],
+        ok: false,
+      },
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        db: false,
+        diagnostics: { db: { reason_code: 'schema_drift' } },
+        services: {
+          database: { reasonCode: 'schema_drift', status: 'not_ready' },
         },
       },
     });

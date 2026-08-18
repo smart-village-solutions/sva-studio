@@ -2,7 +2,16 @@ import { z } from 'zod';
 
 const nonEmptyString = z.string().trim().min(1);
 
-export const organizationTypeSchema = z.enum(['county', 'municipality', 'district', 'company', 'agency', 'other']);
+export const organizationTypeSchema = z.enum([
+  'county',
+  'municipality',
+  'district',
+  'company',
+  'agency',
+  'association',
+  'institution',
+  'other',
+]);
 export const contentAuthorPolicySchema = z.enum(['org_only', 'org_or_personal']);
 export const membershipVisibilitySchema = z.enum(['internal', 'external']);
 

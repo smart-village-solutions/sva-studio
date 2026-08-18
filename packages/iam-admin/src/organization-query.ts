@@ -72,6 +72,8 @@ const ORGANIZATION_TYPE_VALUES = [
   'district',
   'company',
   'agency',
+  'association',
+  'institution',
   'other',
 ] as const satisfies readonly IamOrganizationType[];
 

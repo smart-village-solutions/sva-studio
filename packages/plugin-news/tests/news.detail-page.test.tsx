@@ -102,12 +102,19 @@ describe('NewsDetailPage', () => {
         'news.create',
         'news.update',
         'news.delete',
+        'news.pushNotification',
         'media.read',
         'media.create',
         'media.update',
         'media.reference.manage',
       ],
-      unscopedPermissionActions: ['news.read', 'news.create', 'news.update', 'news.delete'],
+      unscopedPermissionActions: [
+        'news.read',
+        'news.create',
+        'news.update',
+        'news.delete',
+        'news.pushNotification',
+      ],
       assignedModules: ['news'],
       roles: [],
     });
@@ -383,64 +390,7 @@ describe('NewsDetailPage', () => {
     expect(screen.queryByRole('button', { name: 'Speichern' })).toBeNull();
   });
 
-  it('uses the upload response url when the refreshed news asset still has no preview url', async () => {
-    vi.mocked(uploadHostMediaFile).mockResolvedValueOnce({
-      assetId: 'asset-uploaded',
-      previewUrl: 'https://example.com/uploaded.jpg',
-      fileName: 'uploaded.jpg',
-      mimeType: 'image/jpeg',
-      visibility: 'public',
-    } as never);
-    vi.mocked(listHostMediaAssets)
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([
-        {
-          id: 'asset-uploaded',
-          fileName: 'uploaded.jpg',
-          mimeType: 'image/jpeg',
-          previewUrl: '',
-          visibility: 'public',
-        },
-      ] as never);
-    vi.mocked(getHostMediaAsset).mockResolvedValueOnce({
-      id: 'asset-uploaded',
-      instanceId: 'de-test',
-      storageKey: 'de-test/originals/uploaded.jpg',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      previewUrl: '',
-      visibility: 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
-      metadata: {
-        title: 'uploaded.jpg',
-        altText: '',
-        description: '',
-        copyright: '',
-        license: '',
-      },
-    } as never);
-    vi.mocked(updateHostMediaAsset).mockResolvedValueOnce({
-      id: 'asset-uploaded',
-      instanceId: 'de-test',
-      storageKey: 'de-test/originals/uploaded.jpg',
-      mediaType: 'image',
-      mimeType: 'image/jpeg',
-      byteSize: 1234,
-      previewUrl: '',
-      visibility: 'public',
-      uploadStatus: 'processed',
-      processingStatus: 'ready',
-      metadata: {
-        title: 'uploaded.jpg',
-        altText: '',
-        description: '',
-        copyright: '',
-        license: '',
-      },
-    } as never);
-
+  it('keeps a selected upload local until the news item is saved', async () => {
     render(<NewsDetailPage mode="create" />);
 
     fireEvent.change(await screen.findByLabelText('Bereich auswählen'), {
@@ -454,9 +404,12 @@ describe('NewsDetailPage', () => {
     });
     fireEvent.click(await screen.findByRole('button', { name: 'Medium übernehmen' }));
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('https://cdn.example.test/upload-fallback.jpg')).toBeTruthy();
-    });
+    await waitFor(() =>
+      expect(document.querySelector<HTMLImageElement>('article img')?.src).toMatch(/^blob:/)
+    );
+    expect((screen.getByLabelText('Medien-URL') as HTMLInputElement).value).toBe('');
+    expect(vi.mocked(uploadHostMediaFile)).not.toHaveBeenCalled();
+    expect(vi.mocked(getHostMediaAsset)).not.toHaveBeenCalled();
     expect(screen.queryByText('Bild-URL konnte nicht ermittelt werden.')).toBeNull();
   });
 

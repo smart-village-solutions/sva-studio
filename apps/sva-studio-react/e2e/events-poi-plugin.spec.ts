@@ -11,6 +11,7 @@ import {
   gotoShellRoot,
   mockSharedShellRequests,
   navigateClientSide,
+  selectExistingCategory,
   type EventRecord,
   type PoiRecord,
   unauthenticatedStorageState,
@@ -53,7 +54,7 @@ test.describe('events and POI plugins', () => {
       /Ort anlegen|POI anlegen|poi\.detail\.createTitle|poi\.editor\.createTitle/
     );
     await page.locator('#poi-name').fill('Rathaus');
-    await page.locator('#poi-category').fill('Verwaltung');
+    await selectExistingCategory(page, 'poi-category', 'Verwaltung');
     await page.getByRole('tab', { name: /Inhalt|poi\.detailTabs\.content\.title/ }).click();
     await page.locator('#poi-description').fill('Zentraler Servicepunkt');
     await page.locator('#poi-street').fill('Marktplatz 1');
@@ -108,7 +109,7 @@ test.describe('events and POI plugins', () => {
     await navigateClientSide(page, '/admin/events/new');
     await expectEventOrPoiEditorReady(page, '/admin/events/new');
     await page.locator('#event-title').fill('Stadtfest');
-    await page.locator('#event-category').fill('Kultur');
+    await selectExistingCategory(page, 'event-category', 'Kultur');
     await page.getByRole('tab', { name: /Inhalt|events\.detailTabs\.content\.title/ }).click();
     await page.locator('#event-description').fill('Sommerfest in der Innenstadt');
     await page.locator('#event-date-start').fill('2026-04-14');

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1046,
+  "body": "Die auf Staging geprüfte Abgrenzung persönlicher und organisatorischer Mainserver-Inhalte kann jetzt kontrolliert für Production aktiviert werden.\n\n- Nicht-sensitive Production-Einstellungen stammen weiterhin ausschließlich aus dem geprüften, versionierten Profil.\n- Bereits vorhandene geschützte Zugangsdaten werden während der Umstellung sicher weiterverwendet.\n- Unbekannte, fehlende oder falsch eingeordnete Einstellungen stoppen den Rollout vor Änderungen an Production."
+}

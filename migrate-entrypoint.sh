@@ -55,6 +55,9 @@ fi
 log "Wende Graphile-Worker-Migrationen mit dem privilegierten Migrationsbenutzer an"
 node "${GRAPHILE_WORKER_MIGRATOR}"
 
+log "Prüfe Migrationsstand und kritische IAM-Schemaobjekte"
+node ./verify-iam-schema.mjs
+
 case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in
   true)
     WASTE_TENANT_MIGRATOR="${WASTE_TENANT_MIGRATOR:-./migrate-waste-tenants.mjs}"

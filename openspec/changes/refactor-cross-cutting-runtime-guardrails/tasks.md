@@ -14,7 +14,7 @@
 - [ ] 1.3 `/auth/me` auf explizite Response-Allowlist oder Output-Schema umstellen
 - [ ] 1.4 In-Memory- und Redis-Session-Store auf gemeinsamen Codec-, TTL- und Konkurrenzvertrag angleichen
 - [ ] 1.5 OTEL-SDK im Produktions-Bootpfad vor dem ersten Handler-Mount initialisieren
-- [ ] 1.6 Runtime-Readiness und Boot-Checks auf Datenbank-Migrationsdrift erweitern
+- [x] 1.6 Runtime-Readiness und Boot-Checks auf Datenbank-Migrationsdrift erweitern
 
 ## 2. Plugin-Vertrag und Host-Grenzen
 

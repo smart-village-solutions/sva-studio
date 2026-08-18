@@ -351,6 +351,8 @@ Pure reads and background reconciliation without a bound mutation context SHALL 
 - **THEN** those steps reuse the bound `MutationPrincipalContext`
 - **AND** they do not invoke the general credential resolver again
 
+## ADDED Requirements
+
 ### Requirement: V2-Mutationen binden den geladenen Sessionkontext
 
 Das System MUST bei V2-Updates und -Deletes einen nicht autorisierenden Kontext-Bindungswert aus einem aktuellen Detail-Read verlangen und ihn vor dem Provider-Write gegen den authentifizierten Session- und Organisationskontext prüfen. Ein Client ohne vorhandenen Bindungswert MUST das Detail vor der Mutation erneut laden und MUST fail-closed abbrechen, wenn der Read keinen Bindungswert liefert. Requests ohne Vertragsversion dürfen nur im konfigurierten Legacy-Übergang ohne diesen Wert verarbeitet werden.
@@ -371,6 +373,8 @@ Das System SHALL gezielte Mutation-Refreshes nach `user` und `organization` im P
 - **GIVEN** ein `org_or_personal`-Kontext enthält eine durch eine Organisationsmutation aktualisierte Projektionszeile
 - **WHEN** ein impliziter Full-Refresh mit persönlichen Credentials läuft
 - **THEN** bleibt die organisatorische Projektionszeile erhalten
+
+## MODIFIED Requirements
 
 ### Requirement: Mainserver-Projektion trennt Quellkontext von IAM-Ownership
 

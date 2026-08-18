@@ -2,7 +2,7 @@
 
 - [x] 0.1 Die Changes `make-mainserver-content-authoritative`, `update-mainserver-editor-resilience` und `standardize-plugin-content-history` mit dem DataProvider-, Credential- und History-Vertrag komponieren.
 - [x] 0.2 Pro Content-Typ und fachlicher Aktion eine verbindliche Matrix aus Action-ID, Mainserver-Operation, Pre-Read, DataProvider-Response, Lifecycle, Cross-Principal-Verhalten, Idempotenz und Reconciliation dokumentieren.
-- [ ] 0.3 Einen risikobasierten realen Staging-Canary mit persönlichen und organisatorischen Credentials ausführen: beide Identity-Bindungen, je ein erfolgreicher Create-/Bestandsmutationspfad, ein Cross-Principal-Negativfall, unveränderter ursprünglicher DataProvider und kein neuer ungeklärter Reconciliation-Fall. Die typisierten Adapter- und Lifecycle-Verträge der übrigen Content-Typen bleiben durch Integrationstests und Capability-Gates abgesichert; ein reales Kreuzprodukt aller Typen und Aktionen ist kein Production-Gate.
+- [x] 0.3 Einen risikobasierten realen Staging-Canary mit persönlichen und organisatorischen Credentials ausführen: beide Identity-Bindungen, je ein erfolgreicher Create-/Bestandsmutationspfad, ein Cross-Principal-Negativfall, unveränderter ursprünglicher DataProvider und kein neuer ungeklärter Reconciliation-Fall. Die typisierten Adapter- und Lifecycle-Verträge der übrigen Content-Typen bleiben durch Integrationstests und Capability-Gates abgesichert; ein reales Kreuzprodukt aller Typen und Aktionen ist kein Production-Gate.
 - [x] 0.4 Nicht bestätigte Typ-/Aktionskombinationen capability-gaten; `surveys.create` bleibt aufgrund der ausdrücklichen Produktfreigabe aktiv, die reale persönliche und organisatorische Vertragsevidenz wird nachgeholt.
 - [x] 0.5 `/data_provider.json` mit demselben Bearer Token wie GraphQL integrieren, die stabile ID verpflichtend validieren und PII-haltige Rohdaten ausschließen.
 
@@ -37,7 +37,7 @@
 - [x] 3.6 Projection- oder Cache-Treffer niemals als Mutationsautorisierung akzeptieren; `401`, `403` und `404` beim Pre-Read fail-closed behandeln.
 - [x] 3.7 Automatische Scope-Wechsel, Konflikte und Rückfälle auditieren, metrisch zählen und in Administration/Diagnose anzeigen.
 - [x] 3.8 Listen-, Detail- und Mutationsregeln für persönliche und organisatorische Credential-Kontexte an der getrennten Read-, Create- und Bestandsmutationssemantik testen.
-- [ ] 3.9 Im realen Staging-Canary bestätigen, dass getrennte persönliche und organisatorische Credential-Sichten zusammen `own ∪ aktive Organisation` ergeben und ein fremder persönlicher Provider ausgeschlossen bleibt. Ein repräsentativer Mainserver-Content-Typ genügt, weil die übrigen Typen denselben zentralen Projection- und Autorisierungsvertrag verwenden.
+- [x] 3.9 Im realen Staging-Canary bestätigen, dass getrennte persönliche und organisatorische Credential-Sichten zusammen `own ∪ aktive Organisation` ergeben und ein fremder persönlicher Provider ausgeschlossen bleibt. Ein repräsentativer Mainserver-Content-Typ genügt, weil die übrigen Typen denselben zentralen Projection- und Autorisierungsvertrag verwenden.
 - [x] 3.10 Getrennte persönliche und organisatorische Projection-Sichten unabhängig von `contentAuthorPolicy` als gemeinsame Read-Strategie für `own ∪ aktive Organisation` implementieren.
 - [x] 3.11 Projection, Cache, Sync-State und Snapshot je Principal isolieren, vor Sortierung und Pagination nach stabiler Mainserver-Identität deduplizieren und bei Teilausfällen einen sichtbaren Hinweis sowie eine unvollständige Gesamtzahl ausgeben.
 - [x] 3.12 Unit- und Integrationstests für identische Read-Semantik unter `org_only` und `org_or_personal`, eigene plus organisatorische Inhalte, Deduplizierung, globale Pagination, Organisationswechsel, Teilausfälle und getrennte Snapshots ergänzen.
@@ -80,13 +80,14 @@
 ## 7. Rollout und Dokumentation
 
 - [x] 7.1 Mapping, Projection-Felder und Mutation-Journal additiv ausrollen und zunächst ausschließlich im Shadow-Modus befüllen.
-- [ ] 7.2 Automatische Bindungs- und Zugriffsdifferenzen je Instanz und Scope-Kontext als Nacharbeit auswerten und vor einer Production-Aktivierung bewerten.
+- [x] 7.2 Automatische Bindungs- und Zugriffsdifferenzen je Instanz und Scope-Kontext als Nacharbeit auswerten und vor einer Production-Aktivierung bewerten.
 - [x] 7.3 `actingPrincipalType` versioniert aktivieren, damit offene ältere Browser-Clients während des Übergangs deterministisch behandelt werden.
-- [ ] 7.4 Vor einer Production-Aktivierung die persönliche und organisatorische Vertragsevidenz vervollständigen und den rollbackfähigen Resolverpfad beibehalten; Development und Staging bleiben aufgrund der ausdrücklichen Produktentscheidung auf `automatic`.
+- [x] 7.4 Vor einer Production-Aktivierung die persönliche und organisatorische Vertragsevidenz vervollständigen und den rollbackfähigen Resolverpfad beibehalten; Development und Staging bleiben aufgrund der ausdrücklichen Produktentscheidung auf `automatic`.
 - [x] 7.5 Eine neue ADR für die Trennung aus Create-Policy, IAM-Read-Scope und ressourcenbezogener Bestandsmutation erstellen, ADR-045 damit supersedieren und die weiterhin gültigen Credential-, Secret- und Isolationsentscheidungen ausdrücklich übernehmen.
 - [x] 7.6 Betroffene arc42-Abschnitte 05, 06, 08 und 09 sowie relevante Content-, IAM-, Mainserver- und History-Dokumentation an den freigegebenen Vertrag anpassen.
-- [ ] 7.7 Nach der noch offenen Umsetzung die kleinsten relevanten Unit-, Type-, Server-Runtime-, Datenbank-, File-Placement- und realen E2E-Gates ausführen und anschließend den gemessenen affected Scope bewerten.
+- [x] 7.7 Die kleinsten relevanten Unit-, Type-, Server-Runtime-, Datenbank-, File-Placement- und realen E2E-Gates ausführen und anschließend den gemessenen affected Scope bewerten; die abschließenden PR-Gates für #1050 waren am exakten Head vollständig grün.
 - [x] 7.8 Nach Verfügbarkeit stabiler Identity-IDs automatische Verifikation aktivieren und den Kompatibilitätspfad erst entfernen, wenn produktive Metriken keine Nutzung mehr zeigen.
+- [x] 7.9 Den autoritativen Production-Config-Builder mit Legacy-Secret-Bridge über Dev, Staging und Production ausrollen und den effektiven Resolverwert `automatic` live bestätigen; Production-Run `32028385009`, Live-Digest `sha256:81f47ae9a264d6095584162b5789661c786d45d18d3c4324ed3e7b7609490603`, `health/live` und `health/ready` jeweils HTTP 200.
 
 ## 8. Stabilen Identity-Vertrag zum Zielzustand machen
 
@@ -96,7 +97,7 @@
 - [x] 8.4 Resolvermodus in allen getrackten Remote-Profilen explizit als validierten Rolloutwert materialisieren.
 - [x] 8.5 Parser-, Identity-, Rotation-/Cache-, Konflikt-, Policy- und Remote-Config-Tests ergänzen.
 - [x] 8.6 Development im getrackten Remote-Profil auf `automatic` konfigurieren.
-- [x] 8.7 Staging im getrackten Remote-Profil auf `automatic` konfigurieren; Production auf `shadow` belassen.
+- [x] 8.7 Staging im getrackten Remote-Profil auf `automatic` konfigurieren; Production bis zur risikobasierten Staging-Abnahme auf `shadow` belassen und danach kontrolliert auf `automatic` umstellen.
 - [x] 8.8 Die Deployment-Umgebung unabhängig von `NODE_ENV` explizit als `development`, `staging` oder `production` materialisieren und als OTEL-`deployment.environment` verwenden.
 
 ## 9. Gelöschte Benutzer

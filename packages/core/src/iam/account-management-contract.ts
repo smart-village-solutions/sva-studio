@@ -427,7 +427,14 @@ export type IamPendingLegalTextItem = {
 };
 
 export type IamOrganizationType =
-  'county' | 'municipality' | 'district' | 'company' | 'agency' | 'other';
+  | 'county'
+  | 'municipality'
+  | 'district'
+  | 'company'
+  | 'agency'
+  | 'association'
+  | 'institution'
+  | 'other';
 
 export type IamContentAuthorPolicy = 'org_only' | 'org_or_personal';
 

@@ -25,6 +25,7 @@ export type {
   StudioMediaPickerUploadPhase,
 } from './studio-media-picker-overlay.shared.js';
 export { useStudioMediaPickerOverlay } from './use-studio-media-picker-overlay.js';
+export { createLocalStudioMediaPickerAsset } from './studio-media-picker-local-asset.js';
 
 type StudioMediaPickerOverlayProps = Readonly<{
   open: boolean;

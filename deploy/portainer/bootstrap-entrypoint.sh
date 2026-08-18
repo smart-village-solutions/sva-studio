@@ -105,6 +105,7 @@ $bootstrap$;`,
   `REVOKE CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} FROM ${sqlIdentifier(appDbUser)};`,
   `REVOKE CREATE ON SCHEMA public FROM PUBLIC;`,
   `REVOKE CREATE ON SCHEMA public FROM ${sqlIdentifier(appDbUser)};`,
+  `GRANT SELECT (version_id, is_applied) ON TABLE public.goose_db_version TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
@@ -137,7 +138,7 @@ $worker_role$;`,
   `REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
   `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(appDbUser)};`,
-  `GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text) TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO ${sqlIdentifier(appDbUser)};`,
   `BEGIN;
 SET LOCAL ROLE ${sqlIdentifier(appDbUser)};
 SELECT graphile_worker.sva_enqueue_job(
@@ -145,7 +146,8 @@ SELECT graphile_worker.sva_enqueue_job(
   '{"instanceId":"bootstrap-contract","jobId":"bootstrap-contract"}'::json,
   'plugin-operations',
   1,
-  'studio-job:bootstrap-contract'
+  'studio-job:bootstrap-contract',
+  NULL
 );
 ROLLBACK;`,
   `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
@@ -341,7 +343,7 @@ BEGIN
       EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(workerDbUser)}) AS worker_role_exists,
       has_function_privilege(
         ${sqlLiteral(appDbUser)},
-        'graphile_worker.sva_enqueue_job(text,json,text,integer,text)',
+        'graphile_worker.sva_enqueue_job(text,json,text,integer,text,timestamp with time zone)',
         'EXECUTE'
       ) AS app_can_enqueue,
       NOT has_database_privilege(
@@ -625,5 +627,18 @@ PGPASSWORD="${POSTGRES_PASSWORD}" psql \
   -U "${POSTGRES_USER}" \
   -d "${POSTGRES_DB}" \
   -f "${tmp_sql}"
+
+case "${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD}" in
+  true)
+    echo "[bootstrap-entrypoint] verifying IAM database readiness"
+    node ./verify-iam-schema.mjs
+    ;;
+  false)
+    ;;
+  *)
+    echo "[bootstrap-entrypoint] invalid SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD value" >&2
+    exit 1
+    ;;
+esac
 
 echo "[bootstrap-entrypoint] bootstrap completed"

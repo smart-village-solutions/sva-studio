@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig } from './build-remote-app-config.ts';
+import { buildRemoteAppConfig, compareRemoteConfigShadow, parseRemoteConfigLayer, runBuildRemoteAppConfig, selectProtectedOverrides } from './build-remote-app-config.ts';
 import { remoteConfigContract } from './remote-config-contract.ts';
 import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
 
@@ -35,6 +35,7 @@ describe('remote app config builder', () => {
     const result = buildRemoteAppConfig({ environment, profile: remoteProfile, overrides });
 
     expect(result.source).toContain(`SVA_DEPLOYMENT_ENVIRONMENT=${deploymentEnvironment}\n`);
+    expect(result.source).toContain('ENABLE_OTEL=false\n');
     expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
   });
 
@@ -71,6 +72,8 @@ describe('remote app config builder', () => {
   it('rejects duplicates, unknown keys, placeholders, misplaced config and invalid references', () => {
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'SVA_RUNTIME_PROFILE=studio\nSVA_RUNTIME_PROFILE=other')).toThrow(PromoteContractError);
     expect(() => parseRemoteConfigLayer('dev', 'profile', 'UNKNOWN=value')).toThrow(/PROMOTE_CONFIG_INVALID/u);
+    expect(() => parseRemoteConfigLayer('prod', 'legacy', 'UNKNOWN_TWO=value\nUNKNOWN_ONE=value')).toThrow(/UNKNOWN_ONE, UNKNOWN_TWO/u);
+    expect(() => parseRemoteConfigLayer('prod', 'legacy', 'toString=value')).toThrow(/toString/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: overrides.replace('external_secret_v1', 'not a reference') })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile, overrides: `${overrides}\nSVA_STACK_NAME=secret-layer` })).toThrow(/PROMOTE_CONFIG_INVALID/u);
     expect(() => buildRemoteAppConfig({ environment: 'dev', profile: `${profile}\nAPP_DB_PASSWORD=committed-secret`, overrides })).toThrow(/PROMOTE_CONFIG_SOURCE_FORBIDDEN/u);
@@ -86,6 +89,37 @@ describe('remote app config builder', () => {
     expect(compareRemoteConfigShadow('prod', changedSecrets, candidate)).toMatchObject({ equivalent: true });
     expect(compareRemoteConfigShadow('prod', candidate.source.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=other'), candidate)).toMatchObject({ equivalent: false, configValueMismatches: ['SVA_STACK_NAME'] });
     expect(compareRemoteConfigShadow('prod', candidate.source.replace('external_secret_v1', 'external_secret_v2'), candidate)).toMatchObject({ equivalent: false, secretReferenceMismatches: ['WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME'] });
+  });
+
+  it('uses only protected legacy values when explicit overrides are not configured', () => {
+    const legacySource = `${profile.replace('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow', 'SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility')}\n${overrides}`;
+    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
+    const result = buildRemoteAppConfig({ environment: 'prod', profile, overrides: protectedOverrides });
+
+    expect(protectedOverrides).toBe(overrides);
+    expect(result.source).toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow\n');
+    expect(result.source).not.toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility\n');
+    expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
+  });
+
+  it('retains legacy connection secrets while dropping legacy operational config', () => {
+    const protectedConnections = overrides
+      .replace('IAM_DATABASE_URL=sensitive-IAM_DATABASE_URL', 'IAM_DATABASE_URL=postgres://protected')
+      .replace('REDIS_URL=sensitive-REDIS_URL', 'REDIS_URL=redis://protected');
+    const legacyProfile = profile
+      .replace('QUANTUM_ENDPOINT=value', 'QUANTUM_ENDPOINT=sva')
+      .replace('SVA_PUBLIC_HOST=value', 'SVA_PUBLIC_HOST=studio.smart-village.app');
+    const legacySource = `${legacyProfile}\n${protectedConnections}`;
+    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
+
+    expect(protectedOverrides).toContain('IAM_DATABASE_URL=postgres://protected');
+    expect(protectedOverrides).toContain('REDIS_URL=redis://protected');
+    expect(protectedOverrides).not.toContain('QUANTUM_ENDPOINT');
+    expect(protectedOverrides).not.toContain('SVA_PUBLIC_HOST');
+  });
+
+  it('prefers the explicit protected override bundle over legacy values', () => {
+    expect(selectProtectedOverrides('prod', `${profile}\n${overrides}`, 'APP_DB_PASSWORD=explicit-secret')).toBe('APP_DB_PASSWORD=explicit-secret');
   });
 
   it('forbids local files without reading or disclosing their contents', () => {

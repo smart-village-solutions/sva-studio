@@ -1,5 +1,5 @@
 import { createMainserverCrudClient, requestMainserverJson } from '@sva/plugin-sdk';
-import type { MainserverActingPrincipalType } from '@sva/plugin-sdk';
+import type { MainserverActingPrincipalType, MainserverMutationOptions } from '@sva/plugin-sdk';
 
 import type {
   GenericItemContentItem,
@@ -44,15 +44,22 @@ export const getGenericItemDetail = async (
 
 export const createGenericItem = async (
   input: GenericItemFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
-): Promise<GenericItemContentItem> => genericItemsClient.create(input, actingPrincipalType);
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
+): Promise<GenericItemContentItem> =>
+  mutationOptions
+    ? genericItemsClient.create(input, actingPrincipalType, mutationOptions)
+    : genericItemsClient.create(input, actingPrincipalType);
 
 export const updateGenericItem = async (
   contentId: string,
   input: GenericItemFormInput,
-  actingPrincipalType: MainserverActingPrincipalType
+  actingPrincipalType: MainserverActingPrincipalType,
+  mutationOptions?: MainserverMutationOptions
 ): Promise<GenericItemContentItem> =>
-  genericItemsClient.update(contentId, input, actingPrincipalType);
+  mutationOptions
+    ? genericItemsClient.update(contentId, input, actingPrincipalType, mutationOptions)
+    : genericItemsClient.update(contentId, input, actingPrincipalType);
 
 export const deleteGenericItem = async (
   contentId: string,

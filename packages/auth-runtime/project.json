@@ -37,6 +37,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build", "^build"],
       "options": {
+        "cwd": ".",
         "command": "node --import tsx scripts/ci/verify-graphile-worker-database-contract.ts"
       }
     },

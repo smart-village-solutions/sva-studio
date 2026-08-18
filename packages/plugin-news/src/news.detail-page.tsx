@@ -3,6 +3,7 @@ import { FormProvider, useForm, type FieldNamesMarkedBoolean } from 'react-hook-
 import { Link, useNavigate } from '@tanstack/react-router';
 import {
   contentMediaUploadPhaseMessageKey as uploadPhaseMessageKey,
+  contentMediaSavePhaseMessageKey,
   fromDatetimeLocalValue,
   getHostMediaAsset,
   getHostMediaDelivery,
@@ -23,7 +24,6 @@ import {
   toDatetimeLocalValue,
   translatePluginKey,
   updateHostMediaAsset,
-  uploadHostMediaFile,
   type HostMediaAssetDetail,
   type HostMediaAssetListItem,
   type WasteManagementMasterDataOverview,
@@ -31,10 +31,14 @@ import {
 import {
   Button,
   contentMediaUsageToReference,
+  contentMediaUsagesToLocalDrafts,
   contentMediaUsagesToMainserver,
+  createLocalStudioMediaPickerAsset,
   createManualContentMediaUsage,
   isPersistableContentMediaUrl,
   mainserverContentMediaToUsages,
+  revokeContentMediaUsageObjectUrls,
+  resolveContentMediaUsageDrafts,
   toContentMediaAssetSnapshot,
   type ContentMediaUsage,
   Select,
@@ -392,6 +396,7 @@ export const NewsDetailPage = ({
   );
   const deleteLabel = resolvePluginActionLabel(pt, pluginNewsActionIds.delete);
   const saveFeedback = useStudioSaveFeedback();
+  const [mediaSavePhaseKey, setMediaSavePhaseKey] = React.useState<string | null>(null);
   const initialSaveFeedbackShownRef = React.useRef(false);
   const [activeTab, setActiveTab] = React.useState<NewsDetailTabId>('basis');
   const [isLoading, setIsLoading] = React.useState(mode === 'edit');
@@ -439,6 +444,13 @@ export const NewsDetailPage = ({
           resolveContentVisibilityAction(loadedItem.visible ?? true, publicationMode !== 'draft'),
           resourceAccess
         );
+  const canSendPushNotification =
+    sessionAccess.isResolved &&
+    sessionAccess.assignedModules.includes('news') &&
+    sessionAccess.permissionActions.includes('news.pushNotification') &&
+    (mode === 'create' ||
+      (sessionAccess.unscopedPermissionActions?.includes('news.pushNotification') ?? false) ||
+      resourceAccess['news.pushNotification'] === true);
   const mediaCapabilities = React.useMemo(
     () =>
       resolveContentMediaCapabilities({
@@ -494,6 +506,7 @@ export const NewsDetailPage = ({
 
   const isAssetSelectable = React.useCallback(
     (asset: NewsMediaPickerAsset) => {
+      if (asset.localDraft) return mediaUsages.every((usage) => usage.localDraft?.id !== asset.id);
       if (!asset.persistentUrl) return mediaUsages.every((usage) => usage.assetId !== asset.id);
       if (!isPersistableContentMediaUrl(asset.persistentUrl)) return false;
       const nextMedia = mediaContentFromAsset({
@@ -518,8 +531,12 @@ export const NewsDetailPage = ({
 
   const mediaPicker = useStudioMediaPickerOverlay<NewsMediaPickerAsset>({
     onAccept: (asset) => {
-      if (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl)) return;
-      const persistentUrl = asset.persistentUrl;
+      if (
+        !asset.localDraft &&
+        (!asset.persistentUrl || !isPersistableContentMediaUrl(asset.persistentUrl))
+      )
+        return;
+      const persistentUrl = asset.localDraft ? '' : (asset.persistentUrl ?? '');
       const nextMedia = mediaContentFromAsset({
         id: asset.id,
         fileName: asset.fileName,
@@ -537,12 +554,17 @@ export const NewsDetailPage = ({
       };
 
       const currentMedia = methods.getValues('contentMedia') ?? [];
-      methods.setValue('contentMedia', [...currentMedia, persistedMedia], { shouldDirty: true });
+      methods.setValue(
+        'contentMedia',
+        asset.localDraft ? currentMedia : [...currentMedia, persistedMedia],
+        { shouldDirty: true }
+      );
       setMediaUsages((current) => [
         ...current,
         {
           uiId: `news-asset-${asset.id}-${current.length}`,
-          assetId: asset.id,
+          assetId: asset.localDraft ? undefined : asset.id,
+          localDraft: asset.localDraft,
           persistentUrl,
           previewUrl: asset.previewUrl ?? undefined,
           altText: asset.metadata.altText || asset.fileName,
@@ -571,17 +593,7 @@ export const NewsDetailPage = ({
     },
     canAcceptAsset: isAssetSelectable,
     isSupportedUploadFile,
-    uploadAsset: async (file) => {
-      const uploaded = await uploadHostMediaFile({
-        fetch: globalThis.fetch.bind(globalThis),
-        file,
-        mediaType: 'image',
-        visibility: 'public',
-      });
-      const assets = await refreshMediaAssets();
-      mediaAssetsRef.current = assets;
-      return { assetId: uploaded.assetId, previewUrl: uploaded.previewUrl };
-    },
+    createLocalAsset: createLocalStudioMediaPickerAsset,
     loadAsset: async (assetId) => {
       const [detail, delivery] = await Promise.all([
         getHostMediaAsset({ fetch: globalThis.fetch.bind(globalThis), assetId }),
@@ -865,20 +877,27 @@ export const NewsDetailPage = ({
       }
 
       const operationId = saveFeedback.beginSaving();
+      setMediaSavePhaseKey(null);
       try {
-        const saveContent = () =>
+        const saveContent = (
+          draftResolutions: Parameters<typeof resolveContentMediaUsageDrafts>[1] = [],
+          mediaSaveContext?: Readonly<{ operationId: string }>
+        ) =>
           saveNewsEditorItem(
             {
               contentId,
               values: {
                 ...values,
                 contentMedia: contentMediaUsagesToMainserver(
-                  mediaUsages
+                  resolveContentMediaUsageDrafts(mediaUsages, draftResolutions)
                 ) as NewsDetailFormValues['contentMedia'],
               },
               existingItem: loadedItem ?? null,
               actingPrincipalType,
               canWriteWasteTargets: hasWasteTargetingAccess,
+              mutationOptions: mediaSaveContext
+                ? { contentMediaSaveOperationId: mediaSaveContext.operationId }
+                : undefined,
             },
             { createNews, updateNews }
           );
@@ -892,14 +911,21 @@ export const NewsDetailPage = ({
                 const reference = contentMediaUsageToReference(usage);
                 return reference ? [reference] : [];
               }),
+              drafts: contentMediaUsagesToLocalDrafts(mediaUsages),
+              onPhaseChange: (phase) =>
+                setMediaSavePhaseKey(contentMediaSavePhaseMessageKey(phase)),
             })
-          : { status: 'complete' as const, saved: await saveContent() };
+          : { status: 'complete' as const, saved: await saveContent(), resolutions: [] };
         const saved = result.saved;
+        const savedMediaUsages = result.resolutions?.length
+          ? resolveContentMediaUsageDrafts(mediaUsages, result.resolutions)
+          : mediaUsages;
+        if (result.resolutions?.length) revokeContentMediaUsageObjectUrls(mediaUsages);
         if (result.status === 'reference_failed') {
           setRetryReferenceSync(() => result.retryReferenceSync);
           setRetryCreatedContentId(mode === 'create' ? saved.id : null);
-          setMediaUsages((current) =>
-            current.map((usage) =>
+          setMediaUsages(
+            savedMediaUsages.map((usage) =>
               usage.assetId ? { ...usage, referenceStatus: 'failed' } : usage
             )
           );
@@ -928,8 +954,10 @@ export const NewsDetailPage = ({
 
         const nextValues = mapNewsItemToDetailFormValues(saved);
         reset(nextValues);
-        setMediaUsages((current) =>
-          current.map((usage) => (usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage))
+        setMediaUsages(
+          savedMediaUsages.map((usage) =>
+            usage.assetId ? { ...usage, referenceStatus: 'synced' } : usage
+          )
         );
         setRetryReferenceSync(null);
         setRetryCreatedContentId(null);
@@ -1039,6 +1067,7 @@ export const NewsDetailPage = ({
           }}
           canSelectMedia={canSelectMedia}
           canUploadMedia={canUploadMedia}
+          mediaEditingDisabled={saveFeedback.status === 'saving'}
           onLoadAssetSnapshot={async (usage) => {
             if (!usage.assetId) throw new Error('asset_unavailable');
             const [detail, delivery] = await Promise.all([
@@ -1081,6 +1110,7 @@ export const NewsDetailPage = ({
       panel: (
         <NewsDetailSettingsTab
           loadedItem={loadedItem}
+          canSendPushNotification={canSendPushNotification}
           mode={mode}
           pt={pt}
           wasteOverview={wasteOverview}
@@ -1126,7 +1156,7 @@ export const NewsDetailPage = ({
             status={saveFeedback.status}
             labels={{
               idle: pt('actions.save'),
-              saving: pt('actions.saving'),
+              saving: mediaSavePhaseKey ? pt(mediaSavePhaseKey) : pt('actions.saving'),
               saved: pt('actions.saved'),
             }}
           />

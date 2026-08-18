@@ -122,6 +122,24 @@ describe('ContentMediaUsageBlock', () => {
     expect(onOpenUpload).toHaveBeenCalledOnce();
   });
 
+  it('disables media editing while a content save operation is running', () => {
+    render(
+      <ContentMediaUsageBlock
+        usages={[linked()]}
+        onChange={vi.fn()}
+        onAddManual={vi.fn()}
+        onOpenUpload={vi.fn()}
+        labels={labels}
+        disabled
+      />
+    );
+
+    const addButton = screen.getByRole('button', { name: 'Medium hinzufügen' });
+    const fieldset = addButton.closest('fieldset') as HTMLFieldSetElement | null;
+    expect(fieldset?.getAttribute('aria-busy')).toBe('true');
+    expect(fieldset?.disabled).toBe(true);
+  });
+
   it('reorders and removes by stable UI identity while announcing and restoring focus', async () => {
     render(
       <Harness
@@ -146,6 +164,31 @@ describe('ContentMediaUsageBlock', () => {
       expect(document.activeElement).toBe(document.getElementById('content-media-one-remove'))
     );
     expect(screen.getByText('Entfernt')).toBeTruthy();
+  });
+
+  it('revokes local previews exactly once when they are removed', () => {
+    const revokeObjectUrl = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    render(
+      <Harness
+        initial={[
+          linked({
+            assetId: undefined,
+            localDraft: {
+              id: 'draft-remove',
+              file: new File(['image'], 'draft.jpg', { type: 'image/jpeg' }),
+            },
+            previewUrl: 'blob:usage-remove',
+            persistentUrl: '',
+          }),
+        ]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Entfernen' }));
+
+    expect(revokeObjectUrl).toHaveBeenCalledOnce();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:usage-remove');
+    revokeObjectUrl.mockRestore();
   });
 
   it('keeps editorial overrides unselected and applies only explicitly selected asset metadata', async () => {

@@ -278,6 +278,66 @@ describe('Keycloak admin client', () => {
     );
   });
 
+  it('normalizes the admin base URL and rejects blank configuration', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '  https://keycloak.example  ');
+    vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'master');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'studio');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'secret-from-env');
+
+    const { getKeycloakAdminClientConfigFromEnv } = await import('./core.js');
+
+    expect(getKeycloakAdminClientConfigFromEnv().baseUrl).toBe('https://keycloak.example');
+
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '   ');
+    expect(() => getKeycloakAdminClientConfigFromEnv()).toThrow(
+      'Missing required env: KEYCLOAK_ADMIN_BASE_URL'
+    );
+  });
+
+  it('builds tenant-admin config for the tenant realm without using platform credentials', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', 'https://keycloak.example');
+    vi.stubEnv('KEYCLOAK_ADMIN_REALM', 'platform');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_ID', 'platform-client');
+    vi.stubEnv('KEYCLOAK_ADMIN_CLIENT_SECRET', 'platform-secret');
+
+    const { getKeycloakTenantAdminClientConfigFromEnv } = await import('./core.js');
+
+    expect(
+      getKeycloakTenantAdminClientConfigFromEnv({
+        realm: 'demo',
+        clientId: 'sva-studio-admin',
+        clientSecret: 'tenant-secret',
+      })
+    ).toEqual({
+      baseUrl: 'https://keycloak.example',
+      realm: 'demo',
+      adminRealm: 'demo',
+      clientId: 'sva-studio-admin',
+      clientSecret: 'tenant-secret',
+    });
+  });
+
+  it('normalizes the tenant-admin base URL fallback and rejects blank configuration', async () => {
+    vi.stubEnv('KEYCLOAK_ADMIN_BASE_URL', '   ');
+    vi.stubEnv('KEYCLOAK_PROVISIONER_BASE_URL', '  https://provisioner-keycloak.example  ');
+
+    const { getKeycloakTenantAdminClientConfigFromEnv } = await import('./core.js');
+    const input = {
+      realm: 'demo',
+      clientId: 'sva-studio-admin',
+      clientSecret: 'tenant-secret',
+    };
+
+    expect(getKeycloakTenantAdminClientConfigFromEnv(input).baseUrl).toBe(
+      'https://provisioner-keycloak.example'
+    );
+
+    vi.stubEnv('KEYCLOAK_PROVISIONER_BASE_URL', '   ');
+    expect(() => getKeycloakTenantAdminClientConfigFromEnv(input)).toThrow(
+      'Missing required env: KEYCLOAK_ADMIN_BASE_URL'
+    );
+  });
+
   it('synchronizes managed realm roles while preserving built-ins and unmanaged roles', async () => {
     const fetchImpl = vi
       .fn()

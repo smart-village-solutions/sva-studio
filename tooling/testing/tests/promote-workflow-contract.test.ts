@@ -251,8 +251,14 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('PROMOTE_SOURCE_CONTRACT_INVALID');
     expect(workflow).toContain('PROMOTE_INPUT_INVALID');
     expect(workflow).not.toContain(`printf '{"code":"PROMOTE_`);
-    expect(workflow).toContain(
-      'PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json'
+    expect(workflow).not.toMatch(
+      /^\s{6}PROMOTE_(?:FAILURE_PATH|CONTROLLER_DIR):\s+\$\{\{\s*runner\./mu
+    );
+    expect(workflow).toMatch(
+      /- name: initialize promote controller paths\n\s+run: \|\n\s+set -euo pipefail\n[\s\S]*?PROMOTE_FAILURE_PATH=\$\{RUNNER_TEMP\}\/promote-terminal-failure\.json[\s\S]*?PROMOTE_CONTROLLER_DIR=\$\{RUNNER_TEMP\}\/promote-evidence-controller[\s\S]*?GITHUB_ENV/u
+    );
+    expect(workflow.indexOf('initialize promote controller paths')).toBeLessThan(
+      workflow.indexOf('checkout workflow controller revision')
     );
     expect(workflow).toContain('PROMOTE_JOB_STATUS: ${{ job.status }}');
     expect(workflow).toContain('PROMOTE_BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}');

@@ -7,6 +7,27 @@ import { OrganizationDetailPage, sortMembershipUsersByLabel } from './-organizat
 const useOrganizationsMock = vi.fn();
 const listUsersMock = vi.fn();
 const listOrganizationsMock = vi.fn();
+const onTabChangeMock = vi.fn();
+
+const DetailPageHarness = ({
+  initialActiveTab = 'organization',
+}: Readonly<{ initialActiveTab?: 'organization' | 'memberships' }>) => {
+  const [activeTab, setActiveTab] = React.useState(initialActiveTab);
+
+  return (
+    <OrganizationDetailPage
+      organizationId="org-1"
+      activeTab={activeTab}
+      onTabChange={(nextTab) => {
+        onTabChangeMock(nextTab);
+        setActiveTab(nextTab);
+      }}
+    />
+  );
+};
+
+const renderDetailPage = (initialActiveTab: 'organization' | 'memberships' = 'organization') =>
+  render(<DetailPageHarness initialActiveTab={initialActiveTab} />);
 
 vi.mock('../../../hooks/use-iam-resource-access', () => ({
   useIamResourceAccess: () => ({
@@ -141,6 +162,7 @@ describe('OrganizationDetailPage', () => {
     useOrganizationsMock.mockReset();
     listUsersMock.mockReset();
     listOrganizationsMock.mockReset();
+    onTabChangeMock.mockReset();
     listUsersMock.mockResolvedValue({
       data: [],
       pagination: { page: 1, pageSize: 100, total: 0 },
@@ -211,7 +233,7 @@ describe('OrganizationDetailPage', () => {
         pagination: { page: 1, pageSize: 100, total: 2 },
       });
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(loadOrganization).toHaveBeenCalledWith('org-1');
@@ -288,6 +310,8 @@ describe('OrganizationDetailPage', () => {
       });
     });
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Mitgliedschaften' }));
+    expect(onTabChangeMock).toHaveBeenCalledWith('memberships');
     expect(screen.queryByRole('option', { name: 'Anna Admin <anna@example.org>' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
     fireEvent.change(screen.getByPlaceholderText('Nach Name, E-Mail oder Kennung suchen'), {
@@ -394,7 +418,7 @@ describe('OrganizationDetailPage', () => {
       pagination: { page: 1, pageSize: 100, total: 3 },
     });
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage('memberships');
 
     await waitFor(() => expect(listUsersMock).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: 'Accounts' }));
@@ -450,7 +474,7 @@ describe('OrganizationDetailPage', () => {
       })
     );
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
 
     const deleteButton = screen.getByRole('button', { name: 'Löschen' });
     expect((deleteButton as HTMLButtonElement).disabled).toBe(false);
@@ -459,6 +483,22 @@ describe('OrganizationDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Löschen' }));
 
     await waitFor(() => expect(deleteOrganization).toHaveBeenCalledWith('org-1'));
+  });
+
+  it('renders URL-controlled organization tabs and reports tab changes', () => {
+    useOrganizationsMock.mockReturnValue(createState());
+
+    renderDetailPage('memberships');
+
+    expect(
+      screen.getByRole('tab', { name: 'Mitgliedschaften' }).getAttribute('aria-selected')
+    ).toBe('true');
+    expect(screen.queryByLabelText('Technischer Schlüssel')).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Organisation' }));
+
+    expect(onTabChangeMock).toHaveBeenCalledWith('organization');
+    expect(screen.getByLabelText('Technischer Schlüssel')).toBeTruthy();
   });
 
   it('sorts membership users by their rendered label', () => {
@@ -496,14 +536,26 @@ describe('OrganizationDetailPage', () => {
       })
     );
 
-    const { rerender } = render(<OrganizationDetailPage organizationId="org-1" />);
+    const { rerender } = render(
+      <OrganizationDetailPage
+        organizationId="org-1"
+        activeTab="organization"
+        onTabChange={onTabChangeMock}
+      />
+    );
 
     await waitFor(() => {
       expect(loadOrganization).toHaveBeenCalledTimes(1);
       expect(loadOrganization).toHaveBeenCalledWith('org-1');
     });
 
-    rerender(<OrganizationDetailPage organizationId="org-1" />);
+    rerender(
+      <OrganizationDetailPage
+        organizationId="org-1"
+        activeTab="organization"
+        onTabChange={onTabChangeMock}
+      />
+    );
 
     await waitFor(() => {
       expect(loadOrganization).toHaveBeenCalledTimes(1);
@@ -517,7 +569,7 @@ describe('OrganizationDetailPage', () => {
       })
     );
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
 
     expect(screen.getByRole('alert').textContent).toContain('Unzureichende Berechtigungen');
     expect(screen.getByRole('link', { name: 'Zur Organisationsliste' }).getAttribute('href')).toBe(
@@ -529,7 +581,7 @@ describe('OrganizationDetailPage', () => {
     const provisionMainserver = vi.fn().mockResolvedValue(readyOrganizationFixture);
     useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
 
     expect(screen.getByText('Fehlgeschlagen')).toBeTruthy();
     expect(screen.getByText('technical-account-1')).toBeTruthy();
@@ -548,7 +600,7 @@ describe('OrganizationDetailPage', () => {
     const provisionMainserver = vi.fn().mockResolvedValue(organizationFixture);
     useOrganizationsMock.mockReturnValue(createState({ provisionMainserver }));
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
     fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Zugang provisionieren' }));
 
     await waitFor(() => {
@@ -563,7 +615,7 @@ describe('OrganizationDetailPage', () => {
       createState({ selectedOrganization: readyOrganizationFixture, provisionMainserver })
     );
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
     fireEvent.click(screen.getByRole('button', { name: 'Mainserver-Daten aktualisieren' }));
 
     await waitFor(() => {
@@ -593,7 +645,7 @@ describe('OrganizationDetailPage', () => {
         pagination: { page: 2, pageSize: 100, total: 101 },
       });
 
-    render(<OrganizationDetailPage organizationId="org-1" />);
+    renderDetailPage();
 
     await waitFor(() => {
       expect(listOrganizationsMock).toHaveBeenNthCalledWith(1, {

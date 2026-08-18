@@ -308,6 +308,7 @@ export const OrganizationsPage = () => {
                 <Link
                   to="/admin/organizations/$organizationId"
                   params={{ organizationId: organization.id }}
+                  search={{ tab: 'organization' }}
                   aria-label={t('admin.organizations.actions.edit')}
                   title={t('admin.organizations.actions.edit')}
                 >
@@ -318,6 +319,7 @@ export const OrganizationsPage = () => {
                 <Link
                   to="/admin/organizations/$organizationId"
                   params={{ organizationId: organization.id }}
+                  search={{ tab: 'memberships' }}
                   aria-label={t('admin.organizations.actions.memberships')}
                   title={t('admin.organizations.actions.memberships')}
                 >

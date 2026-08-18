@@ -8,6 +8,7 @@ const routeState = vi.hoisted(() => ({
   params: {} as Record<string, unknown>,
   search: {} as Record<string, unknown>,
   normalizeIamTab: vi.fn((tab: unknown) => `iam:${String(tab ?? '')}`),
+  normalizeOrganizationDetailTab: vi.fn((tab: unknown) => `organization:${String(tab ?? '')}`),
   normalizeRoleDetailTab: vi.fn((tab: unknown) => `role:${String(tab ?? '')}`),
   authUser: null as null | { id: string; displayName?: string; name?: string; instanceId?: string },
   organizationContext: {
@@ -40,6 +41,10 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('@sva/routing', () => ({
   normalizeIamTab: routeState.normalizeIamTab,
   normalizeRoleDetailTab: routeState.normalizeRoleDetailTab,
+}));
+
+vi.mock('@sva/routing/route-search', () => ({
+  normalizeOrganizationDetailTab: routeState.normalizeOrganizationDetailTab,
 }));
 
 vi.mock('../i18n', () => ({
@@ -207,9 +212,13 @@ vi.mock('../routes/admin/organizations/-organizations-page', () => ({
 }));
 
 vi.mock('../routes/admin/organizations/-organization-detail-page', () => ({
-  OrganizationDetailPage: ({ organizationId }: { organizationId: string }) => (
-    <div data-testid="organization-detail-page">{organizationId}</div>
-  ),
+  OrganizationDetailPage: ({
+    organizationId,
+    activeTab,
+  }: {
+    organizationId: string;
+    activeTab: string;
+  }) => <div data-testid="organization-detail-page">{`${organizationId}:${activeTab}`}</div>,
 }));
 
 vi.mock('../routes/admin/roles/-role-create-page', () => ({
@@ -441,6 +450,7 @@ describe('appRouteBindings', () => {
     routeState.params = {};
     routeState.search = {};
     routeState.normalizeIamTab.mockClear();
+    routeState.normalizeOrganizationDetailTab.mockClear();
     routeState.normalizeRoleDetailTab.mockClear();
     routeState.authUser = null;
     routeState.organizationContext = {
@@ -863,8 +873,11 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminOrganizationDetail />);
     await waitFor(() =>
-      expect(screen.getByTestId('organization-detail-page').textContent).toBe('org-4')
+      expect(screen.getByTestId('organization-detail-page').textContent).toBe(
+        'org-4:organization:members'
+      )
     );
+    expect(routeState.normalizeOrganizationDetailTab).toHaveBeenCalledWith('members');
     cleanup();
 
     render(<appRouteBindings.adminRoles />);
@@ -979,7 +992,7 @@ describe('appRouteBindings', () => {
 
     render(<appRouteBindings.adminOrganizationDetail />);
     await waitFor(() =>
-      expect(screen.getByTestId('organization-detail-page').textContent).toBe('')
+      expect(screen.getByTestId('organization-detail-page').textContent).toBe(':organization:')
     );
     cleanup();
 

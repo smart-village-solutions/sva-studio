@@ -75,6 +75,12 @@ export const organizationsAdminENResources = {
     backToList: 'Back to organization list',
     notFound: 'The requested organization could not be found.',
   },
+  tabs: {
+    ariaLabel: 'Organization editing sections',
+    mobileLabel: 'Select editing section',
+    organization: 'Organization',
+    memberships: 'Memberships',
+  },
   sections: {
     overviewTitle: 'Overview',
     overviewDescription: 'Status, hierarchy, and key figures of the current organization.',

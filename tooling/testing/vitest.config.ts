@@ -33,6 +33,7 @@ export default defineConfig({
       '../../scripts/ci/promote-backup-job.test.ts',
       '../../scripts/ci/promote-result.test.ts',
       '../../scripts/ci/verify-staging-promote-evidence.test.ts',
+      '../../scripts/ci/verify-main-e2e-evidence.test.ts',
       '../../scripts/ci/backup-agent-contract.test.ts',
       '../../scripts/ci/build-remote-app-config.test.ts',
       '../../scripts/ci/verify-backup-agent-capabilities.test.ts',

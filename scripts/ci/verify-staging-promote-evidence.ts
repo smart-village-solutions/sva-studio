@@ -5,26 +5,79 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { matchesExpectedLiveImage } from './promote-live-digest.ts';
-
+import { parseAppE2EEvidence } from './app-e2e-evidence.ts';
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
 type ArtifactPage = { artifacts?: Artifact[]; total_count?: number };
 type StagingEvidence = {
+  schemaVersion?: number;
+  completedAt?: string;
   database?: string;
   deployImageDigest?: string;
   digest?: string;
   environment?: string;
+  mainE2E?: unknown;
   mutation?: string;
   postflight?: string;
+  sourceSha?: string;
   status?: string;
+  workflowRunId?: string;
 };
 type WorkflowRun = { conclusion?: string; path?: string };
 
-export const matchesSuccessfulStagingEvidence = (evidence: StagingEvidence, targetDigest: string) =>
-  evidence.environment === 'staging' &&
-  (evidence.mutation === 'completed' || evidence.mutation === 'not-run') &&
-  evidence.postflight === 'passed' &&
-  evidence.digest === targetDigest;
+const digestSuffixPattern = /@sha256:[a-f0-9]{64}$/u;
+const completedAtPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
+const matchesExpectedLiveImage = (expectedImage: string, liveImage: string): boolean =>
+  liveImage === expectedImage ||
+  liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
+
+const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return (
+    actual.length === sortedExpected.length &&
+    actual.every((key, index) => key === sortedExpected[index])
+  );
+};
+
+export const matchesSuccessfulStagingEvidence = (
+  evidence: unknown,
+  targetDigest: string,
+  expectedSourceSha: string
+) => {
+  if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
+  if (
+    !hasExactKeys(evidence, [
+      'completedAt',
+      'digest',
+      'environment',
+      'mainE2E',
+      'mutation',
+      'postflight',
+      'schemaVersion',
+      'sourceSha',
+      'workflowRunId',
+    ])
+  )
+    return false;
+  const candidate = evidence as StagingEvidence;
+  const mainE2E = parseAppE2EEvidence(candidate.mainE2E);
+  return (
+    candidate.schemaVersion === 1 &&
+    typeof candidate.completedAt === 'string' &&
+    completedAtPattern.test(candidate.completedAt) &&
+    typeof candidate.workflowRunId === 'string' &&
+    /^\d+$/u.test(candidate.workflowRunId) &&
+    candidate.environment === 'staging' &&
+    (candidate.mutation === 'completed' || candidate.mutation === 'not-run') &&
+    candidate.postflight === 'passed' &&
+    candidate.digest === targetDigest &&
+    candidate.sourceSha === expectedSourceSha &&
+    mainE2E?.evidenceClass === 'canonical-main' &&
+    mainE2E.result === 'success' &&
+    mainE2E.testOutcome === 'success' &&
+    mainE2E.headSha === expectedSourceSha
+  );
+};
 
 export const requiresStagingParity = (targetImage: string, previousLiveImage: string | undefined) =>
   !previousLiveImage || !matchesExpectedLiveImage(targetImage, previousLiveImage);
@@ -96,6 +149,10 @@ const main = () => {
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
   if (!requiresStagingParity(targetImage, process.env.PREVIOUS_LIVE_IMAGE)) return;
+  const expectedSourceSha =
+    evidenceKind === 'promote'
+      ? required(process.env.EXPECTED_CHANGE_HEAD, 'EXPECTED_CHANGE_HEAD')
+      : undefined;
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
   const api = (path: string) =>
     execFileSync('gh', ['api', path], {
@@ -142,7 +199,11 @@ const main = () => {
         const evidence = JSON.parse(
           execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
         ) as StagingEvidence;
-        if (matchesSuccessfulStagingEvidence(evidence, targetDigest)) return;
+        if (
+          expectedSourceSha &&
+          matchesSuccessfulStagingEvidence(evidence, targetDigest, expectedSourceSha)
+        )
+          return;
         continue;
       }
       const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
@@ -164,8 +225,8 @@ const main = () => {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     main();
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : String(error));
+  } catch {
+    process.stderr.write('PROMOTE_PARITY_DIGEST_MISMATCH\n');
     process.exitCode = 1;
   }
 }

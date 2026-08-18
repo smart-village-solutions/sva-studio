@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
+import { buildAppE2EEvidence } from './app-e2e-evidence.ts';
 import {
   buildArtifactDownloadArgs,
   isSuccessfulPromoteWorkflowRun,
@@ -15,6 +16,32 @@ import {
   selectEvidenceJsonFile,
   selectStagingBackupEvidenceJsonFiles,
 } from './verify-staging-promote-evidence.ts';
+import { buildStagingPromoteEvidence } from './write-staging-promote-evidence.ts';
+
+const sourceSha = 'a'.repeat(40);
+const targetDigest = `sha256:${'c'.repeat(64)}`;
+const mainE2E = buildAppE2EEvidence({
+  workflow: 'App E2E',
+  event: 'push',
+  ref: 'refs/heads/main',
+  branch: 'main',
+  headSha: sourceSha,
+  runId: '123',
+  runAttempt: 2,
+  result: 'success',
+  testOutcome: 'success',
+});
+const stagingPromoteEvidence = {
+  schemaVersion: 1,
+  completedAt: '2026-08-18T12:00:00.000Z',
+  digest: targetDigest,
+  environment: 'staging',
+  mainE2E,
+  mutation: 'completed',
+  postflight: 'passed',
+  sourceSha,
+  workflowRunId: '456',
+};
 
 const productionBackupWorkflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
@@ -29,14 +56,17 @@ describe('staging parity evidence', () => {
   it.each([
     ['staging', stagingBackupWorkflow],
     ['production', productionBackupWorkflow],
-  ])('uses current %s backup tooling while validating the immutable image revision', (_, workflow) => {
-    expect(workflow).toContain('checkout current backup tooling source');
-    expect(workflow).toContain('git merge-base --is-ancestor');
-    expect(workflow).not.toContain('git checkout --detach');
-    expect(workflow).toContain(
-      '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
-    );
-  });
+  ])(
+    'uses current %s backup tooling while validating the immutable image revision',
+    (_, workflow) => {
+      expect(workflow).toContain('checkout current backup tooling source');
+      expect(workflow).toContain('git merge-base --is-ancestor');
+      expect(workflow).not.toContain('git checkout --detach');
+      expect(workflow).toContain(
+        '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
+      );
+    }
+  );
 
   it('binds the production backup drill to the immutable image reference and digest', () => {
     const parityStep = productionBackupWorkflow.match(
@@ -54,72 +84,139 @@ describe('staging parity evidence', () => {
   it('requires staging evidence only when production would change the live digest', () => {
     const target = `ghcr.io/example/app@sha256:${'a'.repeat(64)}`;
     expect(requiresStagingParity(target, target)).toBe(false);
-    expect(requiresStagingParity(target, `ghcr.io/example/app@sha256:${'b'.repeat(64)}`)).toBe(true);
+    expect(requiresStagingParity(target, `ghcr.io/example/app@sha256:${'b'.repeat(64)}`)).toBe(
+      true
+    );
     expect(requiresStagingParity(target, undefined)).toBe(true);
   });
 
-  it('accepts only successful staging evidence for the exact target digest', () => {
+  it('accepts only strict successful staging evidence bound to digest and source SHA', () => {
+    expect(matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha)).toBe(
+      true
+    );
     expect(
       matchesSuccessfulStagingEvidence(
-        {
-          digest: 'sha256:expected',
-          environment: 'staging',
-          mutation: 'completed',
-          postflight: 'passed',
-        },
-        'sha256:expected'
+        { ...stagingPromoteEvidence, mutation: 'not-run' },
+        targetDigest,
+        sourceSha
       )
     ).toBe(true);
     expect(
       matchesSuccessfulStagingEvidence(
-        {
-          digest: 'sha256:expected',
-          environment: 'staging',
-          mutation: 'not-run',
-          postflight: 'passed',
-        },
-        'sha256:expected'
+        { ...stagingPromoteEvidence, digest: 'sha256:other' },
+        targetDigest,
+        sourceSha
       )
-    ).toBe(true);
+    ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
-        { digest: 'sha256:expected', environment: 'staging', postflight: 'passed' },
-        'sha256:expected'
+        { ...stagingPromoteEvidence, environment: 'prod' },
+        targetDigest,
+        sourceSha
+      )
+    ).toBe(false);
+    expect(
+      matchesSuccessfulStagingEvidence(
+        { ...stagingPromoteEvidence, postflight: 'failed' },
+        targetDigest,
+        sourceSha
+      )
+    ).toBe(false);
+  });
+
+  it('rejects legacy, recovery, foreign-source, and non-canonical staging evidence', () => {
+    expect(
+      matchesSuccessfulStagingEvidence(
+        { ...stagingPromoteEvidence, mainE2E: null },
+        targetDigest,
+        sourceSha
+      )
+    ).toBe(false);
+    expect(
+      matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, 'b'.repeat(40))
+    ).toBe(false);
+    expect(
+      matchesSuccessfulStagingEvidence(
+        {
+          ...stagingPromoteEvidence,
+          mainE2E: { ...mainE2E, evidenceClass: 'diagnostic' },
+        },
+        targetDigest,
+        sourceSha
+      )
+    ).toBe(false);
+    expect(
+      matchesSuccessfulStagingEvidence(
+        { ...stagingPromoteEvidence, unexpected: true },
+        targetDigest,
+        sourceSha
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         {
-          digest: 'sha256:other',
+          digest: 'sha256:expected',
           environment: 'staging',
           mutation: 'completed',
           postflight: 'passed',
         },
-        'sha256:expected'
+        targetDigest,
+        sourceSha
       )
     ).toBe(false);
-    expect(
-      matchesSuccessfulStagingEvidence(
-        {
-          digest: 'sha256:expected',
-          environment: 'prod',
-          mutation: 'completed',
-          postflight: 'passed',
-        },
-        'sha256:expected'
-      )
-    ).toBe(false);
-    expect(
-      matchesSuccessfulStagingEvidence(
-        {
-          digest: 'sha256:expected',
-          environment: 'staging',
-          mutation: 'completed',
-          postflight: 'failed',
-        },
-        'sha256:expected'
-      )
-    ).toBe(false);
+  });
+
+  it('writes canonical A1 evidence for standard staging and null for recovery', () => {
+    const baseEnv = {
+      CHANGE_HEAD_SHA: sourceSha,
+      DEPLOY_IMAGE_DIGEST: targetDigest,
+      GITHUB_RUN_ID: '456',
+      STAGING_MUTATION: 'true',
+    };
+    const standard = buildStagingPromoteEvidence(
+      {
+        ...baseEnv,
+        MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
+        PROMOTE_MODE: 'standard',
+      },
+      '2026-08-18T12:00:00.000Z'
+    );
+    const recovery = buildStagingPromoteEvidence(
+      { ...baseEnv, PROMOTE_MODE: 'recovery' },
+      '2026-08-18T12:00:00.000Z'
+    );
+
+    expect(standard).toMatchObject({ sourceSha, mainE2E, schemaVersion: 1 });
+    expect(recovery).toMatchObject({ sourceSha, mainE2E: null, schemaVersion: 1 });
+    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha)).toBe(false);
+    expect(() =>
+      buildStagingPromoteEvidence({
+        ...baseEnv,
+        MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
+        PROMOTE_MODE: 'recovery',
+      })
+    ).toThrow(/Recovery-Staging/u);
+  });
+
+  it('rejects missing, malformed, or foreign standard-staging attestations', () => {
+    const baseEnv = {
+      CHANGE_HEAD_SHA: sourceSha,
+      DEPLOY_IMAGE_DIGEST: targetDigest,
+      GITHUB_RUN_ID: '456',
+      PROMOTE_MODE: 'standard',
+      STAGING_MUTATION: 'false',
+    };
+
+    expect(() => buildStagingPromoteEvidence(baseEnv)).toThrow(/MAIN_E2E_ATTESTATION/u);
+    expect(() => buildStagingPromoteEvidence({ ...baseEnv, MAIN_E2E_ATTESTATION: '{' })).toThrow(
+      /MAIN_E2E_ATTESTATION/u
+    );
+    expect(() =>
+      buildStagingPromoteEvidence({
+        ...baseEnv,
+        MAIN_E2E_ATTESTATION: JSON.stringify({ ...mainE2E, headSha: 'b'.repeat(40) }),
+      })
+    ).toThrow(/Main-Push/u);
   });
 
   it('accepts only a successful staging backup drill for the exact target digest', () => {

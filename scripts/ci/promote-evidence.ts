@@ -20,6 +20,7 @@ export type PromoteGateName =
   | 'source-contract'
   | 'registry-login'
   | 'image-contract'
+  | 'main-e2e-evidence'
   | 'config-build'
   | 'change-policy-evaluation'
   | 'migration-bootstrap-policy'
@@ -117,27 +118,67 @@ const revisionPattern = /^[0-9a-f]{64}$/u;
 const gitRefPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 const safeReferencePattern = /^[A-Za-z0-9][A-Za-z0-9._-]{2,127}$/u;
 const safeFieldPattern = /^[a-z][A-Za-z0-9_-]{0,63}$/u;
-const imageRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|sha256:[0-9a-f]{64}|[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$/u;
-const backupAgentRevisionPattern = /^(?:[0-9a-f]{40}|[0-9a-f]{64}|[A-Za-z0-9._/-]+@sha256:[0-9a-f]{64})$/u;
+const imageRevisionPattern =
+  /^(?:[0-9a-f]{40}|[0-9a-f]{64}|sha256:[0-9a-f]{64}|[A-Za-z0-9_][A-Za-z0-9_.-]{0,127})$/u;
+const backupAgentRevisionPattern =
+  /^(?:[0-9a-f]{40}|[0-9a-f]{64}|[A-Za-z0-9._/-]+@sha256:[0-9a-f]{64})$/u;
 const gateStatuses: readonly PromoteGateStatus[] = ['passed', 'failed', 'cancelled', 'skipped'];
 const evidenceStatuses: readonly PromoteEvidenceStatus[] = ['passed', 'failed', 'cancelled'];
 const evidenceEnvironments: readonly PromoteEnvironment[] = ['dev', 'staging', 'prod', 'invalid'];
 const gateNames: readonly PromoteGateName[] = [
-  'workspace-setup', 'input-validation', 'permission-snapshot-secret', 'source-preparation', 'source-contract',
-  'registry-login', 'image-contract', 'config-build', 'change-policy-evaluation',
+  'workspace-setup',
+  'input-validation',
+  'permission-snapshot-secret',
+  'source-preparation',
+  'source-contract',
+  'registry-login',
+  'image-contract',
+  'main-e2e-evidence',
+  'config-build',
+  'change-policy-evaluation',
   'migration-bootstrap-policy',
-  'deployment-tooling', 'target-resolution', 'readiness', 'previous-live-capture',
-  'candidate-preflight', 'staging-parity', 'backup-capabilities', 'studio-backup-request', 'waste-backup-request',
-  'temporary-backup', 'studio-backup-verification', 'waste-backup-verification', 'migration',
-  'bootstrap', 'postconditions', 'deploy', 'runtime-smoke', 'digest-verification',
-  'staging-parity-evidence', 'staging-parity-upload', 'one-shot-evidence-upload',
+  'deployment-tooling',
+  'target-resolution',
+  'readiness',
+  'previous-live-capture',
+  'candidate-preflight',
+  'staging-parity',
+  'backup-capabilities',
+  'studio-backup-request',
+  'waste-backup-request',
+  'temporary-backup',
+  'studio-backup-verification',
+  'waste-backup-verification',
+  'migration',
+  'bootstrap',
+  'postconditions',
+  'deploy',
+  'runtime-smoke',
+  'digest-verification',
+  'staging-parity-evidence',
+  'staging-parity-upload',
+  'one-shot-evidence-upload',
   'config-cleanup',
 ];
 const evidencePhases: readonly PromotePhase[] = [
-  'input-validation', 'source-contract', 'image-contract', 'config-build', 'static-preflight',
-  'candidate-preflight', 'staging-parity', 'backup-capabilities', 'backup', 'migration',
-  'bootstrap', 'postconditions', 'deploy', 'swarm-convergence', 'external-smoke',
-  'digest-verification', 'evidence',
+  'input-validation',
+  'source-contract',
+  'image-contract',
+  'main-e2e-evidence',
+  'config-build',
+  'static-preflight',
+  'candidate-preflight',
+  'staging-parity',
+  'backup-capabilities',
+  'backup',
+  'migration',
+  'bootstrap',
+  'postconditions',
+  'deploy',
+  'swarm-convergence',
+  'external-smoke',
+  'digest-verification',
+  'evidence',
 ];
 
 const assertGitRef = (value: string, label: string): string => {
@@ -211,9 +252,7 @@ const normalizeBackupAgent = (
     agentRevision: assertBackupAgentRevision(value.agentRevision),
     protocolVersions: [...value.protocolVersions].sort((left, right) => left - right),
     databaseTargets: [
-      ...new Set(
-        value.databaseTargets.map((target) => assertSafeField(target, 'Datenbankziel'))
-      ),
+      ...new Set(value.databaseTargets.map((target) => assertSafeField(target, 'Datenbankziel'))),
     ].sort(),
     resultFields: [
       ...new Set(value.resultFields.map((field) => assertSafeField(field, 'Ergebnisfeld'))),
@@ -280,9 +319,7 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
     image: {
       previousDigest: normalizeDigest(input.previousImage),
       targetDigest: normalizeDigest(input.targetImage),
-      revision: input.imageRevision?.trim()
-        ? assertImageRevision(input.imageRevision)
-        : null,
+      revision: input.imageRevision?.trim() ? assertImageRevision(input.imageRevision) : null,
     },
     config: {
       revision: normalizeConfigRevision(input.configRevision),
@@ -348,7 +385,8 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     '| Phase | Status | Blockierend | Fehlercode |',
     '| --- | --- | --- | --- |',
     ...evidence.gates.map(
-      (gate) => `| ${gate.gate} (${gate.phase}) | ${gate.status} | ${gate.blocking ? 'ja' : 'nein'} | ${gate.failure?.code ?? 'none'} |`
+      (gate) =>
+        `| ${gate.gate} (${gate.phase}) | ${gate.status} | ${gate.blocking ? 'ja' : 'nein'} | ${gate.failure?.code ?? 'none'} |`
     ),
     ...(evidence.terminalFailure
       ? [
@@ -421,21 +459,53 @@ const gateEnvironmentKeys: readonly Readonly<{
 }>[] = [
   { gate: 'workspace-setup', phase: 'source-contract', key: 'PROMOTE_GATE_WORKSPACE_SETUP' },
   { gate: 'input-validation', phase: 'input-validation', key: 'PROMOTE_GATE_INPUT' },
-  { gate: 'permission-snapshot-secret', phase: 'input-validation', key: 'PROMOTE_GATE_PERMISSION_SECRET' },
+  {
+    gate: 'permission-snapshot-secret',
+    phase: 'input-validation',
+    key: 'PROMOTE_GATE_PERMISSION_SECRET',
+  },
   { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
+  {
+    gate: 'main-e2e-evidence',
+    phase: 'main-e2e-evidence',
+    key: 'PROMOTE_GATE_MAIN_E2E_EVIDENCE',
+    blockingKey: 'PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING',
+  },
   { gate: 'config-build', phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
-  { gate: 'change-policy-evaluation', phase: 'static-preflight', key: 'PROMOTE_GATE_POLICY_EVALUATION' },
-  { gate: 'migration-bootstrap-policy', phase: 'static-preflight', key: 'PROMOTE_GATE_STATIC_PREFLIGHT' },
+  {
+    gate: 'change-policy-evaluation',
+    phase: 'static-preflight',
+    key: 'PROMOTE_GATE_POLICY_EVALUATION',
+  },
+  {
+    gate: 'migration-bootstrap-policy',
+    phase: 'static-preflight',
+    key: 'PROMOTE_GATE_STATIC_PREFLIGHT',
+  },
   { gate: 'deployment-tooling', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOYMENT_TOOLING' },
   { gate: 'target-resolution', phase: 'deploy', key: 'PROMOTE_GATE_TARGET' },
   { gate: 'readiness', phase: 'static-preflight', key: 'PROMOTE_GATE_READINESS' },
-  { gate: 'previous-live-capture', phase: 'digest-verification', key: 'PROMOTE_GATE_PREVIOUS_LIVE' },
-  { gate: 'candidate-preflight', phase: 'candidate-preflight', key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT', blockingKey: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING' },
+  {
+    gate: 'previous-live-capture',
+    phase: 'digest-verification',
+    key: 'PROMOTE_GATE_PREVIOUS_LIVE',
+  },
+  {
+    gate: 'candidate-preflight',
+    phase: 'candidate-preflight',
+    key: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT',
+    blockingKey: 'PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING',
+  },
   { gate: 'staging-parity', phase: 'staging-parity', key: 'PROMOTE_GATE_STAGING_PARITY' },
-  { gate: 'backup-capabilities', phase: 'backup-capabilities', key: 'PROMOTE_GATE_BACKUP_CAPABILITIES', blockingKey: 'PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING' },
+  {
+    gate: 'backup-capabilities',
+    phase: 'backup-capabilities',
+    key: 'PROMOTE_GATE_BACKUP_CAPABILITIES',
+    blockingKey: 'PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING',
+  },
   { gate: 'studio-backup-request', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_REQUEST' },
   { gate: 'waste-backup-request', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP_REQUEST' },
   { gate: 'temporary-backup', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_FALLBACK' },
@@ -446,10 +516,18 @@ const gateEnvironmentKeys: readonly Readonly<{
   { gate: 'postconditions', phase: 'postconditions', key: 'PROMOTE_GATE_POSTCONDITIONS' },
   { gate: 'deploy', phase: 'deploy', key: 'PROMOTE_GATE_DEPLOY' },
   { gate: 'runtime-smoke', phase: 'external-smoke', key: 'PROMOTE_GATE_EXTERNAL_SMOKE' },
-  { gate: 'digest-verification', phase: 'digest-verification', key: 'PROMOTE_GATE_DIGEST_VERIFICATION' },
+  {
+    gate: 'digest-verification',
+    phase: 'digest-verification',
+    key: 'PROMOTE_GATE_DIGEST_VERIFICATION',
+  },
   { gate: 'staging-parity-evidence', phase: 'evidence', key: 'PROMOTE_GATE_STAGING_EVIDENCE' },
   { gate: 'staging-parity-upload', phase: 'evidence', key: 'PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD' },
-  { gate: 'one-shot-evidence-upload', phase: 'evidence', key: 'PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD' },
+  {
+    gate: 'one-shot-evidence-upload',
+    phase: 'evidence',
+    key: 'PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD',
+  },
   { gate: 'config-cleanup', phase: 'evidence', key: 'PROMOTE_GATE_CONFIG_CLEANUP' },
 ];
 

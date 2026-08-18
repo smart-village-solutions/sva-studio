@@ -7,6 +7,7 @@ export type PromotePhase =
   | 'input-validation'
   | 'source-contract'
   | 'image-contract'
+  | 'main-e2e-evidence'
   | 'config-build'
   | 'static-preflight'
   | 'candidate-preflight'
@@ -27,6 +28,9 @@ export type PromoteErrorCode =
   | 'PROMOTE_SOURCE_CONTRACT_INVALID'
   | 'PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID'
   | 'PROMOTE_IMAGE_CONTRACT_INVALID'
+  | 'PROMOTE_MAIN_E2E_NOT_READY'
+  | 'PROMOTE_MAIN_E2E_REJECTED'
+  | 'PROMOTE_MAIN_E2E_LOOKUP_FAILED'
   | 'PROMOTE_DEPLOY_GATES_REJECTED'
   | 'PROMOTE_CONFIG_SOURCE_FORBIDDEN'
   | 'PROMOTE_CONFIG_INVALID'
@@ -80,6 +84,22 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
     summary: 'Image-Referenz und Git-Revision erfüllen den Promote-Vertrag nicht.',
     retryable: false,
     nextAction: 'Image-Digest, Revision und angeforderte Git-Grenze prüfen.',
+  },
+  PROMOTE_MAIN_E2E_NOT_READY: {
+    summary: 'Die kanonische Main-E2E-Evidenz ist noch nicht terminal verfügbar.',
+    retryable: true,
+    nextAction: 'Den kanonischen Main-E2E-Lauf abschließen lassen und Promote erneut starten.',
+  },
+  PROMOTE_MAIN_E2E_REJECTED: {
+    summary: 'Die Main-E2E-Evidenz erfüllt den Staging-Promote-Vertrag nicht.',
+    retryable: false,
+    nextAction:
+      'Den kanonischen Main-Push-Lauf prüfen, korrigieren und erfolgreich erneut ausführen.',
+  },
+  PROMOTE_MAIN_E2E_LOOKUP_FAILED: {
+    summary: 'Die Main-E2E-Evidenz konnte nicht zuverlässig abgefragt werden.',
+    retryable: true,
+    nextAction: 'GitHub-Actions-Zugriff und API-Verfügbarkeit prüfen und Promote erneut starten.',
   },
   PROMOTE_DEPLOY_GATES_REJECTED: {
     summary: 'Migration- oder Bootstrap-Policy hat die Promotion abgelehnt.',
@@ -186,6 +206,7 @@ const promotePhases: readonly PromotePhase[] = [
   'input-validation',
   'source-contract',
   'image-contract',
+  'main-e2e-evidence',
   'config-build',
   'static-preflight',
   'candidate-preflight',

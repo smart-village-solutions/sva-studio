@@ -108,6 +108,10 @@ jobs:
           mkdir -p "${PROMOTE_CONTROLLER_DIR}"
           cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/promote-result.ts"
           cp scripts/ci/promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence.ts"
+          cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"
+          cp scripts/ci/verify-main-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
+          cp scripts/ci/verify-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"
+          cp scripts/ci/write-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
           cp scripts/ci/record-promote-failure.ts "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts"
           cp scripts/ci/write-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
 
@@ -246,6 +250,16 @@ jobs:
             exit 1
           fi
 
+      - name: require canonical Main App E2E evidence
+        id: main_e2e_evidence
+        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}
+        continue-on-error: ${{ vars.MAIN_E2E_GATE != 'enforce' }}
+        env:
+          EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROMOTE_FAILURE_PATH: ${{ vars.MAIN_E2E_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
+
       - name: build and select remote config
         id: remote_config
         env:
@@ -377,9 +391,10 @@ jobs:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
         run: |
-          if ! pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts; then
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"; then
             node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_PARITY_DIGEST_MISMATCH "${{ inputs.environment }}" staging-parity
             exit 1
           fi
@@ -589,15 +604,18 @@ jobs:
 
       - name: write staging parity evidence
         id: staging_evidence
-        if: ${{ inputs.environment == 'staging' && success() }}
+        if: ${{ inputs.environment == 'staging' && success() && (inputs.promote_mode == 'recovery' || steps.main_e2e_evidence.outputs.e2e_attestation != '') }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
+          MAIN_E2E_ATTESTATION: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
-        run: pnpm exec tsx scripts/ci/write-staging-promote-evidence.ts
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
 
       - name: upload staging parity evidence
         id: staging_evidence_upload
-        if: ${{ inputs.environment == 'staging' && success() }}
+        if: ${{ inputs.environment == 'staging' && success() && (inputs.promote_mode == 'recovery' || steps.main_e2e_evidence.outputs.e2e_attestation != '') }}
         uses: actions/upload-artifact@v4
         with:
           name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}
@@ -646,6 +664,8 @@ jobs:
           PROMOTE_GATE_SOURCE: ${{ steps.source_contract.outcome }}
           PROMOTE_GATE_REGISTRY_LOGIN: ${{ steps.registry_login.outcome }}
           PROMOTE_GATE_IMAGE: ${{ steps.image_contract.outcome }}
+          PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}
+          PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}
           PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
           PROMOTE_GATE_POLICY_EVALUATION: ${{ steps.gate_eval.outcome }}
           PROMOTE_GATE_STATIC_PREFLIGHT: ${{ steps.migration_enforcement.outcome }}

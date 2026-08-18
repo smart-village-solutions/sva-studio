@@ -24,6 +24,15 @@ const shaPattern = /^[0-9a-f]{40}$/u;
 const refPattern = /^refs\/(?:heads|tags)\/[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 const branchPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u;
 
+const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return (
+    actual.length === sortedExpected.length &&
+    actual.every((key, index) => key === sortedExpected[index])
+  );
+};
+
 export const buildAppE2EEvidence = (input: {
   workflow: string;
   event: string;
@@ -78,6 +87,77 @@ export const buildAppE2EEvidence = (input: {
       containerArtifactVerified: false,
     },
   };
+};
+
+export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (
+    !hasExactKeys(value, [
+      'branch',
+      'evidenceClass',
+      'event',
+      'headSha',
+      'ref',
+      'result',
+      'run',
+      'schemaVersion',
+      'subject',
+      'testOutcome',
+      'workflow',
+    ])
+  )
+    return null;
+  const candidate = value as Partial<AppE2EEvidence>;
+  if (
+    candidate.schemaVersion !== 1 ||
+    !candidate.run ||
+    typeof candidate.run !== 'object' ||
+    Array.isArray(candidate.run) ||
+    !hasExactKeys(candidate.run, ['attempt', 'id']) ||
+    !candidate.subject ||
+    typeof candidate.subject !== 'object' ||
+    Array.isArray(candidate.subject) ||
+    !hasExactKeys(candidate.subject, ['app', 'containerArtifactVerified', 'kind', 'services']) ||
+    candidate.subject.kind !== 'local-app-service-stack' ||
+    candidate.subject.app !== 'sva-studio-react' ||
+    candidate.subject.containerArtifactVerified !== false ||
+    !Array.isArray(candidate.subject.services) ||
+    candidate.subject.services.join(',') !== 'redis,loki,otel-collector,promtail' ||
+    !['canonical-main', 'diagnostic'].includes(candidate.evidenceClass ?? '')
+  )
+    return null;
+  if (
+    typeof candidate.workflow !== 'string' ||
+    typeof candidate.event !== 'string' ||
+    typeof candidate.ref !== 'string' ||
+    typeof candidate.branch !== 'string' ||
+    typeof candidate.headSha !== 'string' ||
+    typeof candidate.run.id !== 'string' ||
+    typeof candidate.run.attempt !== 'number' ||
+    typeof candidate.result !== 'string' ||
+    typeof candidate.testOutcome !== 'string' ||
+    typeof candidate.evidenceClass !== 'string'
+  )
+    return null;
+  try {
+    const evidence = buildAppE2EEvidence({
+      workflow: candidate.workflow,
+      event: candidate.event,
+      ref: candidate.ref,
+      branch: candidate.branch,
+      headSha: candidate.headSha,
+      runId: candidate.run.id,
+      runAttempt: candidate.run.attempt,
+      result: candidate.result,
+      testOutcome: candidate.testOutcome === 'not-run' ? '' : candidate.testOutcome,
+    });
+    return evidence.evidenceClass === candidate.evidenceClass &&
+      evidence.testOutcome === candidate.testOutcome
+      ? evidence
+      : null;
+  } catch {
+    return null;
+  }
 };
 
 export const writeAppE2EEvidenceFromEnvironment = (

@@ -4,7 +4,11 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { buildAppE2EEvidence, writeAppE2EEvidenceFromEnvironment } from './app-e2e-evidence.ts';
+import {
+  buildAppE2EEvidence,
+  parseAppE2EEvidence,
+  writeAppE2EEvidenceFromEnvironment,
+} from './app-e2e-evidence.ts';
 
 const sha = 'a'.repeat(40);
 const canonicalInput = {
@@ -29,6 +33,17 @@ describe('App E2E evidence', () => {
       testOutcome: 'success',
       subject: { kind: 'local-app-service-stack', containerArtifactVerified: false },
     });
+  });
+
+  it('strictly parses the canonical evidence schema without accepting contradictory fields', () => {
+    const evidence = buildAppE2EEvidence(canonicalInput);
+    expect(parseAppE2EEvidence(evidence)).toEqual(evidence);
+    expect(parseAppE2EEvidence({ ...evidence, unexpected: 'value' })).toBeNull();
+    expect(parseAppE2EEvidence({ ...evidence, evidenceClass: 'diagnostic' })).toBeNull();
+    expect(parseAppE2EEvidence({ ...evidence, run: { ...evidence.run, id: 123 } })).toBeNull();
+    expect(
+      parseAppE2EEvidence({ ...evidence, subject: { ...evidence.subject, extra: true } })
+    ).toBeNull();
   });
 
   it.each(['schedule', 'workflow_dispatch'] as const)(

@@ -35,6 +35,16 @@ const sentinelValues = [
 ];
 
 describe('promote evidence contract', () => {
+  it.each([
+    ['PROMOTE_MAIN_E2E_NOT_READY', true],
+    ['PROMOTE_MAIN_E2E_REJECTED', false],
+    ['PROMOTE_MAIN_E2E_LOOKUP_FAILED', true],
+  ] as const)('defines the stable %s failure contract', (code, retryable) => {
+    expect(
+      buildPromoteFailure({ code, environment: 'staging', phase: 'main-e2e-evidence' })
+    ).toMatchObject({ code, retryable, phase: 'main-e2e-evidence' });
+  });
+
   it('uses one canonical redacted failure for JSON, annotation, and summary', () => {
     const untrustedFailure = {
       code: 'PROMOTE_CONFIG_INVALID' as const,
@@ -189,7 +199,11 @@ describe('promote evidence contract', () => {
       gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
     });
 
-    expect(evidence.image).toEqual({ previousDigest: null, targetDigest: null, revision: 'latest' });
+    expect(evidence.image).toEqual({
+      previousDigest: null,
+      targetDigest: null,
+      revision: 'latest',
+    });
   });
 
   it('builds the final workflow artifact from allowlisted step outputs', () => {
@@ -214,6 +228,7 @@ describe('promote evidence contract', () => {
         PROMOTE_CONFIG_REVISION: configRevision,
         PROMOTE_SECRET_REFERENCES: '["waste_database_password_v2"]',
         PROMOTE_GATE_CONFIG_BUILD: 'success',
+        PROMOTE_GATE_MAIN_E2E_EVIDENCE: 'success',
         PROMOTE_GATE_STATIC_PREFLIGHT: 'success',
         PROMOTE_GATE_DEPLOY: 'success',
       });
@@ -223,6 +238,9 @@ describe('promote evidence contract', () => {
       };
 
       expect(evidence).toMatchObject({ status: 'passed', terminalFailure: null });
+      expect((evidence as { gates?: Array<{ gate: string }> }).gates).toContainEqual(
+        expect.objectContaining({ gate: 'main-e2e-evidence' })
+      );
       expect(readFileSync(summaryPath, 'utf8')).toContain('| target_digest |');
       expect(readFileSync(githubOutput, 'utf8')).toContain(`evidence_path=${outputPath}`);
     } finally {
@@ -336,7 +354,9 @@ describe('promote evidence contract', () => {
         PROMOTE_GATE_BACKUP_CAPABILITIES: 'success',
       });
       expect(JSON.parse(readFileSync(outputPath, 'utf8'))).toMatchObject({
-        backupAgent: { resultFields: expect.arrayContaining(['deployImageDigest', 'objectKey', 'requestId']) },
+        backupAgent: {
+          resultFields: expect.arrayContaining(['deployImageDigest', 'objectKey', 'requestId']),
+        },
       });
     } finally {
       rmSync(directory, { recursive: true, force: true });
@@ -373,6 +393,63 @@ describe('promote evidence contract', () => {
     }
   });
 
+  it('records a shadow Main-E2E rejection without making a successful staging workflow terminal', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'promote-main-e2e-shadow-'));
+    try {
+      const outputPath = writePromoteEvidenceFromEnvironment({
+        RUNNER_TEMP: directory,
+        GITHUB_RUN_ID: '793',
+        GITHUB_RUN_ATTEMPT: '1',
+        PROMOTE_ENVIRONMENT: 'staging',
+        PROMOTE_JOB_STATUS: 'success',
+        PROMOTE_BASE_REF: 'origin/main',
+        PROMOTE_HEAD_REF: 'feature/promote',
+        PROMOTE_GATE_MAIN_E2E_EVIDENCE: 'failure',
+        PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: 'false',
+      });
+      const evidence = JSON.parse(readFileSync(outputPath, 'utf8')) as {
+        gates: Array<{ gate: string; status: string; blocking: boolean }>;
+        terminalFailure: unknown;
+      };
+      expect(evidence.gates.find((gate) => gate.gate === 'main-e2e-evidence')).toEqual({
+        gate: 'main-e2e-evidence',
+        phase: 'main-e2e-evidence',
+        status: 'failed',
+        blocking: false,
+      });
+      expect(evidence.terminalFailure).toBeNull();
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('makes an enforced Main-E2E rejection terminal with the same stable failure', () => {
+    const failure = buildPromoteFailure({
+      code: 'PROMOTE_MAIN_E2E_REJECTED',
+      environment: 'staging',
+      phase: 'main-e2e-evidence',
+    });
+    const evidence = buildPromoteEvidence({
+      runId: '794',
+      runAttempt: 1,
+      environment: 'staging',
+      status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
+      gates: [
+        {
+          gate: 'main-e2e-evidence',
+          phase: 'main-e2e-evidence',
+          status: 'failed',
+          blocking: true,
+        },
+      ],
+      recordedFailure: failure,
+    });
+    expect(evidence.terminalFailure).toEqual(failure);
+    expect(evidence.gates[0]?.failure).toBe(evidence.terminalFailure);
+  });
+
   it('makes the same failed gate terminal when enforcement is enabled', () => {
     const failure = buildPromoteFailure({
       code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID',
@@ -386,12 +463,14 @@ describe('promote evidence contract', () => {
       status: 'failed',
       baseRef: 'origin/main',
       headRef: 'feature/promote',
-      gates: [{
-        gate: 'candidate-preflight',
-        phase: 'candidate-preflight',
-        status: 'failed',
-        blocking: true,
-      }],
+      gates: [
+        {
+          gate: 'candidate-preflight',
+          phase: 'candidate-preflight',
+          status: 'failed',
+          blocking: true,
+        },
+      ],
       recordedFailure: failure,
     });
     expect(evidence.gates[0]).toMatchObject({ status: 'failed', blocking: true, failure });
@@ -413,7 +492,11 @@ describe('promote evidence contract', () => {
       baseRef: 'origin/main',
       headRef: 'feature/promote',
       gates: [{ gate: 'runtime-smoke', phase: 'external-smoke', status: 'failed' }],
-      recordedFailure: { ...failure, summary: sentinelValues.join('\n'), logs: sentinelValues } as never,
+      recordedFailure: {
+        ...failure,
+        summary: sentinelValues.join('\n'),
+        logs: sentinelValues,
+      } as never,
     });
     const surfaces = [
       JSON.stringify(evidence),
@@ -435,18 +518,54 @@ describe('promote evidence contract', () => {
     ['head sha', { headSha: 'person@example.test' }],
     ['image revision', { imageRevision: 'person@example.test' }],
     ['config revision', { configRevision: 'person@example.test' }],
-    ['agent revision', { backupAgent: { agentRevision: 'person@example.test', protocolVersions: [2], databaseTargets: ['studio'], resultFields: ['status'], wasteInventory: false } }],
-    ['database target', { backupAgent: { agentRevision: 'f'.repeat(40), protocolVersions: [2], databaseTargets: ['person@example.test'], resultFields: ['status'], wasteInventory: false } }],
-    ['result field', { backupAgent: { agentRevision: 'f'.repeat(40), protocolVersions: [2], databaseTargets: ['studio'], resultFields: ['person@example.test'], wasteInventory: false } }],
+    [
+      'agent revision',
+      {
+        backupAgent: {
+          agentRevision: 'person@example.test',
+          protocolVersions: [2],
+          databaseTargets: ['studio'],
+          resultFields: ['status'],
+          wasteInventory: false,
+        },
+      },
+    ],
+    [
+      'database target',
+      {
+        backupAgent: {
+          agentRevision: 'f'.repeat(40),
+          protocolVersions: [2],
+          databaseTargets: ['person@example.test'],
+          resultFields: ['status'],
+          wasteInventory: false,
+        },
+      },
+    ],
+    [
+      'result field',
+      {
+        backupAgent: {
+          agentRevision: 'f'.repeat(40),
+          protocolVersions: [2],
+          databaseTargets: ['studio'],
+          resultFields: ['person@example.test'],
+          wasteInventory: false,
+        },
+      },
+    ],
     ['secret reference', { externalSecretReferences: ['person@example.test'] }],
     ['environment', { environment: 'person@example.test' }],
     ['status', { status: 'person@example.test' }],
     ['gate name', { gates: [{ gate: 'person@example.test', phase: 'deploy', status: 'passed' }] }],
     ['gate phase', { gates: [{ gate: 'deploy', phase: 'person@example.test', status: 'passed' }] }],
-    ['gate status', { gates: [{ gate: 'deploy', phase: 'deploy', status: 'person@example.test' }] }],
+    [
+      'gate status',
+      { gates: [{ gate: 'deploy', phase: 'deploy', status: 'person@example.test' }] },
+    ],
   ])('rejects PII in the allowlisted %s field', (_label, override) => {
     expect(() =>
-      buildPromoteEvidence(({
+      buildPromoteEvidence({
         runId: '123',
         runAttempt: 1,
         environment: 'prod',
@@ -457,7 +576,7 @@ describe('promote evidence contract', () => {
         headSha: otherSha,
         gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
         ...override,
-      }) as never)
+      } as never)
     ).toThrow();
   });
 

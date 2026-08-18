@@ -1,4 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -55,6 +57,23 @@ describe('remote app config builder', () => {
     expect(result.source.split('\n').filter(Boolean)).toEqual([...result.source.split('\n').filter(Boolean)].sort());
     expect(result.secretReferences).toEqual(['external_secret_v1']);
     expect(JSON.stringify({ configRevision: result.configRevision, keys: result.keys, secretReferences: result.secretReferences })).not.toContain('sensitive-');
+  });
+
+  it('publishes only config revision and external reference names as workflow outputs', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-evidence-'));
+    const profilePath = join(directory, 'staging.vars');
+    const githubOutput = join(directory, 'github-output');
+    try {
+      writeFileSync(profilePath, profile, 'utf8');
+      expect(runBuildRemoteAppConfig(['--environment', 'staging', '--profile', profilePath, '--output', join(directory, 'config.vars')], { PROMOTE_CONFIG_OVERRIDES: overrides, GITHUB_OUTPUT: githubOutput })).toBe(0);
+      const output = readFileSync(githubOutput, 'utf8');
+      expect(output).toMatch(/^config_revision=[0-9a-f]{64}$/mu);
+      expect(output).toContain('secret_references=["external_secret_v1"]');
+      expect(output).not.toContain('sensitive-');
+      expect(output).not.toContain('APP_DB_PASSWORD');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('emits the same canonical trimmed values that it validates', () => {
@@ -123,16 +142,20 @@ describe('remote app config builder', () => {
   });
 
   it('forbids local files without reading or disclosing their contents', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-failure-'));
+    const failurePath = join(directory, 'failure.json');
     const stderr: string[] = [];
     const original = process.stderr.write;
     process.stderr.write = ((value: string) => { stderr.push(value); return true; }) as typeof process.stderr.write;
     try {
-      expect(runBuildRemoteAppConfig(['--environment', 'dev', '--profile', 'config/runtime/dev.local.vars', '--output', '/tmp/unused'], {})).toBe(2);
+      expect(runBuildRemoteAppConfig(['--environment', 'dev', '--profile', 'config/runtime/dev.local.vars', '--output', join(directory, 'unused')], { PROMOTE_FAILURE_PATH: failurePath })).toBe(2);
     } finally {
       process.stderr.write = original;
     }
     expect(stderr.join('')).toContain('PROMOTE_CONFIG_SOURCE_FORBIDDEN');
     expect(stderr.join('')).not.toContain('APP_CONFIG');
+    expect(JSON.parse(readFileSync(failurePath, 'utf8'))).toEqual(expect.objectContaining({ code: 'PROMOTE_CONFIG_SOURCE_FORBIDDEN', phase: 'config-build' }));
+    rmSync(directory, { recursive: true, force: true });
   });
 
   it('redacts unknown internal errors', () => {

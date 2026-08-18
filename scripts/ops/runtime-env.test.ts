@@ -1,9 +1,10 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
 
-import { runtimeEnvDangerousOperations, runtimeEnvRemoteVerification, runtimeEnvSmokeWarmup } from './runtime-env.ts';
+import { formatRuntimeEnvCliFailure, runtimeEnvDangerousOperations, runtimeEnvRemoteVerification, runtimeEnvSmokeWarmup } from './runtime-env.ts';
 import type { AcceptanceProbeResult } from './runtime-env.shared.ts';
 import { parseRuntimeCliOptions, resolveAcceptanceDeployOptions } from './runtime-env.shared.ts';
 
@@ -68,6 +69,35 @@ const createProbe = (overrides: Partial<AcceptanceProbeResult>): AcceptanceProbe
   status: 'ok',
   target: 'https://studio.smart-village.app/health/ready',
   ...overrides,
+});
+
+describe('runtime-env CLI failure output', () => {
+  it.each([
+    'person@example.test',
+    'https://internal.example.test/jobs/1',
+    'first line\nsecond line',
+    'secret-key=should-not-leak',
+  ])('writes canonical smoke evidence without stderr diagnostics: %s', (sentinel) => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'runtime-env-cli-'));
+    const failurePath = resolve(directory, 'failure.json');
+    try {
+      const output = formatRuntimeEnvCliFailure(new Error(sentinel), 'smoke', {
+        PROMOTE_FAILURE_PATH: failurePath,
+        SVA_STACK_NAME: 'studio',
+      });
+      const serialized = readFileSync(failurePath, 'utf8');
+      expect(output).toContain('PROMOTE_INTERNAL_ERROR');
+      expect(output).not.toContain(sentinel);
+      expect(JSON.parse(serialized)).toMatchObject({
+        code: 'PROMOTE_INTERNAL_ERROR',
+        environment: 'prod',
+        phase: 'external-smoke',
+      });
+      expect(serialized).not.toContain(sentinel);
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
 });
 
 describe('shouldRetryExternalSmoke', () => {

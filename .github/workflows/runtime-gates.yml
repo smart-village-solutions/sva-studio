@@ -172,7 +172,7 @@ jobs:
             echo 'Scope: keine code-relevanten Änderungen im Pull Request, Heavy-Checks wurden bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.coverage_mode }}" = "skip" ]; then
             echo 'Scope: regulärer PR ohne Coverage-/CI-kritische Änderungen, der teure Coverage-Re-Run wird bewusst übersprungen.' >> "$GITHUB_STEP_SUMMARY"
-            echo 'Schutzwirkung: Unit/Types/Lint/Build/Integration/E2E im PR, volle Coverage weiterhin auf main und nightly.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Schutzwirkung: Unit/Types/Lint/Build/Integration im PR; vollständiges App-E2E läuft nach dem Push auf main, volle Coverage weiterhin auf main und nightly.' >> "$GITHUB_STEP_SUMMARY"
           elif [ "${{ github.event_name }}" = "pull_request" ]; then
             echo "Scope: \`${{ steps.scope.outputs.coverage_mode }}\` gegen Base-SHA \`${{ github.event.pull_request.base.sha }}\`" >> "$GITHUB_STEP_SUMMARY"
           else

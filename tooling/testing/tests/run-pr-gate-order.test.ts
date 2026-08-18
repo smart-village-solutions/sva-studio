@@ -24,7 +24,6 @@ describe('run-pr-gate order', () => {
         coverageMode: 'full',
         integrationMode: 'skip',
         appBuildMode: 'skip',
-        e2eMode: 'skip',
       })),
     }));
     vi.doMock('../../../scripts/ci/affected-unit-gate.ts', () => ({

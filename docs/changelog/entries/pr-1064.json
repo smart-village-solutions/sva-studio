@@ -1,0 +1,4 @@
+{
+  "prNumber": 1064,
+  "body": "Anwendungsweite End-to-End-Tests liefern nach Änderungen schneller und eindeutiger Rückmeldung für geschützte Rollouts.\n\n- Pull Requests werden nicht mehr durch den vollständigen Browserlauf blockiert; der vollständige Test läuft einmal je Änderung auf main.\n- Staging kann den exakten erfolgreichen Main-Testlauf anhand einer redigierten, commitgebundenen Evidenz prüfen.\n- Rollout-Fehler und Prüfresultate werden ohne sensible Diagnosedaten strukturiert und nachvollziehbar ausgegeben."
+}

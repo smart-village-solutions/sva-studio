@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import { backupEnvironmentConfig, type BackupEnvironment } from './backup-agent-contract.ts';
-import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
+import { PromoteContractError, redactPromoteFailure, writePromoteFailureRecord } from './promote-result.ts';
 
 export type BackupAgentCapabilities = Readonly<{
   protocolVersions: readonly number[];
@@ -51,12 +52,14 @@ const main = async () => {
   const response = await fetch(url, { headers: { authorization: `Bearer ${await requestOidcToken()}` }, signal: AbortSignal.timeout(10_000) });
   if (!response.ok) throw new Error(`Capability-Endpoint antwortet mit HTTP ${response.status}.`);
   const capabilities = validateBackupAgentCapabilities(environment, await response.json(), process.env.WASTE_POSTGRES_BACKUP_ENABLED === 'true');
-  process.stdout.write(`${JSON.stringify({ agentRevision: capabilities.agentRevision, databaseTargets: capabilities.databaseTargets, protocolVersions: capabilities.protocolVersions, wasteInventory: capabilities.wasteInventory })}\n`);
+  const evidence = { agentRevision: capabilities.agentRevision, databaseTargets: capabilities.databaseTargets, protocolVersions: capabilities.protocolVersions, resultFields: capabilities.resultFields, wasteInventory: capabilities.wasteInventory };
+  process.stdout.write(`${JSON.stringify(evidence)}\n`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `backup_agent=${JSON.stringify(evidence)}\n`, 'utf8');
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((error: unknown) => {
   const failure = redactPromoteFailure(error, { environment: process.argv[2] === 'prod' ? 'prod' : 'staging', phase: 'backup-capabilities' });
+  writePromoteFailureRecord(failure);
   process.stderr.write(`${JSON.stringify(failure)}\n`);
   process.exitCode = 1;
 });
-

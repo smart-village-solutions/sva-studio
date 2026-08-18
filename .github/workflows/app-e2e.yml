@@ -2,23 +2,25 @@ name: App E2E
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 on:
-  pull_request:
+  push:
+    branches: [main]
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   e2e:
     name: App E2E
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    outputs:
+      test-outcome: ${{ steps.app_e2e.outcome }}
     env:
       SVA_AUTH_ISSUER: https://accounts.google.com
       SVA_AUTH_CLIENT_ID: gha-e2e-client
@@ -26,53 +28,28 @@ jobs:
       SVA_AUTH_REDIRECT_URI: http://localhost:3000/auth/callback
       SVA_AUTH_POST_LOGOUT_REDIRECT_URI: http://localhost:3000/
       REDIS_URL: redis://127.0.0.1:6379
-      PLAYWRIGHT_MAX_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}
+      PLAYWRIGHT_MAX_FAILURES: '0'
+      APP_E2E_ALLOW_RETRY: ${{ github.event_name != 'push' && 'true' || 'false' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-
           fetch-depth: 0
 
-      - name: Detect relevant PR changes
-        id: changes
-        if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@v4
-        with:
-          filters: |
-            relevant:
-              - '**'
-              - '!docs/**'
-              - '!**/*.md'
-              - '!.github/agents/**'
-              - '!.github/prompts/**'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!.github/PULL_REQUEST_TEMPLATE.md'
-
       - name: Setup workspace
-        if: github.event_name != 'pull_request' || steps.changes.outputs.relevant == 'true'
         uses: ./.github/actions/setup-pnpm-workspace
 
-      - name: Determine PR scope
-        id: scope
-        if: github.event_name == 'pull_request' && steps.changes.outputs.relevant == 'true'
-        run: pnpm exec tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output
-
-      - name: Install Playwright browser
-        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
+      - name: Install Playwright browsers
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium firefox
 
       - name: Start Redis for E2E
-        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: docker run -d --name sva-studio-redis-e2e -p 6379:6379 redis:7-alpine
 
       - name: Start required services
-        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: docker compose -f compose.monitoring.yaml up -d loki otel-collector promtail
 
       - name: Wait for Redis readiness
-        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
         run: |
           set -euo pipefail
           for i in {1..30}; do
@@ -87,41 +64,53 @@ jobs:
           docker ps -a
           exit 1
 
-      - name: Run app E2E tests
-        if: github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip')
-        run: pnpm nx run sva-studio-react:test:e2e
+      - name: Run complete app E2E suite uncached
+        id: app_e2e
+        run: pnpm nx run sva-studio-react:test:e2e --skipNxCache
 
-      - name: Upload Playwright report
-        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip'))
+      - name: Upload Playwright diagnostics
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: app-e2e-report-${{ github.run_id }}
-          path: apps/sva-studio-react/playwright-report
+          name: app-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/sva-studio-react/playwright-report
+            apps/sva-studio-react/test-results
           if-no-files-found: warn
           retention-days: 7
 
       - name: Stop services
-        if: always() && (github.event_name != 'pull_request' || (steps.changes.outputs.relevant == 'true' && steps.scope.outputs.e2e_mode != 'skip'))
+        if: always()
         run: |
           docker compose -f compose.monitoring.yaml down
           docker rm -f sva-studio-redis-e2e || true
 
-      - name: Publish E2E summary
+  evidence:
+    name: App E2E Evidence
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout evidence writer
+        uses: actions/checkout@v7
+
+      - name: Setup finalizer Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Write redacted App E2E evidence
+        id: evidence
+        env:
+          APP_E2E_RESULT: ${{ needs.e2e.result }}
+          APP_E2E_TEST_OUTCOME: ${{ needs.e2e.outputs.test-outcome }}
+        run: node --experimental-strip-types scripts/ci/write-app-e2e-evidence.ts
+
+      - name: Upload App E2E evidence
         if: always()
-        run: |
-          echo 'App E2E abgeschlossen.' >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.changes.outputs.relevant }}" != "true" ]; then
-            echo 'Scope: keine code-relevanten Änderungen im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "${{ steps.scope.outputs.e2e_mode }}" = "skip" ]; then
-            echo 'Scope: kein E2E-relevanter App-/Routing-/Auth-/Transport- oder kritischer Flow-Änderungsblock im Pull Request, das Gate endet bewusst als No-op-Erfolg.' >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          echo "Artifact: \`app-e2e-report-${GITHUB_RUN_ID}\`" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo 'Fehlermodus: Abbruch nach dem ersten auch im Retry bestätigten Testfehler.' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo 'Fehlermodus: vollständige Diagnose ohne PR-Fail-fast.' >> "$GITHUB_STEP_SUMMARY"
-          fi
-          echo 'Services: Redis, Loki, OTEL Collector, Promtail.' >> "$GITHUB_STEP_SUMMARY"
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/app-e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}.json
+          if-no-files-found: error
+          retention-days: 30

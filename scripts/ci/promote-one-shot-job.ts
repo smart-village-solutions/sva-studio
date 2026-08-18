@@ -14,6 +14,16 @@ type JobKind = 'bootstrap' | 'candidate' | 'migration';
 type PromoteEnvironment = 'dev' | 'prod' | 'staging';
 type OneShotResult = Awaited<ReturnType<typeof runMigrationJobAgainstAcceptance>> | Awaited<ReturnType<typeof runBootstrapJobAgainstAcceptance>>;
 
+type OneShotEvidenceResult = Pick<
+  OneShotResult,
+  'durationMs' | 'exitCode' | 'jobStackName' | 'state' | 'taskId'
+>;
+
+const safeRuntimeIdentifier = (value: string | undefined) =>
+  value && /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u.test(value) ? value : undefined;
+
+const terminalJobStates = new Set(['complete', 'failed', 'orphaned', 'rejected', 'remove', 'shutdown']);
+
 const rootDir = resolve(import.meta.dirname, '../..');
 
 const resolveComposeSourceRoot = (value: string | undefined): string => {
@@ -43,17 +53,6 @@ export const parseArgs = (args: readonly string[]) => {
   return { environment, kind } as { environment: PromoteEnvironment; kind: JobKind };
 };
 
-const redact = (value: string | undefined) => {
-  const appConfig = process.env.APP_CONFIG?.trim();
-  const withoutAppConfig = appConfig ? (value ?? '').replaceAll(appConfig, '[REDACTED]') : (value ?? '');
-  return withoutAppConfig
-    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)")[^"]*(")/giu, '$1[REDACTED]$2')
-    .replace(/((?:["']?(?:password|token|secret|authorization)["']?\s*[:=]\s*)')[^']*(')/giu, '$1[REDACTED]$2')
-    .replace(/(\bpassword\s+')[^']*(')/giu, '$1[REDACTED]$2')
-    .replace(/((?:password|token|secret|authorization)\s*[=:]\s*)[^\s]+/giu, '$1[REDACTED]')
-    .slice(-8_000);
-};
-
 const runOneShot = (
   kind: JobKind,
   deps: Parameters<typeof runMigrationJobAgainstAcceptance>[0],
@@ -72,6 +71,39 @@ const throwTerminalFailure = (failure: unknown, cleanupError: unknown) => {
   if (cleanupError) throw cleanupError;
   if (failure) throw failure;
 };
+
+export const buildOneShotEvidence = ({
+  cleanupError,
+  environment,
+  failure,
+  kind,
+  result,
+}: {
+  cleanupError?: unknown;
+  environment: PromoteEnvironment;
+  failure?: unknown;
+  kind: JobKind;
+  result?: OneShotEvidenceResult;
+}) => ({
+  cleanup: cleanupError ? 'error' as const : result ? 'ok' as const : 'attempted-after-failure' as const,
+  environment,
+  job: result
+    ? {
+      durationMs: Number.isSafeInteger(result.durationMs) && result.durationMs >= 0
+        ? result.durationMs
+        : undefined,
+      exitCode: result.exitCode === null || Number.isSafeInteger(result.exitCode)
+        ? result.exitCode
+        : undefined,
+      jobServiceName: kind === 'migration' ? 'migrate' as const : kind,
+      jobStackName: safeRuntimeIdentifier(result.jobStackName),
+      state: terminalJobStates.has(result.state) ? result.state : undefined,
+      taskId: safeRuntimeIdentifier(result.taskId),
+    }
+    : undefined,
+  kind,
+  status: failure ? 'failed' as const : cleanupError ? 'cleanup_failed' as const : 'ok' as const,
+});
 
 const main = async () => {
   const { environment, kind } = parseArgs(process.argv.slice(2));
@@ -127,13 +159,7 @@ const main = async () => {
         cleanupError = error;
       }
     }
-    const evidence = {
-      cleanup: cleanupError ? 'error' : result ? 'ok' : 'attempted-after-failure',
-      environment,
-      error: failure instanceof Error ? redact(failure.message) : failure ? redact(String(failure)) : undefined,
-      job: result ? { durationMs: result.durationMs, exitCode: result.exitCode, jobServiceName: result.jobServiceName, jobStackName: result.jobStackName, logTail: redact(result.logTail), state: result.state, taskId: result.taskId } : undefined,
-      kind,
-    };
+    const evidence = buildOneShotEvidence({ cleanupError, environment, failure, kind, result });
     writeFileSync(resultPath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `evidence_path=${resultPath}\n`);
   }
@@ -141,8 +167,8 @@ const main = async () => {
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
-    console.error(error instanceof Error ? redact(error.message) : redact(String(error)));
+  main().catch(() => {
+    console.error('PROMOTE_ONE_SHOT_FAILED: Siehe kanonische Promote-Evidenz und Job-Annotation.');
     process.exitCode = 1;
   });
 }

@@ -46,14 +46,17 @@ const parseCliOptions = (args: readonly string[]): PrScopeCliOptions => {
   return { base, head, githubOutput, json };
 };
 
-const createGithubOutputLines = (decision: PrScopeDecision, base: string, head: string): string[] => [
+const createGithubOutputLines = (
+  decision: PrScopeDecision,
+  base: string,
+  head: string
+): string[] => [
   `base=${base}`,
   `head=${head}`,
   `code_relevant=${decision.codeRelevant ? 'true' : 'false'}`,
   `quality_gate_mode=${decision.qualityGateMode}`,
   `coverage_mode=${decision.coverageMode}`,
   `integration_mode=${decision.integrationMode}`,
-  `e2e_mode=${decision.e2eMode}`,
   `a11y_mode=${decision.a11yMode}`,
   `runtime_verify_mode=${decision.runtimeVerifyMode}`,
   `app_build_mode=${decision.appBuildMode}`,
@@ -66,7 +69,11 @@ const appendGithubOutput = (decision: PrScopeDecision, base: string, head: strin
     throw new Error('GITHUB_OUTPUT ist nicht gesetzt.');
   }
 
-  fs.appendFileSync(outputPath, `${createGithubOutputLines(decision, base, head).join('\n')}\n`, 'utf8');
+  fs.appendFileSync(
+    outputPath,
+    `${createGithubOutputLines(decision, base, head).join('\n')}\n`,
+    'utf8'
+  );
 };
 
 export const runPrScopeCli = (args: readonly string[]): number => {

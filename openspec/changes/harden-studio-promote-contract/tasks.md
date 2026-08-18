@@ -1,3 +1,21 @@
+## 0. Gemeinsamer Start- und Wiederaufnahmevertrag
+
+- [x] 0.1 In einem separaten Worktree vom aktuellen `origin/main` beide genehmigten OpenSpec-Changes bereitstellen, `git status`, Base-SHA und Worktree-Inventar prüfen und `openspec validate harden-studio-promote-contract --strict` sowie `openspec validate accelerate-pr-failure-feedback --strict` erfolgreich ausführen.
+- [x] 0.2 Vor neuer Implementierung die vorhandenen `[x]`- und `[ ]`-Einträge dieses Changes read-only gegen den aktuellen Code, Tests und gegebenenfalls Live-Evidenz abgleichen; nur nachgewiesen falsche Taskzustände korrigieren und keine historische Checkbox als Beweis behandeln.
+- [x] 0.3 Als ersten lieferbaren Block ausschließlich das generische Promote-Evidenzfundament aus 5.1, 5.2, 5.3 und 5.5 implementieren beziehungsweise vervollständigen; keine App-E2E-Trigger, keine E2E-Scope-Logik und keine E2E-spezifische Promote-Entscheidung hinzufügen.
+- [x] 0.4 H1 erst abschließen, wenn 5.1, 5.2, 5.3, 5.5 und der kleinste relevante Gate-Pfad aus 7.6 grün sind, beide OpenSpecs strikt validieren und exakter HEAD, Gates sowie der freigegebene nächste Block `accelerate-pr-failure-feedback` 5.1 bis 5.4 im kanonischen Checkpoint-Protokoll dieses Changes dokumentiert sind.
+
+**Wiederaufnahme:** Es ist immer nur ein Block aktiv. Ein teilweise bearbeiteter Task bleibt unchecked. Nach einer Unterbrechung zuerst `git status`, aktuellen Diff, HEAD und beide OpenSpec-Validierungen prüfen; dann beim ersten unchecked Task des aktiven Blocks fortsetzen und vorhandene Änderungen gegen dessen vollständigen Text verifizieren.
+
+### Kanonisches Checkpoint-Protokoll
+
+- **H1 – Promote-Evidenzfundament:** `completed`; Implementierungs-HEAD: `1bf51738b5060e95dcdf7d75ddb5deeea0e39a69`; Gates: `tooling-testing:test:unit` mit zehn expliziten Promote- und Smoke-Vertragstestdateien (176 Tests), zusätzlicher gezielter Smoke-Nachlauf (25 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün; nächster Block: `accelerate-pr-failure-feedback` 5.1 bis 5.4 freigegeben.
+- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `c639dcf48e5afb04e08eb3bcccd39789b2d7c978`; Gates und Scope sind im kanonischen Checkpoint von `accelerate-pr-failure-feedback` dokumentiert.
+- **A2 – Staging-Consumer:** `implementation-complete, activation pending`; integrierter Implementierungs-HEAD: `b536b613f2874370e282cfec89279387cfb88f00` (Merge von `origin/main` `5652f4a1ea6d4225d8d4f5c5d6385feb17c20e42`); der Consumer erweitert den H1-Vertrag um die separat blockierbare Phase `main-e2e-evidence` und eine strikt geparste allowlistete Main-E2E-Referenz, persistiert keine freie Diagnose und kann v2-Staging-Parität an Attestation plus Source-SHA binden. Ohne explizites `MAIN_E2E_GATE=shadow|enforce` bleibt der Schritt deaktiviert; Disabled und Shadow akzeptieren weiterhin die bestehende Legacy-Parität, erst Enforce verlangt v2. Die Main-Integration erhält zusätzlich die Worker-Datenbank-Secret-, Injection- und Readiness-Verträge und bindet beide Worker-Secret-Schritte an denselben H1-Evidenzvertrag. Gates: `tooling-testing:test:unit` mit fünf expliziten E2E-/Promote-/Workflow-Vertragstestdateien (119 Tests), fünf expliziten Worker-/Readiness-Vertragstestdateien (26 Tests) und dem isolierten Repro zweier PR-fremder Timeout-Dateien (19 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run tooling-testing:lint`, Prettier-Check, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün. `pnpm test:pr` wurde im Coverage-Teil nach zwei nicht reproduzierbaren 5-Sekunden-Lasttimeouts abgebrochen; 90 `tooling-testing`-Dateien und 827 Tests waren dort bereits grün, der isolierte Repro war anschließend 19 von 19 grün. Der Gesamtgate-Lauf wird nicht als grün behauptet.
+- **A3 – Shadow und Aktivierung:** `ready`; Basis-HEAD: `b536b613f2874370e282cfec89279387cfb88f00`; nächster Block: ausschließlich `accelerate-pr-failure-feedback` 7.3 mit expliziter Shadow-Aktivierung, dokumentierter Kettenparität und anschließender blockierender Aktivierung; keine Aktivierung wurde in A2 vorgenommen.
+
+Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dessen exakten HEAD, die tatsächlich ausgeführten Gates, beide strikten OpenSpec-Validierungen und den explizit freigegebenen Folgeblock enthalten. `pending` oder `blocked` ist kein Implementierungsnachweis.
+
 ## 1. Config-Vertrag, Fehlercodes und Shadow-Modus
 
 - [x] 1.1 Getrackte nicht-sensitive Remote-Profile für Dev, Staging und Production sowie eine typsichere Schlüsselklassifikation anlegen.
@@ -38,11 +56,11 @@
 
 ## 5. Evidenz und minimaler Recovery-Vertrag
 
-- [ ] 5.1 Redigierte Evidenz für vorherigen und neuen Digest, Git-Grenzen, nicht-sensitive Config-Revision, externe Secret-Referenzen, Agent-Vertrag und Gate-Ergebnisse ergänzen.
-- [ ] 5.2 GitHub-Annotation, Step-Summary und JSON-Artefakt auf denselben Fehlercodevertrag ausrichten.
-- [ ] 5.3 Secret-Werte, Hashes, Wertlängen, Environment-Dumps, unredigierte Remote-Logs und PII durch Tests aus allen Evidenzpfaden ausschließen.
+- [x] 5.1 Redigierte Evidenz für vorherigen und neuen Digest, Git-Grenzen, nicht-sensitive Config-Revision, externe Secret-Referenzen, Agent-Vertrag und Gate-Ergebnisse ergänzen.
+- [x] 5.2 GitHub-Annotation, Step-Summary und JSON-Artefakt auf denselben Fehlercodevertrag ausrichten.
+- [x] 5.3 Secret-Werte, Hashes, Wertlängen, Environment-Dumps, unredigierte Remote-Logs und PII durch Tests aus allen Evidenzpfaden ausschließen.
 - [ ] 5.4 App-Rollback-Vertrag auf vorherigen Digest plus versionierte nicht-sensitive Config-Revision begrenzen; inkompatible Secret-Rotation als separaten Planungsfall dokumentieren.
-- [ ] 5.5 Unbekannte interne Fehler redigiert als `PROMOTE_INTERNAL_ERROR` erfassen.
+- [x] 5.5 Unbekannte interne Fehler redigiert als `PROMOTE_INTERNAL_ERROR` erfassen.
 
 ## 6. Gestufte Aktivierung
 

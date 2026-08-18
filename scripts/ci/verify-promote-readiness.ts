@@ -3,7 +3,7 @@
 import { pathToFileURL } from 'node:url';
 
 import { validatePromoteMode } from './promote-mode.ts';
-import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
+import { PromoteContractError, redactPromoteFailure, writePromoteFailureRecord } from './promote-result.ts';
 
 export const assertStandardProductionReadiness = (input: { environment: 'dev' | 'staging' | 'prod'; mode: 'standard' | 'recovery'; status: number }) => {
   if (input.environment === 'prod' && input.mode === 'standard' && input.status !== 200) throw new PromoteContractError({
@@ -26,7 +26,7 @@ const main = async () => {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main().catch((error: unknown) => {
   const failure = redactPromoteFailure(error, { environment: process.argv[2] === 'prod' ? 'prod' : process.argv[2] === 'staging' ? 'staging' : 'dev', phase: 'static-preflight' });
+  writePromoteFailureRecord(failure);
   process.stderr.write(`${JSON.stringify(failure)}\n`);
   process.exitCode = 1;
 });
-

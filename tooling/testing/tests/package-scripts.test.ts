@@ -352,10 +352,8 @@ describe('workspace package scripts', () => {
     expect(runtimeWorkflow).not.toContain(
       'tsx scripts/ci/pr-scope.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
     );
-    expect(e2eWorkflow).toContain(
-      'tsx scripts/ci/pr-scope.cli.ts --base ${{ github.event.pull_request.base.sha }} --github-output'
-    );
-    expect(e2eWorkflow).toContain('pull_request:');
+    expect(e2eWorkflow).not.toContain('pr-scope.cli.ts');
+    expect(e2eWorkflow).not.toContain('pull_request:');
   });
 
   it('determines PR scope before conditionally starting Redis in runtime gates', () => {
@@ -396,16 +394,18 @@ describe('workspace package scripts', () => {
     expect(workflow).toContain('Median-Mehrlast <= 2 Minuten');
   });
 
-  it('publishes App E2E summaries with the current workflow naming', () => {
+  it('runs full App E2E only for main pushes and diagnostic invocations', () => {
     const e2eWorkflow = loadAppE2EWorkflow();
 
-    expect(e2eWorkflow).toContain('echo \'App E2E abgeschlossen.\' >> "$GITHUB_STEP_SUMMARY"');
-    expect(e2eWorkflow).not.toContain('App-E2E-Smoke abgeschlossen.');
-    expect(e2eWorkflow).toContain('Run app E2E tests');
-    expect(e2eWorkflow).not.toContain('Run app E2E smoke tests');
-    expect(e2eWorkflow).toContain(
-      "PLAYWRIGHT_MAX_FAILURES: ${{ github.event_name == 'pull_request' && '1' || '0' }}"
-    );
+    expect(e2eWorkflow).toContain('push:');
+    expect(e2eWorkflow).toContain('branches: [main]');
+    expect(e2eWorkflow).toContain('schedule:');
+    expect(e2eWorkflow).toContain('workflow_dispatch:');
+    expect(e2eWorkflow).not.toContain('pull_request:');
+    expect(e2eWorkflow).toContain('Run complete app E2E suite uncached');
+    expect(e2eWorkflow).toContain('sva-studio-react:test:e2e --skipNxCache');
+    expect(e2eWorkflow).toContain("PLAYWRIGHT_MAX_FAILURES: '0'");
+    expect(e2eWorkflow).toContain('Write redacted App E2E evidence');
   });
 
   it('caches pnpm dependencies without restoring Nx local artifacts across runners', () => {

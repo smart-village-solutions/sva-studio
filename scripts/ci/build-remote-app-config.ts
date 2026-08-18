@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
+import { PromoteContractError, redactPromoteFailure, writePromoteFailureRecord } from './promote-result.ts';
 import { remoteConfigContract, requiredRemoteConfigKeys, type RemoteEnvironment } from './remote-config-contract.ts';
 
 const keyPattern = /^[A-Za-z_][A-Za-z0-9_]*$/u;
@@ -96,6 +96,11 @@ export const selectProtectedOverrides = (environment: RemoteEnvironment, legacyS
     .join('\n');
 };
 
+const writeConfigEvidenceOutputs = (candidate: ReturnType<typeof buildRemoteAppConfig>, outputPath: string | undefined): void => {
+  if (!outputPath) return;
+  appendFileSync(outputPath, `config_revision=${candidate.configRevision}\nsecret_references=${JSON.stringify(candidate.secretReferences)}\n`, 'utf8');
+};
+
 export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.ProcessEnv = process.env): number => {
   const environment = args[args.indexOf('--environment') + 1] as RemoteEnvironment | undefined;
   const profilePath = args[args.indexOf('--profile') + 1];
@@ -110,6 +115,7 @@ export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.Pro
     const explicitOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim() ? env.PROMOTE_CONFIG_OVERRIDES : undefined;
     const protectedOverrides = selectProtectedOverrides(environment, legacySource, explicitOverrides);
     const candidate = buildRemoteAppConfig({ environment, profile: readFileSync(resolve(profilePath), 'utf8'), overrides: protectedOverrides });
+    writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     if (shadow) {
       const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
       process.stdout.write(`${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`);
@@ -120,6 +126,7 @@ export const runBuildRemoteAppConfig = (args: readonly string[], env: NodeJS.Pro
     return 0;
   } catch (error) {
     const failure = redactPromoteFailure(error, { environment, phase: 'config-build' });
+    writePromoteFailureRecord(failure, env.PROMOTE_FAILURE_PATH);
     process.stderr.write(`${JSON.stringify(failure)}\n`);
     return 2;
   }

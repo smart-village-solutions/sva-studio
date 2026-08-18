@@ -38,6 +38,51 @@ export const buildBackupAgentRequest = (input: {
   ...(input.tenantInstanceId ? { tenantInstanceId: input.tenantInstanceId } : {}),
 });
 
+export const buildBackupAgentEvidence = (request: BackupRequest, value: unknown) => {
+  const validationTime = new Date(Date.parse(request.expiresAt) - 1);
+  if (
+    !isValidBackupRequest(request, validationTime)
+    || !/^gha-[0-9]+-[0-9]+(?:-waste)?$/u.test(request.requestId)
+    || !value
+    || typeof value !== 'object'
+  ) {
+    throw new Error('Ungültige Eingabe für die Backup-Agent-Evidenz.');
+  }
+  const result = value as Record<string, unknown>;
+  const database = request.database ?? 'studio';
+  const expectedObjectKey = database === 'waste'
+    ? `${request.environment}/waste/inventory/${request.requestId}.json`
+    : undefined;
+  const validStudioObjectKey = new RegExp(
+    `^${request.environment}/[0-9TZ-]+/${request.deployImageDigest.slice('sha256:'.length)}/${request.requestId}\\.dump$`,
+    'u',
+  );
+  if (
+    result.status !== 'succeeded'
+    || typeof result.objectKey !== 'string'
+    || (expectedObjectKey ? result.objectKey !== expectedObjectKey : !validStudioObjectKey.test(result.objectKey))
+    || typeof result.bytes !== 'number'
+    || !Number.isSafeInteger(result.bytes)
+    || result.bytes <= 0
+    || typeof result.sha256 !== 'string'
+    || !/^[a-f0-9]{64}$/u.test(result.sha256)
+  ) {
+    throw new Error('Der Backup-Agent-Nachweis verletzt den Evidence-Vertrag.');
+  }
+  return {
+    bytes: result.bytes,
+    database,
+    deployImageDigest: request.deployImageDigest,
+    environment: request.environment,
+    objectKey: result.objectKey,
+    requestId: request.requestId,
+    sha256: result.sha256,
+    status: 'succeeded' as const,
+    ...(request.tenantInstanceId ? { tenantInstanceId: request.tenantInstanceId } : {}),
+    version: 1 as const,
+  };
+};
+
 const requestOidcToken = async () => {
   const url = new URL(required(process.env.ACTIONS_ID_TOKEN_REQUEST_URL, 'ACTIONS_ID_TOKEN_REQUEST_URL'));
   url.searchParams.set('audience', 'studio-backup-agent');
@@ -129,13 +174,17 @@ const main = async () => {
   const accepted = await response.json() as { requestId?: unknown };
   if (accepted.requestId !== request.requestId) throw new Error('Der Backup-Agent hat eine abweichende Request-ID bestätigt.');
   const result = await waitForResult(target, request);
+  const evidence = buildBackupAgentEvidence(request, result);
   const evidencePath = resolve(process.env.RUNNER_TEMP ?? process.cwd(), `promote-backup-agent-${request.requestId}.json`);
-  writeFileSync(evidencePath, `${JSON.stringify(result, null, 2)}\n`, { mode: 0o600 });
+  writeFileSync(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, { mode: 0o600 });
   const output = resolve(process.env.GITHUB_OUTPUT ?? '/dev/null');
   const outputPrefix = database === 'waste' ? 'waste_backup' : 'backup';
   writeFileSync(output, `${outputPrefix}_request_id=${request.requestId}\n${outputPrefix}_bucket=${backupEnvironmentConfig(target).bucket}\n${outputPrefix}_object=${result.objectKey}\n${outputPrefix}_evidence_path=${evidencePath}\n` , { flag: 'a', mode: 0o600 });
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => { console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; });
+  main().catch(() => {
+    console.error('PROMOTE_BACKUP_AGENT_FAILED: Siehe kanonische Promote-Evidenz und Job-Annotation.');
+    process.exitCode = 1;
+  });
 }

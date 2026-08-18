@@ -87,8 +87,39 @@ jobs:
     name: deploy ${{ inputs.environment }}
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    env:
+      PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
+      PROMOTE_CONTROLLER_DIR: ${{ runner.temp }}/promote-evidence-controller
     steps:
+      - name: checkout workflow controller revision
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.workflow_sha }}
+
+      - name: setup finalizer Node.js runtime
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: preserve promote evidence controller
+        run: |
+          set -euo pipefail
+          mkdir -p "${PROMOTE_CONTROLLER_DIR}"
+          cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/promote-result.ts"
+          cp scripts/ci/promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence.ts"
+          cp scripts/ci/promote-evidence-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-contract.ts"
+          cp scripts/ci/promote-evidence-io.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-io.ts"
+          cp scripts/ci/promote-evidence-types.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-types.ts"
+          cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"
+          cp scripts/ci/verify-main-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
+          cp scripts/ci/verify-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"
+          cp scripts/ci/write-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
+          cp scripts/ci/record-promote-failure.ts "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts"
+          cp scripts/ci/write-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
+
       - name: validate inputs
+        id: input_validation
         env:
           ENVIRONMENT: ${{ inputs.environment }}
           IMAGE_INPUT: ${{ inputs.image_ref }}
@@ -100,29 +131,32 @@ jobs:
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
         run: |
           set -euo pipefail
+          record_input_failure() {
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" input-validation
+          }
 
           case "${ENVIRONMENT}" in
             dev|staging|prod) ;;
             *)
-              echo "Invalid environment: ${ENVIRONMENT}. Expected one of: dev, staging, prod." >&2
+              record_input_failure
               exit 1
               ;;
           esac
 
           if [ -z "${IMAGE_INPUT}" ]; then
-            echo "'image_ref' must not be empty." >&2
+            record_input_failure
             exit 1
           fi
 
           if [ -z "${CHANGE_BASE}" ] || [ -z "${CHANGE_HEAD}" ]; then
-            echo "'change_base' and 'change_head' must identify the exact image change range." >&2
+            record_input_failure
             exit 1
           fi
 
           case "${MIGRATION_MODE}" in
             run|assert-none|auto) ;;
             *)
-              echo "Invalid migration_mode: ${MIGRATION_MODE}. Expected one of: run, assert-none, auto." >&2
+              record_input_failure
               exit 1
               ;;
           esac
@@ -130,7 +164,7 @@ jobs:
           case "${BOOTSTRAP_MODE}" in
             run|assert-none|auto) ;;
             *)
-              echo "Invalid bootstrap_mode: ${BOOTSTRAP_MODE}. Expected one of: run, assert-none, auto." >&2
+              record_input_failure
               exit 1
               ;;
           esac
@@ -139,17 +173,18 @@ jobs:
             standard) ;;
             recovery)
               if [ -z "${RECOVERY_REASON//[[:space:]]/}" ]; then
-                printf '{"code":"PROMOTE_RECOVERY_REASON_REQUIRED","environment":"%s","phase":"static-preflight","summary":"Der Recovery-Modus wurde ohne dokumentierten Grund angefordert.","retryable":false,"nextAction":"Recovery-Grund dokumentieren und das geschuetzte Environment erneut freigeben."}\n' "${ENVIRONMENT}" >&2
+                node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_RECOVERY_REASON_REQUIRED "${ENVIRONMENT}" input-validation
                 exit 1
               fi
               ;;
             *)
-              printf '{"code":"PROMOTE_MODE_INVALID","environment":"%s","phase":"static-preflight","summary":"Der angeforderte Promote-Modus ist ungueltig.","retryable":false,"nextAction":"promote_mode auf standard oder recovery setzen."}\n' "${ENVIRONMENT}" >&2
+              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_MODE_INVALID "${ENVIRONMENT}" input-validation
               exit 1
               ;;
           esac
 
       - name: validate permission snapshot secret
+        id: permission_snapshot_secret
         env:
           REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
         run: |
@@ -159,44 +194,54 @@ jobs:
           trimmed_secret="${trimmed_secret%"${trimmed_secret##*[![:space:]]}"}"
 
           if [ "${#trimmed_secret}" -lt 32 ]; then
-            echo "::error::REDIS_SNAPSHOT_HMAC_SECRET fehlt oder ist zu kurz." >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID "${{ inputs.environment }}" input-validation
             exit 1
           fi
 
       - name: validate worker database secret
+        id: worker_database_secret
         env:
           STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
         run: |
           set -euo pipefail
           if [ "${#STUDIO_JOB_WORKER_DB_PASSWORD}" -lt 32 ]; then
             echo "::error::STUDIO_JOB_WORKER_DB_PASSWORD fehlt oder ist zu kurz." >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${{ inputs.environment }}" input-validation
             exit 1
           fi
 
-      - name: checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
       - name: fetch main reference
+        id: source_preparation
         run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
 
       - name: bind executor source to promoted change head
+        id: source_contract
         env:
           CHANGE_BASE: ${{ inputs.change_base }}
           CHANGE_HEAD: ${{ inputs.change_head }}
         run: |
           set -euo pipefail
-          base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")"
-          head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
-          git merge-base --is-ancestor "${base}" "${head}"
-          git checkout --detach "${head}"
-          test "$(git rev-parse HEAD)" = "${head}"
+          if ! base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")" ||
+             ! head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")" ||
+             ! git merge-base --is-ancestor "${base}" "${head}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
+            exit 1
+          fi
+          if ! git checkout --detach "${head}" || [ "$(git rev-parse HEAD)" != "${head}" ]; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
+            exit 1
+          fi
+          {
+            echo "base_sha=${base}"
+            echo "head_sha=${head}"
+          } >> "${GITHUB_OUTPUT}"
 
-      - name: setup pnpm workspace
+      - name: setup pnpm workspace for promoted source
+        id: workspace_setup
         uses: ./.github/actions/setup-pnpm-workspace
 
       - name: Login to GHCR
+        id: registry_login
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -212,10 +257,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          pnpm exec tsx scripts/ci/promote-image-contract.ts \
+          if ! pnpm exec tsx scripts/ci/promote-image-contract.ts \
             --environment "${ENVIRONMENT}" \
             --image "${IMAGE_INPUT}" \
-            --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"
+            --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_IMAGE_CONTRACT_INVALID "${ENVIRONMENT}" image-contract
+            exit 1
+          fi
+
+      - name: require canonical Main App E2E evidence
+        id: main_e2e_evidence
+        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' && (vars.MAIN_E2E_GATE == 'shadow' || vars.MAIN_E2E_GATE == 'enforce') }}
+        continue-on-error: ${{ vars.MAIN_E2E_GATE == 'shadow' }}
+        env:
+          EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+          PROMOTE_FAILURE_PATH: ${{ vars.MAIN_E2E_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
 
       - name: build and select remote config
         id: remote_config
@@ -229,7 +287,7 @@ jobs:
           mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
           case "${mode}" in
             shadow)
-              if ! pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+              if ! PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts \
                   --environment "${{ inputs.environment }}" \
                   --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
                   --output "${RUNNER_TEMP}/candidate-app-config.vars" \
@@ -245,20 +303,24 @@ jobs:
                 --output "${RUNNER_TEMP}/promote-app-config.vars"
               ;;
             *)
-              printf '{"code":"PROMOTE_CONFIG_INVALID","environment":"%s","phase":"config-build","summary":"Der Config-Builder-Modus ist ungueltig.","retryable":false,"nextAction":"PROMOTE_CONFIG_BUILDER_MODE auf shadow oder authoritative setzen."}\n' "${{ inputs.environment }}" >&2
+              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
               exit 1
               ;;
           esac
           echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
 
       - name: inject worker database secret
+        id: worker_database_secret_injection
         env:
           STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
         run: |
           set -euo pipefail
           umask 077
-          pnpm exec tsx scripts/ci/inject-worker-database-secret.ts \
-            --input "${RUNNER_TEMP}/promote-app-config.vars"
+          if ! pnpm exec tsx scripts/ci/inject-worker-database-secret.ts \
+            --input "${RUNNER_TEMP}/promote-app-config.vars"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
+            exit 1
+          fi
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval
@@ -278,16 +340,20 @@ jobs:
           bootstrap_executor_configured=true
 
           echo "Evaluating deploy gates against ${BASE_REF}..${HEAD_REF}"
-          pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
+          if ! pnpm exec tsx scripts/ci/promote-deploy-gates.ts \
             --base "${BASE_REF}" \
             --head "${HEAD_REF}" \
             --environment "${ENVIRONMENT}" \
             --migration-mode "${MIGRATION_MODE}" \
             --bootstrap-mode "${BOOTSTRAP_MODE}" \
             --migration-executor-configured "${migration_executor_configured}" \
-            --bootstrap-executor-configured "${bootstrap_executor_configured}"
+            --bootstrap-executor-configured "${bootstrap_executor_configured}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${ENVIRONMENT}" static-preflight
+            exit 1
+          fi
 
       - name: enforce migration and bootstrap gates
+        id: migration_enforcement
         env:
           MIGRATION_MODE: ${{ inputs.migration_mode }}
           BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
@@ -303,18 +369,17 @@ jobs:
           set -euo pipefail
 
           if [ "${MIGRATION_GATE_OK}" != "true" ]; then
-            echo "::error::Migration gate failed (${MIGRATION_MODE}/${MIGRATION_GATE_RESULT}): ${MIGRATION_GATE_RISK_FILES}" >&2
-            echo "${MIGRATION_GATE_MESSAGE}" >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
             exit 1
           fi
 
           if [ "${BOOTSTRAP_GATE_OK}" != "true" ]; then
-            echo "::error::Bootstrap gate failed (${BOOTSTRAP_MODE}/${BOOTSTRAP_GATE_RESULT}): ${BOOTSTRAP_GATE_RISK_FILES}" >&2
-            echo "${BOOTSTRAP_GATE_MESSAGE}" >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
             exit 1
           fi
 
       - name: setup quantum-cli
+        id: deployment_tooling
         uses: hostwithquantum/setup-quantum-cli@v2.0.0
         with:
           api-key: ${{ secrets.QUANTUM_API_KEY }}
@@ -322,9 +387,14 @@ jobs:
 
       - name: resolve deployment target
         id: target
-        run: pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${{ inputs.environment }}" deploy
+            exit 1
+          fi
 
       - name: verify pre-mutation production readiness
+        id: readiness
         env:
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
@@ -336,21 +406,33 @@ jobs:
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" digest-verification
+            exit 1
+          fi
 
       - name: require successful staging parity for production mutation
+        id: staging_parity
         if: ${{ inputs.environment == 'prod' }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
+          EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
+          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
-        run: pnpm exec tsx scripts/ci/verify-staging-promote-evidence.ts
+        run: |
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"; then
+            exit 1
+          fi
 
       - name: verify live backup agent capabilities
+        id: backup_capabilities
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}
         continue-on-error: ${{ vars.BACKUP_CAPABILITY_GATE != 'enforce' }}
         env:
+          PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
         run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
 
@@ -411,6 +493,7 @@ jobs:
           pnpm exec tsx scripts/ci/promote-backup-job.ts "${{ inputs.environment }}"
 
       - name: verify database backup object
+        id: backup_verification
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
@@ -421,6 +504,7 @@ jobs:
         run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
 
       - name: verify Waste database backup object
+        id: waste_backup_verification
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
         env:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
@@ -461,6 +545,7 @@ jobs:
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
       - name: run one-shot postconditions
+        id: postconditions
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
@@ -493,12 +578,12 @@ jobs:
           trap 'rm -f .env stack.json stack.yaml' EXIT
 
           if [ -z "${QUANTUM_ENDPOINT}" ]; then
-            echo "'QUANTUM_ENDPOINT' must not be empty." >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" deploy
             exit 1
           fi
 
           if [ ! -s "${RUNNER_TEMP}/promote-app-config.vars" ]; then
-            printf '{"code":"PROMOTE_CONFIG_REQUIRED_KEY_MISSING","environment":"%s","phase":"config-build","summary":"Die ausgewaehlte Remote-Konfiguration ist leer.","retryable":false,"nextAction":"APP_CONFIG oder das autoritative Profil plus Overrides vervollstaendigen."}\n' "${ENVIRONMENT}" >&2
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${ENVIRONMENT}" deploy
             exit 1
           fi
 
@@ -513,6 +598,7 @@ jobs:
           quantum-cli stacks deploy -f stack.yaml --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
 
       - name: verify deployed runtime
+        id: runtime_smoke
         env:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
@@ -522,26 +608,42 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
+          trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars "${RUNNER_TEMP}/runtime-smoke.stderr"' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           mkdir -p config/runtime
           cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
-          pnpm exec tsx scripts/ops/runtime-env.ts smoke studio
+          if ! pnpm exec tsx scripts/ops/runtime-env.ts smoke studio 2>"${RUNNER_TEMP}/runtime-smoke.stderr"; then
+            if [ ! -s "${PROMOTE_FAILURE_PATH}" ]; then
+              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" external-smoke
+            fi
+            exit 1
+          fi
 
       - name: verify deployed runtime image digest
+        id: digest_verification
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"
+        run: |
+          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH "${{ inputs.environment }}" digest-verification
+            exit 1
+          fi
 
       - name: write staging parity evidence
+        id: staging_evidence
         if: ${{ inputs.environment == 'staging' && success() }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
+          MAIN_E2E_ATTESTATION: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
+          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
-        run: pnpm exec tsx scripts/ci/write-staging-promote-evidence.ts
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
 
       - name: upload staging parity evidence
+        id: staging_evidence_upload
         if: ${{ inputs.environment == 'staging' && success() }}
         uses: actions/upload-artifact@v4
         with:
@@ -550,70 +652,86 @@ jobs:
           retention-days: 14
 
       - name: upload redacted one-shot evidence
+        id: one_shot_evidence_upload
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: promote-one-shot-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/promote-*.json
+          path: |
+            ${{ runner.temp }}/promote-candidate-*.json
+            ${{ runner.temp }}/promote-migration-*.json
+            ${{ runner.temp }}/promote-bootstrap-*.json
+            ${{ runner.temp }}/promote-backup-*.json
           if-no-files-found: ignore
           retention-days: 14
 
       - name: remove selected remote config
+        id: config_cleanup
         if: always()
         run: rm -f "${RUNNER_TEMP}/candidate-app-config.vars" "${RUNNER_TEMP}/promote-app-config.vars"
 
-      - name: write deploy summary
+      - name: write redacted promote evidence
+        id: promote_evidence
         if: always()
         env:
-          ENVIRONMENT: ${{ inputs.environment }}
-          DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
-          DEPLOY_IMAGE_TAG: ${{ steps.image_contract.outputs.deploy_summary_tag }}
-          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          DEPLOY_IMAGE_IMMUTABILITY: ${{ steps.image_contract.outputs.deploy_summary_immutability }}
-          DEPLOY_IMAGE_ROLLBACK_HINT: ${{ steps.image_contract.outputs.deploy_summary_rollback_hint }}
-          DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          MIGRATION_GATE_RESULT: ${{ steps.gate_eval.outputs.migration_gate_result }}
-          MIGRATION_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.migration_gate_risk_files }}
-          BOOTSTRAP_GATE_RESULT: ${{ steps.gate_eval.outputs.bootstrap_gate_result }}
-          BOOTSTRAP_GATE_RISK_FILES: ${{ steps.gate_eval.outputs.bootstrap_gate_risk_files }}
-          DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
-          PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
-          MIGRATION_JOB_OUTCOME: ${{ steps.migration_job.outcome }}
-          BOOTSTRAP_JOB_OUTCOME: ${{ steps.bootstrap_job.outcome }}
-          CANDIDATE_JOB_OUTCOME: ${{ steps.candidate_job.outcome }}
-          CONFIG_BUILDER_MODE: ${{ steps.remote_config.outputs.mode }}
-        run: |
-          set -euo pipefail
+          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
+          PROMOTE_JOB_STATUS: ${{ job.status }}
+          PROMOTE_BASE_REF: ${{ inputs.change_base }}
+          PROMOTE_HEAD_REF: ${{ inputs.change_head }}
+          PROMOTE_BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
+          PROMOTE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
+          PROMOTE_PREVIOUS_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
+          PROMOTE_TARGET_IMAGE: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          PROMOTE_IMAGE_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+          PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
+          PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
+          PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}
+          PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
+          PROMOTE_GATE_WORKSPACE_SETUP: ${{ steps.workspace_setup.outcome }}
+          PROMOTE_GATE_INPUT: ${{ steps.input_validation.outcome }}
+          PROMOTE_GATE_PERMISSION_SECRET: ${{ steps.permission_snapshot_secret.outcome }}
+          PROMOTE_GATE_WORKER_DATABASE_SECRET: ${{ steps.worker_database_secret.outcome }}
+          PROMOTE_GATE_SOURCE_PREPARATION: ${{ steps.source_preparation.outcome }}
+          PROMOTE_GATE_SOURCE: ${{ steps.source_contract.outcome }}
+          PROMOTE_GATE_REGISTRY_LOGIN: ${{ steps.registry_login.outcome }}
+          PROMOTE_GATE_IMAGE: ${{ steps.image_contract.outcome }}
+          PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}
+          PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}
+          PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
+          PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION: ${{ steps.worker_database_secret_injection.outcome }}
+          PROMOTE_GATE_POLICY_EVALUATION: ${{ steps.gate_eval.outcome }}
+          PROMOTE_GATE_STATIC_PREFLIGHT: ${{ steps.migration_enforcement.outcome }}
+          PROMOTE_GATE_DEPLOYMENT_TOOLING: ${{ steps.deployment_tooling.outcome }}
+          PROMOTE_GATE_TARGET: ${{ steps.target.outcome }}
+          PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
+          PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}
+          PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' }}
+          PROMOTE_GATE_BACKUP_REQUEST: ${{ steps.backup_job.outcome }}
+          PROMOTE_GATE_WASTE_BACKUP_REQUEST: ${{ steps.waste_backup_job.outcome }}
+          PROMOTE_GATE_BACKUP_FALLBACK: ${{ steps.backup_fallback_job.outcome }}
+          PROMOTE_GATE_BACKUP: ${{ steps.backup_verification.outcome }}
+          PROMOTE_GATE_WASTE_BACKUP: ${{ steps.waste_backup_verification.outcome }}
+          PROMOTE_GATE_MIGRATION: ${{ steps.migration_job.outcome }}
+          PROMOTE_GATE_BOOTSTRAP: ${{ steps.bootstrap_job.outcome }}
+          PROMOTE_GATE_POSTCONDITIONS: ${{ steps.postconditions.outcome }}
+          PROMOTE_GATE_DEPLOY: ${{ steps.deploy.outcome }}
+          PROMOTE_GATE_EXTERNAL_SMOKE: ${{ steps.runtime_smoke.outcome }}
+          PROMOTE_GATE_DIGEST_VERIFICATION: ${{ steps.digest_verification.outcome }}
+          PROMOTE_GATE_STAGING_EVIDENCE: ${{ steps.staging_evidence.outcome }}
+          PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD: ${{ steps.staging_evidence_upload.outcome }}
+          PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD: ${{ steps.one_shot_evidence_upload.outcome }}
+          PROMOTE_GATE_CONFIG_CLEANUP: ${{ steps.config_cleanup.outcome }}
+        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
 
-          deploy_started=no
-          if [ "${DEPLOY_OUTCOME}" != "" ] && [ "${DEPLOY_OUTCOME}" != "skipped" ]; then
-            deploy_started=yes
-          fi
-
-          {
-            echo "## Promote summary"
-            echo
-            echo "| field | value |"
-            echo "| --- | --- |"
-            echo "| environment | ${ENVIRONMENT} |"
-            echo "| image | ${DEPLOY_IMAGE_REF:-not-evaluated} |"
-            echo "| tag | ${DEPLOY_IMAGE_TAG:-not-evaluated} |"
-            echo "| digest | ${DEPLOY_IMAGE_DIGEST:-not-evaluated} |"
-            echo "| previous_live_image | ${PREVIOUS_LIVE_IMAGE:-not-captured} |"
-            echo "| config_builder_mode | ${CONFIG_BUILDER_MODE:-not-evaluated} |"
-            echo "| candidate_preflight | ${CANDIDATE_JOB_OUTCOME:-not-run} |"
-            echo "| immutability | ${DEPLOY_IMAGE_IMMUTABILITY:-not-evaluated} |"
-            echo "| deploy_revision | ${DEPLOY_REVISION:-not-evaluated} |"
-            echo "| migration_mode | ${MIGRATION_MODE} |"
-            echo "| migration_gate_result | ${MIGRATION_GATE_RESULT:-not-evaluated} |"
-            echo "| migration_job | ${MIGRATION_JOB_OUTCOME:-not-run} |"
-            echo "| migration_risk_files | ${MIGRATION_GATE_RISK_FILES:-none} |"
-            echo "| bootstrap_mode | ${BOOTSTRAP_MODE} |"
-            echo "| bootstrap_gate_result | ${BOOTSTRAP_GATE_RESULT:-not-evaluated} |"
-            echo "| bootstrap_job | ${BOOTSTRAP_JOB_OUTCOME:-not-run} |"
-            echo "| bootstrap_risk_files | ${BOOTSTRAP_GATE_RISK_FILES:-none} |"
-            echo "| app_deploy_started | ${deploy_started} |"
-            echo "| rollback_hint | ${DEPLOY_IMAGE_ROLLBACK_HINT:-not-evaluated} |"
-          } >> "${GITHUB_STEP_SUMMARY}"
+      - name: upload redacted promote evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/promote-evidence-${{ github.run_id }}-${{ github.run_attempt }}.json
+          if-no-files-found: error
+          retention-days: 14

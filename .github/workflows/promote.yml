@@ -252,8 +252,8 @@ jobs:
 
       - name: require canonical Main App E2E evidence
         id: main_e2e_evidence
-        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}
-        continue-on-error: ${{ vars.MAIN_E2E_GATE != 'enforce' }}
+        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' && (vars.MAIN_E2E_GATE == 'shadow' || vars.MAIN_E2E_GATE == 'enforce') }}
+        continue-on-error: ${{ vars.MAIN_E2E_GATE == 'shadow' }}
         env:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           GITHUB_TOKEN: ${{ github.token }}

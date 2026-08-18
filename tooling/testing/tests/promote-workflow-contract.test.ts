@@ -72,9 +72,9 @@ describe('Promote workflow contract', () => {
       /- name: require canonical Main App E2E evidence[\s\S]*?run: pnpm exec tsx "\$\{PROMOTE_CONTROLLER_DIR\}\/verify-main-e2e-evidence\.ts"/u
     )?.[0];
     expect(gate).toContain(
-      "if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}"
+      "if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' && (vars.MAIN_E2E_GATE == 'shadow' || vars.MAIN_E2E_GATE == 'enforce') }}"
     );
-    expect(gate).toContain("continue-on-error: ${{ vars.MAIN_E2E_GATE != 'enforce' }}");
+    expect(gate).toContain("continue-on-error: ${{ vars.MAIN_E2E_GATE == 'shadow' }}");
     expect(gate).toContain("PROMOTE_FAILURE_PATH: ${{ vars.MAIN_E2E_GATE == 'enforce'");
     expect(gate).toContain('EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}');
     expect(workflow).toContain(

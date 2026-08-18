@@ -76,6 +76,21 @@ describe('canonical Main App E2E preflight', () => {
     expect(verifyMainE2EEvidence(headSha, dependencies())).toEqual(evidence);
   });
 
+  it('paginates workflow runs until it finds the exact head SHA', () => {
+    const foreignRuns = Array.from({ length: 100 }, (_, index) => ({
+      ...run,
+      id: 1_000 + index,
+      head_sha: 'b'.repeat(40),
+    }));
+    const readWorkflowRuns = vi.fn((page: number) =>
+      page === 1
+        ? { workflow_runs: foreignRuns, total_count: 101 }
+        : { workflow_runs: [run], total_count: 101 }
+    );
+    expect(verifyMainE2EEvidence(headSha, dependencies({ readWorkflowRuns }))).toEqual(evidence);
+    expect(readWorkflowRuns).toHaveBeenCalledWith(2);
+  });
+
   it('uses the latest attempt of one run identity', () => {
     expect(selectCanonicalMainRun([{ ...run, run_attempt: 1 }, run], headSha)).toEqual(run);
   });
@@ -238,6 +253,28 @@ describe('canonical Main App E2E preflight', () => {
         )
       )
     ).toBe('PROMOTE_MAIN_E2E_NOT_READY');
+  });
+
+  it('rejects a newly appearing second canonical run identity during the race recheck', () => {
+    let reads = 0;
+    expect(
+      failureCode(() =>
+        verifyMainE2EEvidence(
+          headSha,
+          dependencies({
+            readWorkflowRuns: () => {
+              reads += 1;
+              return {
+                workflow_runs:
+                  reads === 1
+                    ? [run]
+                    : [run, { ...run, id: 124, status: 'in_progress', conclusion: null }],
+              };
+            },
+          })
+        )
+      )
+    ).toBe('PROMOTE_MAIN_E2E_REJECTED');
   });
 
   it('maps unknown lookup errors to a static retryable failure without leaking diagnostics', () => {

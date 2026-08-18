@@ -36,7 +36,9 @@ export type MainE2EArtifact = Readonly<{
 type Archive = Readonly<{ entries: readonly string[]; readText: (entry: string) => string }>;
 
 export type MainE2EVerifierDependencies = Readonly<{
-  readWorkflowRuns: (page: number) => Readonly<{ workflow_runs?: MainE2EWorkflowRun[] }>;
+  readWorkflowRuns: (
+    page: number
+  ) => Readonly<{ workflow_runs?: MainE2EWorkflowRun[]; total_count?: number }>;
   readWorkflowRun: (runId: number) => MainE2EWorkflowRun;
   readRunArtifacts: (
     runId: number,
@@ -69,7 +71,11 @@ const listPages = <T>(
   for (let page = 1; page <= 10; page += 1) {
     const payload = readPage(page);
     items.push(...payload.items);
-    if (payload.items.length < 100 || items.length >= (payload.total ?? items.length)) break;
+    if (
+      payload.items.length < 100 ||
+      (payload.total !== undefined && items.length >= payload.total)
+    )
+      break;
     if (page === 10) throw contractError('PROMOTE_MAIN_E2E_LOOKUP_FAILED');
   }
   return items;
@@ -167,9 +173,12 @@ export const verifyMainE2EEvidence = (
   dependencies: MainE2EVerifierDependencies
 ): AppE2EEvidence => {
   if (!shaPattern.test(expectedHeadSha)) throw contractError('PROMOTE_MAIN_E2E_REJECTED');
-  const runs = listPages((page) => ({
-    items: readLookup(() => dependencies.readWorkflowRuns(page)).workflow_runs ?? [],
-  }));
+  const readRuns = (): MainE2EWorkflowRun[] =>
+    listPages((page) => {
+      const response = readLookup(() => dependencies.readWorkflowRuns(page));
+      return { items: response.workflow_runs ?? [], total: response.total_count };
+    });
+  const runs = readRuns();
   const run = selectCanonicalMainRun(runs, expectedHeadSha);
   const artifacts = listPages((page) => {
     const response = readLookup(() => dependencies.readRunArtifacts(run.id, page));
@@ -185,6 +194,9 @@ export const verifyMainE2EEvidence = (
     throw contractError('PROMOTE_MAIN_E2E_REJECTED');
   }
   const evidence = validateCanonicalMainEvidence(value, run, expectedHeadSha);
+  const currentSelection = selectCanonicalMainRun(readRuns(), expectedHeadSha);
+  if (currentSelection.id !== run.id || currentSelection.run_attempt !== run.run_attempt)
+    throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
   const current = readLookup(() => dependencies.readWorkflowRun(run.id));
   if (
     current.id !== run.id ||

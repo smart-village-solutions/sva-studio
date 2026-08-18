@@ -14,7 +14,6 @@ import {
   writePromoteFailureRecord,
   type PromoteErrorCode,
 } from './promote-result.ts';
-
 export type MainE2EWorkflowRun = Readonly<{
   id?: number;
   run_attempt?: number;
@@ -25,7 +24,6 @@ export type MainE2EWorkflowRun = Readonly<{
   status?: string;
   conclusion?: string | null;
 }>;
-
 export type MainE2EArtifact = Readonly<{
   id?: number;
   name?: string;
@@ -81,15 +79,26 @@ const listPages = <T>(
   return items;
 };
 
+const isCanonicalMainRun = (run: MainE2EWorkflowRun): boolean =>
+  run.path === expectedWorkflowPath && run.event === 'push' && run.head_branch === 'main';
+
+const hasValidRunIdentity = (run: MainE2EWorkflowRun | undefined): boolean =>
+  Boolean(run) &&
+  Number.isSafeInteger(run?.id) &&
+  (run?.id ?? 0) > 0 &&
+  Number.isSafeInteger(run?.run_attempt) &&
+  (run?.run_attempt ?? 0) > 0;
+
+const isTerminalSuccessfulRun = (run: MainE2EWorkflowRun): boolean =>
+  run.status === 'completed' && run.conclusion === 'success';
+
 export const selectCanonicalMainRun = (
   runs: readonly MainE2EWorkflowRun[],
   expectedHeadSha: string
 ): Required<MainE2EWorkflowRun> => {
   const matching = runs.filter((run) => run.head_sha === expectedHeadSha);
   if (matching.length === 0) throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
-  const canonical = matching.filter(
-    (run) => run.path === expectedWorkflowPath && run.event === 'push' && run.head_branch === 'main'
-  );
+  const canonical = matching.filter(isCanonicalMainRun);
   if (canonical.length === 0) throw contractError('PROMOTE_MAIN_E2E_REJECTED');
   const runIds = new Set(canonical.map((run) => run.id).filter((id): id is number => Boolean(id)));
   if (runIds.size !== 1 || canonical.some((run) => !run.id))
@@ -97,22 +106,31 @@ export const selectCanonicalMainRun = (
   const latest = [...canonical].sort(
     (left, right) => (right.run_attempt ?? 0) - (left.run_attempt ?? 0)
   )[0];
-  if (
-    !latest ||
-    !Number.isSafeInteger(latest.id) ||
-    (latest.id ?? 0) < 1 ||
-    !Number.isSafeInteger(latest.run_attempt) ||
-    (latest.run_attempt ?? 0) < 1 ||
-    latest.path !== expectedWorkflowPath ||
-    latest.event !== 'push' ||
-    latest.head_branch !== 'main'
-  )
+  if (!hasValidRunIdentity(latest) || !latest || !isCanonicalMainRun(latest))
     throw contractError('PROMOTE_MAIN_E2E_REJECTED');
   if (latest.status !== 'completed' || !latest.conclusion)
     throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
   if (latest.conclusion !== 'success') throw contractError('PROMOTE_MAIN_E2E_REJECTED');
   return latest as Required<MainE2EWorkflowRun>;
 };
+
+const matchesCanonicalEvidence = (
+  evidence: AppE2EEvidence,
+  run: Required<MainE2EWorkflowRun>,
+  expectedHeadSha: string
+): boolean =>
+  evidence.workflow === 'App E2E' &&
+  evidence.event === 'push' &&
+  evidence.ref === 'refs/heads/main' &&
+  evidence.branch === 'main' &&
+  evidence.headSha === expectedHeadSha &&
+  evidence.run.id === String(run.id) &&
+  evidence.run.attempt === run.run_attempt &&
+  evidence.result === 'success' &&
+  evidence.testOutcome === 'success' &&
+  evidence.evidenceClass === 'canonical-main' &&
+  evidence.subject.kind === 'local-app-service-stack' &&
+  evidence.subject.containerArtifactVerified === false;
 
 export const selectEvidenceArtifact = (
   artifacts: readonly MainE2EArtifact[],
@@ -149,24 +167,20 @@ export const validateCanonicalMainEvidence = (
   expectedHeadSha: string
 ): AppE2EEvidence => {
   const evidence = parseAppE2EEvidence(value);
-  if (
-    !evidence ||
-    evidence.workflow !== 'App E2E' ||
-    evidence.event !== 'push' ||
-    evidence.ref !== 'refs/heads/main' ||
-    evidence.branch !== 'main' ||
-    evidence.headSha !== expectedHeadSha ||
-    evidence.run.id !== String(run.id) ||
-    evidence.run.attempt !== run.run_attempt ||
-    evidence.result !== 'success' ||
-    evidence.testOutcome !== 'success' ||
-    evidence.evidenceClass !== 'canonical-main' ||
-    evidence.subject.kind !== 'local-app-service-stack' ||
-    evidence.subject.containerArtifactVerified !== false
-  )
+  if (!evidence || !matchesCanonicalEvidence(evidence, run, expectedHeadSha))
     throw contractError('PROMOTE_MAIN_E2E_REJECTED');
   return evidence;
 };
+
+const isCurrentSuccessfulSelection = (
+  current: MainE2EWorkflowRun,
+  run: Required<MainE2EWorkflowRun>,
+  expectedHeadSha: string
+): boolean =>
+  current.id === run.id &&
+  current.run_attempt === run.run_attempt &&
+  isTerminalSuccessfulRun(current) &&
+  current.head_sha === expectedHeadSha;
 
 export const verifyMainE2EEvidence = (
   expectedHeadSha: string,
@@ -198,13 +212,7 @@ export const verifyMainE2EEvidence = (
   if (currentSelection.id !== run.id || currentSelection.run_attempt !== run.run_attempt)
     throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
   const current = readLookup(() => dependencies.readWorkflowRun(run.id));
-  if (
-    current.id !== run.id ||
-    current.run_attempt !== run.run_attempt ||
-    current.status !== 'completed' ||
-    current.conclusion !== 'success' ||
-    current.head_sha !== expectedHeadSha
-  )
+  if (!isCurrentSuccessfulSelection(current, run, expectedHeadSha))
     throw contractError('PROMOTE_MAIN_E2E_NOT_READY');
   return evidence;
 };

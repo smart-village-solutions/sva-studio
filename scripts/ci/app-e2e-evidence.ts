@@ -33,6 +33,86 @@ const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
   );
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+
+const hasValidRun = (value: unknown): value is AppE2EEvidence['run'] =>
+  isRecord(value) &&
+  hasExactKeys(value, ['attempt', 'id']) &&
+  typeof value.id === 'string' &&
+  typeof value.attempt === 'number';
+
+const hasValidSubject = (value: unknown): value is AppE2EEvidence['subject'] =>
+  isRecord(value) &&
+  hasExactKeys(value, ['app', 'containerArtifactVerified', 'kind', 'services']) &&
+  value.kind === 'local-app-service-stack' &&
+  value.app === 'sva-studio-react' &&
+  value.containerArtifactVerified === false &&
+  Array.isArray(value.services) &&
+  value.services.join(',') === 'redis,loki,otel-collector,promtail';
+
+const hasValidPrimitiveFields = (
+  candidate: Partial<AppE2EEvidence>
+): candidate is Partial<AppE2EEvidence> & {
+  workflow: string;
+  event: string;
+  ref: string;
+  branch: string;
+  headSha: string;
+  result: string;
+  testOutcome: string;
+  evidenceClass: string;
+} =>
+  typeof candidate.workflow === 'string' &&
+  typeof candidate.event === 'string' &&
+  typeof candidate.ref === 'string' &&
+  typeof candidate.branch === 'string' &&
+  typeof candidate.headSha === 'string' &&
+  typeof candidate.result === 'string' &&
+  typeof candidate.testOutcome === 'string' &&
+  typeof candidate.evidenceClass === 'string';
+
+const validateSourceIdentity = (input: {
+  workflow: string;
+  event: string;
+  ref: string;
+  branch: string;
+  headSha: string;
+}): void => {
+  if (input.workflow !== 'App E2E') throw new Error('Ungültiger E2E-Workflow.');
+  if (!['push', 'schedule', 'workflow_dispatch'].includes(input.event))
+    throw new Error('Ungültiges E2E-Event.');
+  if (!refPattern.test(input.ref) || input.ref.includes('..')) throw new Error('Ungültiger Ref.');
+  if (!branchPattern.test(input.branch) || input.branch.includes('..'))
+    throw new Error('Ungültiger Branch.');
+  if (!shaPattern.test(input.headSha)) throw new Error('Ungültiges Head-SHA.');
+};
+
+const validateRunIdentity = (runId: string, runAttempt: number): void => {
+  if (!/^\d+$/u.test(runId)) throw new Error('Ungültige Run-ID.');
+  if (!Number.isSafeInteger(runAttempt) || runAttempt < 1)
+    throw new Error('Ungültiger Run-Attempt.');
+};
+
+const normalizeOutcome = (
+  result: string,
+  rawTestOutcome: string
+): Pick<AppE2EEvidence, 'result' | 'testOutcome'> => {
+  if (!['success', 'failure', 'cancelled'].includes(result))
+    throw new Error('Ungültiges Ergebnis.');
+  if (!['success', 'failure', 'cancelled', 'skipped', ''].includes(rawTestOutcome))
+    throw new Error('Ungültiges Testergebnis.');
+  const testOutcome =
+    rawTestOutcome === '' || rawTestOutcome === 'skipped'
+      ? 'not-run'
+      : (rawTestOutcome as AppE2EEvidence['testOutcome']);
+  if (result === 'success' && testOutcome !== 'success')
+    throw new Error('Erfolgreiches Job-Ergebnis ohne erfolgreichen E2E-Test.');
+  if (result === 'failure' && testOutcome === 'cancelled')
+    throw new Error('Fehlgeschlagenes Job-Ergebnis mit abgebrochenem E2E-Test.');
+  return { result: result as AppE2EEvidence['result'], testOutcome };
+};
+
 export const buildAppE2EEvidence = (input: {
   workflow: string;
   event: string;
@@ -44,31 +124,11 @@ export const buildAppE2EEvidence = (input: {
   result: string;
   testOutcome: string;
 }): AppE2EEvidence => {
-  if (input.workflow !== 'App E2E') throw new Error('Ungültiger E2E-Workflow.');
-  if (!['push', 'schedule', 'workflow_dispatch'].includes(input.event))
-    throw new Error('Ungültiges E2E-Event.');
-  if (!refPattern.test(input.ref) || input.ref.includes('..')) throw new Error('Ungültiger Ref.');
-  if (!branchPattern.test(input.branch) || input.branch.includes('..'))
-    throw new Error('Ungültiger Branch.');
-  if (!shaPattern.test(input.headSha)) throw new Error('Ungültiges Head-SHA.');
-  if (!/^\d+$/u.test(input.runId)) throw new Error('Ungültige Run-ID.');
-  if (!Number.isSafeInteger(input.runAttempt) || input.runAttempt < 1)
-    throw new Error('Ungültiger Run-Attempt.');
-  if (!['success', 'failure', 'cancelled'].includes(input.result))
-    throw new Error('Ungültiges Ergebnis.');
-  if (!['success', 'failure', 'cancelled', 'skipped', ''].includes(input.testOutcome))
-    throw new Error('Ungültiges Testergebnis.');
-
+  validateSourceIdentity(input);
+  validateRunIdentity(input.runId, input.runAttempt);
+  const outcome = normalizeOutcome(input.result, input.testOutcome);
   const canonicalMain =
     input.event === 'push' && input.ref === 'refs/heads/main' && input.branch === 'main';
-  const testOutcome =
-    input.testOutcome === '' || input.testOutcome === 'skipped'
-      ? 'not-run'
-      : (input.testOutcome as AppE2EEvidence['testOutcome']);
-  if (input.result === 'success' && testOutcome !== 'success')
-    throw new Error('Erfolgreiches Job-Ergebnis ohne erfolgreichen E2E-Test.');
-  if (input.result === 'failure' && testOutcome === 'cancelled')
-    throw new Error('Fehlgeschlagenes Job-Ergebnis mit abgebrochenem E2E-Test.');
   return {
     schemaVersion: 1,
     workflow: 'App E2E',
@@ -77,8 +137,8 @@ export const buildAppE2EEvidence = (input: {
     branch: input.branch,
     headSha: input.headSha,
     run: { id: input.runId, attempt: input.runAttempt },
-    result: input.result as AppE2EEvidence['result'],
-    testOutcome,
+    result: outcome.result,
+    testOutcome: outcome.testOutcome,
     evidenceClass: canonicalMain ? 'canonical-main' : 'diagnostic',
     subject: {
       kind: 'local-app-service-stack',
@@ -90,7 +150,7 @@ export const buildAppE2EEvidence = (input: {
 };
 
 export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  if (!isRecord(value)) return null;
   if (
     !hasExactKeys(value, [
       'branch',
@@ -110,35 +170,12 @@ export const parseAppE2EEvidence = (value: unknown): AppE2EEvidence | null => {
   const candidate = value as Partial<AppE2EEvidence>;
   if (
     candidate.schemaVersion !== 1 ||
-    !candidate.run ||
-    typeof candidate.run !== 'object' ||
-    Array.isArray(candidate.run) ||
-    !hasExactKeys(candidate.run, ['attempt', 'id']) ||
-    !candidate.subject ||
-    typeof candidate.subject !== 'object' ||
-    Array.isArray(candidate.subject) ||
-    !hasExactKeys(candidate.subject, ['app', 'containerArtifactVerified', 'kind', 'services']) ||
-    candidate.subject.kind !== 'local-app-service-stack' ||
-    candidate.subject.app !== 'sva-studio-react' ||
-    candidate.subject.containerArtifactVerified !== false ||
-    !Array.isArray(candidate.subject.services) ||
-    candidate.subject.services.join(',') !== 'redis,loki,otel-collector,promtail' ||
+    !hasValidRun(candidate.run) ||
+    !hasValidSubject(candidate.subject) ||
     !['canonical-main', 'diagnostic'].includes(candidate.evidenceClass ?? '')
   )
     return null;
-  if (
-    typeof candidate.workflow !== 'string' ||
-    typeof candidate.event !== 'string' ||
-    typeof candidate.ref !== 'string' ||
-    typeof candidate.branch !== 'string' ||
-    typeof candidate.headSha !== 'string' ||
-    typeof candidate.run.id !== 'string' ||
-    typeof candidate.run.attempt !== 'number' ||
-    typeof candidate.result !== 'string' ||
-    typeof candidate.testOutcome !== 'string' ||
-    typeof candidate.evidenceClass !== 'string'
-  )
-    return null;
+  if (!hasValidPrimitiveFields(candidate)) return null;
   try {
     const evidence = buildAppE2EEvidence({
       workflow: candidate.workflow,

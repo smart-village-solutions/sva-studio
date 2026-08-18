@@ -44,6 +44,9 @@ describe('App E2E workflow contract', () => {
   });
 
   it('retains diagnostics and finalizes the terminal job result independently', () => {
+    const setupNode = workflow.indexOf('uses: actions/setup-node@v6');
+    const firstTypeScriptController = workflow.indexOf('node --experimental-strip-types');
+
     expect(workflow).toContain(
       'name: app-e2e-report-${{ github.run_id }}-${{ github.run_attempt }}'
     );
@@ -55,5 +58,14 @@ describe('App E2E workflow contract', () => {
     expect(workflow).toContain(
       'name: app-e2e-evidence-${{ github.run_id }}-${{ github.run_attempt }}'
     );
+    expect(workflow).toContain(
+      'run: node --experimental-strip-types scripts/ci/write-app-e2e-evidence.ts'
+    );
+    expect(workflow).toMatch(
+      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.nvmrc/u
+    );
+    expect(setupNode).toBeGreaterThanOrEqual(0);
+    expect(firstTypeScriptController).toBeGreaterThan(setupNode);
+    expect(workflow).not.toMatch(/run: node (?!--experimental-strip-types)[^\n]*\.ts/u);
   });
 });

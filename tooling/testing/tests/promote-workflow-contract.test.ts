@@ -206,15 +206,33 @@ describe('Promote workflow contract', () => {
   it('publishes one redacted promote evidence contract after every terminal outcome', () => {
     const writer = workflow.indexOf('write redacted promote evidence');
     const upload = workflow.indexOf('upload redacted promote evidence');
+    const setupNode = workflow.indexOf('uses: actions/setup-node@v6');
+    const firstTypeScriptController = workflow.indexOf('node --experimental-strip-types');
     expect(writer).toBeGreaterThan(workflow.indexOf('- name: deploy'));
     expect(upload).toBeGreaterThan(writer);
     expect(workflow).toMatch(
       /- name: write redacted promote evidence\n(?:.*\n){0,3}\s+if: always\(\)/u
     );
     expect(workflow).toMatch(/- name: upload redacted promote evidence\n\s+if: always\(\)/u);
-    expect(workflow).toContain('run: node "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"');
+    expect(workflow).toContain(
+      'run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"'
+    );
+    expect(workflow).not.toMatch(/node (?!--experimental-strip-types)[^\n]*\.ts/u);
     expect(workflow).toContain('ref: ${{ github.workflow_sha }}');
-    expect(workflow).toContain('node-version-file: .nvmrc');
+    expect(workflow).toMatch(
+      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.nvmrc/u
+    );
+    expect(setupNode).toBeGreaterThanOrEqual(0);
+    expect(firstTypeScriptController).toBeGreaterThan(setupNode);
+    for (const controllerModule of [
+      'promote-evidence-contract.ts',
+      'promote-evidence-io.ts',
+      'promote-evidence-types.ts',
+    ]) {
+      expect(workflow).toContain(
+        `cp scripts/ci/${controllerModule} "\${PROMOTE_CONTROLLER_DIR}/${controllerModule}"`
+      );
+    }
     expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
       workflow.indexOf('validate inputs')
     );
@@ -224,7 +242,7 @@ describe('Promote workflow contract', () => {
     expect(workflow.indexOf('setup pnpm workspace for promoted source')).toBeGreaterThan(
       workflow.indexOf('bind executor source to promoted change head')
     );
-    expect(workflow).toContain('PROMOTE_PARITY_DIGEST_MISMATCH');
+    expect(workflow).not.toContain('record-promote-failure.ts" PROMOTE_PARITY_DIGEST_MISMATCH');
     expect(workflow).toContain('PROMOTE_LIVE_DIGEST_MISMATCH');
     expect(workflow).toContain(
       'runtime-env.ts smoke studio 2>"${RUNNER_TEMP}/runtime-smoke.stderr"'

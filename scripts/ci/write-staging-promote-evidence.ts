@@ -42,56 +42,56 @@ const parseMainE2E = (serialized: string | undefined): AppE2EEvidence | null => 
   }
 };
 
-export const buildStagingPromoteEvidence = (
-  env: NodeJS.ProcessEnv,
-  completedAt = new Date().toISOString()
-): StagingPromoteEvidence => {
-  const promoteMode = required(env.PROMOTE_MODE, 'PROMOTE_MODE');
-  if (promoteMode !== 'standard' && promoteMode !== 'recovery') {
-    throw new Error('PROMOTE_MODE muss standard oder recovery sein.');
-  }
-  const sourceSha = required(env.CHANGE_HEAD_SHA, 'CHANGE_HEAD_SHA');
-  if (!shaPattern.test(sourceSha)) throw new Error('CHANGE_HEAD_SHA ist ungültig.');
-  const requestedGateMode = env.MAIN_E2E_GATE_MODE?.trim();
-  const gateMode =
-    requestedGateMode === 'shadow' || requestedGateMode === 'enforce'
-      ? requestedGateMode
-      : 'disabled';
+type PromoteMode = 'standard' | 'recovery';
+type MainE2EGateMode = 'disabled' | 'shadow' | 'enforce';
 
-  const serializedMainE2E = env.MAIN_E2E_ATTESTATION;
-  const parsedMainE2E = parseMainE2E(serializedMainE2E);
-  if (promoteMode === 'recovery' && serializedMainE2E?.trim()) {
+const parsePromoteMode = (value: string | undefined): PromoteMode => {
+  const mode = required(value, 'PROMOTE_MODE');
+  if (mode === 'standard' || mode === 'recovery') return mode;
+  throw new Error('PROMOTE_MODE muss standard oder recovery sein.');
+};
+
+const parseGateMode = (value: string | undefined): MainE2EGateMode => {
+  const mode = value?.trim();
+  return mode === 'shadow' || mode === 'enforce' ? mode : 'disabled';
+};
+
+const validateMainE2E = (
+  serialized: string | undefined,
+  parsed: AppE2EEvidence | null,
+  promoteMode: PromoteMode,
+  gateMode: MainE2EGateMode,
+  sourceSha: string
+): void => {
+  if (promoteMode === 'recovery' && serialized?.trim())
     throw new Error('Recovery-Staging darf keine MAIN_E2E_ATTESTATION übernehmen.');
-  }
-  if (serializedMainE2E?.trim() && !parsedMainE2E) {
-    throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
-  }
-  if (promoteMode === 'standard' && gateMode === 'enforce' && !parsedMainE2E) {
+  if (serialized?.trim() && !parsed) throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
+  if (promoteMode === 'standard' && gateMode === 'enforce' && !parsed)
     throw new Error('Enforced Standard-Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
-  }
-  if (
-    parsedMainE2E &&
-    (parsedMainE2E.evidenceClass !== 'canonical-main' ||
-      parsedMainE2E.result !== 'success' ||
-      parsedMainE2E.testOutcome !== 'success' ||
-      parsedMainE2E.headSha !== sourceSha)
-  ) {
+  if (!parsed) return;
+  const canonicalSuccess =
+    parsed.evidenceClass === 'canonical-main' &&
+    parsed.result === 'success' &&
+    parsed.testOutcome === 'success' &&
+    parsed.headSha === sourceSha;
+  if (!canonicalSuccess)
     throw new Error('MAIN_E2E_ATTESTATION passt nicht zum erfolgreichen Main-Push.');
-  }
+};
 
+const buildEvidenceBase = (
+  env: NodeJS.ProcessEnv,
+  completedAt: string
+): StagingPromoteEvidenceBase => {
   const stagingMutation = required(env.STAGING_MUTATION, 'STAGING_MUTATION');
-  if (stagingMutation !== 'true' && stagingMutation !== 'false') {
+  if (stagingMutation !== 'true' && stagingMutation !== 'false')
     throw new Error('STAGING_MUTATION muss true oder false sein.');
-  }
-
   const digest = required(env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   if (!digestPattern.test(digest)) throw new Error('DEPLOY_IMAGE_DIGEST ist ungültig.');
   const workflowRunId = required(env.GITHUB_RUN_ID, 'GITHUB_RUN_ID');
   if (!runIdPattern.test(workflowRunId)) throw new Error('GITHUB_RUN_ID ist ungültig.');
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u.test(completedAt))
     throw new Error('completedAt ist ungültig.');
-
-  const base: StagingPromoteEvidenceBase = {
+  return {
     completedAt,
     digest,
     environment: 'staging',
@@ -99,6 +99,21 @@ export const buildStagingPromoteEvidence = (
     postflight: 'passed',
     workflowRunId,
   };
+};
+
+export const buildStagingPromoteEvidence = (
+  env: NodeJS.ProcessEnv,
+  completedAt = new Date().toISOString()
+): StagingPromoteEvidence => {
+  const promoteMode = parsePromoteMode(env.PROMOTE_MODE);
+  const sourceSha = required(env.CHANGE_HEAD_SHA, 'CHANGE_HEAD_SHA');
+  if (!shaPattern.test(sourceSha)) throw new Error('CHANGE_HEAD_SHA ist ungültig.');
+  const gateMode = parseGateMode(env.MAIN_E2E_GATE_MODE);
+
+  const serializedMainE2E = env.MAIN_E2E_ATTESTATION;
+  const parsedMainE2E = parseMainE2E(serializedMainE2E);
+  validateMainE2E(serializedMainE2E, parsedMainE2E, promoteMode, gateMode, sourceSha);
+  const base = buildEvidenceBase(env, completedAt);
   if (promoteMode !== 'standard' || gateMode === 'disabled' || !parsedMainE2E) return base;
   return { ...base, schemaVersion: 2, sourceSha, mainE2E: parsedMainE2E };
 };

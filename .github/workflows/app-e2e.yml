@@ -104,7 +104,7 @@ jobs:
         env:
           APP_E2E_RESULT: ${{ needs.e2e.result }}
           APP_E2E_TEST_OUTCOME: ${{ needs.e2e.outputs.test-outcome }}
-        run: node scripts/ci/write-app-e2e-evidence.ts
+        run: node --experimental-strip-types scripts/ci/write-app-e2e-evidence.ts
 
       - name: Upload App E2E evidence
         if: always()

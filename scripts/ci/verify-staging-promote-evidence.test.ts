@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 
 import { describe, expect, it, vi } from 'vitest';
@@ -6,15 +7,18 @@ import { describe, expect, it, vi } from 'vitest';
 import { buildAppE2EEvidence } from './app-e2e-evidence.ts';
 import {
   buildArtifactDownloadArgs,
+  classifyStagingParityError,
   isSuccessfulPromoteWorkflowRun,
   isSuccessfulStagingBackupWorkflowRun,
   listArtifacts,
   matchesSuccessfulStagingBackupEvidence,
   matchesSuccessfulStagingBackupEvidenceSet,
   matchesSuccessfulStagingEvidence,
+  recordStagingParityError,
   requiresStagingParity,
   selectEvidenceJsonFile,
   selectStagingBackupEvidenceJsonFiles,
+  StagingParityNotFoundError,
 } from './verify-staging-promote-evidence.ts';
 import { buildStagingPromoteEvidence } from './write-staging-promote-evidence.ts';
 
@@ -61,6 +65,50 @@ const stagingBackupWorkflow = readFileSync(
 );
 
 describe('staging parity evidence', () => {
+  it('distinguishes an expected parity miss from unexpected internal failures', () => {
+    expect(classifyStagingParityError(new StagingParityNotFoundError())).toBe(
+      'PROMOTE_PARITY_DIGEST_MISMATCH'
+    );
+    expect(
+      classifyStagingParityError(new Error('person@example.test\nhttps://internal.test'))
+    ).toBe('PROMOTE_INTERNAL_ERROR');
+    expect(classifyStagingParityError(JSON.parse('{"secret":"sentinel"}'))).toBe(
+      'PROMOTE_INTERNAL_ERROR'
+    );
+  });
+
+  it.each([
+    [new StagingParityNotFoundError(), 'PROMOTE_PARITY_DIGEST_MISMATCH'],
+    [new Error('person@example.test\nhttps://internal.test'), 'PROMOTE_INTERNAL_ERROR'],
+  ])('records only the canonical static failure for %s', (error, expectedCode) => {
+    const directory = mkdtempSync(resolve(tmpdir(), 'staging-parity-failure-'));
+    const failurePath = resolve(directory, 'failure.json');
+    let stderr = '';
+    try {
+      recordStagingParityError(
+        error,
+        { PROMOTE_FAILURE_PATH: failurePath },
+        {
+          write: (chunk) => {
+            stderr += String(chunk);
+            return true;
+          },
+        }
+      );
+      expect(JSON.parse(readFileSync(failurePath, 'utf8'))).toMatchObject({
+        code: expectedCode,
+        environment: 'prod',
+        phase: 'staging-parity',
+      });
+      expect(stderr).toBe(`${expectedCode}\n`);
+      expect(`${stderr}${readFileSync(failurePath, 'utf8')}`).not.toMatch(
+        /person@example\.test|internal\.test/u
+      );
+    } finally {
+      rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
   it.each([
     ['staging', stagingBackupWorkflow],
     ['production', productionBackupWorkflow],

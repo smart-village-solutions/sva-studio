@@ -6,6 +6,11 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { parseAppE2EEvidence } from './app-e2e-evidence.ts';
+import {
+  buildPromoteFailure,
+  writePromoteFailureRecord,
+  type PromoteErrorCode,
+} from './promote-result.ts';
 type Artifact = { expired?: boolean; id?: number; name?: string; workflow_run?: { id?: number } };
 type ArtifactPage = { artifacts?: Artifact[]; total_count?: number };
 type StagingEvidence = {
@@ -23,6 +28,27 @@ type StagingEvidence = {
   workflowRunId?: string;
 };
 type WorkflowRun = { conclusion?: string; path?: string };
+type EvidenceKind = 'promote' | 'backup-drill';
+
+export class StagingParityNotFoundError extends Error {}
+
+export const classifyStagingParityError = (error: unknown): PromoteErrorCode =>
+  error instanceof StagingParityNotFoundError
+    ? 'PROMOTE_PARITY_DIGEST_MISMATCH'
+    : 'PROMOTE_INTERNAL_ERROR';
+
+export const recordStagingParityError = (
+  error: unknown,
+  env: NodeJS.ProcessEnv = process.env,
+  stderr: Pick<NodeJS.WriteStream, 'write'> = process.stderr
+): void => {
+  const code = classifyStagingParityError(error);
+  writePromoteFailureRecord(
+    buildPromoteFailure({ code, environment: 'prod', phase: 'staging-parity' }),
+    env.PROMOTE_FAILURE_PATH
+  );
+  stderr.write(`${code}\n`);
+};
 
 const digestSuffixPattern = /@sha256:[a-f0-9]{64}$/u;
 const completedAtPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
@@ -69,17 +95,26 @@ export const matchesSuccessfulStagingEvidence = (
   const attested = hasExactKeys(evidence, attestedKeys);
   if (!legacy && !attested) return false;
   const candidate = evidence as StagingEvidence;
-  const commonValid =
-    typeof candidate.completedAt === 'string' &&
-    completedAtPattern.test(candidate.completedAt) &&
-    typeof candidate.workflowRunId === 'string' &&
-    /^\d+$/u.test(candidate.workflowRunId) &&
-    candidate.environment === 'staging' &&
-    (candidate.mutation === 'completed' || candidate.mutation === 'not-run') &&
-    candidate.postflight === 'passed' &&
-    candidate.digest === targetDigest;
+  const commonValid = isSuccessfulStagingEvidenceBase(candidate, targetDigest);
   if (!commonValid) return false;
   if (legacy) return mainE2EGateMode !== 'enforce';
+  return matchesAttestedMainE2E(candidate, expectedSourceSha);
+};
+
+const isSuccessfulStagingEvidenceBase = (
+  candidate: StagingEvidence,
+  targetDigest: string
+): boolean =>
+  typeof candidate.completedAt === 'string' &&
+  completedAtPattern.test(candidate.completedAt) &&
+  typeof candidate.workflowRunId === 'string' &&
+  /^\d+$/u.test(candidate.workflowRunId) &&
+  candidate.environment === 'staging' &&
+  (candidate.mutation === 'completed' || candidate.mutation === 'not-run') &&
+  candidate.postflight === 'passed' &&
+  candidate.digest === targetDigest;
+
+const matchesAttestedMainE2E = (candidate: StagingEvidence, expectedSourceSha: string): boolean => {
   const mainE2E = parseAppE2EEvidence(candidate.mainE2E);
   return (
     candidate.schemaVersion === 2 &&
@@ -153,11 +188,54 @@ const required = (value: string | undefined, name: string) => {
   if (!trimmed) throw new Error(`${name} darf nicht leer sein.`);
   return trimmed;
 };
-const main = () => {
-  const evidenceKind = process.argv[2] ?? 'promote';
-  if (evidenceKind !== 'promote' && evidenceKind !== 'backup-drill') {
-    throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
+
+const parseEvidenceKind = (value: string | undefined): EvidenceKind => {
+  const kind = value ?? 'promote';
+  if (kind === 'promote' || kind === 'backup-drill') return kind;
+  throw new Error('Der Evidenztyp muss promote oder backup-drill sein.');
+};
+
+const artifactPrefix = (kind: EvidenceKind): string =>
+  kind === 'promote' ? 'promote-staging-parity-' : 'staging-backup-drill-';
+
+const isExpectedWorkflowRun = (kind: EvidenceKind, run: WorkflowRun): boolean =>
+  kind === 'promote'
+    ? isSuccessfulPromoteWorkflowRun(run)
+    : isSuccessfulStagingBackupWorkflowRun(run);
+
+const readArchiveEvidence = (zipPath: string, entry: string): StagingEvidence =>
+  JSON.parse(
+    execFileSync('unzip', ['-p', zipPath, entry], { encoding: 'utf8' })
+  ) as StagingEvidence;
+
+const archiveMatches = (
+  kind: EvidenceKind,
+  archiveEntries: string,
+  zipPath: string,
+  targetDigest: string,
+  expectedSourceSha: string | undefined,
+  mainE2EGateMode: 'disabled' | 'shadow' | 'enforce'
+): boolean => {
+  if (kind === 'promote') {
+    const evidenceFile = selectEvidenceJsonFile(archiveEntries);
+    if (!evidenceFile || !expectedSourceSha) return false;
+    return matchesSuccessfulStagingEvidence(
+      readArchiveEvidence(zipPath, evidenceFile),
+      targetDigest,
+      expectedSourceSha,
+      mainE2EGateMode
+    );
   }
+  const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
+  if (!evidenceFiles) return false;
+  return matchesSuccessfulStagingBackupEvidenceSet(
+    evidenceFiles.map((entry) => readArchiveEvidence(zipPath, entry)),
+    targetDigest
+  );
+};
+
+const main = () => {
+  const evidenceKind = parseEvidenceKind(process.argv[2]);
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
   if (!requiresStagingParity(targetImage, process.env.PREVIOUS_LIVE_IMAGE)) return;
@@ -181,11 +259,7 @@ const main = () => {
       JSON.parse(api(`repos/${repo}/actions/artifacts?per_page=100&page=${page}`)) as ArtifactPage
   ).filter(
     (artifact) =>
-      !artifact.expired &&
-      artifact.id &&
-      artifact.name?.startsWith(
-        evidenceKind === 'promote' ? 'promote-staging-parity-' : 'staging-backup-drill-'
-      )
+      !artifact.expired && artifact.id && artifact.name?.startsWith(artifactPrefix(evidenceKind))
   );
   const workdir = mkdtempSync(resolve(tmpdir(), 'sva-staging-parity-'));
   try {
@@ -196,12 +270,7 @@ const main = () => {
       const workflowRun = JSON.parse(
         api(`repos/${repo}/actions/runs/${workflowRunId}`)
       ) as WorkflowRun;
-      if (
-        evidenceKind === 'promote'
-          ? !isSuccessfulPromoteWorkflowRun(workflowRun)
-          : !isSuccessfulStagingBackupWorkflowRun(workflowRun)
-      )
-        continue;
+      if (!isExpectedWorkflowRun(evidenceKind, workflowRun)) continue;
       const zipPath = resolve(workdir, `${artifactId}.zip`);
       writeFileSync(
         zipPath,
@@ -210,35 +279,19 @@ const main = () => {
         })
       );
       const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
-      if (evidenceKind === 'promote') {
-        const evidenceFile = selectEvidenceJsonFile(archiveEntries);
-        if (!evidenceFile) continue;
-        const evidence = JSON.parse(
-          execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
-        ) as StagingEvidence;
-        if (
-          expectedSourceSha &&
-          matchesSuccessfulStagingEvidence(
-            evidence,
-            targetDigest,
-            expectedSourceSha,
-            mainE2EGateMode
-          )
+      if (
+        archiveMatches(
+          evidenceKind,
+          archiveEntries,
+          zipPath,
+          targetDigest,
+          expectedSourceSha,
+          mainE2EGateMode
         )
-          return;
-        continue;
-      }
-      const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
-      if (!evidenceFiles) continue;
-      const evidence = evidenceFiles.map(
-        (evidenceFile) =>
-          JSON.parse(
-            execFileSync('unzip', ['-p', zipPath, evidenceFile], { encoding: 'utf8' })
-          ) as StagingEvidence
-      );
-      if (matchesSuccessfulStagingBackupEvidenceSet(evidence, targetDigest)) return;
+      )
+        return;
     }
-    throw new Error(`Kein erfolgreicher Staging-Paritätsnachweis für ${targetDigest} gefunden.`);
+    throw new StagingParityNotFoundError();
   } finally {
     rmSync(workdir, { force: true, recursive: true });
   }
@@ -247,8 +300,8 @@ const main = () => {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     main();
-  } catch {
-    process.stderr.write('PROMOTE_PARITY_DIGEST_MISMATCH\n');
+  } catch (error) {
+    recordStagingParityError(error);
     process.exitCode = 1;
   }
 }

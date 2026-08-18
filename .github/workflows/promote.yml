@@ -87,10 +87,15 @@ jobs:
     name: deploy ${{ inputs.environment }}
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    env:
-      PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
-      PROMOTE_CONTROLLER_DIR: ${{ runner.temp }}/promote-evidence-controller
     steps:
+      - name: initialize promote controller paths
+        run: |
+          set -euo pipefail
+          {
+            echo "PROMOTE_FAILURE_PATH=${RUNNER_TEMP}/promote-terminal-failure.json"
+            echo "PROMOTE_CONTROLLER_DIR=${RUNNER_TEMP}/promote-evidence-controller"
+          } >> "${GITHUB_ENV}"
+
       - name: checkout workflow controller revision
         uses: actions/checkout@v7
         with:

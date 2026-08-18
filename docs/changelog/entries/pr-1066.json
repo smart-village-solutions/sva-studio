@@ -1,0 +1,4 @@
+{
+  "prNumber": 1066,
+  "body": "Geschützte Rollouts können nach dem Start des neuen Main-Testnachweises wieder zuverlässig ausgeführt werden.\n\n- Der Promote-Workflow initialisiert seine temporären Evidenzpfade erst auf dem GitHub-Runner.\n- Ein Regressionstest verhindert, dass nicht verfügbare Runner-Kontexte den Workflow künftig bereits vor dem Start ungültig machen."
+}

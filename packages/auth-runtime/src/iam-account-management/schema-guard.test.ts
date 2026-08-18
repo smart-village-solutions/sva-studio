@@ -5,6 +5,17 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('schema guard helpers', () => {
+  it('defines the canonical Graphile worker privilege checks', async () => {
+    const { GRAPHILE_WORKER_READINESS_SQL } = await import('./schema-guard.js');
+
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('app_can_enqueue');
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('app_cannot_create');
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_can_process');
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_functions_complete');
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_sequences_complete');
+    expect(GRAPHILE_WORKER_READINESS_SQL).toContain('worker_policies_complete');
+  });
+
   it('evaluates required checks from boolean-like rows and summarizes failures', async () => {
     const {
       CRITICAL_IAM_SCHEMA_GUARD_FIELDS,

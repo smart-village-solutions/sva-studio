@@ -1,5 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const containerName = `sva-graphile-contract-${process.pid}`;
 const adminPassword = 'contract-admin-password';
@@ -177,6 +179,33 @@ const enqueueContractJob = (port: string): void => {
   if (queuedCount !== '1') throw new Error(`graphile_contract_job_not_visible:${queuedCount}`);
 };
 
+const assertCanonicalWorkerReadiness = async (port: string): Promise<void> => {
+  const schemaGuardModule = (await import(
+    pathToFileURL(resolve('packages/auth-runtime/dist/iam-account-management/schema-guard.js')).href
+  )) as {
+    runGraphileWorkerReadinessForConnection(
+      config: Record<string, unknown>,
+      appDbUser: string,
+      workerDbUser: string
+    ): Promise<{ failedChecks: readonly string[]; ok: boolean }>;
+  };
+  const { runGraphileWorkerReadinessForConnection } = schemaGuardModule;
+  const report = await runGraphileWorkerReadinessForConnection(
+    {
+      database,
+      host: '127.0.0.1',
+      password: adminPassword,
+      port: Number.parseInt(port, 10),
+      user: 'postgres',
+    },
+    'sva_app',
+    'sva_job_worker'
+  );
+  if (!report.ok) {
+    throw new Error(`graphile_contract_readiness_failed:${report.failedChecks.join(',')}`);
+  }
+};
+
 const processContractJob = async (
   port: string
 ): Promise<{ pool: ContractPool; runner: ContractRunner }> => {
@@ -253,6 +282,7 @@ const main = async (): Promise<void> => {
   try {
     const port = startContractDatabase();
     migrateAndBootstrap(port);
+    await assertCanonicalWorkerReadiness(port);
     enqueueContractJob(port);
     ({ pool: workerPool, runner } = await processContractJob(port));
     assertAppRestrictions(port);

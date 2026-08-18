@@ -117,9 +117,6 @@ describe('bootstrap-entrypoint', () => {
     expect(sql).toContain(
       'CREATE POLICY sva_job_worker_access ON graphile_worker.%I TO %I USING (true) WITH CHECK (true)'
     );
-    expect(sql).toContain('worker_functions_complete');
-    expect(sql).toContain('worker_sequences_complete');
-    expect(sql).toContain('worker_policies_complete');
     expect(sql).not.toContain('BYPASSRLS');
   });
 
@@ -131,7 +128,6 @@ describe('bootstrap-entrypoint', () => {
     expect(sql).toContain(
       'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA graphile_worker TO "sva_job_worker";'
     );
-    expect(sql).toContain('worker_policies_complete');
   });
 
   it('backfills tenant_admin_client_id in bootstrap instance reconciliation SQL', () => {

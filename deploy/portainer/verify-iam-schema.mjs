@@ -1,5 +1,6 @@
 import {
   resolveExpectedGooseMigrationFromDirectory,
+  runGraphileWorkerReadinessForConnection,
   runIamDatabaseReadinessForConnection,
 } from '@sva/auth-runtime/schema-guard';
 
@@ -52,10 +53,15 @@ try {
   const expectedMigration = migrationsDirectory
     ? resolveExpectedGooseMigrationFromDirectory(migrationsDirectory)
     : resolveExpectedGooseMigrationFromDirectory();
-  const readiness = await runIamDatabaseReadinessForConnection(
-    buildClientConfig(),
-    expectedMigration
-  );
+  const clientConfig = buildClientConfig();
+  const [readiness, workerReadiness] = await Promise.all([
+    runIamDatabaseReadinessForConnection(clientConfig, expectedMigration),
+    runGraphileWorkerReadinessForConnection(
+      clientConfig,
+      process.env.APP_DB_USER?.trim() || 'sva_app',
+      process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker'
+    ),
+  ]);
   const failedSchemaObjects = readiness.schema.checks
     .filter((check) => !check.ok)
     .map(({ expectedMigration: migration, reasonCode, schemaObject }) => ({
@@ -68,15 +74,18 @@ try {
     expectedMigration: readiness.migration.expectedMigration,
     expectedMigrationVersion: readiness.migration.expectedVersion,
     failedSchemaObjects,
-    ok: readiness.ok,
+    failedWorkerChecks: workerReadiness.failedChecks,
+    ok: readiness.ok && workerReadiness.ok,
     reasonCode: !readiness.migration.ok
       ? 'migration_drift'
       : !readiness.schema.ok
         ? 'schema_drift'
-        : undefined,
+        : !workerReadiness.ok
+          ? 'worker_contract_drift'
+          : undefined,
   };
 
-  if (!readiness.ok) {
+  if (!result.ok) {
     process.stderr.write(`[iam-schema-readiness] failed ${JSON.stringify(result)}\n`);
     process.exitCode = 1;
   } else {

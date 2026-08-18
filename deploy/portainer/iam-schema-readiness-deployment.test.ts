@@ -30,6 +30,7 @@ describe('IAM schema readiness deployment contract', () => {
       expect(dockerfile).toContain('verify-iam-schema.mjs');
     }
     expect(verifier).toContain('@sva/auth-runtime/schema-guard');
+    expect(verifier).toContain('runGraphileWorkerReadinessForConnection');
     expect(verifier).not.toContain("from 'pg'");
     expect(verifier).not.toContain("to_regclass('iam.instance_waste_data_sources')");
   });

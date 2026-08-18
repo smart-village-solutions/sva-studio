@@ -1,12 +1,21 @@
 ## 0. Gemeinsame Blockreihenfolge und Wiederaufnahme
 
-- [ ] 0.1 A1 darf erst beginnen, wenn `harden-studio-promote-contract` 0.4 abgeschlossen ist und dessen generischer Evidenzvertrag auf dem gemeinsamen Branchstand verfügbar ist.
-- [ ] 0.2 Den Producer-Block A1 ausschließlich über 5.1 bis 5.4 liefern; bis zu dessen abgeschlossenem Checkpoint `promote.yml` nicht für E2E verändern.
-- [ ] 0.3 A1 erst abschließen, wenn der vollständige Main-E2E-Workflow, Evidenzvertrag, Workflow-/Tooling-Tests, beide strikten OpenSpec-Validierungen und der exakte HEAD nachgewiesen sind; danach A2 mit 6.1 und 6.2 freigeben.
+- [x] 0.1 A1 darf erst beginnen, wenn `harden-studio-promote-contract` 0.4 abgeschlossen ist und dessen generischer Evidenzvertrag auf dem gemeinsamen Branchstand verfügbar ist.
+- [x] 0.2 Den Producer-Block A1 ausschließlich über 5.1 bis 5.4 liefern; bis zu dessen abgeschlossenem Checkpoint `promote.yml` nicht für E2E verändern.
+- [x] 0.3 A1 erst abschließen, wenn der vollständige Main-E2E-Workflow, Evidenzvertrag, Workflow-/Tooling-Tests, beide strikten OpenSpec-Validierungen und der exakte HEAD nachgewiesen sind; danach A2 mit 6.1 und 6.2 freigeben.
 - [ ] 0.4 A2 erst abschließen, wenn der Staging-Consumer den H1-Vertrag wiederverwendet, alle ungültigen Evidenzklassen vor Backup und Mutation fail-closed ablehnt und der relevante Workflow-/Tooling-Gate-Pfad grün ist; danach ausschließlich 7.3 für Shadow und blockierende Aktivierung freigeben.
 - [ ] 0.5 A3 erst nach dokumentierter Event-/Branch-/SHA-/OCI-Parität blockierend aktivieren und anschließend 8.1 bis 8.5 abschließen; ein strukturell gültiges OpenSpec ersetzt keinen Workflow-, Staging- oder Live-Nachweis.
 
 **Wiederaufnahme:** Es ist immer nur ein Block aktiv. Ein teilweise bearbeiteter Task bleibt unchecked. Nach einer Unterbrechung zuerst `git status`, aktuellen Diff, HEAD und beide OpenSpec-Validierungen prüfen; dann beim ersten unchecked Task des aktiven Blocks fortsetzen und vorhandene Änderungen gegen dessen vollständigen Text verifizieren.
+
+### Kanonisches Checkpoint-Protokoll
+
+- **H1 – Promote-Evidenzfundament:** `inherited`; gemeinsamer Basis-HEAD: `197952faf95028ba2010937eaee18171f5f717a8`; der dort dokumentierte H1-Vertrag ist verfügbar.
+- **A1 – Main-E2E-Producer:** `completed`; Implementierungs-HEAD: `1defbf039ba10f89da75ea1f4b3e8f60092002c3`; Gates: `tooling-testing:test:unit` mit sechs expliziten Workflow-, PR-Gate-, Scope- und Evidenz-Testdateien (71 Tests), `pnpm exec tsc -p tsconfig.scripts.json --noEmit`, `pnpm nx run sva-studio-react:test:types`, `pnpm nx run tooling-testing:lint`, Prettier-Check, YAML-Parse, `pnpm check:file-placement`, Diff-Check sowie beide strikten OpenSpec-Validierungen grün; `.github/workflows/promote.yml` ist gegenüber dem gemeinsamen Basis-HEAD unverändert.
+- **A2 – Staging-Consumer:** `ready`; HEAD: keiner; Gates: keine; nächster Block: ausschließlich 6.1 und 6.2, unter Wiederverwendung des H1-Vertrags.
+- **A3 – Shadow und Aktivierung:** `blocked by A2`; HEAD: keiner; Gates: keine; nächster Block: keiner freigegeben.
+
+Dieses Protokoll wird nur beim Abschluss eines Blocks aktualisiert. Es muss dessen exakten Implementierungs-HEAD, die tatsächlich ausgeführten Gates, beide strikten OpenSpec-Validierungen und den explizit freigegebenen Folgeblock enthalten. `ready` oder `blocked` ist kein Implementierungsnachweis.
 
 ## 1. Baseline und CI-Verträge
 
@@ -39,10 +48,10 @@
 
 ## 5. Vollständiges E2E nach Main verlagern
 
-- [ ] 5.1 Den `pull_request`-Trigger aus dem App-E2E-Workflow und den E2E-Aufruf aus `pnpm test:pr` entfernen; keine alternative PR-Smoke-Suite oder E2E-Scope-Heuristik ergänzen.
-- [ ] 5.2 Den vollständigen App-E2E-Workflow genau einmal pro Push auf `main` ausführen; Nightly und manuelle Diagnose beibehalten, aber eindeutig als nicht releasefähige Evidenz klassifizieren.
-- [ ] 5.3 Maschinenlesbare Main-E2E-Evidenz mit Workflow, Event, Branch, Head-SHA, Run-ID, Attempt und terminalem Ergebnis erzeugen; lokale App-Prüfung und Containerartefakt-Nachweis ausdrücklich trennen.
-- [ ] 5.4 Workflow- und Tooling-Tests für keinen PR-E2E-Start, vollständigen Main-Scope, nicht releasefähige Nightly-/Manuell-Läufe, deterministische Fehler und nachvollziehbare Infrastruktur-Reruns ergänzen.
+- [x] 5.1 Den `pull_request`-Trigger aus dem App-E2E-Workflow und den E2E-Aufruf aus `pnpm test:pr` entfernen; keine alternative PR-Smoke-Suite oder E2E-Scope-Heuristik ergänzen.
+- [x] 5.2 Den vollständigen App-E2E-Workflow genau einmal pro Push auf `main` ausführen; Nightly und manuelle Diagnose beibehalten, aber eindeutig als nicht releasefähige Evidenz klassifizieren.
+- [x] 5.3 Maschinenlesbare Main-E2E-Evidenz mit Workflow, Event, Branch, Head-SHA, Run-ID, Attempt und terminalem Ergebnis erzeugen; lokale App-Prüfung und Containerartefakt-Nachweis ausdrücklich trennen.
+- [x] 5.4 Workflow- und Tooling-Tests für keinen PR-E2E-Start, vollständigen Main-Scope, nicht releasefähige Nightly-/Manuell-Läufe, deterministische Fehler und nachvollziehbare Infrastruktur-Reruns ergänzen.
 
 ## 6. Staging-Preflight, stabile Aggregatoren und Cache-Grenzen
 

@@ -12,6 +12,14 @@ const requiredEnvironmentValue = (name) => {
   return value;
 };
 
+const shouldVerifyWorkerContract = () => {
+  const verifierArguments = process.argv.slice(2);
+  if (verifierArguments.some((argument) => argument !== '--iam-only')) {
+    throw new Error('Ungültiges Argument für die IAM-Schema-Prüfung');
+  }
+  return !verifierArguments.includes('--iam-only');
+};
+
 const parsePort = (value) => {
   const port = Number.parseInt(value, 10);
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
@@ -48,20 +56,21 @@ const errorMetadata = (error) => {
 };
 
 try {
+  const verifyWorkerContract = shouldVerifyWorkerContract();
   const migrationsDirectory =
     process.env.MIGRATIONS_DIR?.trim() || process.env.SVA_MIGRATIONS_DIR?.trim();
   const expectedMigration = migrationsDirectory
     ? resolveExpectedGooseMigrationFromDirectory(migrationsDirectory)
     : resolveExpectedGooseMigrationFromDirectory();
   const clientConfig = buildClientConfig();
-  const [readiness, workerReadiness] = await Promise.all([
-    runIamDatabaseReadinessForConnection(clientConfig, expectedMigration),
-    runGraphileWorkerReadinessForConnection(
-      clientConfig,
-      process.env.APP_DB_USER?.trim() || 'sva_app',
-      process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker'
-    ),
-  ]);
+  const readiness = await runIamDatabaseReadinessForConnection(clientConfig, expectedMigration);
+  const workerReadiness = verifyWorkerContract
+    ? await runGraphileWorkerReadinessForConnection(
+        clientConfig,
+        process.env.APP_DB_USER?.trim() || 'sva_app',
+        process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker'
+      )
+    : { failedChecks: [], ok: true };
   const failedSchemaObjects = readiness.schema.checks
     .filter((check) => !check.ok)
     .map(({ expectedMigration: migration, reasonCode, schemaObject }) => ({

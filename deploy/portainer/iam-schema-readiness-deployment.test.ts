@@ -38,13 +38,16 @@ describe('IAM schema readiness deployment contract', () => {
   it('runs the verifier after migration and bootstrap and before app startup', () => {
     for (const entrypoint of migrateEntrypoints) {
       expect(entrypoint.indexOf('goosew.sh')).toBeLessThan(
-        entrypoint.indexOf('node ./verify-iam-schema.mjs')
+        entrypoint.indexOf('node ./verify-iam-schema.mjs --iam-only')
       );
+      expect(entrypoint).toContain('node ./verify-iam-schema.mjs --iam-only');
     }
     expect(bootstrapEntrypoint).not.toContain('DO $schema_guard$');
     expect(bootstrapEntrypoint).toContain('node ./verify-iam-schema.mjs');
+    expect(bootstrapEntrypoint).not.toContain('node ./verify-iam-schema.mjs --iam-only');
     for (const entrypoint of appEntrypoints) {
       expect(entrypoint).toContain('node ./verify-iam-schema.mjs');
+      expect(entrypoint).not.toContain('node ./verify-iam-schema.mjs --iam-only');
       expect(entrypoint.indexOf('node ./verify-iam-schema.mjs')).toBeLessThan(
         entrypoint.lastIndexOf('exec "$@"')
       );

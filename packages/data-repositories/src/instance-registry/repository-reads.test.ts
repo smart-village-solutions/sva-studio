@@ -38,6 +38,64 @@ describe('instance registry repository reads', () => {
     expect(statements[0]?.values).toEqual(['Tenant', 'active']);
   });
 
+  it('maps populated optional instance fields and absent tenant administration', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          ...instanceRow,
+          auth_issuer_url: 'https://id.example.test/realms/sva',
+          tenant_admin_client_id: null,
+          tenant_admin_username: null,
+          tenant_admin_email: 'admin@example.test',
+          tenant_admin_last_name: 'Lovelace',
+          theme_key: 'municipality',
+          assigned_module_ids: null,
+          feature_flags: { beta: true },
+          mainserver_config_ref: 'mainserver-config',
+          created_by: 'system',
+        },
+      ],
+    ]);
+
+    await expect(createInstanceRegistryRepository(executor).listInstances({})).resolves.toEqual([
+      expect.objectContaining({
+        authIssuerUrl: 'https://id.example.test/realms/sva',
+        tenantAdminClient: undefined,
+        tenantAdminBootstrap: undefined,
+        themeKey: 'municipality',
+        assignedModules: [],
+        featureFlags: { beta: true },
+        mainserverConfigRef: 'mainserver-config',
+        createdBy: 'system',
+      }),
+    ]);
+  });
+
+  it('maps all optional tenant administrator fields', async () => {
+    const { executor } = createQueuedExecutor([
+      [
+        {
+          ...instanceRow,
+          tenant_admin_email: 'admin@example.test',
+          tenant_admin_last_name: 'Lovelace',
+          updated_by: null,
+        },
+      ],
+    ]);
+
+    await expect(createInstanceRegistryRepository(executor).listInstances({})).resolves.toEqual([
+      expect.objectContaining({
+        tenantAdminBootstrap: {
+          username: 'admin',
+          email: 'admin@example.test',
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+        },
+        updatedBy: undefined,
+      }),
+    ]);
+  });
+
   it('returns null for missing lookups and reads encrypted credential columns', async () => {
     const { executor } = createQueuedExecutor([
       [],

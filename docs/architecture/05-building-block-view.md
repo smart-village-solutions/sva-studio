@@ -172,6 +172,7 @@ Abhängigkeiten des aktuellen Systems.
 - `@sva/iam-governance` bleibt fachlicher Owner der DSR-Exportdatensätze; Self-Service-Exporte verknüpfen diese Datensätze zusätzlich mit einem Host-Job über `studio_job_id`
 - strukturierte Progress-Details wie `processedRows` und `totalRows` bleiben Teil desselben generischen Jobdatensatzes und werden nicht in plugin- oder DSR-spezifische Nebenspeicher ausgelagert
 - eine interne Worker-Anbindung wie Graphile Worker bleibt hinter diesem Hostpfad austauschbar und ist kein Teil öffentlicher Plugin- oder Self-Service-Verträge
+- die Runtime trennt den enqueue-only Zugriff der App von der Ausführung über den dedizierten Datenbank-Principal `sva_job_worker`; Schema-Migrationen gehören ausschließlich zum privilegierten Deploy-One-shot
 
 15. Waste-Host-Fassade (`packages/auth-runtime`, `packages/server-runtime`, `packages/data-repositories`)
 

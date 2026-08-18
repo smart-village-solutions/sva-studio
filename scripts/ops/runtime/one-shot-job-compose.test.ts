@@ -33,15 +33,27 @@ const input = {
 
 describe('one-shot job compose documents', () => {
   it.each([
-    ['migration', () => buildMigrationJobComposeDocument(renderedCompose, input), 'migrate', 'SVA_MIGRATION_JOB_STACK'],
-    ['bootstrap', () => buildBootstrapJobComposeDocument(renderedCompose, input), 'bootstrap', 'SVA_BOOTSTRAP_JOB_STACK'],
+    [
+      'migration',
+      () => buildMigrationJobComposeDocument(renderedCompose, input),
+      'migrate',
+      'SVA_MIGRATION_JOB_STACK',
+    ],
+    [
+      'bootstrap',
+      () => buildBootstrapJobComposeDocument(renderedCompose, input),
+      'bootstrap',
+      'SVA_BOOTSTRAP_JOB_STACK',
+    ],
   ] as const)('renders an isolated %s document', (_kind, build, serviceName, stackVariable) => {
     const document = build();
     const service = document.services?.[serviceName] as Record<string, unknown>;
     const environment = service.environment as Record<string, string>;
 
     expect(Object.keys(document.services ?? {})).toEqual([serviceName]);
-    expect(document.networks).toEqual({ internal: { external: true, name: 'studio-staging_internal' } });
+    expect(document.networks).toEqual({
+      internal: { external: true, name: 'studio-staging_internal' },
+    });
     expect(service.networks).toEqual(['internal']);
     expect(environment.POSTGRES_HOST).toBe('studio-staging_postgres');
     expect(environment[stackVariable]).toBe(input.jobStackName);
@@ -76,19 +88,68 @@ describe('one-shot job compose documents', () => {
     } catch {
       return;
     }
-    const rendered = JSON.parse(execFileSync('docker', ['compose', '-f', 'compose.yaml', '-f', 'deploy/compose.staging.yaml', 'config', '--format', 'json'], {
-      cwd: process.cwd(), encoding: 'utf8', env: { ...process.env, IMAGE_REF: 'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef', SVA_RUNTIME_PROFILE: 'studio' }, stdio: ['ignore', 'pipe', 'pipe'],
-    })) as Parameters<typeof buildMigrationJobComposeDocument>[0];
+    const rendered = JSON.parse(
+      execFileSync(
+        'docker',
+        [
+          'compose',
+          '-f',
+          'compose.yaml',
+          '-f',
+          'deploy/compose.staging.yaml',
+          'config',
+          '--format',
+          'json',
+        ],
+        {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          env: {
+            ...process.env,
+            IMAGE_REF:
+              'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+            STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
+            STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
+            SVA_RUNTIME_PROFILE: 'studio',
+          },
+          stdio: ['ignore', 'pipe', 'pipe'],
+        }
+      )
+    ) as Parameters<typeof buildMigrationJobComposeDocument>[0];
 
     const migration = buildMigrationJobComposeDocument(rendered, input);
-    const bootstrap = buildBootstrapJobComposeDocument(rendered, { ...input, jobStackName: 'studio-staging-bootstrap-gha-123-1' });
-    const candidate = buildMigrationJobComposeDocument(rendered, { ...input, jobServiceName: 'candidate' });
+    const bootstrap = buildBootstrapJobComposeDocument(rendered, {
+      ...input,
+      jobStackName: 'studio-staging-bootstrap-gha-123-1',
+    });
+    const candidate = buildMigrationJobComposeDocument(rendered, {
+      ...input,
+      jobServiceName: 'candidate',
+    });
     const candidateService = candidate.services?.candidate as Record<string, unknown>;
+    const renderedServices = rendered.services as Record<
+      'app' | 'bootstrap' | 'provisioner',
+      { environment: Record<string, string> }
+    >;
 
     expect(Object.keys(migration.services ?? {})).toEqual(['migrate']);
     expect(Object.keys(bootstrap.services ?? {})).toEqual(['bootstrap']);
-    expect(candidateService.image).toBe('example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef');
-    expect(migration.networks?.internal).toEqual({ external: true, name: 'studio-staging_internal' });
-    expect(bootstrap.networks?.internal).toEqual({ external: true, name: 'studio-staging_internal' });
+    expect(candidateService.image).toBe(
+      'example.invalid/studio@sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+    );
+    expect(migration.networks?.internal).toEqual({
+      external: true,
+      name: 'studio-staging_internal',
+    });
+    expect(bootstrap.networks?.internal).toEqual({
+      external: true,
+      name: 'studio-staging_internal',
+    });
+    for (const serviceName of ['app', 'provisioner', 'bootstrap'] as const) {
+      expect(renderedServices[serviceName].environment).toMatchObject({
+        STUDIO_JOB_WORKER_DB_PASSWORD: 'worker-password',
+        STUDIO_JOB_WORKER_DB_USER: 'sva_job_worker',
+      });
+    }
   });
 });

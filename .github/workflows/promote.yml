@@ -195,6 +195,18 @@ jobs:
             exit 1
           fi
 
+      - name: validate worker database secret
+        id: worker_database_secret
+        env:
+          STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ "${#STUDIO_JOB_WORKER_DB_PASSWORD}" -lt 32 ]; then
+            echo "::error::STUDIO_JOB_WORKER_DB_PASSWORD fehlt oder ist zu kurz." >&2
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${{ inputs.environment }}" input-validation
+            exit 1
+          fi
+
       - name: fetch main reference
         id: source_preparation
         run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
@@ -293,6 +305,19 @@ jobs:
               ;;
           esac
           echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+
+      - name: inject worker database secret
+        id: worker_database_secret_injection
+        env:
+          STUDIO_JOB_WORKER_DB_PASSWORD: ${{ secrets.STUDIO_JOB_WORKER_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if ! pnpm exec tsx scripts/ci/inject-worker-database-secret.ts \
+            --input "${RUNNER_TEMP}/promote-app-config.vars"; then
+            node "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
+            exit 1
+          fi
 
       - name: evaluate migration and bootstrap gates
         id: gate_eval
@@ -663,6 +688,7 @@ jobs:
           PROMOTE_GATE_WORKSPACE_SETUP: ${{ steps.workspace_setup.outcome }}
           PROMOTE_GATE_INPUT: ${{ steps.input_validation.outcome }}
           PROMOTE_GATE_PERMISSION_SECRET: ${{ steps.permission_snapshot_secret.outcome }}
+          PROMOTE_GATE_WORKER_DATABASE_SECRET: ${{ steps.worker_database_secret.outcome }}
           PROMOTE_GATE_SOURCE_PREPARATION: ${{ steps.source_preparation.outcome }}
           PROMOTE_GATE_SOURCE: ${{ steps.source_contract.outcome }}
           PROMOTE_GATE_REGISTRY_LOGIN: ${{ steps.registry_login.outcome }}
@@ -670,6 +696,7 @@ jobs:
           PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}
           PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}
           PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
+          PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION: ${{ steps.worker_database_secret_injection.outcome }}
           PROMOTE_GATE_POLICY_EVALUATION: ${{ steps.gate_eval.outcome }}
           PROMOTE_GATE_STATIC_PREFLIGHT: ${{ steps.migration_enforcement.outcome }}
           PROMOTE_GATE_DEPLOYMENT_TOOLING: ${{ steps.deployment_tooling.outcome }}

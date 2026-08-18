@@ -17,12 +17,14 @@ export type PromoteGateName =
   | 'workspace-setup'
   | 'input-validation'
   | 'permission-snapshot-secret'
+  | 'worker-database-secret'
   | 'source-preparation'
   | 'source-contract'
   | 'registry-login'
   | 'image-contract'
   | 'main-e2e-evidence'
   | 'config-build'
+  | 'worker-database-secret-injection'
   | 'change-policy-evaluation'
   | 'migration-bootstrap-policy'
   | 'deployment-tooling'
@@ -140,12 +142,14 @@ const gateNames: readonly PromoteGateName[] = [
   'workspace-setup',
   'input-validation',
   'permission-snapshot-secret',
+  'worker-database-secret',
   'source-preparation',
   'source-contract',
   'registry-login',
   'image-contract',
   'main-e2e-evidence',
   'config-build',
+  'worker-database-secret-injection',
   'change-policy-evaluation',
   'migration-bootstrap-policy',
   'deployment-tooling',
@@ -523,6 +527,11 @@ const gateEnvironmentKeys: readonly Readonly<{
     phase: 'input-validation',
     key: 'PROMOTE_GATE_PERMISSION_SECRET',
   },
+  {
+    gate: 'worker-database-secret',
+    phase: 'input-validation',
+    key: 'PROMOTE_GATE_WORKER_DATABASE_SECRET',
+  },
   { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
@@ -534,6 +543,11 @@ const gateEnvironmentKeys: readonly Readonly<{
     blockingKey: 'PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING',
   },
   { gate: 'config-build', phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
+  {
+    gate: 'worker-database-secret-injection',
+    phase: 'config-build',
+    key: 'PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION',
+  },
   {
     gate: 'change-policy-evaluation',
     phase: 'static-preflight',

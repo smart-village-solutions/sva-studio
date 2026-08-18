@@ -16,6 +16,7 @@ import {
   getMediaStorageSignedUrlTtlSeconds,
   getRedisPassword,
   getRedisUrl,
+  getStudioJobWorkerDatabaseUrl,
 } from './runtime-secrets.js';
 
 describe('auth runtime secrets', () => {
@@ -47,11 +48,29 @@ describe('auth runtime secrets', () => {
     vi.stubEnv('APP_DB_PASSWORD', 'p@ss word');
     vi.stubEnv('APP_DB_USER', 'sva user');
     vi.stubEnv('POSTGRES_DB', 'studio db');
-    expect(getIamDatabaseUrl()).toBe('postgres://sva%20user:p%40ss%20word@postgres:5432/studio%20db');
+    expect(getIamDatabaseUrl()).toBe(
+      'postgres://sva%20user:p%40ss%20word@postgres:5432/studio%20db'
+    );
 
     vi.stubEnv('APP_DB_PASSWORD', '');
     vi.stubEnv('POSTGRES_PASSWORD', '');
     expect(getAppDbPassword()).toBeUndefined();
+  });
+
+  it('resolves the dedicated worker database url without falling back to app credentials', () => {
+    vi.stubEnv('STUDIO_JOB_WORKER_DB_PASSWORD', 'worker secret');
+    vi.stubEnv('STUDIO_JOB_WORKER_DB_USER', 'job worker');
+    vi.stubEnv('POSTGRES_HOST', 'db.internal');
+    vi.stubEnv('POSTGRES_PORT', '5544');
+    vi.stubEnv('POSTGRES_DB', 'studio db');
+
+    expect(getStudioJobWorkerDatabaseUrl()).toBe(
+      'postgres://job%20worker:worker%20secret@db.internal:5544/studio%20db'
+    );
+
+    vi.stubEnv('STUDIO_JOB_WORKER_DB_PASSWORD', '');
+    vi.stubEnv('APP_DB_PASSWORD', 'app-secret');
+    expect(getStudioJobWorkerDatabaseUrl()).toBeUndefined();
   });
 
   it('chooses redis urls from explicit env, local runtime profiles or container defaults', () => {

@@ -150,6 +150,7 @@ Betriebliche Einordnung:
 
 - App läuft als Node-/Nitro-Server aus dem TanStack-Start-Build.
 - Für spätere Updates bestehender Datenbanken bleiben Migrationen ein bewusster separater Betriebsschritt.
+- Der privilegierte Migrations-One-shot aktualisiert neben Goose auch `graphile_worker` und verwaltet den sicheren Enqueue-Wrapper. Der nachgelagerte Bootstrap erzeugt beziehungsweise rotiert `sva_job_worker`, vergibt Worker-Rechte, reduziert `sva_app` auf `EXECUTE` für `sva_enqueue_job` und entzieht der App allgemeine `CREATE`-Rechte.
 - Auch der CI-Promote-Pfad erzwingt diesen Vertrag: Ohne erfolgreichen Nachweis fuer Migration und Bootstrap oder ohne sauberen No-Risk-Nachweis startet kein App-Deploy.
 - Der kanonische Migrationspfad nutzt ein einzelnes `goose`-SQL-File pro Version mit `Up` und `Down`; ein getrennter `up`/`down`-Dateibaum ist kein Sollzustand mehr.
 - Ein reiner Job-Lauf für `migrate` oder `bootstrap` darf keinen vollständigen Stack-Reconcile auf `<zielstack>_app` auslösen; der Live-Stack wird erst im expliziten `deploy`-Schritt aktualisiert.

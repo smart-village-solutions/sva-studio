@@ -6,7 +6,13 @@ import { useRuntimeHealth } from '../hooks/use-runtime-health';
 import { getActiveLocale, t } from '../i18n';
 import { cn } from '../lib/utils';
 
-const serviceOrder: readonly RuntimeDependencyKey[] = ['database', 'redis', 'keycloak', 'authorizationCache'];
+const serviceOrder: readonly RuntimeDependencyKey[] = [
+  'database',
+  'redis',
+  'keycloak',
+  'jobWorker',
+  'authorizationCache',
+];
 
 const statusBadgeClassNames: Readonly<Record<RuntimeDependencyStatus, string>> = {
   degraded: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300',
@@ -25,6 +31,7 @@ const overallStatusLabels: Readonly<Record<RuntimeDependencyStatus, string>> = {
 const serviceLabels: Readonly<Record<RuntimeDependencyKey, string>> = {
   authorizationCache: t('shell.runtimeHealth.services.authorizationCache'),
   database: t('shell.runtimeHealth.services.database'),
+  jobWorker: t('shell.runtimeHealth.services.jobWorker'),
   keycloak: t('shell.runtimeHealth.services.keycloak'),
   redis: t('shell.runtimeHealth.services.redis'),
 };
@@ -50,32 +57,43 @@ const formatTimestamp = (timestamp: string, locale: string): string => {
   }).format(date);
 };
 
-const toReasonLabel = (reasonCode: string | undefined): string | null => {
-  if (!reasonCode) {
-    return null;
-  }
-
-  switch (reasonCode) {
-    case 'authorization_cache_degraded':
-      return t('shell.runtimeHealth.reasons.authorizationCacheDegraded');
-    case 'authorization_cache_failed':
-      return t('shell.runtimeHealth.reasons.authorizationCacheFailed');
-    case 'database_connection_failed':
-      return t('shell.runtimeHealth.reasons.databaseConnectionFailed');
-    case 'database_not_configured':
-      return t('shell.runtimeHealth.reasons.databaseNotConfigured');
-    case 'keycloak_admin_not_configured':
-      return t('shell.runtimeHealth.reasons.keycloakAdminNotConfigured');
-    case 'keycloak_dependency_failed':
-      return t('shell.runtimeHealth.reasons.keycloakDependencyFailed');
-    case 'redis_ping_failed':
-      return t('shell.runtimeHealth.reasons.redisPingFailed');
-    case 'schema_drift':
-      return t('shell.runtimeHealth.reasons.schemaDrift');
-    default:
-      return t('shell.runtimeHealth.reasons.unknown');
-  }
+const reasonLabels: Readonly<Record<string, string>> = {
+  authorization_cache_degraded: t('shell.runtimeHealth.reasons.authorizationCacheDegraded'),
+  authorization_cache_failed: t('shell.runtimeHealth.reasons.authorizationCacheFailed'),
+  database_connection_failed: t('shell.runtimeHealth.reasons.databaseConnectionFailed'),
+  database_not_configured: t('shell.runtimeHealth.reasons.databaseNotConfigured'),
+  keycloak_admin_not_configured: t('shell.runtimeHealth.reasons.keycloakAdminNotConfigured'),
+  keycloak_dependency_failed: t('shell.runtimeHealth.reasons.keycloakDependencyFailed'),
+  privileged_studio_job_worker_claim_failed: t(
+    'shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'
+  ),
+  privileged_studio_job_worker_connection_failed: t(
+    'shell.runtimeHealth.reasons.jobWorkerStartFailed'
+  ),
+  privileged_studio_job_worker_maintenance_failed: t(
+    'shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'
+  ),
+  privileged_studio_job_worker_not_started: t('shell.runtimeHealth.reasons.jobWorkerNotStarted'),
+  privileged_studio_job_worker_runtime_failed: t(
+    'shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'
+  ),
+  privileged_studio_job_worker_start_failed: t('shell.runtimeHealth.reasons.jobWorkerStartFailed'),
+  privileged_studio_job_worker_starting: t('shell.runtimeHealth.reasons.jobWorkerNotStarted'),
+  privileged_studio_job_worker_stopped: t('shell.runtimeHealth.reasons.jobWorkerStopped'),
+  redis_ping_failed: t('shell.runtimeHealth.reasons.redisPingFailed'),
+  schema_drift: t('shell.runtimeHealth.reasons.schemaDrift'),
+  studio_job_worker_claim_failed: t('shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'),
+  studio_job_worker_connection_failed: t('shell.runtimeHealth.reasons.jobWorkerStartFailed'),
+  studio_job_worker_maintenance_failed: t('shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'),
+  studio_job_worker_not_started: t('shell.runtimeHealth.reasons.jobWorkerNotStarted'),
+  studio_job_worker_runtime_failed: t('shell.runtimeHealth.reasons.jobWorkerRuntimeFailed'),
+  studio_job_worker_start_failed: t('shell.runtimeHealth.reasons.jobWorkerStartFailed'),
+  studio_job_worker_starting: t('shell.runtimeHealth.reasons.jobWorkerNotStarted'),
+  studio_job_worker_stopped: t('shell.runtimeHealth.reasons.jobWorkerStopped'),
 };
+
+const toReasonLabel = (reasonCode: string | undefined): string | null =>
+  reasonCode ? (reasonLabels[reasonCode] ?? t('shell.runtimeHealth.reasons.unknown')) : null;
 
 export function RuntimeHealthIndicator() {
   const { error, health, isLoading, refetch } = useRuntimeHealth();
@@ -94,11 +112,19 @@ export function RuntimeHealthIndicator() {
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold text-foreground">{t('shell.runtimeHealth.title')}</h2>
+          <h2 className="text-sm font-semibold text-foreground">
+            {t('shell.runtimeHealth.title')}
+          </h2>
           <p className="text-xs text-muted-foreground">{t('shell.runtimeHealth.description')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="secondary" onClick={() => void refetch()} disabled={isLoading}>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => void refetch()}
+            disabled={isLoading}
+          >
             {t('shell.runtimeHealth.refresh')}
           </Button>
           <Badge className={cn(statusBadgeClassNames[overallStatus])}>
@@ -124,9 +150,16 @@ export function RuntimeHealthIndicator() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-foreground">{serviceLabels[serviceKey]}</h3>
+                  <h3 className="text-sm font-medium text-foreground">
+                    {serviceLabels[serviceKey]}
+                  </h3>
                   <p className="text-xs text-muted-foreground">
-                    {reasonLabel ?? t(service.status === 'ready' ? 'shell.runtimeHealth.reasons.ok' : 'shell.runtimeHealth.reasons.unknown')}
+                    {reasonLabel ??
+                      t(
+                        service.status === 'ready'
+                          ? 'shell.runtimeHealth.reasons.ok'
+                          : 'shell.runtimeHealth.reasons.unknown'
+                      )}
                   </p>
                   {serviceKey === 'keycloak' ? (
                     <p className="text-xs text-muted-foreground">

@@ -13,6 +13,7 @@ import {
 } from './iam-account-management/schema-guard.js';
 import { getPermissionCacheHealth } from './iam-authorization/shared.js';
 import { getLastRedisError, isRedisAvailable } from './redis.js';
+import { getStudioJobWorkerHealth } from './plugin-operations/runner-worker.js';
 import {
   createHealthDiagnostics,
   createHealthErrors,
@@ -201,13 +202,21 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
       checkTenantLoginContract(),
     ]);
     const authorizationCache = getPermissionCacheHealth();
+    const jobWorker = getStudioJobWorkerHealth();
     const ready =
       database.ready &&
       redis.ready &&
       keycloak.ready &&
       tenantLoginContract.ready &&
+      jobWorker.ready &&
       authorizationCache.status !== 'failed';
-    const services = createRuntimeHealthServices(database, redis, keycloak, authorizationCache);
+    const services = createRuntimeHealthServices(
+      database,
+      redis,
+      keycloak,
+      authorizationCache,
+      jobWorker
+    );
 
     return jsonResponse(ready ? 200 : 503, {
       status: ready ? 'ready' : 'not_ready',
@@ -228,9 +237,10 @@ export const healthReadyHandler = async (request: Request): Promise<Response> =>
           redis,
           keycloak,
           tenantLoginContract,
-          authorizationCache
+          authorizationCache,
+          jobWorker
         ),
-        errors: createHealthErrors(database, redis, keycloak, tenantLoginContract),
+        errors: createHealthErrors(database, redis, keycloak, tenantLoginContract, jobWorker),
         services,
       },
       ...(requestContext.requestId ? { requestId: requestContext.requestId } : {}),

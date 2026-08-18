@@ -98,7 +98,10 @@ const runBootstrap = async (): Promise<boolean> => {
 
     try {
       await client.connect();
-      const existingRole = await client.query('SELECT 1 FROM pg_roles WHERE rolname = $1 LIMIT 1;', [appDbUser]);
+      const existingRole = await client.query(
+        'SELECT 1 FROM pg_roles WHERE rolname = $1 LIMIT 1;',
+        [appDbUser]
+      );
       if (existingRole.rowCount === 0) {
         await client.query(
           `CREATE ROLE ${quotedAppDbUser} LOGIN PASSWORD ${quotedAppDbPassword} NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT`
@@ -109,14 +112,17 @@ const runBootstrap = async (): Promise<boolean> => {
         );
       }
       await client.query(`GRANT CONNECT ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
-      await client.query(`GRANT CREATE ON DATABASE ${quotedPostgresDb} TO ${quotedAppDbUser}`);
-      await client.query(`GRANT USAGE, CREATE ON SCHEMA public TO ${quotedAppDbUser}`);
+      await client.query(`REVOKE CREATE ON DATABASE ${quotedPostgresDb} FROM ${quotedAppDbUser}`);
+      await client.query('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
+      await client.query(`REVOKE CREATE ON SCHEMA public FROM ${quotedAppDbUser}`);
       await client.query(`GRANT iam_app TO ${quotedAppDbUser}`);
       await client.query(`GRANT USAGE ON SCHEMA iam TO ${quotedAppDbUser}`);
       await client.query(
         `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${quotedAppDbUser}`
       );
-      await client.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${quotedAppDbUser}`);
+      await client.query(
+        `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${quotedAppDbUser}`
+      );
       logger.info('Bootstrapped studio app DB role', {
         operation: 'studio_db_bootstrap',
         app_db_user: appDbUser,
@@ -130,7 +136,9 @@ const runBootstrap = async (): Promise<boolean> => {
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(String(lastError ?? 'DB bootstrap failed'));
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(String(lastError ?? 'DB bootstrap failed'));
 };
 
 export const bootstrapStudioAppDbUserIfNeeded = async (error: unknown): Promise<boolean> => {

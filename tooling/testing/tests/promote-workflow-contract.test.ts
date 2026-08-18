@@ -109,6 +109,12 @@ describe('Promote workflow contract', () => {
       'PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}'
     );
     expect(workflow).toContain(
+      'PROMOTE_GATE_WORKER_DATABASE_SECRET: ${{ steps.worker_database_secret.outcome }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION: ${{ steps.worker_database_secret_injection.outcome }}'
+    );
+    expect(workflow).toContain(
       'PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}'
     );
     expect(workflow).toContain(

@@ -84,7 +84,9 @@ describe('postgres app user bootstrap', () => {
 
     vi.stubEnv('SVA_RUNTIME_PROFILE', 'production');
     await expect(
-      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(
+        new Error('password authentication failed for user "sva_app"')
+      )
     ).resolves.toBe(false);
     expect(state.FakeClient.instances).toHaveLength(0);
   });
@@ -101,7 +103,9 @@ describe('postgres app user bootstrap', () => {
     const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.js');
 
     await expect(
-      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(
+        new Error('password authentication failed for user "sva_app"')
+      )
     ).resolves.toBe(true);
 
     expect(state.FakeClient.instances).toHaveLength(1);
@@ -110,11 +114,15 @@ describe('postgres app user bootstrap', () => {
       database: 'sva_studio',
       password: 'super-secret',
     });
-    const executedSql = state.FakeClient.instances[0]?.queryImpl.mock.calls.map(([sql]) => sql) ?? [];
-    expect(executedSql).toContainEqual(expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD'));
+    const executedSql =
+      state.FakeClient.instances[0]?.queryImpl.mock.calls.map(([sql]) => sql) ?? [];
+    expect(executedSql).toContainEqual(
+      expect.stringContaining('CREATE ROLE "sva_app" LOGIN PASSWORD')
+    );
     expect(executedSql).toContain('GRANT CONNECT ON DATABASE "sva_studio" TO "sva_app"');
-    expect(executedSql).toContain('GRANT CREATE ON DATABASE "sva_studio" TO "sva_app"');
-    expect(executedSql).toContain('GRANT USAGE, CREATE ON SCHEMA public TO "sva_app"');
+    expect(executedSql).toContain('REVOKE CREATE ON DATABASE "sva_studio" FROM "sva_app"');
+    expect(executedSql).toContain('REVOKE CREATE ON SCHEMA public FROM PUBLIC');
+    expect(executedSql).toContain('REVOKE CREATE ON SCHEMA public FROM "sva_app"');
     expect(state.logger.info).toHaveBeenCalledWith(
       'Bootstrapped studio app DB role',
       expect.objectContaining({
@@ -128,7 +136,10 @@ describe('postgres app user bootstrap', () => {
     vi.stubEnv('SVA_RUNTIME_PROFILE', 'local-keycloak');
     vi.stubEnv('POSTGRES_PASSWORD', 'super-secret');
     vi.stubEnv('POSTGRES_USER', 'sva');
-    vi.stubEnv('IAM_DATABASE_URL', 'postgres://sva_app:sva_app_local_dev_password@localhost:5432/sva_studio');
+    vi.stubEnv(
+      'IAM_DATABASE_URL',
+      'postgres://sva_app:sva_app_local_dev_password@localhost:5432/sva_studio'
+    );
 
     const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.js');
 
@@ -153,7 +164,9 @@ describe('postgres app user bootstrap', () => {
     const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.js');
 
     await expect(
-      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(
+        new Error('password authentication failed for user "sva_app"')
+      )
     ).resolves.toBe(false);
     expect(state.FakeClient.instances).toHaveLength(0);
   });
@@ -166,7 +179,9 @@ describe('postgres app user bootstrap', () => {
     const { bootstrapStudioAppDbUserIfNeeded } = await import('./postgres-app-user-bootstrap.js');
 
     await expect(
-      bootstrapStudioAppDbUserIfNeeded(new Error('password authentication failed for user "sva_app"'))
+      bootstrapStudioAppDbUserIfNeeded(
+        new Error('password authentication failed for user "sva_app"')
+      )
     ).resolves.toBe(false);
 
     expect(state.logger.warn).toHaveBeenCalledWith(

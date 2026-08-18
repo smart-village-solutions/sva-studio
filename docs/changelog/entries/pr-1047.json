@@ -1,0 +1,4 @@
+{
+  "prNumber": 1047,
+  "body": "Technische Hintergrundprozesse werden in Production zuverlässiger und mit klar getrennten Datenbankrechten ausgeführt.\n\n- Fehlgeschlagene Hintergrundprozesse werden über den Systemstatus sichtbar und automatisch für einen Neustart freigegeben.\n- Die Anwendung, der Job-Worker und der Deployment-Prozess erhalten jeweils nur die für ihre Aufgabe erforderlichen Zugriffe.\n- Ein automatischer Datenbanktest prüft vor dem Rollout, dass Prozesse tatsächlich eingereiht und verarbeitet werden können."
+}

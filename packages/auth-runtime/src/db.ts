@@ -1,7 +1,7 @@
 import { Pool, type PoolClient } from 'pg';
 import { createSdkLogger } from '@sva/server-runtime';
 import { bootstrapStudioAppDbUserIfNeeded } from './postgres-app-user-bootstrap.js';
-import { getIamDatabaseUrl } from './runtime-secrets.js';
+import { getIamDatabaseUrl, getStudioJobWorkerDatabaseUrl } from './runtime-secrets.js';
 
 export type QueryResult<TRow> = {
   rowCount: number;
@@ -90,6 +90,10 @@ export const createPoolResolver = (
 };
 
 export const resolvePool = createPoolResolver(getIamDatabaseUrl);
+export const resolveStudioJobWorkerPool = createPoolResolver(getStudioJobWorkerDatabaseUrl, {
+  max: 18,
+  idleTimeoutMillis: 30_000,
+});
 
 const connectWithStudioBootstrap = async (pool: Pool): Promise<PoolClient & QueryClient> => {
   try {

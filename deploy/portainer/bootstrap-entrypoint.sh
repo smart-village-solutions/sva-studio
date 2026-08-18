@@ -6,6 +6,7 @@ required_vars=(
   POSTGRES_USER
   POSTGRES_PASSWORD
   APP_DB_PASSWORD
+  STUDIO_JOB_WORKER_DB_PASSWORD
 )
 
 for key in "${required_vars[@]}"; do
@@ -18,6 +19,7 @@ done
 export POSTGRES_HOST="${POSTGRES_HOST:-postgres}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 export APP_DB_USER="${APP_DB_USER:-sva_app}"
+export STUDIO_JOB_WORKER_DB_USER="${STUDIO_JOB_WORKER_DB_USER:-sva_job_worker}"
 export SVA_ALLOWED_INSTANCE_IDS="${SVA_ALLOWED_INSTANCE_IDS:-}"
 export SVA_PARENT_DOMAIN="${SVA_PARENT_DOMAIN:-}"
 export SVA_BOOTSTRAP_RECONCILE_APP_ROLE="${SVA_BOOTSTRAP_RECONCILE_APP_ROLE:-true}"
@@ -57,6 +59,8 @@ const [{ resolvesSystemAdminGrant }, { studioPermissionCatalog }] = await Promis
 
 const appDbPassword = process.env.APP_DB_PASSWORD?.trim() ?? '';
 const appDbUser = process.env.APP_DB_USER?.trim() || 'sva_app';
+const workerDbPassword = process.env.STUDIO_JOB_WORKER_DB_PASSWORD?.trim() ?? '';
+const workerDbUser = process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker';
 const instanceIds = (process.env.SVA_ALLOWED_INSTANCE_IDS ?? '')
   .split(',')
   .map((entry) => entry.trim())
@@ -71,11 +75,14 @@ const expectedHostnames = instanceIds.map((instanceId) => ({
 if (!appDbPassword) {
   throw new Error('APP_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
 }
+if (!workerDbPassword) {
+  throw new Error('STUDIO_JOB_WORKER_DB_PASSWORD fehlt fuer den Bootstrap-Job.');
+}
 
 const sqlLiteral = (value) => `'${String(value).replace(/'/gu, "''")}'`;
 const sqlIdentifier = (value) => `"${String(value).replace(/"/gu, '""')}"`;
 
-const roleStatements = [
+const appRoleStatements = [
   `DO $bootstrap$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(appDbUser)}) THEN
@@ -95,18 +102,89 @@ END
 $bootstrap$;`,
   `GRANT iam_app TO ${sqlIdentifier(appDbUser)};`,
   `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
-  `GRANT CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(appDbUser)};`,
-  `GRANT USAGE, CREATE ON SCHEMA public TO ${sqlIdentifier(appDbUser)};`,
+  `REVOKE CREATE ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE CREATE ON SCHEMA public FROM PUBLIC;`,
+  `REVOKE CREATE ON SCHEMA public FROM ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT (version_id, is_applied) ON TABLE public.goose_db_version TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE ON SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
   `GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA iam TO ${sqlIdentifier(appDbUser)};`,
 ];
 
+const workerRoleStatements = [
+  `DO $worker_role$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = ${sqlLiteral(workerDbUser)}) THEN
+    EXECUTE format(
+      'CREATE ROLE %I LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      ${sqlLiteral(workerDbUser)},
+      ${sqlLiteral(workerDbPassword)}
+    );
+  ELSE
+    EXECUTE format(
+      'ALTER ROLE %I WITH LOGIN PASSWORD %L NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT',
+      ${sqlLiteral(workerDbUser)},
+      ${sqlLiteral(workerDbPassword)}
+    );
+  END IF;
+END
+$worker_role$;`,
+  `GRANT CONNECT ON DATABASE ${sqlIdentifier(process.env.POSTGRES_DB?.trim() || 'sva_studio')} TO ${sqlIdentifier(workerDbUser)};`,
+  `REVOKE ALL ON SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL TABLES IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM PUBLIC;`,
+  `REVOKE ALL ON ALL TABLES IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE ALL ON ALL SEQUENCES IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `REVOKE ALL ON ALL FUNCTIONS IN SCHEMA graphile_worker FROM ${sqlIdentifier(appDbUser)};`,
+  `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(appDbUser)};`,
+  `GRANT EXECUTE ON FUNCTION graphile_worker.sva_enqueue_job(text, json, text, integer, text, timestamptz) TO ${sqlIdentifier(appDbUser)};`,
+  `BEGIN;
+SET LOCAL ROLE ${sqlIdentifier(appDbUser)};
+SELECT graphile_worker.sva_enqueue_job(
+  'studio_job_execute',
+  '{"instanceId":"bootstrap-contract","jobId":"bootstrap-contract"}'::json,
+  'plugin-operations',
+  1,
+  'studio-job:bootstrap-contract',
+  NULL
+);
+ROLLBACK;`,
+  `GRANT USAGE ON SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA graphile_worker TO ${sqlIdentifier(workerDbUser)};`,
+  `DO $worker_policies$
+DECLARE
+  table_record record;
+BEGIN
+  FOR table_record IN
+    SELECT c.relname
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'graphile_worker'
+      AND c.relkind IN ('r', 'p')
+      AND c.relrowsecurity = true
+  LOOP
+    EXECUTE format(
+      'DROP POLICY IF EXISTS sva_job_worker_access ON graphile_worker.%I',
+      table_record.relname
+    );
+    EXECUTE format(
+      'CREATE POLICY sva_job_worker_access ON graphile_worker.%I TO %I USING (true) WITH CHECK (true)',
+      table_record.relname,
+      ${sqlLiteral(workerDbUser)}
+    );
+  END LOOP;
+END
+$worker_policies$;`,
+];
+
 const statements = [];
 if ((process.env.SVA_BOOTSTRAP_RECONCILE_APP_ROLE ?? 'true').trim().toLowerCase() !== 'false') {
-  statements.push(...roleStatements);
+  statements.push(...appRoleStatements);
 }
+statements.push(...workerRoleStatements);
 
 
 if (

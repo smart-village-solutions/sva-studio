@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
     recomputePerMinute: 0,
     status: 'ready' as const,
   })),
+  getStudioJobWorkerHealth: vi.fn(() => ({ ready: true, status: 'running' as const })),
   resolveExpectedGooseMigrationFromDirectory: vi.fn(() => ({
     fileName: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
     version: 82,
@@ -62,6 +63,10 @@ vi.mock('./config-tenant-secret.js', () => ({
 
 vi.mock('./iam-authorization/shared.js', () => ({
   getPermissionCacheHealth: state.getPermissionCacheHealth,
+}));
+
+vi.mock('./plugin-operations/runner-worker.js', () => ({
+  getStudioJobWorkerHealth: state.getStudioJobWorkerHealth,
 }));
 
 vi.mock('./iam-account-management/schema-guard.js', () => ({
@@ -118,6 +123,7 @@ describe('auth-runtime health handlers', () => {
       recomputePerMinute: 0,
       status: 'ready',
     });
+    state.getStudioJobWorkerHealth.mockReturnValue({ ready: true, status: 'running' });
     state.resolveExpectedGooseMigrationFromDirectory.mockReturnValue({
       fileName: '0082_iam_waste_postal_code_enrichment_active_job_unique.sql',
       version: 82,
@@ -173,6 +179,7 @@ describe('auth-runtime health handlers', () => {
             status: 'ready',
           },
           database: { status: 'ready' },
+          jobWorker: { status: 'ready' },
           keycloak: { status: 'ready' },
           redis: { status: 'ready' },
         },
@@ -184,6 +191,36 @@ describe('auth-runtime health handlers', () => {
     );
     expect(state.resolveTenantAuthClientSecret).not.toHaveBeenCalled();
     expect(state.getPermissionCacheHealth).toHaveBeenCalled();
+  });
+
+  it('returns not_ready when the configured job worker failed', async () => {
+    state.getStudioJobWorkerHealth.mockReturnValue({
+      ready: false,
+      reasonCode: 'studio_job_worker_runtime_failed',
+      status: 'failed',
+    });
+    const { healthReadyHandler } = await import('./runtime-health.js');
+
+    const response = await healthReadyHandler(new Request('http://localhost/health/ready'));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'not_ready',
+      checks: {
+        diagnostics: {
+          jobWorker: { reason_code: 'studio_job_worker_runtime_failed' },
+        },
+        errors: {
+          jobWorker: 'Studio job worker is not running.',
+        },
+        services: {
+          jobWorker: {
+            reasonCode: 'studio_job_worker_runtime_failed',
+            status: 'not_ready',
+          },
+        },
+      },
+    });
   });
 
   it('returns not_ready when dependencies fail', async () => {

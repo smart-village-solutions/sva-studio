@@ -50,6 +50,9 @@ export const getKeycloakProvisionerClientSecret = (): string | undefined => {
 export const getAppDbPassword = (): string | undefined =>
   readEnvOrSecret(['APP_DB_PASSWORD', 'POSTGRES_PASSWORD'], 'sva_studio_app_db_password');
 
+export const getStudioJobWorkerDbPassword = (): string | undefined =>
+  readEnvOrSecret(['STUDIO_JOB_WORKER_DB_PASSWORD'], 'sva_studio_job_worker_db_password');
+
 export const getRedisPassword = (): string | undefined =>
   readEnvOrSecret(['REDIS_PASSWORD'], 'sva_studio_redis_password');
 
@@ -63,7 +66,10 @@ export const getMediaStorageBucket = (): string | undefined =>
   readEnvOrSecret(['MEDIA_STORAGE_BUCKET', 'S3_BUCKET'], 'sva_studio_media_storage_bucket');
 
 export const getMediaStorageAccessKeyId = (): string | undefined =>
-  readEnvOrSecret(['MEDIA_STORAGE_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'], 'sva_studio_media_storage_access_key_id');
+  readEnvOrSecret(
+    ['MEDIA_STORAGE_ACCESS_KEY_ID', 'AWS_ACCESS_KEY_ID'],
+    'sva_studio_media_storage_access_key_id'
+  );
 
 export const getMediaStorageSecretAccessKey = (): string | undefined =>
   readEnvOrSecret(
@@ -118,6 +124,24 @@ export const getIamDatabaseUrl = (): string | undefined => {
   }
 
   return buildDerivedIamDatabaseUrl();
+};
+
+export const getStudioJobWorkerDatabaseUrl = (): string | undefined => {
+  const databaseUrl = process.env.STUDIO_JOB_WORKER_DATABASE_URL?.trim();
+  if (databaseUrl) {
+    return ensureValidDatabaseUrl(databaseUrl);
+  }
+
+  const password = getStudioJobWorkerDbPassword();
+  if (!password) {
+    return undefined;
+  }
+
+  const user = process.env.STUDIO_JOB_WORKER_DB_USER?.trim() || 'sva_job_worker';
+  const database = process.env.POSTGRES_DB?.trim() || 'sva_studio';
+  const host = process.env.POSTGRES_HOST?.trim() || 'postgres';
+  const port = process.env.POSTGRES_PORT?.trim() || '5432';
+  return `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
 };
 
 export const getRedisUrl = (): string => {

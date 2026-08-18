@@ -58,6 +58,28 @@ describe('instance integration repository', () => {
     ).resolves.toBeNull();
   });
 
+  it('maps missing verification metadata to undefined', async () => {
+    const { executor } = createExecutor([
+      {
+        instance_id: record.instanceId,
+        provider_key: record.providerKey,
+        graphql_base_url: record.graphqlBaseUrl,
+        oauth_token_url: record.oauthTokenUrl,
+        enabled: record.enabled,
+        last_verified_at: null,
+        last_verified_status: null,
+      },
+    ]);
+
+    await expect(
+      createInstanceIntegrationRepository(executor).getByInstanceId('tenant-a', 'sva_mainserver')
+    ).resolves.toEqual({
+      ...record,
+      lastVerifiedAt: undefined,
+      lastVerifiedStatus: undefined,
+    });
+  });
+
   it('builds upsert statements with nullable verification fields', async () => {
     const { executor, statements } = createExecutor();
     const input = {

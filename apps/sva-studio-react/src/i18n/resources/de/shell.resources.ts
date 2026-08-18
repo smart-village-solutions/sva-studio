@@ -30,6 +30,7 @@ export const shellDEResources = {
     services: {
       authorizationCache: 'Autorisierungs-Cache',
       database: 'Postgres',
+      jobWorker: 'Job-Worker',
       keycloak: 'Keycloak',
       redis: 'Redis',
     },
@@ -46,6 +47,10 @@ export const shellDEResources = {
       databaseNotConfigured: 'Datenbank ist nicht konfiguriert.',
       keycloakAdminNotConfigured: 'Keycloak-Admin-Client fehlt.',
       keycloakDependencyFailed: 'Keycloak ist nicht erreichbar.',
+      jobWorkerNotStarted: 'Job-Worker wurde noch nicht gestartet.',
+      jobWorkerRuntimeFailed: 'Job-Worker wurde unerwartet beendet.',
+      jobWorkerStartFailed: 'Job-Worker konnte nicht gestartet werden.',
+      jobWorkerStopped: 'Job-Worker ist beendet.',
       ok: 'Keine Probleme erkannt.',
       redisPingFailed: 'Redis ist nicht erreichbar.',
       schemaDrift: 'IAM-Schema ist nicht aktuell.',

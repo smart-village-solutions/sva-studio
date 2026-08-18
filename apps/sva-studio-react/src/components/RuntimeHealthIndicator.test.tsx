@@ -29,13 +29,14 @@ describe('RuntimeHealthIndicator', () => {
   const dateTimeFormatSpy = vi.spyOn(Intl, 'DateTimeFormat');
 
   beforeEach(() => {
-    dateTimeFormatSpy.mockImplementation(
-      (function mockDateTimeFormat(locale: string | string[] | undefined) {
-        return {
-          format: () => `formatted:${Array.isArray(locale) ? locale.join(',') : locale ?? 'default'}`,
-        } as Intl.DateTimeFormat;
-      }) as typeof Intl.DateTimeFormat
-    );
+    dateTimeFormatSpy.mockImplementation(function mockDateTimeFormat(
+      locale: string | string[] | undefined
+    ) {
+      return {
+        format: () =>
+          `formatted:${Array.isArray(locale) ? locale.join(',') : (locale ?? 'default')}`,
+      } as Intl.DateTimeFormat;
+    } as typeof Intl.DateTimeFormat);
     useRuntimeHealthMock.mockReturnValue({
       error: null,
       health: {
@@ -59,6 +60,7 @@ describe('RuntimeHealthIndicator', () => {
           services: {
             authorizationCache: { status: 'ready' },
             database: { status: 'ready' },
+            jobWorker: { status: 'ready' },
             keycloak: { status: 'not_ready', reasonCode: 'keycloak_dependency_failed' },
             redis: { status: 'degraded', reasonCode: 'redis_ping_failed' },
           },
@@ -103,6 +105,7 @@ describe('RuntimeHealthIndicator', () => {
           services: {
             authorizationCache: { status: 'ready' },
             database: { status: 'ready' },
+            jobWorker: { status: 'not_ready', reasonCode: 'studio_job_worker_runtime_failed' },
             keycloak: { status: 'not_ready', reasonCode: 'keycloak_dependency_failed' },
             redis: { status: 'degraded', reasonCode: 'redis_ping_failed' },
           },
@@ -121,9 +124,11 @@ describe('RuntimeHealthIndicator', () => {
     expect(screen.getByText('shell.runtimeHealth.services.database')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.services.redis')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.services.keycloak')).toBeTruthy();
+    expect(screen.getByText('shell.runtimeHealth.services.jobWorker')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.services.authorizationCache')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.reasons.keycloakDependencyFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.reasons.redisPingFailed')).toBeTruthy();
+    expect(screen.getByText('shell.runtimeHealth.reasons.jobWorkerRuntimeFailed')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.overall.degraded')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.lastUpdated:formatted:en')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.realmLabel:de-musterhausen')).toBeTruthy();
@@ -153,6 +158,7 @@ describe('RuntimeHealthIndicator', () => {
           services: {
             authorizationCache: { status: 'unknown' },
             database: { status: 'unknown' },
+            jobWorker: { status: 'unknown' },
             keycloak: { status: 'unknown' },
             redis: { status: 'unknown' },
           },
@@ -168,7 +174,7 @@ describe('RuntimeHealthIndicator', () => {
     render(<RuntimeHealthIndicator />);
 
     expect(screen.getByText('shell.runtimeHealth.overall.unknown')).toBeTruthy();
-    expect(screen.getAllByText('shell.runtimeHealth.reasons.unknown')).toHaveLength(4);
+    expect(screen.getAllByText('shell.runtimeHealth.reasons.unknown')).toHaveLength(5);
     expect(screen.getByText('shell.runtimeHealth.loading')).toBeTruthy();
     expect(screen.getByText('shell.runtimeHealth.fetchError:req-runtime-health')).toBeTruthy();
   });
@@ -192,6 +198,7 @@ describe('RuntimeHealthIndicator', () => {
           services: {
             authorizationCache: { status: 'ready' },
             database: { status: 'ready' },
+            jobWorker: { status: 'ready' },
             keycloak: { status: 'ready' },
             redis: { status: 'ready' },
           },
@@ -206,6 +213,8 @@ describe('RuntimeHealthIndicator', () => {
 
     render(<RuntimeHealthIndicator />);
 
-    expect(screen.getByText('shell.runtimeHealth.realmLabel:shell.runtimeHealth.notAvailable')).toBeTruthy();
+    expect(
+      screen.getByText('shell.runtimeHealth.realmLabel:shell.runtimeHealth.notAvailable')
+    ).toBeTruthy();
   });
 });

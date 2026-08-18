@@ -449,7 +449,7 @@ describe('server transport', () => {
     await expect(response.text()).resolves.toBe('plain');
   });
 
-  it('refreshes plugin operation handlers on subsequent development requests without restarting the worker', async () => {
+  it('refreshes development handlers and rechecks the idempotent worker controller', async () => {
     vi.stubEnv('NODE_ENV', 'development');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('plain', { status: 200 }));
@@ -482,7 +482,7 @@ describe('server transport', () => {
     expect(registerStudioPluginOperationHandlersMock.mock.calls.length).toBeGreaterThan(
       registrationCountAfterFirstRequest
     );
-    expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(1);
+    expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(2);
     expect(startFetch).toHaveBeenCalledTimes(2);
   });
 
@@ -496,7 +496,7 @@ describe('server transport', () => {
       })
     );
     ensurePluginOperationWorkerStartedMock.mockResolvedValue(undefined);
-    const logger = { info: vi.fn() };
+    const logger = { error: vi.fn(), info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -541,7 +541,7 @@ describe('server transport', () => {
     vi.stubEnv('SVA_SERVER_ENTRY_DEBUG', 'true');
 
     const startFetch = vi.fn().mockResolvedValue(new Response('prod', { status: 204 }));
-    const logger = { info: vi.fn() };
+    const logger = { error: vi.fn(), info: vi.fn() };
     dispatchMainserverNewsRequestMock.mockResolvedValue(null);
     dispatchMainserverEventsRequestMock.mockResolvedValue(null);
     dispatchMainserverPoiRequestMock.mockResolvedValue(null);
@@ -724,7 +724,7 @@ describe('server transport', () => {
       .fn()
       .mockResolvedValueOnce(new Response('first', { status: 200 }))
       .mockResolvedValueOnce(new Response('second', { status: 200 }));
-    const logger = { info: vi.fn() };
+    const logger = { error: vi.fn(), info: vi.fn() };
     const registrationError = new Error('missing runtime requirement');
 
     registerStudioPluginOperationHandlersMock
@@ -749,7 +749,7 @@ describe('server transport', () => {
     await expect(secondResponse.text()).resolves.toBe('second');
     expect(registerStudioPluginOperationHandlersMock).toHaveBeenCalledTimes(2);
     expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(1);
-    expect(logger.info).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       'Plugin worker bootstrap failed',
       expect.objectContaining({
         operation: 'plugin_operation_worker_bootstrap',
@@ -765,7 +765,7 @@ describe('server transport', () => {
       .fn()
       .mockResolvedValueOnce(new Response('first', { status: 200 }))
       .mockResolvedValueOnce(new Response('second', { status: 200 }));
-    const logger = { info: vi.fn() };
+    const logger = { error: vi.fn(), info: vi.fn() };
     const bootstrapError = new Error('database unavailable');
     ensurePluginOperationWorkerStartedMock
       .mockRejectedValueOnce(bootstrapError)
@@ -788,12 +788,33 @@ describe('server transport', () => {
     await expect(firstResponse.text()).resolves.toBe('first');
     await expect(secondResponse.text()).resolves.toBe('second');
     expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(2);
-    expect(logger.info).toHaveBeenCalledWith(
+    expect(logger.error).toHaveBeenCalledWith(
       'Plugin worker bootstrap failed',
       expect.objectContaining({
         operation: 'plugin_operation_worker_bootstrap',
         error: 'database unavailable',
       })
     );
+  });
+
+  it('rechecks the worker controller after a completed bootstrap', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    dispatchMainserverNewsRequestMock.mockResolvedValue(null);
+    dispatchMainserverEventsRequestMock.mockResolvedValue(null);
+    dispatchMainserverPoiRequestMock.mockResolvedValue(null);
+    dispatchMainserverSurveysRequestMock.mockResolvedValue(null);
+    dispatchAuthRouteRequestMock.mockResolvedValue(null);
+    createStartHandlerMock.mockReturnValue(vi.fn().mockResolvedValue(new Response('ok')));
+
+    const mod = await import('./server');
+    await mod.default.fetch(new Request('http://localhost:3000/health/live'));
+    await vi.waitFor(() => {
+      expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledOnce();
+    });
+
+    await mod.default.fetch(new Request('http://localhost:3000/health/ready'));
+    await vi.waitFor(() => {
+      expect(ensurePluginOperationWorkerStartedMock).toHaveBeenCalledTimes(2);
+    });
   });
 });

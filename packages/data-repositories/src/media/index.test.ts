@@ -640,18 +640,18 @@ describe('media repository', () => {
       [contentSaveOperationRow],
       [],
       [{ successful: true }],
-      [],
+      [{ successful: false }],
       [{}],
       [],
       [{}],
       [{ successful: true }],
-      [],
+      [{ successful: false }],
       [{}],
       [],
       [{ ...contentSaveOperationRow, status: 'abandon_pending', error_code: 'save_failed' }],
       [],
       [{ successful: true }],
-      [],
+      [{ successful: false }],
     ]);
     const repository = createMediaRepository(executor);
 
@@ -741,6 +741,19 @@ describe('media repository', () => {
     );
 
     expect(statements).toHaveLength(16);
+    expect(statements[0]?.text).toContain('INSERT INTO iam.media_content_save_operations');
+    expect(statements[3]?.text).toContain(
+      'DELETE FROM iam.media_content_save_operation_references'
+    );
+    expect(statements[3]?.values.slice(0, 3)).toEqual([
+      contentSaveOperationRow.id,
+      'tenant-a',
+      'actor-1',
+    ]);
+    expect(statements[5]?.text).toContain("status = 'content_saved'");
+    expect(statements[8]?.text).toContain('INSERT INTO iam.media_references');
+    expect(statements[12]?.text).toContain("status = 'reconciliation_required'");
+    expect(statements[14]?.text).toContain('DELETE FROM iam.media_assets');
   });
 
   it('claims only expired safe states and preserves unknown or confirmed outcomes', () => {

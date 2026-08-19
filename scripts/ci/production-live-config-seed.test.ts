@@ -141,7 +141,7 @@ const evidence = () =>
     headSha: sha,
     previousImage: digest,
     targetImage: digest,
-    imageRevision: sha,
+    imageRevision: digest,
     previousConfigRevision: null,
     configRevision: revision,
     externalSecretReferences: secretReferences,
@@ -273,6 +273,19 @@ describe('Production live config label seed', () => {
     expect(() =>
       validateProductionPreSeedEvidence(
         { ...evidence(), environment: 'staging' },
+        {
+          runId: '41',
+          runAttempt: 1,
+          sourceSha: sha,
+          imageDigest: digest,
+          configRevision: revision,
+          secretReferences,
+        }
+      )
+    ).toThrow('PROMOTE_LIVE_CONFIG_SEED_REJECTED');
+    expect(() =>
+      validateProductionPreSeedEvidence(
+        { ...evidence(), image: { ...evidence().image, revision: sha } },
         {
           runId: '41',
           runAttempt: 1,

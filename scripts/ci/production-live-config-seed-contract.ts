@@ -223,7 +223,7 @@ const matchesPreSeedIdentity = (
   Object.values(git).every((entry) => entry === bindings.sourceSha) &&
   image.previousDigest === bindings.imageDigest &&
   image.targetDigest === bindings.imageDigest &&
-  image.revision === bindings.sourceSha &&
+  image.revision === bindings.imageDigest &&
   config.previousRevision === null &&
   config.revision === bindings.configRevision;
 

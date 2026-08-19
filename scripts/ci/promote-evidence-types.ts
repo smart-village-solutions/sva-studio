@@ -16,6 +16,10 @@ export type PromoteGateName =
   | 'legacy-config-seed-preparation'
   | 'legacy-config-seed'
   | 'legacy-config-seed-recheck'
+  | 'production-config-seed-preparation'
+  | 'production-config-seed'
+  | 'production-config-seed-prepare-stop'
+  | 'production-config-seed-recheck'
   | 'recovery-contract'
   | 'config-build'
   | 'config-revision-contract'
@@ -82,7 +86,7 @@ export type PromoteRecoveryEvidence = Readonly<{
 }>;
 
 export type PromoteSeedAuthorization = Readonly<{
-  authorization: 'staging-legacy-config-label-v1';
+  authorization: 'staging-legacy-config-label-v1' | 'production-legacy-config-label-v1';
   evidenceRun: Readonly<{ id: string; attempt: number }>;
   sourceSha: string;
   imageDigest: string;
@@ -90,12 +94,13 @@ export type PromoteSeedAuthorization = Readonly<{
 }>;
 
 export type PromoteSeedPreparation = Readonly<{
-  contract: 'staging-live-config-label-prepare-v1';
+  contract: 'staging-live-config-label-prepare-v1' | 'production-live-config-label-prepare-v1';
   sourceSha: string;
   imageDigest: string;
   configRevision: string;
   liveConfigRevisionState: 'missing';
   backupExecutor: 'agent';
+  shadowEquivalent?: true;
 }>;
 
 export type PromoteEvidence = Readonly<{

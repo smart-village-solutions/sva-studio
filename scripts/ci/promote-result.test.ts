@@ -361,6 +361,46 @@ describe('promote evidence contract', () => {
     expect(renderPromoteSummary(evidence)).toContain('| seed_evidence_run | 123456/1 |');
   });
 
+  it('rejects seed evidence authorized by the wrong or multiple environment gates', () => {
+    const productionAuthorization = {
+      authorization: 'production-legacy-config-label-v1' as const,
+      evidenceRun: { id: '123456', attempt: 1 },
+      sourceSha: otherSha,
+      imageDigest: digest,
+      configRevision,
+    };
+    const base = {
+      runId: '8',
+      runAttempt: 2,
+      environment: 'prod' as const,
+      status: 'passed' as const,
+      baseRef: otherSha,
+      headRef: otherSha,
+      baseSha: otherSha,
+      headSha: otherSha,
+      previousImage: digest,
+      targetImage: digest,
+      imageRevision: otherSha,
+      configRevision,
+      seedAuthorization: productionAuthorization,
+    };
+    expect(() =>
+      buildPromoteEvidence({
+        ...base,
+        gates: [{ gate: 'legacy-config-seed', phase: 'static-preflight', status: 'passed' }],
+      })
+    ).toThrow('PROMOTE_LIVE_CONFIG_SEED_REJECTED');
+    expect(() =>
+      buildPromoteEvidence({
+        ...base,
+        gates: [
+          { gate: 'legacy-config-seed', phase: 'static-preflight', status: 'passed' },
+          { gate: 'production-config-seed', phase: 'static-preflight', status: 'passed' },
+        ],
+      })
+    ).toThrow('mehrere autorisierende Gates');
+  });
+
   it('records the allowlisted Prepare marker only with its passed gate', () => {
     const seedPreparation = {
       contract: 'staging-live-config-label-prepare-v1',

@@ -66,9 +66,8 @@ describe('promote workflow hardening contract', () => {
       expect(dispatch).toContain(`${input}:`);
       expect(reusable).not.toContain(`${input}:`);
     }
-    expect(dispatch).toContain(
-      'options: [disabled, prepare-staging-live-config-label, seed-staging-live-config-label]'
-    );
+    expect(dispatch).toContain('prepare-staging-live-config-label');
+    expect(dispatch).toContain('seed-staging-live-config-label');
     const validation = stepBlock('validate inputs');
     expect(validation).toContain('GITHUB_EVENT_NAME: ${{ github.event_name }}');
     expect(validation).toContain('seed-staging-live-config-label)');
@@ -144,7 +143,7 @@ describe('promote workflow hardening contract', () => {
       workflow.indexOf('validate recovery and live revision contract')
     );
     expect(stepBlock('validate recovery and live revision contract')).toContain(
-      'SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+      'SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}'
     );
     expect(stepBlock('validate recovery and live revision contract')).toContain(
       'TARGET_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}'
@@ -177,13 +176,13 @@ describe('promote workflow hardening contract', () => {
       "(inputs.live_config_transition_mode || 'disabled') == 'disabled'"
     );
     expect(workflow).toContain(
-      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation }}'
+      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation || steps.production_config_seed_preparation.outputs.seed_preparation }}'
     );
     expect(workflow).toContain(
       'PROMOTE_GATE_LEGACY_CONFIG_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outcome }}'
     );
     expect(workflow).toContain(
-      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}'
     );
     expect(workflow).toContain(
       'PROMOTE_GATE_LEGACY_CONFIG_SEED: ${{ steps.legacy_config_seed.outcome }}'
@@ -245,7 +244,83 @@ describe('promote workflow hardening contract', () => {
     for (const name of orderedGates.slice(2)) {
       expect(stepBlock(name)).not.toContain('promote_mode');
     }
-    expect(workflow.match(/SVA_CONFIG_REVISION=%s/gu)).toHaveLength(8);
+    expect(workflow.match(/SVA_CONFIG_REVISION=%s/gu)).toHaveLength(9);
+  });
+
+  it('keeps the Production label transition behind a shadow-to-enforce handshake', () => {
+    const dispatch = workflow.slice(
+      workflow.indexOf('  workflow_dispatch:'),
+      workflow.indexOf('  workflow_call:')
+    );
+    const reusable = workflow.slice(
+      workflow.indexOf('  workflow_call:'),
+      workflow.indexOf('\npermissions:')
+    );
+    for (const input of [
+      'production_legacy_config_seed_run_id',
+      'production_legacy_config_seed_run_attempt',
+    ]) {
+      expect(dispatch).toContain(`${input}:`);
+      expect(reusable).not.toContain(`${input}:`);
+    }
+    const validation = stepBlock('validate inputs');
+    expect(validation).toContain('prepare-production-live-config-label)');
+    expect(validation).toContain('seed-production-live-config-label)');
+    expect(validation).toContain('[ "${ENVIRONMENT}" != "prod" ]');
+    expect(validation).toContain('[ "${PROMOTE_CONFIG_BUILDER_MODE}" != "shadow" ]');
+    expect(validation).toContain('[ "${PROMOTE_CONFIG_BUILDER_MODE}" != "authoritative" ]');
+    expect(validation).toContain('[ "${CANDIDATE_GATE_MODE}" != "shadow" ]');
+    expect(validation).toContain('[ "${CANDIDATE_GATE_MODE}" != "enforce" ]');
+    expect(validation).toContain('[ "${BACKUP_CAPABILITY_GATE_MODE}" != "shadow" ]');
+    expect(validation).toContain('[ "${BACKUP_CAPABILITY_GATE_MODE}" != "enforce" ]');
+
+    const preservation = stepBlock('preserve promote evidence controller');
+    for (const file of [
+      'production-live-config-seed-contract.ts',
+      'production-live-config-seed-agent.ts',
+      'production-live-config-seed-context.ts',
+      'production-live-config-seed-io.ts',
+      'production-live-config-seed-runs.ts',
+      'production-live-config-seed-overlay.ts',
+      'verify-production-live-config-prepare.ts',
+      'verify-production-live-config-seed.ts',
+      'compose.production-live-config-label-seed.yaml',
+      'verify-backup-agent-capabilities.ts',
+      'backup-agent-contract.ts',
+    ])
+      expect(preservation).toContain(file);
+
+    const prepare = stepBlock('attest one-time Production live config label preparation');
+    expect(prepare).toContain('CONFIG_SHADOW_EQUIVALENT');
+    expect(prepare).toContain('verify-production-live-config-prepare.ts');
+    const stop = stepBlock('stop after successful Production config shadow preparation');
+    expect(stop).toContain('steps.backup_capabilities.outcome');
+    expect(stop).toContain('steps.candidate_job.outcome');
+    expect(stop).toContain('PROMOTE_RECOVERY_CONTEXT_INVALID prod static-preflight');
+    expect(workflow.indexOf('run read-only candidate preflight')).toBeLessThan(
+      workflow.indexOf('stop after successful Production config shadow preparation')
+    );
+    expect(
+      workflow.indexOf('stop after successful Production config shadow preparation')
+    ).toBeLessThan(workflow.indexOf('create database backup before deployment'));
+
+    const seed = stepBlock('authorize one-time Production live config label seed');
+    expect(seed).toContain('verify-production-live-config-seed.ts');
+    expect(seed).toContain('production-live-config-seed-overlay.ts');
+    expect(seed).toContain('compose.production-live-config-label-seed.yaml');
+    const recheck = stepBlock('recheck one-time Production live config label seed');
+    expect(recheck).toContain('verify-production-live-config-seed.ts');
+    expect(workflow.indexOf('recheck one-time Production live config label seed')).toBeLessThan(
+      workflow.indexOf('- name: deploy')
+    );
+    expect(stepBlock('deploy')).toContain('seed-production-live-config-label');
+    expect(stepBlock('verify live backup agent capabilities')).toContain(
+      '${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts'
+    );
+    const remoteConfig = stepBlock('build and select remote config');
+    expect(remoteConfig.indexOf(': > "${shadow_output}"')).toBeLessThan(
+      remoteConfig.indexOf('case "${mode}" in')
+    );
   });
 
   it('injects the permission snapshot HMAC as a dedicated protected secret', () => {

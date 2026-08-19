@@ -246,6 +246,12 @@ export const runBuildRemoteAppConfig = (
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
     if (shadow) {
       const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
+      if (env.GITHUB_OUTPUT)
+        appendFileSync(
+          env.GITHUB_OUTPUT,
+          `shadow_equivalent=${comparison.equivalent ? 'true' : 'false'}\n`,
+          'utf8'
+        );
       process.stdout.write(
         `${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`
       );

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1075,
+  "body": "Staging-Rollouts sind jetzt zusätzlich durch den blockierenden Candidate-Preflight und die Backup-Agent-Kompatibilitätsprüfung geschützt. Der vollständige Main-E2E-Nachweis, verifizierte Datenbank-Backups, Runtime-Smoke und Digest-Parität bleiben Teil derselben Freigabekette."
+}

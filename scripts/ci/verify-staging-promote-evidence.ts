@@ -126,8 +126,14 @@ const matchesAttestedMainE2E = (candidate: StagingEvidence, expectedSourceSha: s
   );
 };
 
-export const requiresStagingParity = (targetImage: string, previousLiveImage: string | undefined) =>
-  !previousLiveImage || !matchesExpectedLiveImage(targetImage, previousLiveImage);
+export const requiresStagingParity = (
+  targetImage: string,
+  previousLiveImage: string | undefined,
+  forceStagingParity = false
+) =>
+  forceStagingParity ||
+  !previousLiveImage ||
+  !matchesExpectedLiveImage(targetImage, previousLiveImage);
 
 export const matchesSuccessfulStagingBackupEvidence = (
   evidence: StagingEvidence,
@@ -238,7 +244,9 @@ const main = () => {
   const evidenceKind = parseEvidenceKind(process.argv[2]);
   const targetDigest = required(process.env.DEPLOY_IMAGE_DIGEST, 'DEPLOY_IMAGE_DIGEST');
   const targetImage = required(process.env.DEPLOY_IMAGE_REF, 'DEPLOY_IMAGE_REF');
-  if (!requiresStagingParity(targetImage, process.env.PREVIOUS_LIVE_IMAGE)) return;
+  const forceStagingParity = process.env.FORCE_STAGING_PARITY === 'true';
+  if (!requiresStagingParity(targetImage, process.env.PREVIOUS_LIVE_IMAGE, forceStagingParity))
+    return;
   const expectedSourceSha =
     evidenceKind === 'promote'
       ? required(process.env.EXPECTED_CHANGE_HEAD, 'EXPECTED_CHANGE_HEAD')

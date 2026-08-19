@@ -199,19 +199,79 @@ describe('promote evidence contract', () => {
         'run',
         'environment',
         'status',
+        'mode',
+        'recoveryReasonProvided',
         'git',
         'image',
         'config',
         'backupAgent',
         'mainE2E',
+        'rollback',
+        'recovery',
         'gates',
         'terminalFailure',
       ]);
       expect(persisted.mainE2E).toBeNull();
+      expect(persisted.schemaVersion).toBe(2);
       expect(readFileSync(summaryPath, 'utf8')).toContain('## Promote-Evidenz');
       expect(stdout).toEqual([]);
     } finally {
       rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it('projects only the allowlisted recovery and previous-config contract', () => {
+    const recoveryReason = 'person@example.test https://internal.example.test secret=value';
+    const evidence = buildPromoteEvidence({
+      runId: '124',
+      runAttempt: 2,
+      environment: 'prod',
+      status: 'passed',
+      promoteMode: 'recovery',
+      recoveryReasonProvided: true,
+      baseRef: 'origin/main',
+      headRef: 'feature/recovery',
+      baseSha: sha,
+      headSha: otherSha,
+      previousImage: `registry.example/studio@${digest}`,
+      targetImage: digest,
+      imageRevision: configRevision,
+      configRevision,
+      previousConfigRevision: 'e'.repeat(64),
+      recoveryContract: {
+        mode: 'recovery',
+        reasonRecorded: true,
+        previousDigest: digest,
+        previousConfigRevision: 'e'.repeat(64),
+        sameDigestRetry: {
+          authorization: 'documented-cause',
+          previousFailureCode: null,
+        },
+        recoveryReason,
+        secretSnapshot: 'sentinel-secret',
+      },
+      gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
+    });
+    const surfaces = [JSON.stringify(evidence), renderPromoteSummary(evidence)];
+
+    expect(evidence.config.previousRevision).toBe('e'.repeat(64));
+    expect(evidence.rollback).toEqual({
+      imageDigest: digest,
+      configRevision: 'e'.repeat(64),
+    });
+    expect(evidence.recovery).toEqual({
+      mode: 'recovery',
+      reasonRecorded: true,
+      previousDigest: digest,
+      previousConfigRevision: 'e'.repeat(64),
+      sameDigestRetry: {
+        authorization: 'documented-cause',
+        previousFailureCode: null,
+      },
+    });
+    for (const surface of surfaces) {
+      expect(surface).not.toContain(recoveryReason);
+      expect(surface).not.toContain('sentinel-secret');
     }
   });
 
@@ -235,6 +295,25 @@ describe('promote evidence contract', () => {
       targetDigest: null,
       revision: 'latest',
     });
+    expect(evidence.rollback).toBeNull();
+  });
+
+  it('does not claim rollback readiness from an unpaired live digest', () => {
+    const evidence = buildPromoteEvidence({
+      runId: '8',
+      runAttempt: 1,
+      environment: 'prod',
+      status: 'failed',
+      baseRef: 'origin/main',
+      headRef: 'feature/promote',
+      previousImage: digest,
+      targetImage: `sha256:${'e'.repeat(64)}`,
+      gates: [{ gate: 'recovery-contract', phase: 'static-preflight', status: 'failed' }],
+    });
+
+    expect(evidence.image.previousDigest).toBe(digest);
+    expect(evidence.config.previousRevision).toBeNull();
+    expect(evidence.rollback).toBeNull();
   });
 
   it('builds the final workflow artifact from allowlisted step outputs', () => {

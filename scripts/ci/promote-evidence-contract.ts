@@ -6,6 +6,7 @@ import {
   type PromoteFailure,
   type PromotePhase,
 } from './promote-result.ts';
+import { projectRecoveryEvidence } from './promote-recovery-contract.ts';
 import type {
   BuildPromoteEvidenceInput,
   PromoteBackupAgentEvidence,
@@ -41,7 +42,9 @@ const gateNames = new Set<PromoteGateName>([
   'registry-login',
   'image-contract',
   'main-e2e-evidence',
+  'recovery-contract',
   'config-build',
+  'config-revision-contract',
   'worker-database-secret-injection',
   'change-policy-evaluation',
   'migration-bootstrap-policy',
@@ -225,6 +228,15 @@ const normalizeSecretReferences = (values: readonly string[] | undefined): strin
     ),
   ].sort();
 
+const normalizePromoteMode = (value: string | null | undefined): PromoteEvidence['mode'] => {
+  if (value === undefined || value === null || value === '' || value === 'standard')
+    return 'standard';
+  return value === 'recovery' ? 'recovery' : 'invalid';
+};
+
+const normalizeReasonProvided = (value: boolean | string | null | undefined): boolean =>
+  value === true || value === 'true';
+
 export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteEvidence => {
   if (!Number.isSafeInteger(input.runAttempt) || input.runAttempt < 1)
     throw new Error('Run-Attempt ist ungültig.');
@@ -236,6 +248,14 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
     (gate) => gate.blocking && ['failed', 'cancelled'].includes(gate.status)
   )?.phase;
   const terminalFailure = selectTerminalFailure(input, firstFailedPhase);
+  const previousDigest = normalizeDigest(input.previousImage);
+  const targetDigest = normalizeDigest(input.targetImage);
+  const previousConfigRevision = normalizeConfigRevision(input.previousConfigRevision);
+  const mode = normalizePromoteMode(input.promoteMode);
+  const recoveryReasonProvided = normalizeReasonProvided(input.recoveryReasonProvided);
+  if (input.recoveryContract && (mode !== 'recovery' || !recoveryReasonProvided)) {
+    throw new Error('Recovery-Evidenz widerspricht dem Promote-Modus.');
+  }
   const gatesWithFailure = gates.map((gate) =>
     gate.phase === terminalFailure?.phase &&
     gate.blocking &&
@@ -244,10 +264,12 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       : gate
   );
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     run: { id: assertRunId(input.runId), attempt: input.runAttempt },
     environment: input.environment,
     status: input.status,
+    mode,
+    recoveryReasonProvided,
     git: {
       baseRef: assertGitRef(input.baseRef, 'Base-Ref'),
       headRef: assertGitRef(input.headRef, 'Head-Ref'),
@@ -255,11 +277,12 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       headSha: input.headSha?.trim() ? assertSha(input.headSha, 'Head-SHA') : null,
     },
     image: {
-      previousDigest: normalizeDigest(input.previousImage),
-      targetDigest: normalizeDigest(input.targetImage),
+      previousDigest,
+      targetDigest,
       revision: input.imageRevision?.trim() ? assertImageRevision(input.imageRevision) : null,
     },
     config: {
+      previousRevision: previousConfigRevision,
       revision: normalizeConfigRevision(input.configRevision),
       externalSecretReferences: normalizeSecretReferences(input.externalSecretReferences),
     },
@@ -269,6 +292,15 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       input.headSha,
       gates.some((gate) => gate.gate === 'main-e2e-evidence' && gate.status === 'passed')
     ),
+    rollback:
+      previousDigest && previousConfigRevision
+        ? { imageDigest: previousDigest, configRevision: previousConfigRevision }
+        : null,
+    recovery: projectRecoveryEvidence(input.recoveryContract, {
+      previousDigest,
+      targetDigest,
+      previousConfigRevision,
+    }),
     gates: gatesWithFailure,
     terminalFailure,
   };

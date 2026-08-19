@@ -157,6 +157,12 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain(
       '--expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"'
     );
+    expect(workflow).toContain(
+      'PROMOTE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outputs.recovery_contract }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
+    );
   });
 
   it('runs backups before every staging or production deployment and blocks production mutations behind parity', () => {
@@ -243,6 +249,8 @@ describe('Promote workflow contract', () => {
       'promote-evidence-contract.ts',
       'promote-evidence-io.ts',
       'promote-evidence-types.ts',
+      'promote-recovery-contract.ts',
+      'promote-recovery-failure-definitions.ts',
     ]) {
       expect(workflow).toContain(
         `cp scripts/ci/${controllerModule} "\${PROMOTE_CONTROLLER_DIR}/${controllerModule}"`
@@ -306,6 +314,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('PROMOTE_GATE_POLICY_EVALUATION');
     expect(workflow).toContain('PROMOTE_GATE_TARGET');
     expect(workflow).toContain('PROMOTE_GATE_PREVIOUS_LIVE');
+    expect(workflow).toContain(
+      'PROMOTE_GATE_CONFIG_REVISION_CONTRACT: ${{ steps.config_revision_contract.outcome }}'
+    );
     expect(workflow).toContain('PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD');
     expect(workflow).toContain('PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD');
     expect(workflow).toContain(

@@ -13,7 +13,9 @@ export type PromoteGateName =
   | 'registry-login'
   | 'image-contract'
   | 'main-e2e-evidence'
+  | 'recovery-contract'
   | 'config-build'
+  | 'config-revision-contract'
   | 'worker-database-secret-injection'
   | 'change-policy-evaluation'
   | 'migration-bootstrap-policy'
@@ -65,11 +67,24 @@ export type PromoteMainE2EReference = Readonly<{
   evidenceClass: 'canonical-main';
 }>;
 
+export type PromoteRecoveryEvidence = Readonly<{
+  mode: 'recovery';
+  reasonRecorded: true;
+  previousDigest: string;
+  previousConfigRevision: string;
+  sameDigestRetry: Readonly<{
+    authorization: 'documented-cause';
+    previousFailureCode: null;
+  }> | null;
+}>;
+
 export type PromoteEvidence = Readonly<{
-  schemaVersion: 1;
+  schemaVersion: 2;
   run: Readonly<{ id: string; attempt: number }>;
   environment: PromoteEnvironment;
   status: PromoteEvidenceStatus;
+  mode: 'standard' | 'recovery' | 'invalid';
+  recoveryReasonProvided: boolean;
   git: Readonly<{
     baseRef: string;
     headRef: string;
@@ -82,11 +97,17 @@ export type PromoteEvidence = Readonly<{
     revision: string | null;
   }>;
   config: Readonly<{
+    previousRevision: string | null;
     revision: string | null;
     externalSecretReferences: readonly string[];
   }>;
   backupAgent: PromoteBackupAgentEvidence | null;
   mainE2E: PromoteMainE2EReference | null;
+  rollback: Readonly<{
+    imageDigest: string;
+    configRevision: string;
+  }> | null;
+  recovery: PromoteRecoveryEvidence | null;
   gates: readonly PromoteGateEvidence[];
   terminalFailure: PromoteFailure | null;
 }>;
@@ -96,6 +117,8 @@ export type BuildPromoteEvidenceInput = Readonly<{
   runAttempt: number;
   environment: PromoteEnvironment;
   status: PromoteEvidenceStatus;
+  promoteMode?: string | null;
+  recoveryReasonProvided?: boolean | string | null;
   baseRef: string;
   headRef: string;
   baseSha?: string | null;
@@ -104,9 +127,11 @@ export type BuildPromoteEvidenceInput = Readonly<{
   targetImage?: string | null;
   imageRevision?: string | null;
   configRevision?: string | null;
+  previousConfigRevision?: string | null;
   externalSecretReferences?: readonly string[];
   backupAgent?: PromoteBackupAgentEvidence | null;
   mainE2EReference?: unknown;
+  recoveryContract?: unknown;
   gates: readonly Readonly<{
     gate: PromoteGateName;
     phase: PromotePhase;

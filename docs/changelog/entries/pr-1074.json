@@ -1,0 +1,4 @@
+{
+  "prNumber": 1074,
+  "body": "Geschützte Rollouts prüfen im Candidate jetzt gezielt die explizit freigegebenen aktiven Release-Tenants. Historische oder interne Registry-Einträge erweitern den öffentlich zulässigen Tenant-Scope nicht mehr automatisch."
+}

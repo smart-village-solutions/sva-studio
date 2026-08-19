@@ -1,0 +1,4 @@
+{
+  "prNumber": 1093,
+  "body": "Der App-E2E-Lauf verwendet nur noch Chromium und umgeht vor der Browserinstallation den unzuverlässigen HTTP-Azure-Ubuntu-Mirror auf GitHub-Runnern."
+}

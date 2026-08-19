@@ -40,8 +40,26 @@ jobs:
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm-workspace
 
+      - name: Prefer HTTPS Ubuntu archives for Playwright dependencies
+        run: |
+          set -euo pipefail
+          MIRRORS=/etc/apt/apt-mirrors.txt
+          if [ ! -f "$MIRRORS" ]; then
+            echo "::warning::$MIRRORS not found on this runner image; skipping mirror hardening"
+            exit 0
+          fi
+          if ! grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/' "$MIRRORS"; then
+            echo "::notice::The Azure Ubuntu mirror is not configured on this runner image; skipping mirror hardening"
+            exit 0
+          fi
+          sudo sed -i '/^http:\/\/azure\.archive\.ubuntu\.com\/ubuntu\//d' "$MIRRORS"
+          if grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/' "$MIRRORS"; then
+            echo 'The Azure Ubuntu mirror must not be selected for Playwright dependencies.' >&2
+            exit 1
+          fi
+
       - name: Install Playwright browsers
-        run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium firefox
+        run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium
 
       - name: Start Redis for E2E
         run: docker run -d --name sva-studio-redis-e2e -p 6379:6379 redis:7-alpine

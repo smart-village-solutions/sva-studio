@@ -41,35 +41,6 @@ on:
         description: 'Required documented reason for recovery mode'
         required: false
         type: string
-      live_config_transition_mode:
-        description: 'One-time protected live config transition'
-        required: true
-        default: disabled
-        type: choice
-        options:
-          [
-            disabled,
-            prepare-staging-live-config-label,
-            seed-staging-live-config-label,
-            prepare-production-live-config-label,
-            seed-production-live-config-label,
-          ]
-      staging_legacy_config_seed_run_id:
-        description: 'Exact failed Promote run authorizing the Staging label seed'
-        required: false
-        type: string
-      staging_legacy_config_seed_run_attempt:
-        description: 'Exact failed Promote attempt authorizing the Staging label seed'
-        required: false
-        type: string
-      production_legacy_config_seed_run_id:
-        description: 'Exact failed Promote run authorizing the Production label seed'
-        required: false
-        type: string
-      production_legacy_config_seed_run_attempt:
-        description: 'Exact failed Promote attempt authorizing the Production label seed'
-        required: false
-        type: string
   workflow_call:
     inputs:
       environment:
@@ -214,17 +185,6 @@ jobs:
           CHANGE_HEAD: ${{ inputs.change_head }}
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          LIVE_CONFIG_TRANSITION_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}
-          SEED_EVIDENCE_RUN_ID: ${{ inputs.staging_legacy_config_seed_run_id || '' }}
-          SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.staging_legacy_config_seed_run_attempt || '' }}
-          PRODUCTION_SEED_EVIDENCE_RUN_ID: ${{ inputs.production_legacy_config_seed_run_id || '' }}
-          PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.production_legacy_config_seed_run_attempt || '' }}
-          PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
         run: |
           set -euo pipefail
           record_input_failure() {
@@ -275,102 +235,6 @@ jobs:
               ;;
             *)
               node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_MODE_INVALID "${ENVIRONMENT}" input-validation
-              exit 1
-              ;;
-          esac
-
-          case "${LIVE_CONFIG_TRANSITION_MODE}" in
-            disabled)
-              if [ -n "${SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ATTEMPT}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT}" ]; then
-                record_input_failure
-                exit 1
-              fi
-              ;;
-            prepare-staging-live-config-label)
-              if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] ||
-                 [ "${ENVIRONMENT}" != "staging" ] ||
-                 [ "${PROMOTE_MODE}" != "standard" ] ||
-                 [ "${MIGRATION_MODE}" != "assert-none" ] ||
-                 [ "${BOOTSTRAP_MODE}" != "assert-none" ] ||
-                 [ "${CHANGE_BASE}" != "${CHANGE_HEAD}" ] ||
-                 [ "${PROMOTE_CONFIG_BUILDER_MODE}" != "authoritative" ] ||
-                 [ "${MAIN_E2E_GATE_MODE}" != "enforce" ] ||
-                 [ "${CANDIDATE_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_CAPABILITY_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_EXECUTOR_MODE}" != "agent" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ATTEMPT}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT}" ]; then
-                record_input_failure
-                exit 1
-              fi
-              ;;
-            seed-staging-live-config-label)
-              if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] ||
-                 [ "${ENVIRONMENT}" != "staging" ] ||
-                 [ "${PROMOTE_MODE}" != "standard" ] ||
-                 [ "${MIGRATION_MODE}" != "assert-none" ] ||
-                 [ "${BOOTSTRAP_MODE}" != "assert-none" ] ||
-                 [ "${CHANGE_BASE}" != "${CHANGE_HEAD}" ] ||
-                 [ "${PROMOTE_CONFIG_BUILDER_MODE}" != "authoritative" ] ||
-                 [ "${MAIN_E2E_GATE_MODE}" != "enforce" ] ||
-                 [ "${CANDIDATE_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_CAPABILITY_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_EXECUTOR_MODE}" != "agent" ] ||
-                 ! [[ "${SEED_EVIDENCE_RUN_ID}" =~ ^[0-9]+$ ]] ||
-                 ! [[ "${SEED_EVIDENCE_RUN_ATTEMPT}" =~ ^[1-9][0-9]*$ ]] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT}" ]; then
-                record_input_failure
-                exit 1
-              fi
-              ;;
-            prepare-production-live-config-label)
-              if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] ||
-                 [ "${ENVIRONMENT}" != "prod" ] ||
-                 [ "${PROMOTE_MODE}" != "standard" ] ||
-                 [ "${MIGRATION_MODE}" != "assert-none" ] ||
-                 [ "${BOOTSTRAP_MODE}" != "assert-none" ] ||
-                 [ "${CHANGE_BASE}" != "${CHANGE_HEAD}" ] ||
-                 [ "${PROMOTE_CONFIG_BUILDER_MODE}" != "shadow" ] ||
-                 [ "${MAIN_E2E_GATE_MODE}" != "shadow" ] ||
-                 [ "${CANDIDATE_GATE_MODE}" != "shadow" ] ||
-                 [ "${BACKUP_CAPABILITY_GATE_MODE}" != "shadow" ] ||
-                 [ "${BACKUP_EXECUTOR_MODE}" != "agent" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ATTEMPT}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT}" ]; then
-                record_input_failure
-                exit 1
-              fi
-              ;;
-            seed-production-live-config-label)
-              if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] ||
-                 [ "${ENVIRONMENT}" != "prod" ] ||
-                 [ "${PROMOTE_MODE}" != "standard" ] ||
-                 [ "${MIGRATION_MODE}" != "assert-none" ] ||
-                 [ "${BOOTSTRAP_MODE}" != "assert-none" ] ||
-                 [ "${CHANGE_BASE}" != "${CHANGE_HEAD}" ] ||
-                 [ "${PROMOTE_CONFIG_BUILDER_MODE}" != "authoritative" ] ||
-                 [ "${MAIN_E2E_GATE_MODE}" != "enforce" ] ||
-                 [ "${CANDIDATE_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_CAPABILITY_GATE_MODE}" != "enforce" ] ||
-                 [ "${BACKUP_EXECUTOR_MODE}" != "agent" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ID}" ] ||
-                 [ -n "${SEED_EVIDENCE_RUN_ATTEMPT}" ] ||
-                 ! [[ "${PRODUCTION_SEED_EVIDENCE_RUN_ID}" =~ ^[0-9]+$ ]] ||
-                 ! [[ "${PRODUCTION_SEED_EVIDENCE_RUN_ATTEMPT}" =~ ^[1-9][0-9]*$ ]]; then
-                record_input_failure
-                exit 1
-              fi
-              ;;
-            *)
-              record_input_failure
               exit 1
               ;;
           esac
@@ -473,15 +337,11 @@ jobs:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
           PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          LIVE_CONFIG_TRANSITION_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}
         run: |
           set -euo pipefail
           umask 077
           mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
           profile_path="config/runtime/remote/${{ inputs.environment }}.vars"
-          if [[ "${LIVE_CONFIG_TRANSITION_MODE}" == *production* ]]; then
-            profile_path="${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"
-          fi
           shadow_equivalent=not-applicable
           shadow_output="${RUNNER_TEMP}/promote-config-shadow.output"
           rm -f "${shadow_output}"
@@ -519,21 +379,8 @@ jobs:
 
       - name: verify target config revision label contract
         id: config_revision_contract
-        env:
-          LIVE_CONFIG_TRANSITION_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}
         run: |
           set -euo pipefail
-          if [ "${LIVE_CONFIG_TRANSITION_MODE}" = "prepare-staging-live-config-label" ] ||
-             [ "${LIVE_CONFIG_TRANSITION_MODE}" = "seed-staging-live-config-label" ] ||
-             [ "${LIVE_CONFIG_TRANSITION_MODE}" = "prepare-production-live-config-label" ] ||
-             [ "${LIVE_CONFIG_TRANSITION_MODE}" = "seed-production-live-config-label" ]; then
-            if [[ "${LIVE_CONFIG_TRANSITION_MODE}" == *production* ]]; then
-              test -s "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.production-live-config-label-seed.yaml"
-            else
-              test -s "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.staging-live-config-label-seed.yaml"
-            fi
-            exit 0
-          fi
           if ! grep -Eq "^[[:space:]]+- ['\"]sva\\.config\\.revision=\\$\\{SVA_CONFIG_REVISION\\}['\"]$" "deploy/compose.${{ inputs.environment }}.yaml"; then
             node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" static-preflight
             exit 1
@@ -585,151 +432,6 @@ jobs:
             exit 1
           fi
 
-      - name: attest one-time staging live config label preparation
-        id: legacy_config_seed_preparation
-        if: ${{ inputs.live_config_transition_mode == 'prepare-staging-live-config-label' }}
-        env:
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-live-config-prepare.ts"
-
-      - name: authorize one-time staging live config label seed
-        id: legacy_config_seed
-        if: ${{ inputs.live_config_transition_mode == 'seed-staging-live-config-label' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SEED_EVIDENCE_RUN_ID: ${{ inputs.staging_legacy_config_seed_run_id }}
-          SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.staging_legacy_config_seed_run_attempt }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: |
-          set -euo pipefail
-          umask 077
-          authorization_output="${RUNNER_TEMP}/staging-live-config-seed-authorization.output"
-          trap 'rm -f .env "${authorization_output}" "${RUNNER_TEMP}/staging-seed-base.json" "${RUNNER_TEMP}/staging-seed-overlay.json"' EXIT
-          GITHUB_OUTPUT="${authorization_output}" pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-live-config-seed.ts"
-          pnpm exec tsx scripts/ci/render-compose-env.ts \
-            --input "${RUNNER_TEMP}/promote-app-config.vars" \
-            --output .env
-          {
-            printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}"
-            printf 'SVA_DEPLOY_REVISION=%s\n' "${{ steps.image_contract.outputs.deploy_revision }}"
-            printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}"
-          } >> .env
-          docker compose -f compose.yaml -f ./deploy/compose.staging.yaml \
-            config --no-normalize --format json > "${RUNNER_TEMP}/staging-seed-base.json"
-          docker compose -f compose.yaml -f ./deploy/compose.staging.yaml \
-            -f "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.staging-live-config-label-seed.yaml" \
-            config --no-normalize --format json > "${RUNNER_TEMP}/staging-seed-overlay.json"
-          pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/staging-live-config-seed-overlay.ts" \
-            --base "${RUNNER_TEMP}/staging-seed-base.json" \
-            --seeded "${RUNNER_TEMP}/staging-seed-overlay.json" \
-            --revision "${{ steps.remote_config.outputs.config_revision }}"
-          seed_authorization="$(sed -n 's/^seed_authorization=//p' "${authorization_output}")"
-          if [ -z "${seed_authorization}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_CONFIG_SEED_REJECTED staging static-preflight
-            exit 1
-          fi
-          printf 'seed_authorization=%s\n' "${seed_authorization}" >> "${GITHUB_OUTPUT}"
-
-      - name: attest one-time Production live config label preparation
-        id: production_config_seed_preparation
-        if: ${{ inputs.live_config_transition_mode == 'prepare-production-live-config-label' }}
-        env:
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          CONFIG_SHADOW_EQUIVALENT: ${{ steps.remote_config.outputs.shadow_equivalent }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-production-live-config-prepare.ts"
-
-      - name: authorize one-time Production live config label seed
-        id: production_config_seed
-        if: ${{ inputs.live_config_transition_mode == 'seed-production-live-config-label' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SEED_EVIDENCE_RUN_ID: ${{ inputs.production_legacy_config_seed_run_id }}
-          SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.production_legacy_config_seed_run_attempt }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: |
-          set -euo pipefail
-          umask 077
-          authorization_output="${RUNNER_TEMP}/production-live-config-seed-authorization.output"
-          trap 'rm -f .env "${authorization_output}" "${RUNNER_TEMP}/production-seed-base.json" "${RUNNER_TEMP}/production-seed-overlay.json"' EXIT
-          GITHUB_OUTPUT="${authorization_output}" pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-production-live-config-seed.ts"
-          pnpm exec tsx scripts/ci/render-compose-env.ts \
-            --input "${RUNNER_TEMP}/promote-app-config.vars" \
-            --output .env
-          {
-            printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}"
-            printf 'SVA_DEPLOY_REVISION=%s\n' "${{ steps.image_contract.outputs.deploy_revision }}"
-            printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}"
-          } >> .env
-          docker compose -f compose.yaml -f ./deploy/compose.prod.yaml \
-            config --no-normalize --format json > "${RUNNER_TEMP}/production-seed-base.json"
-          docker compose -f compose.yaml -f ./deploy/compose.prod.yaml \
-            -f "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.production-live-config-label-seed.yaml" \
-            config --no-normalize --format json > "${RUNNER_TEMP}/production-seed-overlay.json"
-          pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/production-live-config-seed-overlay.ts" \
-            --base "${RUNNER_TEMP}/production-seed-base.json" \
-            --seeded "${RUNNER_TEMP}/production-seed-overlay.json" \
-            --revision "${{ steps.remote_config.outputs.config_revision }}"
-          seed_authorization="$(sed -n 's/^seed_authorization=//p' "${authorization_output}")"
-          if [ -z "${seed_authorization}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_CONFIG_SEED_REJECTED prod static-preflight
-            exit 1
-          fi
-          printf 'seed_authorization=%s\n' "${seed_authorization}" >> "${GITHUB_OUTPUT}"
-
       - name: validate recovery and live revision contract
         id: recovery_contract
         env:
@@ -740,8 +442,6 @@ jobs:
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
           TARGET_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           SOURCE_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}
-          SEED_PREPARATION: ${{ steps.production_config_seed_preparation.outputs.seed_preparation }}
         run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts" "${{ inputs.environment }}"
 
       - name: bind deploy gates to actual live revision
@@ -835,12 +535,7 @@ jobs:
         env:
           PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
-        run: |
-          if [[ "${{ inputs.live_config_transition_mode || 'disabled' }}" == *production* ]]; then
-            pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts" "${{ inputs.environment }}"
-          else
-            pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
-          fi
+        run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
 
       - name: run read-only candidate preflight
         id: candidate_job
@@ -859,24 +554,6 @@ jobs:
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
           printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind candidate --environment "${{ inputs.environment }}"
-
-      - name: stop after successful Production config shadow preparation
-        id: production_config_seed_prepare_stop
-        if: ${{ inputs.live_config_transition_mode == 'prepare-production-live-config-label' && always() }}
-        env:
-          PARITY_OUTCOME: ${{ steps.staging_parity.outcome }}
-          CAPABILITY_OUTCOME: ${{ steps.backup_capabilities.outcome }}
-          CANDIDATE_OUTCOME: ${{ steps.candidate_job.outcome }}
-        run: |
-          set -euo pipefail
-          if [ "${PARITY_OUTCOME}" != "success" ] ||
-             [ "${CAPABILITY_OUTCOME}" != "success" ] ||
-             [ "${CANDIDATE_OUTCOME}" != "success" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_CONFIG_SEED_REJECTED prod static-preflight
-            exit 1
-          fi
-          node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_RECOVERY_CONTEXT_INVALID prod static-preflight
-          exit 1
 
       - name: create database backup before deployment
         id: backup_job
@@ -993,76 +670,6 @@ jobs:
           : > config/runtime/studio.vars
           pnpm exec tsx scripts/ops/runtime-env.ts doctor studio
 
-      - name: recheck one-time staging live config label seed
-        id: legacy_config_seed_recheck
-        if: ${{ inputs.live_config_transition_mode == 'seed-staging-live-config-label' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SEED_EVIDENCE_RUN_ID: ${{ inputs.staging_legacy_config_seed_run_id }}
-          SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.staging_legacy_config_seed_run_attempt }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-          INITIAL_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}
-        run: |
-          set -euo pipefail
-          recheck_output="${RUNNER_TEMP}/staging-live-config-seed-recheck.output"
-          rm -f "${recheck_output}"
-          GITHUB_OUTPUT="${recheck_output}" pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-live-config-seed.ts"
-          recheck_authorization="$(sed -n 's/^seed_authorization=//p' "${recheck_output}")"
-          rm -f "${recheck_output}"
-          if [ -z "${recheck_authorization}" ] || [ "${INITIAL_SEED_AUTHORIZATION}" != "${recheck_authorization}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_CONFIG_SEED_REJECTED staging static-preflight
-            exit 1
-          fi
-
-      - name: recheck one-time Production live config label seed
-        id: production_config_seed_recheck
-        if: ${{ inputs.live_config_transition_mode == 'seed-production-live-config-label' }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
-          MIGRATION_MODE: ${{ inputs.migration_mode }}
-          BOOTSTRAP_MODE: ${{ inputs.bootstrap_mode }}
-          BASE_SHA: ${{ steps.source_contract.outputs.base_sha }}
-          HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
-          TARGET_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SEED_EVIDENCE_RUN_ID: ${{ inputs.production_legacy_config_seed_run_id }}
-          SEED_EVIDENCE_RUN_ATTEMPT: ${{ inputs.production_legacy_config_seed_run_attempt }}
-          CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
-          CANDIDATE_GATE_MODE: ${{ vars.CANDIDATE_PREFLIGHT_GATE || 'disabled' }}
-          BACKUP_CAPABILITY_GATE_MODE: ${{ vars.BACKUP_CAPABILITY_GATE || 'disabled' }}
-          BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}
-          SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-          INITIAL_SEED_AUTHORIZATION: ${{ steps.production_config_seed.outputs.seed_authorization }}
-        run: |
-          set -euo pipefail
-          recheck_output="${RUNNER_TEMP}/production-live-config-seed-recheck.output"
-          rm -f "${recheck_output}"
-          GITHUB_OUTPUT="${recheck_output}" pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-production-live-config-seed.ts"
-          recheck_authorization="$(sed -n 's/^seed_authorization=//p' "${recheck_output}")"
-          rm -f "${recheck_output}"
-          if [ -z "${recheck_authorization}" ] || [ "${INITIAL_SEED_AUTHORIZATION}" != "${recheck_authorization}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_CONFIG_SEED_REJECTED prod static-preflight
-            exit 1
-          fi
-
       - name: deploy
         id: deploy
         env:
@@ -1071,7 +678,6 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SEED_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
         run: |
@@ -1095,17 +701,8 @@ jobs:
             printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
             printf 'SVA_CONFIG_REVISION=%s\n' "${CONFIG_REVISION}"
           } >> .env
-          compose_files=(-f compose.yaml -f "./deploy/compose.${ENVIRONMENT}.yaml")
-          if [ "${SEED_MODE}" = "seed-staging-live-config-label" ]; then
-            compose_files+=(
-              -f "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.staging-live-config-label-seed.yaml"
-            )
-          elif [ "${SEED_MODE}" = "seed-production-live-config-label" ]; then
-            compose_files+=(
-              -f "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets/compose.production-live-config-label-seed.yaml"
-            )
-          fi
-          docker compose "${compose_files[@]}" config --no-normalize --format json > stack.json
+          docker compose -f compose.yaml -f "./deploy/compose.${ENVIRONMENT}.yaml" \
+            config --no-normalize --format json > stack.json
           pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
 
           quantum-cli stacks deploy -f stack.yaml --stack "${{ steps.target.outputs.stack_name }}" --endpoint "${QUANTUM_ENDPOINT}"
@@ -1154,7 +751,7 @@ jobs:
 
       - name: write staging parity evidence
         id: staging_evidence
-        if: ${{ inputs.environment == 'staging' && (inputs.live_config_transition_mode || 'disabled') == 'disabled' && success() }}
+        if: ${{ inputs.environment == 'staging' && success() }}
         env:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
@@ -1166,7 +763,7 @@ jobs:
 
       - name: upload staging parity evidence
         id: staging_evidence_upload
-        if: ${{ inputs.environment == 'staging' && (inputs.live_config_transition_mode || 'disabled') == 'disabled' && success() }}
+        if: ${{ inputs.environment == 'staging' && success() }}
         uses: actions/upload-artifact@v4
         with:
           name: promote-staging-parity-${{ github.run_id }}-${{ github.run_attempt }}
@@ -1211,8 +808,8 @@ jobs:
           PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
           PROMOTE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outputs.recovery_contract }}
-          PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation || steps.production_config_seed_preparation.outputs.seed_preparation }}
-          PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}
+          PROMOTE_SEED_PREPARATION: ''
+          PROMOTE_SEED_AUTHORIZATION: ''
           PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
           PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}
           PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
@@ -1237,11 +834,6 @@ jobs:
           PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
           PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
           PROMOTE_GATE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outcome }}
-          PROMOTE_GATE_LEGACY_CONFIG_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outcome }}
-          PROMOTE_GATE_LEGACY_CONFIG_SEED: ${{ steps.legacy_config_seed.outcome }}
-          PROMOTE_GATE_PRODUCTION_CONFIG_SEED_PREPARATION: ${{ steps.production_config_seed_preparation.outcome }}
-          PROMOTE_GATE_PRODUCTION_CONFIG_SEED: ${{ steps.production_config_seed.outcome }}
-          PROMOTE_GATE_PRODUCTION_CONFIG_SEED_PREPARE_STOP: ${{ steps.production_config_seed_prepare_stop.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}
@@ -1255,8 +847,6 @@ jobs:
           PROMOTE_GATE_MIGRATION: ${{ steps.migration_job.outcome }}
           PROMOTE_GATE_BOOTSTRAP: ${{ steps.bootstrap_job.outcome }}
           PROMOTE_GATE_POSTCONDITIONS: ${{ steps.postconditions.outcome }}
-          PROMOTE_GATE_LEGACY_CONFIG_SEED_RECHECK: ${{ steps.legacy_config_seed_recheck.outcome }}
-          PROMOTE_GATE_PRODUCTION_CONFIG_SEED_RECHECK: ${{ steps.production_config_seed_recheck.outcome }}
           PROMOTE_GATE_DEPLOY: ${{ steps.deploy.outcome }}
           PROMOTE_GATE_SWARM_CONVERGENCE: ${{ steps.swarm_convergence.outcome }}
           PROMOTE_GATE_EXTERNAL_SMOKE: ${{ steps.runtime_smoke.outcome }}

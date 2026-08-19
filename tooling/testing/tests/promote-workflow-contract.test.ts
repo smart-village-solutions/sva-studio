@@ -17,7 +17,7 @@ const productionBackupDrillWorkflow = readFileSync(
 );
 
 describe('Promote workflow contract', () => {
-  it('keeps the one-time live config label transition staging-only and fail-closed', () => {
+  it('removes the completed live config transition while keeping fail-closed evidence', () => {
     const dispatch = workflow.slice(
       workflow.indexOf('  workflow_dispatch:'),
       workflow.indexOf('  workflow_call:')
@@ -26,25 +26,29 @@ describe('Promote workflow contract', () => {
       workflow.indexOf('  workflow_call:'),
       workflow.indexOf('\npermissions:')
     );
-    expect(dispatch).toContain('live_config_transition_mode:');
-    expect(dispatch).toContain('staging_legacy_config_seed_run_id:');
-    expect(dispatch).toContain('staging_legacy_config_seed_run_attempt:');
-    expect(dispatch).toContain('prepare-staging-live-config-label');
-    expect(reusable).not.toContain('live_config_transition_mode:');
-    expect(reusable).not.toContain('staging_legacy_config_seed_run_id:');
-    expect(reusable).not.toContain('staging_legacy_config_seed_run_attempt:');
-    expect(workflow).toMatch(
-      /prepare-staging-live-config-label\)[\s\S]*?\[ -n "\$\{SEED_EVIDENCE_RUN_ID\}" \][\s\S]*?seed-staging-live-config-label\)/u
-    );
+    for (const input of [
+      'live_config_transition_mode',
+      'staging_legacy_config_seed_run_id',
+      'staging_legacy_config_seed_run_attempt',
+      'production_legacy_config_seed_run_id',
+      'production_legacy_config_seed_run_attempt',
+    ]) {
+      expect(dispatch).not.toContain(`${input}:`);
+      expect(reusable).not.toContain(`${input}:`);
+    }
+    for (const mode of [
+      'prepare-staging-live-config-label',
+      'seed-staging-live-config-label',
+      'prepare-production-live-config-label',
+      'seed-production-live-config-label',
+    ])
+      expect(workflow).not.toContain(mode);
 
     const requiredOrder = [
       'capture previous live app digest',
-      'attest one-time staging live config label preparation',
-      'authorize one-time staging live config label seed',
       'validate recovery and live revision contract',
       'run read-only candidate preflight',
       'create database backup before deployment',
-      'recheck one-time staging live config label seed',
       '- name: deploy',
       'wait for terminal Swarm convergence',
       'verify deployed runtime',
@@ -52,18 +56,12 @@ describe('Promote workflow contract', () => {
     ].map((phase) => workflow.indexOf(phase));
     expect(requiredOrder.every((offset) => offset >= 0)).toBe(true);
     expect(requiredOrder).toEqual([...requiredOrder].sort((left, right) => left - right));
-    expect(workflow).toContain(
-      "inputs.environment == 'staging' && (inputs.live_config_transition_mode || 'disabled') == 'disabled' && success()"
-    );
+    expect(workflow).toContain("inputs.environment == 'staging' && success()");
     expect(workflow).toContain(
       'PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
     );
-    expect(workflow).toContain(
-      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation || steps.production_config_seed_preparation.outputs.seed_preparation }}'
-    );
-    expect(workflow).toContain(
-      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}'
-    );
+    expect(workflow).toContain("PROMOTE_SEED_PREPARATION: ''");
+    expect(workflow).toContain("PROMOTE_SEED_AUTHORIZATION: ''");
   });
 
   it('runs staging phases in the required fail-closed order', () => {
@@ -172,10 +170,10 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toContain("MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}");
     expect(workflow).toMatch(
-      /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && \(inputs\.live_config_transition_mode \|\| 'disabled'\) == 'disabled' && success\(\) \}\}/u
+      /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
     );
     expect(workflow).toMatch(
-      /- name: upload staging parity evidence\n\s+id: staging_evidence_upload\n\s+if: \$\{\{ inputs\.environment == 'staging' && \(inputs\.live_config_transition_mode \|\| 'disabled'\) == 'disabled' && success\(\) \}\}/u
+      /- name: upload staging parity evidence\n\s+id: staging_evidence_upload\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
     );
   });
 

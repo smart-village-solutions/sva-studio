@@ -1,0 +1,4 @@
+{
+  "prNumber": 1091,
+  "body": "Die abgeschlossenen Live-Config-Seed-Pfade sind aus dem aktiven Promote-Workflow entfernt; reguläre Standard- und Recovery-Rollouts bleiben fail-closed und Evidence v2 bleibt kompatibel."
+}

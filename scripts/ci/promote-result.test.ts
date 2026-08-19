@@ -214,6 +214,8 @@ describe('promote evidence contract', () => {
         'terminalFailure',
       ]);
       expect(persisted.mainE2E).toBeNull();
+      expect(persisted.seedPreparation).toBeNull();
+      expect(persisted.seedAuthorization).toBeNull();
       expect(persisted.schemaVersion).toBe(2);
       expect(readFileSync(summaryPath, 'utf8')).toContain('## Promote-Evidenz');
       expect(stdout).toEqual([]);

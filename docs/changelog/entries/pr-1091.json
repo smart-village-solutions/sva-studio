@@ -1,0 +1,4 @@
+{
+  "prNumber": 1091,
+  "body": "Waste-Datenexporte funktionieren jetzt auch für Datensätze, in denen optionale Felder wie Übersetzungen nicht befüllt sind."
+}

@@ -3,7 +3,9 @@
 ## Purpose
 
 Definiert die verbindliche Swarm-Topologie sowie den GitHub-Actions-Promote-Vertrag für Dev, Staging und Production einschließlich immutable Digests, One-shot-Gates, Backups, Freigaben und Verifikation.
+
 ## Requirements
+
 ### Requirement: Swarm-kompatibler Portainer-Stack
 
 Das System SHALL einen Portainer-Stack bereitstellen, der für Docker Swarm mit externem Ingress-Netzwerk und Traefik-Routing geeignet ist.

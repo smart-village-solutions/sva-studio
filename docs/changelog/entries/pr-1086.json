@@ -1,0 +1,4 @@
+{
+  "prNumber": 1086,
+  "body": "Geschützte Deployments älterer Softwarestände verwenden für aktuelle Sicherheitsprüfungen zuverlässig die Workflow-Version der Prüfskripte. Dadurch bleiben Secret-Injection, Deployment-Basis und Konvergenzprüfung auch bei Rollbacks verfügbar."
+}

@@ -262,7 +262,7 @@ describe('Promote workflow contract', () => {
     expect(convergence).toBeGreaterThan(workflow.indexOf('- name: deploy'));
     expect(convergence).toBeLessThan(workflow.indexOf('verify deployed runtime'));
     expect(workflow).toContain(
-      'run: pnpm exec tsx scripts/ci/verify-swarm-convergence.ts "${{ inputs.environment }}"'
+      'run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-swarm-convergence.ts" "${{ inputs.environment }}"'
     );
     expect(workflow).toContain(
       'PROMOTE_GATE_SWARM_CONVERGENCE: ${{ steps.swarm_convergence.outcome }}'

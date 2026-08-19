@@ -1,5 +1,0 @@
-services:
-  app:
-    deploy:
-      labels:
-        sva.config.revision: ${SVA_CONFIG_REVISION:?SVA_CONFIG_REVISION is required}

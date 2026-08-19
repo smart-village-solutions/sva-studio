@@ -41,6 +41,18 @@ describe('remote app config builder', () => {
     expect(result.source).toContain(`SVA_MAINSERVER_SCOPE_RESOLVER_MODE=${resolverMode}\n`);
   });
 
+  it.each([
+    ['dev', 'de-teststadt-dev'],
+    ['staging', 'de-studio-sandbox'],
+  ] as const)('binds the %s candidate to its explicit release tenant scope', (environment, allowedInstanceIds) => {
+    const remoteProfile = readFileSync(
+      new URL(`../../config/runtime/remote/${environment}.vars`, import.meta.url),
+      'utf8'
+    );
+
+    expect(remoteProfile).toContain(`SVA_ALLOWED_INSTANCE_IDS=${allowedInstanceIds}\n`);
+  });
+
   it('fails compose interpolation when the deployment environment is missing', () => {
     const compose = readFileSync(
       new URL('../../deploy/portainer/docker-compose.studio.yml', import.meta.url),

@@ -20,8 +20,7 @@ PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME=tenant-admin@example.org
 PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD=super-secret-tenant-password
 ```
 
-`playwright/.auth/root-user.json` und `playwright/.auth/de-musterhausen-user.json` enthalten Cookies und Tokens und dürfen nicht committed werden.
-4. Playwright Browser wurde installiert:
+`playwright/.auth/root-user.json` und `playwright/.auth/de-musterhausen-user.json` enthalten Cookies und Tokens und dürfen nicht committed werden. 4. Playwright Browser wurde installiert:
 
 ```bash
 pnpm exec playwright install --with-deps chromium
@@ -79,6 +78,8 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 ## CI-Workflow
 
 - Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)
+- führt ausschließlich die Chromium-Suite aus; ein Firefox-Smoke gehört nicht zum kanonischen App-E2E-Nachweis
+- entfernt vor der Playwright-Installation den unzuverlässigen HTTP-Azure-Mirror aus der flüchtigen Runner-Mirrorliste und verwendet die verbleibenden HTTPS-Ubuntu-Archive
 - Startet dieselben Services via Docker Compose
 - startet die App über das Nx-Target `sva-studio-react:serve`
 - injiziert `PLAYWRIGHT_ROOT_*` und `PLAYWRIGHT_DE_MUSTERHAUSEN_*` als Secrets/Variablen

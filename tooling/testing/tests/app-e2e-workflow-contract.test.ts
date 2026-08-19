@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -14,6 +14,10 @@ const playwrightConfig = readFileSync(
 const prGate = readFileSync(
   resolve(import.meta.dirname, '../../../scripts/ci/run-pr-gate.ts'),
   'utf8'
+);
+const crossBrowserFirefoxSpec = resolve(
+  import.meta.dirname,
+  '../../../apps/sva-studio-react/e2e/real-auth.cross-browser.spec.ts'
 );
 
 describe('App E2E workflow contract', () => {
@@ -41,6 +45,19 @@ describe('App E2E workflow contract', () => {
     );
     expect(playwrightConfig).toContain("trace: 'retain-on-failure'");
     expect(playwrightConfig).toContain("screenshot: 'only-on-failure'");
+  });
+
+  it('uses only Chromium and avoids the unreliable Azure apt mirror for browser dependencies', () => {
+    expect(workflow).toContain('Prefer HTTPS Ubuntu archives for Playwright dependencies');
+    expect(workflow).toContain(
+      "sudo sed -i '/^http:\\/\\/azure\\.archive\\.ubuntu\\.com\\/ubuntu\\//d' /etc/apt/apt-mirrors.txt"
+    );
+    expect(workflow).toContain('playwright install --with-deps chromium');
+    expect(workflow).not.toContain('playwright install --with-deps chromium firefox');
+    expect(workflow).not.toContain('firefox');
+    expect(playwrightConfig).not.toContain('firefox-smoke');
+    expect(playwrightConfig).not.toContain('PLAYWRIGHT_ENABLE_FIREFOX_SMOKE');
+    expect(existsSync(crossBrowserFirefoxSpec)).toBe(false);
   });
 
   it('retains diagnostics and finalizes the terminal job result independently', () => {

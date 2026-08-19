@@ -12,7 +12,7 @@ required_vars=(
 for key in "${required_vars[@]}"; do
   if [ -z "${!key:-}" ]; then
     echo "[bootstrap-entrypoint] missing required environment variable: ${key}" >&2
-    exit 1
+    exit 41
   fi
 done
 
@@ -34,7 +34,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-node --input-type=module <<'NODE' >"${tmp_sql}"
+node --input-type=module <<'NODE' >"${tmp_sql}" || exit 42
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -407,18 +407,18 @@ PGPASSWORD="${POSTGRES_PASSWORD}" psql \
   -p "${POSTGRES_PORT}" \
   -U "${POSTGRES_USER}" \
   -d "${POSTGRES_DB}" \
-  -f "${tmp_sql}"
+  -f "${tmp_sql}" || exit 43
 
 case "${SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD}" in
   true)
     echo "[bootstrap-entrypoint] verifying IAM database readiness"
-    node ./verify-iam-schema.mjs
+    node ./verify-iam-schema.mjs || exit 44
     ;;
   false)
     ;;
   *)
     echo "[bootstrap-entrypoint] invalid SVA_BOOTSTRAP_ENABLE_SCHEMA_GUARD value" >&2
-    exit 1
+    exit 41
     ;;
 esac
 

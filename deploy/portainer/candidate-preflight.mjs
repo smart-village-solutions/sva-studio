@@ -11,16 +11,31 @@ const required = (name) => {
 };
 
 export const parseAllowedInstanceIds = (value) =>
-  [...new Set(value.split(',').map((entry) => entry.trim()).filter(Boolean))].sort();
+  [
+    ...new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    ),
+  ].sort();
 
 export const verifyTenantRows = (rows, allowedInstanceIds) => {
   const allowed = new Set(allowedInstanceIds);
   for (const row of rows) {
     if (!allowed.has(row.id)) throw new Error('candidate_release_tenant_scope_mismatch');
-    if (!revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)) {
+    if (
+      !revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)
+    ) {
       throw new Error('candidate_tenant_auth_secret_unreadable');
     }
-    if (row.tenant_admin_client_id && !revealField(row.tenant_admin_client_secret_ciphertext, `iam.instances.tenant_admin_client_secret:${row.id}`)) {
+    if (
+      row.tenant_admin_client_id &&
+      !revealField(
+        row.tenant_admin_client_secret_ciphertext,
+        `iam.instances.tenant_admin_client_secret:${row.id}`
+      )
+    ) {
       throw new Error('candidate_tenant_admin_secret_unreadable');
     }
   }
@@ -29,10 +44,20 @@ export const verifyTenantRows = (rows, allowedInstanceIds) => {
 export const isCandidatePreflightEntrypoint = (moduleUrl, executablePath) =>
   Boolean(executablePath) && moduleUrl === pathToFileURL(resolve(executablePath)).href;
 
+export const exitCodeForCandidateFailure = (code) =>
+  ({
+    PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE: 21,
+    PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH: 22,
+    PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING: 23,
+    PROMOTE_PREFLIGHT_CONFIG_INVALID: 24,
+    PROMOTE_INTERNAL_ERROR: 25,
+  })[code] ?? 25;
+
 export const runCandidatePreflight = async () => {
   const { default: pg } = await import('pg');
   const { Client } = pg;
-  if (required('SVA_RUNTIME_PROFILE') !== 'studio') throw new Error('candidate_runtime_profile_mismatch');
+  if (required('SVA_RUNTIME_PROFILE') !== 'studio')
+    throw new Error('candidate_runtime_profile_mismatch');
   const allowedInstanceIds = parseAllowedInstanceIds(required('SVA_ALLOWED_INSTANCE_IDS'));
   if (allowedInstanceIds.length === 0) throw new Error('candidate_release_tenant_scope_missing');
   await access(required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE'), constants.R_OK);
@@ -55,7 +80,9 @@ export const runCandidatePreflight = async () => {
     `);
     verifyTenantRows(result.rows, allowedInstanceIds);
     await client.query('ROLLBACK');
-    process.stdout.write(`${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`
+    );
   } finally {
     await client.end();
   }
@@ -73,7 +100,9 @@ if (isCandidatePreflightEntrypoint(import.meta.url, process.argv[1])) {
           : message.includes('candidate_')
             ? 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
             : 'PROMOTE_INTERNAL_ERROR';
-    process.stderr.write(`${JSON.stringify({ code, phase: 'candidate-preflight', retryable: false })}\n`);
-    process.exitCode = 1;
+    process.stderr.write(
+      `${JSON.stringify({ code, phase: 'candidate-preflight', retryable: false })}\n`
+    );
+    process.exitCode = exitCodeForCandidateFailure(code);
   });
 }

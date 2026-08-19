@@ -9,7 +9,7 @@ require_env() {
   local key="$1"
   if [ -z "${!key:-}" ]; then
     log "Pflichtvariable fehlt: ${key}"
-    exit 1
+    exit 30
   fi
 }
 
@@ -25,12 +25,12 @@ GOOSE_CONFIG_PATH="${GOOSE_CONFIG_PATH:-packages/data/goose.config.json}"
 
 if [ ! -x "${GOOSE_WRAPPER}" ]; then
   log "Goose-Wrapper nicht gefunden oder nicht ausführbar: ${GOOSE_WRAPPER}"
-  exit 1
+  exit 31
 fi
 
 if [ ! -d "${MIGRATIONS_DIR}" ]; then
   log "Migrationsverzeichnis fehlt: ${MIGRATIONS_DIR}"
-  exit 1
+  exit 31
 fi
 
 mkdir -p artifacts/tools/goose
@@ -42,38 +42,38 @@ goose_version="$(node -e "const fs=require('fs'); const cfg=JSON.parse(fs.readFi
 log "Starte Goose-Migrationsjob mit ${goose_version} gegen ${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
 log "Wende Migrationen an"
-"${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" up
+"${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" up || exit 32
 
 log "Lese finalen Goose-Status"
-"${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status
+"${GOOSE_WRAPPER}" -dir "${MIGRATIONS_DIR}" postgres "${db_string}" status || exit 32
 
 GRAPHILE_WORKER_MIGRATOR="${GRAPHILE_WORKER_MIGRATOR:-./migrate-graphile-worker.mjs}"
 if [ ! -f "${GRAPHILE_WORKER_MIGRATOR}" ]; then
   log "Graphile-Worker-Migrator fehlt: ${GRAPHILE_WORKER_MIGRATOR}"
-  exit 1
+  exit 31
 fi
 log "Wende Graphile-Worker-Migrationen mit dem privilegierten Migrationsbenutzer an"
-node "${GRAPHILE_WORKER_MIGRATOR}"
+node "${GRAPHILE_WORKER_MIGRATOR}" || exit 33
 
 log "Prüfe Migrationsstand und kritische IAM-Schemaobjekte"
-node ./verify-iam-schema.mjs --iam-only
+node ./verify-iam-schema.mjs --iam-only || exit 34
 
 case "${WASTE_TENANT_MIGRATIONS_ENABLED:-false}" in
   true)
     WASTE_TENANT_MIGRATOR="${WASTE_TENANT_MIGRATOR:-./migrate-waste-tenants.mjs}"
     if [ ! -f "${WASTE_TENANT_MIGRATOR}" ]; then
       log "Waste-Tenant-Migrator fehlt: ${WASTE_TENANT_MIGRATOR}"
-      exit 1
+      exit 31
     fi
     log "Wende ausstehende versionierte Waste-Tenant-Migrationen an"
-    node "${WASTE_TENANT_MIGRATOR}"
+    node "${WASTE_TENANT_MIGRATOR}" || exit 35
     ;;
   false|'')
     log "Waste-Tenant-Migrationen sind für dieses Laufzeitprofil deaktiviert"
     ;;
   *)
     log "Ungültiger Wert für WASTE_TENANT_MIGRATIONS_ENABLED"
-    exit 1
+    exit 30
     ;;
 esac
 

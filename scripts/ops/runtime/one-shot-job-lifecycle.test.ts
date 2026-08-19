@@ -36,6 +36,18 @@ describe('one-shot job lifecycle', () => {
     expect(classifyOneShotDiagnostic(diagnostic, service)).toBe(expected);
   });
 
+  it.each([
+    ['candidate', 24, 'CANDIDATE_CONFIG_INVALID'],
+    ['migrate', 32, 'MIGRATION_GOOSE_FAILED'],
+    ['migrate', 33, 'MIGRATION_GRAPHILE_WORKER_FAILED'],
+    ['migrate', 34, 'MIGRATION_IAM_SCHEMA_GUARD_FAILED'],
+    ['migrate', 35, 'MIGRATION_WASTE_TENANT_FAILED'],
+    ['bootstrap', 43, 'BOOTSTRAP_SQL_FAILED'],
+    ['bootstrap', 44, 'BOOTSTRAP_IAM_SCHEMA_GUARD_FAILED'],
+  ] as const)('maps %s exit code %i without remote logs to %s', (service, exitCode, expected) => {
+    expect(classifyOneShotDiagnostic(undefined, service, exitCode)).toBe(expected);
+  });
+
   it('builds the shared successful migration and bootstrap result contract', () => {
     const cleanup = vi.fn(async () => undefined);
     const result = buildSuccessfulOneShotResult({

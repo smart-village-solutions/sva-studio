@@ -8,6 +8,7 @@ const readRepoFile = (path: string) =>
 
 describe('IAM schema readiness deployment contract', () => {
   const bootstrapEntrypoint = readRepoFile('deploy/portainer/bootstrap-entrypoint.sh');
+  const candidatePreflight = readRepoFile('deploy/portainer/candidate-preflight.mjs');
   const migrateEntrypoints = [
     readRepoFile('migrate-entrypoint.sh'),
     readRepoFile('deploy/portainer/migrate-entrypoint.sh'),
@@ -57,6 +58,19 @@ describe('IAM schema readiness deployment contract', () => {
         entrypoint.indexOf('iam-instance-registry/worker.js')
       );
     }
+  });
+
+  it('uses stable phase exit codes when remote logs are unavailable', () => {
+    expect(candidatePreflight).toContain('PROMOTE_PREFLIGHT_CONFIG_INVALID: 24');
+    expect(candidatePreflight).toContain('process.exitCode = exitCodeForCandidateFailure(code)');
+    for (const entrypoint of migrateEntrypoints) {
+      expect(entrypoint).toContain('postgres "${db_string}" up || exit 32');
+      expect(entrypoint).toContain('node "${GRAPHILE_WORKER_MIGRATOR}" || exit 33');
+      expect(entrypoint).toContain('node ./verify-iam-schema.mjs --iam-only || exit 34');
+      expect(entrypoint).toContain('node "${WASTE_TENANT_MIGRATOR}" || exit 35');
+    }
+    expect(bootstrapEntrypoint).toContain('-f "${tmp_sql}" || exit 43');
+    expect(bootstrapEntrypoint).toContain('node ./verify-iam-schema.mjs || exit 44');
   });
 
   it('grants only the migration-ledger columns required by the app verifier', () => {

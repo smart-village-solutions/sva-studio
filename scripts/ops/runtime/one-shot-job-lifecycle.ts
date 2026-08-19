@@ -106,15 +106,47 @@ const diagnosticRules: readonly Readonly<{
   },
 ];
 
+const diagnosticCodeByExitCode: Readonly<
+  Partial<Record<OneShotServiceName, Readonly<Record<number, OneShotDiagnosticCode>>>>
+> = {
+  bootstrap: {
+    41: 'ONESHOT_REQUIRED_CONFIG_MISSING',
+    42: 'BOOTSTRAP_RUNTIME_ARTIFACT_MISSING',
+    43: 'BOOTSTRAP_SQL_FAILED',
+    44: 'BOOTSTRAP_IAM_SCHEMA_GUARD_FAILED',
+  },
+  candidate: {
+    21: 'CANDIDATE_TENANT_SECRET_UNREADABLE',
+    22: 'CANDIDATE_TENANT_SCOPE_MISMATCH',
+    23: 'CANDIDATE_SECRET_REFERENCE_MISSING',
+    24: 'CANDIDATE_CONFIG_INVALID',
+  },
+  migrate: {
+    30: 'ONESHOT_REQUIRED_CONFIG_MISSING',
+    31: 'MIGRATION_RUNTIME_ARTIFACT_MISSING',
+    32: 'MIGRATION_GOOSE_FAILED',
+    33: 'MIGRATION_GRAPHILE_WORKER_FAILED',
+    34: 'MIGRATION_IAM_SCHEMA_GUARD_FAILED',
+    35: 'MIGRATION_WASTE_TENANT_FAILED',
+  },
+};
+
 export const classifyOneShotDiagnostic = (
   diagnostic: string | undefined,
-  jobServiceName: OneShotFailureEvidence['jobServiceName']
+  jobServiceName: OneShotFailureEvidence['jobServiceName'],
+  exitCode?: number | null
 ): OneShotDiagnosticCode => {
   const matchedRule = diagnosticRules.find(
     (rule) =>
       (!rule.service || rule.service === jobServiceName) && rule.pattern.test(diagnostic ?? '')
   );
-  return matchedRule?.code ?? 'ONESHOT_UNKNOWN_TASK_FAILURE';
+  return (
+    matchedRule?.code ??
+    (exitCode === null || exitCode === undefined
+      ? undefined
+      : diagnosticCodeByExitCode[jobServiceName]?.[exitCode]) ??
+    'ONESHOT_UNKNOWN_TASK_FAILURE'
+  );
 };
 
 export const selectOneShotDiagnostic = (
@@ -148,7 +180,11 @@ export const createOneShotJobError = (
 ): OneShotJobError =>
   new OneShotJobError(
     {
-      diagnosticCode: classifyOneShotDiagnostic(input.diagnostic, input.jobServiceName),
+      diagnosticCode: classifyOneShotDiagnostic(
+        input.diagnostic,
+        input.jobServiceName,
+        input.task?.exitCode
+      ),
       exitCode: input.task?.exitCode,
       failureKind: input.failureKind,
       jobServiceName: input.jobServiceName,

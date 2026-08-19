@@ -25,7 +25,7 @@ import {
   parseProjectInput,
 } from './projects-contract.js';
 import {
-  mapAndValidateProject,
+  mapProjectRead,
   projectCreateResponseBody,
   projectPayload,
   publishedAtForProject,
@@ -173,7 +173,7 @@ const createNewProviderProject = async (
     bindingResult.outcome === 'conflict' || bindingResult.outcome === 'reconciliation_required';
   const reconciliationRequired = localFollowUpFailed || bindingReconciliationRequired;
   const responseBody = projectCreateResponseBody({
-    project: mapAndValidateProject({
+    project: mapProjectRead({
       ...created,
       visible: context.project.status === 'published',
     }),

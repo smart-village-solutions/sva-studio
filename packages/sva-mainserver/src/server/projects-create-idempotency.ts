@@ -8,7 +8,7 @@ import { createSdkLogger } from '@sva/server-runtime';
 import type { SvaMainserverGenericItem } from '../types.js';
 import { errorJson, json } from './content-route-core.js';
 import { SvaMainserverError } from './errors.js';
-import { mapAndValidateProject, projectCreateResponseBody } from './projects-create-mapping.js';
+import { mapProjectRead, projectCreateResponseBody } from './projects-create-mapping.js';
 import { listAllActiveProjectItems } from './projects-listing.js';
 import type {
   ProjectCreateContext,
@@ -106,7 +106,7 @@ export const completeExistingProjectCreate = async (
     }
   }
   const responseBody = projectCreateResponseBody({
-    project: mapAndValidateProject(existing),
+    project: mapProjectRead(existing),
     ...(state.reference?.sourceEntityId ? { localContentId: state.reference.contentId } : {}),
   });
   return await completeSuccessfulProjectCreate(context, responseBody, existing.id);

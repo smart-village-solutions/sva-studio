@@ -5,7 +5,7 @@ import type {
 } from '../types.js';
 import { mapGenericItemToProject } from './projects-contract.js';
 
-export const mapAndValidateProject = (item: SvaMainserverGenericItem): SvaMainserverProject => {
+export const mapProjectRead = (item: SvaMainserverGenericItem): SvaMainserverProject => {
   return mapGenericItemToProject(item);
 };
 

@@ -8,7 +8,7 @@ import {
   validateProjectProjection,
 } from './projects-contract.js';
 import {
-  mapAndValidateProject,
+  mapProjectRead,
   projectCreateResponseBody,
   projectPayload,
   publishedAtForProject,
@@ -451,8 +451,8 @@ describe('projects contract', () => {
     expect(publishedAtForProject(projectWithoutAuthor, '2026-01-01T00:00:00.000Z')).toBe(
       '2026-01-01T00:00:00.000Z'
     );
-    expect(mapAndValidateProject(existing)).toEqual(mapGenericItemToProject(existing));
-    expect(mapAndValidateProject({ ...existing, title: '' })).toEqual(
+    expect(mapProjectRead(existing)).toEqual(mapGenericItemToProject(existing));
+    expect(mapProjectRead({ ...existing, title: '' })).toEqual(
       expect.objectContaining({ title: '' })
     );
   });

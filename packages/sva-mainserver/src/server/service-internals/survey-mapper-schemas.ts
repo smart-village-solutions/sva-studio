@@ -94,10 +94,10 @@ export const surveySchema = z.object({
   dataProvider: dataProviderSchema.nullish(),
 });
 
-// The mutation schema remains strict.  Existing provider records, however,
-// must be readable with only their stable identifier intact so they can be
-// completed in Studio.  Invalid nested questions/results are isolated by the
-// mapper rather than making the complete survey unavailable.
+// Read and mutation responses may contain incomplete provider records. They
+// remain readable with only their stable identifier so Studio can complete
+// them. Invalid nested questions/results are isolated by the mapper rather
+// than making the complete survey unavailable.
 export const surveyReadSchema = surveySchema.partial().extend({
   title: localizedTextSchema.nullish(),
   status: surveyStatusSchema.nullish(),

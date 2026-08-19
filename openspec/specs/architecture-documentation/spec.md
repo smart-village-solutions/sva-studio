@@ -1,7 +1,11 @@
 # architecture-documentation Specification
+
 ## Purpose
+
 TBD - created by archiving change add-arc42-architecture-documentation. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Einheitliche Architekturstruktur nach arc42
 
 Das System SHALL Architekturdokumentation in einer konsistenten, arc42-konformen Struktur führen.
@@ -198,34 +202,41 @@ Die Architektur- und Entwicklerdokumentation SHALL das entfernte Beispiel-Plugin
 Die arc42-Dokumentation SHALL Studio als alternative Keycloak-Admin-UI, Keycloak-first Mutationen und die Scope-Trennung zwischen Platform und Tenant beschreiben.
 
 #### Scenario: Architecture docs cover Keycloak-first IAM
+
 - **WHEN** der Change umgesetzt wird
 - **THEN** dokumentieren die betroffenen arc42-Abschnitte System-of-Record, Read-Models, Sync-/Reconcile-Flows, Bearbeitbarkeitsmatrix und Audit-Verhalten
 - **AND** die Doku nennt die Grenzen gegenüber vollständiger Keycloak-Realm-/Client-Administration
 
 ### Requirement: Architektur dokumentiert Studio-UI-React-Boundary
+
 Die Architekturdokumentation SHALL `@sva/studio-ui-react` als öffentliches React/UI-Zielpackage für Host und Plugin-Custom-Views dokumentieren.
 
 #### Scenario: Package-Zielarchitektur enthält Studio UI
+
 - **WHEN** ein Teammitglied `docs/architecture/package-zielarchitektur.md` liest
 - **THEN** ist `@sva/studio-ui-react` als UI-only Zielpackage beschrieben
 - **AND** die erlaubten Importkanten zu App und Plugins sind benannt
 - **AND** die Abgrenzung zu `@sva/plugin-sdk`, `@sva/core` und App-internen Komponenten ist erklärt
 
 #### Scenario: arc42 beschreibt Plugin-Custom-Views
+
 - **WHEN** ein Teammitglied die arc42-Abschnitte zu Bausteinen und Querschnittskonzepten liest
 - **THEN** ist nachvollziehbar, dass Plugin-Custom-Views gemeinsame Studio-UI über `@sva/studio-ui-react` nutzen
 - **AND** host-rendered Admin-Ressourcen weiterhin der Standardfall bleiben
 
 ### Requirement: Entwicklungsdokumentation beschreibt Studio-UI-Nutzung
+
 Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für die Nutzung von `@sva/studio-ui-react` in Host und Plugins enthalten.
 
 #### Scenario: Plugin-Entwickler sucht UI-Regeln
+
 - **WHEN** ein Plugin-Entwickler den Plugin-Entwicklungsleitfaden liest
 - **THEN** findet er erlaubte Imports aus `@sva/plugin-sdk` und `@sva/studio-ui-react`
 - **AND** findet er Beispiele fuer Overview-, Detail-, Formular-, Action- und State-Kompositionen
 - **AND** findet er die verbotenen App-Importe und Basis-Control-Duplikate
 
 #### Scenario: Reviewer prüft UI-Konsistenz
+
 - **WHEN** ein PR eine neue Host- oder Plugin-View enthält
 - **THEN** kann der Reviewer anhand der Dokumentation prüfen, ob Studio-Templates, Controls, States, i18n und Accessibility-Konventionen eingehalten sind
 
@@ -322,9 +333,11 @@ Die Entwicklungsdokumentation SHALL Regeln, Beispiele und Review-Kriterien für 
 - **AND** findet er die verbotenen Direktimporte in App-, Runtime-, IAM- oder Secret-Interna
 
 ### Requirement: Architekturdoku beschreibt scoped role permissions als getrenntes IAM-Pattern
+
 Das System SHALL die neue Rollen-Rechte-Scope-Logik in der Architekturdokumentation als eigenes IAM-Pattern mit klarer Abgrenzung zu `permission.scope` dokumentieren.
 
 #### Scenario: Architektur trennt Assignment-Scope von ABAC-Scope
+
 - **WHEN** die Architektur- oder Entwicklungsdokumentation die IAM-Autorisierung beschreibt
 - **THEN** unterscheidet sie explizit zwischen `role_permissions.access_scope` und dem generischen ABAC-Feld `permissions.scope`
 - **AND** sie nennt die benoetigten Resource-Attribute fuer `own` und `organization`
@@ -398,3 +411,25 @@ Die Entwicklungsdokumentation SHALL das Pattern „lange Bearbeitungsfläche“ 
 
 - **WHEN** ein PR eine lange Host- oder Plugin-Bearbeitungsfläche einführt
 - **THEN** kann der Reviewer prüfen, ob Formulargrenze, Primäraktion, Zustände, Accessibility und Sekundäraktionen dem dokumentierten Pattern entsprechen
+
+### Requirement: Architektur dokumentiert den fokussierten Config- und Promote-Vertrag
+
+Die Architekturdokumentation SHALL nachvollziehbar beschreiben, wie getrackte nicht-sensitive Remote-Konfiguration, geschützte Overrides, Shadow-Aktivierung, Candidate-Preflight und der bestehende Runtime-Secret-Vertrag vom Build bis zur Live-Verifikation zusammenwirken.
+
+#### Scenario: Config- oder Preflight-Vertrag wird geändert
+
+- **WHEN** ein PR Builder, Remote-Config-Schichten, Candidate-One-shot oder Promote-Modi verändert
+- **THEN** aktualisiert er die betroffenen arc42-Abschnitte 06, 07, 08, 10 und bei Recovery-Wirkung 11
+- **AND** verlinkt den kanonischen Rollout-Leitfaden statt einen zweiten Deploypfad zu definieren
+- **AND** dokumentiert weder reale Secret-Werte noch lokale Override-Inhalte
+
+### Requirement: Architektur dokumentiert Konvergenz, Agent-Kompatibilität und Fehlercodes
+
+Die Architekturdokumentation SHALL die getrennten Swarm- und HTTP-Konvergenzphasen, den geschützten Backup-Agent-Capability-Vertrag sowie den strukturierten Logging- und Fehlercodevertrag darstellen.
+
+#### Scenario: Operator diagnostiziert einen fehlgeschlagenen Promote
+
+- **WHEN** ein Promote vor oder nach dem Deploy fehlschlägt
+- **THEN** kann der Operator aus Fehlercode, Retryklassifikation und `nextAction` die zulässige Folgemaßnahme ableiten
+- **AND** unterscheidet die Dokumentation Shadow-Abweichung, Candidate-Fehler, inkompatiblen Agenten, retryfähige Konvergenz, fachlichen Smoke-Fehler und Recovery-Fall
+- **AND** bleibt die Diagnose frei von Secrets und PII

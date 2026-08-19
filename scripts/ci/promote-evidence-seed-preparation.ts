@@ -10,42 +10,63 @@ type PreparationBindings = Readonly<{
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
+const resolvePreparationGates = (value: unknown) => {
+  const production =
+    isRecord(value) && value.contract === 'production-live-config-label-prepare-v1';
+  return production
+    ? {
+        expected: 'production-config-seed-preparation',
+        conflicting: 'legacy-config-seed-preparation',
+      }
+    : {
+        expected: 'legacy-config-seed-preparation',
+        conflicting: 'production-config-seed-preparation',
+      };
+};
+
+const assertPreparationBindings = (
+  value: Record<string, unknown>,
+  bindings: PreparationBindings
+): boolean => {
+  const staging = value.contract === 'staging-live-config-label-prepare-v1';
+  const production = value.contract === 'production-live-config-label-prepare-v1';
+  if (!staging && !production) throw new Error('Seed-Vorbereitung hat einen unbekannten Vertrag.');
+  if (
+    value.sourceSha !== bindings.sourceSha ||
+    value.imageDigest !== bindings.imageDigest ||
+    value.configRevision !== bindings.configRevision ||
+    value.liveConfigRevisionState !== 'missing' ||
+    value.backupExecutor !== 'agent'
+  ) {
+    throw new Error('Seed-Vorbereitung verletzt ihre Bindungen.');
+  }
+  if (production !== (value.shadowEquivalent === true)) {
+    throw new Error('Seed-Vorbereitung verletzt den Shadow-Vertrag.');
+  }
+  if (staging && Object.hasOwn(value, 'shadowEquivalent')) {
+    throw new Error('Seed-Vorbereitung enthält einen fremden Shadow-Vertrag.');
+  }
+  return production;
+};
+
 export const normalizeEvidenceSeedPreparation = (
   value: unknown,
   gates: readonly PromoteGateEvidence[],
   bindings: PreparationBindings
 ): PromoteSeedPreparation | null => {
-  const expectedGate =
-    isRecord(value) && value.contract === 'production-live-config-label-prepare-v1'
-      ? 'production-config-seed-preparation'
-      : 'legacy-config-seed-preparation';
-  const conflictingGate =
-    expectedGate === 'production-config-seed-preparation'
-      ? 'legacy-config-seed-preparation'
-      : 'production-config-seed-preparation';
-  const gatePassed = gates.some((gate) => gate.gate === expectedGate && gate.status === 'passed');
+  const gateNames = resolvePreparationGates(value);
+  const gatePassed = gates.some(
+    (gate) => gate.gate === gateNames.expected && gate.status === 'passed'
+  );
   const conflictingGatePassed = gates.some(
-    (gate) => gate.gate === conflictingGate && gate.status === 'passed'
+    (gate) => gate.gate === gateNames.conflicting && gate.status === 'passed'
   );
   if (conflictingGatePassed) throw new Error('Seed-Vorbereitung hat mehrere autorisierende Gates.');
   if (!gatePassed && (value === null || value === undefined)) return null;
   if (!gatePassed || !isRecord(value)) {
     throw new Error('Seed-Vorbereitung widerspricht dem Gate-Vertrag.');
   }
-  const staging = value.contract === 'staging-live-config-label-prepare-v1';
-  const production = value.contract === 'production-live-config-label-prepare-v1';
-  if (
-    (!staging && !production) ||
-    value.sourceSha !== bindings.sourceSha ||
-    value.imageDigest !== bindings.imageDigest ||
-    value.configRevision !== bindings.configRevision ||
-    value.liveConfigRevisionState !== 'missing' ||
-    value.backupExecutor !== 'agent' ||
-    (production && value.shadowEquivalent !== true) ||
-    (staging && Object.hasOwn(value, 'shadowEquivalent'))
-  ) {
-    throw new Error('Seed-Vorbereitung verletzt ihre Bindungen.');
-  }
+  const production = assertPreparationBindings(value, bindings);
   return {
     contract: value.contract as PromoteSeedPreparation['contract'],
     sourceSha: value.sourceSha as string,

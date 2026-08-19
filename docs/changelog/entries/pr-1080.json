@@ -1,0 +1,4 @@
+{
+  "prNumber": 1080,
+  "body": "Production-Rollouts können das bisher fehlende Konfigurationslabel kontrolliert und nachweisbar ergänzen.\n\n- Ein vorbereitender Lauf prüft Konfiguration, Sicherungen und Schutzgates ohne Deployment.\n- Nur der unmittelbar folgende, exakt gebundene Lauf darf das Label setzen.\n- Die Aktivierung und der eigentliche Production-Rollout erfolgen weiterhin separat über den geschützten Freigabeprozess."
+}

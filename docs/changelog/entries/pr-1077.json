@@ -1,0 +1,4 @@
+{
+  "prNumber": 1077,
+  "body": "Ein fehlender Konfigurationsnachweis auf Staging kann jetzt über einen streng begrenzten, zweistufigen Promote-Ablauf sicher ergänzt werden. Vorbereitung und Ausführung sind an denselben Image-Digest, dieselbe Konfiguration und direkt aufeinanderfolgende Workflow-Läufe gebunden; Backups, Laufzeitprüfungen und der gemeinsame Image-/Konfigurations-Readback bleiben vollständig erhalten. Production ist von diesem Übergang technisch ausgeschlossen."
+}

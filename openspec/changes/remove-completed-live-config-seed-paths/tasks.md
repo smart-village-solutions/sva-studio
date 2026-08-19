@@ -14,8 +14,8 @@
 
 ## 3. Lokale Validierung und erster Rollout
 
-- [ ] 3.1 `tooling-testing:test:unit`, Skript-Typecheck, `tooling-testing:lint`, Complexity-, Placement-, Rollout-Docs-, Changelog- und OpenSpec-Gates ausführen.
-- [ ] 3.2 Vor dem initialen Code-Push `pnpm test:pr` erfolgreich ausführen.
+- [x] 3.1 `tooling-testing:test:unit`, Skript-Typecheck, `tooling-testing:lint`, Complexity-, Placement-, Rollout-Docs-, Changelog- und OpenSpec-Gates ausführen.
+- [x] 3.2 Vor dem initialen Code-Push `pnpm test:pr` erfolgreich ausführen.
 - [ ] 3.3 Finalen PR-Head, vollständige GitHub-Gates und null offene Review-Threads nachweisen.
 - [ ] 3.4 Merge und Build/Dev vollständig abwarten; denselben Digest mit `assert-none` erfolgreich nach Staging und Production promoten.
 - [ ] 3.5 Run-IDs, SHA, Digest, Config-Revision, Rollback-Paar und Health-Nachweise dokumentieren.

@@ -314,8 +314,8 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   }, [maxYear, minYear]);
 
   React.useEffect(() => {
-    props.onVisibleYearChange?.(visibleYear);
-  }, [props.onVisibleYearChange, visibleYear]);
+    props.onVisibleYearChange?.(activeTab === 'month' ? visibleMonth.getFullYear() : visibleYear);
+  }, [activeTab, props.onVisibleYearChange, visibleMonth, visibleYear]);
 
   const handleTabKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,

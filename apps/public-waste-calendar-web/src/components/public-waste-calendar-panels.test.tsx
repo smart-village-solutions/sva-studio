@@ -180,4 +180,26 @@ describe('PublicWasteCalendarPanels', () => {
     expect(screen.getByRole('heading', { name: 'Januar 2025' })).toBeTruthy();
     expect(previousMonthButton.getAttribute('disabled')).not.toBeNull();
   });
+
+  it('reports the month calendar year after navigating across New Year', () => {
+    const onVisibleYearChange = vi.fn();
+
+    render(
+      <PublicWasteCalendarPanels
+        model={createFilteredPublicWasteCalendarModelFixture({
+          listEntries: [createPublicWasteCalendarEntryFixture()],
+        })}
+        onActivateEntry={vi.fn()}
+        onVisibleYearChange={onVisibleYearChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Monat' }));
+    for (let index = 0; index < 8; index += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Nächster Monat' }));
+    }
+
+    expect(screen.getByRole('heading', { name: 'Januar 2027' })).toBeTruthy();
+    expect(onVisibleYearChange).toHaveBeenLastCalledWith(2027);
+  });
 });

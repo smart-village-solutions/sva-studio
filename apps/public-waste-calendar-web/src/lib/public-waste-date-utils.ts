@@ -15,7 +15,7 @@ export const formatDateOnlyGerman = (value: string): string => {
   const normalized = normalizeDateOnly(value);
   return normalized
     ? `${normalized.slice(8, 10)}.${normalized.slice(5, 7)}.${normalized.slice(0, 4)}`
-    : value;
+    : '—';
 };
 
 export const addYearsUtc = (value: string, years: number): string => {

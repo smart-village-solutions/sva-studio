@@ -33,10 +33,24 @@ export const renderPromoteAnnotation = (evidence: PromoteEvidence): string | nul
     : null;
 };
 
+type SummaryRow = readonly [string, string];
+
+const buildRecoverySummaryRows = (evidence: PromoteEvidence): readonly SummaryRow[] => [
+  ['promote_mode', evidence.mode],
+  ['recovery_reason_provided', evidence.recoveryReasonProvided ? 'yes' : 'no'],
+  ['previous_config_revision', evidence.config.previousRevision ?? 'not-captured'],
+  ['rollback_image_digest', evidence.rollback?.imageDigest ?? 'not-ready'],
+  ['rollback_config_revision', evidence.rollback?.configRevision ?? 'not-ready'],
+  ['recovery_contract_recorded', evidence.recovery ? 'yes' : 'no'],
+  ['same_digest_retry', evidence.recovery?.sameDigestRetry?.authorization ?? 'not-applicable'],
+  ['previous_failure_code', evidence.recovery?.sameDigestRetry?.previousFailureCode ?? 'none'],
+];
+
 export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
-  const rows: readonly [string, string][] = [
+  const rows: readonly SummaryRow[] = [
     ['status', evidence.status],
     ['environment', evidence.environment],
+    ...buildRecoverySummaryRows(evidence),
     ['run', `${evidence.run.id}/${evidence.run.attempt}`],
     ['base_ref', evidence.git.baseRef],
     ['head_ref', evidence.git.headRef],
@@ -161,6 +175,11 @@ const gateEnvironmentKeys: readonly Readonly<{
   { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
   { gate: 'deployment-base', phase: 'source-contract', key: 'PROMOTE_GATE_DEPLOYMENT_BASE' },
+  {
+    gate: 'recovery-contract',
+    phase: 'static-preflight',
+    key: 'PROMOTE_GATE_RECOVERY_CONTRACT',
+  },
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
   {
@@ -247,6 +266,8 @@ export const writePromoteEvidenceFromEnvironment = (
     runAttempt: attempt,
     environment: normalizePromoteEnvironment(env.PROMOTE_ENVIRONMENT),
     status: normalizeWorkflowStatus(env.PROMOTE_JOB_STATUS),
+    promoteMode: env.PROMOTE_MODE,
+    recoveryReasonProvided: env.PROMOTE_RECOVERY_REASON_PROVIDED,
     baseRef: normalizeWorkflowRef(env.PROMOTE_BASE_REF),
     headRef: normalizeWorkflowRef(env.PROMOTE_HEAD_REF),
     baseSha: env.PROMOTE_BASE_SHA,
@@ -255,9 +276,11 @@ export const writePromoteEvidenceFromEnvironment = (
     targetImage: env.PROMOTE_TARGET_IMAGE,
     imageRevision: env.PROMOTE_IMAGE_REVISION,
     configRevision: env.PROMOTE_CONFIG_REVISION,
+    previousConfigRevision: env.PROMOTE_PREVIOUS_CONFIG_REVISION,
     externalSecretReferences: parseJson<readonly string[]>(env.PROMOTE_SECRET_REFERENCES, []),
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
     mainE2EReference: parseMainE2EReference(env.PROMOTE_MAIN_E2E_REFERENCE),
+    recoveryContract: parseJson<unknown>(env.PROMOTE_RECOVERY_CONTRACT, null),
     gates: gateEnvironmentKeys.map(({ gate, phase, key, blockingKey }) => ({
       gate,
       phase,

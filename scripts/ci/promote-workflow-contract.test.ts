@@ -8,6 +8,12 @@ const workflow = readFileSync(
   'utf8'
 );
 
+const stepBlock = (name: string): string => {
+  const start = workflow.indexOf(`- name: ${name}`);
+  const next = workflow.indexOf('\n      - name:', start + 1);
+  return workflow.slice(start, next === -1 ? workflow.length : next);
+};
+
 describe('promote workflow hardening contract', () => {
   it('keeps shadow as the safe default and allows protected staged activation', () => {
     expect(workflow).toContain('--shadow');
@@ -42,6 +48,40 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).toContain('PROMOTE_MODE_INVALID');
     expect(workflow).toContain('record-promote-failure.ts');
     expect(workflow).toContain('input-validation');
+    expect(workflow.match(/^ {6}recovery_failure_code:/gmu)).toHaveLength(2);
+    expect(workflow).toContain('validate recovery and live revision contract');
+    expect(workflow).toContain(
+      'PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
+    );
+    expect(workflow).toContain('environment: ${{ inputs.environment }}');
+    expect(workflow.indexOf('validate recovery and live revision contract')).toBeLessThan(
+      workflow.indexOf('create database backup before deployment')
+    );
+    expect(workflow).toContain(
+      'FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}'
+    );
+    const orderedGates = [
+      'capture previous live app digest',
+      'validate recovery and live revision contract',
+      'require successful staging parity for production mutation',
+      'create database backup before deployment',
+      'run migration one-shot job',
+      'run bootstrap one-shot job',
+      'run one-shot postconditions',
+      'deploy',
+      'wait for terminal Swarm convergence',
+      'verify deployed runtime',
+      'verify deployed runtime image digest',
+    ];
+    expect(orderedGates.map((name) => workflow.indexOf(`- name: ${name}`))).toEqual(
+      [...orderedGates]
+        .map((name) => workflow.indexOf(`- name: ${name}`))
+        .sort((left, right) => left - right)
+    );
+    for (const name of orderedGates.slice(2)) {
+      expect(stepBlock(name)).not.toContain('promote_mode');
+    }
+    expect(workflow.match(/SVA_CONFIG_REVISION=%s/gu)).toHaveLength(7);
   });
 
   it('injects the permission snapshot HMAC as a dedicated protected secret', () => {

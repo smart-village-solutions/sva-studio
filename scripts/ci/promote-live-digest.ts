@@ -16,9 +16,18 @@ const required = (value: string | undefined, label: string) => {
 };
 
 const digestSuffixPattern = /@sha256:[a-f0-9]{64}$/u;
+const configRevisionPattern = /^[a-f0-9]{64}$/u;
+
+export const readLiveConfigRevision = (
+  labels: Readonly<Record<string, string>> | undefined
+): string | null => {
+  const revision = labels?.['sva.config.revision']?.trim();
+  return revision && configRevisionPattern.test(revision) ? revision : null;
+};
 
 export const matchesExpectedLiveImage = (expectedImage: string, liveImage: string): boolean =>
-  liveImage === expectedImage || liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
+  liveImage === expectedImage ||
+  liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
 
 export const parseLiveDigestEnvironment = (value: string | undefined): PromoteEnvironment => {
   if (value !== 'dev' && value !== 'staging' && value !== 'prod') {
@@ -30,7 +39,10 @@ export const parseLiveDigestEnvironment = (value: string | undefined): PromoteEn
 const main = async () => {
   const environment = parseLiveDigestEnvironment(process.argv[2]);
   const expectedFlagIndex = process.argv.indexOf('--expected');
-  const expectedImage = expectedFlagIndex === -1 ? undefined : required(process.argv[expectedFlagIndex + 1], '--expected');
+  const expectedImage =
+    expectedFlagIndex === -1
+      ? undefined
+      : required(process.argv[expectedFlagIndex + 1], '--expected');
 
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
   const stackName = stackNameForEnvironment(environment);
@@ -40,22 +52,51 @@ const main = async () => {
       runCapture: (command, args, env) => runCapture(rootDir, command, args, env),
     },
     process.env,
-    { quantumEndpoint, serviceName: 'app', stackName },
+    { quantumEndpoint, serviceName: 'app', stackName }
   );
   const image = contract?.image?.trim();
-  if (!image) throw new Error(`Der laufende App-Digest für ${stackName} konnte nicht aus der Remote-Service-Spec gelesen werden.`);
+  if (!image)
+    throw new Error(
+      `Der laufende App-Digest für ${stackName} konnte nicht aus der Remote-Service-Spec gelesen werden.`
+    );
   if (expectedImage && !matchesExpectedLiveImage(expectedImage, image)) {
-    throw new Error(`Der laufende App-Image-Ref stimmt nicht mit dem Zielartefakt überein: erwartet ${expectedImage}, erhalten ${image}.`);
+    throw new Error(
+      `Der laufende App-Image-Ref stimmt nicht mit dem Zielartefakt überein: erwartet ${expectedImage}, erhalten ${image}.`
+    );
   }
+  const configRevision = readLiveConfigRevision(contract?.labels);
 
-  const evidencePath = resolve(process.env.RUNNER_TEMP ?? rootDir, `promote-live-image-${process.env.GITHUB_RUN_ID ?? 'local'}-${process.env.GITHUB_RUN_ATTEMPT ?? '1'}.json`);
-  writeFileSync(evidencePath, `${JSON.stringify({ environment, expectedImage, image, serviceName: contract?.serviceName ?? `${stackName}_app`, stackName }, null, 2)}\n`, 'utf8');
-  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `previous_live_image=${image}\nevidence_path=${evidencePath}\n`);
+  const evidencePath = resolve(
+    process.env.RUNNER_TEMP ?? rootDir,
+    `promote-live-image-${process.env.GITHUB_RUN_ID ?? 'local'}-${process.env.GITHUB_RUN_ATTEMPT ?? '1'}.json`
+  );
+  writeFileSync(
+    evidencePath,
+    `${JSON.stringify(
+      {
+        configRevision,
+        environment,
+        expectedImage,
+        image,
+        serviceName: contract?.serviceName ?? `${stackName}_app`,
+        stackName,
+      },
+      null,
+      2
+    )}\n`,
+    'utf8'
+  );
+  if (process.env.GITHUB_OUTPUT) {
+    appendFileSync(
+      process.env.GITHUB_OUTPUT,
+      `previous_live_image=${image}\nprevious_config_revision=${configRevision ?? ''}\nevidence_path=${evidencePath}\n`
+    );
+  }
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main().catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : String(error));
+  main().catch(() => {
+    process.stderr.write('PROMOTE_INTERNAL_ERROR\n');
     process.exitCode = 1;
   });
 }

@@ -144,6 +144,7 @@ describe('staging parity evidence', () => {
       true
     );
     expect(requiresStagingParity(target, undefined)).toBe(true);
+    expect(requiresStagingParity(target, target, true)).toBe(true);
   });
 
   it('accepts only strict successful staging evidence bound to digest and source SHA', () => {

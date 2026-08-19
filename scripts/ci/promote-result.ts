@@ -1,6 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { promoteRecoveryFailureDefinitions } from './promote-recovery-failure-definitions.ts';
+
 export type PromoteEnvironment = 'dev' | 'staging' | 'prod' | 'invalid';
 
 export type PromotePhase =
@@ -37,6 +39,7 @@ export type PromoteErrorCode =
   | 'PROMOTE_CONFIG_REQUIRED_KEY_MISSING'
   | 'PROMOTE_CONFIG_SHADOW_MISMATCH'
   | 'PROMOTE_RECOVERY_REASON_REQUIRED'
+  | 'PROMOTE_RECOVERY_CONTEXT_INVALID'
   | 'PROMOTE_MODE_INVALID'
   | 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
   | 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING'
@@ -130,11 +133,7 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
     retryable: false,
     nextAction: 'Die redigierte Shadow-Abweichung prüfen und vor einer Aktivierung beheben.',
   },
-  PROMOTE_RECOVERY_REASON_REQUIRED: {
-    summary: 'Der Recovery-Modus wurde ohne dokumentierten Grund angefordert.',
-    retryable: false,
-    nextAction: 'Den Recovery-Grund dokumentieren und das geschützte Environment erneut freigeben.',
-  },
+  ...promoteRecoveryFailureDefinitions,
   PROMOTE_MODE_INVALID: {
     summary: 'Der angeforderte Promote-Modus ist ungültig.',
     retryable: false,

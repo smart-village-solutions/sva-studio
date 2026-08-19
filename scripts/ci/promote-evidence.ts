@@ -14,4 +14,5 @@ export type {
   PromoteGateName,
   PromoteGateStatus,
   PromoteMainE2EReference,
+  PromoteRecoveryEvidence,
 } from './promote-evidence-types.ts';

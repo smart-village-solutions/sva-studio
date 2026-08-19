@@ -563,7 +563,7 @@ Referenzen:
 
 - Risiko: Der neue Builder weicht vom bewährten `APP_CONFIG` ab. Maßnahme: zuerst ausschließlich redigierter Shadow-Vergleich, danach gestufte autoritative Aktivierung über Dev und Staging; Production bleibt bis zum Nachweis unverändert.
 - Risiko: Neue Gates blockieren einen legitimen Rollout. Maßnahme: stabile Fehlercodes mit nächster Aktion, klar begrenzte Infrastruktur-Retries und Recovery als ausdrücklich freigegebener Modus desselben Workflows.
-- Restrisiko: Geschützte Overrides sind nicht vollständig historisiert. Ein App-Rollback setzt ihre Rückwärtskompatibilität voraus; inkompatible Secret-Rotationen benötigen einen separaten Plan.
+- Restrisiko: Geschützte Overrides und Secret-Werte sind nicht historisiert. Der ausführbare App-Rollback-Vertrag akzeptiert deshalb ausschließlich den vorherigen unveränderlichen Digest zusammen mit der über das Live-Service-Label `sva.config.revision` exakt gebundenen nicht-sensitiven Config-Revision. Fehlt diese Bindung oder ist sie ungültig, gilt fail-closed **STOP** statt einer Rekonstruktion aus Git, Artefakten oder lokalen Dateien. Eine mit diesem Paar inkompatible Secret-Rotation erzwingt ebenfalls **STOP** und einen separat geprüften Recovery-Plan; es gibt weder automatischen Secret-Rückgriff noch einen zweiten Deploypfad außerhalb des geschützten `Promote`-Workflows.
 
 ### Fortschreibung 2026-08: Vereinheitlichung der Content-Editoren
 

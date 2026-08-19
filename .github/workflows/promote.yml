@@ -41,6 +41,10 @@ on:
         description: 'Required documented reason for recovery mode'
         required: false
         type: string
+      recovery_failure_code:
+        description: 'Optional structured failure code from the previous convergence attempt'
+        required: false
+        type: string
   workflow_call:
     inputs:
       environment:
@@ -68,6 +72,10 @@ on:
         type: string
         default: standard
       recovery_reason:
+        required: false
+        type: string
+        default: ''
+      recovery_failure_code:
         required: false
         type: string
         default: ''
@@ -116,6 +124,8 @@ jobs:
           cp scripts/ci/promote-evidence-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-contract.ts"
           cp scripts/ci/promote-evidence-io.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-io.ts"
           cp scripts/ci/promote-evidence-types.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-types.ts"
+          cp scripts/ci/promote-recovery-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts"
+          cp scripts/ci/promote-recovery-failure-definitions.ts "${PROMOTE_CONTROLLER_DIR}/promote-recovery-failure-definitions.ts"
           cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"
           cp scripts/ci/verify-main-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
           cp scripts/ci/verify-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"
@@ -360,6 +370,17 @@ jobs:
             exit 1
           fi
 
+      - name: validate recovery and live revision contract
+        id: recovery_contract
+        env:
+          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
+          PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
+          PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
+          RECOVERY_FAILURE_CODE: ${{ inputs.recovery_failure_code }}
+          RECOVERY_REASON: ${{ inputs.recovery_reason }}
+        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts" "${{ inputs.environment }}"
+
       - name: bind deploy gates to actual live revision
         id: deployment_base
         run: |
@@ -438,6 +459,7 @@ jobs:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
+          FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}
         run: |
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"; then
             exit 1
@@ -467,6 +489,7 @@ jobs:
             --input "${RUNNER_TEMP}/promote-app-config.vars" \
             --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind candidate --environment "${{ inputs.environment }}"
 
       - name: create database backup before deployment
@@ -507,6 +530,7 @@ jobs:
           trap 'rm -f .env' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           pnpm exec tsx scripts/ci/promote-backup-job.ts "${{ inputs.environment }}"
 
       - name: verify database backup object
@@ -544,6 +568,7 @@ jobs:
           trap 'rm -f .env' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind migration --environment "${{ inputs.environment }}"
 
       - name: run bootstrap one-shot job
@@ -559,6 +584,7 @@ jobs:
           trap 'rm -f .env' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
           printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
+          printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           pnpm exec tsx scripts/ci/promote-one-shot-job.ts --kind bootstrap --environment "${{ inputs.environment }}"
 
       - name: run one-shot postconditions
@@ -575,6 +601,7 @@ jobs:
           umask 077
           trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
+          printf '\nSVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           mkdir -p config/runtime
           cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
@@ -587,6 +614,7 @@ jobs:
           ENVIRONMENT: ${{ inputs.environment }}
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
+          CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
         run: |
@@ -608,6 +636,7 @@ jobs:
           {
             printf '\nIMAGE_REF=%s\n' "${DEPLOY_IMAGE_REF}"
             printf 'SVA_DEPLOY_REVISION=%s\n' "${DEPLOY_REVISION}"
+            printf 'SVA_CONFIG_REVISION=%s\n' "${CONFIG_REVISION}"
           } >> .env
           docker compose -f compose.yaml -f ./deploy/compose.${ENVIRONMENT}.yaml config --no-normalize --format json > stack.json
           pnpm exec tsx scripts/ci/render-quantum-stack.ts --input stack.json --output stack.yaml
@@ -633,6 +662,7 @@ jobs:
           umask 077
           trap 'rm -f .env config/runtime/base.vars config/runtime/studio.vars "${RUNNER_TEMP}/runtime-smoke.stderr"' EXIT
           pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
+          printf '\nSVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
           mkdir -p config/runtime
           cp "${RUNNER_TEMP}/promote-app-config.vars" config/runtime/base.vars
           : > config/runtime/studio.vars
@@ -699,6 +729,8 @@ jobs:
         if: always()
         env:
           PROMOTE_ENVIRONMENT: ${{ inputs.environment }}
+          PROMOTE_MODE: ${{ inputs.promote_mode }}
+          PROMOTE_RECOVERY_REASON_PROVIDED: ${{ inputs.recovery_reason != '' }}
           PROMOTE_JOB_STATUS: ${{ job.status }}
           PROMOTE_BASE_REF: ${{ steps.deployment_base.outputs.base_sha || inputs.change_base }}
           PROMOTE_HEAD_REF: ${{ inputs.change_head }}
@@ -708,6 +740,8 @@ jobs:
           PROMOTE_TARGET_IMAGE: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           PROMOTE_IMAGE_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
+          PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
+          PROMOTE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outputs.recovery_contract }}
           PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
           PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}
           PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
@@ -730,6 +764,7 @@ jobs:
           PROMOTE_GATE_TARGET: ${{ steps.target.outcome }}
           PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
           PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
+          PROMOTE_GATE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}

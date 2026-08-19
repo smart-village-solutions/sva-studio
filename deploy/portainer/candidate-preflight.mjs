@@ -20,8 +20,20 @@ export const parseAllowedInstanceIds = (value) =>
     ),
   ].sort();
 
+export const candidateTenantQuery = `
+      SELECT id, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext
+      FROM iam.instances
+      WHERE status = 'active'
+        AND id = ANY($1::text[])
+      ORDER BY id
+    `;
+
 export const verifyTenantRows = (rows, allowedInstanceIds) => {
   const allowed = new Set(allowedInstanceIds);
+  const selected = new Set(rows.map((row) => row.id));
+  if (selected.size !== allowed.size || allowedInstanceIds.some((id) => !selected.has(id))) {
+    throw new Error('candidate_release_tenant_scope_mismatch');
+  }
   for (const row of rows) {
     if (!allowed.has(row.id)) throw new Error('candidate_release_tenant_scope_mismatch');
     if (
@@ -92,12 +104,7 @@ export const runCandidatePreflight = async () => {
   await client.connect();
   try {
     await client.query('BEGIN READ ONLY');
-    const result = await client.query(`
-      SELECT id, auth_client_secret_ciphertext, tenant_admin_client_id, tenant_admin_client_secret_ciphertext
-      FROM iam.instances
-      WHERE status = 'active'
-      ORDER BY id
-    `);
+    const result = await client.query(candidateTenantQuery, [allowedInstanceIds]);
     verifyTenantRows(result.rows, allowedInstanceIds);
     await client.query('ROLLBACK');
     process.stdout.write(

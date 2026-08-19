@@ -163,6 +163,7 @@ jobs:
           cp scripts/ci/staging-live-config-seed-contract.ts "${PROMOTE_CONTROLLER_DIR}/staging-live-config-seed-contract.ts"
           cp scripts/ci/staging-live-config-seed-context.ts "${PROMOTE_CONTROLLER_DIR}/staging-live-config-seed-context.ts"
           cp scripts/ci/production-live-config-seed-contract.ts "${PROMOTE_CONTROLLER_DIR}/production-live-config-seed-contract.ts"
+          cp scripts/ci/production-live-config-seed-agent.ts "${PROMOTE_CONTROLLER_DIR}/production-live-config-seed-agent.ts"
           cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-result.ts"
           cp scripts/ci/promote-h4-failure-definitions.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-h4-failure-definitions.ts"
           cp scripts/ci/promote-recovery-failure-definitions.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-recovery-failure-definitions.ts"

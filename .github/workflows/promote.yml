@@ -140,8 +140,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p \
+            "${PROMOTE_CONTROLLER_DIR}/config/runtime/remote" \
             "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets" \
             "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime"
+          cp config/runtime/remote/prod.vars "${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"
           cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/promote-result.ts"
           cp scripts/ci/promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence.ts"
           cp scripts/ci/promote-evidence-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-contract.ts"
@@ -466,10 +468,15 @@ jobs:
           APP_CONFIG: ${{ secrets.APP_CONFIG }}
           PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
           PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
+          LIVE_CONFIG_TRANSITION_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}
         run: |
           set -euo pipefail
           umask 077
           mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
+          profile_path="config/runtime/remote/${{ inputs.environment }}.vars"
+          if [[ "${LIVE_CONFIG_TRANSITION_MODE}" == *production* ]]; then
+            profile_path="${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"
+          fi
           shadow_equivalent=not-applicable
           shadow_output="${RUNNER_TEMP}/promote-config-shadow.output"
           rm -f "${shadow_output}"
@@ -479,7 +486,7 @@ jobs:
             shadow)
               if ! GITHUB_OUTPUT="${shadow_output}" PROMOTE_FAILURE_PATH= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts" \
                   --environment "${{ inputs.environment }}" \
-                  --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
+                  --profile "${profile_path}" \
                   --output "${RUNNER_TEMP}/candidate-app-config.vars" \
                   --shadow; then
                 echo "::warning::PROMOTE_CONFIG_SHADOW_MISMATCH: Der beobachtende Config-Builder konnte keinen gueltigen Candidate erzeugen."
@@ -491,7 +498,7 @@ jobs:
             authoritative)
               GITHUB_OUTPUT= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts" \
                 --environment "${{ inputs.environment }}" \
-                --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
+                --profile "${profile_path}" \
                 --output "${RUNNER_TEMP}/promote-app-config.vars"
               ;;
             *)

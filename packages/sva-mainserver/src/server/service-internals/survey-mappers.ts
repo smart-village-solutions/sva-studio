@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type {
   SvaMainserverSurveyItem,
   SvaMainserverSurveyMutationPayload,
@@ -16,13 +18,32 @@ import {
 } from './survey-mapper-helpers.js';
 import {
   surveyMutationPayloadSchema,
+  surveyQuestionResultsSchema,
+  surveyQuestionSchema,
+  surveyReadSchema,
+  surveyResultsReadSchema,
   surveyResultsSchema,
   surveySchema,
 } from './survey-mapper-schemas.js';
 import { optionalString, toSvaMainserverError } from './shared.js';
-export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
-  const parsed = surveySchema.safeParse(item);
-  if (!parsed.success) {
+import { parseResilientDetail } from './resilient-detail-mapper.js';
+
+const normalizeSurveyRead = (survey: z.infer<typeof surveyReadSchema>) =>
+  surveySchema.parse({
+    ...survey,
+    title: survey.title ?? '',
+    status: survey.status ?? 'DRAFT',
+    questions: survey.questions ?? [],
+  });
+
+export const mapSurveyItem = (
+  item: SvaMainserverSurveyFragment | null | undefined
+): SvaMainserverSurveyItem => {
+  const parsed = parseResilientDetail<z.infer<typeof surveyReadSchema>>(surveyReadSchema, item, {
+    hardFields: ['id'],
+    listFields: { questions: surveyQuestionSchema },
+  });
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige Survey-Antwort des SVA-Mainservers.',
@@ -30,9 +51,15 @@ export const mapSurveyItem = (item: SvaMainserverSurveyFragment | null | undefin
     });
   }
 
-  return mapParsedSurveyItem(parsed.data, parseSurveyPayloadContract(parsed.data.payload, surveyPayloadContractSchema.safeParse));
+  const survey = normalizeSurveyRead(parsed.data);
+  return mapParsedSurveyItem(
+    survey,
+    parseSurveyPayloadContract(survey.payload, surveyPayloadContractSchema.safeParse)
+  );
 };
-export const mapOptionalSurveyItem = (item: SvaMainserverSurveyFragment | null | undefined): SvaMainserverSurveyItem => {
+export const mapOptionalSurveyItem = (
+  item: SvaMainserverSurveyFragment | null | undefined
+): SvaMainserverSurveyItem => {
   if (!item) {
     throw toSvaMainserverError({
       code: 'not_found',
@@ -61,8 +88,11 @@ export const mapSurveyMutationPayload = (
     ...(parsedPayload.data.survey
       ? {
           survey: mapParsedSurveyItem(
-            parsedPayload.data.survey,
-            parseSurveyPayloadContract(parsedPayload.data.survey.payload, surveyPayloadContractSchema.safeParse)
+            normalizeSurveyRead(parsedPayload.data.survey),
+            parseSurveyPayloadContract(
+              parsedPayload.data.survey.payload,
+              surveyPayloadContractSchema.safeParse
+            )
           ),
         }
       : {}),
@@ -88,16 +118,29 @@ export const mapOptionalSurveyResults = (
       questions: [],
     };
   }
-  const parsed = surveyResultsSchema.safeParse(results);
-  if (!parsed.success) {
+  const parsed = parseResilientDetail<z.infer<typeof surveyResultsReadSchema>>(
+    surveyResultsReadSchema,
+    results,
+    {
+      hardFields: [],
+      listFields: { questions: surveyQuestionResultsSchema },
+    }
+  );
+  if (!parsed) {
     throw toSvaMainserverError({
       code: 'invalid_response',
       message: 'Ungültige Survey-Ergebnisantwort des SVA-Mainservers.',
       statusCode: 502,
     });
   }
+  const normalized = surveyResultsSchema.parse({
+    ...parsed.data,
+    surveyId: parsed.data.surveyId ?? fallbackSurveyId,
+    questions: parsed.data.questions ?? [],
+  });
   const fallbackTimestamp =
-    parsed.data.questions?.flatMap((question) => question.freeTextResponses ?? []).find((item) => item.createdAt)?.createdAt ??
-    new Date(0).toISOString();
-  return mapSurveyResults(parsed.data, fallbackTimestamp);
+    normalized.questions
+      ?.flatMap((question) => question.freeTextResponses ?? [])
+      .find((item) => item.createdAt)?.createdAt ?? new Date(0).toISOString();
+  return mapSurveyResults(normalized, fallbackTimestamp);
 };

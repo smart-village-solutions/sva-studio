@@ -39,7 +39,7 @@ import {
   parseProjectInput,
 } from './projects-contract.js';
 import {
-  mapAndValidateProject,
+  mapProjectRead,
   projectPayload,
   publishedAtForProject,
 } from './projects-create-mapping.js';
@@ -149,7 +149,7 @@ const listProjects = async (
   );
   const projectEntries = upstream.data.flatMap((item) => {
     try {
-      const project = mapAndValidateProject(item);
+      const project = mapProjectRead(item);
       const reference = referenceBySourceId.get(item.id);
       return [{ item, project: { ...project, id: reference?.contentId ?? project.id }, reference }];
     } catch (error) {
@@ -171,7 +171,7 @@ const listProjects = async (
   const data = projectEntries.slice(start, start + input.pageSize).map((entry) => {
     if (!entry.reference) return entry.project;
     try {
-      const project = mapAndValidateProject(entry.item);
+      const project = mapProjectRead(entry.item);
       return { ...project, id: entry.reference.contentId };
     } catch {
       return entry.project;
@@ -242,7 +242,7 @@ const detailProject = async (
         item: context.item,
       })
     : {};
-  const project = mapAndValidateProject(context.item);
+  const project = mapProjectRead(context.item);
   const data = { ...project, id: context.reference?.contentId ?? project.id };
   return json(resourceActor ? { data, meta: { access } } : { data });
 };
@@ -312,7 +312,7 @@ const updateProject = async (
           item: freshItem,
           additionalActions: toMainserverAdditionalActions(
             resolveMainserverLifecycleAction(
-              mapAndValidateProject(freshItem).status,
+              mapProjectRead(freshItem).status,
               project.status
             )
           ),
@@ -376,7 +376,7 @@ const updateProject = async (
           contentId: freshItem.id,
           observedDataProviderId: freshItem.dataProvider?.id,
         });
-        const data = mapAndValidateProject({
+        const data = mapProjectRead({
           ...updated,
           visible: project.status === 'published',
         });

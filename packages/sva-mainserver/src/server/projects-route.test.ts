@@ -285,7 +285,7 @@ describe('projects route', () => {
     expect(state.loadCore).not.toHaveBeenCalled();
   });
 
-  it('skips malformed external projects without breaking the complete list', async () => {
+  it('keeps incomplete external projects in the complete list', async () => {
     prepareDefaults();
     state.listReferences.mockResolvedValue([]);
     state.listGenericItems.mockResolvedValue({
@@ -299,10 +299,13 @@ describe('projects route', () => {
 
     expect(response?.status).toBe(200);
     await expect(response?.json()).resolves.toMatchObject({
-      data: [expect.objectContaining({ id: 'external-1' })],
-      pagination: { total: 1 },
+      data: [
+        expect.objectContaining({ id: 'external-1' }),
+        expect.objectContaining({ id: 'invalid-project', title: ' ' }),
+      ],
+      pagination: { total: 2 },
     });
-    expect(state.loggerWarn).toHaveBeenCalledWith(
+    expect(state.loggerWarn).not.toHaveBeenCalledWith(
       'Skipping FeaturedProject that violates the projection contract',
       expect.objectContaining({ source_entity_id: 'invalid-project' })
     );
@@ -856,7 +859,7 @@ describe('projects route', () => {
     expect(forbidden?.status).toBe(403);
   });
 
-  it('rejects non-project provider records and invalid project projections', async () => {
+  it('rejects non-project provider records but reads incomplete existing projects', async () => {
     prepareDefaults();
     state.loadCore.mockResolvedValue(core);
     state.loadReferenceByContentId.mockResolvedValue(reference);
@@ -871,10 +874,9 @@ describe('projects route', () => {
     const invalidProjection = await dispatchSvaMainserverProjectsRequest(
       request(`/api/v1/mainserver/projects/${contentId}`)
     );
-    expect(invalidProjection?.status).toBe(502);
-    expect(state.loggerWarn).toHaveBeenCalledWith(
-      'Projects route failed',
-      expect.objectContaining({ error_code: 'invalid_response' })
+    expect(invalidProjection?.status).toBe(200);
+    expect(await invalidProjection?.json()).toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ title: '' }) })
     );
   });
 

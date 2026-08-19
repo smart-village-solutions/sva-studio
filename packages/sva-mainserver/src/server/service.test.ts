@@ -1429,7 +1429,7 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('rejects invalid survey detail responses deterministically', async () => {
+  it('keeps incomplete existing survey details readable', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -1469,9 +1469,10 @@ describe('createSvaMainserverService', () => {
         keycloakSubject: 'subject-1',
         surveyId: 'survey-1',
       })
-    ).rejects.toMatchObject({
-      code: 'invalid_response',
-      statusCode: 502,
+    ).resolves.toMatchObject({
+      id: 'survey-1',
+      title: { de: '' },
+      status: 'ACTIVE',
     });
   });
 
@@ -3248,7 +3249,7 @@ describe('createSvaMainserverService', () => {
     });
   });
 
-  it('rejects news items without publication dates and failed destroy responses', async () => {
+  it('keeps news items without publication dates readable and rejects failed destroy responses', async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(createJsonResponse(200, { access_token: 'token-1', expires_in: 120 }))
@@ -3275,10 +3276,18 @@ describe('createSvaMainserverService', () => {
     });
     const connection = { instanceId: baseConfig.instanceId, keycloakSubject: 'subject-1' };
 
-    await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).rejects.toMatchObject({
-      code: 'invalid_response',
-      statusCode: 502,
-    });
+    await expect(service.listNews({ ...connection, page: 1, pageSize: 25 })).resolves.toMatchObject(
+      {
+        data: [
+          expect.objectContaining({
+            id: 'news-1',
+            publishedAt: '1970-01-01T00:00:00.000Z',
+            createdAt: '1970-01-01T00:00:00.000Z',
+            updatedAt: '1970-01-01T00:00:00.000Z',
+          }),
+        ],
+      }
+    );
     await expect(service.deleteNews({ ...connection, newsId: 'news-1' })).rejects.toMatchObject({
       code: 'invalid_response',
       statusCode: 502,

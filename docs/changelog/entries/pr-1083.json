@@ -1,0 +1,4 @@
+{
+  "prNumber": 1083,
+  "body": "Bestehende Mainserver-Inhalte mit leeren oder unvollständigen Fachfeldern bleiben im Studio lesbar und können vervollständigt werden.\n\n- Featured Projects, News und Surveys trennen beim Lesen nun tolerante Bestandsdaten von den weiterhin strengen Speichervalidierungen.\n- Ein unvollständiger Upstream-Read löscht keine bereits sichtbaren Projektionszeilen; leere Zwischenpages werden bis zum eindeutigen Ende weiter geladen.\n- Cockpit Cards bleiben editierbar, falls die optionale Medienreferenz-Anreicherung vorübergehend nicht erreichbar ist."
+}

@@ -47,6 +47,7 @@ describe('one-shot job lifecycle', () => {
     ['migrate', 33, 'MIGRATION_GRAPHILE_WORKER_FAILED'],
     ['migrate', 34, 'MIGRATION_IAM_SCHEMA_GUARD_FAILED'],
     ['migrate', 35, 'MIGRATION_WASTE_TENANT_FAILED'],
+    ['migrate', 36, 'MIGRATION_CONFIG_INVALID'],
     ['bootstrap', 41, 'ONESHOT_REQUIRED_CONFIG_MISSING'],
     ['bootstrap', 42, 'BOOTSTRAP_RUNTIME_ARTIFACT_MISSING'],
     ['bootstrap', 43, 'BOOTSTRAP_SQL_FAILED'],

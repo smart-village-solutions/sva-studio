@@ -10,6 +10,7 @@ export type OneShotDiagnosticCode =
   | 'CANDIDATE_TENANT_SCOPE_MISMATCH'
   | 'CANDIDATE_TENANT_SECRET_UNREADABLE'
   | 'MIGRATION_GOOSE_FAILED'
+  | 'MIGRATION_CONFIG_INVALID'
   | 'MIGRATION_GRAPHILE_WORKER_FAILED'
   | 'MIGRATION_IAM_SCHEMA_GUARD_FAILED'
   | 'MIGRATION_RUNTIME_ARTIFACT_MISSING'
@@ -63,6 +64,11 @@ const diagnosticRules: readonly Readonly<{
   {
     code: 'ONESHOT_REQUIRED_CONFIG_MISSING',
     pattern: /pflichtvariable fehlt|missing required environment variable/iu,
+  },
+  {
+    code: 'MIGRATION_CONFIG_INVALID',
+    pattern: /goose-konfiguration.*(?:ungültig|nicht lesbar)/iu,
+    service: 'migrate',
   },
   {
     code: 'MIGRATION_GRAPHILE_WORKER_FAILED',
@@ -130,6 +136,7 @@ const diagnosticCodeByExitCode: Readonly<
     33: 'MIGRATION_GRAPHILE_WORKER_FAILED',
     34: 'MIGRATION_IAM_SCHEMA_GUARD_FAILED',
     35: 'MIGRATION_WASTE_TENANT_FAILED',
+    36: 'MIGRATION_CONFIG_INVALID',
   },
 };
 

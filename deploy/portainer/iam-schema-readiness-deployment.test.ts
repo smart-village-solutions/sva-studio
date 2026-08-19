@@ -69,7 +69,7 @@ describe('IAM schema readiness deployment contract', () => {
     expect(candidatePreflight).toContain('exitCode: 24');
     expect(candidatePreflight).toContain('process.exitCode = failure.exitCode');
     for (const entrypoint of migrateEntrypoints) {
-      expect(entrypoint).toContain('"${GOOSE_CONFIG_PATH}")" || exit 31');
+      expect(entrypoint).toContain('"${GOOSE_CONFIG_PATH}")" || exit 36');
       expect(entrypoint).toContain('postgres "${db_string}" up || exit 32');
       expect(entrypoint).toContain('node "${GRAPHILE_WORKER_MIGRATOR}" || exit 33');
       expect(entrypoint).toContain('node ./verify-iam-schema.mjs --iam-only || exit 34');

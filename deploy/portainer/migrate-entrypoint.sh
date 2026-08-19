@@ -38,7 +38,7 @@ mkdir -p artifacts/tools/goose
 db_string="postgres://${POSTGRES_USER}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?sslmode=disable"
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
-goose_version="$(node -e "const fs=require('fs'); const cfg=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(cfg.version);" "${GOOSE_CONFIG_PATH}")" || exit 31
+goose_version="$(node -e "const fs=require('fs'); const cfg=JSON.parse(fs.readFileSync(process.argv[1],'utf8')); process.stdout.write(cfg.version);" "${GOOSE_CONFIG_PATH}")" || exit 36
 log "Starte Goose-Migrationsjob mit ${goose_version} gegen ${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}"
 
 log "Wende Migrationen an"

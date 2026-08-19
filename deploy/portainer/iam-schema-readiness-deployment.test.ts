@@ -1,13 +1,18 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@sva/auth-runtime/server', () => ({
+  revealField: () => 'redacted-test-secret',
+}));
 
 const readRepoFile = (path: string) =>
   readFileSync(resolve(import.meta.dirname, '../..', path), 'utf8');
 
 describe('IAM schema readiness deployment contract', () => {
   const bootstrapEntrypoint = readRepoFile('deploy/portainer/bootstrap-entrypoint.sh');
+  const candidatePreflight = readRepoFile('deploy/portainer/candidate-preflight.mjs');
   const migrateEntrypoints = [
     readRepoFile('migrate-entrypoint.sh'),
     readRepoFile('deploy/portainer/migrate-entrypoint.sh'),
@@ -57,6 +62,39 @@ describe('IAM schema readiness deployment contract', () => {
         entrypoint.indexOf('iam-instance-registry/worker.js')
       );
     }
+  });
+
+  it('uses stable phase exit codes when remote logs are unavailable', () => {
+    expect(candidatePreflight).toContain("code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID'");
+    expect(candidatePreflight).toContain('exitCode: 24');
+    expect(candidatePreflight).toContain('process.exitCode = failure.exitCode');
+    for (const entrypoint of migrateEntrypoints) {
+      expect(entrypoint).toContain('"${GOOSE_CONFIG_PATH}")" || exit 36');
+      expect(entrypoint).toContain('postgres "${db_string}" up || exit 32');
+      expect(entrypoint).toContain('node "${GRAPHILE_WORKER_MIGRATOR}" || exit 33');
+      expect(entrypoint).toContain('node ./verify-iam-schema.mjs --iam-only || exit 34');
+      expect(entrypoint).toContain('node "${WASTE_TENANT_MIGRATOR}" || exit 35');
+    }
+    expect(bootstrapEntrypoint).toContain('-f "${tmp_sql}" || exit 43');
+    expect(bootstrapEntrypoint).toContain('node ./verify-iam-schema.mjs || exit 44');
+  });
+
+  it('classifies candidate failures from one rule source', async () => {
+    const { classifyCandidateFailure } = await import('./candidate-preflight.mjs');
+
+    expect(classifyCandidateFailure('candidate_release_tenant_scope_missing')).toEqual(
+      expect.objectContaining({
+        code: 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH',
+        exitCode: 22,
+      })
+    );
+    expect(classifyCandidateFailure('candidate_runtime_profile_mismatch')).toEqual(
+      expect.objectContaining({ code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID', exitCode: 24 })
+    );
+    expect(classifyCandidateFailure('unexpected')).toEqual({
+      code: 'PROMOTE_INTERNAL_ERROR',
+      exitCode: 25,
+    });
   });
 
   it('grants only the migration-ledger columns required by the app verifier', () => {

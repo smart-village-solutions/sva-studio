@@ -11,16 +11,31 @@ const required = (name) => {
 };
 
 export const parseAllowedInstanceIds = (value) =>
-  [...new Set(value.split(',').map((entry) => entry.trim()).filter(Boolean))].sort();
+  [
+    ...new Set(
+      value
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+    ),
+  ].sort();
 
 export const verifyTenantRows = (rows, allowedInstanceIds) => {
   const allowed = new Set(allowedInstanceIds);
   for (const row of rows) {
     if (!allowed.has(row.id)) throw new Error('candidate_release_tenant_scope_mismatch');
-    if (!revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)) {
+    if (
+      !revealField(row.auth_client_secret_ciphertext, `iam.instances.auth_client_secret:${row.id}`)
+    ) {
       throw new Error('candidate_tenant_auth_secret_unreadable');
     }
-    if (row.tenant_admin_client_id && !revealField(row.tenant_admin_client_secret_ciphertext, `iam.instances.tenant_admin_client_secret:${row.id}`)) {
+    if (
+      row.tenant_admin_client_id &&
+      !revealField(
+        row.tenant_admin_client_secret_ciphertext,
+        `iam.instances.tenant_admin_client_secret:${row.id}`
+      )
+    ) {
       throw new Error('candidate_tenant_admin_secret_unreadable');
     }
   }
@@ -29,10 +44,40 @@ export const verifyTenantRows = (rows, allowedInstanceIds) => {
 export const isCandidatePreflightEntrypoint = (moduleUrl, executablePath) =>
   Boolean(executablePath) && moduleUrl === pathToFileURL(resolve(executablePath)).href;
 
+const candidateFailureRules = [
+  {
+    code: 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE',
+    exitCode: 21,
+    matches: (message) => message.includes('secret_unreadable'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH',
+    exitCode: 22,
+    matches: (message) => message.includes('tenant_scope'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING',
+    exitCode: 23,
+    matches: (message) => message.includes('ENOENT') || message.includes('EACCES'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID',
+    exitCode: 24,
+    matches: (message) => message.includes('candidate_'),
+  },
+];
+
+export const classifyCandidateFailure = (message) =>
+  candidateFailureRules.find((rule) => rule.matches(message)) ?? {
+    code: 'PROMOTE_INTERNAL_ERROR',
+    exitCode: 25,
+  };
+
 export const runCandidatePreflight = async () => {
   const { default: pg } = await import('pg');
   const { Client } = pg;
-  if (required('SVA_RUNTIME_PROFILE') !== 'studio') throw new Error('candidate_runtime_profile_mismatch');
+  if (required('SVA_RUNTIME_PROFILE') !== 'studio')
+    throw new Error('candidate_runtime_profile_mismatch');
   const allowedInstanceIds = parseAllowedInstanceIds(required('SVA_ALLOWED_INSTANCE_IDS'));
   if (allowedInstanceIds.length === 0) throw new Error('candidate_release_tenant_scope_missing');
   await access(required('WASTE_DATABASE_PROVISIONER_PASSWORD_FILE'), constants.R_OK);
@@ -55,7 +100,9 @@ export const runCandidatePreflight = async () => {
     `);
     verifyTenantRows(result.rows, allowedInstanceIds);
     await client.query('ROLLBACK');
-    process.stdout.write(`${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`);
+    process.stdout.write(
+      `${JSON.stringify({ checkedActiveTenantCount: result.rowCount ?? 0, status: 'ok' })}\n`
+    );
   } finally {
     await client.end();
   }
@@ -64,16 +111,10 @@ export const runCandidatePreflight = async () => {
 if (isCandidatePreflightEntrypoint(import.meta.url, process.argv[1])) {
   runCandidatePreflight().catch((error) => {
     const message = error instanceof Error ? error.message : 'candidate_internal_error';
-    const code = message.includes('secret_unreadable')
-      ? 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE'
-      : message.includes('tenant_scope')
-        ? 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH'
-        : message.includes('ENOENT') || message.includes('EACCES')
-          ? 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING'
-          : message.includes('candidate_')
-            ? 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
-            : 'PROMOTE_INTERNAL_ERROR';
-    process.stderr.write(`${JSON.stringify({ code, phase: 'candidate-preflight', retryable: false })}\n`);
-    process.exitCode = 1;
+    const failure = classifyCandidateFailure(message);
+    process.stderr.write(
+      `${JSON.stringify({ code: failure.code, phase: 'candidate-preflight', retryable: false })}\n`
+    );
+    process.exitCode = failure.exitCode;
   });
 }

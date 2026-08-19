@@ -187,6 +187,10 @@ jobs:
           cp scripts/ci/staging-live-config-seed-overlay.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/staging-live-config-seed-overlay.ts"
           cp scripts/ci/verify-staging-live-config-prepare.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-live-config-prepare.ts"
           cp scripts/ci/verify-staging-live-config-seed.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-live-config-seed.ts"
+          cp scripts/ci/inject-worker-database-secret.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/inject-worker-database-secret.ts"
+          cp scripts/ci/promote-deployment-base.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-deployment-base.ts"
+          cp scripts/ci/promote-image-provenance.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-image-provenance.ts"
+          cp scripts/ci/verify-swarm-convergence.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-swarm-convergence.ts"
           cp scripts/ci/build-remote-app-config.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts"
           cp scripts/ci/remote-config-contract.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/remote-config-contract.ts"
           cp scripts/ci/remote-config-validation.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/remote-config-validation.ts"
@@ -197,6 +201,7 @@ jobs:
           cp scripts/ops/runtime/process.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/process.ts"
           cp scripts/ops/runtime/remote-portainer.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-portainer.ts"
           cp scripts/ops/runtime/remote-service-spec.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-service-spec.ts"
+          cp scripts/ops/runtime/remote-stack-state.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-stack-state.ts"
 
       - name: validate inputs
         id: input_validation
@@ -541,7 +546,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          if ! pnpm exec tsx scripts/ci/inject-worker-database-secret.ts \
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/inject-worker-database-secret.ts" \
             --input "${RUNNER_TEMP}/promote-app-config.vars"; then
             node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
             exit 1
@@ -742,7 +747,7 @@ jobs:
       - name: bind deploy gates to actual live revision
         id: deployment_base
         run: |
-          if ! pnpm exec tsx scripts/ci/promote-deployment-base.ts \
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-deployment-base.ts" \
             --declared-base "${{ steps.source_contract.outputs.base_sha }}" \
             --head "${{ steps.source_contract.outputs.head_sha }}" \
             --live-image "${{ steps.previous_live_image.outputs.previous_live_image }}" \
@@ -1109,7 +1114,7 @@ jobs:
         id: swarm_convergence
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-        run: pnpm exec tsx scripts/ci/verify-swarm-convergence.ts "${{ inputs.environment }}"
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-swarm-convergence.ts" "${{ inputs.environment }}"
 
       - name: verify deployed runtime
         id: runtime_smoke

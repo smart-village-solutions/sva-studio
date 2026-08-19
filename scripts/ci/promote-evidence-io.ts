@@ -9,6 +9,7 @@ import type {
   PromoteGateName,
   PromoteGateStatus,
 } from './promote-evidence-types.ts';
+import { promoteEvidenceH4GateEnvironmentKeys } from './promote-evidence-h4-gates.ts';
 import {
   normalizePromoteEnvironment,
   parsePromoteFailure,
@@ -72,6 +73,13 @@ export const renderPromoteSummary = (evidence: PromoteEvidence): string => {
     ['main_e2e_result', evidence.mainE2E?.result ?? 'not-evaluated'],
     ['main_e2e_test_outcome', evidence.mainE2E?.testOutcome ?? 'not-evaluated'],
     ['main_e2e_evidence_class', evidence.mainE2E?.evidenceClass ?? 'not-evaluated'],
+    ['seed_preparation', evidence.seedPreparation?.contract ?? 'none'],
+    [
+      'seed_evidence_run',
+      evidence.seedAuthorization
+        ? `${evidence.seedAuthorization.evidenceRun.id}/${evidence.seedAuthorization.evidenceRun.attempt}`
+        : 'none',
+    ],
     ['terminal_code', evidence.terminalFailure?.code ?? 'none'],
   ];
   return [
@@ -180,6 +188,7 @@ const gateEnvironmentKeys: readonly Readonly<{
     phase: 'static-preflight',
     key: 'PROMOTE_GATE_RECOVERY_CONTRACT',
   },
+  ...promoteEvidenceH4GateEnvironmentKeys,
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
   {
@@ -286,6 +295,8 @@ export const writePromoteEvidenceFromEnvironment = (
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
     mainE2EReference: parseMainE2EReference(env.PROMOTE_MAIN_E2E_REFERENCE),
     recoveryContract: parseJson<unknown>(env.PROMOTE_RECOVERY_CONTRACT, null),
+    seedPreparation: parseJson<unknown>(env.PROMOTE_SEED_PREPARATION, null),
+    seedAuthorization: parseJson<unknown>(env.PROMOTE_SEED_AUTHORIZATION, null),
     gates: gateEnvironmentKeys.map(({ gate, phase, key, blockingKey }) => ({
       gate,
       phase,

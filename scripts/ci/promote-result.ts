@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { promoteH4FailureDefinitions } from './promote-h4-failure-definitions.ts';
 import { promoteRecoveryFailureDefinitions } from './promote-recovery-failure-definitions.ts';
 
 export type PromoteEnvironment = 'dev' | 'staging' | 'prod' | 'invalid';
@@ -38,8 +39,8 @@ export type PromoteErrorCode =
   | 'PROMOTE_CONFIG_INVALID'
   | 'PROMOTE_CONFIG_REQUIRED_KEY_MISSING'
   | 'PROMOTE_CONFIG_SHADOW_MISMATCH'
-  | 'PROMOTE_RECOVERY_REASON_REQUIRED'
-  | 'PROMOTE_RECOVERY_CONTEXT_INVALID'
+  | keyof typeof promoteRecoveryFailureDefinitions
+  | keyof typeof promoteH4FailureDefinitions
   | 'PROMOTE_MODE_INVALID'
   | 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
   | 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING'
@@ -66,9 +67,7 @@ export type PromoteFailure = Readonly<{
   nextAction: string;
 }>;
 
-type PromoteFailureDefinition = Readonly<
-  Pick<PromoteFailure, 'summary' | 'retryable' | 'nextAction'>
->;
+type PromoteFailureDefinition = Omit<PromoteFailure, 'code' | 'environment' | 'phase'>;
 
 const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailureDefinition>> = {
   PROMOTE_INPUT_INVALID: {
@@ -133,6 +132,7 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
     retryable: false,
     nextAction: 'Die redigierte Shadow-Abweichung prüfen und vor einer Aktivierung beheben.',
   },
+  ...promoteH4FailureDefinitions,
   ...promoteRecoveryFailureDefinitions,
   PROMOTE_MODE_INVALID: {
     summary: 'Der angeforderte Promote-Modus ist ungültig.',

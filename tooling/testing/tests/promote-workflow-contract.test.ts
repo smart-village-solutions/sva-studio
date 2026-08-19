@@ -17,6 +17,55 @@ const productionBackupDrillWorkflow = readFileSync(
 );
 
 describe('Promote workflow contract', () => {
+  it('keeps the one-time live config label transition staging-only and fail-closed', () => {
+    const dispatch = workflow.slice(
+      workflow.indexOf('  workflow_dispatch:'),
+      workflow.indexOf('  workflow_call:')
+    );
+    const reusable = workflow.slice(
+      workflow.indexOf('  workflow_call:'),
+      workflow.indexOf('\npermissions:')
+    );
+    expect(dispatch).toContain('live_config_transition_mode:');
+    expect(dispatch).toContain('staging_legacy_config_seed_run_id:');
+    expect(dispatch).toContain('staging_legacy_config_seed_run_attempt:');
+    expect(dispatch).toContain('prepare-staging-live-config-label');
+    expect(reusable).not.toContain('live_config_transition_mode:');
+    expect(reusable).not.toContain('staging_legacy_config_seed_run_id:');
+    expect(reusable).not.toContain('staging_legacy_config_seed_run_attempt:');
+    expect(workflow).toMatch(
+      /prepare-staging-live-config-label\)[\s\S]*?\[ -n "\$\{SEED_EVIDENCE_RUN_ID\}" \][\s\S]*?seed-staging-live-config-label\)/u
+    );
+
+    const requiredOrder = [
+      'capture previous live app digest',
+      'attest one-time staging live config label preparation',
+      'authorize one-time staging live config label seed',
+      'validate recovery and live revision contract',
+      'run read-only candidate preflight',
+      'create database backup before deployment',
+      'recheck one-time staging live config label seed',
+      '- name: deploy',
+      'wait for terminal Swarm convergence',
+      'verify deployed runtime',
+      'verify deployed runtime image digest',
+    ].map((phase) => workflow.indexOf(phase));
+    expect(requiredOrder.every((offset) => offset >= 0)).toBe(true);
+    expect(requiredOrder).toEqual([...requiredOrder].sort((left, right) => left - right));
+    expect(workflow).toContain(
+      "inputs.environment == 'staging' && (inputs.live_config_transition_mode || 'disabled') == 'disabled' && success()"
+    );
+    expect(workflow).toContain(
+      'PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+    );
+  });
+
   it('runs staging phases in the required fail-closed order', () => {
     const phases = [
       'bind executor source to promoted change head',
@@ -123,10 +172,10 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toContain("MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}");
     expect(workflow).toMatch(
-      /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
+      /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && \(inputs\.live_config_transition_mode \|\| 'disabled'\) == 'disabled' && success\(\) \}\}/u
     );
     expect(workflow).toMatch(
-      /- name: upload staging parity evidence\n\s+id: staging_evidence_upload\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
+      /- name: upload staging parity evidence\n\s+id: staging_evidence_upload\n\s+if: \$\{\{ inputs\.environment == 'staging' && \(inputs\.live_config_transition_mode \|\| 'disabled'\) == 'disabled' && success\(\) \}\}/u
     );
   });
 
@@ -248,8 +297,12 @@ describe('Promote workflow contract', () => {
     for (const controllerModule of [
       'promote-evidence-contract.ts',
       'promote-evidence-io.ts',
+      'promote-evidence-h4-gates.ts',
       'promote-evidence-types.ts',
+      'promote-evidence-seed-preparation.ts',
+      'promote-evidence-values.ts',
       'promote-recovery-contract.ts',
+      'promote-h4-failure-definitions.ts',
       'promote-recovery-failure-definitions.ts',
     ]) {
       expect(workflow).toContain(
@@ -336,7 +389,7 @@ describe('Promote workflow contract', () => {
       "PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce'"
     );
     expect(workflow).toContain(
-      'PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts'
+      'PROMOTE_FAILURE_PATH= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts"'
     );
     expect(workflow).not.toContain('echo "## Promote summary"');
   });

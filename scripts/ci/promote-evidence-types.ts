@@ -13,6 +13,9 @@ export type PromoteGateName =
   | 'registry-login'
   | 'image-contract'
   | 'main-e2e-evidence'
+  | 'legacy-config-seed-preparation'
+  | 'legacy-config-seed'
+  | 'legacy-config-seed-recheck'
   | 'recovery-contract'
   | 'config-build'
   | 'config-revision-contract'
@@ -78,6 +81,23 @@ export type PromoteRecoveryEvidence = Readonly<{
   }> | null;
 }>;
 
+export type PromoteSeedAuthorization = Readonly<{
+  authorization: 'staging-legacy-config-label-v1';
+  evidenceRun: Readonly<{ id: string; attempt: number }>;
+  sourceSha: string;
+  imageDigest: string;
+  configRevision: string;
+}>;
+
+export type PromoteSeedPreparation = Readonly<{
+  contract: 'staging-live-config-label-prepare-v1';
+  sourceSha: string;
+  imageDigest: string;
+  configRevision: string;
+  liveConfigRevisionState: 'missing';
+  backupExecutor: 'agent';
+}>;
+
 export type PromoteEvidence = Readonly<{
   schemaVersion: 2;
   run: Readonly<{ id: string; attempt: number }>;
@@ -108,6 +128,8 @@ export type PromoteEvidence = Readonly<{
     configRevision: string;
   }> | null;
   recovery: PromoteRecoveryEvidence | null;
+  seedPreparation: PromoteSeedPreparation | null;
+  seedAuthorization: PromoteSeedAuthorization | null;
   gates: readonly PromoteGateEvidence[];
   terminalFailure: PromoteFailure | null;
 }>;
@@ -132,6 +154,8 @@ export type BuildPromoteEvidenceInput = Readonly<{
   backupAgent?: PromoteBackupAgentEvidence | null;
   mainE2EReference?: unknown;
   recoveryContract?: unknown;
+  seedPreparation?: unknown;
+  seedAuthorization?: unknown;
   gates: readonly Readonly<{
     gate: PromoteGateName;
     phase: PromotePhase;

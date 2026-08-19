@@ -208,6 +208,8 @@ describe('promote evidence contract', () => {
         'mainE2E',
         'rollback',
         'recovery',
+        'seedPreparation',
+        'seedAuthorization',
         'gates',
         'terminalFailure',
       ]);
@@ -314,6 +316,104 @@ describe('promote evidence contract', () => {
     expect(evidence.image.previousDigest).toBe(digest);
     expect(evidence.config.previousRevision).toBeNull();
     expect(evidence.rollback).toBeNull();
+  });
+
+  it('records a separate allowlisted seed authorization without inventing rollback readiness', () => {
+    const seedAuthorization = {
+      authorization: 'staging-legacy-config-label-v1' as const,
+      evidenceRun: { id: '123456', attempt: 1 },
+      sourceSha: otherSha,
+      imageDigest: digest,
+      configRevision,
+      actor: 'person@example.test',
+      artifactUrl: 'https://internal.example.test/evidence',
+    };
+    const evidence = buildPromoteEvidence({
+      runId: '8',
+      runAttempt: 2,
+      environment: 'staging',
+      status: 'passed',
+      baseRef: otherSha,
+      headRef: otherSha,
+      baseSha: otherSha,
+      headSha: otherSha,
+      previousImage: digest,
+      targetImage: digest,
+      imageRevision: otherSha,
+      configRevision,
+      seedAuthorization,
+      gates: [
+        { gate: 'legacy-config-seed', phase: 'static-preflight', status: 'passed' },
+        { gate: 'legacy-config-seed-recheck', phase: 'static-preflight', status: 'passed' },
+      ],
+    });
+
+    expect(evidence.seedAuthorization).toEqual({
+      authorization: 'staging-legacy-config-label-v1',
+      evidenceRun: { id: '123456', attempt: 1 },
+      sourceSha: otherSha,
+      imageDigest: digest,
+      configRevision,
+    });
+    expect(evidence.config.previousRevision).toBeNull();
+    expect(evidence.rollback).toBeNull();
+    expect(JSON.stringify(evidence)).not.toMatch(/person@example\.test|internal\.example\.test/u);
+    expect(renderPromoteSummary(evidence)).toContain('| seed_evidence_run | 123456/1 |');
+  });
+
+  it('records the allowlisted Prepare marker only with its passed gate', () => {
+    const seedPreparation = {
+      contract: 'staging-live-config-label-prepare-v1',
+      sourceSha: otherSha,
+      imageDigest: digest,
+      configRevision,
+      liveConfigRevisionState: 'missing',
+      backupExecutor: 'agent',
+      actor: 'person@example.test',
+    };
+    const evidence = buildPromoteEvidence({
+      runId: '7',
+      runAttempt: 1,
+      environment: 'staging',
+      status: 'failed',
+      baseRef: otherSha,
+      headRef: otherSha,
+      headSha: otherSha,
+      targetImage: digest,
+      configRevision,
+      seedPreparation,
+      gates: [
+        {
+          gate: 'legacy-config-seed-preparation',
+          phase: 'static-preflight',
+          status: 'passed',
+        },
+      ],
+    });
+    expect(evidence.seedPreparation).toEqual({
+      contract: 'staging-live-config-label-prepare-v1',
+      sourceSha: otherSha,
+      imageDigest: digest,
+      configRevision,
+      liveConfigRevisionState: 'missing',
+      backupExecutor: 'agent',
+    });
+    expect(JSON.stringify(evidence)).not.toContain('person@example.test');
+    expect(() =>
+      buildPromoteEvidence({
+        runId: '7',
+        runAttempt: 1,
+        environment: 'staging',
+        status: 'failed',
+        baseRef: otherSha,
+        headRef: otherSha,
+        headSha: otherSha,
+        targetImage: digest,
+        configRevision,
+        seedPreparation,
+        gates: [],
+      })
+    ).toThrow('Seed-Vorbereitung widerspricht dem Gate-Vertrag.');
   });
 
   it('builds the final workflow artifact from allowlisted step outputs', () => {

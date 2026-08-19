@@ -49,6 +49,150 @@ describe('promote workflow hardening contract', () => {
     );
   });
 
+  it('keeps the legacy config label seed behind a dispatch-only staging handshake', () => {
+    const dispatch = workflow.slice(
+      workflow.indexOf('  workflow_dispatch:'),
+      workflow.indexOf('  workflow_call:')
+    );
+    const reusable = workflow.slice(
+      workflow.indexOf('  workflow_call:'),
+      workflow.indexOf('\npermissions:')
+    );
+    for (const input of [
+      'live_config_transition_mode',
+      'staging_legacy_config_seed_run_id',
+      'staging_legacy_config_seed_run_attempt',
+    ]) {
+      expect(dispatch).toContain(`${input}:`);
+      expect(reusable).not.toContain(`${input}:`);
+    }
+    expect(dispatch).toContain(
+      'options: [disabled, prepare-staging-live-config-label, seed-staging-live-config-label]'
+    );
+    const validation = stepBlock('validate inputs');
+    expect(validation).toContain('GITHUB_EVENT_NAME: ${{ github.event_name }}');
+    expect(validation).toContain('seed-staging-live-config-label)');
+    expect(validation).toContain('prepare-staging-live-config-label)');
+    expect(validation).toContain('[ -n "${SEED_EVIDENCE_RUN_ID}" ]');
+    expect(validation).toContain('[ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ]');
+    expect(validation).toContain('[ "${ENVIRONMENT}" != "staging" ]');
+    expect(validation).toContain('[ "${PROMOTE_MODE}" != "standard" ]');
+    expect(validation).toContain('[ "${MIGRATION_MODE}" != "assert-none" ]');
+    expect(validation).toContain('[ "${BOOTSTRAP_MODE}" != "assert-none" ]');
+    expect(validation).toContain('[ "${CHANGE_BASE}" != "${CHANGE_HEAD}" ]');
+    expect(validation).toContain('[ "${PROMOTE_CONFIG_BUILDER_MODE}" != "authoritative" ]');
+    expect(validation).toContain('[ "${MAIN_E2E_GATE_MODE}" != "enforce" ]');
+    expect(validation).toContain('[ "${CANDIDATE_GATE_MODE}" != "enforce" ]');
+    expect(validation).toContain('[ "${BACKUP_CAPABILITY_GATE_MODE}" != "enforce" ]');
+    expect(validation).toContain('[ "${BACKUP_EXECUTOR_MODE}" != "agent" ]');
+  });
+
+  it('preserves the H4 controller graph and binds both live checks around recovery', () => {
+    const preservation = stepBlock('preserve promote evidence controller');
+    for (const file of [
+      'scripts/ci/verify-staging-live-config-seed.ts',
+      'scripts/ci/staging-live-config-seed-contract.ts',
+      'scripts/ci/staging-live-config-seed-context.ts',
+      'scripts/ci/promote-evidence-seed-preparation.ts',
+      'scripts/ci/promote-h4-failure-definitions.ts',
+      'scripts/ci/promote-recovery-failure-definitions.ts',
+      'scripts/ci/staging-live-config-seed-io.ts',
+      'scripts/ci/staging-live-config-seed-runs.ts',
+      'scripts/ci/promote-evidence-seed.ts',
+      'scripts/ci/promote-evidence-seed-preparation.ts',
+      'scripts/ci/staging-live-config-seed-overlay.ts',
+      'scripts/ci/verify-staging-live-config-prepare.ts',
+      'scripts/ci/build-remote-app-config.ts',
+      'scripts/ci/promote-live-digest.ts',
+      'scripts/ci/assets/compose.staging-live-config-label-seed.yaml',
+      'scripts/ops/runtime/process.ts',
+      'scripts/ops/runtime/remote-portainer.ts',
+      'scripts/ops/runtime/remote-service-spec.ts',
+    ]) {
+      expect(preservation).toContain(file);
+    }
+    expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
+      workflow.indexOf('bind executor source to promoted change head')
+    );
+    expect(stepBlock('build and select remote config')).toContain(
+      '${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts'
+    );
+    expect(stepBlock('capture previous live app digest')).toContain(
+      '${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts'
+    );
+    const preparation = stepBlock('attest one-time staging live config label preparation');
+    expect(preparation).toContain('verify-staging-live-config-prepare.ts');
+    expect(preparation).toContain("BACKUP_EXECUTOR_MODE: ${{ vars.BACKUP_EXECUTOR || 'agent' }}");
+    expect(stepBlock('verify deployed runtime image digest')).toContain(
+      '${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts'
+    );
+
+    const authorization = stepBlock('authorize one-time staging live config label seed');
+    expect(authorization).toContain(
+      "if: ${{ inputs.live_config_transition_mode == 'seed-staging-live-config-label' }}"
+    );
+    expect(authorization).toContain('verify-staging-live-config-seed.ts');
+    expect(authorization).toContain('staging-live-config-seed-overlay.ts');
+    expect(authorization).toContain('--base "${RUNNER_TEMP}/staging-seed-base.json"');
+    expect(authorization).toContain('--seeded "${RUNNER_TEMP}/staging-seed-overlay.json"');
+    expect(authorization).toContain('GITHUB_OUTPUT="${authorization_output}"');
+    expect(authorization).toContain("printf 'seed_authorization=%s\\n'");
+    expect(workflow.indexOf('capture previous live app digest')).toBeLessThan(
+      workflow.indexOf('authorize one-time staging live config label seed')
+    );
+    expect(workflow.indexOf('authorize one-time staging live config label seed')).toBeLessThan(
+      workflow.indexOf('validate recovery and live revision contract')
+    );
+    expect(stepBlock('validate recovery and live revision contract')).toContain(
+      'SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+    );
+    expect(stepBlock('validate recovery and live revision contract')).toContain(
+      'TARGET_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}'
+    );
+    expect(stepBlock('validate recovery and live revision contract')).toContain(
+      'SOURCE_SHA: ${{ steps.source_contract.outputs.head_sha }}'
+    );
+
+    const recheck = stepBlock('recheck one-time staging live config label seed');
+    expect(recheck).toContain('verify-staging-live-config-seed.ts');
+    expect(recheck).toContain('steps.legacy_config_seed.outputs.seed_authorization');
+    expect(recheck).toContain('recheck_authorization');
+    expect(workflow.indexOf('recheck one-time staging live config label seed')).toBeGreaterThan(
+      workflow.indexOf('run one-shot postconditions')
+    );
+    expect(workflow.indexOf('recheck one-time staging live config label seed')).toBeLessThan(
+      workflow.indexOf('- name: deploy')
+    );
+  });
+
+  it('uses the controller overlay only for the seed and suppresses staging parity', () => {
+    const deploy = stepBlock('deploy');
+    expect(deploy).toContain("SEED_MODE: ${{ inputs.live_config_transition_mode || 'disabled' }}");
+    expect(deploy).toContain('compose.staging-live-config-label-seed.yaml');
+    expect(deploy).toContain('seed-staging-live-config-label');
+    expect(stepBlock('write staging parity evidence')).toContain(
+      "(inputs.live_config_transition_mode || 'disabled') == 'disabled'"
+    );
+    expect(stepBlock('upload staging parity evidence')).toContain(
+      "(inputs.live_config_transition_mode || 'disabled') == 'disabled'"
+    );
+    expect(workflow).toContain(
+      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_GATE_LEGACY_CONFIG_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outcome }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_GATE_LEGACY_CONFIG_SEED: ${{ steps.legacy_config_seed.outcome }}'
+    );
+    expect(workflow).toContain(
+      'PROMOTE_GATE_LEGACY_CONFIG_SEED_RECHECK: ${{ steps.legacy_config_seed_recheck.outcome }}'
+    );
+  });
+
   it('supports explicit standard and recovery modes in dispatch and reusable calls', () => {
     expect(workflow.match(/^ {6}promote_mode:/gmu)).toHaveLength(2);
     expect(workflow).toContain('PROMOTE_RECOVERY_REASON_REQUIRED');
@@ -101,7 +245,7 @@ describe('promote workflow hardening contract', () => {
     for (const name of orderedGates.slice(2)) {
       expect(stepBlock(name)).not.toContain('promote_mode');
     }
-    expect(workflow.match(/SVA_CONFIG_REVISION=%s/gu)).toHaveLength(7);
+    expect(workflow.match(/SVA_CONFIG_REVISION=%s/gu)).toHaveLength(8);
   });
 
   it('injects the permission snapshot HMAC as a dedicated protected secret', () => {

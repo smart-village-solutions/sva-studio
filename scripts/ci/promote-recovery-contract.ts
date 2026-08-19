@@ -10,6 +10,7 @@ import {
   type PromoteEnvironment,
 } from './promote-result.ts';
 import type { PromoteRecoveryEvidence } from './promote-evidence-types.ts';
+import { projectSeedAuthorization } from './staging-live-config-seed-contract.ts';
 
 export type PromoteRecoveryContract = PromoteRecoveryEvidence;
 
@@ -110,15 +111,40 @@ export const buildRecoveryContract = (
     previousImage: string | undefined;
     targetImage: string | undefined;
     previousConfigRevision: string | undefined;
+    targetConfigRevision?: string | undefined;
+    sourceSha?: string | undefined;
+    seedAuthorization?: unknown;
   }>
 ): PromoteRecoveryContract | null => {
   if (input.environment === 'invalid') fail(input.environment);
   if (input.mode === 'standard') {
     const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
+    const previousConfigRevision = input.previousConfigRevision?.trim() ?? '';
+    if (input.seedAuthorization) {
+      if (input.environment !== 'staging' || previousConfigRevision) fail(input.environment);
+      const targetDigest = parseDigest(input.targetImage, input.environment);
+      const targetConfigRevision = parseRevision(input.targetConfigRevision, input.environment);
+      const sourceSha = input.sourceSha?.trim() ?? '';
+      if (!/^[a-f0-9]{40}$/u.test(sourceSha) || previousDigest !== targetDigest)
+        fail(input.environment);
+      try {
+        if (
+          !projectSeedAuthorization(input.seedAuthorization, {
+            sourceSha,
+            imageDigest: targetDigest,
+            configRevision: targetConfigRevision,
+          })
+        )
+          fail(input.environment);
+      } catch {
+        fail(input.environment);
+      }
+      return null;
+    }
     if (
       (input.environment === 'staging' || input.environment === 'prod') &&
       previousDigest &&
-      !revisionPattern.test(input.previousConfigRevision?.trim() ?? '')
+      !revisionPattern.test(previousConfigRevision)
     )
       fail(input.environment);
     return null;
@@ -165,6 +191,9 @@ export const runRecoveryContractFromEnvironment = (
       previousImage: env.PREVIOUS_LIVE_IMAGE,
       targetImage: env.DEPLOY_IMAGE_DIGEST,
       previousConfigRevision: env.PREVIOUS_CONFIG_REVISION,
+      targetConfigRevision: env.TARGET_CONFIG_REVISION,
+      sourceSha: env.SOURCE_SHA,
+      seedAuthorization: env.SEED_AUTHORIZATION?.trim() ? JSON.parse(env.SEED_AUTHORIZATION) : null,
     });
     if (env.GITHUB_OUTPUT) {
       appendFileSync(

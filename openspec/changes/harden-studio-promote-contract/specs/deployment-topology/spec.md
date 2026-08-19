@@ -159,6 +159,16 @@ Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte ni
 - **THEN** leitet der Workflow die effektive Diff-Basis aus der OCI-Revision des tatsächlich live konfigurierten App-Images ab
 - **AND** darf der reine Git-Push-Vorgänger keine Migrations- oder Bootstrap-Risiken aus dem Prüfbereich entfernen
 
+#### Scenario: Staging-Live-Service besitzt noch kein versioniertes Config-Label
+
+- **WHEN** ein geschützter Staging-Standard-Promote im expliziten Vorbereitungsmodus mit bereits live laufendem Zieldigest ausschließlich am fehlenden Live-Config-Label fail-closed endet
+- **THEN** darf ein zweiter expliziter `workflow_dispatch` genau diesen Run und Attempt als einmalige Seed-Autorisierung referenzieren
+- **AND** muss der Vorlauf einen allowlisteten Preparation-Marker für Same-Digest, Labelzustand `missing` und kanonischen Backup-Agenten enthalten sowie Candidate, Backup, Deploy und Parität übersprungen haben
+- **AND** müssen Prepare und Seed dieselbe Workflow-ID besitzen und unmittelbar aufeinanderfolgende Run-Nummern haben; jeder intervenierende Promote muss fail-closed blockieren
+- **AND** muss er das fehlende Label, Same-Digest, identische Source- und Config-Revision sowie die vollständige Pre-Mutation-Evidenz vor und unmittelbar vor dem Deploy erneut fail-closed prüfen
+- **AND** darf ausschließlich ein controller-eigenes Staging-Overlay das Config-Label ergänzen, während Candidate, Backups, Deploy, Konvergenz, Smoke und gemeinsamer Digest-/Config-Readback blockierend bleiben
+- **AND** bleiben `previousConfigRevision` und Rollback-Evidenz leer, entsteht weder aus Prepare noch Seed eine Production-fähige Staging-Parität und sind Dev, Production, Recovery, der temporäre Backup-Executor sowie ein erneuter Seed bei vorhandenem oder ungültigem Label ausgeschlossen
+
 #### Scenario: Ein One-shot schlägt vor dem Cleanup fehl
 
 - **WHEN** Candidate, Migration oder Bootstrap einen terminalen Taskfehler oder Timeout meldet

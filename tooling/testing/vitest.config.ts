@@ -35,6 +35,8 @@ export default defineConfig({
       '../../scripts/ci/promote-deployment-base.test.ts',
       '../../scripts/ci/promote-mode.test.ts',
       '../../scripts/ci/promote-recovery-contract.test.ts',
+      '../../scripts/ci/staging-live-config-seed-contract.test.ts',
+      '../../scripts/ci/staging-live-config-seed-overlay.test.ts',
       '../../scripts/ci/verify-swarm-convergence.test.ts',
       '../../scripts/ci/promote-backup-job.test.ts',
       '../../scripts/ci/promote-result.test.ts',

@@ -78,6 +78,57 @@ describe('promote recovery contract', () => {
     ).toBeNull();
   });
 
+  it('allows only a separately bound Staging seed authorization without a previous revision', () => {
+    expect(
+      buildRecoveryContract({
+        environment: 'staging',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedAuthorization: {
+          authorization: 'staging-legacy-config-label-v1',
+          evidenceRun: { id: '123456', attempt: 1 },
+          sourceSha: 'd'.repeat(40),
+          imageDigest: `sha256:${'a'.repeat(64)}`,
+          configRevision: previousConfigRevision,
+        },
+      })
+    ).toBeNull();
+  });
+
+  it.each([
+    ['production', { environment: 'prod' as const }],
+    ['recovery', { mode: 'recovery' }],
+    ['digest change', { targetImage: targetDigest }],
+    ['foreign source', { sourceSha: 'e'.repeat(40) }],
+    ['foreign config', { targetConfigRevision: 'e'.repeat(64) }],
+  ])('does not let a seed authorization bypass %s', (_, override) => {
+    expect(() =>
+      buildRecoveryContract({
+        environment: 'staging',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedAuthorization: {
+          authorization: 'staging-legacy-config-label-v1',
+          evidenceRun: { id: '123456', attempt: 1 },
+          sourceSha: 'd'.repeat(40),
+          imageDigest: `sha256:${'a'.repeat(64)}`,
+          configRevision: previousConfigRevision,
+        },
+        ...override,
+      })
+    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+  });
+
   it('binds recovery to the previous digest and its versioned config revision', () => {
     expect(
       buildRecoveryContract({

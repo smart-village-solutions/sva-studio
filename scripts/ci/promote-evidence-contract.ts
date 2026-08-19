@@ -7,6 +7,9 @@ import {
   type PromotePhase,
 } from './promote-result.ts';
 import { projectRecoveryEvidence } from './promote-recovery-contract.ts';
+import { normalizeEvidenceSeedAuthorization } from './promote-evidence-seed.ts';
+import { normalizeEvidenceSeedPreparation } from './promote-evidence-seed-preparation.ts';
+import { normalizePromoteMode, normalizeReasonProvided } from './promote-evidence-values.ts';
 import type {
   BuildPromoteEvidenceInput,
   PromoteBackupAgentEvidence,
@@ -42,6 +45,9 @@ const gateNames = new Set<PromoteGateName>([
   'registry-login',
   'image-contract',
   'main-e2e-evidence',
+  'legacy-config-seed-preparation',
+  'legacy-config-seed',
+  'legacy-config-seed-recheck',
   'recovery-contract',
   'config-build',
   'config-revision-contract',
@@ -228,15 +234,6 @@ const normalizeSecretReferences = (values: readonly string[] | undefined): strin
     ),
   ].sort();
 
-const normalizePromoteMode = (value: string | null | undefined): PromoteEvidence['mode'] => {
-  if (value === undefined || value === null || value === '' || value === 'standard')
-    return 'standard';
-  return value === 'recovery' ? 'recovery' : 'invalid';
-};
-
-const normalizeReasonProvided = (value: boolean | string | null | undefined): boolean =>
-  value === true || value === 'true';
-
 export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteEvidence => {
   if (!Number.isSafeInteger(input.runAttempt) || input.runAttempt < 1)
     throw new Error('Run-Attempt ist ungültig.');
@@ -251,6 +248,7 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
   const previousDigest = normalizeDigest(input.previousImage);
   const targetDigest = normalizeDigest(input.targetImage);
   const previousConfigRevision = normalizeConfigRevision(input.previousConfigRevision);
+  const configRevision = normalizeConfigRevision(input.configRevision);
   const mode = normalizePromoteMode(input.promoteMode);
   const recoveryReasonProvided = normalizeReasonProvided(input.recoveryReasonProvided);
   if (input.recoveryContract && (mode !== 'recovery' || !recoveryReasonProvided)) {
@@ -283,7 +281,7 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
     },
     config: {
       previousRevision: previousConfigRevision,
-      revision: normalizeConfigRevision(input.configRevision),
+      revision: configRevision,
       externalSecretReferences: normalizeSecretReferences(input.externalSecretReferences),
     },
     backupAgent: normalizeBackupAgent(input.backupAgent),
@@ -300,6 +298,16 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       previousDigest,
       targetDigest,
       previousConfigRevision,
+    }),
+    seedPreparation: normalizeEvidenceSeedPreparation(input.seedPreparation, gates, {
+      sourceSha: input.headSha?.trim() || null,
+      imageDigest: targetDigest,
+      configRevision,
+    }),
+    seedAuthorization: normalizeEvidenceSeedAuthorization(input.seedAuthorization, gates, {
+      sourceSha: input.headSha?.trim() || null,
+      imageDigest: targetDigest,
+      configRevision,
     }),
     gates: gatesWithFailure,
     terminalFailure,

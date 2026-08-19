@@ -15,4 +15,6 @@ export type {
   PromoteGateStatus,
   PromoteMainE2EReference,
   PromoteRecoveryEvidence,
+  PromoteSeedAuthorization,
+  PromoteSeedPreparation,
 } from './promote-evidence-types.ts';

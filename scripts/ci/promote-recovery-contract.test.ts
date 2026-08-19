@@ -28,6 +28,22 @@ describe('promote recovery contract', () => {
     ).toBeNull();
   });
 
+  it.each(['standard', 'recovery'] as const)(
+    'fails closed for an invalid environment in %s mode',
+    (mode) => {
+      expect(() =>
+        buildRecoveryContract({
+          environment: 'invalid',
+          mode,
+          recoveryReason: mode === 'recovery' ? 'Dokumentierte Ursache' : undefined,
+          previousImage: previousDigest,
+          targetImage: targetDigest,
+          previousConfigRevision,
+        })
+      ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+    }
+  );
+
   it.each([
     ['staging digest change', 'staging', targetDigest],
     ['staging same digest', 'staging', `sha256:${'a'.repeat(64)}`],

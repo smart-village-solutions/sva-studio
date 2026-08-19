@@ -10,11 +10,18 @@ const workflow = readFileSync(
 
 const stepBlock = (name: string): string => {
   const start = workflow.indexOf(`- name: ${name}`);
+  if (start === -1) throw new Error(`Workflow step is missing: ${name}`);
   const next = workflow.indexOf('\n      - name:', start + 1);
   return workflow.slice(start, next === -1 ? workflow.length : next);
 };
 
 describe('promote workflow hardening contract', () => {
+  it('fails fast when a referenced workflow step is missing', () => {
+    expect(() => stepBlock('missing contract sentinel')).toThrow(
+      'Workflow step is missing: missing contract sentinel'
+    );
+  });
+
   it('keeps shadow as the safe default and allows protected staged activation', () => {
     expect(workflow).toContain('--shadow');
     expect(workflow).toContain('mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"');

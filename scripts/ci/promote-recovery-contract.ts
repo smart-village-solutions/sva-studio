@@ -112,6 +112,7 @@ export const buildRecoveryContract = (
     previousConfigRevision: string | undefined;
   }>
 ): PromoteRecoveryContract | null => {
+  if (input.environment === 'invalid') fail(input.environment);
   if (input.mode === 'standard') {
     const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
     if (

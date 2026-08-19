@@ -1,3 +1,8 @@
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { PromoteContractError } from './promote-result.ts';
@@ -167,7 +172,3 @@ describe('staging live config seed overlay', () => {
     expect(result.stderr).not.toContain('internal.test');
   });
 });
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { resolve } from 'node:path';

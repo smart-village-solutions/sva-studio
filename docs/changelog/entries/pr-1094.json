@@ -1,5 +1,4 @@
 {
-  "type": "fixed",
-  "scope": "Deployment",
-  "summary": "Entfernt die abgeschlossene Live-Config-Seed-Implementierung aus Promote und hält Evidence v2 mit dauerhaft leeren Kompatibilitätsfeldern stabil."
+  "prNumber": 1094,
+  "body": "Entfernt die abgeschlossene Live-Config-Seed-Implementierung aus Promote und hält Evidence v2 mit dauerhaft leeren Kompatibilitätsfeldern stabil."
 }

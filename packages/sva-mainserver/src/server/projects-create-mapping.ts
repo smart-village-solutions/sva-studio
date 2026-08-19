@@ -3,19 +3,10 @@ import type {
   SvaMainserverProject,
   SvaMainserverProjectInput,
 } from '../types.js';
-import { SvaMainserverError } from './errors.js';
-import { mapGenericItemToProject, validateProjectProjection } from './projects-contract.js';
+import { mapGenericItemToProject } from './projects-contract.js';
 
 export const mapAndValidateProject = (item: SvaMainserverGenericItem): SvaMainserverProject => {
-  const project = mapGenericItemToProject(item);
-  if (validateProjectProjection(project)) {
-    throw new SvaMainserverError({
-      code: 'invalid_response',
-      message: 'Mainserver-Projekt verletzt den FeaturedProject-Vertrag.',
-      statusCode: 502,
-    });
-  }
-  return project;
+  return mapGenericItemToProject(item);
 };
 
 export const projectPayload = (input: SvaMainserverProjectInput) => ({

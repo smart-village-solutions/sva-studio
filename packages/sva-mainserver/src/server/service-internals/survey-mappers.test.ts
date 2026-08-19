@@ -7,7 +7,10 @@ import {
   mapSurveyMutationPayload,
 } from './survey-mappers.js';
 
-const expectInvalidResponseError = (callback: () => unknown, expectedCode: 'invalid_response' | 'not_found') => {
+const expectInvalidResponseError = (
+  callback: () => unknown,
+  expectedCode: 'invalid_response' | 'not_found'
+) => {
   try {
     callback();
     throw new Error('Expected callback to throw.');
@@ -128,10 +131,19 @@ describe('survey-mappers', () => {
                   title: 'Option A',
                   votes: null,
                   percentage: null,
-                  freeTextResponses: [{ id: 'free-1', text: null, status: 'PUBLIC', createdAt: null }],
+                  freeTextResponses: [
+                    { id: 'free-1', text: null, status: 'PUBLIC', createdAt: null },
+                  ],
                 },
               ],
-              freeTextResponses: [{ id: 'free-2', text: null, status: 'INTERNAL', createdAt: '2026-07-01T08:00:00.000Z' }],
+              freeTextResponses: [
+                {
+                  id: 'free-2',
+                  text: null,
+                  status: 'INTERNAL',
+                  createdAt: '2026-07-01T08:00:00.000Z',
+                },
+              ],
             },
           ],
         },
@@ -165,10 +177,14 @@ describe('survey-mappers', () => {
             optionResults: [
               {
                 votes: 0,
-                freeTextResponses: [expect.objectContaining({ text: '', createdAt: '1970-01-01T00:00:00.000Z' })],
+                freeTextResponses: [
+                  expect.objectContaining({ text: '', createdAt: '1970-01-01T00:00:00.000Z' }),
+                ],
               },
             ],
-            freeTextResponses: [expect.objectContaining({ text: '', createdAt: '2026-07-01T08:00:00.000Z' })],
+            freeTextResponses: [
+              expect.objectContaining({ text: '', createdAt: '2026-07-01T08:00:00.000Z' }),
+            ],
           },
         ],
       },
@@ -186,7 +202,14 @@ describe('survey-mappers', () => {
               type: 'FREE_TEXT',
               totalResponses: null,
               optionResults: [],
-              freeTextResponses: [{ id: 'free-1', text: null, status: 'PUBLIC', createdAt: '2026-07-02T08:00:00.000Z' }],
+              freeTextResponses: [
+                {
+                  id: 'free-1',
+                  text: null,
+                  status: 'PUBLIC',
+                  createdAt: '2026-07-02T08:00:00.000Z',
+                },
+              ],
             },
           ],
         } as never,
@@ -199,7 +222,9 @@ describe('survey-mappers', () => {
       questions: [
         {
           totalResponses: 0,
-          freeTextResponses: [expect.objectContaining({ text: '', createdAt: '2026-07-02T08:00:00.000Z' })],
+          freeTextResponses: [
+            expect.objectContaining({ text: '', createdAt: '2026-07-02T08:00:00.000Z' }),
+          ],
         },
       ],
     });
@@ -427,12 +452,39 @@ describe('survey-mappers', () => {
     });
   });
 
-  it('rejects invalid mutation and results payloads deterministically', () => {
-    expectInvalidResponseError(() => mapSurveyMutationPayload({ success: true, survey: { id: 42 } }), 'invalid_response');
+  it('keeps sparse surveys and valid nested siblings readable', () => {
+    expect(
+      mapSurveyItem({
+        id: 'survey-legacy',
+        title: null,
+        status: null,
+        questions: [
+          {
+            id: 'question-valid',
+            surveyId: 'survey-legacy',
+            title: 'Weiter nutzbar',
+            type: 'FREE_TEXT',
+            options: [],
+          },
+          { id: 'question-invalid', surveyId: 'survey-legacy', title: null, type: 'FREE_TEXT' },
+        ],
+      } as never)
+    ).toMatchObject({
+      id: 'survey-legacy',
+      title: { de: '' },
+      status: 'DRAFT',
+      questions: [expect.objectContaining({ id: 'question-valid' })],
+    });
+  });
 
+  it('keeps malformed result siblings from blocking the results response', () => {
     expectInvalidResponseError(
-      () =>
-        mapOptionalSurveyResults(
+      () => mapSurveyMutationPayload({ success: true, survey: { id: 42 } }),
+      'invalid_response'
+    );
+
+    expect(
+      mapOptionalSurveyResults(
         {
           surveyId: 'survey-1',
           participationCount: 1,
@@ -440,8 +492,12 @@ describe('survey-mappers', () => {
           questions: [{ questionId: 'question-1', optionResults: 'invalid' }],
         } as never,
         'survey-1'
-        ),
-      'invalid_response'
-    );
+      )
+    ).toEqual({
+      surveyId: 'survey-1',
+      participationCount: 1,
+      submissionCount: 1,
+      questions: [],
+    });
   });
 });

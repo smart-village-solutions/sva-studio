@@ -204,7 +204,9 @@ describe('content list projection', () => {
   it('sorts supported projection fields with nulls last and an ascending id tie-breaker', () => {
     const row = (
       id: string,
-      overrides: Partial<Pick<ProjectionRow, 'title' | 'created_at' | 'updated_at' | 'published_at'>> = {}
+      overrides: Partial<
+        Pick<ProjectionRow, 'title' | 'created_at' | 'updated_at' | 'published_at'>
+      > = {}
     ) => ({
       id,
       title: 'Gleich',
@@ -4323,7 +4325,7 @@ describe('content list projection', () => {
     });
   });
 
-  it('refreshes multiple mainserver event pages and stops on empty follow-up pages', async () => {
+  it('continues mainserver pagination after an empty intermediate page', async () => {
     state.listSvaMainserverEvents.mockImplementation(async ({ page }: { page: number }) => ({
       data:
         page === 1
@@ -4347,8 +4349,29 @@ describe('content list projection', () => {
                 updatedAt: '2026-06-21T10:00:00.000Z',
               },
             ]
-          : [],
-      pagination: { page, pageSize: 25, hasNextPage: true },
+          : page === 3
+            ? [
+                {
+                  id: 'event-page-3',
+                  title: 'Dritte Seite',
+                  contentType: 'events.event-record',
+                  status: 'published',
+                  dates: [],
+                  recurringWeekdays: [],
+                  categories: [],
+                  addresses: [],
+                  contacts: [],
+                  urls: [],
+                  mediaContents: [],
+                  priceInformations: [],
+                  tags: [],
+                  visible: true,
+                  createdAt: '2026-06-20T10:00:00.000Z',
+                  updatedAt: '2026-06-21T10:00:00.000Z',
+                },
+              ]
+            : [],
+      pagination: { page, pageSize: 25, hasNextPage: page < 3 },
     }));
 
     const response = await refreshProjectedContents(ctx, {
@@ -4357,7 +4380,7 @@ describe('content list projection', () => {
     });
 
     expect(response.status).toBe(200);
-    expect(state.listSvaMainserverEvents).toHaveBeenCalledTimes(2);
+    expect(state.listSvaMainserverEvents).toHaveBeenCalledTimes(3);
     expect(state.listSvaMainserverEvents).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -4365,10 +4388,9 @@ describe('content list projection', () => {
         pageSize: 100,
       })
     );
-    expect(projectionRows).toEqual([
-      expect.objectContaining({
-        source_entity_id: 'event-page-1',
-      }),
+    expect(projectionRows.map((row) => row.source_entity_id).sort()).toEqual([
+      'event-page-1',
+      'event-page-3',
     ]);
   });
 
@@ -4545,6 +4567,57 @@ describe('content list projection', () => {
     );
     expect(projectionRows).toEqual([
       expect.objectContaining({ source_entity_id: 'news-slim-1', payload_json: {} }),
+    ]);
+  });
+
+  it('does not delete an existing projection when a slim upstream page skipped records', async () => {
+    process.env.SVA_CONTENT_PROJECTION_ADAPTER_MODE = 'slim';
+    projectionRows = [
+      mapInsertedProjectionRow({
+        id: 'news-legacy-1',
+        instance_id: 'de-musterhausen',
+        projection_scope_key: 'de-musterhausen::account-1::org-1::news.article',
+        organization_id: 'org-1',
+        owner_subject_id: null,
+        owner_user_id: null,
+        owner_organization_id: null,
+        content_type: 'news.article',
+        title: 'Bestehende News',
+        published_at: null,
+        publish_from: null,
+        publish_until: null,
+        created_at: '2026-06-20T10:00:00.000Z',
+        created_by: 'mainserver',
+        updated_at: '2026-06-21T10:00:00.000Z',
+        updated_by: 'mainserver',
+        author_display_mode: 'organization',
+        author_display_name: 'Redaktion',
+        payload_json: {},
+        status: 'published',
+        validation_state: 'valid',
+        history_ref: 'mainserver:news.article:news-legacy-1',
+        current_revision_ref: null,
+        last_audit_event_ref: null,
+        source_data_provider_id: null,
+        source_data_provider_name: null,
+        credential_source: 'organization',
+        credential_fingerprint: null,
+        authorization_mode: 'credential_visible_compatibility',
+        source_system: 'mainserver',
+        source_entity_type: 'news.article',
+        source_entity_id: 'news-legacy-1',
+      }),
+    ];
+    state.listSvaMainserverProjection.mockResolvedValue({
+      data: [],
+      skippedInvalidCount: 1,
+      pagination: { page: 1, pageSize: 100, hasNextPage: false },
+    });
+
+    await refreshProjectedContents(ctx, { visibleTypes: ['news.article'], force: true });
+
+    expect(projectionRows).toEqual([
+      expect.objectContaining({ source_entity_id: 'news-legacy-1' }),
     ]);
   });
 

@@ -720,7 +720,7 @@ Der zentrale Migrationsprincipal darf nur das Registry-Inventar lesen; in der Fa
 
 - `pagination.total` bezeichnet weiterhin die lokal verfügbare Trefferzahl. Bei partiellen Snapshots erlaubt dieser Wert die Navigation zwischen bereits materialisierten lokalen Seiten, ohne eine endgültige Gesamtseitenzahl oder weitere, noch nicht materialisierte Seiten zu behaupten. `totalCount` existiert nur bei einem vollständigen Snapshot; `isTotalFinal` macht die Semantik explizit.
 - `payload_json` ist für Mainserver-Projektionszeilen immer `{}`. Detailfragmente, Medien, Adressen und Content-Blöcke werden weder geladen noch für Listenfilterung vorausgesetzt.
-- Ein Datensatz ohne stabile Quell-ID wird übersprungen und gezählt. Transportfehler, fehlende Page-Metadaten und strukturell ungültige Pages stoppen nur den betroffenen Typ.
+- Ein Datensatz ohne stabile Quell-ID wird übersprungen und gezählt. Solange ein Upstream-Read Datensätze überspringt, finalisiert die Projektion keinen löschfähigen Vollsnapshot: Bereits materialisierte Bestandszeilen bleiben sichtbar, statt als Provider-Löschung fehlinterpretiert zu werden. Leere Zwischenpages mit `hasNextPage` werden weitergescannt; Transportfehler, fehlende Page-Metadaten und strukturell ungültige Pages stoppen nur den betroffenen Typ.
 - Browser-Revalidation läuft nur für laufende, partielle oder veraltete Zustände, pausiert bei unsichtbarem Dokument, verwendet Backoff und beendet sich nach Finalisierung. Filter, Auswahl, Fokus, lokale Seite und Scrollposition bleiben Browserzustand.
 - Rollback-Schalter ändern nur neue Läufe und Reads; additive Sync-State-Spalten bleiben erhalten.
 

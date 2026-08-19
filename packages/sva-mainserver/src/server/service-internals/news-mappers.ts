@@ -183,14 +183,13 @@ export const mapNewsItemDetail = (item: SvaMainserverNewsItemFragment | null | u
     });
   }
 
-  const publishedAt = parsed.data.publishedAt ?? parsed.data.publicationDate;
-  if (!publishedAt) {
-    throw toSvaMainserverError({
-      code: 'invalid_response',
-      message: 'News-Antwort ohne Veröffentlichungsdatum des SVA-Mainservers.',
-      statusCode: 502,
-    });
-  }
+  // A publication date is required when writing News, but legacy records without
+  // one must remain readable so editors can repair them.  The epoch is only a
+  // deterministic read fallback and is never written back implicitly.
+  const publishedAt =
+    optionalString(parsed.data.publishedAt) ??
+    optionalString(parsed.data.publicationDate) ??
+    new Date(0).toISOString();
 
   const payload = parseNewsPayload(parsed.data.payload);
   const categories = (parsed.data.categories ?? []).map(mapCategory).filter(defined);

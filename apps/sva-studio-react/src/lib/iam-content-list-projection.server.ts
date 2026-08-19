@@ -1613,7 +1613,7 @@ WHERE instance_id = $1
             ]
       );
 
-      if (input.finalize) {
+      if (input.finalize && input.skippedInvalidCount === 0) {
         await deleteMainserverProjectionRowsNotInSet(
           client,
           input.target,
@@ -1656,7 +1656,7 @@ const hasNextProjectionPage = (
     readonly page: number;
     readonly pageSize: number;
   },
-  continueAfterEmptyPage = false
+  continueAfterEmptyPage = true
 ): boolean => {
   const nextPage = result.pagination.page ?? pageQuery.page;
   return (

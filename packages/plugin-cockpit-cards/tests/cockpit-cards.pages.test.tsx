@@ -415,6 +415,18 @@ describe('cockpit cards pages', () => {
     await waitFor(() => expect(screen.getAllByLabelText('fields.imageUrl')).toHaveLength(1));
   });
 
+  it('keeps the editor available when optional media references cannot be loaded', async () => {
+    state.params = { id: 'card-1' };
+    state.get.mockResolvedValue(record);
+    state.listReferences.mockRejectedValue(new Error('media references unavailable'));
+    const { CockpitCardsEditPage } = await import('../src/cockpit-cards.pages.js');
+
+    render(<CockpitCardsEditPage />);
+
+    expect(await screen.findByDisplayValue('Bestehende Karte')).toBeTruthy();
+    expect(screen.queryByText('messages.loadError')).toBeNull();
+  });
+
   it('saves linked references with the canonical target after the content save', async () => {
     state.params = { id: 'card-1' };
     state.get.mockResolvedValue(record);

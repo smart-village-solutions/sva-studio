@@ -93,6 +93,22 @@ export const surveySchema = z.object({
   archivedAt: z.string().nullish(),
   dataProvider: dataProviderSchema.nullish(),
 });
+
+// The mutation schema remains strict.  Existing provider records, however,
+// must be readable with only their stable identifier intact so they can be
+// completed in Studio.  Invalid nested questions/results are isolated by the
+// mapper rather than making the complete survey unavailable.
+export const surveyReadSchema = surveySchema.partial().extend({
+  title: localizedTextSchema.nullish(),
+  status: surveyStatusSchema.nullish(),
+  questions: z.array(surveyQuestionSchema).nullish(),
+  results: surveyResultsSchema.nullish(),
+});
+
+export const surveyResultsReadSchema = surveyResultsSchema.partial().extend({
+  surveyId: z.string().min(1).nullish(),
+  questions: z.array(surveyQuestionResultsSchema).nullish(),
+});
 export const surveyMutationErrorSchema = z.object({
   code: surveyMutationErrorCodeSchema,
   message: z.string().min(1),
@@ -101,7 +117,7 @@ export const surveyMutationErrorSchema = z.object({
 export const surveyMutationPayloadSchema = z.object({
   success: z.boolean().nullish(),
   action: surveyMutationActionSchema.nullish(),
-  survey: surveySchema.nullish(),
+  survey: surveyReadSchema.nullish(),
   deletedSurveyId: z.string().nullish(),
   errors: z.array(surveyMutationErrorSchema).nullish(),
 });

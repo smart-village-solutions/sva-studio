@@ -34,11 +34,7 @@ const deriveEditorialStatusForList = (
 
   const publishedAt = item.publishedAt ?? item.publicationDate ?? '';
   if (publishedAt.trim().length === 0) {
-    throw toSvaMainserverError({
-      code: 'invalid_response',
-      message: 'Mainserver-News ohne Veröffentlichungsdatum erhalten.',
-      statusCode: 502,
-    });
+    return 'published';
   }
 
   return new Date(publishedAt).getTime() > new Date(nowIso).getTime() ? 'scheduled' : 'published';

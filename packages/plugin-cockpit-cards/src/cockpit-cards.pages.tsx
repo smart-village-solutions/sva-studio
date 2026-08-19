@@ -519,7 +519,7 @@ function Editor({
         fetch: globalThis.fetch.bind(globalThis),
         targetType: COCKPIT_CARD_CONTENT_TYPE,
         targetId: contentId,
-      }),
+      }).catch(() => []),
     ])
       .then(
         ([detail, references]) => {

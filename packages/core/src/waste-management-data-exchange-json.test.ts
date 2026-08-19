@@ -41,6 +41,7 @@ describe('Waste data exchange JSON', () => {
           entityType: 'fraction',
           id: 'fraction-1',
           name: 'Restmüll',
+          translations: undefined,
           color: '#112233',
           createdAt: 'sensitive-target-metadata',
         },
@@ -58,6 +59,7 @@ describe('Waste data exchange JSON', () => {
           id: 'fraction-1',
           active: true,
           pdfShortLabel: null,
+          translations: null,
           reminderConfig: {
             reminderCount: 'none',
             channels: { push: false, email: false, calendar: false },

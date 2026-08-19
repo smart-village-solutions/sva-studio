@@ -121,7 +121,9 @@ const selectTransferableFields = (
     return Object.fromEntries([
       ['entityType', record.entityType],
       ...definition.fields.flatMap((field) =>
-        field.transfer === 'included' && hasOwnProperty(record, field.key)
+        field.transfer === 'included' &&
+        hasOwnProperty(record, field.key) &&
+        record[field.key] !== undefined
           ? [[field.key, record[field.key]] as const]
           : []
       ),

@@ -16,15 +16,15 @@
 
 - [x] 3.1 `tooling-testing:test:unit`, Skript-Typecheck, `tooling-testing:lint`, Complexity-, Placement-, Rollout-Docs-, Changelog- und OpenSpec-Gates ausführen.
 - [x] 3.2 Vor dem initialen Code-Push `pnpm test:pr` erfolgreich ausführen.
-- [ ] 3.3 Finalen PR-Head, vollständige GitHub-Gates und null offene Review-Threads nachweisen.
-- [ ] 3.4 Merge und Build/Dev vollständig abwarten; denselben Digest mit `assert-none` erfolgreich nach Staging und Production promoten.
-- [ ] 3.5 Run-IDs, SHA, Digest, Config-Revision, Rollback-Paar und Health-Nachweise dokumentieren.
+- [x] 3.3 Finalen PR-Head, vollständige GitHub-Gates und null offene Review-Threads nachweisen.
+- [x] 3.4 Merge und Build/Dev vollständig abwarten; denselben Digest mit `assert-none` erfolgreich nach Staging und Production promoten.
+- [x] 3.5 Run-IDs, SHA, Digest, Config-Revision, Rollback-Paar und Health-Nachweise dokumentieren: PR #1092 (`08e5e6b6b29a86457d90960fb986bd9016bddf1d`) und das darauf aufbauende Runner-Hardening aus PR #1093 (`c0f054d693fc0957a13095cad8993113ffbf312d`) liefen über Build/Dev #32284542187, Staging #32285717884 und Production #32286734802. Production bestätigt Digest `sha256:27a688cd513a6066dd6532c3b82fc22e10defda3cf432d13757e656ec9da408f`, Config-Revision `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`, Rollback-Paar `sha256:b1e40b32b8135581cd381dca6a670b9a5cd6dc01ea62374b27b8e1d659ec23b8` plus dieselbe Config-Revision sowie `/health/live` und `/health/ready` jeweils HTTP 200.
 
 ## 4. Tote Implementierung entfernen
 
-- [ ] 4.1 Erst nach erfolgreichem Production-Nachweis Seed-Verifier, Parser, IO-Helfer, Overlays und Tests löschen.
-- [ ] 4.2 Seed-spezifische Gate-Namen, Autorisierungstypen, Fehlercodes und Controller-Kopien entfernen, Evidence v2 aber null-kompatibel halten.
-- [ ] 4.3 Aktive Architektur-, Risiko- und Entwicklerdokumentation bereinigen; Archive und historische Reports unverändert lassen.
+- [x] 4.1 Erst nach erfolgreichem Production-Nachweis Seed-Verifier, Parser, IO-Helfer, Overlays und Tests löschen.
+- [x] 4.2 Seed-spezifische Gate-Namen, Autorisierungstypen, Fehlercodes und Controller-Kopien entfernen, Evidence v2 aber null-kompatibel halten.
+- [x] 4.3 Aktive Architektur-, Risiko- und Entwicklerdokumentation bereinigen; Archive und historische Reports unverändert lassen.
 - [ ] 4.4 Vollständige lokale Gates und finalen PR-/Review-Nachweis erbringen.
 - [ ] 4.5 Zweiten Build/Dev-, Staging- und Production-Nachweis mit demselben Digest und `assert-none` erbringen.
 

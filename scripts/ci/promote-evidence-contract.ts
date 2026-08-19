@@ -7,8 +7,6 @@ import {
   type PromotePhase,
 } from './promote-result.ts';
 import { projectRecoveryEvidence } from './promote-recovery-contract.ts';
-import { normalizeEvidenceSeedAuthorization } from './promote-evidence-seed.ts';
-import { normalizeEvidenceSeedPreparation } from './promote-evidence-seed-preparation.ts';
 import { normalizePromoteMode, normalizeReasonProvided } from './promote-evidence-values.ts';
 import type {
   BuildPromoteEvidenceInput,
@@ -45,13 +43,6 @@ const gateNames = new Set<PromoteGateName>([
   'registry-login',
   'image-contract',
   'main-e2e-evidence',
-  'legacy-config-seed-preparation',
-  'legacy-config-seed',
-  'legacy-config-seed-recheck',
-  'production-config-seed-preparation',
-  'production-config-seed',
-  'production-config-seed-prepare-stop',
-  'production-config-seed-recheck',
   'recovery-contract',
   'config-build',
   'config-revision-contract',
@@ -303,16 +294,8 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       targetDigest,
       previousConfigRevision,
     }),
-    seedPreparation: normalizeEvidenceSeedPreparation(input.seedPreparation, gates, {
-      sourceSha: input.headSha?.trim() || null,
-      imageDigest: targetDigest,
-      configRevision,
-    }),
-    seedAuthorization: normalizeEvidenceSeedAuthorization(input.seedAuthorization, gates, {
-      sourceSha: input.headSha?.trim() || null,
-      imageDigest: targetDigest,
-      configRevision,
-    }),
+    seedPreparation: null,
+    seedAuthorization: null,
     gates: gatesWithFailure,
     terminalFailure,
   };

@@ -60,8 +60,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain(
       'PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
     );
-    expect(workflow).toContain("PROMOTE_SEED_PREPARATION: ''");
-    expect(workflow).toContain("PROMOTE_SEED_AUTHORIZATION: ''");
+    expect(workflow).not.toContain('PROMOTE_SEED_');
   });
 
   it('runs staging phases in the required fail-closed order', () => {
@@ -295,12 +294,9 @@ describe('Promote workflow contract', () => {
     for (const controllerModule of [
       'promote-evidence-contract.ts',
       'promote-evidence-io.ts',
-      'promote-evidence-h4-gates.ts',
       'promote-evidence-types.ts',
-      'promote-evidence-seed-preparation.ts',
       'promote-evidence-values.ts',
       'promote-recovery-contract.ts',
-      'promote-h4-failure-definitions.ts',
       'promote-recovery-failure-definitions.ts',
     ]) {
       expect(workflow).toContain(

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1085,
+  "body": "Der einmalige, geschützte Production-Konfigurationsübergang kann auch einen älteren laufenden Softwarestand sicher gegen das aktuelle Konfigurationsprofil prüfen. Reguläre Rollouts und Rollbacks bleiben unverändert."
+}

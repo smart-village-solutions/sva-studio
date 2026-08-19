@@ -3,9 +3,7 @@
 ## Purpose
 
 Definiert die verbindliche Swarm-Topologie sowie den GitHub-Actions-Promote-Vertrag für Dev, Staging und Production einschließlich immutable Digests, One-shot-Gates, Backups, Freigaben und Verifikation.
-
 ## Requirements
-
 ### Requirement: Swarm-kompatibler Portainer-Stack
 
 Das System SHALL einen Portainer-Stack bereitstellen, der für Docker Swarm mit externem Ingress-Netzwerk und Traefik-Routing geeignet ist.
@@ -894,7 +892,7 @@ Das System SHALL für jede Promote-Phase stabile maschinenlesbare Fehlercodes, R
 
 ### Requirement: Recovery-Evidenz bleibt minimal und reproduzierbar
 
-Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte nicht-sensitive Config-Revision, externe Secret-Referenznamen, Backup-Agent-Vertrag und blockierende Gate-Ergebnisse redigiert erfassen. Der Change SHALL keinen automatischen Rollback oder eine vollständige Secret-Historisierung voraussetzen.
+Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte nicht-sensitive Config-Revision, externe Secret-Referenznamen, Backup-Agent-Vertrag und blockierende Gate-Ergebnisse redigiert erfassen. Der Change SHALL keinen automatischen Rollback oder eine vollständige Secret-Historisierung voraussetzen. Abgeschlossene einmalige Live-Config-Seed-Verträge SHALL nicht mehr durch einen aktiven Workflowpfad autorisierbar sein.
 
 #### Scenario: App-Rollback wird vorbereitet
 
@@ -909,28 +907,19 @@ Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte ni
 - **THEN** leitet der Workflow die effektive Diff-Basis aus der OCI-Revision des tatsächlich live konfigurierten App-Images ab
 - **AND** darf der reine Git-Push-Vorgänger keine Migrations- oder Bootstrap-Risiken aus dem Prüfbereich entfernen
 
-#### Scenario: Staging-Live-Service besitzt noch kein versioniertes Config-Label
+#### Scenario: Live-Config-Revision fehlt oder ist ungültig
 
-- **WHEN** ein geschützter Staging-Standard-Promote im expliziten Vorbereitungsmodus mit bereits live laufendem Zieldigest ausschließlich am fehlenden Live-Config-Label fail-closed endet
-- **THEN** darf ein zweiter expliziter `workflow_dispatch` genau diesen Run und Attempt als einmalige Seed-Autorisierung referenzieren
-- **AND** muss der Vorlauf einen allowlisteten Preparation-Marker für Same-Digest, Labelzustand `missing` und kanonischen Backup-Agenten enthalten sowie Candidate, Backup, Deploy und Parität übersprungen haben
-- **AND** müssen Prepare und Seed dieselbe Workflow-ID besitzen und unmittelbar aufeinanderfolgende Run-Nummern haben; jeder intervenierende Promote muss fail-closed blockieren
-- **AND** muss er das fehlende Label, Same-Digest, identische Source- und Config-Revision sowie die vollständige Pre-Mutation-Evidenz vor und unmittelbar vor dem Deploy erneut fail-closed prüfen
-- **AND** darf ausschließlich ein controller-eigenes Staging-Overlay das Config-Label ergänzen, während Candidate, Backups, Deploy, Konvergenz, Smoke und gemeinsamer Digest-/Config-Readback blockierend bleiben
-- **AND** bleiben `previousConfigRevision` und Rollback-Evidenz leer, entsteht weder aus Prepare noch Seed eine Production-fähige Staging-Parität und sind Dev, Production, Recovery, der temporäre Backup-Executor sowie ein erneuter Seed bei vorhandenem oder ungültigem Label ausgeschlossen
+- **WHEN** Staging oder Production bereits einen Live-Digest besitzt und die gleichzeitig gelesene `sva.config.revision` fehlt oder ungültig ist
+- **THEN** stoppt jeder Standard- und Recovery-Promote fail-closed vor Backup und Mutation
+- **AND** bietet weder `workflow_dispatch` noch `workflow_call` einen Prepare-, Seed- oder Run-Referenz-Eingang an
+- **AND** verlangt jede weitere Wiederherstellung einen neuen separat geprüften Recovery-Change innerhalb des kanonischen Promote-Pfads
 
-#### Scenario: Production-Live-Service besitzt noch kein versioniertes Config-Label
+#### Scenario: Reguläre Promote-Evidenz bleibt schema-v2-kompatibel
 
-- **WHEN** ein geschützter Production-Standard-Promote im expliziten Production-Vorbereitungsmodus mit bereits live laufendem Zieldigest ausgeführt wird
-- **THEN** muss der Config-Builder im Shadow-Modus vollständige redigierte Äquivalenz belegen
-- **AND** müssen Candidate- und Backup-Capability-Gates im Shadow-Modus tatsächlich bestehen
-- **AND** muss ein atomarer Live-Snapshot Same-Digest und Labelzustand `missing` belegen
-- **AND** muss der Prepare-Lauf danach deterministisch vor Backup, Migration, Bootstrap und Deploy fail-closed enden
-- **WHEN** der unmittelbar folgende Promote-Run exakt diesen Run und Attempt nach Umschaltung auf `authoritative` sowie Enforce-Gates als Seed-Autorisierung referenziert
-- **THEN** müssen Workflow-ID, Run-Nummernfolge, Artefakt, Gatematrix, Source-SHA, Digest, Config-Revision und Live-Snapshot vor und unmittelbar vor Deploy erneut fail-closed gebunden werden
-- **AND** darf ausschließlich ein controller-eigenes Production-Overlay das Config-Label ergänzen, während frische Backups, Candidate, Agent-Capabilities, Deploy, Konvergenz, Smoke und gemeinsamer Digest-/Config-Readback blockierend bleiben
-- **AND** bleiben `previousConfigRevision` und Rollback-Evidenz leer, entsteht keine Staging-Parität und sind Dev, Staging, Recovery, der temporäre Backup-Executor sowie ein erneuter Seed bei vorhandenem oder ungültigem Label ausgeschlossen
-- **AND** darf erst nach erfolgreichem Seed der bereits in Staging geprüfte Zieldigest mit blockierenden Production-Gates regulär promotet werden
+- **WHEN** ein Standard- oder Recovery-Promote neue Evidence v2 schreibt
+- **THEN** sind `seedPreparation` und `seedAuthorization` explizit `null`
+- **AND** können historische v2-Artefakte mit nicht-leeren Seed-Inhalten weiterhin gelesen werden
+- **AND** kann historische Seed-Evidenz keinen aktiven Workflowpfad autorisieren
 
 #### Scenario: Ein One-shot schlägt vor dem Cleanup fehl
 

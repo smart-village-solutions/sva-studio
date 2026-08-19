@@ -289,6 +289,9 @@ describe('promote workflow hardening contract', () => {
       'backup-agent-contract.ts',
     ])
       expect(preservation).toContain(file);
+    expect(preservation).toContain(
+      'cp scripts/ci/production-live-config-seed-agent.ts "${PROMOTE_CONTROLLER_DIR}/production-live-config-seed-agent.ts"'
+    );
 
     const prepare = stepBlock('attest one-time Production live config label preparation');
     expect(prepare).toContain('CONFIG_SHADOW_EQUIVALENT');

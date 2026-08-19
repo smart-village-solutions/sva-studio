@@ -317,6 +317,14 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).not.toContain('pnpm exec tsx scripts/ci/inject-worker-database-secret.ts');
     expect(workflow).not.toContain('pnpm exec tsx scripts/ci/promote-deployment-base.ts');
     expect(workflow).not.toContain('pnpm exec tsx scripts/ci/verify-swarm-convergence.ts');
+    for (const controllerRuntime of [
+      'inject-worker-database-secret.ts',
+      'promote-deployment-base.ts',
+      'verify-swarm-convergence.ts',
+    ])
+      expect(workflow).toContain(
+        `pnpm exec tsx "\${PROMOTE_CONTROLLER_DIR}/scripts/ci/${controllerRuntime}"`
+      );
 
     const prepare = stepBlock('attest one-time Production live config label preparation');
     expect(prepare).toContain('CONFIG_SHADOW_EQUIVALENT');

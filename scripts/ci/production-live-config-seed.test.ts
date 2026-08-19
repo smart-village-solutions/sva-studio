@@ -167,8 +167,11 @@ const evidence = () =>
       ...passed.map((entry) => gate(entry, 'passed')),
       gate(['backup-capabilities', 'backup-capabilities'], 'passed', false),
       gate(['candidate-preflight', 'candidate-preflight'], 'passed', false),
+      gate(['main-e2e-evidence', 'main-e2e-evidence'], 'skipped', false),
       gate(['production-config-seed-prepare-stop', 'static-preflight'], 'failed'),
-      ...skipped.map((entry) => gate(entry, 'skipped')),
+      ...skipped
+        .filter(([name]) => name !== 'main-e2e-evidence')
+        .map((entry) => gate(entry, 'skipped')),
     ],
     recordedFailure: {
       code: 'PROMOTE_RECOVERY_CONTEXT_INVALID',

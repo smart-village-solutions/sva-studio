@@ -106,6 +106,8 @@ const diagnosticRules: readonly Readonly<{
   },
 ];
 
+// These values mirror the runtime entrypoints. The cross-file contract is enforced by
+// deploy/portainer/iam-schema-readiness-deployment.test.ts and the complete mapping below.
 const diagnosticCodeByExitCode: Readonly<
   Partial<Record<OneShotServiceName, Readonly<Record<number, OneShotDiagnosticCode>>>>
 > = {

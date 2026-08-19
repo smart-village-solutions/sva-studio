@@ -44,14 +44,34 @@ export const verifyTenantRows = (rows, allowedInstanceIds) => {
 export const isCandidatePreflightEntrypoint = (moduleUrl, executablePath) =>
   Boolean(executablePath) && moduleUrl === pathToFileURL(resolve(executablePath)).href;
 
-export const exitCodeForCandidateFailure = (code) =>
-  ({
-    PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE: 21,
-    PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH: 22,
-    PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING: 23,
-    PROMOTE_PREFLIGHT_CONFIG_INVALID: 24,
-    PROMOTE_INTERNAL_ERROR: 25,
-  })[code] ?? 25;
+const candidateFailureRules = [
+  {
+    code: 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE',
+    exitCode: 21,
+    matches: (message) => message.includes('secret_unreadable'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH',
+    exitCode: 22,
+    matches: (message) => message.includes('tenant_scope'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING',
+    exitCode: 23,
+    matches: (message) => message.includes('ENOENT') || message.includes('EACCES'),
+  },
+  {
+    code: 'PROMOTE_PREFLIGHT_CONFIG_INVALID',
+    exitCode: 24,
+    matches: (message) => message.includes('candidate_'),
+  },
+];
+
+export const classifyCandidateFailure = (message) =>
+  candidateFailureRules.find((rule) => rule.matches(message)) ?? {
+    code: 'PROMOTE_INTERNAL_ERROR',
+    exitCode: 25,
+  };
 
 export const runCandidatePreflight = async () => {
   const { default: pg } = await import('pg');
@@ -91,18 +111,10 @@ export const runCandidatePreflight = async () => {
 if (isCandidatePreflightEntrypoint(import.meta.url, process.argv[1])) {
   runCandidatePreflight().catch((error) => {
     const message = error instanceof Error ? error.message : 'candidate_internal_error';
-    const code = message.includes('secret_unreadable')
-      ? 'PROMOTE_PREFLIGHT_TENANT_SECRET_UNREADABLE'
-      : message.includes('tenant_scope')
-        ? 'PROMOTE_PREFLIGHT_TENANT_SCOPE_MISMATCH'
-        : message.includes('ENOENT') || message.includes('EACCES')
-          ? 'PROMOTE_PREFLIGHT_SECRET_REFERENCE_MISSING'
-          : message.includes('candidate_')
-            ? 'PROMOTE_PREFLIGHT_CONFIG_INVALID'
-            : 'PROMOTE_INTERNAL_ERROR';
+    const failure = classifyCandidateFailure(message);
     process.stderr.write(
-      `${JSON.stringify({ code, phase: 'candidate-preflight', retryable: false })}\n`
+      `${JSON.stringify({ code: failure.code, phase: 'candidate-preflight', retryable: false })}\n`
     );
-    process.exitCode = exitCodeForCandidateFailure(code);
+    process.exitCode = failure.exitCode;
   });
 }

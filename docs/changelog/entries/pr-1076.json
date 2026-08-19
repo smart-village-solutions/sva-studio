@@ -1,0 +1,4 @@
+{
+  "prNumber": 1076,
+  "body": "Recovery-Rollouts nach Staging und Production stoppen jetzt, wenn der bisherige Live-Digest nicht sicher an seine versionierte Konfiguration gebunden ist. Nach einem Rollout werden Image-Digest und Konfigurationsrevision gemeinsam geprüft; dadurch bleibt ein späterer Rollback nachvollziehbar und Secret-Rotationen erfordern weiterhin einen separaten geprüften Plan."
+}

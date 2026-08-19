@@ -44,6 +44,7 @@ const gateNames = new Set<PromoteGateName>([
   'main-e2e-evidence',
   'recovery-contract',
   'config-build',
+  'config-revision-contract',
   'worker-database-secret-injection',
   'change-policy-evaluation',
   'migration-bootstrap-policy',

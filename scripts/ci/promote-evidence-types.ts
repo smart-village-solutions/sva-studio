@@ -15,6 +15,7 @@ export type PromoteGateName =
   | 'main-e2e-evidence'
   | 'recovery-contract'
   | 'config-build'
+  | 'config-revision-contract'
   | 'worker-database-secret-injection'
   | 'change-policy-evaluation'
   | 'migration-bootstrap-policy'
@@ -72,8 +73,8 @@ export type PromoteRecoveryEvidence = Readonly<{
   previousDigest: string;
   previousConfigRevision: string;
   sameDigestRetry: Readonly<{
-    authorization: 'retryable-convergence' | 'documented-cause';
-    previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT' | null;
+    authorization: 'documented-cause';
+    previousFailureCode: null;
   }> | null;
 }>;
 

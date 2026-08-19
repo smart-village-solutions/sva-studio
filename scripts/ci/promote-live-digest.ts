@@ -29,6 +29,15 @@ export const matchesExpectedLiveImage = (expectedImage: string, liveImage: strin
   liveImage === expectedImage ||
   liveImage === `${expectedImage}${liveImage.match(digestSuffixPattern)?.[0] ?? ''}`;
 
+export const matchesExpectedLiveContract = (
+  contract: Readonly<{ image?: string; labels?: Readonly<Record<string, string>> }>,
+  expectedImage: string,
+  expectedConfigRevision: string
+): boolean =>
+  Boolean(contract.image) &&
+  matchesExpectedLiveImage(expectedImage, contract.image ?? '') &&
+  readLiveConfigRevision(contract.labels) === expectedConfigRevision;
+
 export const parseLiveDigestEnvironment = (value: string | undefined): PromoteEnvironment => {
   if (value !== 'dev' && value !== 'staging' && value !== 'prod') {
     throw new Error('Der Live-Digest-Nachweis ist nur für dev, staging oder prod zulässig.');
@@ -43,6 +52,13 @@ const main = async () => {
     expectedFlagIndex === -1
       ? undefined
       : required(process.argv[expectedFlagIndex + 1], '--expected');
+  const expectedConfigFlagIndex = process.argv.indexOf('--expected-config-revision');
+  const expectedConfigRevision =
+    expectedConfigFlagIndex === -1
+      ? undefined
+      : required(process.argv[expectedConfigFlagIndex + 1], '--expected-config-revision');
+  if (expectedConfigRevision && !configRevisionPattern.test(expectedConfigRevision))
+    throw new Error('Die erwartete Config-Revision ist ungültig.');
 
   const quantumEndpoint = required(process.env.QUANTUM_ENDPOINT, 'QUANTUM_ENDPOINT');
   const stackName = stackNameForEnvironment(environment);
@@ -65,6 +81,17 @@ const main = async () => {
     );
   }
   const configRevision = readLiveConfigRevision(contract?.labels);
+  if (
+    expectedImage &&
+    expectedConfigRevision &&
+    !matchesExpectedLiveContract(
+      { image, labels: contract?.labels },
+      expectedImage,
+      expectedConfigRevision
+    )
+  ) {
+    throw new Error('Der laufende App-Vertrag stimmt nicht mit dem Zielartefakt überein.');
+  }
 
   const evidencePath = resolve(
     process.env.RUNNER_TEMP ?? rootDir,

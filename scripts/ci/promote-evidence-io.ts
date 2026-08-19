@@ -190,6 +190,11 @@ const gateEnvironmentKeys: readonly Readonly<{
   },
   { gate: 'config-build', phase: 'config-build', key: 'PROMOTE_GATE_CONFIG_BUILD' },
   {
+    gate: 'config-revision-contract',
+    phase: 'static-preflight',
+    key: 'PROMOTE_GATE_CONFIG_REVISION_CONTRACT',
+  },
+  {
     gate: 'worker-database-secret-injection',
     phase: 'config-build',
     key: 'PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION',

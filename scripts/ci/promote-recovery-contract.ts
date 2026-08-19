@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -60,17 +60,8 @@ const projectSameDigestRetry = (
   const retry = value as Record<string, unknown>;
   const authorization = retry.authorization;
   const previousFailureCode = retry.previousFailureCode;
-  const retryableConvergence =
-    authorization === 'retryable-convergence' &&
-    previousFailureCode === 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT';
   const documentedCause = authorization === 'documented-cause' && previousFailureCode === null;
   if (previousDigest !== targetDigest) invalidEvidence();
-  if (retryableConvergence) {
-    return {
-      authorization: 'retryable-convergence',
-      previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT',
-    };
-  }
   if (documentedCause) {
     return { authorization: 'documented-cause', previousFailureCode: null };
   }
@@ -119,29 +110,30 @@ export const buildRecoveryContract = (
     previousImage: string | undefined;
     targetImage: string | undefined;
     previousConfigRevision: string | undefined;
-    previousFailureCode: string | undefined;
   }>
 ): PromoteRecoveryContract | null => {
-  if (input.mode === 'standard') return null;
+  if (input.mode === 'standard') {
+    const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
+    const targetDigest = input.targetImage?.trim().match(digestPattern)?.[1];
+    if (
+      input.environment === 'prod' &&
+      previousDigest &&
+      previousDigest === targetDigest &&
+      !revisionPattern.test(input.previousConfigRevision?.trim() ?? '')
+    )
+      fail(input.environment);
+    return null;
+  }
   if (input.mode !== 'recovery') fail(input.environment);
   if (!input.recoveryReason?.trim()) fail(input.environment);
   const previousDigest = parseDigest(input.previousImage, input.environment);
   const targetDigest = parseDigest(input.targetImage, input.environment);
   const previousConfigRevision = parseRevision(input.previousConfigRevision, input.environment);
-  const rawPreviousFailureCode = input.previousFailureCode?.trim() || undefined;
-  const previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT' | undefined =
-    rawPreviousFailureCode === undefined ||
-    rawPreviousFailureCode === 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT'
-      ? rawPreviousFailureCode
-      : fail(input.environment);
-  if (previousFailureCode && previousDigest !== targetDigest) fail(input.environment);
   const sameDigestRetry =
     previousDigest === targetDigest
       ? {
-          authorization: previousFailureCode
-            ? ('retryable-convergence' as const)
-            : ('documented-cause' as const),
-          previousFailureCode: previousFailureCode ?? null,
+          authorization: 'documented-cause' as const,
+          previousFailureCode: null,
         }
       : null;
   return {
@@ -172,7 +164,6 @@ export const runRecoveryContractFromEnvironment = (
       previousImage: env.PREVIOUS_LIVE_IMAGE,
       targetImage: env.DEPLOY_IMAGE_DIGEST,
       previousConfigRevision: env.PREVIOUS_CONFIG_REVISION,
-      previousFailureCode: env.RECOVERY_FAILURE_CODE,
     });
     if (env.GITHUB_OUTPUT) {
       appendFileSync(
@@ -191,9 +182,11 @@ export const runRecoveryContractFromEnvironment = (
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const result = runRecoveryContractFromEnvironment(process.argv[2]);
   if (
-    runRecoveryContractFromEnvironment(process.argv[2]) === null &&
-    process.env.PROMOTE_MODE !== 'standard'
+    result === null &&
+    (process.env.PROMOTE_MODE !== 'standard' ||
+      Boolean(process.env.PROMOTE_FAILURE_PATH && existsSync(process.env.PROMOTE_FAILURE_PATH)))
   )
     process.exitCode = 1;
 }

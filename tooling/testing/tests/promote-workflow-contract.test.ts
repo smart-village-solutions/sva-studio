@@ -314,6 +314,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('PROMOTE_GATE_POLICY_EVALUATION');
     expect(workflow).toContain('PROMOTE_GATE_TARGET');
     expect(workflow).toContain('PROMOTE_GATE_PREVIOUS_LIVE');
+    expect(workflow).toContain(
+      'PROMOTE_GATE_CONFIG_REVISION_CONTRACT: ${{ steps.config_revision_contract.outcome }}'
+    );
     expect(workflow).toContain('PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD');
     expect(workflow).toContain('PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD');
     expect(workflow).toContain(

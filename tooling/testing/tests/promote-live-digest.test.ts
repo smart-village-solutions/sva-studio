@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line @nx/enforce-module-boundaries -- contract test for the repository-level CI script
 import {
+  matchesExpectedLiveContract,
   matchesExpectedLiveImage,
   parseLiveDigestEnvironment,
   readLiveConfigRevision,
@@ -40,6 +41,26 @@ describe('matchesExpectedLiveImage', () => {
   it('reads the config revision bound to the inspected live service', () => {
     const revision = 'a'.repeat(64);
     expect(readLiveConfigRevision({ 'sva.config.revision': revision })).toBe(revision);
+  });
+
+  it('verifies image and config revision from one live service snapshot', () => {
+    const revision = 'a'.repeat(64);
+    const image = `ghcr.io/example/studio@sha256:${'b'.repeat(64)}`;
+    expect(
+      matchesExpectedLiveContract(
+        { image, labels: { 'sva.config.revision': revision } },
+        image,
+        revision
+      )
+    ).toBe(true);
+    expect(
+      matchesExpectedLiveContract(
+        { image, labels: { 'sva.config.revision': 'c'.repeat(64) } },
+        image,
+        revision
+      )
+    ).toBe(false);
+    expect(matchesExpectedLiveContract({ image, labels: {} }, image, revision)).toBe(false);
   });
 
   it.each([

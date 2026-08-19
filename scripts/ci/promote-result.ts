@@ -206,9 +206,9 @@ const promoteFailureDefinitions: Readonly<Record<PromoteErrorCode, PromoteFailur
     nextAction: 'Konvergenz und Readiness prüfen und nur im zulässigen Modus fortfahren.',
   },
   PROMOTE_LIVE_DIGEST_MISMATCH: {
-    summary: 'Der live laufende Image-Digest entspricht nicht dem Zieldigest.',
+    summary: 'Der live laufende Image- und Config-Vertrag entspricht nicht dem Zielvertrag.',
     retryable: false,
-    nextAction: 'Den Swarm-Zustand und die Digest-Bindung prüfen.',
+    nextAction: 'Swarm-Zustand, Digest-Bindung und Config-Revision gemeinsam prüfen.',
   },
   PROMOTE_INTERNAL_ERROR: {
     summary: 'Ein unerwarteter interner Fehler hat das Promote-Gate beendet.',

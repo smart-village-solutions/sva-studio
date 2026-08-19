@@ -137,7 +137,7 @@ describe('staging parity evidence', () => {
     );
   });
 
-  it('requires staging evidence only when production would change the live digest', () => {
+  it('requires staging evidence for digest changes and documented same-digest recovery', () => {
     const target = `ghcr.io/example/app@sha256:${'a'.repeat(64)}`;
     expect(requiresStagingParity(target, target)).toBe(false);
     expect(requiresStagingParity(target, `ghcr.io/example/app@sha256:${'b'.repeat(64)}`)).toBe(

@@ -41,10 +41,6 @@ on:
         description: 'Required documented reason for recovery mode'
         required: false
         type: string
-      recovery_failure_code:
-        description: 'Optional structured failure code from the previous convergence attempt'
-        required: false
-        type: string
   workflow_call:
     inputs:
       environment:
@@ -72,10 +68,6 @@ on:
         type: string
         default: standard
       recovery_reason:
-        required: false
-        type: string
-        default: ''
-      recovery_failure_code:
         required: false
         type: string
         default: ''
@@ -302,7 +294,7 @@ jobs:
           mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
           case "${mode}" in
             shadow)
-              if ! PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+              if ! GITHUB_OUTPUT= PROMOTE_FAILURE_PATH= pnpm exec tsx scripts/ci/build-remote-app-config.ts \
                   --environment "${{ inputs.environment }}" \
                   --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
                   --output "${RUNNER_TEMP}/candidate-app-config.vars" \
@@ -312,7 +304,7 @@ jobs:
               printf '%s\n' "${APP_CONFIG}" > "${RUNNER_TEMP}/promote-app-config.vars"
               ;;
             authoritative)
-              pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+              GITHUB_OUTPUT= pnpm exec tsx scripts/ci/build-remote-app-config.ts \
                 --environment "${{ inputs.environment }}" \
                 --profile "config/runtime/remote/${{ inputs.environment }}.vars" \
                 --output "${RUNNER_TEMP}/promote-app-config.vars"
@@ -322,7 +314,19 @@ jobs:
               exit 1
               ;;
           esac
+          pnpm exec tsx scripts/ci/build-remote-app-config.ts \
+            --environment "${{ inputs.environment }}" \
+            --selected-input "${RUNNER_TEMP}/promote-app-config.vars"
           echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
+
+      - name: verify target config revision label contract
+        id: config_revision_contract
+        run: |
+          set -euo pipefail
+          if ! grep -Eq "^[[:space:]]+- ['\"]sva\\.config\\.revision=\\$\\{SVA_CONFIG_REVISION\\}['\"]$" "deploy/compose.${{ inputs.environment }}.yaml"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" static-preflight
+            exit 1
+          fi
 
       - name: inject worker database secret
         id: worker_database_secret_injection
@@ -377,7 +381,6 @@ jobs:
           PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           PROMOTE_MODE: ${{ inputs.promote_mode }}
-          RECOVERY_FAILURE_CODE: ${{ inputs.recovery_failure_code }}
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
         run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts" "${{ inputs.environment }}"
 
@@ -678,7 +681,9 @@ jobs:
         env:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: |
-          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" --expected "${{ steps.image_contract.outputs.deploy_image_ref }}"; then
+          if ! pnpm exec tsx scripts/ci/promote-live-digest.ts "${{ inputs.environment }}" \
+              --expected "${{ steps.image_contract.outputs.deploy_image_ref }}" \
+              --expected-config-revision "${{ steps.remote_config.outputs.config_revision }}"; then
             node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH "${{ inputs.environment }}" digest-verification
             exit 1
           fi
@@ -757,6 +762,7 @@ jobs:
           PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}
           PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}
           PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
+          PROMOTE_GATE_CONFIG_REVISION_CONTRACT: ${{ steps.config_revision_contract.outcome }}
           PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION: ${{ steps.worker_database_secret_injection.outcome }}
           PROMOTE_GATE_POLICY_EVALUATION: ${{ steps.gate_eval.outcome }}
           PROMOTE_GATE_STATIC_PREFLIGHT: ${{ steps.migration_enforcement.outcome }}

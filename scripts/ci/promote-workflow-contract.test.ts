@@ -48,7 +48,7 @@ describe('promote workflow hardening contract', () => {
     expect(workflow).toContain('PROMOTE_MODE_INVALID');
     expect(workflow).toContain('record-promote-failure.ts');
     expect(workflow).toContain('input-validation');
-    expect(workflow.match(/^ {6}recovery_failure_code:/gmu)).toHaveLength(2);
+    expect(workflow).not.toContain('recovery_failure_code');
     expect(workflow).toContain('validate recovery and live revision contract');
     expect(workflow).toContain(
       'PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
@@ -59,6 +59,19 @@ describe('promote workflow hardening contract', () => {
     );
     expect(workflow).toContain(
       'FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}'
+    );
+    expect(stepBlock('build and select remote config')).toContain(
+      '--selected-input "${RUNNER_TEMP}/promote-app-config.vars"'
+    );
+    expect(stepBlock('build and select remote config')).toContain('GITHUB_OUTPUT=');
+    expect(stepBlock('verify target config revision label contract')).toContain(
+      'sva\\\\.config\\\\.revision=\\\\$\\\\{SVA_CONFIG_REVISION\\\\}'
+    );
+    expect(workflow.indexOf('verify target config revision label contract')).toBeLessThan(
+      workflow.indexOf('create database backup before deployment')
+    );
+    expect(stepBlock('verify deployed runtime image digest')).toContain(
+      '--expected-config-revision "${{ steps.remote_config.outputs.config_revision }}"'
     );
     const orderedGates = [
       'capture previous live app digest',

@@ -23,9 +23,21 @@ describe('promote recovery contract', () => {
         previousImage: previousDigest,
         targetImage: targetDigest,
         previousConfigRevision,
-        previousFailureCode: undefined,
       })
     ).toBeNull();
+  });
+
+  it('blocks a standard same-digest legacy seed without a bound live config revision', () => {
+    expect(() =>
+      buildRecoveryContract({
+        environment: 'prod',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+      })
+    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
   });
 
   it('binds recovery to the previous digest and its versioned config revision', () => {
@@ -37,7 +49,6 @@ describe('promote recovery contract', () => {
         previousImage: previousDigest,
         targetImage: targetDigest,
         previousConfigRevision,
-        previousFailureCode: undefined,
       })
     ).toEqual({
       mode: 'recovery',
@@ -45,25 +56,6 @@ describe('promote recovery contract', () => {
       previousDigest: `sha256:${'a'.repeat(64)}`,
       previousConfigRevision,
       sameDigestRetry: null,
-    });
-  });
-
-  it('classifies a same-digest retry from a structured retryable convergence code', () => {
-    expect(
-      buildRecoveryContract({
-        environment: 'prod',
-        mode: 'recovery',
-        recoveryReason: 'Vorheriger Lauf endete im Swarm-Warmup',
-        previousImage: previousDigest,
-        targetImage: `sha256:${'a'.repeat(64)}`,
-        previousConfigRevision,
-        previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT',
-      })
-    ).toMatchObject({
-      sameDigestRetry: {
-        authorization: 'retryable-convergence',
-        previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT',
-      },
     });
   });
 
@@ -76,7 +68,6 @@ describe('promote recovery contract', () => {
         previousImage: previousDigest,
         targetImage: `sha256:${'a'.repeat(64)}`,
         previousConfigRevision,
-        previousFailureCode: undefined,
       })
     ).toMatchObject({
       sameDigestRetry: { authorization: 'documented-cause', previousFailureCode: null },
@@ -87,10 +78,6 @@ describe('promote recovery contract', () => {
     ['missing previous digest', { previousImage: '' }],
     ['missing previous config revision', { previousConfigRevision: '' }],
     ['blank recovery reason', { recoveryReason: '  ' }],
-    ['unknown previous failure code', { previousFailureCode: 'PROMOTE_PERSONAL_DIAGNOSTIC' }],
-    ['readiness failure code', { previousFailureCode: 'PROMOTE_READINESS_NOT_READY' }],
-    ['realm failure code', { previousFailureCode: 'PROMOTE_SMOKE_REALM_MISMATCH' }],
-    ['migration failure code', { previousFailureCode: 'PROMOTE_MIGRATION_FAILED' }],
   ])('fails closed for %s', (_, override) => {
     expect(() =>
       buildRecoveryContract({
@@ -100,22 +87,7 @@ describe('promote recovery contract', () => {
         previousImage: previousDigest,
         targetImage: `sha256:${'a'.repeat(64)}`,
         previousConfigRevision,
-        previousFailureCode: undefined,
         ...override,
-      })
-    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
-  });
-
-  it('rejects a convergence code when the retry changes the digest', () => {
-    expect(() =>
-      buildRecoveryContract({
-        environment: 'prod',
-        mode: 'recovery',
-        recoveryReason: 'Dokumentierte Ursache',
-        previousImage: previousDigest,
-        targetImage: targetDigest,
-        previousConfigRevision,
-        previousFailureCode: 'PROMOTE_SWARM_CONVERGENCE_TIMEOUT',
       })
     ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
   });
@@ -129,7 +101,6 @@ describe('promote recovery contract', () => {
       previousImage: previousDigest,
       targetImage: targetDigest,
       previousConfigRevision,
-      previousFailureCode: undefined,
     });
     expect(JSON.stringify(contract)).not.toContain(sentinel);
   });

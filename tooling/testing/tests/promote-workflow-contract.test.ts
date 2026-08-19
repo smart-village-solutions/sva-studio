@@ -59,10 +59,10 @@ describe('Promote workflow contract', () => {
       'PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}'
     );
     expect(workflow).toContain(
-      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation }}'
+      'PROMOTE_SEED_PREPARATION: ${{ steps.legacy_config_seed_preparation.outputs.seed_preparation || steps.production_config_seed_preparation.outputs.seed_preparation }}'
     );
     expect(workflow).toContain(
-      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization }}'
+      'PROMOTE_SEED_AUTHORIZATION: ${{ steps.legacy_config_seed.outputs.seed_authorization || steps.production_config_seed.outputs.seed_authorization }}'
     );
   });
 

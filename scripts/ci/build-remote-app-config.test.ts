@@ -126,6 +126,40 @@ describe('remote app config builder', () => {
     }
   });
 
+  it('publishes only a boolean shadow equivalence decision for the Production handshake', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-shadow-'));
+    const profilePath = join(directory, 'prod.vars');
+    const githubOutput = join(directory, 'github-output');
+    const candidate = buildRemoteAppConfig({ environment: 'prod', profile, overrides });
+    try {
+      writeFileSync(profilePath, profile, 'utf8');
+      expect(
+        runBuildRemoteAppConfig(
+          [
+            '--environment',
+            'prod',
+            '--profile',
+            profilePath,
+            '--output',
+            join(directory, 'config.vars'),
+            '--shadow',
+          ],
+          {
+            APP_CONFIG: candidate.source,
+            PROMOTE_CONFIG_OVERRIDES: overrides,
+            GITHUB_OUTPUT: githubOutput,
+          }
+        )
+      ).toBe(0);
+      const output = readFileSync(githubOutput, 'utf8');
+      expect(output).toContain('shadow_equivalent=true');
+      expect(output).not.toContain('APP_DB_PASSWORD');
+      expect(output).not.toContain('sensitive-');
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
   it('derives deployment evidence from the actually selected shadow bundle', () => {
     const candidate = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
     const selectedShadowBundle = candidate.source.replace(

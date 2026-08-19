@@ -121,6 +121,16 @@ Da der promotete Legacy-`change_head` das H3-Overlay und den gemeinsamen Digest-
 
 Die H1-Evidenz erfasst den allowlisteten Preparation-Marker, die Seed-Autorisierung und eigene Gates, aber keine URL, keinen Actor, keinen Grund und keinen Labelrohwert. `config.previousRevision` und `rollback` bleiben `null`, weil der Übergang keine historische Config-Bindung erfindet. Prepare und Seed schreiben bewusst kein Production-fähiges Staging-Paritätsartefakt. Der historische erfolgreiche Staging-Run `32212677551` dient nur als read-only Cross-Check der bekannten Digest-, Source- und Config-Werte; er ist keine automatische Autorisierung und wird im Verifier nicht hardcodiert.
 
+### 11. Einmaliger Production-Übergang mit vorgeschaltetem Shadow-Nachweis
+
+Production erhält keinen direkten Label-Seed und verwendet nicht den Staging-Vertrag. Ein eigener, workflow-dispatch-only Zwei-Run-Handshake bindet den Legacy-Übergang an das geschützte `prod`-Environment. Der Prepare-Lauf ist `standard`, Same-Digest und verwendet `change_base=change_head` sowie Migration und Bootstrap jeweils `assert-none`. Er verlangt den Config-Builder im Shadow-Modus und Candidate- sowie Backup-Capability-Gates im Shadow-Modus. Der tatsächlich selektierte Legacy-Deploy-Bundle-Hash und die Candidate-Konfiguration müssen redigiert äquivalent sein. Der aktuelle Production-Service muss aus einem atomaren Snapshot denselben Digest, ein fehlendes Config-Label und erfolgreiche Readiness belegen.
+
+Nach dem lokalen Shadow-Nachweis durchläuft Prepare die read-only Staging-Paritäts-, Candidate- und Backup-Capability-Prüfungen. Nur wenn alle beobachtenden Gates tatsächlich bestanden haben, erzeugt der Workflow einen festen Production-Preparation-Marker und stoppt deterministisch vor Backup, Migration, Bootstrap und Deploy. Ein fehlgeschlagenes beobachtendes Gate, ein vorhandenes oder ungültiges Label, ein Digestwechsel oder eine Config-Abweichung ist keine Seed-Autorisierung.
+
+Vor dem Seed werden der Production-Builder auf `authoritative` und Main-E2E-/Candidate-/Backup-Capability-Gates auf `enforce` gesetzt. Der Seed muss der unmittelbar folgende Promote-Run desselben Workflows sein und referenziert Run-ID sowie Attempt des Prepare-Laufs. Run, Attempt, direkte Run-Nummernfolge, einziges nicht abgelaufenes Promote-Artefakt, einzelne Root-JSON-Datei, feste Gatematrix, Digest, Source-SHA, Config-Revision und Live-Snapshot werden vor sowie unmittelbar vor Deploy erneut geprüft. Ein controller-eigenes Production-only Overlay darf ausschließlich `sva.config.revision` ergänzen; ein struktureller Rendervergleich verbietet jede weitere Änderung. Frische Studio-/Waste-Backups, Agent-Capabilities, Candidate, Deploy, Konvergenz, Runtime-Smoke und gemeinsamer Digest-/Config-Readback bleiben blockierend. Der Seed erzeugt keine Staging-Parität und erfindet keine vorherige Config-Revision oder Rollback-Evidenz.
+
+Erst nach dem erfolgreichen Same-Digest-Seed ist der normale Production-Promote des bereits erfolgreich in Staging geprüften Ziel-Digests zulässig. Dieser Lauf verwendet den unveränderten Digest aus der v2-Staging-Parität, `migration_mode=run` und `bootstrap_mode=run`, die geschützte Production-Freigabe und alle Enforce-Gates. Das nun vorhandene Live-Label bindet den vorherigen Production-Digest an seine Config-Revision und stellt den H3-Rollback-Vertrag wieder her.
+
 ## Risks / Trade-offs
 
 - Neue Gates können zunächst legitime Promotes blockieren. Shadow-Modus und gestufte Aktivierung verschieben dieses Risiko vor Production.
@@ -153,6 +163,7 @@ Für jede Wiederaufnahme gelten `tasks.md`, der aktuelle Git-Diff und nachgewies
 7. Production-Konfiguration im Shadow-Modus attestieren und erst danach den Builder sowie neue Gates über das geschützte `prod`-Environment aktivieren.
 8. Production unabhängig auf Root, Liveness, Readiness, Release-Tenant-Realm, Callback, Unknown-Host-Fail-closed und Live-Digest prüfen.
 9. Falls das Staging-Live-Label aus dem Legacy-Stand fehlt, zuerst einen ausdrücklich ausgewählten fail-closed Pre-Seed-Lauf erzeugen und danach genau einmal den evidenzgebundenen Staging-Seed ausführen; Production bleibt davon unberührt.
+10. Falls das Production-Live-Label aus dem Legacy-Stand fehlt, einen eigenen Shadow-Prepare-Lauf ausführen, danach ohne intervenierenden Promote auf `authoritative/enforce` umschalten und genau einmal den evidenzgebundenen Production-Seed ausführen; erst anschließend den in Staging geprüften Zieldigest regulär promoten.
 
 ## Resolved Decisions
 

@@ -169,6 +169,19 @@ Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte ni
 - **AND** darf ausschließlich ein controller-eigenes Staging-Overlay das Config-Label ergänzen, während Candidate, Backups, Deploy, Konvergenz, Smoke und gemeinsamer Digest-/Config-Readback blockierend bleiben
 - **AND** bleiben `previousConfigRevision` und Rollback-Evidenz leer, entsteht weder aus Prepare noch Seed eine Production-fähige Staging-Parität und sind Dev, Production, Recovery, der temporäre Backup-Executor sowie ein erneuter Seed bei vorhandenem oder ungültigem Label ausgeschlossen
 
+#### Scenario: Production-Live-Service besitzt noch kein versioniertes Config-Label
+
+- **WHEN** ein geschützter Production-Standard-Promote im expliziten Production-Vorbereitungsmodus mit bereits live laufendem Zieldigest ausgeführt wird
+- **THEN** muss der Config-Builder im Shadow-Modus vollständige redigierte Äquivalenz belegen
+- **AND** müssen Candidate- und Backup-Capability-Gates im Shadow-Modus tatsächlich bestehen
+- **AND** muss ein atomarer Live-Snapshot Same-Digest und Labelzustand `missing` belegen
+- **AND** muss der Prepare-Lauf danach deterministisch vor Backup, Migration, Bootstrap und Deploy fail-closed enden
+- **WHEN** der unmittelbar folgende Promote-Run exakt diesen Run und Attempt nach Umschaltung auf `authoritative` sowie Enforce-Gates als Seed-Autorisierung referenziert
+- **THEN** müssen Workflow-ID, Run-Nummernfolge, Artefakt, Gatematrix, Source-SHA, Digest, Config-Revision und Live-Snapshot vor und unmittelbar vor Deploy erneut fail-closed gebunden werden
+- **AND** darf ausschließlich ein controller-eigenes Production-Overlay das Config-Label ergänzen, während frische Backups, Candidate, Agent-Capabilities, Deploy, Konvergenz, Smoke und gemeinsamer Digest-/Config-Readback blockierend bleiben
+- **AND** bleiben `previousConfigRevision` und Rollback-Evidenz leer, entsteht keine Staging-Parität und sind Dev, Staging, Recovery, der temporäre Backup-Executor sowie ein erneuter Seed bei vorhandenem oder ungültigem Label ausgeschlossen
+- **AND** darf erst nach erfolgreichem Seed der bereits in Staging geprüfte Zieldigest mit blockierenden Production-Gates regulär promotet werden
+
 #### Scenario: Ein One-shot schlägt vor dem Cleanup fehl
 
 - **WHEN** Candidate, Migration oder Bootstrap einen terminalen Taskfehler oder Timeout meldet

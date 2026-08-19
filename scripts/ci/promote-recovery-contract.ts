@@ -11,6 +11,8 @@ import {
 } from './promote-result.ts';
 import type { PromoteRecoveryEvidence } from './promote-evidence-types.ts';
 import { projectSeedAuthorization } from './staging-live-config-seed-contract.ts';
+import { projectProductionSeedAuthorization } from './production-live-config-seed-contract.ts';
+import { validateProductionSeedPreparation } from './promote-evidence-seed-preparation.ts';
 
 export type PromoteRecoveryContract = PromoteRecoveryEvidence;
 
@@ -114,6 +116,7 @@ export const buildRecoveryContract = (
     targetConfigRevision?: string | undefined;
     sourceSha?: string | undefined;
     seedAuthorization?: unknown;
+    seedPreparation?: unknown;
   }>
 ): PromoteRecoveryContract | null => {
   if (input.environment === 'invalid') fail(input.environment);
@@ -121,21 +124,43 @@ export const buildRecoveryContract = (
     const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
     const previousConfigRevision = input.previousConfigRevision?.trim() ?? '';
     if (input.seedAuthorization) {
-      if (input.environment !== 'staging' || previousConfigRevision) fail(input.environment);
+      if (previousConfigRevision) fail(input.environment);
       const targetDigest = parseDigest(input.targetImage, input.environment);
       const targetConfigRevision = parseRevision(input.targetConfigRevision, input.environment);
       const sourceSha = input.sourceSha?.trim() ?? '';
       if (!/^[a-f0-9]{40}$/u.test(sourceSha) || previousDigest !== targetDigest)
         fail(input.environment);
       try {
-        if (
-          !projectSeedAuthorization(input.seedAuthorization, {
-            sourceSha,
-            imageDigest: targetDigest,
-            configRevision: targetConfigRevision,
-          })
-        )
-          fail(input.environment);
+        const bindings = {
+          sourceSha,
+          imageDigest: targetDigest,
+          configRevision: targetConfigRevision,
+        };
+        const authorization =
+          input.environment === 'staging'
+            ? projectSeedAuthorization(input.seedAuthorization, bindings)
+            : input.environment === 'prod'
+              ? projectProductionSeedAuthorization(input.seedAuthorization, bindings)
+              : null;
+        if (!authorization) fail(input.environment);
+      } catch {
+        fail(input.environment);
+      }
+      return null;
+    }
+    if (input.seedPreparation) {
+      if (input.environment !== 'prod' || previousConfigRevision) fail(input.environment);
+      const targetDigest = parseDigest(input.targetImage, input.environment);
+      const targetConfigRevision = parseRevision(input.targetConfigRevision, input.environment);
+      const sourceSha = input.sourceSha?.trim() ?? '';
+      if (!/^[a-f0-9]{40}$/u.test(sourceSha) || previousDigest !== targetDigest)
+        fail(input.environment);
+      try {
+        validateProductionSeedPreparation(input.seedPreparation, {
+          sourceSha,
+          imageDigest: targetDigest,
+          configRevision: targetConfigRevision,
+        });
       } catch {
         fail(input.environment);
       }
@@ -194,6 +219,7 @@ export const runRecoveryContractFromEnvironment = (
       targetConfigRevision: env.TARGET_CONFIG_REVISION,
       sourceSha: env.SOURCE_SHA,
       seedAuthorization: env.SEED_AUTHORIZATION?.trim() ? JSON.parse(env.SEED_AUTHORIZATION) : null,
+      seedPreparation: env.SEED_PREPARATION?.trim() ? JSON.parse(env.SEED_PREPARATION) : null,
     });
     if (env.GITHUB_OUTPUT) {
       appendFileSync(

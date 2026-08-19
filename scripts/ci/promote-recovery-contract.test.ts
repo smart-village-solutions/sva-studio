@@ -100,6 +100,76 @@ describe('promote recovery contract', () => {
     ).toBeNull();
   });
 
+  it('allows only the bound Production shadow preparation before read-only gates', () => {
+    expect(
+      buildRecoveryContract({
+        environment: 'prod',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedPreparation: {
+          contract: 'production-live-config-label-prepare-v1',
+          sourceSha: 'd'.repeat(40),
+          imageDigest: `sha256:${'a'.repeat(64)}`,
+          configRevision: previousConfigRevision,
+          liveConfigRevisionState: 'missing',
+          backupExecutor: 'agent',
+          shadowEquivalent: true,
+        },
+      })
+    ).toBeNull();
+  });
+
+  it('allows only a separately bound Production seed authorization without a previous revision', () => {
+    expect(
+      buildRecoveryContract({
+        environment: 'prod',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedAuthorization: {
+          authorization: 'production-legacy-config-label-v1',
+          evidenceRun: { id: '123457', attempt: 1 },
+          sourceSha: 'd'.repeat(40),
+          imageDigest: `sha256:${'a'.repeat(64)}`,
+          configRevision: previousConfigRevision,
+        },
+      })
+    ).toBeNull();
+  });
+
+  it('rejects a Production preparation without proved shadow equivalence', () => {
+    expect(() =>
+      buildRecoveryContract({
+        environment: 'prod',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedPreparation: {
+          contract: 'production-live-config-label-prepare-v1',
+          sourceSha: 'd'.repeat(40),
+          imageDigest: `sha256:${'a'.repeat(64)}`,
+          configRevision: previousConfigRevision,
+          liveConfigRevisionState: 'missing',
+          backupExecutor: 'agent',
+          shadowEquivalent: false,
+        },
+      })
+    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+  });
+
   it.each([
     ['production', { environment: 'prod' as const }],
     ['recovery', { mode: 'recovery' }],

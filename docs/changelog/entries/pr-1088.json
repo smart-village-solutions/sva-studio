@@ -1,0 +1,4 @@
+{
+  "prNumber": 1088,
+  "body": "Der einmalige, geschützte Production-Config-Label-Übergang erkennt immutable Image-Digests jetzt korrekt und bleibt weiterhin an Git-Revision, Vorbereitungsevidenz und Freigabegates gebunden."
+}

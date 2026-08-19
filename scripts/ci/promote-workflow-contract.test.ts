@@ -292,6 +292,16 @@ describe('promote workflow hardening contract', () => {
     expect(preservation).toContain(
       'cp scripts/ci/production-live-config-seed-agent.ts "${PROMOTE_CONTROLLER_DIR}/production-live-config-seed-agent.ts"'
     );
+    expect(preservation).toContain(
+      'cp config/runtime/remote/prod.vars "${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"'
+    );
+
+    const productionRemoteConfig = stepBlock('build and select remote config');
+    expect(productionRemoteConfig).toContain('LIVE_CONFIG_TRANSITION_MODE');
+    expect(productionRemoteConfig).toContain(
+      'profile_path="${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"'
+    );
+    expect(productionRemoteConfig.match(/--profile "\$\{profile_path\}"/gu)).toHaveLength(2);
 
     const prepare = stepBlock('attest one-time Production live config label preparation');
     expect(prepare).toContain('CONFIG_SHADOW_EQUIVALENT');

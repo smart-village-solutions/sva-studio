@@ -1,0 +1,4 @@
+{
+  "prNumber": 1072,
+  "body": "Der vollständige Anwendungstest schützt Staging jetzt commitgenau vor dem Rollout. Der dokumentierte Nachweis verbindet Main-Commit, Testlauf und unveränderlichen Container-Digest und bleibt auch nach Unterbrechungen nachvollziehbar."
+}

@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -27,17 +28,38 @@ describe('promote recovery contract', () => {
     ).toBeNull();
   });
 
-  it('blocks a standard same-digest legacy seed without a bound live config revision', () => {
-    expect(() =>
+  it.each([
+    ['staging digest change', 'staging', targetDigest],
+    ['staging same digest', 'staging', `sha256:${'a'.repeat(64)}`],
+    ['production digest change', 'prod', targetDigest],
+    ['production same digest', 'prod', `sha256:${'a'.repeat(64)}`],
+  ] as const)(
+    'blocks a standard %s legacy seed without a bound live config revision',
+    (_, environment, targetImage) => {
+      expect(() =>
+        buildRecoveryContract({
+          environment,
+          mode: 'standard',
+          recoveryReason: undefined,
+          previousImage: previousDigest,
+          targetImage,
+          previousConfigRevision: '',
+        })
+      ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+    }
+  );
+
+  it('allows disposable Dev standard promotes without a previous config revision', () => {
+    expect(
       buildRecoveryContract({
-        environment: 'prod',
+        environment: 'dev',
         mode: 'standard',
         recoveryReason: undefined,
         previousImage: previousDigest,
-        targetImage: `sha256:${'a'.repeat(64)}`,
+        targetImage: targetDigest,
         previousConfigRevision: '',
       })
-    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+    ).toBeNull();
   });
 
   it('binds recovery to the previous digest and its versioned config revision', () => {
@@ -131,7 +153,7 @@ describe('promote recovery contract', () => {
             },
           }
         )
-      ).toBeNull();
+      ).toEqual({ ok: false, contract: null });
       const surfaces = [readFileSync(failurePath, 'utf8'), stderr.join('')];
       for (const surface of surfaces) {
         expect(surface).toContain('PROMOTE_RECOVERY_CONTEXT_INVALID');
@@ -142,5 +164,27 @@ describe('promote recovery contract', () => {
     } finally {
       rmSync(directory, { recursive: true, force: true });
     }
+  });
+
+  it('exits non-zero for a standard contract failure without a failure-record path', () => {
+    const script = new URL('./promote-recovery-contract.ts', import.meta.url);
+    const result = spawnSync(
+      process.execPath,
+      ['--no-warnings', '--experimental-strip-types', script.pathname, 'staging'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PROMOTE_MODE: 'standard',
+          PREVIOUS_LIVE_IMAGE: previousDigest,
+          DEPLOY_IMAGE_DIGEST: targetDigest,
+          PREVIOUS_CONFIG_REVISION: '',
+          PROMOTE_FAILURE_PATH: '',
+        },
+      }
+    );
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe('PROMOTE_RECOVERY_CONTEXT_INVALID\n');
   });
 });

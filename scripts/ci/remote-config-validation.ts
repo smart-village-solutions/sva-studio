@@ -53,7 +53,15 @@ export const parseRemoteConfigLayer = (
       unknownKeys.add(key);
       return;
     }
-    values.set(key, line.slice(separator + 1).trim());
+    const rawValue = line.slice(separator + 1);
+    if (rawValue !== rawValue.trim())
+      fail(
+        environment,
+        'PROMOTE_CONFIG_INVALID',
+        `Schluessel ${key} ist nicht kanonisch formatiert.`,
+        'Fuehrende und nachgestellte Leerzeichen aus dem Wert entfernen.'
+      );
+    values.set(key, rawValue);
   });
   if (unknownKeys.size > 0)
     fail(

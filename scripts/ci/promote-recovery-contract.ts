@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { appendFileSync, existsSync } from 'node:fs';
+import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
 import {
@@ -114,11 +114,9 @@ export const buildRecoveryContract = (
 ): PromoteRecoveryContract | null => {
   if (input.mode === 'standard') {
     const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
-    const targetDigest = input.targetImage?.trim().match(digestPattern)?.[1];
     if (
-      input.environment === 'prod' &&
+      (input.environment === 'staging' || input.environment === 'prod') &&
       previousDigest &&
-      previousDigest === targetDigest &&
       !revisionPattern.test(input.previousConfigRevision?.trim() ?? '')
     )
       fail(input.environment);
@@ -154,7 +152,9 @@ export const runRecoveryContractFromEnvironment = (
   environmentValue: string | undefined,
   env: NodeJS.ProcessEnv = process.env,
   stderr: Pick<NodeJS.WriteStream, 'write'> = process.stderr
-): PromoteRecoveryContract | null => {
+):
+  | Readonly<{ ok: true; contract: PromoteRecoveryContract | null }>
+  | Readonly<{ ok: false; contract: null }> => {
   const environment = parseEnvironment(environmentValue);
   try {
     const contract = buildRecoveryContract({
@@ -172,21 +172,16 @@ export const runRecoveryContractFromEnvironment = (
         'utf8'
       );
     }
-    return contract;
+    return { ok: true, contract };
   } catch (error) {
     const failure = redactPromoteFailure(error, { environment, phase: 'static-preflight' });
     writePromoteFailureRecord(failure, env.PROMOTE_FAILURE_PATH);
     stderr.write(`${failure.code}\n`);
-    return null;
+    return { ok: false, contract: null };
   }
 };
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const result = runRecoveryContractFromEnvironment(process.argv[2]);
-  if (
-    result === null &&
-    (process.env.PROMOTE_MODE !== 'standard' ||
-      Boolean(process.env.PROMOTE_FAILURE_PATH && existsSync(process.env.PROMOTE_FAILURE_PATH)))
-  )
-    process.exitCode = 1;
+  if (!result.ok) process.exitCode = 1;
 }

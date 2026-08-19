@@ -13,6 +13,7 @@ import {
   selectProtectedOverrides,
 } from './build-remote-app-config.ts';
 import { remoteConfigContract } from './remote-config-contract.ts';
+import { renderComposeEnv } from './render-compose-env.ts';
 import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
 
 const profile = Object.entries(remoteConfigContract)
@@ -138,18 +139,25 @@ describe('remote app config builder', () => {
     expect(JSON.stringify(selected)).not.toContain('sensitive-');
   });
 
-  it('emits the same canonical trimmed values that it validates', () => {
-    const result = buildRemoteAppConfig({
-      environment: 'staging',
-      profile: profile.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=  value  '),
-      overrides: overrides.replace('external_secret_v1', '  external_secret_v1  '),
-    });
+  it('keeps the selected revision bound to the exact values rendered for Compose', () => {
+    const selectedBundle = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
+    const evidence = buildSelectedRemoteConfigEvidence('staging', selectedBundle.source);
+    const rendered = renderComposeEnv(selectedBundle.source);
 
-    expect(result.source).toContain('SVA_STACK_NAME=value\n');
-    expect(result.source).toContain(
-      'WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME=external_secret_v1\n'
+    expect(evidence.configRevision).toBe(selectedBundle.configRevision);
+    expect(rendered).toContain("SVA_STACK_NAME='value'\n");
+    expect(rendered).toContain(
+      "WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME='external_secret_v1'\n"
     );
-    expect(result.source).not.toContain('  value  ');
+  });
+
+  it('rejects non-canonical whitespace so hashed and rendered values cannot diverge', () => {
+    expect(() =>
+      buildSelectedRemoteConfigEvidence(
+        'staging',
+        `${profile.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME= value ')}\n${overrides}`
+      )
+    ).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
   it('rejects duplicates, unknown keys, placeholders, misplaced config and invalid references', () => {

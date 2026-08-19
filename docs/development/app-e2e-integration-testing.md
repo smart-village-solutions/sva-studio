@@ -20,7 +20,9 @@ PLAYWRIGHT_DE_MUSTERHAUSEN_USERNAME=tenant-admin@example.org
 PLAYWRIGHT_DE_MUSTERHAUSEN_PASSWORD=super-secret-tenant-password
 ```
 
-`playwright/.auth/root-user.json` und `playwright/.auth/de-musterhausen-user.json` enthalten Cookies und Tokens und dürfen nicht committed werden. 4. Playwright Browser wurde installiert:
+`playwright/.auth/root-user.json` und `playwright/.auth/de-musterhausen-user.json` enthalten Cookies und Tokens und dürfen nicht committed werden.
+
+4. Playwright Browser wurde installiert:
 
 ```bash
 pnpm exec playwright install --with-deps chromium

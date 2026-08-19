@@ -98,6 +98,17 @@ try {
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE n.nspname = 'graphile_worker'
           AND c.relkind IN ('r', 'p', 'S', 'v', 'm')
+          AND (
+            c.relkind <> 'S'
+            OR NOT EXISTS (
+              SELECT 1
+              FROM pg_depend d
+              WHERE d.classid = 'pg_class'::regclass
+                AND d.objid = c.oid
+                AND d.refclassid = 'pg_class'::regclass
+                AND d.deptype IN ('a', 'i')
+            )
+          )
       LOOP
         IF object_record.relkind = 'S' THEN
           EXECUTE format('ALTER SEQUENCE %s OWNER TO %I', object_record.object_name, current_user);

@@ -1,0 +1,4 @@
+{
+  "prNumber": 1073,
+  "body": "Die geschützten Dev- und Staging-Rollouts prüfen ihren veröffentlichten Test-Tenant jetzt gegen eine explizite, versionierte Allowlist. Damit kann der Candidate-Preflight Konfigurationsabweichungen zuverlässig erkennen, bevor er blockierend aktiviert wird."
+}

@@ -80,13 +80,13 @@ Wenn ein Service fehlt, bricht der Test früh mit klarer Fehlermeldung ab.
 ## CI-Workflow
 
 - Workflow: `.github/workflows/app-e2e.yml` (`App E2E`)
+- läuft bei Pushes auf `main`, täglich geplant und manuell; Pull Requests starten keine vollständige App-E2E-Suite
 - führt ausschließlich die Chromium-Suite aus; ein Firefox-Smoke gehört nicht zum kanonischen App-E2E-Nachweis
-- entfernt vor der Playwright-Installation den unzuverlässigen HTTP-Azure-Mirror aus der flüchtigen Runner-Mirrorliste und verwendet die verbleibenden HTTPS-Ubuntu-Archive
+- entfernt vor der Playwright-Installation den unzuverlässigen HTTP-Azure-Mirror aus der flüchtigen Runner-Mirrorliste, sofern dieses Ubuntu-Runner-Format vorhanden ist; sonst wird mit sichtbarem Hinweis unverändert fortgefahren
 - Startet dieselben Services via Docker Compose
 - startet die App über das Nx-Target `sva-studio-react:serve`
-- injiziert `PLAYWRIGHT_ROOT_*` und `PLAYWRIGHT_DE_MUSTERHAUSEN_*` als Secrets/Variablen
 - führt `pnpm nx run sva-studio-react:test:e2e` aus
 - lädt den Playwright-Report als Artifact hoch
-- setzt in Pull Requests `PLAYWRIGHT_MAX_FAILURES=1`; der Lauf endet damit nach dem ersten Test, der auch nach dem vorhandenen Retry rot bleibt
-- lässt `maxFailures` für Nightly und manuelle Diagnose auf `0`, damit dort alle geplanten Fehler gesammelt werden
+- lässt `PLAYWRIGHT_MAX_FAILURES` für alle Ausführungen auf `0`, damit alle geplanten Fehler gesammelt werden
+- führt `main` deterministisch ohne Test-Retry aus; geplante und manuelle Diagnosen dürfen einen Retry verwenden
 - verwendet keinen Nx-Ergebnis-Cache für E2E; jeder CI-Lauf startet App und Pflichtservices frisch

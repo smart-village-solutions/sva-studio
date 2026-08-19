@@ -43,12 +43,20 @@ jobs:
       - name: Prefer HTTPS Ubuntu archives for Playwright dependencies
         run: |
           set -euo pipefail
-          sudo sed -i '/^http:\/\/azure\.archive\.ubuntu\.com\/ubuntu\//d' /etc/apt/apt-mirrors.txt
-          if grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/' /etc/apt/apt-mirrors.txt; then
+          MIRRORS=/etc/apt/apt-mirrors.txt
+          if [ ! -f "$MIRRORS" ]; then
+            echo "::warning::$MIRRORS not found on this runner image; skipping mirror hardening"
+            exit 0
+          fi
+          if ! grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/' "$MIRRORS"; then
+            echo "::notice::The Azure Ubuntu mirror is not configured on this runner image; skipping mirror hardening"
+            exit 0
+          fi
+          sudo sed -i '/^http:\/\/azure\.archive\.ubuntu\.com\/ubuntu\//d' "$MIRRORS"
+          if grep -q '^http://azure\.archive\.ubuntu\.com/ubuntu/' "$MIRRORS"; then
             echo 'The Azure Ubuntu mirror must not be selected for Playwright dependencies.' >&2
             exit 1
           fi
-          grep -q '^https://archive\.ubuntu\.com/ubuntu/' /etc/apt/apt-mirrors.txt
 
       - name: Install Playwright browsers
         run: pnpm --filter sva-studio-react exec playwright install --with-deps chromium

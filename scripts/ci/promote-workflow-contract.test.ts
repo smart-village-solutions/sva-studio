@@ -317,6 +317,10 @@ describe('promote workflow hardening contract', () => {
     expect(stepBlock('verify live backup agent capabilities')).toContain(
       '${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts'
     );
+    const remoteConfig = stepBlock('build and select remote config');
+    expect(remoteConfig.indexOf(': > "${shadow_output}"')).toBeLessThan(
+      remoteConfig.indexOf('case "${mode}" in')
+    );
   });
 
   it('injects the permission snapshot HMAC as a dedicated protected secret', () => {

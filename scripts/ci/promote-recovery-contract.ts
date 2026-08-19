@@ -168,6 +168,7 @@ const validateSeedPreparation = (
 const buildStandardContract = (input: BuildRecoveryContractInput): null => {
   const previousDigest = input.previousImage?.trim().match(digestPattern)?.[1];
   const previousConfigRevision = input.previousConfigRevision?.trim() ?? '';
+  if (input.seedAuthorization && input.seedPreparation) fail(input.environment);
   if (input.seedAuthorization) {
     if (previousConfigRevision) fail(input.environment);
     validateSeedAuthorization(input, previousDigest);

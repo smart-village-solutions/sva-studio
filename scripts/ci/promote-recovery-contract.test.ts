@@ -146,6 +146,23 @@ describe('promote recovery contract', () => {
     ).toBeNull();
   });
 
+  it('rejects simultaneous seed preparation and authorization evidence', () => {
+    expect(() =>
+      buildRecoveryContract({
+        environment: 'prod',
+        mode: 'standard',
+        recoveryReason: undefined,
+        previousImage: previousDigest,
+        targetImage: `sha256:${'a'.repeat(64)}`,
+        previousConfigRevision: '',
+        targetConfigRevision: previousConfigRevision,
+        sourceSha: 'd'.repeat(40),
+        seedAuthorization: {},
+        seedPreparation: {},
+      })
+    ).toThrow(/PROMOTE_RECOVERY_CONTEXT_INVALID/u);
+  });
+
   it('rejects a Production preparation without proved shadow equivalence', () => {
     expect(() =>
       buildRecoveryContract({

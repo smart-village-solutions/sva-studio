@@ -472,6 +472,7 @@ jobs:
           shadow_equivalent=not-applicable
           shadow_output="${RUNNER_TEMP}/promote-config-shadow.output"
           rm -f "${shadow_output}"
+          : > "${shadow_output}"
           trap 'rm -f "${shadow_output}"' EXIT
           case "${mode}" in
             shadow)

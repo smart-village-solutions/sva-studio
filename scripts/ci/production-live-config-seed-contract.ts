@@ -183,8 +183,7 @@ const validateGates = (value: unknown): void => {
     const gate = raw as Record<string, unknown>;
     if (typeof gate.gate !== 'string' || seen.has(gate.gate)) fail();
     const gateName = gate.gate as string;
-    const expected = expectedGateStates.get(gateName);
-    if (!expected) return fail();
+    const expected = expectedGateStates.get(gateName) ?? fail();
     const keys =
       expected.status === 'failed'
         ? ['gate', 'phase', 'status', 'blocking', 'failure']

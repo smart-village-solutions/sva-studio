@@ -1,0 +1,4 @@
+{
+  "prNumber": 1071,
+  "body": "Datenbankmigrationen behandeln automatisch an Tabellen gekoppelte Graphile-Worker-Sequenzen jetzt korrekt. Dadurch kann der geschützte Rollout fortgesetzt werden, ohne die Eigentums- und Berechtigungsgrenzen unabhängiger Sequenzen aufzuweichen."
+}

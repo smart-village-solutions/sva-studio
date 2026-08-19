@@ -22,6 +22,8 @@ describe('Graphile worker migration contract', () => {
     expect(migrator).toContain('SECURITY DEFINER');
     expect(migrator).toContain('SET search_path = pg_catalog, graphile_worker');
     expect(migrator).toContain('graphile_worker.sva_enqueue_job');
+    expect(migrator).toContain("c.relkind <> 'S'");
+    expect(migrator).toContain("d.deptype IN ('a', 'i')");
     expect(migrationEntrypoint).toContain('node "${GRAPHILE_WORKER_MIGRATOR}"');
     expect(runtimeWorker).toContain('graphileWorker.runTaskList(');
     expect(runtimeWorker).not.toContain('runMigrations');

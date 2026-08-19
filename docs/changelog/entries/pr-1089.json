@@ -1,0 +1,4 @@
+{
+  "prNumber": 1089,
+  "body": "Der geschützte Production-Config-Label-Übergang wertet den im Vorbereitungsmodus bewusst beobachtenden Main-E2E-Gate korrekt als nicht blockierend aus, ohne die übrigen Freigabe- und Evidenzbindungen zu lockern."
+}

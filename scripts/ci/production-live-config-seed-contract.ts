@@ -127,12 +127,12 @@ const expectedGateStates = new Map<
   ].map(([gate, phase]) => [gate, { phase, status: 'passed', blocking: true }] as const),
   ['backup-capabilities', { phase: 'backup-capabilities', status: 'passed', blocking: false }],
   ['candidate-preflight', { phase: 'candidate-preflight', status: 'passed', blocking: false }],
+  ['main-e2e-evidence', { phase: 'main-e2e-evidence', status: 'skipped', blocking: false }],
   [
     'production-config-seed-prepare-stop',
     { phase: 'static-preflight', status: 'failed', blocking: true },
   ],
   ...[
-    ['main-e2e-evidence', 'main-e2e-evidence'],
     ['legacy-config-seed-preparation', 'static-preflight'],
     ['legacy-config-seed', 'static-preflight'],
     ['legacy-config-seed-recheck', 'static-preflight'],

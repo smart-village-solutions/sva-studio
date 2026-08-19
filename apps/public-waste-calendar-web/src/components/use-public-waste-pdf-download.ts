@@ -7,9 +7,8 @@ import type { PublicWasteCalendarViewModel } from '../lib/public-waste-view-mode
 type UsePublicWastePdfDownloadInput = {
   readonly selection: PublicWasteResolvedSelection;
   readonly calendarModel: PublicWasteCalendarViewModel;
+  readonly year: number;
 };
-
-const currentYear = (): number => new Date().getFullYear();
 
 const downloadBlob = (blob: Blob, filename: string) => {
   const downloadUrl = URL.createObjectURL(blob);
@@ -24,24 +23,22 @@ const downloadBlob = (blob: Blob, filename: string) => {
   }, 0);
 };
 
-export const usePublicWastePdfDownload = ({ selection, calendarModel }: UsePublicWastePdfDownloadInput) => {
+export const usePublicWastePdfDownload = ({
+  selection,
+  calendarModel,
+  year,
+}: UsePublicWastePdfDownloadInput) => {
   const [selectedFractions, setSelectedFractions] = React.useState<readonly string[]>(() =>
     calendarModel.fractionOptions.map((fraction) => fraction.id)
   );
-  const [pdfYear, setPdfYear] = React.useState(currentYear());
   const [pdfRunning, setPdfRunning] = React.useState(false);
   const [pdfError, setPdfError] = React.useState<string | null>(null);
-  const yearOptions = React.useMemo(() => {
-    const year = currentYear();
-    return [year - 1, year, year + 1];
-  }, []);
 
   React.useEffect(() => {
     setSelectedFractions(calendarModel.fractionOptions.map((fraction) => fraction.id));
   }, [calendarModel.locationKey, calendarModel.fractionOptions]);
 
   React.useEffect(() => {
-    setPdfYear(currentYear());
     setPdfError(null);
   }, [calendarModel.locationKey]);
 
@@ -62,7 +59,7 @@ export const usePublicWastePdfDownload = ({ selection, calendarModel }: UsePubli
     try {
       const { blob, filename } = await requestPublicWastePdf({
         selection,
-        year: pdfYear,
+        year,
         fractionIds: selectedFractions,
       });
       downloadBlob(blob, filename);
@@ -75,11 +72,8 @@ export const usePublicWastePdfDownload = ({ selection, calendarModel }: UsePubli
 
   return {
     selectedFractions,
-    pdfYear,
     pdfRunning,
     pdfError,
-    yearOptions,
-    setPdfYear,
     toggleFraction,
     downloadPdf,
   };

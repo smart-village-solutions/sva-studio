@@ -84,6 +84,7 @@ describe('PublicWasteApp', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -282,7 +283,9 @@ describe('PublicWasteApp', () => {
     ).toBeTruthy();
   });
 
-  it('downloads a pdf for the active fractions and selected year from the action panel', async () => {
+  it('downloads a pdf for the active fractions and year visible in the calendar', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-05-18T12:00:00Z'));
     const createObjectUrlSpy = vi
       .spyOn(URL, 'createObjectURL')
       .mockReturnValue('blob:public-waste-pdf');
@@ -291,17 +294,19 @@ describe('PublicWasteApp', () => {
       new Response(new Blob(['pdf'], { type: 'application/pdf' }), {
         status: 200,
         headers: {
-          'content-disposition': 'attachment; filename="abfallkalender-2026-rathenow.pdf"',
+          'content-disposition': 'attachment; filename="abfallkalender-2027-rathenow.pdf"',
         },
       })
     );
 
     renderCompletePublicWasteApp();
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Jahr' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nächstes Jahr' }));
+    expect(screen.getByRole('heading', { name: '2027' })).toBeTruthy();
+
     fireEvent.click(screen.getByRole('button', { name: 'PDF / Druckversion' }));
-    fireEvent.change(screen.getByLabelText('PDF-Jahr'), {
-      target: { value: '2026' },
-    });
+    expect(screen.queryByLabelText('PDF-Jahr')).toBeNull();
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'PDF herunterladen' }));
@@ -312,8 +317,9 @@ describe('PublicWasteApp', () => {
     });
     expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=bio');
     expect(fetchMock.mock.calls[0]?.[0]).toContain('fractionId=paper');
-    expect(fetchMock.mock.calls[0]?.[0]).toContain('year=2026');
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('year=2027');
     expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    await vi.runAllTimersAsync();
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:public-waste-pdf');
 
     createObjectUrlSpy.mockRestore();
@@ -695,7 +701,7 @@ describe('PublicWasteApp', () => {
       }),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 2026-05-19' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Termin Bioabfall am 19.05.2026' }));
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeTruthy();

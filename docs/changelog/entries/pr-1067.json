@@ -1,0 +1,4 @@
+{
+  "prNumber": 1067,
+  "body": "Der öffentliche Abfallkalender zeigt Termine verständlicher an und erzeugt die Druckversion für das gerade betrachtete Jahr.\n\n- Datumswerte im Termindialog und in zugänglichen Terminbeschriftungen erscheinen im deutschen Format TT.MM.JJJJ.\n- Der PDF-Download übernimmt automatisch das sichtbare Kalenderjahr; die separate Jahresauswahl entfällt."
+}

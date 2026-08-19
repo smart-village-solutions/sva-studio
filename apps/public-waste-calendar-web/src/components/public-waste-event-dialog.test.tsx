@@ -28,6 +28,8 @@ describe('PublicWasteEventDialog', () => {
     const closeButton = screen.getByRole('button', { name: 'Schließen' });
     expect(document.activeElement).toBe(closeButton);
     expect(screen.getByText('Biotour Nord')).toBeTruthy();
+    expect(screen.getByText('19.05.2026')).toBeTruthy();
+    expect(screen.queryByText('2026-05-19')).toBeNull();
     expect(screen.getByText('Hinweis')).toBeTruthy();
     expect(screen.getByText('Wöchentliche Leerung im Innenstadtbereich.')).toBeTruthy();
     expect(screen.getByText('Bitte rausstellen.')).toBeTruthy();

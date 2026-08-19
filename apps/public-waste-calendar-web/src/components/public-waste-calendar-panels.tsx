@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
+import { formatDateOnlyGerman } from '../lib/public-waste-date-utils.js';
 import type { FilteredPublicWasteCalendarViewModel } from '../lib/public-waste-view-model.js';
 
 const monthYearFormatter = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' });
@@ -126,7 +127,7 @@ const renderPickupEntryButton = (
     key={entry.id}
     type="button"
     className={props.className}
-    aria-label={`Termin ${entry.fractionLabel} am ${entry.date}`}
+    aria-label={`Termin ${entry.fractionLabel} am ${formatDateOnlyGerman(entry.date)}`}
     onClick={() => props.onActivateEntry(entry)}
   >
     {props.children}
@@ -259,6 +260,7 @@ const buildYearMonthCells = (
 export function PublicWasteCalendarPanels(props: Readonly<{
   model: FilteredPublicWasteCalendarViewModel;
   onActivateEntry: (entry: PublicWasteCalendarEntry) => void;
+  onVisibleYearChange?: (year: number) => void;
 }>) {
   const tabs: ReadonlyArray<'list' | 'month' | 'year'> = ['list', 'month', 'year'];
   const tabButtonRefs = React.useRef(new Map<'list' | 'month' | 'year', HTMLButtonElement>());
@@ -310,6 +312,10 @@ export function PublicWasteCalendarPanels(props: Readonly<{
   React.useEffect(() => {
     setVisibleYear((current) => Math.min(maxYear, Math.max(minYear, current)));
   }, [maxYear, minYear]);
+
+  React.useEffect(() => {
+    props.onVisibleYearChange?.(activeTab === 'month' ? visibleMonth.getFullYear() : visibleYear);
+  }, [activeTab, props.onVisibleYearChange, visibleMonth, visibleYear]);
 
   const handleTabKeyDown = (
     event: React.KeyboardEvent<HTMLButtonElement>,

@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { PublicWasteCalendarEntry } from '../lib/public-waste-contract.js';
+import { formatDateOnlyGerman } from '../lib/public-waste-date-utils.js';
 
 type PublicWasteEventDialogProps = Readonly<{
   entry: PublicWasteCalendarEntry | null;
@@ -111,7 +112,7 @@ export function PublicWasteEventDialog(props: PublicWasteEventDialogProps) {
         </div>
         <div className="dialog-section">
           <p className="dialog-section-label">Datum</p>
-          <p className="body-copy">{props.entry.date}</p>
+          <p className="body-copy">{formatDateOnlyGerman(props.entry.date)}</p>
         </div>
         <div className="dialog-section">
           <p className="dialog-section-label">Hinweis</p>

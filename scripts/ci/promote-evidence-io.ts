@@ -234,7 +234,6 @@ const gateEnvironmentKeys: readonly Readonly<{
   },
   { gate: 'studio-backup-request', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_REQUEST' },
   { gate: 'waste-backup-request', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP_REQUEST' },
-  { gate: 'temporary-backup', phase: 'backup', key: 'PROMOTE_GATE_BACKUP_FALLBACK' },
   { gate: 'studio-backup-verification', phase: 'backup', key: 'PROMOTE_GATE_BACKUP' },
   { gate: 'waste-backup-verification', phase: 'backup', key: 'PROMOTE_GATE_WASTE_BACKUP' },
   { gate: 'migration', phase: 'migration', key: 'PROMOTE_GATE_MIGRATION' },

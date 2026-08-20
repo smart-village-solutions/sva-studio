@@ -22,7 +22,7 @@ Ein Restore wird nur durch `.github/workflows/database-restore.yml` ausgelöst. 
 
 Da Custom-Dumps bewusst ohne Owner- und ACL-Übernahme erzeugt werden, rekonstruiert der Agent nach `pg_restore` die fest allowlisteten Rechte des Runtime-Principals `sva_app` idempotent. Schema-Owner `sva`, Runtime-Principal `sva_app`, Rolle `iam_app`, Datenbank und Grants sind interne Konstanten und keine Request-Felder. Der Agent prüft anschließend Datenbank-, Schema-, Rollen-, Tabellen- und Sequenzrechte und meldet ohne vollständige Principal-Evidenz keinen erfolgreichen Restore. Er erhält dafür weder App-Passwort noch allgemeine SQL-Ausführung. Nach dem App-Neustart prüft der geschützte Workflow zusätzlich `/auth/me` und `/iam/me/permissions` mit einem dedizierten Restore-Smoke-Zugang.
 
-Nach der erfolgreichen Backup-Betriebsabnahme am 31. Juli 2026 ist der Agent der Backup-Standard. Der noch vorhandene Schalter `BACKUP_EXECUTOR=temporary` ist ausschließlich Incident-Fallback und kein regulärer Betriebsmodus; seine Entfernung bleibt ein separater Folgechange. Jeder Restore wird über die explizite Freigabe des gewählten GitHub Environments autorisiert und vollständig in dieser Zielumgebung geprüft.
+Nach der erfolgreichen Backup-Betriebsabnahme am 31. Juli 2026 ist der Agent der ausschließliche Backup-Executor regulärer Studio-Promotes. Der frühere temporäre Swarm-Backup-Pfad und sein Umschalter sind entfernt. Jeder Restore wird über die explizite Freigabe des gewählten GitHub Environments autorisiert und vollständig in dieser Zielumgebung geprüft.
 
 ## Konsequenzen
 

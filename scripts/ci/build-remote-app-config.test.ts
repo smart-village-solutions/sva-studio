@@ -6,14 +6,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildRemoteAppConfig,
-  buildSelectedRemoteConfigEvidence,
-  compareRemoteConfigShadow,
   parseRemoteConfigLayer,
   runBuildRemoteAppConfig,
-  selectProtectedOverrides,
 } from './build-remote-app-config.ts';
 import { remoteConfigContract } from './remote-config-contract.ts';
-import { renderComposeEnv } from './render-compose-env.ts';
 import { PromoteContractError, redactPromoteFailure } from './promote-result.ts';
 
 const profile = Object.entries(remoteConfigContract)
@@ -126,71 +122,13 @@ describe('remote app config builder', () => {
     }
   });
 
-  it('publishes only a boolean shadow equivalence decision for the Production handshake', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'remote-config-shadow-'));
-    const profilePath = join(directory, 'prod.vars');
-    const githubOutput = join(directory, 'github-output');
-    const candidate = buildRemoteAppConfig({ environment: 'prod', profile, overrides });
-    try {
-      writeFileSync(profilePath, profile, 'utf8');
-      expect(
-        runBuildRemoteAppConfig(
-          [
-            '--environment',
-            'prod',
-            '--profile',
-            profilePath,
-            '--output',
-            join(directory, 'config.vars'),
-            '--shadow',
-          ],
-          {
-            APP_CONFIG: candidate.source,
-            PROMOTE_CONFIG_OVERRIDES: overrides,
-            GITHUB_OUTPUT: githubOutput,
-          }
-        )
-      ).toBe(0);
-      const output = readFileSync(githubOutput, 'utf8');
-      expect(output).toContain('shadow_equivalent=true');
-      expect(output).not.toContain('APP_DB_PASSWORD');
-      expect(output).not.toContain('sensitive-');
-    } finally {
-      rmSync(directory, { recursive: true, force: true });
-    }
-  });
-
-  it('derives deployment evidence from the actually selected shadow bundle', () => {
-    const candidate = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
-    const selectedShadowBundle = candidate.source.replace(
-      'SVA_STACK_NAME=value',
-      'SVA_STACK_NAME=legacy-selected'
-    );
-    const selected = buildSelectedRemoteConfigEvidence('staging', selectedShadowBundle);
-
-    expect(selected.configRevision).not.toBe(candidate.configRevision);
-    expect(selected.secretReferences).toEqual(candidate.secretReferences);
-    expect(JSON.stringify(selected)).not.toContain('sensitive-');
-  });
-
-  it('keeps the selected revision bound to the exact values rendered for Compose', () => {
-    const selectedBundle = buildRemoteAppConfig({ environment: 'staging', profile, overrides });
-    const evidence = buildSelectedRemoteConfigEvidence('staging', selectedBundle.source);
-    const rendered = renderComposeEnv(selectedBundle.source);
-
-    expect(evidence.configRevision).toBe(selectedBundle.configRevision);
-    expect(rendered).toContain("SVA_STACK_NAME='value'\n");
-    expect(rendered).toContain(
-      "WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME='external_secret_v1'\n"
-    );
-  });
-
-  it('rejects non-canonical whitespace so hashed and rendered values cannot diverge', () => {
+  it('rejects non-canonical whitespace so hashed and deployed values cannot diverge', () => {
     expect(() =>
-      buildSelectedRemoteConfigEvidence(
-        'staging',
-        `${profile.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME= value ')}\n${overrides}`
-      )
+      buildRemoteAppConfig({
+        environment: 'staging',
+        profile: profile.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME= value '),
+        overrides,
+      })
     ).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
@@ -263,73 +201,53 @@ describe('remote app config builder', () => {
     ).toThrow(/PROMOTE_CONFIG_INVALID/u);
   });
 
-  it('compares only keys, non-sensitive values and reference names', () => {
-    const candidate = buildRemoteAppConfig({ environment: 'prod', profile, overrides });
-    const changedSecrets = candidate.source.replaceAll('sensitive-', 'rotated-');
-    expect(compareRemoteConfigShadow('prod', changedSecrets, candidate)).toMatchObject({
-      equivalent: true,
-    });
-    expect(
-      compareRemoteConfigShadow(
-        'prod',
-        candidate.source.replace('SVA_STACK_NAME=value', 'SVA_STACK_NAME=other'),
-        candidate
-      )
-    ).toMatchObject({ equivalent: false, configValueMismatches: ['SVA_STACK_NAME'] });
-    expect(
-      compareRemoteConfigShadow(
-        'prod',
-        candidate.source.replace('external_secret_v1', 'external_secret_v2'),
-        candidate
-      )
-    ).toMatchObject({
-      equivalent: false,
-      secretReferenceMismatches: ['WASTE_DATABASE_PROVISIONER_PASSWORD_SECRET_NAME'],
-    });
+  it('fails before writing config when protected overrides are missing', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-required-'));
+    const profilePath = join(directory, 'staging.vars');
+    const outputPath = join(directory, 'config.vars');
+    const failurePath = join(directory, 'failure.json');
+    const stderr: string[] = [];
+    const original = process.stderr.write;
+    process.stderr.write = ((value: string) => {
+      stderr.push(value);
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      writeFileSync(profilePath, profile, 'utf8');
+      expect(
+        runBuildRemoteAppConfig(
+          ['--environment', 'staging', '--profile', profilePath, '--output', outputPath],
+          { PROMOTE_FAILURE_PATH: failurePath }
+        )
+      ).toBe(2);
+      expect(() => readFileSync(outputPath, 'utf8')).toThrow();
+    } finally {
+      process.stderr.write = original;
+    }
+    expect(stderr.join('')).toContain('PROMOTE_CONFIG_REQUIRED_KEY_MISSING');
+    expect(JSON.parse(readFileSync(failurePath, 'utf8'))).toEqual(
+      expect.objectContaining({ code: 'PROMOTE_CONFIG_REQUIRED_KEY_MISSING' })
+    );
+    rmSync(directory, { recursive: true, force: true });
   });
 
-  it('uses only protected legacy values when explicit overrides are not configured', () => {
-    const legacySource = `${profile.replace('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow', 'SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility')}\n${overrides}`;
-    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
-    const result = buildRemoteAppConfig({
-      environment: 'prod',
-      profile,
-      overrides: protectedOverrides,
-    });
-
-    expect(protectedOverrides).toBe(overrides);
-    expect(result.source).toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=shadow\n');
-    expect(result.source).not.toContain('SVA_MAINSERVER_SCOPE_RESOLVER_MODE=compatibility\n');
-    expect(result.source).toContain('APP_DB_PASSWORD=sensitive-APP_DB_PASSWORD\n');
-  });
-
-  it('retains legacy connection secrets while dropping legacy operational config', () => {
-    const protectedConnections = overrides
-      .replace(
-        'IAM_DATABASE_URL=sensitive-IAM_DATABASE_URL',
-        'IAM_DATABASE_URL=postgres://protected'
-      )
-      .replace('REDIS_URL=sensitive-REDIS_URL', 'REDIS_URL=redis://protected');
-    const legacyProfile = profile
-      .replace('QUANTUM_ENDPOINT=value', 'QUANTUM_ENDPOINT=sva')
-      .replace('SVA_PUBLIC_HOST=value', 'SVA_PUBLIC_HOST=studio.smart-village.app');
-    const legacySource = `${legacyProfile}\n${protectedConnections}`;
-    const protectedOverrides = selectProtectedOverrides('prod', legacySource);
-
-    expect(protectedOverrides).toContain('IAM_DATABASE_URL=postgres://protected');
-    expect(protectedOverrides).toContain('REDIS_URL=redis://protected');
-    expect(protectedOverrides).not.toContain('QUANTUM_ENDPOINT');
-    expect(protectedOverrides).not.toContain('SVA_PUBLIC_HOST');
-  });
-
-  it('prefers the explicit protected override bundle over legacy values', () => {
-    expect(
-      selectProtectedOverrides(
-        'prod',
-        `${profile}\n${overrides}`,
-        'APP_DB_PASSWORD=explicit-secret'
-      )
-    ).toBe('APP_DB_PASSWORD=explicit-secret');
+  it('never falls back to APP_CONFIG when protected overrides are missing', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'remote-config-no-legacy-'));
+    const profilePath = join(directory, 'prod.vars');
+    const original = process.stderr.write;
+    process.stderr.write = (() => true) as typeof process.stderr.write;
+    try {
+      writeFileSync(profilePath, profile, 'utf8');
+      expect(
+        runBuildRemoteAppConfig(
+          ['--environment', 'prod', '--profile', profilePath, '--output', join(directory, 'out')],
+          { APP_CONFIG: `${profile}\n${overrides}` }
+        )
+      ).toBe(2);
+    } finally {
+      process.stderr.write = original;
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('forbids local files without reading or disclosing their contents', () => {

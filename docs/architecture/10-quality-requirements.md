@@ -342,7 +342,7 @@ Referenzen:
 - Rolling Updates (`start-first`) dürfen keine Downtime verursachen; Healthchecks müssen vor dem Routing-Start grün sein.
 - Production-Readiness besteht ausschließlich mit HTTP 200; 503 ist nur ein retryfähiger Warmup-Zustand.
 - Reine App-Promotions nach Production benötigen denselben erfolgreich in Staging geprüften Image-Digest.
-- Config-Builder, Shadow-Vergleich, Backup-Agent-Capabilities und `PROMOTE_*`-Fehlercodes benötigen positive und negative Vertragstests.
+- Autoritativer Config-Builder, verpflichtende Overrides, blockierende Backup-Agent-Capabilities und `PROMOTE_*`-Fehlercodes benötigen positive und negative Vertragstests.
 
 ### Ergänzung 2026-06: Qualitätsziele POI-Voll-Editor
 

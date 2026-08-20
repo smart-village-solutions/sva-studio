@@ -296,59 +296,25 @@ jobs:
 
       - name: require canonical Main App E2E evidence
         id: main_e2e_evidence
-        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' && (vars.MAIN_E2E_GATE == 'shadow' || vars.MAIN_E2E_GATE == 'enforce') }}
-        continue-on-error: ${{ vars.MAIN_E2E_GATE == 'shadow' }}
+        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}
         env:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           GITHUB_TOKEN: ${{ github.token }}
-          PROMOTE_FAILURE_PATH: ${{ vars.MAIN_E2E_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
+          PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
 
-      - name: build and select remote config
+      - name: build authoritative remote config
         id: remote_config
         env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           PROMOTE_CONFIG_OVERRIDES: ${{ secrets.PROMOTE_CONFIG_OVERRIDES }}
-          PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}
         run: |
           set -euo pipefail
           umask 077
-          mode="${PROMOTE_CONFIG_BUILDER_MODE:-shadow}"
           profile_path="config/runtime/remote/${{ inputs.environment }}.vars"
-          shadow_equivalent=not-applicable
-          shadow_output="${RUNNER_TEMP}/promote-config-shadow.output"
-          rm -f "${shadow_output}"
-          : > "${shadow_output}"
-          trap 'rm -f "${shadow_output}"' EXIT
-          case "${mode}" in
-            shadow)
-              if ! GITHUB_OUTPUT="${shadow_output}" PROMOTE_FAILURE_PATH= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts" \
-                  --environment "${{ inputs.environment }}" \
-                  --profile "${profile_path}" \
-                  --output "${RUNNER_TEMP}/candidate-app-config.vars" \
-                  --shadow; then
-                echo "::warning::PROMOTE_CONFIG_SHADOW_MISMATCH: Der beobachtende Config-Builder konnte keinen gueltigen Candidate erzeugen."
-              fi
-              shadow_equivalent="$(sed -n 's/^shadow_equivalent=//p' "${shadow_output}" | tail -n 1)"
-              shadow_equivalent="${shadow_equivalent:-false}"
-              printf '%s\n' "${APP_CONFIG}" > "${RUNNER_TEMP}/promote-app-config.vars"
-              ;;
-            authoritative)
-              GITHUB_OUTPUT= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts" \
-                --environment "${{ inputs.environment }}" \
-                --profile "${profile_path}" \
-                --output "${RUNNER_TEMP}/promote-app-config.vars"
-              ;;
-            *)
-              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
-              exit 1
-              ;;
-          esac
           pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts" \
             --environment "${{ inputs.environment }}" \
-            --selected-input "${RUNNER_TEMP}/promote-app-config.vars"
-          echo "mode=${mode}" >> "${GITHUB_OUTPUT}"
-          echo "shadow_equivalent=${shadow_equivalent}" >> "${GITHUB_OUTPUT}"
+            --profile "${profile_path}" \
+            --output "${RUNNER_TEMP}/promote-app-config.vars"
 
       - name: verify target config revision label contract
         id: config_revision_contract
@@ -493,7 +459,7 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
+          MAIN_E2E_GATE_MODE: enforce
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}
         run: |
@@ -503,18 +469,16 @@ jobs:
 
       - name: verify live backup agent capabilities
         id: backup_capabilities
-        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}
-        continue-on-error: ${{ vars.BACKUP_CAPABILITY_GATE != 'enforce' }}
+        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
-          PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
+          PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
         run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
 
       - name: run read-only candidate preflight
         id: candidate_job
-        continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}
         env:
-          PROMOTE_FAILURE_PATH: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' && format('{0}/promote-terminal-failure.json', runner.temp) || '' }}
+          PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
         run: |
@@ -530,7 +494,7 @@ jobs:
 
       - name: create database backup before deployment
         id: backup_job
-        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}
+        if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
@@ -541,7 +505,7 @@ jobs:
 
       - name: create Waste database backup before deployment
         id: waste_backup_job
-        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
         env:
           BACKUP_AGENT_SIGNING_KEY: ${{ secrets.BACKUP_AGENT_SIGNING_KEY }}
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
@@ -550,39 +514,20 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/submit-backup-agent-request.ts "${{ inputs.environment }}" waste
 
-      - name: create temporary database backup fallback
-        id: backup_fallback_job
-        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR == 'temporary' }}
-        env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
-          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
-          QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
-          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          S3_ENDPOINT: https://fileserver.smart-village.app
-          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-        run: |
-          set -euo pipefail
-          umask 077
-          trap 'rm -f .env' EXIT
-          pnpm exec tsx scripts/ci/render-compose-env.ts --input "${RUNNER_TEMP}/promote-app-config.vars" --output .env
-          printf '\nIMAGE_REF=%s\n' "${{ steps.image_contract.outputs.deploy_image_ref }}" >> .env
-          printf 'SVA_CONFIG_REVISION=%s\n' "${{ steps.remote_config.outputs.config_revision }}" >> .env
-          pnpm exec tsx scripts/ci/promote-backup-job.ts "${{ inputs.environment }}"
-
       - name: verify database backup object
         id: backup_verification
         if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}
         env:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          S3_BUCKET: ${{ steps.backup_job.outputs.backup_bucket || steps.backup_fallback_job.outputs.backup_bucket }}
+          S3_BUCKET: ${{ steps.backup_job.outputs.backup_bucket }}
           S3_ENDPOINT: https://fileserver.smart-village.app
-          S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}
+          S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: pnpm exec tsx scripts/ci/verify-promote-backup.ts
 
       - name: verify Waste database backup object
         id: waste_backup_verification
-        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
+        if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}
         env:
           S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
           S3_BUCKET: ${{ steps.waste_backup_job.outputs.waste_backup_bucket }}
@@ -595,7 +540,6 @@ jobs:
         id: migration_job
         if: ${{ steps.gate_eval.outputs.migration_should_run == 'true' }}
         env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
         run: |
@@ -611,7 +555,6 @@ jobs:
         id: bootstrap_job
         if: ${{ steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
         run: |
@@ -627,7 +570,6 @@ jobs:
         id: postconditions
         if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && (steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true') }}
         env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
@@ -651,7 +593,6 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           DEPLOY_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           REDIS_SNAPSHOT_HMAC_SECRET: ${{ secrets.REDIS_SNAPSHOT_HMAC_SECRET }}
         run: |
           set -euo pipefail
@@ -689,7 +630,6 @@ jobs:
       - name: verify deployed runtime
         id: runtime_smoke
         env:
-          APP_CONFIG: ${{ secrets.APP_CONFIG }}
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
           SVA_PUBLIC_BASE_URL: ${{ steps.target.outputs.public_base_url }}
           SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}
@@ -729,7 +669,7 @@ jobs:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
           MAIN_E2E_ATTESTATION: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
-          MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}
+          MAIN_E2E_GATE_MODE: enforce
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
@@ -758,10 +698,10 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: remove selected remote config
+      - name: remove remote config
         id: config_cleanup
         if: always()
-        run: rm -f "${RUNNER_TEMP}/candidate-app-config.vars" "${RUNNER_TEMP}/promote-app-config.vars"
+        run: rm -f "${RUNNER_TEMP}/promote-app-config.vars"
 
       - name: write redacted promote evidence
         id: promote_evidence
@@ -794,7 +734,7 @@ jobs:
           PROMOTE_GATE_REGISTRY_LOGIN: ${{ steps.registry_login.outcome }}
           PROMOTE_GATE_IMAGE: ${{ steps.image_contract.outcome }}
           PROMOTE_GATE_MAIN_E2E_EVIDENCE: ${{ steps.main_e2e_evidence.outcome }}
-          PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}
+          PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: 'true'
           PROMOTE_GATE_CONFIG_BUILD: ${{ steps.remote_config.outcome }}
           PROMOTE_GATE_CONFIG_REVISION_CONTRACT: ${{ steps.config_revision_contract.outcome }}
           PROMOTE_GATE_WORKER_DATABASE_SECRET_INJECTION: ${{ steps.worker_database_secret_injection.outcome }}
@@ -806,13 +746,12 @@ jobs:
           PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
           PROMOTE_GATE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
-          PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}
+          PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: 'true'
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}
           PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}
-          PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' }}
+          PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: 'true'
           PROMOTE_GATE_BACKUP_REQUEST: ${{ steps.backup_job.outcome }}
           PROMOTE_GATE_WASTE_BACKUP_REQUEST: ${{ steps.waste_backup_job.outcome }}
-          PROMOTE_GATE_BACKUP_FALLBACK: ${{ steps.backup_fallback_job.outcome }}
           PROMOTE_GATE_BACKUP: ${{ steps.backup_verification.outcome }}
           PROMOTE_GATE_WASTE_BACKUP: ${{ steps.waste_backup_verification.outcome }}
           PROMOTE_GATE_MIGRATION: ${{ steps.migration_job.outcome }}

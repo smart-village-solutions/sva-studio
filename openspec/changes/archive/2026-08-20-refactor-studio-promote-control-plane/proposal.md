@@ -20,4 +20,3 @@ Der kanonische Studio-Rollout ist sicher und produktiv erprobt, enthält aber we
 - Affected arc42 sections: `07-deployment-view.md`, `08-cross-cutting-concepts.md`
 - Affected guide: `docs/guides/studio-rollout-process.md`
 - No database, application runtime, restore workflow, backup-agent implementation, secret value, or deployment topology changes
-

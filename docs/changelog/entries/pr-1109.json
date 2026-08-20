@@ -1,0 +1,4 @@
+{
+  "prNumber": 1109,
+  "body": "Der vollständig abgenommene Promote-Control-Plane-Change ist abgeschlossen und archiviert.\n\n- Die finalen Verträge für autoritative Konfiguration, getrennte Controller- und Release-Revisionen sowie Production-Recovery sind Teil der kanonischen Deployment-Spezifikation.\n- Die nicht mehr gelesenen GitHub-Environment-Variablen sind nach erfolgreichem Production-Rollout entfernt.\n- Der geschützte Rolloutpfad und seine Sicherheitsgates bleiben unverändert verbindlich."
+}

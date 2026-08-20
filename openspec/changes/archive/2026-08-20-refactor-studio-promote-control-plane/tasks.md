@@ -28,5 +28,5 @@
 
 ## 4. Abschluss
 
-- [ ] 4.1 Entfernte GitHub-Variablen nach erfolgreichem dritten Production-Rollout separat bereinigen
-- [ ] 4.2 Change nach vollständigem Rollout archivieren und OpenSpec strikt validieren
+- [x] 4.1 Entfernte GitHub-Variablen nach erfolgreichem dritten Production-Rollout separat bereinigen
+- [x] 4.2 Change nach vollständigem Rollout archivieren und OpenSpec strikt validieren

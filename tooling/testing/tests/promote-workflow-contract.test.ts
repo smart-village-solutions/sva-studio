@@ -292,7 +292,15 @@ describe('Promote workflow contract', () => {
     expect(workflow).not.toMatch(/^\s*cp .*PROMOTE_CONTROLLER_DIR/mu);
     expect(workflow).not.toContain('promote-evidence-controller');
     expect(workflow).not.toContain('working-directory: .promote-controller');
-    expect(workflow.match(/uses: \.\/\.github\/actions\/setup-pnpm-workspace/gu)).toHaveLength(1);
+    expect(
+      workflow.match(
+        /uses: \.\/\.promote-controller\/\.github\/actions\/setup-pnpm-workspace/gu
+      )
+    ).toHaveLength(1);
+    expect(workflow).not.toContain('uses: ./.github/actions/setup-pnpm-workspace');
+    expect(workflow).toMatch(
+      /- name: setup pnpm workspace for promoted source[\s\S]*?node-version-file: \.promote-controller\/\.nvmrc/u
+    );
     expect(workflow).toMatch(
       /- name: setup finalizer Node\.js runtime\n\s+uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.promote-controller\/\.nvmrc/u
     );

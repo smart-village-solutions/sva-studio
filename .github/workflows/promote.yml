@@ -230,7 +230,9 @@ jobs:
 
       - name: setup pnpm workspace for promoted source
         id: workspace_setup
-        uses: ./.github/actions/setup-pnpm-workspace
+        uses: ./.promote-controller/.github/actions/setup-pnpm-workspace
+        with:
+          node-version-file: .promote-controller/.nvmrc
 
       - name: Login to GHCR
         id: registry_login

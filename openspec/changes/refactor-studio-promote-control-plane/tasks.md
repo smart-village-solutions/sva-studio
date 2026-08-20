@@ -24,7 +24,7 @@
 - [x] 3.2 Separaten Recovery-Contract entfernen und Live-Revision-Prüfung zentralisieren
 - [x] 3.3 Staging-Evidenz auf den kanonischen Main-E2E-Vertrag reduzieren
 - [x] 3.4 Recovery-Parität und unveränderte Folgegates testen
-- [ ] 3.5 Dokumentation, vollständige Gates und geschützten Rollout abschließen
+- [x] 3.5 Dokumentation, vollständige Gates und geschützten Rollout abschließen
 
 ## 4. Abschluss
 

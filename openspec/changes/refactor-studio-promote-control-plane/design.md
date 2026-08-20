@@ -78,6 +78,17 @@ Die drei Blöcke werden getrennt gemergt und ausgerollt. Der nächste Block begi
 - gebundener Image-Digest: `sha256:db6322ce5e1b1c85d55ddaea02f2dccdd53699051309c18647be94ea10ecd883`
 - gebundene Production-Config-Revision: `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`
 
+### Abnahme für PR 3
+
+- Merge-Commit: `f1215803097746a12595d444b6aa3ff22cd1e672`
+- erfolgreicher Build und Dev-Promote: Run `32427819235`, Attempt `1`, Status `passed`
+- erfolgreiche kanonische Main-E2E-Evidenz: Run `32427818963`, Status `passed`
+- erfolgreicher Staging-Promote: Run `32428697220`, Attempt `1`, Status `passed`
+- erfolgreicher Production-Promote im Standardmodus: Run `32428928260`, Attempt `1`, Status `passed`
+- gebundener Image-Digest in allen drei Umgebungen: `sha256:32c39bf59dc2838fb7651af327d5a0a2542bd186595453bdac9879198b1f1aac`
+- gebundene Production-Config-Revision: `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`
+- Production-Nachweis: initiale Readiness, Staging-Parität, Agent-Capability, Candidate-Preflight, beide Backups, Konvergenz, Runtime-Smoke sowie Digest-/Config-Verifikation erfolgreich
+
 ## Open Questions
 
 Keine. Die drei Umsetzungsblöcke und ihre Reihenfolge sind freigegeben.

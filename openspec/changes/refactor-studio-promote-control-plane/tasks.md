@@ -16,14 +16,14 @@
 - [x] 2.3 Source-Contract auf reine Revision- und Ancestor-Prüfung reduzieren
 - [x] 2.4 Workflow-Vertragstests für Checkout-, Pfad- und Gate-Reihenfolge ergänzen
 - [x] 2.5 Dokumentation und vollständige lokale sowie GitHub-Gates abschließen
-- [ ] 2.6 Nach Mergefreigabe denselben Digest geschützt über Dev, Staging und Production verifizieren
+- [x] 2.6 Nach Mergefreigabe denselben Digest geschützt über Dev, Staging und Production verifizieren
 
 ## 3. Recovery auf Production-Readiness-Ausnahme reduzieren
 
-- [ ] 3.1 Recovery für Dev und Staging ablehnen und den dokumentierten Grund erzwingen
-- [ ] 3.2 Separaten Recovery-Contract entfernen und Live-Revision-Prüfung zentralisieren
-- [ ] 3.3 Staging-Evidenz auf den kanonischen Main-E2E-Vertrag reduzieren
-- [ ] 3.4 Recovery-Parität und unveränderte Folgegates testen
+- [x] 3.1 Recovery für Dev und Staging ablehnen und den dokumentierten Grund erzwingen
+- [x] 3.2 Separaten Recovery-Contract entfernen und Live-Revision-Prüfung zentralisieren
+- [x] 3.3 Staging-Evidenz auf den kanonischen Main-E2E-Vertrag reduzieren
+- [x] 3.4 Recovery-Parität und unveränderte Folgegates testen
 - [ ] 3.5 Dokumentation, vollständige Gates und geschützten Rollout abschließen
 
 ## 4. Abschluss

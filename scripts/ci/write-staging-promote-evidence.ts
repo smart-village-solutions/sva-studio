@@ -14,14 +14,13 @@ type StagingPromoteEvidenceBase = Readonly<{
   workflowRunId: string;
 }>;
 
-export type LegacyStagingPromoteEvidence = StagingPromoteEvidenceBase;
 export type AttestedStagingPromoteEvidence = StagingPromoteEvidenceBase &
   Readonly<{
     schemaVersion: 2;
     sourceSha: string;
     mainE2E: AppE2EEvidence;
   }>;
-export type StagingPromoteEvidence = LegacyStagingPromoteEvidence | AttestedStagingPromoteEvidence;
+export type StagingPromoteEvidence = AttestedStagingPromoteEvidence;
 
 const shaPattern = /^[0-9a-f]{40}$/u;
 const digestPattern = /^sha256:[0-9a-f]{64}$/u;
@@ -42,33 +41,13 @@ const parseMainE2E = (serialized: string | undefined): AppE2EEvidence | null => 
   }
 };
 
-type PromoteMode = 'standard' | 'recovery';
-type MainE2EGateMode = 'disabled' | 'shadow' | 'enforce';
-
-const parsePromoteMode = (value: string | undefined): PromoteMode => {
-  const mode = required(value, 'PROMOTE_MODE');
-  if (mode === 'standard' || mode === 'recovery') return mode;
-  throw new Error('PROMOTE_MODE muss standard oder recovery sein.');
-};
-
-const parseGateMode = (value: string | undefined): MainE2EGateMode => {
-  const mode = value?.trim();
-  return mode === 'shadow' || mode === 'enforce' ? mode : 'disabled';
-};
-
 const validateMainE2E = (
   serialized: string | undefined,
   parsed: AppE2EEvidence | null,
-  promoteMode: PromoteMode,
-  gateMode: MainE2EGateMode,
   sourceSha: string
 ): void => {
-  if (promoteMode === 'recovery' && serialized?.trim())
-    throw new Error('Recovery-Staging darf keine MAIN_E2E_ATTESTATION übernehmen.');
-  if (serialized?.trim() && !parsed) throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
-  if (promoteMode === 'standard' && gateMode === 'enforce' && !parsed)
-    throw new Error('Enforced Standard-Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
-  if (!parsed) return;
+  if (!serialized?.trim() || !parsed)
+    throw new Error('Staging benötigt eine gültige MAIN_E2E_ATTESTATION.');
   const canonicalSuccess =
     parsed.evidenceClass === 'canonical-main' &&
     parsed.result === 'success' &&
@@ -105,16 +84,14 @@ export const buildStagingPromoteEvidence = (
   env: NodeJS.ProcessEnv,
   completedAt = new Date().toISOString()
 ): StagingPromoteEvidence => {
-  const promoteMode = parsePromoteMode(env.PROMOTE_MODE);
   const sourceSha = required(env.CHANGE_HEAD_SHA, 'CHANGE_HEAD_SHA');
   if (!shaPattern.test(sourceSha)) throw new Error('CHANGE_HEAD_SHA ist ungültig.');
-  const gateMode = parseGateMode(env.MAIN_E2E_GATE_MODE);
 
   const serializedMainE2E = env.MAIN_E2E_ATTESTATION;
   const parsedMainE2E = parseMainE2E(serializedMainE2E);
-  validateMainE2E(serializedMainE2E, parsedMainE2E, promoteMode, gateMode, sourceSha);
+  validateMainE2E(serializedMainE2E, parsedMainE2E, sourceSha);
   const base = buildEvidenceBase(env, completedAt);
-  if (promoteMode !== 'standard' || gateMode === 'disabled' || !parsedMainE2E) return base;
+  if (!parsedMainE2E) throw new Error('MAIN_E2E_ATTESTATION ist ungültig.');
   return { ...base, schemaVersion: 2, sourceSha, mainE2E: parsedMainE2E };
 };
 

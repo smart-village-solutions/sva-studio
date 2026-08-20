@@ -41,7 +41,7 @@ const buildRecoverySummaryRows = (evidence: PromoteEvidence): readonly SummaryRo
   ['previous_config_revision', evidence.config.previousRevision ?? 'not-captured'],
   ['rollback_image_digest', evidence.rollback?.imageDigest ?? 'not-ready'],
   ['rollback_config_revision', evidence.rollback?.configRevision ?? 'not-ready'],
-  ['recovery_contract_recorded', evidence.recovery ? 'yes' : 'no'],
+  ['recovery_context_recorded', evidence.recovery ? 'yes' : 'no'],
   ['same_digest_retry', evidence.recovery?.sameDigestRetry?.authorization ?? 'not-applicable'],
   ['previous_failure_code', evidence.recovery?.sameDigestRetry?.previousFailureCode ?? 'none'],
 ];
@@ -177,11 +177,6 @@ const gateEnvironmentKeys: readonly Readonly<{
   { gate: 'source-preparation', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE_PREPARATION' },
   { gate: 'source-contract', phase: 'source-contract', key: 'PROMOTE_GATE_SOURCE' },
   { gate: 'deployment-base', phase: 'source-contract', key: 'PROMOTE_GATE_DEPLOYMENT_BASE' },
-  {
-    gate: 'recovery-contract',
-    phase: 'static-preflight',
-    key: 'PROMOTE_GATE_RECOVERY_CONTRACT',
-  },
   { gate: 'registry-login', phase: 'image-contract', key: 'PROMOTE_GATE_REGISTRY_LOGIN' },
   { gate: 'image-contract', phase: 'image-contract', key: 'PROMOTE_GATE_IMAGE' },
   {
@@ -218,6 +213,11 @@ const gateEnvironmentKeys: readonly Readonly<{
     gate: 'previous-live-capture',
     phase: 'digest-verification',
     key: 'PROMOTE_GATE_PREVIOUS_LIVE',
+  },
+  {
+    gate: 'promote-mode-validation',
+    phase: 'static-preflight',
+    key: 'PROMOTE_GATE_PROMOTE_MODE',
   },
   {
     gate: 'candidate-preflight',
@@ -286,7 +286,6 @@ export const writePromoteEvidenceFromEnvironment = (
     externalSecretReferences: parseJson<readonly string[]>(env.PROMOTE_SECRET_REFERENCES, []),
     backupAgent: parseJson<PromoteBackupAgentEvidence | null>(env.PROMOTE_BACKUP_AGENT, null),
     mainE2EReference: parseMainE2EReference(env.PROMOTE_MAIN_E2E_REFERENCE),
-    recoveryContract: parseJson<unknown>(env.PROMOTE_RECOVERY_CONTRACT, null),
     gates: gateEnvironmentKeys.map(({ gate, phase, key, blockingKey }) => ({
       gate,
       phase,

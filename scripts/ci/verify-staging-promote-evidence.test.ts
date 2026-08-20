@@ -46,15 +46,6 @@ const stagingPromoteEvidence = {
   sourceSha,
   workflowRunId: '456',
 };
-const legacyStagingPromoteEvidence = {
-  completedAt: '2026-08-18T12:00:00.000Z',
-  digest: targetDigest,
-  environment: 'staging',
-  mutation: 'completed',
-  postflight: 'passed',
-  workflowRunId: '456',
-};
-
 const productionBackupWorkflow = readFileSync(
   resolve(import.meta.dirname, '../../.github/workflows/production-backup-drill.yml'),
   'utf8'
@@ -148,67 +139,63 @@ describe('staging parity evidence', () => {
   });
 
   it('accepts only strict successful staging evidence bound to digest and source SHA', () => {
-    expect(
-      matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha, 'enforce')
-    ).toBe(true);
+    expect(matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, sourceSha)).toBe(
+      true
+    );
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, mutation: 'not-run' },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(true);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, digest: 'sha256:other' },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, environment: 'prod' },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, postflight: 'failed' },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
   });
 
-  it('enforce rejects legacy, foreign-source, and non-canonical staging evidence', () => {
+  it('rejects legacy, foreign-source, and non-canonical staging evidence', () => {
     expect(
       matchesSuccessfulStagingEvidence(
-        legacyStagingPromoteEvidence,
+        {
+          completedAt: '2026-08-18T12:00:00.000Z',
+          digest: targetDigest,
+          environment: 'staging',
+          mutation: 'completed',
+          postflight: 'passed',
+          workflowRunId: '456',
+        },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, mainE2E: null },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
-      matchesSuccessfulStagingEvidence(
-        stagingPromoteEvidence,
-        targetDigest,
-        'b'.repeat(40),
-        'enforce'
-      )
+      matchesSuccessfulStagingEvidence(stagingPromoteEvidence, targetDigest, 'b'.repeat(40))
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
@@ -217,16 +204,14 @@ describe('staging parity evidence', () => {
           mainE2E: { ...mainE2E, evidenceClass: 'diagnostic' },
         },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
       matchesSuccessfulStagingEvidence(
         { ...stagingPromoteEvidence, unexpected: true },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
     expect(
@@ -238,87 +223,35 @@ describe('staging parity evidence', () => {
           postflight: 'passed',
         },
         targetDigest,
-        sourceSha,
-        'enforce'
+        sourceSha
       )
     ).toBe(false);
   });
 
-  it('keeps legacy parity in disabled and invalid shadow modes, but writes v2 when observed', () => {
+  it('always writes canonical v2 staging evidence', () => {
     const baseEnv = {
       CHANGE_HEAD_SHA: sourceSha,
       DEPLOY_IMAGE_DIGEST: targetDigest,
       GITHUB_RUN_ID: '456',
       STAGING_MUTATION: 'true',
     };
-    const standard = buildStagingPromoteEvidence(
+    const evidence = buildStagingPromoteEvidence(
       {
         ...baseEnv,
         MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
-        MAIN_E2E_GATE_MODE: 'shadow',
-        PROMOTE_MODE: 'standard',
       },
       '2026-08-18T12:00:00.000Z'
     );
-    const disabled = buildStagingPromoteEvidence(
-      { ...baseEnv, MAIN_E2E_GATE_MODE: 'disabled', PROMOTE_MODE: 'standard' },
-      '2026-08-18T12:00:00.000Z'
-    );
-    const shadowInvalid = buildStagingPromoteEvidence(
-      { ...baseEnv, MAIN_E2E_GATE_MODE: 'shadow', PROMOTE_MODE: 'standard' },
-      '2026-08-18T12:00:00.000Z'
-    );
 
-    expect(standard).toMatchObject({ sourceSha, mainE2E, schemaVersion: 2 });
-    expect(disabled).toEqual(legacyStagingPromoteEvidence);
-    expect(shadowInvalid).toEqual(legacyStagingPromoteEvidence);
-    expect(matchesSuccessfulStagingEvidence(disabled, targetDigest, sourceSha, 'disabled')).toBe(
-      true
-    );
-    expect(matchesSuccessfulStagingEvidence(shadowInvalid, targetDigest, sourceSha, 'shadow')).toBe(
-      true
-    );
-    expect(
-      matchesSuccessfulStagingEvidence(shadowInvalid, targetDigest, sourceSha, 'enforce')
-    ).toBe(false);
+    expect(evidence).toMatchObject({ sourceSha, mainE2E, schemaVersion: 2 });
+    expect(matchesSuccessfulStagingEvidence(evidence, targetDigest, sourceSha)).toBe(true);
   });
 
-  it('keeps recovery legacy before activation and never accepts it in enforce mode', () => {
+  it('rejects missing, malformed, or foreign staging attestations', () => {
     const baseEnv = {
       CHANGE_HEAD_SHA: sourceSha,
       DEPLOY_IMAGE_DIGEST: targetDigest,
       GITHUB_RUN_ID: '456',
-      MAIN_E2E_GATE_MODE: 'shadow',
-      STAGING_MUTATION: 'true',
-    };
-    const recovery = buildStagingPromoteEvidence(
-      { ...baseEnv, PROMOTE_MODE: 'recovery' },
-      '2026-08-18T12:00:00.000Z'
-    );
-    expect(recovery).toEqual(legacyStagingPromoteEvidence);
-    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha, 'shadow')).toBe(
-      true
-    );
-    expect(matchesSuccessfulStagingEvidence(recovery, targetDigest, sourceSha, 'enforce')).toBe(
-      false
-    );
-    expect(() =>
-      buildStagingPromoteEvidence({
-        ...baseEnv,
-        MAIN_E2E_ATTESTATION: JSON.stringify(mainE2E),
-        MAIN_E2E_GATE_MODE: 'shadow',
-        PROMOTE_MODE: 'recovery',
-      })
-    ).toThrow(/Recovery-Staging/u);
-  });
-
-  it('rejects missing, malformed, or foreign standard-staging attestations', () => {
-    const baseEnv = {
-      CHANGE_HEAD_SHA: sourceSha,
-      DEPLOY_IMAGE_DIGEST: targetDigest,
-      GITHUB_RUN_ID: '456',
-      MAIN_E2E_GATE_MODE: 'enforce',
-      PROMOTE_MODE: 'standard',
       STAGING_MUTATION: 'false',
     };
 

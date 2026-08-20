@@ -25,6 +25,7 @@ export type PromoteGateName =
   | 'candidate-preflight'
   | 'staging-parity'
   | 'previous-live-capture'
+  | 'promote-mode-validation'
   | 'backup-capabilities'
   | 'studio-backup-request'
   | 'waste-backup-request'
@@ -133,7 +134,6 @@ export type BuildPromoteEvidenceInput = Readonly<{
   externalSecretReferences?: readonly string[];
   backupAgent?: PromoteBackupAgentEvidence | null;
   mainE2EReference?: unknown;
-  recoveryContract?: unknown;
   gates: readonly Readonly<{
     gate: PromoteGateName;
     phase: PromotePhase;

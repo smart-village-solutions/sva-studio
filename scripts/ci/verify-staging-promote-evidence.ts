@@ -68,18 +68,9 @@ const hasExactKeys = (value: object, expected: readonly string[]): boolean => {
 export const matchesSuccessfulStagingEvidence = (
   evidence: unknown,
   targetDigest: string,
-  expectedSourceSha: string,
-  mainE2EGateMode: 'disabled' | 'shadow' | 'enforce'
+  expectedSourceSha: string
 ) => {
   if (!evidence || typeof evidence !== 'object' || Array.isArray(evidence)) return false;
-  const legacyKeys = [
-    'completedAt',
-    'digest',
-    'environment',
-    'mutation',
-    'postflight',
-    'workflowRunId',
-  ] as const;
   const attestedKeys = [
     'completedAt',
     'digest',
@@ -91,13 +82,10 @@ export const matchesSuccessfulStagingEvidence = (
     'sourceSha',
     'workflowRunId',
   ] as const;
-  const legacy = hasExactKeys(evidence, legacyKeys);
-  const attested = hasExactKeys(evidence, attestedKeys);
-  if (!legacy && !attested) return false;
+  if (!hasExactKeys(evidence, attestedKeys)) return false;
   const candidate = evidence as StagingEvidence;
   const commonValid = isSuccessfulStagingEvidenceBase(candidate, targetDigest);
   if (!commonValid) return false;
-  if (legacy) return mainE2EGateMode !== 'enforce';
   return matchesAttestedMainE2E(candidate, expectedSourceSha);
 };
 
@@ -219,8 +207,7 @@ const archiveMatches = (
   archiveEntries: string,
   zipPath: string,
   targetDigest: string,
-  expectedSourceSha: string | undefined,
-  mainE2EGateMode: 'disabled' | 'shadow' | 'enforce'
+  expectedSourceSha: string | undefined
 ): boolean => {
   if (kind === 'promote') {
     const evidenceFile = selectEvidenceJsonFile(archiveEntries);
@@ -228,8 +215,7 @@ const archiveMatches = (
     return matchesSuccessfulStagingEvidence(
       readArchiveEvidence(zipPath, evidenceFile),
       targetDigest,
-      expectedSourceSha,
-      mainE2EGateMode
+      expectedSourceSha
     );
   }
   const evidenceFiles = selectStagingBackupEvidenceJsonFiles(archiveEntries);
@@ -251,11 +237,6 @@ const main = () => {
     evidenceKind === 'promote'
       ? required(process.env.EXPECTED_CHANGE_HEAD, 'EXPECTED_CHANGE_HEAD')
       : undefined;
-  const requestedMainE2EGateMode = process.env.MAIN_E2E_GATE_MODE?.trim();
-  const mainE2EGateMode =
-    requestedMainE2EGateMode === 'shadow' || requestedMainE2EGateMode === 'enforce'
-      ? requestedMainE2EGateMode
-      : 'disabled';
   const repo = required(process.env.GITHUB_REPOSITORY, 'GITHUB_REPOSITORY');
   const api = (path: string) =>
     execFileSync('gh', ['api', path], {
@@ -287,16 +268,7 @@ const main = () => {
         })
       );
       const archiveEntries = execFileSync('unzip', ['-Z1', zipPath], { encoding: 'utf8' });
-      if (
-        archiveMatches(
-          evidenceKind,
-          archiveEntries,
-          zipPath,
-          targetDigest,
-          expectedSourceSha,
-          mainE2EGateMode
-        )
-      )
+      if (archiveMatches(evidenceKind, archiveEntries, zipPath, targetDigest, expectedSourceSha))
         return;
     }
     throw new StagingParityNotFoundError();

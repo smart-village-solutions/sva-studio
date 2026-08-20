@@ -167,19 +167,7 @@ jobs:
               ;;
           esac
 
-          case "${PROMOTE_MODE}" in
-            standard) ;;
-            recovery)
-              if [ -z "${RECOVERY_REASON//[[:space:]]/}" ]; then
-                node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_RECOVERY_REASON_REQUIRED "${ENVIRONMENT}" input-validation
-                exit 1
-              fi
-              ;;
-            *)
-              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_MODE_INVALID "${ENVIRONMENT}" input-validation
-              exit 1
-              ;;
-          esac
+          node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-mode.ts" "${ENVIRONMENT}" --mode-only
 
       - name: validate permission snapshot secret
         id: permission_snapshot_secret
@@ -261,7 +249,7 @@ jobs:
 
       - name: require canonical Main App E2E evidence
         id: main_e2e_evidence
-        if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}
+        if: ${{ inputs.environment == 'staging' }}
         env:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           GITHUB_TOKEN: ${{ github.token }}
@@ -336,17 +324,14 @@ jobs:
             exit 1
           fi
 
-      - name: validate recovery and live revision contract
-        id: recovery_contract
+      - name: validate promote mode and live revision
+        id: promote_mode
         env:
-          DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
-          TARGET_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
-          SOURCE_SHA: ${{ steps.source_contract.outputs.head_sha }}
-        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-recovery-contract.ts" "${{ inputs.environment }}"
+        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-mode.ts" "${{ inputs.environment }}"
 
       - name: bind deploy gates to actual live revision
         id: deployment_base
@@ -424,9 +409,8 @@ jobs:
           DEPLOY_IMAGE_REF: ${{ steps.image_contract.outputs.deploy_image_ref }}
           GITHUB_TOKEN: ${{ github.token }}
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
-          MAIN_E2E_GATE_MODE: enforce
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
-          FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}
+          FORCE_STAGING_PARITY: ${{ inputs.promote_mode == 'recovery' }}
         run: |
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"; then
             exit 1
@@ -634,8 +618,6 @@ jobs:
           DEPLOY_IMAGE_DIGEST: ${{ steps.image_contract.outputs.deploy_summary_digest }}
           CHANGE_HEAD_SHA: ${{ steps.source_contract.outputs.head_sha }}
           MAIN_E2E_ATTESTATION: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
-          MAIN_E2E_GATE_MODE: enforce
-          PROMOTE_MODE: ${{ inputs.promote_mode }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
         run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-staging-promote-evidence.ts"
 
@@ -685,7 +667,6 @@ jobs:
           PROMOTE_IMAGE_REVISION: ${{ steps.image_contract.outputs.deploy_revision }}
           PROMOTE_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           PROMOTE_PREVIOUS_CONFIG_REVISION: ${{ steps.previous_live_image.outputs.previous_config_revision }}
-          PROMOTE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outputs.recovery_contract }}
           PROMOTE_SECRET_REFERENCES: ${{ steps.remote_config.outputs.secret_references }}
           PROMOTE_BACKUP_AGENT: ${{ steps.backup_capabilities.outputs.backup_agent }}
           PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}
@@ -709,7 +690,7 @@ jobs:
           PROMOTE_GATE_TARGET: ${{ steps.target.outcome }}
           PROMOTE_GATE_READINESS: ${{ steps.readiness.outcome }}
           PROMOTE_GATE_PREVIOUS_LIVE: ${{ steps.previous_live_image.outcome }}
-          PROMOTE_GATE_RECOVERY_CONTRACT: ${{ steps.recovery_contract.outcome }}
+          PROMOTE_GATE_PROMOTE_MODE: ${{ steps.promote_mode.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}
           PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: 'true'
           PROMOTE_GATE_STAGING_PARITY: ${{ steps.staging_parity.outcome }}

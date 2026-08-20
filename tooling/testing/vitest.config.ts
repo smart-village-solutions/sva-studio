@@ -33,7 +33,6 @@ export default defineConfig({
       '../../scripts/ci/promote-one-shot-job.test.ts',
       '../../scripts/ci/promote-deployment-base.test.ts',
       '../../scripts/ci/promote-mode.test.ts',
-      '../../scripts/ci/promote-recovery-contract.test.ts',
       '../../scripts/ci/verify-swarm-convergence.test.ts',
       '../../scripts/ci/promote-backup-job.test.ts',
       '../../scripts/ci/promote-result.test.ts',

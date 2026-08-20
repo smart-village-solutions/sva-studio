@@ -7,15 +7,16 @@
 - [x] 1.5 Workflow-Vertragstests und Config-Builder-Tests anpassen
 - [x] 1.6 `docs/guides/studio-rollout-process.md`, `docs/architecture/07-deployment-view.md` und `docs/architecture/08-cross-cutting-concepts.md` aktualisieren
 - [x] 1.7 Zieltests, Script-Typecheck, Rollout-Doku-Check, OpenSpec-Validierung und `pnpm test:pr` ausführen
-- [ ] 1.8 Nach separater Freigabe denselben Digest über Dev, Staging und Production verifizieren
+- [x] 1.8 Nach separater Freigabe denselben Digest über Dev, Staging und Production verifizieren
 
 ## 2. Controller- und Release-Revision über zwei Checkouts trennen
 
-- [ ] 2.1 Release-Quellstand im Workspace und Workflow-Revision unter `.promote-controller/` auschecken
-- [ ] 2.2 Manuelle Controller-Kopierliste entfernen und Aufrufe eindeutig zuordnen
-- [ ] 2.3 Source-Contract auf reine Revision- und Ancestor-Prüfung reduzieren
-- [ ] 2.4 Workflow-Vertragstests für Checkout-, Pfad- und Gate-Reihenfolge ergänzen
-- [ ] 2.5 Dokumentation, vollständige Gates und geschützten Rollout abschließen
+- [x] 2.1 Release-Quellstand im Workspace und Workflow-Revision unter `.promote-controller/` auschecken
+- [x] 2.2 Manuelle Controller-Kopierliste entfernen und Aufrufe eindeutig zuordnen
+- [x] 2.3 Source-Contract auf reine Revision- und Ancestor-Prüfung reduzieren
+- [x] 2.4 Workflow-Vertragstests für Checkout-, Pfad- und Gate-Reihenfolge ergänzen
+- [ ] 2.5 Dokumentation und vollständige lokale sowie GitHub-Gates abschließen
+- [ ] 2.6 Nach Mergefreigabe denselben Digest geschützt über Dev, Staging und Production verifizieren
 
 ## 3. Recovery auf Production-Readiness-Ausnahme reduzieren
 

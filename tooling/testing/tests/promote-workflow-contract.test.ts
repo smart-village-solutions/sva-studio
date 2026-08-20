@@ -275,6 +275,7 @@ describe('Promote workflow contract', () => {
     )?.[0];
 
     expect(releaseCheckout).toContain('fetch-depth: 0');
+    expect(releaseCheckout).toContain('continue-on-error: true');
     expect(releaseCheckout).not.toContain('path:');
     expect(controllerCheckout).toContain('fetch-depth: 1');
     expect(controllerCheckout).toContain('path: .promote-controller');
@@ -292,6 +293,9 @@ describe('Promote workflow contract', () => {
     expect(workflow).not.toContain('promote-evidence-controller');
     expect(workflow).not.toContain('working-directory: .promote-controller');
     expect(workflow.match(/uses: \.\/\.github\/actions\/setup-pnpm-workspace/gu)).toHaveLength(1);
+    expect(workflow).toMatch(
+      /- name: setup finalizer Node\.js runtime\n\s+uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.promote-controller\/\.nvmrc/u
+    );
 
     expect(sourceContract).toContain('workspace_head="$(git rev-parse --verify HEAD)"');
     expect(sourceContract).toContain('base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")"');
@@ -350,7 +354,7 @@ describe('Promote workflow contract', () => {
     expect(workflow).not.toMatch(/node (?!--experimental-strip-types)[^\n]*\.ts/u);
     expect(workflow).toContain('ref: ${{ github.workflow_sha }}');
     expect(workflow).toMatch(
-      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.nvmrc/u
+      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.promote-controller\/\.nvmrc/u
     );
     expect(setupNode).toBeGreaterThanOrEqual(0);
     expect(firstTypeScriptController).toBeGreaterThan(setupNode);

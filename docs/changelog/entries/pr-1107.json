@@ -1,0 +1,4 @@
+{
+  "prNumber": 1107,
+  "body": "Der geschützte Production-Recovery-Pfad ist jetzt auf eine klar dokumentierte Ausnahme begrenzt: Nur die initiale Readiness darf übersprungen werden; Staging-Parität und alle nachfolgenden Sicherheits-, Deployment- und Verifikationsgates bleiben unverändert blockierend."
+}

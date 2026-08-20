@@ -224,8 +224,7 @@ describe('promote evidence contract', () => {
     }
   });
 
-  it('projects only the allowlisted recovery and previous-config contract', () => {
-    const recoveryReason = 'person@example.test https://internal.example.test secret=value';
+  it('derives only allowlisted recovery values from validated rollout bindings', () => {
     const evidence = buildPromoteEvidence({
       runId: '124',
       runAttempt: 2,
@@ -242,18 +241,6 @@ describe('promote evidence contract', () => {
       imageRevision: configRevision,
       configRevision,
       previousConfigRevision: 'e'.repeat(64),
-      recoveryContract: {
-        mode: 'recovery',
-        reasonRecorded: true,
-        previousDigest: digest,
-        previousConfigRevision: 'e'.repeat(64),
-        sameDigestRetry: {
-          authorization: 'documented-cause',
-          previousFailureCode: null,
-        },
-        recoveryReason,
-        secretSnapshot: 'sentinel-secret',
-      },
       gates: [{ gate: 'deploy', phase: 'deploy', status: 'passed' }],
     });
     const surfaces = [JSON.stringify(evidence), renderPromoteSummary(evidence)];
@@ -273,10 +260,7 @@ describe('promote evidence contract', () => {
         previousFailureCode: null,
       },
     });
-    for (const surface of surfaces) {
-      expect(surface).not.toContain(recoveryReason);
-      expect(surface).not.toContain('sentinel-secret');
-    }
+    expect(surfaces.join('\n')).not.toContain('secretSnapshot');
   });
 
   it('represents mutable Dev images without inventing an immutable digest', () => {
@@ -312,7 +296,7 @@ describe('promote evidence contract', () => {
       headRef: 'feature/promote',
       previousImage: digest,
       targetImage: `sha256:${'e'.repeat(64)}`,
-      gates: [{ gate: 'recovery-contract', phase: 'static-preflight', status: 'failed' }],
+      gates: [{ gate: 'deployment-base', phase: 'source-contract', status: 'failed' }],
     });
 
     expect(evidence.image.previousDigest).toBe(digest);

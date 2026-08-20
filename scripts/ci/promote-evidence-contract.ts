@@ -6,8 +6,11 @@ import {
   type PromoteFailure,
   type PromotePhase,
 } from './promote-result.ts';
-import { projectRecoveryEvidence } from './promote-recovery-contract.ts';
-import { normalizePromoteMode, normalizeReasonProvided } from './promote-evidence-values.ts';
+import {
+  deriveRecoveryEvidence,
+  normalizePromoteMode,
+  normalizeReasonProvided,
+} from './promote-evidence-values.ts';
 import type {
   BuildPromoteEvidenceInput,
   PromoteBackupAgentEvidence,
@@ -53,6 +56,7 @@ const gateNames = new Set<PromoteGateName>([
   'target-resolution',
   'readiness',
   'previous-live-capture',
+  'promote-mode-validation',
   'candidate-preflight',
   'staging-parity',
   'backup-capabilities',
@@ -247,9 +251,6 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
   const configRevision = normalizeConfigRevision(input.configRevision);
   const mode = normalizePromoteMode(input.promoteMode);
   const recoveryReasonProvided = normalizeReasonProvided(input.recoveryReasonProvided);
-  if (input.recoveryContract && (mode !== 'recovery' || !recoveryReasonProvided)) {
-    throw new Error('Recovery-Evidenz widerspricht dem Promote-Modus.');
-  }
   const gatesWithFailure = gates.map((gate) =>
     gate.phase === terminalFailure?.phase &&
     gate.blocking &&
@@ -290,7 +291,9 @@ export const buildPromoteEvidence = (input: BuildPromoteEvidenceInput): PromoteE
       previousDigest && previousConfigRevision
         ? { imageDigest: previousDigest, configRevision: previousConfigRevision }
         : null,
-    recovery: projectRecoveryEvidence(input.recoveryContract, {
+    recovery: deriveRecoveryEvidence({
+      mode,
+      reasonProvided: recoveryReasonProvided,
       previousDigest,
       targetDigest,
       previousConfigRevision,

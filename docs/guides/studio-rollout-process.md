@@ -115,6 +115,16 @@ Migrationen, Bootstraps und Backups benötigen keinen Wartungsfenster-Verweis. D
 
 Vor der ersten Mutation erzeugt der repository-lokale Remote-Config-Builder immer das autoritative Deploy-Bundle. Nicht-sensitive Werte stammen ausschließlich aus `config/runtime/remote/<umgebung>.vars`; lokale `*.local.vars` sind als Remote-Quelle technisch gesperrt. Geschützte Werte und externe Secret-Namen müssen vollständig im GitHub-Environment-Secret `PROMOTE_CONFIG_OVERRIDES` vorliegen. Fehlende, unbekannte oder falsch klassifizierte Werte stoppen vor jeder Remote-Mutation. Das bestehende Secret `APP_CONFIG` wird von `Promote` nicht gelesen und bleibt nur für einen möglichen Git-Revert des Changes unangetastet.
 
+Die früheren GitHub-Environment-Variablen sind kein Teil des aktiven Vertrags mehr. Falls ein Git-Revert auf einen Stand vor der Vereinfachung erforderlich wird, müssen sie vor dem erneuten Ausführen dieses alten Workflows mit den zuletzt freigegebenen Werten wiederhergestellt werden:
+
+- `PROMOTE_CONFIG_BUILDER_MODE=authoritative` in Dev, Staging und Production
+- `MAIN_E2E_GATE=enforce` in Staging und Production
+- `CANDIDATE_PREFLIGHT_GATE=enforce` in Staging und Production
+- `BACKUP_CAPABILITY_GATE=enforce` in Staging und Production
+- `BACKUP_EXECUTOR=agent` in Production
+
+Diese Werte dienen ausschließlich der Revert-Kompatibilität. Der aktuelle Workflow liest keinen dieser Schalter und darf daraus keinen zweiten Deploymentpfad ableiten.
+
 Der isolierte Candidate-One-shot läuft blockierend mit dem Zielimage vor Backup, Migration, Bootstrap und Deploy. Er besitzt kein Ingress, kein schreibbares Dateisystem und keine Linux-Capabilities. Seine Datenbankverbindung wird ausschließlich in einer `READ ONLY`-Transaktion verwendet. Geprüft werden Runtime-Profil, externe Secret-Mounts, der explizite Release-Tenant-Scope sowie die Entschlüsselbarkeit der aktiven Tenant-Secrets. Das erfolgreiche Pullen und Starten des temporären Stacks attestiert zugleich die Registry-Lesbarkeit des Zielimages. Der Stack wird nach terminalem Erfolg oder Fehler entfernt.
 
 `promote_mode=standard` verlangt für Production bereits vor Backup oder Deploy `health/ready` mit HTTP 200. `promote_mode=recovery` ist ausschließlich für Production und nur mit einem nicht leeren dokumentierten Grund zulässig; Dev und Staging lehnen den Modus vor jeder Zielmutation ab. Recovery überspringt genau diese initiale Production-Readiness. Imagevertrag, Live-Config-Revision, Staging-Parität, Candidate, Backup, Migration, Bootstrap, Postconditions, Deploy, Swarm-Konvergenz, Runtime-Smoke sowie die abschließende Digest-/Config-Prüfung bleiben unverändert blockierend. Recovery erzwingt die Staging-Parität auch bei gleichem Live- und Zieldigest.

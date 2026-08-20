@@ -752,14 +752,14 @@ Das System SHALL nach jedem Umgebungsrollout den Root-Host, jeden explizit freig
 
 ### Requirement: Remote-Konfigurationen werden deterministisch und gestuft aktiviert
 
-Das System SHALL nicht-sensitive Studio-Remote-Konfiguration versioniert im Repository führen und sie über einen repository-lokalen Builder mit einem kompakten geschützten Override-Bundle des jeweiligen GitHub-Environments zusammenführen. Lokale `*.local.vars` dürfen keine Remote-Deployment-Quelle sein.
+Das System SHALL nicht-sensitive Studio-Remote-Konfiguration versioniert im Repository führen und sie über einen repository-lokalen Builder ausschließlich mit dem geschützten Override-Bundle des jeweiligen GitHub-Environments zusammenführen. Lokale `*.local.vars` und das historische vollständige `APP_CONFIG` dürfen keine reguläre Remote-Deployment-Quelle sein.
 
-#### Scenario: Builder läuft erstmals für eine Remote-Umgebung
+#### Scenario: Builder erzeugt die autoritative Remote-Konfiguration
 
-- **WHEN** der neue Builder in Dev, Staging oder Production eingeführt wird
-- **THEN** läuft er zunächst im Shadow-Modus ohne Änderung der autoritativen Deploy-Ausgabe
-- **AND** vergleicht Schlüsselmengen, nicht-sensitive Werte, Secret-Klassifikationen und externe Referenznamen redigiert mit dem bestehenden Pfad
-- **AND** wird erst nach erfolgreichem Dev- und Staging-Nachweis für Production autoritativ
+- **WHEN** Dev, Staging oder Production die Remote-Konfiguration vorbereitet
+- **THEN** führt der Builder das versionierte Umgebungsprofil mit `PROMOTE_CONFIG_OVERRIDES` zusammen
+- **AND** validiert er Pflichtschlüssel, Typen, Secret-Klassifikationen und externe Referenznamen vor jeder Remote-Mutation
+- **AND** stoppt er bei fehlendem oder ungültigem Override-Bundle fail-closed
 
 #### Scenario: Lokale Override-Datei wird als Remote-Quelle angeboten
 
@@ -775,13 +775,14 @@ Das System SHALL nicht-sensitive Studio-Remote-Konfiguration versioniert im Repo
 
 ### Requirement: Candidate-Konfiguration wird vor jeder Zielmutation read-only geprüft
 
-Das System SHALL nach Image-, Git- und statischer Config-Validierung einen isolierten read-only Candidate-One-shot mit Zielimage, Candidate-Konfiguration und erforderlichen Secret-Mounts ausführen. Der Candidate SHALL keine Migration, keinen Bootstrap und keine fachliche Datenmutation ausführen können.
+Das System SHALL nach Image-, Git- und statischer Config-Validierung einen isolierten, blockierenden und read-only Candidate-One-shot mit Zielimage, Candidate-Konfiguration und erforderlichen Secret-Mounts ausführen. Der Candidate SHALL keine Migration, keinen Bootstrap und keine fachliche Datenmutation ausführen können.
 
 #### Scenario: Candidate ist vollständig und kompatibel
 
 - **WHEN** ein Staging- oder Production-Promote den Candidate-Preflight erreicht
 - **THEN** prüft der One-shot Runtime-Profil, externe Secret-Referenzen, Registry-Lesbarkeit, Release-Tenant-Scope und Entschlüsselbarkeit aktiver Tenant-Secrets
 - **AND** wird er vor Backup und App-Deploy terminal ausgewertet und entfernt
+- **AND** darf der Workflow Candidate-Fehler nicht beobachtend fortsetzen
 
 #### Scenario: Candidate kann aktive Tenant-Secrets nicht entschlüsseln
 
@@ -791,7 +792,7 @@ Das System SHALL nach Image-, Git- und statischer Config-Validierung einen isoli
 
 ### Requirement: Standard und Recovery bleiben Modi desselben Promote-Workflows
 
-Das System SHALL reguläre und degradierte Ausgangszustände innerhalb desselben kanonischen `Promote`-Workflows als `standard` beziehungsweise `recovery` behandeln.
+Das System SHALL reguläre Rollouts und degradierte Production-Ausgangszustände innerhalb desselben kanonischen `Promote`-Workflows als `standard` beziehungsweise `recovery` behandeln. Dev und Staging SHALL ausschließlich `standard` verwenden.
 
 #### Scenario: Standard-Promote trifft degradierte Production
 
@@ -799,16 +800,17 @@ Das System SHALL reguläre und degradierte Ausgangszustände innerhalb desselben
 - **THEN** stoppt der Promote vor der ersten Zielmutation mit `PROMOTE_READINESS_NOT_READY`
 - **AND** verweist auf den kontrollierten Recovery-Modus
 
-#### Scenario: Recovery-Promote wird ausdrücklich freigegeben
+#### Scenario: Production-Recovery wird ausdrücklich freigegeben
 
-- **WHEN** `promote_mode=recovery` mit nicht leerem Grund und geschützter Environment-Freigabe gestartet wird
-- **THEN** darf der Ausgangszustand degradiert sein
-- **AND** bleiben Backup, Staging-Digest-Parität, Migration-/Bootstrap-Gates, finale Readiness, Release-Tenant-Smoke und Digest-Prüfung unverändert blockierend
+- **WHEN** `promote_mode=recovery` für Production mit nicht leerem Grund und geschützter Environment-Freigabe gestartet wird
+- **THEN** darf ausschließlich der initiale Readiness-Ausgangszustand degradiert sein
+- **AND** bleiben Imagevertrag, Config-Revision, Backup, Staging-Digest-Parität, Migration-/Bootstrap-Gates, finale Readiness, Release-Tenant-Smoke und Digest-Prüfung unverändert blockierend
+- **AND** erzwingt der Workflow Staging-Parität auch bei gleichem Ziel- und Live-Digest
 
-#### Scenario: Recovery-Grund fehlt
+#### Scenario: Recovery ist außerhalb von Production oder ohne Grund angefordert
 
-- **WHEN** `promote_mode=recovery` ohne nicht leeren dokumentierten Grund gestartet wird
-- **THEN** stoppt der Workflow mit `PROMOTE_RECOVERY_REASON_REQUIRED` vor jeder Zielmutation
+- **WHEN** `promote_mode=recovery` für Dev oder Staging oder ohne nicht leeren dokumentierten Grund gestartet wird
+- **THEN** stoppt der Workflow vor jeder Zielmutation mit einem stabilen `PROMOTE_`-Fehlercode
 
 ### Requirement: Production verlangt denselben erfolgreichen Staging-Image-Digest
 
@@ -829,7 +831,7 @@ Das System SHALL bei jedem Production-Promote mit einem vom Live-Digest abweiche
 
 ### Requirement: Backup-Agent-Capabilities werden vor dem Auftrag live validiert
 
-Das System SHALL den tatsächlich laufenden Backup-Agenten über einen geschützten read-only Capability-Endpoint prüfen, bevor ein Backup-Auftrag erzeugt wird.
+Das System SHALL den tatsächlich laufenden zentralen Backup-Agenten über einen geschützten read-only Capability-Endpoint blockierend prüfen, bevor ein Backup-Auftrag erzeugt wird. Ein temporärer regulärer Backup-Executor ist nicht zulässig.
 
 #### Scenario: Agent erfüllt den Consumer-Vertrag
 
@@ -928,3 +930,14 @@ Das System SHALL vorherigen und neuen Image-Digest, Git-Grenzen, versionierte ni
 - **WHEN** Candidate, Migration oder Bootstrap einen terminalen Taskfehler oder Timeout meldet
 - **THEN** persistiert der Workflow vor beziehungsweise trotz Stack-Bereinigung Jobart, allowlistete Failure-Klasse, Task-ID, Zustand und Exit-Code
 - **AND** persistiert er weder Task-Message noch Remote-Logs, SQL-Text, URL, PII oder Secret-Werte
+
+### Requirement: Workflow-Controller und Release-Quellstand bleiben revisionsgebunden getrennt
+
+Das System SHALL die Revision des ausgeführten Promote-Workflows und den durch `change_head` beschriebenen Release-Quellstand als zwei vollständige Git-Checkouts bereitstellen, ohne eine manuell gepflegte Controller-Dateiliste oder ein zusätzliches Controller-Artefakt zu benötigen.
+
+#### Scenario: Ein älterer Release-Commit wird promotet
+
+- **WHEN** `change_head` von `${{ github.workflow_sha }}` abweicht
+- **THEN** laufen Controller-Validierung, Fehlerklassifikation und Evidenz aus der Workflow-Revision
+- **AND** stammen Compose-Dateien, Runtime-Profile, Diff-Auswertung und Deploy-Render aus `change_head`
+- **AND** prüft der Source-Contract den aufgelösten Head und die Ancestor-Beziehung vor jeder Remote-Mutation

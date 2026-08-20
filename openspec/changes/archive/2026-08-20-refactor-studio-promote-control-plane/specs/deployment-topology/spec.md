@@ -1,6 +1,6 @@
 ## MODIFIED Requirements
 
-### Requirement: Remote-Konfigurationen werden deterministisch aktiviert
+### Requirement: Remote-Konfigurationen werden deterministisch und gestuft aktiviert
 
 Das System SHALL nicht-sensitive Studio-Remote-Konfiguration versioniert im Repository führen und sie über einen repository-lokalen Builder ausschließlich mit dem geschützten Override-Bundle des jeweiligen GitHub-Environments zusammenführen. Lokale `*.local.vars` und das historische vollständige `APP_CONFIG` dürfen keine reguläre Remote-Deployment-Quelle sein.
 
@@ -90,4 +90,3 @@ Das System SHALL die Revision des ausgeführten Promote-Workflows und den durch 
 - **THEN** laufen Controller-Validierung, Fehlerklassifikation und Evidenz aus der Workflow-Revision
 - **AND** stammen Compose-Dateien, Runtime-Profile, Diff-Auswertung und Deploy-Render aus `change_head`
 - **AND** prüft der Source-Contract den aufgelösten Head und die Ancestor-Beziehung vor jeder Remote-Mutation
-

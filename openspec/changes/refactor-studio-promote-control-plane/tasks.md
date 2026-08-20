@@ -15,7 +15,7 @@
 - [x] 2.2 Manuelle Controller-Kopierliste entfernen und Aufrufe eindeutig zuordnen
 - [x] 2.3 Source-Contract auf reine Revision- und Ancestor-Prüfung reduzieren
 - [x] 2.4 Workflow-Vertragstests für Checkout-, Pfad- und Gate-Reihenfolge ergänzen
-- [ ] 2.5 Dokumentation und vollständige lokale sowie GitHub-Gates abschließen
+- [x] 2.5 Dokumentation und vollständige lokale sowie GitHub-Gates abschließen
 - [ ] 2.6 Nach Mergefreigabe denselben Digest geschützt über Dev, Staging und Production verifizieren
 
 ## 3. Recovery auf Production-Readiness-Ausnahme reduzieren

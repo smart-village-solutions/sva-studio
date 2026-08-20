@@ -1,0 +1,4 @@
+{
+  "prNumber": 1108,
+  "body": "Der verschlankte Promote-Ablauf ist vollständig über Dev, Staging und Production bestätigt.\n\n- Alle drei Umgebungen verwenden weiterhin denselben unveränderlichen Image-Digest.\n- Die abschließende Betriebsdokumentation hält die bisherigen Variablenwerte ausschließlich für einen möglichen Git-Revert fest.\n- Backup-, E2E-, Paritäts-, Health-, Digest- und Config-Revision-Nachweise bleiben dokumentiert."
+}

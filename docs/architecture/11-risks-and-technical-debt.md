@@ -532,7 +532,7 @@ Referenzen:
 
 - Impact: hoch (der Dienst besitzt getrennten Zugriff auf beide Datenbanken und Backup-Buckets)
 - Wahrscheinlichkeit: niedrig
-- Maßnahme: eine Replica, globale Serialisierung, keine allgemeine Kommandoausführung, getrennte Secrets, feste Umgebungsableitung, OIDC- und HMAC-Prüfung sowie dauerhafte MinIO-Evidenz. Nach erfolgreichem Staging- und Production-Nachweis ist der zentrale Agent der Standard; der noch vorhandene temporäre Executor ist ausschließlich Incident-Fallback und soll in einem separaten Change entfernt werden.
+- Maßnahme: eine Replica, globale Serialisierung, keine allgemeine Kommandoausführung, getrennte Secrets, feste Umgebungsableitung, OIDC- und HMAC-Prüfung sowie dauerhafte MinIO-Evidenz. Nach erfolgreichem Staging- und Production-Nachweis ist der zentrale Agent der ausschließliche Backup-Executor regulärer Promotes; der temporäre Executor wurde entfernt.
 
 35. Teilrestore oder externer Drift nach einem Datenbank-Vollrestore
 
@@ -561,7 +561,7 @@ Referenzen:
 
 ### Fortschreibung 2026-08: Promote-Vertrag
 
-- Risiko: Der neue Builder weicht vom bewährten `APP_CONFIG` ab. Maßnahme: zuerst ausschließlich redigierter Shadow-Vergleich, danach gestufte autoritative Aktivierung über Dev und Staging; Production bleibt bis zum Nachweis unverändert.
+- Risiko: Das autoritative Bundle ist ohne vollständige geschützte Overrides nicht erzeugbar. Maßnahme: `PROMOTE_CONFIG_OVERRIDES` ist in jedem Environment verpflichtend; fehlende oder ungültige Werte stoppen vor jeder Remote-Mutation.
 - Risiko: Neue Gates blockieren einen legitimen Rollout. Maßnahme: stabile Fehlercodes mit nächster Aktion, klar begrenzte Infrastruktur-Retries und Recovery als ausdrücklich freigegebener Modus desselben Workflows.
 - Restrisiko: Geschützte Overrides und Secret-Werte sind nicht historisiert. Der ausführbare App-Rollback-Vertrag akzeptiert deshalb ausschließlich den vorherigen unveränderlichen Digest zusammen mit der über das Live-Service-Label `sva.config.revision` exakt gebundenen nicht-sensitiven Config-Revision. Fehlt diese Bindung oder ist sie ungültig, gilt fail-closed **STOP** statt einer Rekonstruktion aus Git, Artefakten oder lokalen Dateien. Eine mit diesem Paar inkompatible Secret-Rotation erzwingt ebenfalls **STOP** und einen separat geprüften Recovery-Plan; es gibt weder automatischen Secret-Rückgriff noch einen zweiten Deploypfad außerhalb des geschützten `Promote`-Workflows.
 - Risiko: Der einmalige Staging-Label-Seed wird als allgemeiner Recovery- oder Production-Pfad missbraucht. Maßnahme: geschützter Zwei-Run-Handshake nur über `workflow_dispatch`, exakte Bindung an Run-ID und Attempt einer schema-strikt geprüften H3-Fehlerevidenz, Same-Digest und ausschließlich fehlendes Label; Dev, Production, Recovery, Digestwechsel sowie vorhandene ungültige oder gültige Labels werden abgelehnt. Der Controller ergänzt strukturell nur das Staging-Label, hält alle regulären Candidate-, Main-E2E-, Backup-, Deploy-, Konvergenz-, Smoke- und gemeinsamen Readback-Gates aufrecht und veröffentlicht keine Production-fähige Parität.

@@ -94,12 +94,18 @@ describe('Promote workflow contract', () => {
         /cp "\$\{RUNNER_TEMP\}\/promote-app-config\.vars" config\/runtime\/base\.vars/gu
       )
     ).toHaveLength(2);
-    expect(workflow).toContain(
-      'PROMOTE_CONFIG_BUILDER_MODE: ${{ vars.PROMOTE_CONFIG_BUILDER_MODE }}'
-    );
-    expect(workflow).toContain(
-      "continue-on-error: ${{ vars.CANDIDATE_PREFLIGHT_GATE != 'enforce' }}"
-    );
+    for (const completedTransition of [
+      'PROMOTE_CONFIG_BUILDER_MODE',
+      'vars.MAIN_E2E_GATE',
+      'CANDIDATE_PREFLIGHT_GATE',
+      'BACKUP_CAPABILITY_GATE',
+      'BACKUP_EXECUTOR',
+      'backup_fallback_job',
+      'create temporary database backup fallback',
+      'PROMOTE_GATE_BACKUP_FALLBACK',
+    ])
+      expect(workflow).not.toContain(completedTransition);
+    expect(workflow).not.toContain('APP_CONFIG: ${{ secrets.APP_CONFIG }}');
     expect(
       workflow.match(/SVA_STACK_NAME: \$\{\{ steps\.target\.outputs\.stack_name \}\}/gu)
     ).toHaveLength(2);
@@ -119,10 +125,12 @@ describe('Promote workflow contract', () => {
       /- name: require canonical Main App E2E evidence[\s\S]*?run: pnpm exec tsx "\$\{PROMOTE_CONTROLLER_DIR\}\/verify-main-e2e-evidence\.ts"/u
     )?.[0];
     expect(gate).toContain(
-      "if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' && (vars.MAIN_E2E_GATE == 'shadow' || vars.MAIN_E2E_GATE == 'enforce') }}"
+      "if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}"
     );
-    expect(gate).toContain("continue-on-error: ${{ vars.MAIN_E2E_GATE == 'shadow' }}");
-    expect(gate).toContain("PROMOTE_FAILURE_PATH: ${{ vars.MAIN_E2E_GATE == 'enforce'");
+    expect(gate).not.toContain('continue-on-error:');
+    expect(gate).toContain(
+      'PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json'
+    );
     expect(gate).toContain('EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}');
     expect(workflow).toContain(
       'cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"'
@@ -165,9 +173,9 @@ describe('Promote workflow contract', () => {
       'PROMOTE_MAIN_E2E_REFERENCE: ${{ steps.main_e2e_evidence.outputs.e2e_attestation }}'
     );
     expect(workflow).toContain(
-      "PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: ${{ vars.MAIN_E2E_GATE == 'enforce' }}"
+      "PROMOTE_GATE_MAIN_E2E_EVIDENCE_BLOCKING: 'true'"
     );
-    expect(workflow).toContain("MAIN_E2E_GATE_MODE: ${{ vars.MAIN_E2E_GATE || 'disabled' }}");
+    expect(workflow).toContain('MAIN_E2E_GATE_MODE: enforce');
     expect(workflow).toMatch(
       /- name: write staging parity evidence\n\s+id: staging_evidence\n\s+if: \$\{\{ inputs\.environment == 'staging' && success\(\) \}\}/u
     );
@@ -189,11 +197,11 @@ describe('Promote workflow contract', () => {
     expect(workflow).toContain('create database backup before deployment');
     expect(workflow).toContain('verify database backup object');
     expect(workflow).toContain(
-      'S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object || steps.backup_fallback_job.outputs.backup_object }}'
+      'S3_OBJECT_KEY: ${{ steps.backup_job.outputs.backup_object }}'
     );
     expect(workflow).toContain('id-token: write');
     expect(workflow).toContain('submit-backup-agent-request.ts "${{ inputs.environment }}"');
-    expect(workflow).toContain("vars.BACKUP_EXECUTOR == 'temporary'");
+    expect(workflow).not.toContain('promote-backup-job.ts "${{ inputs.environment }}"');
     expect(workflow).toContain(
       "STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}"
     );
@@ -219,13 +227,10 @@ describe('Promote workflow contract', () => {
       workflow.indexOf('require successful staging parity for production mutation')
     ).toBeLessThan(workflow.indexOf('create database backup before deployment'));
     expect(workflow).toContain(
-      "if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR != 'temporary' }}"
-    );
-    expect(workflow).toContain(
-      "if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.BACKUP_EXECUTOR == 'temporary' }}"
-    );
-    expect(workflow).toContain(
       "if: ${{ inputs.environment == 'staging' || inputs.environment == 'prod' }}"
+    );
+    expect(workflow).toContain(
+      "if: ${{ (inputs.environment == 'staging' || inputs.environment == 'prod') && vars.WASTE_POSTGRES_BACKUP_ENABLED == 'true' }}"
     );
   });
 
@@ -370,21 +375,21 @@ describe('Promote workflow contract', () => {
       'PROMOTE_GATE_CANDIDATE_PREFLIGHT: ${{ steps.candidate_job.outcome }}'
     );
     expect(workflow).toContain(
-      "PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: ${{ vars.CANDIDATE_PREFLIGHT_GATE == 'enforce' }}"
+      "PROMOTE_GATE_CANDIDATE_PREFLIGHT_BLOCKING: 'true'"
     );
     expect(workflow).toContain(
       'PROMOTE_GATE_BACKUP_CAPABILITIES: ${{ steps.backup_capabilities.outcome }}'
     );
     expect(workflow).toContain(
-      "PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce' }}"
+      "PROMOTE_GATE_BACKUP_CAPABILITIES_BLOCKING: 'true'"
     );
     expect(workflow).not.toContain('path: ${{ runner.temp }}/promote-*.json');
     expect(workflow).toContain(
-      "PROMOTE_FAILURE_PATH: ${{ vars.BACKUP_CAPABILITY_GATE == 'enforce'"
+      'PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json'
     );
-    expect(workflow).toContain(
-      'PROMOTE_FAILURE_PATH= pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts"'
-    );
+    expect(workflow).toContain('- name: build authoritative remote config');
+    expect(workflow).not.toContain('--selected-input');
+    expect(workflow).not.toContain('--shadow');
     expect(workflow).not.toContain('echo "## Promote summary"');
   });
 

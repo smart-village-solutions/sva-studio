@@ -85,7 +85,7 @@ Ein erfolgreicher Auftrag erzeugt dauerhaft in MinIO:
 - einen PostgreSQL-Custom-Dump im umgebungsgebundenen Präfix,
 - redigierte Diagnose- und Prüfsummenevidenz.
 
-Der Promote-Workflow akzeptiert das Backup nur, wenn Request-ID, Umgebung, Digest und Terminalstatus passen und das Dump-Objekt anschließend unabhängig verifiziert wurde. Der historische temporäre Backup-Executor ist nur Incident-Fallback und darf nicht als reguläre Variable aktiviert werden.
+Der Promote-Workflow akzeptiert das Backup nur, wenn Request-ID, Umgebung, Digest und Terminalstatus passen und das Dump-Objekt anschließend unabhängig verifiziert wurde. Reguläre Studio-Promotes verwenden ausschließlich den zentralen Backup-Agenten; ein temporärer Backup-Executor ist nicht mehr vorhanden.
 
 ## Backup-Drills
 

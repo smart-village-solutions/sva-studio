@@ -108,86 +108,6 @@ export const buildRemoteAppConfig = (input: {
   };
 };
 
-export const buildSelectedRemoteConfigEvidence = (
-  environment: RemoteEnvironment,
-  source: string
-) => {
-  const selected = parseRemoteConfigLayer(environment, 'selektiertes Deploy-Bundle', source);
-  const missing = requiredRemoteConfigKeys.filter((key) => !selected.values.has(key));
-  if (missing.length > 0)
-    fail(
-      environment,
-      'PROMOTE_CONFIG_REQUIRED_KEY_MISSING',
-      `Pflichtschluessel fehlen: ${missing.join(', ')}.`,
-      'Das selektierte Deploy-Bundle vervollstaendigen.'
-    );
-  for (const [key, value] of selected.values) validateRemoteConfigValue(environment, key, value);
-  const keys = [...selected.values.keys()].sort();
-  const configRevision = createHash('sha256')
-    .update(
-      keys
-        .filter((key) => remoteConfigContract[key]?.kind === 'config')
-        .map((key) => `${key}=${selected.values.get(key)}`)
-        .join('\n')
-    )
-    .digest('hex');
-  return {
-    configRevision,
-    secretReferences: keys
-      .filter((key) => remoteConfigContract[key]?.kind === 'secret-reference')
-      .map((key) => selected.values.get(key) ?? ''),
-  };
-};
-
-export const compareRemoteConfigShadow = (
-  environment: RemoteEnvironment,
-  legacySource: string,
-  candidate: ReturnType<typeof buildRemoteAppConfig>
-) => {
-  const legacy = parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource);
-  const candidateLayer = parseRemoteConfigLayer(environment, 'Candidate', candidate.source);
-  const legacyKeys = [...legacy.values.keys()].sort();
-  const missing = legacyKeys.filter((key) => !candidate.keys.includes(key));
-  const additional = candidate.keys.filter((key) => !legacy.values.has(key));
-  const configValueMismatches = candidate.keys.filter(
-    (key) =>
-      remoteConfigContract[key]?.kind === 'config' &&
-      legacy.values.has(key) &&
-      legacy.values.get(key) !== candidateLayer.values.get(key)
-  );
-  const secretReferenceMismatches = candidate.keys.filter(
-    (key) =>
-      remoteConfigContract[key]?.kind === 'secret-reference' &&
-      legacy.values.has(key) &&
-      legacy.values.get(key) !== candidateLayer.values.get(key)
-  );
-  return {
-    equivalent:
-      missing.length === 0 &&
-      additional.length === 0 &&
-      configValueMismatches.length === 0 &&
-      secretReferenceMismatches.length === 0,
-    missing,
-    additional,
-    configValueMismatches,
-    secretReferenceMismatches,
-  };
-};
-
-export const selectProtectedOverrides = (
-  environment: RemoteEnvironment,
-  legacySource: string,
-  explicitOverrides?: string
-): string => {
-  if (explicitOverrides?.trim()) return explicitOverrides;
-  return [
-    ...parseRemoteConfigLayer(environment, 'bestehender APP_CONFIG-Pfad', legacySource).values,
-  ]
-    .filter(([key]) => remoteConfigContract[key]?.kind !== 'config')
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n');
-};
-
 const writeConfigEvidenceOutputs = (
   candidate: Readonly<{ configRevision: string; secretReferences: readonly string[] }>,
   outputPath: string | undefined
@@ -209,58 +129,29 @@ export const runBuildRemoteAppConfig = (
     return index === -1 ? undefined : args[index + 1];
   };
   const environment = argument('--environment') as RemoteEnvironment | undefined;
-  const selectedInputPath = argument('--selected-input');
   const profilePath = argument('--profile');
   const outputPath = argument('--output');
-  const shadow = args.includes('--shadow');
   if (!environment || !['dev', 'staging', 'prod'].includes(environment)) return 2;
   try {
-    if (selectedInputPath) {
-      writeConfigEvidenceOutputs(
-        buildSelectedRemoteConfigEvidence(
-          environment,
-          readFileSync(resolve(selectedInputPath), 'utf8')
-        ),
-        env.GITHUB_OUTPUT
-      );
-      return 0;
-    }
     if (!profilePath || !outputPath) return 2;
     assertRemoteSource(environment, profilePath);
     const overrideSourceName = env.PROMOTE_CONFIG_OVERRIDE_SOURCE ?? 'github-environment-secret';
     assertRemoteSource(environment, overrideSourceName);
-    const legacySource = env.APP_CONFIG ?? '';
-    const explicitOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim()
-      ? env.PROMOTE_CONFIG_OVERRIDES
-      : undefined;
-    const protectedOverrides = selectProtectedOverrides(
-      environment,
-      legacySource,
-      explicitOverrides
-    );
+    const configuredOverrides = env.PROMOTE_CONFIG_OVERRIDES?.trim();
+    const protectedOverrides = configuredOverrides
+      ? configuredOverrides
+      : fail(
+          environment,
+          'PROMOTE_CONFIG_REQUIRED_KEY_MISSING',
+          'Das geschuetzte Override-Bundle fehlt.',
+          'PROMOTE_CONFIG_OVERRIDES im geschuetzten GitHub Environment konfigurieren.'
+        );
     const candidate = buildRemoteAppConfig({
       environment,
       profile: readFileSync(resolve(profilePath), 'utf8'),
       overrides: protectedOverrides,
     });
     writeConfigEvidenceOutputs(candidate, env.GITHUB_OUTPUT);
-    if (shadow) {
-      const comparison = compareRemoteConfigShadow(environment, legacySource, candidate);
-      if (env.GITHUB_OUTPUT)
-        appendFileSync(
-          env.GITHUB_OUTPUT,
-          `shadow_equivalent=${comparison.equivalent ? 'true' : 'false'}\n`,
-          'utf8'
-        );
-      process.stdout.write(
-        `${JSON.stringify({ mode: 'shadow', configRevision: candidate.configRevision, secretReferences: candidate.secretReferences, ...comparison })}\n`
-      );
-      if (!comparison.equivalent)
-        process.stdout.write(
-          '::warning::PROMOTE_CONFIG_SHADOW_MISMATCH: Der neue Config-Builder ist noch nicht aequivalent zum bestehenden Pfad.\n'
-        );
-      return 0;
-    }
     writeFileSync(resolve(outputPath), candidate.source, { mode: 0o600 });
     return 0;
   } catch (error) {

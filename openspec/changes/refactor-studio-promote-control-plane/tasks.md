@@ -6,7 +6,7 @@
 - [x] 1.4 Temporären Backup-Executor und tote Evidenz-Mappings entfernen
 - [x] 1.5 Workflow-Vertragstests und Config-Builder-Tests anpassen
 - [x] 1.6 `docs/guides/studio-rollout-process.md`, `docs/architecture/07-deployment-view.md` und `docs/architecture/08-cross-cutting-concepts.md` aktualisieren
-- [ ] 1.7 Zieltests, Script-Typecheck, Rollout-Doku-Check, OpenSpec-Validierung und `pnpm test:pr` ausführen
+- [x] 1.7 Zieltests, Script-Typecheck, Rollout-Doku-Check, OpenSpec-Validierung und `pnpm test:pr` ausführen
 - [ ] 1.8 Nach separater Freigabe denselben Digest über Dev, Staging und Production verifizieren
 
 ## 2. Controller- und Release-Revision über zwei Checkouts trennen

@@ -53,7 +53,13 @@ Die drei Blöcke werden getrennt gemergt und ausgerollt. Der nächste Block begi
 3. Recovery-Vertrag vereinfachen und den normalen Standardpfad erneut vollständig promoten.
 4. Erst danach ungenutzte GitHub-Variablen separat entfernen; die bisherigen Werte für einen Git-Revert dokumentiert halten.
 
+### Ausgangsnachweis für PR 1
+
+- Ausgangs-Commit: `c7abb7c997feda418ec8c58c2225fff3a18822ae`
+- letzter erfolgreicher Production-Promote: Run `32304245487`, Status `passed`
+- gebundener Image-Digest: `sha256:1b761a1537c4266fca21baf96a7fde1b0f76a948c8caabeb3684581cc727e55f`
+- gebundene Config-Revision: `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`
+
 ## Open Questions
 
 Keine. Die drei Umsetzungsblöcke und ihre Reihenfolge sind freigegeben.
-

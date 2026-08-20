@@ -93,59 +93,28 @@ jobs:
           set -euo pipefail
           {
             echo "PROMOTE_FAILURE_PATH=${RUNNER_TEMP}/promote-terminal-failure.json"
-            echo "PROMOTE_CONTROLLER_DIR=${RUNNER_TEMP}/promote-evidence-controller"
+            echo "PROMOTE_CONTROLLER_DIR=${GITHUB_WORKSPACE}/.promote-controller"
           } >> "${GITHUB_ENV}"
+
+      - name: checkout promoted release revision
+        id: source_preparation
+        continue-on-error: true
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.change_head }}
 
       - name: checkout workflow controller revision
         uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 1
+          path: .promote-controller
           ref: ${{ github.workflow_sha }}
 
       - name: setup finalizer Node.js runtime
         uses: actions/setup-node@v6
         with:
-          node-version-file: .nvmrc
-
-      - name: preserve promote evidence controller
-        run: |
-          set -euo pipefail
-          mkdir -p \
-            "${PROMOTE_CONTROLLER_DIR}/config/runtime/remote" \
-            "${PROMOTE_CONTROLLER_DIR}/scripts/ci/assets" \
-            "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime"
-          cp config/runtime/remote/prod.vars "${PROMOTE_CONTROLLER_DIR}/config/runtime/remote/prod.vars"
-          cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/promote-result.ts"
-          cp scripts/ci/promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence.ts"
-          cp scripts/ci/promote-evidence-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-contract.ts"
-          cp scripts/ci/promote-evidence-io.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-io.ts"
-          cp scripts/ci/promote-evidence-types.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-types.ts"
-          cp scripts/ci/promote-evidence-values.ts "${PROMOTE_CONTROLLER_DIR}/promote-evidence-values.ts"
-          cp scripts/ci/promote-recovery-contract.ts "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts"
-          cp scripts/ci/promote-recovery-failure-definitions.ts "${PROMOTE_CONTROLLER_DIR}/promote-recovery-failure-definitions.ts"
-          cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"
-          cp scripts/ci/verify-main-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
-          cp scripts/ci/verify-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"
-          cp scripts/ci/write-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
-          cp scripts/ci/record-promote-failure.ts "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts"
-          cp scripts/ci/write-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
-          cp scripts/ci/promote-result.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-result.ts"
-          cp scripts/ci/promote-recovery-failure-definitions.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-recovery-failure-definitions.ts"
-          cp scripts/ci/backup-agent-contract.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/backup-agent-contract.ts"
-          cp scripts/ci/verify-backup-agent-capabilities.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts"
-          cp scripts/ci/inject-worker-database-secret.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/inject-worker-database-secret.ts"
-          cp scripts/ci/promote-deployment-base.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-deployment-base.ts"
-          cp scripts/ci/promote-image-provenance.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-image-provenance.ts"
-          cp scripts/ci/verify-swarm-convergence.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-swarm-convergence.ts"
-          cp scripts/ci/build-remote-app-config.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/build-remote-app-config.ts"
-          cp scripts/ci/remote-config-contract.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/remote-config-contract.ts"
-          cp scripts/ci/remote-config-validation.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/remote-config-validation.ts"
-          cp scripts/ci/promote-live-digest.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts"
-          cp scripts/ci/promote-target.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-target.ts"
-          cp scripts/ops/runtime/process.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/process.ts"
-          cp scripts/ops/runtime/remote-portainer.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-portainer.ts"
-          cp scripts/ops/runtime/remote-service-spec.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-service-spec.ts"
-          cp scripts/ops/runtime/remote-stack-state.ts "${PROMOTE_CONTROLLER_DIR}/scripts/ops/runtime/remote-stack-state.ts"
+          node-version-file: .promote-controller/.nvmrc
 
       - name: validate inputs
         id: input_validation
@@ -161,7 +130,7 @@ jobs:
         run: |
           set -euo pipefail
           record_input_failure() {
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" input-validation
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" input-validation
           }
 
           case "${ENVIRONMENT}" in
@@ -202,12 +171,12 @@ jobs:
             standard) ;;
             recovery)
               if [ -z "${RECOVERY_REASON//[[:space:]]/}" ]; then
-                node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_RECOVERY_REASON_REQUIRED "${ENVIRONMENT}" input-validation
+                node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_RECOVERY_REASON_REQUIRED "${ENVIRONMENT}" input-validation
                 exit 1
               fi
               ;;
             *)
-              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_MODE_INVALID "${ENVIRONMENT}" input-validation
+              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_MODE_INVALID "${ENVIRONMENT}" input-validation
               exit 1
               ;;
           esac
@@ -223,7 +192,7 @@ jobs:
           trimmed_secret="${trimmed_secret%"${trimmed_secret##*[![:space:]]}"}"
 
           if [ "${#trimmed_secret}" -lt 32 ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID "${{ inputs.environment }}" input-validation
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_PERMISSION_SNAPSHOT_SECRET_INVALID "${{ inputs.environment }}" input-validation
             exit 1
           fi
 
@@ -235,29 +204,23 @@ jobs:
           set -euo pipefail
           if [ "${#STUDIO_JOB_WORKER_DB_PASSWORD}" -lt 32 ]; then
             echo "::error::STUDIO_JOB_WORKER_DB_PASSWORD fehlt oder ist zu kurz." >&2
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${{ inputs.environment }}" input-validation
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${{ inputs.environment }}" input-validation
             exit 1
           fi
 
-      - name: fetch main reference
-        id: source_preparation
-        run: git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
-
-      - name: bind executor source to promoted change head
+      - name: verify promoted release source contract
         id: source_contract
         env:
           CHANGE_BASE: ${{ inputs.change_base }}
           CHANGE_HEAD: ${{ inputs.change_head }}
         run: |
           set -euo pipefail
-          if ! base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")" ||
+          if ! workspace_head="$(git rev-parse --verify HEAD)" ||
+             ! base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")" ||
              ! head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")" ||
+             [ "${workspace_head}" != "${head}" ] ||
              ! git merge-base --is-ancestor "${base}" "${head}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
-            exit 1
-          fi
-          if ! git checkout --detach "${head}" || [ "$(git rev-parse HEAD)" != "${head}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
             exit 1
           fi
           {
@@ -267,7 +230,9 @@ jobs:
 
       - name: setup pnpm workspace for promoted source
         id: workspace_setup
-        uses: ./.github/actions/setup-pnpm-workspace
+        uses: ./.promote-controller/.github/actions/setup-pnpm-workspace
+        with:
+          node-version-file: .promote-controller/.nvmrc
 
       - name: Login to GHCR
         id: registry_login
@@ -290,7 +255,7 @@ jobs:
             --environment "${ENVIRONMENT}" \
             --image "${IMAGE_INPUT}" \
             --expected-revision "$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_IMAGE_CONTRACT_INVALID "${ENVIRONMENT}" image-contract
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_IMAGE_CONTRACT_INVALID "${ENVIRONMENT}" image-contract
             exit 1
           fi
 
@@ -301,7 +266,7 @@ jobs:
           EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}
           GITHUB_TOKEN: ${{ github.token }}
           PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
-        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-main-e2e-evidence.ts"
 
       - name: build authoritative remote config
         id: remote_config
@@ -321,7 +286,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! grep -Eq "^[[:space:]]+- ['\"]sva\\.config\\.revision=\\$\\{SVA_CONFIG_REVISION\\}['\"]$" "deploy/compose.${{ inputs.environment }}.yaml"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" static-preflight
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" static-preflight
             exit 1
           fi
 
@@ -334,7 +299,7 @@ jobs:
           umask 077
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/inject-worker-database-secret.ts" \
             --input "${RUNNER_TEMP}/promote-app-config.vars"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_CONFIG_INVALID "${{ inputs.environment }}" config-build
             exit 1
           fi
 
@@ -348,8 +313,8 @@ jobs:
       - name: resolve deployment target
         id: target
         run: |
-          if ! pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${{ inputs.environment }}" deploy
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-target.ts" "${{ inputs.environment }}"; then
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${{ inputs.environment }}" deploy
             exit 1
           fi
 
@@ -367,7 +332,7 @@ jobs:
           QUANTUM_ENDPOINT: ${{ vars.QUANTUM_ENDPOINT }}
         run: |
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts" "${{ inputs.environment }}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" digest-verification
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" digest-verification
             exit 1
           fi
 
@@ -381,7 +346,7 @@ jobs:
           RECOVERY_REASON: ${{ inputs.recovery_reason }}
           TARGET_CONFIG_REVISION: ${{ steps.remote_config.outputs.config_revision }}
           SOURCE_SHA: ${{ steps.source_contract.outputs.head_sha }}
-        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/promote-recovery-contract.ts" "${{ inputs.environment }}"
+        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-recovery-contract.ts" "${{ inputs.environment }}"
 
       - name: bind deploy gates to actual live revision
         id: deployment_base
@@ -391,7 +356,7 @@ jobs:
             --head "${{ steps.source_contract.outputs.head_sha }}" \
             --live-image "${{ steps.previous_live_image.outputs.previous_live_image }}" \
             --environment "${{ inputs.environment }}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_SOURCE_CONTRACT_INVALID "${{ inputs.environment }}" source-contract
             exit 1
           fi
 
@@ -421,7 +386,7 @@ jobs:
             --bootstrap-mode "${BOOTSTRAP_MODE}" \
             --migration-executor-configured "${migration_executor_configured}" \
             --bootstrap-executor-configured "${bootstrap_executor_configured}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${ENVIRONMENT}" static-preflight
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${ENVIRONMENT}" static-preflight
             exit 1
           fi
 
@@ -442,12 +407,12 @@ jobs:
           set -euo pipefail
 
           if [ "${MIGRATION_GATE_OK}" != "true" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
             exit 1
           fi
 
           if [ "${BOOTSTRAP_GATE_OK}" != "true" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_DEPLOY_GATES_REJECTED "${{ inputs.environment }}" static-preflight
             exit 1
           fi
 
@@ -463,7 +428,7 @@ jobs:
           PREVIOUS_LIVE_IMAGE: ${{ steps.previous_live_image.outputs.previous_live_image }}
           FORCE_STAGING_PARITY: ${{ steps.recovery_contract.outputs.force_staging_parity }}
         run: |
-          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"; then
+          if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"; then
             exit 1
           fi
 
@@ -473,7 +438,7 @@ jobs:
         env:
           PROMOTE_FAILURE_PATH: ${{ runner.temp }}/promote-terminal-failure.json
           WASTE_POSTGRES_BACKUP_ENABLED: ${{ vars.WASTE_POSTGRES_BACKUP_ENABLED }}
-        run: pnpm exec tsx scripts/ci/verify-backup-agent-capabilities.ts "${{ inputs.environment }}"
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-backup-agent-capabilities.ts" "${{ inputs.environment }}"
 
       - name: run read-only candidate preflight
         id: candidate_job
@@ -600,12 +565,12 @@ jobs:
           trap 'rm -f .env stack.json stack.yaml' EXIT
 
           if [ -z "${QUANTUM_ENDPOINT}" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" deploy
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INPUT_INVALID "${ENVIRONMENT}" deploy
             exit 1
           fi
 
           if [ ! -s "${RUNNER_TEMP}/promote-app-config.vars" ]; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${ENVIRONMENT}" deploy
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_CONFIG_REQUIRED_KEY_MISSING "${ENVIRONMENT}" deploy
             exit 1
           fi
 
@@ -645,7 +610,7 @@ jobs:
           : > config/runtime/studio.vars
           if ! pnpm exec tsx scripts/ops/runtime-env.ts smoke studio 2>"${RUNNER_TEMP}/runtime-smoke.stderr"; then
             if [ ! -s "${PROMOTE_FAILURE_PATH}" ]; then
-              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" external-smoke
+              node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_INTERNAL_ERROR "${{ inputs.environment }}" external-smoke
             fi
             exit 1
           fi
@@ -658,7 +623,7 @@ jobs:
           if ! pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-live-digest.ts" "${{ inputs.environment }}" \
               --expected "${{ steps.image_contract.outputs.deploy_image_ref }}" \
               --expected-config-revision "${{ steps.remote_config.outputs.config_revision }}"; then
-            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH "${{ inputs.environment }}" digest-verification
+            node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/record-promote-failure.ts" PROMOTE_LIVE_DIGEST_MISMATCH "${{ inputs.environment }}" digest-verification
             exit 1
           fi
 
@@ -672,7 +637,7 @@ jobs:
           MAIN_E2E_GATE_MODE: enforce
           PROMOTE_MODE: ${{ inputs.promote_mode }}
           STAGING_MUTATION: ${{ steps.gate_eval.outputs.migration_should_run == 'true' || steps.gate_eval.outputs.bootstrap_should_run == 'true' }}
-        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"
+        run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-staging-promote-evidence.ts"
 
       - name: upload staging parity evidence
         id: staging_evidence_upload
@@ -765,7 +730,7 @@ jobs:
           PROMOTE_GATE_STAGING_EVIDENCE_UPLOAD: ${{ steps.staging_evidence_upload.outcome }}
           PROMOTE_GATE_ONE_SHOT_EVIDENCE_UPLOAD: ${{ steps.one_shot_evidence_upload.outcome }}
           PROMOTE_GATE_CONFIG_CLEANUP: ${{ steps.config_cleanup.outcome }}
-        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"
+        run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-promote-evidence.ts"
 
       - name: upload redacted promote evidence
         if: always()

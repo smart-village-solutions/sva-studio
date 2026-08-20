@@ -47,6 +47,8 @@ Die Backup-Endpunkte und Buckets sind fest an die Zielumgebung gebunden:
 
 Der zentrale Agent akzeptiert nur den engen, OIDC- und HMAC-gesicherten Vertrag `backup-and-verify`. Er stellt keine Remote-Shell bereit. Der S3-kompatible Speicher ist MinIO unter `https://fileserver.smart-village.app`; AWS CLI und S3 SDK dienen lediglich als kompatible Clients.
 
+`Promote` trennt Workflow-Steuerung und Release-Quellstand durch zwei vollständige Git-Checkouts. Der normale Workspace enthält `change_head` mit vollständiger Historie; `${{ github.workflow_sha }}` liegt mit Tiefe 1 unter `.promote-controller/`. Fehlerklassifikation, Evidenz und die controllerseitigen Remote- und Konvergenzprüfungen laufen aus dem Controller-Checkout. Releaseverträge wie Image- und Deploy-Contract sowie Compose-Dateien, Runtime-Profile, Diff-Auswertung, One-shot-Jobs und Deploy-Render bleiben an den Release-Workspace gebunden. Ein fehlgeschlagener Release-Checkout wird fail-closed im Source-Contract klassifiziert, nachdem Controller und dessen Node-Runtime verfügbar sind. Abhängigkeiten werden genau einmal im Release-Workspace installiert; eine manuelle Controller-Dateiliste oder ein zweiter Installationsschritt existiert nicht.
+
 ## Phase 1: Image bauen und Dev aktualisieren
 
 Ein Push nach `main` startet [Build](../../.github/workflows/build.yml):
@@ -74,7 +76,7 @@ Der manuelle Workflow [Promote](../../.github/workflows/promote.yml) erhält:
 
 Die Reihenfolge ist unveränderlich; nicht angeforderte One-shot-Jobs und deren Postconditions werden übersprungen:
 
-1. Inputs, Git-Bindung, Image-Digest und OCI-Revision validieren.
+1. Inputs, beide revisionsgebundenen Git-Checkouts, Image-Digest und OCI-Revision validieren. Der Source-Contract verlangt, dass Workspace-HEAD exakt `change_head` entspricht und `change_base` dessen Vorfahr ist.
 2. Vorherigen Live-Digest und dessen OCI-Revision erfassen; nur diese Revision ist die effektive Basis der Diff-Gates.
 3. Signierten Backup-Auftrag an den Staging-Agenten senden; bei aktiviertem Waste-Backup anschließend einen zweiten Auftrag mit `database: "waste"` ausführen. Der Agent entdeckt das vollständige Tenant-Inventar selbst und schreibt ein Manifest mit tenantgenauen Dump-Referenzen.
 4. Terminales Ergebnis aus MinIO abwarten und das Dump-Objekt unabhängig per S3-`HEAD` verifizieren.

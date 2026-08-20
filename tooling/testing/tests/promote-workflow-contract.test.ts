@@ -65,7 +65,7 @@ describe('Promote workflow contract', () => {
 
   it('runs staging phases in the required fail-closed order', () => {
     const phases = [
-      'bind executor source to promoted change head',
+      'verify promoted release source contract',
       'capture previous live app digest',
       'run read-only candidate preflight',
       'create database backup before deployment',
@@ -113,7 +113,7 @@ describe('Promote workflow contract', () => {
       workflow.match(/SVA_PUBLIC_BASE_URL: \$\{\{ steps\.target\.outputs\.public_base_url \}\}/gu)
     ).toHaveLength(3);
     expect(workflow).toContain(
-      'pnpm exec tsx scripts/ci/promote-target.ts "${{ inputs.environment }}"'
+      'pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/promote-target.ts" "${{ inputs.environment }}"'
     );
     expect(workflow).toContain('SVA_STACK_NAME: ${{ steps.target.outputs.stack_name }}');
     expect(workflow).toContain('--stack "${{ steps.target.outputs.stack_name }}"');
@@ -122,7 +122,7 @@ describe('Promote workflow contract', () => {
 
   it('requires canonical Main App E2E evidence only for standard staging before remote mutation', () => {
     const gate = workflow.match(
-      /- name: require canonical Main App E2E evidence[\s\S]*?run: pnpm exec tsx "\$\{PROMOTE_CONTROLLER_DIR\}\/verify-main-e2e-evidence\.ts"/u
+      /- name: require canonical Main App E2E evidence[\s\S]*?run: pnpm exec tsx "\$\{PROMOTE_CONTROLLER_DIR\}\/scripts\/ci\/verify-main-e2e-evidence\.ts"/u
     )?.[0];
     expect(gate).toContain(
       "if: ${{ inputs.environment == 'staging' && inputs.promote_mode == 'standard' }}"
@@ -133,22 +133,10 @@ describe('Promote workflow contract', () => {
     );
     expect(gate).toContain('EXPECTED_CHANGE_HEAD: ${{ steps.source_contract.outputs.head_sha }}');
     expect(workflow).toContain(
-      'cp scripts/ci/app-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/app-e2e-evidence.ts"'
+      'pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/verify-staging-promote-evidence.ts"'
     );
     expect(workflow).toContain(
-      'cp scripts/ci/verify-main-e2e-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-main-e2e-evidence.ts"'
-    );
-    expect(workflow).toContain(
-      'cp scripts/ci/verify-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"'
-    );
-    expect(workflow).toContain(
-      'cp scripts/ci/write-staging-promote-evidence.ts "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"'
-    );
-    expect(workflow).toContain(
-      'pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/verify-staging-promote-evidence.ts"'
-    );
-    expect(workflow).toContain(
-      'run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/write-staging-promote-evidence.ts"'
+      'run: pnpm exec tsx "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-staging-promote-evidence.ts"'
     );
     const gateOffset = workflow.indexOf('require canonical Main App E2E evidence');
     expect(gateOffset).toBeGreaterThan(workflow.indexOf('validate image contract'));
@@ -275,6 +263,88 @@ describe('Promote workflow contract', () => {
     );
   });
 
+  it('keeps controller and release sources in revision-bound checkouts without a copy list', () => {
+    const releaseCheckout = workflow.match(
+      /- name: checkout promoted release revision[\s\S]*?ref: \$\{\{ inputs\.change_head \}\}/u
+    )?.[0];
+    const controllerCheckout = workflow.match(
+      /- name: checkout workflow controller revision[\s\S]*?ref: \$\{\{ github\.workflow_sha \}\}/u
+    )?.[0];
+    const sourceContract = workflow.match(
+      /- name: verify promoted release source contract[\s\S]*?echo "head_sha=\$\{head\}"/u
+    )?.[0];
+
+    expect(releaseCheckout).toContain('fetch-depth: 0');
+    expect(releaseCheckout).toContain('continue-on-error: true');
+    expect(releaseCheckout).not.toContain('path:');
+    expect(controllerCheckout).toContain('fetch-depth: 1');
+    expect(controllerCheckout).toContain('path: .promote-controller');
+    expect(workflow.indexOf('checkout promoted release revision')).toBeLessThan(
+      workflow.indexOf('checkout workflow controller revision')
+    );
+    expect(workflow.indexOf('checkout workflow controller revision')).toBeLessThan(
+      workflow.indexOf('setup pnpm workspace for promoted source')
+    );
+    expect(workflow).toContain(
+      'PROMOTE_CONTROLLER_DIR=${GITHUB_WORKSPACE}/.promote-controller'
+    );
+    expect(workflow).not.toContain('preserve promote evidence controller');
+    expect(workflow).not.toMatch(/^\s*cp .*PROMOTE_CONTROLLER_DIR/mu);
+    expect(workflow).not.toContain('promote-evidence-controller');
+    expect(workflow).not.toContain('working-directory: .promote-controller');
+    expect(
+      workflow.match(
+        /uses: \.\/\.promote-controller\/\.github\/actions\/setup-pnpm-workspace/gu
+      )
+    ).toHaveLength(1);
+    expect(workflow).not.toContain('uses: ./.github/actions/setup-pnpm-workspace');
+    expect(workflow).toMatch(
+      /- name: setup pnpm workspace for promoted source[\s\S]*?node-version-file: \.promote-controller\/\.nvmrc/u
+    );
+    expect(workflow).toMatch(
+      /- name: setup finalizer Node\.js runtime\n\s+uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.promote-controller\/\.nvmrc/u
+    );
+
+    expect(sourceContract).toContain('workspace_head="$(git rev-parse --verify HEAD)"');
+    expect(sourceContract).toContain('base="$(git rev-parse --verify "${CHANGE_BASE}^{commit}")"');
+    expect(sourceContract).toContain('head="$(git rev-parse --verify "${CHANGE_HEAD}^{commit}")"');
+    expect(sourceContract).toContain('[ "${workspace_head}" != "${head}" ]');
+    expect(sourceContract).toContain('git merge-base --is-ancestor "${base}" "${head}"');
+    expect(sourceContract).not.toContain('git checkout');
+
+    for (const controllerCommand of [
+      'scripts/ci/record-promote-failure.ts',
+      'scripts/ci/verify-main-e2e-evidence.ts',
+      'scripts/ci/verify-staging-promote-evidence.ts',
+      'scripts/ci/write-staging-promote-evidence.ts',
+      'scripts/ci/write-promote-evidence.ts',
+      'scripts/ci/build-remote-app-config.ts',
+      'scripts/ci/inject-worker-database-secret.ts',
+      'scripts/ci/promote-deployment-base.ts',
+      'scripts/ci/promote-live-digest.ts',
+      'scripts/ci/promote-target.ts',
+      'scripts/ci/verify-backup-agent-capabilities.ts',
+      'scripts/ci/verify-swarm-convergence.ts',
+    ])
+      expect(workflow).toContain(`\${PROMOTE_CONTROLLER_DIR}/${controllerCommand}`);
+
+    for (const releaseCommand of [
+      'scripts/ci/promote-image-contract.ts',
+      'scripts/ci/promote-deploy-gates.ts',
+      'scripts/ci/render-compose-env.ts',
+      'scripts/ci/promote-one-shot-job.ts',
+      'scripts/ci/submit-backup-agent-request.ts',
+      'scripts/ci/verify-promote-backup.ts',
+      'scripts/ci/render-quantum-stack.ts',
+      'scripts/ops/runtime-env.ts',
+    ]) {
+      expect(workflow).toContain(releaseCommand);
+      expect(workflow).not.toContain(`\${PROMOTE_CONTROLLER_DIR}/${releaseCommand}`);
+    }
+    expect(workflow).toContain('profile_path="config/runtime/remote/${{ inputs.environment }}.vars"');
+    expect(workflow).toContain('"deploy/compose.${{ inputs.environment }}.yaml"');
+  });
+
   it('publishes one redacted promote evidence contract after every terminal outcome', () => {
     const writer = workflow.indexOf('write redacted promote evidence');
     const upload = workflow.indexOf('upload redacted promote evidence');
@@ -287,35 +357,17 @@ describe('Promote workflow contract', () => {
     );
     expect(workflow).toMatch(/- name: upload redacted promote evidence\n\s+if: always\(\)/u);
     expect(workflow).toContain(
-      'run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/write-promote-evidence.ts"'
+      'run: node --experimental-strip-types "${PROMOTE_CONTROLLER_DIR}/scripts/ci/write-promote-evidence.ts"'
     );
     expect(workflow).not.toMatch(/node (?!--experimental-strip-types)[^\n]*\.ts/u);
     expect(workflow).toContain('ref: ${{ github.workflow_sha }}');
     expect(workflow).toMatch(
-      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.nvmrc/u
+      /uses: actions\/setup-node@v6\n\s+with:\n\s+node-version-file: \.promote-controller\/\.nvmrc/u
     );
     expect(setupNode).toBeGreaterThanOrEqual(0);
     expect(firstTypeScriptController).toBeGreaterThan(setupNode);
-    for (const controllerModule of [
-      'promote-evidence-contract.ts',
-      'promote-evidence-io.ts',
-      'promote-evidence-types.ts',
-      'promote-evidence-values.ts',
-      'promote-recovery-contract.ts',
-      'promote-recovery-failure-definitions.ts',
-    ]) {
-      expect(workflow).toContain(
-        `cp scripts/ci/${controllerModule} "\${PROMOTE_CONTROLLER_DIR}/${controllerModule}"`
-      );
-    }
-    expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
-      workflow.indexOf('validate inputs')
-    );
-    expect(workflow.indexOf('preserve promote evidence controller')).toBeLessThan(
-      workflow.indexOf('bind executor source to promoted change head')
-    );
     expect(workflow.indexOf('setup pnpm workspace for promoted source')).toBeGreaterThan(
-      workflow.indexOf('bind executor source to promoted change head')
+      workflow.indexOf('verify promoted release source contract')
     );
     expect(workflow).not.toContain('record-promote-failure.ts" PROMOTE_PARITY_DIGEST_MISMATCH');
     expect(workflow).toContain('PROMOTE_LIVE_DIGEST_MISMATCH');
@@ -330,7 +382,7 @@ describe('Promote workflow contract', () => {
       /^\s{6}PROMOTE_(?:FAILURE_PATH|CONTROLLER_DIR):\s+\$\{\{\s*runner\./mu
     );
     expect(workflow).toMatch(
-      /- name: initialize promote controller paths\n\s+run: \|\n\s+set -euo pipefail\n[\s\S]*?PROMOTE_FAILURE_PATH=\$\{RUNNER_TEMP\}\/promote-terminal-failure\.json[\s\S]*?PROMOTE_CONTROLLER_DIR=\$\{RUNNER_TEMP\}\/promote-evidence-controller[\s\S]*?GITHUB_ENV/u
+      /- name: initialize promote controller paths\n\s+run: \|\n\s+set -euo pipefail\n[\s\S]*?PROMOTE_FAILURE_PATH=\$\{RUNNER_TEMP\}\/promote-terminal-failure\.json[\s\S]*?PROMOTE_CONTROLLER_DIR=\$\{GITHUB_WORKSPACE\}\/\.promote-controller[\s\S]*?GITHUB_ENV/u
     );
     expect(workflow.indexOf('initialize promote controller paths')).toBeLessThan(
       workflow.indexOf('checkout workflow controller revision')

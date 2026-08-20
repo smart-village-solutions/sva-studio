@@ -60,6 +60,15 @@ Die drei Blöcke werden getrennt gemergt und ausgerollt. Der nächste Block begi
 - gebundener Image-Digest: `sha256:1b761a1537c4266fca21baf96a7fde1b0f76a948c8caabeb3684581cc727e55f`
 - gebundene Config-Revision: `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`
 
+### Ausgangsnachweis für PR 2
+
+- Ausgangs-Commit: `3c9be1c305cb7a076790db434172a85640265d36`
+- erfolgreicher Dev-Promote: Build-Run `32414894734`, Attempt `2`, Status `passed`
+- erfolgreicher Staging-Promote: Run `32417352434`, Status `passed`
+- erfolgreicher Production-Promote: Run `32419078441`, Status `passed`
+- gebundener Image-Digest: `sha256:fe287a3a8851b007a89f923304d056ac7faa3e40af84ce982a24018c905125b0`
+- gebundene Production-Config-Revision: `a6349d63cc858bdc1713ffeb6c5bf4c886aac3ef2826ab4de0a6d0bfb3d6175e`
+
 ## Open Questions
 
 Keine. Die drei Umsetzungsblöcke und ihre Reihenfolge sind freigegeben.
